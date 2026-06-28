@@ -15,9 +15,9 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 pb-24 pt-4">
+      <main className="mx-auto max-w-5xl px-4 pt-4" style={{ paddingBottom: 120 }}>
         <Outlet />
       </main>
       <BottomNav />
