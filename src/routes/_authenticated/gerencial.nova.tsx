@@ -111,7 +111,6 @@ function NovaVisitaPage() {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, nome, cargo")
-        .eq("cargo", "tecnico")
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
