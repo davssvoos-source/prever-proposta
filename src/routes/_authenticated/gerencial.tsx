@@ -456,6 +456,11 @@ function ListaVisitas({
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {v.status === "aguardando_aprovacao" && (
+                          <DropdownMenuItem onClick={() => onApprove(v.id)}>
+                            ✓ Aprovar
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
                           <Link to="/gerencial/visita/$id/editar" params={{ id: v.id }}>
                             Editar
