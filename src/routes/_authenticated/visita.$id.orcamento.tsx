@@ -73,7 +73,7 @@ function OrcamentoEtapa1() {
 
   useEffect(() => {
     if (!hydrated && (orcamento || visita)) {
-      const o = orcamento as Record<string, unknown> | null;
+      const o = orcamento as unknown as Record<string, unknown> | null;
       setQtd((o?.qtd_apartamentos as number) ?? 0);
       setSistema((o?.sistema_atual as string) ?? null);
       const fromOrc = (o?.servicos_ofertados as string[]) ?? null;
