@@ -855,6 +855,56 @@ function VisitaDetail() {
         </div>
       )}
 
+      {/* Equipamentos do orçamento */}
+      {verEquip && blocoDetalhes.length > 0 && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
+          {Object.entries(
+            (orcamento?.blocos_selecionados as Record<string, Record<string, number>>) ?? {},
+          ).map(([cat, catQtds]) =>
+            Object.entries(catQtds).map(([blocoId, qty]) => {
+              const bloco = blocoDetalhes.find((b: any) => b.id === blocoId) as any;
+              if (!bloco || !qty) return null;
+              return (
+                <div
+                  key={`${cat}-${blocoId}`}
+                  style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                    <span style={{ background: "rgba(255,192,0,0.12)", borderRadius: 6, padding: "2px 8px", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10, color: "#FFC000" }}>
+                      {bloco.code}
+                    </span>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 13, color: "#fff" }}>
+                      {bloco.name}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,192,0,0.65)" }}>
+                      ×{qty}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 4 }}>
+                    {(bloco.blocos_itens ?? []).map((item: any) => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+                        <span>{item.nome} · {item.modelo}</span>
+                        <span style={{ color: "#FFC000", fontWeight: 400 }}>
+                          {item.qty * qty}{item.variavel ? " (V)" : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }),
+          )}
+          {orcamento?.qtd_apartamentos && (
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.40)", marginTop: 4 }}>
+              {orcamento.qtd_apartamentos} apartamentos{orcamento.sistema_atual ? ` · ${orcamento.sistema_atual}` : ""}
+            </div>
+          )}
+        </div>
+      )}
+
+
+
       {/* Aprovação */}
       {(status === "aprovada" || status === "reprovada" || showApproval) && (
         <div style={GLASS}>
