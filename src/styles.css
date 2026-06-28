@@ -58,7 +58,7 @@
   --color-gold: var(--gold-primary);
   --color-gold-bright: var(--gold-bright);
   --color-gold-dim: var(--gold-dim);
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
