@@ -127,7 +127,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
           styles: { fontSize: 9 },
           theme: "grid",
         });
-        y = (doc as any).lastAutoTable.finalY + 14;
+        y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
       }
 
       // Totais
@@ -171,7 +171,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
           styles: { fontSize: 9 },
           theme: "grid",
         });
-        y = (doc as any).lastAutoTable.finalY + 10;
+        y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
         doc.setFont("helvetica", "bold");
         doc.setTextColor(31, 56, 100);
         doc.setFontSize(12);
@@ -189,9 +189,8 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
 
       doc.save(`Proposta-${projeto.nome.replace(/[^a-z0-9]+/gi, "-")}.pdf`);
       toast.success("PDF gerado");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      toast.error(e.message ?? "Erro ao gerar PDF");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar PDF");
     } finally {
       setBusy(false);
     }

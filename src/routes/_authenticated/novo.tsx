@@ -113,9 +113,8 @@ function NovaProposta() {
       }
       toast.success("Proposta criada!");
       navigate({ to: "/projeto/$id", params: { id: p.id } });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      toast.error(err.message ?? "Erro ao criar proposta");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar proposta");
     } finally {
       setSaving(false);
     }

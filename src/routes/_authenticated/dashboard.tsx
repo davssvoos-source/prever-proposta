@@ -46,15 +46,18 @@ function Dashboard() {
   });
 
   const filtered = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (projetos ?? []).filter((p: any) => {
-      if (status !== "todos" && p.status !== status) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        return p.nome?.toLowerCase().includes(q) || p.cliente?.nome?.toLowerCase().includes(q);
-      }
-      return true;
-    });
+    return (projetos ?? []).filter(
+      (
+        p: Record<string, unknown> & { status: string; nome?: string; cliente?: { nome?: string } },
+      ) => {
+        if (status !== "todos" && p.status !== status) return false;
+        if (query) {
+          const q = query.toLowerCase();
+          return p.nome?.toLowerCase().includes(q) || p.cliente?.nome?.toLowerCase().includes(q);
+        }
+        return true;
+      },
+    );
   }, [projetos, query, status]);
 
   return (
@@ -115,30 +118,38 @@ function Dashboard() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          {filtered.map((p: any) => (
-            <Link key={p.id} to="/projeto/$id" params={{ id: p.id }} className="group">
-              <Card className="h-full p-4 transition-shadow hover:shadow-md">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold">{p.nome}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {p.cliente?.nome ?? "—"}
+          {filtered.map(
+            (
+              p: Record<string, unknown> & {
+                status: string;
+                nome?: string;
+                cliente?: { nome?: string };
+              },
+            ) => (
+              <Link key={p.id} to="/projeto/$id" params={{ id: p.id }} className="group">
+                <Card className="h-full p-4 transition-shadow hover:shadow-md">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{p.nome}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {p.cliente?.nome ?? "—"}
+                      </div>
                     </div>
+                    <StatusBadge status={p.status} />
                   </div>
-                  <StatusBadge status={p.status} />
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(p.data_visita)}
-                  </span>
-                  <span className="rounded bg-muted px-2 py-0.5">
-                    {CONTRATO_LABEL[p.tipo_contrato]}
-                  </span>
-                </div>
-              </Card>
-            </Link>
-          ))}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(p.data_visita)}
+                    </span>
+                    <span className="rounded bg-muted px-2 py-0.5">
+                      {CONTRATO_LABEL[p.tipo_contrato]}
+                    </span>
+                  </div>
+                </Card>
+              </Link>
+            ),
+          )}
         </div>
       )}
     </div>
