@@ -190,6 +190,8 @@ function VisitaDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
 
   const { data: meUser } = useQuery({
     queryKey: ["me-user"],
