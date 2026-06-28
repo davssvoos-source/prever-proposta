@@ -46,18 +46,17 @@ function Dashboard() {
   });
 
   const filtered = useMemo(() => {
-    return (projetos ?? []).filter(
-      (
-        p: Record<string, unknown> & { status: string; nome?: string; cliente?: { nome?: string } },
-      ) => {
-        if (status !== "todos" && p.status !== status) return false;
-        if (query) {
-          const q = query.toLowerCase();
-          return p.nome?.toLowerCase().includes(q) || p.cliente?.nome?.toLowerCase().includes(q);
-        }
-        return true;
-      },
-    );
+    return (projetos ?? []).filter((p) => {
+      if (status !== "todos" && p.status !== status) return false;
+      if (query) {
+        const q = query.toLowerCase();
+        return (
+          p.nome?.toLowerCase().includes(q) ||
+          p.cliente?.nome?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
   }, [projetos, query, status]);
 
   return (
