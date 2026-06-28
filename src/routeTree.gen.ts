@@ -21,6 +21,7 @@ import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
+import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
 import { Route as AuthenticatedVisitaIdOrcamentoRouteImport } from './routes/_authenticated/visita.$id.orcamento'
 import { Route as AuthenticatedVisitaIdOrcamentoCategoriasRouteImport } from './routes/_authenticated/visita.$id.orcamento.categorias'
@@ -86,6 +87,12 @@ const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   path: '/projeto/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGerencialUsuariosRoute =
+  AuthenticatedGerencialUsuariosRouteImport.update({
+    id: '/usuarios',
+    path: '/usuarios',
+    getParentRoute: () => AuthenticatedGerencialRoute,
+  } as any)
 const AuthenticatedGerencialNovaRoute =
   AuthenticatedGerencialNovaRouteImport.update({
     id: '/nova',
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/novo'
     | '/perfil'
     | '/gerencial/nova'
+    | '/gerencial/usuarios'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/orcamento'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/novo'
     | '/perfil'
     | '/gerencial/nova'
+    | '/gerencial/usuarios'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/orcamento'
@@ -223,6 +235,7 @@ export interface FileRouteTypes {
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
     | '/_authenticated/gerencial/nova'
+    | '/_authenticated/gerencial/usuarios'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
     | '/_authenticated/visita/$id/orcamento'
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjetoIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gerencial/usuarios': {
+      id: '/_authenticated/gerencial/usuarios'
+      path: '/usuarios'
+      fullPath: '/gerencial/usuarios'
+      preLoaderRoute: typeof AuthenticatedGerencialUsuariosRouteImport
+      parentRoute: typeof AuthenticatedGerencialRoute
+    }
     '/_authenticated/gerencial/nova': {
       id: '/_authenticated/gerencial/nova'
       path: '/nova'
@@ -363,12 +383,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedGerencialRouteChildren {
   AuthenticatedGerencialNovaRoute: typeof AuthenticatedGerencialNovaRoute
+  AuthenticatedGerencialUsuariosRoute: typeof AuthenticatedGerencialUsuariosRoute
   AuthenticatedGerencialVisitaIdEditarRoute: typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 
 const AuthenticatedGerencialRouteChildren: AuthenticatedGerencialRouteChildren =
   {
     AuthenticatedGerencialNovaRoute: AuthenticatedGerencialNovaRoute,
+    AuthenticatedGerencialUsuariosRoute: AuthenticatedGerencialUsuariosRoute,
     AuthenticatedGerencialVisitaIdEditarRoute:
       AuthenticatedGerencialVisitaIdEditarRoute,
   }
