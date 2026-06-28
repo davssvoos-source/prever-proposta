@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -15,12 +16,15 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   return (
-    <div className="min-h-screen">
-      <AppHeader />
-      <main className="mx-auto max-w-5xl px-4 pt-4" style={{ paddingBottom: 120 }}>
-        <Outlet />
-      </main>
-      <BottomNav />
-    </div>
+    <>
+      <AnimatedBackground />
+      <div className="min-h-screen" style={{ position: "relative", zIndex: 1 }}>
+        <AppHeader />
+        <main className="mx-auto max-w-5xl px-4 pt-4" style={{ paddingBottom: 120 }}>
+          <Outlet />
+        </main>
+        <BottomNav />
+      </div>
+    </>
   );
 }
