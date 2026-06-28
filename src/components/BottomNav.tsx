@@ -8,7 +8,7 @@ export function BottomNav() {
   const items = [
     { icon: LayoutDashboard, label: "Início", to: "/dashboard" as const },
     { icon: Map, label: "Mapa", to: "/mapa" as const },
-    { icon: Plus, label: "Nova", to: "/gerencial/nova" as const },
+    { icon: Plus, label: "Nova", to: "/novo" as const },
     { icon: Calendar, label: "Calendário", to: "/calendario" as const },
     { icon: User, label: "Perfil", to: "/perfil" as const },
   ];
