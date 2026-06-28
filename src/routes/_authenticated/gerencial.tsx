@@ -308,11 +308,12 @@ function StatCard({
 
 
 function ListaVisitas({
-  visitas, tecMap, onCancel,
+  visitas, tecMap, onCancel, onApprove,
 }: {
   visitas: Visita[];
   tecMap: Map<string, Tecnico>;
   onCancel: (id: string) => void;
+  onApprove: (id: string) => void;
 }) {
   const navigate = useNavigate();
   if (visitas.length === 0) {
