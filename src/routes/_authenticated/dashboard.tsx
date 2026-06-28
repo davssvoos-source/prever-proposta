@@ -48,8 +48,8 @@ function Dashboard() {
     enabled: tecnicoIds.length > 0,
   });
   const profileMap = useMemo(() => {
-    const m = new Map<string, { nome: string; cargo?: string | null }>();
-    (profiles ?? []).forEach((p) => m.set(p.id, { nome: p.nome, cargo: p.cargo ?? null }));
+    const m = new Map<string, { nome: string; cargo: string | null }>();
+    (profiles ?? []).forEach((p) => m.set(p.id, { nome: p.nome ?? "Sem nome", cargo: p.cargo ?? null }));
     return m;
   }, [profiles]);
 
