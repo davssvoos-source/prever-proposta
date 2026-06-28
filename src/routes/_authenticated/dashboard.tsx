@@ -49,7 +49,7 @@ function Dashboard() {
   });
   const profileMap = useMemo(() => {
     const m = new Map<string, { nome: string; cargo?: string | null }>();
-    (profiles ?? []).forEach((p) => m.set(p.id, { nome: p.nome, cargo: p.cargo }));
+    (profiles ?? []).forEach((p) => m.set(p.id, { nome: p.nome, cargo: p.cargo ?? null }));
     return m;
   }, [profiles]);
 
