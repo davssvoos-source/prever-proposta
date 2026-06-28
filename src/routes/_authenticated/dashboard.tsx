@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ClipboardCheck, Clock } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -101,12 +101,15 @@ function Dashboard() {
 
   const pendentes = visitas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitas.filter((v: any) => v.status === "em_andamento");
-  const concluidas = visitas.filter((v: any) => v.status === "concluida" || v.status === "aprovada");
+  const aguardando = visitas.filter((v: any) => v.status === "concluida");
+  const aprovadas = visitas.filter((v: any) => v.status === "aprovada");
+  const reprovadas = visitas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={16} /> },
-    { label: "Em andamento", value: emAndamento.length, color: "#60A5FA", icon: <CalendarDays size={16} /> },
-    { label: "Concluídas", value: concluidas.length, color: "#34D399", icon: <ClipboardCheck size={16} /> },
+    { label: "Ag. Aprovação", value: aguardando.length, color: "#FBBF24", icon: <CalendarDays size={16} /> },
+    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={16} /> },
+    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={16} /> },
   ];
 
   return (
@@ -138,7 +141,7 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {metrics.map((m) => (
           <div key={m.label} style={{ ...GLASS, padding: "14px 10px", textAlign: "center" }}>
             <div style={{ color: m.color, display: "flex", justifyContent: "center" }}>{m.icon}</div>
@@ -192,36 +195,31 @@ function Dashboard() {
         <>
           {pendentes.length > 0 && <Section title="📅 Pendentes" items={pendentes} />}
           {emAndamento.length > 0 && <Section title="▶️ Em andamento" items={emAndamento} />}
-          {concluidas.length > 0 && <Section title="✅ Concluídas" items={concluidas.slice(0, 5)} />}
+          {aguardando.length > 0 && <Section title="⏳ Aguardando aprovação" items={aguardando} />}
+          {aprovadas.length > 0 && <Section title="✅ Aprovadas" items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section title="❌ Reprovadas" items={reprovadas.slice(0, 5)} />}
         </>
       )}
     </div>
   );
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pendente: "#FFC000",
-  em_andamento: "#60A5FA",
-  concluida: "#34D399",
-  aprovada: "#34D399",
-  reprovada: "#F87171",
-};
-const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluida: "Concluída",
-  aprovada: "Aprovada",
-  reprovada: "Reprovada",
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  pendente:     { label: "Visita Técnica Pendente", color: "#FFC000",  bg: "rgba(255,192,0,0.12)"   },
+  em_andamento: { label: "Em Andamento",            color: "#60A5FA",  bg: "rgba(96,165,250,0.12)"  },
+  concluida:    { label: "Aguardando Aprovação",    color: "#FBBF24",  bg: "rgba(251,191,36,0.12)"  },
+  aprovada:     { label: "Aprovada",                color: "#34D399",  bg: "rgba(52,211,153,0.12)"  },
+  reprovada:    { label: "Reprovada",               color: "#F87171",  bg: "rgba(248,113,113,0.12)" },
 };
 
 function VisitaCard({ visita }: { visita: any }) {
-  const color = STATUS_COLOR[visita.status] ?? "#888";
-  const label = STATUS_LABEL[visita.status] ?? visita.status;
+  const sInfo = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
   const nome =
     visita.nome_predio ??
     visita.clientes?.nome ??
     visita.nome_sindico ??
     visita.titulo ??
+    "Sem nome";
     "Sem nome";
   return (
     <div
@@ -256,19 +254,21 @@ function VisitaCard({ visita }: { visita: any }) {
         </div>
         <div
           style={{
-            background: `${color}22`,
-            border: `1px solid ${color}55`,
+            display: "inline-flex",
+            alignItems: "center",
+            background: sInfo.bg,
+            border: `1px solid ${sInfo.color}40`,
             borderRadius: 20,
             padding: "3px 10px",
             fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
+            fontWeight: 500,
             fontSize: 10,
-            letterSpacing: "0.10em",
-            color,
+            color: sInfo.color,
+            letterSpacing: "0.08em",
             whiteSpace: "nowrap",
           }}
         >
-          {label}
+          {sInfo.label}
         </div>
       </div>
       {visita.endereco && (
