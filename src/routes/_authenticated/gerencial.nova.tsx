@@ -92,6 +92,8 @@ function NovaVisitaPage() {
   const [tecnicoId, setTecnicoId] = useState("");
   const [prioridade, setPrioridade] = useState("normal");
   const [descricao, setDescricao] = useState("");
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
   const { data: tecnicos = [] } = useQuery({
     queryKey: ["tecnicos"],
