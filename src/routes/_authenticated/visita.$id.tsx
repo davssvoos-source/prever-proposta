@@ -663,37 +663,16 @@ function VisitaDetail() {
 
       {/* CTAs fixos no rodapé */}
       {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                className="h-12 w-full text-base font-semibold btn-pulse-gold"
-              >
-                <Play className="h-5 w-5" /> Iniciar Visita
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Iniciar visita?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Isso registra o início da visita técnica neste momento.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    await updateMutation.mutateAsync({
-                      data_hora_inicio: new Date().toISOString(),
-                    });
-                    navigate({ to: "/visita/$id/orcamento", params: { id } });
-                  }}
-                >
-                  Iniciar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <div className="fixed bottom-16 left-0 right-0 z-30 p-3">
+          <SlideToStart
+            onComplete={async () => {
+              await updateMutation.mutateAsync({
+                data_hora_inicio: new Date().toISOString(),
+              });
+              navigate({ to: "/visita/$id/orcamento", params: { id } });
+            }}
+            loading={updateMutation.isPending}
+          />
         </div>
       )}
       {visita.status === "pendente" && user?.id === visita.tecnico_id && visita.data_hora_inicio && (
