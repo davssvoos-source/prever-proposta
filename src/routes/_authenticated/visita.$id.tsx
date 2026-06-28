@@ -511,21 +511,21 @@ function VisitaDetail() {
       )}
 
       {/* CTAs fixos no rodapé */}
-      {isFuture && user?.id === visita.tecnico_id && (
+      {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 className="h-12 w-full text-base font-semibold btn-pulse-gold"
               >
-                <Play className="h-5 w-5" /> Iniciar Visita Agora
+                <Play className="h-5 w-5" /> Iniciar Visita
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Iniciar visita?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Isso registra o início da visita técnica e abre a montagem do orçamento.
+                  Isso registra o início da visita técnica neste momento.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -533,7 +533,6 @@ function VisitaDetail() {
                 <AlertDialogAction
                   onClick={async () => {
                     await updateMutation.mutateAsync({
-                      status: "em_andamento",
                       data_hora_inicio: new Date().toISOString(),
                     });
                     navigate({ to: "/visita/$id/orcamento", params: { id } });
@@ -546,14 +545,14 @@ function VisitaDetail() {
           </AlertDialog>
         </div>
       )}
-      {visita.status === "em_andamento" && user?.id === visita.tecnico_id && (
+      {visita.status === "pendente" && user?.id === visita.tecnico_id && visita.data_hora_inicio && (
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
           <Button
-            className="h-12 w-full text-base font-semibold text-primary-foreground"
-            style={{ backgroundColor: "#1F3864" }}
+            className="h-12 w-full text-base font-semibold"
+            style={{ backgroundColor: "rgba(96,165,250,0.10)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.30)" }}
             onClick={() =>
               updateMutation.mutate({
-                status: "concluida",
+                status: "aguardando_aprovacao",
                 data_hora_fim: new Date().toISOString(),
               })
             }
