@@ -182,7 +182,7 @@ function GerencialIndex() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard icon={<CalendarClock className="h-4 w-4" />} value={stats.semana} label="Esta semana" />
         <StatCard icon={<UserX className="h-4 w-4" />} value={stats.semTec} label="Aguardando técnico" />
-        <StatCard icon={<Loader2 className="h-4 w-4" />} value={stats.andamento} label="Em andamento" />
+        <StatCard icon={<Loader2 className="h-4 w-4" />} value={stats.andamento} label="Ag. Aprovação" />
         <StatCard icon={<CheckCircle2 className="h-4 w-4" />} value={stats.concluidasMes} label="Concluídas no mês" />
       </div>
 
