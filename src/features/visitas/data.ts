@@ -12,7 +12,7 @@ export async function fetchVisitas() {
 export async function fetchVisita(id: string) {
   const { data, error } = await supabase
     .from("visitas_tecnicas")
-    .select("*, cliente:clientes(id, nome, tipo_empreendimento, contato_telefone)")
+    .select("*, cliente:clientes(id, nome, tipo_empreendimento, telefone)")
     .eq("id", id)
     .single();
   if (error) throw error;
