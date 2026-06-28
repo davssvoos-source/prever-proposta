@@ -101,7 +101,7 @@ function BlocosCatPage() {
         .eq("visita_id", id)
         .maybeSingle();
       const existing =
-        ((current?.blocos_selecionados ?? {}) as Record<string, Record<string, number>>) ?? {};
+        (current?.blocos_selecionados ?? {}) as Record<string, Record<string, number>>;
       const merged = { ...existing, [cat]: qtds };
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
