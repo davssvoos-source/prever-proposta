@@ -1,73 +1,76 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { ClipboardList, Home, Map, User } from "lucide-react";
-import { useIsGerente } from "@/features/gerencial/data";
-
-const BASE_ITEMS = [
-  { to: "/dashboard" as const, label: "Home", icon: Home },
-  { to: "/mapa" as const, label: "Mapa", icon: Map },
-];
-const PROFILE_ITEM = { to: "/perfil" as const, label: "Perfil", icon: User };
-const GERENCIAL_ITEM = { to: "/gerencial" as const, label: "Gerencial", icon: ClipboardList };
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { LayoutDashboard, Map, Plus, Calendar, User } from "lucide-react";
 
 export function BottomNav() {
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data: isGerente } = useIsGerente();
 
-  const items = isGerente
-    ? [...BASE_ITEMS, GERENCIAL_ITEM, PROFILE_ITEM]
-    : [...BASE_ITEMS, PROFILE_ITEM];
+  const items = [
+    { icon: LayoutDashboard, label: "Início", to: "/dashboard" as const },
+    { icon: Map, label: "Mapa", to: "/mapa" as const },
+    { icon: Plus, label: "Nova", to: "/gerencial/nova" as const },
+    { icon: Calendar, label: "Calendário", to: "/calendario" as const },
+    { icon: User, label: "Perfil", to: "/perfil" as const },
+  ];
 
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
       style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        background: "rgba(8,8,12,0.82)",
+        backdropFilter: "blur(24px) saturate(160%)",
+        WebkitBackdropFilter: "blur(24px) saturate(160%)",
+        borderTop: "1px solid rgba(255,255,255,0.08)",
         display: "flex",
+        justifyContent: "space-around",
         alignItems: "center",
-        gap: 8,
-        padding: "10px 14px",
-        background: "rgba(6, 6, 6, 0.80)",
-        backdropFilter: "blur(30px) saturate(180%)",
-        border: "1px solid rgba(255, 192, 0, 0.20)",
-        borderRadius: 40,
-        boxShadow:
-          "0 8px 32px rgba(0,0,0,0.6), 0 0 40px rgba(255,192,0,0.06), 0 0 0 1px rgba(255,255,255,0.04) inset",
-        minWidth: 220,
+        padding: "10px 0 20px",
       }}
     >
-      {items.map((item) => {
+      {items.map(({ icon: Icon, label, to }) => {
         const active =
-          pathname === item.to ||
-          (item.to === "/dashboard" && pathname === "/") ||
-          (item.to === "/gerencial" && pathname.startsWith("/gerencial"));
-        const Icon = item.icon;
+          pathname === to ||
+          (to === "/dashboard" && pathname === "/") ||
+          (to !== "/dashboard" && pathname.startsWith(to));
         return (
-          <Link
-            key={item.to}
-            to={item.to}
-            aria-current={active ? "page" : undefined}
-            className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] px-4 py-2 transition-all duration-200"
-            style={{ background: active ? "rgba(255, 192, 0, 0.12)" : "transparent" }}
+          <button
+            key={to}
+            onClick={() => navigate({ to })}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 12px",
+              borderRadius: 12,
+              minWidth: 52,
+            }}
           >
             <Icon
-              className="h-[22px] w-[22px] transition-colors"
-              strokeWidth={active ? 2.4 : 1.8}
-              style={{ color: active ? "#FFC000" : "#4A4F66" }}
+              size={22}
+              color={active ? "#FFC000" : "rgba(255,255,255,0.35)"}
+              strokeWidth={active ? 2 : 1.5}
             />
             <span
-              className="text-[10px] font-medium transition-colors"
-              style={{ color: active ? "#FFC000" : "#4A4F66" }}
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: active ? 500 : 300,
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                color: active ? "#FFC000" : "rgba(255,255,255,0.35)",
+              }}
             >
-              {item.label}
+              {label}
             </span>
-            {active && (
-              <span
-                aria-hidden
-                className="absolute -bottom-1 h-1 w-1 rounded-full"
-                style={{ background: "#FFC000", boxShadow: "0 0 6px rgba(255,192,0,0.6)" }}
-              />
-            )}
-          </Link>
+          </button>
         );
       })}
     </nav>

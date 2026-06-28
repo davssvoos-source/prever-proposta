@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, MapPin, ClipboardCheck, Clock } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/lib/auth";
-import { STATUS_VISITA, type VisitaStatus } from "@/features/visitas/types";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -168,10 +168,10 @@ function Dashboard() {
             <Section title="📅 Próximas visitas" items={pendentes} />
           )}
           {aguardando.length > 0 && (
-            <Section title="🕐 Aguardando aprovação" items={aguardando} compact />
+            <Section title="🕐 Aguardando aprovação" items={aguardando} />
           )}
           {aprovadas.length > 0 && (
-            <Section title="✅ Aprovadas" items={aprovadas.slice(0, 3)} compact />
+            <Section title="✅ Aprovadas" items={aprovadas.slice(0, 3)} />
           )}
         </>
       )}
@@ -179,15 +179,128 @@ function Dashboard() {
   );
 }
 
-function Section({
-  title,
-  items,
-  compact = false,
-}: {
-  title: string;
-  items: any[];
-  compact?: boolean;
-}) {
+const STATUS_COLOR: Record<string, string> = {
+  pendente: "#FFC000",
+  aguardando_aprovacao: "#3B82F6",
+  aprovado: "#22C55E",
+};
+const STATUS_LABEL: Record<string, string> = {
+  pendente: "Pendente",
+  aguardando_aprovacao: "Aguardando aprovação",
+  aprovado: "Aprovado",
+};
+
+function VisitaCard({ visita, onClick }: { visita: any; onClick: () => void }) {
+  const emAndamento = visita.status === "pendente" && visita.data_hora_inicio && !visita.data_hora_fim;
+  const statusKey = emAndamento ? "em_andamento" : visita.status;
+  const color = emAndamento ? "#FFC000" : STATUS_COLOR[visita.status] ?? "#888";
+  const label = emAndamento ? "Em andamento" : STATUS_LABEL[visita.status] ?? visita.status;
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        background: "rgba(8,8,12,0.22)",
+        backdropFilter: "blur(12px) saturate(130%)",
+        border: "1px solid rgba(255,192,0,0.10)",
+        borderRadius: 18,
+        padding: "18px 16px",
+        cursor: "pointer",
+        marginBottom: 12,
+        minHeight: visita.foto_fachada_url ? 140 : undefined,
+      }}
+    >
+      {visita.foto_fachada_url && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url(${visita.foto_fachada_url})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(135deg, rgba(8,8,12,0.78) 0%, rgba(8,8,12,0.55) 60%, rgba(8,8,12,0.40) 100%)",
+            }}
+          />
+        </>
+      )}
+
+      <div style={{ position: "relative", zIndex: 1 }} data-status={statusKey}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: 8,
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 15,
+              color: "#fff",
+              flex: 1,
+            }}
+          >
+            {visita.nome_predio ?? visita.titulo}
+          </div>
+          <div
+            style={{
+              background: `${color}22`,
+              border: `1px solid ${color}55`,
+              borderRadius: 20,
+              padding: "3px 10px",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 10,
+              letterSpacing: "0.10em",
+              color,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {label}
+          </div>
+        </div>
+        <div
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.65)",
+          }}
+        >
+          📍 {visita.endereco}
+        </div>
+        {visita.data_hora_agendada && (
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: "rgba(255,192,0,0.75)",
+              marginTop: 6,
+              letterSpacing: "0.06em",
+            }}
+          >
+            🗓️ {fmtData(visita.data_hora_agendada)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, items }: { title: string; items: any[] }) {
   return (
     <section>
       <h2
@@ -202,94 +315,18 @@ function Section({
       >
         {title}
       </h2>
-      <ul style={{ display: "flex", flexDirection: "column", gap: 10, listStyle: "none", padding: 0, margin: 0 }}>
-        {items.map((v) => {
-          const sInfo = STATUS_VISITA[v.status as VisitaStatus];
-          const emAndamento = v.status === "pendente" && v.data_hora_inicio && !v.data_hora_fim;
-          return (
-            <li key={v.id}>
-              <Link
-                to="/visita/$id"
-                params={{ id: v.id }}
-                style={{
-                  ...GLASS,
-                  display: "block",
-                  padding: compact ? "12px 14px" : "14px 16px",
-                  textDecoration: "none",
-                  color: "inherit",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-                  <div
-                    style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 500,
-                      fontSize: 14,
-                      color: "#F0F2F5",
-                    }}
-                  >
-                    {v.nome_predio ?? v.titulo}
-                  </div>
-                  {emAndamento ? (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 500,
-                        color: "#FFC000",
-                        background: "rgba(255,192,0,0.12)",
-                        border: "1px solid rgba(255,192,0,0.30)",
-                        padding: "3px 8px",
-                        borderRadius: 999,
-                        letterSpacing: "0.08em",
-                      }}
-                    >
-                      EM ANDAMENTO
-                    </span>
-                  ) : (
-                    sInfo && (
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 500,
-                          color: sInfo.color,
-                          background: sInfo.bg,
-                          border: `1px solid ${sInfo.color}55`,
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          letterSpacing: "0.08em",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {sInfo.label.toUpperCase()}
-                      </span>
-                    )
-                  )}
-                </div>
-                {!compact && (
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(200,200,200,0.65)", fontSize: 12 }}>
-                      <CalendarDays size={12} />
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                        {fmtData(v.data_hora_agendada)}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(200,200,200,0.5)", fontSize: 11 }}>
-                      <MapPin size={12} />
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                        {v.endereco}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {compact && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: "rgba(200,200,200,0.45)", fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                    {v.endereco}
-                  </div>
-                )}
-              </Link>
-            </li>
-          );
-        })}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {items.map((v) => (
+          <li key={v.id}>
+            <Link
+              to="/visita/$id"
+              params={{ id: v.id }}
+              style={{ textDecoration: "none", color: "inherit", display: "block" }}
+            >
+              <VisitaCard visita={v} onClick={() => {}} />
+            </Link>
+          </li>
+        ))}
       </ul>
     </section>
   );

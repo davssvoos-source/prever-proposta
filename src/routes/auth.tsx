@@ -1,140 +1,396 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect, type CSSProperties } from "react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/auth")({
-  ssr: false,
   component: AuthPage,
 });
 
+type AuthMode = "login" | "forgot" | "recovery";
+
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
+  const [senha, setSenha] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [showSenha, setShowSenha] = useState(false);
+  const [showNovaSenha, setShowNovaSenha] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard", replace: true });
-    });
-  }, [navigate]);
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery") || hash.includes("type=email")) setMode("recovery");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("type") === "recovery") setMode("recovery");
+  }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { nome },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Entrando...");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
-      navigate({ to: "/dashboard", replace: true });
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Erro ao autenticar");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (mode === "recovery") return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate({ to: "/dashboard" });
+    });
+  }, [mode, navigate]);
+
+  async function handleLogin() {
+    if (!email || !senha) {
+      toast.error("Preencha e-mail e senha.");
+      return;
     }
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    navigate({ to: "/dashboard" });
   }
 
+  async function handleForgot() {
+    if (!email) {
+      toast.error("Informe seu e-mail.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Link de recuperação enviado para " + email);
+    setMode("login");
+  }
+
+  async function handleReset() {
+    if (!novaSenha || !confirmarSenha) {
+      toast.error("Preencha os campos.");
+      return;
+    }
+    if (novaSenha !== confirmarSenha) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    if (novaSenha.length < 6) {
+      toast.error("Senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: novaSenha });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Senha alterada com sucesso!");
+    navigate({ to: "/dashboard" });
+  }
+
+  const CARD: CSSProperties = {
+    background: "rgba(8,8,12,0.55)",
+    backdropFilter: "blur(20px) saturate(160%)",
+    WebkitBackdropFilter: "blur(20px) saturate(160%)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 24,
+    padding: "32px 24px",
+  };
+  const INPUT: CSSProperties = {
+    width: "100%",
+    height: 52,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 14,
+    color: "#fff",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 14,
+    padding: "0 16px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+  const BTN_GOLD: CSSProperties = {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+    border: "none",
+    color: "#08090E",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 13,
+    letterSpacing: "0.18em",
+    textTransform: "uppercase",
+    cursor: "pointer",
+    boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
+  };
+  const BTN_GHOST: CSSProperties = {
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.45)",
+    letterSpacing: "0.06em",
+  };
+  const LBL: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 11,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: "rgba(255,192,0,0.65)",
+    marginBottom: 8,
+    display: "block",
+  };
+
   return (
-    <>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#08090E",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
       <AnimatedBackground />
-      <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ position: "relative", zIndex: 1 }}>
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center text-primary-foreground">
-          <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-xl bg-accent text-accent-foreground text-xl font-bold">
-            PV
+      <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: 28,
+              letterSpacing: "0.20em",
+              textTransform: "uppercase",
+              color: "#FFC000",
+              textShadow: "0 0 24px rgba(255,192,0,0.4)",
+            }}
+          >
+            PREVER
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Grupo Prever</h1>
-          <p className="text-sm opacity-80">Gerador de orçamentos</p>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+              marginTop: 4,
+            }}
+          >
+            Sistema de Gestão
+          </div>
         </div>
 
-        <Card className="p-6 shadow-xl">
-          <div className="mb-5 flex gap-1 rounded-md bg-muted p-1">
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-                mode === "login" ? "bg-background shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-                mode === "signup" ? "bg-background shadow-sm" : "text-muted-foreground"
-              }`}
-            >
-              Criar conta
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="nome">Nome</Label>
-                <Input
-                  id="nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Seu nome"
-                  required
+        <div style={CARD}>
+          {mode === "login" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={LBL}>E-mail</label>
+                <input
+                  style={INPUT}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                 />
               </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div>
+                <label style={LBL}>Senha</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...INPUT, paddingRight: 48 }}
+                    type={showSenha ? "text" : "password"}
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    placeholder="••••••••"
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSenha((p) => !p)}
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "rgba(255,255,255,0.4)",
+                      display: "flex",
+                    }}
+                  >
+                    {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1, marginTop: 4 }}
+              >
+                {loading ? "Entrando..." : "Entrar"}
+              </button>
+              <div style={{ textAlign: "center", marginTop: 4 }}>
+                <button onClick={() => setMode("forgot")} style={BTN_GHOST}>
+                  Esqueci minha senha
+                </button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={6}
-                required
-              />
+          )}
+
+          {mode === "forgot" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <button
+                onClick={() => setMode("login")}
+                style={{
+                  ...BTN_GHOST,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  color: "rgba(255,255,255,0.5)",
+                  marginBottom: 4,
+                }}
+              >
+                <ArrowLeft size={14} /> Voltar ao login
+              </button>
+              <div>
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 17,
+                    color: "#fff",
+                    marginBottom: 6,
+                  }}
+                >
+                  Recuperar senha
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.45)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Informe seu e-mail e enviaremos um link para criar uma nova senha.
+                </div>
+              </div>
+              <div>
+                <label style={LBL}>Seu e-mail</label>
+                <input
+                  style={INPUT}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  onKeyDown={(e) => e.key === "Enter" && handleForgot()}
+                />
+              </div>
+              <button
+                onClick={handleForgot}
+                disabled={loading}
+                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? "Enviando..." : "Enviar link de recuperação →"}
+              </button>
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Aguarde..." : mode === "signup" ? "Criar conta" : "Entrar"}
-            </Button>
-          </form>
-        </Card>
-        <p className="mt-4 text-center text-xs text-primary-foreground/70">
-          <Link to="/">Voltar à página inicial</Link>
-        </p>
+          )}
+
+          {mode === "recovery" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 17,
+                    color: "#fff",
+                    marginBottom: 6,
+                  }}
+                >
+                  Nova senha
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.45)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Defina sua nova senha de acesso.
+                </div>
+              </div>
+              <div>
+                <label style={LBL}>Nova senha</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...INPUT, paddingRight: 48 }}
+                    type={showNovaSenha ? "text" : "password"}
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    placeholder="Min. 6 caracteres"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNovaSenha((p) => !p)}
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "rgba(255,255,255,0.4)",
+                      display: "flex",
+                    }}
+                  >
+                    {showNovaSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={LBL}>Confirmar nova senha</label>
+                <input
+                  style={INPUT}
+                  type="password"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  placeholder="Repita a senha"
+                  onKeyDown={(e) => e.key === "Enter" && handleReset()}
+                />
+              </div>
+              <button
+                onClick={handleReset}
+                disabled={loading}
+                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? "Salvando..." : "Salvar nova senha →"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 }
