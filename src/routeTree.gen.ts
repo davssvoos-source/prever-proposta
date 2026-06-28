@@ -21,6 +21,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
+import { Route as AuthenticatedVisitaIdOrcamentoRouteImport } from './routes/_authenticated/visita.$id.orcamento'
 import { Route as AuthenticatedGerencialVisitaIdEditarRouteImport } from './routes/_authenticated/gerencial.visita.$id.editar'
 
 const AuthRoute = AuthRouteImport.update({
@@ -83,6 +84,12 @@ const AuthenticatedGerencialNovaRoute =
     path: '/nova',
     getParentRoute: () => AuthenticatedGerencialRoute,
   } as any)
+const AuthenticatedVisitaIdOrcamentoRoute =
+  AuthenticatedVisitaIdOrcamentoRouteImport.update({
+    id: '/orcamento',
+    path: '/orcamento',
+    getParentRoute: () => AuthenticatedVisitaIdRoute,
+  } as any)
 const AuthenticatedGerencialVisitaIdEditarRoute =
   AuthenticatedGerencialVisitaIdEditarRouteImport.update({
     id: '/visita/$id/editar',
@@ -101,7 +108,8 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
-  '/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRoutesByTo {
@@ -115,7 +123,8 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
-  '/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRoutesById {
@@ -131,7 +140,8 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
-  '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
   '/_authenticated/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRouteTypes {
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/gerencial/nova'
     | '/projeto/$id'
     | '/visita/$id'
+    | '/visita/$id/orcamento'
     | '/gerencial/visita/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/gerencial/nova'
     | '/projeto/$id'
     | '/visita/$id'
+    | '/visita/$id/orcamento'
     | '/gerencial/visita/$id/editar'
   id:
     | '__root__'
@@ -177,6 +189,7 @@ export interface FileRouteTypes {
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
+    | '/_authenticated/visita/$id/orcamento'
     | '/_authenticated/gerencial/visita/$id/editar'
   fileRoutesById: FileRoutesById
 }
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGerencialNovaRouteImport
       parentRoute: typeof AuthenticatedGerencialRoute
     }
+    '/_authenticated/visita/$id/orcamento': {
+      id: '/_authenticated/visita/$id/orcamento'
+      path: '/orcamento'
+      fullPath: '/visita/$id/orcamento'
+      preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoRouteImport
+      parentRoute: typeof AuthenticatedVisitaIdRoute
+    }
     '/_authenticated/gerencial/visita/$id/editar': {
       id: '/_authenticated/gerencial/visita/$id/editar'
       path: '/visita/$id/editar'
@@ -299,6 +319,19 @@ const AuthenticatedGerencialRouteWithChildren =
     AuthenticatedGerencialRouteChildren,
   )
 
+interface AuthenticatedVisitaIdRouteChildren {
+  AuthenticatedVisitaIdOrcamentoRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
+}
+
+const AuthenticatedVisitaIdRouteChildren: AuthenticatedVisitaIdRouteChildren = {
+  AuthenticatedVisitaIdOrcamentoRoute: AuthenticatedVisitaIdOrcamentoRoute,
+}
+
+const AuthenticatedVisitaIdRouteWithChildren =
+  AuthenticatedVisitaIdRoute._addFileChildren(
+    AuthenticatedVisitaIdRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -307,7 +340,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProjetoIdRoute: typeof AuthenticatedProjetoIdRoute
-  AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRoute
+  AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -318,7 +351,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProjetoIdRoute: AuthenticatedProjetoIdRoute,
-  AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRoute,
+  AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

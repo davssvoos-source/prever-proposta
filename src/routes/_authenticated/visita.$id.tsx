@@ -531,8 +531,7 @@ function VisitaDetail() {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
-                className="h-12 w-full text-base font-semibold"
-                style={{ backgroundColor: "#FFC000", color: "#1F3864" }}
+                className="h-12 w-full text-base font-semibold btn-pulse-gold"
               >
                 <Play className="h-5 w-5" /> Iniciar Visita Agora
               </Button>
@@ -541,18 +540,19 @@ function VisitaDetail() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Iniciar visita?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Isso registra o início da visita técnica neste momento.
+                  Isso registra o início da visita técnica e abre a montagem do orçamento.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() =>
-                    updateMutation.mutate({
+                  onClick={async () => {
+                    await updateMutation.mutateAsync({
                       status: "em_andamento",
                       data_hora_inicio: new Date().toISOString(),
-                    })
-                  }
+                    });
+                    navigate({ to: "/visita/$id/orcamento", params: { id } });
+                  }}
                 >
                   Iniciar
                 </AlertDialogAction>
