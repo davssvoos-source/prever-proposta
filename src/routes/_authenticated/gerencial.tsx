@@ -271,7 +271,12 @@ function GerencialPage() {
                   year: "numeric",
                 })
               : "Sem data";
-            const clienteNome = v.clientes?.nome ?? "Cliente";
+            const clienteNome =
+              v.clientes?.nome ??
+              v.nome_sindico ??
+              v.nome_predio ??
+              v.titulo ??
+              "Sem nome";
             const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
 
             return (
