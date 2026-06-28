@@ -441,6 +441,79 @@ function NovaVisitaPage() {
               onChange={(e) => setObsAgendamento(e.target.value)}
             />
           </div>
+
+          <div style={{ ...GLASS, padding: 16 }}>
+            <label style={LABEL}>Foto da Fachada (opcional)</label>
+            <div
+              onClick={() => document.getElementById("foto-fachada-input")?.click()}
+              style={{
+                width: "100%",
+                minHeight: fotoPreview ? "auto" : 90,
+                borderRadius: 14,
+                border: "2px dashed rgba(255,192,0,0.30)",
+                background: "rgba(255,255,255,0.03)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              {fotoPreview ? (
+                <>
+                  <img
+                    src={fotoPreview}
+                    alt="preview"
+                    style={{ width: "100%", borderRadius: 12, display: "block" }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      background: "rgba(8,8,12,0.7)",
+                      borderRadius: 20,
+                      padding: "4px 10px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontWeight: 300,
+                      fontSize: 11,
+                      color: "#FFC000",
+                    }}
+                  >
+                    Alterar foto
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: "center", padding: "16px 8px" }}>
+                  <div style={{ fontSize: 24, marginBottom: 4 }}>📷</div>
+                  <div
+                    style={{
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontWeight: 300,
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.45)",
+                    }}
+                  >
+                    Toque para adicionar foto da fachada
+                  </div>
+                </div>
+              )}
+            </div>
+            <input
+              id="foto-fachada-input"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setFotoFile(file);
+                setFotoPreview(URL.createObjectURL(file));
+              }}
+            />
+          </div>
         </div>
       )}
 
