@@ -134,6 +134,7 @@ function AuthPage() {
           <Link to="/">Voltar à página inicial</Link>
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
