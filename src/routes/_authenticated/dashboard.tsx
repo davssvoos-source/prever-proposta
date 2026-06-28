@@ -141,7 +141,7 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {metrics.map((m) => (
           <div key={m.label} style={{ ...GLASS, padding: "14px 10px", textAlign: "center" }}>
             <div style={{ color: m.color, display: "flex", justifyContent: "center" }}>{m.icon}</div>
