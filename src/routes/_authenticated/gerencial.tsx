@@ -32,12 +32,6 @@ function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
 
-  // Se estamos em uma rota filha (/gerencial/nova, /gerencial/usuarios, etc.),
-  // renderiza o componente filho em tela cheia — não mostra o painel
-  if (pathname !== "/gerencial") {
-    return <Outlet />;
-  }
-
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
     queryFn: async () => {
@@ -78,7 +72,6 @@ function GerencialPage() {
 
   const tecMap = new Map(tecnicos.map((t) => [t.id, t.nome]));
 
-  // Estatísticas
   const stats = {
     total:        visitasRaw.length,
     pendentes:    visitasRaw.filter((v: any) => v.status === "pendente").length,
@@ -88,6 +81,10 @@ function GerencialPage() {
   };
 
   const visitas = visitasRaw as any[];
+
+  if (pathname !== "/gerencial") {
+    return <Outlet />;
+  }
 
   return (
     <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
