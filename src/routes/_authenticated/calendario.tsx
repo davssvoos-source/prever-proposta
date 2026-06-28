@@ -226,16 +226,14 @@ function CalendarioPage() {
                 aspectRatio: "1",
                 borderRadius: 12,
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: temVisitas ? "pointer" : "default",
-                position: "relative",
                 transition: "transform 0.15s",
                 ...(temVisitas
                   ? {
                       background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
-                      boxShadow: "0 4px 16px rgba(255,192,0,0.35)",
+                      boxShadow: "0 4px 20px rgba(255,192,0,0.45)",
                     }
                   : {
                       background: "rgba(255,255,255,0.04)",
@@ -246,32 +244,32 @@ function CalendarioPage() {
                     }),
               }}
             >
-              <span
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: temVisitas ? 700 : isHoje ? 500 : 300,
-                  fontSize: 15,
-                  color: temVisitas ? "#08090E" : isHoje ? "#FFC000" : "rgba(255,255,255,0.45)",
-                  lineHeight: 1,
-                }}
-              >
-                {dayNum}
-              </span>
-              {temVisitas && (
-                <div
+              {temVisitas ? (
+                <span
                   style={{
-                    marginTop: 3,
-                    background: "rgba(8,8,12,0.25)",
-                    borderRadius: 20,
-                    padding: "1px 6px",
                     fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 700,
-                    fontSize: 10,
+                    fontWeight: 800,
+                    fontSize: 22,
                     color: "#08090E",
+                    lineHeight: 1,
+                    userSelect: "none",
                   }}
                 >
                   {visitasNoDia.length}
-                </div>
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: isHoje ? 600 : 300,
+                    fontSize: 18,
+                    color: isHoje ? "#FFC000" : "rgba(255,255,255,0.55)",
+                    lineHeight: 1,
+                    userSelect: "none",
+                  }}
+                >
+                  {dayNum}
+                </span>
               )}
             </div>
           );
@@ -279,7 +277,7 @@ function CalendarioPage() {
       </div>
 
       <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 20 }}>
-        <Legenda swatch="linear-gradient(135deg,#FFD700,#FF9F00)" label="Com visitas" />
+        <Legenda swatch="linear-gradient(135deg,#FFD700,#FF9F00)" label="Nº de visitas no dia" />
         <Legenda
           swatch="rgba(255,255,255,0.04)"
           border="1px solid rgba(255,192,0,0.5)"
