@@ -1,14 +1,22 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Map, User } from "lucide-react";
+import { ClipboardList, Home, Map, User } from "lucide-react";
+import { useIsGerente } from "@/features/gerencial/data";
 
-const ITEMS = [
-  { to: "/dashboard", label: "Home", icon: Home },
-  { to: "/mapa", label: "Mapa", icon: Map },
-  { to: "/perfil", label: "Perfil", icon: User },
-] as const;
+const BASE_ITEMS = [
+  { to: "/dashboard" as const, label: "Home", icon: Home },
+  { to: "/mapa" as const, label: "Mapa", icon: Map },
+];
+const PROFILE_ITEM = { to: "/perfil" as const, label: "Perfil", icon: User };
+const GERENCIAL_ITEM = { to: "/gerencial" as const, label: "Gerencial", icon: ClipboardList };
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: isGerente } = useIsGerente();
+
+  const items = isGerente
+    ? [...BASE_ITEMS, GERENCIAL_ITEM, PROFILE_ITEM]
+    : [...BASE_ITEMS, PROFILE_ITEM];
+
   return (
     <nav
       aria-label="Navegação principal"
@@ -27,10 +35,11 @@ export function BottomNav() {
         minWidth: 220,
       }}
     >
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active =
           pathname === item.to ||
-          (item.to === "/dashboard" && pathname === "/");
+          (item.to === "/dashboard" && pathname === "/") ||
+          (item.to === "/gerencial" && pathname.startsWith("/gerencial"));
         const Icon = item.icon;
         return (
           <Link
@@ -38,9 +47,7 @@ export function BottomNav() {
             to={item.to}
             aria-current={active ? "page" : undefined}
             className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] px-4 py-2 transition-all duration-200"
-            style={{
-              background: active ? "rgba(255, 192, 0, 0.12)" : "transparent",
-            }}
+            style={{ background: active ? "rgba(255, 192, 0, 0.12)" : "transparent" }}
           >
             <Icon
               className="h-[22px] w-[22px] transition-colors"
@@ -57,10 +64,7 @@ export function BottomNav() {
               <span
                 aria-hidden
                 className="absolute -bottom-1 h-1 w-1 rounded-full"
-                style={{
-                  background: "#FFC000",
-                  boxShadow: "0 0 6px rgba(255,192,0,0.6)",
-                }}
+                style={{ background: "#FFC000", boxShadow: "0 0 6px rgba(255,192,0,0.6)" }}
               />
             )}
           </Link>

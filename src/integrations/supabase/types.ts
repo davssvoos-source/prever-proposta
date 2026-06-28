@@ -203,6 +203,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ativo: boolean
           avatar_url: string | null
           cargo: string | null
           created_at: string
@@ -212,6 +213,7 @@ export type Database = {
           telefone: string | null
         }
         Insert: {
+          ativo?: boolean
           avatar_url?: string | null
           cargo?: string | null
           created_at?: string
@@ -221,6 +223,7 @@ export type Database = {
           telefone?: string | null
         }
         Update: {
+          ativo?: boolean
           avatar_url?: string | null
           cargo?: string | null
           created_at?: string
@@ -449,6 +452,7 @@ export type Database = {
           aprovado_por: string | null
           cliente_id: string | null
           complemento: string | null
+          contato_sindico: string | null
           created_at: string
           created_by: string | null
           data_hora_agendada: string
@@ -461,10 +465,16 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           motivo_reprovacao: string | null
+          nome_predio: string | null
+          nome_sindico: string | null
           notas_visita: string | null
+          obs_agendamento: string | null
+          prioridade: string | null
           projeto_id: string | null
+          servico_solicitado: string | null
           status: string
           tecnico_id: string | null
+          tipo_local: string | null
           titulo: string
           updated_at: string
         }
@@ -473,6 +483,7 @@ export type Database = {
           aprovado_por?: string | null
           cliente_id?: string | null
           complemento?: string | null
+          contato_sindico?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_agendada: string
@@ -485,10 +496,16 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_reprovacao?: string | null
+          nome_predio?: string | null
+          nome_sindico?: string | null
           notas_visita?: string | null
+          obs_agendamento?: string | null
+          prioridade?: string | null
           projeto_id?: string | null
+          servico_solicitado?: string | null
           status?: string
           tecnico_id?: string | null
+          tipo_local?: string | null
           titulo: string
           updated_at?: string
         }
@@ -497,6 +514,7 @@ export type Database = {
           aprovado_por?: string | null
           cliente_id?: string | null
           complemento?: string | null
+          contato_sindico?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_agendada?: string
@@ -509,10 +527,16 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           motivo_reprovacao?: string | null
+          nome_predio?: string | null
+          nome_sindico?: string | null
           notas_visita?: string | null
+          obs_agendamento?: string | null
+          prioridade?: string | null
           projeto_id?: string | null
+          servico_solicitado?: string | null
           status?: string
           tecnico_id?: string | null
+          tipo_local?: string | null
           titulo?: string
           updated_at?: string
         }

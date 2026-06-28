@@ -15,10 +15,13 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/novo'
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
+import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
+import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
+import { Route as AuthenticatedGerencialVisitaIdEditarRouteImport } from './routes/_authenticated/gerencial.visita.$id.editar'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -49,6 +52,11 @@ const AuthenticatedMapaRoute = AuthenticatedMapaRouteImport.update({
   path: '/mapa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGerencialRoute = AuthenticatedGerencialRouteImport.update({
+  id: '/gerencial',
+  path: '/gerencial',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -69,28 +77,46 @@ const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   path: '/projeto/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGerencialNovaRoute =
+  AuthenticatedGerencialNovaRouteImport.update({
+    id: '/nova',
+    path: '/nova',
+    getParentRoute: () => AuthenticatedGerencialRoute,
+  } as any)
+const AuthenticatedGerencialVisitaIdEditarRoute =
+  AuthenticatedGerencialVisitaIdEditarRouteImport.update({
+    id: '/visita/$id/editar',
+    path: '/visita/$id/editar',
+    getParentRoute: () => AuthenticatedGerencialRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -99,11 +125,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRoute
+  '/_authenticated/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -112,22 +141,28 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/dashboard'
+    | '/gerencial'
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/gerencial/nova'
     | '/projeto/$id'
     | '/visita/$id'
+    | '/gerencial/visita/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/admin'
     | '/dashboard'
+    | '/gerencial'
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/gerencial/nova'
     | '/projeto/$id'
     | '/visita/$id'
+    | '/gerencial/visita/$id/editar'
   id:
     | '__root__'
     | '/'
@@ -135,11 +170,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/gerencial'
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
+    | '/_authenticated/gerencial/nova'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
+    | '/_authenticated/gerencial/visita/$id/editar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -192,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMapaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gerencial': {
+      id: '/_authenticated/gerencial'
+      path: '/gerencial'
+      fullPath: '/gerencial'
+      preLoaderRoute: typeof AuthenticatedGerencialRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -220,12 +265,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjetoIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gerencial/nova': {
+      id: '/_authenticated/gerencial/nova'
+      path: '/nova'
+      fullPath: '/gerencial/nova'
+      preLoaderRoute: typeof AuthenticatedGerencialNovaRouteImport
+      parentRoute: typeof AuthenticatedGerencialRoute
+    }
+    '/_authenticated/gerencial/visita/$id/editar': {
+      id: '/_authenticated/gerencial/visita/$id/editar'
+      path: '/visita/$id/editar'
+      fullPath: '/gerencial/visita/$id/editar'
+      preLoaderRoute: typeof AuthenticatedGerencialVisitaIdEditarRouteImport
+      parentRoute: typeof AuthenticatedGerencialRoute
+    }
   }
 }
+
+interface AuthenticatedGerencialRouteChildren {
+  AuthenticatedGerencialNovaRoute: typeof AuthenticatedGerencialNovaRoute
+  AuthenticatedGerencialVisitaIdEditarRoute: typeof AuthenticatedGerencialVisitaIdEditarRoute
+}
+
+const AuthenticatedGerencialRouteChildren: AuthenticatedGerencialRouteChildren =
+  {
+    AuthenticatedGerencialNovaRoute: AuthenticatedGerencialNovaRoute,
+    AuthenticatedGerencialVisitaIdEditarRoute:
+      AuthenticatedGerencialVisitaIdEditarRoute,
+  }
+
+const AuthenticatedGerencialRouteWithChildren =
+  AuthenticatedGerencialRoute._addFileChildren(
+    AuthenticatedGerencialRouteChildren,
+  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
@@ -236,6 +313,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
