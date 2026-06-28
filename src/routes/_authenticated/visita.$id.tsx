@@ -102,7 +102,16 @@ function VisitaDetail() {
   }, [fotos]);
 
   const updateMutation = useMutation({
-    mutationFn: async (patch: Record<string, unknown>) => {
+    mutationFn: async (patch: Partial<{
+      status: VisitaStatus;
+      data_hora_inicio: string;
+      data_hora_fim: string;
+      aprovado_por: string;
+      aprovado_em: string;
+      motivo_reprovacao: string;
+      notas_visita: string;
+      equipamentos_vistos: string;
+    }>) => {
       const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", id);
       if (error) throw error;
     },
