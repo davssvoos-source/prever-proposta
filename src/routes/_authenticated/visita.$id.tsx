@@ -461,7 +461,13 @@ function VisitaDetail() {
     textDecoration: "none",
   };
 
+  // EARLY RETURN obrigatório (após todos os hooks) — delega às rotas filhas
+  if (pathname !== `/visita/${id}`) {
+    return <Outlet />;
+  }
+
   if (isLoading || !visita) {
+
     return (
       <div style={{ padding: 24 }}>
         <div style={{ ...GLASS, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
