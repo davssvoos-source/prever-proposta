@@ -357,21 +357,8 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Tipo de Empreendimento</label>
-            <select
-              style={{ ...INPUT, appearance: "none" }}
-              value={tipoEmpreendimento}
-              onChange={(e) => setTipoEmpreendimento(e.target.value)}
-            >
-              <option value="">— Selecione —</option>
-              {TIPOS_EMPREENDIMENTO.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
             <div>
               <label style={LABEL}>Nome do Cliente</label>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
