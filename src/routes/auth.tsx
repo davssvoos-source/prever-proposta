@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -54,7 +55,9 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen brand-gradient flex items-center justify-center px-4 py-10">
+    <>
+      <AnimatedBackground />
+      <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ position: "relative", zIndex: 1 }}>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center text-primary-foreground">
           <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-xl bg-accent text-accent-foreground text-xl font-bold">
@@ -131,6 +134,7 @@ function AuthPage() {
           <Link to="/">Voltar à página inicial</Link>
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

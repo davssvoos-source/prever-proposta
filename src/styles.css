@@ -312,9 +312,9 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(8, 9, 14, 0.80);
-  backdrop-filter: blur(24px) saturate(150%);
-  border-bottom: 1px solid rgba(255, 192, 0, 0.08);
+  background: rgba(0, 0, 0, 0.70);
+  backdrop-filter: blur(30px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 192, 0, 0.12);
 }
 
 /* Ensure app content sits above fixed noise overlay */
