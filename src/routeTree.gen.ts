@@ -22,7 +22,9 @@ import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
 import { Route as AuthenticatedVisitaIdOrcamentoRouteImport } from './routes/_authenticated/visita.$id.orcamento'
+import { Route as AuthenticatedVisitaIdOrcamentoCategoriasRouteImport } from './routes/_authenticated/visita.$id.orcamento.categorias'
 import { Route as AuthenticatedGerencialVisitaIdEditarRouteImport } from './routes/_authenticated/gerencial.visita.$id.editar'
+import { Route as AuthenticatedVisitaIdOrcamentoBlocosCatRouteImport } from './routes/_authenticated/visita.$id.orcamento.blocos.$cat'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -90,11 +92,23 @@ const AuthenticatedVisitaIdOrcamentoRoute =
     path: '/orcamento',
     getParentRoute: () => AuthenticatedVisitaIdRoute,
   } as any)
+const AuthenticatedVisitaIdOrcamentoCategoriasRoute =
+  AuthenticatedVisitaIdOrcamentoCategoriasRouteImport.update({
+    id: '/categorias',
+    path: '/categorias',
+    getParentRoute: () => AuthenticatedVisitaIdOrcamentoRoute,
+  } as any)
 const AuthenticatedGerencialVisitaIdEditarRoute =
   AuthenticatedGerencialVisitaIdEditarRouteImport.update({
     id: '/visita/$id/editar',
     path: '/visita/$id/editar',
     getParentRoute: () => AuthenticatedGerencialRoute,
+  } as any)
+const AuthenticatedVisitaIdOrcamentoBlocosCatRoute =
+  AuthenticatedVisitaIdOrcamentoBlocosCatRouteImport.update({
+    id: '/blocos/$cat',
+    path: '/blocos/$cat',
+    getParentRoute: () => AuthenticatedVisitaIdOrcamentoRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -109,8 +123,10 @@ export interface FileRoutesByFullPath {
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
-  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
+  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
+  '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -124,8 +140,10 @@ export interface FileRoutesByTo {
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
-  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
+  '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
+  '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,8 +159,10 @@ export interface FileRoutesById {
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
-  '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRoute
+  '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
   '/_authenticated/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
+  '/_authenticated/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/_authenticated/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,6 +180,8 @@ export interface FileRouteTypes {
     | '/visita/$id'
     | '/visita/$id/orcamento'
     | '/gerencial/visita/$id/editar'
+    | '/visita/$id/orcamento/categorias'
+    | '/visita/$id/orcamento/blocos/$cat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -175,6 +197,8 @@ export interface FileRouteTypes {
     | '/visita/$id'
     | '/visita/$id/orcamento'
     | '/gerencial/visita/$id/editar'
+    | '/visita/$id/orcamento/categorias'
+    | '/visita/$id/orcamento/blocos/$cat'
   id:
     | '__root__'
     | '/'
@@ -191,6 +215,8 @@ export interface FileRouteTypes {
     | '/_authenticated/visita/$id'
     | '/_authenticated/visita/$id/orcamento'
     | '/_authenticated/gerencial/visita/$id/editar'
+    | '/_authenticated/visita/$id/orcamento/categorias'
+    | '/_authenticated/visita/$id/orcamento/blocos/$cat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -292,12 +318,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoRouteImport
       parentRoute: typeof AuthenticatedVisitaIdRoute
     }
+    '/_authenticated/visita/$id/orcamento/categorias': {
+      id: '/_authenticated/visita/$id/orcamento/categorias'
+      path: '/categorias'
+      fullPath: '/visita/$id/orcamento/categorias'
+      preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoCategoriasRouteImport
+      parentRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
+    }
     '/_authenticated/gerencial/visita/$id/editar': {
       id: '/_authenticated/gerencial/visita/$id/editar'
       path: '/visita/$id/editar'
       fullPath: '/gerencial/visita/$id/editar'
       preLoaderRoute: typeof AuthenticatedGerencialVisitaIdEditarRouteImport
       parentRoute: typeof AuthenticatedGerencialRoute
+    }
+    '/_authenticated/visita/$id/orcamento/blocos/$cat': {
+      id: '/_authenticated/visita/$id/orcamento/blocos/$cat'
+      path: '/blocos/$cat'
+      fullPath: '/visita/$id/orcamento/blocos/$cat'
+      preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoBlocosCatRouteImport
+      parentRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
     }
   }
 }
@@ -319,12 +359,31 @@ const AuthenticatedGerencialRouteWithChildren =
     AuthenticatedGerencialRouteChildren,
   )
 
+interface AuthenticatedVisitaIdOrcamentoRouteChildren {
+  AuthenticatedVisitaIdOrcamentoCategoriasRoute: typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  AuthenticatedVisitaIdOrcamentoBlocosCatRoute: typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
+}
+
+const AuthenticatedVisitaIdOrcamentoRouteChildren: AuthenticatedVisitaIdOrcamentoRouteChildren =
+  {
+    AuthenticatedVisitaIdOrcamentoCategoriasRoute:
+      AuthenticatedVisitaIdOrcamentoCategoriasRoute,
+    AuthenticatedVisitaIdOrcamentoBlocosCatRoute:
+      AuthenticatedVisitaIdOrcamentoBlocosCatRoute,
+  }
+
+const AuthenticatedVisitaIdOrcamentoRouteWithChildren =
+  AuthenticatedVisitaIdOrcamentoRoute._addFileChildren(
+    AuthenticatedVisitaIdOrcamentoRouteChildren,
+  )
+
 interface AuthenticatedVisitaIdRouteChildren {
-  AuthenticatedVisitaIdOrcamentoRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
+  AuthenticatedVisitaIdOrcamentoRoute: typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
 }
 
 const AuthenticatedVisitaIdRouteChildren: AuthenticatedVisitaIdRouteChildren = {
-  AuthenticatedVisitaIdOrcamentoRoute: AuthenticatedVisitaIdOrcamentoRoute,
+  AuthenticatedVisitaIdOrcamentoRoute:
+    AuthenticatedVisitaIdOrcamentoRouteWithChildren,
 }
 
 const AuthenticatedVisitaIdRouteWithChildren =
