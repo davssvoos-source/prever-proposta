@@ -410,6 +410,9 @@ function VisitaDetail() {
 
   const [showReprovarForm, setShowReprovarForm] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [editandoTecnico, setEditandoTecnico] = useState(false);
+  const [novoTecnicoId, setNovoTecnicoId] = useState("");
+
 
   // ── computed (após todos os hooks) ──────────────────────────────────────────
   const status = visita?.status;
