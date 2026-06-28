@@ -309,6 +309,19 @@ function VisitaCard({ visita, onClick }: { visita: any; onClick: () => void }) {
             🗓️ {fmtData(visita.data_hora_agendada)}
           </div>
         )}
+        {visita.tecnico?.nome && (
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: "rgba(255,255,255,0.45)",
+              marginTop: 4,
+            }}
+          >
+            👷 {visita.tecnico.nome}
+          </div>
+        )}
       </div>
     </div>
   );
