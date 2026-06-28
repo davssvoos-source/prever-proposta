@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users } from "lucide-react";
@@ -29,7 +29,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 function GerencialPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+
+  // Se estamos em uma rota filha (/gerencial/nova, /gerencial/usuarios, etc.),
+  // renderiza o componente filho em tela cheia — não mostra o painel
+  if (pathname !== "/gerencial") {
+    return <Outlet />;
+  }
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
@@ -37,17 +44,19 @@ function GerencialPage() {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
         .select(`
-          id,
-          status,
-          data_hora_agendada,
-          endereco,
-          servicos_solicitados,
-          created_at,
-          cliente_id,
-          tecnico_id,
-          titulo,
-          clientes (nome, email)
-        `)
+            id,
+            status,
+            data_hora_agendada,
+            endereco,
+            servicos_solicitados,
+            created_at,
+            cliente_id,
+            tecnico_id,
+            titulo,
+            nome_sindico,
+            nome_predio,
+            clientes (nome, email)
+          `)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -262,7 +271,12 @@ function GerencialPage() {
                   year: "numeric",
                 })
               : "Sem data";
-            const clienteNome = v.clientes?.nome ?? "Cliente";
+            const clienteNome =
+              v.clientes?.nome ??
+              v.nome_sindico ??
+              v.nome_predio ??
+              v.titulo ??
+              "Sem nome";
             const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
 
             return (
