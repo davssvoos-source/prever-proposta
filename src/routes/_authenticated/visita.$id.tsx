@@ -199,7 +199,11 @@ function VisitaDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="flex-1 text-lg font-semibold">Visita Técnica</h1>
-        {sInfo && <Badge className={sInfo.color}>{sInfo.label}</Badge>}
+        {sInfo && (
+          <Badge style={{ background: sInfo.bg, color: sInfo.color, border: `1px solid ${sInfo.color}55` }}>
+            {sInfo.label}
+          </Badge>
+        )}
         {!isFuture && canEdit && (
           <Button size="icon" variant="ghost">
             <Pencil className="h-4 w-4" />
