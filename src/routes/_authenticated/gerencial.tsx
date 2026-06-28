@@ -44,17 +44,19 @@ function GerencialPage() {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
         .select(`
-          id,
-          status,
-          data_hora_agendada,
-          endereco,
-          servicos_solicitados,
-          created_at,
-          cliente_id,
-          tecnico_id,
-          titulo,
-          clientes (nome, email)
-        `)
+            id,
+            status,
+            data_hora_agendada,
+            endereco,
+            servicos_solicitados,
+            created_at,
+            cliente_id,
+            tecnico_id,
+            titulo,
+            nome_sindico,
+            nome_predio,
+            clientes (nome, email)
+          `)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
