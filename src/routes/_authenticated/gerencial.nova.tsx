@@ -175,7 +175,7 @@ function NovaVisitaPage() {
           nome: nomeSindico,
           email: clienteEmail || null,
           telefone: contato,
-          tipo_empreendimento: tipoEmpreendimento,
+          
           owner_id: user?.id as string,
         })
         .select("id")
