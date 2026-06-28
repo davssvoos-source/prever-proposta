@@ -34,10 +34,28 @@ function initials(name: string) {
 
 function Dashboard() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: visitas, isLoading } = useQuery({
     queryKey: ["visitas"],
     queryFn: fetchVisitas,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("visitas-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "visitas_tecnicas" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["visitas"] });
+          qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 
   const tecnicoIds = useMemo(
     () => Array.from(new Set((visitas ?? []).map((v) => v.tecnico_id).filter(Boolean) as string[])),
