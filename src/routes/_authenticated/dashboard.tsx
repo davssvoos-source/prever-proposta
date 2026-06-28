@@ -101,12 +101,15 @@ function Dashboard() {
 
   const pendentes = visitas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitas.filter((v: any) => v.status === "em_andamento");
-  const concluidas = visitas.filter((v: any) => v.status === "concluida" || v.status === "aprovada");
+  const aguardando = visitas.filter((v: any) => v.status === "concluida");
+  const aprovadas = visitas.filter((v: any) => v.status === "aprovada");
+  const reprovadas = visitas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={16} /> },
-    { label: "Em andamento", value: emAndamento.length, color: "#60A5FA", icon: <CalendarDays size={16} /> },
-    { label: "Concluídas", value: concluidas.length, color: "#34D399", icon: <ClipboardCheck size={16} /> },
+    { label: "Ag. Aprovação", value: aguardando.length, color: "#FBBF24", icon: <CalendarDays size={16} /> },
+    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={16} /> },
+    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={16} /> },
   ];
 
   return (
