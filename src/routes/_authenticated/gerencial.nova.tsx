@@ -44,16 +44,22 @@ const INPUT: CSSProperties = {
 };
 
 const SERVICOS = [
-  { id: "portaria_remota", label: "Portaria Remota", emoji: "🏛️" },
-  { id: "cftv", label: "CFTV", emoji: "📷" },
-  { id: "alarme", label: "Alarme", emoji: "🔔" },
+  { id: "portaria_virtual_24h", label: "Portaria Virtual 24h", emoji: "🏛️" },
+  { id: "cftv_cameras", label: "CFTV/Câmeras", emoji: "📷" },
+  { id: "controle_acesso", label: "Controle de Acesso", emoji: "🔐" },
+  { id: "interfone_ip", label: "Interfone IP", emoji: "📞" },
+  { id: "alarme_sensores", label: "Alarme/Sensores", emoji: "🔔" },
   { id: "cerca_eletrica", label: "Cerca Elétrica", emoji: "⚡" },
-  { id: "acesso_pedestre", label: "Acesso Pedestre", emoji: "🚶" },
-  { id: "acesso_veicular", label: "Acesso Veicular", emoji: "🚗" },
-  { id: "elevadores", label: "Elevadores", emoji: "🛗" },
-  { id: "manutencao", label: "Manutenção", emoji: "🔧" },
-  { id: "consultoria", label: "Consultoria", emoji: "💼" },
-  { id: "outro", label: "Outro", emoji: "➕" },
+  { id: "monitoramento_remoto", label: "Monitoramento Remoto", emoji: "🛰️" },
+  { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
+];
+
+const TIPOS_EMPREENDIMENTO = [
+  { id: "residencial", label: "Residencial" },
+  { id: "comercial", label: "Comercial" },
+  { id: "industrial", label: "Industrial" },
+  { id: "misto", label: "Misto" },
+  { id: "outro", label: "Outro" },
 ];
 
 const TIPOS_LOCAL = [
@@ -70,6 +76,7 @@ const PRIORIDADES = [
   { id: "urgente", label: "Urgente", color: "#F87171" },
 ];
 
+
 function NovaVisitaPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -77,10 +84,13 @@ function NovaVisitaPage() {
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
+  const [tipoEmpreendimento, setTipoEmpreendimento] = useState("");
   const [nomeSindico, setNomeSindico] = useState("");
   const [contato, setContato] = useState("");
-  const [servico, setServico] = useState("");
+  const [clienteEmail, setClienteEmail] = useState("");
+  const [servicos, setServicos] = useState<string[]>([]);
   const [endereco, setEndereco] = useState("");
+
   const [complemento, setComplemento] = useState("");
   const [obsAgendamento, setObsAgendamento] = useState("");
   const [lat, setLat] = useState<number | null>(null);
@@ -154,9 +164,10 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
+    tipoEmpreendimento !== "" &&
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
-    servico !== "" &&
+    servicos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = data !== "" && hora !== "";
 
@@ -164,6 +175,20 @@ function NovaVisitaPage() {
     mutationFn: async () => {
       const dataHoraAgendada = new Date(`${data}T${hora}:00`).toISOString();
       const { data: { user } } = await supabase.auth.getUser();
+
+      // 1) Criar cliente
+      const { data: clienteRow, error: clienteErr } = await supabase
+        .from("clientes")
+        .insert({
+          nome: nomeSindico,
+          email: clienteEmail || null,
+          telefone: contato,
+          tipo_empreendimento: tipoEmpreendimento,
+          owner_id: user?.id as string,
+        })
+        .select("id")
+        .single();
+      if (clienteErr) throw clienteErr;
 
       let foto_fachada_url: string | null = null;
       if (fotoFile) {
@@ -183,12 +208,14 @@ function NovaVisitaPage() {
       }
 
       const payload = {
+        cliente_id: clienteRow.id,
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
         nome_sindico: nomeSindico,
         contato_sindico: contato,
-        servico_solicitado: servico,
+        servicos_solicitados: servicos,
+        servico_solicitado: servicos[0] ?? null,
         endereco,
         complemento: complemento || null,
         obs_agendamento: obsAgendamento || null,
@@ -205,6 +232,7 @@ function NovaVisitaPage() {
       const { error } = await supabase.from("visitas_tecnicas").insert(payload);
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
@@ -337,26 +365,48 @@ function NovaVisitaPage() {
             </div>
           </div>
 
+          <div style={{ ...GLASS, padding: 16 }}>
+            <label style={LABEL}>Tipo de Empreendimento</label>
+            <select
+              style={{ ...INPUT, appearance: "none" }}
+              value={tipoEmpreendimento}
+              onChange={(e) => setTipoEmpreendimento(e.target.value)}
+            >
+              <option value="">— Selecione —</option>
+              {TIPOS_EMPREENDIMENTO.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Síndico / Responsável</label>
+              <label style={LABEL}>Nome do Cliente</label>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
             </div>
             <div>
-              <label style={LABEL}>Contato (WhatsApp)</label>
+              <label style={LABEL}>WhatsApp</label>
               <input style={INPUT} value={contato} onChange={(e) => setContato(e.target.value)} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={LABEL}>E-mail do Cliente</label>
+              <input style={INPUT} type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} placeholder="cliente@email.com" />
             </div>
           </div>
 
           <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Serviço Solicitado</label>
+            <label style={LABEL}>Serviços Solicitados (selecione um ou mais)</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {SERVICOS.map((s) => {
-                const ativo = servico === s.id;
+                const ativo = servicos.includes(s.id);
                 return (
                   <button
                     key={s.id}
-                    onClick={() => setServico(s.id)}
+                    onClick={() =>
+                      setServicos((prev) =>
+                        prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
+                      )
+                    }
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -372,12 +422,14 @@ function NovaVisitaPage() {
                       cursor: "pointer",
                     }}
                   >
+                    <span>{ativo ? "☑" : "☐"}</span>
                     <span>{s.emoji}</span> {s.label}
                   </button>
                 );
               })}
             </div>
           </div>
+
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Endereço</label>
@@ -665,7 +717,9 @@ function NovaVisitaPage() {
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               { label: "Síndico", value: nomeSindico },
-              { label: "Serviço", value: SERVICOS.find((s) => s.id === servico)?.label },
+              { label: "Serviços", value: servicos.map((id) => SERVICOS.find((s) => s.id === id)?.label).filter(Boolean).join(", ") },
+              { label: "Empreendimento", value: TIPOS_EMPREENDIMENTO.find((t) => t.id === tipoEmpreendimento)?.label },
+
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
                 label: "Data/Hora",
