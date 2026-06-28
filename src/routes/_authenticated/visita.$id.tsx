@@ -36,17 +36,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -54,6 +43,153 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/visita/$id")({
   component: VisitaDetail,
 });
+
+function SlideToStart({
+  onComplete,
+  loading,
+}: {
+  onComplete: () => Promise<void>;
+  loading: boolean;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [slideX, setSlideX] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const isDragging = useRef(false);
+  const startTouchX = useRef(0);
+  const KNOB = 56;
+
+  const getMaxX = () =>
+    trackRef.current ? trackRef.current.offsetWidth - KNOB - 8 : 0;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (completed || loading) return;
+    isDragging.current = true;
+    startTouchX.current = e.touches[0].clientX - slideX;
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging.current) return;
+    const x = Math.max(0, Math.min(getMaxX(), e.touches[0].clientX - startTouchX.current));
+    setSlideX(x);
+  };
+  const handleTouchEnd = async () => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const max = getMaxX();
+    if (slideX >= max * 0.78) {
+      setSlideX(max);
+      setCompleted(true);
+      await onComplete();
+    } else {
+      setSlideX(0);
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (completed || loading) return;
+    isDragging.current = true;
+    startTouchX.current = e.clientX - slideX;
+    const onMove = (ev: MouseEvent) => {
+      const x = Math.max(0, Math.min(getMaxX(), ev.clientX - startTouchX.current));
+      setSlideX(x);
+    };
+    const onUp = async () => {
+      isDragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const max = getMaxX();
+      if (slideX >= max * 0.78) {
+        setSlideX(max);
+        setCompleted(true);
+        await onComplete();
+      } else {
+        setSlideX(0);
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const max = getMaxX();
+  const progress = max > 0 ? slideX / max : 0;
+
+  return (
+    <div
+      ref={trackRef}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: 64,
+        borderRadius: 32,
+        background: "rgba(8,8,12,0.55)",
+        border: "1px solid rgba(255,192,0,0.22)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        overflow: "hidden",
+        userSelect: "none",
+        touchAction: "none",
+      }}
+    >
+      {/* Trilha de preenchimento */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: slideX + KNOB,
+          background: "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
+          transition: isDragging.current ? "none" : "width 0.25s ease",
+        }}
+      />
+      {/* Label */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 400,
+          fontSize: 13,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.85)",
+          opacity: 1 - progress * 1.2,
+          pointerEvents: "none",
+        }}
+      >
+        {completed ? "Iniciada" : loading ? "Registrando..." : "Deslize para iniciar"}
+      </div>
+      {/* Knob */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        style={{
+          position: "absolute",
+          top: 4,
+          left: 4,
+          width: KNOB,
+          height: KNOB,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+          boxShadow: "0 4px 18px rgba(255,192,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#0A0A0A",
+          cursor: completed || loading ? "default" : "grab",
+          transform: `translateX(${slideX}px)`,
+          transition: isDragging.current ? "none" : "transform 0.25s ease",
+        }}
+      >
+        {completed ? <Check className="h-6 w-6" /> : <Play className="h-5 w-5" />}
+      </div>
+    </div>
+  );
+}
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
@@ -516,37 +652,16 @@ function VisitaDetail() {
 
       {/* CTAs fixos no rodapé */}
       {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                className="h-12 w-full text-base font-semibold btn-pulse-gold"
-              >
-                <Play className="h-5 w-5" /> Iniciar Visita
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Iniciar visita?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Isso registra o início da visita técnica neste momento.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={async () => {
-                    await updateMutation.mutateAsync({
-                      data_hora_inicio: new Date().toISOString(),
-                    });
-                    navigate({ to: "/visita/$id/orcamento", params: { id } });
-                  }}
-                >
-                  Iniciar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <div className="fixed bottom-16 left-0 right-0 z-30 p-3">
+          <SlideToStart
+            onComplete={async () => {
+              await updateMutation.mutateAsync({
+                data_hora_inicio: new Date().toISOString(),
+              });
+              navigate({ to: "/visita/$id/orcamento", params: { id } });
+            }}
+            loading={updateMutation.isPending}
+          />
         </div>
       )}
       {visita.status === "pendente" && user?.id === visita.tecnico_id && visita.data_hora_inicio && (
