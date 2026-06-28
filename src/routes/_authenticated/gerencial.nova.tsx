@@ -164,9 +164,10 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
+    tipoEmpreendimento !== "" &&
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
-    servico !== "" &&
+    servicos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = data !== "" && hora !== "";
 
@@ -174,6 +175,20 @@ function NovaVisitaPage() {
     mutationFn: async () => {
       const dataHoraAgendada = new Date(`${data}T${hora}:00`).toISOString();
       const { data: { user } } = await supabase.auth.getUser();
+
+      // 1) Criar cliente
+      const { data: clienteRow, error: clienteErr } = await supabase
+        .from("clientes")
+        .insert({
+          nome: nomeSindico,
+          email: clienteEmail || null,
+          telefone: contato,
+          tipo_empreendimento: tipoEmpreendimento,
+          owner_id: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+      if (clienteErr) throw clienteErr;
 
       let foto_fachada_url: string | null = null;
       if (fotoFile) {
@@ -193,12 +208,14 @@ function NovaVisitaPage() {
       }
 
       const payload = {
+        cliente_id: clienteRow.id,
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
         nome_sindico: nomeSindico,
         contato_sindico: contato,
-        servico_solicitado: servico,
+        servicos_solicitados: servicos,
+        servico_solicitado: servicos[0] ?? null,
         endereco,
         complemento: complemento || null,
         obs_agendamento: obsAgendamento || null,
@@ -215,6 +232,7 @@ function NovaVisitaPage() {
       const { error } = await supabase.from("visitas_tecnicas").insert(payload);
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
