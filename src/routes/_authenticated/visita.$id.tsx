@@ -652,7 +652,7 @@ function VisitaDetail() {
 
       {/* CTAs fixos no rodapé */}
       {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 p-3">
+        <div className="px-1 pt-2">
           <SlideToStart
             onComplete={async () => {
               await updateMutation.mutateAsync({
