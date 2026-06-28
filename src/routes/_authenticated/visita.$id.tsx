@@ -1,62 +1,31 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft,
-  CalendarDays,
-  Copy,
-  ExternalLink,
-  ImagePlus,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Play,
-  Square,
-  X,
-  Check,
-  Pencil,
+  ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
+  Check, X, Play, Square,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthUser, useUserRoles } from "@/lib/auth";
-import {
-  fetchFotosVisita,
-  fetchProfile,
-  fetchVisita,
-  getSignedPhotoUrl,
-} from "@/features/visitas/data";
-import {
-  formatDataHoraLong,
-  formatDuracao,
-  formatRelativeFuture,
-  STATUS_VISITA,
-  type VisitaStatus,
-} from "@/features/visitas/types";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
   component: VisitaDetail,
 });
 
+// ─── SlideToStart ─────────────────────────────────────────────────────────────
 function SlideToStart({
-  onComplete,
-  loading,
+  onConfirm,
+  pending,
 }: {
-  onComplete: () => void;
-  loading: boolean;
+  onConfirm: () => void;
+  pending: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const slideXRef = useRef(0);
-  const [slideX, setSlideX] = useState(0);
-  const [completed, setCompleted] = useState(false);
   const dragging = useRef(false);
   const startClientX = useRef(0);
+  const [slideX, setSlideX] = useState(0);
+  const [completed, setCompleted] = useState(false);
   const KNOB = 56;
 
   const getMaxX = () =>
@@ -76,7 +45,7 @@ function SlideToStart({
       slideXRef.current = max;
       setSlideX(max);
       setCompleted(true);
-      onComplete();
+      onConfirm();
     } else {
       slideXRef.current = 0;
       setSlideX(0);
@@ -110,8 +79,8 @@ function SlideToStart({
           left: 0,
           height: "100%",
           width: slideX + KNOB,
-          background: "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
-          transition: dragging.current ? "none" : "width 0.25s ease",
+          background:
+            "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
         }}
       />
       <div
@@ -131,11 +100,11 @@ function SlideToStart({
           pointerEvents: "none",
         }}
       >
-        {completed ? "Iniciada" : loading ? "Registrando..." : "Deslize para iniciar"}
+        {completed ? "Iniciada" : pending ? "Iniciando…" : "Deslize para iniciar"}
       </div>
       <div
         onTouchStart={(e) => {
-          if (completed || loading) return;
+          if (completed || pending) return;
           dragging.current = true;
           startClientX.current = e.touches[0].clientX - slideXRef.current;
         }}
@@ -145,7 +114,7 @@ function SlideToStart({
         }}
         onTouchEnd={finalize}
         onMouseDown={(e) => {
-          if (completed || loading) return;
+          if (completed || pending) return;
           dragging.current = true;
           startClientX.current = e.clientX - slideXRef.current;
           const move = (ev: MouseEvent) => updateSlide(ev.clientX);
@@ -165,535 +134,839 @@ function SlideToStart({
           height: KNOB,
           borderRadius: "50%",
           background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
-          boxShadow: "0 4px 18px rgba(255,192,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+          boxShadow:
+            "0 4px 18px rgba(255,192,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: "#0A0A0A",
-          cursor: completed || loading ? "default" : "grab",
+          cursor: completed || pending ? "default" : "grab",
           transform: `translateX(${slideX}px)`,
-          transition: dragging.current ? "none" : "transform 0.25s ease",
         }}
       >
-        {completed ? <Check className="h-6 w-6" /> : <Play className="h-5 w-5" />}
+        {completed ? <Check size={22} /> : <Play size={20} />}
       </div>
     </div>
   );
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function fmtDateLong(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    weekday: "long", day: "2-digit", month: "long",
+    year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+function fmtShort(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR");
+}
+function fmtDuracao(inicio: string, fim?: string | null) {
+  const ms = (fim ? new Date(fim) : new Date()).getTime() - new Date(inicio).getTime();
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `${h}h ${m}min`;
+}
 function initials(name: string) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+  return (name ?? "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
 }
 
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  pendente:     { label: "Pendente",     color: "rgba(255,192,0,0.9)" },
+  em_andamento: { label: "Em andamento", color: "rgba(96,165,250,0.9)" },
+  concluida:    { label: "Concluída",    color: "rgba(52,211,153,0.9)" },
+  aprovada:     { label: "Aprovada",     color: "rgba(52,211,153,0.9)" },
+  reprovada:    { label: "Reprovada",    color: "rgba(248,113,113,0.9)" },
+};
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 function VisitaDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { user } = useAuthUser();
-  const roles = useUserRoles(user?.id);
-  const isAdmin = roles.includes("admin");
+
+  const { data: meUser } = useQuery({
+    queryKey: ["me-user"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+  });
+  const userId = meUser?.id;
+
+  const { data: mePerfil } = useQuery({
+    queryKey: ["meu-perfil", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome, cargo")
+        .eq("id", userId!)
+        .maybeSingle();
+      return data;
+    },
+  });
 
   const { data: visita, isLoading } = useQuery({
     queryKey: ["visita", id],
-    queryFn: () => fetchVisita(id),
-  });
-  const { data: tec } = useQuery({
-    queryKey: ["profile", visita?.tecnico_id],
-    queryFn: () => fetchProfile(visita!.tecnico_id!),
-    enabled: !!visita?.tecnico_id,
-  });
-  const { data: aprov } = useQuery({
-    queryKey: ["profile", visita?.aprovado_por],
-    queryFn: () => fetchProfile(visita!.aprovado_por!),
-    enabled: !!visita?.aprovado_por,
-  });
-  const { data: fotos } = useQuery({
-    queryKey: ["fotos", id],
-    queryFn: () => fetchFotosVisita(id),
-  });
-
-  // signed urls for photos
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
-  useEffect(() => {
-    (fotos ?? []).forEach(async (f) => {
-      if (photoUrls[f.id]) return;
-      if (f.storage_path) {
-        const url = await getSignedPhotoUrl(f.storage_path);
-        setPhotoUrls((p) => ({ ...p, [f.id]: url || f.url }));
-      } else {
-        setPhotoUrls((p) => ({ ...p, [f.id]: f.url }));
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fotos]);
-
-  const updateMutation = useMutation({
-    mutationFn: async (patch: Partial<{
-      status: VisitaStatus;
-      data_hora_inicio: string;
-      data_hora_fim: string;
-      aprovado_por: string;
-      aprovado_em: string;
-      motivo_reprovacao: string;
-      notas_visita: string;
-      equipamentos_vistos: string;
-    }>) => {
-      const { error } = await supabase.from("visitas_tecnicas").update(patch).eq("id", id);
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visitas_tecnicas")
+        .select(`
+          id, status, data_hora_agendada, endereco, complemento,
+          latitude, longitude, titulo, nome_sindico, nome_predio,
+          descricao_pedido, tecnico_id, cliente_id, prioridade,
+          data_hora_inicio, data_hora_fim,
+          aprovado_por, aprovado_em, motivo_reprovacao,
+          servicos_solicitados,
+          clientes (nome, email, telefone, tipo_empreendimento)
+        `)
+        .eq("id", id)
+        .maybeSingle();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["visita", id] });
-      qc.invalidateQueries({ queryKey: ["visitas"] });
+  });
+
+  const { data: tecPerfil } = useQuery({
+    queryKey: ["profile", visita?.tecnico_id],
+    enabled: !!visita?.tecnico_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome, cargo")
+        .eq("id", visita!.tecnico_id!)
+        .maybeSingle();
+      return data;
     },
-    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const { data: aprovPerf } = useQuery({
+    queryKey: ["profile", visita?.aprovado_por],
+    enabled: !!visita?.aprovado_por,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nome")
+        .eq("id", visita!.aprovado_por!)
+        .maybeSingle();
+      return data;
+    },
   });
 
   const iniciarMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ data_hora_inicio: new Date().toISOString() })
+        .update({
+          status: "em_andamento",
+          data_hora_inicio: new Date().toISOString(),
+        })
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visita", id] });
-      qc.invalidateQueries({ queryKey: ["visitas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
       navigate({ to: "/visita/$id/orcamento", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (visita?.status === "pendente") {
-      const t = setInterval(() => setTick((x) => x + 1), 60_000);
-      return () => clearInterval(t);
-    }
-  }, [visita?.status]);
-
-  const status = visita?.status as VisitaStatus | undefined;
-  const sInfo = status ? STATUS_VISITA[status] : null;
-  const isFuture = status === "pendente" && !visita?.data_hora_inicio;
-  const canEdit = status !== "aprovado";
-
-  const [notas, setNotas] = useState("");
-  const [equip, setEquip] = useState("");
-  const [editingNotes, setEditingNotes] = useState(false);
-  useEffect(() => {
-    if (visita) {
-      setNotas(visita.notas_visita ?? "");
-      setEquip(visita.equipamentos_vistos ?? "");
-    }
-  }, [visita]);
-
-  const [lightbox, setLightbox] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const uploadPhoto = useMutation({
-    mutationFn: async (file: File) => {
-      if (!user) throw new Error("Não autenticado");
-      const path = `${id}/${Date.now()}-${file.name.replace(/[^\w.-]/g, "_")}`;
-      const { error: upErr } = await supabase.storage
-        .from("fotos-visitas")
-        .upload(path, file, { cacheControl: "3600" });
-      if (upErr) throw upErr;
-      const { data: signed } = await supabase.storage
-        .from("fotos-visitas")
-        .createSignedUrl(path, 3600);
-      const { error } = await supabase.from("fotos_visita").insert({
-        visita_id: id,
-        url: signed?.signedUrl ?? "",
-        storage_path: path,
-        created_by: user.id,
-      });
+  const finalizarMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({
+          status: "concluida",
+          data_hora_fim: new Date().toISOString(),
+        })
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Foto enviada");
-      qc.invalidateQueries({ queryKey: ["fotos", id] });
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      toast.success("Visita finalizada! Aguardando aprovação.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mapUrl = useMemo(() => {
-    if (visita?.latitude && visita?.longitude) {
-      return `https://www.openstreetmap.org/export/embed.html?bbox=${visita.longitude - 0.01}%2C${visita.latitude - 0.01}%2C${visita.longitude + 0.01}%2C${visita.latitude + 0.01}&layer=mapnik&marker=${visita.latitude}%2C${visita.longitude}`;
-    }
-    return null;
-  }, [visita]);
+  const aprovarMutation = useMutation({
+    mutationFn: async ({ aprovar, motivo }: { aprovar: boolean; motivo?: string }) => {
+      const patch = aprovar
+        ? {
+            status: "aprovada" as const,
+            aprovado_por: userId,
+            aprovado_em: new Date().toISOString(),
+          }
+        : {
+            status: "reprovada" as const,
+            motivo_reprovacao: motivo ?? "",
+          };
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update(patch)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+      toast.success(vars.aprovar ? "Visita aprovada!" : "Visita reprovada.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mapUrl =
+    visita?.latitude && visita?.longitude
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${visita.longitude - 0.01}%2C${visita.latitude - 0.01}%2C${visita.longitude + 0.01}%2C${visita.latitude + 0.01}&layer=mapnik&marker=${visita.latitude}%2C${visita.longitude}`
+      : null;
+
+  const [showReprovarForm, setShowReprovarForm] = useState(false);
+  const [motivo, setMotivo] = useState("");
+
+  // ── computed (após todos os hooks) ──────────────────────────────────────────
+  const status = visita?.status;
+  const isTecnico = !!userId && userId === visita?.tecnico_id;
+  const canApprove =
+    mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
+  const isAdmin = canApprove;
+  const showSlide =
+    status === "pendente" && isTecnico && !visita?.data_hora_inicio;
+  const showFinalizar = status === "em_andamento" && isTecnico;
+  const showApproval = canApprove && status === "concluida";
+  const sInfo = status ? STATUS_LABELS[status] : null;
+
+  const GLASS: React.CSSProperties = {
+    background: "rgba(8,8,12,0.22)",
+    backdropFilter: "blur(24px) saturate(200%)",
+    WebkitBackdropFilter: "blur(24px) saturate(200%)",
+    border: "1px solid rgba(255,192,0,0.10)",
+    borderRadius: 18,
+    padding: "18px 16px",
+  };
+  const SECTION_LABEL: React.CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    fontSize: 10,
+    color: "rgba(255,192,0,0.65)",
+    marginBottom: 10,
+  };
+  const BTN_GHOST: React.CSSProperties = {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.05)",
+    color: "#fff",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 12,
+    textDecoration: "none",
+  };
 
   if (isLoading || !visita) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-32 w-full rounded-xl" />
+      <div style={{ padding: 24 }}>
+        <div style={{ ...GLASS, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
+          Carregando visita…
+        </div>
       </div>
     );
   }
 
+  const cliente = visita.clientes as any;
+
   return (
-    <div className="space-y-4 pb-24">
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 160 }}>
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button size="icon" variant="ghost" onClick={() => navigate({ to: "/dashboard" })}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <h1 className="flex-1 text-lg font-semibold">Visita Técnica</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          onClick={() => navigate({ to: isAdmin ? "/gerencial" : "/dashboard" })}
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            borderRadius: 12,
+            width: 40,
+            height: 40,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#fff",
+          }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 16,
+              color: "#fff",
+            }}
+          >
+            Visita Técnica
+          </div>
+          {(visita.nome_predio ?? visita.titulo) && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 12,
+                color: "rgba(255,255,255,0.55)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {visita.nome_predio ?? visita.titulo}
+            </div>
+          )}
+        </div>
         {sInfo && (
-          <Badge style={{ background: sInfo.bg, color: sInfo.color, border: `1px solid ${sInfo.color}55` }}>
+          <div
+            style={{
+              padding: "5px 12px",
+              borderRadius: 999,
+              border: `1px solid ${sInfo.color}`,
+              color: sInfo.color,
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 400,
+              fontSize: 11,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
             {sInfo.label}
-          </Badge>
-        )}
-        {!isFuture && canEdit && (
-          <Button size="icon" variant="ghost">
-            <Pencil className="h-4 w-4" />
-          </Button>
+          </div>
         )}
       </div>
 
-      {/* Data e Horário */}
-      <Card className="p-4">
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <CalendarDays className="h-4 w-4" /> Data e horário
+      {/* Data e horário */}
+      <div style={GLASS}>
+        <div style={SECTION_LABEL}>Data e horário</div>
+        <div
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 500,
+            fontSize: 14,
+            color: "#fff",
+            textTransform: "capitalize",
+          }}
+        >
+          {fmtDateLong(visita.data_hora_agendada)}
         </div>
-        <div className="text-sm font-medium capitalize">
-          {formatDataHoraLong(visita.data_hora_agendada)}
-        </div>
-        {isFuture && (
-          <div className="mt-1 text-xs font-medium text-primary" key={tick}>
-            {formatRelativeFuture(visita.data_hora_agendada)}
+        {visita.data_hora_inicio && (
+          <div
+            style={{
+              marginTop: 10,
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 12,
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.7,
+            }}
+          >
+            <div>Início: {fmtShort(visita.data_hora_inicio)}</div>
+            {visita.data_hora_fim && <div>Fim: {fmtShort(visita.data_hora_fim)}</div>}
+            <div>Duração: {fmtDuracao(visita.data_hora_inicio, visita.data_hora_fim)}</div>
           </div>
         )}
-        {!isFuture && visita.data_hora_inicio && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            Início: {new Date(visita.data_hora_inicio).toLocaleString("pt-BR")}
-            {visita.data_hora_fim && (
-              <>
-                {" "}· Fim: {new Date(visita.data_hora_fim).toLocaleString("pt-BR")}
-              </>
-            )}
-            <div>Duração: {formatDuracao(visita.data_hora_inicio, visita.data_hora_fim)}</div>
-          </div>
-        )}
-      </Card>
+      </div>
 
       {/* Local */}
-      <Card className="overflow-hidden">
-        <div className="p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <MapPin className="h-4 w-4" /> Local
+      <div style={{ ...GLASS, padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "18px 16px" }}>
+          <div style={SECTION_LABEL}>Local</div>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 400,
+              fontSize: 13,
+              color: "#fff",
+            }}
+          >
+            {visita.endereco}
           </div>
-          <div className="text-sm">{visita.endereco}</div>
           {visita.complemento && (
-            <div className="text-xs text-muted-foreground">{visita.complemento}</div>
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 12,
+                color: "rgba(255,255,255,0.50)",
+                marginTop: 4,
+              }}
+            >
+              {visita.complemento}
+            </div>
           )}
         </div>
         {mapUrl && (
           <iframe
             title="Mapa"
             src={mapUrl}
-            className="h-48 w-full border-y"
+            style={{ width: "100%", height: 180, border: "none", display: "block" }}
             loading="lazy"
           />
         )}
-        <div className="flex gap-2 p-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
+        <div style={{ display: "flex", gap: 8, padding: "12px 16px" }}>
+          <button
+            style={BTN_GHOST}
             onClick={() => {
               navigator.clipboard.writeText(visita.endereco);
               toast.success("Endereço copiado");
             }}
           >
-            <Copy className="h-4 w-4" /> Copiar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            asChild
+            <Copy size={14} /> Copiar
+          </button>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(visita.endereco)}`}
+            target="_blank"
+            rel="noreferrer"
+            style={BTN_GHOST}
           >
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(visita.endereco)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink className="h-4 w-4" /> Maps
-            </a>
-          </Button>
+            <ExternalLink size={14} /> Maps
+          </a>
         </div>
-      </Card>
+      </div>
 
       {/* Cliente */}
-      {visita.cliente && (
-        <Card className="p-4">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Cliente
+      {cliente && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Cliente</div>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 14,
+              color: "#fff",
+            }}
+          >
+            {cliente.nome}
           </div>
-          <div className="text-sm font-semibold">{visita.cliente.nome}</div>
-          {visita.cliente.tipo_empreendimento && (
-            <div className="text-xs text-muted-foreground capitalize">
-              {visita.cliente.tipo_empreendimento}
+          {cliente.tipo_empreendimento && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 12,
+                color: "rgba(255,255,255,0.40)",
+                marginTop: 2,
+                textTransform: "capitalize",
+              }}
+            >
+              {cliente.tipo_empreendimento}
             </div>
           )}
-          {visita.cliente.telefone && (
-            <div className="mt-3 flex gap-2">
-              <Button size="sm" variant="outline" className="flex-1" asChild>
-                <a href={`tel:${visita.cliente.telefone}`}>
-                  <Phone className="h-4 w-4" /> Ligar
-                </a>
-              </Button>
-              <Button size="sm" variant="outline" className="flex-1" asChild>
-                <a
-                  href={`https://wa.me/${visita.cliente.telefone.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MessageCircle className="h-4 w-4" /> WhatsApp
-                </a>
-              </Button>
+          {cliente.telefone && (
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <a href={`tel:${cliente.telefone}`} style={BTN_GHOST}>
+                <Phone size={14} /> Ligar
+              </a>
+              <a
+                href={`https://wa.me/${String(cliente.telefone).replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  ...BTN_GHOST,
+                  border: "1px solid rgba(52,211,153,0.30)",
+                  color: "#34D399",
+                }}
+              >
+                <MessageCircle size={14} /> WhatsApp
+              </a>
             </div>
           )}
-        </Card>
+        </div>
+      )}
+
+      {/* Condomínio / síndico */}
+      {(visita.nome_sindico ?? visita.nome_predio) && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Condomínio</div>
+          {visita.nome_predio && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                fontSize: 14,
+                color: "#fff",
+              }}
+            >
+              {visita.nome_predio}
+            </div>
+          )}
+          {visita.nome_sindico && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 12,
+                color: "rgba(255,255,255,0.45)",
+                marginTop: 4,
+              }}
+            >
+              Síndico: {visita.nome_sindico}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Técnico responsável */}
+      {tecPerfil && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Técnico responsável</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                flexShrink: 0,
+                background: "linear-gradient(135deg,#FFD700,#FFC000)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "#08090E",
+              }}
+            >
+              {initials(tecPerfil.nome ?? "?")}
+            </div>
+            <div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#fff",
+                }}
+              >
+                {tecPerfil.nome}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.40)",
+                  textTransform: "capitalize",
+                }}
+              >
+                {tecPerfil.cargo ?? "—"}
+              </div>
+            </div>
+          </div>
+          {isTecnico && (
+            <div
+              style={{
+                marginTop: 10,
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 400,
+                fontSize: 12,
+                color: "#FFC000",
+              }}
+            >
+              Você é o responsável por esta visita
+            </div>
+          )}
+        </div>
       )}
 
       {/* Descrição */}
       {visita.descricao_pedido && (
-        <Card className="p-4">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Descrição do pedido
-          </div>
-          <p className="whitespace-pre-wrap text-sm">{visita.descricao_pedido}</p>
-        </Card>
-      )}
-
-      {/* Técnico */}
-      {tec && (
-        <Card className="p-4">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Técnico responsável
-          </div>
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {initials(tec.nome ?? "?")}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="text-sm font-semibold">{tec.nome}</div>
-              <div className="text-xs text-muted-foreground capitalize">{tec.cargo ?? "—"}</div>
-            </div>
-          </div>
-          {user?.id === visita.tecnico_id && (
-            <p className="mt-2 text-xs font-medium text-primary">
-              Você é o responsável por esta visita
-            </p>
-          )}
-        </Card>
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Descrição do pedido</div>
+          <p
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 13,
+              color: "rgba(255,255,255,0.72)",
+              whiteSpace: "pre-wrap",
+              margin: 0,
+              lineHeight: 1.6,
+            }}
+          >
+            {visita.descricao_pedido}
+          </p>
+        </div>
       )}
 
       {/* Aprovação */}
-      {(visita.status === "aguardando_aprovacao" || visita.status === "aprovado") && (
-        <Card className="p-4">
-          {visita.status === "aprovado" && (
-            <div className="rounded-md bg-success/10 p-3 text-sm text-success">
-              ✅ Aprovada {aprov?.nome ? `por ${aprov.nome}` : ""}
+      {(status === "aprovada" || status === "reprovada" || showApproval) && (
+        <div style={GLASS}>
+          {status === "aprovada" && (
+            <div
+              style={{
+                background: "rgba(52,211,153,0.09)",
+                border: "1px solid rgba(52,211,153,0.22)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 13,
+                color: "#34D399",
+              }}
+            >
+              ✅ Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
               {visita.aprovado_em
                 ? ` em ${new Date(visita.aprovado_em).toLocaleDateString("pt-BR")}`
                 : ""}
             </div>
           )}
-          {visita.status === "aguardando_aprovacao" && (
-            <div className="rounded-md bg-accent/30 p-3 text-sm">
-              🕐 Visita concluída — aguardando aprovação do gerente
-            </div>
-          )}
-          {isAdmin && visita.status === "aguardando_aprovacao" && (
-            <div className="mt-3">
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() =>
-                  updateMutation.mutate({
-                    status: "aprovado",
-                    aprovado_por: user?.id,
-                    aprovado_em: new Date().toISOString(),
-                  })
-                }
-              >
-                <Check className="h-4 w-4" /> Aprovar Visita
-              </Button>
-            </div>
-          )}
-        </Card>
-      )}
 
-      {/* Notas */}
-      {!isFuture && (
-        <Card className="p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Notas da visita
+          {status === "reprovada" && (
+            <div
+              style={{
+                background: "rgba(248,113,113,0.09)",
+                border: "1px solid rgba(248,113,113,0.22)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 13,
+                color: "#F87171",
+              }}
+            >
+              ❌ Reprovada
+              {visita.motivo_reprovacao ? ` — ${visita.motivo_reprovacao}` : ""}
             </div>
-            {canEdit && !editingNotes && (
-              <Button size="sm" variant="ghost" onClick={() => setEditingNotes(true)}>
-                Editar
-              </Button>
-            )}
-          </div>
-          {editingNotes ? (
+          )}
+
+          {showApproval && !showReprovarForm && (
             <>
-              <Textarea
-                rows={4}
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                placeholder="Anotações da visita..."
-              />
-              <div className="mt-2 flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    await updateMutation.mutateAsync({ notas_visita: notas });
-                    setEditingNotes(false);
-                    toast.success("Notas atualizadas");
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.55)",
+                  marginBottom: 14,
+                }}
+              >
+                Visita concluída — aguardando aprovação
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => aprovarMutation.mutate({ aprovar: true })}
+                  disabled={aprovarMutation.isPending}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 12,
+                    border: "1px solid rgba(52,211,153,0.35)",
+                    background: "rgba(52,211,153,0.09)",
+                    color: "#34D399",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    letterSpacing: "0.08em",
                   }}
                 >
-                  Salvar
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)}>
-                  Cancelar
-                </Button>
+                  <Check size={15} /> Aprovar
+                </button>
+                <button
+                  onClick={() => setShowReprovarForm(true)}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 12,
+                    border: "1px solid rgba(248,113,113,0.35)",
+                    background: "rgba(248,113,113,0.08)",
+                    color: "#F87171",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  <X size={15} /> Reprovar
+                </button>
               </div>
             </>
-          ) : (
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {visita.notas_visita || "Nenhuma nota registrada."}
-            </p>
           )}
-        </Card>
-      )}
 
-      {/* Equipamentos */}
-      {!isFuture && (
-        <Card className="p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Equipamentos observados
-            </div>
-            {canEdit && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => updateMutation.mutate({ equipamentos_vistos: equip })}
+          {showApproval && showReprovarForm && (
+            <div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 12,
+                  color: "rgba(248,113,113,0.80)",
+                  marginBottom: 10,
+                  letterSpacing: "0.08em",
+                }}
               >
-                Salvar
-              </Button>
-            )}
-          </div>
-          <Textarea
-            rows={3}
-            value={equip}
-            onChange={(e) => setEquip(e.target.value)}
-            disabled={!canEdit}
-            placeholder="Equipamentos identificados..."
-          />
-        </Card>
-      )}
-
-      {/* Fotos */}
-      {!isFuture && (
-        <Card className="p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Fotos registradas
-            </div>
-            {canEdit && (
-              <>
-                <input
-                  type="file"
-                  ref={fileRef}
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) uploadPhoto.mutate(f);
-                    e.target.value = "";
-                  }}
-                />
-                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-                  <ImagePlus className="h-4 w-4" /> Adicionar
-                </Button>
-              </>
-            )}
-          </div>
-          {(fotos ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma foto registrada.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {(fotos ?? []).map((f) => (
+                Motivo da reprovação
+              </div>
+              <textarea
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Descreva o motivo…"
+                rows={3}
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "1px solid rgba(248,113,113,0.28)",
+                  background: "rgba(248,113,113,0.06)",
+                  color: "#fff",
+                  padding: "10px 12px",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 13,
+                  resize: "vertical",
+                  boxSizing: "border-box",
+                  marginBottom: 10,
+                  outline: "none",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  key={f.id}
-                  onClick={() => setLightbox(photoUrls[f.id] || f.url)}
-                  className="aspect-square overflow-hidden rounded-md border bg-muted"
+                  onClick={() => {
+                    setShowReprovarForm(false);
+                    setMotivo("");
+                  }}
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "transparent",
+                    color: "rgba(255,255,255,0.45)",
+                    cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                  }}
                 >
-                  {photoUrls[f.id] ? (
-                    <img
-                      src={photoUrls[f.id]}
-                      alt={f.legenda ?? "Foto"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Skeleton className="h-full w-full" />
-                  )}
+                  Cancelar
                 </button>
-              ))}
+                <button
+                  onClick={() => aprovarMutation.mutate({ aprovar: false, motivo })}
+                  disabled={aprovarMutation.isPending || !motivo.trim()}
+                  style={{
+                    flex: 1,
+                    height: 40,
+                    borderRadius: 12,
+                    border: "1px solid rgba(248,113,113,0.35)",
+                    background: "rgba(248,113,113,0.10)",
+                    color: "#F87171",
+                    cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    opacity: motivo.trim() ? 1 : 0.5,
+                  }}
+                >
+                  Confirmar
+                </button>
+              </div>
             </div>
           )}
-        </Card>
+        </div>
       )}
 
-      {/* CTAs fixos no rodapé */}
-      {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
-        <div className="px-1 pt-2">
+      {/* CTA fixo: SlideToStart */}
+      {showSlide && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 64,
+            left: 0,
+            right: 0,
+            zIndex: 30,
+            borderTop: "1px solid rgba(255,192,0,0.10)",
+            background: "rgba(8,9,14,0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            padding: "12px 16px",
+          }}
+        >
           <SlideToStart
-            onComplete={() => iniciarMutation.mutate()}
-            loading={iniciarMutation.isPending}
+            onConfirm={() => iniciarMutation.mutate()}
+            pending={iniciarMutation.isPending}
           />
         </div>
       )}
-      {visita.status === "pendente" && user?.id === visita.tecnico_id && visita.data_hora_inicio && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
-          <Button
-            className="h-12 w-full text-base font-semibold"
-            style={{ backgroundColor: "rgba(96,165,250,0.10)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.30)" }}
-            onClick={() =>
-              updateMutation.mutate({
-                status: "aguardando_aprovacao",
-                data_hora_fim: new Date().toISOString(),
-              })
-            }
+
+      {/* CTA fixo: Finalizar */}
+      {showFinalizar && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 64,
+            left: 0,
+            right: 0,
+            zIndex: 30,
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(8,9,14,0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            padding: "12px 16px",
+          }}
+        >
+          <button
+            onClick={() => finalizarMutation.mutate()}
+            disabled={finalizarMutation.isPending}
+            style={{
+              width: "100%",
+              height: 56,
+              borderRadius: 28,
+              background: "rgba(96,165,250,0.12)",
+              border: "1.5px solid rgba(96,165,250,0.35)",
+              color: "#60A5FA",
+              cursor: "pointer",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 13,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: finalizarMutation.isPending ? 0.6 : 1,
+            }}
           >
-            <Square className="h-5 w-5" /> Finalizar Visita
-          </Button>
+            <Square size={18} />
+            {finalizarMutation.isPending ? "Finalizando…" : "Finalizar Visita"}
+          </button>
         </div>
       )}
-
-      {/* Lightbox */}
-      <Dialog open={!!lightbox} onOpenChange={(o) => !o && setLightbox(null)}>
-        <DialogContent className="max-w-3xl p-2">
-          {lightbox && <img src={lightbox} alt="Foto" className="h-auto w-full rounded" />}
-        </DialogContent>
-      </Dialog>
-
-      <div className="text-center">
-        <Link to="/dashboard" className="text-xs text-muted-foreground">
-          ← Voltar para o início
-        </Link>
-      </div>
     </div>
   );
 }
