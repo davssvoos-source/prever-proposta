@@ -96,12 +96,12 @@ function NovaVisitaPage() {
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
   const { data: tecnicos = [] } = useQuery({
-    queryKey: ["tecnicos"],
+    queryKey: ["tecnicos-lista"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, nome, cargo")
-        .in("cargo", ["tecnico", "admin", "comercial"])
+        .eq("cargo", "tecnico")
         .eq("ativo", true)
         .order("nome");
       if (error) throw error;
