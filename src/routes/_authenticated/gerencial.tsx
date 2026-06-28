@@ -73,7 +73,7 @@ function GerencialIndex() {
   const [view, setView] = useState<"lista" | "tecnico">("lista");
 
   const tecMap = useMemo(() => {
-    const m = new Map<string, (typeof tecnicos)[number]>();
+    const m = new Map<string, Tecnico>();
     (tecnicos ?? []).forEach((t) => m.set(t.id, t));
     return m;
   }, [tecnicos]);
