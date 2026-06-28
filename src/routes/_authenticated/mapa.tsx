@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/mapa")({
   component: MapaPage,
 });
 
-const STATUSES: VisitaStatus[] = ["pendente", "em_andamento", "concluida", "aprovada", "reprovada"];
+const STATUSES: VisitaStatus[] = ["pendente", "aguardando_aprovacao", "aprovado"];
 
 function MapaPage() {
   const navigate = useNavigate();
