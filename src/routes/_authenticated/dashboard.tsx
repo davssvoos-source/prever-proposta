@@ -195,7 +195,9 @@ function Dashboard() {
         <>
           {pendentes.length > 0 && <Section title="📅 Pendentes" items={pendentes} />}
           {emAndamento.length > 0 && <Section title="▶️ Em andamento" items={emAndamento} />}
-          {concluidas.length > 0 && <Section title="✅ Concluídas" items={concluidas.slice(0, 5)} />}
+          {aguardando.length > 0 && <Section title="⏳ Aguardando aprovação" items={aguardando} />}
+          {aprovadas.length > 0 && <Section title="✅ Aprovadas" items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section title="❌ Reprovadas" items={reprovadas.slice(0, 5)} />}
         </>
       )}
     </div>
