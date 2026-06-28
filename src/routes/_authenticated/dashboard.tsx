@@ -204,25 +204,22 @@ function Dashboard() {
   );
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pendente: "#FFC000",
-  em_andamento: "#60A5FA",
-  concluida: "#34D399",
-  aprovada: "#34D399",
-  reprovada: "#F87171",
-};
-const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluida: "Concluída",
-  aprovada: "Aprovada",
-  reprovada: "Reprovada",
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  pendente:     { label: "Visita Técnica Pendente", color: "#FFC000",  bg: "rgba(255,192,0,0.12)"   },
+  em_andamento: { label: "Em Andamento",            color: "#60A5FA",  bg: "rgba(96,165,250,0.12)"  },
+  concluida:    { label: "Aguardando Aprovação",    color: "#FBBF24",  bg: "rgba(251,191,36,0.12)"  },
+  aprovada:     { label: "Aprovada",                color: "#34D399",  bg: "rgba(52,211,153,0.12)"  },
+  reprovada:    { label: "Reprovada",               color: "#F87171",  bg: "rgba(248,113,113,0.12)" },
 };
 
 function VisitaCard({ visita }: { visita: any }) {
-  const color = STATUS_COLOR[visita.status] ?? "#888";
-  const label = STATUS_LABEL[visita.status] ?? visita.status;
+  const sInfo = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
   const nome =
+    visita.nome_predio ??
+    visita.clientes?.nome ??
+    visita.nome_sindico ??
+    visita.titulo ??
+    "Sem nome";
     visita.nome_predio ??
     visita.clientes?.nome ??
     visita.nome_sindico ??
