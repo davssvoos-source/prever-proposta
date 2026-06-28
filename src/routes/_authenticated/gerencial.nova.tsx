@@ -164,6 +164,24 @@ function NovaVisitaPage() {
     mutationFn: async () => {
       const dataHoraAgendada = new Date(`${data}T${hora}:00`).toISOString();
       const { data: { user } } = await supabase.auth.getUser();
+
+      let foto_fachada_url: string | null = null;
+      if (fotoFile) {
+        const ext = fotoFile.name.split(".").pop() || "jpg";
+        const path = `visitas/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("visita-fotos")
+          .upload(path, fotoFile, { upsert: true });
+        if (upErr) {
+          toast.error("Erro ao enviar foto: " + upErr.message);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from("visita-fotos")
+            .getPublicUrl(path);
+          foto_fachada_url = publicUrl;
+        }
+      }
+
       const payload = {
         titulo: nomePredio,
         nome_predio: nomePredio,
@@ -181,6 +199,7 @@ function NovaVisitaPage() {
         status: "pendente",
         latitude: lat,
         longitude: lng,
+        foto_fachada_url,
         created_by: user?.id ?? null,
       };
       const { error } = await supabase.from("visitas_tecnicas").insert(payload);
