@@ -152,7 +152,7 @@ function OrcamentoPasso1() {
       setSistema((orcamento as any).sistema_atual ?? "");
       setReady(true);
     } else if (servicosList.length > 0) {
-      setSelecionados(servicosList.filter((s) => s.defaultOn).map((s) => s.id));
+      setSelecionados([]);
       setReady(true);
     }
   }, [orcamento, servicosList, ready]);
