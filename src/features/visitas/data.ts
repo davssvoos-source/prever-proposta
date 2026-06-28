@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 export async function fetchVisitas() {
   const { data, error } = await supabase
     .from("visitas_tecnicas")
-    .select("*, cliente:clientes(id, nome, tipo_empreendimento, contato_telefone)")
+    .select("*, cliente:clientes(id, nome, tipo_empreendimento, telefone)")
     .order("data_hora_agendada", { ascending: true });
   if (error) throw error;
   return data ?? [];
