@@ -51,91 +51,53 @@ function ServicoCard({
   const startX = useRef(0);
   const [dragX, setDragX] = useState(0);
   const dragging = useRef(false);
-  const moved = useRef(false);
 
   return (
-    <button
-      type="button"
+    <div
       onTouchStart={(e) => {
         startX.current = e.touches[0].clientX;
         dragging.current = true;
-        moved.current = false;
       }}
       onTouchMove={(e) => {
         if (!dragging.current) return;
-        const dx = e.touches[0].clientX - startX.current;
-        if (Math.abs(dx) > 6) moved.current = true;
-        setDragX(Math.max(-64, Math.min(64, dx)));
+        setDragX(Math.max(-60, Math.min(60, e.touches[0].clientX - startX.current)));
       }}
       onTouchEnd={() => {
         dragging.current = false;
         if (Math.abs(dragX) > 36) onToggle();
         setDragX(0);
       }}
-      onClick={(e) => {
-        if (moved.current) {
-          e.preventDefault();
-          return;
-        }
-        onToggle();
-      }}
+      onClick={onToggle}
       style={{
         transform: `translateX(${dragX}px)`,
         transition:
           dragX === 0
-            ? "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border 0.2s, box-shadow 0.2s"
-            : "transform 0s",
+            ? "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border 0.2s"
+            : "none",
         background: selected ? "rgba(255,192,0,0.15)" : "rgba(8,8,12,0.35)",
-        border: selected
-          ? "1px solid rgba(255,192,0,0.55)"
-          : "1px solid rgba(255,255,255,0.07)",
+        border: selected ? "1px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,255,255,0.07)",
         borderRadius: 14,
         padding: "14px 8px",
-        textAlign: "center",
+        textAlign: "center" as const,
         cursor: "pointer",
         backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        boxShadow: selected ? "0 0 16px rgba(255,192,0,0.15)" : "none",
-        userSelect: "none",
-        touchAction: "pan-y",
-        position: "relative",
-        color: selected ? "#FFC000" : "rgba(220,220,220,0.85)",
+        userSelect: "none" as const,
+        touchAction: "none",
       }}
     >
-      <div style={{ fontSize: 28, lineHeight: 1 }}>{icon}</div>
+      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
       <div
         style={{
-          marginTop: 8,
-          fontSize: 11,
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
-          letterSpacing: "0.04em",
+          fontSize: 11,
+          color: selected ? "#FFC000" : "rgba(255,255,255,0.75)",
+          lineHeight: 1.25,
         }}
       >
         {label}
       </div>
-      {selected && (
-        <div
-          style={{
-            position: "absolute",
-            top: 6,
-            right: 6,
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: "#FFC000",
-            color: "#0A0A0A",
-            fontSize: 10,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ✓
-        </div>
-      )}
-    </button>
+    </div>
   );
 }
 
@@ -148,92 +110,84 @@ function OrcamentoPasso1() {
     queryKey: ["orcamento", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("visita_orcamentos" as never)
+        .from("visita_orcamentos")
         .select("*")
         .eq("visita_id", id)
         .maybeSingle();
-      return (data as Record<string, unknown> | null) ?? null;
+      return data;
     },
   });
 
   const { data: servicosDB } = useQuery({
-    queryKey: ["servicos-ativos"],
+    queryKey: ["servicos-lista"],
     queryFn: async () => {
       const { data } = await supabase
         .from("servicos")
-        .select("id, nome, code, ativo_padrao")
-        .order("ordem" as never);
-      return (data as Array<{ id: string; nome: string; code: string | null; ativo_padrao: boolean | null }> | null) ?? [];
+        .select("id,nome,code,ativo_padrao")
+        .order("ordem");
+      return data ?? [];
     },
   });
 
   const servicosList =
     servicosDB && servicosDB.length > 0
-      ? servicosDB.map((s) => ({
-          id: (s.code ?? s.id) as string,
+      ? servicosDB.map((s: any) => ({
+          id: s.code ?? s.id,
           label: s.nome,
           icon: "🔧",
-          defaultOn: !!s.ativo_padrao,
+          defaultOn: s.ativo_padrao,
         }))
       : SERVICOS_FALLBACK.map((s) => ({ ...s, defaultOn: true }));
 
-  const [qtdApartamentos, setQtdApartamentos] = useState<number | "">("");
+  const [qtd, setQtd] = useState<number | "">("");
   const [selecionados, setSelecionados] = useState<string[]>([]);
-  const [sistemaAtual, setSistemaAtual] = useState<string>("");
-  const [hydrated, setHydrated] = useState(false);
+  const [sistema, setSistema] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (hydrated) return;
+    if (ready) return;
     if (orcamento) {
-      setQtdApartamentos((orcamento.qtd_apartamentos as number | null) ?? "");
-      setSistemaAtual((orcamento.sistema_atual as string | null) ?? "");
-      const ofertados = (orcamento.servicos_ofertados as string[] | null) ?? null;
-      if (ofertados && ofertados.length > 0) {
-        setSelecionados(ofertados);
-      } else if (servicosList.length > 0) {
-        setSelecionados(servicosList.filter((s) => s.defaultOn).map((s) => s.id));
-      }
-      setHydrated(true);
+      setQtd((orcamento as any).qtd_apartamentos ?? "");
+      setSelecionados((orcamento as any).servicos_ofertados ?? []);
+      setSistema((orcamento as any).sistema_atual ?? "");
+      setReady(true);
     } else if (servicosList.length > 0) {
       setSelecionados(servicosList.filter((s) => s.defaultOn).map((s) => s.id));
-      setHydrated(true);
+      setReady(true);
     }
-  }, [orcamento, servicosList, hydrated]);
-
-  const toggleServico = (sid: string) => {
-    setSelecionados((prev) =>
-      prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid],
-    );
-  };
+  }, [orcamento, servicosList, ready]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!qtdApartamentos || Number(qtdApartamentos) <= 0) {
-        throw new Error("Informe a quantidade de apartamentos.");
-      }
-      const payload = {
-        visita_id: id,
-        qtd_apartamentos: Number(qtdApartamentos),
-        servicos_ofertados: selecionados,
-        sistema_atual: sistemaAtual,
-        step_atual: 1,
-        updated_at: new Date().toISOString(),
-      };
-      const { error } = await supabase
-        .from("visita_orcamentos" as never)
-        .upsert(payload as never, { onConflict: "visita_id" });
+      if (!qtd || Number(qtd) <= 0) throw new Error("Informe a quantidade de apartamentos.");
+      const { error } = await supabase.from("visita_orcamentos").upsert(
+        {
+          visita_id: id,
+          qtd_apartamentos: Number(qtd),
+          servicos_ofertados: selecionados,
+          sistema_atual: sistema,
+          step_atual: 1,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "visita_id" },
+      );
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
-      toast.success("Dados salvos");
-      // Passo 2 ainda não existe — volta ao detalhe da visita
-      navigate({ to: "/visita/$id", params: { id } });
+      navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const LABEL_STYLE: React.CSSProperties = {
+  const CARD: React.CSSProperties = {
+    background: "rgba(8,8,12,0.22)",
+    backdropFilter: "blur(12px) saturate(130%)",
+    border: "1px solid rgba(255,192,0,0.10)",
+    borderRadius: 18,
+    padding: "18px 16px",
+  };
+  const LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     letterSpacing: "0.14em",
@@ -243,21 +197,11 @@ function OrcamentoPasso1() {
     marginBottom: 10,
   };
 
-  const CARD_STYLE: React.CSSProperties = {
-    background: "rgba(8,8,12,0.22)",
-    backdropFilter: "blur(12px) saturate(130%)",
-    WebkitBackdropFilter: "blur(12px) saturate(130%)",
-    border: "1px solid rgba(255,192,0,0.10)",
-    borderRadius: 18,
-    padding: "18px 16px",
-  };
-
   return (
-    <div className="pb-40 space-y-5" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          type="button"
           onClick={() => navigate({ to: "/visita/$id", params: { id } })}
           style={{
             background: "rgba(255,255,255,0.06)",
@@ -272,14 +216,15 @@ function OrcamentoPasso1() {
             color: "#fff",
           }}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft size={18} />
         </button>
-        <div className="flex-1">
+        <div style={{ flex: 1 }}>
           <div
             style={{
-              fontWeight: 500,
-              fontSize: 16,
-              color: "#F5F5F5",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 400,
+              fontSize: 18,
+              color: "#fff",
               letterSpacing: "0.02em",
             }}
           >
@@ -287,148 +232,153 @@ function OrcamentoPasso1() {
           </div>
           <div
             style={{
-              fontSize: 11,
+              fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
-              color: "rgba(200,200,200,0.65)",
-              letterSpacing: "0.04em",
+              fontSize: 11,
+              color: "rgba(255,255,255,0.45)",
+              marginTop: 2,
             }}
           >
-            Passo 1 de 2 — Informações gerais
+            Passo 1 de 3 — Informações gerais
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div style={{ width: 18, height: 4, borderRadius: 2, background: "#FFC000" }} />
-          <div style={{ width: 18, height: 4, borderRadius: 2, background: "rgba(255,192,0,0.2)" }} />
+        <div style={{ display: "flex", gap: 4 }}>
+          {[true, false, false].map((active, i) => (
+            <div
+              key={i}
+              style={{
+                width: 20,
+                height: 4,
+                borderRadius: 2,
+                background: active ? "#FFC000" : "rgba(255,255,255,0.12)",
+              }}
+            />
+          ))}
         </div>
       </div>
 
-      <div className="space-y-4">
-        {/* Qtd Apartamentos */}
-        <div style={CARD_STYLE}>
-          <div style={LABEL_STYLE}>Quantidade de apartamentos</div>
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            value={qtdApartamentos}
-            onChange={(e) =>
-              setQtdApartamentos(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            placeholder="Ex: 48"
+      {/* Qtd Apartamentos */}
+      <div style={CARD}>
+        <div style={LABEL}>Quantidade de apartamentos</div>
+        <Input
+          type="number"
+          inputMode="numeric"
+          value={qtd}
+          onChange={(e) => setQtd(e.target.value === "" ? "" : Number(e.target.value))}
+          placeholder="Ex: 48"
+          style={{
+            background: "transparent",
+            border: "1px solid rgba(255,192,0,0.22)",
+            borderRadius: 12,
+            color: "#fff",
+            fontSize: 28,
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            textAlign: "center",
+            height: 68,
+          }}
+        />
+      </div>
+
+      {/* Serviços */}
+      <div style={CARD}>
+        <div style={LABEL}>Serviços ofertados</div>
+        <div
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 11,
+            color: "rgba(255,255,255,0.40)",
+            marginBottom: 14,
+          }}
+        >
+          Toque ou arraste para adicionar / remover
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {servicosList.map((s) => (
+            <ServicoCard
+              key={s.id}
+              label={s.label}
+              icon={s.icon}
+              selected={selecionados.includes(s.id)}
+              onToggle={() =>
+                setSelecionados((p) =>
+                  p.includes(s.id) ? p.filter((x) => x !== s.id) : [...p, s.id],
+                )
+              }
+            />
+          ))}
+        </div>
+        <div
+          style={{
+            marginTop: 12,
+            textAlign: "center",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 11,
+            color: "rgba(255,192,0,0.65)",
+          }}
+        >
+          {selecionados.length} selecionado{selecionados.length !== 1 ? "s" : ""}
+        </div>
+      </div>
+
+      {/* Sistema Atual */}
+      <div style={CARD}>
+        <div style={LABEL}>Sistema atual do condomínio</div>
+        <Select value={sistema} onValueChange={setSistema}>
+          <SelectTrigger
             style={{
               background: "transparent",
               border: "1px solid rgba(255,192,0,0.22)",
               borderRadius: 12,
               color: "#fff",
-              fontSize: 28,
+              height: 48,
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
-              textAlign: "center",
-              height: 68,
-              letterSpacing: "0.06em",
-            }}
-          />
-        </div>
-
-        {/* Serviços */}
-        <div style={CARD_STYLE}>
-          <div style={LABEL_STYLE}>Serviços ofertados</div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "rgba(200,200,200,0.55)",
-              marginBottom: 12,
-              fontWeight: 300,
             }}
           >
-            Toque ou arraste para adicionar / remover
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {servicosList.map((s) => (
-              <ServicoCard
-                key={s.id}
-                label={s.label}
-                icon={s.icon}
-                selected={selecionados.includes(s.id)}
-                onToggle={() => toggleServico(s.id)}
-              />
+            <SelectValue placeholder="Selecione o sistema atual" />
+          </SelectTrigger>
+          <SelectContent>
+            {SISTEMAS.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
             ))}
-          </div>
-          <div
-            style={{
-              marginTop: 12,
-              fontSize: 11,
-              color: "#FFC000",
-              textAlign: "center",
-              fontWeight: 400,
-              letterSpacing: "0.04em",
-            }}
-          >
-            {selecionados.length} serviço{selecionados.length !== 1 ? "s" : ""} selecionado
-            {selecionados.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-
-        {/* Sistema Atual */}
-        <div style={CARD_STYLE}>
-          <div style={LABEL_STYLE}>Sistema atual do condomínio</div>
-          <Select value={sistemaAtual} onValueChange={setSistemaAtual}>
-            <SelectTrigger
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255,192,0,0.22)",
-                borderRadius: 12,
-                color: "#fff",
-                height: 52,
-                fontSize: 14,
-                fontFamily: "'Montserrat', sans-serif",
-              }}
-            >
-              <SelectValue placeholder="Selecione..." />
-            </SelectTrigger>
-            <SelectContent>
-              {SISTEMAS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Botão fixo */}
-      <div className="fixed left-0 right-0 z-30 px-4" style={{ bottom: 80 }}>
-        <div className="mx-auto max-w-5xl">
-          <button
-            type="button"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 28,
-              background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
-              border: "none",
-              color: "#08090E",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 13,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
-              opacity: saveMutation.isPending ? 0.7 : 1,
-            }}
-          >
-            {saveMutation.isPending ? "Salvando..." : "Próxima etapa"}
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+      {/* Botão próxima etapa */}
+      <div style={{ marginTop: 8 }}>
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          style={{
+            width: "100%",
+            height: 56,
+            borderRadius: 28,
+            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            border: "none",
+            color: "#08090E",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 13,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
+            opacity: saveMutation.isPending ? 0.7 : 1,
+          }}
+        >
+          {saveMutation.isPending ? "Salvando..." : "Próxima etapa"}
+          <ChevronRight size={18} />
+        </button>
       </div>
     </div>
   );
