@@ -710,7 +710,7 @@ function NovaVisitaPage() {
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               { label: "Síndico", value: nomeSindico },
               { label: "Serviços", value: servicos.map((id) => SERVICOS.find((s) => s.id === id)?.label).filter(Boolean).join(", ") },
-              { label: "Empreendimento", value: TIPOS_EMPREENDIMENTO.find((t) => t.id === tipoEmpreendimento)?.label },
+              
 
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
