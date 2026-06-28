@@ -163,24 +163,71 @@ export type Database = {
         }
         Relationships: []
       }
+      fotos_visita: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          legenda: string | null
+          storage_path: string | null
+          url: string
+          visita_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          legenda?: string | null
+          storage_path?: string | null
+          url: string
+          visita_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          legenda?: string | null
+          storage_path?: string | null
+          url?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fotos_visita_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          avatar_url: string | null
+          cargo: string | null
           created_at: string
           email: string | null
           id: string
           nome: string | null
+          telefone: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          cargo?: string | null
           created_at?: string
           email?: string | null
           id: string
           nome?: string | null
+          telefone?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          cargo?: string | null
           created_at?: string
           email?: string | null
           id?: string
           nome?: string | null
+          telefone?: string | null
         }
         Relationships: []
       }
@@ -395,6 +442,96 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      visitas_tecnicas: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          cliente_id: string | null
+          complemento: string | null
+          created_at: string
+          created_by: string | null
+          data_hora_agendada: string
+          data_hora_fim: string | null
+          data_hora_inicio: string | null
+          descricao_pedido: string | null
+          endereco: string
+          equipamentos_vistos: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          motivo_reprovacao: string | null
+          notas_visita: string | null
+          projeto_id: string | null
+          status: string
+          tecnico_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cliente_id?: string | null
+          complemento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_hora_agendada: string
+          data_hora_fim?: string | null
+          data_hora_inicio?: string | null
+          descricao_pedido?: string | null
+          endereco: string
+          equipamentos_vistos?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_reprovacao?: string | null
+          notas_visita?: string | null
+          projeto_id?: string | null
+          status?: string
+          tecnico_id?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          cliente_id?: string | null
+          complemento?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_hora_agendada?: string
+          data_hora_fim?: string | null
+          data_hora_inicio?: string | null
+          descricao_pedido?: string | null
+          endereco?: string
+          equipamentos_vistos?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          motivo_reprovacao?: string | null
+          notas_visita?: string | null
+          projeto_id?: string | null
+          status?: string
+          tecnico_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitas_tecnicas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitas_tecnicas_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
