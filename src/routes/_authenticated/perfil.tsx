@@ -45,9 +45,9 @@ function PerfilPage() {
   const realizadasMes = myVisits.filter(
     (v) => v.data_hora_inicio && new Date(v.data_hora_inicio) >= monthStart,
   ).length;
-  const aprovadas = myVisits.filter((v) => v.status === "aprovada").length;
+  const aprovadas = myVisits.filter((v) => v.status === "aprovado").length;
   const totalFinalizadas = myVisits.filter((v) =>
-    ["aprovada", "reprovada"].includes(v.status),
+    ["aprovado", "aguardando_aprovacao"].includes(v.status),
   ).length;
   const taxa =
     totalFinalizadas === 0 ? 0 : Math.round((aprovadas / totalFinalizadas) * 100);

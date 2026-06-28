@@ -1,38 +1,29 @@
-export type VisitaStatus =
-  | "pendente"
-  | "em_andamento"
-  | "concluida"
-  | "aprovada"
-  | "reprovada";
+export type VisitaStatus = "pendente" | "aguardando_aprovacao" | "aprovado";
 
 export const STATUS_VISITA: Record<
   VisitaStatus,
-  { label: string; color: string; icon: string; pin: string }
+  { label: string; color: string; bg: string; pin: string; icon: string }
 > = {
-  pendente: { label: "Pendente", color: "bg-info text-info-foreground", icon: "🕓", pin: "#3b82f6" },
-  em_andamento: {
-    label: "Em andamento",
-    color: "bg-warning text-warning-foreground",
-    icon: "▶️",
-    pin: "#f59e0b",
+  pendente: {
+    label: "Pendente",
+    color: "#FFC000",
+    bg: "rgba(255,192,0,0.12)",
+    pin: "#FFC000",
+    icon: "🕓",
   },
-  concluida: {
-    label: "Ag. aprovação",
-    color: "bg-accent text-accent-foreground",
+  aguardando_aprovacao: {
+    label: "Ag. Aprovação",
+    color: "#60A5FA",
+    bg: "rgba(96,165,250,0.12)",
+    pin: "#60A5FA",
     icon: "🕐",
-    pin: "#eab308",
   },
-  aprovada: {
-    label: "Aprovada",
-    color: "bg-success text-success-foreground",
+  aprovado: {
+    label: "Aprovado",
+    color: "#34D399",
+    bg: "rgba(52,211,153,0.12)",
+    pin: "#34D399",
     icon: "✅",
-    pin: "#22c55e",
-  },
-  reprovada: {
-    label: "Reprovada",
-    color: "bg-destructive text-destructive-foreground",
-    icon: "❌",
-    pin: "#ef4444",
   },
 };
 

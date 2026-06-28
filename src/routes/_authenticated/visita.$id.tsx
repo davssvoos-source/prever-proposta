@@ -124,7 +124,7 @@ function VisitaDetail() {
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (visita?.status === "em_andamento" || visita?.status === "pendente") {
+    if (visita?.status === "pendente") {
       const t = setInterval(() => setTick((x) => x + 1), 60_000);
       return () => clearInterval(t);
     }
@@ -132,8 +132,8 @@ function VisitaDetail() {
 
   const status = visita?.status as VisitaStatus | undefined;
   const sInfo = status ? STATUS_VISITA[status] : null;
-  const isFuture = status === "pendente";
-  const canEdit = status !== "aprovada";
+  const isFuture = status === "pendente" && !visita?.data_hora_inicio;
+  const canEdit = status !== "aprovado";
 
   const [notas, setNotas] = useState("");
   const [equip, setEquip] = useState("");
@@ -199,7 +199,11 @@ function VisitaDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="flex-1 text-lg font-semibold">Visita Técnica</h1>
-        {sInfo && <Badge className={sInfo.color}>{sInfo.label}</Badge>}
+        {sInfo && (
+          <Badge style={{ background: sInfo.bg, color: sInfo.color, border: `1px solid ${sInfo.color}55` }}>
+            {sInfo.label}
+          </Badge>
+        )}
         {!isFuture && canEdit && (
           <Button size="icon" variant="ghost">
             <Pencil className="h-4 w-4" />
@@ -349,10 +353,10 @@ function VisitaDetail() {
         </Card>
       )}
 
-      {/* Aprovação (concluída) */}
-      {!isFuture && (
+      {/* Aprovação */}
+      {(visita.status === "aguardando_aprovacao" || visita.status === "aprovado") && (
         <Card className="p-4">
-          {visita.status === "aprovada" && (
+          {visita.status === "aprovado" && (
             <div className="rounded-md bg-success/10 p-3 text-sm text-success">
               ✅ Aprovada {aprov?.nome ? `por ${aprov.nome}` : ""}
               {visita.aprovado_em
@@ -360,40 +364,25 @@ function VisitaDetail() {
                 : ""}
             </div>
           )}
-          {visita.status === "reprovada" && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              ❌ Reprovada{visita.motivo_reprovacao ? ` — ${visita.motivo_reprovacao}` : ""}
+          {visita.status === "aguardando_aprovacao" && (
+            <div className="rounded-md bg-accent/30 p-3 text-sm">
+              🕐 Visita concluída — aguardando aprovação do gerente
             </div>
           )}
-          {visita.status === "concluida" && (
-            <div className="rounded-md bg-accent/30 p-3 text-sm">🕐 Aguardando aprovação</div>
-          )}
-          {isAdmin && visita.status === "concluida" && (
-            <div className="mt-3 flex gap-2">
+          {isAdmin && visita.status === "aguardando_aprovacao" && (
+            <div className="mt-3">
               <Button
                 size="sm"
-                className="flex-1"
+                className="w-full"
                 onClick={() =>
                   updateMutation.mutate({
-                    status: "aprovada",
+                    status: "aprovado",
                     aprovado_por: user?.id,
                     aprovado_em: new Date().toISOString(),
                   })
                 }
               >
-                <Check className="h-4 w-4" /> Aprovar
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={() => {
-                  const motivo = window.prompt("Motivo da reprovação:");
-                  if (motivo == null) return;
-                  updateMutation.mutate({ status: "reprovada", motivo_reprovacao: motivo });
-                }}
-              >
-                <X className="h-4 w-4" /> Reprovar
+                <Check className="h-4 w-4" /> Aprovar Visita
               </Button>
             </div>
           )}
@@ -526,21 +515,21 @@ function VisitaDetail() {
       )}
 
       {/* CTAs fixos no rodapé */}
-      {isFuture && user?.id === visita.tecnico_id && (
+      {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
                 className="h-12 w-full text-base font-semibold btn-pulse-gold"
               >
-                <Play className="h-5 w-5" /> Iniciar Visita Agora
+                <Play className="h-5 w-5" /> Iniciar Visita
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Iniciar visita?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Isso registra o início da visita técnica e abre a montagem do orçamento.
+                  Isso registra o início da visita técnica neste momento.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -548,7 +537,6 @@ function VisitaDetail() {
                 <AlertDialogAction
                   onClick={async () => {
                     await updateMutation.mutateAsync({
-                      status: "em_andamento",
                       data_hora_inicio: new Date().toISOString(),
                     });
                     navigate({ to: "/visita/$id/orcamento", params: { id } });
@@ -561,14 +549,14 @@ function VisitaDetail() {
           </AlertDialog>
         </div>
       )}
-      {visita.status === "em_andamento" && user?.id === visita.tecnico_id && (
+      {visita.status === "pendente" && user?.id === visita.tecnico_id && visita.data_hora_inicio && (
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-border bg-background p-3">
           <Button
-            className="h-12 w-full text-base font-semibold text-primary-foreground"
-            style={{ backgroundColor: "#1F3864" }}
+            className="h-12 w-full text-base font-semibold"
+            style={{ backgroundColor: "rgba(96,165,250,0.10)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.30)" }}
             onClick={() =>
               updateMutation.mutate({
-                status: "concluida",
+                status: "aguardando_aprovacao",
                 data_hora_fim: new Date().toISOString(),
               })
             }

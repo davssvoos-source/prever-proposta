@@ -44,6 +44,19 @@ import {
 import { type Tecnico, type Visita, useTecnicos, useVisitasGerencial } from "@/features/gerencial/data";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
+  beforeLoad: async () => {
+    const { redirect } = await import("@tanstack/react-router");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("cargo")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!["admin", "comercial"].includes(perfil?.cargo ?? "")) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: GerencialLayout,
 });
 
@@ -92,10 +105,10 @@ function GerencialIndex() {
         return d >= now && d <= weekEnd;
       }).length,
       semTec: list.filter((v) => !v.tecnico_id && v.status === "pendente").length,
-      andamento: list.filter((v) => v.status === "em_andamento").length,
+      andamento: list.filter((v) => v.status === "aguardando_aprovacao").length,
       concluidasMes: list.filter(
         (v) =>
-          ["concluida", "aprovada"].includes(v.status) &&
+          v.status === "aprovado" &&
           v.data_hora_inicio &&
           new Date(v.data_hora_inicio) >= monthStart &&
           new Date(v.data_hora_inicio) <= monthEnd,
@@ -135,12 +148,28 @@ function GerencialIndex() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ status: "reprovada" })
+        .delete()
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Visita cancelada");
+      qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
+      qc.invalidateQueries({ queryKey: ["visitas"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ status: "aprovado", aprovado_em: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Visita aprovada!");
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
     },
@@ -166,7 +195,7 @@ function GerencialIndex() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard icon={<CalendarClock className="h-4 w-4" />} value={stats.semana} label="Esta semana" />
         <StatCard icon={<UserX className="h-4 w-4" />} value={stats.semTec} label="Aguardando técnico" />
-        <StatCard icon={<Loader2 className="h-4 w-4" />} value={stats.andamento} label="Em andamento" />
+        <StatCard icon={<Loader2 className="h-4 w-4" />} value={stats.andamento} label="Ag. Aprovação" />
         <StatCard icon={<CheckCircle2 className="h-4 w-4" />} value={stats.concluidasMes} label="Concluídas no mês" />
       </div>
 
@@ -206,10 +235,8 @@ function GerencialIndex() {
             <SelectContent>
               <SelectItem value="todos">Todos status</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="em_andamento">Em andamento</SelectItem>
-              <SelectItem value="concluida">Concluída</SelectItem>
-              <SelectItem value="aprovada">Aprovada</SelectItem>
-              <SelectItem value="reprovada">Reprovada</SelectItem>
+              <SelectItem value="aguardando_aprovacao">Ag. Aprovação</SelectItem>
+              <SelectItem value="aprovado">Aprovado</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -255,7 +282,9 @@ function GerencialIndex() {
           visitas={filtradas}
           tecMap={tecMap}
           onCancel={(id) => cancelMutation.mutate(id)}
+          onApprove={(id) => approveMutation.mutate(id)}
         />
+
       ) : (
         <PorTecnico tecnicos={tecnicos ?? []} visitas={visitas ?? []} />
       )}
@@ -279,11 +308,12 @@ function StatCard({
 
 
 function ListaVisitas({
-  visitas, tecMap, onCancel,
+  visitas, tecMap, onCancel, onApprove,
 }: {
   visitas: Visita[];
   tecMap: Map<string, Tecnico>;
   onCancel: (id: string) => void;
+  onApprove: (id: string) => void;
 }) {
   const navigate = useNavigate();
   if (visitas.length === 0) {
@@ -426,6 +456,11 @@ function ListaVisitas({
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {v.status === "aguardando_aprovacao" && (
+                          <DropdownMenuItem onClick={() => onApprove(v.id)}>
+                            ✓ Aprovar
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem asChild>
                           <Link to="/gerencial/visita/$id/editar" params={{ id: v.id }}>
                             Editar
@@ -501,6 +536,27 @@ function ListaVisitas({
                     </div>
                   </div>
                 </Link>
+                {v.status === "aguardando_aprovacao" && (
+                  <div className="px-4 pb-3">
+                    <button
+                      onClick={() => onApprove(v.id)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 14px",
+                        background: "rgba(52,211,153,0.10)",
+                        border: "1px solid rgba(52,211,153,0.30)",
+                        borderRadius: 10,
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: 11, fontWeight: 300,
+                        color: "#34D399",
+                        cursor: "pointer",
+                        letterSpacing: "0.08em", textTransform: "uppercase",
+                      }}
+                    >
+                      ✓ Aprovar Visita
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
