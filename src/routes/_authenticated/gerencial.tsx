@@ -222,10 +222,8 @@ function GerencialIndex() {
             <SelectContent>
               <SelectItem value="todos">Todos status</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="em_andamento">Em andamento</SelectItem>
-              <SelectItem value="concluida">Concluída</SelectItem>
-              <SelectItem value="aprovada">Aprovada</SelectItem>
-              <SelectItem value="reprovada">Reprovada</SelectItem>
+              <SelectItem value="aguardando_aprovacao">Ag. Aprovação</SelectItem>
+              <SelectItem value="aprovado">Aprovado</SelectItem>
             </SelectContent>
           </Select>
         </div>
