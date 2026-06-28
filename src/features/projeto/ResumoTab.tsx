@@ -6,12 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
-import {
-  useCatalogos,
-  useProjetoBlocos,
-  useProjetoItensVar,
-  useProjetoServicos,
-} from "./data";
+import { useCatalogos, useProjetoBlocos, useProjetoItensVar, useProjetoServicos } from "./data";
 import { computeBom, computeServicoQty } from "./calc";
 
 type Projeto = {
@@ -89,10 +84,7 @@ export function ResumoTab({ projeto }: { projeto: Projeto }) {
             <span className="text-xs font-medium text-muted-foreground">
               {projeto.fornecimento ? "SIM" : "NÃO"}
             </span>
-            <Switch
-              checked={projeto.fornecimento}
-              onCheckedChange={toggleFornecimento}
-            />
+            <Switch checked={projeto.fornecimento} onCheckedChange={toggleFornecimento} />
           </div>
         </Card>
       )}

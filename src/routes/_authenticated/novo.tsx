@@ -41,10 +41,7 @@ function NovaProposta() {
   const { data: clientes } = useQuery({
     queryKey: ["clientes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clientes")
-        .select("*")
-        .order("nome");
+      const { data, error } = await supabase.from("clientes").select("*").order("nome");
       if (error) throw error;
       return data;
     },
@@ -103,9 +100,7 @@ function NovaProposta() {
       if (ep) throw ep;
 
       // Seed serviços padrão
-      const { data: svcs } = await supabase
-        .from("servicos")
-        .select("id, ativo_padrao");
+      const { data: svcs } = await supabase.from("servicos").select("id, ativo_padrao");
       if (svcs && svcs.length) {
         await supabase.from("projeto_servicos").insert(
           svcs.map((s) => ({
@@ -126,9 +121,7 @@ function NovaProposta() {
   }
 
   const canNext1 =
-    cliente.modo === "existente"
-      ? !!cliente.cliente_id
-      : cliente.nome.trim().length > 1;
+    cliente.modo === "existente" ? !!cliente.cliente_id : cliente.nome.trim().length > 1;
   const canCriar = projeto.nome.trim().length > 1 && projeto.valor_hora_hh > 0;
 
   return (
@@ -142,9 +135,7 @@ function NovaProposta() {
 
       <div className="flex gap-1">
         <div className="h-1.5 flex-1 rounded-full bg-primary" />
-        <div
-          className={`h-1.5 flex-1 rounded-full ${step === 2 ? "bg-primary" : "bg-muted"}`}
-        />
+        <div className={`h-1.5 flex-1 rounded-full ${step === 2 ? "bg-primary" : "bg-muted"}`} />
       </div>
 
       {step === 1 ? (
@@ -163,9 +154,7 @@ function NovaProposta() {
               type="button"
               onClick={() => setCliente({ ...cliente, modo: "existente" })}
               className={`flex-1 rounded px-3 py-1.5 text-sm font-medium ${
-                cliente.modo === "existente"
-                  ? "bg-background shadow-sm"
-                  : "text-muted-foreground"
+                cliente.modo === "existente" ? "bg-background shadow-sm" : "text-muted-foreground"
               }`}
             >
               Cliente existente
@@ -205,9 +194,7 @@ function NovaProposta() {
                 <Label>Tipo de empreendimento</Label>
                 <Select
                   value={cliente.tipo_empreendimento}
-                  onValueChange={(v) =>
-                    setCliente({ ...cliente, tipo_empreendimento: v })
-                  }
+                  onValueChange={(v) => setCliente({ ...cliente, tipo_empreendimento: v })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -267,9 +254,7 @@ function NovaProposta() {
               <Input
                 type="date"
                 value={projeto.data_visita}
-                onChange={(e) =>
-                  setProjeto({ ...projeto, data_visita: e.target.value })
-                }
+                onChange={(e) => setProjeto({ ...projeto, data_visita: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">

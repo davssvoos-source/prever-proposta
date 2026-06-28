@@ -50,10 +50,7 @@ function Dashboard() {
       if (status !== "todos" && p.status !== status) return false;
       if (query) {
         const q = query.toLowerCase();
-        return (
-          p.nome?.toLowerCase().includes(q) ||
-          p.cliente?.nome?.toLowerCase().includes(q)
-        );
+        return p.nome?.toLowerCase().includes(q) || p.cliente?.nome?.toLowerCase().includes(q);
       }
       return true;
     });
@@ -117,12 +114,7 @@ function Dashboard() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((p: any) => (
-            <Link
-              key={p.id}
-              to="/projeto/$id"
-              params={{ id: p.id }}
-              className="group"
-            >
+            <Link key={p.id} to="/projeto/$id" params={{ id: p.id }} className="group">
               <Card className="h-full p-4 transition-shadow hover:shadow-md">
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">

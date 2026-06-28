@@ -53,9 +53,7 @@ export function VariaveisTab({ projetoId }: { projetoId: string }) {
   if (itensAgrupados.length === 0) {
     return (
       <Card className="grid place-items-center py-12 text-center">
-        <p className="text-sm text-muted-foreground">
-          Não há itens variáveis nos blocos ativos.
-        </p>
+        <p className="text-sm text-muted-foreground">Não há itens variáveis nos blocos ativos.</p>
       </Card>
     );
   }

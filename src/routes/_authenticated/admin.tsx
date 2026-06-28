@@ -29,9 +29,7 @@ function AdminPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Catálogo</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie equipamentos, blocos e serviços.
-        </p>
+        <p className="text-sm text-muted-foreground">Gerencie equipamentos, blocos e serviços.</p>
       </div>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-3">
@@ -104,7 +102,10 @@ function EquipamentosAdmin() {
         </div>
         <div className="divide-y divide-border">
           {filt.map((e) => (
-            <div key={e.id} className="grid grid-cols-[1fr_120px_120px_120px] items-center px-3 py-2 text-sm">
+            <div
+              key={e.id}
+              className="grid grid-cols-[1fr_120px_120px_120px] items-center px-3 py-2 text-sm"
+            >
               <div className="min-w-0">
                 <div className="truncate font-medium">{e.nome}</div>
                 <div className="truncate text-xs text-muted-foreground">
@@ -159,12 +160,13 @@ function BlocosAdmin() {
               {b.hh} HH
             </span>
           </div>
-          {b.descricao && (
-            <p className="mt-1 text-xs text-muted-foreground">{b.descricao}</p>
-          )}
+          {b.descricao && <p className="mt-1 text-xs text-muted-foreground">{b.descricao}</p>}
           <div className="mt-2 space-y-1 text-xs">
             {(b.blocos_itens ?? []).map((it: any) => (
-              <div key={it.id} className="flex gap-2 rounded border border-border bg-background px-2 py-1">
+              <div
+                key={it.id}
+                className="flex gap-2 rounded border border-border bg-background px-2 py-1"
+              >
                 <span className="flex-1 truncate">
                   {it.nome} <span className="text-muted-foreground">· {it.modelo}</span>
                 </span>

@@ -114,15 +114,11 @@ function ProjetoPage() {
             options={Object.entries(CONTRATO_LABEL).map(([v, l]) => ({ v, l }))}
           />
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Valor hora (R$)
-            </label>
+            <label className="text-xs font-medium text-muted-foreground">Valor hora (R$)</label>
             <Input
               type="number"
               defaultValue={projeto.valor_hora_hh}
-              onBlur={(e) =>
-                updateProjeto({ valor_hora_hh: Number(e.target.value) || 0 })
-              }
+              onBlur={(e) => updateProjeto({ valor_hora_hh: Number(e.target.value) || 0 })}
             />
           </div>
         </div>

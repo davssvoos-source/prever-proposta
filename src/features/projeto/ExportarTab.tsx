@@ -3,12 +3,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { brl, formatDate, CONTRATO_LABEL } from "@/lib/format";
-import {
-  useCatalogos,
-  useProjetoBlocos,
-  useProjetoItensVar,
-  useProjetoServicos,
-} from "./data";
+import { useCatalogos, useProjetoBlocos, useProjetoItensVar, useProjetoServicos } from "./data";
 import { computeBom, computeServicoQty } from "./calc";
 import { toast } from "sonner";
 
@@ -19,7 +14,12 @@ type Projeto = {
   fornecimento: boolean;
   valor_hora_hh: number;
   tipo_contrato: string;
-  cliente?: { nome: string; tipo_empreendimento?: string | null; email?: string | null; telefone?: string | null } | null;
+  cliente?: {
+    nome: string;
+    tipo_empreendimento?: string | null;
+    email?: string | null;
+    telefone?: string | null;
+  } | null;
 };
 
 export function ExportarTab({ projeto }: { projeto: Projeto }) {
@@ -166,12 +166,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
         autoTable(doc, {
           startY: y,
           head: [["Serviço", "Qtd", "Preço unit./mês", "Total/mês"]],
-          body: data.servicosAtivos.map((s) => [
-            s.nome,
-            String(s.qty),
-            brl(s.preco),
-            brl(s.total),
-          ]),
+          body: data.servicosAtivos.map((s) => [s.nome, String(s.qty), brl(s.preco), brl(s.total)]),
           headStyles: { fillColor: PRIMARY, textColor: 255 },
           styles: { fontSize: 9 },
           theme: "grid",
@@ -188,12 +183,9 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
       doc.setFont("helvetica", "normal");
-      doc.text(
-        "Grupo Prever Segurança Eletrônica · Proposta válida por 30 dias",
-        297.5,
-        820,
-        { align: "center" },
-      );
+      doc.text("Grupo Prever Segurança Eletrônica · Proposta válida por 30 dias", 297.5, 820, {
+        align: "center",
+      });
 
       doc.save(`Proposta-${projeto.nome.replace(/[^a-z0-9]+/gi, "-")}.pdf`);
       toast.success("PDF gerado");
@@ -236,9 +228,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Manutenção mensal</dt>
-            <dd className="text-lg font-bold tabular-nums text-primary">
-              {brl(data.totalMensal)}
-            </dd>
+            <dd className="text-lg font-bold tabular-nums text-primary">{brl(data.totalMensal)}</dd>
           </div>
         </dl>
       </Card>

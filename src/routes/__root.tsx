@@ -80,8 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Prever Orçamentos — Segurança Eletrônica" },
       {
         name: "description",
-        content:
-          "Gerador de orçamentos do Grupo Prever para sistemas de segurança eletrônica.",
+        content: "Gerador de orçamentos do Grupo Prever para sistemas de segurança eletrônica.",
       },
       { name: "theme-color", content: "#1F3864" },
     ],

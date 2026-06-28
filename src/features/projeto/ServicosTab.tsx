@@ -7,12 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
-import {
-  useCatalogos,
-  useProjetoBlocos,
-  useProjetoServicos,
-  type Servico,
-} from "./data";
+import { useCatalogos, useProjetoBlocos, useProjetoServicos, type Servico } from "./data";
 import { computeServicoQty } from "./calc";
 
 export function ServicosTab({ projetoId }: { projetoId: string }) {
@@ -23,7 +18,8 @@ export function ServicosTab({ projetoId }: { projetoId: string }) {
 
   const psByServ = useMemo(() => {
     const m = new Map<string, { ativo: boolean; quantidade: number }>();
-    for (const r of ps.data ?? []) m.set(r.servico_id, { ativo: r.ativo, quantidade: r.quantidade });
+    for (const r of ps.data ?? [])
+      m.set(r.servico_id, { ativo: r.ativo, quantidade: r.quantidade });
     return m;
   }, [ps.data]);
 
@@ -37,8 +33,7 @@ export function ServicosTab({ projetoId }: { projetoId: string }) {
       ...patch,
     };
     if (row.ativo && (!row.quantidade || row.quantidade < 1)) {
-      row.quantidade =
-        computeServicoQty(s, cat.data?.blocos ?? [], pb.data ?? []) || 1;
+      row.quantidade = computeServicoQty(s, cat.data?.blocos ?? [], pb.data ?? []) || 1;
     }
     const { error } = await supabase
       .from("projeto_servicos")
@@ -141,9 +136,7 @@ function ServicoRow({
         disabled={!ativo}
         className="w-16 text-center"
       />
-      <div className="w-24 text-right text-sm tabular-nums font-medium">
-        {brl(total)}
-      </div>
+      <div className="w-24 text-right text-sm tabular-nums font-medium">{brl(total)}</div>
     </div>
   );
 }

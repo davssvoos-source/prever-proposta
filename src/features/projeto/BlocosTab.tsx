@@ -14,12 +14,7 @@ import {
 import { LAYER_INFO } from "@/lib/format";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  useCatalogos,
-  useProjetoBlocos,
-  type Bloco,
-  type ProjetoBloco,
-} from "./data";
+import { useCatalogos, useProjetoBlocos, type Bloco, type ProjetoBloco } from "./data";
 
 export function BlocosTab({
   projetoId,
@@ -136,7 +131,10 @@ export function BlocosTab({
                       active={active}
                       quantidade={row?.quantidade ?? 0}
                       onToggle={(v) =>
-                        upsert(b, { ativo: v, quantidade: v ? Math.max(1, row?.quantidade ?? 1) : 0 })
+                        upsert(b, {
+                          ativo: v,
+                          quantidade: v ? Math.max(1, row?.quantidade ?? 1) : 0,
+                        })
                       }
                       onQty={(q) => upsert(b, { quantidade: q })}
                     />

@@ -29,9 +29,7 @@ export function AppHeader() {
           </div>
           <div className="hidden sm:block">
             <div className="text-sm font-semibold leading-tight">Grupo Prever</div>
-            <div className="text-[11px] leading-tight text-muted-foreground">
-              Orçamentos
-            </div>
+            <div className="text-[11px] leading-tight text-muted-foreground">Orçamentos</div>
           </div>
         </Link>
 
