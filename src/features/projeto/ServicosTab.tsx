@@ -117,7 +117,6 @@ function ServicoRow({
   servico: Servico;
   ativo: boolean;
   quantidade: number;
-  autoQty: number;
   onToggle: (v: boolean) => void;
   onQty: (q: number) => void;
 }) {
