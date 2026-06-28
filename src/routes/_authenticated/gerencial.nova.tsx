@@ -44,16 +44,22 @@ const INPUT: CSSProperties = {
 };
 
 const SERVICOS = [
-  { id: "portaria_remota", label: "Portaria Remota", emoji: "🏛️" },
-  { id: "cftv", label: "CFTV", emoji: "📷" },
-  { id: "alarme", label: "Alarme", emoji: "🔔" },
+  { id: "portaria_virtual_24h", label: "Portaria Virtual 24h", emoji: "🏛️" },
+  { id: "cftv_cameras", label: "CFTV/Câmeras", emoji: "📷" },
+  { id: "controle_acesso", label: "Controle de Acesso", emoji: "🔐" },
+  { id: "interfone_ip", label: "Interfone IP", emoji: "📞" },
+  { id: "alarme_sensores", label: "Alarme/Sensores", emoji: "🔔" },
   { id: "cerca_eletrica", label: "Cerca Elétrica", emoji: "⚡" },
-  { id: "acesso_pedestre", label: "Acesso Pedestre", emoji: "🚶" },
-  { id: "acesso_veicular", label: "Acesso Veicular", emoji: "🚗" },
-  { id: "elevadores", label: "Elevadores", emoji: "🛗" },
-  { id: "manutencao", label: "Manutenção", emoji: "🔧" },
-  { id: "consultoria", label: "Consultoria", emoji: "💼" },
-  { id: "outro", label: "Outro", emoji: "➕" },
+  { id: "monitoramento_remoto", label: "Monitoramento Remoto", emoji: "🛰️" },
+  { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
+];
+
+const TIPOS_EMPREENDIMENTO = [
+  { id: "residencial", label: "Residencial" },
+  { id: "comercial", label: "Comercial" },
+  { id: "industrial", label: "Industrial" },
+  { id: "misto", label: "Misto" },
+  { id: "outro", label: "Outro" },
 ];
 
 const TIPOS_LOCAL = [
@@ -69,6 +75,7 @@ const PRIORIDADES = [
   { id: "alta", label: "Alta", color: "#FFC000" },
   { id: "urgente", label: "Urgente", color: "#F87171" },
 ];
+
 
 function NovaVisitaPage() {
   const navigate = useNavigate();
