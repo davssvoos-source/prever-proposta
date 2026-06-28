@@ -54,13 +54,6 @@ const SERVICOS = [
   { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
 ];
 
-const TIPOS_EMPREENDIMENTO = [
-  { id: "residencial", label: "Residencial" },
-  { id: "comercial", label: "Comercial" },
-  { id: "industrial", label: "Industrial" },
-  { id: "misto", label: "Misto" },
-  { id: "outro", label: "Outro" },
-];
 
 const TIPOS_LOCAL = [
   { id: "condominio_vertical", label: "Cond. Vertical", emoji: "🏢" },
@@ -84,7 +77,7 @@ function NovaVisitaPage() {
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
-  const [tipoEmpreendimento, setTipoEmpreendimento] = useState("");
+  
   const [nomeSindico, setNomeSindico] = useState("");
   const [contato, setContato] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
@@ -163,7 +156,7 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    tipoEmpreendimento !== "" &&
+    
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
     servicos.length > 0 &&
@@ -182,7 +175,7 @@ function NovaVisitaPage() {
           nome: nomeSindico,
           email: clienteEmail || null,
           telefone: contato,
-          tipo_empreendimento: tipoEmpreendimento,
+          
           owner_id: user?.id as string,
         })
         .select("id")
@@ -364,21 +357,8 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Tipo de Empreendimento</label>
-            <select
-              style={{ ...INPUT, appearance: "none" }}
-              value={tipoEmpreendimento}
-              onChange={(e) => setTipoEmpreendimento(e.target.value)}
-            >
-              <option value="">— Selecione —</option>
-              {TIPOS_EMPREENDIMENTO.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
             <div>
               <label style={LABEL}>Nome do Cliente</label>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
@@ -717,7 +697,7 @@ function NovaVisitaPage() {
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               { label: "Síndico", value: nomeSindico },
               { label: "Serviços", value: servicos.map((id) => SERVICOS.find((s) => s.id === id)?.label).filter(Boolean).join(", ") },
-              { label: "Empreendimento", value: TIPOS_EMPREENDIMENTO.find((t) => t.id === tipoEmpreendimento)?.label },
+              
 
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {

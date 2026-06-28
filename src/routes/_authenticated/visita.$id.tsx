@@ -1,12 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
-  Check, X, Play, Square,
+  Check, X, Play, Square, ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
   component: VisitaDetail,
@@ -189,6 +190,8 @@ function VisitaDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
 
   const { data: meUser } = useQuery({
     queryKey: ["me-user"],
@@ -258,6 +261,80 @@ function VisitaDetail() {
       return data;
     },
   });
+
+  const isAdminOrComercial =
+    mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
+
+  const { data: todosProfiles = [] } = useQuery({
+    queryKey: ["tecnicos-lista"],
+    enabled: isAdminOrComercial,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, nome, cargo")
+        .eq("ativo", true)
+        .order("nome");
+      return data ?? [];
+    },
+  });
+
+  const verEquip =
+    visita?.status === "em_andamento" ||
+    visita?.status === "concluida" ||
+    visita?.status === "aprovada";
+
+  const { data: orcamento } = useQuery({
+    queryKey: ["orcamento", id],
+    enabled: !!verEquip,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visita_orcamentos")
+        .select("blocos_selecionados, qtd_apartamentos, servicos_ofertados, sistema_atual")
+        .eq("visita_id", id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const blocoIds = useMemo(() => {
+    const sel =
+      (orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null) ?? {};
+    return Object.values(sel).flatMap((cat) => Object.keys(cat));
+  }, [orcamento]);
+
+  const { data: blocoDetalhes = [] } = useQuery({
+    queryKey: ["blocos-detalhe", blocoIds.sort().join(",")],
+    enabled: blocoIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blocos")
+        .select("id, code, name, descricao, hh, blocos_itens(*)")
+        .in("id", blocoIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const atribuirMutation = useMutation({
+    mutationFn: async (tecnicoId: string) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ tecnico_id: tecnicoId })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+      setEditandoTecnico(false);
+      setNovoTecnicoId("");
+      toast.success("Técnico atualizado!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   const iniciarMutation = useMutation({
     mutationFn: async () => {
@@ -333,6 +410,9 @@ function VisitaDetail() {
 
   const [showReprovarForm, setShowReprovarForm] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [editandoTecnico, setEditandoTecnico] = useState(false);
+  const [novoTecnicoId, setNovoTecnicoId] = useState("");
+
 
   // ── computed (após todos os hooks) ──────────────────────────────────────────
   const status = visita?.status;
@@ -381,7 +461,13 @@ function VisitaDetail() {
     textDecoration: "none",
   };
 
+  // EARLY RETURN obrigatório (após todos os hooks) — delega às rotas filhas
+  if (pathname !== `/visita/${id}`) {
+    return <Outlet />;
+  }
+
   if (isLoading || !visita) {
+
     return (
       <div style={{ padding: 24 }}>
         <div style={{ ...GLASS, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
@@ -633,67 +719,121 @@ function VisitaDetail() {
       )}
 
       {/* Técnico responsável */}
-      {tecPerfil && (
+      {(tecPerfil || isAdmin) && (
         <div style={GLASS}>
-          <div style={SECTION_LABEL}>Técnico responsável</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                flexShrink: 0,
-                background: "linear-gradient(135deg,#FFD700,#FFC000)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 700,
-                fontSize: 16,
-                color: "#08090E",
-              }}
-            >
-              {initials(tecPerfil.nome ?? "?")}
-            </div>
-            <div>
-              <div
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={SECTION_LABEL}>Técnico responsável</div>
+            {isAdmin && !editandoTecnico && (
+              <button
+                onClick={() => { setEditandoTecnico(true); setNovoTecnicoId(visita.tecnico_id ?? ""); }}
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 500,
-                  fontSize: 14,
-                  color: "#fff",
-                }}
-              >
-                {tecPerfil.nome}
-              </div>
-              <div
-                style={{
+                  background: "rgba(255,192,0,0.10)",
+                  border: "1px solid rgba(255,192,0,0.28)",
+                  borderRadius: 10,
+                  padding: "4px 12px",
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
-                  fontSize: 12,
-                  color: "rgba(255,255,255,0.40)",
-                  textTransform: "capitalize",
+                  fontSize: 11,
+                  color: "#FFC000",
+                  cursor: "pointer",
+                  letterSpacing: "0.08em",
                 }}
               >
-                {tecPerfil.cargo ?? "—"}
+                Alterar técnico
+              </button>
+            )}
+          </div>
+
+          {tecPerfil && !editandoTecnico && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+                  background: "linear-gradient(135deg,#FFD700,#FFC000)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 16, color: "#08090E",
+                }}
+              >
+                {initials(tecPerfil.nome ?? "?")}
+              </div>
+              <div>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff" }}>
+                  {tecPerfil.nome}
+                </div>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.40)", textTransform: "capitalize" }}>
+                  {tecPerfil.cargo ?? "—"}
+                </div>
               </div>
             </div>
-          </div>
-          {isTecnico && (
-            <div
-              style={{
-                marginTop: 10,
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 400,
-                fontSize: 12,
-                color: "#FFC000",
-              }}
-            >
+          )}
+
+          {!tecPerfil && !editandoTecnico && (
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+              Nenhum técnico atribuído
+            </div>
+          )}
+
+          {isAdmin && editandoTecnico && (
+            <div>
+              <div style={{ position: "relative", marginBottom: 10 }}>
+                <select
+                  value={novoTecnicoId}
+                  onChange={(e) => setNovoTecnicoId(e.target.value)}
+                  style={{
+                    width: "100%", height: 48, borderRadius: 12,
+                    border: "1px solid rgba(255,192,0,0.28)",
+                    background: "rgba(255,192,0,0.06)", color: "#fff",
+                    padding: "0 40px 0 14px",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13,
+                    appearance: "none", outline: "none", cursor: "pointer",
+                  }}
+                >
+                  <option value="">Selecione o técnico…</option>
+                  {todosProfiles.map((p: any) => (
+                    <option key={p.id} value={p.id} style={{ background: "#0d0e14" }}>
+                      {p.nome} ({p.cargo ?? "sem cargo"})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} color="rgba(255,192,0,0.6)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => { setEditandoTecnico(false); setNovoTecnicoId(""); }}
+                  style={{
+                    flex: 1, height: 40, borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
+                    color: "rgba(255,255,255,0.45)", cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => novoTecnicoId && atribuirMutation.mutate(novoTecnicoId)}
+                  disabled={!novoTecnicoId || atribuirMutation.isPending}
+                  style={{
+                    flex: 2, height: 40, borderRadius: 12,
+                    border: "1px solid rgba(255,192,0,0.35)", background: "rgba(255,192,0,0.12)",
+                    color: "#FFC000", cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 12,
+                    letterSpacing: "0.08em", opacity: novoTecnicoId ? 1 : 0.4,
+                  }}
+                >
+                  {atribuirMutation.isPending ? "Salvando…" : "Confirmar atribuição"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isTecnico && !editandoTecnico && (
+            <div style={{ marginTop: 10, fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 12, color: "#FFC000" }}>
               Você é o responsável por esta visita
             </div>
           )}
         </div>
       )}
+
 
       {/* Descrição */}
       {visita.descricao_pedido && (
@@ -714,6 +854,56 @@ function VisitaDetail() {
           </p>
         </div>
       )}
+
+      {/* Equipamentos do orçamento */}
+      {verEquip && blocoDetalhes.length > 0 && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
+          {Object.entries(
+            (orcamento?.blocos_selecionados as Record<string, Record<string, number>>) ?? {},
+          ).map(([cat, catQtds]) =>
+            Object.entries(catQtds).map(([blocoId, qty]) => {
+              const bloco = blocoDetalhes.find((b: any) => b.id === blocoId) as any;
+              if (!bloco || !qty) return null;
+              return (
+                <div
+                  key={`${cat}-${blocoId}`}
+                  style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                    <span style={{ background: "rgba(255,192,0,0.12)", borderRadius: 6, padding: "2px 8px", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10, color: "#FFC000" }}>
+                      {bloco.code}
+                    </span>
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 13, color: "#fff" }}>
+                      {bloco.name}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,192,0,0.65)" }}>
+                      ×{qty}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 4 }}>
+                    {(bloco.blocos_itens ?? []).map((item: any) => (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.55)" }}>
+                        <span>{item.nome} · {item.modelo}</span>
+                        <span style={{ color: "#FFC000", fontWeight: 400 }}>
+                          {item.qty * qty}{item.variavel ? " (V)" : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }),
+          )}
+          {orcamento?.qtd_apartamentos && (
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.40)", marginTop: 4 }}>
+              {orcamento.qtd_apartamentos} apartamentos{orcamento.sistema_atual ? ` · ${orcamento.sistema_atual}` : ""}
+            </div>
+          )}
+        </div>
+      )}
+
+
 
       {/* Aprovação */}
       {(status === "aprovada" || status === "reprovada" || showApproval) && (
