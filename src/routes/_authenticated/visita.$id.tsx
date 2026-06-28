@@ -660,13 +660,8 @@ function VisitaDetail() {
       {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
         <div className="px-1 pt-2">
           <SlideToStart
-            onComplete={async () => {
-              await updateMutation.mutateAsync({
-                data_hora_inicio: new Date().toISOString(),
-              });
-              navigate({ to: "/visita/$id/orcamento", params: { id } });
-            }}
-            loading={updateMutation.isPending}
+            onComplete={() => iniciarMutation.mutate()}
+            loading={iniciarMutation.isPending}
           />
         </div>
       )}
