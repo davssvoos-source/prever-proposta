@@ -282,7 +282,9 @@ function GerencialIndex() {
           visitas={filtradas}
           tecMap={tecMap}
           onCancel={(id) => cancelMutation.mutate(id)}
+          onApprove={(id) => approveMutation.mutate(id)}
         />
+
       ) : (
         <PorTecnico tecnicos={tecnicos ?? []} visitas={visitas ?? []} />
       )}
