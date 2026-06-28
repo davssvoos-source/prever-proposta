@@ -151,6 +151,7 @@ function BlocosAdmin() {
   });
   return (
     <div className="space-y-3">
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {(data ?? []).map((b: any) => (
         <Card key={b.id} className="p-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -162,6 +163,7 @@ function BlocosAdmin() {
           </div>
           {b.descricao && <p className="mt-1 text-xs text-muted-foreground">{b.descricao}</p>}
           <div className="mt-2 space-y-1 text-xs">
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {(b.blocos_itens ?? []).map((it: any) => (
               <div
                 key={it.id}

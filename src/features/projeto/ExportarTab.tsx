@@ -189,6 +189,7 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
 
       doc.save(`Proposta-${projeto.nome.replace(/[^a-z0-9]+/gi, "-")}.pdf`);
       toast.success("PDF gerado");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao gerar PDF");
     } finally {

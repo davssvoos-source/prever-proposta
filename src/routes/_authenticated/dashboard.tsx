@@ -46,6 +46,7 @@ function Dashboard() {
   });
 
   const filtered = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (projetos ?? []).filter((p: any) => {
       if (status !== "todos" && p.status !== status) return false;
       if (query) {
@@ -113,6 +114,7 @@ function Dashboard() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           {filtered.map((p: any) => (
             <Link key={p.id} to="/projeto/$id" params={{ id: p.id }} className="group">
               <Card className="h-full p-4 transition-shadow hover:shadow-md">
