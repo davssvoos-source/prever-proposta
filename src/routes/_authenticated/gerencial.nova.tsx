@@ -54,13 +54,6 @@ const SERVICOS = [
   { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
 ];
 
-const TIPOS_EMPREENDIMENTO = [
-  { id: "residencial", label: "Residencial" },
-  { id: "comercial", label: "Comercial" },
-  { id: "industrial", label: "Industrial" },
-  { id: "misto", label: "Misto" },
-  { id: "outro", label: "Outro" },
-];
 
 const TIPOS_LOCAL = [
   { id: "condominio_vertical", label: "Cond. Vertical", emoji: "🏢" },
