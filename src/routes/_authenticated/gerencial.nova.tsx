@@ -84,10 +84,13 @@ function NovaVisitaPage() {
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
+  const [tipoEmpreendimento, setTipoEmpreendimento] = useState("");
   const [nomeSindico, setNomeSindico] = useState("");
   const [contato, setContato] = useState("");
-  const [servico, setServico] = useState("");
+  const [clienteEmail, setClienteEmail] = useState("");
+  const [servicos, setServicos] = useState<string[]>([]);
   const [endereco, setEndereco] = useState("");
+
   const [complemento, setComplemento] = useState("");
   const [obsAgendamento, setObsAgendamento] = useState("");
   const [lat, setLat] = useState<number | null>(null);
