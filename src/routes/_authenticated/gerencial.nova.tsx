@@ -365,26 +365,48 @@ function NovaVisitaPage() {
             </div>
           </div>
 
+          <div style={{ ...GLASS, padding: 16 }}>
+            <label style={LABEL}>Tipo de Empreendimento</label>
+            <select
+              style={{ ...INPUT, appearance: "none" }}
+              value={tipoEmpreendimento}
+              onChange={(e) => setTipoEmpreendimento(e.target.value)}
+            >
+              <option value="">— Selecione —</option>
+              {TIPOS_EMPREENDIMENTO.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Síndico / Responsável</label>
+              <label style={LABEL}>Nome do Cliente</label>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
             </div>
             <div>
-              <label style={LABEL}>Contato (WhatsApp)</label>
+              <label style={LABEL}>WhatsApp</label>
               <input style={INPUT} value={contato} onChange={(e) => setContato(e.target.value)} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={LABEL}>E-mail do Cliente</label>
+              <input style={INPUT} type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} placeholder="cliente@email.com" />
             </div>
           </div>
 
           <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Serviço Solicitado</label>
+            <label style={LABEL}>Serviços Solicitados (selecione um ou mais)</label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {SERVICOS.map((s) => {
-                const ativo = servico === s.id;
+                const ativo = servicos.includes(s.id);
                 return (
                   <button
                     key={s.id}
-                    onClick={() => setServico(s.id)}
+                    onClick={() =>
+                      setServicos((prev) =>
+                        prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
+                      )
+                    }
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -400,12 +422,14 @@ function NovaVisitaPage() {
                       cursor: "pointer",
                     }}
                   >
+                    <span>{ativo ? "☑" : "☐"}</span>
                     <span>{s.emoji}</span> {s.label}
                   </button>
                 );
               })}
             </div>
           </div>
+
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Endereço</label>
