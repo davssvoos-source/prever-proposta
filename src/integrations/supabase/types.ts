@@ -446,6 +446,62 @@ export type Database = {
         }
         Relationships: []
       }
+      visita_orcamentos: {
+        Row: {
+          blocos_selecionados: Json | null
+          created_at: string
+          fornecimento: boolean | null
+          id: string
+          itens_variaveis: Json | null
+          obs_tecnico: string | null
+          qtd_apartamentos: number | null
+          servicos_ofertados: string[] | null
+          sistema_atual: string | null
+          step_atual: number | null
+          updated_at: string
+          valor_hora_hh: number | null
+          visita_id: string | null
+        }
+        Insert: {
+          blocos_selecionados?: Json | null
+          created_at?: string
+          fornecimento?: boolean | null
+          id?: string
+          itens_variaveis?: Json | null
+          obs_tecnico?: string | null
+          qtd_apartamentos?: number | null
+          servicos_ofertados?: string[] | null
+          sistema_atual?: string | null
+          step_atual?: number | null
+          updated_at?: string
+          valor_hora_hh?: number | null
+          visita_id?: string | null
+        }
+        Update: {
+          blocos_selecionados?: Json | null
+          created_at?: string
+          fornecimento?: boolean | null
+          id?: string
+          itens_variaveis?: Json | null
+          obs_tecnico?: string | null
+          qtd_apartamentos?: number | null
+          servicos_ofertados?: string[] | null
+          sistema_atual?: string | null
+          step_atual?: number | null
+          updated_at?: string
+          valor_hora_hh?: number | null
+          visita_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_orcamentos_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: true
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visitas_tecnicas: {
         Row: {
           aprovado_em: string | null
