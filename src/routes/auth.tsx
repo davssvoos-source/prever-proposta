@@ -167,19 +167,21 @@ function AuthPage() {
       <AnimatedBackground />
       <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div
+          <img
+            src="/logo-prever.svg"
+            alt="Grupo Prever"
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: 28,
-              letterSpacing: "0.20em",
-              textTransform: "uppercase",
-              color: "#FFC000",
-              textShadow: "0 0 24px rgba(255,192,0,0.4)",
+              height: 72,
+              width: "auto",
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto 12px",
+              filter:
+                "drop-shadow(0 0 8px rgba(255,192,0,0.90)) " +
+                "drop-shadow(0 0 20px rgba(255,192,0,0.55)) " +
+                "drop-shadow(0 0 40px rgba(255,192,0,0.25))",
             }}
-          >
-            PREVER
-          </div>
+          />
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
@@ -188,7 +190,6 @@ function AuthPage() {
               letterSpacing: "0.18em",
               textTransform: "uppercase",
               color: "rgba(255,255,255,0.35)",
-              marginTop: 4,
             }}
           >
             Sistema de Gestão
