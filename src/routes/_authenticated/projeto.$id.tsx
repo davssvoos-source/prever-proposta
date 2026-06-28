@@ -46,8 +46,12 @@ function ProjetoPage() {
     },
   });
 
-  async function updateProjeto(patch: Record<string, any>) {
-    const { error } = await supabase.from("projetos").update(patch).eq("id", id);
+  async function updateProjeto(patch: Record<string, unknown>) {
+    const { error } = await supabase
+      .from("projetos")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(patch as any)
+      .eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
