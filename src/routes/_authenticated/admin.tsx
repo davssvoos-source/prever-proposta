@@ -149,7 +149,14 @@ function BlocosAdmin() {
       return r.data;
     },
   });
-  type BlocoRow = { id: string; code: string; name: string; hh: number; descricao: string | null; blocos_itens: { id: string; nome: string; modelo: string; qty: number; variavel: boolean }[] };
+  type BlocoRow = {
+    id: string;
+    code: string;
+    name: string;
+    hh: number;
+    descricao: string | null;
+    blocos_itens: { id: string; nome: string; modelo: string; qty: number; variavel: boolean }[];
+  };
   return (
     <div className="space-y-3">
       {((data ?? []) as BlocoRow[]).map((b) => (

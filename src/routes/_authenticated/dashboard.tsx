@@ -50,10 +50,7 @@ function Dashboard() {
       if (status !== "todos" && p.status !== status) return false;
       if (query) {
         const q = query.toLowerCase();
-        return (
-          p.nome?.toLowerCase().includes(q) ||
-          p.cliente?.nome?.toLowerCase().includes(q)
-        );
+        return p.nome?.toLowerCase().includes(q) || p.cliente?.nome?.toLowerCase().includes(q);
       }
       return true;
     });
