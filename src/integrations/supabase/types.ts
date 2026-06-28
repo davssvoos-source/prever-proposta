@@ -118,6 +118,39 @@ export type Database = {
         }
         Relationships: []
       }
+      convites: {
+        Row: {
+          cargo: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          nome: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          nome: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipamentos: {
         Row: {
           cat: string | null
