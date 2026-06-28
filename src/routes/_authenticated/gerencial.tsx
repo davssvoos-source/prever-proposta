@@ -92,10 +92,10 @@ function GerencialIndex() {
         return d >= now && d <= weekEnd;
       }).length,
       semTec: list.filter((v) => !v.tecnico_id && v.status === "pendente").length,
-      andamento: list.filter((v) => v.status === "em_andamento").length,
+      andamento: list.filter((v) => v.status === "aguardando_aprovacao").length,
       concluidasMes: list.filter(
         (v) =>
-          ["concluida", "aprovada"].includes(v.status) &&
+          v.status === "aprovado" &&
           v.data_hora_inicio &&
           new Date(v.data_hora_inicio) >= monthStart &&
           new Date(v.data_hora_inicio) <= monthEnd,
