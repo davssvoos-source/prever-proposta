@@ -29,7 +29,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 function GerencialPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+
+  // Se estamos em uma rota filha (/gerencial/nova, /gerencial/usuarios, etc.),
+  // renderiza o componente filho em tela cheia — não mostra o painel
+  if (pathname !== "/gerencial") {
+    return <Outlet />;
+  }
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
