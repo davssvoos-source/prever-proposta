@@ -168,10 +168,10 @@ function Dashboard() {
             <Section title="📅 Próximas visitas" items={pendentes} />
           )}
           {aguardando.length > 0 && (
-            <Section title="🕐 Aguardando aprovação" items={aguardando} compact />
+            <Section title="🕐 Aguardando aprovação" items={aguardando} />
           )}
           {aprovadas.length > 0 && (
-            <Section title="✅ Aprovadas" items={aprovadas.slice(0, 3)} compact />
+            <Section title="✅ Aprovadas" items={aprovadas.slice(0, 3)} />
           )}
         </>
       )}
