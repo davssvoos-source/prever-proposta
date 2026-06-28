@@ -262,6 +262,80 @@ function VisitaDetail() {
     },
   });
 
+  const isAdminOrComercial =
+    mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
+
+  const { data: todosProfiles = [] } = useQuery({
+    queryKey: ["tecnicos-lista"],
+    enabled: isAdminOrComercial,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, nome, cargo")
+        .eq("ativo", true)
+        .order("nome");
+      return data ?? [];
+    },
+  });
+
+  const verEquip =
+    visita?.status === "em_andamento" ||
+    visita?.status === "concluida" ||
+    visita?.status === "aprovada";
+
+  const { data: orcamento } = useQuery({
+    queryKey: ["orcamento", id],
+    enabled: !!verEquip,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visita_orcamentos")
+        .select("blocos_selecionados, qtd_apartamentos, servicos_ofertados, sistema_atual")
+        .eq("visita_id", id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const blocoIds = useMemo(() => {
+    const sel =
+      (orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null) ?? {};
+    return Object.values(sel).flatMap((cat) => Object.keys(cat));
+  }, [orcamento]);
+
+  const { data: blocoDetalhes = [] } = useQuery({
+    queryKey: ["blocos-detalhe", blocoIds.sort().join(",")],
+    enabled: blocoIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blocos")
+        .select("id, code, name, descricao, hh, blocos_itens(*)")
+        .in("id", blocoIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const atribuirMutation = useMutation({
+    mutationFn: async (tecnicoId: string) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ tecnico_id: tecnicoId })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+      setEditandoTecnico(false);
+      setNovoTecnicoId("");
+      toast.success("Técnico atualizado!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
+
   const iniciarMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
