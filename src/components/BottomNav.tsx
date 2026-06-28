@@ -18,13 +18,12 @@ export function BottomNav() {
         alignItems: "center",
         gap: 8,
         padding: "10px 14px",
-        background: "rgba(10, 12, 20, 0.85)",
+        background: "rgba(6, 6, 6, 0.80)",
         backdropFilter: "blur(30px) saturate(180%)",
-        WebkitBackdropFilter: "blur(30px) saturate(180%)",
-        border: "1px solid rgba(255, 192, 0, 0.18)",
+        border: "1px solid rgba(255, 192, 0, 0.20)",
         borderRadius: 40,
         boxShadow:
-          "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset",
+          "0 8px 32px rgba(0,0,0,0.6), 0 0 40px rgba(255,192,0,0.06), 0 0 0 1px rgba(255,255,255,0.04) inset",
         minWidth: 220,
       }}
     >
