@@ -277,10 +277,6 @@ function StatCard({
   );
 }
 
-type Visita = Awaited<ReturnType<NonNullable<Parameters<typeof useVisitasGerencial>[0]>>> extends never
-  ? never
-  : Exclude<ReturnType<typeof useVisitasGerencial>["data"], undefined>[number];
-type Tecnico = Exclude<ReturnType<typeof useTecnicos>["data"], undefined>[number];
 
 function ListaVisitas({
   visitas, tecMap, onCancel,
