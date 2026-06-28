@@ -44,6 +44,19 @@ import {
 import { type Tecnico, type Visita, useTecnicos, useVisitasGerencial } from "@/features/gerencial/data";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
+  beforeLoad: async () => {
+    const { redirect } = await import("@tanstack/react-router");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("cargo")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!["admin", "comercial"].includes(perfil?.cargo ?? "")) {
+      throw redirect({ to: "/dashboard" });
+    }
+  },
   component: GerencialLayout,
 });
 
