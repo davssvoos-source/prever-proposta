@@ -536,6 +536,27 @@ function ListaVisitas({
                     </div>
                   </div>
                 </Link>
+                {v.status === "aguardando_aprovacao" && (
+                  <div className="px-4 pb-3">
+                    <button
+                      onClick={() => onApprove(v.id)}
+                      style={{
+                        width: "100%",
+                        padding: "8px 14px",
+                        background: "rgba(52,211,153,0.10)",
+                        border: "1px solid rgba(52,211,153,0.30)",
+                        borderRadius: 10,
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: 11, fontWeight: 300,
+                        color: "#34D399",
+                        cursor: "pointer",
+                        letterSpacing: "0.08em", textTransform: "uppercase",
+                      }}
+                    >
+                      ✓ Aprovar Visita
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
