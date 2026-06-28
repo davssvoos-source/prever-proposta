@@ -248,6 +248,22 @@ function VisitaDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const iniciarMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ data_hora_inicio: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["visitas"] });
+      navigate({ to: "/visita/$id/orcamento", params: { id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (visita?.status === "pendente") {
