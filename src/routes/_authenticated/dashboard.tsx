@@ -271,7 +271,6 @@ function VisitaCard({ visita }: { visita: any }) {
           {sInfo.label}
         </div>
       </div>
-      </div>
       {visita.endereco && (
         <div
           style={{
