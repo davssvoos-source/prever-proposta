@@ -80,21 +80,21 @@ export function ServicosTab({ projetoId }: { projetoId: string }) {
         <div className="text-2xl font-bold tabular-nums text-primary">{brl(total)}</div>
       </Card>
 
-      {Array.from(grupos.entries()).map(([cat, items]) => (
-        <Card key={cat} className="overflow-hidden">
+      {Array.from(grupos.entries()).map(([catKey, items]) => (
+        <Card key={catKey} className="overflow-hidden">
           <div className="border-b border-border bg-muted/50 px-4 py-2 text-xs font-semibold uppercase text-muted-foreground">
-            {cat}
+            {catKey}
           </div>
           <div className="divide-y divide-border">
             {items.map((s) => {
               const row = psByServ.get(s.id);
+              const auto = computeServicoQty(s, cat.data?.blocos ?? [], pb.data ?? []);
               return (
                 <ServicoRow
                   key={s.id}
                   servico={s}
                   ativo={!!row?.ativo}
-                  quantidade={row?.quantidade ?? 0}
-                  autoQty={computeServicoQty(s, cat?.length ? [] : [], [])}
+                  quantidade={row?.quantidade ?? auto}
                   onToggle={(v) => upsert(s, { ativo: v })}
                   onQty={(q) => upsert(s, { quantidade: q })}
                 />
