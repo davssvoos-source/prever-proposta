@@ -124,7 +124,7 @@ function VisitaDetail() {
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (visita?.status === "em_andamento" || visita?.status === "pendente") {
+    if (visita?.status === "pendente") {
       const t = setInterval(() => setTick((x) => x + 1), 60_000);
       return () => clearInterval(t);
     }
@@ -132,8 +132,8 @@ function VisitaDetail() {
 
   const status = visita?.status as VisitaStatus | undefined;
   const sInfo = status ? STATUS_VISITA[status] : null;
-  const isFuture = status === "pendente";
-  const canEdit = status !== "aprovada";
+  const isFuture = status === "pendente" && !visita?.data_hora_inicio;
+  const canEdit = status !== "aprovado";
 
   const [notas, setNotas] = useState("");
   const [equip, setEquip] = useState("");
