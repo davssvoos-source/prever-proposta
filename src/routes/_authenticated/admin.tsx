@@ -149,10 +149,10 @@ function BlocosAdmin() {
       return r.data;
     },
   });
+  type BlocoRow = { id: string; code: string; name: string; hh: number; descricao: string | null; blocos_itens: { id: string; nome: string; modelo: string; qty: number; variavel: boolean }[] };
   return (
     <div className="space-y-3">
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {(data ?? []).map((b: any) => (
+      {((data ?? []) as BlocoRow[]).map((b) => (
         <Card key={b.id} className="p-4">
           <div className="flex flex-wrap items-center gap-2">
             <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{b.code}</code>
@@ -163,8 +163,7 @@ function BlocosAdmin() {
           </div>
           {b.descricao && <p className="mt-1 text-xs text-muted-foreground">{b.descricao}</p>}
           <div className="mt-2 space-y-1 text-xs">
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            {(b.blocos_itens ?? []).map((it: any) => (
+            {(b.blocos_itens ?? []).map((it) => (
               <div
                 key={it.id}
                 className="flex gap-2 rounded border border-border bg-background px-2 py-1"
