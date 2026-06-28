@@ -14,16 +14,403 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blocos: {
+        Row: {
+          code: string
+          created_at: string
+          descricao: string | null
+          hh: number
+          id: string
+          layer: number
+          name: string
+          obs: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          descricao?: string | null
+          hh?: number
+          id?: string
+          layer: number
+          name: string
+          obs?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          descricao?: string | null
+          hh?: number
+          id?: string
+          layer?: number
+          name?: string
+          obs?: string | null
+        }
+        Relationships: []
+      }
+      blocos_itens: {
+        Row: {
+          bloco_id: string
+          id: string
+          marca: string | null
+          modelo: string
+          nome: string
+          qty: number
+          seq: number
+          variavel: boolean
+        }
+        Insert: {
+          bloco_id: string
+          id?: string
+          marca?: string | null
+          modelo: string
+          nome: string
+          qty?: number
+          seq?: number
+          variavel?: boolean
+        }
+        Update: {
+          bloco_id?: string
+          id?: string
+          marca?: string | null
+          modelo?: string
+          nome?: string
+          qty?: number
+          seq?: number
+          variavel?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocos_itens_bloco_id_fkey"
+            columns: ["bloco_id"]
+            isOneToOne: false
+            referencedRelation: "blocos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          owner_id: string
+          telefone: string | null
+          tipo_empreendimento: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          owner_id: string
+          telefone?: string | null
+          tipo_empreendimento?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          owner_id?: string
+          telefone?: string | null
+          tipo_empreendimento?: string | null
+        }
+        Relationships: []
+      }
+      equipamentos: {
+        Row: {
+          cat: string | null
+          code: string | null
+          created_at: string
+          custo: number
+          fornecedor: string | null
+          id: string
+          marca: string | null
+          markup: number
+          modelo: string
+          nome: string
+          subcat: string | null
+          un: string
+        }
+        Insert: {
+          cat?: string | null
+          code?: string | null
+          created_at?: string
+          custo?: number
+          fornecedor?: string | null
+          id?: string
+          marca?: string | null
+          markup?: number
+          modelo: string
+          nome: string
+          subcat?: string | null
+          un?: string
+        }
+        Update: {
+          cat?: string | null
+          code?: string | null
+          created_at?: string
+          custo?: number
+          fornecedor?: string | null
+          id?: string
+          marca?: string | null
+          markup?: number
+          modelo?: string
+          nome?: string
+          subcat?: string | null
+          un?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string | null
+        }
+        Relationships: []
+      }
+      projeto_blocos: {
+        Row: {
+          ativo: boolean
+          bloco_id: string
+          id: string
+          projeto_id: string
+          quantidade: number
+        }
+        Insert: {
+          ativo?: boolean
+          bloco_id: string
+          id?: string
+          projeto_id: string
+          quantidade?: number
+        }
+        Update: {
+          ativo?: boolean
+          bloco_id?: string
+          id?: string
+          projeto_id?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projeto_blocos_bloco_id_fkey"
+            columns: ["bloco_id"]
+            isOneToOne: false
+            referencedRelation: "blocos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projeto_blocos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projeto_itens_variaveis: {
+        Row: {
+          bloco_item_id: string
+          id: string
+          projeto_id: string
+          quantidade: number
+        }
+        Insert: {
+          bloco_item_id: string
+          id?: string
+          projeto_id: string
+          quantidade?: number
+        }
+        Update: {
+          bloco_item_id?: string
+          id?: string
+          projeto_id?: string
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projeto_itens_variaveis_bloco_item_id_fkey"
+            columns: ["bloco_item_id"]
+            isOneToOne: false
+            referencedRelation: "blocos_itens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projeto_itens_variaveis_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projeto_servicos: {
+        Row: {
+          ativo: boolean
+          id: string
+          projeto_id: string
+          quantidade: number
+          servico_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          id?: string
+          projeto_id: string
+          quantidade?: number
+          servico_id: string
+        }
+        Update: {
+          ativo?: boolean
+          id?: string
+          projeto_id?: string
+          quantidade?: number
+          servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projeto_servicos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projeto_servicos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projetos: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          data_visita: string | null
+          fornecimento: boolean
+          id: string
+          nome: string
+          owner_id: string
+          status: string
+          tipo_contrato: string
+          updated_at: string
+          valor_hora_hh: number
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          data_visita?: string | null
+          fornecimento?: boolean
+          id?: string
+          nome: string
+          owner_id: string
+          status?: string
+          tipo_contrato?: string
+          updated_at?: string
+          valor_hora_hh?: number
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          data_visita?: string | null
+          fornecimento?: boolean
+          id?: string
+          nome?: string
+          owner_id?: string
+          status?: string
+          tipo_contrato?: string
+          updated_at?: string
+          valor_hora_hh?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projetos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servicos: {
+        Row: {
+          ativo_padrao: boolean
+          cat: string | null
+          code: string
+          id: string
+          nome: string
+          ordem: number
+          preco_unitario_mensal: number
+        }
+        Insert: {
+          ativo_padrao?: boolean
+          cat?: string | null
+          code: string
+          id?: string
+          nome: string
+          ordem?: number
+          preco_unitario_mensal?: number
+        }
+        Update: {
+          ativo_padrao?: boolean
+          cat?: string | null
+          code?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          preco_unitario_mensal?: number
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "comercial" | "tecnico"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +537,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "comercial", "tecnico"],
+    },
   },
 } as const
