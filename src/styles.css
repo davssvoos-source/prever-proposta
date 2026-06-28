@@ -5,8 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Prever — Design System
- * Azul navy #1F3864 / Dourado #FFC000 / Fundo branco.
+ * Prever — Dark Gold Design System
+ * Inspired by Robinhood / Linear / Vercel Dashboard.
+ * Background: near-black with radial glow. Accent: Prever gold #FFC000.
  */
 
 @theme inline {
@@ -54,62 +55,77 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-gold: var(--gold-primary);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-dim: var(--gold-dim);
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.28 0.02 256);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.02 256);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.02 256);
+  --radius: 1rem;
 
-  /* Azul navy Prever #1F3864 */
-  --primary: oklch(0.31 0.08 263);
-  --primary-foreground: oklch(0.99 0.005 250);
+  /* Surfaces */
+  --bg-base: #08090E;
+  --bg-elevated: #0F111A;
+  --bg-overlay: #161926;
 
-  --secondary: oklch(0.965 0.008 250);
-  --secondary-foreground: oklch(0.31 0.08 263);
+  /* Gold */
+  --gold-primary: #FFC000;
+  --gold-bright: #FFD340;
+  --gold-dim: #B88A00;
+  --gold-glow: rgba(255, 192, 0, 0.18);
+  --gold-glow-hv: rgba(255, 192, 0, 0.30);
 
-  --muted: oklch(0.97 0.006 250);
-  --muted-foreground: oklch(0.5 0.02 256);
+  /* Semantic mapping (shadcn tokens → dark gold) */
+  --background: #08090E;
+  --foreground: #F0F2F5;
+  --card: #0F111A;
+  --card-foreground: #F0F2F5;
+  --popover: #161926;
+  --popover-foreground: #F0F2F5;
 
-  /* Dourado Prever #FFC000 */
-  --accent: oklch(0.85 0.16 88);
-  --accent-foreground: oklch(0.25 0.05 263);
+  --primary: #FFC000;
+  --primary-foreground: #08090E;
 
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.99 0.003 247);
+  --secondary: #161926;
+  --secondary-foreground: #F0F2F5;
 
-  --success: oklch(0.66 0.16 150);
-  --success-foreground: oklch(0.99 0.005 150);
+  --muted: #11131D;
+  --muted-foreground: #8A8FA8;
 
-  --warning: oklch(0.78 0.15 70);
-  --warning-foreground: oklch(0.25 0.05 263);
+  --accent: #1A1D2A;
+  --accent-foreground: #FFC000;
 
-  --info: oklch(0.55 0.13 240);
-  --info-foreground: oklch(0.99 0.005 250);
+  --destructive: #F87171;
+  --destructive-foreground: #08090E;
 
-  --border: oklch(0.91 0.012 256);
-  --input: oklch(0.91 0.012 256);
-  --ring: oklch(0.31 0.08 263);
+  --success: #34D399;
+  --success-foreground: #08090E;
 
-  --chart-1: oklch(0.31 0.08 263);
-  --chart-2: oklch(0.85 0.16 88);
-  --chart-3: oklch(0.55 0.13 240);
-  --chart-4: oklch(0.66 0.16 150);
-  --chart-5: oklch(0.78 0.15 70);
+  --warning: #FFC000;
+  --warning-foreground: #08090E;
 
-  --sidebar: oklch(0.99 0.005 250);
-  --sidebar-foreground: oklch(0.28 0.02 256);
-  --sidebar-primary: oklch(0.31 0.08 263);
-  --sidebar-primary-foreground: oklch(0.99 0.005 250);
-  --sidebar-accent: oklch(0.965 0.008 250);
-  --sidebar-accent-foreground: oklch(0.31 0.08 263);
-  --sidebar-border: oklch(0.91 0.012 256);
-  --sidebar-ring: oklch(0.31 0.08 263);
+  --info: #60A5FA;
+  --info-foreground: #08090E;
+
+  --border: rgba(255, 192, 0, 0.12);
+  --input: rgba(255, 255, 255, 0.06);
+  --ring: #FFC000;
+
+  --chart-1: #FFC000;
+  --chart-2: #FFD340;
+  --chart-3: #60A5FA;
+  --chart-4: #34D399;
+  --chart-5: #F87171;
+
+  --sidebar: #0F111A;
+  --sidebar-foreground: #F0F2F5;
+  --sidebar-primary: #FFC000;
+  --sidebar-primary-foreground: #08090E;
+  --sidebar-accent: #161926;
+  --sidebar-accent-foreground: #FFC000;
+  --sidebar-border: rgba(255, 192, 0, 0.12);
+  --sidebar-ring: #FFC000;
 }
 
 @layer base {
@@ -117,13 +133,192 @@
     border-color: var(--color-border);
   }
   html, body {
-    background-color: var(--color-background);
+    background-color: var(--bg-base);
     color: var(--color-foreground);
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  body {
+    background:
+      radial-gradient(ellipse at top center,
+        #131828 0%,
+        #08090E 55%,
+        #05060A 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    position: relative;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.025;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Headings */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+  }
+  /* Inputs/selects baseline */
+  input, textarea, select {
+    color: var(--color-foreground);
+  }
 }
 
 @utility brand-gradient {
-  background-image: linear-gradient(135deg, var(--color-primary) 0%, oklch(0.38 0.1 263) 100%);
+  background-image: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-dim) 100%);
+}
+
+/* ============= Card — Glass Gold ============= */
+@utility card-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 192, 0, 0.06) 0%,
+    rgba(15, 17, 26, 0.95) 100%
+  );
+  border: 1px solid rgba(255, 192, 0, 0.14);
+  border-radius: 20px;
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow:
+    0 0 0 1px rgba(255, 192, 0, 0.06) inset,
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(255, 192, 0, 0.04);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  &:hover {
+    border-color: rgba(255, 192, 0, 0.28);
+    box-shadow:
+      0 0 0 1px rgba(255, 192, 0, 0.12) inset,
+      0 8px 40px rgba(0, 0, 0, 0.5),
+      0 0 60px rgba(255, 192, 0, 0.10);
+  }
+}
+
+/* ============= Stat card ============= */
+@utility stat-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 192, 0, 0.07);
+  border: 1px solid rgba(255, 192, 0, 0.16);
+  border-radius: 18px;
+  padding: 16px;
+  &::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(255, 192, 0, 0.25), transparent 70%);
+    pointer-events: none;
+  }
+}
+
+@utility stat-card-highlight {
+  background: linear-gradient(135deg, #FFC000 0%, #B88A00 100%);
+  border: 1px solid #FFC000;
+  box-shadow: 0 4px 24px rgba(255, 192, 0, 0.35);
+  color: #08090E;
+}
+
+@utility stat-value {
+  font-size: 36px;
+  font-weight: 800;
+  color: #F0F2F5;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+@utility section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #F0F2F5;
+  letter-spacing: -0.02em;
+}
+
+@utility section-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8A8FA8;
+  letter-spacing: 0.02em;
+}
+
+@utility link-action {
+  font-size: 13px;
+  color: #FFC000;
+  font-weight: 500;
+}
+
+/* ============= Primary button (gold shimmer) ============= */
+@utility btn-gold {
+  background: linear-gradient(135deg, #FFC000 0%, #FFD740 50%, #FFC000 100%);
+  background-size: 200% 200%;
+  color: #08090E;
+  font-weight: 700;
+  border: none;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 20px rgba(255, 192, 0, 0.40),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  animation: gold-shimmer 3s infinite;
+  &:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 10px rgba(255, 192, 0, 0.30);
+  }
+}
+
+@keyframes gold-shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============= Badges ============= */
+@utility badge-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+@utility badge-pending  { background: rgba(255, 192, 0, 0.15); color: #FFC000; }
+@utility badge-running  { background: rgba(96, 165, 250, 0.15); color: #60A5FA; }
+@utility badge-done     { background: rgba(52, 211, 153, 0.15); color: #34D399; }
+@utility badge-approved { background: rgba(52, 211, 153, 0.15); color: #34D399; }
+@utility badge-rejected { background: rgba(248, 113, 113, 0.15); color: #F87171; }
+
+/* ============= Progress bar ============= */
+@utility progress-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+@utility progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #FFC000, #FFD740);
+  box-shadow: 0 0 10px rgba(255, 192, 0, 0.5);
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============= Header glass ============= */
+@utility header-glass {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(8, 9, 14, 0.80);
+  backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 192, 0, 0.08);
+}
+
+/* Ensure app content sits above fixed noise overlay */
+#root, main, header, nav {
+  position: relative;
+  z-index: 1;
 }
