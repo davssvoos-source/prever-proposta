@@ -41,7 +41,7 @@ import {
   TIPO_ICON,
   TIPO_LABEL,
 } from "@/features/gerencial/constants";
-import { useTecnicos, useVisitasGerencial } from "@/features/gerencial/data";
+import { type Tecnico, type Visita, useTecnicos, useVisitasGerencial } from "@/features/gerencial/data";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   component: GerencialLayout,

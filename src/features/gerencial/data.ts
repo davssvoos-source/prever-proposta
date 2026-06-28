@@ -13,33 +13,33 @@ export async function geocode(endereco: string): Promise<{ lat: number; lng: num
   }
 }
 
+export async function fetchTecnicos() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, nome, email, cargo, avatar_url, telefone, ativo")
+    .eq("ativo", true)
+    .order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+export type Tecnico = Awaited<ReturnType<typeof fetchTecnicos>>[number];
+
+export async function fetchVisitasGerencial() {
+  const { data, error } = await supabase
+    .from("visitas_tecnicas")
+    .select("*, cliente:clientes(id, nome, tipo_empreendimento, telefone)")
+    .order("data_hora_agendada", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+export type Visita = Awaited<ReturnType<typeof fetchVisitasGerencial>>[number];
+
 export function useTecnicos() {
-  return useQuery({
-    queryKey: ["tecnicos-ativos"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, nome, email, cargo, avatar_url, telefone, ativo")
-        .eq("ativo", true)
-        .order("nome");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  return useQuery({ queryKey: ["tecnicos-ativos"], queryFn: fetchTecnicos });
 }
 
 export function useVisitasGerencial() {
-  return useQuery({
-    queryKey: ["visitas-gerencial"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("visitas_tecnicas")
-        .select("*, cliente:clientes(id, nome, tipo_empreendimento, telefone)")
-        .order("data_hora_agendada", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  return useQuery({ queryKey: ["visitas-gerencial"], queryFn: fetchVisitasGerencial });
 }
 
 export function useIsGerente() {
