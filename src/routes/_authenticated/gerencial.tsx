@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   beforeLoad: async () => {
