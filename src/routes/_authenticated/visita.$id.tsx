@@ -48,65 +48,39 @@ function SlideToStart({
   onComplete,
   loading,
 }: {
-  onComplete: () => Promise<void>;
+  onComplete: () => void;
   loading: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const slideXRef = useRef(0);
   const [slideX, setSlideX] = useState(0);
   const [completed, setCompleted] = useState(false);
-  const isDragging = useRef(false);
-  const startTouchX = useRef(0);
+  const dragging = useRef(false);
+  const startClientX = useRef(0);
   const KNOB = 56;
 
   const getMaxX = () =>
-    trackRef.current ? trackRef.current.offsetWidth - KNOB - 8 : 0;
+    trackRef.current ? trackRef.current.offsetWidth - KNOB - 8 : 200;
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (completed || loading) return;
-    isDragging.current = true;
-    startTouchX.current = e.touches[0].clientX - slideX;
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    const x = Math.max(0, Math.min(getMaxX(), e.touches[0].clientX - startTouchX.current));
+  const updateSlide = (clientX: number) => {
+    const x = Math.max(0, Math.min(getMaxX(), clientX - startClientX.current));
+    slideXRef.current = x;
     setSlideX(x);
   };
-  const handleTouchEnd = async () => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
+
+  const finalize = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
     const max = getMaxX();
-    if (slideX >= max * 0.78) {
+    if (slideXRef.current >= max * 0.78) {
+      slideXRef.current = max;
       setSlideX(max);
       setCompleted(true);
-      await onComplete();
+      onComplete();
     } else {
+      slideXRef.current = 0;
       setSlideX(0);
     }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (completed || loading) return;
-    isDragging.current = true;
-    startTouchX.current = e.clientX - slideX;
-    const onMove = (ev: MouseEvent) => {
-      const x = Math.max(0, Math.min(getMaxX(), ev.clientX - startTouchX.current));
-      setSlideX(x);
-    };
-    const onUp = async () => {
-      isDragging.current = false;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      const max = getMaxX();
-      if (slideX >= max * 0.78) {
-        setSlideX(max);
-        setCompleted(true);
-        await onComplete();
-      } else {
-        setSlideX(0);
-      }
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
   };
 
   const max = getMaxX();
@@ -129,7 +103,6 @@ function SlideToStart({
         touchAction: "none",
       }}
     >
-      {/* Trilha de preenchimento */}
       <div
         style={{
           position: "absolute",
@@ -138,10 +111,9 @@ function SlideToStart({
           height: "100%",
           width: slideX + KNOB,
           background: "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
-          transition: isDragging.current ? "none" : "width 0.25s ease",
+          transition: dragging.current ? "none" : "width 0.25s ease",
         }}
       />
-      {/* Label */}
       <div
         style={{
           position: "absolute",
@@ -161,12 +133,30 @@ function SlideToStart({
       >
         {completed ? "Iniciada" : loading ? "Registrando..." : "Deslize para iniciar"}
       </div>
-      {/* Knob */}
       <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
+        onTouchStart={(e) => {
+          if (completed || loading) return;
+          dragging.current = true;
+          startClientX.current = e.touches[0].clientX - slideXRef.current;
+        }}
+        onTouchMove={(e) => {
+          if (!dragging.current) return;
+          updateSlide(e.touches[0].clientX);
+        }}
+        onTouchEnd={finalize}
+        onMouseDown={(e) => {
+          if (completed || loading) return;
+          dragging.current = true;
+          startClientX.current = e.clientX - slideXRef.current;
+          const move = (ev: MouseEvent) => updateSlide(ev.clientX);
+          const up = () => {
+            window.removeEventListener("mousemove", move);
+            window.removeEventListener("mouseup", up);
+            finalize();
+          };
+          window.addEventListener("mousemove", move);
+          window.addEventListener("mouseup", up);
+        }}
         style={{
           position: "absolute",
           top: 4,
@@ -182,7 +172,7 @@ function SlideToStart({
           color: "#0A0A0A",
           cursor: completed || loading ? "default" : "grab",
           transform: `translateX(${slideX}px)`,
-          transition: isDragging.current ? "none" : "transform 0.25s ease",
+          transition: dragging.current ? "none" : "transform 0.25s ease",
         }}
       >
         {completed ? <Check className="h-6 w-6" /> : <Play className="h-5 w-5" />}
@@ -254,6 +244,22 @@ function VisitaDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visita", id] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const iniciarMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ data_hora_inicio: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["visitas"] });
+      navigate({ to: "/visita/$id/orcamento", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -654,13 +660,8 @@ function VisitaDetail() {
       {visita.status === "pendente" && user?.id === visita.tecnico_id && !visita.data_hora_inicio && (
         <div className="px-1 pt-2">
           <SlideToStart
-            onComplete={async () => {
-              await updateMutation.mutateAsync({
-                data_hora_inicio: new Date().toISOString(),
-              });
-              navigate({ to: "/visita/$id/orcamento", params: { id } });
-            }}
-            loading={updateMutation.isPending}
+            onComplete={() => iniciarMutation.mutate()}
+            loading={iniciarMutation.isPending}
           />
         </div>
       )}
