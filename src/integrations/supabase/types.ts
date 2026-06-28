@@ -94,27 +94,33 @@ export type Database = {
           email: string | null
           id: string
           nome: string
+          nome_predio: string | null
           owner_id: string
           telefone: string | null
           tipo_empreendimento: string | null
+          tipo_local: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id?: string
           nome: string
+          nome_predio?: string | null
           owner_id: string
           telefone?: string | null
           tipo_empreendimento?: string | null
+          tipo_local?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           nome?: string
+          nome_predio?: string | null
           owner_id?: string
           telefone?: string | null
           tipo_empreendimento?: string | null
+          tipo_local?: string | null
         }
         Relationships: []
       }
