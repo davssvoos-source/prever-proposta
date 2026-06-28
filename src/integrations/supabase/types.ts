@@ -201,6 +201,36 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          corpo: string | null
+          created_at: string
+          id: string
+          lida: boolean
+          tipo: string
+          titulo: string
+          user_id: string | null
+        }
+        Insert: {
+          corpo?: string | null
+          created_at?: string
+          id?: string
+          lida?: boolean
+          tipo?: string
+          titulo: string
+          user_id?: string | null
+        }
+        Update: {
+          corpo?: string | null
+          created_at?: string
+          id?: string
+          lida?: boolean
+          tipo?: string
+          titulo?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -517,6 +547,7 @@ export type Database = {
           descricao_pedido: string | null
           endereco: string
           equipamentos_vistos: string | null
+          foto_fachada_url: string | null
           id: string
           latitude: number | null
           longitude: number | null
@@ -548,6 +579,7 @@ export type Database = {
           descricao_pedido?: string | null
           endereco: string
           equipamentos_vistos?: string | null
+          foto_fachada_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
@@ -579,6 +611,7 @@ export type Database = {
           descricao_pedido?: string | null
           endereco?: string
           equipamentos_vistos?: string | null
+          foto_fachada_url?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
