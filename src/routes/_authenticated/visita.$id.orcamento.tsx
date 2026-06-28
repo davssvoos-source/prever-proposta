@@ -90,7 +90,7 @@ function OrcamentoEtapa1() {
 
   // Redirect if user already past step 1
   useEffect(() => {
-    const step = (orcamento as { step_atual?: number } | null)?.step_atual;
+    const step = (orcamento as unknown as { step_atual?: number } | null)?.step_atual;
     if (step === 2) navigate({ to: "/visita/$id/orcamento", params: { id } });
   }, [orcamento, navigate, id]);
 
