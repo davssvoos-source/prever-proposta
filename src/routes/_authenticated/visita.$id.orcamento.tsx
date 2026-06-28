@@ -152,7 +152,7 @@ function OrcamentoPasso1() {
       setSistema((orcamento as any).sistema_atual ?? "");
       setReady(true);
     } else if (servicosList.length > 0) {
-      setSelecionados(servicosList.filter((s) => s.defaultOn).map((s) => s.id));
+      setSelecionados([]);
       setReady(true);
     }
   }, [orcamento, servicosList, ready]);
@@ -166,7 +166,6 @@ function OrcamentoPasso1() {
           qtd_apartamentos: Number(qtd),
           servicos_ofertados: selecionados,
           sistema_atual: sistema,
-          step_atual: 1,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "visita_id" },
@@ -275,9 +274,14 @@ function OrcamentoPasso1() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             textAlign: "center",
-            height: 68,
+          height: 68,
           }}
         />
+        {(!qtd || Number(qtd) <= 0) && saveMutation.isError && (
+          <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, marginTop: 4 }}>
+            Informe a quantidade de apartamentos
+          </p>
+        )}
       </div>
 
       {/* Serviços */}
