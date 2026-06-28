@@ -3,8 +3,6 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ClipboardCheck, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthUser } from "@/lib/auth";
-
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -18,6 +16,13 @@ const GLASS: React.CSSProperties = {
   borderRadius: 18,
   boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
 };
+
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
 function fmtData(iso: string) {
   const d = new Date(iso);
@@ -37,69 +42,75 @@ function fmtData(iso: string) {
 }
 
 function Dashboard() {
-  const { user } = useAuthUser();
   const qc = useQueryClient();
 
-  const { data: visitas = [], isLoading } = useQuery({
-    queryKey: ["visitas", user?.id],
+  const { data: perfil } = useQuery({
+    queryKey: ["meu-perfil"],
     queryFn: async () => {
-      if (!user) return [];
-
-      const { data: perfil } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data } = await supabase
         .from("profiles")
-        .select("cargo")
+        .select("cargo, nome")
         .eq("id", user.id)
         .maybeSingle();
+      return data;
+    },
+  });
 
-      const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial";
-
+  const { data: visitas = [], isLoading } = useQuery({
+    queryKey: ["dashboard-visitas", perfil?.cargo],
+    enabled: !!perfil,
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       let q = supabase
         .from("visitas_tecnicas")
-        .select(
-          "*, tecnico:profiles!visitas_tecnicas_tecnico_id_fkey(nome)",
-        )
+        .select(`
+          id, status, data_hora_agendada, endereco, titulo,
+          nome_sindico, nome_predio, tecnico_id,
+          clientes (nome)
+        `)
         .order("data_hora_agendada", { ascending: true });
 
-      if (!isAdmin) q = q.eq("tecnico_id", user.id);
+      if (perfil?.cargo === "tecnico") {
+        q = q.eq("tecnico_id", user!.id);
+      }
 
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!user?.id,
   });
 
   useEffect(() => {
-    if (!user) return;
     const channel = supabase
       .channel("visitas-realtime-dashboard")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "visitas_tecnicas" },
         () => {
-          qc.invalidateQueries({ queryKey: ["visitas"] });
-          qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
+          qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+          qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [qc, user]);
+  }, [qc]);
 
-  const pendentes = visitas.filter((v) => v.status === "pendente");
-  const aguardando = visitas.filter((v) => v.status === "aguardando_aprovacao");
-  const aprovadas = visitas.filter((v) => v.status === "aprovado");
+  const pendentes = visitas.filter((v: any) => v.status === "pendente");
+  const emAndamento = visitas.filter((v: any) => v.status === "em_andamento");
+  const concluidas = visitas.filter((v: any) => v.status === "concluida" || v.status === "aprovada");
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={16} /> },
-    { label: "Ag. Aprov.", value: aguardando.length, color: "#60A5FA", icon: <CalendarDays size={16} /> },
-    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <ClipboardCheck size={16} /> },
+    { label: "Em andamento", value: emAndamento.length, color: "#60A5FA", icon: <CalendarDays size={16} /> },
+    { label: "Concluídas", value: concluidas.length, color: "#34D399", icon: <ClipboardCheck size={16} /> },
   ];
 
   return (
     <div className="space-y-5">
-      {/* Saudação */}
       <div>
         <h1
           style={{
@@ -110,7 +121,7 @@ function Dashboard() {
             margin: 0,
           }}
         >
-          Bom dia 👋
+          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""} 👋
         </h1>
         <p
           style={{
@@ -121,11 +132,12 @@ function Dashboard() {
             margin: "4px 0 0",
           }}
         >
-          Aqui estão suas visitas técnicas
+          {perfil?.cargo === "tecnico"
+            ? "Aqui estão suas visitas técnicas"
+            : "Visão geral das visitas técnicas"}
         </p>
       </div>
 
-      {/* Métricas */}
       <div className="grid grid-cols-3 gap-3">
         {metrics.map((m) => (
           <div key={m.label} style={{ ...GLASS, padding: "14px 10px", textAlign: "center" }}>
@@ -173,20 +185,14 @@ function Dashboard() {
               margin: 0,
             }}
           >
-            Nenhuma visita atribuída ainda.
+            Nenhuma visita encontrada.
           </p>
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && (
-            <Section title="📅 Próximas visitas" items={pendentes} />
-          )}
-          {aguardando.length > 0 && (
-            <Section title="🕐 Aguardando aprovação" items={aguardando} />
-          )}
-          {aprovadas.length > 0 && (
-            <Section title="✅ Aprovadas" items={aprovadas.slice(0, 3)} />
-          )}
+          {pendentes.length > 0 && <Section title="📅 Pendentes" items={pendentes} />}
+          {emAndamento.length > 0 && <Section title="▶️ Em andamento" items={emAndamento} />}
+          {concluidas.length > 0 && <Section title="✅ Concluídas" items={concluidas.slice(0, 5)} />}
         </>
       )}
     </div>
@@ -195,96 +201,77 @@ function Dashboard() {
 
 const STATUS_COLOR: Record<string, string> = {
   pendente: "#FFC000",
-  aguardando_aprovacao: "#3B82F6",
-  aprovado: "#22C55E",
+  em_andamento: "#60A5FA",
+  concluida: "#34D399",
+  aprovada: "#34D399",
+  reprovada: "#F87171",
 };
 const STATUS_LABEL: Record<string, string> = {
   pendente: "Pendente",
-  aguardando_aprovacao: "Aguardando aprovação",
-  aprovado: "Aprovado",
+  em_andamento: "Em andamento",
+  concluida: "Concluída",
+  aprovada: "Aprovada",
+  reprovada: "Reprovada",
 };
 
-function VisitaCard({ visita, onClick }: { visita: any; onClick: () => void }) {
-  const emAndamento = visita.status === "pendente" && visita.data_hora_inicio && !visita.data_hora_fim;
-  const statusKey = emAndamento ? "em_andamento" : visita.status;
-  const color = emAndamento ? "#FFC000" : STATUS_COLOR[visita.status] ?? "#888";
-  const label = emAndamento ? "Em andamento" : STATUS_LABEL[visita.status] ?? visita.status;
+function VisitaCard({ visita }: { visita: any }) {
+  const color = STATUS_COLOR[visita.status] ?? "#888";
+  const label = STATUS_LABEL[visita.status] ?? visita.status;
+  const nome =
+    visita.nome_predio ??
+    visita.clientes?.nome ??
+    visita.nome_sindico ??
+    visita.titulo ??
+    "Sem nome";
   return (
     <div
-      onClick={onClick}
       style={{
-        position: "relative",
-        overflow: "hidden",
         background: "rgba(8,8,12,0.22)",
         backdropFilter: "blur(12px) saturate(130%)",
         border: "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
-        cursor: "pointer",
         marginBottom: 12,
-        minHeight: visita.foto_fachada_url ? 140 : undefined,
       }}
     >
-      {visita.foto_fachada_url && (
-        <>
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: `url(${visita.foto_fachada_url})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(135deg, rgba(8,8,12,0.78) 0%, rgba(8,8,12,0.55) 60%, rgba(8,8,12,0.40) 100%)",
-            }}
-          />
-        </>
-      )}
-
-      <div style={{ position: "relative", zIndex: 1 }} data-status={statusKey}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 8,
+          gap: 10,
+        }}
+      >
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: 8,
-            gap: 10,
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 500,
+            fontSize: 15,
+            color: "#fff",
+            flex: 1,
           }}
         >
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 15,
-              color: "#fff",
-              flex: 1,
-            }}
-          >
-            {visita.nome_predio ?? visita.titulo}
-          </div>
-          <div
-            style={{
-              background: `${color}22`,
-              border: `1px solid ${color}55`,
-              borderRadius: 20,
-              padding: "3px 10px",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 10,
-              letterSpacing: "0.10em",
-              color,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {label}
-          </div>
+          {nome}
         </div>
+        <div
+          style={{
+            background: `${color}22`,
+            border: `1px solid ${color}55`,
+            borderRadius: 20,
+            padding: "3px 10px",
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 10,
+            letterSpacing: "0.10em",
+            color,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </div>
+      </div>
+      {visita.endereco && (
         <div
           style={{
             fontFamily: "'Montserrat', sans-serif",
@@ -295,34 +282,21 @@ function VisitaCard({ visita, onClick }: { visita: any; onClick: () => void }) {
         >
           📍 {visita.endereco}
         </div>
-        {visita.data_hora_agendada && (
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,192,0,0.75)",
-              marginTop: 6,
-              letterSpacing: "0.06em",
-            }}
-          >
-            🗓️ {fmtData(visita.data_hora_agendada)}
-          </div>
-        )}
-        {visita.tecnico?.nome && (
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.45)",
-              marginTop: 4,
-            }}
-          >
-            👷 {visita.tecnico.nome}
-          </div>
-        )}
-      </div>
+      )}
+      {visita.data_hora_agendada && (
+        <div
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 11,
+            color: "rgba(255,192,0,0.75)",
+            marginTop: 6,
+            letterSpacing: "0.06em",
+          }}
+        >
+          🗓️ {fmtData(visita.data_hora_agendada)}
+        </div>
+      )}
     </div>
   );
 }
@@ -350,7 +324,7 @@ function Section({ title, items }: { title: string; items: any[] }) {
               params={{ id: v.id }}
               style={{ textDecoration: "none", color: "inherit", display: "block" }}
             >
-              <VisitaCard visita={v} onClick={() => {}} />
+              <VisitaCard visita={v} />
             </Link>
           </li>
         ))}

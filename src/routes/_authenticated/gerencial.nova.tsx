@@ -233,8 +233,8 @@ function NovaVisitaPage() {
     },
 
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
-      qc.invalidateQueries({ queryKey: ["visitas"] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
       toast.success("Visita agendada com sucesso!");
       navigate({ to: "/gerencial" });
     },
