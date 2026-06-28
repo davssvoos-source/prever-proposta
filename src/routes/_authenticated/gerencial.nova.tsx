@@ -156,7 +156,7 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    tipoEmpreendimento !== "" &&
+    
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
     servicos.length > 0 &&
