@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, MapPin, ClipboardCheck, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthUser } from "@/lib/auth";
-import { STATUS_VISITA, type VisitaStatus } from "@/features/visitas/types";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
