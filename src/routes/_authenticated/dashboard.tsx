@@ -44,11 +44,25 @@ function Dashboard() {
     queryKey: ["visitas", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
+
+      const { data: perfil } = await supabase
+        .from("profiles")
+        .select("cargo")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial";
+
+      let q = supabase
         .from("visitas_tecnicas")
-        .select("*")
-        .eq("tecnico_id", user.id)
+        .select(
+          "*, tecnico:profiles!visitas_tecnicas_tecnico_id_fkey(nome)",
+        )
         .order("data_hora_agendada", { ascending: true });
+
+      if (!isAdmin) q = q.eq("tecnico_id", user.id);
+
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
@@ -293,6 +307,19 @@ function VisitaCard({ visita, onClick }: { visita: any; onClick: () => void }) {
             }}
           >
             🗓️ {fmtData(visita.data_hora_agendada)}
+          </div>
+        )}
+        {visita.tecnico?.nome && (
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: "rgba(255,255,255,0.45)",
+              marginTop: 4,
+            }}
+          >
+            👷 {visita.tecnico.nome}
           </div>
         )}
       </div>
