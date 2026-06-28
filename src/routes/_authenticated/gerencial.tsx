@@ -135,12 +135,28 @@ function GerencialIndex() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ status: "reprovada" })
+        .delete()
         .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Visita cancelada");
+      qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
+      qc.invalidateQueries({ queryKey: ["visitas"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ status: "aprovado", aprovado_em: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Visita aprovada!");
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
     },
