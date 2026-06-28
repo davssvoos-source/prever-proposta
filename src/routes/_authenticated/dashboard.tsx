@@ -220,10 +220,6 @@ function VisitaCard({ visita }: { visita: any }) {
     visita.nome_sindico ??
     visita.titulo ??
     "Sem nome";
-    visita.nome_predio ??
-    visita.clientes?.nome ??
-    visita.nome_sindico ??
-    visita.titulo ??
     "Sem nome";
   return (
     <div
@@ -258,20 +254,23 @@ function VisitaCard({ visita }: { visita: any }) {
         </div>
         <div
           style={{
-            background: `${color}22`,
-            border: `1px solid ${color}55`,
+            display: "inline-flex",
+            alignItems: "center",
+            background: sInfo.bg,
+            border: `1px solid ${sInfo.color}40`,
             borderRadius: 20,
             padding: "3px 10px",
             fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
+            fontWeight: 500,
             fontSize: 10,
-            letterSpacing: "0.10em",
-            color,
+            color: sInfo.color,
+            letterSpacing: "0.08em",
             whiteSpace: "nowrap",
           }}
         >
-          {label}
+          {sInfo.label}
         </div>
+      </div>
       </div>
       {visita.endereco && (
         <div
