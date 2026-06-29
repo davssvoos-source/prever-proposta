@@ -221,7 +221,7 @@ function NovaVisitaPage() {
         foto_fachada_url,
         created_by: user?.id ?? null,
       };
-      const { error } = await supabase.from("visitas_tecnicas").insert(payload);
+      const { error } = await supabase.from("visitas_tecnicas").insert(payload as any);
       if (error) throw error;
     },
 
