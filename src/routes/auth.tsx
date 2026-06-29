@@ -261,6 +261,31 @@ function AuthPage() {
               >
                 {loading ? "Entrando..." : "Entrar"}
               </button>
+              <button
+                onClick={() => {
+                  setMode("register");
+                  setEmail("");
+                  setSenha("");
+                  setNome("");
+                  setConfirmarSenha("");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.20)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: "'Montserrat', sans-serif",
+                  marginTop: 8,
+                  transition: "all 0.2s",
+                }}
+              >
+                Criar conta
+              </button>
               <div style={{ textAlign: "center", marginTop: 4 }}>
                 <button onClick={() => setMode("forgot")} style={BTN_GHOST}>
                   Esqueci minha senha
