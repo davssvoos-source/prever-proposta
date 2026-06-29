@@ -302,12 +302,18 @@ function GerencialPage() {
                       fontWeight: 300,
                       color: "#9ca3af",
                       lineHeight: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 6,
                     }}
                   >
-                    📅 {dataVisita}
-                    {v.endereco ? `  ·  📍 ${v.endereco}` : ""}
-                    {tecnicoNome ? `  ·  👤 ${tecnicoNome}` : ""}
+                    <CalendarDays size={12} style={{ opacity: 0.7 }} />
+                    <span>{dataVisita}</span>
+                    {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={12} style={{ opacity: 0.7 }} /><span>{v.endereco}</span></>) : null}
+                    {tecnicoNome ? (<><span style={{ opacity: 0.4 }}>·</span><User size={12} style={{ opacity: 0.7 }} /><span>{tecnicoNome}</span></>) : null}
                   </div>
+
                 </div>
 
                 <div
