@@ -53,7 +53,7 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes'>('hoje');
+  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<string>('todos');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
