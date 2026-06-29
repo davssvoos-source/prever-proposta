@@ -133,7 +133,7 @@ function VisitasPage() {
                   year: "numeric",
                 })
               : "Sem data";
-            const clienteNome = v.clientes?.nome ?? v.titulo ?? "Visita";
+            const clienteNome = v.clientes?.nome ?? v.nome_predio ?? v.nome_sindico ?? v.titulo ?? "Sem nome";
 
             return (
               <button
