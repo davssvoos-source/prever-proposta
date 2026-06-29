@@ -644,7 +644,7 @@ function NovaVisitaPage() {
             )}
             {tecnicoId && visitasTecnico.length === 0 && (
               <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: "rgba(52,211,153,0.7)", margin: "8px 0 0" }}>
-                ✓ Técnico livre nos próximos 7 dias
+                Técnico livre nos próximos 7 dias
               </p>
             )}
           </div>
