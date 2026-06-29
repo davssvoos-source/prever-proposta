@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   reprovada: { label: "Reprovada", color: "#EF4444", icon: XCircle },
 };
 
-type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "agendada" | "em_andamento" | "reprovada";
+type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "em_andamento" | "reprovada";
 
 function VisitasPage() {
   const navigate = useNavigate();
