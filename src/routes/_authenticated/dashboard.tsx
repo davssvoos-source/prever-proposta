@@ -139,10 +139,10 @@ function Dashboard() {
   const reprovadas = visitasFiltradas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
-    { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={16} /> },
-    { label: "Ag. Aprovação", value: aguardando.length, color: "#FBBF24", icon: <CalendarDays size={16} /> },
-    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={16} /> },
-    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={16} /> },
+    { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={14} /> },
+    { label: "Ag. Aprovação", value: aguardando.length, color: "#FBBF24", icon: <CalendarDays size={14} /> },
+    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={14} /> },
+    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
   ];
 
   return (
@@ -174,15 +174,15 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         {metrics.map((m) => (
-          <div key={m.label} style={{ ...GLASS, padding: "14px 10px", textAlign: "center" }}>
+          <div key={m.label} style={{ ...GLASS, padding: "8px 6px", textAlign: "center" }}>
             <div style={{ color: m.color, display: "flex", justifyContent: "center" }}>{m.icon}</div>
             <div
               style={{
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 600,
-                fontSize: 22,
+                fontSize: 18,
                 color: m.color,
                 marginTop: 4,
               }}
@@ -205,6 +205,7 @@ function Dashboard() {
           </div>
         ))}
       </div>
+
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
