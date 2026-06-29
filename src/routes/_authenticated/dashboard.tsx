@@ -440,11 +440,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section title="Pendentes" icon={<CalendarDays size={14} />} items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {emAndamento.length > 0 && <Section title="Em andamento" icon={<Play size={14} />} items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aguardando.length > 0 && <Section title="Aguardando aprovação" icon={<Hourglass size={14} />} items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aprovadas.length > 0 && <Section title="Aprovadas" icon={<CheckCircle2 size={14} />} items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {reprovadas.length > 0 && <Section title="Reprovadas" icon={<XCircle size={14} />} items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {pendentes.length > 0 && <Section items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {emAndamento.length > 0 && <Section items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {aguardando.length > 0 && <Section items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
 
         </>
       )}
