@@ -669,7 +669,7 @@ function BlocoGenericList({
   if (blocos.length === 0)
     return (
       <div style={{ ...CARD, textAlign: "center", padding: 32 }}>
-        <div style={{ fontSize: 38, marginBottom: 10 }}>📭</div>
+        <div style={{ fontSize: 38, marginBottom: 10 }}></div>
         <div
           style={{
             fontFamily: "'Montserrat', sans-serif",
