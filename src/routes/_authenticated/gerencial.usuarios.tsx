@@ -195,7 +195,7 @@ function UsuariosPage() {
       });
     },
     onSuccess: () => {
-      toast.success(`Convite enviado para ${inviteEmail} ✉️`);
+      toast.success(`Convite enviado para ${inviteEmail}`);
       setInviteNome(""); setInviteEmail(""); setInviteCargo("tecnico");
       setShowInvite(false);
       qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
