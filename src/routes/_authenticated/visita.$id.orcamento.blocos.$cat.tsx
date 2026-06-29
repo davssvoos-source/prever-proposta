@@ -561,7 +561,7 @@ function VeiculosConfigurador({
           )}
 
           <div style={CARD}>
-            <div style={LBL}>Tipo de acesso para entrar{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
+            <div style={LBL}>Entrada</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 style={btnStyle(p.tipoAcessoEntrar === "controle_simples")}
@@ -580,7 +580,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoEntrar !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de acesso para sair{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
+              <div style={LBL}>Saída</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAcessoSair === "controle_simples")}
@@ -606,7 +606,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoSair !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de abertura{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
+              <div style={LBL}>Tipo de abertura</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAbertura === "basculante")}
