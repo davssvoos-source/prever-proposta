@@ -157,11 +157,13 @@ function Dashboard() {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const visitasFiltradas = visitas.filter((v: any) => {
+    if (!filtroAtivo) return true;
     if (!v.data_hora_agendada) return false;
     const d = new Date(v.data_hora_agendada);
     if (filtroAtivo === 'hoje') return d >= startOfDay && d <= endOfDay;
     if (filtroAtivo === 'semana') return d >= startOfWeek && d <= endOfWeek;
-    return d >= startOfMonth && d <= endOfMonth;
+    if (filtroAtivo === 'mes') return d >= startOfMonth && d <= endOfMonth;
+    return true;
   });
 
   const visitasExibidas = statusFiltro === 'todos'
@@ -170,8 +172,8 @@ function Dashboard() {
 
   const pendentes = visitasExibidas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitasExibidas.filter((v: any) => v.status === "concluida");
-  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const aguardando = visitasExibidas.filter((v: any) => v.status === "aguardando_aprovacao");
+  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovado");
   const reprovadas = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
