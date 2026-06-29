@@ -51,7 +51,7 @@ function CalendarioPage() {
       if (isAdmin) {
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .select("id, status, data_hora_agendada, titulo, nome_predio")
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
           .order("data_hora_agendada");
@@ -62,7 +62,7 @@ function CalendarioPage() {
         if (!user) return [];
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .select("id, status, data_hora_agendada, titulo, nome_predio")
           .eq("tecnico_id", user.id)
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
