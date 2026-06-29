@@ -165,7 +165,7 @@ function NovaVisitaPage() {
 
   const criarMutation = useMutation({
     mutationFn: async () => {
-      const dataHoraAgendada = new Date(`${data}T${hora}:00`).toISOString();
+      const dataHoraAgendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
       const { data: { user } } = await supabase.auth.getUser();
 
       // 1) Criar cliente
