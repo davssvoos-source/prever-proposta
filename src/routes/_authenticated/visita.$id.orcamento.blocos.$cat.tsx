@@ -561,7 +561,7 @@ function VeiculosConfigurador({
           )}
 
           <div style={CARD}>
-            <div style={LBL}>Tipo de acesso para entrar — Portão {idx + 1}</div>
+            <div style={LBL}>Tipo de acesso para entrar{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 style={btnStyle(p.tipoAcessoEntrar === "controle_simples")}
