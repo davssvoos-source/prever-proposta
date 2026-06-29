@@ -331,10 +331,12 @@ function FallbackList({
 
 function PedestresConfigurador({
   blocos,
+  savedItensVariaveis,
   onSave,
 }: {
   blocos: Bloco[];
-  onSave: (qtds: Record<string, number>) => void;
+  savedItensVariaveis: Record<string, Record<string, number>>;
+  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
 }) {
   type NP = "1P" | "2P";
   type Material = "MET" | "VID";
@@ -345,12 +347,7 @@ function PedestresConfigurador({
   const [material, setMaterial] = useState<Material | null>(null);
   const [controle, setControle] = useState<Controle | null>(null);
   const [qtdBloco, setQtdBloco] = useState(1);
-  const [activeEquipId, setActiveEquipId] = useState<string | null>(null);
-  const [equipQtd, setEquipQtd] = useState<Record<string, number>>({});
 
-  function getQtd(equipId: string, baseQtd: number): number {
-    return equipQtd[equipId] ?? baseQtd;
-  }
 
   // Eclusa (2P) só disponível em metal
   useEffect(() => {
