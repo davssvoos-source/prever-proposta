@@ -377,5 +377,6 @@ function GerencialPage() {
     >
       <Plus size={28} color="#08090E" strokeWidth={2.5} />
     </button>
+    </>
   );
 }
