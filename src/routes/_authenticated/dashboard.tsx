@@ -552,7 +552,7 @@ function SwipeableCard({
   const [offsetX, setOffsetX] = useState(0);
 
   const ACTION_W = 72;
-  const EXECUTE_AT = 140;
+  const EXECUTE_AT = Math.round((typeof window !== "undefined" ? window.innerWidth : 400) * 0.78);
   const clamp = (v: number) => Math.min(0, Math.max(-EXECUTE_AT, v));
 
   const onStart = (clientX: number) => {
@@ -564,19 +564,18 @@ function SwipeableCard({
     const next = clamp(clientX - startX.current);
     currentX.current = next;
     setOffsetX(next);
-    if (next <= -EXECUTE_AT) {
-      dragging.current = false;
-      currentX.current = 0;
-      setOffsetX(0);
-      onReagendar(visitaId);
-    }
   };
   const onEnd = () => {
     if (!dragging.current) return;
     dragging.current = false;
-    if (currentX.current < -ACTION_W / 2) {
-      currentX.current = -ACTION_W;
-      setOffsetX(-ACTION_W);
+    if (currentX.current <= -EXECUTE_AT * 0.75) {
+      currentX.current = -EXECUTE_AT;
+      setOffsetX(-EXECUTE_AT);
+      setTimeout(() => {
+        currentX.current = 0;
+        setOffsetX(0);
+        onReagendar(visitaId);
+      }, 220);
     } else {
       currentX.current = 0;
       setOffsetX(0);
@@ -584,32 +583,31 @@ function SwipeableCard({
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: 12, borderRadius: 18, overflow: "hidden" }}>
+    <div style={{ position: "relative", marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
       <div
-        onClick={() => onReagendar(visitaId)}
         style={{
           position: "absolute",
-          top: 0, right: 0, bottom: 0,
-          width: 140,
-          background: "#FFFFFF",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: ACTION_W,
+          background: "white",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 4,
-          cursor: "pointer",
+          borderTopRightRadius: 20,
+          borderBottomRightRadius: 20,
         }}
       >
-        <CalendarDays size={20} color="#0a0a14" />
-        <span style={{ fontSize: 11, color: "#0a0a14", fontWeight: 500, letterSpacing: "0.04em" }}>
-          Reagendar
-        </span>
+        <CalendarRange size={22} color="#3B82F6" />
       </div>
       <div
         style={{
           transform: `translateX(${offsetX}px)`,
           transition: dragging.current ? "none" : "transform 0.25s ease",
           touchAction: "pan-y",
+          position: "relative",
+          zIndex: 1,
         }}
         onMouseDown={(e) => onStart(e.clientX)}
         onMouseMove={(e) => onMove(e.clientX)}
@@ -624,6 +622,7 @@ function SwipeableCard({
     </div>
   );
 }
+
 
 function Section({ title, icon, items, onReagendar }: { title: string; icon?: React.ReactNode; items: any[]; onReagendar?: (id: string) => void }) {
   return (
