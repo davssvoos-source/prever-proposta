@@ -1,10 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/categorias")({
   component: CategoriasPage,
 });
+
+const SLUG_TO_TIPO: Record<string, string> = {
+  pedestres: "PED",
+  veiculos: "VEI",
+  cftv: "CFTV",
+  alarme: "AL",
+  cerca: "CER",
+};
+
 
 const ICON_COLOR = "#FFC000";
 
@@ -129,6 +141,63 @@ function SlideToNext({
 function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: visita } = useQuery({
+    queryKey: ["visita", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visitas_tecnicas")
+        .select("id, servicos_propostos")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: contagemBlocos = [] } = useQuery({
+    queryKey: ["visita_blocos_count", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("tipo_bloco")
+        .eq("visita_id", id);
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+  });
+
+  const countPorTipo = (tipoSlug: string) => {
+    const tipo = SLUG_TO_TIPO[tipoSlug];
+    return contagemBlocos.filter((b: any) => b.tipo_bloco === tipo).length;
+  };
+
+  const totalBlocos = contagemBlocos.length;
+
+  useEffect(() => {
+    if (!visita) return;
+    const servicos = (visita as any).servicos_propostos as string[] | null;
+    if (!servicos?.includes("portaria_remota")) return;
+    const jaExiste = contagemBlocos.some((b: any) => b.tipo_bloco === "CENT");
+    if (jaExiste) return;
+
+    (async () => {
+      const { error } = await supabase.from("visita_blocos" as any).insert({
+        visita_id: id,
+        codigo_bloco: "CENT-PR",
+        nome_descritivo: "Central de Portaria Remota",
+        tipo_bloco: "CENT",
+        eclusa: false,
+        hh_padrao: 10,
+        quantidade: 1,
+        ordem: 999,
+      });
+      if (!error) {
+        queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", id] });
+      }
+    })();
+  }, [visita, contagemBlocos, id, queryClient]);
 
   const CARD: React.CSSProperties = {
     background: "rgba(8,8,12,0.22)",
@@ -142,7 +211,9 @@ function CategoriasPage() {
     cursor: "pointer",
     transition: "border 0.2s, background 0.2s, transform 0.15s",
     touchAction: "manipulation",
+    position: "relative",
   };
+
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -215,63 +286,88 @@ function CategoriasPage() {
         Toque em uma categoria para configurar os blocos correspondentes
       </div>
 
-      {CATEGORIAS.map((cat) => (
-        <div
-          key={cat.id}
-          style={CARD}
-          onClick={() =>
-            navigate({
-              to: "/visita/$id/orcamento/blocos/$cat",
-              params: { id, cat: cat.id },
-            })
-          }
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background = "rgba(255,192,0,0.08)";
-            (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.30)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background = "rgba(8,8,12,0.22)";
-            (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 400,
-                fontSize: 15,
-                color: "#fff",
-                marginBottom: 4,
-              }}
-            >
-              {cat.label}
+      {CATEGORIAS.map((cat) => {
+        const count = countPorTipo(cat.id);
+        return (
+          <div
+            key={cat.id}
+            style={CARD}
+            onClick={() =>
+              navigate({
+                to: "/visita/$id/orcamento/blocos/$cat",
+                params: { id, cat: cat.id },
+              })
+            }
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background = "rgba(255,192,0,0.08)";
+              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.30)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background = "rgba(8,8,12,0.22)";
+              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 400,
+                  fontSize: 15,
+                  color: "#fff",
+                  marginBottom: 4,
+                }}
+              >
+                {cat.label}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.45)",
+                  lineHeight: 1.4,
+                }}
+              >
+                {cat.desc}
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 11,
-                color: "rgba(255,255,255,0.45)",
-                lineHeight: 1.4,
-              }}
-            >
-              {cat.desc}
-            </div>
+            {count > 0 && (
+              <div
+                style={{
+                  background: "rgba(34,197,94,0.18)",
+                  border: "1px solid rgba(34,197,94,0.45)",
+                  color: "#22C55E",
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "'Montserrat', sans-serif",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {count} {count === 1 ? "bloco" : "blocos"}
+              </div>
+            )}
+            <ChevronRight size={20} color="rgba(255,192,0,0.55)" />
           </div>
-          <ChevronRight size={20} color="rgba(255,192,0,0.55)" />
-        </div>
-      ))}
+        );
+      })}
 
       {/* Botão deslizar para próximo passo */}
       <div style={{ marginTop: 24, paddingBottom: 16 }}>
         <SlideToNext
           pending={false}
           onConfirm={() => {
+            if (totalBlocos === 0) {
+              toast.error("Adicione pelo menos um bloco antes de continuar.");
+              return;
+            }
             navigate({ to: "/visita/$id", params: { id } });
           }}
         />
       </div>
+
     </div>
   );
 }

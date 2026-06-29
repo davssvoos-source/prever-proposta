@@ -1,1035 +1,616 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Minus, Plus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import {
+  LABELS,
+  OPCOES,
+  type BlocoConfig,
+  type BarreiraConfig,
+  type TipoBloco,
+  gerarCodigoBloco,
+  gerarDescricaoBloco,
+  CAT_SLUG_TO_TIPO,
+  CAT_NOMES,
+} from "@/lib/blocos";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
-  component: BlocosCatPage,
+  component: BlocosWizardPage,
 });
 
-const CAT_PREFIXES: Record<string, string[]> = {
-  pedestres: ["PED"],
-  veiculos: ["VEI"],
-  cftv: ["CFTV"],
-  alarme: ["ALARM"],
-  cerca: ["CERCA"],
-};
-const CAT_LABELS: Record<string, string> = {
-  pedestres: "Acesso de Pedestres",
-  veiculos: "Acesso de Veículos",
-  cftv: "CFTV",
-  alarme: "Alarme",
-  cerca: "Cerca Elétrica",
-};
-const CAT_ORDER = ["pedestres", "veiculos", "cftv", "alarme", "cerca"];
+// ─── Tipos internos do wizard ─────────────────────────────────────────────────
 
-type BlocoItem = { id: string; nome: string; modelo: string; qty: number; variavel: boolean };
-type Bloco = {
-  id: string;
-  code: string;
-  name: string;
-  hh: number;
-  descricao: string | null;
-  blocos_itens: BlocoItem[];
-};
+type WizardStep =
+  | "eclusa"
+  | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_material" | "b1_abertura" | "b1_folhas"
+  | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_material" | "b2_abertura" | "b2_folhas"
+  | "tecnologia"
+  | "resumo";
 
-const CARD: React.CSSProperties = {
-  background: "rgba(8,8,12,0.22)",
-  backdropFilter: "blur(12px) saturate(130%)",
-  border: "1px solid rgba(255,192,0,0.10)",
-  borderRadius: 18,
-  padding: "18px 16px",
-  marginBottom: 16,
-};
-const LBL: React.CSSProperties = {
+interface WizardState {
+  step: WizardStep;
+  eclusa: boolean;
+  b1: Partial<BarreiraConfig>;
+  b2: Partial<BarreiraConfig>;
+  tecnologia: string | null;
+}
+
+// ─── Estilos compartilhados ───────────────────────────────────────────────────
+
+const PAGE_STYLE: React.CSSProperties = {
+  padding: "12px 14px 120px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
   fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  fontSize: 10,
-  color: "rgba(255,192,0,0.65)",
-  marginBottom: 12,
+  color: "#fff",
 };
-const btnStyle = (active: boolean, disabled = false): React.CSSProperties => ({
-  flex: 1,
-  padding: "12px 8px",
+
+const BACK_BTN_STYLE: React.CSSProperties = {
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
-  cursor: disabled ? "not-allowed" : "pointer",
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: active ? 500 : 300,
-  fontSize: 13,
-  background: active ? "rgba(255,192,0,0.18)" : "rgba(255,255,255,0.04)",
-  border: active ? "1px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,255,255,0.08)",
-  color: active ? "#FFC000" : "rgba(255,255,255,0.6)",
-  transition: "all 0.18s",
-  opacity: disabled ? 0.35 : 1,
-});
+  width: 40,
+  height: 40,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  color: "#fff",
+};
 
-function BlocoDetailCard({
-  bloco,
-  qtdBloco,
-  setQtdBloco,
-  savedItens,
-  onSave,
-}: {
-  bloco: Bloco;
-  qtdBloco: number;
-  setQtdBloco: (n: number) => void;
-  savedItens: Record<string, number>;
-  onSave: (customItemQtds: Record<string, number>) => void;
-}) {
-  const [customItemQtds, setCustomItemQtds] = useState<Record<string, number>>({});
+// ─── Componente principal ─────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const defaults: Record<string, number> = {};
-    for (const item of bloco.blocos_itens ?? []) {
-      defaults[item.id] = savedItens[item.id] ?? item.qty ?? 0;
-    }
-    setCustomItemQtds(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bloco.id]);
-
-  return (
-    <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
-      <div style={LBL}>Bloco identificado</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#fff", fontSize: 14 }}>{bloco.name}</span>
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{bloco.hh} HH</span>
-      </div>
-      {bloco.descricao && (
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 12,
-            color: "rgba(255,255,255,0.55)",
-            marginBottom: 14,
-          }}
-        >
-          {bloco.descricao}
-        </div>
-      )}
-
-      <div style={{ ...LBL, marginTop: 8 }}>Equipamentos inclusos</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
-        {(bloco.blocos_itens ?? []).map((it) => {
-          const q = customItemQtds[it.id] ?? it.qty ?? 0;
-          return (
-            <div
-              key={it.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                padding: "8px 10px",
-                borderRadius: 10,
-                background: "rgba(255,255,255,0.04)",
-                fontFamily: "'Montserrat', sans-serif",
-                fontSize: 12,
-                color: "rgba(255,255,255,0.85)",
-              }}
-            >
-              <span style={{ flex: 1, minWidth: 0 }}>
-                {it.nome}
-                {it.modelo ? ` · ${it.modelo}` : ""}
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() =>
-                    setCustomItemQtds((prev) => ({
-                      ...prev,
-                      [it.id]: Math.max(0, (prev[it.id] ?? it.qty ?? 0) - 1),
-                    }))
-                  }
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 6,
-                    background: "rgba(255,192,0,0.15)",
-                    border: "1px solid rgba(255,192,0,0.35)",
-                    color: "#FFC000",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Minus size={13} />
-                </button>
-                <span style={{ minWidth: 22, textAlign: "center", color: "#FFC000", fontWeight: 600 }}>{q}</span>
-                <button
-                  onClick={() =>
-                    setCustomItemQtds((prev) => ({
-                      ...prev,
-                      [it.id]: (prev[it.id] ?? it.qty ?? 0) + 1,
-                    }))
-                  }
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 6,
-                    background: "rgba(255,192,0,0.15)",
-                    border: "1px solid rgba(255,192,0,0.35)",
-                    color: "#FFC000",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Plus size={13} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={LBL}>Quantidade deste bloco</div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <button
-          onClick={() => setQtdBloco(Math.max(1, qtdBloco - 1))}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            background: "rgba(255,192,0,0.15)",
-            border: "1px solid rgba(255,192,0,0.35)",
-            color: "#FFC000",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <Minus size={18} />
-        </button>
-        <span
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 400,
-            fontSize: 26,
-            color: "#FFC000",
-            minWidth: 40,
-            textAlign: "center",
-          }}
-        >
-          {qtdBloco}
-        </span>
-        <button
-          onClick={() => setQtdBloco(qtdBloco + 1)}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            background: "rgba(255,192,0,0.15)",
-            border: "1px solid rgba(255,192,0,0.35)",
-            color: "#FFC000",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={18} />
-        </button>
-      </div>
-
-      <button
-        onClick={() => onSave(customItemQtds)}
-        style={{
-          marginTop: 18,
-          width: "100%",
-          padding: 14,
-          borderRadius: 14,
-          background: "linear-gradient(135deg,#FFD700,#FFC000)",
-          border: "none",
-          color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 500,
-          fontSize: 13,
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          cursor: "pointer",
-        }}
-      >
-        Adicionar bloco
-      </button>
-    </div>
-  );
-}
-
-
-function FallbackList({
-  blocos,
-  onPick,
-  prefixLabel,
-}: {
-  blocos: Bloco[];
-  onPick: (id: string) => void;
-  prefixLabel: string;
-}) {
-  return (
-    <div style={CARD}>
-      <div style={LBL}>Combinação não disponível — escolha manualmente</div>
-      <div
-        style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
-          fontSize: 11,
-          color: "rgba(255,255,255,0.45)",
-          marginBottom: 10,
-        }}
-      >
-        Mostrando todos os blocos {prefixLabel} cadastrados:
-      </div>
-      {blocos.map((b) => (
-        <button
-          key={b.id}
-          onClick={() => onPick(b.id)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            width: "100%",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 12,
-            padding: "12px 14px",
-            marginBottom: 8,
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <span style={{ color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 500 }}>
-            {b.code}
-          </span>
-          <span style={{ color: "#fff", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>{b.name}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function PedestresConfigurador({
-  blocos,
-  savedItensVariaveis,
-  onSave,
-}: {
-  blocos: Bloco[];
-  savedItensVariaveis: Record<string, Record<string, number>>;
-  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
-}) {
-  type NP = "1P" | "2P";
-  type Material = "MET" | "VID";
-  type Controle = "E" | "ES" | "PAD";
-
-  const [nP, setNP] = useState<NP | null>(null);
-  const [qtdPortas, setQtdPortas] = useState<number | null>(null);
-  const [material, setMaterial] = useState<Material | null>(null);
-  const [controle, setControle] = useState<Controle | null>(null);
-  const [qtdBloco, setQtdBloco] = useState(1);
-
-
-  // Eclusa (2P) só disponível em metal
-  useEffect(() => {
-    if (nP === "2P" && material === "VID") setMaterial(null);
-    setControle(null);
-  }, [nP]);
-  useEffect(() => {
-    setControle(null);
-  }, [material]);
-
-  const configCompleta = nP !== null && material !== null && controle !== null;
-  const expectedCode = configCompleta ? `PED-${nP}-${controle}-${material}-PR` : null;
-  const blocoEncontrado = expectedCode ? blocos.find((b) => b.code === expectedCode) ?? null : null;
-
-  return (
-    <div>
-      <div style={CARD}>
-        <div style={LBL}>ECLUSA?</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button style={btnStyle(nP === "1P")} onClick={() => { setNP("1P"); setQtdPortas(null); }}>
-            Não
-          </button>
-          <button style={btnStyle(nP === "2P")} onClick={() => setNP("2P")}>
-            Sim
-          </button>
-        </div>
-      </div>
-
-      {nP === "2P" && (
-        <div style={CARD}>
-          <div style={LBL}>QUANTIDADE DE PORTAS</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[2, 3, 4].map((n) => (
-              <button
-                key={n}
-                style={{ ...btnStyle(qtdPortas === n), minWidth: 56 }}
-                onClick={() => setQtdPortas(n)}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {nP !== null && (
-        <div style={CARD}>
-          <div style={LBL}>Material da porta</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(material === "MET")} onClick={() => setMaterial("MET")}>
-              Metal
-            </button>
-            <button
-              style={btnStyle(material === "VID", nP === "2P")}
-              onClick={() => nP !== "2P" && setMaterial("VID")}
-              disabled={nP === "2P"}
-            >
-              Vidro
-            </button>
-          </div>
-          {nP === "2P" && (
-            <div
-              style={{
-                marginTop: 10,
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 11,
-                color: "rgba(255,255,255,0.45)",
-              }}
-            >
-              Eclusa só disponível em metal
-            </div>
-          )}
-        </div>
-      )}
-
-      {material !== null && (
-        <div style={CARD}>
-          <div style={LBL}>Nível de controle</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {([
-              { id: "E", title: "E — Entrada", desc: "Facial apenas no acesso de entrada" },
-              { id: "ES", title: "ES — Entrada + Saída", desc: "Facial na entrada e na saída" },
-              ...(nP === "2P"
-                ? [{ id: "PAD", title: "PAD — Controle Padrão (3 pontos)", desc: "3 faciais: entrada, saída e eclusa" }]
-                : []),
-            ] as { id: Controle; title: string; desc: string }[]).map((opt) => (
-              <button
-                key={opt.id}
-                style={{ ...btnStyle(controle === opt.id), textAlign: "left", padding: 14 }}
-                onClick={() => setControle(opt.id)}
-              >
-                <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>{opt.title}</div>
-                <div style={{ fontWeight: 300, fontSize: 11, opacity: 0.7 }}>{opt.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {configCompleta && blocoEncontrado && (
-        <BlocoDetailCard
-          bloco={blocoEncontrado}
-          qtdBloco={qtdBloco}
-          setQtdBloco={setQtdBloco}
-          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
-          onSave={(customItemQtds) =>
-            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
-          }
-        />
-      )}
-
-      {configCompleta && !blocoEncontrado && (
-        <FallbackList
-          blocos={blocos}
-          prefixLabel="PED"
-          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
-        />
-      )}
-    </div>
-  );
-}
-
-
-function VeiculosConfigurador({
-  blocos,
-  savedItensVariaveis,
-  onSave,
-}: {
-  blocos: Bloco[];
-  savedItensVariaveis: Record<string, Record<string, number>>;
-  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
-}) {
-  type Eclusa = "sim" | "nao";
-  type AcessoEntrar = "controle_simples" | "tag_facial";
-  type AcessoSair = "controle_simples" | "tag_facial" | "livre";
-  type Abertura = "basculante" | "deslizante" | "pivotante";
-  type PortaoCfg = {
-    tipoAcessoEntrar: AcessoEntrar | null;
-    tipoAcessoSair: AcessoSair | null;
-    tipoAbertura: Abertura | null;
-  };
-
-  const [eclusa, setEclusa] = useState<Eclusa | null>(null);
-  const [qtdPortoes, setQtdPortoes] = useState<1 | 2 | 3 | null>(null);
-  const [portoes, setPortoes] = useState<PortaoCfg[]>([]);
-  const [qtdBloco, setQtdBloco] = useState(1);
-
-  // Quando ECLUSA = NÃO, força quantidade = 1 e oculta o seletor.
-  useEffect(() => {
-    if (eclusa === "nao") setQtdPortoes(1);
-    else if (eclusa === "sim") setQtdPortoes((prev) => (prev === 1 ? null : prev));
-    else setQtdPortoes(null);
-  }, [eclusa]);
-
-  // Ajusta array de portões quando a quantidade muda
-  useEffect(() => {
-    if (qtdPortoes === null) {
-      setPortoes([]);
-      return;
-    }
-    setPortoes((prev) => {
-      const next: PortaoCfg[] = [];
-      for (let i = 0; i < qtdPortoes; i++) {
-        next.push(prev[i] ?? { tipoAcessoEntrar: null, tipoAcessoSair: null, tipoAbertura: null });
-      }
-      return next;
-    });
-  }, [qtdPortoes]);
-
-  const updatePortao = (idx: number, patch: Partial<PortaoCfg>) =>
-    setPortoes((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
-
-  const portoesCompletos =
-    qtdPortoes !== null &&
-    portoes.length === qtdPortoes &&
-    portoes.every((p) => p.tipoAcessoEntrar && p.tipoAcessoSair && p.tipoAbertura);
-
-  const configCompleta = eclusa !== null && qtdPortoes !== null && portoesCompletos;
-
-  return (
-    <div>
-      <div style={CARD}>
-        <div style={LBL}>Eclusa?</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button style={btnStyle(eclusa === "sim")} onClick={() => setEclusa("sim")}>
-            Sim
-          </button>
-          <button style={btnStyle(eclusa === "nao")} onClick={() => setEclusa("nao")}>
-            Não
-          </button>
-        </div>
-      </div>
-
-      {eclusa === "sim" && (
-        <div style={CARD}>
-          <div style={LBL}>Quantidade de portões?</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(qtdPortoes === 2)} onClick={() => setQtdPortoes(2)}>
-              2 portões
-            </button>
-            <button style={btnStyle(qtdPortoes === 3)} onClick={() => setQtdPortoes(3)}>
-              3 portões
-            </button>
-          </div>
-        </div>
-      )}
-
-      {portoes.map((p, idx) => (
-        <div key={idx}>
-          {portoes.length > 1 && (
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 500,
-                fontSize: 11,
-                letterSpacing: "0.18em",
-                color: "#FFC000",
-                textAlign: "center",
-                margin: "20px 0 10px",
-                opacity: 0.85,
-              }}
-            >
-              ─── PORTÃO {idx + 1} ───
-            </div>
-          )}
-
-          <div style={CARD}>
-            <div style={LBL}>Entrada</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                style={btnStyle(p.tipoAcessoEntrar === "controle_simples")}
-                onClick={() => updatePortao(idx, { tipoAcessoEntrar: "controle_simples" })}
-              >
-                Controle simples
-              </button>
-              <button
-                style={btnStyle(p.tipoAcessoEntrar === "tag_facial")}
-                onClick={() => updatePortao(idx, { tipoAcessoEntrar: "tag_facial" })}
-              >
-                Tag / Facial
-              </button>
-            </div>
-          </div>
-
-          {p.tipoAcessoEntrar !== null && (
-            <div style={CARD}>
-              <div style={LBL}>Saída</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  style={btnStyle(p.tipoAcessoSair === "controle_simples")}
-                  onClick={() => updatePortao(idx, { tipoAcessoSair: "controle_simples" })}
-                >
-                  Controle simples
-                </button>
-                <button
-                  style={btnStyle(p.tipoAcessoSair === "tag_facial")}
-                  onClick={() => updatePortao(idx, { tipoAcessoSair: "tag_facial" })}
-                >
-                  Tag / Facial
-                </button>
-                <button
-                  style={btnStyle(p.tipoAcessoSair === "livre")}
-                  onClick={() => updatePortao(idx, { tipoAcessoSair: "livre" })}
-                >
-                  Livre
-                </button>
-              </div>
-            </div>
-          )}
-
-          {p.tipoAcessoSair !== null && (
-            <div style={CARD}>
-              <div style={LBL}>Tipo de abertura</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  style={btnStyle(p.tipoAbertura === "basculante")}
-                  onClick={() => updatePortao(idx, { tipoAbertura: "basculante" })}
-                >
-                  Basculante
-                </button>
-                <button
-                  style={btnStyle(p.tipoAbertura === "deslizante")}
-                  onClick={() => updatePortao(idx, { tipoAbertura: "deslizante" })}
-                >
-                  Deslizante
-                </button>
-                <button
-                  style={btnStyle(p.tipoAbertura === "pivotante")}
-                  onClick={() => updatePortao(idx, { tipoAbertura: "pivotante" })}
-                >
-                  Pivotante
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
-
-      {configCompleta && (
-        <FallbackList
-          blocos={blocos}
-          prefixLabel="VEI"
-          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
-        />
-      )}
-    </div>
-  );
-}
-
-
-function BlocoGenericList({
-  blocos,
-  savedQtds,
-  onSave,
-}: {
-  blocos: Bloco[];
-  savedQtds: Record<string, number>;
-  onSave: (qtds: Record<string, number>) => void;
-}) {
-  const [qtds, setQtds] = useState<Record<string, number>>(savedQtds);
-  useEffect(() => {
-    setQtds(savedQtds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const inc = (id: string) => setQtds((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }));
-  const dec = (id: string) =>
-    setQtds((p) => {
-      const next = Math.max(0, (p[id] ?? 0) - 1);
-      const copy = { ...p };
-      if (next === 0) delete copy[id];
-      else copy[id] = next;
-      return copy;
-    });
-
-  if (blocos.length === 0)
-    return (
-      <div style={{ ...CARD, textAlign: "center", padding: 32 }}>
-        <div style={{ fontSize: 38, marginBottom: 10 }}></div>
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 12,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
-          Nenhum bloco cadastrado para esta categoria.
-        </div>
-      </div>
-    );
-
-  return (
-    <div>
-      {blocos.map((b) => {
-        const q = qtds[b.id] ?? 0;
-        return (
-          <div
-            key={b.id}
-            style={{
-              ...CARD,
-              marginBottom: 10,
-              background: q > 0 ? "rgba(255,192,0,0.06)" : "rgba(8,8,12,0.22)",
-              border: q > 0 ? "1px solid rgba(255,192,0,0.35)" : "1px solid rgba(255,192,0,0.08)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                  <span
-                    style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 500,
-                      fontSize: 10,
-                      color: "#FFC000",
-                      background: "rgba(255,192,0,0.10)",
-                      padding: "2px 8px",
-                      borderRadius: 6,
-                    }}
-                  >
-                    {b.code}
-                  </span>
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14, color: "#fff" }}>{b.name}</span>
-                </div>
-                {b.descricao && (
-                  <div
-                    style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.45)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {b.descricao}
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 10,
-                    color: "rgba(255,255,255,0.35)",
-                  }}
-                >
-                  {b.hh} HH
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => dec(b.id)}
-                  disabled={q === 0}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: "50%",
-                    background: q > 0 ? "rgba(255,192,0,0.15)" : "rgba(255,255,255,0.05)",
-                    border: q > 0 ? "1px solid rgba(255,192,0,0.35)" : "1px solid rgba(255,255,255,0.08)",
-                    color: q > 0 ? "#FFC000" : "rgba(255,255,255,0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: q > 0 ? "pointer" : "default",
-                  }}
-                >
-                  <Minus size={16} />
-                </button>
-                <span
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 400,
-                    fontSize: 18,
-                    color: q > 0 ? "#FFC000" : "rgba(255,255,255,0.3)",
-                    minWidth: 24,
-                    textAlign: "center",
-                  }}
-                >
-                  {q}
-                </span>
-                <button
-                  onClick={() => inc(b.id)}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: "50%",
-                    background: "rgba(255,192,0,0.15)",
-                    border: "1px solid rgba(255,192,0,0.35)",
-                    color: "#FFC000",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-            </div>
-            {q > 0 && (b.blocos_itens ?? []).length > 0 && (
-              <div
-                style={{
-                  borderTop: "1px solid rgba(255,192,0,0.15)",
-                  paddingTop: 10,
-                  marginTop: 12,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 4,
-                }}
-              >
-                {b.blocos_itens.map((it) => (
-                  <div
-                    key={it.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.6)",
-                    }}
-                  >
-                    <span>
-                      {it.nome} · {it.modelo}
-                    </span>
-                    <span style={{ color: "#FFC000" }}>
-                      {it.qty * q}
-                      {it.variavel ? " (V)" : ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-      <button
-        onClick={() => onSave(qtds)}
-        style={{
-          width: "100%",
-          height: 56,
-          borderRadius: 28,
-          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
-          border: "none",
-          color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 500,
-          fontSize: 13,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          cursor: "pointer",
-          marginTop: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
-        }}
-      >
-        Salvar e continuar
-        <ChevronRight size={18} />
-      </button>
-    </div>
-  );
-}
-
-function BlocosCatPage() {
-  const { id, cat } = Route.useParams();
+function BlocosWizardPage() {
+  const { id: visitaId, cat: catSlug } = Route.useParams();
+  const cat: TipoBloco = CAT_SLUG_TO_TIPO[catSlug] ?? "PED";
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const prefixes = CAT_PREFIXES[cat] ?? [];
+  const queryClient = useQueryClient();
 
-  const { data: todosBlocos, isLoading } = useQuery({
-    queryKey: ["blocos-com-itens"],
+  const { data: blocosAdicionados = [], isLoading } = useQuery({
+    queryKey: ["visita_blocos", visitaId, cat],
     queryFn: async () => {
-      const { data, error } = await supabase.from("blocos").select("*, blocos_itens(*)").order("code");
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("*")
+        .eq("visita_id", visitaId)
+        .eq("tipo_bloco", cat)
+        .order("ordem");
       if (error) throw error;
-      return (data ?? []) as unknown as Bloco[];
+      return (data as any[]) || [];
     },
   });
 
-  const { data: orcamento } = useQuery({
-    queryKey: ["orcamento", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("visita_orcamentos")
-        .select("blocos_selecionados, itens_variaveis")
-        .eq("visita_id", id)
-        .maybeSingle();
-      return data;
-    },
-  });
+  const [wizard, setWizard] = useState<WizardState | null>(null);
 
-  const blocos = (todosBlocos ?? []).filter((b) =>
-    prefixes.some((p) => b.code.toUpperCase().startsWith(p)),
-  );
-
-  const savedQtds =
-    ((orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null)?.[cat]) ?? {};
-
-  const savedItensVariaveis =
-    (orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {};
-
-  const saveMutation = useMutation({
-    mutationFn: async (payload: {
-      qtds: Record<string, number>;
-      itensVariaveisPorBloco: Record<string, Record<string, number>>;
-    }) => {
-      const { data: current } = await supabase
-        .from("visita_orcamentos")
-        .select("blocos_selecionados, itens_variaveis")
-        .eq("visita_id", id)
-        .maybeSingle();
-      const existingBlocos =
-        (current?.blocos_selecionados ?? {}) as Record<string, Record<string, number>>;
-      const merged = { ...existingBlocos, [cat]: payload.qtds };
-
-      const existingItens =
-        (current?.itens_variaveis ?? {}) as Record<string, Record<string, number>>;
-      const mergedItens = { ...existingItens, ...payload.itensVariaveisPorBloco };
-
-      const { error } = await supabase.from("visita_orcamentos").upsert(
-        {
-          visita_id: id,
-          blocos_selecionados: merged,
-          itens_variaveis: mergedItens,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "visita_id" },
-      );
+  const salvarBlocoMutation = useMutation({
+    mutationFn: async (config: BlocoConfig) => {
+      const codigo = gerarCodigoBloco(config);
+      const nome = gerarDescricaoBloco(config);
+      const { error } = await supabase.from("visita_blocos" as any).insert({
+        visita_id: visitaId,
+        codigo_bloco: codigo,
+        nome_descritivo: nome,
+        tipo_bloco: config.tipoBloco,
+        qtd_barreiras: ["CFTV", "AL", "CER", "CENT"].includes(config.tipoBloco)
+          ? null
+          : config.eclusa ? "2B" : "1B",
+        eclusa: config.eclusa,
+        b1_tipo: config.b1?.tipo ?? null,
+        b1_entrada: config.b1?.entrada ?? null,
+        b1_saida: config.b1?.saida ?? null,
+        b1_material: config.b1?.material ?? null,
+        b1_abertura: config.b1?.abertura ?? null,
+        b1_folhas: config.b1?.folhas ?? null,
+        b2_tipo: config.b2?.tipo ?? null,
+        b2_entrada: config.b2?.entrada ?? null,
+        b2_saida: config.b2?.saida ?? null,
+        b2_material: config.b2?.material ?? null,
+        b2_abertura: config.b2?.abertura ?? null,
+        b2_folhas: config.b2?.folhas ?? null,
+        tecnologia: config.tecnologia ?? null,
+        hh_padrao: 10,
+        quantidade: 1,
+        ordem: blocosAdicionados.length,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orcamento", id] });
-      toast.success(`${CAT_LABELS[cat]} salvo`);
-      window.location.href = `/visita/${id}/orcamento/categorias`;
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+      setWizard(null);
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
+  const removerBlocoMutation = useMutation({
+    mutationFn: async (blocoId: string) => {
+      const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", blocoId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+    },
+  });
 
+  function iniciarWizard() {
+    const primeiroStep: WizardStep =
+      cat === "CFTV" || cat === "AL" ? "tecnologia" :
+      cat === "CER" ? "resumo" :
+      "eclusa";
+    setWizard({
+      step: primeiroStep,
+      eclusa: false,
+      b1: {},
+      b2: {},
+      tecnologia: null,
+    });
+  }
+
+  function selecionar(valor: string) {
+    if (!wizard) return;
+    const w: WizardState = {
+      ...wizard,
+      b1: { ...wizard.b1 },
+      b2: { ...wizard.b2 },
+    };
+
+    switch (w.step) {
+      case "eclusa":
+        w.eclusa = valor === "SIM";
+        w.step = "b1_tipo";
+        break;
+
+      case "b1_tipo":
+        w.b1 = { tipo: valor };
+        w.step = "b1_entrada";
+        break;
+      case "b1_entrada":
+        w.b1.entrada = valor;
+        w.step = "b1_saida";
+        break;
+      case "b1_saida":
+        w.b1.saida = valor;
+        if (w.b1.tipo === "PORP") w.step = "b1_material";
+        else if (w.b1.tipo === "PORV") w.step = "b1_abertura";
+        else w.step = w.eclusa ? "b2_tipo" : "resumo";
+        break;
+      case "b1_material":
+        w.b1.material = valor;
+        w.step = "b1_abertura";
+        break;
+      case "b1_abertura":
+        w.b1.abertura = valor;
+        if (w.b1.tipo === "PORP") {
+          w.step = w.eclusa ? "b2_tipo" : "resumo";
+        } else if (w.b1.tipo === "PORV") {
+          if (valor === "PIVO") {
+            w.step = "b1_folhas";
+          } else {
+            w.b1.folhas = "1F";
+            w.step = w.eclusa ? "b2_tipo" : "resumo";
+          }
+        }
+        break;
+      case "b1_folhas":
+        w.b1.folhas = valor;
+        w.step = w.eclusa ? "b2_tipo" : "resumo";
+        break;
+
+      case "b2_tipo":
+        w.b2 = { tipo: valor };
+        w.step = "b2_entrada";
+        break;
+      case "b2_entrada":
+        w.b2.entrada = valor;
+        w.step = "b2_saida";
+        break;
+      case "b2_saida":
+        w.b2.saida = valor;
+        if (w.b2.tipo === "PORP") w.step = "b2_material";
+        else if (w.b2.tipo === "PORV") w.step = "b2_abertura";
+        else w.step = "resumo";
+        break;
+      case "b2_material":
+        w.b2.material = valor;
+        w.step = "b2_abertura";
+        break;
+      case "b2_abertura":
+        w.b2.abertura = valor;
+        if (w.b2.tipo === "PORP") {
+          w.step = "resumo";
+        } else if (w.b2.tipo === "PORV") {
+          if (valor === "PIVO") {
+            w.step = "b2_folhas";
+          } else {
+            w.b2.folhas = "1F";
+            w.step = "resumo";
+          }
+        }
+        break;
+      case "b2_folhas":
+        w.b2.folhas = valor;
+        w.step = "resumo";
+        break;
+
+      case "tecnologia":
+        w.tecnologia = valor;
+        w.step = "resumo";
+        break;
+    }
+    setWizard(w);
+  }
+
+  function voltarPasso() {
+    if (!wizard) return;
+    const w = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
+    const step = w.step;
+
+    if (step === "eclusa" || step === "tecnologia") { setWizard(null); return; }
+    if (step === "b1_tipo") { w.step = "eclusa"; setWizard(w); return; }
+    if (step === "b1_entrada") { w.step = "b1_tipo"; setWizard(w); return; }
+    if (step === "b1_saida") { w.step = "b1_entrada"; setWizard(w); return; }
+    if (step === "b1_material") { w.step = "b1_saida"; setWizard(w); return; }
+    if (step === "b1_abertura") {
+      w.step = w.b1.tipo === "PORP" ? "b1_material" : "b1_saida"; setWizard(w); return;
+    }
+    if (step === "b1_folhas") { w.step = "b1_abertura"; setWizard(w); return; }
+    if (step === "b2_tipo") {
+      if (w.b1.tipo === "PORP") w.step = "b1_abertura";
+      else if (w.b1.tipo === "PORV") w.step = w.b1.folhas ? "b1_folhas" : "b1_abertura";
+      else w.step = "b1_saida";
+      setWizard(w); return;
+    }
+    if (step === "b2_entrada") { w.step = "b2_tipo"; setWizard(w); return; }
+    if (step === "b2_saida") { w.step = "b2_entrada"; setWizard(w); return; }
+    if (step === "b2_material") { w.step = "b2_saida"; setWizard(w); return; }
+    if (step === "b2_abertura") {
+      w.step = w.b2.tipo === "PORP" ? "b2_material" : "b2_saida"; setWizard(w); return;
+    }
+    if (step === "b2_folhas") { w.step = "b2_abertura"; setWizard(w); return; }
+    if (step === "resumo") {
+      if (cat === "CFTV" || cat === "AL") { w.step = "tecnologia"; setWizard(w); return; }
+      if (cat === "CER") { setWizard(null); return; }
+      const lastB = w.eclusa ? w.b2 : w.b1;
+      const prefix = w.eclusa ? "b2" : "b1";
+      if (lastB.tipo === "PORP") w.step = `${prefix}_abertura` as WizardStep;
+      else if (lastB.tipo === "PORV") {
+        w.step = lastB.abertura === "PIVO"
+          ? (`${prefix}_folhas` as WizardStep)
+          : (`${prefix}_abertura` as WizardStep);
+      } else {
+        w.step = `${prefix}_saida` as WizardStep;
+      }
+      setWizard(w);
+    }
+  }
+
+  function buildConfig(): BlocoConfig {
+    return {
+      tipoBloco: cat,
+      eclusa: wizard?.eclusa ?? false,
+      b1: wizard?.b1 as BarreiraConfig,
+      b2: wizard?.eclusa ? (wizard?.b2 as BarreiraConfig) : undefined,
+      tecnologia: wizard?.tecnologia ?? undefined,
+    };
+  }
+
+  function getOpcoes(): { valor: string; label: string; descricao?: string }[] {
+    if (!wizard) return [];
+    const { step, b1, b2 } = wizard;
+
+    switch (step) {
+      case "eclusa":
+        return [
+          { valor: "NAO", label: "Não", descricao: "Acesso simples — 1 barreira" },
+          { valor: "SIM", label: "Sim", descricao: "Eclusa — 2 barreiras em sequência" },
+        ];
+      case "b1_tipo":
+      case "b2_tipo":
+        if (cat === "PED") return [
+          { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
+          { valor: "PORP", label: "Porta de Pedestres", descricao: "Porta com controle de acesso" },
+        ];
+        if (cat === "VEI") return [
+          { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
+          { valor: "PORV", label: "Portão Veicular", descricao: "Portão completo para veículos" },
+        ];
+        return [];
+      case "b1_entrada":
+      case "b2_entrada": {
+        const tipo = (step === "b1_entrada" ? b1.tipo : b2.tipo) as string | undefined;
+        const lista =
+          tipo === "CAT" ? OPCOES.entradaCat :
+          tipo === "PORP" ? OPCOES.entradaPorp :
+          tipo === "CAN" ? OPCOES.entradaCan :
+          tipo === "PORV" ? OPCOES.entradaPorv : [];
+        return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
+      }
+      case "b1_saida":
+      case "b2_saida": {
+        const tipo = (step === "b1_saida" ? b1.tipo : b2.tipo) as string | undefined;
+        const lista =
+          tipo === "CAT" ? OPCOES.saidaCat :
+          tipo === "PORP" ? OPCOES.saidaPorp :
+          tipo === "CAN" ? OPCOES.saidaCan :
+          tipo === "PORV" ? OPCOES.saidaPorv : [];
+        return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
+      }
+      case "b1_material":
+      case "b2_material":
+        return OPCOES.materialPorp.map(v => ({ valor: v, label: LABELS[v] }));
+      case "b1_abertura":
+      case "b2_abertura": {
+        const b = step === "b1_abertura" ? b1 : b2;
+        if (b.tipo === "PORP") {
+          const lista = b.material === "VID" ? OPCOES.aberturaVid : OPCOES.aberturaMet;
+          return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
+        }
+        if (b.tipo === "PORV") return OPCOES.aberturaVei.map(v => ({
+          valor: v,
+          label: LABELS[v],
+          descricao:
+            v === "BASC" ? "Sempre 1 folha" :
+            v === "DESL" ? "Sempre 1 folha" :
+            "Pode ser 1 ou 2 folhas",
+        }));
+        return [];
+      }
+      case "b1_folhas":
+      case "b2_folhas":
+        return OPCOES.folhasPivo.map(v => ({ valor: v, label: LABELS[v] }));
+      case "tecnologia":
+        if (cat === "CFTV") return OPCOES.tecCftv.map(v => ({ valor: v, label: LABELS[v] }));
+        if (cat === "AL") return OPCOES.tecAl.map(v => ({ valor: v, label: LABELS[v] }));
+        return [];
+      default:
+        return [];
+    }
+  }
+
+  function getLabelPergunta(): string {
+    if (!wizard) return "";
+    const barrNr = wizard.step.startsWith("b2") ? " — BARREIRA 2" :
+                   wizard.step.startsWith("b1") ? " — BARREIRA 1" : "";
+    switch (wizard.step) {
+      case "eclusa": return "É UMA ECLUSA?";
+      case "b1_tipo":
+      case "b2_tipo": return `TIPO DE BARREIRA?${barrNr}`;
+      case "b1_entrada":
+      case "b2_entrada": return `DISPOSITIVO DE ENTRADA?${barrNr}`;
+      case "b1_saida":
+      case "b2_saida": return `DISPOSITIVO DE SAÍDA?${barrNr}`;
+      case "b1_material":
+      case "b2_material": return `TIPO DE MATERIAL?${barrNr}`;
+      case "b1_abertura":
+      case "b2_abertura": return `TIPO DE ABERTURA?${barrNr}`;
+      case "b1_folhas":
+      case "b2_folhas": return `QUANTIDADE DE FOLHAS?${barrNr}`;
+      case "tecnologia": return cat === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
+      default: return "";
+    }
+  }
+
+  // ─── Render: Wizard ──────────────────────────────────────────────────────
+  if (wizard) {
+    const config = buildConfig();
+
+    // Tela RESUMO
+    if (wizard.step === "resumo") {
+      const codigo = gerarCodigoBloco(config);
+      const descricao = gerarDescricaoBloco(config);
+      return (
+        <div style={PAGE_STYLE}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={voltarPasso} style={BACK_BTN_STYLE}>
+              <ArrowLeft size={18} />
+            </button>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+              {CAT_NOMES[cat]} › Configuração concluída
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: "rgba(255,215,0,0.06)",
+              border: "1px solid rgba(255,215,0,0.30)",
+              borderRadius: 18,
+              padding: 22,
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CheckCircle2 size={22} color="#FFD700" />
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "#FFD700" }}>
+                BLOCO IDENTIFICADO
+              </div>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>{CAT_NOMES[cat]}</div>
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
+              {descricao}
+            </div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }}>
+              {codigo}
+            </div>
+          </div>
+
+          <button
+            onClick={() => salvarBlocoMutation.mutate(config)}
+            disabled={salvarBlocoMutation.isPending}
+            style={{
+              width: "100%",
+              padding: "18px 0",
+              background: "linear-gradient(135deg, #B8860B, #FFD700)",
+              border: "none",
+              borderRadius: 16,
+              color: "#000",
+              fontSize: 15,
+              fontWeight: 800,
+              cursor: "pointer",
+              letterSpacing: 1.2,
+            }}
+          >
+            {salvarBlocoMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
+          </button>
+        </div>
+      );
+    }
+
+    // Telas de pergunta
+    const opcoes = getOpcoes();
+    return (
+      <div style={PAGE_STYLE}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={voltarPasso} style={BACK_BTN_STYLE}>
+            <ArrowLeft size={18} />
+          </button>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{CAT_NOMES[cat]}</div>
+        </div>
+
+        <div style={{ fontSize: 14, fontWeight: 600, color: "#FFD700", letterSpacing: 1, marginTop: 6 }}>
+          {getLabelPergunta()}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {opcoes.map(op => (
+            <button
+              key={op.valor}
+              onClick={() => selecionar(op.valor)}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,215,0,0.18)",
+                borderRadius: 14,
+                padding: "18px 20px",
+                textAlign: "left",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                color: "#fff",
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 500 }}>{op.label}</div>
+              {op.descricao && (
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{op.descricao}</div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Render: Lista de blocos da categoria ───────────────────────────────
   return (
-    <div style={{ padding: "12px 14px 140px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+    <div style={PAGE_STYLE}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 12,
-            width: 40,
-            height: 40,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#fff",
-          }}
+          onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })}
+          style={BACK_BTN_STYLE}
         >
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 400,
-              fontSize: 17,
-              color: "#fff",
-            }}
-          >
-            {CAT_LABELS[cat] ?? cat}
-          </div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.45)",
-              marginTop: 2,
-            }}
-          >
-            Passo 3 — Configure os blocos
-          </div>
+          <div style={{ fontSize: 18, fontWeight: 500 }}>Configurar blocos</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{CAT_NOMES[cat]}</div>
         </div>
       </div>
 
-      {isLoading ? (
-        <div
-          style={{
-            textAlign: "center",
-            color: "rgba(255,255,255,0.4)",
-            fontFamily: "'Montserrat', sans-serif",
-            padding: 40,
-          }}
-        >
-          Carregando blocos...
-        </div>
-      ) : cat === "pedestres" ? (
-        <PedestresConfigurador
-          blocos={blocos}
-          savedItensVariaveis={savedItensVariaveis}
-          onSave={(qtds, itensVariaveisPorBloco) =>
-            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
-          }
-        />
-      ) : cat === "veiculos" ? (
-        <VeiculosConfigurador
-          blocos={blocos}
-          savedItensVariaveis={savedItensVariaveis}
-          onSave={(qtds, itensVariaveisPorBloco) =>
-            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
-          }
-        />
-      ) : (
-        <BlocoGenericList
-          blocos={blocos}
-          savedQtds={savedQtds}
-          onSave={(qtds) => saveMutation.mutate({ qtds, itensVariaveisPorBloco: {} })}
-        />
-      )}
-
-      <div style={{ textAlign: "center", marginTop: 20 }}>
-        <button
-          onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
-          style={{
-            background: "none",
-            border: "none",
-            color: "rgba(255,255,255,0.35)",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          ← Voltar às categorias sem salvar
-        </button>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {isLoading ? (
+          <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>Carregando...</div>
+        ) : blocosAdicionados.length === 0 ? (
+          <div
+            style={{
+              border: "1px dashed rgba(255,255,255,0.15)",
+              borderRadius: 14,
+              padding: 24,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+              Nenhum bloco adicionado ainda.
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
+              Toque em "Adicionar bloco" para configurar.
+            </div>
+          </div>
+        ) : (
+          blocosAdicionados.map((bloco: any) => (
+            <div
+              key={bloco.id}
+              style={{
+                background: "rgba(8,8,12,0.35)",
+                border: "1px solid rgba(255,215,0,0.15)",
+                borderRadius: 14,
+                padding: 16,
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <CheckCircle2 size={16} color="#22C55E" />
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5 }}>
+                    {bloco.eclusa ? "Eclusa" : bloco.qtd_barreiras ? "Barreira Única" : "Sistema"}
+                    {bloco.b1_tipo ? ` — ${LABELS[bloco.b1_tipo] ?? bloco.b1_tipo}` : ""}
+                    {bloco.tecnologia ? ` — ${LABELS[bloco.tecnologia] ?? bloco.tecnologia}` : ""}
+                  </div>
+                </div>
+                <div style={{ fontSize: 14, color: "#fff", lineHeight: 1.4 }}>
+                  {bloco.nome_descritivo}
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                  HH: {bloco.hh_padrao}h
+                </div>
+              </div>
+              <button
+                onClick={() => removerBlocoMutation.mutate(bloco.id)}
+                disabled={removerBlocoMutation.isPending}
+                style={{
+                  background: "rgba(239,68,68,0.15)",
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  color: "#EF4444",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Trash2 size={12} /> Remover
+              </button>
+            </div>
+          ))
+        )}
       </div>
+
+      <button
+        onClick={iniciarWizard}
+        style={{
+          width: "100%",
+          padding: "18px 0",
+          background: "linear-gradient(135deg, #B8860B, #FFD700)",
+          border: "none",
+          borderRadius: 16,
+          color: "#000",
+          fontSize: 15,
+          fontWeight: 800,
+          cursor: "pointer",
+          letterSpacing: 1.2,
+          marginTop: 8,
+        }}
+      >
+        + ADICIONAR BLOCO
+      </button>
     </div>
   );
 }

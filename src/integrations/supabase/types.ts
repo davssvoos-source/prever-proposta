@@ -529,6 +529,95 @@ export type Database = {
         }
         Relationships: []
       }
+      visita_blocos: {
+        Row: {
+          b1_abertura: string | null
+          b1_entrada: string | null
+          b1_folhas: string | null
+          b1_material: string | null
+          b1_saida: string | null
+          b1_tipo: string | null
+          b2_abertura: string | null
+          b2_entrada: string | null
+          b2_folhas: string | null
+          b2_material: string | null
+          b2_saida: string | null
+          b2_tipo: string | null
+          codigo_bloco: string
+          created_at: string
+          eclusa: boolean | null
+          hh_padrao: number
+          id: string
+          nome_descritivo: string
+          ordem: number | null
+          qtd_barreiras: string | null
+          quantidade: number
+          tecnologia: string | null
+          tipo_bloco: string
+          visita_id: string
+        }
+        Insert: {
+          b1_abertura?: string | null
+          b1_entrada?: string | null
+          b1_folhas?: string | null
+          b1_material?: string | null
+          b1_saida?: string | null
+          b1_tipo?: string | null
+          b2_abertura?: string | null
+          b2_entrada?: string | null
+          b2_folhas?: string | null
+          b2_material?: string | null
+          b2_saida?: string | null
+          b2_tipo?: string | null
+          codigo_bloco: string
+          created_at?: string
+          eclusa?: boolean | null
+          hh_padrao?: number
+          id?: string
+          nome_descritivo: string
+          ordem?: number | null
+          qtd_barreiras?: string | null
+          quantidade?: number
+          tecnologia?: string | null
+          tipo_bloco: string
+          visita_id: string
+        }
+        Update: {
+          b1_abertura?: string | null
+          b1_entrada?: string | null
+          b1_folhas?: string | null
+          b1_material?: string | null
+          b1_saida?: string | null
+          b1_tipo?: string | null
+          b2_abertura?: string | null
+          b2_entrada?: string | null
+          b2_folhas?: string | null
+          b2_material?: string | null
+          b2_saida?: string | null
+          b2_tipo?: string | null
+          codigo_bloco?: string
+          created_at?: string
+          eclusa?: boolean | null
+          hh_padrao?: number
+          id?: string
+          nome_descritivo?: string
+          ordem?: number | null
+          qtd_barreiras?: string | null
+          quantidade?: number
+          tecnologia?: string | null
+          tipo_bloco?: string
+          visita_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_blocos_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visita_orcamentos: {
         Row: {
           blocos_selecionados: Json | null
