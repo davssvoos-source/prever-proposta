@@ -617,7 +617,10 @@ function VeiculosConfigurador({
           bloco={blocoEncontrado}
           qtdBloco={qtdBloco}
           setQtdBloco={setQtdBloco}
-          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
+          onSave={(customItemQtds) =>
+            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
+          }
         />
       )}
 
@@ -625,7 +628,7 @@ function VeiculosConfigurador({
         <FallbackList
           blocos={blocos}
           prefixLabel="VEI"
-          onPick={(id) => onSave({ [id]: qtdBloco })}
+          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
         />
       )}
     </div>
