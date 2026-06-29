@@ -304,14 +304,22 @@ function VisitaDetail() {
     return Object.values(sel).flatMap((cat) => Object.keys(cat));
   }, [orcamento]);
 
+  const centraisAuto = useMemo(
+    () => centraisAutomaticas((visita as any)?.servicos_propostos as string[] | null),
+    [visita],
+  );
+
   const { data: blocoDetalhes = [] } = useQuery({
-    queryKey: ["blocos-detalhe", blocoIds.sort().join(",")],
-    enabled: blocoIds.length > 0,
+    queryKey: ["blocos-detalhe", blocoIds.sort().join(","), centraisAuto.sort().join(",")],
+    enabled: blocoIds.length > 0 || centraisAuto.length > 0,
     queryFn: async () => {
+      const orFilter: string[] = [];
+      if (blocoIds.length) orFilter.push(`id.in.(${blocoIds.join(",")})`);
+      if (centraisAuto.length) orFilter.push(`code.in.(${centraisAuto.join(",")})`);
       const { data, error } = await supabase
         .from("blocos")
         .select("id, code, name, descricao, hh, blocos_itens(*)")
-        .in("id", blocoIds);
+        .or(orFilter.join(","));
       if (error) throw error;
       return data ?? [];
     },
