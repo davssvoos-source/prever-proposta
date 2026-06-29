@@ -146,9 +146,10 @@ function AuthenticatedLayout() {
         >
           <Outlet />
         </main>
-
-        <BottomNav />
       </div>
+
+      <BottomNav />
     </>
   );
 }
+
