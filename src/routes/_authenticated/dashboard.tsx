@@ -43,6 +43,8 @@ function fmtData(iso: string) {
 
 function Dashboard() {
   const qc = useQueryClient();
+  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana'>('hoje');
+  const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
 
   const { data: perfil } = useQuery({
     queryKey: ["meu-perfil"],
@@ -58,8 +60,23 @@ function Dashboard() {
     },
   });
 
+  const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial";
+
+  const { data: listaTecnicos } = useQuery({
+    queryKey: ['tecnicos'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, nome, email')
+        .eq('cargo', 'tecnico')
+        .order('nome');
+      return data ?? [];
+    },
+    enabled: isAdmin,
+  });
+
   const { data: visitas = [], isLoading } = useQuery({
-    queryKey: ["dashboard-visitas", perfil?.cargo],
+    queryKey: ["dashboard-visitas", perfil?.cargo, tecnicoFiltro],
     enabled: !!perfil,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,6 +91,8 @@ function Dashboard() {
 
       if (perfil?.cargo === "tecnico") {
         q = q.eq("tecnico_id", user!.id);
+      } else if (isAdmin && tecnicoFiltro !== 'todos') {
+        q = q.eq("tecnico_id", tecnicoFiltro);
       }
 
       const { data, error } = await q;
@@ -99,11 +118,25 @@ function Dashboard() {
     };
   }, [qc]);
 
-  const pendentes = visitas.filter((v: any) => v.status === "pendente");
-  const emAndamento = visitas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitas.filter((v: any) => v.status === "concluida");
-  const aprovadas = visitas.filter((v: any) => v.status === "aprovada");
-  const reprovadas = visitas.filter((v: any) => v.status === "reprovada");
+  // Filtro de período
+  const now = new Date();
+  const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
+  const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+  const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23, 59, 59, 999);
+
+  const visitasFiltradas = visitas.filter((v: any) => {
+    if (!v.data_hora_agendada) return false;
+    const d = new Date(v.data_hora_agendada);
+    if (filtroAtivo === 'hoje') return d >= startOfDay && d <= endOfDay;
+    return d >= startOfWeek && d <= endOfWeek;
+  });
+
+  const pendentes = visitasFiltradas.filter((v: any) => v.status === "pendente");
+  const emAndamento = visitasFiltradas.filter((v: any) => v.status === "em_andamento");
+  const aguardando = visitasFiltradas.filter((v: any) => v.status === "concluida");
+  const aprovadas = visitasFiltradas.filter((v: any) => v.status === "aprovada");
+  const reprovadas = visitasFiltradas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={16} /> },
