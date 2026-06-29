@@ -349,7 +349,7 @@ function UsuariosPage() {
                   opacity: (inviteMutation.isPending || !inviteEmail.trim() || !inviteNome.trim()) ? 0.6 : 1,
                 }}
               >
-                {inviteMutation.isPending ? "Enviando..." : "Enviar Convite ✉️"}
+                {inviteMutation.isPending ? "Enviando..." : "Enviar Convite"}
               </button>
             </div>
           </div>
