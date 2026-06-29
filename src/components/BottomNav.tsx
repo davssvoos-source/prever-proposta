@@ -17,7 +17,7 @@ export function BottomNav() {
     : [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/historico", label: "Histórico", icon: History },
+        { to: "/historico", label: "Visitas", icon: ClipboardList },
         { to: "/perfil", label: "Perfil", icon: User },
       ];
 
