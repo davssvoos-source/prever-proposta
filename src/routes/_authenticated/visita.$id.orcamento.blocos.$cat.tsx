@@ -276,9 +276,16 @@ function PedestresConfigurador({
   type Controle = "E" | "ES" | "PAD";
 
   const [nP, setNP] = useState<NP | null>(null);
+  const [qtdPortas, setQtdPortas] = useState<number | null>(null);
   const [material, setMaterial] = useState<Material | null>(null);
   const [controle, setControle] = useState<Controle | null>(null);
   const [qtdBloco, setQtdBloco] = useState(1);
+  const [activeEquipId, setActiveEquipId] = useState<string | null>(null);
+  const [equipQtd, setEquipQtd] = useState<Record<string, number>>({});
+
+  function getQtd(equipId: string, baseQtd: number): number {
+    return equipQtd[equipId] ?? baseQtd;
+  }
 
   // Eclusa (2P) só disponível em metal
   useEffect(() => {
@@ -296,30 +303,47 @@ function PedestresConfigurador({
   return (
     <div>
       <div style={CARD}>
-        <div style={LBL}>Eclusa (2 portas)?</div>
+        <div style={LBL}>ECLUSA?</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button style={btnStyle(nP === "1P")} onClick={() => setNP("1P")}>
-            🚪 Não — 1 porta
+          <button style={btnStyle(nP === "1P")} onClick={() => { setNP("1P"); setQtdPortas(null); }}>
+            Não
           </button>
           <button style={btnStyle(nP === "2P")} onClick={() => setNP("2P")}>
-            🔄 Sim — 2 portas
+            Sim
           </button>
         </div>
       </div>
+
+      {nP === "2P" && (
+        <div style={CARD}>
+          <div style={LBL}>QUANTIDADE DE PORTAS</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {[1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                style={{ ...btnStyle(qtdPortas === n), minWidth: 56 }}
+                onClick={() => setQtdPortas(n)}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {nP !== null && (
         <div style={CARD}>
           <div style={LBL}>Material da porta</div>
           <div style={{ display: "flex", gap: 10 }}>
             <button style={btnStyle(material === "MET")} onClick={() => setMaterial("MET")}>
-              ⚙️ Metal
+              Metal
             </button>
             <button
               style={btnStyle(material === "VID", nP === "2P")}
               onClick={() => nP !== "2P" && setMaterial("VID")}
               disabled={nP === "2P"}
             >
-              🪟 Vidro
+              Vidro
             </button>
           </div>
           {nP === "2P" && (
@@ -332,7 +356,7 @@ function PedestresConfigurador({
                 color: "rgba(255,255,255,0.45)",
               }}
             >
-              ⓘ Eclusa só disponível em metal
+              Eclusa só disponível em metal
             </div>
           )}
         </div>
@@ -359,6 +383,82 @@ function PedestresConfigurador({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {blocoEncontrado && (
+        <div style={{ marginTop: 24, marginBottom: 16 }}>
+          <div style={{ ...LBL, marginBottom: 8 }}>EQUIPAMENTOS</div>
+          {(blocoEncontrado.blocos_itens ?? []).map((equip) => {
+            const isActive = activeEquipId === equip.id;
+            const baseQty = (equip.qty ?? 1) * (qtdBloco || 1);
+            const qty = getQtd(equip.id, baseQty);
+            return (
+              <div
+                key={equip.id}
+                onClick={() => setActiveEquipId(isActive ? null : equip.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  marginBottom: 6,
+                  borderRadius: 10,
+                  background: isActive ? "#FFC000" : "rgba(255,255,255,0.06)",
+                  color: isActive ? "#000" : "#fff",
+                  cursor: "pointer",
+                  transition: "background 0.15s",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 400,
+                }}
+              >
+                <span style={{ flex: 1 }}>{equip.nome}</span>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {isActive && (
+                    <button
+                      onClick={() =>
+                        setEquipQtd((prev) => ({
+                          ...prev,
+                          [equip.id]: Math.max(0, (prev[equip.id] ?? qty) - 1),
+                        }))
+                      }
+                      style={{
+                        width: 28, height: 28, borderRadius: 6,
+                        background: "rgba(0,0,0,0.15)", border: "none",
+                        color: "#000", fontSize: 16, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      −
+                    </button>
+                  )}
+                  <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700 }}>{qty}</span>
+                  {isActive && (
+                    <button
+                      onClick={() =>
+                        setEquipQtd((prev) => ({
+                          ...prev,
+                          [equip.id]: (prev[equip.id] ?? qty) + 1,
+                        }))
+                      }
+                      style={{
+                        width: 28, height: 28, borderRadius: 6,
+                        background: "rgba(0,0,0,0.15)", border: "none",
+                        color: "#000", fontSize: 16, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      +
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
