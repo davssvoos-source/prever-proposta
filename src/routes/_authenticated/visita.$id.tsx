@@ -945,9 +945,9 @@ function VisitaDetail() {
                   <span
                     key={k}
                     style={{
-                      background: "rgba(255,192,0,0.10)",
-                      border: "1px solid rgba(255,192,0,0.30)",
-                      color: "#FFC000",
+                      background: "transparent",
+                      border: "1px solid #FFFFFF",
+                      color: "#FFFFFF",
                       borderRadius: 999,
                       padding: "5px 10px",
                       fontFamily: "'Montserrat', sans-serif",
