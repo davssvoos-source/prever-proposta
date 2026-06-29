@@ -401,7 +401,7 @@ function NovaVisitaPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <span>{ativo ? "☑" : "☐"}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
                     <span>{s.emoji}</span> {s.label}
                   </button>
                 );
