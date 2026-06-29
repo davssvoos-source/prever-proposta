@@ -256,7 +256,7 @@ function BlocoDetailCard({
           cursor: "pointer",
         }}
       >
-        Salvar e continuar →
+        Adicionar bloco
       </button>
     </div>
   );
