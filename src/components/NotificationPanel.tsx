@@ -4,7 +4,6 @@ import { Bell } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 
 const ICONS: Record<string, string> = {
-  visita_atribuida: "🔔",
   visita_aprovada: "✅",
   visita: "🗓️",
   aprovacao: "✅",
