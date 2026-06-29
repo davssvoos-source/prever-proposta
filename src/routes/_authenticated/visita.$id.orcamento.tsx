@@ -143,6 +143,7 @@ function OrcamentoPasso1() {
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [sistema, setSistema] = useState("");
   const [ready, setReady] = useState(false);
+  const [erroVisible, setErroVisible] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready) return;
