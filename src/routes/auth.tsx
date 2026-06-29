@@ -9,32 +9,21 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "login" | "forgot" | "recovery";
+type AuthMode = "login" | "forgot";
 
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
-  const [showNovaSenha, setShowNovaSenha] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery") || hash.includes("type=email")) setMode("recovery");
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("type") === "recovery") setMode("recovery");
-  }, []);
-
-  useEffect(() => {
-    if (mode === "recovery") return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) navigate({ to: "/dashboard" });
     });
-  }, [mode, navigate]);
+  }, [navigate]);
 
   async function handleLogin() {
     if (!email || !senha) {
