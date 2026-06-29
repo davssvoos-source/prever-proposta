@@ -517,7 +517,7 @@ function NovaVisitaPage() {
                 </>
               ) : (
                 <div style={{ textAlign: "center", padding: "16px 8px" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>📷</div>
+                  <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}><Camera size={24} color="rgba(255,192,0,0.65)" /></div>
                   <div
                     style={{
                       fontFamily: "'Montserrat', sans-serif",
