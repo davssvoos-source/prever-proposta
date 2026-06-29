@@ -124,12 +124,15 @@ function Dashboard() {
   const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
   const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
   const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23, 59, 59, 999);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const visitasFiltradas = visitas.filter((v: any) => {
     if (!v.data_hora_agendada) return false;
     const d = new Date(v.data_hora_agendada);
     if (filtroAtivo === 'hoje') return d >= startOfDay && d <= endOfDay;
-    return d >= startOfWeek && d <= endOfWeek;
+    if (filtroAtivo === 'semana') return d >= startOfWeek && d <= endOfWeek;
+    return d >= startOfMonth && d <= endOfMonth;
   });
 
   const pendentes = visitasFiltradas.filter((v: any) => v.status === "pendente");
