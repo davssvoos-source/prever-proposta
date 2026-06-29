@@ -413,6 +413,44 @@ function NovaVisitaPage() {
             </div>
           </div>
 
+          <div style={{ ...GLASS, padding: 16 }}>
+            <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {SERVICOS_PROPOSTOS.map((s) => {
+                const ativo = servicosPropostos.includes(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() =>
+                      setServicosPropostos((prev) =>
+                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
+                      )
+                    }
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      background: ativo ? "rgba(255,192,0,0.12)" : "rgba(8,8,12,0.20)",
+                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      borderRadius: 999,
+                      padding: "7px 12px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
+                    <span>{s.emoji}</span> {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+
+
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Endereço</label>
