@@ -371,7 +371,7 @@ function Dashboard() {
               backdropFilter: 'blur(14px) saturate(140%)',
               WebkitBackdropFilter: 'blur(14px) saturate(140%)',
               border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 12,
+              borderRadius: 16,
               overflow: 'hidden',
               boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
             }}
