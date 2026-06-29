@@ -95,7 +95,7 @@ export function NotificationPanel() {
             position: "absolute",
             top: 48,
             right: 0,
-            width: 320,
+            width: 352,
             zIndex: 100,
             background: "rgba(12,12,18,0.92)",
             backdropFilter: "blur(24px) saturate(180%)",
