@@ -164,11 +164,15 @@ function Dashboard() {
     return d >= startOfMonth && d <= endOfMonth;
   });
 
-  const pendentes = visitasFiltradas.filter((v: any) => v.status === "pendente");
-  const emAndamento = visitasFiltradas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitasFiltradas.filter((v: any) => v.status === "concluida");
-  const aprovadas = visitasFiltradas.filter((v: any) => v.status === "aprovada");
-  const reprovadas = visitasFiltradas.filter((v: any) => v.status === "reprovada");
+  const visitasExibidas = statusFiltro === 'todos'
+    ? visitasFiltradas
+    : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
+
+  const pendentes = visitasExibidas.filter((v: any) => v.status === "pendente");
+  const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
+  const aguardando = visitasExibidas.filter((v: any) => v.status === "concluida");
+  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const reprovadas = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={14} /> },
