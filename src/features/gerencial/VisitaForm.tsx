@@ -209,8 +209,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
       const tecNome = tecnicos?.find((t) => t.id === form.tecnico_id)?.nome ?? "sem técnico";
       toast.success(
         editing
-          ? "✅ Visita atualizada"
-          : `✅ Visita agendada! ${form.tecnico_id ? `${tecNome} será notificado.` : ""}`,
+          ? "Visita atualizada"
+          : `Visita agendada! ${form.tecnico_id ? `${tecNome} será notificado.` : ""}`,
       );
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
