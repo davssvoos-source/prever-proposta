@@ -57,6 +57,7 @@ function Dashboard() {
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<string>('todos');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
   const irParaReagendar = (visitaId: string) => {
     navigate({ to: '/visita/$id/reagendar', params: { id: visitaId } });
@@ -64,7 +65,10 @@ function Dashboard() {
 
   useEffect(() => {
     if (!showStatusDropdown) return;
-    const handler = () => setShowStatusDropdown(false);
+    const handler = (e: Event) => {
+      if (statusDropdownRef.current && statusDropdownRef.current.contains(e.target as Node)) return;
+      setShowStatusDropdown(false);
+    };
     const timeout = setTimeout(
       () => document.addEventListener('pointerdown', handler),
       100
@@ -178,7 +182,7 @@ function Dashboard() {
 
   const metrics = [
     { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={14} /> },
-    { label: "Ag. Aprovação", value: aguardando.length, color: "#FBBF24", icon: <CalendarDays size={14} /> },
+    { label: "Ag. Aprovação", value: aguardando.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
     { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={14} /> },
     { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
   ];
