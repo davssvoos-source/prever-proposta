@@ -129,28 +129,37 @@ function PerfilPage() {
         .toUpperCase()
     : "U";
 
+  const FORMATOS_ACEITOS = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
   const avatarMutation = useMutation({
     mutationFn: async (file: File) => {
+      if (!FORMATOS_ACEITOS.includes(file.type)) {
+        throw new Error("Formato não suportado. Use JPG, PNG ou WebP.");
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
-      const ext = file.name.split(".").pop();
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${user.id}/avatar.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, file, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
-      const cacheBusted = `${publicUrl}?t=${Date.now()}`;
+      // bucket é privado — usar signed URL (1 ano)
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      const finalUrl = `${signed.signedUrl}${signed.signedUrl.includes("?") ? "&" : "?"}t=${Date.now()}`;
       const { error: dbErr } = await supabase
         .from("profiles")
-        .update({ avatar_url: cacheBusted })
+        .update({ avatar_url: finalUrl })
         .eq("id", user.id);
       if (dbErr) throw dbErr;
-      return cacheBusted;
+      return finalUrl;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["perfil"] });
-      qc.invalidateQueries({ queryKey: ["perfil-header"] });
+      qc.invalidateQueries({ queryKey: ["meu-perfil-header"] });
       toast.success("Foto de perfil atualizada!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -288,7 +297,7 @@ function PerfilPage() {
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
           style={{ display: "none" }}
           onChange={(e) => {
             const f = e.target.files?.[0];
