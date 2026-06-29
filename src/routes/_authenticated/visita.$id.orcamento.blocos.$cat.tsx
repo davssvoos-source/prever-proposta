@@ -477,7 +477,8 @@ function VeiculosConfigurador({
   onSave,
 }: {
   blocos: Bloco[];
-  onSave: (qtds: Record<string, number>) => void;
+  savedItensVariaveis: Record<string, Record<string, number>>;
+  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
 }) {
   type Pistas = "1P" | "2P";
   type Acesso = "CTRL" | "TAG";
