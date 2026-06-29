@@ -85,14 +85,24 @@ export function useNotificacoes() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notificacoes"] }),
   });
 
+  const deletar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("notificacoes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notificacoes"] }),
+  });
+
   return {
     notificacoes,
     naoLidas,
     isLoading: query.isLoading,
     marcarLida: (id: string) => marcarLida.mutate(id),
     marcarTodasLidas: () => marcarTodasLidas.mutate(),
+    deletar: (id: string) => deletar.mutate(id),
   };
 }
+
 
 export function tempoRelativo(iso: string): string {
   const d = new Date(iso).getTime();
