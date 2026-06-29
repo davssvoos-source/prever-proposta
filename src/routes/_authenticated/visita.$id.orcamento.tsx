@@ -360,6 +360,11 @@ function OrcamentoPasso1() {
       </div>
 
       {/* Botão próxima etapa */}
+      {erroVisible && (
+        <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
+          ⚠️ {erroVisible}
+        </p>
+      )}
       <div style={{ marginTop: 8 }}>
         <button
           onClick={() => saveMutation.mutate()}
