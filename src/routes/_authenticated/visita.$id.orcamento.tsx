@@ -143,6 +143,7 @@ function OrcamentoPasso1() {
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [sistema, setSistema] = useState("");
   const [ready, setReady] = useState(false);
+  const [erroVisible, setErroVisible] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready) return;
@@ -173,10 +174,14 @@ function OrcamentoPasso1() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setErroVisible(null);
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
       navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setErroVisible(e.message);
+      toast.error(e.message);
+    },
   });
 
   const CARD: React.CSSProperties = {
@@ -355,6 +360,11 @@ function OrcamentoPasso1() {
       </div>
 
       {/* Botão próxima etapa */}
+      {erroVisible && (
+        <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
+          ⚠️ {erroVisible}
+        </p>
+      )}
       <div style={{ marginTop: 8 }}>
         <button
           onClick={() => saveMutation.mutate()}
