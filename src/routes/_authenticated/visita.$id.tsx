@@ -922,7 +922,7 @@ function VisitaDetail() {
                 color: "#34D399",
               }}
             >
-              ✅ Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
+              <CheckCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
               {visita.aprovado_em
                 ? ` em ${new Date(visita.aprovado_em).toLocaleDateString("pt-BR")}`
                 : ""}
