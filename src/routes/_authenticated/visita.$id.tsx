@@ -942,7 +942,7 @@ function VisitaDetail() {
                 color: "#F87171",
               }}
             >
-              ❌ Reprovada
+              <XCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Reprovada
               {visita.motivo_reprovacao ? ` — ${visita.motivo_reprovacao}` : ""}
             </div>
           )}
