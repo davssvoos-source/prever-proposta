@@ -105,6 +105,8 @@ function UsuariosPage() {
   const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
   const [editCargo, setEditCargo] = useState<string>("");
   const [deleteConfirm, setDeleteConfirm] = useState<StaffUser | null>(null);
+  const [aprovarId, setAprovarId] = useState<string | null>(null);
+  const [aprovarCargo, setAprovarCargo] = useState<CargoId>("tecnico");
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ["staff-profiles"],
