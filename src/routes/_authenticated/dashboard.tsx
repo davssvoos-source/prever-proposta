@@ -278,7 +278,7 @@ function Dashboard() {
           <CalendarRange size={14} /> Essa semana
         </button>
         <button
-          onClick={() => setFiltroAtivo('mes')}
+          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', borderRadius: 20,
