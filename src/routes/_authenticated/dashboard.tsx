@@ -43,7 +43,7 @@ function fmtData(iso: string) {
 
 function Dashboard() {
   const qc = useQueryClient();
-  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana'>('hoje');
+  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes'>('hoje');
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
 
   const { data: perfil } = useQuery({
