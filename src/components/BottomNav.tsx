@@ -49,10 +49,10 @@ export function BottomNav() {
           padding: "10px 14px",
           background: "rgba(6, 6, 6, 0.80)",
           backdropFilter: "blur(30px) saturate(180%)",
-          border: "1px solid rgba(255, 192, 0, 0.20)",
+          border: "1px solid rgba(255, 255, 255, 0.22)",
           borderRadius: 40,
           boxShadow:
-            "0 8px 32px rgba(0,0,0,0.6), 0 0 40px rgba(255,192,0,0.06), 0 0 0 1px rgba(255,255,255,0.04) inset",
+            "0 8px 32px rgba(0,0,0,0.6), 0 0 40px rgba(255,255,255,0.06), 0 0 0 1px rgba(255,255,255,0.04) inset",
           minWidth: 220,
         }}
       >
@@ -68,23 +68,24 @@ export function BottomNav() {
               to={item.to as any}
               aria-current={active ? "page" : undefined}
               className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] px-4 py-2 transition-all duration-200"
-              style={{ background: active ? "rgba(255, 192, 0, 0.12)" : "transparent" }}
+              style={{ background: active ? "rgba(255, 255, 255, 0.12)" : "transparent" }}
             >
               <Icon
                 size={22}
                 strokeWidth={active ? 2.4 : 1.8}
                 style={{
-                  color: "#FFC000",
+                  color: "#FFFFFF",
                   opacity: active ? 1 : 0.45,
-                  filter: active ? "drop-shadow(0 0 6px rgba(255,192,0,0.55))" : "none",
+                  filter: active ? "drop-shadow(0 0 8px rgba(255,255,255,0.70)) drop-shadow(0 0 18px rgba(255,255,255,0.30))" : "none",
                   transition: "opacity 200ms, filter 200ms",
                 }}
               />
               <span
                 className="text-[10px] font-medium"
                 style={{
-                  color: "#FFC000",
+                  color: "#FFFFFF",
                   opacity: active ? 1 : 0.45,
+                  textShadow: active ? "0 0 8px rgba(255,255,255,0.55)" : "none",
                   transition: "opacity 200ms",
                 }}
               >
@@ -94,7 +95,7 @@ export function BottomNav() {
                 <span
                   aria-hidden
                   className="absolute -bottom-1 h-1 w-1 rounded-full"
-                  style={{ background: "#FFC000", boxShadow: "0 0 6px rgba(255,192,0,0.6)" }}
+                  style={{ background: "#FFFFFF", boxShadow: "0 0 8px rgba(255,255,255,0.7)" }}
                 />
               )}
             </Link>

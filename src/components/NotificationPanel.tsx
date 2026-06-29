@@ -4,7 +4,6 @@ import { Bell } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 
 const ICONS: Record<string, string> = {
-  visita_atribuida: "🔔",
   visita_aprovada: "✅",
   visita: "🗓️",
   aprovacao: "✅",
@@ -96,7 +95,7 @@ export function NotificationPanel() {
             position: "absolute",
             top: 48,
             right: 0,
-            width: 320,
+            width: 352,
             zIndex: 100,
             background: "rgba(12,12,18,0.92)",
             backdropFilter: "blur(24px) saturate(180%)",
@@ -178,8 +177,11 @@ export function NotificationPanel() {
                   }}
                 >
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 16, minWidth: 22 }}>
-                      {ICONS[n.tipo] ?? "ℹ️"}
+                    <span style={{ fontSize: 16, minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {n.tipo === 'visita_atribuida'
+                        ? <Bell size={16} color="#FFC000" />
+                        : (ICONS[n.tipo] ?? <Bell size={14} color="rgba(255,255,255,0.6)" />)
+                      }
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div

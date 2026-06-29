@@ -142,10 +142,9 @@ function AuthPage() {
               objectFit: "contain",
               display: "block",
               margin: "0 auto 12px",
-              filter:
-                "drop-shadow(0 0 8px rgba(255,192,0,0.90)) " +
-                "drop-shadow(0 0 20px rgba(255,192,0,0.55)) " +
-                "drop-shadow(0 0 40px rgba(255,192,0,0.25))",
+            filter:
+              "drop-shadow(0 0 4px rgba(255,192,0,0.45)) " +
+              "drop-shadow(0 0 10px rgba(255,192,0,0.20))",
             }}
           />
           <div

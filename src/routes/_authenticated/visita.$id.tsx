@@ -404,9 +404,37 @@ function VisitaDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [geoLat, setGeoLat] = useState<number | null>(null);
+  const [geoLng, setGeoLng] = useState<number | null>(null);
+
+  const lat = visita?.latitude ?? geoLat;
+  const lng = visita?.longitude ?? geoLng;
+
+  async function geocodificar() {
+    if (!visita?.endereco) return;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(visita.endereco)}`;
+      const res = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
+      const arr = await res.json();
+      if (Array.isArray(arr) && arr[0]) {
+        setGeoLat(parseFloat(arr[0].lat));
+        setGeoLng(parseFloat(arr[0].lon));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    if (visita?.endereco && visita.endereco.trim() && !lat && !lng) {
+      geocodificar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visita?.endereco]);
+
   const mapUrl =
-    visita?.latitude && visita?.longitude
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${visita.longitude - 0.01}%2C${visita.latitude - 0.01}%2C${visita.longitude + 0.01}%2C${visita.latitude + 0.01}&layer=mapnik&marker=${visita.latitude}%2C${visita.longitude}`
+    lat && lng
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`
       : null;
 
   const [showReprovarForm, setShowReprovarForm] = useState(false);
