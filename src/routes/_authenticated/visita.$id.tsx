@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 
 
