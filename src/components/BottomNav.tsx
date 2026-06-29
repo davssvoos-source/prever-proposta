@@ -1,86 +1,77 @@
-import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Map, Plus, Calendar, User, Briefcase } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { Home, Calendar, History, ClipboardList, User } from "lucide-react";
+import { useUserCargo } from "@/features/gerencial/data";
 
 export function BottomNav() {
-  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { data: cargo } = useUserCargo();
+  const isAdmin = cargo === "admin";
 
-  const { data: isGerencial } = useQuery({
-    queryKey: ["bottomnav-cargo"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      const { data } = await supabase
-        .from("profiles")
-        .select("cargo")
-        .eq("id", user.id)
-        .maybeSingle();
-      return data?.cargo === "admin" || data?.cargo === "comercial";
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const baseItems = [
-    { icon: LayoutDashboard, label: "Início", to: "/dashboard" as const },
-    { icon: Map, label: "Mapa", to: "/mapa" as const },
-    { icon: Plus, label: "Nova", to: "/gerencial/nova" as const },
-    { icon: Calendar, label: "Calendário", to: "/calendario" as const },
-    { icon: User, label: "Perfil", to: "/perfil" as const },
-  ];
-
-  const gerencialItem = { icon: Briefcase, label: "Gerencial", to: "/gerencial" as const };
-  const items = isGerencial ? [...baseItems, gerencialItem] : baseItems;
+  const items = isAdmin
+    ? [
+        { to: "/dashboard", label: "Início", icon: Home },
+        { to: "/calendario", label: "Calendário", icon: Calendar },
+        { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
+        { to: "/perfil", label: "Perfil", icon: User },
+      ]
+    : [
+        { to: "/dashboard", label: "Início", icon: Home },
+        { to: "/calendario", label: "Calendário", icon: Calendar },
+        { to: "/historico", label: "Histórico", icon: History },
+        { to: "/perfil", label: "Perfil", icon: User },
+      ];
 
   return (
     <nav
       aria-label="Navegação principal"
+      className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
       style={{
-        position: "fixed",
-        bottom: 0, left: 0, right: 0, zIndex: 50,
-        background: "rgba(8,8,12,0.82)",
-        backdropFilter: "blur(24px) saturate(160%)",
-        WebkitBackdropFilter: "blur(24px) saturate(160%)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
         display: "flex",
-        justifyContent: "space-around",
         alignItems: "center",
-        padding: "10px 0 20px",
+        gap: 8,
+        padding: "10px 14px",
+        background: "rgba(6, 6, 6, 0.80)",
+        backdropFilter: "blur(30px) saturate(180%)",
+        border: "1px solid rgba(255, 192, 0, 0.20)",
+        borderRadius: 40,
+        boxShadow:
+          "0 8px 32px rgba(0,0,0,0.6), 0 0 40px rgba(255,192,0,0.06), 0 0 0 1px rgba(255,255,255,0.04) inset",
+        minWidth: 220,
       }}
     >
-      {items.map(({ icon: Icon, label, to }) => {
+      {items.map((item) => {
         const active =
-          pathname === to ||
-          (to === "/dashboard" && pathname === "/") ||
-          (to === "/gerencial" && (pathname === "/gerencial" || pathname.startsWith("/gerencial/"))) ||
-          (to !== "/dashboard" && to !== "/gerencial" && pathname.startsWith(to));
+          pathname === item.to ||
+          (item.to === "/dashboard" && pathname === "/") ||
+          (item.to === "/gerencial" && pathname.startsWith("/gerencial"));
+        const Icon = item.icon;
         return (
-          <button
-            key={to}
-            onClick={() => navigate({ to })}
-            style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-              background: "none", border: "none", cursor: "pointer",
-              padding: "4px 8px", borderRadius: 12,
-              minWidth: isGerencial ? 44 : 52,
-            }}
+          <Link
+            key={item.to}
+            to={item.to as any}
+            aria-current={active ? "page" : undefined}
+            className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] px-4 py-2 transition-all duration-200"
+            style={{ background: active ? "rgba(255, 192, 0, 0.12)" : "transparent" }}
           >
             <Icon
-              size={22}
-              color={active ? "#FFC000" : "rgba(255,255,255,0.35)"}
-              strokeWidth={active ? 2 : 1.5}
+              className="h-[22px] w-[22px] transition-colors"
+              strokeWidth={active ? 2.4 : 1.8}
+              style={{ color: active ? "#FFC000" : "#4A4F66" }}
             />
-            <span style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: active ? 500 : 300,
-              fontSize: isGerencial ? 9 : 10,
-              letterSpacing: "0.08em",
-              color: active ? "#FFC000" : "rgba(255,255,255,0.35)",
-            }}>
-              {label}
+            <span
+              className="text-[10px] font-medium transition-colors"
+              style={{ color: active ? "#FFC000" : "#4A4F66" }}
+            >
+              {item.label}
             </span>
-          </button>
+            {active && (
+              <span
+                aria-hidden
+                className="absolute -bottom-1 h-1 w-1 rounded-full"
+                style={{ background: "#FFC000", boxShadow: "0 0 6px rgba(255,192,0,0.6)" }}
+              />
+            )}
+          </Link>
         );
       })}
     </nav>

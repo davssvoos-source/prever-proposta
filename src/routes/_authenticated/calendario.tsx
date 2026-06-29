@@ -1,312 +1,343 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserCargo } from "@/features/gerencial/data";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
 });
 
+const STATUS_CORES: Record<string, string> = {
+  pendente: "#FFC000",
+  em_andamento: "#3B82F6",
+  concluida: "#10B981",
+  aprovada: "#8B5CF6",
+  cancelada: "#EF4444",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  concluida: "Concluída",
+  aprovada: "Aprovada",
+  cancelada: "Cancelada",
+};
+
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 const MESES = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
 function CalendarioPage() {
   const navigate = useNavigate();
   const hoje = new Date();
-  const [ano, setAno] = useState(hoje.getFullYear());
-  const [mes, setMes] = useState(hoje.getMonth());
+  const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  const [diaSelecionado, setDiaSelecionado] = useState<number | null>(hoje.getDate());
 
-  const inicioMes = new Date(ano, mes, 1);
-  const fimMes = new Date(ano, mes + 1, 0, 23, 59, 59);
+  const { data: cargo } = useUserCargo();
+  const isAdmin = cargo === "admin";
 
-  const { data: visitas = [] } = useQuery({
-    queryKey: ["visitas-calendario", ano, mes],
+  const { data: visitas = [], isLoading } = useQuery({
+    queryKey: ["calendario", mes.getFullYear(), mes.getMonth(), isAdmin],
+    enabled: cargo !== undefined,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("visitas_tecnicas")
-        .select("id, titulo, data_hora_agendada, status")
-        .gte("data_hora_agendada", inicioMes.toISOString())
-        .lte("data_hora_agendada", fimMes.toISOString());
-      return data ?? [];
+      const inicio = new Date(mes.getFullYear(), mes.getMonth(), 1).toISOString();
+      const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+      if (isAdmin) {
+        const { data, error } = await supabase
+          .from("visitas_tecnicas")
+          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .gte("data_hora_agendada", inicio)
+          .lte("data_hora_agendada", fim)
+          .order("data_hora_agendada");
+        if (error) throw error;
+        return data ?? [];
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+        const { data, error } = await supabase
+          .from("visitas_tecnicas")
+          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .eq("tecnico_id", user.id)
+          .gte("data_hora_agendada", inicio)
+          .lte("data_hora_agendada", fim)
+          .order("data_hora_agendada");
+        if (error) throw error;
+        return data ?? [];
+      }
     },
   });
 
-  const visitasPorDia = useMemo(() => {
-    return visitas.reduce((acc: Record<string, any[]>, v: any) => {
-      const date = v.data_hora_agendada.substring(0, 10);
-      if (!acc[date]) acc[date] = [];
-      acc[date].push(v);
-      return acc;
-    }, {} as Record<string, any[]>);
-  }, [visitas]);
+  const { diasGrid, visitasPorDia } = useMemo(() => {
+    const primeiroDia = new Date(mes.getFullYear(), mes.getMonth(), 1).getDay();
+    const totalDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate();
 
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
-  const cellsTotal = Math.ceil((primeiroDiaSemana + diasNoMes) / 7) * 7;
+    const map = new Map<number, any[]>();
+    visitas.forEach((v: any) => {
+      const d = new Date(v.data_hora_agendada);
+      if (d.getMonth() === mes.getMonth() && d.getFullYear() === mes.getFullYear()) {
+        const dia = d.getDate();
+        if (!map.has(dia)) map.set(dia, []);
+        map.get(dia)!.push(v);
+      }
+    });
 
-  function prevMes() {
-    if (mes === 0) {
-      setMes(11);
-      setAno((a) => a - 1);
-    } else setMes((m) => m - 1);
+    const grid: (number | null)[] = [];
+    for (let i = 0; i < primeiroDia; i++) grid.push(null);
+    for (let i = 1; i <= totalDias; i++) grid.push(i);
+    while (grid.length % 7 !== 0) grid.push(null);
+
+    return { diasGrid: grid, visitasPorDia: map };
+  }, [mes, visitas]);
+
+  const visitasDoDia = useMemo(() => {
+    if (diaSelecionado === null) return visitas;
+    return visitasPorDia.get(diaSelecionado) ?? [];
+  }, [diaSelecionado, visitasPorDia, visitas]);
+
+  function isHoje(dia: number) {
+    return (
+      dia === hoje.getDate() &&
+      mes.getMonth() === hoje.getMonth() &&
+      mes.getFullYear() === hoje.getFullYear()
+    );
   }
-  function nextMes() {
-    if (mes === 11) {
-      setMes(0);
-      setAno((a) => a + 1);
-    } else setMes((m) => m + 1);
-  }
-
-  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
-        <button
-          onClick={prevMes}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#fff",
-          }}
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 600,
-              fontSize: 20,
-              color: "#fff",
-            }}
-          >
-            {MESES[mes]}
-          </div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 13,
-              color: "rgba(255,255,255,0.4)",
-              letterSpacing: "0.10em",
-            }}
-          >
-            {ano}
-          </div>
-        </div>
-        <button
-          onClick={nextMes}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#fff",
-          }}
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
-
-      <div
-        style={{
-          background: "rgba(255,192,0,0.06)",
-          border: "1px solid rgba(255,192,0,0.18)",
-          borderRadius: 14,
-          padding: "10px 16px",
-          marginBottom: 20,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 12,
-            color: "rgba(255,255,255,0.5)",
-          }}
-        >
-          Total de visitas no mês
-        </span>
-        <span
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 600,
-            fontSize: 20,
-            color: "#FFC000",
-          }}
-        >
-          {visitas.length}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 4,
-          marginBottom: 4,
-        }}
-      >
-        {DIAS_SEMANA.map((d) => (
-          <div
-            key={d}
-            style={{
-              textAlign: "center",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 10,
-              letterSpacing: "0.10em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.35)",
-              padding: "4px 0",
-            }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-        {Array.from({ length: cellsTotal }).map((_, idx) => {
-          const dayNum = idx - primeiroDiaSemana + 1;
-          const isValidDay = dayNum >= 1 && dayNum <= diasNoMes;
-          const dateStr = isValidDay
-            ? `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`
-            : null;
-          const visitasNoDia = dateStr ? visitasPorDia[dateStr] ?? [] : [];
-          const temVisitas = visitasNoDia.length > 0;
-          const isHoje = dateStr === hojeStr;
-
-          if (!isValidDay) {
-            return <div key={idx} style={{ aspectRatio: "1", borderRadius: 12 }} />;
-          }
-
-          return (
-            <div
-              key={idx}
-              onClick={() => temVisitas && navigate({ to: "/dashboard" })}
-              style={{
-                aspectRatio: "1",
-                borderRadius: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: temVisitas ? "pointer" : "default",
-                transition: "transform 0.15s",
-                ...(temVisitas
-                  ? {
-                      background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
-                      boxShadow: "0 4px 20px rgba(255,192,0,0.45)",
-                    }
-                  : {
-                      background: "rgba(255,255,255,0.04)",
-                      backdropFilter: "blur(8px)",
-                      border: isHoje
-                        ? "1.5px solid rgba(255,192,0,0.6)"
-                        : "1px solid rgba(255,255,255,0.07)",
-                    }),
-              }}
-            >
-              {temVisitas ? (
-                <span
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 800,
-                    fontSize: 22,
-                    color: "#08090E",
-                    lineHeight: 1,
-                    userSelect: "none",
-                  }}
-                >
-                  {visitasNoDia.length}
-                </span>
-              ) : (
-                <span
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: isHoje ? 600 : 300,
-                    fontSize: 18,
-                    color: isHoje ? "#FFC000" : "rgba(255,255,255,0.55)",
-                    lineHeight: 1,
-                    userSelect: "none",
-                  }}
-                >
-                  {dayNum}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 20 }}>
-        <Legenda swatch="linear-gradient(135deg,#FFD700,#FF9F00)" label="Nº de visitas no dia" />
-        <Legenda
-          swatch="rgba(255,255,255,0.04)"
-          border="1px solid rgba(255,192,0,0.5)"
-          label="Hoje"
-        />
-        <Legenda
-          swatch="rgba(255,255,255,0.04)"
-          border="1px solid rgba(255,255,255,0.07)"
-          label="Sem visitas"
-        />
-      </div>
-    </div>
-  );
-}
-
-function Legenda({ swatch, border, label }: { swatch: string; border?: string; label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 12, height: 12, borderRadius: 4, background: swatch, border }} />
-      <span
-        style={{
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 600,
+          fontSize: 22,
+          color: "#fff",
+          margin: 0,
+        }}>Calendário</h1>
+        <p style={{
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
-          fontSize: 11,
-          color: "rgba(255,255,255,0.4)",
-        }}
-      >
-        {label}
-      </span>
+          fontSize: 12,
+          color: "rgba(255,255,255,0.5)",
+          margin: "4px 0 0",
+          letterSpacing: "0.06em",
+        }}>
+          {isAdmin ? "Todas as visitas técnicas" : "Suas visitas agendadas"}
+        </p>
+      </div>
+
+      <div style={CARD}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <button
+            onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1)); setDiaSelecionado(null); }}
+            style={NAV_BTN}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <div style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 600,
+            fontSize: 15,
+            color: "#fff",
+          }}>
+            {MESES[mes.getMonth()]} {mes.getFullYear()}
+          </div>
+          <button
+            onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1)); setDiaSelecionado(null); }}
+            style={NAV_BTN}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+          {DIAS_SEMANA.map((d) => (
+            <div key={d} style={{
+              textAlign: "center",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 10,
+              color: "rgba(255,255,255,0.4)",
+              letterSpacing: "0.08em",
+              padding: "4px 0",
+            }}>{d}</div>
+          ))}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          {diasGrid.map((dia, idx) => {
+            if (dia === null) return <div key={idx} />;
+
+            const selecionado = dia === diaSelecionado;
+            const hoje_ = isHoje(dia);
+            const visitasDia = visitasPorDia.get(dia) ?? [];
+            const temVisitas = visitasDia.length > 0;
+
+            return (
+              <button
+                key={idx}
+                onClick={() => setDiaSelecionado(selecionado ? null : dia)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  padding: "6px 2px",
+                  borderRadius: 10,
+                  border: hoje_ && !selecionado
+                    ? "1.5px solid rgba(255,192,0,0.55)"
+                    : "1.5px solid transparent",
+                  background: selecionado ? "#FFC000" : "transparent",
+                  cursor: "pointer",
+                  minHeight: 44,
+                  transition: "background 0.15s",
+                }}
+              >
+                <span style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: selecionado || hoje_ ? 600 : 400,
+                  fontSize: 13,
+                  color: selecionado ? "#08090E" : "#fff",
+                  lineHeight: 1,
+                }}>{dia}</span>
+                {temVisitas && (
+                  <div style={{ display: "flex", gap: 2 }}>
+                    {visitasDia.slice(0, 3).map((v: any, i: number) => (
+                      <span key={i} style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        background: selecionado ? "#08090E" : (STATUS_CORES[v.status] ?? "#FFC000"),
+                      }} />
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <div style={{
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 500,
+          fontSize: 12,
+          color: "rgba(255,255,255,0.55)",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          marginBottom: 12,
+        }}>
+          {diaSelecionado
+            ? `${diaSelecionado} de ${MESES[mes.getMonth()]} · ${visitasDoDia.length} visita${visitasDoDia.length !== 1 ? "s" : ""}`
+            : `${MESES[mes.getMonth()]} · ${visitas.length} visita${visitas.length !== 1 ? "s" : ""}`}
+        </div>
+
+        {isLoading ? (
+          <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.4)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+            Carregando...
+          </div>
+        ) : visitasDoDia.length === 0 ? (
+          <div style={{ padding: 28, textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
+            <CalendarDays size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+              {diaSelecionado ? "Nenhuma visita neste dia" : "Nenhuma visita neste mês"}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {visitasDoDia.map((v: any) => {
+              const cor = STATUS_CORES[v.status] ?? "#FFC000";
+              const label = STATUS_LABELS[v.status] ?? v.status;
+              const hora = new Date(v.data_hora_agendada).toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const clienteNome = v.clientes?.nome ?? "Cliente";
+
+              return (
+                <button
+                  key={v.id}
+                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderLeft: `3px solid ${cor}`,
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    textAlign: "left",
+                    width: "100%",
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontWeight: 600,
+                      fontSize: 14,
+                      color: "#fff",
+                      marginBottom: 2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>{clienteNome}</div>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontWeight: 300,
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.5)",
+                    }}>⏰ {hora}</div>
+                  </div>
+                  <span style={{
+                    flexShrink: 0,
+                    padding: "4px 10px",
+                    borderRadius: 12,
+                    background: `${cor}22`,
+                    color: cor,
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 600,
+                    fontSize: 10,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                  }}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+const CARD: CSSProperties = {
+  background: "rgba(8,8,12,0.22)",
+  backdropFilter: "blur(12px) saturate(130%)",
+  WebkitBackdropFilter: "blur(12px) saturate(130%)",
+  border: "1px solid rgba(255,192,0,0.10)",
+  borderRadius: 18,
+  padding: "20px 16px",
+  marginBottom: 20,
+};
+
+const NAV_BTN: CSSProperties = {
+  width: 34,
+  height: 34,
+  borderRadius: 10,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  color: "rgba(255,255,255,0.7)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+};
