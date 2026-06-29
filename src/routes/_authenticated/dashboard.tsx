@@ -193,11 +193,12 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section title="📅 Pendentes" items={pendentes} />}
-          {emAndamento.length > 0 && <Section title="▶️ Em andamento" items={emAndamento} />}
-          {aguardando.length > 0 && <Section title="⏳ Aguardando aprovação" items={aguardando} />}
-          {aprovadas.length > 0 && <Section title="✅ Aprovadas" items={aprovadas.slice(0, 5)} />}
-          {reprovadas.length > 0 && <Section title="❌ Reprovadas" items={reprovadas.slice(0, 5)} />}
+          {pendentes.length > 0 && <Section title="Pendentes" icon={<CalendarDays size={14} />} items={pendentes} />}
+          {emAndamento.length > 0 && <Section title="Em andamento" icon={<Play size={14} />} items={emAndamento} />}
+          {aguardando.length > 0 && <Section title="Aguardando aprovação" icon={<Hourglass size={14} />} items={aguardando} />}
+          {aprovadas.length > 0 && <Section title="Aprovadas" icon={<CheckCircle2 size={14} />} items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section title="Reprovadas" icon={<XCircle size={14} />} items={reprovadas.slice(0, 5)} />}
+
         </>
       )}
     </div>
