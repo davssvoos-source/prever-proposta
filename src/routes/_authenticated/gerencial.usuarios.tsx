@@ -276,8 +276,8 @@ function UsuariosPage() {
       {/* Formulário de convite */}
       {showInvite && (
         <div style={{ ...GLASS, marginBottom: 20 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff", marginBottom: 16 }}>
-            ✉️ Convidar Novo Usuário
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <Mail size={16} /> Convidar Novo Usuário
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
