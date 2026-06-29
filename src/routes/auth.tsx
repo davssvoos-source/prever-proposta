@@ -61,6 +61,52 @@ function AuthPage() {
     setMode("login");
   }
 
+  async function handleRegister() {
+    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
+      toast.error("Preencha todos os campos.");
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    if (senha.length < 6) {
+      toast.error("A senha deve ter ao menos 6 caracteres.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: senha,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (data.user) {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          email: email.trim(),
+          nome: nome.trim(),
+          cargo: null,
+          status: "pendente_aprovacao",
+        } as any);
+        await supabase.auth.signOut();
+        toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+        setNome("");
+        setEmail("");
+        setSenha("");
+        setConfirmarSenha("");
+        setMode("login");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+
+
 
   const CARD: CSSProperties = {
     background: "rgba(8,8,12,0.55)",
