@@ -87,17 +87,18 @@ function GerencialPage() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
-      {/* Header */}
+    <>
+      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
           marginBottom: 24,
+          gap: 12,
         }}
       >
-        <div>
+        <div style={{ minWidth: 0 }}>
           <h1
             style={{
               fontFamily: "Montserrat, sans-serif",
@@ -124,50 +125,29 @@ function GerencialPage() {
             {stats.total} proposta{stats.total !== 1 ? "s" : ""} cadastrada{stats.total !== 1 ? "s" : ""}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={() => navigate({ to: "/gerencial/nova" })}
-            style={{
-              background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
-              border: "none",
-              borderRadius: 12,
-              padding: "10px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              color: "#08090E",
-              fontFamily: "Montserrat, sans-serif",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-              letterSpacing: "0.08em",
-            }}
-          >
-            <Plus size={16} />
-            Nova Proposta
-          </button>
-          <button
-            onClick={() => navigate({ to: "/gerencial/usuarios" })}
-            style={{
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 12,
-              padding: "10px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              color: "rgba(255,255,255,0.75)",
-              fontFamily: "Montserrat, sans-serif",
-              fontWeight: 400,
-              fontSize: 13,
-              cursor: "pointer",
-              letterSpacing: "0.06em",
-            }}
-          >
-            <Users size={16} />
-            Usuários
-          </button>
-        </div>
+        <button
+          onClick={() => navigate({ to: "/gerencial/usuarios" })}
+          style={{
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 12,
+            padding: "10px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            color: "rgba(255,255,255,0.75)",
+            fontFamily: "Montserrat, sans-serif",
+            fontWeight: 400,
+            fontSize: 13,
+            cursor: "pointer",
+            letterSpacing: "0.06em",
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Users size={16} />
+          Usuários
+        </button>
       </div>
 
       {/* Cards de estatística */}
@@ -364,5 +344,39 @@ function GerencialPage() {
         </div>
       )}
     </div>
+
+    {/* FAB — Nova Proposta */}
+    <button
+      onClick={() => navigate({ to: "/gerencial/nova" })}
+      style={{
+        position: "fixed",
+        bottom: 100,
+        right: 24,
+        width: 60,
+        height: 60,
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+        border: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        boxShadow: "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)",
+        zIndex: 50,
+        transition: "transform 0.15s, box-shadow 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.boxShadow = "0 6px 28px rgba(255,192,0,0.7), 0 0 50px rgba(255,192,0,0.35)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)";
+      }}
+      aria-label="Nova Proposta"
+    >
+      <Plus size={28} color="#08090E" strokeWidth={2.5} />
+    </button>
+    </>
   );
 }
