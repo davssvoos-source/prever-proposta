@@ -535,7 +535,95 @@ function VisitaCard({ visita }: { visita: any }) {
   );
 }
 
-function Section({ title, icon, items }: { title: string; icon?: React.ReactNode; items: any[] }) {
+function SwipeableCard({
+  visitaId,
+  onReagendar,
+  children,
+}: {
+  visitaId: string;
+  onReagendar: (id: string) => void;
+  children: React.ReactNode;
+}) {
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const currentX = useRef(0);
+  const [offsetX, setOffsetX] = useState(0);
+
+  const ACTION_W = 72;
+  const EXECUTE_AT = 140;
+  const clamp = (v: number) => Math.min(0, Math.max(-EXECUTE_AT, v));
+
+  const onStart = (clientX: number) => {
+    dragging.current = true;
+    startX.current = clientX - currentX.current;
+  };
+  const onMove = (clientX: number) => {
+    if (!dragging.current) return;
+    const next = clamp(clientX - startX.current);
+    currentX.current = next;
+    setOffsetX(next);
+    if (next <= -EXECUTE_AT) {
+      dragging.current = false;
+      currentX.current = 0;
+      setOffsetX(0);
+      onReagendar(visitaId);
+    }
+  };
+  const onEnd = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (currentX.current < -ACTION_W / 2) {
+      currentX.current = -ACTION_W;
+      setOffsetX(-ACTION_W);
+    } else {
+      currentX.current = 0;
+      setOffsetX(0);
+    }
+  };
+
+  return (
+    <div style={{ position: "relative", marginBottom: 12, borderRadius: 18, overflow: "hidden" }}>
+      <div
+        onClick={() => onReagendar(visitaId)}
+        style={{
+          position: "absolute",
+          top: 0, right: 0, bottom: 0,
+          width: 140,
+          background: "#FFFFFF",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          cursor: "pointer",
+        }}
+      >
+        <CalendarDays size={20} color="#0a0a14" />
+        <span style={{ fontSize: 11, color: "#0a0a14", fontWeight: 500, letterSpacing: "0.04em" }}>
+          Reagendar
+        </span>
+      </div>
+      <div
+        style={{
+          transform: `translateX(${offsetX}px)`,
+          transition: dragging.current ? "none" : "transform 0.25s ease",
+          touchAction: "pan-y",
+        }}
+        onMouseDown={(e) => onStart(e.clientX)}
+        onMouseMove={(e) => onMove(e.clientX)}
+        onMouseUp={onEnd}
+        onMouseLeave={onEnd}
+        onTouchStart={(e) => onStart(e.touches[0].clientX)}
+        onTouchMove={(e) => onMove(e.touches[0].clientX)}
+        onTouchEnd={onEnd}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon, items, onReagendar }: { title: string; icon?: React.ReactNode; items: any[]; onReagendar?: (id: string) => void }) {
   return (
     <section>
       <h2
@@ -556,8 +644,8 @@ function Section({ title, icon, items }: { title: string; icon?: React.ReactNode
       </h2>
 
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {items.map((v) => (
-          <li key={v.id}>
+        {items.map((v) => {
+          const cardLink = (
             <Link
               to="/visita/$id"
               params={{ id: v.id }}
@@ -565,8 +653,19 @@ function Section({ title, icon, items }: { title: string; icon?: React.ReactNode
             >
               <VisitaCard visita={v} />
             </Link>
-          </li>
-        ))}
+          );
+          return (
+            <li key={v.id}>
+              {onReagendar ? (
+                <SwipeableCard visitaId={v.id} onReagendar={onReagendar}>
+                  {cardLink}
+                </SwipeableCard>
+              ) : (
+                cardLink
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
