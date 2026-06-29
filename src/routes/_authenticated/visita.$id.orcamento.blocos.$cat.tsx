@@ -871,7 +871,7 @@ function BlocosCatPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("visita_orcamentos")
-        .select("blocos_selecionados")
+        .select("blocos_selecionados, itens_variaveis")
         .eq("visita_id", id)
         .maybeSingle();
       return data;
@@ -885,20 +885,32 @@ function BlocosCatPage() {
   const savedQtds =
     ((orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null)?.[cat]) ?? {};
 
+  const savedItensVariaveis =
+    (orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {};
+
   const saveMutation = useMutation({
-    mutationFn: async (qtds: Record<string, number>) => {
+    mutationFn: async (payload: {
+      qtds: Record<string, number>;
+      itensVariaveisPorBloco: Record<string, Record<string, number>>;
+    }) => {
       const { data: current } = await supabase
         .from("visita_orcamentos")
-        .select("blocos_selecionados")
+        .select("blocos_selecionados, itens_variaveis")
         .eq("visita_id", id)
         .maybeSingle();
-      const existing =
+      const existingBlocos =
         (current?.blocos_selecionados ?? {}) as Record<string, Record<string, number>>;
-      const merged = { ...existing, [cat]: qtds };
+      const merged = { ...existingBlocos, [cat]: payload.qtds };
+
+      const existingItens =
+        (current?.itens_variaveis ?? {}) as Record<string, Record<string, number>>;
+      const mergedItens = { ...existingItens, ...payload.itensVariaveisPorBloco };
+
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
           visita_id: id,
           blocos_selecionados: merged,
+          itens_variaveis: mergedItens,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "visita_id" },
@@ -912,6 +924,7 @@ function BlocosCatPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <div style={{ padding: "12px 14px 140px" }}>
