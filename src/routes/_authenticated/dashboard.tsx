@@ -597,21 +597,21 @@ function SwipeableCard({
 
   return (
     <div style={{ position: "relative", marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
-      <div
-        style={{
+      <div style={{
           position: "absolute",
           top: 0,
           right: 0,
           bottom: 0,
-          width: ACTION_W,
+          width: Math.abs(offsetX),
           background: "white",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          overflow: "hidden",
           borderTopRightRadius: 20,
           borderBottomRightRadius: 20,
-        }}
-      >
+          transition: dragging.current ? "none" : "width 0.25s ease",
+      }}>
         <CalendarRange size={22} color="#3B82F6" />
       </div>
       <div
