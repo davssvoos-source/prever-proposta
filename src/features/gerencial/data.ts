@@ -60,3 +60,24 @@ export function useIsGerente() {
     staleTime: 60_000,
   });
 }
+
+/** Retorna "admin" para admin/comercial, "tecnico" para os demais. */
+export function useUserCargo() {
+  return useQuery({
+    queryKey: ["user-cargo"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return "tecnico" as const;
+      const [{ data: roles }, { data: profile }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
+        supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
+      ]);
+      const roleStrs = (roles ?? []).map((r) => r.role as string);
+      if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return "admin" as const;
+      const c = profile?.cargo ?? "";
+      if (c === "admin" || c === "comercial") return "admin" as const;
+      return "tecnico" as const;
+    },
+    staleTime: 60_000,
+  });
+}
