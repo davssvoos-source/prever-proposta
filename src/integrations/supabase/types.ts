@@ -249,6 +249,7 @@ export type Database = {
           tipo: string
           titulo: string
           user_id: string | null
+          visita_id: string | null
         }
         Insert: {
           corpo?: string | null
@@ -258,6 +259,7 @@ export type Database = {
           tipo?: string
           titulo: string
           user_id?: string | null
+          visita_id?: string | null
         }
         Update: {
           corpo?: string | null
@@ -267,8 +269,17 @@ export type Database = {
           tipo?: string
           titulo?: string
           user_id?: string | null
+          visita_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_visita_id_fkey"
+            columns: ["visita_id"]
+            isOneToOne: false
+            referencedRelation: "visitas_tecnicas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
