@@ -263,7 +263,7 @@ function Dashboard() {
           <CalendarDays size={14} /> Hoje
         </button>
         <button
-          onClick={() => setFiltroAtivo('semana')}
+          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', borderRadius: 20,
