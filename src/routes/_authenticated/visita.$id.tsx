@@ -450,6 +450,24 @@ function VisitaDetail() {
   const [motivo, setMotivo] = useState("");
   const [editandoTecnico, setEditandoTecnico] = useState(false);
   const [novoTecnicoId, setNovoTecnicoId] = useState("");
+  const [editandoPropostos, setEditandoPropostos] = useState(false);
+  const [propostosDraft, setPropostosDraft] = useState<string[]>([]);
+
+  const propostosMutation = useMutation({
+    mutationFn: async (vals: string[]) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ servicos_propostos: vals } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      setEditandoPropostos(false);
+      toast.success("Serviços propostos atualizados");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
 
   // ── computed (após todos os hooks) ──────────────────────────────────────────
