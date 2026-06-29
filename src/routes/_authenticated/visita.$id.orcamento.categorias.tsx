@@ -141,6 +141,63 @@ function SlideToNext({
 function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: visita } = useQuery({
+    queryKey: ["visita", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visitas_tecnicas")
+        .select("id, servicos_propostos")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: contagemBlocos = [] } = useQuery({
+    queryKey: ["visita_blocos_count", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("tipo_bloco")
+        .eq("visita_id", id);
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+  });
+
+  const countPorTipo = (tipoSlug: string) => {
+    const tipo = SLUG_TO_TIPO[tipoSlug];
+    return contagemBlocos.filter((b: any) => b.tipo_bloco === tipo).length;
+  };
+
+  const totalBlocos = contagemBlocos.length;
+
+  useEffect(() => {
+    if (!visita) return;
+    const servicos = (visita as any).servicos_propostos as string[] | null;
+    if (!servicos?.includes("portaria_remota")) return;
+    const jaExiste = contagemBlocos.some((b: any) => b.tipo_bloco === "CENT");
+    if (jaExiste) return;
+
+    (async () => {
+      const { error } = await supabase.from("visita_blocos" as any).insert({
+        visita_id: id,
+        codigo_bloco: "CENT-PR",
+        nome_descritivo: "Central de Portaria Remota",
+        tipo_bloco: "CENT",
+        eclusa: false,
+        hh_padrao: 10,
+        quantidade: 1,
+        ordem: 999,
+      });
+      if (!error) {
+        queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", id] });
+      }
+    })();
+  }, [visita, contagemBlocos, id, queryClient]);
 
   const CARD: React.CSSProperties = {
     background: "rgba(8,8,12,0.22)",
@@ -154,7 +211,9 @@ function CategoriasPage() {
     cursor: "pointer",
     transition: "border 0.2s, background 0.2s, transform 0.15s",
     touchAction: "manipulation",
+    position: "relative",
   };
+
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 12 }}>
