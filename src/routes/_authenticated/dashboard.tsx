@@ -601,24 +601,17 @@ function SwipeableCard({
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
+    <div style={{ position: "relative", marginBottom: 12, borderRadius: 16, overflow: "hidden" }}>
       <div style={{
           position: "absolute",
           top: 0,
           right: 0,
           bottom: 0,
-          height: "100%",
-          width: Math.abs(offsetX),
+          width: 90,
           background: "linear-gradient(to bottom, #B8860B, #FFD700 50%, #B8860B)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          overflow: "hidden",
-          borderTopLeftRadius: 0,
-          borderBottomLeftRadius: 0,
-          borderTopRightRadius: 20,
-          borderBottomRightRadius: 20,
-          transition: dragging.current ? "none" : "width 0.25s ease",
       }}>
         <CalendarRange size={32} color="#000000" />
       </div>
