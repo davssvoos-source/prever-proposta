@@ -912,7 +912,7 @@ function BlocosCatPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
-      toast.success(`${CAT_LABELS[cat]} salvo ✓`);
+      toast.success(`${CAT_LABELS[cat]} salvo`);
       window.location.href = `/visita/${id}/orcamento/categorias`;
     },
     onError: (e: Error) => toast.error(e.message),
