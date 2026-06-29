@@ -983,14 +983,26 @@ function BlocosCatPage() {
           Carregando blocos...
         </div>
       ) : cat === "pedestres" ? (
-        <PedestresConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
+        <PedestresConfigurador
+          blocos={blocos}
+          savedItensVariaveis={savedItensVariaveis}
+          onSave={(qtds, itensVariaveisPorBloco) =>
+            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
+          }
+        />
       ) : cat === "veiculos" ? (
-        <VeiculosConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
+        <VeiculosConfigurador
+          blocos={blocos}
+          savedItensVariaveis={savedItensVariaveis}
+          onSave={(qtds, itensVariaveisPorBloco) =>
+            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
+          }
+        />
       ) : (
         <BlocoGenericList
           blocos={blocos}
           savedQtds={savedQtds}
-          onSave={(qtds) => saveMutation.mutate(qtds)}
+          onSave={(qtds) => saveMutation.mutate({ qtds, itensVariaveisPorBloco: {} })}
         />
       )}
 
