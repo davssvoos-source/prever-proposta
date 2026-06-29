@@ -543,10 +543,10 @@ function VeiculosConfigurador({
         <div style={LBL}>Quantas pistas?</div>
         <div style={{ display: "flex", gap: 10 }}>
           <button style={btnStyle(pistas === "1P")} onClick={() => setPistas("1P")}>
-            🛣️ 1 pista
+            1 pista
           </button>
           <button style={btnStyle(pistas === "2P")} onClick={() => setPistas("2P")}>
-            🛤️ 2 pistas
+            2 pistas
           </button>
         </div>
       </div>
@@ -556,10 +556,10 @@ function VeiculosConfigurador({
           <div style={LBL}>{pistas === "2P" ? "Controle de entrada" : "Tipo de acesso"}</div>
           <div style={{ display: "flex", gap: 10 }}>
             <button style={btnStyle(acesso === "CTRL")} onClick={() => setAcesso("CTRL")}>
-              🎛️ Controle simples
+              Controle simples
             </button>
             <button style={btnStyle(acesso === "TAG")} onClick={() => setAcesso("TAG")}>
-              📡 Tag / Facial
+              Tag / Facial
             </button>
           </div>
         </div>
@@ -570,10 +570,10 @@ function VeiculosConfigurador({
           <div style={LBL}>Controle de saída</div>
           <div style={{ display: "flex", gap: 10 }}>
             <button style={btnStyle(ctrlSai === "CTRL")} onClick={() => setCtrlSai("CTRL")}>
-              🎛️ Controle
+              Controle
             </button>
             <button style={btnStyle(ctrlSai === "FAC")} onClick={() => setCtrlSai("FAC")}>
-              👤 Facial
+              Facial
             </button>
           </div>
         </div>
@@ -612,10 +612,10 @@ function VeiculosConfigurador({
           <div style={LBL}>Portaria</div>
           <div style={{ display: "flex", gap: 10 }}>
             <button style={btnStyle(porteiro === "PP")} onClick={() => setPorteiro("PP")}>
-              👮 Presencial
+              Presencial
             </button>
             <button style={btnStyle(porteiro === "PR")} onClick={() => setPorteiro("PR")}>
-              📞 Remota
+              Remota
             </button>
           </div>
         </div>
