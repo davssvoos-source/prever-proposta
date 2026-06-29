@@ -174,10 +174,14 @@ function OrcamentoPasso1() {
       if (error) throw error;
     },
     onSuccess: () => {
+      setErroVisible(null);
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
       navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      setErroVisible(e.message);
+      toast.error(e.message);
+    },
   });
 
   const CARD: React.CSSProperties = {
