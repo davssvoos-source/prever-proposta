@@ -161,7 +161,7 @@ function NovaVisitaPage() {
     contato.trim() !== "" &&
     servicos.length > 0 &&
     endereco.trim() !== "";
-  const passo2Valido = data !== "" && hora !== "";
+  const passo2Valido = true;
 
   const criarMutation = useMutation({
     mutationFn: async () => {
