@@ -52,8 +52,28 @@ function fmtData(iso: string) {
 
 function Dashboard() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes'>('hoje');
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
+  const [statusFiltro, setStatusFiltro] = useState<string>('todos');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+
+  const irParaReagendar = (visitaId: string) => {
+    navigate({ to: '/visita/$id/reagendar', params: { id: visitaId } });
+  };
+
+  useEffect(() => {
+    if (!showStatusDropdown) return;
+    const handler = () => setShowStatusDropdown(false);
+    const timeout = setTimeout(
+      () => document.addEventListener('pointerdown', handler),
+      100
+    );
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('pointerdown', handler);
+    };
+  }, [showStatusDropdown]);
 
   const { data: perfil } = useQuery({
     queryKey: ["meu-perfil"],
