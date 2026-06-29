@@ -73,13 +73,26 @@ function BlocoDetailCard({
   bloco,
   qtdBloco,
   setQtdBloco,
+  savedItens,
   onSave,
 }: {
   bloco: Bloco;
   qtdBloco: number;
   setQtdBloco: (n: number) => void;
-  onSave: () => void;
+  savedItens: Record<string, number>;
+  onSave: (customItemQtds: Record<string, number>) => void;
 }) {
+  const [customItemQtds, setCustomItemQtds] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const defaults: Record<string, number> = {};
+    for (const item of bloco.blocos_itens ?? []) {
+      defaults[item.id] = savedItens[item.id] ?? item.qty ?? 0;
+    }
+    setCustomItemQtds(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bloco.id]);
+
   return (
     <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
       <div style={LBL}>Bloco identificado</div>
@@ -115,28 +128,79 @@ function BlocoDetailCard({
       )}
 
       <div style={{ ...LBL, marginTop: 8 }}>Equipamentos inclusos</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
-        {(bloco.blocos_itens ?? []).map((it) => (
-          <div
-            key={it.id}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.6)",
-            }}
-          >
-            <span>
-              {it.nome} · {it.modelo}
-            </span>
-            <span style={{ color: "#FFC000" }}>
-              {it.qty * qtdBloco}
-              {it.variavel ? " (V)" : ""}
-            </span>
-          </div>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+        {(bloco.blocos_itens ?? []).map((it) => {
+          const q = customItemQtds[it.id] ?? it.qty ?? 0;
+          return (
+            <div
+              key={it.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: "8px 10px",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.04)",
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {it.nome}
+                {it.modelo ? ` · ${it.modelo}` : ""}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() =>
+                    setCustomItemQtds((prev) => ({
+                      ...prev,
+                      [it.id]: Math.max(0, (prev[it.id] ?? it.qty ?? 0) - 1),
+                    }))
+                  }
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: "rgba(255,192,0,0.15)",
+                    border: "1px solid rgba(255,192,0,0.35)",
+                    color: "#FFC000",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Minus size={13} />
+                </button>
+                <span style={{ minWidth: 22, textAlign: "center", color: "#FFC000", fontWeight: 600 }}>{q}</span>
+                <button
+                  onClick={() =>
+                    setCustomItemQtds((prev) => ({
+                      ...prev,
+                      [it.id]: (prev[it.id] ?? it.qty ?? 0) + 1,
+                    }))
+                  }
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: "rgba(255,192,0,0.15)",
+                    border: "1px solid rgba(255,192,0,0.35)",
+                    color: "#FFC000",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={LBL}>Quantidade deste bloco</div>
@@ -190,7 +254,7 @@ function BlocoDetailCard({
       </div>
 
       <button
-        onClick={onSave}
+        onClick={() => onSave(customItemQtds)}
         style={{
           marginTop: 18,
           width: "100%",
@@ -212,6 +276,7 @@ function BlocoDetailCard({
     </div>
   );
 }
+
 
 function FallbackList({
   blocos,
@@ -266,10 +331,12 @@ function FallbackList({
 
 function PedestresConfigurador({
   blocos,
+  savedItensVariaveis,
   onSave,
 }: {
   blocos: Bloco[];
-  onSave: (qtds: Record<string, number>) => void;
+  savedItensVariaveis: Record<string, Record<string, number>>;
+  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
 }) {
   type NP = "1P" | "2P";
   type Material = "MET" | "VID";
@@ -280,12 +347,7 @@ function PedestresConfigurador({
   const [material, setMaterial] = useState<Material | null>(null);
   const [controle, setControle] = useState<Controle | null>(null);
   const [qtdBloco, setQtdBloco] = useState(1);
-  const [activeEquipId, setActiveEquipId] = useState<string | null>(null);
-  const [equipQtd, setEquipQtd] = useState<Record<string, number>>({});
 
-  function getQtd(equipId: string, baseQtd: number): number {
-    return equipQtd[equipId] ?? baseQtd;
-  }
 
   // Eclusa (2P) só disponível em metal
   useEffect(() => {
@@ -386,88 +448,15 @@ function PedestresConfigurador({
         </div>
       )}
 
-      {blocoEncontrado && (
-        <div style={{ marginTop: 24, marginBottom: 16 }}>
-          <div style={{ ...LBL, marginBottom: 8 }}>EQUIPAMENTOS</div>
-          {(blocoEncontrado.blocos_itens ?? []).map((equip) => {
-            const isActive = activeEquipId === equip.id;
-            const baseQty = (equip.qty ?? 1) * (qtdBloco || 1);
-            const qty = getQtd(equip.id, baseQty);
-            return (
-              <div
-                key={equip.id}
-                onClick={() => setActiveEquipId(isActive ? null : equip.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 14px",
-                  marginBottom: 6,
-                  borderRadius: 10,
-                  background: isActive ? "#FFC000" : "rgba(255,255,255,0.06)",
-                  color: isActive ? "#000" : "#fff",
-                  cursor: "pointer",
-                  transition: "background 0.15s",
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                }}
-              >
-                <span style={{ flex: 1 }}>{equip.nome}</span>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {isActive && (
-                    <button
-                      onClick={() =>
-                        setEquipQtd((prev) => ({
-                          ...prev,
-                          [equip.id]: Math.max(0, (prev[equip.id] ?? qty) - 1),
-                        }))
-                      }
-                      style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: "rgba(0,0,0,0.15)", border: "none",
-                        color: "#000", fontSize: 16, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >
-                      −
-                    </button>
-                  )}
-                  <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700 }}>{qty}</span>
-                  {isActive && (
-                    <button
-                      onClick={() =>
-                        setEquipQtd((prev) => ({
-                          ...prev,
-                          [equip.id]: (prev[equip.id] ?? qty) + 1,
-                        }))
-                      }
-                      style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: "rgba(0,0,0,0.15)", border: "none",
-                        color: "#000", fontSize: 16, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {configCompleta && blocoEncontrado && (
         <BlocoDetailCard
           bloco={blocoEncontrado}
           qtdBloco={qtdBloco}
           setQtdBloco={setQtdBloco}
-          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
+          onSave={(customItemQtds) =>
+            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
+          }
         />
       )}
 
@@ -475,19 +464,22 @@ function PedestresConfigurador({
         <FallbackList
           blocos={blocos}
           prefixLabel="PED"
-          onPick={(id) => onSave({ [id]: qtdBloco })}
+          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
         />
       )}
     </div>
   );
 }
 
+
 function VeiculosConfigurador({
   blocos,
+  savedItensVariaveis,
   onSave,
 }: {
   blocos: Bloco[];
-  onSave: (qtds: Record<string, number>) => void;
+  savedItensVariaveis: Record<string, Record<string, number>>;
+  onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
 }) {
   type Pistas = "1P" | "2P";
   type Acesso = "CTRL" | "TAG";
@@ -626,7 +618,10 @@ function VeiculosConfigurador({
           bloco={blocoEncontrado}
           qtdBloco={qtdBloco}
           setQtdBloco={setQtdBloco}
-          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
+          onSave={(customItemQtds) =>
+            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
+          }
         />
       )}
 
@@ -634,7 +629,7 @@ function VeiculosConfigurador({
         <FallbackList
           blocos={blocos}
           prefixLabel="VEI"
-          onPick={(id) => onSave({ [id]: qtdBloco })}
+          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
         />
       )}
     </div>
@@ -876,7 +871,7 @@ function BlocosCatPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("visita_orcamentos")
-        .select("blocos_selecionados")
+        .select("blocos_selecionados, itens_variaveis")
         .eq("visita_id", id)
         .maybeSingle();
       return data;
@@ -890,20 +885,32 @@ function BlocosCatPage() {
   const savedQtds =
     ((orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null)?.[cat]) ?? {};
 
+  const savedItensVariaveis =
+    (orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {};
+
   const saveMutation = useMutation({
-    mutationFn: async (qtds: Record<string, number>) => {
+    mutationFn: async (payload: {
+      qtds: Record<string, number>;
+      itensVariaveisPorBloco: Record<string, Record<string, number>>;
+    }) => {
       const { data: current } = await supabase
         .from("visita_orcamentos")
-        .select("blocos_selecionados")
+        .select("blocos_selecionados, itens_variaveis")
         .eq("visita_id", id)
         .maybeSingle();
-      const existing =
+      const existingBlocos =
         (current?.blocos_selecionados ?? {}) as Record<string, Record<string, number>>;
-      const merged = { ...existing, [cat]: qtds };
+      const merged = { ...existingBlocos, [cat]: payload.qtds };
+
+      const existingItens =
+        (current?.itens_variaveis ?? {}) as Record<string, Record<string, number>>;
+      const mergedItens = { ...existingItens, ...payload.itensVariaveisPorBloco };
+
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
           visita_id: id,
           blocos_selecionados: merged,
+          itens_variaveis: mergedItens,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "visita_id" },
@@ -917,6 +924,7 @@ function BlocosCatPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <div style={{ padding: "12px 14px 140px" }}>
@@ -975,14 +983,26 @@ function BlocosCatPage() {
           Carregando blocos...
         </div>
       ) : cat === "pedestres" ? (
-        <PedestresConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
+        <PedestresConfigurador
+          blocos={blocos}
+          savedItensVariaveis={savedItensVariaveis}
+          onSave={(qtds, itensVariaveisPorBloco) =>
+            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
+          }
+        />
       ) : cat === "veiculos" ? (
-        <VeiculosConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
+        <VeiculosConfigurador
+          blocos={blocos}
+          savedItensVariaveis={savedItensVariaveis}
+          onSave={(qtds, itensVariaveisPorBloco) =>
+            saveMutation.mutate({ qtds, itensVariaveisPorBloco })
+          }
+        />
       ) : (
         <BlocoGenericList
           blocos={blocos}
           savedQtds={savedQtds}
-          onSave={(qtds) => saveMutation.mutate(qtds)}
+          onSave={(qtds) => saveMutation.mutate({ qtds, itensVariaveisPorBloco: {} })}
         />
       )}
 
