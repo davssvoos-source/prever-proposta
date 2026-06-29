@@ -15,7 +15,6 @@ const CAT_PREFIXES: Record<string, string[]> = {
   cftv: ["CFTV"],
   alarme: ["ALARM"],
   cerca: ["CERCA"],
-  central: ["CENT"],
 };
 const CAT_LABELS: Record<string, string> = {
   pedestres: "Acesso de Pedestres",
@@ -23,9 +22,8 @@ const CAT_LABELS: Record<string, string> = {
   cftv: "CFTV",
   alarme: "Alarme",
   cerca: "Cerca Elétrica",
-  central: "Central de Comando",
 };
-const CAT_ORDER = ["pedestres", "veiculos", "cftv", "alarme", "cerca", "central"];
+const CAT_ORDER = ["pedestres", "veiculos", "cftv", "alarme", "cerca"];
 
 type BlocoItem = { id: string; nome: string; modelo: string; qty: number; variavel: boolean };
 type Bloco = {

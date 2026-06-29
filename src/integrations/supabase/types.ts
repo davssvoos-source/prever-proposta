@@ -612,6 +612,7 @@ export type Database = {
           prioridade: string | null
           projeto_id: string | null
           servico_solicitado: string | null
+          servicos_propostos: string[]
           servicos_solicitados: string[]
           status: string
           tecnico_id: string | null
@@ -645,6 +646,7 @@ export type Database = {
           prioridade?: string | null
           projeto_id?: string | null
           servico_solicitado?: string | null
+          servicos_propostos?: string[]
           servicos_solicitados?: string[]
           status?: string
           tecnico_id?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           prioridade?: string | null
           projeto_id?: string | null
           servico_solicitado?: string | null
+          servicos_propostos?: string[]
           servicos_solicitados?: string[]
           status?: string
           tecnico_id?: string | null

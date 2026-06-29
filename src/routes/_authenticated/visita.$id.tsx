@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 
 
@@ -227,7 +228,7 @@ function VisitaDetail() {
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
-          servicos_solicitados,
+          servicos_solicitados, servicos_propostos,
           clientes (nome, email, telefone, tipo_empreendimento)
         `)
         .eq("id", id)
@@ -303,14 +304,22 @@ function VisitaDetail() {
     return Object.values(sel).flatMap((cat) => Object.keys(cat));
   }, [orcamento]);
 
+  const centraisAuto = useMemo(
+    () => centraisAutomaticas((visita as any)?.servicos_propostos as string[] | null),
+    [visita],
+  );
+
   const { data: blocoDetalhes = [] } = useQuery({
-    queryKey: ["blocos-detalhe", blocoIds.sort().join(",")],
-    enabled: blocoIds.length > 0,
+    queryKey: ["blocos-detalhe", blocoIds.sort().join(","), centraisAuto.sort().join(",")],
+    enabled: blocoIds.length > 0 || centraisAuto.length > 0,
     queryFn: async () => {
+      const orFilter: string[] = [];
+      if (blocoIds.length) orFilter.push(`id.in.(${blocoIds.join(",")})`);
+      if (centraisAuto.length) orFilter.push(`code.in.(${centraisAuto.join(",")})`);
       const { data, error } = await supabase
         .from("blocos")
         .select("id, code, name, descricao, hh, blocos_itens(*)")
-        .in("id", blocoIds);
+        .or(orFilter.join(","));
       if (error) throw error;
       return data ?? [];
     },
@@ -441,6 +450,24 @@ function VisitaDetail() {
   const [motivo, setMotivo] = useState("");
   const [editandoTecnico, setEditandoTecnico] = useState(false);
   const [novoTecnicoId, setNovoTecnicoId] = useState("");
+  const [editandoPropostos, setEditandoPropostos] = useState(false);
+  const [propostosDraft, setPropostosDraft] = useState<string[]>([]);
+
+  const propostosMutation = useMutation({
+    mutationFn: async (vals: string[]) => {
+      const { error } = await supabase
+        .from("visitas_tecnicas")
+        .update({ servicos_propostos: vals } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      setEditandoPropostos(false);
+      toast.success("Serviços propostos atualizados");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
 
   // ── computed (após todos os hooks) ──────────────────────────────────────────
@@ -863,6 +890,111 @@ function VisitaDetail() {
         </div>
       )}
 
+      {/* Serviços propostos */}
+      {visita && (
+        <div style={GLASS}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ ...SECTION_LABEL, marginBottom: 0 }}>Serviços propostos</div>
+            {!editandoPropostos ? (
+              <button
+                onClick={() => {
+                  setPropostosDraft(((visita as any).servicos_propostos as string[] | null) ?? []);
+                  setEditandoPropostos(true);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255,192,0,0.30)",
+                  borderRadius: 8,
+                  color: "#FFC000",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 400,
+                  fontSize: 11,
+                  letterSpacing: "0.08em",
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                Editar
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => setEditandoPropostos(false)}
+                  style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 11, padding: "4px 10px", cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => propostosMutation.mutate(propostosDraft)}
+                  disabled={propostosMutation.isPending || propostosDraft.length === 0}
+                  style={{ background: "rgba(255,192,0,0.12)", border: "1px solid rgba(255,192,0,0.45)", borderRadius: 8, color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
+                >
+                  Salvar
+                </button>
+              </div>
+            )}
+          </div>
+          {!editandoPropostos ? (
+            (((visita as any).servicos_propostos as string[] | null) ?? []).length === 0 ? (
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.45)", margin: 0 }}>
+                Nenhum serviço proposto definido.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(((visita as any).servicos_propostos as string[] | null) ?? []).map((k) => (
+                  <span
+                    key={k}
+                    style={{
+                      background: "rgba(255,192,0,0.10)",
+                      border: "1px solid rgba(255,192,0,0.30)",
+                      color: "#FFC000",
+                      borderRadius: 999,
+                      padding: "5px 10px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 400,
+                    }}
+                  >
+                    {SERVICO_PROPOSTO_LABEL[k] ?? k}
+                  </span>
+                ))}
+              </div>
+            )
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {SERVICOS_PROPOSTOS.map((s) => {
+                const ativo = propostosDraft.includes(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() =>
+                      setPropostosDraft((prev) =>
+                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
+                      )
+                    }
+                    style={{
+                      background: ativo ? "rgba(255,192,0,0.15)" : "rgba(8,8,12,0.20)",
+                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      borderRadius: 999,
+                      padding: "6px 11px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <span>{s.emoji}</span> {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Descrição */}
       {visita.descricao_pedido && (
@@ -885,9 +1017,48 @@ function VisitaDetail() {
       )}
 
       {/* Equipamentos do orçamento */}
-      {verEquip && blocoDetalhes.length > 0 && (
+      {verEquip && (blocoDetalhes.length > 0 || centraisAuto.length > 0) && (
         <div style={GLASS}>
           <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
+          {centraisAuto.map((code) => {
+            const bloco = blocoDetalhes.find((b: any) => b.code === code) as any;
+            if (!bloco) return null;
+            return (
+              <div
+                key={`auto-${code}`}
+                style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div style={{ display: "inline-block", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#FFC000", background: "rgba(255,192,0,0.10)", border: "1px solid rgba(255,192,0,0.30)", borderRadius: 6, padding: "2px 6px", marginBottom: 6, fontFamily: "'Montserrat', sans-serif", fontWeight: 400 }}>
+                  Automático
+                </div>
+                {bloco.descricao && (
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 6, marginTop: 0, fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+                    {bloco.descricao}
+                  </p>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 15, color: "#fff" }}>
+                    {bloco.name}
+                  </span>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+                    ×1
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 4 }}>
+                  {(bloco.blocos_itens ?? []).map((item: any) => {
+                    const totalQty = item.qty ?? 0;
+                    if (totalQty === 0) return null;
+                    return (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
+                        <span>{item.nome}{item.modelo ? ` · ${item.modelo}` : ""}</span>
+                        <span style={{ fontWeight: 500 }}>{totalQty}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
           {Object.entries(
             (orcamento?.blocos_selecionados as Record<string, Record<string, number>>) ?? {},
           ).map(([cat, catQtds]) =>
