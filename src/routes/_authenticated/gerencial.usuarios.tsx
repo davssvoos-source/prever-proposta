@@ -140,6 +140,51 @@ function UsuariosPage() {
     },
   });
 
+  const { data: solicitacoes = [] } = useQuery({
+    queryKey: ["solicitacoes-pendentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nome, email, created_at")
+        .eq("status" as any, "pendente_aprovacao")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const aprovarMutation = useMutation({
+    mutationFn: async ({ userId, cargo }: { userId: string; cargo: string }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ status: "ativo", cargo } as any)
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitacoes-pendentes"] });
+      qc.invalidateQueries({ queryKey: ["staff-profiles"] });
+      setAprovarId(null);
+      toast.success("Usuário aprovado com sucesso!");
+    },
+    onError: () => toast.error("Erro ao aprovar usuário."),
+  });
+
+  const rejeitarMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ status: "rejeitado" } as any)
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["solicitacoes-pendentes"] });
+      toast.success("Solicitação rejeitada.");
+    },
+    onError: () => toast.error("Erro ao rejeitar."),
+  });
+
   const inviteMutation = useMutation({
     mutationFn: async () => {
       if (!inviteEmail.trim() || !inviteNome.trim()) {
