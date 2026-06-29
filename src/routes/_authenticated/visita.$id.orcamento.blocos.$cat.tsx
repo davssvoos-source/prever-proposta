@@ -527,7 +527,7 @@ function VeiculosConfigurador({
         </div>
       </div>
 
-      {eclusa !== null && (
+      {eclusa === "sim" && (
         <div style={CARD}>
           <div style={LBL}>Quantidade de portões?</div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -543,20 +543,22 @@ function VeiculosConfigurador({
 
       {portoes.map((p, idx) => (
         <div key={idx}>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              color: "#FFC000",
-              textAlign: "center",
-              margin: "20px 0 10px",
-              opacity: 0.85,
-            }}
-          >
-            ─── PORTÃO {idx + 1} ───
-          </div>
+          {portoes.length > 1 && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                color: "#FFC000",
+                textAlign: "center",
+                margin: "20px 0 10px",
+                opacity: 0.85,
+              }}
+            >
+              ─── PORTÃO {idx + 1} ───
+            </div>
+          )}
 
           <div style={CARD}>
             <div style={LBL}>Tipo de acesso para entrar — Portão {idx + 1}</div>
