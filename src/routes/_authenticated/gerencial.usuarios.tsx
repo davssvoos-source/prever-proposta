@@ -665,7 +665,7 @@ function UsuariosPage() {
             onClick={(e) => e.stopPropagation()}
             style={{ ...GLASS, background: "#0F1015", maxWidth: 380, width: "100%", textAlign: "center" }}
           >
-            <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><AlertTriangle size={36} color="#F59E0B" /></div>
             <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16, color: "#fff", marginBottom: 8 }}>
               Desativar {deleteConfirm.nome}?
             </div>
