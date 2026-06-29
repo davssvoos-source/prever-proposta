@@ -580,7 +580,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoEntrar !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de acesso para sair{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
+              <div style={LBL}>Saída</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAcessoSair === "controle_simples")}
