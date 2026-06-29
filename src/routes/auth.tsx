@@ -9,32 +9,21 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "login" | "forgot" | "recovery";
+type AuthMode = "login" | "forgot";
 
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
-  const [showNovaSenha, setShowNovaSenha] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery") || hash.includes("type=email")) setMode("recovery");
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("type") === "recovery") setMode("recovery");
-  }, []);
-
-  useEffect(() => {
-    if (mode === "recovery") return;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) navigate({ to: "/dashboard" });
     });
-  }, [mode, navigate]);
+  }, [navigate]);
 
   async function handleLogin() {
     if (!email || !senha) {
@@ -58,7 +47,7 @@ function AuthPage() {
     }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth`,
+      redirectTo: `${window.location.origin}/redefinir-senha`,
     });
     setLoading(false);
     if (error) {
@@ -69,29 +58,6 @@ function AuthPage() {
     setMode("login");
   }
 
-  async function handleReset() {
-    if (!novaSenha || !confirmarSenha) {
-      toast.error("Preencha os campos.");
-      return;
-    }
-    if (novaSenha !== confirmarSenha) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
-    if (novaSenha.length < 6) {
-      toast.error("Senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: novaSenha });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Senha alterada com sucesso!");
-    navigate({ to: "/dashboard" });
-  }
 
   const CARD: CSSProperties = {
     background: "rgba(8,8,12,0.55)",
@@ -315,81 +281,6 @@ function AuthPage() {
             </div>
           )}
 
-          {mode === "recovery" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 500,
-                    fontSize: 17,
-                    color: "#fff",
-                    marginBottom: 6,
-                  }}
-                >
-                  Nova senha
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.45)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Defina sua nova senha de acesso.
-                </div>
-              </div>
-              <div>
-                <label style={LBL}>Nova senha</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    style={{ ...INPUT, paddingRight: 48 }}
-                    type={showNovaSenha ? "text" : "password"}
-                    value={novaSenha}
-                    onChange={(e) => setNovaSenha(e.target.value)}
-                    placeholder="Min. 6 caracteres"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNovaSenha((p) => !p)}
-                    style={{
-                      position: "absolute",
-                      right: 14,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "rgba(255,255,255,0.4)",
-                      display: "flex",
-                    }}
-                  >
-                    {showNovaSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label style={LBL}>Confirmar nova senha</label>
-                <input
-                  style={INPUT}
-                  type="password"
-                  value={confirmarSenha}
-                  onChange={(e) => setConfirmarSenha(e.target.value)}
-                  placeholder="Repita a senha"
-                  onKeyDown={(e) => e.key === "Enter" && handleReset()}
-                />
-              </div>
-              <button
-                onClick={handleReset}
-                disabled={loading}
-                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1 }}
-              >
-                {loading ? "Salvando..." : "Salvar nova senha →"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
