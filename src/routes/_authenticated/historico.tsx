@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Archive } from "lucide-react";
+import { CheckCircle, XCircle, Archive, CalendarDays, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/historico")({
