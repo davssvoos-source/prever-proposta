@@ -440,11 +440,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section title="Pendentes" icon={<CalendarDays size={14} />} items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {emAndamento.length > 0 && <Section title="Em andamento" icon={<Play size={14} />} items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aguardando.length > 0 && <Section title="Aguardando aprovação" icon={<Hourglass size={14} />} items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aprovadas.length > 0 && <Section title="Aprovadas" icon={<CheckCircle2 size={14} />} items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {reprovadas.length > 0 && <Section title="Reprovadas" icon={<XCircle size={14} />} items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {pendentes.length > 0 && <Section items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {emAndamento.length > 0 && <Section items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {aguardando.length > 0 && <Section items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
 
         </>
       )}
@@ -601,24 +601,17 @@ function SwipeableCard({
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: 12, borderRadius: 20, overflow: "hidden" }}>
+    <div style={{ position: "relative", marginBottom: 12, borderRadius: 16, overflow: "hidden" }}>
       <div style={{
           position: "absolute",
           top: 0,
           right: 0,
           bottom: 0,
-          height: "100%",
-          width: Math.abs(offsetX),
+          width: 90,
           background: "linear-gradient(to bottom, #B8860B, #FFD700 50%, #B8860B)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          overflow: "hidden",
-          borderTopLeftRadius: 0,
-          borderBottomLeftRadius: 0,
-          borderTopRightRadius: 20,
-          borderBottomRightRadius: 20,
-          transition: dragging.current ? "none" : "width 0.25s ease",
       }}>
         <CalendarRange size={32} color="#000000" />
       </div>
@@ -645,25 +638,10 @@ function SwipeableCard({
 }
 
 
-function Section({ title, icon, items, onReagendar }: { title: string; icon?: React.ReactNode; items: any[]; onReagendar?: (id: string) => void }) {
+function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: string) => void }) {
   return (
     <section>
-      <h2
-        style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 400,
-          fontSize: 13,
-          color: "rgba(255,192,0,0.85)",
-          letterSpacing: "0.06em",
-          margin: "0 0 10px",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        {icon}
-        {title}
-      </h2>
+
 
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => {

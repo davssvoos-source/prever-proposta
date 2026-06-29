@@ -557,7 +557,7 @@ function VisitaDetail() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: isAdmin ? "/gerencial" : "/dashboard" })}
+          onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
           style={{
             background: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(255,255,255,0.10)",

@@ -1,17 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/categorias")({
   component: CategoriasPage,
 });
 
+const ICON_COLOR = "#FFC000";
+
 const CATEGORIAS = [
-  { id: "pedestres", label: "Acesso de Pedestres", icon: "🚶", desc: "Portas, cancelas e leitores de pedestre" },
-  { id: "veiculos", label: "Acesso de Veículos", icon: "🚗", desc: "Cancelas, barreiras e controles veiculares" },
-  { id: "cftv", label: "CFTV", icon: "📷", desc: "Câmeras, DVRs e NVRs" },
-  { id: "alarme", label: "Alarme", icon: "🚨", desc: "Sensores, centrais e sirenes" },
-  { id: "cerca", label: "Cerca Elétrica", icon: "⚡", desc: "Centrais e eletrificadores" },
+  { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={ICON_COLOR} />, desc: "Portas, cancelas e leitores de pedestre" },
+  { id: "veiculos", label: "Acesso de Veículos", icon: <Car size={32} color={ICON_COLOR} />, desc: "Cancelas, barreiras e controles veiculares" },
+  { id: "cftv", label: "CFTV", icon: <Camera size={32} color={ICON_COLOR} />, desc: "Câmeras, DVRs e NVRs" },
+  { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={ICON_COLOR} />, desc: "Sensores, centrais e sirenes" },
+  { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={ICON_COLOR} />, desc: "Centrais e eletrificadores" },
 ];
 
 // ——— SlideToNext ———————————————————————————————
@@ -232,7 +234,7 @@ function CategoriasPage() {
             (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
           }}
         >
-          <div style={{ fontSize: 32 }}>{cat.icon}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
           <div style={{ flex: 1 }}>
             <div
               style={{
