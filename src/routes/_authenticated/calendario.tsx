@@ -258,7 +258,7 @@ function CalendarioPage() {
                 hour: "2-digit",
                 minute: "2-digit",
               });
-              const clienteNome = v.clientes?.nome ?? "Cliente";
+              const clienteNome = (v as any).nome_predio ?? v.titulo ?? "Visita";
 
               return (
                 <button
