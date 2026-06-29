@@ -1149,6 +1149,24 @@ function VisitaDetail() {
           </button>
         </div>
       )}
+
+      {/* SlideToStart — fluxo normal */}
+      {showSlide && (
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,192,0,0.10)",
+            background: "rgba(8,9,14,0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            padding: "12px 16px",
+          }}
+        >
+          <SlideToStart
+            onConfirm={() => iniciarMutation.mutate()}
+            pending={iniciarMutation.isPending}
+          />
+        </div>
+      )}
     </div>
   );
 }
