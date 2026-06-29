@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, MessageCircle, AlertTriangle, Phone, Calendar, HardHat, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
