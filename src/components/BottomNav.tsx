@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, History, ClipboardList, User } from "lucide-react";
+import { Home, Calendar, ClipboardList, User } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
 
 export function BottomNav() {
