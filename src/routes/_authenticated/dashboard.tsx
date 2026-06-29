@@ -296,8 +296,8 @@ function Dashboard() {
           onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
           style={{
             flex: 1,
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
             border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
@@ -312,8 +312,8 @@ function Dashboard() {
           onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
           style={{
             flex: 1,
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
             border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
@@ -328,8 +328,8 @@ function Dashboard() {
           onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
           style={{
             flex: 1,
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
             border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
@@ -338,6 +338,7 @@ function Dashboard() {
             transition: 'all 0.2s',
           }}
         >
+
           <CalendarCheck size={14} /> Esse mês
         </button>
       </div>

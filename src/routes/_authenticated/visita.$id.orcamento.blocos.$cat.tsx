@@ -479,151 +479,164 @@ function VeiculosConfigurador({
   savedItensVariaveis: Record<string, Record<string, number>>;
   onSave: (qtds: Record<string, number>, itensVariaveis: Record<string, Record<string, number>>) => void;
 }) {
-  type Pistas = "1P" | "2P";
-  type Acesso = "CTRL" | "TAG";
-  type AcessoSai = "CTRL" | "FAC";
-  type Motor = "BASC" | "DESL" | "PIVO";
-  type Porteiro = "PP" | "PR";
+  type Eclusa = "sim" | "nao";
+  type AcessoEntrar = "controle_simples" | "tag_facial";
+  type AcessoSair = "controle_simples" | "tag_facial" | "livre";
+  type Abertura = "basculante" | "deslizante" | "pivotante";
+  type PortaoCfg = {
+    tipoAcessoEntrar: AcessoEntrar | null;
+    tipoAcessoSair: AcessoSair | null;
+    tipoAbertura: Abertura | null;
+  };
 
-  const [pistas, setPistas] = useState<Pistas | null>(null);
-  const [acesso, setAcesso] = useState<Acesso | null>(null);
-  const [ctrlSai, setCtrlSai] = useState<AcessoSai | null>(null);
-  const [motorEnt, setMotorEnt] = useState<Motor | null>(null);
-  const [motorSai, setMotorSai] = useState<Motor | null>(null);
-  const [porteiro, setPorteiro] = useState<Porteiro | null>(null);
+  const [eclusa, setEclusa] = useState<Eclusa | null>(null);
+  const [qtdPortoes, setQtdPortoes] = useState<2 | 3 | null>(null);
+  const [portoes, setPortoes] = useState<PortaoCfg[]>([]);
   const [qtdBloco, setQtdBloco] = useState(1);
 
-  // Reset dependents when pistas muda
+  // Ajusta array de portões quando a quantidade muda
   useEffect(() => {
-    setAcesso(null);
-    setCtrlSai(null);
-    setMotorEnt(null);
-    setMotorSai(null);
-    setPorteiro(null);
-  }, [pistas]);
+    if (qtdPortoes === null) {
+      setPortoes([]);
+      return;
+    }
+    setPortoes((prev) => {
+      const next: PortaoCfg[] = [];
+      for (let i = 0; i < qtdPortoes; i++) {
+        next.push(prev[i] ?? { tipoAcessoEntrar: null, tipoAcessoSair: null, tipoAbertura: null });
+      }
+      return next;
+    });
+  }, [qtdPortoes]);
 
-  const configCompleta1P =
-    pistas === "1P" && acesso !== null && motorEnt !== null && porteiro !== null;
-  const configCompleta2P =
-    pistas === "2P" &&
-    acesso !== null &&
-    ctrlSai !== null &&
-    motorEnt !== null &&
-    motorSai !== null &&
-    porteiro !== null;
-  const configCompleta = configCompleta1P || configCompleta2P;
+  const updatePortao = (idx: number, patch: Partial<PortaoCfg>) =>
+    setPortoes((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
 
-  const expectedCode = configCompleta1P
-    ? `VEI-1P-${acesso}-${motorEnt}-${porteiro}`
-    : configCompleta2P
-    ? `VEI-2P-${acesso}-${ctrlSai}-${motorEnt}-${motorSai}-${porteiro}`
-    : null;
+  const portoesCompletos =
+    qtdPortoes !== null &&
+    portoes.length === qtdPortoes &&
+    portoes.every((p) => p.tipoAcessoEntrar && p.tipoAcessoSair && p.tipoAbertura);
 
-  const blocoEncontrado = expectedCode ? blocos.find((b) => b.code === expectedCode) ?? null : null;
-
-  const motorOpts: { id: Motor; label: string }[] = [
-    { id: "BASC", label: "Basculante" },
-    { id: "DESL", label: "Deslizante" },
-    { id: "PIVO", label: "Pivotante" },
-  ];
+  const configCompleta = eclusa !== null && qtdPortoes !== null && portoesCompletos;
 
   return (
     <div>
       <div style={CARD}>
-        <div style={LBL}>Quantas pistas?</div>
+        <div style={LBL}>Eclusa?</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button style={btnStyle(pistas === "1P")} onClick={() => setPistas("1P")}>
-            1 pista
+          <button style={btnStyle(eclusa === "sim")} onClick={() => setEclusa("sim")}>
+            Sim
           </button>
-          <button style={btnStyle(pistas === "2P")} onClick={() => setPistas("2P")}>
-            2 pistas
+          <button style={btnStyle(eclusa === "nao")} onClick={() => setEclusa("nao")}>
+            Não
           </button>
         </div>
       </div>
 
-      {pistas !== null && (
+      {eclusa !== null && (
         <div style={CARD}>
-          <div style={LBL}>{pistas === "2P" ? "Controle de entrada" : "Tipo de acesso"}</div>
+          <div style={LBL}>Quantidade de portões?</div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(acesso === "CTRL")} onClick={() => setAcesso("CTRL")}>
-              Controle simples
+            <button style={btnStyle(qtdPortoes === 2)} onClick={() => setQtdPortoes(2)}>
+              2 portões
             </button>
-            <button style={btnStyle(acesso === "TAG")} onClick={() => setAcesso("TAG")}>
-              Tag / Facial
+            <button style={btnStyle(qtdPortoes === 3)} onClick={() => setQtdPortoes(3)}>
+              3 portões
             </button>
           </div>
         </div>
       )}
 
-      {pistas === "2P" && acesso !== null && (
-        <div style={CARD}>
-          <div style={LBL}>Controle de saída</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(ctrlSai === "CTRL")} onClick={() => setCtrlSai("CTRL")}>
-              Controle
-            </button>
-            <button style={btnStyle(ctrlSai === "FAC")} onClick={() => setCtrlSai("FAC")}>
-              Facial
-            </button>
+      {portoes.map((p, idx) => (
+        <div key={idx}>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 500,
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              color: "#FFC000",
+              textAlign: "center",
+              margin: "20px 0 10px",
+              opacity: 0.85,
+            }}
+          >
+            ─── PORTÃO {idx + 1} ───
           </div>
-        </div>
-      )}
 
-      {((pistas === "1P" && acesso !== null) ||
-        (pistas === "2P" && ctrlSai !== null)) && (
-        <div style={CARD}>
-          <div style={LBL}>{pistas === "2P" ? "Motor portão de entrada" : "Tipo de motor/portão"}</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            {motorOpts.map((m) => (
-              <button key={m.id} style={btnStyle(motorEnt === m.id)} onClick={() => setMotorEnt(m.id)}>
-                {m.label}
+          <div style={CARD}>
+            <div style={LBL}>Tipo de acesso para entrar — Portão {idx + 1}</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                style={btnStyle(p.tipoAcessoEntrar === "controle_simples")}
+                onClick={() => updatePortao(idx, { tipoAcessoEntrar: "controle_simples" })}
+              >
+                Controle simples
               </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {pistas === "2P" && motorEnt !== null && (
-        <div style={CARD}>
-          <div style={LBL}>Motor portão de saída</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            {motorOpts.map((m) => (
-              <button key={m.id} style={btnStyle(motorSai === m.id)} onClick={() => setMotorSai(m.id)}>
-                {m.label}
+              <button
+                style={btnStyle(p.tipoAcessoEntrar === "tag_facial")}
+                onClick={() => updatePortao(idx, { tipoAcessoEntrar: "tag_facial" })}
+              >
+                Tag / Facial
               </button>
-            ))}
+            </div>
           </div>
+
+          {p.tipoAcessoEntrar !== null && (
+            <div style={CARD}>
+              <div style={LBL}>Tipo de acesso para sair — Portão {idx + 1}</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  style={btnStyle(p.tipoAcessoSair === "controle_simples")}
+                  onClick={() => updatePortao(idx, { tipoAcessoSair: "controle_simples" })}
+                >
+                  Controle simples
+                </button>
+                <button
+                  style={btnStyle(p.tipoAcessoSair === "tag_facial")}
+                  onClick={() => updatePortao(idx, { tipoAcessoSair: "tag_facial" })}
+                >
+                  Tag / Facial
+                </button>
+                <button
+                  style={btnStyle(p.tipoAcessoSair === "livre")}
+                  onClick={() => updatePortao(idx, { tipoAcessoSair: "livre" })}
+                >
+                  Livre
+                </button>
+              </div>
+            </div>
+          )}
+
+          {p.tipoAcessoSair !== null && (
+            <div style={CARD}>
+              <div style={LBL}>Tipo de abertura — Portão {idx + 1}</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  style={btnStyle(p.tipoAbertura === "basculante")}
+                  onClick={() => updatePortao(idx, { tipoAbertura: "basculante" })}
+                >
+                  Basculante
+                </button>
+                <button
+                  style={btnStyle(p.tipoAbertura === "deslizante")}
+                  onClick={() => updatePortao(idx, { tipoAbertura: "deslizante" })}
+                >
+                  Deslizante
+                </button>
+                <button
+                  style={btnStyle(p.tipoAbertura === "pivotante")}
+                  onClick={() => updatePortao(idx, { tipoAbertura: "pivotante" })}
+                >
+                  Pivotante
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      ))}
 
-      {((pistas === "1P" && motorEnt !== null) ||
-        (pistas === "2P" && motorSai !== null)) && (
-        <div style={CARD}>
-          <div style={LBL}>Portaria</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(porteiro === "PP")} onClick={() => setPorteiro("PP")}>
-              Presencial
-            </button>
-            <button style={btnStyle(porteiro === "PR")} onClick={() => setPorteiro("PR")}>
-              Remota
-            </button>
-          </div>
-        </div>
-      )}
-
-      {configCompleta && blocoEncontrado && (
-        <BlocoDetailCard
-          bloco={blocoEncontrado}
-          qtdBloco={qtdBloco}
-          setQtdBloco={setQtdBloco}
-          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
-          onSave={(customItemQtds) =>
-            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
-          }
-        />
-      )}
-
-      {configCompleta && !blocoEncontrado && (
+      {configCompleta && (
         <FallbackList
           blocos={blocos}
           prefixLabel="VEI"
@@ -633,6 +646,7 @@ function VeiculosConfigurador({
     </div>
   );
 }
+
 
 function BlocoGenericList({
   blocos,
