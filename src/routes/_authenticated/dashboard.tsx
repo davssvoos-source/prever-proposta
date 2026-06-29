@@ -448,7 +448,6 @@ function VisitaCard({ visita }: { visita: any }) {
     visita.nome_sindico ??
     visita.titulo ??
     "Sem nome";
-    "Sem nome";
   return (
     <div
       style={{
