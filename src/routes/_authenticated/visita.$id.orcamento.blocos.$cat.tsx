@@ -606,7 +606,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoSair !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de abertura{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
+              <div style={LBL}>Tipo de abertura</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAbertura === "basculante")}
