@@ -95,19 +95,6 @@ function BlocoDetailCard({
     <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
       <div style={LBL}>Bloco identificado</div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-        <span
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            fontSize: 11,
-            color: "#FFC000",
-            background: "rgba(255,192,0,0.15)",
-            padding: "3px 8px",
-            borderRadius: 6,
-          }}
-        >
-          {bloco.code}
-        </span>
         <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#fff", fontSize: 14 }}>{bloco.name}</span>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{bloco.hh} HH</span>
       </div>
