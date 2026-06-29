@@ -176,7 +176,7 @@ function OrcamentoPasso1() {
     onSuccess: () => {
       setErroVisible(null);
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
-      navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
+      window.location.href = `/visita/${id}/orcamento/categorias`;
     },
     onError: (e: Error) => {
       setErroVisible(e.message);

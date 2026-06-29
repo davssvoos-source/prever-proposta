@@ -1097,28 +1097,6 @@ function VisitaDetail() {
         </div>
       )}
 
-      {/* CTA fixo: SlideToStart */}
-      {showSlide && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 64,
-            left: 0,
-            right: 0,
-            zIndex: 30,
-            borderTop: "1px solid rgba(255,192,0,0.10)",
-            background: "rgba(8,9,14,0.96)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            padding: "12px 16px",
-          }}
-        >
-          <SlideToStart
-            onConfirm={() => iniciarMutation.mutate()}
-            pending={iniciarMutation.isPending}
-          />
-        </div>
-      )}
 
       {/* CTA fixo: Finalizar */}
       {showFinalizar && (
@@ -1169,6 +1147,24 @@ function VisitaDetail() {
             <Square size={18} />
             {finalizarMutation.isPending ? "Finalizando…" : "Finalizar Visita"}
           </button>
+        </div>
+      )}
+
+      {/* SlideToStart — fluxo normal */}
+      {showSlide && (
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,192,0,0.10)",
+            background: "rgba(8,9,14,0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            padding: "12px 16px",
+          }}
+        >
+          <SlideToStart
+            onConfirm={() => iniciarMutation.mutate()}
+            pending={iniciarMutation.isPending}
+          />
         </div>
       )}
     </div>
