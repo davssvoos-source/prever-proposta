@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 
-const ICONS: Record<string, string> = {
-  visita_aprovada: "✅",
-  visita: "🗓️",
-  aprovacao: "✅",
-  sistema: "⚙️",
-  info: "ℹ️",
-};
+function NotifIcon({ tipo }: { tipo: string }) {
+  const s = { size: 18, strokeWidth: 1.8 };
+  switch (tipo) {
+    case 'visita_aprovada':
+    case 'aprovacao':
+      return <CheckCircle2 {...s} color="#10B981" />;
+    case 'visita':
+    case 'visita_atribuida':
+      return <CalendarCheck {...s} color="#FFC000" />;
+    case 'sistema':
+      return <Settings {...s} color="#60A5FA" />;
+    case 'info':
+    default:
+      return <Info {...s} color="rgba(255,255,255,0.5)" />;
+  }
+}
 
 export function NotificationPanel() {
   const [open, setOpen] = useState(false);
