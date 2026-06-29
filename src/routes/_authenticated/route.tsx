@@ -136,7 +136,7 @@ function AuthenticatedLayout() {
             </div>
           </div>
 
-          <NotificationBell />
+          <NotificationPanel />
         </div>
 
         {/* CONTEÚDO */}
