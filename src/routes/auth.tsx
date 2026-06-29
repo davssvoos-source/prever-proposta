@@ -9,7 +9,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "login" | "forgot";
+type AuthMode = "login" | "forgot" | "register";
 
 function AuthPage() {
   const navigate = useNavigate();
