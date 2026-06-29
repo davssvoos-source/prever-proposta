@@ -297,7 +297,7 @@ function PerfilPage() {
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
           style={{ display: "none" }}
           onChange={(e) => {
             const f = e.target.files?.[0];
