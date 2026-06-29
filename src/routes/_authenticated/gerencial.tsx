@@ -88,7 +88,7 @@ function GerencialPage() {
 
   return (
     <>
-      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ paddingTop: 16, paddingBottom: 24, paddingLeft: 0, paddingRight: 0 }}>
       <div
         style={{
           display: "flex",
