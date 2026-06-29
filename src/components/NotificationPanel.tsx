@@ -197,81 +197,90 @@ function NotifItem({
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const dragging = useRef(false);
-  const startX = useRef(0);
-  const currentX = useRef(0);
-  const moved = useRef(false);
-  const [offset, setOffset] = useState(0);
-  const EXECUTE = Math.round((typeof window !== "undefined" ? window.innerWidth : 360) * 0.6);
+  const DELETE_THRESHOLD = 100;
+  const MAX_TRANSLATE = 200;
+  const [translateX, setTranslateX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
+  const translateRef = useRef(0);
+  const movedRef = useRef(false);
 
-  const onStart = (clientX: number) => {
-    dragging.current = true;
-    moved.current = false;
-    startX.current = clientX - currentX.current;
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true);
+    movedRef.current = false;
+    startXRef.current = e.clientX;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
-  const onMove = (clientX: number) => {
-    if (!dragging.current) return;
-    const next = Math.min(0, Math.max(-EXECUTE, clientX - startX.current));
-    if (Math.abs(next - currentX.current) > 3) moved.current = true;
-    currentX.current = next;
-    setOffset(next);
-  };
-  const onEnd = () => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    if (currentX.current <= -EXECUTE * 0.6) {
-      setOffset(-EXECUTE);
-      setTimeout(onDelete, 200);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const delta = startXRef.current - e.clientX;
+    if (Math.abs(delta) > 4) movedRef.current = true;
+    if (delta > 0) {
+      const next = -Math.min(delta, MAX_TRANSLATE);
+      translateRef.current = next;
+      setTranslateX(next);
     } else {
-      currentX.current = 0;
-      setOffset(0);
+      translateRef.current = 0;
+      setTranslateX(0);
     }
+  };
+  const handlePointerUp = () => {
+    setIsDragging(false);
+    if (Math.abs(translateRef.current) >= DELETE_THRESHOLD) {
+      setTranslateX(-MAX_TRANSLATE);
+      translateRef.current = -MAX_TRANSLATE;
+      setTimeout(() => onDelete(), 180);
+    } else {
+      translateRef.current = 0;
+      setTranslateX(0);
+    }
+  };
+  const handlePointerCancel = () => {
+    setIsDragging(false);
+    translateRef.current = 0;
+    setTranslateX(0);
   };
 
   const handleClick = () => {
-    if (moved.current) return;
+    if (movedRef.current) return;
     onClick();
   };
 
+  const showDeleteBackground = Math.abs(translateX) > 10;
+
   return (
     <div style={{ position: "relative", overflow: "hidden", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: Math.abs(offset),
-          background: "#EF4444",
-          display: offset < 0 ? "flex" : "none",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          paddingRight: 24,
-          overflow: "hidden",
-          transition: dragging.current ? "none" : "width 0.2s ease",
-        }}
-      >
-        <Trash2 size={20} color="white" />
-      </div>
+      {showDeleteBackground && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: "#EF4444",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            paddingRight: 20,
+          }}
+        >
+          <Trash2 size={22} color="#fff" />
+        </div>
+      )}
       <button
         onClick={handleClick}
-        onMouseDown={(e) => onStart(e.clientX)}
-        onMouseMove={(e) => onMove(e.clientX)}
-        onMouseUp={onEnd}
-        onMouseLeave={onEnd}
-        onTouchStart={(e) => onStart(e.touches[0].clientX)}
-        onTouchMove={(e) => onMove(e.touches[0].clientX)}
-        onTouchEnd={onEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         style={{
           width: "100%",
           textAlign: "left",
           padding: "12px 16px",
-          background: n.lida ? "rgba(12,12,18,0.92)" : "rgba(35,30,15,0.96)",
+          background: n.lida ? "rgba(12,12,18,0.98)" : "rgba(35,30,15,0.98)",
           border: "none",
           cursor: "pointer",
           display: "block",
-          transform: `translateX(${offset}px)`,
-          transition: dragging.current ? "none" : "transform 0.2s ease",
+          transform: `translateX(${translateX}px)`,
+          transition: isDragging ? "none" : "transform 0.2s ease-out",
           position: "relative",
           zIndex: 1,
           touchAction: "pan-y",
