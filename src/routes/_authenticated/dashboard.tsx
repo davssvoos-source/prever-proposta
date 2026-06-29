@@ -124,7 +124,7 @@ function Dashboard() {
             margin: 0,
           }}
         >
-          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""} 👋
+          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""}
         </h1>
         <p
           style={{
