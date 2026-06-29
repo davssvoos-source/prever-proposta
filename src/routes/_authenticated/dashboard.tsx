@@ -569,74 +569,84 @@ function SwipeableCard({
   onReagendar: (id: string) => void;
   children: React.ReactNode;
 }) {
-  const dragging = useRef(false);
-  const startX = useRef(0);
-  const currentX = useRef(0);
-  const [offsetX, setOffsetX] = useState(0);
+  const SWIPE_THRESHOLD = 80;
+  const MAX_SWIPE = 90;
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
+  const offsetRef = useRef(0);
 
-  const ACTION_W = 72;
-  const EXECUTE_AT = Math.round((typeof window !== "undefined" ? window.innerWidth : 400) * 0.78);
-  const clamp = (v: number) => Math.min(0, Math.max(-EXECUTE_AT, v));
-
-  const onStart = (clientX: number) => {
-    dragging.current = true;
-    startX.current = clientX - currentX.current;
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
-  const onMove = (clientX: number) => {
-    if (!dragging.current) return;
-    const next = clamp(clientX - startX.current);
-    currentX.current = next;
-    setOffsetX(next);
-  };
-  const onEnd = () => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    if (currentX.current <= -EXECUTE_AT * 0.75) {
-      currentX.current = -EXECUTE_AT;
-      setOffsetX(-EXECUTE_AT);
-      setTimeout(() => {
-        currentX.current = 0;
-        setOffsetX(0);
-        onReagendar(visitaId);
-      }, 220);
-    } else {
-      currentX.current = 0;
-      setOffsetX(0);
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const delta = startXRef.current - e.clientX;
+    if (delta < 0) {
+      offsetRef.current = 0;
+      setSwipeOffset(0);
+      return;
     }
+    const next = Math.min(delta, MAX_SWIPE);
+    offsetRef.current = next;
+    setSwipeOffset(next);
+  };
+  const handlePointerUp = () => {
+    setIsDragging(false);
+    if (offsetRef.current >= SWIPE_THRESHOLD) {
+      setSwipeOffset(MAX_SWIPE);
+      offsetRef.current = MAX_SWIPE;
+      setTimeout(() => {
+        offsetRef.current = 0;
+        setSwipeOffset(0);
+        onReagendar(visitaId);
+      }, 200);
+    } else {
+      offsetRef.current = 0;
+      setSwipeOffset(0);
+    }
+  };
+  const handlePointerCancel = () => {
+    setIsDragging(false);
+    offsetRef.current = 0;
+    setSwipeOffset(0);
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: 12, borderRadius: 16, overflow: "hidden" }}>
-      <div style={{
+    <div style={{ position: "relative", marginBottom: 12 }}>
+      {/* CAMADA INFERIOR — caixa amarela, mesmo tamanho exato do card */}
+      <div
+        style={{
           position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 90,
+          inset: 0,
+          borderRadius: 18,
           background: "linear-gradient(to bottom, #B8860B, #FFD700 50%, #B8860B)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-      }}>
+          justifyContent: "flex-end",
+          paddingRight: 24,
+        }}
+      >
         <CalendarRange size={32} color="#000000" />
       </div>
+      {/* CAMADA SUPERIOR — card opaco, desliza */}
       <div
         style={{
-          transform: `translateX(${offsetX}px)`,
-          transition: dragging.current ? "none" : "transform 0.25s ease",
-          touchAction: "pan-y",
           position: "relative",
           zIndex: 1,
-          backgroundColor: "#0E0E14",
+          borderRadius: 18,
+          background: "linear-gradient(135deg, #15140C 0%, #0B0B07 100%)",
+          transform: `translateX(-${swipeOffset}px)`,
+          transition: isDragging ? "none" : "transform 0.25s ease-out",
+          touchAction: "pan-y",
+          cursor: "grab",
         }}
-
-        onMouseDown={(e) => onStart(e.clientX)}
-        onMouseMove={(e) => onMove(e.clientX)}
-        onMouseUp={onEnd}
-        onMouseLeave={onEnd}
-        onTouchStart={(e) => onStart(e.touches[0].clientX)}
-        onTouchMove={(e) => onMove(e.touches[0].clientX)}
-        onTouchEnd={onEnd}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
       >
         {children}
       </div>
