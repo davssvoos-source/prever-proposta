@@ -622,7 +622,9 @@ function SwipeableCard({
           touchAction: "pan-y",
           position: "relative",
           zIndex: 1,
+          backgroundColor: "#0E0E14",
         }}
+
         onMouseDown={(e) => onStart(e.clientX)}
         onMouseMove={(e) => onMove(e.clientX)}
         onMouseUp={onEnd}
