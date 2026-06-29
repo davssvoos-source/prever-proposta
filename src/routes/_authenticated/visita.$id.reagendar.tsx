@@ -103,7 +103,7 @@ function ReagendarPage() {
         </button>
         <div>
           <h1 style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 500, margin: 0 }}>
-            Reagendar visita
+            Agendar / Reagendar
           </h1>
           {nomeCliente && (
             <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "2px 0 0" }}>
