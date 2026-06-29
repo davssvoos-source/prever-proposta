@@ -12,7 +12,6 @@ const CATEGORIAS = [
   { id: "cftv", label: "CFTV", icon: "📷", desc: "Câmeras, DVRs e NVRs" },
   { id: "alarme", label: "Alarme", icon: "🚨", desc: "Sensores, centrais e sirenes" },
   { id: "cerca", label: "Cerca Elétrica", icon: "⚡", desc: "Centrais e eletrificadores" },
-  { id: "central", label: "Central de Comando", icon: "🖥️", desc: "Racks, nobreaks e infraestrutura" },
 ];
 
 // ——— SlideToNext ———————————————————————————————
