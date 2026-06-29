@@ -343,7 +343,7 @@ function Dashboard() {
       </div>
 
       {/* Filtro de status — full width */}
-      <div style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
+      <div ref={statusDropdownRef} style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
         <button
           onClick={(e) => { e.stopPropagation(); setShowStatusDropdown((v) => !v); }}
           style={{
