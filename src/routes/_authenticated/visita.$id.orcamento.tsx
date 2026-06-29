@@ -1,9 +1,4 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-
 export const Route = createFileRoute('/_authenticated/visita/$id/orcamento')({
-  component: OrcamentoLayout,
+  component: () => <Outlet />,
 })
-
-function OrcamentoLayout() {
-  return <Outlet />
-}
