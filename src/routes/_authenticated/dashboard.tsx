@@ -645,25 +645,10 @@ function SwipeableCard({
 }
 
 
-function Section({ title, icon, items, onReagendar }: { title: string; icon?: React.ReactNode; items: any[]; onReagendar?: (id: string) => void }) {
+function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: string) => void }) {
   return (
     <section>
-      <h2
-        style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 400,
-          fontSize: 13,
-          color: "rgba(255,192,0,0.85)",
-          letterSpacing: "0.06em",
-          margin: "0 0 10px",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        {icon}
-        {title}
-      </h2>
+
 
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => {
