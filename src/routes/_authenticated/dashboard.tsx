@@ -279,9 +279,12 @@ function VisitaCard({ visita }: { visita: any }) {
             fontWeight: 300,
             fontSize: 12,
             color: "rgba(255,255,255,0.65)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          📍 {visita.endereco}
+          <MapPin size={12} style={{ opacity: 0.75 }} /> {visita.endereco}
         </div>
       )}
       {visita.data_hora_agendada && (
@@ -293,11 +296,15 @@ function VisitaCard({ visita }: { visita: any }) {
             color: "rgba(255,192,0,0.75)",
             marginTop: 6,
             letterSpacing: "0.06em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          🗓️ {fmtData(visita.data_hora_agendada)}
+          <CalendarDays size={12} /> {fmtData(visita.data_hora_agendada)}
         </div>
       )}
+
     </div>
   );
 }
