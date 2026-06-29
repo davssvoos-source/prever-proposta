@@ -894,8 +894,6 @@ function VisitaDetail() {
       )}
 
       {/* Equipamentos do orçamento */}
-      {verEquip && blocoDetalhes.length > 0 && (
-        <div style={GLASS}>
       {verEquip && (blocoDetalhes.length > 0 || centraisAuto.length > 0) && (
         <div style={GLASS}>
           <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
