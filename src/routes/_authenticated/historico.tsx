@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   reprovada: { label: "Reprovada", color: "#EF4444", icon: XCircle },
 };
 
-type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "agendada" | "em_andamento" | "reprovada";
+type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "em_andamento" | "reprovada";
 
 function VisitasPage() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ function VisitasPage() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("visitas_tecnicas")
-        .select("id, status, data_hora_agendada, titulo, endereco, clientes(nome)")
+        .select("id, status, data_hora_agendada, titulo, endereco, nome_predio, nome_sindico, clientes(nome)")
         .eq("tecnico_id", user.id)
         .order("data_hora_agendada", { ascending: false });
       if (error) throw error;
@@ -47,7 +47,6 @@ function VisitasPage() {
   const FILTROS: { key: Filtro; label: string }[] = [
     { key: "todos", label: "Todas" },
     { key: "pendente", label: "Pendentes" },
-    { key: "agendada", label: "Agendadas" },
     { key: "em_andamento", label: "Em andamento" },
     { key: "concluida", label: "Concluídas" },
     { key: "aprovada", label: "Aprovadas" },
@@ -134,7 +133,7 @@ function VisitasPage() {
                   year: "numeric",
                 })
               : "Sem data";
-            const clienteNome = v.clientes?.nome ?? v.titulo ?? "Visita";
+            const clienteNome = v.clientes?.nome ?? v.nome_predio ?? v.nome_sindico ?? v.titulo ?? "Sem nome";
 
             return (
               <button
