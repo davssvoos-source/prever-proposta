@@ -973,14 +973,14 @@ function VisitaDetail() {
                       )
                     }
                     style={{
-                      background: ativo ? "rgba(255,192,0,0.15)" : "rgba(8,8,12,0.20)",
-                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      background: ativo ? "rgba(255,255,255,0.10)" : "rgba(8,8,12,0.20)",
+                      border: ativo ? "1.5px solid #FFFFFF" : "1px solid rgba(255,255,255,0.18)",
                       borderRadius: 999,
                       padding: "6px 11px",
                       fontFamily: "'Montserrat', sans-serif",
                       fontSize: 11,
                       fontWeight: 300,
-                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      color: ativo ? "#FFFFFF" : "rgba(200,200,200,0.65)",
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
