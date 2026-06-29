@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/novo'
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
+import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
@@ -62,6 +63,11 @@ const AuthenticatedNovoRoute = AuthenticatedNovoRouteImport.update({
 const AuthenticatedMapaRoute = AuthenticatedMapaRouteImport.update({
   id: '/mapa',
   path: '/mapa',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHistoricoRoute = AuthenticatedHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGerencialRoute = AuthenticatedGerencialRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
+  '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/calendario'
     | '/dashboard'
     | '/gerencial'
+    | '/historico'
     | '/mapa'
     | '/novo'
     | '/perfil'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/calendario'
     | '/dashboard'
     | '/gerencial'
+    | '/historico'
     | '/mapa'
     | '/novo'
     | '/perfil'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calendario'
     | '/_authenticated/dashboard'
     | '/_authenticated/gerencial'
+    | '/_authenticated/historico'
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       path: '/mapa'
       fullPath: '/mapa'
       preLoaderRoute: typeof AuthenticatedMapaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/historico': {
+      id: '/_authenticated/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof AuthenticatedHistoricoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/gerencial': {
@@ -478,6 +497,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
+  AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
@@ -490,6 +510,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
+  AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
@@ -509,13 +530,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
