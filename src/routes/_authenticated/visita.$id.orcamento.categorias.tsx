@@ -234,7 +234,7 @@ function CategoriasPage() {
             (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
           }}
         >
-          <div style={{ fontSize: 32 }}>{cat.icon}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
           <div style={{ flex: 1 }}>
             <div
               style={{
