@@ -290,7 +290,7 @@ function VisitaDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("visita_orcamentos")
-        .select("blocos_selecionados, qtd_apartamentos, servicos_ofertados, sistema_atual")
+        .select("blocos_selecionados, itens_variaveis, qtd_apartamentos, servicos_ofertados, sistema_atual")
         .eq("visita_id", id)
         .maybeSingle();
       return data;
