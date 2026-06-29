@@ -307,7 +307,7 @@ function Dashboard() {
               margin: 0,
             }}
           >
-            {filtroAtivo === 'hoje' ? 'Nenhuma visita neste dia' : 'Nenhuma visita nesta semana'}
+            {filtroAtivo === 'hoje' ? 'Nenhuma visita hoje' : filtroAtivo === 'semana' ? 'Nenhuma visita esta semana' : 'Nenhuma visita este mês'}
           </p>
         </div>
       ) : (
