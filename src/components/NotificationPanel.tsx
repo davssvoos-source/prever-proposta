@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, CheckCircle2, CalendarCheck, Settings, Info } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2 } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
+
 
 function NotifIcon({ tipo }: { tipo: string }) {
   const s = { size: 18, strokeWidth: 1.8 };
