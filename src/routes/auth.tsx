@@ -9,7 +9,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "login" | "forgot";
+type AuthMode = "login" | "forgot" | "register";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -18,6 +18,9 @@ function AuthPage() {
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [nome, setNome] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,6 +60,52 @@ function AuthPage() {
     toast.success("Link de recuperação enviado para " + email);
     setMode("login");
   }
+
+  async function handleRegister() {
+    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
+      toast.error("Preencha todos os campos.");
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    if (senha.length < 6) {
+      toast.error("A senha deve ter ao menos 6 caracteres.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: senha,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      if (data.user) {
+        await supabase.from("profiles").upsert({
+          id: data.user.id,
+          email: email.trim(),
+          nome: nome.trim(),
+          cargo: null,
+          status: "pendente_aprovacao",
+        } as any);
+        await supabase.auth.signOut();
+        toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");
+        setNome("");
+        setEmail("");
+        setSenha("");
+        setConfirmarSenha("");
+        setMode("login");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+
 
 
   const CARD: CSSProperties = {
@@ -212,6 +261,31 @@ function AuthPage() {
               >
                 {loading ? "Entrando..." : "Entrar"}
               </button>
+              <button
+                onClick={() => {
+                  setMode("register");
+                  setEmail("");
+                  setSenha("");
+                  setNome("");
+                  setConfirmarSenha("");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.20)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: "'Montserrat', sans-serif",
+                  marginTop: 8,
+                  transition: "all 0.2s",
+                }}
+              >
+                Criar conta
+              </button>
               <div style={{ textAlign: "center", marginTop: 4 }}>
                 <button onClick={() => setMode("forgot")} style={BTN_GHOST}>
                   Esqueci minha senha
@@ -276,6 +350,94 @@ function AuthPage() {
                 style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1 }}
               >
                 {loading ? "Enviando..." : "Enviar link de recuperação →"}
+              </button>
+            </div>
+          )}
+
+          {mode === "register" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <button
+                onClick={() => setMode("login")}
+                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}
+              >
+                <ArrowLeft size={14} /> Voltar para o login
+              </button>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 17, color: "#fff" }}>
+                Criar conta
+              </div>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
+                Sua solicitação será analisada por um administrador.
+              </div>
+
+              <div>
+                <label style={LBL}>Nome completo</label>
+                <input
+                  style={INPUT}
+                  type="text"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Seu nome"
+                />
+              </div>
+
+              <div>
+                <label style={LBL}>E-mail</label>
+                <input
+                  style={INPUT}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                />
+              </div>
+
+              <div>
+                <label style={LBL}>Senha</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...INPUT, paddingRight: 48 }}
+                    type={showSenha ? "text" : "password"}
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSenha((p) => !p)}
+                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", display: "flex" }}
+                  >
+                    {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={LBL}>Confirmar senha</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...INPUT, paddingRight: 48 }}
+                    type={showConfirmarSenha ? "text" : "password"}
+                    value={confirmarSenha}
+                    onChange={(e) => setConfirmarSenha(e.target.value)}
+                    placeholder="Repita a senha"
+                    onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmarSenha((p) => !p)}
+                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", display: "flex" }}
+                  >
+                    {showConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={handleRegister}
+                disabled={loading}
+                style={{ ...BTN_GOLD, opacity: loading ? 0.7 : 1, marginTop: 4 }}
+              >
+                {loading ? "Enviando..." : "Solicitar acesso"}
               </button>
             </div>
           )}

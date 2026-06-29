@@ -24,7 +24,7 @@ function usePerfil() {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("nome, cargo, avatar_url")
+        .select("nome, cargo, avatar_url, status")
         .eq("id", user.id)
         .maybeSingle();
       return data;
@@ -36,6 +36,43 @@ function usePerfil() {
 function AuthenticatedLayout() {
   const navigate = useNavigate();
   const { data: perfil } = usePerfil();
+
+  if (perfil && (perfil as any).status === "pendente_aprovacao") {
+    return (
+      <>
+        <AnimatedBackground />
+        <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+          <div style={{ maxWidth: 380 }}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 22, color: "#fff", marginBottom: 12 }}>
+              Aguardando aprovação
+            </div>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+              Sua solicitação de acesso foi enviada. Um administrador irá analisá-la em breve.
+            </div>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate({ to: "/auth" });
+              }}
+              style={{
+                marginTop: 32,
+                padding: "10px 24px",
+                borderRadius: 20,
+                border: "1px solid rgba(255,255,255,0.20)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.7)",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Sair
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const iniciais = perfil?.nome
     ? perfil.nome

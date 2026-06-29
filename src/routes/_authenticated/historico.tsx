@@ -1,27 +1,31 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Archive, CalendarDays, MapPin } from "lucide-react";
+import { CheckCircle, XCircle, Archive, CalendarDays, MapPin, Clock, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/historico")({
-  component: HistoricoPage,
+  component: VisitasPage,
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   concluida: { label: "Concluída", color: "#10B981", icon: CheckCircle },
   aprovada: { label: "Aprovada", color: "#8B5CF6", icon: CheckCircle },
   cancelada: { label: "Cancelada", color: "#EF4444", icon: XCircle },
+  pendente: { label: "Pendente", color: "#FFC000", icon: Clock },
+  agendada: { label: "Agendada", color: "#3B82F6", icon: CalendarDays },
+  em_andamento: { label: "Em andamento", color: "#F59E0B", icon: Play },
+  reprovada: { label: "Reprovada", color: "#EF4444", icon: XCircle },
 };
 
-type Filtro = "todos" | "concluida" | "aprovada" | "cancelada";
+type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "agendada" | "em_andamento" | "reprovada";
 
-function HistoricoPage() {
+function VisitasPage() {
   const navigate = useNavigate();
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
   const { data: visitas = [], isLoading } = useQuery({
-    queryKey: ["historico-visitas"],
+    queryKey: ["visitas-todas"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
@@ -29,7 +33,6 @@ function HistoricoPage() {
         .from("visitas_tecnicas")
         .select("id, status, data_hora_agendada, titulo, endereco, clientes(nome)")
         .eq("tecnico_id", user.id)
-        .in("status", ["concluida", "aprovada", "cancelada"])
         .order("data_hora_agendada", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -43,9 +46,13 @@ function HistoricoPage() {
 
   const FILTROS: { key: Filtro; label: string }[] = [
     { key: "todos", label: "Todas" },
+    { key: "pendente", label: "Pendentes" },
+    { key: "agendada", label: "Agendadas" },
+    { key: "em_andamento", label: "Em andamento" },
     { key: "concluida", label: "Concluídas" },
     { key: "aprovada", label: "Aprovadas" },
     { key: "cancelada", label: "Canceladas" },
+    { key: "reprovada", label: "Reprovadas" },
   ];
 
   return (
@@ -57,7 +64,7 @@ function HistoricoPage() {
           fontSize: 22,
           color: "#fff",
           margin: 0,
-        }}>Histórico</h1>
+        }}>Visitas</h1>
         <p style={{
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
@@ -66,7 +73,7 @@ function HistoricoPage() {
           margin: "4px 0 0",
           letterSpacing: "0.06em",
         }}>
-          {visitas.length} visita{visitas.length !== 1 ? "s" : ""} realizada{visitas.length !== 1 ? "s" : ""}
+          {visitas.length} visita{visitas.length !== 1 ? "s" : ""}
         </p>
       </div>
 
@@ -120,12 +127,14 @@ function HistoricoPage() {
           {filtradas.map((v: any) => {
             const cfg = STATUS_CONFIG[v.status] ?? STATUS_CONFIG.concluida;
             const Icon = cfg.icon;
-            const dataFormatada = new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            });
-            const clienteNome = v.clientes?.nome ?? "Cliente";
+            const dataFormatada = v.data_hora_agendada
+              ? new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "Sem data";
+            const clienteNome = v.clientes?.nome ?? v.titulo ?? "Visita";
 
             return (
               <button

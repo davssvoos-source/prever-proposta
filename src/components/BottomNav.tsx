@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, History, ClipboardList, User } from "lucide-react";
+import { Home, Calendar, ClipboardList, User } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
 
 export function BottomNav() {
@@ -17,7 +17,7 @@ export function BottomNav() {
     : [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/historico", label: "Histórico", icon: History },
+        { to: "/historico", label: "Visitas", icon: ClipboardList },
         { to: "/perfil", label: "Perfil", icon: User },
       ];
 
