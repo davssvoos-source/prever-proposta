@@ -1138,16 +1138,10 @@ function VisitaDetail() {
       {showFinalizar && (
         <div
           style={{
-            position: "fixed",
-            bottom: 64,
-            left: 0,
-            right: 0,
-            zIndex: 30,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(8,9,14,0.96)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            padding: "12px 16px",
+            marginTop: 24,
+            marginBottom: 32,
+            paddingLeft: 16,
+            paddingRight: 16,
           }}
         >
           <button
