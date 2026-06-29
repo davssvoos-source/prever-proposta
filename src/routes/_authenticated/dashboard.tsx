@@ -291,17 +291,20 @@ function Dashboard() {
         paddingLeft: 16,
         paddingRight: 16,
         marginBottom: 8,
+        width: '100%',
+        boxSizing: 'border-box',
       }}>
         <button
           onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
           style={{
             flex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
             border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
             fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            whiteSpace: 'nowrap',
             boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
             transition: 'all 0.2s',
           }}
@@ -313,11 +316,12 @@ function Dashboard() {
           style={{
             flex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
             border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
             fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            whiteSpace: 'nowrap',
             boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
             transition: 'all 0.2s',
           }}
@@ -329,19 +333,20 @@ function Dashboard() {
           style={{
             flex: 1,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 16, paddingRight: 16, borderRadius: 20,
+            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
             border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
             background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
             fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            whiteSpace: 'nowrap',
             boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
             transition: 'all 0.2s',
           }}
         >
-
           <CalendarCheck size={14} /> Esse mês
         </button>
       </div>
+
 
       {/* Filtro de status — full width */}
       <div ref={statusDropdownRef} style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
