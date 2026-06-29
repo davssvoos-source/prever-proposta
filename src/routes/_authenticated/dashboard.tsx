@@ -18,12 +18,12 @@ const GLASS: React.CSSProperties = {
 };
 
 const STATUS_OPCOES = [
-  { key: 'todos',        label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
-  { key: 'pendente',     label: 'Visitas pendentes',   color: '#FFC000' },
-  { key: 'em_andamento', label: 'Em andamento',        color: '#60A5FA' },
-  { key: 'concluida',    label: 'Aguardando aprovação', color: '#F59E0B' },
-  { key: 'aprovada',     label: 'Aprovadas',           color: '#10B981' },
-  { key: 'reprovada',    label: 'Reprovadas',          color: '#EF4444' },
+  { key: 'todos',                label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
+  { key: 'pendente',             label: 'Visitas pendentes',   color: '#FFC000' },
+  { key: 'em_andamento',         label: 'Em andamento',        color: '#60A5FA' },
+  { key: 'aguardando_aprovacao', label: 'Ag. Aprovação',       color: '#3B82F6' },
+  { key: 'aprovado',             label: 'Aprovadas',           color: '#10B981' },
+  { key: 'reprovada',            label: 'Reprovadas',          color: '#EF4444' },
 ];
 
 function saudacao() {
