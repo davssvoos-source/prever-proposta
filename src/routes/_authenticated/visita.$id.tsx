@@ -897,6 +897,45 @@ function VisitaDetail() {
       {verEquip && blocoDetalhes.length > 0 && (
         <div style={GLASS}>
           <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
+          {centraisAuto.map((code) => {
+            const bloco = blocoDetalhes.find((b: any) => b.code === code) as any;
+            if (!bloco) return null;
+            return (
+              <div
+                key={`auto-${code}`}
+                style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div style={{ display: "inline-block", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#FFC000", background: "rgba(255,192,0,0.10)", border: "1px solid rgba(255,192,0,0.30)", borderRadius: 6, padding: "2px 6px", marginBottom: 6, fontFamily: "'Montserrat', sans-serif", fontWeight: 400 }}>
+                  Automático
+                </div>
+                {bloco.descricao && (
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 6, marginTop: 0, fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+                    {bloco.descricao}
+                  </p>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 15, color: "#fff" }}>
+                    {bloco.name}
+                  </span>
+                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
+                    ×1
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 4 }}>
+                  {(bloco.blocos_itens ?? []).map((item: any) => {
+                    const totalQty = item.qty ?? 0;
+                    if (totalQty === 0) return null;
+                    return (
+                      <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
+                        <span>{item.nome}{item.modelo ? ` · ${item.modelo}` : ""}</span>
+                        <span style={{ fontWeight: 500 }}>{totalQty}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
           {Object.entries(
             (orcamento?.blocos_selecionados as Record<string, Record<string, number>>) ?? {},
           ).map(([cat, catQtds]) =>
