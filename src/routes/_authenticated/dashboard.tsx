@@ -380,7 +380,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 11,
-            color: "rgba(255,192,0,0.75)",
+            color: "#FFFFFF",
             marginTop: 6,
             letterSpacing: "0.06em",
             display: "inline-flex",
