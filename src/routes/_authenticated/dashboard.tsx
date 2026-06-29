@@ -302,7 +302,7 @@ function VisitaCard({ visita }: { visita: any }) {
   );
 }
 
-function Section({ title, items }: { title: string; items: any[] }) {
+function Section({ title, icon, items }: { title: string; icon?: React.ReactNode; items: any[] }) {
   return (
     <section>
       <h2
@@ -313,10 +313,15 @@ function Section({ title, items }: { title: string; items: any[] }) {
           color: "rgba(255,192,0,0.85)",
           letterSpacing: "0.06em",
           margin: "0 0 10px",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
+        {icon}
         {title}
       </h2>
+
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>
