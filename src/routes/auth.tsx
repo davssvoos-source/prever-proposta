@@ -58,29 +58,6 @@ function AuthPage() {
     setMode("login");
   }
 
-  async function handleReset() {
-    if (!novaSenha || !confirmarSenha) {
-      toast.error("Preencha os campos.");
-      return;
-    }
-    if (novaSenha !== confirmarSenha) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
-    if (novaSenha.length < 6) {
-      toast.error("Senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: novaSenha });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Senha alterada com sucesso!");
-    navigate({ to: "/dashboard" });
-  }
 
   const CARD: CSSProperties = {
     background: "rgba(8,8,12,0.55)",
