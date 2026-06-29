@@ -62,14 +62,12 @@ function ReagendarPage() {
   });
 
   const handleSalvar = () => {
-    if (!novaData) {
-      toast.error("Selecione uma data e horário.");
-      return;
-    }
-    const d = new Date(novaData);
-    if (isNaN(d.getTime())) {
-      toast.error("Data inválida.");
-      return;
+    if (novaData) {
+      const d = new Date(novaData);
+      if (isNaN(d.getTime())) {
+        toast.error("Data inválida.");
+        return;
+      }
     }
     mutation.mutate(novaData);
   };
