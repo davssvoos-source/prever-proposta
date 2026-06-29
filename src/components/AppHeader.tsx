@@ -49,24 +49,39 @@ export function AppHeader() {
         <div className="ml-auto flex items-center gap-3">
           {perfil && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  background: "linear-gradient(135deg, #FFD700, #FFC000)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 700,
-                  fontSize: 12,
-                  color: "#08090E",
-                }}
-              >
-                {initials(perfil.nome ?? "")}
-              </div>
+              {perfil.avatar_url ? (
+                <img
+                  src={perfil.avatar_url}
+                  alt={perfil.nome ?? "Avatar"}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    objectFit: "cover",
+                    border: "1.5px solid rgba(255,192,0,0.5)",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: "linear-gradient(135deg, #FFD700, #FFC000)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    color: "#08090E",
+                  }}
+                >
+                  {initials(perfil.nome ?? "")}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
                 <span
                   style={{
