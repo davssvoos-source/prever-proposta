@@ -343,5 +343,38 @@ function GerencialPage() {
         </div>
       )}
     </div>
+
+    {/* FAB — Nova Proposta */}
+    <button
+      onClick={() => navigate({ to: "/gerencial/nova" })}
+      style={{
+        position: "fixed",
+        bottom: 100,
+        right: 24,
+        width: 60,
+        height: 60,
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+        border: "none",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        boxShadow: "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)",
+        zIndex: 50,
+        transition: "transform 0.15s, box-shadow 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.08)";
+        e.currentTarget.style.boxShadow = "0 6px 28px rgba(255,192,0,0.7), 0 0 50px rgba(255,192,0,0.35)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)";
+      }}
+      aria-label="Nova Proposta"
+    >
+      <Plus size={28} color="#08090E" strokeWidth={2.5} />
+    </button>
   );
 }
