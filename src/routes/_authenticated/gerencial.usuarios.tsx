@@ -356,6 +356,89 @@ function UsuariosPage() {
         </div>
       )}
 
+      {/* Solicitações de acesso */}
+      {solicitacoes.length > 0 && (
+        <>
+          <div style={SECTION_TITLE}>Solicitações de acesso ({solicitacoes.length})</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+            {solicitacoes.map((s: any) => (
+              <div key={s.id} style={{ ...GLASS, padding: "14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%",
+                    background: "rgba(255,192,0,0.12)",
+                    border: "1px solid rgba(255,192,0,0.25)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                    flexShrink: 0,
+                  }}>
+                    {iniciais(s.nome ?? s.email)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: "#fff" }}>
+                      {s.nome ?? "—"}
+                    </div>
+                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                      {s.email}
+                    </div>
+                  </div>
+                  {aprovarId === s.id ? (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      <select
+                        value={aprovarCargo}
+                        onChange={(e) => setAprovarCargo(e.target.value as CargoId)}
+                        style={{
+                          padding: "6px 10px", borderRadius: 8,
+                          border: "1px solid rgba(255,255,255,0.20)",
+                          background: "rgba(255,255,255,0.08)",
+                          color: "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
+                        }}
+                      >
+                        <option value="tecnico" style={{ background: "#0a0a14" }}>Técnico</option>
+                        <option value="comercial" style={{ background: "#0a0a14" }}>Comercial</option>
+                        <option value="admin" style={{ background: "#0a0a14" }}>Admin</option>
+                      </select>
+                      <button
+                        onClick={() => aprovarMutation.mutate({ userId: s.id, cargo: aprovarCargo })}
+                        disabled={aprovarMutation.isPending}
+                        style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#10B981", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => setAprovarId(null)}
+                        style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.20)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => { setAprovarId(s.id); setAprovarCargo("tecnico"); }}
+                        style={{ padding: "6px 14px", borderRadius: 8, background: "rgba(255,192,0,0.15)", border: "1px solid rgba(255,192,0,0.40)", color: "#FFC000", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Aprovar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm("Rejeitar esta solicitação?")) {
+                            rejeitarMutation.mutate(s.id);
+                          }
+                        }}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.40)", background: "rgba(239,68,68,0.10)", color: "#EF4444", fontSize: 13, cursor: "pointer" }}
+                      >
+                        Rejeitar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Convites pendentes */}
       {convitesPendentes.length > 0 && (
         <>
