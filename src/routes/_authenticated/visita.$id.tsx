@@ -325,6 +325,23 @@ function VisitaDetail() {
     },
   });
 
+  const updateItemQtyMutation = useMutation({
+    mutationFn: async ({ blocoId, itemId, qty }: { blocoId: string; itemId: string; qty: number }) => {
+      const current = (orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {};
+      const next = {
+        ...current,
+        [blocoId]: { ...(current[blocoId] ?? {}), [itemId]: Math.max(0, qty) },
+      };
+      const { error } = await supabase
+        .from("visita_orcamentos")
+        .update({ itens_variaveis: next })
+        .eq("visita_id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["orcamento", id] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const atribuirMutation = useMutation({
     mutationFn: async (tecnicoId: string) => {
       const { error } = await supabase
