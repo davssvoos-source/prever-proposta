@@ -209,7 +209,7 @@ function UsuariosPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Permissão atualizada ✓");
+      toast.success("Permissão atualizada");
       setEditingUser(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
