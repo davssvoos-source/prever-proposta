@@ -407,8 +407,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
             </div>
             {isPast && (
-              <p className="mt-2 text-xs font-medium text-red-400">
-                ⚠ Data/hora no passado
+              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-400">
+                <AlertTriangle className="h-3 w-3" /> Data/hora no passado
               </p>
             )}
           </div>
