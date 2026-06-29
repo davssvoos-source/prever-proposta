@@ -246,7 +246,7 @@ function Dashboard() {
 
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, marginBottom: 16 }}>
         <button
           onClick={() => setFiltroAtivo('hoje')}
           style={{
