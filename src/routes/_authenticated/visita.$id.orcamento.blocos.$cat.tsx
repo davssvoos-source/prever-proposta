@@ -448,88 +448,15 @@ function PedestresConfigurador({
         </div>
       )}
 
-      {blocoEncontrado && (
-        <div style={{ marginTop: 24, marginBottom: 16 }}>
-          <div style={{ ...LBL, marginBottom: 8 }}>EQUIPAMENTOS</div>
-          {(blocoEncontrado.blocos_itens ?? []).map((equip) => {
-            const isActive = activeEquipId === equip.id;
-            const baseQty = (equip.qty ?? 1) * (qtdBloco || 1);
-            const qty = getQtd(equip.id, baseQty);
-            return (
-              <div
-                key={equip.id}
-                onClick={() => setActiveEquipId(isActive ? null : equip.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 14px",
-                  marginBottom: 6,
-                  borderRadius: 10,
-                  background: isActive ? "#FFC000" : "rgba(255,255,255,0.06)",
-                  color: isActive ? "#000" : "#fff",
-                  cursor: "pointer",
-                  transition: "background 0.15s",
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 400,
-                }}
-              >
-                <span style={{ flex: 1 }}>{equip.nome}</span>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {isActive && (
-                    <button
-                      onClick={() =>
-                        setEquipQtd((prev) => ({
-                          ...prev,
-                          [equip.id]: Math.max(0, (prev[equip.id] ?? qty) - 1),
-                        }))
-                      }
-                      style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: "rgba(0,0,0,0.15)", border: "none",
-                        color: "#000", fontSize: 16, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >
-                      −
-                    </button>
-                  )}
-                  <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700 }}>{qty}</span>
-                  {isActive && (
-                    <button
-                      onClick={() =>
-                        setEquipQtd((prev) => ({
-                          ...prev,
-                          [equip.id]: (prev[equip.id] ?? qty) + 1,
-                        }))
-                      }
-                      style={{
-                        width: 28, height: 28, borderRadius: 6,
-                        background: "rgba(0,0,0,0.15)", border: "none",
-                        color: "#000", fontSize: 16, cursor: "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {configCompleta && blocoEncontrado && (
         <BlocoDetailCard
           bloco={blocoEncontrado}
           qtdBloco={qtdBloco}
           setQtdBloco={setQtdBloco}
-          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+          savedItens={savedItensVariaveis[blocoEncontrado.id] ?? {}}
+          onSave={(customItemQtds) =>
+            onSave({ [blocoEncontrado.id]: qtdBloco }, { [blocoEncontrado.id]: customItemQtds })
+          }
         />
       )}
 
@@ -537,12 +464,13 @@ function PedestresConfigurador({
         <FallbackList
           blocos={blocos}
           prefixLabel="PED"
-          onPick={(id) => onSave({ [id]: qtdBloco })}
+          onPick={(bid) => onSave({ [bid]: qtdBloco }, {})}
         />
       )}
     </div>
   );
 }
+
 
 function VeiculosConfigurador({
   blocos,
