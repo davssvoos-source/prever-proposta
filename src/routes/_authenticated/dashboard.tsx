@@ -328,13 +328,13 @@ function Dashboard() {
       </div>
 
       {/* Filtro de status — full width */}
-      <div style={{ position: 'relative', marginBottom: 4 }}>
+      <div style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
         <button
           onClick={(e) => { e.stopPropagation(); setShowStatusDropdown((v) => !v); }}
           style={{
             width: '100%',
             padding: '11px 16px',
-            borderRadius: 12,
+            borderRadius: 24,
             border: statusFiltro !== 'todos' ? '1px solid rgba(255,192,0,0.50)' : '1px solid rgba(255,255,255,0.16)',
             background: statusFiltro !== 'todos' ? 'rgba(255,192,0,0.08)' : 'rgba(255,255,255,0.04)',
             display: 'flex',
