@@ -512,10 +512,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             <div><strong>{form.nome_predio}</strong> · {TIPO_LABEL[form.tipo_local]}</div>
             <div>{SERVICO_ICON[form.servico_solicitado]} {SERVICO_LABEL[form.servico_solicitado]}</div>
             <div className="text-muted-foreground">{form.endereco}</div>
-            <div>📞 {form.nome_sindico} · {form.contato_sindico}</div>
+            <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}</div>
             {dataHoraISO && (
-              <div>
-                📅{" "}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
                 {new Date(dataHoraISO).toLocaleString("pt-BR", {
                   weekday: "long",
                   day: "2-digit",
@@ -525,8 +525,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                 })}
               </div>
             )}
-            <div>👷 {tecnicoSel?.nome ?? "Sem técnico definido"}</div>
-            <div>⚑ Prioridade: {PRIORIDADE_LABEL[form.prioridade]}</div>
+            <div className="flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> {tecnicoSel?.nome ?? "Sem técnico definido"}</div>
+            <div className="flex items-center gap-1.5"><Flag className="h-3.5 w-3.5" /> Prioridade: {PRIORIDADE_LABEL[form.prioridade]}</div>
           </Card>
 
           <div className="flex justify-between">
