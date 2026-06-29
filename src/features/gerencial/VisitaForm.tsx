@@ -472,8 +472,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                   </ul>
                 )}
                 {conflito && (
-                  <p className="mt-2 text-[11px] font-medium text-red-400">
-                    ⚠ Possível conflito de horário
+                  <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-400">
+                    <AlertTriangle className="h-3 w-3" /> Possível conflito de horário
                   </p>
                 )}
               </div>
