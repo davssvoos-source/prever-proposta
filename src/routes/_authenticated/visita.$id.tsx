@@ -228,7 +228,7 @@ function VisitaDetail() {
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
-          servicos_solicitados,
+          servicos_solicitados, servicos_propostos,
           clientes (nome, email, telefone, tipo_empreendimento)
         `)
         .eq("id", id)
