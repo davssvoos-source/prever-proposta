@@ -73,13 +73,26 @@ function BlocoDetailCard({
   bloco,
   qtdBloco,
   setQtdBloco,
+  savedItens,
   onSave,
 }: {
   bloco: Bloco;
   qtdBloco: number;
   setQtdBloco: (n: number) => void;
-  onSave: () => void;
+  savedItens: Record<string, number>;
+  onSave: (customItemQtds: Record<string, number>) => void;
 }) {
+  const [customItemQtds, setCustomItemQtds] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const defaults: Record<string, number> = {};
+    for (const item of bloco.blocos_itens ?? []) {
+      defaults[item.id] = savedItens[item.id] ?? item.qty ?? 0;
+    }
+    setCustomItemQtds(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bloco.id]);
+
   return (
     <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
       <div style={LBL}>Bloco identificado</div>
@@ -115,28 +128,79 @@ function BlocoDetailCard({
       )}
 
       <div style={{ ...LBL, marginTop: 8 }}>Equipamentos inclusos</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
-        {(bloco.blocos_itens ?? []).map((it) => (
-          <div
-            key={it.id}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.6)",
-            }}
-          >
-            <span>
-              {it.nome} · {it.modelo}
-            </span>
-            <span style={{ color: "#FFC000" }}>
-              {it.qty * qtdBloco}
-              {it.variavel ? " (V)" : ""}
-            </span>
-          </div>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+        {(bloco.blocos_itens ?? []).map((it) => {
+          const q = customItemQtds[it.id] ?? it.qty ?? 0;
+          return (
+            <div
+              key={it.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: "8px 10px",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.04)",
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {it.nome}
+                {it.modelo ? ` · ${it.modelo}` : ""}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() =>
+                    setCustomItemQtds((prev) => ({
+                      ...prev,
+                      [it.id]: Math.max(0, (prev[it.id] ?? it.qty ?? 0) - 1),
+                    }))
+                  }
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: "rgba(255,192,0,0.15)",
+                    border: "1px solid rgba(255,192,0,0.35)",
+                    color: "#FFC000",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Minus size={13} />
+                </button>
+                <span style={{ minWidth: 22, textAlign: "center", color: "#FFC000", fontWeight: 600 }}>{q}</span>
+                <button
+                  onClick={() =>
+                    setCustomItemQtds((prev) => ({
+                      ...prev,
+                      [it.id]: (prev[it.id] ?? it.qty ?? 0) + 1,
+                    }))
+                  }
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 6,
+                    background: "rgba(255,192,0,0.15)",
+                    border: "1px solid rgba(255,192,0,0.35)",
+                    color: "#FFC000",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={LBL}>Quantidade deste bloco</div>
@@ -190,7 +254,7 @@ function BlocoDetailCard({
       </div>
 
       <button
-        onClick={onSave}
+        onClick={() => onSave(customItemQtds)}
         style={{
           marginTop: 18,
           width: "100%",
@@ -212,6 +276,7 @@ function BlocoDetailCard({
     </div>
   );
 }
+
 
 function FallbackList({
   blocos,
