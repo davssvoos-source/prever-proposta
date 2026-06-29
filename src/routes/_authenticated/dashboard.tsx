@@ -206,11 +206,65 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* Filtros */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+        <button
+          onClick={() => setFiltroAtivo('hoje')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarDays size={14} /> Hoje
+        </button>
+        <button
+          onClick={() => setFiltroAtivo('semana')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarRange size={14} /> Essa semana
+        </button>
+        {isAdmin && listaTecnicos && listaTecnicos.length > 0 && (
+          <select
+            value={tecnicoFiltro}
+            onChange={(e) => setTecnicoFiltro(e.target.value)}
+            style={{
+              padding: '7px 12px', borderRadius: 20,
+              border: '1px solid rgba(255,255,255,0.20)',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#FFFFFF', fontSize: 13, cursor: 'pointer',
+              outline: 'none', appearance: 'none', minWidth: 150,
+            }}
+          >
+            <option value="todos" style={{ background: '#0a0a14' }}>Todos os técnicos</option>
+            {listaTecnicos.map((t: any) => (
+              <option key={t.id} value={t.id} style={{ background: '#0a0a14' }}>
+                {t.nome ?? t.email}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
       {isLoading ? (
         <div style={{ ...GLASS, padding: 24, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
           Carregando visitas...
         </div>
-      ) : visitas.length === 0 ? (
+      ) : visitasFiltradas.length === 0 ? (
         <div style={{ ...GLASS, padding: 32, textAlign: "center" }}>
           <p
             style={{
@@ -221,7 +275,7 @@ function Dashboard() {
               margin: 0,
             }}
           >
-            Nenhuma visita encontrada.
+            {filtroAtivo === 'hoje' ? 'Nenhuma visita neste dia' : 'Nenhuma visita nesta semana'}
           </p>
         </div>
       ) : (
