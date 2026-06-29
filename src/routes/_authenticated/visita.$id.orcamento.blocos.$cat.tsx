@@ -12,10 +12,10 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/bloco
 const CAT_PREFIXES: Record<string, string[]> = {
   pedestres: ["PED"],
   veiculos: ["VEI"],
-  cftv: ["CAM", "NVR", "CFTV"],
-  alarme: ["ALA", "ALM"],
-  cerca: ["CER"],
-  central: ["CENT", "RACK"],
+  cftv: ["CFTV"],
+  alarme: ["ALARM"],
+  cerca: ["CERCA"],
+  central: ["CENT"],
 };
 const CAT_LABELS: Record<string, string> = {
   pedestres: "Acesso de Pedestres",
@@ -36,11 +36,6 @@ type Bloco = {
   descricao: string | null;
   blocos_itens: BlocoItem[];
 };
-
-function blocoMatchSegments(code: string, segments: string[]): boolean {
-  const partes = code.toUpperCase().split("-");
-  return segments.every((s) => partes.includes(s.toUpperCase()));
-}
 
 const CARD: React.CSSProperties = {
   background: "rgba(8,8,12,0.22)",
@@ -74,6 +69,201 @@ const btnStyle = (active: boolean, disabled = false): React.CSSProperties => ({
   opacity: disabled ? 0.35 : 1,
 });
 
+function BlocoDetailCard({
+  bloco,
+  qtdBloco,
+  setQtdBloco,
+  onSave,
+}: {
+  bloco: Bloco;
+  qtdBloco: number;
+  setQtdBloco: (n: number) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
+      <div style={LBL}>Bloco identificado</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 500,
+            fontSize: 11,
+            color: "#FFC000",
+            background: "rgba(255,192,0,0.15)",
+            padding: "3px 8px",
+            borderRadius: 6,
+          }}
+        >
+          {bloco.code}
+        </span>
+        <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#fff", fontSize: 14 }}>{bloco.name}</span>
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{bloco.hh} HH</span>
+      </div>
+      {bloco.descricao && (
+        <div
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 300,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.55)",
+            marginBottom: 14,
+          }}
+        >
+          {bloco.descricao}
+        </div>
+      )}
+
+      <div style={{ ...LBL, marginTop: 8 }}>Equipamentos inclusos</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
+        {(bloco.blocos_itens ?? []).map((it) => (
+          <div
+            key={it.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            <span>
+              {it.nome} · {it.modelo}
+            </span>
+            <span style={{ color: "#FFC000" }}>
+              {it.qty * qtdBloco}
+              {it.variavel ? " (V)" : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div style={LBL}>Quantidade deste bloco</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <button
+          onClick={() => setQtdBloco(Math.max(1, qtdBloco - 1))}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "rgba(255,192,0,0.15)",
+            border: "1px solid rgba(255,192,0,0.35)",
+            color: "#FFC000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <Minus size={18} />
+        </button>
+        <span
+          style={{
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 400,
+            fontSize: 26,
+            color: "#FFC000",
+            minWidth: 40,
+            textAlign: "center",
+          }}
+        >
+          {qtdBloco}
+        </span>
+        <button
+          onClick={() => setQtdBloco(qtdBloco + 1)}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "rgba(255,192,0,0.15)",
+            border: "1px solid rgba(255,192,0,0.35)",
+            color: "#FFC000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
+      <button
+        onClick={onSave}
+        style={{
+          marginTop: 18,
+          width: "100%",
+          padding: 14,
+          borderRadius: 14,
+          background: "linear-gradient(135deg,#FFD700,#FFC000)",
+          border: "none",
+          color: "#08090E",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 500,
+          fontSize: 13,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+        }}
+      >
+        Salvar e continuar →
+      </button>
+    </div>
+  );
+}
+
+function FallbackList({
+  blocos,
+  onPick,
+  prefixLabel,
+}: {
+  blocos: Bloco[];
+  onPick: (id: string) => void;
+  prefixLabel: string;
+}) {
+  return (
+    <div style={CARD}>
+      <div style={LBL}>Combinação não disponível — escolha manualmente</div>
+      <div
+        style={{
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 300,
+          fontSize: 11,
+          color: "rgba(255,255,255,0.45)",
+          marginBottom: 10,
+        }}
+      >
+        Mostrando todos os blocos {prefixLabel} cadastrados:
+      </div>
+      {blocos.map((b) => (
+        <button
+          key={b.id}
+          onClick={() => onPick(b.id)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            width: "100%",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 12,
+            padding: "12px 14px",
+            marginBottom: 8,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <span style={{ color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 500 }}>
+            {b.code}
+          </span>
+          <span style={{ color: "#fff", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>{b.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PedestresConfigurador({
   blocos,
   onSave,
@@ -81,115 +271,84 @@ function PedestresConfigurador({
   blocos: Bloco[];
   onSave: (qtds: Record<string, number>) => void;
 }) {
-  type Material = "metal" | "vidro";
-  type Abertura = "motorizada" | "mola" | "nenhum";
-  type Controle = "pad" | "e" | "es";
+  type NP = "1P" | "2P";
+  type Material = "MET" | "VID";
+  type Controle = "E" | "ES" | "PAD";
 
-  const [eclusa, setEclusa] = useState<boolean | null>(null);
+  const [nP, setNP] = useState<NP | null>(null);
   const [material, setMaterial] = useState<Material | null>(null);
-  const [abertura, setAbertura] = useState<Abertura | null>(null);
   const [controle, setControle] = useState<Controle | null>(null);
   const [qtdBloco, setQtdBloco] = useState(1);
 
+  // Eclusa (2P) só disponível em metal
   useEffect(() => {
-    setAbertura(null);
+    if (nP === "2P" && material === "VID") setMaterial(null);
     setControle(null);
-    if (material === "vidro" && abertura === "motorizada") setAbertura(null);
+  }, [nP]);
+  useEffect(() => {
+    setControle(null);
   }, [material]);
-  useEffect(() => {
-    setControle(null);
-  }, [eclusa]);
 
-  const segments: string[] = ["PED"];
-  if (eclusa !== null) segments.push(eclusa ? "2P" : "1P");
-  if (material !== null) segments.push(material === "metal" ? "MET" : "VID");
-  if (material === "metal" && abertura === "motorizada") segments.push("MOT");
-  if (abertura === "mola") segments.push("MOL");
-  if (eclusa && controle) segments.push(controle === "pad" ? "PAD" : controle === "e" ? "E" : "ES");
-
-  const configCompleta =
-    eclusa !== null && material !== null && abertura !== null && (!eclusa || controle !== null);
-
-  const blocoEncontrado = configCompleta
-    ? blocos.find((b) => blocoMatchSegments(b.code, segments)) ?? null
-    : null;
-
-  const blocosAlt =
-    configCompleta && !blocoEncontrado
-      ? blocos.filter((b) => b.code.toUpperCase().startsWith("PED"))
-      : [];
+  const configCompleta = nP !== null && material !== null && controle !== null;
+  const expectedCode = configCompleta ? `PED-${nP}-${controle}-${material}-PR` : null;
+  const blocoEncontrado = expectedCode ? blocos.find((b) => b.code === expectedCode) ?? null : null;
 
   return (
     <div>
       <div style={CARD}>
         <div style={LBL}>Eclusa (2 portas)?</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button style={btnStyle(eclusa === false)} onClick={() => setEclusa(false)}>
+          <button style={btnStyle(nP === "1P")} onClick={() => setNP("1P")}>
             🚪 Não — 1 porta
           </button>
-          <button style={btnStyle(eclusa === true)} onClick={() => setEclusa(true)}>
+          <button style={btnStyle(nP === "2P")} onClick={() => setNP("2P")}>
             🔄 Sim — 2 portas
           </button>
         </div>
       </div>
 
-      {eclusa !== null && (
+      {nP !== null && (
         <div style={CARD}>
           <div style={LBL}>Material da porta</div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button style={btnStyle(material === "metal")} onClick={() => setMaterial("metal")}>
+            <button style={btnStyle(material === "MET")} onClick={() => setMaterial("MET")}>
               ⚙️ Metal
             </button>
-            <button style={btnStyle(material === "vidro")} onClick={() => setMaterial("vidro")}>
+            <button
+              style={btnStyle(material === "VID", nP === "2P")}
+              onClick={() => nP !== "2P" && setMaterial("VID")}
+              disabled={nP === "2P"}
+            >
               🪟 Vidro
             </button>
           </div>
-        </div>
-      )}
-
-      {material !== null && (
-        <div style={CARD}>
-          <div style={LBL}>Tipo de abertura</div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              style={btnStyle(abertura === "motorizada", material === "vidro")}
-              onClick={() => material !== "vidro" && setAbertura("motorizada")}
-              disabled={material === "vidro"}
-            >
-              ⚡ Motorizada
-            </button>
-            <button style={btnStyle(abertura === "mola")} onClick={() => setAbertura("mola")}>
-              🔩 Mola Aérea
-            </button>
-            <button style={btnStyle(abertura === "nenhum")} onClick={() => setAbertura("nenhum")}>
-              🚫 Nenhum
-            </button>
-          </div>
-          {material === "vidro" && (
+          {nP === "2P" && (
             <div
               style={{
                 marginTop: 10,
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 11,
-                color: "rgba(255,255,255,0.4)",
+                color: "rgba(255,255,255,0.45)",
               }}
             >
-              ⓘ Porta de vidro não suporta motorização
+              ⓘ Eclusa só disponível em metal
             </div>
           )}
         </div>
       )}
 
-      {eclusa === true && abertura !== null && (
+      {material !== null && (
         <div style={CARD}>
-          <div style={LBL}>Nível de controle da eclusa</div>
+          <div style={LBL}>Nível de controle</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {([
-              { id: "pad", title: "PAD — Controle Padrão", desc: "3 faciais: entrada, saída e eclusa" },
-              { id: "e", title: "E — Somente Entrada", desc: "Facial apenas no acesso de entrada" },
-              { id: "es", title: "ES — Reforçado (Entrada + Saída)", desc: "Facial na entrada e na saída" },
-            ] as const).map((opt) => (
+              { id: "E", title: "E — Entrada", desc: "Facial apenas no acesso de entrada" },
+              { id: "ES", title: "ES — Entrada + Saída", desc: "Facial na entrada e na saída" },
+              ...(nP === "2P"
+                ? [{ id: "PAD", title: "PAD — Controle Padrão (3 pontos)", desc: "3 faciais: entrada, saída e eclusa" }]
+                : []),
+            ] as { id: Controle; title: string; desc: string }[]).map((opt) => (
               <button
                 key={opt.id}
                 style={{ ...btnStyle(controle === opt.id), textAlign: "left", padding: 14 }}
@@ -204,185 +363,179 @@ function PedestresConfigurador({
       )}
 
       {configCompleta && blocoEncontrado && (
-        <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
-          <div style={LBL}>Bloco identificado</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-            <span
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 500,
-                fontSize: 11,
-                color: "#FFC000",
-                background: "rgba(255,192,0,0.15)",
-                padding: "3px 8px",
-                borderRadius: 6,
-              }}
-            >
-              {blocoEncontrado.code}
-            </span>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#fff", fontSize: 14 }}>
-              {blocoEncontrado.name}
-            </span>
-            <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-              {blocoEncontrado.hh} HH
-            </span>
-          </div>
-          {blocoEncontrado.descricao && (
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.55)",
-                marginBottom: 14,
-              }}
-            >
-              {blocoEncontrado.descricao}
-            </div>
-          )}
+        <BlocoDetailCard
+          bloco={blocoEncontrado}
+          qtdBloco={qtdBloco}
+          setQtdBloco={setQtdBloco}
+          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+        />
+      )}
 
-          <div style={{ ...LBL, marginTop: 8 }}>Equipamentos inclusos</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 14 }}>
-            {(blocoEncontrado.blocos_itens ?? []).map((it) => (
-              <div
-                key={it.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.6)",
-                }}
-              >
-                <span>
-                  {it.nome} · {it.modelo}
-                </span>
-                <span style={{ color: "#FFC000" }}>
-                  {it.qty * qtdBloco}
-                  {it.variavel ? " (V)" : ""}
-                </span>
-              </div>
-            ))}
-          </div>
+      {configCompleta && !blocoEncontrado && (
+        <FallbackList
+          blocos={blocos}
+          prefixLabel="PED"
+          onPick={(id) => onSave({ [id]: qtdBloco })}
+        />
+      )}
+    </div>
+  );
+}
 
-          <div style={LBL}>Quantidade deste bloco</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
-            <button
-              onClick={() => setQtdBloco(Math.max(1, qtdBloco - 1))}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                background: "rgba(255,192,0,0.15)",
-                border: "1px solid rgba(255,192,0,0.35)",
-                color: "#FFC000",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Minus size={18} />
-            </button>
-            <span
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 400,
-                fontSize: 26,
-                color: "#FFC000",
-                minWidth: 40,
-                textAlign: "center",
-              }}
-            >
-              {qtdBloco}
-            </span>
-            <button
-              onClick={() => setQtdBloco(qtdBloco + 1)}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                background: "rgba(255,192,0,0.15)",
-                border: "1px solid rgba(255,192,0,0.35)",
-                color: "#FFC000",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Plus size={18} />
-            </button>
-          </div>
+function VeiculosConfigurador({
+  blocos,
+  onSave,
+}: {
+  blocos: Bloco[];
+  onSave: (qtds: Record<string, number>) => void;
+}) {
+  type Pistas = "1P" | "2P";
+  type Acesso = "CTRL" | "TAG";
+  type AcessoSai = "CTRL" | "FAC";
+  type Motor = "BASC" | "DESL" | "PIVO";
+  type Porteiro = "PP" | "PR";
 
-          <button
-            onClick={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
-            style={{
-              marginTop: 18,
-              width: "100%",
-              padding: 14,
-              borderRadius: 14,
-              background: "linear-gradient(135deg,#FFD700,#FFC000)",
-              border: "none",
-              color: "#08090E",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 13,
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
-            Salvar e continuar →
+  const [pistas, setPistas] = useState<Pistas | null>(null);
+  const [acesso, setAcesso] = useState<Acesso | null>(null);
+  const [ctrlSai, setCtrlSai] = useState<AcessoSai | null>(null);
+  const [motorEnt, setMotorEnt] = useState<Motor | null>(null);
+  const [motorSai, setMotorSai] = useState<Motor | null>(null);
+  const [porteiro, setPorteiro] = useState<Porteiro | null>(null);
+  const [qtdBloco, setQtdBloco] = useState(1);
+
+  // Reset dependents when pistas muda
+  useEffect(() => {
+    setAcesso(null);
+    setCtrlSai(null);
+    setMotorEnt(null);
+    setMotorSai(null);
+    setPorteiro(null);
+  }, [pistas]);
+
+  const configCompleta1P =
+    pistas === "1P" && acesso !== null && motorEnt !== null && porteiro !== null;
+  const configCompleta2P =
+    pistas === "2P" &&
+    acesso !== null &&
+    ctrlSai !== null &&
+    motorEnt !== null &&
+    motorSai !== null &&
+    porteiro !== null;
+  const configCompleta = configCompleta1P || configCompleta2P;
+
+  const expectedCode = configCompleta1P
+    ? `VEI-1P-${acesso}-${motorEnt}-${porteiro}`
+    : configCompleta2P
+    ? `VEI-2P-${acesso}-${ctrlSai}-${motorEnt}-${motorSai}-${porteiro}`
+    : null;
+
+  const blocoEncontrado = expectedCode ? blocos.find((b) => b.code === expectedCode) ?? null : null;
+
+  const motorOpts: { id: Motor; label: string }[] = [
+    { id: "BASC", label: "Basculante" },
+    { id: "DESL", label: "Deslizante" },
+    { id: "PIVO", label: "Pivotante" },
+  ];
+
+  return (
+    <div>
+      <div style={CARD}>
+        <div style={LBL}>Quantas pistas?</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={btnStyle(pistas === "1P")} onClick={() => setPistas("1P")}>
+            🛣️ 1 pista
+          </button>
+          <button style={btnStyle(pistas === "2P")} onClick={() => setPistas("2P")}>
+            🛤️ 2 pistas
           </button>
         </div>
-      )}
+      </div>
 
-      {configCompleta && !blocoEncontrado && blocosAlt.length > 0 && (
+      {pistas !== null && (
         <div style={CARD}>
-          <div style={LBL}>Nenhum bloco exato — escolha manualmente</div>
-          {blocosAlt.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => onSave({ [b.id]: qtdBloco })}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 12,
-                padding: "12px 14px",
-                marginBottom: 8,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <span style={{ color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 500 }}>
-                {b.code}
-              </span>
-              <span style={{ color: "#fff", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>{b.name}</span>
+          <div style={LBL}>{pistas === "2P" ? "Controle de entrada" : "Tipo de acesso"}</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button style={btnStyle(acesso === "CTRL")} onClick={() => setAcesso("CTRL")}>
+              🎛️ Controle simples
             </button>
-          ))}
-        </div>
-      )}
-
-      {configCompleta && !blocoEncontrado && blocosAlt.length === 0 && (
-        <div style={{ ...CARD, textAlign: "center", padding: 32 }}>
-          <div style={{ fontSize: 38, marginBottom: 10 }}>📭</div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 12,
-              color: "rgba(255,255,255,0.5)",
-            }}
-          >
-            Nenhum bloco PED cadastrado. Cadastre na área de administração.
+            <button style={btnStyle(acesso === "TAG")} onClick={() => setAcesso("TAG")}>
+              📡 Tag / Facial
+            </button>
           </div>
         </div>
+      )}
+
+      {pistas === "2P" && acesso !== null && (
+        <div style={CARD}>
+          <div style={LBL}>Controle de saída</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button style={btnStyle(ctrlSai === "CTRL")} onClick={() => setCtrlSai("CTRL")}>
+              🎛️ Controle
+            </button>
+            <button style={btnStyle(ctrlSai === "FAC")} onClick={() => setCtrlSai("FAC")}>
+              👤 Facial
+            </button>
+          </div>
+        </div>
+      )}
+
+      {((pistas === "1P" && acesso !== null) ||
+        (pistas === "2P" && ctrlSai !== null)) && (
+        <div style={CARD}>
+          <div style={LBL}>{pistas === "2P" ? "Motor portão de entrada" : "Tipo de motor/portão"}</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {motorOpts.map((m) => (
+              <button key={m.id} style={btnStyle(motorEnt === m.id)} onClick={() => setMotorEnt(m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pistas === "2P" && motorEnt !== null && (
+        <div style={CARD}>
+          <div style={LBL}>Motor portão de saída</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {motorOpts.map((m) => (
+              <button key={m.id} style={btnStyle(motorSai === m.id)} onClick={() => setMotorSai(m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {((pistas === "1P" && motorEnt !== null) ||
+        (pistas === "2P" && motorSai !== null)) && (
+        <div style={CARD}>
+          <div style={LBL}>Portaria</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button style={btnStyle(porteiro === "PP")} onClick={() => setPorteiro("PP")}>
+              👮 Presencial
+            </button>
+            <button style={btnStyle(porteiro === "PR")} onClick={() => setPorteiro("PR")}>
+              📞 Remota
+            </button>
+          </div>
+        </div>
+      )}
+
+      {configCompleta && blocoEncontrado && (
+        <BlocoDetailCard
+          bloco={blocoEncontrado}
+          qtdBloco={qtdBloco}
+          setQtdBloco={setQtdBloco}
+          onSave={() => onSave({ [blocoEncontrado.id]: qtdBloco })}
+        />
+      )}
+
+      {configCompleta && !blocoEncontrado && (
+        <FallbackList
+          blocos={blocos}
+          prefixLabel="VEI"
+          onPick={(id) => onSave({ [id]: qtdBloco })}
+        />
       )}
     </div>
   );
@@ -663,10 +816,10 @@ function BlocosCatPage() {
       const idx = CAT_ORDER.indexOf(cat);
       const nextCat = CAT_ORDER[idx + 1];
       if (nextCat) {
-        navigate({ to: "/visita/$id/orcamento/blocos/$cat", params: { id, cat: nextCat } });
+        window.location.href = `/visita/${id}/orcamento/blocos/${nextCat}`;
       } else {
-        navigate({ to: "/visita/$id", params: { id } });
         toast.success("Orçamento concluído! ✅");
+        window.location.href = `/visita/${id}`;
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -730,6 +883,8 @@ function BlocosCatPage() {
         </div>
       ) : cat === "pedestres" ? (
         <PedestresConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
+      ) : cat === "veiculos" ? (
+        <VeiculosConfigurador blocos={blocos} onSave={(qtds) => saveMutation.mutate(qtds)} />
       ) : (
         <BlocoGenericList
           blocos={blocos}
