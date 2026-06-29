@@ -95,19 +95,6 @@ function BlocoDetailCard({
     <div style={{ ...CARD, border: "1px solid rgba(255,192,0,0.45)", background: "rgba(255,192,0,0.06)" }}>
       <div style={LBL}>Bloco identificado</div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-        <span
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            fontSize: 11,
-            color: "#FFC000",
-            background: "rgba(255,192,0,0.15)",
-            padding: "3px 8px",
-            borderRadius: 6,
-          }}
-        >
-          {bloco.code}
-        </span>
         <span style={{ fontFamily: "'Montserrat', sans-serif", color: "#fff", fontSize: 14 }}>{bloco.name}</span>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{bloco.hh} HH</span>
       </div>
@@ -269,7 +256,7 @@ function BlocoDetailCard({
           cursor: "pointer",
         }}
       >
-        Salvar e continuar →
+        Adicionar bloco
       </button>
     </div>
   );
@@ -490,9 +477,16 @@ function VeiculosConfigurador({
   };
 
   const [eclusa, setEclusa] = useState<Eclusa | null>(null);
-  const [qtdPortoes, setQtdPortoes] = useState<2 | 3 | null>(null);
+  const [qtdPortoes, setQtdPortoes] = useState<1 | 2 | 3 | null>(null);
   const [portoes, setPortoes] = useState<PortaoCfg[]>([]);
   const [qtdBloco, setQtdBloco] = useState(1);
+
+  // Quando ECLUSA = NÃO, força quantidade = 1 e oculta o seletor.
+  useEffect(() => {
+    if (eclusa === "nao") setQtdPortoes(1);
+    else if (eclusa === "sim") setQtdPortoes((prev) => (prev === 1 ? null : prev));
+    else setQtdPortoes(null);
+  }, [eclusa]);
 
   // Ajusta array de portões quando a quantidade muda
   useEffect(() => {
@@ -533,7 +527,7 @@ function VeiculosConfigurador({
         </div>
       </div>
 
-      {eclusa !== null && (
+      {eclusa === "sim" && (
         <div style={CARD}>
           <div style={LBL}>Quantidade de portões?</div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -549,23 +543,25 @@ function VeiculosConfigurador({
 
       {portoes.map((p, idx) => (
         <div key={idx}>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              color: "#FFC000",
-              textAlign: "center",
-              margin: "20px 0 10px",
-              opacity: 0.85,
-            }}
-          >
-            ─── PORTÃO {idx + 1} ───
-          </div>
+          {portoes.length > 1 && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                color: "#FFC000",
+                textAlign: "center",
+                margin: "20px 0 10px",
+                opacity: 0.85,
+              }}
+            >
+              ─── PORTÃO {idx + 1} ───
+            </div>
+          )}
 
           <div style={CARD}>
-            <div style={LBL}>Tipo de acesso para entrar — Portão {idx + 1}</div>
+            <div style={LBL}>Tipo de acesso para entrar{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 style={btnStyle(p.tipoAcessoEntrar === "controle_simples")}
@@ -584,7 +580,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoEntrar !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de acesso para sair — Portão {idx + 1}</div>
+              <div style={LBL}>Tipo de acesso para sair{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAcessoSair === "controle_simples")}
@@ -610,7 +606,7 @@ function VeiculosConfigurador({
 
           {p.tipoAcessoSair !== null && (
             <div style={CARD}>
-              <div style={LBL}>Tipo de abertura — Portão {idx + 1}</div>
+              <div style={LBL}>Tipo de abertura{portoes.length > 1 ? ` — Portão ${idx + 1}` : ""}</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   style={btnStyle(p.tipoAbertura === "basculante")}
