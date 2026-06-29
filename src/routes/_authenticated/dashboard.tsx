@@ -246,52 +246,7 @@ function Dashboard() {
 
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, marginBottom: 16 }}>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
-            border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarDays size={14} /> Hoje
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
-            border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarRange size={14} /> Essa semana
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 16px', borderRadius: 20,
-            border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarCheck size={14} /> Esse mês
-        </button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, marginBottom: 8 }}>
         {isAdmin && listaTecnicos && listaTecnicos.length > 0 && (
           <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
             <UserRound
@@ -325,6 +280,62 @@ function Dashboard() {
             </select>
           </div>
         )}
+      </div>
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        paddingLeft: 16,
+        paddingRight: 16,
+        marginBottom: 8,
+      }}>
+        <button
+          onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
+          style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarDays size={14} /> Hoje
+        </button>
+        <button
+          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
+          style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarRange size={14} /> Essa semana
+        </button>
+        <button
+          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
+          style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarCheck size={14} /> Esse mês
+        </button>
       </div>
 
       {/* Filtro de status — full width */}
@@ -365,6 +376,8 @@ function Dashboard() {
         {showStatusDropdown && (
           <div
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
             style={{
               position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30,
               background: 'rgba(10,10,20,0.96)',

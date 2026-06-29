@@ -318,7 +318,7 @@ function PedestresConfigurador({
         <div style={CARD}>
           <div style={LBL}>QUANTIDADE DE PORTAS</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[1, 2, 3, 4].map((n) => (
+            {[2, 3, 4].map((n) => (
               <button
                 key={n}
                 style={{ ...btnStyle(qtdPortas === n), minWidth: 56 }}
