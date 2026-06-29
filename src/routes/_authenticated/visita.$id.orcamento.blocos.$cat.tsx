@@ -477,9 +477,16 @@ function VeiculosConfigurador({
   };
 
   const [eclusa, setEclusa] = useState<Eclusa | null>(null);
-  const [qtdPortoes, setQtdPortoes] = useState<2 | 3 | null>(null);
+  const [qtdPortoes, setQtdPortoes] = useState<1 | 2 | 3 | null>(null);
   const [portoes, setPortoes] = useState<PortaoCfg[]>([]);
   const [qtdBloco, setQtdBloco] = useState(1);
+
+  // Quando ECLUSA = NÃO, força quantidade = 1 e oculta o seletor.
+  useEffect(() => {
+    if (eclusa === "nao") setQtdPortoes(1);
+    else if (eclusa === "sim") setQtdPortoes((prev) => (prev === 1 ? null : prev));
+    else setQtdPortoes(null);
+  }, [eclusa]);
 
   // Ajusta array de portões quando a quantidade muda
   useEffect(() => {
