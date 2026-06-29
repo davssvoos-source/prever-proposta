@@ -241,12 +241,14 @@ function NotifItem({
           top: 0,
           right: 0,
           bottom: 0,
-          left: 0,
+          width: Math.abs(offset),
           background: "#EF4444",
-          display: "flex",
+          display: offset < 0 ? "flex" : "none",
           alignItems: "center",
           justifyContent: "flex-end",
           paddingRight: 24,
+          overflow: "hidden",
+          transition: dragging.current ? "none" : "width 0.2s ease",
         }}
       >
         <Trash2 size={20} color="white" />
