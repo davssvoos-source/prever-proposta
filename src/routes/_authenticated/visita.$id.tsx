@@ -890,6 +890,111 @@ function VisitaDetail() {
         </div>
       )}
 
+      {/* Serviços propostos */}
+      {visita && (
+        <div style={GLASS}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ ...SECTION_LABEL, marginBottom: 0 }}>Serviços propostos</div>
+            {!editandoPropostos ? (
+              <button
+                onClick={() => {
+                  setPropostosDraft(((visita as any).servicos_propostos as string[] | null) ?? []);
+                  setEditandoPropostos(true);
+                }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255,192,0,0.30)",
+                  borderRadius: 8,
+                  color: "#FFC000",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 400,
+                  fontSize: 11,
+                  letterSpacing: "0.08em",
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                }}
+              >
+                Editar
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => setEditandoPropostos(false)}
+                  style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 11, padding: "4px 10px", cursor: "pointer" }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => propostosMutation.mutate(propostosDraft)}
+                  disabled={propostosMutation.isPending || propostosDraft.length === 0}
+                  style={{ background: "rgba(255,192,0,0.12)", border: "1px solid rgba(255,192,0,0.45)", borderRadius: 8, color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
+                >
+                  Salvar
+                </button>
+              </div>
+            )}
+          </div>
+          {!editandoPropostos ? (
+            (((visita as any).servicos_propostos as string[] | null) ?? []).length === 0 ? (
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.45)", margin: 0 }}>
+                Nenhum serviço proposto definido.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(((visita as any).servicos_propostos as string[] | null) ?? []).map((k) => (
+                  <span
+                    key={k}
+                    style={{
+                      background: "rgba(255,192,0,0.10)",
+                      border: "1px solid rgba(255,192,0,0.30)",
+                      color: "#FFC000",
+                      borderRadius: 999,
+                      padding: "5px 10px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 400,
+                    }}
+                  >
+                    {SERVICO_PROPOSTO_LABEL[k] ?? k}
+                  </span>
+                ))}
+              </div>
+            )
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {SERVICOS_PROPOSTOS.map((s) => {
+                const ativo = propostosDraft.includes(s.key);
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() =>
+                      setPropostosDraft((prev) =>
+                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
+                      )
+                    }
+                    style={{
+                      background: ativo ? "rgba(255,192,0,0.15)" : "rgba(8,8,12,0.20)",
+                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      borderRadius: 999,
+                      padding: "6px 11px",
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <span>{s.emoji}</span> {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Descrição */}
       {visita.descricao_pedido && (
