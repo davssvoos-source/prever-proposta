@@ -18,12 +18,12 @@ const GLASS: React.CSSProperties = {
 };
 
 const STATUS_OPCOES = [
-  { key: 'todos',        label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
-  { key: 'pendente',     label: 'Visitas pendentes',   color: '#FFC000' },
-  { key: 'em_andamento', label: 'Em andamento',        color: '#60A5FA' },
-  { key: 'concluida',    label: 'Aguardando aprovação', color: '#F59E0B' },
-  { key: 'aprovada',     label: 'Aprovadas',           color: '#10B981' },
-  { key: 'reprovada',    label: 'Reprovadas',          color: '#EF4444' },
+  { key: 'todos',                label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
+  { key: 'pendente',             label: 'Visitas pendentes',   color: '#FFC000' },
+  { key: 'em_andamento',         label: 'Em andamento',        color: '#60A5FA' },
+  { key: 'aguardando_aprovacao', label: 'Ag. Aprovação',       color: '#3B82F6' },
+  { key: 'aprovado',             label: 'Aprovadas',           color: '#10B981' },
+  { key: 'reprovada',            label: 'Reprovadas',          color: '#EF4444' },
 ];
 
 function saudacao() {
@@ -53,7 +53,7 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes'>('hoje');
+  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<string>('todos');
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -157,11 +157,13 @@ function Dashboard() {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const visitasFiltradas = visitas.filter((v: any) => {
+    if (!filtroAtivo) return true;
     if (!v.data_hora_agendada) return false;
     const d = new Date(v.data_hora_agendada);
     if (filtroAtivo === 'hoje') return d >= startOfDay && d <= endOfDay;
     if (filtroAtivo === 'semana') return d >= startOfWeek && d <= endOfWeek;
-    return d >= startOfMonth && d <= endOfMonth;
+    if (filtroAtivo === 'mes') return d >= startOfMonth && d <= endOfMonth;
+    return true;
   });
 
   const visitasExibidas = statusFiltro === 'todos'
@@ -170,8 +172,8 @@ function Dashboard() {
 
   const pendentes = visitasExibidas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitasExibidas.filter((v: any) => v.status === "concluida");
-  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const aguardando = visitasExibidas.filter((v: any) => v.status === "aguardando_aprovacao");
+  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovado");
   const reprovadas = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
@@ -244,9 +246,9 @@ function Dashboard() {
 
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, marginBottom: 16 }}>
         <button
-          onClick={() => setFiltroAtivo('hoje')}
+          onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', borderRadius: 20,
@@ -261,7 +263,7 @@ function Dashboard() {
           <CalendarDays size={14} /> Hoje
         </button>
         <button
-          onClick={() => setFiltroAtivo('semana')}
+          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', borderRadius: 20,
@@ -276,7 +278,7 @@ function Dashboard() {
           <CalendarRange size={14} /> Essa semana
         </button>
         <button
-          onClick={() => setFiltroAtivo('mes')}
+          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '7px 16px', borderRadius: 20,
@@ -326,13 +328,13 @@ function Dashboard() {
       </div>
 
       {/* Filtro de status — full width */}
-      <div style={{ position: 'relative', marginBottom: 4 }}>
+      <div style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
         <button
           onClick={(e) => { e.stopPropagation(); setShowStatusDropdown((v) => !v); }}
           style={{
             width: '100%',
             padding: '11px 16px',
-            borderRadius: 12,
+            borderRadius: 24,
             border: statusFiltro !== 'todos' ? '1px solid rgba(255,192,0,0.50)' : '1px solid rgba(255,255,255,0.16)',
             background: statusFiltro !== 'todos' ? 'rgba(255,192,0,0.08)' : 'rgba(255,255,255,0.04)',
             display: 'flex',
@@ -369,7 +371,7 @@ function Dashboard() {
               backdropFilter: 'blur(14px) saturate(140%)',
               WebkitBackdropFilter: 'blur(14px) saturate(140%)',
               border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 12,
+              borderRadius: 16,
               overflow: 'hidden',
               boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
             }}
@@ -415,7 +417,7 @@ function Dashboard() {
               margin: 0,
             }}
           >
-            {filtroAtivo === 'hoje' ? 'Nenhuma visita hoje' : filtroAtivo === 'semana' ? 'Nenhuma visita esta semana' : 'Nenhuma visita este mês'}
+            {filtroAtivo === 'hoje' ? 'Nenhuma visita hoje' : filtroAtivo === 'semana' ? 'Nenhuma visita esta semana' : filtroAtivo === 'mes' ? 'Nenhuma visita este mês' : 'Nenhuma visita encontrada'}
           </p>
         </div>
       ) : (

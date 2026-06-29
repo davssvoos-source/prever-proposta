@@ -1,15 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 
-const ICONS: Record<string, string> = {
-  visita_aprovada: "✅",
-  visita: "🗓️",
-  aprovacao: "✅",
-  sistema: "⚙️",
-  info: "ℹ️",
-};
+function NotifIcon({ tipo }: { tipo: string }) {
+  const s = { size: 18, strokeWidth: 1.8 };
+  switch (tipo) {
+    case 'visita_aprovada':
+    case 'aprovacao':
+      return <CheckCircle2 {...s} color="#10B981" />;
+    case 'visita':
+    case 'visita_atribuida':
+      return <CalendarCheck {...s} color="#FFC000" />;
+    case 'sistema':
+      return <Settings {...s} color="#60A5FA" />;
+    case 'info':
+    default:
+      return <Info {...s} color="rgba(255,255,255,0.5)" />;
+  }
+}
 
 export function NotificationPanel() {
   const [open, setOpen] = useState(false);
@@ -177,11 +186,8 @@ export function NotificationPanel() {
                   }}
                 >
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 16, minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {n.tipo === 'visita_atribuida'
-                        ? <Bell size={16} color="#FFC000" />
-                        : (ICONS[n.tipo] ?? <Bell size={14} color="rgba(255,255,255,0.6)" />)
-                      }
+                    <span style={{ minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <NotifIcon tipo={n.tipo} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div

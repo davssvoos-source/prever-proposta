@@ -44,9 +44,10 @@ function ReagendarPage() {
 
   const mutation = useMutation({
     mutationFn: async (dataHora: string) => {
+      const valor = dataHora ? new Date(dataHora).toISOString() : null;
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ data_hora_agendada: new Date(dataHora).toISOString() })
+        .update({ data_hora_agendada: valor } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -61,14 +62,12 @@ function ReagendarPage() {
   });
 
   const handleSalvar = () => {
-    if (!novaData) {
-      toast.error("Selecione uma data e horário.");
-      return;
-    }
-    const d = new Date(novaData);
-    if (isNaN(d.getTime())) {
-      toast.error("Data inválida.");
-      return;
+    if (novaData) {
+      const d = new Date(novaData);
+      if (isNaN(d.getTime())) {
+        toast.error("Data inválida.");
+        return;
+      }
     }
     mutation.mutate(novaData);
   };
@@ -104,7 +103,7 @@ function ReagendarPage() {
         </button>
         <div>
           <h1 style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 500, margin: 0 }}>
-            Reagendar visita
+            Agendar / Reagendar
           </h1>
           {nomeCliente && (
             <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "2px 0 0" }}>

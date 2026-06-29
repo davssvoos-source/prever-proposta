@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, MessageCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, MessageCircle, AlertTriangle, Phone, Calendar, HardHat, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -209,8 +209,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
       const tecNome = tecnicos?.find((t) => t.id === form.tecnico_id)?.nome ?? "sem técnico";
       toast.success(
         editing
-          ? "✅ Visita atualizada"
-          : `✅ Visita agendada! ${form.tecnico_id ? `${tecNome} será notificado.` : ""}`,
+          ? "Visita atualizada"
+          : `Visita agendada! ${form.tecnico_id ? `${tecNome} será notificado.` : ""}`,
       );
       qc.invalidateQueries({ queryKey: ["visitas-gerencial"] });
       qc.invalidateQueries({ queryKey: ["visitas"] });
@@ -407,8 +407,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
             </div>
             {isPast && (
-              <p className="mt-2 text-xs font-medium text-red-400">
-                ⚠ Data/hora no passado
+              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-400">
+                <AlertTriangle className="h-3 w-3" /> Data/hora no passado
               </p>
             )}
           </div>
@@ -472,8 +472,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                   </ul>
                 )}
                 {conflito && (
-                  <p className="mt-2 text-[11px] font-medium text-red-400">
-                    ⚠ Possível conflito de horário
+                  <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-400">
+                    <AlertTriangle className="h-3 w-3" /> Possível conflito de horário
                   </p>
                 )}
               </div>
@@ -512,10 +512,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             <div><strong>{form.nome_predio}</strong> · {TIPO_LABEL[form.tipo_local]}</div>
             <div>{SERVICO_ICON[form.servico_solicitado]} {SERVICO_LABEL[form.servico_solicitado]}</div>
             <div className="text-muted-foreground">{form.endereco}</div>
-            <div>📞 {form.nome_sindico} · {form.contato_sindico}</div>
+            <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}</div>
             {dataHoraISO && (
-              <div>
-                📅{" "}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
                 {new Date(dataHoraISO).toLocaleString("pt-BR", {
                   weekday: "long",
                   day: "2-digit",
@@ -525,8 +525,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                 })}
               </div>
             )}
-            <div>👷 {tecnicoSel?.nome ?? "Sem técnico definido"}</div>
-            <div>⚑ Prioridade: {PRIORIDADE_LABEL[form.prioridade]}</div>
+            <div className="flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> {tecnicoSel?.nome ?? "Sem técnico definido"}</div>
+            <div className="flex items-center gap-1.5"><Flag className="h-3.5 w-3.5" /> Prioridade: {PRIORIDADE_LABEL[form.prioridade]}</div>
           </Card>
 
           <div className="flex justify-between">

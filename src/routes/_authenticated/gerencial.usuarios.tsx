@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserPlus, Shield, Trash2, Mail } from "lucide-react";
+import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
@@ -195,7 +195,7 @@ function UsuariosPage() {
       });
     },
     onSuccess: () => {
-      toast.success(`Convite enviado para ${inviteEmail} ✉️`);
+      toast.success(`Convite enviado para ${inviteEmail}`);
       setInviteNome(""); setInviteEmail(""); setInviteCargo("tecnico");
       setShowInvite(false);
       qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
@@ -209,7 +209,7 @@ function UsuariosPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Permissão atualizada ✓");
+      toast.success("Permissão atualizada");
       setEditingUser(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
@@ -276,8 +276,8 @@ function UsuariosPage() {
       {/* Formulário de convite */}
       {showInvite && (
         <div style={{ ...GLASS, marginBottom: 20 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff", marginBottom: 16 }}>
-            ✉️ Convidar Novo Usuário
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+            <Mail size={16} /> Convidar Novo Usuário
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
@@ -349,7 +349,7 @@ function UsuariosPage() {
                   opacity: (inviteMutation.isPending || !inviteEmail.trim() || !inviteNome.trim()) ? 0.6 : 1,
                 }}
               >
-                {inviteMutation.isPending ? "Enviando..." : "Enviar Convite ✉️"}
+                {inviteMutation.isPending ? "Enviando..." : "Enviar Convite"}
               </button>
             </div>
           </div>
@@ -665,7 +665,7 @@ function UsuariosPage() {
             onClick={(e) => e.stopPropagation()}
             style={{ ...GLASS, background: "#0F1015", maxWidth: 380, width: "100%", textAlign: "center" }}
           >
-            <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><AlertTriangle size={36} color="#F59E0B" /></div>
             <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16, color: "#fff", marginBottom: 8 }}>
               Desativar {deleteConfirm.nome}?
             </div>

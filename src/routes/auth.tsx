@@ -206,7 +206,7 @@ function AuthPage() {
               color: "rgba(255,255,255,0.35)",
             }}
           >
-            Sistema de Gestão
+            SISTEMA DE PROJETOS ELETRÔNICOS
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -161,11 +161,11 @@ function NovaVisitaPage() {
     contato.trim() !== "" &&
     servicos.length > 0 &&
     endereco.trim() !== "";
-  const passo2Valido = data !== "" && hora !== "";
+  const passo2Valido = true;
 
   const criarMutation = useMutation({
     mutationFn: async () => {
-      const dataHoraAgendada = new Date(`${data}T${hora}:00`).toISOString();
+      const dataHoraAgendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
       const { data: { user } } = await supabase.auth.getUser();
 
       // 1) Criar cliente
@@ -221,7 +221,7 @@ function NovaVisitaPage() {
         foto_fachada_url,
         created_by: user?.id ?? null,
       };
-      const { error } = await supabase.from("visitas_tecnicas").insert(payload);
+      const { error } = await supabase.from("visitas_tecnicas").insert(payload as any);
       if (error) throw error;
     },
 
@@ -401,7 +401,7 @@ function NovaVisitaPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <span>{ativo ? "☑" : "☐"}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
                     <span>{s.emoji}</span> {s.label}
                   </button>
                 );
@@ -517,7 +517,7 @@ function NovaVisitaPage() {
                 </>
               ) : (
                 <div style={{ textAlign: "center", padding: "16px 8px" }}>
-                  <div style={{ fontSize: 24, marginBottom: 4 }}>📷</div>
+                  <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}><Camera size={24} color="rgba(255,192,0,0.65)" /></div>
                   <div
                     style={{
                       fontFamily: "'Montserrat', sans-serif",
@@ -551,7 +551,7 @@ function NovaVisitaPage() {
       {step === 2 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Data e Horário</label>
+            <label style={LABEL}>Data e Horário (opcional)</label>
             <div style={{ display: "flex", gap: 10 }}>
               <input
                 type="date"
@@ -644,7 +644,7 @@ function NovaVisitaPage() {
             )}
             {tecnicoId && visitasTecnico.length === 0 && (
               <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: "rgba(52,211,153,0.7)", margin: "8px 0 0" }}>
-                ✓ Técnico livre nos próximos 7 dias
+                Técnico livre nos próximos 7 dias
               </p>
             )}
           </div>
