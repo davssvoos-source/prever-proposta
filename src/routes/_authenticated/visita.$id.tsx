@@ -961,7 +961,14 @@ function VisitaDetail() {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => aprovarMutation.mutate({ aprovar: true })}
+                  onClick={async () => {
+                    await aprovarMutation.mutateAsync({ aprovar: true });
+                    fetch("https://grupoprever.app.n8n.cloud/webhook/visita-aprovada", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ visita_id: id }),
+                    }).catch(() => {});
+                  }}
                   disabled={aprovarMutation.isPending}
                   style={{
                     flex: 1,
@@ -1130,7 +1137,14 @@ function VisitaDetail() {
           }}
         >
           <button
-            onClick={() => finalizarMutation.mutate()}
+            onClick={async () => {
+              await finalizarMutation.mutateAsync();
+              fetch("https://grupoprever.app.n8n.cloud/webhook/visita-concluida", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ visita_id: id }),
+              }).catch(() => {});
+            }}
             disabled={finalizarMutation.isPending}
             style={{
               width: "100%",
