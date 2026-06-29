@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, Play, Hourglass, CalendarRange, CalendarCheck, UserRound } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, Play, Hourglass, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -16,6 +16,15 @@ const GLASS: React.CSSProperties = {
   borderRadius: 18,
   boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
 };
+
+const STATUS_OPCOES = [
+  { key: 'todos',        label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
+  { key: 'pendente',     label: 'Visitas pendentes',   color: '#FFC000' },
+  { key: 'em_andamento', label: 'Em andamento',        color: '#60A5FA' },
+  { key: 'concluida',    label: 'Aguardando aprovação', color: '#F59E0B' },
+  { key: 'aprovada',     label: 'Aprovadas',           color: '#10B981' },
+  { key: 'reprovada',    label: 'Reprovadas',          color: '#EF4444' },
+];
 
 function saudacao() {
   const h = new Date().getHours();
