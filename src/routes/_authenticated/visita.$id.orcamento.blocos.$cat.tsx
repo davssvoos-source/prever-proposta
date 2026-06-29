@@ -474,6 +474,7 @@ function PedestresConfigurador({
 
 function VeiculosConfigurador({
   blocos,
+  savedItensVariaveis,
   onSave,
 }: {
   blocos: Bloco[];
