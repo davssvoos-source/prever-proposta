@@ -83,6 +83,7 @@ function NovaVisitaPage() {
   const [contato, setContato] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [servicos, setServicos] = useState<string[]>([]);
+  const [servicosPropostos, setServicosPropostos] = useState<string[]>([]);
   const [endereco, setEndereco] = useState("");
 
   const [complemento, setComplemento] = useState("");
