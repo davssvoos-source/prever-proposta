@@ -210,6 +210,7 @@ function NovaVisitaPage() {
         nome_sindico: nomeSindico,
         contato_sindico: contato,
         servicos_solicitados: servicos,
+        servicos_propostos: servicosPropostos,
         servico_solicitado: servicos[0] ?? null,
         endereco,
         complemento: complemento || null,
