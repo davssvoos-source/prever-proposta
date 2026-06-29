@@ -177,10 +177,15 @@ function HistoricoPage() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                   }}>
-                    📅 {dataFormatada}
-                    {v.endereco ? `  ·  📍 ${v.endereco}` : ""}
+                    <CalendarDays size={11} style={{ opacity: 0.7 }} />
+                    <span>{dataFormatada}</span>
+                    {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={11} style={{ opacity: 0.7 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{v.endereco}</span></>) : null}
                   </div>
+
                 </div>
 
                 <span style={{
