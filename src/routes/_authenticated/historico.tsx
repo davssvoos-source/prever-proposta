@@ -31,7 +31,7 @@ function VisitasPage() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("visitas_tecnicas")
-        .select("id, status, data_hora_agendada, titulo, endereco, clientes(nome)")
+        .select("id, status, data_hora_agendada, titulo, endereco, nome_predio, nome_sindico, clientes(nome)")
         .eq("tecnico_id", user.id)
         .order("data_hora_agendada", { ascending: false });
       if (error) throw error;
@@ -47,7 +47,6 @@ function VisitasPage() {
   const FILTROS: { key: Filtro; label: string }[] = [
     { key: "todos", label: "Todas" },
     { key: "pendente", label: "Pendentes" },
-    { key: "agendada", label: "Agendadas" },
     { key: "em_andamento", label: "Em andamento" },
     { key: "concluida", label: "Concluídas" },
     { key: "aprovada", label: "Aprovadas" },
