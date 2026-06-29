@@ -290,6 +290,7 @@ export type Database = {
           email: string | null
           id: string
           nome: string | null
+          status: string
           telefone: string | null
         }
         Insert: {
@@ -300,6 +301,7 @@ export type Database = {
           email?: string | null
           id: string
           nome?: string | null
+          status?: string
           telefone?: string | null
         }
         Update: {
@@ -310,6 +312,7 @@ export type Database = {
           email?: string | null
           id?: string
           nome?: string | null
+          status?: string
           telefone?: string | null
         }
         Relationships: []
