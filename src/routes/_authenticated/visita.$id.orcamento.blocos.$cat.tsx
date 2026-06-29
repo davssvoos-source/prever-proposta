@@ -813,14 +813,7 @@ function BlocosCatPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orcamento", id] });
       toast.success(`${CAT_LABELS[cat]} salvo ✓`);
-      const idx = CAT_ORDER.indexOf(cat);
-      const nextCat = CAT_ORDER[idx + 1];
-      if (nextCat) {
-        window.location.href = `/visita/${id}/orcamento/blocos/${nextCat}`;
-      } else {
-        toast.success("Orçamento concluído! ✅");
-        window.location.href = `/visita/${id}`;
-      }
+      window.location.href = `/visita/${id}/orcamento/categorias`;
     },
     onError: (e: Error) => toast.error(e.message),
   });
