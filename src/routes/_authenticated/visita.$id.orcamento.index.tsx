@@ -264,30 +264,92 @@ function OrcamentoPasso1() {
       {/* Qtd Apartamentos */}
       <div style={CARD}>
         <div style={LABEL}>Quantidade de apartamentos</div>
-        <Input
-          type="number"
-          inputMode="numeric"
-          value={qtd}
-          onChange={(e) => setQtd(e.target.value === "" ? "" : Number(e.target.value))}
-          placeholder="Ex: 48"
-          style={{
-            background: "transparent",
-            border: "1px solid rgba(255,192,0,0.22)",
-            borderRadius: 12,
-            color: "#fff",
-            fontSize: 28,
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            textAlign: "center",
-          height: 68,
-          }}
-        />
-        {(!qtd || Number(qtd) <= 0) && saveMutation.isError && (
-          <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, marginTop: 4 }}>
-            Informe a quantidade de apartamentos
-          </p>
-        )}
+        {/* Número editável acima da barra */}
+        <div style={{ textAlign: "center", marginBottom: 14 }}>
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={qtd === "" ? 0 : qtd}
+            onChange={(e) => {
+              const v = Math.min(1000, Math.max(0, Number(e.target.value) || 0));
+              setQtd(v);
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "#FFFFFF",
+              fontWeight: 700,
+              fontSize: 36,
+              textAlign: "center",
+              width: 120,
+              fontFamily: "'Montserrat', sans-serif",
+            }}
+          />
+        </div>
+        {/* Barra slider customizada */}
+        <div style={{ position: "relative", height: 28, display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              height: 4,
+              borderRadius: 2,
+              background: "rgba(255,255,255,0.18)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              height: 4,
+              borderRadius: 2,
+              width: `${((Number(qtd) || 0) / 1000) * 100}%`,
+              background: "linear-gradient(90deg, #FFC000, #FFD84D)",
+              transition: "width 0.05s",
+            }}
+          />
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            step={1}
+            value={Number(qtd) || 0}
+            onChange={(e) => setQtd(Number(e.target.value))}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              width: "100%",
+              opacity: 0,
+              height: 28,
+              cursor: "pointer",
+              zIndex: 2,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              left: `calc(${((Number(qtd) || 0) / 1000) * 100}% - 11px)`,
+              width: 22,
+              height: 22,
+              borderRadius: "50%",
+              background: "#FFFFFF",
+              boxShadow: "0 0 10px rgba(255,255,255,0.70), 0 0 20px rgba(255,255,255,0.30)",
+              pointerEvents: "none",
+              zIndex: 1,
+              transition: "left 0.05s",
+            }}
+          />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>0</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>1000</span>
+        </div>
       </div>
+
 
       {/* Serviços */}
       <div style={CARD}>
