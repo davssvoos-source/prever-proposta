@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, Play, Hourglass } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -124,7 +124,7 @@ function Dashboard() {
             margin: 0,
           }}
         >
-          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""} 👋
+          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""}
         </h1>
         <p
           style={{
@@ -193,11 +193,12 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section title="📅 Pendentes" items={pendentes} />}
-          {emAndamento.length > 0 && <Section title="▶️ Em andamento" items={emAndamento} />}
-          {aguardando.length > 0 && <Section title="⏳ Aguardando aprovação" items={aguardando} />}
-          {aprovadas.length > 0 && <Section title="✅ Aprovadas" items={aprovadas.slice(0, 5)} />}
-          {reprovadas.length > 0 && <Section title="❌ Reprovadas" items={reprovadas.slice(0, 5)} />}
+          {pendentes.length > 0 && <Section title="Pendentes" icon={<CalendarDays size={14} />} items={pendentes} />}
+          {emAndamento.length > 0 && <Section title="Em andamento" icon={<Play size={14} />} items={emAndamento} />}
+          {aguardando.length > 0 && <Section title="Aguardando aprovação" icon={<Hourglass size={14} />} items={aguardando} />}
+          {aprovadas.length > 0 && <Section title="Aprovadas" icon={<CheckCircle2 size={14} />} items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section title="Reprovadas" icon={<XCircle size={14} />} items={reprovadas.slice(0, 5)} />}
+
         </>
       )}
     </div>
@@ -278,9 +279,12 @@ function VisitaCard({ visita }: { visita: any }) {
             fontWeight: 300,
             fontSize: 12,
             color: "rgba(255,255,255,0.65)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          📍 {visita.endereco}
+          <MapPin size={12} style={{ opacity: 0.75 }} /> {visita.endereco}
         </div>
       )}
       {visita.data_hora_agendada && (
@@ -292,16 +296,20 @@ function VisitaCard({ visita }: { visita: any }) {
             color: "rgba(255,192,0,0.75)",
             marginTop: 6,
             letterSpacing: "0.06em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
           }}
         >
-          🗓️ {fmtData(visita.data_hora_agendada)}
+          <CalendarDays size={12} /> {fmtData(visita.data_hora_agendada)}
         </div>
       )}
+
     </div>
   );
 }
 
-function Section({ title, items }: { title: string; items: any[] }) {
+function Section({ title, icon, items }: { title: string; icon?: React.ReactNode; items: any[] }) {
   return (
     <section>
       <h2
@@ -312,10 +320,15 @@ function Section({ title, items }: { title: string; items: any[] }) {
           color: "rgba(255,192,0,0.85)",
           letterSpacing: "0.06em",
           margin: "0 0 10px",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
         }}
       >
+        {icon}
         {title}
       </h2>
+
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>

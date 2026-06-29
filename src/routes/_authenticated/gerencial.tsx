@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   beforeLoad: async () => {
@@ -88,7 +88,7 @@ function GerencialPage() {
 
   return (
     <>
-      <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ paddingTop: 16, paddingBottom: 24, paddingLeft: 0, paddingRight: 0 }}>
       <div
         style={{
           display: "flex",
@@ -302,12 +302,18 @@ function GerencialPage() {
                       fontWeight: 300,
                       color: "#9ca3af",
                       lineHeight: 1.5,
+                      display: "flex",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 6,
                     }}
                   >
-                    📅 {dataVisita}
-                    {v.endereco ? `  ·  📍 ${v.endereco}` : ""}
-                    {tecnicoNome ? `  ·  👤 ${tecnicoNome}` : ""}
+                    <CalendarDays size={12} style={{ opacity: 0.7 }} />
+                    <span>{dataVisita}</span>
+                    {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={12} style={{ opacity: 0.7 }} /><span>{v.endereco}</span></>) : null}
+                    {tecnicoNome ? (<><span style={{ opacity: 0.4 }}>·</span><User size={12} style={{ opacity: 0.7 }} /><span>{tecnicoNome}</span></>) : null}
                   </div>
+
                 </div>
 
                 <div

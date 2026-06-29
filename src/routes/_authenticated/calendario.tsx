@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 
@@ -51,7 +51,7 @@ function CalendarioPage() {
       if (isAdmin) {
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .select("id, status, data_hora_agendada, titulo, nome_predio")
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
           .order("data_hora_agendada");
@@ -62,7 +62,7 @@ function CalendarioPage() {
         if (!user) return [];
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, clientes(nome)")
+          .select("id, status, data_hora_agendada, titulo, nome_predio")
           .eq("tecnico_id", user.id)
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
@@ -258,7 +258,7 @@ function CalendarioPage() {
                 hour: "2-digit",
                 minute: "2-digit",
               });
-              const clienteNome = v.clientes?.nome ?? "Cliente";
+              const clienteNome = (v as any).nome_predio ?? v.titulo ?? "Visita";
 
               return (
                 <button
@@ -295,7 +295,10 @@ function CalendarioPage() {
                       fontWeight: 300,
                       fontSize: 11,
                       color: "rgba(255,255,255,0.5)",
-                    }}>⏰ {hora}</div>
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}</div>
+
                   </div>
                   <span style={{
                     flexShrink: 0,

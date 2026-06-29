@@ -3,8 +3,9 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
-  Check, X, Play, Square, ChevronDown,
+  Check, X, Play, Square, ChevronDown, CheckCircle, XCircle,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -921,7 +922,7 @@ function VisitaDetail() {
                 color: "#34D399",
               }}
             >
-              ✅ Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
+              <CheckCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
               {visita.aprovado_em
                 ? ` em ${new Date(visita.aprovado_em).toLocaleDateString("pt-BR")}`
                 : ""}
@@ -941,7 +942,7 @@ function VisitaDetail() {
                 color: "#F87171",
               }}
             >
-              ❌ Reprovada
+              <XCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Reprovada
               {visita.motivo_reprovacao ? ` — ${visita.motivo_reprovacao}` : ""}
             </div>
           )}

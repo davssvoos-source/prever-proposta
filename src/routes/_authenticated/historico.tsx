@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Archive } from "lucide-react";
+import { CheckCircle, XCircle, Archive, CalendarDays, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/historico")({
@@ -177,10 +177,15 @@ function HistoricoPage() {
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                   }}>
-                    📅 {dataFormatada}
-                    {v.endereco ? `  ·  📍 ${v.endereco}` : ""}
+                    <CalendarDays size={11} style={{ opacity: 0.7 }} />
+                    <span>{dataFormatada}</span>
+                    {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={11} style={{ opacity: 0.7 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{v.endereco}</span></>) : null}
                   </div>
+
                 </div>
 
                 <span style={{
