@@ -242,25 +242,53 @@ function Dashboard() {
         >
           <CalendarRange size={14} /> Essa semana
         </button>
+        <button
+          onClick={() => setFiltroAtivo('mes')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 16px', borderRadius: 20,
+            border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
+            background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
+            color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
+            transition: 'all 0.2s',
+          }}
+        >
+          <CalendarCheck size={14} /> Esse mês
+        </button>
         {isAdmin && listaTecnicos && listaTecnicos.length > 0 && (
-          <select
-            value={tecnicoFiltro}
-            onChange={(e) => setTecnicoFiltro(e.target.value)}
-            style={{
-              padding: '7px 12px', borderRadius: 20,
-              border: '1px solid rgba(255,255,255,0.20)',
-              background: 'rgba(255,255,255,0.06)',
-              color: '#FFFFFF', fontSize: 13, cursor: 'pointer',
-              outline: 'none', appearance: 'none', minWidth: 150,
-            }}
-          >
-            <option value="todos" style={{ background: '#0a0a14' }}>Todos os técnicos</option>
-            {listaTecnicos.map((t: any) => (
-              <option key={t.id} value={t.id} style={{ background: '#0a0a14' }}>
-                {t.nome ?? t.email}
-              </option>
-            ))}
-          </select>
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            <UserRound
+              size={14}
+              style={{
+                position: 'absolute',
+                left: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'rgba(255,255,255,0.6)',
+                pointerEvents: 'none',
+              }}
+            />
+            <select
+              value={tecnicoFiltro}
+              onChange={(e) => setTecnicoFiltro(e.target.value)}
+              style={{
+                padding: '7px 12px 7px 30px', borderRadius: 20,
+                border: '1px solid rgba(255,255,255,0.20)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#FFFFFF', fontSize: 13, cursor: 'pointer',
+                outline: 'none', appearance: 'none', WebkitAppearance: 'none', minWidth: 170,
+              }}
+            >
+              <option value="todos" style={{ background: '#0a0a14' }}>Todos os técnicos</option>
+              {listaTecnicos.map((t: any) => (
+                <option key={t.id} value={t.id} style={{ background: '#0a0a14' }}>
+                  {t.nome ?? t.email}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
 
