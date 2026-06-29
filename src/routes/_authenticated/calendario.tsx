@@ -295,7 +295,10 @@ function CalendarioPage() {
                       fontWeight: 300,
                       fontSize: 11,
                       color: "rgba(255,255,255,0.5)",
-                    }}>⏰ {hora}</div>
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}</div>
+
                   </div>
                   <span style={{
                     flexShrink: 0,
