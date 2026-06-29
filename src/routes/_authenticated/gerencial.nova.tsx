@@ -551,7 +551,7 @@ function NovaVisitaPage() {
       {step === 2 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Data e Horário</label>
+            <label style={LABEL}>Data e Horário (opcional)</label>
             <div style={{ display: "flex", gap: 10 }}>
               <input
                 type="date"
