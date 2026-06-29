@@ -286,63 +286,88 @@ function CategoriasPage() {
         Toque em uma categoria para configurar os blocos correspondentes
       </div>
 
-      {CATEGORIAS.map((cat) => (
-        <div
-          key={cat.id}
-          style={CARD}
-          onClick={() =>
-            navigate({
-              to: "/visita/$id/orcamento/blocos/$cat",
-              params: { id, cat: cat.id },
-            })
-          }
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background = "rgba(255,192,0,0.08)";
-            (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.30)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.background = "rgba(8,8,12,0.22)";
-            (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 400,
-                fontSize: 15,
-                color: "#fff",
-                marginBottom: 4,
-              }}
-            >
-              {cat.label}
+      {CATEGORIAS.map((cat) => {
+        const count = countPorTipo(cat.id);
+        return (
+          <div
+            key={cat.id}
+            style={CARD}
+            onClick={() =>
+              navigate({
+                to: "/visita/$id/orcamento/blocos/$cat",
+                params: { id, cat: cat.id },
+              })
+            }
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background = "rgba(255,192,0,0.08)";
+              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.30)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.background = "rgba(8,8,12,0.22)";
+              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 400,
+                  fontSize: 15,
+                  color: "#fff",
+                  marginBottom: 4,
+                }}
+              >
+                {cat.label}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.45)",
+                  lineHeight: 1.4,
+                }}
+              >
+                {cat.desc}
+              </div>
             </div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 11,
-                color: "rgba(255,255,255,0.45)",
-                lineHeight: 1.4,
-              }}
-            >
-              {cat.desc}
-            </div>
+            {count > 0 && (
+              <div
+                style={{
+                  background: "rgba(34,197,94,0.18)",
+                  border: "1px solid rgba(34,197,94,0.45)",
+                  color: "#22C55E",
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "'Montserrat', sans-serif",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {count} {count === 1 ? "bloco" : "blocos"}
+              </div>
+            )}
+            <ChevronRight size={20} color="rgba(255,192,0,0.55)" />
           </div>
-          <ChevronRight size={20} color="rgba(255,192,0,0.55)" />
-        </div>
-      ))}
+        );
+      })}
 
       {/* Botão deslizar para próximo passo */}
       <div style={{ marginTop: 24, paddingBottom: 16 }}>
         <SlideToNext
           pending={false}
           onConfirm={() => {
+            if (totalBlocos === 0) {
+              toast.error("Adicione pelo menos um bloco antes de continuar.");
+              return;
+            }
             navigate({ to: "/visita/$id", params: { id } });
           }}
         />
       </div>
+
     </div>
   );
 }
