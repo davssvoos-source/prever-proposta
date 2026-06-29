@@ -186,11 +186,8 @@ export function NotificationPanel() {
                   }}
                 >
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 16, minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {n.tipo === 'visita_atribuida'
-                        ? <Bell size={16} color="#FFC000" />
-                        : (ICONS[n.tipo] ?? <Bell size={14} color="rgba(255,255,255,0.6)" />)
-                      }
+                    <span style={{ minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <NotifIcon tipo={n.tipo} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div
