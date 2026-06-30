@@ -528,8 +528,8 @@ function PerfilPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
                   borderRadius: 12,
                   padding: "10px 12px",
                   cursor: "pointer",
@@ -538,6 +538,7 @@ function PerfilPage() {
                   justifyContent: "space-between",
                   gap: 10,
                   textAlign: "left",
+                  boxShadow: isLight ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -546,7 +547,7 @@ function PerfilPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 500,
                       fontSize: 13,
-                      color: "#fff",
+                      color: isLight ? "#0a0b0e" : "#fff",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -559,7 +560,7 @@ function PerfilPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 300,
                       fontSize: 11,
-                      color: "rgba(255,255,255,0.45)",
+                      color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                       marginTop: 2,
                     }}
                   >
@@ -570,7 +571,7 @@ function PerfilPage() {
                     })}
                   </div>
                 </div>
-                {v.status && <StatusBadge status={String(v.status).toLowerCase()} />}
+                {v.status && <span style={badgeStyle(String(v.status).toLowerCase(), isLight)}>{String(v.status).toLowerCase()}</span>}
               </button>
             ))
           )}
