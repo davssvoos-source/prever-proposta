@@ -197,45 +197,36 @@ function NotifItem({
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const LIMITE_NOT = 260;
-  const THRESHOLD_NOT = 120;
+  const THRESHOLD_NOT = 110;
+  const EXIT_PX = 320;
   const [swipeX, setSwipeX] = useState(0);
   const [deletando, setDeletando] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const startXRef = useRef(0);
   const movedRef = useRef(false);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    setDragging(true);
+  const onTouchStart = (e: React.TouchEvent) => {
     movedRef.current = false;
-    startXRef.current = e.clientX;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    startXRef.current = e.touches[0].clientX;
   };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging) return;
-    const delta = startXRef.current - e.clientX;
-    if (Math.abs(delta) > 4) movedRef.current = true;
-    if (delta > 0) {
-      setSwipeX(Math.min(delta, LIMITE_NOT));
-    } else {
-      setSwipeX(0);
-    }
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = startXRef.current - e.touches[0].clientX;
+    if (Math.abs(d) > 4) movedRef.current = true;
+    if (d > 0) setSwipeX(Math.min(d, EXIT_PX));
+    else setSwipeX(0);
   };
-  const onPointerUp = () => {
-    setDragging(false);
+  const onTouchEnd = () => {
     if (swipeX >= THRESHOLD_NOT) {
-      setSwipeX(LIMITE_NOT);
-      setTimeout(() => {
-        setDeletando(true);
-        setTimeout(() => onDelete(), 300);
-      }, 150);
+      setSwipeX(EXIT_PX);
+      setDeletando(true);
+      setTimeout(() => onDelete(), 280);
     } else {
       setSwipeX(0);
     }
   };
-  const onPointerCancel = () => {
-    setDragging(false);
-    setSwipeX(0);
+
+  const handleClick = () => {
+    if (movedRef.current) return;
+    onClick();
   };
 
   const handleClick = () => {
