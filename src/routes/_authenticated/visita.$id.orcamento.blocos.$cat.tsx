@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Trash2, Camera, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -271,9 +271,52 @@ function BlocosWizardPage() {
 
   // Scroll suave ao revelar nova pergunta
   const bottomRef = useRef<HTMLDivElement>(null);
+  const b2Ref = useRef<HTMLDivElement>(null);
+  const [b1Collapsed, setB1Collapsed] = useState(false);
   useEffect(() => {
     if (wizard) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [wizard?.step]);
+
+  // ── Edit step inline (toque em resposta confirmada) ─────────────────────
+  const B1_ORDER: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
+  const B2_ORDER: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+
+  function limparStep(step: WizardStep, w: WizardState) {
+    switch (step) {
+      case "b1_tipo":     w.b1.tipo     = undefined; break;
+      case "b1_entrada":  w.b1.entrada  = undefined; break;
+      case "b1_saida":    w.b1.saida    = undefined; break;
+      case "b1_material": w.b1.material = undefined; break;
+      case "b1_motor":    w.b1.motor    = undefined; break;
+      case "b1_abertura": w.b1.abertura = undefined; break;
+      case "b1_folhas":   w.b1.folhas   = undefined; break;
+      case "b2_tipo":     w.b2.tipo     = undefined; break;
+      case "b2_entrada":  w.b2.entrada  = undefined; break;
+      case "b2_saida":    w.b2.saida    = undefined; break;
+      case "b2_material": w.b2.material = undefined; break;
+      case "b2_motor":    w.b2.motor    = undefined; break;
+      case "b2_abertura": w.b2.abertura = undefined; break;
+      case "b2_folhas":   w.b2.folhas   = undefined; break;
+    }
+  }
+
+  function handleEditStep(step: WizardStep) {
+    if (!wizard) return;
+    const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
+    if (B1_ORDER.includes(step)) {
+      const idx = B1_ORDER.indexOf(step);
+      B1_ORDER.slice(idx + 1).forEach((s) => limparStep(s, w));
+      B2_ORDER.forEach((s) => limparStep(s, w));
+      setB1Collapsed(false);
+      w.step = step;
+    } else if (B2_ORDER.includes(step)) {
+      const idx = B2_ORDER.indexOf(step);
+      B2_ORDER.slice(idx + 1).forEach((s) => limparStep(s, w));
+      w.step = step;
+    }
+    setWizard(w);
+  }
+
 
 
   // ── Selecionar opção ────────────────────────────────────────────────────
@@ -404,10 +447,20 @@ function BlocosWizardPage() {
         break;
     }
 
-    const crossingBarreira =
-      (wizard.step.startsWith("b1") && (w.step === "b2_tipo" || w.step === "resumo")) ||
+    const crossingB1ToB2 = wizard.step.startsWith("b1") && w.step === "b2_tipo";
+    const crossingToResumo =
+      (wizard.step.startsWith("b1") && w.step === "resumo") ||
       (wizard.step.startsWith("b2") && w.step === "resumo");
-    if (crossingBarreira) {
+
+    if (crossingB1ToB2) {
+      setB1Collapsed(true);
+      setTimeout(() => {
+        setWizard(w);
+        setTimeout(() => {
+          b2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }, 300);
+    } else if (crossingToResumo) {
       setTimeout(() => setWizard(w), 400);
     } else {
       setWizard(w);
@@ -574,8 +627,8 @@ function BlocosWizardPage() {
     const s = stepOverride ?? wizard.step;
     if (s === "eclusa") return "É UMA ECLUSA?";
     if (s === "b1_tipo" || s === "b2_tipo") return "TIPO DE BARREIRA?";
-    if (s === "b1_entrada" || s === "b2_entrada") return "DISPOSITIVO DE ENTRADA?";
-    if (s === "b1_saida" || s === "b2_saida") return "DISPOSITIVO DE SAÍDA?";
+    if (s === "b1_entrada" || s === "b2_entrada") return "ENTRADA";
+    if (s === "b1_saida" || s === "b2_saida") return "SAÍDA";
     if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
     if (s === "b1_motor" || s === "b2_motor") return "FORNECER MOTOR?";
     if (s === "b1_abertura" || s === "b2_abertura") return "TIPO DE ABERTURA?";
@@ -903,17 +956,68 @@ function BlocosWizardPage() {
       );
     }
 
-    // Telas de barreira (B1 / B2): perguntas reveladas progressivamente
-    const isB1 = B1_STEPS.includes(wizard.step);
-    const isB2 = B2_STEPS.includes(wizard.step);
+    // Telas de barreira (B1 / B2): ambas na mesma página, B1 recolhível
+    const isB1Step = B1_STEPS.includes(wizard.step);
+    const isB2Step = B2_STEPS.includes(wizard.step);
 
-    if (isB1 || isB2) {
-      const currentSteps = isB1 ? B1_STEPS : B2_STEPS;
-      const barrNum = isB1 ? "01" : "02";
-      const currentIdx = currentSteps.indexOf(wizard.step);
-      const stepsRespondidos = currentSteps
-        .slice(0, currentIdx)
-        .filter((s) => getRespostaDada(s) !== null);
+    if (isB1Step || isB2Step) {
+      const b1Done = isB2Step;
+      const showB2 = b1Done;
+
+      const stepsRespondidosB1 = (() => {
+        if (isB1Step) {
+          const idx = B1_STEPS.indexOf(wizard.step);
+          return B1_STEPS.slice(0, idx).filter((s) => getRespostaDada(s) !== null);
+        }
+        return B1_STEPS.filter((s) => getRespostaDada(s) !== null);
+      })();
+      const stepsRespondidosB2 = (() => {
+        if (!isB2Step) return [];
+        const idx = B2_STEPS.indexOf(wizard.step);
+        return B2_STEPS.slice(0, idx).filter((s) => getRespostaDada(s) !== null);
+      })();
+
+      const ConfirmedAnswer = ({ step }: { step: WizardStep }) => {
+        const resposta = getRespostaDada(step);
+        if (!resposta) return null;
+        const todasOpcoes = getOpcoes(step);
+        const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
+        return (
+          <div style={{ marginBottom: 16 }}>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 2,
+                margin: "0 0 6px",
+                textTransform: "uppercase",
+              }}
+            >
+              {getLabelPergunta(step)}
+            </p>
+            <button
+              onClick={() => handleEditStep(step)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "4px 0",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
+                {opcaoSel?.label ?? LABELS[resposta] ?? resposta}
+              </span>
+              <Pencil size={12} color="#4B5563" />
+            </button>
+          </div>
+        );
+      };
 
       return (
         <div style={PAGE}>
@@ -922,62 +1026,118 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
           </div>
 
-          <BarreiraIndicador numero={barrNum} />
-
-          {stepsRespondidos.map((step) => {
-            const resposta = getRespostaDada(step)!;
-            const todasOpcoes = getOpcoes(step);
-            const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
-            return (
-              <div key={step} style={{ marginBottom: 16 }}>
-                <p
-                  style={{
-                    color: "rgba(255,255,255,0.4)",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: 2,
-                    margin: "0 0 8px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {getLabelPergunta(step)}
-                </p>
+          {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
+          <div style={{ marginBottom: 24 }}>
+            <div
+              onClick={b1Done ? () => setB1Collapsed((p) => !p) : undefined}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: b1Collapsed ? 0 : 20,
+                cursor: b1Done ? "pointer" : "default",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    background: "rgba(255,215,0,0.08)",
-                    border: "1.5px solid #FFD700",
-                    borderRadius: 12,
-                    padding: "14px 16px",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    border: `2px solid ${b1Done ? "#22C55E" : "#FFD700"}`,
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#FFD700", flexShrink: 0 }} />
-                  <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
-                    {opcaoSel?.label ?? resposta}
-                  </span>
+                  <span style={{ color: b1Done ? "#22C55E" : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
                 </div>
+                <span
+                  style={{
+                    color: b1Done ? "#22C55E" : "#FFD700",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 1,
+                  }}
+                >
+                  BARREIRA 1 {b1Done ? "✓" : ""}
+                </span>
               </div>
-            );
-          })}
-
-          <div ref={bottomRef}>
-            <div style={QUESTION}>{getLabelPergunta()}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {opcoes.map((op) => (
-                <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
-                  {op.descricao && (
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-                  )}
-                </button>
-              ))}
+              {b1Done && (
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "transform 0.2s",
+                    transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                  }}
+                >
+                  <ChevronDown size={16} color="#FFFFFF" />
+                </div>
+              )}
             </div>
+
+            {!b1Collapsed && (
+              <div>
+                {stepsRespondidosB1.map((step) => (
+                  <ConfirmedAnswer key={step} step={step} />
+                ))}
+
+                {isB1Step && (
+                  <div ref={bottomRef}>
+                    <div style={QUESTION}>{getLabelPergunta()}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {opcoes.map((op) => (
+                        <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                          {op.descricao && (
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* ── SEÇÃO BARREIRA 2 ─────────────────────────────────────── */}
+          {showB2 && (
+            <div ref={b2Ref}>
+              <BarreiraIndicador numero="02" />
+
+              {stepsRespondidosB2.map((step) => (
+                <ConfirmedAnswer key={step} step={step} />
+              ))}
+
+              {isB2Step && (
+                <div ref={bottomRef}>
+                  <div style={QUESTION}>{getLabelPergunta()}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {opcoes.map((op) => (
+                      <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                        {op.descricao && (
+                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
+
 
     return (
       <div style={PAGE}>
