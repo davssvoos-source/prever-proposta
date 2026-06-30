@@ -73,7 +73,11 @@ function NovaVisitaPage() {
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
 
+  const [nomeCliente, setNomeCliente] = useState("");
   const [nomeSindico, setNomeSindico] = useState("");
+  const [nomeZelador, setNomeZelador] = useState("");
+
+
   const [contato, setContato] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [servicos, setServicos] = useState<string[]>([]);
@@ -194,7 +198,7 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    nomeSindico.trim() !== "" &&
+    nomeCliente.trim() !== "" &&
     contato.trim() !== "" &&
     servicosPropostos.length > 0 &&
     endereco.trim() !== "";
@@ -208,7 +212,7 @@ function NovaVisitaPage() {
       const { data: clienteRow, error: clienteErr } = await supabase
         .from("clientes")
         .insert({
-          nome: nomeSindico,
+          nome: nomeCliente,
           email: clienteEmail || null,
           telefone: contato,
           owner_id: user?.id as string,
@@ -239,8 +243,10 @@ function NovaVisitaPage() {
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
-        nome_sindico: nomeSindico,
+        nome_sindico: nomeSindico || null,
+        nome_zelador: nomeZelador || null,
         contato_sindico: contato,
+
         servicos_solicitados: servicos,
         servicos_propostos: servicosPropostos,
         servico_solicitado: servicos[0] ?? null,
@@ -426,7 +432,7 @@ function NovaVisitaPage() {
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
               <label style={LABEL}>Nome do Cliente</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
+              <input style={INPUT} value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} />
             </div>
             <div>
               <label style={LABEL}>WhatsApp</label>
@@ -437,6 +443,18 @@ function NovaVisitaPage() {
               <input style={INPUT} type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} placeholder="cliente@email.com" />
             </div>
           </div>
+
+          <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={LABEL}>Síndico (opcional)</label>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
+            </div>
+            <div>
+              <label style={LABEL}>Zelador(a) (opcional)</label>
+              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome do zelador(a)" />
+            </div>
+          </div>
+
 
 
 
@@ -713,7 +731,7 @@ function NovaVisitaPage() {
                   >
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLight ? L.gold : "#FFC000", flexShrink: 0, boxShadow: isLight ? "none" : "0 0 6px rgba(255,192,0,0.5)" }} />
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
-                      {new Date(v.data_hora_agendada).toLocaleString("pt-BR", {
+                      {new Date(v.data_hora_agendada!).toLocaleString("pt-BR", {
                         weekday: "short",
                         day: "2-digit",
                         month: "2-digit",
@@ -789,7 +807,10 @@ function NovaVisitaPage() {
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
-              { label: "Síndico", value: nomeSindico },
+              { label: "Cliente", value: nomeCliente },
+              ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
+              ...(nomeZelador ? [{ label: "Zelador(a)", value: nomeZelador }] : []),
+
               { label: "Serviços", value: servicosPropostos.map((k) => SERVICOS_PROPOSTOS.find((s) => s.key === k)?.label).filter(Boolean).join(", ") },
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {

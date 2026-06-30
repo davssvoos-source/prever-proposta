@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { visitaRouteFor } from "@/lib/visita-route";
+
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   beforeLoad: async () => {
@@ -270,7 +272,7 @@ function GerencialPage() {
             return (
               <div
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
                 style={{
                   background: cardBg,
                   backdropFilter: isLight ? "none" : "blur(16px)",

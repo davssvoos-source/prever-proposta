@@ -6,6 +6,8 @@ import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, Cale
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
+import { visitaRouteFor } from "@/lib/visita-route";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -212,7 +214,7 @@ function Dashboard() {
   useEffect(() => {
     if (!proximaVisita?.data_hora_agendada) return;
     const update = () => {
-      const diff = new Date(proximaVisita.data_hora_agendada).getTime() - Date.now();
+      const diff = new Date(proximaVisita.data_hora_agendada!).getTime() - Date.now();
       if (diff <= 0) { setCountdown("Agora"); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -299,11 +301,11 @@ function Dashboard() {
       <div className="space-y-5" style={{ paddingTop: 20 }}>
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
         {proximaVisita && (
-          <Link
-            to="/visita/$id"
-            params={{ id: proximaVisita.id }}
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+          <div
+            onClick={() => navigate(visitaRouteFor(proximaVisita.status, proximaVisita.id) as any)}
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
           >
+
             <div
               style={{
                 ...GLASS,
@@ -378,7 +380,7 @@ function Dashboard() {
                     gap: 5,
                   }}
                 >
-                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada)}
+                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada!)}
                 </div>
                 <div
                   style={{
@@ -400,7 +402,8 @@ function Dashboard() {
               </div>
             </div>
 
-          </Link>
+          </div>
+
         )}
 
       <div className="grid grid-cols-4 gap-2">
@@ -871,13 +874,13 @@ function SwipeableVisita({ visita }: { visita: any }) {
           touchAction: "pan-y",
         }}
       >
-        <Link
-          to="/visita/$id"
-          params={{ id: visita.id }}
-          style={{ textDecoration: "none", color: "inherit", display: "block" }}
+        <div
+          onClick={() => navigate(visitaRouteFor(visita.status, visita.id) as any)}
+          style={{ textDecoration: "none", color: "inherit", display: "block", cursor: "pointer" }}
         >
           <VisitaCard visita={visita} />
-        </Link>
+        </div>
+
       </div>
     </div>
   );
