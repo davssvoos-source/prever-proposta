@@ -443,9 +443,10 @@ function BlocosWizardPage() {
   }
 
   // ── Opções do step atual ────────────────────────────────────────────────
-  function getOpcoes(): { valor: string; label: string; descricao?: string }[] {
+  function getOpcoes(stepOverride?: WizardStep): { valor: string; label: string; descricao?: string }[] {
     if (!wizard) return [];
-    const { step, b1, b2 } = wizard;
+    const { b1, b2 } = wizard;
+    const step = stepOverride ?? wizard.step;
 
     const entrada = (tipo?: string) => {
       const lista =
@@ -521,20 +522,42 @@ function BlocosWizardPage() {
     }
   }
 
-  function getLabelPergunta(): string {
+  function getLabelPergunta(stepOverride?: WizardStep): string {
     if (!wizard) return "";
-    const s = wizard.step;
-    const sufx = s.startsWith("b2") ? " — BARREIRA 2" : s.startsWith("b1") ? " — BARREIRA 1" : "";
+    const s = stepOverride ?? wizard.step;
     if (s === "eclusa") return "É UMA ECLUSA?";
-    if (s === "b1_tipo" || s === "b2_tipo") return `TIPO DE BARREIRA?${sufx}`;
-    if (s === "b1_entrada" || s === "b2_entrada") return `DISPOSITIVO DE ENTRADA?${sufx}`;
-    if (s === "b1_saida" || s === "b2_saida") return `DISPOSITIVO DE SAÍDA?${sufx}`;
-    if (s === "b1_material" || s === "b2_material") return `TIPO DE MATERIAL?${sufx}`;
-    if (s === "b1_motor" || s === "b2_motor") return `FORNECER MOTOR?${sufx}`;
-    if (s === "b1_abertura" || s === "b2_abertura") return `TIPO DE ABERTURA?${sufx}`;
-    if (s === "b1_folhas" || s === "b2_folhas") return `QUANTIDADE DE FOLHAS?${sufx}`;
+    if (s === "b1_tipo" || s === "b2_tipo") return "TIPO DE BARREIRA?";
+    if (s === "b1_entrada" || s === "b2_entrada") return "DISPOSITIVO DE ENTRADA?";
+    if (s === "b1_saida" || s === "b2_saida") return "DISPOSITIVO DE SAÍDA?";
+    if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
+    if (s === "b1_motor" || s === "b2_motor") return "FORNECER MOTOR?";
+    if (s === "b1_abertura" || s === "b2_abertura") return "TIPO DE ABERTURA?";
+    if (s === "b1_folhas" || s === "b2_folhas") return "QUANTIDADE DE FOLHAS?";
     if (s === "tecnologia") return tipoBloco === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
     return "";
+  }
+
+  function getRespostaDada(step: WizardStep): string | null {
+    if (!wizard) return null;
+    const w = wizard;
+    const map: Partial<Record<WizardStep, string | undefined>> = {
+      b1_tipo: w.b1.tipo,
+      b1_entrada: w.b1.entrada,
+      b1_saida: w.b1.saida,
+      b1_material: w.b1.material,
+      b1_motor: w.b1.motor === true ? "SIM" : w.b1.motor === false ? "NAO" : undefined,
+      b1_abertura: w.b1.abertura,
+      b1_folhas: w.b1.folhas,
+      b2_tipo: w.b2.tipo,
+      b2_entrada: w.b2.entrada,
+      b2_saida: w.b2.saida,
+      b2_material: w.b2.material,
+      b2_motor: w.b2.motor === true ? "SIM" : w.b2.motor === false ? "NAO" : undefined,
+      b2_abertura: w.b2.abertura,
+      b2_folhas: w.b2.folhas,
+    };
+    const v = map[step];
+    return v ?? null;
   }
 
   function buildConfig(): BlocoConfig {
