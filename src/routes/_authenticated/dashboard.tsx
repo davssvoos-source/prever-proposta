@@ -60,9 +60,6 @@ function Dashboard() {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
 
-  const irParaReagendar = (visitaId: string) => {
-    navigate({ to: '/visita/$id/reagendar', params: { id: visitaId } });
-  };
 
   useEffect(() => {
     if (!showStatusDropdown) return;
