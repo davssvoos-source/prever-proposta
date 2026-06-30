@@ -278,7 +278,7 @@ function NotifItem({
           width: "100%",
           textAlign: "left",
           padding: "12px 16px",
-          background: n.lida ? "rgba(12,12,18,0.98)" : "rgba(35,30,15,0.98)",
+          background: isLight ? (n.lida ? "#ffffff" : "#fff8e6") : (n.lida ? "rgba(12,12,18,0.98)" : "rgba(35,30,15,0.98)"),
           border: "none",
           cursor: "pointer",
           display: "block",
