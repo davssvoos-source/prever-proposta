@@ -37,6 +37,7 @@ function usePerfil() {
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();
+  const { isLight } = useTheme();
   const { data: perfil } = usePerfil();
 
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
