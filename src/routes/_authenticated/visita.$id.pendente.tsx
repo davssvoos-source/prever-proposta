@@ -426,7 +426,7 @@ function VisitaPendentePage() {
               if (error) throw error;
               qc.invalidateQueries({ queryKey: ["visita_pendente", id] });
               qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
-              navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
+              navigate({ to: "/visita/$id/orcamento", params: { id } });
             } catch (err: any) {
               toast.error(err?.message || "Erro ao iniciar visita");
               setIniciando(false);
