@@ -29,16 +29,6 @@ const L = {
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
-const SERVICOS = [
-  { id: "portaria_virtual_24h", label: "Portaria Virtual 24h", emoji: "🏛️" },
-  { id: "cftv_cameras", label: "CFTV/Câmeras", emoji: "📷" },
-  { id: "controle_acesso", label: "Controle de Acesso", emoji: "🔐" },
-  { id: "interfone_ip", label: "Interfone IP", emoji: "📞" },
-  { id: "alarme_sensores", label: "Alarme/Sensores", emoji: "🔔" },
-  { id: "cerca_eletrica", label: "Cerca Elétrica", emoji: "⚡" },
-  { id: "monitoramento_remoto", label: "Monitoramento Remoto", emoji: "🛰️" },
-  { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
-];
 
 const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: "condominio_vertical", label: "Cond. Vertical", Icon: Building2 },
