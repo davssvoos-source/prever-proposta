@@ -874,13 +874,13 @@ function SwipeableVisita({ visita }: { visita: any }) {
           touchAction: "pan-y",
         }}
       >
-        <Link
-          to="/visita/$id"
-          params={{ id: visita.id }}
-          style={{ textDecoration: "none", color: "inherit", display: "block" }}
+        <div
+          onClick={() => navigate(visitaRouteFor(visita.status, visita.id) as any)}
+          style={{ textDecoration: "none", color: "inherit", display: "block", cursor: "pointer" }}
         >
           <VisitaCard visita={visita} />
-        </Link>
+        </div>
+
       </div>
     </div>
   );
