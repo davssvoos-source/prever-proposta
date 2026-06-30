@@ -212,7 +212,7 @@ function Dashboard() {
   useEffect(() => {
     if (!proximaVisita?.data_hora_agendada) return;
     const update = () => {
-      const diff = new Date(proximaVisita.data_hora_agendada).getTime() - Date.now();
+      const diff = new Date(proximaVisita.data_hora_agendada!).getTime() - Date.now();
       if (diff <= 0) { setCountdown("Agora"); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
