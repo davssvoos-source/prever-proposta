@@ -1010,7 +1010,7 @@ function BlocosWizardPage() {
                 gap: 8,
               }}
             >
-              <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
+              <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>
                 {opcaoSel?.label ?? LABELS[resposta] ?? resposta}
               </span>
               <Pencil size={12} color="#4B5563" />
