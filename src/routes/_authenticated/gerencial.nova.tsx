@@ -433,29 +433,34 @@ function NovaVisitaPage() {
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Nome do Cliente</label>
-              <input style={INPUT} value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} />
+              <label style={LABEL}>Nome do Síndico (opcional)</label>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
             </div>
             <div>
-              <label style={LABEL}>WhatsApp</label>
-              <input style={INPUT} value={contato} onChange={(e) => setContato(e.target.value)} />
+              <label style={LABEL}>WhatsApp do Síndico</label>
+              <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="(11) 90000-0000" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do Cliente</label>
-              <input style={INPUT} type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} placeholder="cliente@email.com" />
+              <label style={LABEL}>E-mail do Síndico</label>
+              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder="sindico@email.com" />
             </div>
           </div>
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Síndico (opcional)</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
-            </div>
-            <div>
-              <label style={LABEL}>Zelador(a) (opcional)</label>
+              <label style={LABEL}>Nome do Zelador(a) (opcional)</label>
               <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome do zelador(a)" />
             </div>
+            <div>
+              <label style={LABEL}>WhatsApp do Zelador(a)</label>
+              <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="(11) 90000-0000" />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={LABEL}>E-mail do Zelador(a)</label>
+              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder="zelador@email.com" />
+            </div>
           </div>
+
 
 
 
