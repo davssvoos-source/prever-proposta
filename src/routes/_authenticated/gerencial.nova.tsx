@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Factory, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite } from "lucide-react";
+import type { ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
@@ -28,23 +29,32 @@ const L = {
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
-const SERVICOS = [
-  { id: "portaria_virtual_24h", label: "Portaria Virtual 24h", emoji: "🏛️" },
-  { id: "cftv_cameras", label: "CFTV/Câmeras", emoji: "📷" },
-  { id: "controle_acesso", label: "Controle de Acesso", emoji: "🔐" },
-  { id: "interfone_ip", label: "Interfone IP", emoji: "📞" },
-  { id: "alarme_sensores", label: "Alarme/Sensores", emoji: "🔔" },
-  { id: "cerca_eletrica", label: "Cerca Elétrica", emoji: "⚡" },
-  { id: "monitoramento_remoto", label: "Monitoramento Remoto", emoji: "🛰️" },
-  { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
+
+const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { id: "condominio_vertical", label: "Cond. Vertical", Icon: Building2 },
+  { id: "condominio_horizontal", label: "Cond. Horizontal", Icon: Home },
+  { id: "empresa", label: "Empresa", Icon: Factory },
+  { id: "residencia", label: "Residência", Icon: (props) => <Home {...props} strokeWidth={1.5} /> },
 ];
 
-const TIPOS_LOCAL = [
-  { id: "condominio_vertical", label: "Cond. Vertical", emoji: "🏢" },
-  { id: "condominio_horizontal", label: "Cond. Horizontal", emoji: "🏘️" },
-  { id: "empresa", label: "Empresa", emoji: "🏭" },
-  { id: "residencia", label: "Residência", emoji: "🏠" },
-];
+const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = {
+  portaria_remota: Building2,
+  monitoramento_alarmes: Eye,
+  implantacao_controle_acesso: Lock,
+  implantacao_cftv: CameraIcon,
+  implantacao_alarmes: Bell,
+  manutencao_alarmes: Wrench,
+  manutencao_controle_acesso: Settings,
+  manutencao_cftv: Video,
+  portaria_virtual_24h: Shield,
+  cftv_cameras: CameraIcon,
+  controle_acesso: Lock,
+  interfone_ip: Phone,
+  alarme_sensores: Bell,
+  cerca_eletrica: Zap,
+  monitoramento_remoto: Satellite,
+  automacao_portoes: DoorOpen,
+};
 
 const PRIORIDADES = [
   { id: "baixa", label: "Baixa", color: "#9CA3AF" },
@@ -186,7 +196,6 @@ function NovaVisitaPage() {
     tipoLocal !== "" &&
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
-    servicos.length > 0 &&
     servicosPropostos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = true;
@@ -391,7 +400,9 @@ function NovaVisitaPage() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <span style={{ fontSize: 20 }}>{t.emoji}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "rgba(200,200,200,0.65)") }}>
+                      <t.Icon size={26} />
+                    </span>
                     <span
                       style={{
                         fontFamily: "'Montserrat', sans-serif",
@@ -427,47 +438,8 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Serviços Solicitados (selecione um ou mais)</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {SERVICOS.map((s) => {
-                const ativo = servicos.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() =>
-                      setServicos((prev) =>
-                        prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
-                      )
-                    }
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      background: ativo
-                        ? isLight ? L.goldBg : "rgba(255,192,0,0.12)"
-                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
-                      border: ativo
-                        ? isLight ? L.goldBorder : "1.5px solid rgba(255,192,0,0.55)"
-                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.14)",
-                      borderRadius: 999,
-                      padding: "7px 12px",
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontSize: 11,
-                      fontWeight: 300,
-                      color: ativo
-                        ? isLight ? L.gold : "#FFC000"
-                        : isLight ? L.textSub : "rgba(200,200,200,0.65)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
-                    <span>{s.emoji}</span> {s.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+
+
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
@@ -485,7 +457,7 @@ function NovaVisitaPage() {
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 5,
+                      gap: 6,
                       background: ativo
                         ? isLight ? L.goldBg : "rgba(255,192,0,0.12)"
                         : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
@@ -499,12 +471,20 @@ function NovaVisitaPage() {
                       fontWeight: 300,
                       color: ativo
                         ? isLight ? L.gold : "#FFC000"
-                        : isLight ? L.textSub : "rgba(200,200,200,0.65)",
+                        : isLight ? L.textSub : "rgba(255,255,255,0.70)",
                       cursor: "pointer",
                     }}
                   >
                     <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
-                    <span>{s.emoji}</span> {s.label}
+                    {(() => {
+                      const Ico = SERVICO_PROPOSTO_ICON[s.key];
+                      return Ico ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", color: isLight ? L.gold : "#FFC000" }}>
+                          <Ico size={14} />
+                        </span>
+                      ) : null;
+                    })()}
+                    {s.label}
                   </button>
                 );
               })}
@@ -810,7 +790,7 @@ function NovaVisitaPage() {
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               { label: "Síndico", value: nomeSindico },
-              { label: "Serviços", value: servicos.map((id) => SERVICOS.find((s) => s.id === id)?.label).filter(Boolean).join(", ") },
+              { label: "Serviços", value: servicosPropostos.map((k) => SERVICOS_PROPOSTOS.find((s) => s.key === k)?.label).filter(Boolean).join(", ") },
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
                 label: "Data/Hora",

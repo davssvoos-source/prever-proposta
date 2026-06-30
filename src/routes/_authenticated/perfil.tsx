@@ -325,7 +325,7 @@ function PerfilPage() {
               height: 30,
               borderRadius: "50%",
               background: "linear-gradient(135deg,#FFD700,#FFC000)",
-              border: "2px solid #08090E",
+              border: isLight ? "2px solid #f4f5f7" : "2px solid #08090E",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -528,8 +528,8 @@ function PerfilPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
                   borderRadius: 12,
                   padding: "10px 12px",
                   cursor: "pointer",
@@ -538,6 +538,7 @@ function PerfilPage() {
                   justifyContent: "space-between",
                   gap: 10,
                   textAlign: "left",
+                  boxShadow: isLight ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -546,7 +547,7 @@ function PerfilPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 500,
                       fontSize: 13,
-                      color: "#fff",
+                      color: isLight ? "#0a0b0e" : "#fff",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -559,7 +560,7 @@ function PerfilPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 300,
                       fontSize: 11,
-                      color: "rgba(255,255,255,0.45)",
+                      color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                       marginTop: 2,
                     }}
                   >
@@ -570,7 +571,7 @@ function PerfilPage() {
                     })}
                   </div>
                 </div>
-                {v.status && <StatusBadge status={String(v.status).toLowerCase()} />}
+                {v.status && <span style={badgeStyle(String(v.status).toLowerCase(), isLight)}>{String(v.status).toLowerCase()}</span>}
               </button>
             ))
           )}
@@ -944,4 +945,26 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
       </span>
     </div>
   );
+}
+
+function badgeStyle(status: string, isLight: boolean): CSSProperties {
+  const map: Record<string, { bg: string; bgDark: string; color: string; colorDark: string }> = {
+    aprovada:     { bg: "rgba(22,163,74,0.10)",  bgDark: "rgba(34,197,94,0.12)",  color: "#15803d", colorDark: "#4ade80" },
+    concluida:    { bg: "rgba(37,99,235,0.10)",  bgDark: "rgba(96,165,250,0.12)", color: "#1d4ed8", colorDark: "#93c5fd" },
+    em_andamento: { bg: "rgba(180,120,0,0.10)",  bgDark: "rgba(255,192,0,0.12)",  color: "#b87800", colorDark: "#FFC000" },
+    reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#f87171" },
+    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "rgba(255,255,255,0.08)",color: "#4a5060", colorDark: "#9CA3AF" },
+  };
+  const s = map[status] ?? map.pendente;
+  return {
+    display: "inline-block",
+    padding: "2px 9px",
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "capitalize",
+    background: isLight ? s.bg : s.bgDark,
+    color: isLight ? s.color : s.colorDark,
+  };
 }
