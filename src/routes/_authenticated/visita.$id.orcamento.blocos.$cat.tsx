@@ -93,6 +93,34 @@ function optionStyle(): React.CSSProperties {
   };
 }
 
+// ─── Steps por barreira ─────────────────────────────────────────────────────
+const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
+const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+
+function BarreiraIndicador({ numero }: { numero: "01" | "02" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          border: "2px solid #FFD700",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ color: "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
+      </div>
+      <span style={{ color: "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+        {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
+      </span>
+    </div>
+  );
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function proximoAposBarreira(prefix: "b1" | "b2", eclusa: boolean | null): WizardStep {
