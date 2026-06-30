@@ -257,6 +257,7 @@ function VisitaPendentePage() {
         {(["sindico", "zelador"] as const).map((kind) => {
           const nome = kind === "sindico" ? visita?.nome_sindico : visita?.nome_zelador;
           const tel = kind === "sindico" ? visita?.telefone_sindico : visita?.telefone_zelador;
+          const isEditing = editingContact === kind;
           return (
             <div
               key={kind}
@@ -266,33 +267,109 @@ function VisitaPendentePage() {
                 boxShadow: c.shadow,
               }}
             >
-              <span style={{ ...label, marginBottom: 0 }}>{kind === "sindico" ? "SÍNDICO" : "ZELADOR(A)"}</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: c.text, lineHeight: 1.3 }}>
-                {nome || <span style={{ color: c.muted, fontWeight: 400 }}>Não informado</span>}
-              </span>
-              {tel && (
-                <a
-                  href={`https://wa.me/55${String(tel).replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    padding: "6px 10px", borderRadius: 8,
-                    background: isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)",
-                    border: isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)",
-                    color: isLight ? "#15803d" : "#4ade80",
-                    fontSize: 12, fontWeight: 600, textDecoration: "none", marginTop: 2,
-                    alignSelf: "flex-start",
-                  }}
-                >
-                  <MessageCircle size={13} />
-                  WhatsApp
-                </a>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ ...label, marginBottom: 0 }}>{kind === "sindico" ? "SÍNDICO" : "ZELADOR(A)"}</span>
+                {!isEditing && (
+                  <button
+                    onClick={() => {
+                      setDraftNome(nome || "");
+                      setDraftTel(tel || "");
+                      setEditingContact(kind);
+                    }}
+                    style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: c.gold, display: "flex" }}
+                    aria-label="Editar"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                )}
+              </div>
+
+              {!isEditing && (
+                <>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: c.text, lineHeight: 1.3 }}>
+                    {nome || <span style={{ color: c.muted, fontWeight: 400 }}>Não informado</span>}
+                  </span>
+                  <a
+                    href={tel ? `https://wa.me/55${String(tel).replace(/\D/g, "")}` : undefined}
+                    onClick={(e) => { if (!tel) { e.preventDefault(); toast.error("Telefone não informado"); } }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "6px 10px", borderRadius: 8,
+                      background: tel
+                        ? (isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)")
+                        : (isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)"),
+                      border: tel
+                        ? (isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)")
+                        : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)"),
+                      color: tel
+                        ? (isLight ? "#15803d" : "#4ade80")
+                        : c.muted,
+                      fontSize: 12, fontWeight: 600, textDecoration: "none", marginTop: 2,
+                      alignSelf: "flex-start", cursor: tel ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    <MessageCircle size={13} />
+                    WhatsApp
+                  </a>
+                </>
+              )}
+
+              {isEditing && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input
+                    type="text"
+                    value={draftNome}
+                    placeholder="Nome"
+                    onChange={(e) => setDraftNome(e.target.value)}
+                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
+                  />
+                  <input
+                    type="tel"
+                    value={draftTel}
+                    placeholder="Telefone"
+                    onChange={(e) => setDraftTel(e.target.value)}
+                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => setEditingContact(null)}
+                      style={{ flex: 1, padding: 7, borderRadius: 8, border: c.border, background: "transparent", color: c.sub, cursor: "pointer", fontWeight: 600, fontSize: 12 }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      disabled={savingContact}
+                      onClick={async () => {
+                        setSavingContact(true);
+                        try {
+                          const payload = kind === "sindico"
+                            ? { nome_sindico: draftNome || null, telefone_sindico: draftTel || null }
+                            : { nome_zelador: draftNome || null, telefone_zelador: draftTel || null };
+                          const { error } = await supabase.from("visitas_tecnicas").update(payload).eq("id", id);
+                          if (error) throw error;
+                          qc.invalidateQueries({ queryKey: ["visita_pendente", id] });
+                          toast.success("Atualizado");
+                          setEditingContact(null);
+                        } catch (e: any) {
+                          toast.error(e?.message || "Erro ao salvar");
+                        } finally {
+                          setSavingContact(false);
+                        }
+                      }}
+                      style={{ flex: 1, padding: 7, borderRadius: 8, border: "none", background: c.gold, color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 12 }}
+                    >
+                      {savingContact ? "..." : "Salvar"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           );
         })}
       </div>
+
 
 
       {/* Técnico */}
