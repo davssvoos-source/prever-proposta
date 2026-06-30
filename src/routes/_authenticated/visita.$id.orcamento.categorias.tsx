@@ -235,8 +235,8 @@ function CategoriasPage() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento", params: { id } })}
           style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
             height: 40,
@@ -244,7 +244,7 @@ function CategoriasPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: "#fff",
+            color: textPrimary,
           }}
         >
           <ArrowLeft size={18} />
@@ -255,7 +255,7 @@ function CategoriasPage() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 400,
               fontSize: 18,
-              color: "#fff",
+              color: textPrimary,
             }}
           >
             Blocos do Orçamento
@@ -265,7 +265,7 @@ function CategoriasPage() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
               fontSize: 11,
-              color: "rgba(255,255,255,0.45)",
+              color: textSecondary,
               marginTop: 2,
             }}
           >
@@ -280,7 +280,7 @@ function CategoriasPage() {
                 width: 20,
                 height: 4,
                 borderRadius: 2,
-                background: active ? "#FFC000" : "rgba(255,255,255,0.12)",
+                background: active ? iconColor : (isLight ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.12)"),
               }}
             />
           ))}
@@ -292,14 +292,14 @@ function CategoriasPage() {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
           fontSize: 12,
-          color: "rgba(255,255,255,0.45)",
+          color: textSecondary,
           marginBottom: 4,
         }}
       >
         Toque em uma categoria para configurar os blocos correspondentes
       </div>
 
-      {CATEGORIAS.map((cat) => {
+      {CATEGORIAS_T.map((cat) => {
         const count = countPorTipo(cat.id);
         return (
           <div
