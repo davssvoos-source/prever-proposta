@@ -62,6 +62,8 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { isLight } = useTheme();
+  const GLASS = isLight ? GLASS_LIGHT : GLASS_DARK;
   const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<string>('todos');
