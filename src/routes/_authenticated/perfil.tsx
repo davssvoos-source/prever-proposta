@@ -364,7 +364,7 @@ function PerfilPage() {
               fontSize: 11,
               letterSpacing: "0.16em",
               textTransform: "uppercase",
-              color: "#FFC000",
+              color: goldDark,
               marginTop: 4,
             }}
           >
@@ -376,7 +376,7 @@ function PerfilPage() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 12,
-            color: "rgba(255,255,255,0.5)",
+            color: textSecondary,
             marginTop: 4,
           }}
         >
@@ -395,7 +395,7 @@ function PerfilPage() {
               fontSize: 11,
               letterSpacing: "0.10em",
               textTransform: "uppercase",
-              color: "#FFC000",
+              color: goldDark,
             }}
           >
             {roleLabel}
