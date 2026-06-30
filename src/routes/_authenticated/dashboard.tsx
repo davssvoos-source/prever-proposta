@@ -239,30 +239,35 @@ function Dashboard() {
         }}
       >
         <img
-          src={bannerAsset.url}
+          src={isLight ? '/banner-home-light.jpg' : bannerAsset.url}
           alt="Frota Prever"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 60%' }}
         />
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
-          }}
-        />
-        {/* Fade inferior — transição suave para o fundo da página */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '40%',
-            background:
-              'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
+            background: isLight
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 40%, rgba(244,245,247,0.9) 100%)'
+              : 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
             pointerEvents: 'none',
           }}
         />
+        {/* Fade inferior — transição suave para o fundo da página */}
+        {!isLight && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '40%',
+              background:
+                'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         <div
           style={{
             position: 'absolute',
@@ -276,15 +281,16 @@ function Dashboard() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 600,
               fontSize: 18,
-              color: '#FFFFFF',
+              color: isLight ? '#0a0b0e' : '#FFFFFF',
               margin: 0,
-              textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              textShadow: isLight ? 'none' : '0 2px 12px rgba(0,0,0,0.5)',
             }}
           >
             Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje{perfil?.nome ? `, ${perfil.nome.split(' ')[0]}` : ''}
           </h2>
         </div>
       </div>
+
 
       <div className="space-y-5" style={{ paddingTop: 20 }}>
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
