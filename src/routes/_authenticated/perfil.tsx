@@ -325,7 +325,7 @@ function PerfilPage() {
               height: 30,
               borderRadius: "50%",
               background: "linear-gradient(135deg,#FFD700,#FFC000)",
-              border: "2px solid #08090E",
+              border: isLight ? "2px solid #f4f5f7" : "2px solid #08090E",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
