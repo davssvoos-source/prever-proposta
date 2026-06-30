@@ -100,7 +100,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     nome_predio: initial?.nome_predio ?? "",
     tipo_local: initial?.tipo_local ?? "",
     nome_sindico: initial?.nome_sindico ?? "",
-    contato_sindico: initial?.contato_sindico ?? "",
+    telefone_sindico: initial?.telefone_sindico ?? initial?.contato_sindico ?? "",
+    nome_zelador: initial?.nome_zelador ?? "",
+    telefone_zelador: initial?.telefone_zelador ?? "",
     servico_solicitado: initial?.servico_solicitado ?? "",
     endereco: initial?.endereco ?? "",
     obs_agendamento: initial?.obs_agendamento ?? "",
@@ -109,6 +111,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     tecnico_id: initial?.tecnico_id ?? "",
     prioridade: (initial?.prioridade ?? "normal") as string,
   });
+
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     initial?.latitude && initial?.longitude
       ? { lat: initial.latitude, lng: initial.longitude }
