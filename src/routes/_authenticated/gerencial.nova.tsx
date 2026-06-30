@@ -209,9 +209,9 @@ function NovaVisitaPage() {
       const { data: clienteRow, error: clienteErr } = await supabase
         .from("clientes")
         .insert({
-          nome: nomeCliente,
-          email: clienteEmail || null,
-          telefone: contato,
+          nome: nomeSindico || nomePredio,
+          email: emailSindico || null,
+          telefone: telefoneSindico || null,
           owner_id: user?.id as string,
         })
         .select("id")
