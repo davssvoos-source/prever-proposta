@@ -2,8 +2,10 @@ import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LightBackground } from "@/components/LightBackground";
 import { BottomNav } from "@/components/BottomNav";
 import { NotificationPanel } from "@/components/NotificationPanel";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
