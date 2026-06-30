@@ -202,7 +202,7 @@ function GerencialPage() {
                 fontFamily: "Montserrat, sans-serif",
                 fontSize: 11,
                 fontWeight: 300,
-                color: "#9ca3af",
+                color: textSecondary,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginTop: 4,
