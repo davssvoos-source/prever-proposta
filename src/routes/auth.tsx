@@ -4,6 +4,8 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LightBackground } from "@/components/LightBackground";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
