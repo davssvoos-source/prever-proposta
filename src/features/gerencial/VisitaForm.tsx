@@ -134,10 +134,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
   const step1Valid =
     form.nome_predio.trim() &&
     form.tipo_local &&
-    form.nome_sindico.trim() &&
-    form.contato_sindico.replace(/\D/g, "").length >= 10 &&
     form.servico_solicitado &&
     form.endereco.trim();
+
 
   const step2Valid = form.data && form.hora;
 
