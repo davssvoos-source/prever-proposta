@@ -229,6 +229,21 @@ function BlocosWizardPage() {
     });
   }
 
+  // Auto-iniciar wizard quando não há blocos
+  useEffect(() => {
+    if (!isLoading && blocosAdicionados.length === 0 && !wizard) {
+      iniciarWizard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, blocosAdicionados.length]);
+
+  // Scroll suave ao revelar nova pergunta
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (wizard) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [wizard?.step]);
+
+
   // ── Selecionar opção ────────────────────────────────────────────────────
   function selecionar(valor: string) {
     if (!wizard) return;
