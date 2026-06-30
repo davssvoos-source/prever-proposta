@@ -378,7 +378,7 @@ function Dashboard() {
                     gap: 5,
                   }}
                 >
-                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada)}
+                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada!)}
                 </div>
                 <div
                   style={{
