@@ -663,18 +663,20 @@ function VisitaCard({ visita }: { visita: any }) {
     <div
       style={{
         background: isLight
-          ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
-          : "rgba(8,8,12,0.22)",
-        backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+          ? "linear-gradient(135deg, #ffffff 0%, #f0f1f4 100%)"
+          : "linear-gradient(135deg, #0d0e18 0%, #13141f 100%)",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
         border: isLight
-          ? "1px solid rgba(0,0,0,0.07)"
-          : "1px solid rgba(255,192,0,0.10)",
+          ? "1px solid rgba(0,0,0,0.08)"
+          : "1px solid rgba(255,255,255,0.06)",
         borderRadius: 18,
         padding: "18px 16px",
         marginBottom: 0,
-        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
+        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
       }}
     >
+
       <div
         style={{
           display: "flex",
