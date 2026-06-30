@@ -301,11 +301,11 @@ function Dashboard() {
       <div className="space-y-5" style={{ paddingTop: 20 }}>
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
         {proximaVisita && (
-          <Link
-            to="/visita/$id"
-            params={{ id: proximaVisita.id }}
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+          <div
+            onClick={() => navigate(visitaRouteFor(proximaVisita.status, proximaVisita.id) as any)}
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
           >
+
             <div
               style={{
                 ...GLASS,
