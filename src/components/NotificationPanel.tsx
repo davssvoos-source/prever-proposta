@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2 } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 function NotifIcon({ tipo }: { tipo: string }) {
