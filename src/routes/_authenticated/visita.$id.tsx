@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
@@ -193,6 +194,7 @@ function VisitaDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isLight } = useTheme();
 
 
   const { data: meUser } = useQuery({
@@ -500,12 +502,13 @@ function VisitaDetail() {
   const sInfo = status ? STATUS_LABELS[status] : null;
 
   const GLASS: React.CSSProperties = {
-    background: "rgba(8,8,12,0.22)",
-    backdropFilter: "blur(24px) saturate(200%)",
-    WebkitBackdropFilter: "blur(24px) saturate(200%)",
-    border: "1px solid rgba(255,192,0,0.10)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    backdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
+    WebkitBackdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
     borderRadius: 18,
     padding: "18px 16px",
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SECTION_LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
@@ -513,16 +516,17 @@ function VisitaDetail() {
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
-    color: "rgba(255,192,0,0.65)",
+    color: isLight ? "#b87800" : "rgba(255,192,0,0.65)",
     marginBottom: 10,
   };
   const BTN_GHOST: React.CSSProperties = {
     flex: 1,
     height: 40,
     borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.05)",
-    color: "#fff",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
+    color: isLight ? "#0a0b0e" : "#fff",
+    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
@@ -533,6 +537,8 @@ function VisitaDetail() {
     fontSize: 12,
     textDecoration: "none",
   };
+  const TXT_PRIMARY = isLight ? "#0a0b0e" : "#fff";
+  const TXT_SECONDARY = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
 
   // EARLY RETURN obrigatório (após todos os hooks) — delega às rotas filhas
   if (pathname !== `/visita/${id}`) {
@@ -559,8 +565,8 @@ function VisitaDetail() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
           style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
             height: 40,
@@ -569,7 +575,7 @@ function VisitaDetail() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: "#fff",
+            color: TXT_PRIMARY,
           }}
         >
           <ArrowLeft size={18} />
@@ -580,7 +586,7 @@ function VisitaDetail() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 500,
               fontSize: 16,
-              color: "#fff",
+              color: TXT_PRIMARY,
             }}
           >
             Visita Técnica
@@ -591,7 +597,7 @@ function VisitaDetail() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.55)",
+                color: TXT_SECONDARY,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

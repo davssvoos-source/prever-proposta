@@ -24,6 +24,44 @@ function PerfilPage() {
   const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
+  const goldDark = isLight ? "#b87800" : "#FFC000";
+  const CARD: CSSProperties = {
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    borderRadius: 18,
+    padding: "20px 16px",
+    marginBottom: 16,
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+  };
+  const LBL: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 11,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    color: goldDark,
+    marginBottom: 8,
+    display: "block",
+  };
+  const INPUT: CSSProperties = {
+    width: "100%",
+    height: 50,
+    background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.05)",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 12,
+    color: textPrimary,
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 14,
+    padding: "0 14px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [showNova, setShowNova] = useState(false);
@@ -232,12 +270,13 @@ function PerfilPage() {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 600,
           fontSize: 22,
-          color: "#fff",
+          color: textPrimary,
           marginBottom: 20,
         }}
       >
         Perfil
       </div>
+
 
       {/* Seção 1 - Hero */}
       <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center" }}>

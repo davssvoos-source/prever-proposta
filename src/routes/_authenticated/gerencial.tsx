@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   beforeLoad: async () => {
@@ -31,6 +32,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { isLight } = useTheme();
+  const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
+  const textPrimary = isLight ? "#0a0b0e" : "#F5F5F5";
+  const textSecondary = isLight ? "#4a5060" : "#9ca3af";
+  const cardBg = isLight ? cardLight : "rgba(255,255,255,0.05)";
+  const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
+  const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none";
+  const numberGold = isLight ? "#b87800" : "#FFC000";
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
@@ -104,7 +113,7 @@ function GerencialPage() {
               fontFamily: "Montserrat, sans-serif",
               fontWeight: 700,
               fontSize: 24,
-              color: "#F5F5F5",
+              color: textPrimary,
               letterSpacing: "0.05em",
               margin: 0,
             }}
@@ -116,7 +125,7 @@ function GerencialPage() {
               fontFamily: "Montserrat, sans-serif",
               fontWeight: 300,
               fontSize: 13,
-              color: "#9ca3af",
+              color: textSecondary,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
               marginTop: 4,
@@ -128,14 +137,15 @@ function GerencialPage() {
         <button
           onClick={() => navigate({ to: "/gerencial/usuarios" })}
           style={{
-            background: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background: isLight ? "#ffffff" : "rgba(255,255,255,0.07)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             borderRadius: 12,
             padding: "10px 16px",
             display: "flex",
             alignItems: "center",
             gap: 8,
-            color: "rgba(255,255,255,0.75)",
+            color: textPrimary,
+            boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
             fontFamily: "Montserrat, sans-serif",
             fontWeight: 400,
             fontSize: 13,
@@ -160,19 +170,20 @@ function GerencialPage() {
         }}
       >
         {[
-          { label: "Total",        value: stats.total,        color: "#FFC000" },
-          { label: "Pendentes",    value: stats.pendentes,    color: "#FFC000" },
+          { label: "Total",        value: stats.total,        color: numberGold },
+          { label: "Pendentes",    value: stats.pendentes,    color: numberGold },
           { label: "Em Andamento", value: stats.em_andamento, color: "#3B82F6" },
           { label: "Concluídas",   value: stats.concluidas,   color: "#10B981" },
         ].map((s) => (
           <div
             key={s.label}
             style={{
-              background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(16px)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: cardBg,
+              backdropFilter: isLight ? "none" : "blur(16px)",
+              border: cardBorder,
               borderRadius: 16,
               padding: "18px 22px",
+              boxShadow: cardShadow,
             }}
           >
             <div
@@ -191,7 +202,7 @@ function GerencialPage() {
                 fontFamily: "Montserrat, sans-serif",
                 fontSize: 11,
                 fontWeight: 300,
-                color: "#9ca3af",
+                color: textSecondary,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginTop: 4,
@@ -261,9 +272,9 @@ function GerencialPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: cardBg,
+                  backdropFilter: isLight ? "none" : "blur(16px)",
+                  border: cardBorder,
                   borderRadius: 16,
                   padding: "18px 22px",
                   cursor: "pointer",
@@ -272,12 +283,13 @@ function GerencialPage() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   gap: 16,
+                  boxShadow: cardShadow,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,192,0,0.3)";
+                  e.currentTarget.style.borderColor = isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.3)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)";
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -286,7 +298,7 @@ function GerencialPage() {
                       fontFamily: "Montserrat, sans-serif",
                       fontWeight: 600,
                       fontSize: 14,
-                      color: "#F5F5F5",
+                      color: textPrimary,
                       marginBottom: 6,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -300,7 +312,7 @@ function GerencialPage() {
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: 12,
                       fontWeight: 300,
-                      color: "#9ca3af",
+                      color: textSecondary,
                       lineHeight: 1.5,
                       display: "flex",
                       alignItems: "center",

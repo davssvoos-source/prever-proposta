@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2 } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
+import { useTheme } from "@/contexts/ThemeContext";
 
 
 function NotifIcon({ tipo }: { tipo: string }) {
@@ -26,6 +27,7 @@ export function NotificationPanel() {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { notificacoes, naoLidas, marcarLida, marcarTodasLidas, deletar } = useNotificacoes();
+  const { isLight } = useTheme();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -55,13 +57,13 @@ export function NotificationPanel() {
           width: 40,
           height: 40,
           borderRadius: 12,
-          background: "rgba(255,255,255,0.07)",
-          border: "1px solid rgba(255,255,255,0.10)",
+          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)",
+          border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          color: "rgba(255,255,255,0.85)",
+          color: isLight ? "#0a0b0e" : "rgba(255,255,255,0.85)",
         }}
       >
         <Bell size={18} />
@@ -107,19 +109,21 @@ export function NotificationPanel() {
             right: 0,
             width: 352,
             zIndex: 100,
-            background: "rgba(12,12,18,0.92)",
+            background: isLight ? "rgba(248,249,251,0.97)" : "rgba(12,12,18,0.92)",
             backdropFilter: "blur(24px) saturate(180%)",
             WebkitBackdropFilter: "blur(24px) saturate(180%)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.12)",
             borderRadius: 18,
-            boxShadow: "0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
+            boxShadow: isLight
+              ? "0 8px 40px rgba(0,0,0,0.12)"
+              : "0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
             overflow: "hidden",
           }}
         >
           <div
             style={{
               padding: "14px 16px 12px",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.07)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -131,7 +135,7 @@ export function NotificationPanel() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 600,
                 fontSize: 13,
-                color: "#fff",
+                color: isLight ? "#0a0b0e" : "#fff",
               }}
             >
               Notificações
@@ -146,7 +150,7 @@ export function NotificationPanel() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 400,
                   fontSize: 11,
-                  color: "rgba(255,192,0,0.85)",
+                  color: isLight ? "#b87800" : "rgba(255,192,0,0.85)",
                   letterSpacing: "0.04em",
                 }}
               >
@@ -177,6 +181,7 @@ export function NotificationPanel() {
                   n={n}
                   onClick={() => handleClick(n)}
                   onDelete={() => deletar(n.id)}
+                  isLight={isLight}
                 />
               ))
 
@@ -192,10 +197,12 @@ function NotifItem({
   n,
   onClick,
   onDelete,
+  isLight,
 }: {
   n: Notificacao;
   onClick: () => void;
   onDelete: () => void;
+  isLight: boolean;
 }) {
   const THRESHOLD_NOT = 110;
   const EXIT_PX = 320;
@@ -240,7 +247,7 @@ function NotifItem({
         transition: deletando
           ? "max-height 0.3s ease, opacity 0.25s ease"
           : "none",
-        borderBottom: deletando ? "none" : "1px solid rgba(255,255,255,0.05)",
+        borderBottom: deletando ? "none" : (isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.05)"),
       }}
     >
       {/* Fundo vermelho de delete */}
@@ -271,7 +278,7 @@ function NotifItem({
           width: "100%",
           textAlign: "left",
           padding: "12px 16px",
-          background: n.lida ? "rgba(12,12,18,0.98)" : "rgba(35,30,15,0.98)",
+          background: isLight ? (n.lida ? "#ffffff" : "#fff8e6") : (n.lida ? "rgba(12,12,18,0.98)" : "rgba(35,30,15,0.98)"),
           border: "none",
           cursor: "pointer",
           display: "block",
@@ -295,7 +302,9 @@ function NotifItem({
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: n.lida ? 400 : 600,
                 fontSize: 13,
-                color: n.lida ? "rgba(255,255,255,0.65)" : "#fff",
+                color: isLight
+                  ? (n.lida ? "#4a5060" : "#0a0b0e")
+                  : (n.lida ? "rgba(255,255,255,0.65)" : "#fff"),
                 lineHeight: 1.4,
               }}
             >
@@ -307,7 +316,7 @@ function NotifItem({
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
+                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                   marginTop: 3,
                   lineHeight: 1.4,
                 }}
@@ -320,7 +329,7 @@ function NotifItem({
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 10,
-                color: "rgba(255,192,0,0.55)",
+                color: isLight ? "#b87800" : "rgba(255,192,0,0.55)",
                 marginTop: 5,
                 letterSpacing: "0.06em",
               }}
@@ -334,7 +343,7 @@ function NotifItem({
                 width: 7,
                 height: 7,
                 borderRadius: "50%",
-                background: "#FFC000",
+                background: isLight ? "#b87800" : "#FFC000",
                 marginTop: 6,
                 flexShrink: 0,
                 boxShadow: "0 0 6px rgba(255,192,0,0.7)",
