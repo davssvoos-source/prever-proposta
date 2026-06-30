@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Calendar, User, Phone, Mail, Edit2, Wrench } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, Phone, Mail, Edit2, Wrench, Copy, Map, MessageCircle, Play } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_authenticated/visita/$id/pendente")({
   component: VisitaPendentePage,
 });
 
+
 function VisitaPendentePage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ function VisitaPendentePage() {
   const [editingDate, setEditingDate] = useState(false);
   const [draftDate, setDraftDate] = useState("");
   const [draftTime, setDraftTime] = useState("09:00");
+  const [copied, setCopied] = useState(false);
+  const [iniciando, setIniciando] = useState(false);
+
 
   const { data: visita } = useQuery({
     queryKey: ["visita_pendente", id],
@@ -182,12 +186,49 @@ function VisitaPendentePage() {
         </div>
         <p style={{ color: c.text, fontSize: 14, margin: 0, marginBottom: 12 }}>{endereco || "—"}</p>
         {endereco && (
-          <iframe
-            title="Mapa do local"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(endereco)}&output=embed`}
-            style={{ width: "100%", height: 180, borderRadius: 12, border: "none" }}
-            loading="lazy"
-          />
+          <>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(endereco);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "8px 14px", borderRadius: 10, flex: 1,
+                  background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.07)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+                  color: c.text, fontSize: 13, fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                <Copy size={14} />
+                {copied ? "Copiado!" : "Copiar endereço"}
+              </button>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(endereco)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "8px 14px", borderRadius: 10, flex: 1,
+                  background: isLight ? "rgba(37,99,235,0.08)" : "rgba(96,165,250,0.10)",
+                  border: isLight ? "1px solid rgba(37,99,235,0.18)" : "1px solid rgba(96,165,250,0.22)",
+                  color: isLight ? "#1d4ed8" : "#93c5fd",
+                  fontSize: 13, fontWeight: 500, textDecoration: "none", cursor: "pointer",
+                }}
+              >
+                <Map size={14} />
+                Abrir Maps
+              </a>
+            </div>
+            <iframe
+              title="Mapa do local"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(endereco)}&output=embed`}
+              style={{ width: "100%", height: 180, borderRadius: 12, border: "none" }}
+              loading="lazy"
+            />
+          </>
         )}
       </div>
 
@@ -206,21 +247,48 @@ function VisitaPendentePage() {
         </div>
       )}
 
-      {/* Sindico */}
-      {visita?.nome_sindico && (
-        <div style={card}>
-          <span style={label}>SÍNDICO</span>
-          <p style={{ color: c.text, fontSize: 14, margin: 0 }}>{visita.nome_sindico}</p>
-        </div>
-      )}
+      {/* Sindico + Zelador 50/50 */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {(["sindico", "zelador"] as const).map((kind) => {
+          const nome = kind === "sindico" ? visita?.nome_sindico : visita?.nome_zelador;
+          const tel = kind === "sindico" ? visita?.telefone_sindico : visita?.telefone_zelador;
+          return (
+            <div
+              key={kind}
+              style={{
+                background: c.bg, border: c.border, borderRadius: 16,
+                padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8,
+                boxShadow: c.shadow,
+              }}
+            >
+              <span style={{ ...label, marginBottom: 0 }}>{kind === "sindico" ? "SÍNDICO" : "ZELADOR(A)"}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: c.text, lineHeight: 1.3 }}>
+                {nome || <span style={{ color: c.muted, fontWeight: 400 }}>Não informado</span>}
+              </span>
+              {tel && (
+                <a
+                  href={`https://wa.me/55${String(tel).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "6px 10px", borderRadius: 8,
+                    background: isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)",
+                    border: isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)",
+                    color: isLight ? "#15803d" : "#4ade80",
+                    fontSize: 12, fontWeight: 600, textDecoration: "none", marginTop: 2,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <MessageCircle size={13} />
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Zelador */}
-      {visita?.nome_zelador && (
-        <div style={card}>
-          <span style={label}>ZELADOR(A)</span>
-          <p style={{ color: c.text, fontSize: 14, margin: 0 }}>{visita.nome_zelador}</p>
-        </div>
-      )}
 
       {/* Técnico */}
       {tecnico?.nome && (
@@ -262,6 +330,53 @@ function VisitaPendentePage() {
           <p style={{ color: c.text, fontSize: 13, margin: 0, whiteSpace: "pre-wrap" }}>{visita.obs_agendamento}</p>
         </div>
       )}
+
+      {/* Iniciar Visita */}
+      <div style={{ padding: "24px 0 40px" }}>
+        <button
+          onClick={async () => {
+            setIniciando(true);
+            try {
+              const { error } = await supabase
+                .from("visitas_tecnicas")
+                .update({ status: "em_andamento", iniciada_em: new Date().toISOString() })
+                .eq("id", id);
+              if (error) throw error;
+              qc.invalidateQueries({ queryKey: ["visita_pendente", id] });
+              qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+              navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
+            } catch (err: any) {
+              toast.error(err?.message || "Erro ao iniciar visita");
+              setIniciando(false);
+            }
+          }}
+          disabled={iniciando}
+          style={{
+            width: "100%",
+            padding: "16px 0",
+            borderRadius: 16,
+            border: "none",
+            cursor: iniciando ? "not-allowed" : "pointer",
+            background: iniciando
+              ? (isLight ? "#d4a800" : "rgba(255,192,0,0.50)")
+              : "linear-gradient(135deg, #FFC000 0%, #FFD700 50%, #FFA500 100%)",
+            boxShadow: iniciando ? "none" : "0 4px 20px rgba(255,192,0,0.35)",
+            color: "#0a0b0e",
+            fontSize: 15,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            transition: "all 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+          }}
+        >
+          {iniciando ? "Iniciando..." : (<><Play size={18} fill="currentColor" /> Iniciar Visita Técnica</>)}
+        </button>
+      </div>
     </div>
   );
+
 }

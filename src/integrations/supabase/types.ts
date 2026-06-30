@@ -717,6 +717,8 @@ export type Database = {
           status: string
           status_aprovacao: string | null
           tecnico_id: string | null
+          telefone_sindico: string | null
+          telefone_zelador: string | null
           tipo_local: string | null
           titulo: string
           updated_at: string
@@ -754,6 +756,8 @@ export type Database = {
           status?: string
           status_aprovacao?: string | null
           tecnico_id?: string | null
+          telefone_sindico?: string | null
+          telefone_zelador?: string | null
           tipo_local?: string | null
           titulo: string
           updated_at?: string
@@ -791,6 +795,8 @@ export type Database = {
           status?: string
           status_aprovacao?: string | null
           tecnico_id?: string | null
+          telefone_sindico?: string | null
+          telefone_zelador?: string | null
           tipo_local?: string | null
           titulo?: string
           updated_at?: string

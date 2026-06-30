@@ -57,6 +57,9 @@ export type VisitaFormInitial = {
   tipo_local?: string | null;
   nome_sindico?: string | null;
   contato_sindico?: string | null;
+  telefone_sindico?: string | null;
+  nome_zelador?: string | null;
+  telefone_zelador?: string | null;
   servico_solicitado?: string | null;
   endereco?: string | null;
   latitude?: number | null;
@@ -66,6 +69,7 @@ export type VisitaFormInitial = {
   tecnico_id?: string | null;
   prioridade?: string | null;
 };
+
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
@@ -96,7 +100,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     nome_predio: initial?.nome_predio ?? "",
     tipo_local: initial?.tipo_local ?? "",
     nome_sindico: initial?.nome_sindico ?? "",
-    contato_sindico: initial?.contato_sindico ?? "",
+    telefone_sindico: initial?.telefone_sindico ?? initial?.contato_sindico ?? "",
+    nome_zelador: initial?.nome_zelador ?? "",
+    telefone_zelador: initial?.telefone_zelador ?? "",
     servico_solicitado: initial?.servico_solicitado ?? "",
     endereco: initial?.endereco ?? "",
     obs_agendamento: initial?.obs_agendamento ?? "",
@@ -105,6 +111,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     tecnico_id: initial?.tecnico_id ?? "",
     prioridade: (initial?.prioridade ?? "normal") as string,
   });
+
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     initial?.latitude && initial?.longitude
       ? { lat: initial.latitude, lng: initial.longitude }
@@ -127,10 +134,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
   const step1Valid =
     form.nome_predio.trim() &&
     form.tipo_local &&
-    form.nome_sindico.trim() &&
-    form.contato_sindico.replace(/\D/g, "").length >= 10 &&
     form.servico_solicitado &&
     form.endereco.trim();
+
 
   const step2Valid = form.data && form.hora;
 
@@ -197,8 +203,12 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
         titulo: `${SERVICO_LABEL[form.servico_solicitado] ?? "Visita"} — ${form.nome_predio}`,
         nome_predio: form.nome_predio,
         tipo_local: form.tipo_local,
-        nome_sindico: form.nome_sindico,
-        contato_sindico: form.contato_sindico,
+        nome_sindico: form.nome_sindico || null,
+        contato_sindico: form.telefone_sindico || null,
+        telefone_sindico: form.telefone_sindico || null,
+        nome_zelador: form.nome_zelador || null,
+        telefone_zelador: form.telefone_zelador || null,
+
         servico_solicitado: form.servico_solicitado,
         endereco: form.endereco,
         obs_agendamento: form.obs_agendamento || null,
@@ -295,35 +305,39 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             </div>
           </div>
 
-          <div>
-            <Label>Nome do Síndico / Responsável *</Label>
-            <Input
-              value={form.nome_sindico}
-              onChange={(e) => set("nome_sindico", e.target.value)}
-              placeholder="Nome completo"
-            />
-          </div>
-
-          <div>
-            <Label>Contato *</Label>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Síndico (opcional)</Label>
               <Input
-                value={form.contato_sindico}
-                onChange={(e) => set("contato_sindico", formatPhoneBR(e.target.value))}
+                value={form.nome_sindico}
+                onChange={(e) => set("nome_sindico", e.target.value)}
+                placeholder="Nome do síndico"
+              />
+              <Input
+                value={form.telefone_sindico}
+                onChange={(e) => set("telefone_sindico", formatPhoneBR(e.target.value))}
                 placeholder="(00) 00000-0000"
                 inputMode="tel"
+                type="tel"
               />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={form.contato_sindico.replace(/\D/g, "").length < 10}
-                onClick={() => window.open(whatsappLink(form.contato_sindico), "_blank")}
-                aria-label="Abrir WhatsApp"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
+            </div>
+            <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Zelador(a) (opcional)</Label>
+              <Input
+                value={form.nome_zelador}
+                onChange={(e) => set("nome_zelador", e.target.value)}
+                placeholder="Nome do zelador"
+              />
+              <Input
+                value={form.telefone_zelador}
+                onChange={(e) => set("telefone_zelador", formatPhoneBR(e.target.value))}
+                placeholder="(00) 00000-0000"
+                inputMode="tel"
+                type="tel"
+              />
             </div>
           </div>
+
 
           <div>
             <Label>Serviço Solicitado *</Label>
@@ -576,7 +590,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               className="flex items-center gap-1.5"
               style={{ color: isLight ? L.textSub : undefined }}
             >
-              <Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}
+              <Phone className="h-3.5 w-3.5" /> {form.nome_sindico || "—"} · {form.telefone_sindico || "—"}
             </div>
             {dataHoraISO && (
               <div
