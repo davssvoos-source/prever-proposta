@@ -184,7 +184,8 @@ function AuthenticatedLayout() {
                     fontSize: 10,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: isLight ? "#7a5000" : "rgba(255,192,0,0.6)",
+                    color: scrolled ? (isLight ? "#7a5000" : "rgba(255,192,0,0.6)") : "#FFC000",
+                    textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                     lineHeight: 1.2,
                   }}
                 >
