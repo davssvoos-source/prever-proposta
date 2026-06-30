@@ -170,72 +170,83 @@ function PreEnvioPage() {
         onChange={handleFotoBanner}
       />
 
-      {/* BANNER / HEADER */}
+      {/* ── BANNER ─────────────────────────────────────────────────────── */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         {fotoBanner ? (
+          /* Com foto */
           <div
             style={{
               position: "relative",
               width: "100%",
               height: "25vh",
               minHeight: 140,
-              maxHeight: 200,
+              maxHeight: 210,
+              overflow: "hidden",
             }}
           >
             <img
               src={fotoBanner}
               alt="Fachada"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
             />
+            {/* Overlay degradê */}
             <div
               style={{
                 position: "absolute",
                 inset: 0,
                 background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%)",
+                  "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 45%, rgba(0,0,0,0.70) 100%)",
+                pointerEvents: "none",
               }}
             />
+            {/* Botão voltar sobreposto */}
             <button
               onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
               }
               style={{
                 position: "absolute",
-                top: 16,
-                left: 16,
-                width: 36,
-                height: 36,
-                background: "rgba(0,0,0,0.5)",
+                top: 14,
+                left: 14,
+                width: 34,
+                height: 34,
+                background: "rgba(0,0,0,0.55)",
                 border: "none",
                 borderRadius: "50%",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backdropFilter: "blur(4px)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
               }}
             >
-              <ArrowLeft size={20} color="#FFFFFF" />
+              <ArrowLeft size={18} color="#FFFFFF" />
             </button>
+            {/* Nome do local na borda inferior */}
             <div
               style={{
                 position: "absolute",
                 bottom: 0,
                 left: 0,
                 right: 0,
-                padding: "10px 20px 14px",
+                padding: "12px 20px 16px",
                 textAlign: "center",
+                background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)",
               }}
             >
               <p
                 style={{
                   color: "#FFFFFF",
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: 800,
                   margin: 0,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
-                  letterSpacing: 0.3,
-                  fontFamily: "'Montserrat',sans-serif",
+                  textShadow: "0 2px 10px rgba(0,0,0,0.9)",
                 }}
               >
                 {nomeLocal}
@@ -243,46 +254,35 @@ function PreEnvioPage() {
             </div>
           </div>
         ) : (
+          /* Sem foto — header padrão */
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 14,
-              padding: "16px 20px",
+              padding: "16px 16px",
               borderBottom: "1px solid rgba(255,255,255,0.07)",
             }}
           >
             <button
               onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
               }
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 4,
-              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}
             >
               <ArrowLeft size={24} color="#FFFFFF" />
             </button>
-            <div>
-              <p
-                style={{
-                  color: "#9CA3AF",
-                  fontSize: 12,
-                  margin: 0,
-                  fontFamily: "'Montserrat',sans-serif",
-                }}
-              >
-                Orçamento
-              </p>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
               <p
                 style={{
                   color: "#FFFFFF",
                   fontSize: 17,
                   fontWeight: 700,
                   margin: 0,
-                  fontFamily: "'Montserrat',sans-serif",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {nomeLocal}
