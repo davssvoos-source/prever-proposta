@@ -272,9 +272,9 @@ function GerencialPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: cardBg,
+                  backdropFilter: isLight ? "none" : "blur(16px)",
+                  border: cardBorder,
                   borderRadius: 16,
                   padding: "18px 22px",
                   cursor: "pointer",
@@ -283,12 +283,13 @@ function GerencialPage() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   gap: 16,
+                  boxShadow: cardShadow,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,192,0,0.3)";
+                  e.currentTarget.style.borderColor = isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.3)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)";
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -297,7 +298,7 @@ function GerencialPage() {
                       fontFamily: "Montserrat, sans-serif",
                       fontWeight: 600,
                       fontSize: 14,
-                      color: "#F5F5F5",
+                      color: textPrimary,
                       marginBottom: 6,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -311,7 +312,7 @@ function GerencialPage() {
                       fontFamily: "Montserrat, sans-serif",
                       fontSize: 12,
                       fontWeight: 300,
-                      color: "#9ca3af",
+                      color: textSecondary,
                       lineHeight: 1.5,
                       display: "flex",
                       alignItems: "center",
