@@ -4,18 +4,26 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const GLASS: React.CSSProperties = {
+const GLASS_DARK: React.CSSProperties = {
   background: "rgba(8, 8, 12, 0.18)",
   backdropFilter: "blur(10px) saturate(120%)",
   WebkitBackdropFilter: "blur(10px) saturate(120%)",
   border: "1px solid rgba(255, 192, 0, 0.20)",
   borderRadius: 18,
   boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
+};
+
+const GLASS_LIGHT: React.CSSProperties = {
+  background: "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderRadius: 18,
+  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
 };
 
 const STATUS_OPCOES = [
@@ -54,6 +62,8 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { isLight } = useTheme();
+  const GLASS = isLight ? GLASS_LIGHT : GLASS_DARK;
   const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
   const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
   const [statusFiltro, setStatusFiltro] = useState<string>('todos');
@@ -229,30 +239,35 @@ function Dashboard() {
         }}
       >
         <img
-          src={bannerAsset.url}
+          src={isLight ? '/banner-home-light.jpg' : bannerAsset.url}
           alt="Frota Prever"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 60%' }}
         />
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
-          }}
-        />
-        {/* Fade inferior — transição suave para o fundo da página */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '40%',
-            background:
-              'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
+            background: isLight
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 40%, rgba(244,245,247,0.9) 100%)'
+              : 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
             pointerEvents: 'none',
           }}
         />
+        {/* Fade inferior — transição suave para o fundo da página */}
+        {!isLight && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '40%',
+              background:
+                'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         <div
           style={{
             position: 'absolute',
@@ -266,15 +281,16 @@ function Dashboard() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 600,
               fontSize: 18,
-              color: '#FFFFFF',
+              color: isLight ? '#0a0b0e' : '#FFFFFF',
               margin: 0,
-              textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              textShadow: isLight ? 'none' : '0 2px 12px rgba(0,0,0,0.5)',
             }}
           >
             Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje{perfil?.nome ? `, ${perfil.nome.split(' ')[0]}` : ''}
           </h2>
         </div>
       </div>
+
 
       <div className="space-y-5" style={{ paddingTop: 20 }}>
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
@@ -287,28 +303,31 @@ function Dashboard() {
             <div
               style={{
                 ...GLASS,
+                ...(isLight ? { border: '1px solid rgba(180,120,0,0.25)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' } : {}),
                 padding: '20px 18px',
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: -30,
-                  right: -30,
-                  width: 100,
-                  height: 100,
-                  background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
-                  pointerEvents: 'none',
-                }}
-              />
+              {!isLight && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -30,
+                    right: -30,
+                    width: 100,
+                    height: 100,
+                    background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
               <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 11,
-                  color: 'rgba(255,192,0,0.7)',
+                  color: isLight ? '#b87800' : 'rgba(255,192,0,0.7)',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   marginBottom: 8,
@@ -321,7 +340,7 @@ function Dashboard() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 600,
                   fontSize: 16,
-                  color: '#FFFFFF',
+                  color: isLight ? '#0a0b0e' : '#FFFFFF',
                   marginBottom: 6,
                 }}
               >
@@ -333,7 +352,7 @@ function Dashboard() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: 'rgba(255,255,255,0.65)',
+                    color: isLight ? '#4a5060' : 'rgba(255,255,255,0.65)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
@@ -349,7 +368,7 @@ function Dashboard() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: '#FFFFFF',
+                    color: isLight ? '#0a0b0e' : '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
@@ -362,20 +381,21 @@ function Dashboard() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: 'rgba(255,192,0,0.12)',
-                    border: '1px solid rgba(255,192,0,0.30)',
+                    background: isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.12)',
+                    border: isLight ? '1px solid rgba(180,120,0,0.30)' : '1px solid rgba(255,192,0,0.30)',
                     borderRadius: 20,
                     padding: '4px 10px',
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 600,
                     fontSize: 11,
-                    color: '#FFC000',
+                    color: isLight ? '#b87800' : '#FFC000',
                   }}
                 >
                   <AlarmClock size={11} /> {countdown}
                 </div>
               </div>
             </div>
+
           </Link>
         )}
 
@@ -399,7 +419,7 @@ function Dashboard() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 10,
-                color: "rgba(200,200,200,0.55)",
+                color: isLight ? "#4a5060" : "rgba(200,200,200,0.55)",
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginTop: 2,
@@ -423,7 +443,7 @@ function Dashboard() {
                 left: 10,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'rgba(255,255,255,0.6)',
+                color: isLight ? '#4a5060' : 'rgba(255,255,255,0.6)',
                 pointerEvents: 'none',
               }}
             />
@@ -432,15 +452,16 @@ function Dashboard() {
               onChange={(e) => setTecnicoFiltro(e.target.value)}
               style={{
                 padding: '7px 12px 7px 30px', borderRadius: 20,
-                border: '1px solid rgba(255,255,255,0.20)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#FFFFFF', fontSize: 13, cursor: 'pointer',
+                border: isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)',
+                background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
+                color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 13, cursor: 'pointer',
                 outline: 'none', appearance: 'none', WebkitAppearance: 'none', minWidth: 170,
+                boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
               }}
             >
-              <option value="todos" style={{ background: '#0a0a14' }}>Todos os técnicos</option>
+              <option value="todos" style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>Todos os técnicos</option>
               {listaTecnicos.map((t: any) => (
-                <option key={t.id} value={t.id} style={{ background: '#0a0a14' }}>
+                <option key={t.id} value={t.id} style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>
                   {t.nome ?? t.email}
                 </option>
               ))}
@@ -457,58 +478,41 @@ function Dashboard() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarDays size={14} /> Hoje
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarRange size={14} /> Essa semana
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarCheck size={14} /> Esse mês
-        </button>
+        {(['hoje','semana','mes'] as const).map((key) => {
+          const active = filtroAtivo === key;
+          const Icon = key === 'hoje' ? CalendarDays : key === 'semana' ? CalendarRange : CalendarCheck;
+          const label = key === 'hoje' ? 'Hoje' : key === 'semana' ? 'Essa semana' : 'Esse mês';
+          return (
+            <button
+              key={key}
+              onClick={() => setFiltroAtivo(active ? null : key)}
+              style={{
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
+                border: active
+                  ? (isLight ? '1px solid #b87800' : '1px solid rgba(255,192,0,0.60)')
+                  : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)'),
+                background: active
+                  ? (isLight ? '#b87800' : 'rgba(255,192,0,0.12)')
+                  : (isLight ? '#ffffff' : 'rgba(255,255,255,0.06)'),
+                color: active
+                  ? (isLight ? '#ffffff' : '#FFC000')
+                  : (isLight ? '#0a0b0e' : '#FFFFFF'),
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: active
+                  ? (isLight ? '0 2px 8px rgba(184,120,0,0.25)' : '0 0 10px rgba(255,192,0,0.25)')
+                  : (isLight ? '0 1px 3px rgba(0,0,0,0.05)' : '0 0 6px rgba(255,255,255,0.08)'),
+                transition: 'all 0.2s',
+              }}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          );
+        })}
       </div>
+
 
 
       {/* Filtro de status — full width */}
@@ -519,8 +523,13 @@ function Dashboard() {
             width: '100%',
             padding: '11px 16px',
             borderRadius: 24,
-            border: statusFiltro !== 'todos' ? '1px solid rgba(255,192,0,0.50)' : '1px solid rgba(255,255,255,0.16)',
-            background: statusFiltro !== 'todos' ? 'rgba(255,192,0,0.08)' : 'rgba(255,255,255,0.04)',
+            border: statusFiltro !== 'todos'
+              ? (isLight ? '1px solid rgba(180,120,0,0.50)' : '1px solid rgba(255,192,0,0.50)')
+              : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.16)'),
+            background: statusFiltro !== 'todos'
+              ? (isLight ? 'rgba(180,120,0,0.08)' : 'rgba(255,192,0,0.08)')
+              : (isLight ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -535,13 +544,13 @@ function Dashboard() {
                 background: STATUS_OPCOES.find((o) => o.key === statusFiltro)?.color ?? 'rgba(255,255,255,0.35)',
               }}
             />
-            <span style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 500 }}>
+            <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, fontWeight: 500 }}>
               {STATUS_OPCOES.find((o) => o.key === statusFiltro)?.label ?? 'Filtrar por status'}
             </span>
           </div>
           <ChevronDown
             size={18}
-            color="rgba(255,255,255,0.6)"
+            color={isLight ? '#4a5060' : 'rgba(255,255,255,0.6)'}
             style={{ transform: showStatusDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
           />
         </button>
@@ -553,13 +562,13 @@ function Dashboard() {
             onTouchStart={(e) => e.stopPropagation()}
             style={{
               position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30,
-              background: 'rgba(10,10,20,0.96)',
-              backdropFilter: 'blur(14px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(14px) saturate(140%)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: isLight ? '#ffffff' : 'rgba(10,10,20,0.96)',
+              backdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
+              WebkitBackdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
+              border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
               borderRadius: 16,
               overflow: 'hidden',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+              boxShadow: isLight ? '0 10px 30px rgba(0,0,0,0.12)' : '0 12px 40px rgba(0,0,0,0.5)',
             }}
           >
             {STATUS_OPCOES.map((opt, i) => (
@@ -569,9 +578,13 @@ function Dashboard() {
                 style={{
                   width: '100%',
                   padding: '13px 16px',
-                  background: statusFiltro === opt.key ? 'rgba(255,192,0,0.10)' : 'transparent',
+                  background: statusFiltro === opt.key
+                    ? (isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.10)')
+                    : 'transparent',
                   border: 'none',
-                  borderBottom: i < STATUS_OPCOES.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                  borderBottom: i < STATUS_OPCOES.length - 1
+                    ? (isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.07)')
+                    : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
@@ -580,13 +593,14 @@ function Dashboard() {
                 }}
               >
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
-                <span style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{opt.label}</span>
-                {statusFiltro === opt.key && <CheckCircle size={16} color="#FFC000" />}
+                <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, flex: 1 }}>{opt.label}</span>
+                {statusFiltro === opt.key && <CheckCircle size={16} color={isLight ? '#b87800' : '#FFC000'} />}
               </button>
             ))}
           </div>
         )}
       </div>
+
 
       {isLoading ? (
         <div style={{ ...GLASS, padding: 24, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
@@ -630,7 +644,11 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 };
 
 function VisitaCard({ visita }: { visita: any }) {
-  const sInfo = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
+  const { isLight } = useTheme();
+  const sInfoBase = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
+  const sInfo = isLight && visita.status === 'pendente'
+    ? { label: sInfoBase.label, color: '#7a5000', bg: 'rgba(180,120,0,0.10)', border: 'rgba(180,120,0,0.25)' }
+    : { ...sInfoBase, border: `${sInfoBase.color}40` };
   const nome =
     visita.nome_predio ??
     visita.clientes?.nome ??
@@ -640,12 +658,17 @@ function VisitaCard({ visita }: { visita: any }) {
   return (
     <div
       style={{
-        background: "rgba(8,8,12,0.22)",
-        backdropFilter: "blur(12px) saturate(130%)",
-        border: "1px solid rgba(255,192,0,0.10)",
+        background: isLight
+          ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
+          : "rgba(8,8,12,0.22)",
+        backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+        border: isLight
+          ? "1px solid rgba(0,0,0,0.07)"
+          : "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
         marginBottom: 12,
+        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
       }}
     >
       <div
@@ -662,7 +685,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 15,
-            color: "#fff",
+            color: isLight ? "#0a0b0e" : "#fff",
             flex: 1,
           }}
         >
@@ -673,7 +696,7 @@ function VisitaCard({ visita }: { visita: any }) {
             display: "inline-flex",
             alignItems: "center",
             background: sInfo.bg,
-            border: `1px solid ${sInfo.color}40`,
+            border: `1px solid ${sInfo.border}`,
             borderRadius: 20,
             padding: "3px 10px",
             fontFamily: "'Montserrat', sans-serif",
@@ -693,7 +716,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 12,
-            color: "rgba(255,255,255,0.65)",
+            color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)",
             display: "inline-flex",
             alignItems: "center",
             gap: 5,
@@ -708,7 +731,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 11,
-            color: "#FFFFFF",
+            color: isLight ? "#0a0b0e" : "#FFFFFF",
             marginTop: 6,
             letterSpacing: "0.06em",
             display: "inline-flex",
