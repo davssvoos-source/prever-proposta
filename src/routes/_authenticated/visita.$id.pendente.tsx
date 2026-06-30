@@ -22,6 +22,11 @@ function VisitaPendentePage() {
   const [draftTime, setDraftTime] = useState("09:00");
   const [copied, setCopied] = useState(false);
   const [iniciando, setIniciando] = useState(false);
+  const [editingContact, setEditingContact] = useState<null | "sindico" | "zelador">(null);
+  const [draftNome, setDraftNome] = useState("");
+  const [draftTel, setDraftTel] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
+
 
 
   const { data: visita } = useQuery({
