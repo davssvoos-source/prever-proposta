@@ -177,7 +177,7 @@ function AuthPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#08090E",
+        background: isLight ? "#eef0f4" : "#08090E",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -186,7 +186,7 @@ function AuthPage() {
         overflow: "hidden",
       }}
     >
-      <AnimatedBackground />
+      {isLight ? <LightBackground /> : <AnimatedBackground />}
       <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <img
