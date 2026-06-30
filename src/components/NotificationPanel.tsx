@@ -57,13 +57,13 @@ export function NotificationPanel() {
           width: 40,
           height: 40,
           borderRadius: 12,
-          background: "rgba(255,255,255,0.07)",
-          border: "1px solid rgba(255,255,255,0.10)",
+          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)",
+          border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          color: "rgba(255,255,255,0.85)",
+          color: isLight ? "#0a0b0e" : "rgba(255,255,255,0.85)",
         }}
       >
         <Bell size={18} />
