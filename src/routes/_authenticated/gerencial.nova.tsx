@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Factory, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite } from "lucide-react";
+import type { ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
