@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LABELS,
@@ -19,35 +20,41 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/bloco
   component: BlocosWizardPage,
 });
 
-// ─── Tipos internos do wizard ─────────────────────────────────────────────────
+// ─── Tipos internos do wizard ────────────────────────────────────────────────
 
 type WizardStep =
   | "eclusa"
-  | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_material" | "b1_abertura" | "b1_folhas"
-  | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_material" | "b2_abertura" | "b2_folhas"
+  | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_material" | "b1_motor" | "b1_abertura" | "b1_folhas"
+  | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_material" | "b2_motor" | "b2_abertura" | "b2_folhas"
   | "tecnologia"
   | "resumo";
 
 interface WizardState {
   step: WizardStep;
-  eclusa: boolean;
+  eclusa: boolean | null;
   b1: Partial<BarreiraConfig>;
   b2: Partial<BarreiraConfig>;
   tecnologia: string | null;
 }
 
-// ─── Estilos compartilhados ───────────────────────────────────────────────────
+// ─── Estilos compartilhados ──────────────────────────────────────────────────
 
-const PAGE_STYLE: React.CSSProperties = {
+const PAGE: React.CSSProperties = {
   padding: "12px 14px 120px",
   display: "flex",
   flexDirection: "column",
   gap: 16,
-  fontFamily: "'Montserrat', sans-serif",
   color: "#fff",
 };
 
-const BACK_BTN_STYLE: React.CSSProperties = {
+const HEADER: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 8,
+};
+
+const BACK_BTN: React.CSSProperties = {
   background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
@@ -60,53 +67,93 @@ const BACK_BTN_STYLE: React.CSSProperties = {
   color: "#fff",
 };
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+const QUESTION: React.CSSProperties = {
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 600,
+  fontSize: 14,
+  letterSpacing: "0.06em",
+  color: "rgba(255,255,255,0.85)",
+  textTransform: "uppercase",
+  margin: "4px 2px 8px",
+};
+
+function optionStyle(): React.CSSProperties {
+  return {
+    width: "100%",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,215,0,0.18)",
+    borderRadius: 14,
+    padding: "16px 18px",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    color: "#fff",
+  };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function proximoAposBarreira(prefix: "b1" | "b2", eclusa: boolean | null): WizardStep {
+  if (prefix === "b1" && eclusa) return "b2_tipo";
+  return "resumo";
+}
+
+// ─── Componente ──────────────────────────────────────────────────────────────
 
 function BlocosWizardPage() {
   const { id: visitaId, cat: catSlug } = Route.useParams();
-  const cat: TipoBloco = CAT_SLUG_TO_TIPO[catSlug] ?? "PED";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const tipoBloco = (CAT_SLUG_TO_TIPO[catSlug] ?? "PED") as TipoBloco;
+  const catNome = CAT_NOMES[tipoBloco] ?? catSlug;
+
+  // ── Blocos já adicionados ───────────────────────────────────────────────
   const { data: blocosAdicionados = [], isLoading } = useQuery({
-    queryKey: ["visita_blocos", visitaId, cat],
+    queryKey: ["visita_blocos", visitaId, tipoBloco],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visita_blocos" as any)
         .select("*")
         .eq("visita_id", visitaId)
-        .eq("tipo_bloco", cat)
+        .eq("tipo_bloco", tipoBloco)
         .order("ordem");
       if (error) throw error;
-      return (data as any[]) || [];
+      return (data as any[]) ?? [];
     },
   });
 
+  // ── Estado do wizard ────────────────────────────────────────────────────
   const [wizard, setWizard] = useState<WizardState | null>(null);
 
-  const salvarBlocoMutation = useMutation({
+  // ── Salvar bloco ────────────────────────────────────────────────────────
+  const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
-      const codigo = gerarCodigoBloco(config);
-      const nome = gerarDescricaoBloco(config);
       const { error } = await supabase.from("visita_blocos" as any).insert({
         visita_id: visitaId,
-        codigo_bloco: codigo,
-        nome_descritivo: nome,
+        codigo_bloco: gerarCodigoBloco(config),
+        nome_descritivo: gerarDescricaoBloco(config),
         tipo_bloco: config.tipoBloco,
-        qtd_barreiras: ["CFTV", "AL", "CER", "CENT"].includes(config.tipoBloco)
+        qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco)
           ? null
-          : config.eclusa ? "2B" : "1B",
+          : config.eclusa
+            ? "2B"
+            : "1B",
         eclusa: config.eclusa,
         b1_tipo: config.b1?.tipo ?? null,
         b1_entrada: config.b1?.entrada ?? null,
         b1_saida: config.b1?.saida ?? null,
         b1_material: config.b1?.material ?? null,
+        b1_motor: config.b1?.motor ?? null,
         b1_abertura: config.b1?.abertura ?? null,
         b1_folhas: config.b1?.folhas ?? null,
         b2_tipo: config.b2?.tipo ?? null,
         b2_entrada: config.b2?.entrada ?? null,
         b2_saida: config.b2?.saida ?? null,
         b2_material: config.b2?.material ?? null,
+        b2_motor: config.b2?.motor ?? null,
         b2_abertura: config.b2?.abertura ?? null,
         b2_folhas: config.b2?.folhas ?? null,
         tecnologia: config.tecnologia ?? null,
@@ -119,13 +166,16 @@ function BlocosWizardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+      toast.success("Bloco adicionado");
       setWizard(null);
     },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar bloco"),
   });
 
-  const removerBlocoMutation = useMutation({
-    mutationFn: async (blocoId: string) => {
-      const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", blocoId);
+  // ── Remover bloco ───────────────────────────────────────────────────────
+  const removerMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -134,27 +184,27 @@ function BlocosWizardPage() {
     },
   });
 
+  // ── Iniciar wizard ──────────────────────────────────────────────────────
   function iniciarWizard() {
     const primeiroStep: WizardStep =
-      cat === "CFTV" || cat === "AL" ? "tecnologia" :
-      cat === "CER" ? "resumo" :
-      "eclusa";
+      tipoBloco === "CFTV" || tipoBloco === "AL"
+        ? "tecnologia"
+        : tipoBloco === "CER"
+          ? "resumo"
+          : "eclusa";
     setWizard({
       step: primeiroStep,
-      eclusa: false,
+      eclusa: tipoBloco === "CER" ? false : null,
       b1: {},
       b2: {},
       tecnologia: null,
     });
   }
 
+  // ── Selecionar opção ────────────────────────────────────────────────────
   function selecionar(valor: string) {
     if (!wizard) return;
-    const w: WizardState = {
-      ...wizard,
-      b1: { ...wizard.b1 },
-      b2: { ...wizard.b2 },
-    };
+    const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
 
     switch (w.step) {
       case "eclusa":
@@ -162,8 +212,9 @@ function BlocosWizardPage() {
         w.step = "b1_tipo";
         break;
 
+      // ── B1 ─────────────────────────────────────────────────────────────
       case "b1_tipo":
-        w.b1 = { tipo: valor };
+        w.b1 = { tipo: valor } as Partial<BarreiraConfig>;
         w.step = "b1_entrada";
         break;
       case "b1_entrada":
@@ -173,33 +224,53 @@ function BlocosWizardPage() {
       case "b1_saida":
         w.b1.saida = valor;
         if (w.b1.tipo === "PORP") w.step = "b1_material";
-        else if (w.b1.tipo === "PORV") w.step = "b1_abertura";
-        else w.step = w.eclusa ? "b2_tipo" : "resumo";
+        else if (w.b1.tipo === "PORV") w.step = "b1_motor";
+        else w.step = proximoAposBarreira("b1", w.eclusa);
         break;
       case "b1_material":
         w.b1.material = valor;
-        w.step = "b1_abertura";
+        if (valor === "VID") w.step = "b1_abertura";
+        else w.step = "b1_motor";
+        break;
+      case "b1_motor":
+        w.b1.motor = valor === "SIM";
+        if (tipoBloco === "PED") {
+          if (valor === "SIM") {
+            w.b1.abertura = "MOT";
+            w.step = proximoAposBarreira("b1", w.eclusa);
+          } else {
+            w.step = "b1_abertura";
+          }
+        } else {
+          if (valor === "SIM") {
+            w.step = "b1_abertura";
+          } else {
+            w.b1.abertura = undefined;
+            w.b1.folhas = undefined;
+            w.step = proximoAposBarreira("b1", w.eclusa);
+          }
+        }
         break;
       case "b1_abertura":
         w.b1.abertura = valor;
-        if (w.b1.tipo === "PORP") {
-          w.step = w.eclusa ? "b2_tipo" : "resumo";
-        } else if (w.b1.tipo === "PORV") {
-          if (valor === "PIVO") {
-            w.step = "b1_folhas";
-          } else {
+        if (w.b1.tipo === "PORV") {
+          if (valor === "PIVO") w.step = "b1_folhas";
+          else {
             w.b1.folhas = "1F";
-            w.step = w.eclusa ? "b2_tipo" : "resumo";
+            w.step = proximoAposBarreira("b1", w.eclusa);
           }
+        } else {
+          w.step = proximoAposBarreira("b1", w.eclusa);
         }
         break;
       case "b1_folhas":
         w.b1.folhas = valor;
-        w.step = w.eclusa ? "b2_tipo" : "resumo";
+        w.step = proximoAposBarreira("b1", w.eclusa);
         break;
 
+      // ── B2 ─────────────────────────────────────────────────────────────
       case "b2_tipo":
-        w.b2 = { tipo: valor };
+        w.b2 = { tipo: valor } as Partial<BarreiraConfig>;
         w.step = "b2_entrada";
         break;
       case "b2_entrada":
@@ -209,24 +280,42 @@ function BlocosWizardPage() {
       case "b2_saida":
         w.b2.saida = valor;
         if (w.b2.tipo === "PORP") w.step = "b2_material";
-        else if (w.b2.tipo === "PORV") w.step = "b2_abertura";
+        else if (w.b2.tipo === "PORV") w.step = "b2_motor";
         else w.step = "resumo";
         break;
       case "b2_material":
         w.b2.material = valor;
-        w.step = "b2_abertura";
+        w.step = valor === "VID" ? "b2_abertura" : "b2_motor";
+        break;
+      case "b2_motor":
+        w.b2.motor = valor === "SIM";
+        if (tipoBloco === "PED") {
+          if (valor === "SIM") {
+            w.b2.abertura = "MOT";
+            w.step = "resumo";
+          } else {
+            w.step = "b2_abertura";
+          }
+        } else {
+          if (valor === "SIM") {
+            w.step = "b2_abertura";
+          } else {
+            w.b2.abertura = undefined;
+            w.b2.folhas = undefined;
+            w.step = "resumo";
+          }
+        }
         break;
       case "b2_abertura":
         w.b2.abertura = valor;
-        if (w.b2.tipo === "PORP") {
-          w.step = "resumo";
-        } else if (w.b2.tipo === "PORV") {
-          if (valor === "PIVO") {
-            w.step = "b2_folhas";
-          } else {
+        if (w.b2.tipo === "PORV") {
+          if (valor === "PIVO") w.step = "b2_folhas";
+          else {
             w.b2.folhas = "1F";
             w.step = "resumo";
           }
+        } else {
+          w.step = "resumo";
         }
         break;
       case "b2_folhas":
@@ -239,66 +328,106 @@ function BlocosWizardPage() {
         w.step = "resumo";
         break;
     }
+
     setWizard(w);
   }
 
+  // ── Voltar passo ────────────────────────────────────────────────────────
   function voltarPasso() {
-    if (!wizard) return;
-    const w = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
-    const step = w.step;
-
-    if (step === "eclusa" || step === "tecnologia") { setWizard(null); return; }
-    if (step === "b1_tipo") { w.step = "eclusa"; setWizard(w); return; }
-    if (step === "b1_entrada") { w.step = "b1_tipo"; setWizard(w); return; }
-    if (step === "b1_saida") { w.step = "b1_entrada"; setWizard(w); return; }
-    if (step === "b1_material") { w.step = "b1_saida"; setWizard(w); return; }
-    if (step === "b1_abertura") {
-      w.step = w.b1.tipo === "PORP" ? "b1_material" : "b1_saida"; setWizard(w); return;
+    if (!wizard) {
+      navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+      return;
     }
-    if (step === "b1_folhas") { w.step = "b1_abertura"; setWizard(w); return; }
-    if (step === "b2_tipo") {
-      if (w.b1.tipo === "PORP") w.step = "b1_abertura";
-      else if (w.b1.tipo === "PORV") w.step = w.b1.folhas ? "b1_folhas" : "b1_abertura";
-      else w.step = "b1_saida";
+    const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
+    const s = w.step;
+
+    if (s === "eclusa" || s === "tecnologia") {
+      setWizard(null);
+      return;
+    }
+    if (s === "resumo" && tipoBloco === "CER") {
+      setWizard(null);
+      return;
+    }
+
+    if (s === "b1_tipo") { w.step = "eclusa"; setWizard(w); return; }
+    if (s === "b1_entrada") { w.step = "b1_tipo"; setWizard(w); return; }
+    if (s === "b1_saida") { w.step = "b1_entrada"; setWizard(w); return; }
+    if (s === "b1_material") { w.step = "b1_saida"; setWizard(w); return; }
+    if (s === "b1_motor") {
+      w.step = tipoBloco === "PED" ? "b1_material" : "b1_saida";
       setWizard(w); return;
     }
-    if (step === "b2_entrada") { w.step = "b2_tipo"; setWizard(w); return; }
-    if (step === "b2_saida") { w.step = "b2_entrada"; setWizard(w); return; }
-    if (step === "b2_material") { w.step = "b2_saida"; setWizard(w); return; }
-    if (step === "b2_abertura") {
-      w.step = w.b2.tipo === "PORP" ? "b2_material" : "b2_saida"; setWizard(w); return;
+    if (s === "b1_abertura") {
+      w.step = w.b1.material === "VID" ? "b1_material" : "b1_motor";
+      setWizard(w); return;
     }
-    if (step === "b2_folhas") { w.step = "b2_abertura"; setWizard(w); return; }
-    if (step === "resumo") {
-      if (cat === "CFTV" || cat === "AL") { w.step = "tecnologia"; setWizard(w); return; }
-      if (cat === "CER") { setWizard(null); return; }
+    if (s === "b1_folhas") { w.step = "b1_abertura"; setWizard(w); return; }
+
+    if (s === "b2_tipo") {
+      const b1 = w.b1;
+      if (b1.tipo === "CAT" || b1.tipo === "CAN") w.step = "b1_saida";
+      else if (b1.tipo === "PORP") {
+        if (b1.motor === true) w.step = "b1_motor";
+        else w.step = "b1_abertura";
+      } else if (b1.tipo === "PORV") {
+        if (b1.motor === false) w.step = "b1_motor";
+        else if (b1.abertura === "PIVO") w.step = "b1_folhas";
+        else w.step = "b1_abertura";
+      }
+      setWizard(w); return;
+    }
+    if (s === "b2_entrada") { w.step = "b2_tipo"; setWizard(w); return; }
+    if (s === "b2_saida") { w.step = "b2_entrada"; setWizard(w); return; }
+    if (s === "b2_material") { w.step = "b2_saida"; setWizard(w); return; }
+    if (s === "b2_motor") {
+      w.step = tipoBloco === "PED" ? "b2_material" : "b2_saida";
+      setWizard(w); return;
+    }
+    if (s === "b2_abertura") {
+      w.step = w.b2.material === "VID" ? "b2_material" : "b2_motor";
+      setWizard(w); return;
+    }
+    if (s === "b2_folhas") { w.step = "b2_abertura"; setWizard(w); return; }
+
+    if (s === "resumo") {
+      if (tipoBloco === "CFTV" || tipoBloco === "AL") { w.step = "tecnologia"; setWizard(w); return; }
       const lastB = w.eclusa ? w.b2 : w.b1;
-      const prefix = w.eclusa ? "b2" : "b1";
-      if (lastB.tipo === "PORP") w.step = `${prefix}_abertura` as WizardStep;
-      else if (lastB.tipo === "PORV") {
-        w.step = lastB.abertura === "PIVO"
-          ? (`${prefix}_folhas` as WizardStep)
-          : (`${prefix}_abertura` as WizardStep);
-      } else {
-        w.step = `${prefix}_saida` as WizardStep;
+      const prefix = (w.eclusa ? "b2" : "b1") as "b1" | "b2";
+      if (lastB.tipo === "CAT" || lastB.tipo === "CAN") w.step = `${prefix}_saida` as WizardStep;
+      else if (lastB.tipo === "PORP") {
+        if (lastB.motor === true) w.step = `${prefix}_motor` as WizardStep;
+        else w.step = `${prefix}_abertura` as WizardStep;
+      } else if (lastB.tipo === "PORV") {
+        if (lastB.motor === false) w.step = `${prefix}_motor` as WizardStep;
+        else if (lastB.abertura === "PIVO") w.step = `${prefix}_folhas` as WizardStep;
+        else w.step = `${prefix}_abertura` as WizardStep;
       }
       setWizard(w);
     }
   }
 
-  function buildConfig(): BlocoConfig {
-    return {
-      tipoBloco: cat,
-      eclusa: wizard?.eclusa ?? false,
-      b1: wizard?.b1 as BarreiraConfig,
-      b2: wizard?.eclusa ? (wizard?.b2 as BarreiraConfig) : undefined,
-      tecnologia: wizard?.tecnologia ?? undefined,
-    };
-  }
-
+  // ── Opções do step atual ────────────────────────────────────────────────
   function getOpcoes(): { valor: string; label: string; descricao?: string }[] {
     if (!wizard) return [];
     const { step, b1, b2 } = wizard;
+
+    const entrada = (tipo?: string) => {
+      const lista =
+        tipo === "CAT" ? OPCOES.entradaCat :
+        tipo === "PORP" ? OPCOES.entradaPorp :
+        tipo === "CAN" ? OPCOES.entradaCan :
+        tipo === "PORV" ? OPCOES.entradaPorv : [];
+      return [...lista].map((v) => ({ valor: v, label: LABELS[v] }));
+    };
+    const saida = (tipo?: string) => {
+      const lista =
+        tipo === "CAT" ? OPCOES.saidaCat :
+        tipo === "PORP" ? OPCOES.saidaPorp :
+        tipo === "CAN" ? OPCOES.saidaCan :
+        tipo === "PORV" ? OPCOES.saidaPorv : [];
+      return [...lista].map((v) => ({ valor: v, label: LABELS[v] }));
+    };
 
     switch (step) {
       case "eclusa":
@@ -308,194 +437,180 @@ function BlocosWizardPage() {
         ];
       case "b1_tipo":
       case "b2_tipo":
-        if (cat === "PED") return [
-          { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
-          { valor: "PORP", label: "Porta de Pedestres", descricao: "Porta com controle de acesso" },
-        ];
-        if (cat === "VEI") return [
-          { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
-          { valor: "PORV", label: "Portão Veicular", descricao: "Portão completo para veículos" },
-        ];
-        return [];
-      case "b1_entrada":
-      case "b2_entrada": {
-        const tipo = (step === "b1_entrada" ? b1.tipo : b2.tipo) as string | undefined;
-        const lista =
-          tipo === "CAT" ? OPCOES.entradaCat :
-          tipo === "PORP" ? OPCOES.entradaPorp :
-          tipo === "CAN" ? OPCOES.entradaCan :
-          tipo === "PORV" ? OPCOES.entradaPorv : [];
-        return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
-      }
-      case "b1_saida":
-      case "b2_saida": {
-        const tipo = (step === "b1_saida" ? b1.tipo : b2.tipo) as string | undefined;
-        const lista =
-          tipo === "CAT" ? OPCOES.saidaCat :
-          tipo === "PORP" ? OPCOES.saidaPorp :
-          tipo === "CAN" ? OPCOES.saidaCan :
-          tipo === "PORV" ? OPCOES.saidaPorv : [];
-        return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
-      }
+        return tipoBloco === "PED"
+          ? [
+              { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
+              { valor: "PORP", label: "Porta de Pedestres", descricao: "Porta com controle de acesso" },
+            ]
+          : [
+              { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
+              { valor: "PORV", label: "Portão Veicular", descricao: "Portão completo para veículos" },
+            ];
+      case "b1_entrada": return entrada(b1.tipo);
+      case "b2_entrada": return entrada(b2.tipo);
+      case "b1_saida": return saida(b1.tipo);
+      case "b2_saida": return saida(b2.tipo);
       case "b1_material":
       case "b2_material":
-        return OPCOES.materialPorp.map(v => ({ valor: v, label: LABELS[v] }));
-      case "b1_abertura":
+        return [...OPCOES.materialPorp].map((v) => ({ valor: v, label: LABELS[v] }));
+      case "b1_motor":
+      case "b2_motor":
+        return [
+          { valor: "SIM", label: "Sim" },
+          { valor: "NAO", label: "Não" },
+        ];
+      case "b1_abertura": {
+        if (b1.tipo === "PORP") return [...OPCOES.aberturaSemMotor].map((v) => ({ valor: v, label: LABELS[v] }));
+        if (b1.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({
+          valor: v, label: LABELS[v],
+          descricao: v === "PIVO" ? "Pode ter 1 ou 2 folhas" : "Sempre 1 folha",
+        }));
+        return [];
+      }
       case "b2_abertura": {
-        const b = step === "b1_abertura" ? b1 : b2;
-        if (b.tipo === "PORP") {
-          const lista = b.material === "VID" ? OPCOES.aberturaVid : OPCOES.aberturaMet;
-          return (lista as readonly string[]).map(v => ({ valor: v, label: LABELS[v] }));
-        }
-        if (b.tipo === "PORV") return OPCOES.aberturaVei.map(v => ({
-          valor: v,
-          label: LABELS[v],
-          descricao:
-            v === "BASC" ? "Sempre 1 folha" :
-            v === "DESL" ? "Sempre 1 folha" :
-            "Pode ser 1 ou 2 folhas",
+        if (b2.tipo === "PORP") return [...OPCOES.aberturaSemMotor].map((v) => ({ valor: v, label: LABELS[v] }));
+        if (b2.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({
+          valor: v, label: LABELS[v],
+          descricao: v === "PIVO" ? "Pode ter 1 ou 2 folhas" : "Sempre 1 folha",
         }));
         return [];
       }
       case "b1_folhas":
       case "b2_folhas":
-        return OPCOES.folhasPivo.map(v => ({ valor: v, label: LABELS[v] }));
+        return [...OPCOES.folhasPivo].map((v) => ({ valor: v, label: LABELS[v] }));
       case "tecnologia":
-        if (cat === "CFTV") return OPCOES.tecCftv.map(v => ({ valor: v, label: LABELS[v] }));
-        if (cat === "AL") return OPCOES.tecAl.map(v => ({ valor: v, label: LABELS[v] }));
-        return [];
-      default:
-        return [];
+        return tipoBloco === "CFTV"
+          ? [...OPCOES.tecCftv].map((v) => ({ valor: v, label: LABELS[v] }))
+          : [...OPCOES.tecAl].map((v) => ({ valor: v, label: LABELS[v] }));
+      default: return [];
     }
   }
 
   function getLabelPergunta(): string {
     if (!wizard) return "";
-    const barrNr = wizard.step.startsWith("b2") ? " — BARREIRA 2" :
-                   wizard.step.startsWith("b1") ? " — BARREIRA 1" : "";
-    switch (wizard.step) {
-      case "eclusa": return "É UMA ECLUSA?";
-      case "b1_tipo":
-      case "b2_tipo": return `TIPO DE BARREIRA?${barrNr}`;
-      case "b1_entrada":
-      case "b2_entrada": return `DISPOSITIVO DE ENTRADA?${barrNr}`;
-      case "b1_saida":
-      case "b2_saida": return `DISPOSITIVO DE SAÍDA?${barrNr}`;
-      case "b1_material":
-      case "b2_material": return `TIPO DE MATERIAL?${barrNr}`;
-      case "b1_abertura":
-      case "b2_abertura": return `TIPO DE ABERTURA?${barrNr}`;
-      case "b1_folhas":
-      case "b2_folhas": return `QUANTIDADE DE FOLHAS?${barrNr}`;
-      case "tecnologia": return cat === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
-      default: return "";
-    }
+    const s = wizard.step;
+    const sufx = s.startsWith("b2") ? " — BARREIRA 2" : s.startsWith("b1") ? " — BARREIRA 1" : "";
+    if (s === "eclusa") return "É UMA ECLUSA?";
+    if (s === "b1_tipo" || s === "b2_tipo") return `TIPO DE BARREIRA?${sufx}`;
+    if (s === "b1_entrada" || s === "b2_entrada") return `DISPOSITIVO DE ENTRADA?${sufx}`;
+    if (s === "b1_saida" || s === "b2_saida") return `DISPOSITIVO DE SAÍDA?${sufx}`;
+    if (s === "b1_material" || s === "b2_material") return `TIPO DE MATERIAL?${sufx}`;
+    if (s === "b1_motor" || s === "b2_motor") return `FORNECER MOTOR?${sufx}`;
+    if (s === "b1_abertura" || s === "b2_abertura") return `TIPO DE ABERTURA?${sufx}`;
+    if (s === "b1_folhas" || s === "b2_folhas") return `QUANTIDADE DE FOLHAS?${sufx}`;
+    if (s === "tecnologia") return tipoBloco === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
+    return "";
   }
 
-  // ─── Render: Wizard ──────────────────────────────────────────────────────
-  if (wizard) {
-    const config = buildConfig();
+  function buildConfig(): BlocoConfig {
+    return {
+      tipoBloco,
+      eclusa: !!wizard?.eclusa,
+      b1: wizard?.b1 as BarreiraConfig,
+      b2: wizard?.eclusa ? (wizard?.b2 as BarreiraConfig) : undefined,
+      tecnologia: wizard?.tecnologia ?? undefined,
+    };
+  }
 
-    // Tela RESUMO
+  // ─── RENDER: Wizard ───────────────────────────────────────────────────────
+  if (wizard) {
+    const opcoes = getOpcoes();
+
     if (wizard.step === "resumo") {
-      const codigo = gerarCodigoBloco(config);
+      const config = buildConfig();
       const descricao = gerarDescricaoBloco(config);
+      const codigo = gerarCodigoBloco(config);
+
       return (
-        <div style={PAGE_STYLE}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button onClick={voltarPasso} style={BACK_BTN_STYLE}>
-              <ArrowLeft size={18} />
-            </button>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
-              {CAT_NOMES[cat]} › Configuração concluída
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>
+                {catNome}
+              </div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                Configuração concluída
+              </div>
             </div>
+            <CheckCircle2 size={22} color="#22C55E" />
           </div>
 
           <div
             style={{
               background: "rgba(255,215,0,0.06)",
-              border: "1px solid rgba(255,215,0,0.30)",
-              borderRadius: 18,
-              padding: 22,
+              border: "1px solid rgba(255,215,0,0.25)",
+              borderRadius: 16,
+              padding: 18,
               display: "flex",
               flexDirection: "column",
-              gap: 14,
+              gap: 8,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <CheckCircle2 size={22} color="#FFD700" />
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "#FFD700" }}>
-                BLOCO IDENTIFICADO
-              </div>
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.12em",
+                color: "rgba(255,215,0,0.7)",
+                fontWeight: 700,
+              }}
+            >
+              BLOCO IDENTIFICADO
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>{CAT_NOMES[cat]}</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>{catNome}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
               {descricao}
             </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }}>
+            <div
+              style={{
+                marginTop: 6,
+                fontFamily: "monospace",
+                fontSize: 11,
+                color: "rgba(255,215,0,0.65)",
+                wordBreak: "break-all",
+              }}
+            >
               {codigo}
             </div>
           </div>
 
           <button
-            onClick={() => salvarBlocoMutation.mutate(config)}
-            disabled={salvarBlocoMutation.isPending}
+            onClick={() => salvarMutation.mutate(config)}
+            disabled={salvarMutation.isPending}
             style={{
               width: "100%",
               padding: "18px 0",
-              background: "linear-gradient(135deg, #B8860B, #FFD700)",
+              background: "linear-gradient(135deg, #FFD700, #FFB300)",
               border: "none",
               borderRadius: 16,
-              color: "#000",
+              color: "#0A0A0A",
               fontSize: 15,
               fontWeight: 800,
               cursor: "pointer",
-              letterSpacing: 1.2,
+              letterSpacing: 1,
             }}
           >
-            {salvarBlocoMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
+            {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
           </button>
         </div>
       );
     }
 
-    // Telas de pergunta
-    const opcoes = getOpcoes();
     return (
-      <div style={PAGE_STYLE}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={voltarPasso} style={BACK_BTN_STYLE}>
-            <ArrowLeft size={18} />
-          </button>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{CAT_NOMES[cat]}</div>
+      <div style={PAGE}>
+        <div style={HEADER}>
+          <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
         </div>
 
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#FFD700", letterSpacing: 1, marginTop: 6 }}>
-          {getLabelPergunta()}
-        </div>
+        <div style={QUESTION}>{getLabelPergunta()}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {opcoes.map(op => (
-            <button
-              key={op.valor}
-              onClick={() => selecionar(op.valor)}
-              style={{
-                width: "100%",
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,215,0,0.18)",
-                borderRadius: 14,
-                padding: "18px 20px",
-                textAlign: "left",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                color: "#fff",
-              }}
-            >
-              <div style={{ fontSize: 15, fontWeight: 500 }}>{op.label}</div>
+          {opcoes.map((op) => (
+            <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
               {op.descricao && (
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{op.descricao}</div>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
               )}
             </button>
           ))}
@@ -504,89 +619,86 @@ function BlocosWizardPage() {
     );
   }
 
-  // ─── Render: Lista de blocos da categoria ───────────────────────────────
+  // ─── RENDER: Lista de blocos ──────────────────────────────────────────────
   return (
-    <div style={PAGE_STYLE}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={PAGE}>
+      <div style={HEADER}>
         <button
+          style={BACK_BTN}
           onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })}
-          style={BACK_BTN_STYLE}
         >
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 18, fontWeight: 500 }}>Configurar blocos</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>{CAT_NOMES[cat]}</div>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 18 }}>
+            Configurar blocos
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{catNome}</div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {isLoading ? (
-          <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>Carregando...</div>
+          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>Carregando...</div>
         ) : blocosAdicionados.length === 0 ? (
           <div
             style={{
-              border: "1px dashed rgba(255,255,255,0.15)",
-              borderRadius: 14,
-              padding: 24,
               textAlign: "center",
+              padding: "32px 16px",
+              border: "1px dashed rgba(255,255,255,0.12)",
+              borderRadius: 14,
+              color: "rgba(255,255,255,0.45)",
             }}
           >
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-              Nenhum bloco adicionado ainda.
-            </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>
-              Toque em "Adicionar bloco" para configurar.
-            </div>
+            <div style={{ fontSize: 13, marginBottom: 4 }}>Nenhum bloco adicionado ainda.</div>
+            <div style={{ fontSize: 11 }}>Toque em "Adicionar bloco" para configurar.</div>
           </div>
         ) : (
           blocosAdicionados.map((bloco: any) => (
             <div
               key={bloco.id}
               style={{
-                background: "rgba(8,8,12,0.35)",
+                background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,215,0,0.15)",
                 borderRadius: 14,
-                padding: 16,
+                padding: "14px 16px",
                 display: "flex",
+                alignItems: "center",
                 gap: 12,
-                alignItems: "flex-start",
               }}
             >
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle2 size={16} color="#22C55E" />
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5 }}>
-                    {bloco.eclusa ? "Eclusa" : bloco.qtd_barreiras ? "Barreira Única" : "Sistema"}
-                    {bloco.b1_tipo ? ` — ${LABELS[bloco.b1_tipo] ?? bloco.b1_tipo}` : ""}
-                    {bloco.tecnologia ? ` — ${LABELS[bloco.tecnologia] ?? bloco.tecnologia}` : ""}
-                  </div>
-                </div>
-                <div style={{ fontSize: 14, color: "#fff", lineHeight: 1.4 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 2 }}>
                   {bloco.nome_descritivo}
                 </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-                  HH: {bloco.hh_padrao}h
+                <div
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 10,
+                    color: "rgba(255,215,0,0.55)",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {bloco.codigo_bloco}
                 </div>
               </div>
               <button
-                onClick={() => removerBlocoMutation.mutate(bloco.id)}
-                disabled={removerBlocoMutation.isPending}
+                onClick={() => removerMutation.mutate(bloco.id)}
+                disabled={removerMutation.isPending}
                 style={{
-                  background: "rgba(239,68,68,0.15)",
+                  background: "rgba(239,68,68,0.12)",
                   border: "1px solid rgba(239,68,68,0.3)",
-                  borderRadius: 8,
-                  padding: "6px 10px",
-                  color: "#EF4444",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
+                  borderRadius: 10,
+                  width: 36,
+                  height: 36,
                   display: "flex",
                   alignItems: "center",
-                  gap: 4,
+                  justifyContent: "center",
+                  color: "#EF4444",
+                  cursor: "pointer",
                 }}
               >
-                <Trash2 size={12} /> Remover
+                <Trash2 size={16} />
               </button>
             </div>
           ))
@@ -596,17 +708,16 @@ function BlocosWizardPage() {
       <button
         onClick={iniciarWizard}
         style={{
-          width: "100%",
-          padding: "18px 0",
-          background: "linear-gradient(135deg, #B8860B, #FFD700)",
+          marginTop: 8,
+          padding: "16px 0",
+          background: "linear-gradient(135deg, #FFD700, #FFB300)",
           border: "none",
-          borderRadius: 16,
-          color: "#000",
-          fontSize: 15,
+          borderRadius: 14,
+          color: "#0A0A0A",
+          fontSize: 14,
           fontWeight: 800,
           cursor: "pointer",
-          letterSpacing: 1.2,
-          marginTop: 8,
+          letterSpacing: 1,
         }}
       >
         + ADICIONAR BLOCO

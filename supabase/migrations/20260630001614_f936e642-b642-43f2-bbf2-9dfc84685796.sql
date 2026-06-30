@@ -1,0 +1,3 @@
+ALTER TABLE public.visita_blocos
+  ADD COLUMN IF NOT EXISTS b1_motor BOOLEAN,
+  ADD COLUMN IF NOT EXISTS b2_motor BOOLEAN;

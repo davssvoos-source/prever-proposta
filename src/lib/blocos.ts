@@ -7,6 +7,7 @@ export interface BarreiraConfig {
   entrada: string;
   saida: string;
   material?: string;
+  motor?: boolean;
   abertura?: string;
   folhas?: string;
 }
@@ -22,7 +23,6 @@ export interface BlocoConfig {
 // ─── Labels legíveis ─────────────────────────────────────────────────────────
 
 export const LABELS: Record<string, string> = {
-  // Dispositivos
   FAC: "Leitora Facial",
   DIG: "Biometria Digital",
   CTRL: "Controle Remoto",
@@ -32,26 +32,20 @@ export const LABELS: Record<string, string> = {
   PORTAR: "Portaria",
   BOTANA: "Botoeira Analógica",
   BOTAPR: "Botoeira por Aproximação",
-  // Barreiras
   CAT: "Catraca",
   PORP: "Porta de Pedestres",
   CAN: "Cancela",
   PORV: "Portão Veicular",
-  // Material
   MET: "Metal",
   VID: "Vidro",
-  // Abertura PED
   MOT: "Motorizada",
   MOL: "Mola Aérea",
   NAD: "Sem motor e sem mola",
-  // Abertura VEI
   BASC: "Basculante",
   DESL: "Deslizante",
   PIVO: "Pivotante",
-  // Folhas
   "1F": "1 Folha",
   "2F": "2 Folhas",
-  // Tecnologia
   IP: "IP (câmeras de rede)",
   ANAL: "Analógico (cabo coaxial)",
   CAB: "Cabeado",
@@ -70,8 +64,7 @@ export const OPCOES = {
   entradaPorv: ["CTRL", "TAG", "FAC", "LAC", "PORTAR"] as const,
   saidaPorv: ["CTRL", "TAG", "FAC", "LAC", "FOT", "PORTAR"] as const,
   materialPorp: ["MET", "VID"] as const,
-  aberturaMet: ["MOT", "MOL", "NAD"] as const,
-  aberturaVid: ["MOL", "NAD"] as const,
+  aberturaSemMotor: ["MOL", "NAD"] as const,
   aberturaVei: ["BASC", "DESL", "PIVO"] as const,
   folhasPivo: ["1F", "2F"] as const,
   tecCftv: ["IP", "ANAL"] as const,
@@ -90,15 +83,15 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 
   const barreiras = eclusa ? "2B" : "1B";
 
-  function segmentoBarreira(b: BarreiraConfig): string {
+  function seg(b: BarreiraConfig): string {
     let s = `${b.tipo}-${b.entrada}-${b.saida}`;
-    if (b.tipo === "PORP") s += `-${b.material}-${b.abertura}`;
-    if (b.tipo === "PORV") s += `-${b.abertura}-${b.folhas}`;
+    if (b.tipo === "PORP" && b.abertura) s += `-${b.material}-${b.abertura}`;
+    if (b.tipo === "PORV" && b.abertura) s += `-${b.abertura}-${b.folhas}`;
     return s;
   }
 
-  let code = `${tipoBloco}-${barreiras}-${segmentoBarreira(b1!)}`;
-  if (eclusa && b2) code += `-${segmentoBarreira(b2)}`;
+  let code = `${tipoBloco}-${barreiras}-${seg(b1!)}`;
+  if (eclusa && b2) code += `-${seg(b2)}`;
   return code;
 }
 
@@ -115,17 +108,22 @@ export function gerarDescricaoBloco(config: BlocoConfig): string {
   const tipoNome = tipoBloco === "PED" ? "Pedestre" : "Veicular";
   const barrNome = eclusa ? "2 Barreiras (Eclusa)" : "1 Barreira";
 
-  function descrBarreira(b: BarreiraConfig, idx: number): string {
+  function descrB(b: BarreiraConfig, idx: number): string {
     let d = `B${idx}: ${LABELS[b.tipo] ?? b.tipo}`;
-    d += ` | E: ${LABELS[b.entrada] ?? b.entrada}`;
-    d += ` | S: ${LABELS[b.saida] ?? b.saida}`;
-    if (b.tipo === "PORP") d += ` | ${LABELS[b.material!] ?? b.material} ${LABELS[b.abertura!] ?? b.abertura}`;
-    if (b.tipo === "PORV") d += ` | ${LABELS[b.abertura!] ?? b.abertura} ${b.folhas}`;
+    d += ` | E: ${LABELS[b.entrada] ?? b.entrada} | S: ${LABELS[b.saida] ?? b.saida}`;
+    if (b.tipo === "PORP" && b.abertura) {
+      d += ` | ${LABELS[b.material!] ?? b.material} — ${LABELS[b.abertura] ?? b.abertura}`;
+    }
+    if (b.tipo === "PORV") {
+      d += b.abertura
+        ? ` | ${LABELS[b.abertura] ?? b.abertura}${b.folhas ? " " + b.folhas : ""}`
+        : " | Sem motor";
+    }
     return d;
   }
 
-  let desc = `${tipoNome} ${barrNome} — ${descrBarreira(b1!, 1)}`;
-  if (eclusa && b2) desc += ` | ${descrBarreira(b2, 2)}`;
+  let desc = `${tipoNome} ${barrNome} — ${descrB(b1!, 1)}`;
+  if (eclusa && b2) desc += ` | ${descrB(b2, 2)}`;
   return desc;
 }
 

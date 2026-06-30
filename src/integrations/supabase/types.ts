@@ -535,12 +535,14 @@ export type Database = {
           b1_entrada: string | null
           b1_folhas: string | null
           b1_material: string | null
+          b1_motor: boolean | null
           b1_saida: string | null
           b1_tipo: string | null
           b2_abertura: string | null
           b2_entrada: string | null
           b2_folhas: string | null
           b2_material: string | null
+          b2_motor: boolean | null
           b2_saida: string | null
           b2_tipo: string | null
           codigo_bloco: string
@@ -561,12 +563,14 @@ export type Database = {
           b1_entrada?: string | null
           b1_folhas?: string | null
           b1_material?: string | null
+          b1_motor?: boolean | null
           b1_saida?: string | null
           b1_tipo?: string | null
           b2_abertura?: string | null
           b2_entrada?: string | null
           b2_folhas?: string | null
           b2_material?: string | null
+          b2_motor?: boolean | null
           b2_saida?: string | null
           b2_tipo?: string | null
           codigo_bloco: string
@@ -587,12 +591,14 @@ export type Database = {
           b1_entrada?: string | null
           b1_folhas?: string | null
           b1_material?: string | null
+          b1_motor?: boolean | null
           b1_saida?: string | null
           b1_tipo?: string | null
           b2_abertura?: string | null
           b2_entrada?: string | null
           b2_folhas?: string | null
           b2_material?: string | null
+          b2_motor?: boolean | null
           b2_saida?: string | null
           b2_tipo?: string | null
           codigo_bloco?: string
