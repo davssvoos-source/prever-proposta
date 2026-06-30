@@ -241,8 +241,13 @@ function NovaVisitaPage() {
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
         nome_sindico: nomeSindico || null,
+        telefone_sindico: telefoneSindico || null,
+        email_sindico: emailSindico || null,
         nome_zelador: nomeZelador || null,
-        contato_sindico: contato,
+        telefone_zelador: telefoneZelador || null,
+        email_zelador: emailZelador || null,
+        contato_sindico: telefoneSindico || null,
+
 
         servicos_solicitados: servicos,
         servicos_propostos: servicosPropostos,
