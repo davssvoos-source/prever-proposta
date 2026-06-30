@@ -713,7 +713,7 @@ function NovaVisitaPage() {
                   >
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLight ? L.gold : "#FFC000", flexShrink: 0, boxShadow: isLight ? "none" : "0 0 6px rgba(255,192,0,0.5)" }} />
                     <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
-                      {new Date(v.data_hora_agendada).toLocaleString("pt-BR", {
+                      {new Date(v.data_hora_agendada!).toLocaleString("pt-BR", {
                         weekday: "short",
                         day: "2-digit",
                         month: "2-digit",
