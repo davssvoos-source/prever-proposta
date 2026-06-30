@@ -111,21 +111,25 @@ function AuthPage() {
 
 
 
+  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
+  const goldDark = isLight ? "#b87800" : "rgba(255,192,0,0.65)";
   const CARD: CSSProperties = {
-    background: "rgba(8,8,12,0.55)",
+    background: isLight ? "rgba(255,255,255,0.92)" : "rgba(8,8,12,0.55)",
     backdropFilter: "blur(20px) saturate(160%)",
     WebkitBackdropFilter: "blur(20px) saturate(160%)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 24,
     padding: "32px 24px",
+    boxShadow: isLight ? "0 4px 24px rgba(0,0,0,0.08)" : "0 4px 24px rgba(0,0,0,0.5)",
   };
   const INPUT: CSSProperties = {
     width: "100%",
     height: 52,
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.05)",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
-    color: "#fff",
+    color: textPrimary,
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 14,
@@ -137,16 +141,16 @@ function AuthPage() {
     width: "100%",
     height: 52,
     borderRadius: 26,
-    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+    background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
     border: "none",
-    color: "#08090E",
+    color: isLight ? "#fff" : "#08090E",
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 13,
     letterSpacing: "0.18em",
     textTransform: "uppercase",
     cursor: "pointer",
-    boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
+    boxShadow: isLight ? "0 4px 16px rgba(180,120,0,0.35)" : "0 4px 24px rgba(255,192,0,0.35)",
   };
   const BTN_GHOST: CSSProperties = {
     background: "none",
@@ -155,7 +159,7 @@ function AuthPage() {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 12,
-    color: "rgba(255,255,255,0.45)",
+    color: textSecondary,
     letterSpacing: "0.06em",
   };
   const LBL: CSSProperties = {
@@ -164,7 +168,7 @@ function AuthPage() {
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
-    color: "rgba(255,192,0,0.65)",
+    color: goldDark,
     marginBottom: 8,
     display: "block",
   };
