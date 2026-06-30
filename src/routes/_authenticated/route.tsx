@@ -102,10 +102,10 @@ function AuthenticatedLayout() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: "rgba(8,8,12,0.65)",
+            background: isLight ? "rgba(255,255,255,0.82)" : "rgba(8,8,12,0.65)",
             backdropFilter: "blur(20px) saturate(160%)",
             WebkitBackdropFilter: "blur(20px) saturate(160%)",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            borderBottom: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.07)",
           }}
         >
           <div
@@ -152,7 +152,7 @@ function AuthenticatedLayout() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 13,
-                  color: "#fff",
+                  color: isLight ? "#0a0b0e" : "#fff",
                   lineHeight: 1.2,
                 }}
               >
@@ -166,7 +166,7 @@ function AuthenticatedLayout() {
                     fontSize: 10,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: "rgba(255,192,0,0.6)",
+                    color: isLight ? "#7a5000" : "rgba(255,192,0,0.6)",
                     lineHeight: 1.2,
                   }}
                 >
