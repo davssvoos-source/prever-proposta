@@ -869,7 +869,7 @@ function BlocosWizardPage() {
           letterSpacing: 1,
         }}
       >
-        + ADICIONAR BLOCO
+        + ADICIONAR
       </button>
     </div>
   );
