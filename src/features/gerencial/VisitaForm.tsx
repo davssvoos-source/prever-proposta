@@ -305,35 +305,39 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             </div>
           </div>
 
-          <div>
-            <Label>Nome do Síndico / Responsável *</Label>
-            <Input
-              value={form.nome_sindico}
-              onChange={(e) => set("nome_sindico", e.target.value)}
-              placeholder="Nome completo"
-            />
-          </div>
-
-          <div>
-            <Label>Contato *</Label>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Síndico (opcional)</Label>
               <Input
-                value={form.contato_sindico}
-                onChange={(e) => set("contato_sindico", formatPhoneBR(e.target.value))}
+                value={form.nome_sindico}
+                onChange={(e) => set("nome_sindico", e.target.value)}
+                placeholder="Nome do síndico"
+              />
+              <Input
+                value={form.telefone_sindico}
+                onChange={(e) => set("telefone_sindico", formatPhoneBR(e.target.value))}
                 placeholder="(00) 00000-0000"
                 inputMode="tel"
+                type="tel"
               />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={form.contato_sindico.replace(/\D/g, "").length < 10}
-                onClick={() => window.open(whatsappLink(form.contato_sindico), "_blank")}
-                aria-label="Abrir WhatsApp"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
+            </div>
+            <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Zelador(a) (opcional)</Label>
+              <Input
+                value={form.nome_zelador}
+                onChange={(e) => set("nome_zelador", e.target.value)}
+                placeholder="Nome do zelador"
+              />
+              <Input
+                value={form.telefone_zelador}
+                onChange={(e) => set("telefone_zelador", formatPhoneBR(e.target.value))}
+                placeholder="(00) 00000-0000"
+                inputMode="tel"
+                type="tel"
+              />
             </div>
           </div>
+
 
           <div>
             <Label>Serviço Solicitado *</Label>
