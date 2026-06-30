@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   LABELS,
   OPCOES,
@@ -37,67 +38,26 @@ interface WizardState {
   tecnologia: string | null;
 }
 
-// ─── Estilos compartilhados ──────────────────────────────────────────────────
-
-const PAGE: React.CSSProperties = {
-  padding: "12px 14px 120px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 16,
-  color: "#fff",
+// ─── Light palette ───────────────────────────────────────────────────────────
+const L = {
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  cardSolid: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderMd: "1px solid rgba(0,0,0,0.10)",
+  shadow: "0 1px 6px rgba(0,0,0,0.07)",
+  shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
+  text: "#0a0b0e",
+  textSub: "#4a5060",
+  gold: "#b87800",
+  goldBg: "rgba(180,120,0,0.10)",
+  goldBorder: "1px solid rgba(180,120,0,0.22)",
 };
-
-const HEADER: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 8,
-};
-
-const BACK_BTN: React.CSSProperties = {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 12,
-  width: 40,
-  height: 40,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  color: "#fff",
-};
-
-const QUESTION: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 600,
-  fontSize: 14,
-  letterSpacing: "0.06em",
-  color: "rgba(255,255,255,0.85)",
-  textTransform: "uppercase",
-  margin: "4px 2px 8px",
-};
-
-function optionStyle(): React.CSSProperties {
-  return {
-    width: "100%",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,215,0,0.18)",
-    borderRadius: 14,
-    padding: "16px 18px",
-    textAlign: "left",
-    cursor: "pointer",
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    color: "#fff",
-  };
-}
 
 // ─── Steps por barreira ─────────────────────────────────────────────────────
 const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
 const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
 
-function BarreiraIndicador({ numero }: { numero: "01" | "02" }) {
+function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
       <div
@@ -105,16 +65,17 @@ function BarreiraIndicador({ numero }: { numero: "01" | "02" }) {
           width: 36,
           height: 36,
           borderRadius: "50%",
-          border: "2px solid #FFD700",
+          border: isLight ? `2px solid ${L.gold}` : "2px solid #FFD700",
+          background: isLight ? "rgba(180,120,0,0.06)" : "transparent",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
         }}
       >
-        <span style={{ color: "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
+        <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
       </div>
-      <span style={{ color: "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+      <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
         {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
       </span>
     </div>
@@ -131,12 +92,101 @@ function proximoAposBarreira(prefix: "b1" | "b2", eclusa: boolean | null): Wizar
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 function BlocosWizardPage() {
+  const { isLight } = useTheme();
   const { id: visitaId, cat: catSlug } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const tipoBloco = (CAT_SLUG_TO_TIPO[catSlug] ?? "PED") as TipoBloco;
   const catNome = CAT_NOMES[tipoBloco] ?? catSlug;
+
+  // ── Styles computed from isLight ────────────────────────────────────────
+  const PAGE: React.CSSProperties = {
+    padding: "12px 14px 120px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    color: isLight ? L.text : "#fff",
+  };
+
+  const HEADER: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  };
+
+  const BACK_BTN: React.CSSProperties = {
+    background: isLight ? L.cardSolid : "rgba(255,255,255,0.06)",
+    border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.10)",
+    boxShadow: isLight ? L.shadowSm : undefined,
+    borderRadius: 12,
+    width: 40,
+    height: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: isLight ? L.text : "#fff",
+  };
+
+  const QUESTION: React.CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600,
+    fontSize: 14,
+    letterSpacing: "0.06em",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
+    textTransform: "uppercase",
+    margin: "4px 2px 8px",
+  };
+
+  function optionStyle(selected = false): React.CSSProperties {
+    if (isLight) {
+      if (selected) {
+        return {
+          width: "100%",
+          background: "rgba(180,120,0,0.08)",
+          border: "2px solid #b87800",
+          boxShadow: "0 0 0 3px rgba(180,120,0,0.10)",
+          borderRadius: 14,
+          padding: "16px 18px",
+          textAlign: "left",
+          cursor: "pointer",
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          color: L.text,
+        };
+      }
+      return {
+        width: "100%",
+        background: L.cardSolid,
+        border: L.borderMd,
+        boxShadow: L.shadowSm,
+        borderRadius: 14,
+        padding: "16px 18px",
+        textAlign: "left",
+        cursor: "pointer",
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        color: L.text,
+      };
+    }
+    return {
+      width: "100%",
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,215,0,0.18)",
+      borderRadius: 14,
+      padding: "16px 18px",
+      textAlign: "left",
+      cursor: "pointer",
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+      color: "#fff",
+    };
+  }
 
   // ── Blocos já adicionados ───────────────────────────────────────────────
   const { data: blocosAdicionados = [], isLoading } = useQuery({
@@ -684,10 +734,10 @@ function BlocosWizardPage() {
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>
+              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>
                 {catNome}
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+              <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
                 Configuração concluída
               </div>
             </div>
@@ -696,8 +746,8 @@ function BlocosWizardPage() {
 
           <div
             style={{
-              background: "rgba(255,215,0,0.06)",
-              border: "1px solid rgba(255,215,0,0.25)",
+              background: isLight ? L.goldBg : "rgba(255,215,0,0.06)",
+              border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.25)",
               borderRadius: 16,
               padding: 18,
               display: "flex",
@@ -709,14 +759,14 @@ function BlocosWizardPage() {
               style={{
                 fontSize: 10,
                 letterSpacing: "0.12em",
-                color: "rgba(255,215,0,0.7)",
+                color: isLight ? L.gold : "rgba(255,215,0,0.7)",
                 fontWeight: 700,
               }}
             >
               BLOCO IDENTIFICADO
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>{catNome}</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: isLight ? L.text : "#fff" }}>{catNome}</div>
+            <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
               {descricao}
             </div>
             <div
@@ -724,7 +774,7 @@ function BlocosWizardPage() {
                 marginTop: 6,
                 fontFamily: "monospace",
                 fontSize: 11,
-                color: "rgba(255,215,0,0.65)",
+                color: isLight ? L.gold : "rgba(255,215,0,0.65)",
                 wordBreak: "break-all",
               }}
             >
@@ -736,7 +786,7 @@ function BlocosWizardPage() {
           <div>
             <div
               style={{
-                color: "rgba(255,255,255,0.55)",
+                color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: "0.18em",
@@ -804,9 +854,9 @@ function BlocosWizardPage() {
                 width: "100%",
                 padding: "14px 0",
                 background: "transparent",
-                border: "1.5px dashed rgba(255,215,0,0.4)",
+                border: isLight ? "1.5px dashed rgba(180,120,0,0.4)" : "1.5px dashed rgba(255,215,0,0.4)",
                 borderRadius: 14,
-                color: "#FFD700",
+                color: isLight ? L.gold : "#FFD700",
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: "pointer",
@@ -816,7 +866,7 @@ function BlocosWizardPage() {
                 gap: 8,
               }}
             >
-              <Camera size={18} color="#FFD700" />
+              <Camera size={18} color={isLight ? L.gold : "#FFD700"} />
               {fotos.length === 0 ? "ADICIONAR FOTOS" : "ADICIONAR MAIS FOTOS"}
             </button>
           </div>
@@ -827,14 +877,15 @@ function BlocosWizardPage() {
             style={{
               width: "100%",
               padding: "18px 0",
-              background: "linear-gradient(135deg, #FFD700, #FFB300)",
+              background: isLight ? L.gold : "linear-gradient(135deg, #FFD700, #FFB300)",
               border: "none",
               borderRadius: 16,
-              color: "#0A0A0A",
+              color: isLight ? "#ffffff" : "#0A0A0A",
               fontSize: 15,
               fontWeight: 800,
               cursor: "pointer",
               letterSpacing: 1,
+              boxShadow: isLight ? "0 2px 12px rgba(180,120,0,0.30)" : undefined,
             }}
           >
             {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
@@ -871,19 +922,20 @@ function BlocosWizardPage() {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  background: "#1C1A0F",
-                  border: "1px solid rgba(255,215,0,0.2)",
+                  background: isLight ? L.cardSolid : "#1C1A0F",
+                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.2)",
                   borderRadius: "20px 20px 0 0",
                   padding: "24px 20px 40px",
                   zIndex: 50,
                   display: "flex",
                   flexDirection: "column",
                   gap: 12,
+                  boxShadow: isLight ? L.shadow : undefined,
                 }}
               >
                 <div
                   style={{
-                    color: "#fff",
+                    color: isLight ? L.text : "#fff",
                     fontSize: 16,
                     fontWeight: 700,
                     marginBottom: 4,
@@ -897,10 +949,10 @@ function BlocosWizardPage() {
                   style={{
                     width: "100%",
                     padding: 16,
-                    background: "rgba(255,215,0,0.08)",
-                    border: "1px solid rgba(255,215,0,0.2)",
+                    background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
+                    border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
                     borderRadius: 14,
-                    color: "#FFD700",
+                    color: isLight ? L.gold : "#FFD700",
                     fontSize: 15,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -910,7 +962,7 @@ function BlocosWizardPage() {
                     gap: 10,
                   }}
                 >
-                  <Camera size={20} color="#FFD700" />
+                  <Camera size={20} color={isLight ? L.gold : "#FFD700"} />
                   Tirar foto
                 </button>
                 <button
@@ -918,10 +970,10 @@ function BlocosWizardPage() {
                   style={{
                     width: "100%",
                     padding: 16,
-                    background: "rgba(255,215,0,0.08)",
-                    border: "1px solid rgba(255,215,0,0.2)",
+                    background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
+                    border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
                     borderRadius: 14,
-                    color: "#FFD700",
+                    color: isLight ? L.gold : "#FFD700",
                     fontSize: 15,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -931,7 +983,7 @@ function BlocosWizardPage() {
                     gap: 10,
                   }}
                 >
-                  <ImageIcon size={20} color="#FFD700" />
+                  <ImageIcon size={20} color={isLight ? L.gold : "#FFD700"} />
                   Escolher da galeria
                 </button>
                 <button
@@ -940,7 +992,7 @@ function BlocosWizardPage() {
                     width: "100%",
                     padding: 14,
                     background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.1)",
                     borderRadius: 14,
                     color: "#6B7280",
                     fontSize: 14,
@@ -986,7 +1038,7 @@ function BlocosWizardPage() {
           <div style={{ marginBottom: 16 }}>
             <p
               style={{
-                color: "rgba(255,255,255,0.4)",
+                color: isLight ? "rgba(0,0,0,0.40)" : "rgba(255,255,255,0.4)",
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: 2,
@@ -1010,7 +1062,7 @@ function BlocosWizardPage() {
                 gap: 8,
               }}
             >
-              <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>
+              <span style={{ color: isLight ? L.text : "#FFFFFF", fontSize: 15, fontWeight: 700 }}>
                 {opcaoSel?.label ?? LABELS[resposta] ?? resposta}
               </span>
               <Pencil size={12} color="#4B5563" />
@@ -1023,7 +1075,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
           {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
@@ -1044,18 +1096,23 @@ function BlocosWizardPage() {
                     width: 36,
                     height: 36,
                     borderRadius: "50%",
-                    border: `2px solid ${b1Done ? "#22C55E" : "#FFD700"}`,
+                    border: b1Done
+                      ? "2px solid #22C55E"
+                      : isLight
+                        ? `2px solid ${L.gold}`
+                        : "2px solid #FFD700",
+                    background: (!b1Done && isLight) ? "rgba(180,120,0,0.06)" : "transparent",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ color: b1Done ? "#22C55E" : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
+                  <span style={{ color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
                 </div>
                 <span
                   style={{
-                    color: b1Done ? "#22C55E" : "#FFD700",
+                    color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
                     fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: 1,
@@ -1070,7 +1127,7 @@ function BlocosWizardPage() {
                     width: 28,
                     height: 28,
                     borderRadius: "50%",
-                    background: "rgba(255,255,255,0.1)",
+                    background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.1)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1078,7 +1135,7 @@ function BlocosWizardPage() {
                     transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
                   }}
                 >
-                  <ChevronDown size={16} color="#FFFFFF" />
+                  <ChevronDown size={16} color={isLight ? L.text : "#FFFFFF"} />
                 </div>
               )}
             </div>
@@ -1095,9 +1152,9 @@ function BlocosWizardPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                          <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                           {op.descricao && (
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                            <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
                           )}
                         </button>
                       ))}
@@ -1111,7 +1168,7 @@ function BlocosWizardPage() {
           {/* ── SEÇÃO BARREIRA 2 ─────────────────────────────────────── */}
           {showB2 && (
             <div ref={b2Ref}>
-              <BarreiraIndicador numero="02" />
+              <BarreiraIndicador numero="02" isLight={isLight} />
 
               {stepsRespondidosB2.map((step) => (
                 <ConfirmedAnswer key={step} step={step} />
@@ -1123,9 +1180,9 @@ function BlocosWizardPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {opcoes.map((op) => (
                       <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                         {op.descricao && (
-                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                          <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
                         )}
                       </button>
                     ))}
@@ -1143,7 +1200,7 @@ function BlocosWizardPage() {
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
         </div>
 
         <div style={QUESTION}>{getLabelPergunta()}</div>
@@ -1151,9 +1208,9 @@ function BlocosWizardPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
               {op.descricao && (
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
               )}
             </button>
           ))}
@@ -1173,24 +1230,24 @@ function BlocosWizardPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 18 }}>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 18, color: isLight ? L.text : "#fff" }}>
             Configurar blocos
           </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{catNome}</div>
+          <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>{catNome}</div>
         </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {isLoading ? (
-          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>Carregando...</div>
+          <div style={{ color: isLight ? L.textSub : "rgba(255,255,255,0.5)", fontSize: 13 }}>Carregando...</div>
         ) : blocosAdicionados.length === 0 ? (
           <div
             style={{
               textAlign: "center",
               padding: "32px 16px",
-              border: "1px dashed rgba(255,255,255,0.12)",
+              border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
               borderRadius: 14,
-              color: "rgba(255,255,255,0.45)",
+              color: isLight ? L.textSub : "rgba(255,255,255,0.45)",
             }}
           >
             <div style={{ fontSize: 13, marginBottom: 4 }}>Nenhum bloco adicionado ainda.</div>
@@ -1201,8 +1258,9 @@ function BlocosWizardPage() {
             <div
               key={bloco.id}
               style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,215,0,0.15)",
+                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                boxShadow: isLight ? L.shadowSm : undefined,
                 borderRadius: 14,
                 padding: "14px 16px",
                 display: "flex",
@@ -1211,14 +1269,14 @@ function BlocosWizardPage() {
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 2 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? L.text : "#fff", marginBottom: 2 }}>
                   {bloco.nome_descritivo}
                 </div>
                 <div
                   style={{
                     fontFamily: "monospace",
                     fontSize: 10,
-                    color: "rgba(255,215,0,0.55)",
+                    color: isLight ? L.gold : "rgba(255,215,0,0.55)",
                     wordBreak: "break-all",
                   }}
                 >
@@ -1253,14 +1311,15 @@ function BlocosWizardPage() {
         style={{
           marginTop: 8,
           padding: "16px 0",
-          background: "linear-gradient(135deg, #FFD700, #FFB300)",
-          border: "none",
+          background: isLight ? L.goldBg : "linear-gradient(135deg, #FFD700, #FFB300)",
+          border: isLight ? L.goldBorder : "none",
           borderRadius: 14,
-          color: "#0A0A0A",
+          color: isLight ? L.gold : "#0A0A0A",
           fontSize: 14,
           fontWeight: 800,
           cursor: "pointer",
           letterSpacing: 1,
+          boxShadow: isLight ? L.shadowSm : undefined,
         }}
       >
         + ADICIONAR

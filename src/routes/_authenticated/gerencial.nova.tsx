@@ -5,43 +5,27 @@ import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, Ch
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/gerencial/nova")({
   component: NovaVisitaPage,
 });
 
-const GLASS: CSSProperties = {
-  background: "rgba(8, 8, 12, 0.18)",
-  backdropFilter: "blur(10px) saturate(120%)",
-  WebkitBackdropFilter: "blur(10px) saturate(120%)",
-  border: "1px solid rgba(255, 192, 0, 0.20)",
-  borderRadius: 18,
-  boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
-};
-
-const LABEL: CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  fontSize: 10,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "rgba(255,192,0,0.65)",
-  marginBottom: 8,
-  display: "block",
-};
-
-const INPUT: CSSProperties = {
-  width: "100%",
-  background: "rgba(8,8,12,0.25)",
-  border: "1px solid rgba(255,192,0,0.16)",
-  borderRadius: 10,
-  color: "#F0F2F5",
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  fontSize: 14,
-  padding: "12px 14px",
-  outline: "none",
-  boxSizing: "border-box",
+const L = {
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  cardSolid: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderMd: "1px solid rgba(0,0,0,0.10)",
+  shadow: "0 1px 6px rgba(0,0,0,0.07)",
+  shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
+  text: "#0a0b0e",
+  textSub: "#4a5060",
+  textMuted: "#8a909e",
+  gold: "#b87800",
+  goldBg: "rgba(180,120,0,0.10)",
+  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  inputBg: "#f0f1f4",
+  inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
 const SERVICOS = [
@@ -54,7 +38,6 @@ const SERVICOS = [
   { id: "monitoramento_remoto", label: "Monitoramento Remoto", emoji: "🛰️" },
   { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
 ];
-
 
 const TIPOS_LOCAL = [
   { id: "condominio_vertical", label: "Cond. Vertical", emoji: "🏢" },
@@ -72,13 +55,14 @@ const PRIORIDADES = [
 
 
 function NovaVisitaPage() {
+  const { isLight } = useTheme();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [step, setStep] = useState(1);
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
-  
+
   const [nomeSindico, setNomeSindico] = useState("");
   const [contato, setContato] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
@@ -99,6 +83,48 @@ function NovaVisitaPage() {
   const [descricao, setDescricao] = useState("");
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+
+  // Dynamic styles
+  const GLASS: CSSProperties = isLight
+    ? {
+        background: L.card,
+        border: L.border,
+        borderRadius: 18,
+        boxShadow: L.shadow,
+      }
+    : {
+        background: "rgba(8, 8, 12, 0.18)",
+        backdropFilter: "blur(10px) saturate(120%)",
+        WebkitBackdropFilter: "blur(10px) saturate(120%)",
+        border: "1px solid rgba(255, 192, 0, 0.20)",
+        borderRadius: 18,
+        boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
+      };
+
+  const LABEL: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 10,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    marginBottom: 8,
+    display: "block",
+  };
+
+  const INPUT: CSSProperties = {
+    width: "100%",
+    background: isLight ? L.inputBg : "rgba(8,8,12,0.25)",
+    border: isLight ? L.inputBorder : "1px solid rgba(255,192,0,0.16)",
+    borderRadius: 10,
+    color: isLight ? L.text : "#F0F2F5",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 14,
+    padding: "12px 14px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
 
   const { data: tecnicos = [] } = useQuery({
     queryKey: ["tecnicos-lista"],
@@ -158,7 +184,6 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
     servicos.length > 0 &&
@@ -171,14 +196,12 @@ function NovaVisitaPage() {
       const dataHoraAgendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1) Criar cliente
       const { data: clienteRow, error: clienteErr } = await supabase
         .from("clientes")
         .insert({
           nome: nomeSindico,
           email: clienteEmail || null,
           telefone: contato,
-          
           owner_id: user?.id as string,
         })
         .select("id")
@@ -249,7 +272,13 @@ function NovaVisitaPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
         <button
           onClick={() => (step === 1 ? navigate({ to: "/gerencial" }) : setStep(1))}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(200,200,200,0.7)", padding: 4 }}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: isLight ? L.textSub : "rgba(200,200,200,0.7)",
+            padding: 4,
+          }}
         >
           <ArrowLeft size={20} />
         </button>
@@ -259,14 +288,14 @@ function NovaVisitaPage() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 500,
               fontSize: 18,
-              color: "#F0F2F5",
+              color: isLight ? L.text : "#F0F2F5",
               margin: 0,
             }}
           >
             Nova Visita Técnica
           </h1>
         </div>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,192,0,0.7)" }}>
+        <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: isLight ? L.gold : "rgba(255,192,0,0.7)" }}>
           {step}/2
         </span>
       </div>
@@ -281,14 +310,22 @@ function NovaVisitaPage() {
                   width: 24,
                   height: 24,
                   borderRadius: "50%",
-                  background: step >= s.n ? "linear-gradient(135deg, #FFD700, #FFC000)" : "rgba(255,192,0,0.08)",
-                  border: step >= s.n ? "none" : "1px solid rgba(255,192,0,0.20)",
+                  background: step >= s.n
+                    ? "linear-gradient(135deg, #FFD700, #FFC000)"
+                    : isLight
+                      ? "#f0f1f4"
+                      : "rgba(255,192,0,0.08)",
+                  border: step >= s.n
+                    ? "none"
+                    : isLight
+                      ? "1px solid rgba(0,0,0,0.12)"
+                      : "1px solid rgba(255,192,0,0.20)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: 11,
                   fontWeight: 700,
-                  color: step >= s.n ? "#000" : "rgba(200,200,200,0.4)",
+                  color: step >= s.n ? "#000" : isLight ? L.textSub : "rgba(200,200,200,0.4)",
                   flexShrink: 0,
                 }}
               >
@@ -299,14 +336,22 @@ function NovaVisitaPage() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 11,
-                  color: step >= s.n ? "#FFC000" : "rgba(200,200,200,0.4)",
+                  color: step >= s.n
+                    ? isLight ? L.gold : "#FFC000"
+                    : isLight ? L.textSub : "rgba(200,200,200,0.4)",
                 }}
               >
                 {s.label}
               </span>
             </div>
             {i < 1 && (
-              <div style={{ flex: 1, height: 1, background: step > 1 ? "rgba(255,192,0,0.4)" : "rgba(255,192,0,0.12)" }} />
+              <div style={{
+                flex: 1,
+                height: 1,
+                background: step > 1
+                  ? isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)"
+                  : isLight ? "rgba(0,0,0,0.08)" : "rgba(255,192,0,0.12)",
+              }} />
             )}
           </div>
         ))}
@@ -329,8 +374,12 @@ function NovaVisitaPage() {
                     key={t.id}
                     onClick={() => setTipoLocal(t.id)}
                     style={{
-                      background: ativo ? "rgba(255,192,0,0.12)" : "rgba(8,8,12,0.20)",
-                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.12)",
+                      background: ativo
+                        ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.12)"
+                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                      border: ativo
+                        ? isLight ? "2px solid #b87800" : "1.5px solid rgba(255,192,0,0.55)"
+                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.12)",
                       borderRadius: 12,
                       padding: "16px 8px",
                       cursor: "pointer",
@@ -338,7 +387,7 @@ function NovaVisitaPage() {
                       flexDirection: "column",
                       alignItems: "center",
                       gap: 6,
-                      boxShadow: ativo ? "0 0 16px rgba(255,192,0,0.18)" : "none",
+                      boxShadow: ativo ? (isLight ? "none" : "0 0 16px rgba(255,192,0,0.18)") : "none",
                       transition: "all 0.2s ease",
                     }}
                   >
@@ -348,7 +397,9 @@ function NovaVisitaPage() {
                         fontFamily: "'Montserrat', sans-serif",
                         fontSize: 10,
                         fontWeight: 300,
-                        color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                        color: ativo
+                          ? isLight ? L.gold : "#FFC000"
+                          : isLight ? L.textSub : "rgba(200,200,200,0.65)",
                         textAlign: "center",
                         lineHeight: 1.2,
                       }}
@@ -362,7 +413,6 @@ function NovaVisitaPage() {
           </div>
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-
             <div>
               <label style={LABEL}>Nome do Cliente</label>
               <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
@@ -394,14 +444,20 @@ function NovaVisitaPage() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      background: ativo ? "rgba(255,192,0,0.12)" : "rgba(8,8,12,0.20)",
-                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      background: ativo
+                        ? isLight ? L.goldBg : "rgba(255,192,0,0.12)"
+                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                      border: ativo
+                        ? isLight ? L.goldBorder : "1.5px solid rgba(255,192,0,0.55)"
+                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.14)",
                       borderRadius: 999,
                       padding: "7px 12px",
                       fontFamily: "'Montserrat', sans-serif",
                       fontSize: 11,
                       fontWeight: 300,
-                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      color: ativo
+                        ? isLight ? L.gold : "#FFC000"
+                        : isLight ? L.textSub : "rgba(200,200,200,0.65)",
                       cursor: "pointer",
                     }}
                   >
@@ -430,14 +486,20 @@ function NovaVisitaPage() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      background: ativo ? "rgba(255,192,0,0.12)" : "rgba(8,8,12,0.20)",
-                      border: ativo ? "1.5px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,192,0,0.14)",
+                      background: ativo
+                        ? isLight ? L.goldBg : "rgba(255,192,0,0.12)"
+                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                      border: ativo
+                        ? isLight ? L.goldBorder : "1.5px solid rgba(255,192,0,0.55)"
+                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.14)",
                       borderRadius: 999,
                       padding: "7px 12px",
                       fontFamily: "'Montserrat', sans-serif",
                       fontSize: 11,
                       fontWeight: 300,
-                      color: ativo ? "#FFC000" : "rgba(200,200,200,0.65)",
+                      color: ativo
+                        ? isLight ? L.gold : "#FFC000"
+                        : isLight ? L.textSub : "rgba(200,200,200,0.65)",
                       cursor: "pointer",
                     }}
                   >
@@ -448,9 +510,6 @@ function NovaVisitaPage() {
               })}
             </div>
           </div>
-
-
-
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Endereço</label>
@@ -470,12 +529,12 @@ function NovaVisitaPage() {
               <button
                 onClick={geocodificar}
                 style={{
-                  background: "rgba(255,192,0,0.10)",
-                  border: "1px solid rgba(255,192,0,0.30)",
+                  background: isLight ? L.cardSolid : "rgba(255,192,0,0.10)",
+                  border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.30)",
                   borderRadius: 10,
                   width: 44,
                   cursor: "pointer",
-                  color: "#FFC000",
+                  color: isLight ? L.gold : "#FFC000",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -485,7 +544,7 @@ function NovaVisitaPage() {
               </button>
             </div>
             {geoStatus === "loading" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: "rgba(200,200,200,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? L.textMuted : "rgba(200,200,200,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
                 Buscando localização...
               </p>
             )}
@@ -495,7 +554,7 @@ function NovaVisitaPage() {
               </p>
             )}
             {mapUrl && (
-              <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,192,0,0.16)" }}>
+              <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", border: isLight ? L.border : "1px solid rgba(255,192,0,0.16)" }}>
                 <iframe title="mapa" src={mapUrl} style={{ width: "100%", height: 160, border: 0 }} />
               </div>
             )}
@@ -523,8 +582,8 @@ function NovaVisitaPage() {
                 width: "100%",
                 minHeight: fotoPreview ? "auto" : 90,
                 borderRadius: 14,
-                border: "2px dashed rgba(255,192,0,0.30)",
-                background: "rgba(255,255,255,0.03)",
+                border: isLight ? "2px dashed rgba(180,120,0,0.30)" : "2px dashed rgba(255,192,0,0.30)",
+                background: isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -545,13 +604,13 @@ function NovaVisitaPage() {
                       position: "absolute",
                       top: 8,
                       right: 8,
-                      background: "rgba(8,8,12,0.7)",
+                      background: isLight ? "rgba(255,255,255,0.85)" : "rgba(8,8,12,0.7)",
                       borderRadius: 20,
                       padding: "4px 10px",
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 300,
                       fontSize: 11,
-                      color: "#FFC000",
+                      color: isLight ? L.gold : "#FFC000",
                     }}
                   >
                     Alterar foto
@@ -559,13 +618,15 @@ function NovaVisitaPage() {
                 </>
               ) : (
                 <div style={{ textAlign: "center", padding: "16px 8px" }}>
-                  <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}><Camera size={24} color="rgba(255,192,0,0.65)" /></div>
+                  <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}>
+                    <Camera size={24} color={isLight ? L.gold : "rgba(255,192,0,0.65)"} />
+                  </div>
                   <div
                     style={{
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 300,
                       fontSize: 12,
-                      color: "rgba(255,255,255,0.45)",
+                      color: isLight ? L.textMuted : "rgba(255,255,255,0.45)",
                     }}
                   >
                     Toque para adicionar foto da fachada
@@ -620,14 +681,14 @@ function NovaVisitaPage() {
                     setHora(a.time);
                   }}
                   style={{
-                    background: "rgba(255,192,0,0.06)",
-                    border: "1px solid rgba(255,192,0,0.18)",
+                    background: isLight ? L.goldBg : "rgba(255,192,0,0.06)",
+                    border: isLight ? L.goldBorder : "1px solid rgba(255,192,0,0.18)",
                     borderRadius: 999,
                     padding: "5px 10px",
                     fontFamily: "'Montserrat', sans-serif",
                     fontSize: 10,
                     fontWeight: 300,
-                    color: "rgba(255,192,0,0.75)",
+                    color: isLight ? L.gold : "rgba(255,192,0,0.75)",
                     cursor: "pointer",
                   }}
                 >
@@ -654,7 +715,7 @@ function NovaVisitaPage() {
 
             {tecnicoId && visitasTecnico.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 300, color: "rgba(255,192,0,0.6)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 6px" }}>
+                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 300, color: isLight ? L.gold : "rgba(255,192,0,0.6)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 6px" }}>
                   Agenda dos próximos 7 dias
                 </p>
                 {visitasTecnico.map((v, i) => (
@@ -665,11 +726,13 @@ function NovaVisitaPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "7px 0",
-                      borderBottom: i < visitasTecnico.length - 1 ? "1px solid rgba(255,192,0,0.08)" : "none",
+                      borderBottom: i < visitasTecnico.length - 1
+                        ? isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,192,0,0.08)"
+                        : "none",
                     }}
                   >
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#FFC000", flexShrink: 0, boxShadow: "0 0 6px rgba(255,192,0,0.5)" }} />
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: "rgba(200,200,200,0.6)" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLight ? L.gold : "#FFC000", flexShrink: 0, boxShadow: isLight ? "none" : "0 0 6px rgba(255,192,0,0.5)" }} />
+                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
                       {new Date(v.data_hora_agendada).toLocaleString("pt-BR", {
                         weekday: "short",
                         day: "2-digit",
@@ -702,15 +765,19 @@ function NovaVisitaPage() {
                     onClick={() => setPrioridade(p.id)}
                     style={{
                       flex: 1,
-                      background: ativo ? `${p.color}18` : "rgba(8,8,12,0.20)",
-                      border: ativo ? `1.5px solid ${p.color}55` : "1px solid rgba(255,192,0,0.10)",
+                      background: ativo
+                        ? `${p.color}18`
+                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                      border: ativo
+                        ? `1.5px solid ${p.color}55`
+                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.10)",
                       borderRadius: 10,
                       padding: "10px 4px",
                       cursor: "pointer",
                       fontFamily: "'Montserrat', sans-serif",
                       fontSize: 10,
                       fontWeight: ativo ? 500 : 300,
-                      color: ativo ? p.color : "rgba(200,200,200,0.5)",
+                      color: ativo ? p.color : isLight ? L.textSub : "rgba(200,200,200,0.5)",
                     }}
                   >
                     {p.label}
@@ -730,7 +797,12 @@ function NovaVisitaPage() {
             />
           </div>
 
-          <div style={{ ...GLASS, padding: 16, borderColor: "rgba(52,211,153,0.25)", background: "rgba(52,211,153,0.04)" }}>
+          <div style={{
+            ...GLASS,
+            padding: 16,
+            borderColor: isLight ? "rgba(52,211,153,0.20)" : "rgba(52,211,153,0.25)",
+            background: isLight ? "rgba(52,211,153,0.05)" : "rgba(52,211,153,0.04)",
+          }}>
             <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 300, color: "rgba(52,211,153,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
               Resumo da visita
             </p>
@@ -739,8 +811,6 @@ function NovaVisitaPage() {
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               { label: "Síndico", value: nomeSindico },
               { label: "Serviços", value: servicos.map((id) => SERVICOS.find((s) => s.id === id)?.label).filter(Boolean).join(", ") },
-              
-
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
                 label: "Data/Hora",
@@ -749,9 +819,9 @@ function NovaVisitaPage() {
               { label: "Técnico", value: tecnicos.find((t) => t.id === tecnicoId)?.nome ?? "Não definido" },
               { label: "Prioridade", value: PRIORIDADES.find((p) => p.id === prioridade)?.label },
             ].map((row) => (
-              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: "rgba(200,200,200,0.45)" }}>{row.label}</span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 400, color: "#F0F2F5", textAlign: "right", maxWidth: "60%" }}>{row.value || "—"}</span>
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.04)" }}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textMuted : "rgba(200,200,200,0.45)" }}>{row.label}</span>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 400, color: isLight ? L.text : "#F0F2F5", textAlign: "right", maxWidth: "60%" }}>{row.value || "—"}</span>
               </div>
             ))}
           </div>
@@ -766,9 +836,9 @@ function NovaVisitaPage() {
           left: 0,
           right: 0,
           padding: "12px 16px",
-          background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(20px)",
-          borderTop: "1px solid rgba(255,192,0,0.10)",
+          background: isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.7)",
+          backdropFilter: isLight ? "none" : "blur(20px)",
+          borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,192,0,0.10)",
           display: "flex",
           gap: 10,
           zIndex: 30,
@@ -781,14 +851,14 @@ function NovaVisitaPage() {
               height: 50,
               width: 50,
               flexShrink: 0,
-              background: "rgba(255,192,0,0.06)",
-              border: "1px solid rgba(255,192,0,0.20)",
+              background: isLight ? L.cardSolid : "rgba(255,192,0,0.06)",
+              border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.20)",
               borderRadius: 13,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#FFC000",
+              color: isLight ? L.gold : "#FFC000",
             }}
           >
             <ChevronLeft size={20} />
@@ -814,8 +884,8 @@ function NovaVisitaPage() {
           style={{
             flex: 1,
             height: 50,
-            background: "linear-gradient(135deg, #FFD700 0%, #FFC000 50%, #FF9F00 100%)",
-            color: "#0A0A0A",
+            background: isLight ? L.gold : "linear-gradient(135deg, #FFD700 0%, #FFC000 50%, #FF9F00 100%)",
+            color: "#ffffff",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 13,
@@ -828,7 +898,7 @@ function NovaVisitaPage() {
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            boxShadow: "0 4px 18px rgba(255,192,0,0.38)",
+            boxShadow: isLight ? "0 4px 14px rgba(180,120,0,0.30)" : "0 4px 18px rgba(255,192,0,0.38)",
             opacity: criarMutation.isPending ? 0.7 : 1,
           }}
         >
