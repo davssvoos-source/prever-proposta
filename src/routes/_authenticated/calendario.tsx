@@ -255,7 +255,7 @@ function CalendarioPage() {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 500,
           fontSize: 12,
-          color: "rgba(255,255,255,0.55)",
+          color: goldDark,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
           marginBottom: 12,
@@ -266,11 +266,11 @@ function CalendarioPage() {
         </div>
 
         {isLoading ? (
-          <div style={{ padding: 24, textAlign: "center", color: "rgba(255,255,255,0.4)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+          <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
             Carregando...
           </div>
         ) : visitasDoDia.length === 0 ? (
-          <div style={{ padding: 28, textAlign: "center", color: "rgba(255,255,255,0.4)" }}>
+          <div style={{ padding: 28, textAlign: "center", color: textSecondary }}>
             <CalendarDays size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
             <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
               {diaSelecionado ? "Nenhuma visita neste dia" : "Nenhuma visita neste mês"}
@@ -279,7 +279,7 @@ function CalendarioPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {visitasDoDia.map((v: any) => {
-              const cor = STATUS_CORES[v.status] ?? "#FFC000";
+              const cor = STATUS_CORES[v.status] ?? goldDark;
               const label = STATUS_LABELS[v.status] ?? v.status;
               const hora = new Date(v.data_hora_agendada).toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
@@ -292,8 +292,8 @@ function CalendarioPage() {
                   key={v.id}
                   onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(255,255,255,0.05)",
+                    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
                     borderLeft: `3px solid ${cor}`,
                     borderRadius: 12,
                     padding: "14px 16px",
@@ -304,6 +304,7 @@ function CalendarioPage() {
                     gap: 12,
                     textAlign: "left",
                     width: "100%",
+                    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
                   }}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -311,7 +312,7 @@ function CalendarioPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 600,
                       fontSize: 14,
-                      color: "#fff",
+                      color: textPrimary,
                       marginBottom: 2,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -321,7 +322,7 @@ function CalendarioPage() {
                       fontFamily: "'Montserrat', sans-serif",
                       fontWeight: 300,
                       fontSize: 11,
-                      color: "rgba(255,255,255,0.5)",
+                      color: textSecondary,
                       display: "inline-flex",
                       alignItems: "center",
                     }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}</div>
