@@ -4,18 +4,26 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const GLASS: React.CSSProperties = {
+const GLASS_DARK: React.CSSProperties = {
   background: "rgba(8, 8, 12, 0.18)",
   backdropFilter: "blur(10px) saturate(120%)",
   WebkitBackdropFilter: "blur(10px) saturate(120%)",
   border: "1px solid rgba(255, 192, 0, 0.20)",
   borderRadius: 18,
   boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
+};
+
+const GLASS_LIGHT: React.CSSProperties = {
+  background: "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderRadius: 18,
+  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
 };
 
 const STATUS_OPCOES = [
