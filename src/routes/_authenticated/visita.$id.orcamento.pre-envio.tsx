@@ -95,27 +95,33 @@ function PreEnvioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visita?.foto_fachada_url]);
 
-  async function handleFotoBanner(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFotoBanner(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const localUrl = URL.createObjectURL(file);
-    setFotoBanner(localUrl);
+
+    // Preview imediato via FileReader
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFotoBanner(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload em background para o Supabase Storage
     const ext = file.name.split(".").pop() || "jpg";
     const path = `fachadas/${visitaId}.${ext}`;
-    const { error: uploadError } = await supabase.storage
+    supabase.storage
       .from("blocos-fotos")
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (uploadError) {
-      toast.error("Falha ao enviar foto");
-      e.target.value = "";
-      return;
-    }
-    const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
-    setFotoBanner(data.publicUrl);
-    await supabase
-      .from("visitas_tecnicas")
-      .update({ foto_fachada_url: data.publicUrl } as any)
-      .eq("id", visitaId);
+      .upload(path, file, { upsert: true, contentType: file.type })
+      .then(({ error }) => {
+        if (!error) {
+          const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
+          supabase
+            .from("visitas_tecnicas")
+            .update({ foto_fachada_url: data.publicUrl })
+            .eq("id", visitaId);
+        }
+      });
+
     e.target.value = "";
   }
 
