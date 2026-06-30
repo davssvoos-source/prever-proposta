@@ -143,6 +143,17 @@ function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isLight } = useTheme();
+  const iconColor = isLight ? "#b87800" : "#FFC000";
+  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
+  const CATEGORIAS_T = [
+    { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={iconColor} />, desc: "Portas, cancelas e leitores de pedestre" },
+    { id: "veiculos", label: "Acesso de Veículos", icon: <Car size={32} color={iconColor} />, desc: "Cancelas, barreiras e controles veiculares" },
+    { id: "cftv", label: "CFTV", icon: <Camera size={32} color={iconColor} />, desc: "Câmeras, DVRs e NVRs" },
+    { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={iconColor} />, desc: "Sensores, centrais e sirenes" },
+    { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={iconColor} />, desc: "Centrais e eletrificadores" },
+  ];
 
   const { data: visita } = useQuery({
     queryKey: ["visita", id],
