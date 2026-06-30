@@ -109,19 +109,21 @@ export function NotificationPanel() {
             right: 0,
             width: 352,
             zIndex: 100,
-            background: "rgba(12,12,18,0.92)",
+            background: isLight ? "rgba(248,249,251,0.97)" : "rgba(12,12,18,0.92)",
             backdropFilter: "blur(24px) saturate(180%)",
             WebkitBackdropFilter: "blur(24px) saturate(180%)",
-            border: "1px solid rgba(255,255,255,0.12)",
+            border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.12)",
             borderRadius: 18,
-            boxShadow: "0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
+            boxShadow: isLight
+              ? "0 8px 40px rgba(0,0,0,0.12)"
+              : "0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)",
             overflow: "hidden",
           }}
         >
           <div
             style={{
               padding: "14px 16px 12px",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.07)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -133,7 +135,7 @@ export function NotificationPanel() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 600,
                 fontSize: 13,
-                color: "#fff",
+                color: isLight ? "#0a0b0e" : "#fff",
               }}
             >
               Notificações
@@ -148,7 +150,7 @@ export function NotificationPanel() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 400,
                   fontSize: 11,
-                  color: "rgba(255,192,0,0.85)",
+                  color: isLight ? "#b87800" : "rgba(255,192,0,0.85)",
                   letterSpacing: "0.04em",
                 }}
               >
