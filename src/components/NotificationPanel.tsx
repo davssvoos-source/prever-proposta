@@ -264,10 +264,9 @@ function NotifItem({
       </div>
       <button
         onClick={handleClick}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         style={{
           width: "100%",
           textAlign: "left",
@@ -277,9 +276,9 @@ function NotifItem({
           cursor: "pointer",
           display: "block",
           transform: `translateX(-${swipeX}px)`,
-          transition: dragging
+          transition: swipeX > 0
             ? "none"
-            : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+            : "transform 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
           willChange: "transform",
           position: "relative",
           zIndex: 1,
