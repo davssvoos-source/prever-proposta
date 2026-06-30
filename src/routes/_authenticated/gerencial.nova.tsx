@@ -74,6 +74,8 @@ function NovaVisitaPage() {
   const [tipoLocal, setTipoLocal] = useState("");
 
   const [nomeSindico, setNomeSindico] = useState("");
+  const [nomeZelador, setNomeZelador] = useState("");
+
   const [contato, setContato] = useState("");
   const [clienteEmail, setClienteEmail] = useState("");
   const [servicos, setServicos] = useState<string[]>([]);
