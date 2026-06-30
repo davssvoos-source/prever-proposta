@@ -590,7 +590,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               className="flex items-center gap-1.5"
               style={{ color: isLight ? L.textSub : undefined }}
             >
-              <Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}
+              <Phone className="h-3.5 w-3.5" /> {form.nome_sindico || "—"} · {form.telefone_sindico || "—"}
             </div>
             {dataHoraISO && (
               <div
