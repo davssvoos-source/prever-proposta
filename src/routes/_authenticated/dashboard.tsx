@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar } from "lucide-react";
-import { useSwipeable } from "react-swipeable";
+
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -663,18 +663,20 @@ function VisitaCard({ visita }: { visita: any }) {
     <div
       style={{
         background: isLight
-          ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
-          : "rgba(8,8,12,0.22)",
-        backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+          ? "linear-gradient(135deg, #ffffff 0%, #f0f1f4 100%)"
+          : "linear-gradient(135deg, #0d0e18 0%, #13141f 100%)",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
         border: isLight
-          ? "1px solid rgba(0,0,0,0.07)"
-          : "1px solid rgba(255,192,0,0.10)",
+          ? "1px solid rgba(0,0,0,0.08)"
+          : "1px solid rgba(255,255,255,0.06)",
         borderRadius: 18,
         padding: "18px 16px",
         marginBottom: 0,
-        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
+        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
       }}
     >
+
       <div
         style={{
           display: "flex",
@@ -756,64 +758,123 @@ function VisitaCard({ visita }: { visita: any }) {
 function SwipeableVisita({ visita }: { visita: any }) {
   const { isLight } = useTheme();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [offsetX, setOffsetX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef<number | null>(null);
+  const startYRef = useRef<number | null>(null);
+  const movedRef = useRef(false);
+  const axisLockRef = useRef<"x" | "y" | null>(null);
 
-  const handlers = useSwipeable({
-    onSwipedLeft: () => setOpen(true),
-    onSwipedRight: () => setOpen(false),
-    trackMouse: false,
-    delta: 40,
-  });
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startXRef.current = e.touches[0].clientX;
+    startYRef.current = e.touches[0].clientY;
+    movedRef.current = false;
+    axisLockRef.current = null;
+    setIsDragging(true);
+  };
 
-  const goAgendar = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigate({ to: "/visita/$id/reagendar", params: { id: visita.id } });
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (startXRef.current === null || startYRef.current === null) return;
+    const dx = e.touches[0].clientX - startXRef.current;
+    const dy = e.touches[0].clientY - startYRef.current;
+    if (axisLockRef.current === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axisLockRef.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+    if (axisLockRef.current !== "x") return;
+    if (dx < 0) {
+      movedRef.current = true;
+      const maxSwipe = -(cardRef.current?.offsetWidth ?? 320);
+      setOffsetX(Math.max(dx, maxSwipe));
+    } else {
+      setOffsetX(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    const cardWidth = cardRef.current?.offsetWidth ?? 320;
+    const threshold = cardWidth * 0.6;
+    if (Math.abs(offsetX) >= threshold) {
+      setOffsetX(-cardWidth);
+      setTimeout(() => {
+        navigate({ to: "/visita/$id/reagendar", params: { id: visita.id } });
+        setOffsetX(0);
+      }, 300);
+    } else {
+      setOffsetX(0);
+    }
+    startXRef.current = null;
+    startYRef.current = null;
+    axisLockRef.current = null;
+  };
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (movedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      movedRef.current = false;
+    }
   };
 
   return (
-    <div {...handlers} style={{ position: "relative", overflow: "hidden", borderRadius: 18, marginBottom: 12 }}>
-      <button
-        onClick={goAgendar}
-        aria-label="Agendar"
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          bottom: 12,
-          width: 80,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: "none",
-          cursor: "pointer",
-          background: isLight
-            ? "linear-gradient(135deg, #b87800, #e6a800)"
-            : "linear-gradient(135deg, #FFC000, #FFD700)",
-          borderRadius: "0 18px 18px 0",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <Calendar size={20} color="#FFFFFF" />
-          <span style={{ color: "#FFFFFF", fontSize: 10, fontWeight: 600 }}>Agendar</span>
-        </div>
-      </button>
+    <div
+      style={{
+        position: "relative",
+        borderRadius: 18,
+        marginBottom: 12,
+        overflow: "hidden",
+      }}
+    >
+      {/* CAMADA INFERIOR — caixa de reagendamento */}
       <div
         style={{
-          transform: open ? "translateX(-80px)" : "translateX(0)",
-          transition: "transform 0.25s ease",
+          position: "absolute",
+          inset: 0,
+          borderRadius: 18,
+          background: isLight
+            ? "linear-gradient(135deg, #b87800 0%, #e6a800 100%)"
+            : "linear-gradient(135deg, #FFC000 0%, #FFD700 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          pointerEvents: "none",
         }}
-        onClick={(e) => {
-          if (open) {
-            e.preventDefault();
-            e.stopPropagation();
-            setOpen(false);
-          }
+      >
+        <Calendar size={28} color="#FFFFFF" />
+        <span
+          style={{
+            color: "#FFFFFF",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+          }}
+        >
+          REAGENDAR
+        </span>
+      </div>
+
+      {/* CAMADA SUPERIOR — card de visita */}
+      <div
+        ref={cardRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClickCapture={handleClickCapture}
+        style={{
+          position: "relative",
+          transform: `translateX(${offsetX}px)`,
+          transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          touchAction: "pan-y",
         }}
       >
         <Link
           to="/visita/$id"
           params={{ id: visita.id }}
-          style={{ textDecoration: "none", color: "inherit", display: "block", pointerEvents: open ? "none" : "auto" }}
+          style={{ textDecoration: "none", color: "inherit", display: "block" }}
         >
           <VisitaCard visita={visita} />
         </Link>
@@ -821,6 +882,7 @@ function SwipeableVisita({ visita }: { visita: any }) {
     </div>
   );
 }
+
 
 function Section({ items }: { items: any[] }) {
   return (
