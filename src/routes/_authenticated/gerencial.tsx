@@ -272,7 +272,7 @@ function GerencialPage() {
             return (
               <div
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
                 style={{
                   background: cardBg,
                   backdropFilter: isLight ? "none" : "blur(16px)",
