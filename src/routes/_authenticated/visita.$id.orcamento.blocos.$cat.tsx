@@ -156,9 +156,39 @@ function BlocosWizardPage() {
   // ── Estado do wizard ────────────────────────────────────────────────────
   const [wizard, setWizard] = useState<WizardState | null>(null);
 
+  // ── Estado de fotos (tela de resumo) ────────────────────────────────────
+  const [fotos, setFotos] = useState<{ localUrl: string; file: File }[]>([]);
+  const [showOpcoes, setShowOpcoes] = useState(false);
+  const inputGaleriaRef = useRef<HTMLInputElement>(null);
+  const inputCameraRef = useRef<HTMLInputElement>(null);
+
+  function handleArquivos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const novas = files.map((file) => ({ file, localUrl: URL.createObjectURL(file) }));
+    setFotos((prev) => [...prev, ...novas]);
+    setShowOpcoes(false);
+    e.target.value = "";
+  }
+  function removerFoto(index: number) {
+    setFotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
   // ── Salvar bloco ────────────────────────────────────────────────────────
   const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
+      // Upload das fotos
+      const fotosUrls: string[] = [];
+      for (const foto of fotos) {
+        const ext = foto.file.name.split(".").pop() || "jpg";
+        const path = `${visitaId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("blocos-fotos")
+          .upload(path, foto.file, { contentType: foto.file.type });
+        if (!uploadError) {
+          fotosUrls.push(path);
+        }
+      }
+
       const { error } = await supabase.from("visita_blocos" as any).insert({
         visita_id: visitaId,
         codigo_bloco: gerarCodigoBloco(config),
@@ -188,6 +218,7 @@ function BlocosWizardPage() {
         hh_padrao: 10,
         quantidade: 1,
         ordem: blocosAdicionados.length,
+        fotos_urls: fotosUrls,
       });
       if (error) throw error;
     },
@@ -195,6 +226,7 @@ function BlocosWizardPage() {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
       toast.success("Bloco adicionado");
+      setFotos([]);
       setWizard(null);
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar bloco"),
