@@ -186,12 +186,49 @@ function VisitaPendentePage() {
         </div>
         <p style={{ color: c.text, fontSize: 14, margin: 0, marginBottom: 12 }}>{endereco || "—"}</p>
         {endereco && (
-          <iframe
-            title="Mapa do local"
-            src={`https://maps.google.com/maps?q=${encodeURIComponent(endereco)}&output=embed`}
-            style={{ width: "100%", height: 180, borderRadius: 12, border: "none" }}
-            loading="lazy"
-          />
+          <>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(endereco);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "8px 14px", borderRadius: 10, flex: 1,
+                  background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.07)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+                  color: c.text, fontSize: 13, fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                <Copy size={14} />
+                {copied ? "Copiado!" : "Copiar endereço"}
+              </button>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(endereco)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "8px 14px", borderRadius: 10, flex: 1,
+                  background: isLight ? "rgba(37,99,235,0.08)" : "rgba(96,165,250,0.10)",
+                  border: isLight ? "1px solid rgba(37,99,235,0.18)" : "1px solid rgba(96,165,250,0.22)",
+                  color: isLight ? "#1d4ed8" : "#93c5fd",
+                  fontSize: 13, fontWeight: 500, textDecoration: "none", cursor: "pointer",
+                }}
+              >
+                <Map size={14} />
+                Abrir Maps
+              </a>
+            </div>
+            <iframe
+              title="Mapa do local"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(endereco)}&output=embed`}
+              style={{ width: "100%", height: 180, borderRadius: 12, border: "none" }}
+              loading="lazy"
+            />
+          </>
         )}
       </div>
 
@@ -210,21 +247,48 @@ function VisitaPendentePage() {
         </div>
       )}
 
-      {/* Sindico */}
-      {visita?.nome_sindico && (
-        <div style={card}>
-          <span style={label}>SÍNDICO</span>
-          <p style={{ color: c.text, fontSize: 14, margin: 0 }}>{visita.nome_sindico}</p>
-        </div>
-      )}
+      {/* Sindico + Zelador 50/50 */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {(["sindico", "zelador"] as const).map((kind) => {
+          const nome = kind === "sindico" ? visita?.nome_sindico : visita?.nome_zelador;
+          const tel = kind === "sindico" ? visita?.telefone_sindico : visita?.telefone_zelador;
+          return (
+            <div
+              key={kind}
+              style={{
+                background: c.bg, border: c.border, borderRadius: 16,
+                padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8,
+                boxShadow: c.shadow,
+              }}
+            >
+              <span style={{ ...label, marginBottom: 0 }}>{kind === "sindico" ? "SÍNDICO" : "ZELADOR(A)"}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: c.text, lineHeight: 1.3 }}>
+                {nome || <span style={{ color: c.muted, fontWeight: 400 }}>Não informado</span>}
+              </span>
+              {tel && (
+                <a
+                  href={`https://wa.me/55${String(tel).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    padding: "6px 10px", borderRadius: 8,
+                    background: isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)",
+                    border: isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)",
+                    color: isLight ? "#15803d" : "#4ade80",
+                    fontSize: 12, fontWeight: 600, textDecoration: "none", marginTop: 2,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <MessageCircle size={13} />
+                  WhatsApp
+                </a>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Zelador */}
-      {visita?.nome_zelador && (
-        <div style={card}>
-          <span style={label}>ZELADOR(A)</span>
-          <p style={{ color: c.text, fontSize: 14, margin: 0 }}>{visita.nome_zelador}</p>
-        </div>
-      )}
 
       {/* Técnico */}
       {tecnico?.nome && (
