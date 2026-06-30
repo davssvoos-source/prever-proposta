@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X } from "lucide-react";
+import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
+import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/perfil")({
@@ -20,6 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
 function PerfilPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [novaSenha, setNovaSenha] = useState("");
@@ -361,6 +363,86 @@ function PerfilPage() {
           </div>
         )}
       </div>
+
+      {/* Toggle de tema */}
+      <button
+        onClick={toggleTheme}
+        style={{
+          ...CARD,
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+        aria-label="Alternar tema"
+      >
+        <div
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            background: "rgba(255,192,0,0.10)",
+            border: "1px solid rgba(255,192,0,0.25)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {isLight ? <Sun size={20} color="#FFC000" /> : <Moon size={20} color="#FFC000" />}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 600,
+              fontSize: 14,
+              color: "var(--text-primary, #fff)",
+            }}
+          >
+            {isLight ? "Modo Claro" : "Modo Escuro"}
+          </div>
+          <div
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: "var(--text-secondary, rgba(255,255,255,0.5))",
+              marginTop: 2,
+            }}
+          >
+            {isLight ? "Toque para ativar o modo escuro" : "Toque para ativar o modo claro"}
+          </div>
+        </div>
+        <div
+          style={{
+            width: 44,
+            height: 26,
+            borderRadius: 999,
+            background: isLight ? "#FFC000" : "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,192,0,0.30)",
+            position: "relative",
+            flexShrink: 0,
+            transition: "background 0.3s ease",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 2,
+              left: isLight ? 20 : 2,
+              width: 20,
+              height: 20,
+              borderRadius: "50%",
+              background: "#fff",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+              transition: "left 0.3s ease",
+            }}
+          />
+        </div>
+      </button>
 
       {/* Seção 2 - Estatísticas */}
       <div style={CARD}>
