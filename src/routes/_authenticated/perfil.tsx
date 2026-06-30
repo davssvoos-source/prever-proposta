@@ -745,12 +745,17 @@ function PerfilPage() {
                   if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
                 }}
                 style={{
-                  background: n.lida ? "transparent" : "rgba(255,192,0,0.05)",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  background: n.lida
+                    ? (isLight ? "#ffffff" : "transparent")
+                    : (isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.05)"),
+                  border: isLight
+                    ? (n.lida ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(180,120,0,0.14)")
+                    : "1px solid rgba(255,255,255,0.05)",
                   borderRadius: 10,
                   padding: "10px 12px",
                   cursor: n.visita_id ? "pointer" : "default",
                   textAlign: "left",
+                  boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
                 }}
               >
                 <div
@@ -758,7 +763,7 @@ function PerfilPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: n.lida ? 400 : 500,
                     fontSize: 12,
-                    color: "#fff",
+                    color: isLight ? "#0a0b0e" : "#FFFFFF",
                   }}
                 >
                   {n.titulo}
@@ -768,7 +773,7 @@ function PerfilPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 10,
-                    color: "rgba(255,192,0,0.55)",
+                    color: isLight ? "#8a909e" : "rgba(255,255,255,0.40)",
                     marginTop: 3,
                     letterSpacing: "0.06em",
                   }}
