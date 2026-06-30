@@ -671,7 +671,7 @@ function VisitaCard({ visita }: { visita: any }) {
           : "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
-        marginBottom: 12,
+        marginBottom: 0,
         boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
       }}
     >
