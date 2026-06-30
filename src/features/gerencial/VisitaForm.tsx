@@ -57,6 +57,9 @@ export type VisitaFormInitial = {
   tipo_local?: string | null;
   nome_sindico?: string | null;
   contato_sindico?: string | null;
+  telefone_sindico?: string | null;
+  nome_zelador?: string | null;
+  telefone_zelador?: string | null;
   servico_solicitado?: string | null;
   endereco?: string | null;
   latitude?: number | null;
@@ -66,6 +69,7 @@ export type VisitaFormInitial = {
   tecnico_id?: string | null;
   prioridade?: string | null;
 };
+
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
