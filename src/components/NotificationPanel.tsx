@@ -247,7 +247,7 @@ function NotifItem({
         transition: deletando
           ? "max-height 0.3s ease, opacity 0.25s ease"
           : "none",
-        borderBottom: deletando ? "none" : "1px solid rgba(255,255,255,0.05)",
+        borderBottom: deletando ? "none" : (isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.05)"),
       }}
     >
       {/* Fundo vermelho de delete */}
