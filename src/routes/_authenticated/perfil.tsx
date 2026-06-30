@@ -350,7 +350,7 @@ function PerfilPage() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: 22,
-            color: "#fff",
+            color: textPrimary,
             marginTop: 14,
           }}
         >
@@ -364,7 +364,7 @@ function PerfilPage() {
               fontSize: 11,
               letterSpacing: "0.16em",
               textTransform: "uppercase",
-              color: "#FFC000",
+              color: goldDark,
               marginTop: 4,
             }}
           >
@@ -376,7 +376,7 @@ function PerfilPage() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 12,
-            color: "rgba(255,255,255,0.5)",
+            color: textSecondary,
             marginTop: 4,
           }}
         >
@@ -395,7 +395,7 @@ function PerfilPage() {
               fontSize: 11,
               letterSpacing: "0.10em",
               textTransform: "uppercase",
-              color: "#FFC000",
+              color: goldDark,
             }}
           >
             {roleLabel}
@@ -745,12 +745,17 @@ function PerfilPage() {
                   if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
                 }}
                 style={{
-                  background: n.lida ? "transparent" : "rgba(255,192,0,0.05)",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  background: n.lida
+                    ? (isLight ? "#ffffff" : "transparent")
+                    : (isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.05)"),
+                  border: isLight
+                    ? (n.lida ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(180,120,0,0.14)")
+                    : "1px solid rgba(255,255,255,0.05)",
                   borderRadius: 10,
                   padding: "10px 12px",
                   cursor: n.visita_id ? "pointer" : "default",
                   textAlign: "left",
+                  boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
                 }}
               >
                 <div
@@ -758,7 +763,7 @@ function PerfilPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: n.lida ? 400 : 500,
                     fontSize: 12,
-                    color: "#fff",
+                    color: isLight ? "#0a0b0e" : "#FFFFFF",
                   }}
                 >
                   {n.titulo}
@@ -768,7 +773,7 @@ function PerfilPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 10,
-                    color: "rgba(255,192,0,0.55)",
+                    color: isLight ? "#8a909e" : "rgba(255,255,255,0.40)",
                     marginTop: 3,
                     letterSpacing: "0.06em",
                   }}
@@ -871,6 +876,7 @@ const eyeBtnStyle: CSSProperties = {
 };
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const { isLight } = useTheme();
   return (
     <div style={{ textAlign: "center", flex: 1 }}>
       <div
@@ -878,7 +884,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 700,
           fontSize: 28,
-          color: "#FFC000",
+          color: isLight ? "#b87800" : "#FFC000",
           lineHeight: 1.1,
         }}
       >
@@ -891,7 +897,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontSize: 11,
           letterSpacing: "0.10em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.55)",
+          color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
           marginTop: 4,
         }}
       >
@@ -914,13 +920,14 @@ function Divisor() {
 }
 
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  const { isLight } = useTheme();
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "space-between",
         padding: "8px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <span
@@ -928,7 +935,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
           fontSize: 12,
-          color: "rgba(255,255,255,0.4)",
+          color: isLight ? "#4a5060" : "rgba(255,255,255,0.60)",
         }}
       >
         {label}
@@ -938,7 +945,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 400,
           fontSize: 12,
-          color: highlight ? "#FFC000" : "#fff",
+          color: highlight ? (isLight ? "#b87800" : "#FFC000") : (isLight ? "#0a0b0e" : "#FFFFFF"),
         }}
       >
         {value}
