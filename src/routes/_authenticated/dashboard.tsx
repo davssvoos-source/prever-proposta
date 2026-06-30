@@ -753,19 +753,82 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
+function SwipeableVisita({ visita }: { visita: any }) {
+  const { isLight } = useTheme();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const handlers = useSwipeable({
+    onSwipedLeft: () => setOpen(true),
+    onSwipedRight: () => setOpen(false),
+    trackMouse: false,
+    delta: 40,
+  });
+
+  const goAgendar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate({ to: "/visita/$id/reagendar", params: { id: visita.id } });
+  };
+
+  return (
+    <div {...handlers} style={{ position: "relative", overflow: "hidden", borderRadius: 18, marginBottom: 12 }}>
+      <button
+        onClick={goAgendar}
+        aria-label="Agendar"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 12,
+          width: 80,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "none",
+          cursor: "pointer",
+          background: isLight
+            ? "linear-gradient(135deg, #b87800, #e6a800)"
+            : "linear-gradient(135deg, #FFC000, #FFD700)",
+          borderRadius: "0 18px 18px 0",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <Calendar size={20} color="#FFFFFF" />
+          <span style={{ color: "#FFFFFF", fontSize: 10, fontWeight: 600 }}>Agendar</span>
+        </div>
+      </button>
+      <div
+        style={{
+          transform: open ? "translateX(-80px)" : "translateX(0)",
+          transition: "transform 0.25s ease",
+        }}
+        onClick={(e) => {
+          if (open) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(false);
+          }
+        }}
+      >
+        <Link
+          to="/visita/$id"
+          params={{ id: visita.id }}
+          style={{ textDecoration: "none", color: "inherit", display: "block", pointerEvents: open ? "none" : "auto" }}
+        >
+          <VisitaCard visita={visita} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function Section({ items }: { items: any[] }) {
   return (
     <section>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>
-            <Link
-              to="/visita/$id"
-              params={{ id: v.id }}
-              style={{ textDecoration: "none", color: "inherit", display: "block" }}
-            >
-              <VisitaCard visita={v} />
-            </Link>
+            <SwipeableVisita visita={v} />
           </li>
         ))}
       </ul>
