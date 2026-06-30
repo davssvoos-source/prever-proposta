@@ -40,12 +40,31 @@ const SERVICOS = [
   { id: "automacao_portoes", label: "Automação de Portões", emoji: "🚪" },
 ];
 
-const TIPOS_LOCAL = [
-  { id: "condominio_vertical", label: "Cond. Vertical", emoji: "🏢" },
-  { id: "condominio_horizontal", label: "Cond. Horizontal", emoji: "🏘️" },
-  { id: "empresa", label: "Empresa", emoji: "🏭" },
-  { id: "residencia", label: "Residência", emoji: "🏠" },
+const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { id: "condominio_vertical", label: "Cond. Vertical", Icon: Building2 },
+  { id: "condominio_horizontal", label: "Cond. Horizontal", Icon: Home },
+  { id: "empresa", label: "Empresa", Icon: Factory },
+  { id: "residencia", label: "Residência", Icon: (props) => <Home {...props} strokeWidth={1.5} /> },
 ];
+
+const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = {
+  portaria_remota: Building2,
+  monitoramento_alarmes: Eye,
+  implantacao_controle_acesso: Lock,
+  implantacao_cftv: CameraIcon,
+  implantacao_alarmes: Bell,
+  manutencao_alarmes: Wrench,
+  manutencao_controle_acesso: Settings,
+  manutencao_cftv: Video,
+  portaria_virtual_24h: Shield,
+  cftv_cameras: CameraIcon,
+  controle_acesso: Lock,
+  interfone_ip: Phone,
+  alarme_sensores: Bell,
+  cerca_eletrica: Zap,
+  monitoramento_remoto: Satellite,
+  automacao_portoes: DoorOpen,
+};
 
 const PRIORIDADES = [
   { id: "baixa", label: "Baixa", color: "#9CA3AF" },
