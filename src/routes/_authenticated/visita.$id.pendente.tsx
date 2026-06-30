@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Calendar, User, Phone, Mail, Edit2, Wrench } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, Phone, Mail, Edit2, Wrench, Copy, Map, MessageCircle, Play } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/visita/$id/pendente")({
   component: VisitaPendentePage,
 });
+
 
 function VisitaPendentePage() {
   const { id } = Route.useParams();
