@@ -78,6 +78,16 @@ function AuthenticatedLayout() {
     );
   }
 
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled((window.scrollY || document.documentElement.scrollTop) > 10);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const iniciais = perfil?.nome
     ? perfil.nome
         .split(" ")
