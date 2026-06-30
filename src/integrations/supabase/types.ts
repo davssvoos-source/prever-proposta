@@ -696,6 +696,8 @@ export type Database = {
           data_hora_fim: string | null
           data_hora_inicio: string | null
           descricao_pedido: string | null
+          email_sindico: string | null
+          email_zelador: string | null
           endereco: string
           equipamentos_vistos: string | null
           foto_fachada_url: string | null
@@ -735,6 +737,8 @@ export type Database = {
           data_hora_fim?: string | null
           data_hora_inicio?: string | null
           descricao_pedido?: string | null
+          email_sindico?: string | null
+          email_zelador?: string | null
           endereco: string
           equipamentos_vistos?: string | null
           foto_fachada_url?: string | null
@@ -774,6 +778,8 @@ export type Database = {
           data_hora_fim?: string | null
           data_hora_inicio?: string | null
           descricao_pedido?: string | null
+          email_sindico?: string | null
+          email_zelador?: string | null
           endereco?: string
           equipamentos_vistos?: string | null
           foto_fachada_url?: string | null
