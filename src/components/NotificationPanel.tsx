@@ -197,48 +197,45 @@ function NotifItem({
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const DELETE_THRESHOLD = 100;
-  const MAX_TRANSLATE = 200;
-  const [translateX, setTranslateX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const LIMITE_NOT = 260;
+  const THRESHOLD_NOT = 120;
+  const [swipeX, setSwipeX] = useState(0);
+  const [deletando, setDeletando] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const startXRef = useRef(0);
-  const translateRef = useRef(0);
   const movedRef = useRef(false);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
+  const onPointerDown = (e: React.PointerEvent) => {
+    setDragging(true);
     movedRef.current = false;
     startXRef.current = e.clientX;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
     const delta = startXRef.current - e.clientX;
     if (Math.abs(delta) > 4) movedRef.current = true;
     if (delta > 0) {
-      const next = -Math.min(delta, MAX_TRANSLATE);
-      translateRef.current = next;
-      setTranslateX(next);
+      setSwipeX(Math.min(delta, LIMITE_NOT));
     } else {
-      translateRef.current = 0;
-      setTranslateX(0);
+      setSwipeX(0);
     }
   };
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    if (Math.abs(translateRef.current) >= DELETE_THRESHOLD) {
-      setTranslateX(-MAX_TRANSLATE);
-      translateRef.current = -MAX_TRANSLATE;
-      setTimeout(() => onDelete(), 180);
+  const onPointerUp = () => {
+    setDragging(false);
+    if (swipeX >= THRESHOLD_NOT) {
+      setSwipeX(LIMITE_NOT);
+      setTimeout(() => {
+        setDeletando(true);
+        setTimeout(() => onDelete(), 300);
+      }, 150);
     } else {
-      translateRef.current = 0;
-      setTranslateX(0);
+      setSwipeX(0);
     }
   };
-  const handlePointerCancel = () => {
-    setIsDragging(false);
-    translateRef.current = 0;
-    setTranslateX(0);
+  const onPointerCancel = () => {
+    setDragging(false);
+    setSwipeX(0);
   };
 
   const handleClick = () => {
@@ -246,31 +243,45 @@ function NotifItem({
     onClick();
   };
 
-  const showDeleteBackground = Math.abs(translateX) > 10;
-
   return (
-    <div style={{ position: "relative", overflow: "hidden", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-      {showDeleteBackground && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "#EF4444",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            paddingRight: 20,
-          }}
-        >
-          <Trash2 size={22} color="#fff" />
+    <div
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        maxHeight: deletando ? 0 : 200,
+        opacity: deletando ? 0 : 1,
+        marginBottom: 0,
+        transition: deletando
+          ? "max-height 0.3s ease, opacity 0.25s ease"
+          : "none",
+        borderBottom: deletando ? "none" : "1px solid rgba(255,255,255,0.05)",
+      }}
+    >
+      {/* Fundo vermelho de delete */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(239, 68, 68, 0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 20,
+          opacity: Math.min(swipeX / THRESHOLD_NOT, 1),
+          pointerEvents: "none",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <Trash2 size={18} color="#EF4444" />
+          <span style={{ color: "#EF4444", fontSize: 10, fontWeight: 700 }}>REMOVER</span>
         </div>
-      )}
+      </div>
       <button
         onClick={handleClick}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         style={{
           width: "100%",
           textAlign: "left",
@@ -279,8 +290,11 @@ function NotifItem({
           border: "none",
           cursor: "pointer",
           display: "block",
-          transform: `translateX(${translateX}px)`,
-          transition: isDragging ? "none" : "transform 0.2s ease-out",
+          transform: `translateX(-${swipeX}px)`,
+          transition: dragging
+            ? "none"
+            : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          willChange: "transform",
           position: "relative",
           zIndex: 1,
           touchAction: "pan-y",
