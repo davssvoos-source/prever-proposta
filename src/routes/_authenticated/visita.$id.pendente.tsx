@@ -20,6 +20,9 @@ function VisitaPendentePage() {
   const [editingDate, setEditingDate] = useState(false);
   const [draftDate, setDraftDate] = useState("");
   const [draftTime, setDraftTime] = useState("09:00");
+  const [copied, setCopied] = useState(false);
+  const [iniciando, setIniciando] = useState(false);
+
 
   const { data: visita } = useQuery({
     queryKey: ["visita_pendente", id],
