@@ -197,7 +197,6 @@ function NovaVisitaPage() {
     nomeSindico.trim() !== "" &&
     contato.trim() !== "" &&
     servicosPropostos.length > 0 &&
-    servicosPropostos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = true;
 
