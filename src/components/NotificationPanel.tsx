@@ -229,11 +229,6 @@ function NotifItem({
     onClick();
   };
 
-  const handleClick = () => {
-    if (movedRef.current) return;
-    onClick();
-  };
-
   return (
     <div
       style={{
