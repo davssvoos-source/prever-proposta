@@ -447,10 +447,20 @@ function BlocosWizardPage() {
         break;
     }
 
-    const crossingBarreira =
-      (wizard.step.startsWith("b1") && (w.step === "b2_tipo" || w.step === "resumo")) ||
+    const crossingB1ToB2 = wizard.step.startsWith("b1") && w.step === "b2_tipo";
+    const crossingToResumo =
+      (wizard.step.startsWith("b1") && w.step === "resumo") ||
       (wizard.step.startsWith("b2") && w.step === "resumo");
-    if (crossingBarreira) {
+
+    if (crossingB1ToB2) {
+      setB1Collapsed(true);
+      setTimeout(() => {
+        setWizard(w);
+        setTimeout(() => {
+          b2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }, 300);
+    } else if (crossingToResumo) {
       setTimeout(() => setWizard(w), 400);
     } else {
       setWizard(w);
