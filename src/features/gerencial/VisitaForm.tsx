@@ -32,6 +32,24 @@ import {
   whatsappLink,
 } from "./constants";
 import { geocode, useTecnicos, useVisitasGerencial } from "./data";
+import { useTheme } from "@/contexts/ThemeContext";
+
+const L = {
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  cardSolid: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderMd: "1px solid rgba(0,0,0,0.10)",
+  shadow: "0 1px 6px rgba(0,0,0,0.07)",
+  shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
+  text: "#0a0b0e",
+  textSub: "#4a5060",
+  textMuted: "#8a909e",
+  gold: "#b87800",
+  goldBg: "rgba(180,120,0,0.10)",
+  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  inputBg: "#f0f1f4",
+  inputBorder: "1px solid rgba(0,0,0,0.10)",
+};
 
 export type VisitaFormInitial = {
   id?: string;
@@ -64,6 +82,7 @@ function toDateTimeFields(iso?: string | null): { data: string; hora: string } {
 }
 
 export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
+  const { isLight } = useTheme();
   const editing = !!initial?.id;
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -122,7 +141,6 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
   const isPast = dataHoraISO ? new Date(dataHoraISO).getTime() < Date.now() : false;
 
-  // Agenda da semana do técnico selecionado
   const tecnicoAgendaSemana = useMemo(() => {
     if (!form.tecnico_id || !visitasAll) return [];
     const now = new Date();
@@ -227,7 +245,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
   return (
     <div className="space-y-5">
-      <Stepper step={step} />
+      <Stepper step={step} isLight={isLight} />
 
       {step === 1 && (
         <Card className="p-5 space-y-5">
@@ -252,17 +270,19 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     onClick={() => set("tipo_local", t)}
                     className="flex flex-col items-center justify-center gap-2 rounded-xl p-4 transition-all"
                     style={{
-                      background: active ? "rgba(255,192,0,0.10)" : "rgba(255,255,255,0.02)",
+                      background: active
+                        ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.10)"
+                        : isLight ? L.cardSolid : "rgba(255,255,255,0.02)",
                       border: active
-                        ? "1px solid rgba(255,192,0,0.6)"
-                        : "1px solid rgba(255,255,255,0.06)",
+                        ? isLight ? "2px solid #b87800" : "1px solid rgba(255,192,0,0.6)"
+                        : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.06)",
                       minHeight: 92,
                     }}
                   >
                     <span className="text-2xl">{TIPO_ICON[t]}</span>
                     <span
                       className="text-xs font-medium"
-                      style={{ color: active ? "#FFC000" : "#F5F5F5" }}
+                      style={{ color: active ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#F5F5F5") }}
                     >
                       {TIPO_LABEL[t]}
                     </span>
@@ -314,11 +334,13 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     onClick={() => set("servico_solicitado", s)}
                     className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all"
                     style={{
-                      background: active ? "rgba(255,192,0,0.15)" : "rgba(255,255,255,0.04)",
+                      background: active
+                        ? isLight ? L.goldBg : "rgba(255,192,0,0.15)"
+                        : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
                       border: active
-                        ? "1px solid rgba(255,192,0,0.7)"
-                        : "1px solid rgba(255,255,255,0.08)",
-                      color: active ? "#FFC000" : "#F5F5F5",
+                        ? isLight ? L.goldBorder : "1px solid rgba(255,192,0,0.7)"
+                        : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
+                      color: active ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#F5F5F5"),
                     }}
                   >
                     <span>{SERVICO_ICON[s]}</span>
@@ -341,7 +363,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               <p className="mt-1 text-xs text-muted-foreground">Localizando endereço…</p>
             )}
             {coords && (
-              <div className="mt-2 overflow-hidden rounded-lg border border-[rgba(255,192,0,0.2)]">
+              <div
+                className="mt-2 overflow-hidden rounded-lg"
+                style={{ border: isLight ? L.border : "1px solid rgba(255,192,0,0.2)" }}
+              >
                 <iframe
                   title="Mini mapa"
                   className="h-40 w-full"
@@ -380,6 +405,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             <div className="mt-2 flex flex-wrap gap-2">
               <QuickDate
                 label="Amanhã manhã (09:00)"
+                isLight={isLight}
                 onClick={() => {
                   const d = new Date();
                   d.setDate(d.getDate() + 1);
@@ -389,6 +415,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
               <QuickDate
                 label="Amanhã tarde (14:00)"
+                isLight={isLight}
                 onClick={() => {
                   const d = new Date();
                   d.setDate(d.getDate() + 1);
@@ -398,6 +425,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
               <QuickDate
                 label="Próxima semana"
+                isLight={isLight}
                 onClick={() => {
                   const d = new Date();
                   d.setDate(d.getDate() + 7);
@@ -430,14 +458,31 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             </Select>
 
             {tecnicoSel && (
-              <div className="mt-3 rounded-lg border border-[rgba(255,192,0,0.12)] bg-black/30 p-3">
+              <div
+                className="mt-3 rounded-lg p-3"
+                style={{
+                  border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.12)",
+                  background: isLight ? L.cardSolid : "rgba(0,0,0,0.30)",
+                }}
+              >
                 <div className="mb-2 flex items-center gap-2">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="bg-[#FFC000] text-[10px] text-black">
+                    <AvatarFallback
+                      style={{
+                        background: isLight ? L.gold : "#FFC000",
+                        color: "#fff",
+                        fontSize: 10,
+                      }}
+                    >
                       {initials(tecnicoSel.nome ?? "?")}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="text-xs font-semibold">{tecnicoSel.nome}</div>
+                  <div
+                    className="text-xs font-semibold"
+                    style={{ color: isLight ? L.text : undefined }}
+                  >
+                    {tecnicoSel.nome}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     · {tecnicoAgendaSemana.length} agendadas
                   </div>
@@ -457,7 +502,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                           className="flex justify-between rounded px-2 py-1 text-[11px]"
                           style={{
                             background: isConflito ? "rgba(239,68,68,0.15)" : "transparent",
-                            color: isConflito ? "#fca5a5" : "#cbd5e1",
+                            color: isConflito ? "#fca5a5" : isLight ? L.textSub : "#cbd5e1",
                           }}
                         >
                           <span>
@@ -492,11 +537,13 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     onClick={() => set("prioridade", p)}
                     className="rounded-full px-4 py-1.5 text-xs font-medium transition-all"
                     style={{
-                      background: active ? PRIORIDADE_COLOR[p] : "rgba(255,255,255,0.04)",
+                      background: active
+                        ? PRIORIDADE_COLOR[p]
+                        : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
                       border: active
                         ? `1px solid ${PRIORIDADE_BORDER[p]}`
-                        : "1px solid rgba(255,255,255,0.08)",
-                      color: active ? "#fff" : "#cbd5e1",
+                        : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
+                      color: active ? "#fff" : isLight ? L.textSub : "#cbd5e1",
                     }}
                   >
                     {PRIORIDADE_LABEL[p]}
@@ -508,13 +555,30 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
           {/* Resumo */}
           <Card className="p-4 space-y-2 text-sm">
-            <div className="text-xs uppercase tracking-wide text-[#FFC000]">Resumo</div>
-            <div><strong>{form.nome_predio}</strong> · {TIPO_LABEL[form.tipo_local]}</div>
-            <div>{SERVICO_ICON[form.servico_solicitado]} {SERVICO_LABEL[form.servico_solicitado]}</div>
+            <div
+              className="text-xs uppercase tracking-wide"
+              style={{ color: isLight ? L.gold : "#FFC000" }}
+            >
+              Resumo
+            </div>
+            <div style={{ color: isLight ? L.text : undefined }}>
+              <strong>{form.nome_predio}</strong> · {TIPO_LABEL[form.tipo_local]}
+            </div>
+            <div style={{ color: isLight ? L.text : undefined }}>
+              {SERVICO_ICON[form.servico_solicitado]} {SERVICO_LABEL[form.servico_solicitado]}
+            </div>
             <div className="text-muted-foreground">{form.endereco}</div>
-            <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}</div>
+            <div
+              className="flex items-center gap-1.5"
+              style={{ color: isLight ? L.textSub : undefined }}
+            >
+              <Phone className="h-3.5 w-3.5" /> {form.nome_sindico} · {form.contato_sindico}
+            </div>
             {dataHoraISO && (
-              <div className="flex items-center gap-1.5">
+              <div
+                className="flex items-center gap-1.5"
+                style={{ color: isLight ? L.textSub : undefined }}
+              >
                 <Calendar className="h-3.5 w-3.5" />
                 {new Date(dataHoraISO).toLocaleString("pt-BR", {
                   weekday: "long",
@@ -525,8 +589,18 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                 })}
               </div>
             )}
-            <div className="flex items-center gap-1.5"><HardHat className="h-3.5 w-3.5" /> {tecnicoSel?.nome ?? "Sem técnico definido"}</div>
-            <div className="flex items-center gap-1.5"><Flag className="h-3.5 w-3.5" /> Prioridade: {PRIORIDADE_LABEL[form.prioridade]}</div>
+            <div
+              className="flex items-center gap-1.5"
+              style={{ color: isLight ? L.textSub : undefined }}
+            >
+              <HardHat className="h-3.5 w-3.5" /> {tecnicoSel?.nome ?? "Sem técnico definido"}
+            </div>
+            <div
+              className="flex items-center gap-1.5"
+              style={{ color: isLight ? L.textSub : undefined }}
+            >
+              <Flag className="h-3.5 w-3.5" /> Prioridade: {PRIORIDADE_LABEL[form.prioridade]}
+            </div>
           </Card>
 
           <div className="flex justify-between">
@@ -553,33 +627,41 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
   );
 }
 
-function QuickDate({ label, onClick }: { label: string; onClick: () => void }) {
+function QuickDate({ label, onClick, isLight }: { label: string; onClick: () => void; isLight: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-[rgba(255,192,0,0.25)] bg-[rgba(255,192,0,0.06)] px-3 py-1 text-[11px] font-medium text-[#FFC000] transition hover:bg-[rgba(255,192,0,0.12)]"
+      className="rounded-full px-3 py-1 text-[11px] font-medium transition"
+      style={{
+        background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.06)",
+        border: isLight ? "1px solid rgba(180,120,0,0.22)" : "1px solid rgba(255,192,0,0.25)",
+        color: isLight ? "#b87800" : "#FFC000",
+      }}
     >
       {label}
     </button>
   );
 }
 
-function Stepper({ step }: { step: 1 | 2 }) {
+function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
   const Item = ({ n, label, active }: { n: number; label: string; active: boolean }) => (
     <div className="flex items-center gap-2">
       <div
         className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
         style={{
-          background: active ? "#FFC000" : "rgba(255,255,255,0.08)",
-          color: active ? "#0A0A0A" : "#9ca3af",
+          background: active
+            ? isLight ? "#b87800" : "#FFC000"
+            : isLight ? "#f0f1f4" : "rgba(255,255,255,0.08)",
+          color: active ? "#ffffff" : isLight ? "#4a5060" : "#9ca3af",
+          border: active ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "none",
         }}
       >
         {n}
       </div>
       <span
         className="text-xs font-medium"
-        style={{ color: active ? "#FFC000" : "#9ca3af" }}
+        style={{ color: active ? (isLight ? "#b87800" : "#FFC000") : (isLight ? "#4a5060" : "#9ca3af") }}
       >
         {label}
       </span>
@@ -591,8 +673,9 @@ function Stepper({ step }: { step: 1 | 2 }) {
       <div
         className="h-px flex-1"
         style={{
-          background:
-            step >= 2 ? "linear-gradient(90deg,#FFC000,#FFC000)" : "rgba(255,255,255,0.08)",
+          background: step >= 2
+            ? isLight ? "#b87800" : "linear-gradient(90deg,#FFC000,#FFC000)"
+            : isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
         }}
       />
       <Item n={2} label="Agendamento" active={step >= 2} />
