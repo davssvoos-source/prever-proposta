@@ -565,8 +565,8 @@ function VisitaDetail() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
           style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
             height: 40,
@@ -575,7 +575,7 @@ function VisitaDetail() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: "#fff",
+            color: TXT_PRIMARY,
           }}
         >
           <ArrowLeft size={18} />
@@ -586,7 +586,7 @@ function VisitaDetail() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 500,
               fontSize: 16,
-              color: "#fff",
+              color: TXT_PRIMARY,
             }}
           >
             Visita Técnica
@@ -597,7 +597,7 @@ function VisitaDetail() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.55)",
+                color: TXT_SECONDARY,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
