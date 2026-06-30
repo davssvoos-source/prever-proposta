@@ -271,22 +271,25 @@ function Dashboard() {
         <div
           style={{
             position: 'absolute',
-            bottom: 16,
-            left: 16,
-            right: 16,
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            padding: '0 20px 28px 20px',
           }}
         >
           <h2
             style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 600,
-              fontSize: 18,
-              color: isLight ? '#0a0b0e' : '#FFFFFF',
+              fontWeight: 700,
+              fontSize: 26,
+              lineHeight: 1.25,
+              color: '#FFFFFF',
               margin: 0,
-              textShadow: isLight ? 'none' : '0 2px 12px rgba(0,0,0,0.5)',
+              textShadow: '0 1px 8px rgba(0,0,0,0.35)',
             }}
           >
-            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje{perfil?.nome ? `, ${perfil.nome.split(' ')[0]}` : ''}
+            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
           </h2>
         </div>
       </div>
