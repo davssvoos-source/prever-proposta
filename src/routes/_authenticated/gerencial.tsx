@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { visitaRouteFor } from "@/lib/visita-route";
+
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
   beforeLoad: async () => {
