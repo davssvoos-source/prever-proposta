@@ -946,3 +946,24 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
     </div>
   );
 }
+
+function badgeStyle(status: string, isLight: boolean): CSSProperties {
+  const map: Record<string, { bg: string; bgDark: string; color: string; colorDark: string }> = {
+    aprovada:     { bg: "rgba(22,163,74,0.10)",  bgDark: "rgba(34,197,94,0.12)",  color: "#15803d", colorDark: "#4ade80" },
+    concluida:    { bg: "rgba(37,99,235,0.10)",  bgDark: "rgba(96,165,250,0.12)", color: "#1d4ed8", colorDark: "#93c5fd" },
+    em_andamento: { bg: "rgba(180,120,0,0.10)",  bgDark: "rgba(255,192,0,0.12)",  color: "#b87800", colorDark: "#FFC000" },
+    reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#f87171" },
+    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "rgba(255,255,255,0.08)",color: "#4a5060", colorDark: "#9CA3AF" },
+  };
+  const s = map[status] ?? map.pendente;
+  return {
+    display: "inline-block",
+    padding: "2px 9px",
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: "0.04em",
+    textTransform: "capitalize",
+    background: isLight ? s.bg : s.bgDark,
+    color: isLight ? s.color : s.colorDark,
+  };
