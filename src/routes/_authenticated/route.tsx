@@ -169,7 +169,8 @@ function AuthenticatedLayout() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 13,
-                  color: isLight ? "#0a0b0e" : "#fff",
+                  color: scrolled ? (isLight ? "#0a0b0e" : "#fff") : "#FFFFFF",
+                  textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                   lineHeight: 1.2,
                 }}
               >
