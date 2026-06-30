@@ -212,9 +212,9 @@ function CategoriasPage() {
   }, [visita, contagemBlocos, id, queryClient]);
 
   const CARD: React.CSSProperties = {
-    background: "rgba(8,8,12,0.22)",
-    backdropFilter: "blur(12px) saturate(130%)",
-    border: "1px solid rgba(255,192,0,0.10)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
     borderRadius: 18,
     padding: "20px 18px",
     display: "flex",
@@ -224,6 +224,7 @@ function CategoriasPage() {
     transition: "border 0.2s, background 0.2s, transform 0.15s",
     touchAction: "manipulation",
     position: "relative",
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
 
 
