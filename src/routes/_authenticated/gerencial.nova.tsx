@@ -807,7 +807,10 @@ function NovaVisitaPage() {
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
-              { label: "Síndico", value: nomeSindico },
+              { label: "Cliente", value: nomeCliente },
+              ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
+              ...(nomeZelador ? [{ label: "Zelador(a)", value: nomeZelador }] : []),
+
               { label: "Serviços", value: servicosPropostos.map((k) => SERVICOS_PROPOSTOS.find((s) => s.key === k)?.label).filter(Boolean).join(", ") },
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
