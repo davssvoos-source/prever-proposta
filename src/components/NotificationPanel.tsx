@@ -197,10 +197,12 @@ function NotifItem({
   n,
   onClick,
   onDelete,
+  isLight,
 }: {
   n: Notificacao;
   onClick: () => void;
   onDelete: () => void;
+  isLight: boolean;
 }) {
   const THRESHOLD_NOT = 110;
   const EXIT_PX = 320;
