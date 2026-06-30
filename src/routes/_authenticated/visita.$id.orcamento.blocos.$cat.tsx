@@ -271,9 +271,52 @@ function BlocosWizardPage() {
 
   // Scroll suave ao revelar nova pergunta
   const bottomRef = useRef<HTMLDivElement>(null);
+  const b2Ref = useRef<HTMLDivElement>(null);
+  const [b1Collapsed, setB1Collapsed] = useState(false);
   useEffect(() => {
     if (wizard) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [wizard?.step]);
+
+  // ── Edit step inline (toque em resposta confirmada) ─────────────────────
+  const B1_ORDER: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
+  const B2_ORDER: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+
+  function limparStep(step: WizardStep, w: WizardState) {
+    switch (step) {
+      case "b1_tipo":     w.b1.tipo     = undefined; break;
+      case "b1_entrada":  w.b1.entrada  = undefined; break;
+      case "b1_saida":    w.b1.saida    = undefined; break;
+      case "b1_material": w.b1.material = undefined; break;
+      case "b1_motor":    w.b1.motor    = undefined; break;
+      case "b1_abertura": w.b1.abertura = undefined; break;
+      case "b1_folhas":   w.b1.folhas   = undefined; break;
+      case "b2_tipo":     w.b2.tipo     = undefined; break;
+      case "b2_entrada":  w.b2.entrada  = undefined; break;
+      case "b2_saida":    w.b2.saida    = undefined; break;
+      case "b2_material": w.b2.material = undefined; break;
+      case "b2_motor":    w.b2.motor    = undefined; break;
+      case "b2_abertura": w.b2.abertura = undefined; break;
+      case "b2_folhas":   w.b2.folhas   = undefined; break;
+    }
+  }
+
+  function handleEditStep(step: WizardStep) {
+    if (!wizard) return;
+    const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
+    if (B1_ORDER.includes(step)) {
+      const idx = B1_ORDER.indexOf(step);
+      B1_ORDER.slice(idx + 1).forEach((s) => limparStep(s, w));
+      B2_ORDER.forEach((s) => limparStep(s, w));
+      setB1Collapsed(false);
+      w.step = step;
+    } else if (B2_ORDER.includes(step)) {
+      const idx = B2_ORDER.indexOf(step);
+      B2_ORDER.slice(idx + 1).forEach((s) => limparStep(s, w));
+      w.step = step;
+    }
+    setWizard(w);
+  }
+
 
 
   // ── Selecionar opção ────────────────────────────────────────────────────
