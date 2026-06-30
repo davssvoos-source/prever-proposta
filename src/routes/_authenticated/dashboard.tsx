@@ -6,6 +6,8 @@ import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, Cale
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
+import { visitaRouteFor } from "@/lib/visita-route";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
