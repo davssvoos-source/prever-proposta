@@ -95,27 +95,33 @@ function PreEnvioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visita?.foto_fachada_url]);
 
-  async function handleFotoBanner(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFotoBanner(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const localUrl = URL.createObjectURL(file);
-    setFotoBanner(localUrl);
+
+    // Preview imediato via FileReader
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFotoBanner(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload em background para o Supabase Storage
     const ext = file.name.split(".").pop() || "jpg";
     const path = `fachadas/${visitaId}.${ext}`;
-    const { error: uploadError } = await supabase.storage
+    supabase.storage
       .from("blocos-fotos")
-      .upload(path, file, { upsert: true, contentType: file.type });
-    if (uploadError) {
-      toast.error("Falha ao enviar foto");
-      e.target.value = "";
-      return;
-    }
-    const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
-    setFotoBanner(data.publicUrl);
-    await supabase
-      .from("visitas_tecnicas")
-      .update({ foto_fachada_url: data.publicUrl } as any)
-      .eq("id", visitaId);
+      .upload(path, file, { upsert: true, contentType: file.type })
+      .then(({ error }) => {
+        if (!error) {
+          const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
+          supabase
+            .from("visitas_tecnicas")
+            .update({ foto_fachada_url: data.publicUrl })
+            .eq("id", visitaId);
+        }
+      });
+
     e.target.value = "";
   }
 
@@ -145,7 +151,11 @@ function PreEnvioPage() {
   const nomeLocal =
     visita?.nome_local ||
     visita?.nome_condominio ||
+    visita?.titulo ||
+    visita?.nome ||
     visita?.cliente?.nome ||
+    visita?.cliente?.nome_completo ||
+    visita?.cliente?.razao_social ||
     "—";
 
   const servicos: string[] = visita?.servicos_propostos || [];
@@ -160,72 +170,83 @@ function PreEnvioPage() {
         onChange={handleFotoBanner}
       />
 
-      {/* BANNER / HEADER */}
+      {/* ── BANNER ─────────────────────────────────────────────────────── */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         {fotoBanner ? (
+          /* Com foto */
           <div
             style={{
               position: "relative",
               width: "100%",
               height: "25vh",
               minHeight: 140,
-              maxHeight: 200,
+              maxHeight: 210,
+              overflow: "hidden",
             }}
           >
             <img
               src={fotoBanner}
               alt="Fachada"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
             />
+            {/* Overlay degradê */}
             <div
               style={{
                 position: "absolute",
                 inset: 0,
                 background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%)",
+                  "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 45%, rgba(0,0,0,0.70) 100%)",
+                pointerEvents: "none",
               }}
             />
+            {/* Botão voltar sobreposto */}
             <button
               onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
               }
               style={{
                 position: "absolute",
-                top: 16,
-                left: 16,
-                width: 36,
-                height: 36,
-                background: "rgba(0,0,0,0.5)",
+                top: 14,
+                left: 14,
+                width: 34,
+                height: 34,
+                background: "rgba(0,0,0,0.55)",
                 border: "none",
                 borderRadius: "50%",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backdropFilter: "blur(4px)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
               }}
             >
-              <ArrowLeft size={20} color="#FFFFFF" />
+              <ArrowLeft size={18} color="#FFFFFF" />
             </button>
+            {/* Nome do local na borda inferior */}
             <div
               style={{
                 position: "absolute",
                 bottom: 0,
                 left: 0,
                 right: 0,
-                padding: "10px 20px 14px",
+                padding: "12px 20px 16px",
                 textAlign: "center",
+                background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)",
               }}
             >
               <p
                 style={{
                   color: "#FFFFFF",
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: 800,
                   margin: 0,
-                  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
-                  letterSpacing: 0.3,
-                  fontFamily: "'Montserrat',sans-serif",
+                  textShadow: "0 2px 10px rgba(0,0,0,0.9)",
                 }}
               >
                 {nomeLocal}
@@ -233,46 +254,35 @@ function PreEnvioPage() {
             </div>
           </div>
         ) : (
+          /* Sem foto — header padrão */
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 14,
-              padding: "16px 20px",
+              padding: "16px 16px",
               borderBottom: "1px solid rgba(255,255,255,0.07)",
             }}
           >
             <button
               onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
               }
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 4,
-              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}
             >
               <ArrowLeft size={24} color="#FFFFFF" />
             </button>
-            <div>
-              <p
-                style={{
-                  color: "#9CA3AF",
-                  fontSize: 12,
-                  margin: 0,
-                  fontFamily: "'Montserrat',sans-serif",
-                }}
-              >
-                Orçamento
-              </p>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ color: "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
               <p
                 style={{
                   color: "#FFFFFF",
                   fontSize: 17,
                   fontWeight: 700,
                   margin: 0,
-                  fontFamily: "'Montserrat',sans-serif",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {nomeLocal}
@@ -286,7 +296,8 @@ function PreEnvioPage() {
       <div
         style={{
           flex: 1,
-          padding: "20px 16px 40px",
+          overflowY: "auto",
+          padding: fotoBanner ? "20px 16px 48px" : "16px 16px 48px",
           display: "flex",
           flexDirection: "column",
           gap: 14,
@@ -541,11 +552,11 @@ function SectionCard({
   return (
     <div
       style={{
-        background: "rgba(8,8,12,0.22)",
-        backdropFilter: "blur(12px) saturate(130%)",
-        border: "1px solid rgba(255,192,0,0.10)",
-        borderRadius: 18,
-        padding: "16px 16px 18px",
+        background: "rgba(255,255,255,0.03)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: 16,
+        padding: "16px",
+        marginBottom: 12,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
