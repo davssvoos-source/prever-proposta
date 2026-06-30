@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X } from "lucide-react";
+import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/StatusBadge";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
+import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/perfil")({
