@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Layers, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
@@ -84,6 +85,40 @@ function PreEnvioPage() {
     },
   });
 
+  const [fotoBanner, setFotoBanner] = useState<string | null>(null);
+  const fileBannerRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (visita?.foto_fachada_url && !fotoBanner) {
+      setFotoBanner(visita.foto_fachada_url);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visita?.foto_fachada_url]);
+
+  async function handleFotoBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setFotoBanner(localUrl);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `fachadas/${visitaId}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("blocos-fotos")
+      .upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) {
+      toast.error("Falha ao enviar foto");
+      e.target.value = "";
+      return;
+    }
+    const { data } = supabase.storage.from("blocos-fotos").getPublicUrl(path);
+    setFotoBanner(data.publicUrl);
+    await supabase
+      .from("visitas_tecnicas")
+      .update({ foto_fachada_url: data.publicUrl } as any)
+      .eq("id", visitaId);
+    e.target.value = "";
+  }
+
   const enviarMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -107,73 +142,215 @@ function PreEnvioPage() {
   const endereco =
     [visita?.endereco, visita?.complemento].filter(Boolean).join(" - ") || "—";
 
+  const nomeLocal =
+    visita?.nome_local ||
+    visita?.nome_condominio ||
+    visita?.cliente?.nome ||
+    "—";
+
   const servicos: string[] = visita?.servicos_propostos || [];
 
   return (
-    <div style={{ minHeight: "100vh", paddingBottom: 120 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 14px" }}>
-        <button
-          onClick={() =>
-            navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
-          }
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 12,
-            width: 40,
-            height: 40,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#fff",
-          }}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <input
+        ref={fileBannerRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFotoBanner}
+      />
+
+      {/* BANNER / HEADER */}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        {fotoBanner ? (
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 400,
-              fontSize: 18,
-              color: "#fff",
+              position: "relative",
+              width: "100%",
+              height: "25vh",
+              minHeight: 140,
+              maxHeight: 200,
             }}
           >
-            Orçamento
+            <img
+              src={fotoBanner}
+              alt="Fachada"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.65) 100%)",
+              }}
+            />
+            <button
+              onClick={() =>
+                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+              }
+              style={{
+                position: "absolute",
+                top: 16,
+                left: 16,
+                width: 36,
+                height: 36,
+                background: "rgba(0,0,0,0.5)",
+                border: "none",
+                borderRadius: "50%",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <ArrowLeft size={20} color="#FFFFFF" />
+            </button>
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "10px 20px 14px",
+                textAlign: "center",
+              }}
+            >
+              <p
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 20,
+                  fontWeight: 800,
+                  margin: 0,
+                  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+                  letterSpacing: 0.3,
+                  fontFamily: "'Montserrat',sans-serif",
+                }}
+              >
+                {nomeLocal}
+              </p>
+            </div>
           </div>
+        ) : (
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: "rgba(255,255,255,0.45)",
-              marginTop: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              padding: "16px 20px",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
             }}
           >
-            Revisão antes do envio
+            <button
+              onClick={() =>
+                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
+              }
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 4,
+              }}
+            >
+              <ArrowLeft size={24} color="#FFFFFF" />
+            </button>
+            <div>
+              <p
+                style={{
+                  color: "#9CA3AF",
+                  fontSize: 12,
+                  margin: 0,
+                  fontFamily: "'Montserrat',sans-serif",
+                }}
+              >
+                Orçamento
+              </p>
+              <p
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  margin: 0,
+                  fontFamily: "'Montserrat',sans-serif",
+                }}
+              >
+                {nomeLocal}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div style={{ padding: "0 14px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* CONTEÚDO SCROLLÁVEL */}
+      <div
+        style={{
+          flex: 1,
+          padding: "20px 16px 40px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
         <SectionCard icon={<MapPin size={16} color="#FFC000" />} titulo="LOCAL">
           <div style={{ color: "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
             {endereco}
           </div>
-          {visita?.cliente?.nome && (
-            <div
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: 8,
+              gap: 8,
+            }}
+          >
+            <p
               style={{
                 color: "rgba(255,255,255,0.55)",
                 fontSize: 12,
-                marginTop: 6,
+                margin: 0,
                 fontFamily: "'Montserrat',sans-serif",
               }}
             >
-              {visita.cliente.nome}
-            </div>
-          )}
+              {nomeLocal}
+            </p>
+            <button
+              onClick={() => fileBannerRef.current?.click()}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px 0",
+              }}
+            >
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  border: "1.5px solid #4B5563",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span style={{ color: "#9CA3AF", fontSize: 14, lineHeight: 1 }}>+</span>
+              </div>
+              <span
+                style={{
+                  color: "#9CA3AF",
+                  fontSize: 11,
+                  fontFamily: "'Montserrat',sans-serif",
+                }}
+              >
+                {fotoBanner ? "Trocar foto da fachada" : "Adicionar foto da fachada"}
+              </span>
+            </button>
+          </div>
         </SectionCard>
 
         <SectionCard
@@ -320,45 +497,33 @@ function PreEnvioPage() {
             </div>
           )}
         </SectionCard>
-      </div>
 
-      {/* Footer fixo */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: "14px 14px 22px",
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0))",
-          backdropFilter: "blur(10px)",
-          zIndex: 10,
-        }}
-      >
-        <button
-          onClick={() => enviarMutation.mutate()}
-          disabled={enviarMutation.isPending}
-          style={{
-            width: "100%",
-            padding: "18px 0",
-            background: enviarMutation.isPending ? "#166534" : "#16a34a",
-            border: "none",
-            borderRadius: 16,
-            color: "#FFFFFF",
-            fontSize: 16,
-            fontWeight: 800,
-            cursor: enviarMutation.isPending ? "not-allowed" : "pointer",
-            letterSpacing: 0.5,
-            fontFamily: "'Montserrat',sans-serif",
-            boxShadow: enviarMutation.isPending
-              ? "none"
-              : "0 0 24px rgba(34,197,94,0.35), 0 4px 16px rgba(34,197,94,0.2)",
-            transition: "box-shadow 0.2s, background 0.2s",
-          }}
-        >
-          {enviarMutation.isPending ? "ENVIANDO..." : "ENVIAR PARA APROVAÇÃO"}
-        </button>
+        {/* BOTÃO ENVIAR — ao final do scroll */}
+        <div style={{ padding: "24px 0 48px" }}>
+          <button
+            onClick={() => enviarMutation.mutate()}
+            disabled={enviarMutation.isPending}
+            style={{
+              width: "100%",
+              padding: "18px 0",
+              background: enviarMutation.isPending ? "#166534" : "#16a34a",
+              border: "none",
+              borderRadius: 16,
+              color: "#FFFFFF",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: enviarMutation.isPending ? "not-allowed" : "pointer",
+              letterSpacing: 0.5,
+              fontFamily: "'Montserrat',sans-serif",
+              boxShadow: enviarMutation.isPending
+                ? "none"
+                : "0 0 24px rgba(34,197,94,0.35), 0 4px 16px rgba(34,197,94,0.2)",
+              transition: "box-shadow 0.2s, background 0.2s",
+            }}
+          >
+            {enviarMutation.isPending ? "ENVIANDO..." : "ENVIAR PARA APROVAÇÃO"}
+          </button>
+        </div>
       </div>
     </div>
   );
