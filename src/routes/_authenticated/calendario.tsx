@@ -188,7 +188,7 @@ function CalendarioPage() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 500,
               fontSize: 10,
-              color: "rgba(255,255,255,0.4)",
+              color: textSecondary,
               letterSpacing: "0.08em",
               padding: "4px 0",
             }}>{d}</div>
@@ -217,9 +217,9 @@ function CalendarioPage() {
                   padding: "6px 2px",
                   borderRadius: 10,
                   border: hoje_ && !selecionado
-                    ? "1.5px solid rgba(255,192,0,0.55)"
+                    ? `1.5px solid ${isLight ? "rgba(180,120,0,0.55)" : "rgba(255,192,0,0.55)"}`
                     : "1.5px solid transparent",
-                  background: selecionado ? "#FFC000" : "transparent",
+                  background: selecionado ? goldDark : "transparent",
                   cursor: "pointer",
                   minHeight: 44,
                   transition: "background 0.15s",
@@ -229,7 +229,7 @@ function CalendarioPage() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: selecionado || hoje_ ? 600 : 400,
                   fontSize: 13,
-                  color: selecionado ? "#08090E" : "#fff",
+                  color: selecionado ? "#fff" : textPrimary,
                   lineHeight: 1,
                 }}>{dia}</span>
                 {temVisitas && (
@@ -239,7 +239,7 @@ function CalendarioPage() {
                         width: 4,
                         height: 4,
                         borderRadius: "50%",
-                        background: selecionado ? "#08090E" : (STATUS_CORES[v.status] ?? "#FFC000"),
+                        background: selecionado ? "#fff" : (STATUS_CORES[v.status] ?? goldDark),
                       }} />
                     ))}
                   </div>
