@@ -3,7 +3,6 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
@@ -42,11 +42,13 @@ function ServicoCard({
   icon,
   selected,
   onToggle,
+  isLight,
 }: {
   label: string;
   icon: string;
   selected: boolean;
   onToggle: () => void;
+  isLight: boolean;
 }) {
   const startX = useRef(0);
   const [dragX, setDragX] = useState(0);
@@ -74,13 +76,18 @@ function ServicoCard({
           dragX === 0
             ? "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border 0.2s"
             : "none",
-        background: selected ? "rgba(255,192,0,0.15)" : "rgba(8,8,12,0.35)",
-        border: selected ? "1px solid rgba(255,192,0,0.55)" : "1px solid rgba(255,255,255,0.07)",
+        background: selected
+          ? isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.15)"
+          : isLight ? "#ffffff" : "rgba(8,8,12,0.35)",
+        border: selected
+          ? isLight ? "1px solid rgba(180,120,0,0.40)" : "1px solid rgba(255,192,0,0.55)"
+          : isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)",
         borderRadius: 14,
         padding: "14px 8px",
         textAlign: "center" as const,
         cursor: "pointer",
-        backdropFilter: "blur(8px)",
+        backdropFilter: isLight ? undefined : "blur(8px)",
+        boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
         userSelect: "none" as const,
         touchAction: "none",
       }}
@@ -91,7 +98,9 @@ function ServicoCard({
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
           fontSize: 11,
-          color: selected ? "#FFC000" : "rgba(255,255,255,0.75)",
+          color: selected
+            ? isLight ? "#b87800" : "#FFC000"
+            : isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
           lineHeight: 1.25,
         }}
       >
@@ -105,6 +114,7 @@ function OrcamentoPasso1() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { isLight } = useTheme();
 
   const { data: orcamento } = useQuery({
     queryKey: ["orcamento", id],
@@ -184,20 +194,29 @@ function OrcamentoPasso1() {
     },
   });
 
-  const CARD: React.CSSProperties = {
-    background: "rgba(8,8,12,0.22)",
-    backdropFilter: "blur(12px) saturate(130%)",
-    border: "1px solid rgba(255,192,0,0.10)",
-    borderRadius: 18,
-    padding: "18px 16px",
-  };
+  const CARD: React.CSSProperties = isLight
+    ? {
+        background: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+        border: "1px solid rgba(0,0,0,0.07)",
+        borderRadius: 18,
+        padding: "18px 16px",
+        boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+      }
+    : {
+        background: "rgba(8,8,12,0.22)",
+        backdropFilter: "blur(12px) saturate(130%)",
+        border: "1px solid rgba(255,192,0,0.10)",
+        borderRadius: 18,
+        padding: "18px 16px",
+      };
+
   const LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
-    color: "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
     marginBottom: 10,
   };
 
@@ -208,8 +227,8 @@ function OrcamentoPasso1() {
         <button
           onClick={() => navigate({ to: "/visita/$id", params: { id } })}
           style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: isLight ? "#ffffff" : "rgba(255,255,255,0.06)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
             height: 40,
@@ -217,7 +236,8 @@ function OrcamentoPasso1() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: "#fff",
+            color: isLight ? "#0a0b0e" : "#fff",
+            boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
           }}
         >
           <ArrowLeft size={18} />
@@ -228,7 +248,7 @@ function OrcamentoPasso1() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 400,
               fontSize: 18,
-              color: "#fff",
+              color: isLight ? "#0a0b0e" : "#fff",
               letterSpacing: "0.02em",
             }}
           >
@@ -239,7 +259,7 @@ function OrcamentoPasso1() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
               fontSize: 11,
-              color: "rgba(255,255,255,0.45)",
+              color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
               marginTop: 2,
             }}
           >
@@ -254,7 +274,9 @@ function OrcamentoPasso1() {
                 width: 20,
                 height: 4,
                 borderRadius: 2,
-                background: active ? "#FFC000" : "rgba(255,255,255,0.12)",
+                background: active
+                  ? isLight ? "#b87800" : "#FFC000"
+                  : isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
               }}
             />
           ))}
@@ -279,7 +301,7 @@ function OrcamentoPasso1() {
               background: "transparent",
               border: "none",
               outline: "none",
-              color: "#FFFFFF",
+              color: isLight ? "#0a0b0e" : "#FFFFFF",
               fontWeight: 700,
               fontSize: 36,
               textAlign: "center",
@@ -297,7 +319,7 @@ function OrcamentoPasso1() {
               right: 0,
               height: 4,
               borderRadius: 2,
-              background: "rgba(255,255,255,0.18)",
+              background: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.18)",
             }}
           />
           <div
@@ -307,7 +329,9 @@ function OrcamentoPasso1() {
               height: 4,
               borderRadius: 2,
               width: `${((Number(qtd) || 0) / 1000) * 100}%`,
-              background: "linear-gradient(90deg, #FFC000, #FFD84D)",
+              background: isLight
+                ? "linear-gradient(90deg, #b87800, #d49a00)"
+                : "linear-gradient(90deg, #FFC000, #FFD84D)",
               transition: "width 0.05s",
             }}
           />
@@ -336,8 +360,10 @@ function OrcamentoPasso1() {
               width: 22,
               height: 22,
               borderRadius: "50%",
-              background: "#FFFFFF",
-              boxShadow: "0 0 10px rgba(255,255,255,0.70), 0 0 20px rgba(255,255,255,0.30)",
+              background: isLight ? "#ffffff" : "#FFFFFF",
+              boxShadow: isLight
+                ? "0 1px 6px rgba(0,0,0,0.18)"
+                : "0 0 10px rgba(255,255,255,0.70), 0 0 20px rgba(255,255,255,0.30)",
               pointerEvents: "none",
               zIndex: 1,
               transition: "left 0.05s",
@@ -345,8 +371,8 @@ function OrcamentoPasso1() {
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>0</span>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>1000</span>
+          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>0</span>
+          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>1000</span>
         </div>
       </div>
 
@@ -359,7 +385,7 @@ function OrcamentoPasso1() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 11,
-            color: "rgba(255,255,255,0.40)",
+            color: isLight ? "#4a5060" : "rgba(255,255,255,0.40)",
             marginBottom: 14,
           }}
         >
@@ -372,6 +398,7 @@ function OrcamentoPasso1() {
               label={s.label}
               icon={s.icon}
               selected={selecionados.includes(s.id)}
+              isLight={isLight}
               onToggle={() =>
                 setSelecionados((p) =>
                   p.includes(s.id) ? p.filter((x) => x !== s.id) : [...p, s.id],
@@ -387,7 +414,7 @@ function OrcamentoPasso1() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 11,
-            color: "rgba(255,192,0,0.65)",
+            color: isLight ? "#b87800" : "rgba(255,192,0,0.65)",
           }}
         >
           {selecionados.length} selecionado{selecionados.length !== 1 ? "s" : ""}
@@ -400,10 +427,10 @@ function OrcamentoPasso1() {
         <Select value={sistema} onValueChange={setSistema}>
           <SelectTrigger
             style={{
-              background: "transparent",
-              border: "1px solid rgba(255,192,0,0.22)",
+              background: isLight ? "#f0f1f4" : "transparent",
+              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,192,0,0.22)",
               borderRadius: 12,
-              color: "#fff",
+              color: isLight ? "#0a0b0e" : "#fff",
               height: 48,
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
@@ -435,9 +462,9 @@ function OrcamentoPasso1() {
             width: "100%",
             height: 56,
             borderRadius: 28,
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
             border: "none",
-            color: "#08090E",
+            color: isLight ? "#ffffff" : "#08090E",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 13,
@@ -448,7 +475,9 @@ function OrcamentoPasso1() {
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
+            boxShadow: isLight
+              ? "0 4px 16px rgba(180,120,0,0.30)"
+              : "0 4px 24px rgba(255,192,0,0.35)",
             opacity: saveMutation.isPending ? 0.7 : 1,
           }}
         >

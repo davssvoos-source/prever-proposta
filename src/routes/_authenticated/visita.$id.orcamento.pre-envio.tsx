@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -34,6 +35,7 @@ const TIPOS_NOMES: Record<string, string> = {
 function PreEnvioPage() {
   const { id: visitaId } = Route.useParams();
   const navigate = useNavigate();
+  const { isLight } = useTheme();
 
   const { data: visita } = useQuery({
     queryKey: ["visita_pre_envio", visitaId],
@@ -99,14 +101,12 @@ function PreEnvioPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Preview imediato via FileReader
     const reader = new FileReader();
     reader.onloadend = () => {
       setFotoBanner(reader.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Upload em background para o Supabase Storage
     const ext = file.name.split(".").pop() || "jpg";
     const path = `fachadas/${visitaId}.${ext}`;
     supabase.storage
@@ -215,18 +215,19 @@ function PreEnvioPage() {
                 left: 14,
                 width: 34,
                 height: 34,
-                background: "rgba(0,0,0,0.55)",
-                border: "none",
+                background: isLight ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.55)",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "none",
                 borderRadius: "50%",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
+                backdropFilter: isLight ? undefined : "blur(6px)",
+                WebkitBackdropFilter: isLight ? undefined : "blur(6px)",
+                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
               }}
             >
-              <ArrowLeft size={18} color="#FFFFFF" />
+              <ArrowLeft size={18} color={isLight ? "#0a0b0e" : "#FFFFFF"} />
             </button>
             {/* Nome do local na borda inferior */}
             <div
@@ -261,22 +262,35 @@ function PreEnvioPage() {
               alignItems: "center",
               gap: 14,
               padding: "16px 16px",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)",
             }}
           >
             <button
               onClick={() =>
                 navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
               }
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0 }}
+              style={{
+                background: isLight ? "#ffffff" : "none",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "none",
+                borderRadius: isLight ? 12 : undefined,
+                width: isLight ? 40 : undefined,
+                height: isLight ? 40 : undefined,
+                cursor: "pointer",
+                padding: isLight ? undefined : 4,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
+              }}
             >
-              <ArrowLeft size={24} color="#FFFFFF" />
+              <ArrowLeft size={24} color={isLight ? "#0a0b0e" : "#FFFFFF"} />
             </button>
             <div style={{ minWidth: 0 }}>
-              <p style={{ color: "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
+              <p style={{ color: isLight ? "#4a5060" : "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
               <p
                 style={{
-                  color: "#FFFFFF",
+                  color: isLight ? "#0a0b0e" : "#FFFFFF",
                   fontSize: 17,
                   fontWeight: 700,
                   margin: 0,
@@ -303,8 +317,8 @@ function PreEnvioPage() {
           gap: 14,
         }}
       >
-        <SectionCard icon={<MapPin size={16} color="#FFC000" />} titulo="LOCAL">
-          <div style={{ color: "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
+        <SectionCard icon={<MapPin size={16} color={isLight ? "#b87800" : "#FFC000"} />} titulo="LOCAL" isLight={isLight}>
+          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
             {endereco}
           </div>
           <div
@@ -318,7 +332,7 @@ function PreEnvioPage() {
           >
             <p
               style={{
-                color: "rgba(255,255,255,0.55)",
+                color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
                 fontSize: 12,
                 margin: 0,
                 fontFamily: "'Montserrat',sans-serif",
@@ -343,17 +357,17 @@ function PreEnvioPage() {
                   width: 20,
                   height: 20,
                   borderRadius: "50%",
-                  border: "1.5px solid #4B5563",
+                  border: isLight ? "1.5px solid rgba(0,0,0,0.20)" : "1.5px solid #4B5563",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ color: "#9CA3AF", fontSize: 14, lineHeight: 1 }}>+</span>
+                <span style={{ color: isLight ? "#4a5060" : "#9CA3AF", fontSize: 14, lineHeight: 1 }}>+</span>
               </div>
               <span
                 style={{
-                  color: "#9CA3AF",
+                  color: isLight ? "#4a5060" : "#9CA3AF",
                   fontSize: 11,
                   fontFamily: "'Montserrat',sans-serif",
                 }}
@@ -365,20 +379,22 @@ function PreEnvioPage() {
         </SectionCard>
 
         <SectionCard
-          icon={<Calendar size={16} color="#FFC000" />}
+          icon={<Calendar size={16} color={isLight ? "#b87800" : "#FFC000"} />}
           titulo="DATA E HORÁRIO DA VISITA"
+          isLight={isLight}
         >
-          <div style={{ color: "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
+          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
             {dataFmt}
           </div>
         </SectionCard>
 
         <SectionCard
-          icon={<CheckCircle2 size={16} color="#FFC000" />}
+          icon={<CheckCircle2 size={16} color={isLight ? "#b87800" : "#FFC000"} />}
           titulo="SERVIÇOS PROPOSTOS"
+          isLight={isLight}
         >
           {servicos.length === 0 ? (
-            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+            <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
               Nenhum serviço selecionado
             </div>
           ) : (
@@ -387,9 +403,9 @@ function PreEnvioPage() {
                 <span
                   key={s}
                   style={{
-                    background: "rgba(255,192,0,0.10)",
-                    border: "1px solid rgba(255,192,0,0.35)",
-                    color: "#FFD700",
+                    background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.10)",
+                    border: isLight ? "1px solid rgba(180,120,0,0.22)" : "1px solid rgba(255,192,0,0.35)",
+                    color: isLight ? "#b87800" : "#FFD700",
                     borderRadius: 999,
                     padding: "5px 12px",
                     fontSize: 12,
@@ -404,9 +420,9 @@ function PreEnvioPage() {
           )}
         </SectionCard>
 
-        <SectionCard icon={<Layers size={16} color="#FFC000" />} titulo="ESCOPO DO PROJETO">
+        <SectionCard icon={<Layers size={16} color={isLight ? "#b87800" : "#FFC000"} />} titulo="ESCOPO DO PROJETO" isLight={isLight}>
           {blocos.length === 0 ? (
-            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+            <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
               Nenhum bloco adicionado
             </div>
           ) : (
@@ -417,7 +433,7 @@ function PreEnvioPage() {
                     <div
                       style={{
                         height: 1,
-                        background: "rgba(255,255,255,0.08)",
+                        background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
                         marginBottom: 16,
                       }}
                     />
@@ -432,7 +448,7 @@ function PreEnvioPage() {
                   >
                     <span
                       style={{
-                        color: "#FFC000",
+                        color: isLight ? "#b87800" : "#FFC000",
                         fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: 0.6,
@@ -443,7 +459,7 @@ function PreEnvioPage() {
                     </span>
                     <span
                       style={{
-                        color: "rgba(255,255,255,0.4)",
+                        color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)",
                         fontSize: 11,
                         fontFamily: "'Montserrat',sans-serif",
                       }}
@@ -453,7 +469,7 @@ function PreEnvioPage() {
                   </div>
                   <div
                     style={{
-                      color: "#fff",
+                      color: isLight ? "#0a0b0e" : "#fff",
                       fontSize: 14,
                       fontWeight: 500,
                       marginBottom: 6,
@@ -464,7 +480,7 @@ function PreEnvioPage() {
                   </div>
                   <div
                     style={{
-                      color: "rgba(255,255,255,0.55)",
+                      color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
                       fontSize: 11,
                       fontFamily: "'JetBrains Mono', ui-monospace, monospace",
                       letterSpacing: 0.4,
@@ -488,8 +504,8 @@ function PreEnvioPage() {
                             aspectRatio: "1 / 1",
                             borderRadius: 8,
                             overflow: "hidden",
-                            background: "rgba(255,255,255,0.04)",
-                            border: "1px solid rgba(255,255,255,0.08)",
+                            background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+                            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.08)",
                           }}
                         >
                           {fotosSignadas[url] && (
@@ -544,26 +560,39 @@ function SectionCard({
   icon,
   titulo,
   children,
+  isLight,
 }: {
   icon: React.ReactNode;
   titulo: string;
   children: React.ReactNode;
+  isLight: boolean;
 }) {
   return (
     <div
-      style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 16,
-        padding: "16px",
-        marginBottom: 12,
-      }}
+      style={
+        isLight
+          ? {
+              background: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+              border: "1px solid rgba(0,0,0,0.07)",
+              borderRadius: 16,
+              padding: "16px",
+              marginBottom: 12,
+              boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+            }
+          : {
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 16,
+              padding: "16px",
+              marginBottom: 12,
+            }
+      }
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         {icon}
         <span
           style={{
-            color: "rgba(255,255,255,0.55)",
+            color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: 1,
