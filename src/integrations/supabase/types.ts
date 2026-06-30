@@ -548,6 +548,7 @@ export type Database = {
           codigo_bloco: string
           created_at: string
           eclusa: boolean | null
+          fotos_urls: string[]
           hh_padrao: number
           id: string
           nome_descritivo: string
@@ -576,6 +577,7 @@ export type Database = {
           codigo_bloco: string
           created_at?: string
           eclusa?: boolean | null
+          fotos_urls?: string[]
           hh_padrao?: number
           id?: string
           nome_descritivo: string
@@ -604,6 +606,7 @@ export type Database = {
           codigo_bloco?: string
           created_at?: string
           eclusa?: boolean | null
+          fotos_urls?: string[]
           hh_padrao?: number
           id?: string
           nome_descritivo?: string
