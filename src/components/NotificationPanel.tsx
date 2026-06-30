@@ -302,7 +302,9 @@ function NotifItem({
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: n.lida ? 400 : 600,
                 fontSize: 13,
-                color: n.lida ? "rgba(255,255,255,0.65)" : "#fff",
+                color: isLight
+                  ? (n.lida ? "#4a5060" : "#0a0b0e")
+                  : (n.lida ? "rgba(255,255,255,0.65)" : "#fff"),
                 lineHeight: 1.4,
               }}
             >
@@ -314,7 +316,7 @@ function NotifItem({
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
+                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                   marginTop: 3,
                   lineHeight: 1.4,
                 }}
@@ -327,7 +329,7 @@ function NotifItem({
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 10,
-                color: "rgba(255,192,0,0.55)",
+                color: isLight ? "#b87800" : "rgba(255,192,0,0.55)",
                 marginTop: 5,
                 letterSpacing: "0.06em",
               }}
