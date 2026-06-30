@@ -151,7 +151,11 @@ function PreEnvioPage() {
   const nomeLocal =
     visita?.nome_local ||
     visita?.nome_condominio ||
+    visita?.titulo ||
+    visita?.nome ||
     visita?.cliente?.nome ||
+    visita?.cliente?.nome_completo ||
+    visita?.cliente?.razao_social ||
     "—";
 
   const servicos: string[] = visita?.servicos_propostos || [];
