@@ -443,7 +443,7 @@ function Dashboard() {
                 left: 10,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: 'rgba(255,255,255,0.6)',
+                color: isLight ? '#4a5060' : 'rgba(255,255,255,0.6)',
                 pointerEvents: 'none',
               }}
             />
@@ -452,15 +452,16 @@ function Dashboard() {
               onChange={(e) => setTecnicoFiltro(e.target.value)}
               style={{
                 padding: '7px 12px 7px 30px', borderRadius: 20,
-                border: '1px solid rgba(255,255,255,0.20)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#FFFFFF', fontSize: 13, cursor: 'pointer',
+                border: isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)',
+                background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
+                color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 13, cursor: 'pointer',
                 outline: 'none', appearance: 'none', WebkitAppearance: 'none', minWidth: 170,
+                boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
               }}
             >
-              <option value="todos" style={{ background: '#0a0a14' }}>Todos os técnicos</option>
+              <option value="todos" style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>Todos os técnicos</option>
               {listaTecnicos.map((t: any) => (
-                <option key={t.id} value={t.id} style={{ background: '#0a0a14' }}>
+                <option key={t.id} value={t.id} style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>
                   {t.nome ?? t.email}
                 </option>
               ))}
@@ -477,58 +478,41 @@ function Dashboard() {
         width: '100%',
         boxSizing: 'border-box',
       }}>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'hoje' ? null : 'hoje')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'hoje' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'hoje' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'hoje' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'hoje' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarDays size={14} /> Hoje
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'semana' ? null : 'semana')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'semana' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'semana' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'semana' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'semana' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarRange size={14} /> Essa semana
-        </button>
-        <button
-          onClick={() => setFiltroAtivo(filtroAtivo === 'mes' ? null : 'mes')}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-            border: filtroAtivo === 'mes' ? '1px solid rgba(255,192,0,0.60)' : '1px solid rgba(255,255,255,0.20)',
-            background: filtroAtivo === 'mes' ? 'rgba(255,192,0,0.12)' : 'rgba(255,255,255,0.06)',
-            color: filtroAtivo === 'mes' ? '#FFC000' : '#FFFFFF',
-            fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: filtroAtivo === 'mes' ? '0 0 10px rgba(255,192,0,0.25)' : '0 0 6px rgba(255,255,255,0.08)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <CalendarCheck size={14} /> Esse mês
-        </button>
+        {(['hoje','semana','mes'] as const).map((key) => {
+          const active = filtroAtivo === key;
+          const Icon = key === 'hoje' ? CalendarDays : key === 'semana' ? CalendarRange : CalendarCheck;
+          const label = key === 'hoje' ? 'Hoje' : key === 'semana' ? 'Essa semana' : 'Esse mês';
+          return (
+            <button
+              key={key}
+              onClick={() => setFiltroAtivo(active ? null : key)}
+              style={{
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
+                border: active
+                  ? (isLight ? '1px solid #b87800' : '1px solid rgba(255,192,0,0.60)')
+                  : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)'),
+                background: active
+                  ? (isLight ? '#b87800' : 'rgba(255,192,0,0.12)')
+                  : (isLight ? '#ffffff' : 'rgba(255,255,255,0.06)'),
+                color: active
+                  ? (isLight ? '#ffffff' : '#FFC000')
+                  : (isLight ? '#0a0b0e' : '#FFFFFF'),
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: active
+                  ? (isLight ? '0 2px 8px rgba(184,120,0,0.25)' : '0 0 10px rgba(255,192,0,0.25)')
+                  : (isLight ? '0 1px 3px rgba(0,0,0,0.05)' : '0 0 6px rgba(255,255,255,0.08)'),
+                transition: 'all 0.2s',
+              }}
+            >
+              <Icon size={14} /> {label}
+            </button>
+          );
+        })}
       </div>
+
 
 
       {/* Filtro de status — full width */}
