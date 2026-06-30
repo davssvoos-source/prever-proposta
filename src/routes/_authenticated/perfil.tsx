@@ -350,7 +350,7 @@ function PerfilPage() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 700,
             fontSize: 22,
-            color: "#fff",
+            color: textPrimary,
             marginTop: 14,
           }}
         >
