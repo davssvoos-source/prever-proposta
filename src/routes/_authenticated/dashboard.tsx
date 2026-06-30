@@ -240,7 +240,20 @@ function Dashboard() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.65) 100%)',
+            background: 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
+          }}
+        />
+        {/* Fade inferior — transição suave para o fundo da página */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '35%',
+            background:
+              'linear-gradient(to bottom, rgba(14,13,6,0) 0%, rgba(14,13,6,0.6) 60%, rgba(14,13,6,1) 100%)',
+            pointerEvents: 'none',
           }}
         />
         <div
