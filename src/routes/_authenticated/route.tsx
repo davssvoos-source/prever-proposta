@@ -113,10 +113,16 @@ function AuthenticatedLayout() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: isLight ? "rgba(255,255,255,0.82)" : "rgba(8,8,12,0.65)",
-            backdropFilter: "blur(20px) saturate(160%)",
-            WebkitBackdropFilter: "blur(20px) saturate(160%)",
-            borderBottom: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.07)",
+            transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+            background: scrolled
+              ? (isLight ? "rgba(255,255,255,0.88)" : "rgba(8,8,12,0.80)")
+              : "transparent",
+            backdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
+            WebkitBackdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
+            borderBottom: scrolled
+              ? (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.06)")
+              : "1px solid transparent",
+            boxShadow: scrolled && isLight ? "0 2px 12px rgba(0,0,0,0.06)" : "none",
           }}
         >
           <div
