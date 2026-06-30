@@ -967,3 +967,4 @@ function badgeStyle(status: string, isLight: boolean): CSSProperties {
     background: isLight ? s.bg : s.bgDark,
     color: isLight ? s.color : s.colorDark,
   };
+}
