@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar } from "lucide-react";
+import { useSwipeable } from "react-swipeable";
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -271,22 +272,25 @@ function Dashboard() {
         <div
           style={{
             position: 'absolute',
-            bottom: 16,
-            left: 16,
-            right: 16,
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            padding: '0 20px 28px 20px',
           }}
         >
           <h2
             style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 600,
-              fontSize: 18,
-              color: isLight ? '#0a0b0e' : '#FFFFFF',
+              fontWeight: 700,
+              fontSize: 26,
+              lineHeight: 1.25,
+              color: '#FFFFFF',
               margin: 0,
-              textShadow: isLight ? 'none' : '0 2px 12px rgba(0,0,0,0.5)',
+              textShadow: '0 1px 8px rgba(0,0,0,0.35)',
             }}
           >
-            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje{perfil?.nome ? `, ${perfil.nome.split(' ')[0]}` : ''}
+            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
           </h2>
         </div>
       </div>
@@ -667,7 +671,7 @@ function VisitaCard({ visita }: { visita: any }) {
           : "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
-        marginBottom: 12,
+        marginBottom: 0,
         boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
       }}
     >
@@ -749,19 +753,82 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
+function SwipeableVisita({ visita }: { visita: any }) {
+  const { isLight } = useTheme();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  const handlers = useSwipeable({
+    onSwipedLeft: () => setOpen(true),
+    onSwipedRight: () => setOpen(false),
+    trackMouse: false,
+    delta: 40,
+  });
+
+  const goAgendar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate({ to: "/visita/$id/reagendar", params: { id: visita.id } });
+  };
+
+  return (
+    <div {...handlers} style={{ position: "relative", overflow: "hidden", borderRadius: 18, marginBottom: 12 }}>
+      <button
+        onClick={goAgendar}
+        aria-label="Agendar"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 12,
+          width: 80,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "none",
+          cursor: "pointer",
+          background: isLight
+            ? "linear-gradient(135deg, #b87800, #e6a800)"
+            : "linear-gradient(135deg, #FFC000, #FFD700)",
+          borderRadius: "0 18px 18px 0",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <Calendar size={20} color="#FFFFFF" />
+          <span style={{ color: "#FFFFFF", fontSize: 10, fontWeight: 600 }}>Agendar</span>
+        </div>
+      </button>
+      <div
+        style={{
+          transform: open ? "translateX(-80px)" : "translateX(0)",
+          transition: "transform 0.25s ease",
+        }}
+        onClick={(e) => {
+          if (open) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(false);
+          }
+        }}
+      >
+        <Link
+          to="/visita/$id"
+          params={{ id: visita.id }}
+          style={{ textDecoration: "none", color: "inherit", display: "block", pointerEvents: open ? "none" : "auto" }}
+        >
+          <VisitaCard visita={visita} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function Section({ items }: { items: any[] }) {
   return (
     <section>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>
-            <Link
-              to="/visita/$id"
-              params={{ id: v.id }}
-              style={{ textDecoration: "none", color: "inherit", display: "block" }}
-            >
-              <VisitaCard visita={v} />
-            </Link>
+            <SwipeableVisita visita={v} />
           </li>
         ))}
       </ul>

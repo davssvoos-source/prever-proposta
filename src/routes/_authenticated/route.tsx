@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -77,6 +78,16 @@ function AuthenticatedLayout() {
     );
   }
 
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled((window.scrollY || document.documentElement.scrollTop) > 10);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const iniciais = perfil?.nome
     ? perfil.nome
         .split(" ")
@@ -102,10 +113,16 @@ function AuthenticatedLayout() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: isLight ? "rgba(255,255,255,0.82)" : "rgba(8,8,12,0.65)",
-            backdropFilter: "blur(20px) saturate(160%)",
-            WebkitBackdropFilter: "blur(20px) saturate(160%)",
-            borderBottom: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.07)",
+            transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
+            background: scrolled
+              ? (isLight ? "rgba(255,255,255,0.88)" : "rgba(8,8,12,0.80)")
+              : "transparent",
+            backdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
+            WebkitBackdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
+            borderBottom: scrolled
+              ? (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.06)")
+              : "1px solid transparent",
+            boxShadow: scrolled && isLight ? "0 2px 12px rgba(0,0,0,0.06)" : "none",
           }}
         >
           <div
@@ -152,7 +169,8 @@ function AuthenticatedLayout() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 13,
-                  color: isLight ? "#0a0b0e" : "#fff",
+                  color: scrolled ? (isLight ? "#0a0b0e" : "#fff") : "#FFFFFF",
+                  textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                   lineHeight: 1.2,
                 }}
               >
@@ -166,7 +184,8 @@ function AuthenticatedLayout() {
                     fontSize: 10,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: isLight ? "#7a5000" : "rgba(255,192,0,0.6)",
+                    color: scrolled ? (isLight ? "#7a5000" : "rgba(255,192,0,0.6)") : "#FFC000",
+                    textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                     lineHeight: 1.2,
                   }}
                 >
