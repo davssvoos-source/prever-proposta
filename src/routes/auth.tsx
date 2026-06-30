@@ -15,6 +15,7 @@ type AuthMode = "login" | "forgot" | "register";
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { isLight } = useTheme();
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
