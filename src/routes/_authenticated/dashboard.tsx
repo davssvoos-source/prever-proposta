@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -187,34 +188,186 @@ function Dashboard() {
     { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
   ];
 
+  // ─── Banner data ──────────────────────────────────────────
+  const visitasHoje = visitas.filter((v: any) => {
+    if (!v.data_hora_agendada) return false;
+    const d = new Date(v.data_hora_agendada);
+    return d >= startOfDay && d <= endOfDay;
+  });
+
+  const agoraMs = Date.now();
+  const proximaVisita = visitas
+    .filter((v: any) => v.data_hora_agendada && new Date(v.data_hora_agendada).getTime() > agoraMs)
+    .sort((a: any, b: any) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime())[0];
+
+  const [countdown, setCountdown] = useState("");
+  useEffect(() => {
+    if (!proximaVisita?.data_hora_agendada) return;
+    const update = () => {
+      const diff = new Date(proximaVisita.data_hora_agendada).getTime() - Date.now();
+      if (diff <= 0) { setCountdown("Agora"); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      if (h > 0) setCountdown(`${h}h ${m.toString().padStart(2, '0')}m`);
+      else setCountdown(`${m}m ${s.toString().padStart(2, '0')}s`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [proximaVisita]);
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h1
+    <>
+      {/* ═══ BANNER FROTA ═══ */}
+      <div
+        style={{
+          marginTop: -76,
+          marginLeft: -16,
+          marginRight: -16,
+          position: 'relative',
+          height: '28vh',
+          minHeight: 180,
+          overflow: 'hidden',
+        }}
+      >
+        <img
+          src={bannerAsset.url}
+          alt="Frota Prever"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <div
           style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            fontSize: 22,
-            color: "#F0F2F5",
-            margin: 0,
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.65) 100%)',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            left: 16,
+            right: 16,
           }}
         >
-          {saudacao()}{perfil?.nome ? `, ${perfil.nome.split(" ")[0]}` : ""}
-        </h1>
-        <p
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 13,
-            color: "rgba(200,200,200,0.6)",
-            margin: "4px 0 0",
-          }}
-        >
-          {perfil?.cargo === "tecnico"
-            ? "Aqui estão suas visitas técnicas"
-            : "Visão geral das visitas técnicas"}
-        </p>
+          <h2
+            style={{
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 600,
+              fontSize: 18,
+              color: '#FFFFFF',
+              margin: 0,
+              textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+            }}
+          >
+            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje{perfil?.nome ? `, ${perfil.nome.split(' ')[0]}` : ''}
+          </h2>
+        </div>
       </div>
+
+      <div className="space-y-5" style={{ paddingTop: 20 }}>
+        {/* ═══ CARD PRÓXIMA VISITA ═══ */}
+        {proximaVisita && (
+          <Link
+            to="/visita/$id"
+            params={{ id: proximaVisita.id }}
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+          >
+            <div
+              style={{
+                ...GLASS,
+                padding: '20px 18px',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -30,
+                  right: -30,
+                  width: 100,
+                  height: 100,
+                  background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
+                  pointerEvents: 'none',
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 11,
+                  color: 'rgba(255,192,0,0.7)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}
+              >
+                Próxima visita
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 600,
+                  fontSize: 16,
+                  color: '#FFFFFF',
+                  marginBottom: 6,
+                }}
+              >
+                {proximaVisita.nome_predio ?? proximaVisita.clientes?.nome ?? proximaVisita.nome_sindico ?? proximaVisita.titulo ?? 'Sem nome'}
+              </div>
+              {proximaVisita.endereco && (
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.65)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    marginBottom: 4,
+                  }}
+                >
+                  <MapPin size={12} style={{ opacity: 0.75 }} /> {proximaVisita.endereco}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <div
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 300,
+                    fontSize: 12,
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
+                >
+                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada)}
+                </div>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: 'rgba(255,192,0,0.12)',
+                    border: '1px solid rgba(255,192,0,0.30)',
+                    borderRadius: 20,
+                    padding: '4px 10px',
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 600,
+                    fontSize: 11,
+                    color: '#FFC000',
+                  }}
+                >
+                  <AlarmClock size={11} /> {countdown}
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
 
       <div className="grid grid-cols-4 gap-2">
         {metrics.map((m) => (
@@ -453,7 +606,8 @@ function Dashboard() {
 
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
