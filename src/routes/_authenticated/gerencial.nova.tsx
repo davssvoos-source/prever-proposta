@@ -458,7 +458,7 @@ function NovaVisitaPage() {
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 5,
+                      gap: 6,
                       background: ativo
                         ? isLight ? L.goldBg : "rgba(255,192,0,0.12)"
                         : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
@@ -472,12 +472,20 @@ function NovaVisitaPage() {
                       fontWeight: 300,
                       color: ativo
                         ? isLight ? L.gold : "#FFC000"
-                        : isLight ? L.textSub : "rgba(200,200,200,0.65)",
+                        : isLight ? L.textSub : "rgba(255,255,255,0.70)",
                       cursor: "pointer",
                     }}
                   >
                     <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
-                    <span>{s.emoji}</span> {s.label}
+                    {(() => {
+                      const Ico = SERVICO_PROPOSTO_ICON[s.key];
+                      return Ico ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", color: isLight ? L.gold : "#FFC000" }}>
+                          <Ico size={14} />
+                        </span>
+                      ) : null;
+                    })()}
+                    {s.label}
                   </button>
                 );
               })}
