@@ -181,6 +181,7 @@ export function NotificationPanel() {
                   n={n}
                   onClick={() => handleClick(n)}
                   onDelete={() => deletar(n.id)}
+                  isLight={isLight}
                 />
               ))
 
