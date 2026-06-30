@@ -523,8 +523,13 @@ function Dashboard() {
             width: '100%',
             padding: '11px 16px',
             borderRadius: 24,
-            border: statusFiltro !== 'todos' ? '1px solid rgba(255,192,0,0.50)' : '1px solid rgba(255,255,255,0.16)',
-            background: statusFiltro !== 'todos' ? 'rgba(255,192,0,0.08)' : 'rgba(255,255,255,0.04)',
+            border: statusFiltro !== 'todos'
+              ? (isLight ? '1px solid rgba(180,120,0,0.50)' : '1px solid rgba(255,192,0,0.50)')
+              : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.16)'),
+            background: statusFiltro !== 'todos'
+              ? (isLight ? 'rgba(180,120,0,0.08)' : 'rgba(255,192,0,0.08)')
+              : (isLight ? '#ffffff' : 'rgba(255,255,255,0.04)'),
+            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -539,13 +544,13 @@ function Dashboard() {
                 background: STATUS_OPCOES.find((o) => o.key === statusFiltro)?.color ?? 'rgba(255,255,255,0.35)',
               }}
             />
-            <span style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 500 }}>
+            <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, fontWeight: 500 }}>
               {STATUS_OPCOES.find((o) => o.key === statusFiltro)?.label ?? 'Filtrar por status'}
             </span>
           </div>
           <ChevronDown
             size={18}
-            color="rgba(255,255,255,0.6)"
+            color={isLight ? '#4a5060' : 'rgba(255,255,255,0.6)'}
             style={{ transform: showStatusDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
           />
         </button>
@@ -557,13 +562,13 @@ function Dashboard() {
             onTouchStart={(e) => e.stopPropagation()}
             style={{
               position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30,
-              background: 'rgba(10,10,20,0.96)',
-              backdropFilter: 'blur(14px) saturate(140%)',
-              WebkitBackdropFilter: 'blur(14px) saturate(140%)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: isLight ? '#ffffff' : 'rgba(10,10,20,0.96)',
+              backdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
+              WebkitBackdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
+              border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
               borderRadius: 16,
               overflow: 'hidden',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+              boxShadow: isLight ? '0 10px 30px rgba(0,0,0,0.12)' : '0 12px 40px rgba(0,0,0,0.5)',
             }}
           >
             {STATUS_OPCOES.map((opt, i) => (
@@ -573,9 +578,13 @@ function Dashboard() {
                 style={{
                   width: '100%',
                   padding: '13px 16px',
-                  background: statusFiltro === opt.key ? 'rgba(255,192,0,0.10)' : 'transparent',
+                  background: statusFiltro === opt.key
+                    ? (isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.10)')
+                    : 'transparent',
                   border: 'none',
-                  borderBottom: i < STATUS_OPCOES.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none',
+                  borderBottom: i < STATUS_OPCOES.length - 1
+                    ? (isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.07)')
+                    : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
@@ -584,13 +593,14 @@ function Dashboard() {
                 }}
               >
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
-                <span style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{opt.label}</span>
-                {statusFiltro === opt.key && <CheckCircle size={16} color="#FFC000" />}
+                <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, flex: 1 }}>{opt.label}</span>
+                {statusFiltro === opt.key && <CheckCircle size={16} color={isLight ? '#b87800' : '#FFC000'} />}
               </button>
             ))}
           </div>
         )}
       </div>
+
 
       {isLoading ? (
         <div style={{ ...GLASS, padding: 24, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
