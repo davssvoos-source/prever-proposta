@@ -73,13 +73,12 @@ function NovaVisitaPage() {
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
 
-  const [nomeCliente, setNomeCliente] = useState("");
   const [nomeSindico, setNomeSindico] = useState("");
+  const [telefoneSindico, setTelefoneSindico] = useState("");
+  const [emailSindico, setEmailSindico] = useState("");
   const [nomeZelador, setNomeZelador] = useState("");
-
-
-  const [contato, setContato] = useState("");
-  const [clienteEmail, setClienteEmail] = useState("");
+  const [telefoneZelador, setTelefoneZelador] = useState("");
+  const [emailZelador, setEmailZelador] = useState("");
   const [servicos, setServicos] = useState<string[]>([]);
   const [servicosPropostos, setServicosPropostos] = useState<string[]>([]);
   const [endereco, setEndereco] = useState("");
@@ -198,8 +197,6 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    nomeCliente.trim() !== "" &&
-    contato.trim() !== "" &&
     servicosPropostos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = true;
@@ -212,9 +209,9 @@ function NovaVisitaPage() {
       const { data: clienteRow, error: clienteErr } = await supabase
         .from("clientes")
         .insert({
-          nome: nomeCliente,
-          email: clienteEmail || null,
-          telefone: contato,
+          nome: nomeSindico || nomePredio,
+          email: emailSindico || null,
+          telefone: telefoneSindico || null,
           owner_id: user?.id as string,
         })
         .select("id")
@@ -244,8 +241,13 @@ function NovaVisitaPage() {
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
         nome_sindico: nomeSindico || null,
+        telefone_sindico: telefoneSindico || null,
+        email_sindico: emailSindico || null,
         nome_zelador: nomeZelador || null,
-        contato_sindico: contato,
+        telefone_zelador: telefoneZelador || null,
+        email_zelador: emailZelador || null,
+        contato_sindico: telefoneSindico || null,
+
 
         servicos_solicitados: servicos,
         servicos_propostos: servicosPropostos,
@@ -431,29 +433,34 @@ function NovaVisitaPage() {
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Nome do Cliente</label>
-              <input style={INPUT} value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} />
+              <label style={LABEL}>Nome do Síndico (opcional)</label>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
             </div>
             <div>
-              <label style={LABEL}>WhatsApp</label>
-              <input style={INPUT} value={contato} onChange={(e) => setContato(e.target.value)} />
+              <label style={LABEL}>WhatsApp do Síndico</label>
+              <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="(11) 90000-0000" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do Cliente</label>
-              <input style={INPUT} type="email" value={clienteEmail} onChange={(e) => setClienteEmail(e.target.value)} placeholder="cliente@email.com" />
+              <label style={LABEL}>E-mail do Síndico</label>
+              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder="sindico@email.com" />
             </div>
           </div>
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Síndico (opcional)</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
-            </div>
-            <div>
-              <label style={LABEL}>Zelador(a) (opcional)</label>
+              <label style={LABEL}>Nome do Zelador(a) (opcional)</label>
               <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome do zelador(a)" />
             </div>
+            <div>
+              <label style={LABEL}>WhatsApp do Zelador(a)</label>
+              <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="(11) 90000-0000" />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={LABEL}>E-mail do Zelador(a)</label>
+              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder="zelador@email.com" />
+            </div>
           </div>
+
 
 
 
@@ -807,7 +814,6 @@ function NovaVisitaPage() {
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
-              { label: "Cliente", value: nomeCliente },
               ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
               ...(nomeZelador ? [{ label: "Zelador(a)", value: nomeZelador }] : []),
 
