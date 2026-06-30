@@ -495,7 +495,8 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                 ) : (
                   <ul className="space-y-1">
                     {tecnicoAgendaSemana.slice(0, 5).map((v) => {
-                      const t = new Date(v.data_hora_agendada);
+                      const t = new Date(v.data_hora_agendada!);
+
                       const isConflito =
                         dataHoraISO &&
                         Math.abs(t.getTime() - new Date(dataHoraISO).getTime()) < 60 * 60 * 1000;
