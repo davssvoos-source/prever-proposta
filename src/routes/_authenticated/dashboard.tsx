@@ -736,107 +736,80 @@ function SwipeableCard({
   onReagendar: (id: string) => void;
   children: React.ReactNode;
 }) {
-  const LIMITE_SWIPE = 120;
-  const THRESHOLD = 80;
-  const [swipeX, setSwipeX] = useState(0);
-  const [swipando, setSwipando] = useState(false);
-  const startXRef = useRef(0);
-  const currentRef = useRef(0);
+  const SNAP = 100;
+  const MAX = 110;
+  const [offsetX, setOffsetX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    setSwipando(true);
-    startXRef.current = e.clientX;
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!swipando) return;
-    const delta = startXRef.current - e.clientX + currentRef.current;
-    if (delta > 0) {
-      const clamped =
-        delta > LIMITE_SWIPE
-          ? LIMITE_SWIPE + (delta - LIMITE_SWIPE) * 0.15
-          : delta;
-      setSwipeX(clamped);
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX;
+    setDragging(true);
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    const d = startX.current - e.touches[0].clientX;
+    if (d > 0) {
+      setOffsetX(d > MAX ? MAX + (d - MAX) * 0.12 : d);
     } else {
-      setSwipeX(0);
+      setOffsetX(0);
     }
-  };
-  const onPointerUp = () => {
-    setSwipando(false);
-    setSwipeX((prev) => {
-      const next = prev >= THRESHOLD ? LIMITE_SWIPE : 0;
-      currentRef.current = next;
-      return next;
-    });
-  };
-  const onPointerCancel = () => {
-    setSwipando(false);
-    currentRef.current = 0;
-    setSwipeX(0);
-  };
-
-  const handleReagendar = () => {
-    currentRef.current = 0;
-    setSwipeX(0);
-    onReagendar(visitaId);
-  };
+  }
+  function onTouchEnd() {
+    setDragging(false);
+    setOffsetX(offsetX >= SNAP * 0.7 ? SNAP : 0);
+  }
 
   return (
     <div style={{ position: "relative", marginBottom: 12, overflow: "hidden", borderRadius: 18 }}>
-      {/* Botão re-agendar — revelado pelo swipe */}
       <div
         style={{
           position: "absolute",
           right: 0,
           top: 0,
           bottom: 0,
-          width: LIMITE_SWIPE,
+          width: SNAP,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: "0 16px 16px 0",
-          background: "rgba(255, 215, 0, 0.15)",
-          opacity: Math.min(swipeX / THRESHOLD, 1),
-          transition: swipando ? "none" : "opacity 0.2s",
+          background: "rgba(255, 192, 0, 0.12)",
+          borderRadius: "0 18px 18px 0",
+          opacity: Math.min(offsetX / (SNAP * 0.5), 1),
+          transition: dragging ? "none" : "opacity 0.2s",
         }}
       >
         <button
-          onClick={handleReagendar}
+          onClick={(e) => {
+            e.stopPropagation();
+            onReagendar(visitaId);
+            setOffsetX(0);
+          }}
           style={{
             background: "none",
             border: "none",
-            color: "#FFD700",
-            fontSize: 11,
-            fontWeight: 700,
             cursor: "pointer",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 4,
-            letterSpacing: 0.5,
+            gap: 5,
           }}
         >
-          <CalendarClock size={20} color="#FFD700" />
-          RE-AGENDAR
+          <CalendarClock size={22} color="#FFC000" />
+          <span style={{ color: "#FFC000", fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>
+            RE-AGENDAR
+          </span>
         </button>
       </div>
-      {/* Card */}
       <div
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         style={{
-          transform: `translateX(-${swipeX}px)`,
-          transition: swipando
+          transform: `translateX(-${offsetX}px)`,
+          transition: dragging
             ? "none"
             : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
           willChange: "transform",
-          borderRadius: 16,
-          position: "relative",
-          zIndex: 1,
-          touchAction: "pan-y",
         }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
       >
         {children}
       </div>
