@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, CalendarClock } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 
@@ -60,9 +60,6 @@ function Dashboard() {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
 
-  const irParaReagendar = (visitaId: string) => {
-    navigate({ to: '/visita/$id/reagendar', params: { id: visitaId } });
-  };
 
   useEffect(() => {
     if (!showStatusDropdown) return;
@@ -611,11 +608,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {emAndamento.length > 0 && <Section items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aguardando.length > 0 && <Section items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {pendentes.length > 0 && <Section items={pendentes} />}
+          {emAndamento.length > 0 && <Section items={emAndamento} />}
+          {aguardando.length > 0 && <Section items={aguardando} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
 
         </>
       )}
@@ -727,105 +724,14 @@ function VisitaCard({ visita }: { visita: any }) {
   );
 }
 
-function SwipeableCard({
-  visitaId,
-  onReagendar,
-  children,
-}: {
-  visitaId: string;
-  onReagendar: (id: string) => void;
-  children: React.ReactNode;
-}) {
-  const SNAP = 100;
-  const MAX = 110;
-  const [offsetX, setOffsetX] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startX = useRef(0);
-
-  function onTouchStart(e: React.TouchEvent) {
-    startX.current = e.touches[0].clientX;
-    setDragging(true);
-  }
-  function onTouchMove(e: React.TouchEvent) {
-    const d = startX.current - e.touches[0].clientX;
-    if (d > 0) {
-      setOffsetX(d > MAX ? MAX + (d - MAX) * 0.12 : d);
-    } else {
-      setOffsetX(0);
-    }
-  }
-  function onTouchEnd() {
-    setDragging(false);
-    setOffsetX(offsetX >= SNAP * 0.7 ? SNAP : 0);
-  }
-
-  return (
-    <div style={{ position: "relative", marginBottom: 12, overflow: "hidden", borderRadius: 18 }}>
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: SNAP,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(255, 192, 0, 0.12)",
-          borderRadius: "0 18px 18px 0",
-          opacity: Math.min(offsetX / (SNAP * 0.5), 1),
-          transition: dragging ? "none" : "opacity 0.2s",
-        }}
-      >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onReagendar(visitaId);
-            setOffsetX(0);
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <CalendarClock size={22} color="#FFC000" />
-          <span style={{ color: "#FFC000", fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>
-            RE-AGENDAR
-          </span>
-        </button>
-      </div>
-      <div
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        style={{
-          transform: `translateX(-${offsetX}px)`,
-          transition: dragging
-            ? "none"
-            : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          willChange: "transform",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
 
 
-function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: string) => void }) {
+function Section({ items }: { items: any[] }) {
   return (
     <section>
-
-
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {items.map((v) => {
-          const cardLink = (
+        {items.map((v) => (
+          <li key={v.id}>
             <Link
               to="/visita/$id"
               params={{ id: v.id }}
@@ -833,19 +739,8 @@ function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: stri
             >
               <VisitaCard visita={v} />
             </Link>
-          );
-          return (
-            <li key={v.id}>
-              {onReagendar ? (
-                <SwipeableCard visitaId={v.id} onReagendar={onReagendar}>
-                  {cardLink}
-                </SwipeableCard>
-              ) : (
-                cardLink
-              )}
-            </li>
-          );
-        })}
+          </li>
+        ))}
       </ul>
     </section>
   );
