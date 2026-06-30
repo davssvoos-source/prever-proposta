@@ -349,26 +349,3 @@ function CalendarioPage() {
     </div>
   );
 }
-
-const CARD: CSSProperties = {
-  background: "rgba(8,8,12,0.22)",
-  backdropFilter: "blur(12px) saturate(130%)",
-  WebkitBackdropFilter: "blur(12px) saturate(130%)",
-  border: "1px solid rgba(255,192,0,0.10)",
-  borderRadius: 18,
-  padding: "20px 16px",
-  marginBottom: 20,
-};
-
-const NAV_BTN: CSSProperties = {
-  width: 34,
-  height: 34,
-  borderRadius: 10,
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  color: "rgba(255,255,255,0.7)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-};
