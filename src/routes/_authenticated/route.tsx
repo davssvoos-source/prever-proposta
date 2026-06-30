@@ -88,7 +88,7 @@ function AuthenticatedLayout() {
 
   return (
     <>
-      <AnimatedBackground />
+      {isLight ? <LightBackground /> : <AnimatedBackground />}
       <div style={{ minHeight: "100vh", position: "relative", zIndex: 1 }}>
         {/* HEADER */}
         <div
