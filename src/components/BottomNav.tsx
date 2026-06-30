@@ -14,6 +14,12 @@ export function BottomNav() {
         { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
         { to: "/perfil", label: "Perfil", icon: User },
       ]
+    : cargo === "tecnico"
+    ? [
+        { to: "/dashboard", label: "Início", icon: Home },
+        { to: "/calendario", label: "Calendário", icon: Calendar },
+        { to: "/perfil", label: "Perfil", icon: User },
+      ]
     : [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
