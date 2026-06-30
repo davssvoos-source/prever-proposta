@@ -956,17 +956,68 @@ function BlocosWizardPage() {
       );
     }
 
-    // Telas de barreira (B1 / B2): perguntas reveladas progressivamente
-    const isB1 = B1_STEPS.includes(wizard.step);
-    const isB2 = B2_STEPS.includes(wizard.step);
+    // Telas de barreira (B1 / B2): ambas na mesma página, B1 recolhível
+    const isB1Step = B1_STEPS.includes(wizard.step);
+    const isB2Step = B2_STEPS.includes(wizard.step);
 
-    if (isB1 || isB2) {
-      const currentSteps = isB1 ? B1_STEPS : B2_STEPS;
-      const barrNum = isB1 ? "01" : "02";
-      const currentIdx = currentSteps.indexOf(wizard.step);
-      const stepsRespondidos = currentSteps
-        .slice(0, currentIdx)
-        .filter((s) => getRespostaDada(s) !== null);
+    if (isB1Step || isB2Step) {
+      const b1Done = isB2Step;
+      const showB2 = b1Done;
+
+      const stepsRespondidosB1 = (() => {
+        if (isB1Step) {
+          const idx = B1_STEPS.indexOf(wizard.step);
+          return B1_STEPS.slice(0, idx).filter((s) => getRespostaDada(s) !== null);
+        }
+        return B1_STEPS.filter((s) => getRespostaDada(s) !== null);
+      })();
+      const stepsRespondidosB2 = (() => {
+        if (!isB2Step) return [];
+        const idx = B2_STEPS.indexOf(wizard.step);
+        return B2_STEPS.slice(0, idx).filter((s) => getRespostaDada(s) !== null);
+      })();
+
+      const ConfirmedAnswer = ({ step }: { step: WizardStep }) => {
+        const resposta = getRespostaDada(step);
+        if (!resposta) return null;
+        const todasOpcoes = getOpcoes(step);
+        const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
+        return (
+          <div style={{ marginBottom: 16 }}>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.4)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 2,
+                margin: "0 0 6px",
+                textTransform: "uppercase",
+              }}
+            >
+              {getLabelPergunta(step)}
+            </p>
+            <button
+              onClick={() => handleEditStep(step)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "4px 0",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
+                {opcaoSel?.label ?? LABELS[resposta] ?? resposta}
+              </span>
+              <Pencil size={12} color="#4B5563" />
+            </button>
+          </div>
+        );
+      };
 
       return (
         <div style={PAGE}>
@@ -975,62 +1026,118 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
           </div>
 
-          <BarreiraIndicador numero={barrNum} />
-
-          {stepsRespondidos.map((step) => {
-            const resposta = getRespostaDada(step)!;
-            const todasOpcoes = getOpcoes(step);
-            const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
-            return (
-              <div key={step} style={{ marginBottom: 16 }}>
-                <p
-                  style={{
-                    color: "rgba(255,255,255,0.4)",
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: 2,
-                    margin: "0 0 8px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {getLabelPergunta(step)}
-                </p>
+          {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
+          <div style={{ marginBottom: 24 }}>
+            <div
+              onClick={b1Done ? () => setB1Collapsed((p) => !p) : undefined}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: b1Collapsed ? 0 : 20,
+                cursor: b1Done ? "pointer" : "default",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    background: "rgba(255,215,0,0.08)",
-                    border: "1.5px solid #FFD700",
-                    borderRadius: 12,
-                    padding: "14px 16px",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    border: `2px solid ${b1Done ? "#22C55E" : "#FFD700"}`,
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
+                    justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#FFD700", flexShrink: 0 }} />
-                  <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
-                    {opcaoSel?.label ?? resposta}
-                  </span>
+                  <span style={{ color: b1Done ? "#22C55E" : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
                 </div>
+                <span
+                  style={{
+                    color: b1Done ? "#22C55E" : "#FFD700",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: 1,
+                  }}
+                >
+                  BARREIRA 1 {b1Done ? "✓" : ""}
+                </span>
               </div>
-            );
-          })}
-
-          <div ref={bottomRef}>
-            <div style={QUESTION}>{getLabelPergunta()}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {opcoes.map((op) => (
-                <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
-                  {op.descricao && (
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-                  )}
-                </button>
-              ))}
+              {b1Done && (
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "transform 0.2s",
+                    transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                  }}
+                >
+                  <ChevronDown size={16} color="#FFFFFF" />
+                </div>
+              )}
             </div>
+
+            {!b1Collapsed && (
+              <div>
+                {stepsRespondidosB1.map((step) => (
+                  <ConfirmedAnswer key={step} step={step} />
+                ))}
+
+                {isB1Step && (
+                  <div ref={bottomRef}>
+                    <div style={QUESTION}>{getLabelPergunta()}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {opcoes.map((op) => (
+                        <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                          <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                          {op.descricao && (
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* ── SEÇÃO BARREIRA 2 ─────────────────────────────────────── */}
+          {showB2 && (
+            <div ref={b2Ref}>
+              <BarreiraIndicador numero="02" />
+
+              {stepsRespondidosB2.map((step) => (
+                <ConfirmedAnswer key={step} step={step} />
+              ))}
+
+              {isB2Step && (
+                <div ref={bottomRef}>
+                  <div style={QUESTION}>{getLabelPergunta()}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {opcoes.map((op) => (
+                      <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                        {op.descricao && (
+                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
+
 
     return (
       <div style={PAGE}>
