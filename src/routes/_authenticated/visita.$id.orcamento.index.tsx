@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,17 +17,6 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
 });
 
-const SERVICOS_FALLBACK = [
-  { id: "portaria_virtual", label: "Portaria Virtual 24h", icon: "🏢" },
-  { id: "cftv", label: "CFTV / Câmeras", icon: "📷" },
-  { id: "controle_acesso", label: "Controle de Acesso", icon: "🔐" },
-  { id: "interfone_ip", label: "Interfone IP", icon: "📞" },
-  { id: "alarme", label: "Alarme / Sensores", icon: "🚨" },
-  { id: "cerca_eletrica", label: "Cerca Elétrica", icon: "⚡" },
-  { id: "monitoramento", label: "Monitoramento Remoto", icon: "🖥️" },
-  { id: "automacao", label: "Automação de Portões", icon: "🚪" },
-];
-
 const SISTEMAS = [
   "Portaria Presencial",
   "Portaria Remota / Virtual",
@@ -36,79 +25,6 @@ const SISTEMAS = [
   "Sem portaria",
   "Outro",
 ];
-
-function ServicoCard({
-  label,
-  icon,
-  selected,
-  onToggle,
-  isLight,
-}: {
-  label: string;
-  icon: string;
-  selected: boolean;
-  onToggle: () => void;
-  isLight: boolean;
-}) {
-  const startX = useRef(0);
-  const [dragX, setDragX] = useState(0);
-  const dragging = useRef(false);
-
-  return (
-    <div
-      onTouchStart={(e) => {
-        startX.current = e.touches[0].clientX;
-        dragging.current = true;
-      }}
-      onTouchMove={(e) => {
-        if (!dragging.current) return;
-        setDragX(Math.max(-60, Math.min(60, e.touches[0].clientX - startX.current)));
-      }}
-      onTouchEnd={() => {
-        dragging.current = false;
-        if (Math.abs(dragX) > 36) onToggle();
-        setDragX(0);
-      }}
-      onClick={onToggle}
-      style={{
-        transform: `translateX(${dragX}px)`,
-        transition:
-          dragX === 0
-            ? "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, border 0.2s"
-            : "none",
-        background: selected
-          ? isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.15)"
-          : isLight ? "#ffffff" : "rgba(8,8,12,0.35)",
-        border: selected
-          ? isLight ? "1px solid rgba(180,120,0,0.40)" : "1px solid rgba(255,192,0,0.55)"
-          : isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)",
-        borderRadius: 14,
-        padding: "14px 8px",
-        textAlign: "center" as const,
-        cursor: "pointer",
-        backdropFilter: isLight ? undefined : "blur(8px)",
-        boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
-        userSelect: "none" as const,
-        touchAction: "none",
-      }}
-    >
-      <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
-      <div
-        style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
-          fontSize: 11,
-          color: selected
-            ? isLight ? "#b87800" : "#FFC000"
-            : isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
-          lineHeight: 1.25,
-        }}
-      >
-        {label}
-      </div>
-    </div>
-  );
-}
 
 function OrcamentoPasso1() {
   const { id } = Route.useParams();
@@ -128,29 +44,7 @@ function OrcamentoPasso1() {
     },
   });
 
-  const { data: servicosDB } = useQuery({
-    queryKey: ["servicos-lista"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("servicos")
-        .select("id,nome,code,ativo_padrao")
-        .order("ordem");
-      return data ?? [];
-    },
-  });
-
-  const servicosList =
-    servicosDB && servicosDB.length > 0
-      ? servicosDB.map((s: any) => ({
-          id: s.code ?? s.id,
-          label: s.nome,
-          icon: "🔧",
-          defaultOn: s.ativo_padrao,
-        }))
-      : SERVICOS_FALLBACK.map((s) => ({ ...s, defaultOn: true }));
-
   const [qtd, setQtd] = useState<number | "">("");
-  const [selecionados, setSelecionados] = useState<string[]>([]);
   const [sistema, setSistema] = useState("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
@@ -159,14 +53,12 @@ function OrcamentoPasso1() {
     if (ready) return;
     if (orcamento) {
       setQtd((orcamento as any).qtd_apartamentos ?? "");
-      setSelecionados((orcamento as any).servicos_ofertados ?? []);
       setSistema((orcamento as any).sistema_atual ?? "");
       setReady(true);
-    } else if (servicosList.length > 0) {
-      setSelecionados([]);
+    } else {
       setReady(true);
     }
-  }, [orcamento, servicosList, ready]);
+  }, [orcamento, ready]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -175,7 +67,6 @@ function OrcamentoPasso1() {
         {
           visita_id: id,
           qtd_apartamentos: Number(qtd),
-          servicos_ofertados: selecionados,
           sistema_atual: sistema,
           updated_at: new Date().toISOString(),
         },
@@ -219,6 +110,9 @@ function OrcamentoPasso1() {
     color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
     marginBottom: 10,
   };
+
+  const sliderValue = Math.min(Number(qtd) || 0, 200);
+  const inputMax = 200;
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -291,10 +185,9 @@ function OrcamentoPasso1() {
           <input
             type="number"
             min={0}
-            max={1000}
             value={qtd === "" ? 0 : qtd}
             onChange={(e) => {
-              const v = Math.min(1000, Math.max(0, Number(e.target.value) || 0));
+              const v = Math.max(0, Number(e.target.value) || 0);
               setQtd(v);
             }}
             style={{
@@ -328,7 +221,7 @@ function OrcamentoPasso1() {
               left: 0,
               height: 4,
               borderRadius: 2,
-              width: `${((Number(qtd) || 0) / 1000) * 100}%`,
+              width: `${(sliderValue / inputMax) * 100}%`,
               background: isLight
                 ? "linear-gradient(90deg, #b87800, #d49a00)"
                 : "linear-gradient(90deg, #FFC000, #FFD84D)",
@@ -338,9 +231,9 @@ function OrcamentoPasso1() {
           <input
             type="range"
             min={0}
-            max={1000}
+            max={inputMax}
             step={1}
-            value={Number(qtd) || 0}
+            value={sliderValue}
             onChange={(e) => setQtd(Number(e.target.value))}
             style={{
               position: "absolute",
@@ -356,7 +249,7 @@ function OrcamentoPasso1() {
           <div
             style={{
               position: "absolute",
-              left: `calc(${((Number(qtd) || 0) / 1000) * 100}% - 11px)`,
+              left: `calc(${(sliderValue / inputMax) * 100}% - 11px)`,
               width: 22,
               height: 22,
               borderRadius: "50%",
@@ -372,52 +265,7 @@ function OrcamentoPasso1() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
           <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>0</span>
-          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>1000</span>
-        </div>
-      </div>
-
-
-      {/* Serviços */}
-      <div style={CARD}>
-        <div style={LABEL}>Serviços ofertados</div>
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 11,
-            color: isLight ? "#4a5060" : "rgba(255,255,255,0.40)",
-            marginBottom: 14,
-          }}
-        >
-          Toque ou arraste para adicionar / remover
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-          {servicosList.map((s) => (
-            <ServicoCard
-              key={s.id}
-              label={s.label}
-              icon={s.icon}
-              selected={selecionados.includes(s.id)}
-              isLight={isLight}
-              onToggle={() =>
-                setSelecionados((p) =>
-                  p.includes(s.id) ? p.filter((x) => x !== s.id) : [...p, s.id],
-                )
-              }
-            />
-          ))}
-        </div>
-        <div
-          style={{
-            marginTop: 12,
-            textAlign: "center",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 11,
-            color: isLight ? "#b87800" : "rgba(255,192,0,0.65)",
-          }}
-        >
-          {selecionados.length} selecionado{selecionados.length !== 1 ? "s" : ""}
+          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>200</span>
         </div>
       </div>
 
