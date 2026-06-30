@@ -726,14 +726,12 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
-function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: string) => void }) {
+function Section({ items }: { items: any[] }) {
   return (
     <section>
-
-
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {items.map((v) => {
-          const cardLink = (
+        {items.map((v) => (
+          <li key={v.id}>
             <Link
               to="/visita/$id"
               params={{ id: v.id }}
@@ -741,19 +739,8 @@ function Section({ items, onReagendar }: { items: any[]; onReagendar?: (id: stri
             >
               <VisitaCard visita={v} />
             </Link>
-          );
-          return (
-            <li key={v.id}>
-              {onReagendar ? (
-                <SwipeableCard visitaId={v.id} onReagendar={onReagendar}>
-                  {cardLink}
-                </SwipeableCard>
-              ) : (
-                cardLink
-              )}
-            </li>
-          );
-        })}
+          </li>
+        ))}
       </ul>
     </section>
   );
