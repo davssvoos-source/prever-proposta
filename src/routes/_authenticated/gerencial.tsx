@@ -32,6 +32,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { isLight } = useTheme();
+  const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
+  const textPrimary = isLight ? "#0a0b0e" : "#F5F5F5";
+  const textSecondary = isLight ? "#4a5060" : "#9ca3af";
+  const cardBg = isLight ? cardLight : "rgba(255,255,255,0.05)";
+  const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
+  const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none";
+  const numberGold = isLight ? "#b87800" : "#FFC000";
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
