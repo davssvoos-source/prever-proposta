@@ -142,14 +142,14 @@ function CalendarioPage() {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 600,
           fontSize: 22,
-          color: "#fff",
+          color: textPrimary,
           margin: 0,
         }}>Calendário</h1>
         <p style={{
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
           fontSize: 12,
-          color: "rgba(255,255,255,0.5)",
+          color: textSecondary,
           margin: "4px 0 0",
           letterSpacing: "0.06em",
         }}>
@@ -157,11 +157,11 @@ function CalendarioPage() {
         </p>
       </div>
 
-      <div style={CARD}>
+      <div style={CARD_T}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <button
             onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1)); setDiaSelecionado(null); }}
-            style={NAV_BTN}
+            style={NAV_BTN_T}
           >
             <ChevronLeft size={18} />
           </button>
@@ -169,13 +169,13 @@ function CalendarioPage() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 600,
             fontSize: 15,
-            color: "#fff",
+            color: textPrimary,
           }}>
             {MESES[mes.getMonth()]} {mes.getFullYear()}
           </div>
           <button
             onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1)); setDiaSelecionado(null); }}
-            style={NAV_BTN}
+            style={NAV_BTN_T}
           >
             <ChevronRight size={18} />
           </button>
