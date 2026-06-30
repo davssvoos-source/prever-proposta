@@ -679,6 +679,95 @@ function BlocosWizardPage() {
             </div>
           </div>
 
+          {/* ── SEÇÃO DE FOTOS ─────────────────────────────────────── */}
+          <div>
+            <div
+              style={{
+                color: "rgba(255,255,255,0.55)",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.18em",
+                marginBottom: 10,
+              }}
+            >
+              FOTOS DO LOCAL {fotos.length > 0 ? `(${fotos.length})` : ""}
+            </div>
+
+            {fotos.length > 0 && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+              >
+                {fotos.map((foto, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      position: "relative",
+                      aspectRatio: "1",
+                      borderRadius: 12,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={foto.localUrl}
+                      alt={`Foto ${idx + 1}`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                    <button
+                      onClick={() => removerFoto(idx)}
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        right: 6,
+                        width: 24,
+                        height: 24,
+                        background: "rgba(0,0,0,0.7)",
+                        border: "none",
+                        borderRadius: "50%",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        lineHeight: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowOpcoes(true)}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                background: "transparent",
+                border: "1.5px dashed rgba(255,215,0,0.4)",
+                borderRadius: 14,
+                color: "#FFD700",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Camera size={18} color="#FFD700" />
+              {fotos.length === 0 ? "ADICIONAR FOTOS" : "ADICIONAR MAIS FOTOS"}
+            </button>
+          </div>
+
           <button
             onClick={() => salvarMutation.mutate(config)}
             disabled={salvarMutation.isPending}
@@ -697,6 +786,119 @@ function BlocosWizardPage() {
           >
             {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
           </button>
+
+          {/* Inputs ocultos */}
+          <input
+            ref={inputGaleriaRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={handleArquivos}
+          />
+          <input
+            ref={inputCameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: "none" }}
+            onChange={handleArquivos}
+          />
+
+          {/* Bottom sheet */}
+          {showOpcoes && (
+            <>
+              <div
+                onClick={() => setShowOpcoes(false)}
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40 }}
+              />
+              <div
+                style={{
+                  position: "fixed",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: "#1C1A0F",
+                  border: "1px solid rgba(255,215,0,0.2)",
+                  borderRadius: "20px 20px 0 0",
+                  padding: "24px 20px 40px",
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#fff",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    marginBottom: 4,
+                    textAlign: "center",
+                  }}
+                >
+                  Adicionar fotos
+                </div>
+                <button
+                  onClick={() => inputCameraRef.current?.click()}
+                  style={{
+                    width: "100%",
+                    padding: 16,
+                    background: "rgba(255,215,0,0.08)",
+                    border: "1px solid rgba(255,215,0,0.2)",
+                    borderRadius: 14,
+                    color: "#FFD700",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Camera size={20} color="#FFD700" />
+                  Tirar foto
+                </button>
+                <button
+                  onClick={() => inputGaleriaRef.current?.click()}
+                  style={{
+                    width: "100%",
+                    padding: 16,
+                    background: "rgba(255,215,0,0.08)",
+                    border: "1px solid rgba(255,215,0,0.2)",
+                    borderRadius: 14,
+                    color: "#FFD700",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                  }}
+                >
+                  <ImageIcon size={20} color="#FFD700" />
+                  Escolher da galeria
+                </button>
+                <button
+                  onClick={() => setShowOpcoes(false)}
+                  style={{
+                    width: "100%",
+                    padding: 14,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 14,
+                    color: "#6B7280",
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
         </div>
       );
     }
