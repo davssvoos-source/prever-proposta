@@ -432,7 +432,7 @@ function NovaVisitaPage() {
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
               <label style={LABEL}>Nome do Cliente</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} />
+              <input style={INPUT} value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} />
             </div>
             <div>
               <label style={LABEL}>WhatsApp</label>
