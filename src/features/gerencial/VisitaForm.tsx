@@ -176,10 +176,11 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     const weekEnd = new Date(now);
     weekEnd.setDate(now.getDate() + 7);
     (visitasAll ?? []).forEach((v) => {
-      if (!v.tecnico_id) return;
+      if (!v.tecnico_id || !v.data_hora_agendada) return;
       const d = new Date(v.data_hora_agendada);
       if (d >= now && d <= weekEnd) m.set(v.tecnico_id, (m.get(v.tecnico_id) ?? 0) + 1);
     });
+
     return m;
   }, [visitasAll]);
 
