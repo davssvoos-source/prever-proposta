@@ -197,8 +197,6 @@ function NovaVisitaPage() {
   const passo1Valido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
-    nomeCliente.trim() !== "" &&
-    contato.trim() !== "" &&
     servicosPropostos.length > 0 &&
     endereco.trim() !== "";
   const passo2Valido = true;
