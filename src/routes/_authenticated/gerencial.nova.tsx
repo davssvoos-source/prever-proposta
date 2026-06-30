@@ -241,8 +241,10 @@ function NovaVisitaPage() {
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
-        nome_sindico: nomeSindico,
+        nome_sindico: nomeSindico || null,
+        nome_zelador: nomeZelador || null,
         contato_sindico: contato,
+
         servicos_solicitados: servicos,
         servicos_propostos: servicosPropostos,
         servico_solicitado: servicos[0] ?? null,
