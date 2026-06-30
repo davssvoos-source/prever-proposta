@@ -343,7 +343,7 @@ function NotifItem({
                 width: 7,
                 height: 7,
                 borderRadius: "50%",
-                background: "#FFC000",
+                background: isLight ? "#b87800" : "#FFC000",
                 marginTop: 6,
                 flexShrink: 0,
                 boxShadow: "0 0 6px rgba(255,192,0,0.7)",
