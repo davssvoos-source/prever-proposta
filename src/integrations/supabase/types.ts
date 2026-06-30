@@ -692,7 +692,7 @@ export type Database = {
           contato_sindico: string | null
           created_at: string
           created_by: string | null
-          data_hora_agendada: string
+          data_hora_agendada: string | null
           data_hora_fim: string | null
           data_hora_inicio: string | null
           descricao_pedido: string | null
@@ -706,6 +706,7 @@ export type Database = {
           motivo_reprovacao: string | null
           nome_predio: string | null
           nome_sindico: string | null
+          nome_zelador: string | null
           notas_visita: string | null
           obs_agendamento: string | null
           prioridade: string | null
@@ -728,7 +729,7 @@ export type Database = {
           contato_sindico?: string | null
           created_at?: string
           created_by?: string | null
-          data_hora_agendada: string
+          data_hora_agendada?: string | null
           data_hora_fim?: string | null
           data_hora_inicio?: string | null
           descricao_pedido?: string | null
@@ -742,6 +743,7 @@ export type Database = {
           motivo_reprovacao?: string | null
           nome_predio?: string | null
           nome_sindico?: string | null
+          nome_zelador?: string | null
           notas_visita?: string | null
           obs_agendamento?: string | null
           prioridade?: string | null
@@ -764,7 +766,7 @@ export type Database = {
           contato_sindico?: string | null
           created_at?: string
           created_by?: string | null
-          data_hora_agendada?: string
+          data_hora_agendada?: string | null
           data_hora_fim?: string | null
           data_hora_inicio?: string | null
           descricao_pedido?: string | null
@@ -778,6 +780,7 @@ export type Database = {
           motivo_reprovacao?: string | null
           nome_predio?: string | null
           nome_sindico?: string | null
+          nome_zelador?: string | null
           notas_visita?: string | null
           obs_agendamento?: string | null
           prioridade?: string | null
