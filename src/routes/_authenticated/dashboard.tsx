@@ -303,28 +303,31 @@ function Dashboard() {
             <div
               style={{
                 ...GLASS,
+                ...(isLight ? { border: '1px solid rgba(180,120,0,0.25)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' } : {}),
                 padding: '20px 18px',
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  top: -30,
-                  right: -30,
-                  width: 100,
-                  height: 100,
-                  background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
-                  pointerEvents: 'none',
-                }}
-              />
+              {!isLight && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -30,
+                    right: -30,
+                    width: 100,
+                    height: 100,
+                    background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
               <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 11,
-                  color: 'rgba(255,192,0,0.7)',
+                  color: isLight ? '#b87800' : 'rgba(255,192,0,0.7)',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   marginBottom: 8,
@@ -337,7 +340,7 @@ function Dashboard() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 600,
                   fontSize: 16,
-                  color: '#FFFFFF',
+                  color: isLight ? '#0a0b0e' : '#FFFFFF',
                   marginBottom: 6,
                 }}
               >
@@ -349,7 +352,7 @@ function Dashboard() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: 'rgba(255,255,255,0.65)',
+                    color: isLight ? '#4a5060' : 'rgba(255,255,255,0.65)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
@@ -365,7 +368,7 @@ function Dashboard() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: '#FFFFFF',
+                    color: isLight ? '#0a0b0e' : '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
@@ -378,20 +381,21 @@ function Dashboard() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: 'rgba(255,192,0,0.12)',
-                    border: '1px solid rgba(255,192,0,0.30)',
+                    background: isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.12)',
+                    border: isLight ? '1px solid rgba(180,120,0,0.30)' : '1px solid rgba(255,192,0,0.30)',
                     borderRadius: 20,
                     padding: '4px 10px',
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 600,
                     fontSize: 11,
-                    color: '#FFC000',
+                    color: isLight ? '#b87800' : '#FFC000',
                   }}
                 >
                   <AlarmClock size={11} /> {countdown}
                 </div>
               </div>
             </div>
+
           </Link>
         )}
 
@@ -415,7 +419,7 @@ function Dashboard() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 10,
-                color: "rgba(200,200,200,0.55)",
+                color: isLight ? "#4a5060" : "rgba(200,200,200,0.55)",
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginTop: 2,
