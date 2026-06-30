@@ -608,11 +608,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section items={pendentes} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {emAndamento.length > 0 && <Section items={emAndamento} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aguardando.length > 0 && <Section items={aguardando} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
-          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onReagendar={isAdmin ? undefined : irParaReagendar} />}
+          {pendentes.length > 0 && <Section items={pendentes} />}
+          {emAndamento.length > 0 && <Section items={emAndamento} />}
+          {aguardando.length > 0 && <Section items={aguardando} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
 
         </>
       )}
