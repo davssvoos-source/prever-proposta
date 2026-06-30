@@ -638,7 +638,7 @@ function VisitaDetail() {
             textTransform: "capitalize",
           }}
         >
-          {fmtDateLong(visita.data_hora_agendada)}
+          {visita.data_hora_agendada ? fmtDateLong(visita.data_hora_agendada) : "Sem data agendada"}
         </div>
         {visita.data_hora_inicio && (
           <div
