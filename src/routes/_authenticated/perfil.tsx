@@ -915,13 +915,14 @@ function Divisor() {
 }
 
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  const { isLight } = useTheme();
   return (
     <div
       style={{
         display: "flex",
         justifyContent: "space-between",
         padding: "8px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <span
@@ -929,7 +930,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
           fontSize: 12,
-          color: "rgba(255,255,255,0.4)",
+          color: isLight ? "#4a5060" : "rgba(255,255,255,0.60)",
         }}
       >
         {label}
@@ -939,7 +940,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 400,
           fontSize: 12,
-          color: highlight ? "#FFC000" : "#fff",
+          color: highlight ? (isLight ? "#b87800" : "#FFC000") : (isLight ? "#0a0b0e" : "#FFFFFF"),
         }}
       >
         {value}
