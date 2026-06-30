@@ -700,6 +700,7 @@ export type Database = {
           equipamentos_vistos: string | null
           foto_fachada_url: string | null
           id: string
+          iniciada_em: string | null
           latitude: number | null
           longitude: number | null
           motivo_reprovacao: string | null
@@ -713,6 +714,7 @@ export type Database = {
           servicos_propostos: string[]
           servicos_solicitados: string[]
           status: string
+          status_aprovacao: string | null
           tecnico_id: string | null
           tipo_local: string | null
           titulo: string
@@ -734,6 +736,7 @@ export type Database = {
           equipamentos_vistos?: string | null
           foto_fachada_url?: string | null
           id?: string
+          iniciada_em?: string | null
           latitude?: number | null
           longitude?: number | null
           motivo_reprovacao?: string | null
@@ -747,6 +750,7 @@ export type Database = {
           servicos_propostos?: string[]
           servicos_solicitados?: string[]
           status?: string
+          status_aprovacao?: string | null
           tecnico_id?: string | null
           tipo_local?: string | null
           titulo: string
@@ -768,6 +772,7 @@ export type Database = {
           equipamentos_vistos?: string | null
           foto_fachada_url?: string | null
           id?: string
+          iniciada_em?: string | null
           latitude?: number | null
           longitude?: number | null
           motivo_reprovacao?: string | null
@@ -781,6 +786,7 @@ export type Database = {
           servicos_propostos?: string[]
           servicos_solicitados?: string[]
           status?: string
+          status_aprovacao?: string | null
           tecnico_id?: string | null
           tipo_local?: string | null
           titulo?: string
