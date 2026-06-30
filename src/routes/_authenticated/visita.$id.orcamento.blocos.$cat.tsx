@@ -361,8 +361,6 @@ function BlocosWizardPage() {
       (wizard.step.startsWith("b1") && (w.step === "b2_tipo" || w.step === "resumo")) ||
       (wizard.step.startsWith("b2") && w.step === "resumo");
     if (crossingBarreira) {
-      // mantém a seleção visível por um instante antes de avançar
-      setWizard({ ...wizard, b1: w.b1, b2: w.b2 });
       setTimeout(() => setWizard(w), 400);
     } else {
       setWizard(w);
