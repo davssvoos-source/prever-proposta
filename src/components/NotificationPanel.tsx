@@ -27,6 +27,7 @@ export function NotificationPanel() {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { notificacoes, naoLidas, marcarLida, marcarTodasLidas, deletar } = useNotificacoes();
+  const { isLight } = useTheme();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
