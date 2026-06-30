@@ -330,6 +330,53 @@ function VisitaPendentePage() {
           <p style={{ color: c.text, fontSize: 13, margin: 0, whiteSpace: "pre-wrap" }}>{visita.obs_agendamento}</p>
         </div>
       )}
+
+      {/* Iniciar Visita */}
+      <div style={{ padding: "24px 0 40px" }}>
+        <button
+          onClick={async () => {
+            setIniciando(true);
+            try {
+              const { error } = await supabase
+                .from("visitas_tecnicas")
+                .update({ status: "em_andamento", iniciada_em: new Date().toISOString() })
+                .eq("id", id);
+              if (error) throw error;
+              qc.invalidateQueries({ queryKey: ["visita_pendente", id] });
+              qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
+              navigate({ to: "/visita/$id/orcamento/categorias", params: { id } });
+            } catch (err: any) {
+              toast.error(err?.message || "Erro ao iniciar visita");
+              setIniciando(false);
+            }
+          }}
+          disabled={iniciando}
+          style={{
+            width: "100%",
+            padding: "16px 0",
+            borderRadius: 16,
+            border: "none",
+            cursor: iniciando ? "not-allowed" : "pointer",
+            background: iniciando
+              ? (isLight ? "#d4a800" : "rgba(255,192,0,0.50)")
+              : "linear-gradient(135deg, #FFC000 0%, #FFD700 50%, #FFA500 100%)",
+            boxShadow: iniciando ? "none" : "0 4px 20px rgba(255,192,0,0.35)",
+            color: "#0a0b0e",
+            fontSize: 15,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            transition: "all 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+          }}
+        >
+          {iniciando ? "Iniciando..." : (<><Play size={18} fill="currentColor" /> Iniciar Visita Técnica</>)}
+        </button>
+      </div>
     </div>
   );
+
 }
