@@ -669,6 +669,82 @@ function BlocosWizardPage() {
       );
     }
 
+    // Telas de barreira (B1 / B2): perguntas reveladas progressivamente
+    const isB1 = B1_STEPS.includes(wizard.step);
+    const isB2 = B2_STEPS.includes(wizard.step);
+
+    if (isB1 || isB2) {
+      const currentSteps = isB1 ? B1_STEPS : B2_STEPS;
+      const barrNum = isB1 ? "01" : "02";
+      const currentIdx = currentSteps.indexOf(wizard.step);
+      const stepsRespondidos = currentSteps
+        .slice(0, currentIdx)
+        .filter((s) => getRespostaDada(s) !== null);
+
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
+          </div>
+
+          <BarreiraIndicador numero={barrNum} />
+
+          {stepsRespondidos.map((step) => {
+            const resposta = getRespostaDada(step)!;
+            const todasOpcoes = getOpcoes(step);
+            const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
+            return (
+              <div key={step} style={{ marginBottom: 16 }}>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.4)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 2,
+                    margin: "0 0 8px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {getLabelPergunta(step)}
+                </p>
+                <div
+                  style={{
+                    background: "rgba(255,215,0,0.08)",
+                    border: "1.5px solid #FFD700",
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#FFD700", flexShrink: 0 }} />
+                  <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
+                    {opcaoSel?.label ?? resposta}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          <div ref={bottomRef}>
+            <div style={QUESTION}>{getLabelPergunta()}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {opcoes.map((op) => (
+                <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                  {op.descricao && (
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={PAGE}>
         <div style={HEADER}>
