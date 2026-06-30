@@ -871,6 +871,7 @@ const eyeBtnStyle: CSSProperties = {
 };
 
 function Stat({ label, value }: { label: string; value: string }) {
+  const { isLight } = useTheme();
   return (
     <div style={{ textAlign: "center", flex: 1 }}>
       <div
@@ -878,7 +879,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 700,
           fontSize: 28,
-          color: "#FFC000",
+          color: isLight ? "#b87800" : "#FFC000",
           lineHeight: 1.1,
         }}
       >
@@ -891,7 +892,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontSize: 11,
           letterSpacing: "0.10em",
           textTransform: "uppercase",
-          color: "rgba(255,255,255,0.55)",
+          color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
           marginTop: 4,
         }}
       >
