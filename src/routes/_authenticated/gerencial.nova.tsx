@@ -814,7 +814,7 @@ function NovaVisitaPage() {
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
-              { label: "Cliente", value: nomeCliente },
+              ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
               ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
               ...(nomeZelador ? [{ label: "Zelador(a)", value: nomeZelador }] : []),
 
