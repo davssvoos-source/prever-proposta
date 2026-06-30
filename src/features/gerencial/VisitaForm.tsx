@@ -151,12 +151,13 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
         (v) =>
           v.tecnico_id === form.tecnico_id &&
           v.id !== initial?.id &&
+          v.data_hora_agendada &&
           new Date(v.data_hora_agendada) >= now &&
           new Date(v.data_hora_agendada) <= weekEnd,
       )
       .sort(
         (a, b) =>
-          new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime(),
+          new Date(a.data_hora_agendada!).getTime() - new Date(b.data_hora_agendada!).getTime(),
       );
   }, [form.tecnico_id, visitasAll, initial?.id]);
 
@@ -164,9 +165,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     if (!dataHoraISO) return false;
     const t = new Date(dataHoraISO).getTime();
     return tecnicoAgendaSemana.some(
-      (v) => Math.abs(new Date(v.data_hora_agendada).getTime() - t) < 60 * 60 * 1000,
+      (v) => Math.abs(new Date(v.data_hora_agendada!).getTime() - t) < 60 * 60 * 1000,
     );
   }, [dataHoraISO, tecnicoAgendaSemana]);
+
 
   const visitasPorTecnico = useMemo(() => {
     const m = new Map<string, number>();
