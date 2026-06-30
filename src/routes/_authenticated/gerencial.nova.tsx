@@ -401,7 +401,9 @@ function NovaVisitaPage() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <span style={{ fontSize: 20 }}>{t.emoji}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "rgba(200,200,200,0.65)") }}>
+                      <t.Icon size={26} />
+                    </span>
                     <span
                       style={{
                         fontFamily: "'Montserrat', sans-serif",
