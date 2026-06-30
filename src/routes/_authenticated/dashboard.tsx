@@ -644,7 +644,11 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
 };
 
 function VisitaCard({ visita }: { visita: any }) {
-  const sInfo = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
+  const { isLight } = useTheme();
+  const sInfoBase = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
+  const sInfo = isLight && visita.status === 'pendente'
+    ? { label: sInfoBase.label, color: '#7a5000', bg: 'rgba(180,120,0,0.10)', border: 'rgba(180,120,0,0.25)' }
+    : { ...sInfoBase, border: `${sInfoBase.color}40` };
   const nome =
     visita.nome_predio ??
     visita.clientes?.nome ??
@@ -654,12 +658,17 @@ function VisitaCard({ visita }: { visita: any }) {
   return (
     <div
       style={{
-        background: "rgba(8,8,12,0.22)",
-        backdropFilter: "blur(12px) saturate(130%)",
-        border: "1px solid rgba(255,192,0,0.10)",
+        background: isLight
+          ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
+          : "rgba(8,8,12,0.22)",
+        backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+        border: isLight
+          ? "1px solid rgba(0,0,0,0.07)"
+          : "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
         marginBottom: 12,
+        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
       }}
     >
       <div
@@ -676,7 +685,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 15,
-            color: "#fff",
+            color: isLight ? "#0a0b0e" : "#fff",
             flex: 1,
           }}
         >
@@ -687,7 +696,7 @@ function VisitaCard({ visita }: { visita: any }) {
             display: "inline-flex",
             alignItems: "center",
             background: sInfo.bg,
-            border: `1px solid ${sInfo.color}40`,
+            border: `1px solid ${sInfo.border}`,
             borderRadius: 20,
             padding: "3px 10px",
             fontFamily: "'Montserrat', sans-serif",
@@ -707,7 +716,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 12,
-            color: "rgba(255,255,255,0.65)",
+            color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)",
             display: "inline-flex",
             alignItems: "center",
             gap: 5,
@@ -722,7 +731,7 @@ function VisitaCard({ visita }: { visita: any }) {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 300,
             fontSize: 11,
-            color: "#FFFFFF",
+            color: isLight ? "#0a0b0e" : "#FFFFFF",
             marginTop: 6,
             letterSpacing: "0.06em",
             display: "inline-flex",
