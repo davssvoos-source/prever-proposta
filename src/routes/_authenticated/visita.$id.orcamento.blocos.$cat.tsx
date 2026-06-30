@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -91,6 +91,34 @@ function optionStyle(): React.CSSProperties {
     gap: 4,
     color: "#fff",
   };
+}
+
+// ─── Steps por barreira ─────────────────────────────────────────────────────
+const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
+const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+
+function BarreiraIndicador({ numero }: { numero: "01" | "02" }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          border: "2px solid #FFD700",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ color: "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
+      </div>
+      <span style={{ color: "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+        {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
+      </span>
+    </div>
+  );
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -200,6 +228,21 @@ function BlocosWizardPage() {
       tecnologia: null,
     });
   }
+
+  // Auto-iniciar wizard quando não há blocos
+  useEffect(() => {
+    if (!isLoading && blocosAdicionados.length === 0 && !wizard) {
+      iniciarWizard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, blocosAdicionados.length]);
+
+  // Scroll suave ao revelar nova pergunta
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (wizard) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [wizard?.step]);
+
 
   // ── Selecionar opção ────────────────────────────────────────────────────
   function selecionar(valor: string) {
@@ -329,7 +372,14 @@ function BlocosWizardPage() {
         break;
     }
 
-    setWizard(w);
+    const crossingBarreira =
+      (wizard.step.startsWith("b1") && (w.step === "b2_tipo" || w.step === "resumo")) ||
+      (wizard.step.startsWith("b2") && w.step === "resumo");
+    if (crossingBarreira) {
+      setTimeout(() => setWizard(w), 400);
+    } else {
+      setWizard(w);
+    }
   }
 
   // ── Voltar passo ────────────────────────────────────────────────────────
@@ -408,9 +458,10 @@ function BlocosWizardPage() {
   }
 
   // ── Opções do step atual ────────────────────────────────────────────────
-  function getOpcoes(): { valor: string; label: string; descricao?: string }[] {
+  function getOpcoes(stepOverride?: WizardStep): { valor: string; label: string; descricao?: string }[] {
     if (!wizard) return [];
-    const { step, b1, b2 } = wizard;
+    const { b1, b2 } = wizard;
+    const step = stepOverride ?? wizard.step;
 
     const entrada = (tipo?: string) => {
       const lista =
@@ -486,20 +537,42 @@ function BlocosWizardPage() {
     }
   }
 
-  function getLabelPergunta(): string {
+  function getLabelPergunta(stepOverride?: WizardStep): string {
     if (!wizard) return "";
-    const s = wizard.step;
-    const sufx = s.startsWith("b2") ? " — BARREIRA 2" : s.startsWith("b1") ? " — BARREIRA 1" : "";
+    const s = stepOverride ?? wizard.step;
     if (s === "eclusa") return "É UMA ECLUSA?";
-    if (s === "b1_tipo" || s === "b2_tipo") return `TIPO DE BARREIRA?${sufx}`;
-    if (s === "b1_entrada" || s === "b2_entrada") return `DISPOSITIVO DE ENTRADA?${sufx}`;
-    if (s === "b1_saida" || s === "b2_saida") return `DISPOSITIVO DE SAÍDA?${sufx}`;
-    if (s === "b1_material" || s === "b2_material") return `TIPO DE MATERIAL?${sufx}`;
-    if (s === "b1_motor" || s === "b2_motor") return `FORNECER MOTOR?${sufx}`;
-    if (s === "b1_abertura" || s === "b2_abertura") return `TIPO DE ABERTURA?${sufx}`;
-    if (s === "b1_folhas" || s === "b2_folhas") return `QUANTIDADE DE FOLHAS?${sufx}`;
+    if (s === "b1_tipo" || s === "b2_tipo") return "TIPO DE BARREIRA?";
+    if (s === "b1_entrada" || s === "b2_entrada") return "DISPOSITIVO DE ENTRADA?";
+    if (s === "b1_saida" || s === "b2_saida") return "DISPOSITIVO DE SAÍDA?";
+    if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
+    if (s === "b1_motor" || s === "b2_motor") return "FORNECER MOTOR?";
+    if (s === "b1_abertura" || s === "b2_abertura") return "TIPO DE ABERTURA?";
+    if (s === "b1_folhas" || s === "b2_folhas") return "QUANTIDADE DE FOLHAS?";
     if (s === "tecnologia") return tipoBloco === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
     return "";
+  }
+
+  function getRespostaDada(step: WizardStep): string | null {
+    if (!wizard) return null;
+    const w = wizard;
+    const map: Partial<Record<WizardStep, string | undefined>> = {
+      b1_tipo: w.b1.tipo,
+      b1_entrada: w.b1.entrada,
+      b1_saida: w.b1.saida,
+      b1_material: w.b1.material,
+      b1_motor: w.b1.motor === true ? "SIM" : w.b1.motor === false ? "NAO" : undefined,
+      b1_abertura: w.b1.abertura,
+      b1_folhas: w.b1.folhas,
+      b2_tipo: w.b2.tipo,
+      b2_entrada: w.b2.entrada,
+      b2_saida: w.b2.saida,
+      b2_material: w.b2.material,
+      b2_motor: w.b2.motor === true ? "SIM" : w.b2.motor === false ? "NAO" : undefined,
+      b2_abertura: w.b2.abertura,
+      b2_folhas: w.b2.folhas,
+    };
+    const v = map[step];
+    return v ?? null;
   }
 
   function buildConfig(): BlocoConfig {
@@ -592,6 +665,82 @@ function BlocosWizardPage() {
           >
             {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
           </button>
+        </div>
+      );
+    }
+
+    // Telas de barreira (B1 / B2): perguntas reveladas progressivamente
+    const isB1 = B1_STEPS.includes(wizard.step);
+    const isB2 = B2_STEPS.includes(wizard.step);
+
+    if (isB1 || isB2) {
+      const currentSteps = isB1 ? B1_STEPS : B2_STEPS;
+      const barrNum = isB1 ? "01" : "02";
+      const currentIdx = currentSteps.indexOf(wizard.step);
+      const stepsRespondidos = currentSteps
+        .slice(0, currentIdx)
+        .filter((s) => getRespostaDada(s) !== null);
+
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16 }}>{catNome}</div>
+          </div>
+
+          <BarreiraIndicador numero={barrNum} />
+
+          {stepsRespondidos.map((step) => {
+            const resposta = getRespostaDada(step)!;
+            const todasOpcoes = getOpcoes(step);
+            const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
+            return (
+              <div key={step} style={{ marginBottom: 16 }}>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.4)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: 2,
+                    margin: "0 0 8px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {getLabelPergunta(step)}
+                </p>
+                <div
+                  style={{
+                    background: "rgba(255,215,0,0.08)",
+                    border: "1.5px solid #FFD700",
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#FFD700", flexShrink: 0 }} />
+                  <span style={{ color: "#FFD700", fontSize: 15, fontWeight: 700 }}>
+                    {opcaoSel?.label ?? resposta}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          <div ref={bottomRef}>
+            <div style={QUESTION}>{getLabelPergunta()}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {opcoes.map((op) => (
+                <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{op.label}</span>
+                  {op.descricao && (
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       );
     }
@@ -720,7 +869,7 @@ function BlocosWizardPage() {
           letterSpacing: 1,
         }}
       >
-        + ADICIONAR BLOCO
+        + ADICIONAR
       </button>
     </div>
   );
