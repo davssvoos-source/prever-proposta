@@ -28,6 +28,7 @@ import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authen
 import { Route as AuthenticatedVisitaIdReagendarRouteImport } from './routes/_authenticated/visita.$id.reagendar'
 import { Route as AuthenticatedVisitaIdOrcamentoRouteImport } from './routes/_authenticated/visita.$id.orcamento'
 import { Route as AuthenticatedVisitaIdOrcamentoIndexRouteImport } from './routes/_authenticated/visita.$id.orcamento.index'
+import { Route as AuthenticatedVisitaIdOrcamentoPreEnvioRouteImport } from './routes/_authenticated/visita.$id.orcamento.pre-envio'
 import { Route as AuthenticatedVisitaIdOrcamentoCategoriasRouteImport } from './routes/_authenticated/visita.$id.orcamento.categorias'
 import { Route as AuthenticatedGerencialVisitaIdEditarRouteImport } from './routes/_authenticated/gerencial.visita.$id.editar'
 import { Route as AuthenticatedVisitaIdOrcamentoBlocosCatRouteImport } from './routes/_authenticated/visita.$id.orcamento.blocos.$cat'
@@ -131,6 +132,12 @@ const AuthenticatedVisitaIdOrcamentoIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedVisitaIdOrcamentoRoute,
   } as any)
+const AuthenticatedVisitaIdOrcamentoPreEnvioRoute =
+  AuthenticatedVisitaIdOrcamentoPreEnvioRouteImport.update({
+    id: '/pre-envio',
+    path: '/pre-envio',
+    getParentRoute: () => AuthenticatedVisitaIdOrcamentoRoute,
+  } as any)
 const AuthenticatedVisitaIdOrcamentoCategoriasRoute =
   AuthenticatedVisitaIdOrcamentoCategoriasRouteImport.update({
     id: '/categorias',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento/': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -192,6 +200,7 @@ export interface FileRoutesByTo {
   '/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -217,6 +226,7 @@ export interface FileRoutesById {
   '/_authenticated/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
   '/_authenticated/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/_authenticated/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  '/_authenticated/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/_authenticated/visita/$id/orcamento/': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/_authenticated/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/visita/$id/reagendar'
     | '/gerencial/visita/$id/editar'
     | '/visita/$id/orcamento/categorias'
+    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento/'
     | '/visita/$id/orcamento/blocos/$cat'
   fileRoutesByTo: FileRoutesByTo
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/visita/$id/reagendar'
     | '/gerencial/visita/$id/editar'
     | '/visita/$id/orcamento/categorias'
+    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento'
     | '/visita/$id/orcamento/blocos/$cat'
   id:
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/visita/$id/reagendar'
     | '/_authenticated/gerencial/visita/$id/editar'
     | '/_authenticated/visita/$id/orcamento/categorias'
+    | '/_authenticated/visita/$id/orcamento/pre-envio'
     | '/_authenticated/visita/$id/orcamento/'
     | '/_authenticated/visita/$id/orcamento/blocos/$cat'
   fileRoutesById: FileRoutesById
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoIndexRouteImport
       parentRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
     }
+    '/_authenticated/visita/$id/orcamento/pre-envio': {
+      id: '/_authenticated/visita/$id/orcamento/pre-envio'
+      path: '/pre-envio'
+      fullPath: '/visita/$id/orcamento/pre-envio'
+      preLoaderRoute: typeof AuthenticatedVisitaIdOrcamentoPreEnvioRouteImport
+      parentRoute: typeof AuthenticatedVisitaIdOrcamentoRoute
+    }
     '/_authenticated/visita/$id/orcamento/categorias': {
       id: '/_authenticated/visita/$id/orcamento/categorias'
       path: '/categorias'
@@ -479,6 +499,7 @@ const AuthenticatedGerencialRouteWithChildren =
 
 interface AuthenticatedVisitaIdOrcamentoRouteChildren {
   AuthenticatedVisitaIdOrcamentoCategoriasRoute: typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
+  AuthenticatedVisitaIdOrcamentoPreEnvioRoute: typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   AuthenticatedVisitaIdOrcamentoIndexRoute: typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   AuthenticatedVisitaIdOrcamentoBlocosCatRoute: typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -487,6 +508,8 @@ const AuthenticatedVisitaIdOrcamentoRouteChildren: AuthenticatedVisitaIdOrcament
   {
     AuthenticatedVisitaIdOrcamentoCategoriasRoute:
       AuthenticatedVisitaIdOrcamentoCategoriasRoute,
+    AuthenticatedVisitaIdOrcamentoPreEnvioRoute:
+      AuthenticatedVisitaIdOrcamentoPreEnvioRoute,
     AuthenticatedVisitaIdOrcamentoIndexRoute:
       AuthenticatedVisitaIdOrcamentoIndexRoute,
     AuthenticatedVisitaIdOrcamentoBlocosCatRoute:

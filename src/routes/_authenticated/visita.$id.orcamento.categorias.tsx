@@ -363,7 +363,7 @@ function CategoriasPage() {
               toast.error("Adicione pelo menos um bloco antes de continuar.");
               return;
             }
-            navigate({ to: "/visita/$id", params: { id } });
+            navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
           }}
         />
       </div>
