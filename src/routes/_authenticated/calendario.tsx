@@ -35,6 +35,32 @@ const MESES = [
 
 function CalendarioPage() {
   const navigate = useNavigate();
+  const { isLight } = useTheme();
+  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
+  const goldDark = isLight ? "#b87800" : "#FFC000";
+  const CARD_T: CSSProperties = {
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    borderRadius: 18,
+    padding: "20px 16px",
+    marginBottom: 20,
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+  };
+  const NAV_BTN_T: CSSProperties = {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+    color: textPrimary,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+  };
   const hoje = new Date();
   const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(hoje.getDate());
