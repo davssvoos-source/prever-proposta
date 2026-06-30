@@ -312,12 +312,12 @@ function CategoriasPage() {
               })
             }
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background = "rgba(255,192,0,0.08)";
-              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.30)";
+              (e.currentTarget as HTMLDivElement).style.background = isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.08)";
+              (e.currentTarget as HTMLDivElement).style.border = isLight ? "1px solid rgba(180,120,0,0.30)" : "1px solid rgba(255,192,0,0.30)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background = "rgba(8,8,12,0.22)";
-              (e.currentTarget as HTMLDivElement).style.border = "1px solid rgba(255,192,0,0.10)";
+              (e.currentTarget as HTMLDivElement).style.background = (CARD.background as string) || "";
+              (e.currentTarget as HTMLDivElement).style.border = (CARD.border as string) || "";
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 40 }}>{cat.icon}</div>
@@ -327,7 +327,7 @@ function CategoriasPage() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 400,
                   fontSize: 15,
-                  color: "#fff",
+                  color: textPrimary,
                   marginBottom: 4,
                 }}
               >
@@ -338,7 +338,7 @@ function CategoriasPage() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 11,
-                  color: "rgba(255,255,255,0.45)",
+                  color: textSecondary,
                   lineHeight: 1.4,
                 }}
               >
@@ -348,9 +348,9 @@ function CategoriasPage() {
             {count > 0 && (
               <div
                 style={{
-                  background: "rgba(34,197,94,0.18)",
-                  border: "1px solid rgba(34,197,94,0.45)",
-                  color: "#22C55E",
+                  background: isLight ? "rgba(34,197,94,0.10)" : "rgba(34,197,94,0.18)",
+                  border: isLight ? "1px solid rgba(34,197,94,0.30)" : "1px solid rgba(34,197,94,0.45)",
+                  color: isLight ? "#15803d" : "#22C55E",
                   borderRadius: 999,
                   padding: "4px 10px",
                   fontSize: 11,
@@ -362,7 +362,7 @@ function CategoriasPage() {
                 {count} {count === 1 ? "bloco" : "blocos"}
               </div>
             )}
-            <ChevronRight size={20} color="rgba(255,192,0,0.55)" />
+            <ChevronRight size={20} color={iconColor} />
           </div>
         );
       })}
