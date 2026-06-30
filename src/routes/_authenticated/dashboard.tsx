@@ -736,84 +736,107 @@ function SwipeableCard({
   onReagendar: (id: string) => void;
   children: React.ReactNode;
 }) {
-  const SWIPE_THRESHOLD = 80;
-  const MAX_SWIPE = 90;
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const LIMITE_SWIPE = 120;
+  const THRESHOLD = 80;
+  const [swipeX, setSwipeX] = useState(0);
+  const [swipando, setSwipando] = useState(false);
   const startXRef = useRef(0);
-  const offsetRef = useRef(0);
+  const currentRef = useRef(0);
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
+  const onPointerDown = (e: React.PointerEvent) => {
+    setSwipando(true);
     startXRef.current = e.clientX;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    const delta = startXRef.current - e.clientX;
-    if (delta < 0) {
-      offsetRef.current = 0;
-      setSwipeOffset(0);
-      return;
-    }
-    const next = Math.min(delta, MAX_SWIPE);
-    offsetRef.current = next;
-    setSwipeOffset(next);
-  };
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    if (offsetRef.current >= SWIPE_THRESHOLD) {
-      setSwipeOffset(MAX_SWIPE);
-      offsetRef.current = MAX_SWIPE;
-      setTimeout(() => {
-        offsetRef.current = 0;
-        setSwipeOffset(0);
-        onReagendar(visitaId);
-      }, 200);
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!swipando) return;
+    const delta = startXRef.current - e.clientX + currentRef.current;
+    if (delta > 0) {
+      const clamped =
+        delta > LIMITE_SWIPE
+          ? LIMITE_SWIPE + (delta - LIMITE_SWIPE) * 0.15
+          : delta;
+      setSwipeX(clamped);
     } else {
-      offsetRef.current = 0;
-      setSwipeOffset(0);
+      setSwipeX(0);
     }
   };
-  const handlePointerCancel = () => {
-    setIsDragging(false);
-    offsetRef.current = 0;
-    setSwipeOffset(0);
+  const onPointerUp = () => {
+    setSwipando(false);
+    setSwipeX((prev) => {
+      const next = prev >= THRESHOLD ? LIMITE_SWIPE : 0;
+      currentRef.current = next;
+      return next;
+    });
+  };
+  const onPointerCancel = () => {
+    setSwipando(false);
+    currentRef.current = 0;
+    setSwipeX(0);
+  };
+
+  const handleReagendar = () => {
+    currentRef.current = 0;
+    setSwipeX(0);
+    onReagendar(visitaId);
   };
 
   return (
-    <div style={{ position: "relative", marginBottom: 12 }}>
-      {/* CAMADA INFERIOR — caixa amarela, mesmo tamanho exato do card */}
+    <div style={{ position: "relative", marginBottom: 12, overflow: "hidden", borderRadius: 18 }}>
+      {/* Botão re-agendar — revelado pelo swipe */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
-          borderRadius: 18,
-          background: "linear-gradient(to bottom, #B8860B, #FFD700 50%, #B8860B)",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: LIMITE_SWIPE,
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
-          paddingRight: 24,
+          justifyContent: "center",
+          borderRadius: "0 16px 16px 0",
+          background: "rgba(255, 215, 0, 0.15)",
+          opacity: Math.min(swipeX / THRESHOLD, 1),
+          transition: swipando ? "none" : "opacity 0.2s",
         }}
       >
-        <CalendarRange size={32} color="#000000" />
+        <button
+          onClick={handleReagendar}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#FFD700",
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4,
+            letterSpacing: 0.5,
+          }}
+        >
+          <CalendarClock size={20} color="#FFD700" />
+          RE-AGENDAR
+        </button>
       </div>
-      {/* CAMADA SUPERIOR — card opaco, desliza */}
+      {/* Card */}
       <div
         style={{
+          transform: `translateX(-${swipeX}px)`,
+          transition: swipando
+            ? "none"
+            : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          willChange: "transform",
+          borderRadius: 16,
           position: "relative",
           zIndex: 1,
-          borderRadius: 18,
-          background: "linear-gradient(135deg, #15140C 0%, #0B0B07 100%)",
-          transform: `translateX(-${swipeOffset}px)`,
-          transition: isDragging ? "none" : "transform 0.25s ease-out",
           touchAction: "pan-y",
-          cursor: "grab",
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
       >
         {children}
       </div>
