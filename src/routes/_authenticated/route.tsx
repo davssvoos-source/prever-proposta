@@ -43,7 +43,7 @@ function AuthenticatedLayout() {
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
     return (
       <>
-        <AnimatedBackground />
+        {isLight ? <LightBackground /> : <AnimatedBackground />}
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
