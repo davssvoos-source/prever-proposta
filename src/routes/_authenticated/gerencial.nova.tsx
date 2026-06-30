@@ -442,6 +442,18 @@ function NovaVisitaPage() {
             </div>
           </div>
 
+          <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={LABEL}>Síndico (opcional)</label>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
+            </div>
+            <div>
+              <label style={LABEL}>Zelador(a) (opcional)</label>
+              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome do zelador(a)" />
+            </div>
+          </div>
+
+
 
 
 
