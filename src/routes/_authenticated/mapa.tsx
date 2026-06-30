@@ -64,7 +64,7 @@ function MapaPage() {
       const popup = `
         <div style="font-family:Inter,sans-serif;min-width:180px">
           <div style="font-weight:600;font-size:13px;color:#1F3864">${v.cliente?.nome ?? v.titulo}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px">${new Date(v.data_hora_agendada).toLocaleString("pt-BR")}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px">${v.data_hora_agendada ? new Date(v.data_hora_agendada).toLocaleString("pt-BR") : "Sem data"}</div>
           <div style="margin-top:4px;font-size:11px"><span style="background:${info.pin};color:white;padding:1px 6px;border-radius:4px">${info.label}</span></div>
           <a href="/visita/${v.id}" data-id="${v.id}" style="margin-top:6px;display:inline-block;font-size:12px;color:#1F3864;font-weight:600">Ver detalhes →</a>
         </div>`;
