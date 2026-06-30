@@ -270,12 +270,13 @@ function PerfilPage() {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 600,
           fontSize: 22,
-          color: "#fff",
+          color: textPrimary,
           marginBottom: 20,
         }}
       >
         Perfil
       </div>
+
 
       {/* Seção 1 - Hero */}
       <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center" }}>
