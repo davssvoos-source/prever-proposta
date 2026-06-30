@@ -194,6 +194,7 @@ function VisitaDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isLight } = useTheme();
 
 
   const { data: meUser } = useQuery({
