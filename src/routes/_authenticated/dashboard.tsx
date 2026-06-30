@@ -250,9 +250,9 @@ function Dashboard() {
             bottom: 0,
             left: 0,
             right: 0,
-            height: '35%',
+            height: '40%',
             background:
-              'linear-gradient(to bottom, rgba(14,13,6,0) 0%, rgba(14,13,6,0.6) 60%, rgba(14,13,6,1) 100%)',
+              'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
             pointerEvents: 'none',
           }}
         />
