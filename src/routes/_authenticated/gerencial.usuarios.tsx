@@ -6,6 +6,7 @@ import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/gerencial/usuarios")({
   beforeLoad: async () => {
@@ -21,48 +22,31 @@ export const Route = createFileRoute("/_authenticated/gerencial/usuarios")({
   component: UsuariosPage,
 });
 
-const GLASS: CSSProperties = {
-  background: "rgba(8,8,12,0.22)",
-  backdropFilter: "blur(12px) saturate(130%)",
-  border: "1px solid rgba(255,192,0,0.10)",
-  borderRadius: 18,
-  padding: "18px 16px",
-};
-const INPUT: CSSProperties = {
-  width: "100%",
-  background: "rgba(8,8,12,0.30)",
-  border: "1px solid rgba(255,192,0,0.18)",
-  borderRadius: 10,
-  color: "#F0F2F5",
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  fontSize: 14,
-  padding: "11px 14px",
-  outline: "none",
-  boxSizing: "border-box",
-};
-const LABEL: CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  fontSize: 10,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "rgba(255,192,0,0.65)",
-  marginBottom: 6,
-  display: "block",
-};
-const SECTION_TITLE: CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
-  fontSize: 10,
-  color: "rgba(255,192,0,0.55)",
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  marginBottom: 12,
-  marginTop: 24,
+const L = {
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  cardSolid: "#ffffff",
+  border: "1px solid rgba(0,0,0,0.07)",
+  borderMd: "1px solid rgba(0,0,0,0.10)",
+  shadow: "0 1px 6px rgba(0,0,0,0.07)",
+  shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
+  text: "#0a0b0e",
+  textSub: "#4a5060",
+  textMuted: "#8a909e",
+  gold: "#b87800",
+  goldBg: "rgba(180,120,0,0.10)",
+  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  inputBg: "#f0f1f4",
+  inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
 type CargoId = "tecnico" | "comercial" | "admin";
+
+const CARGO_LIGHT: Record<string, { color: string; bg: string; border: string }> = {
+  tecnico:   { color: "#15803d", bg: "#dcfce7", border: "1px solid #bbf7d0" },
+  comercial: { color: "#1d4ed8", bg: "#dbeafe", border: "1px solid #bfdbfe" },
+  admin:     { color: "#b45309", bg: "#fef3c7", border: "1px solid #fde68a" },
+};
+
 const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
   tecnico:   { label: "Técnico",   color: "#34D399", desc: "Acessa apenas visitas atribuídas a ele" },
   comercial: { label: "Comercial", color: "#60A5FA", desc: "Acessa painel gerencial e todas as visitas" },
@@ -93,6 +77,7 @@ function iniciais(nome: string) {
 }
 
 function UsuariosPage() {
+  const { isLight } = useTheme();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const enviarConviteFn = useServerFn(enviarConvite);
@@ -107,6 +92,56 @@ function UsuariosPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<StaffUser | null>(null);
   const [aprovarId, setAprovarId] = useState<string | null>(null);
   const [aprovarCargo, setAprovarCargo] = useState<CargoId>("tecnico");
+
+  const GLASS: CSSProperties = isLight
+    ? {
+        background: L.card,
+        border: L.border,
+        borderRadius: 18,
+        boxShadow: L.shadow,
+      }
+    : {
+        background: "rgba(8,8,12,0.22)",
+        backdropFilter: "blur(12px) saturate(130%)",
+        border: "1px solid rgba(255,192,0,0.10)",
+        borderRadius: 18,
+      };
+
+  const INPUT: CSSProperties = {
+    width: "100%",
+    background: isLight ? L.inputBg : "rgba(8,8,12,0.30)",
+    border: isLight ? L.inputBorder : "1px solid rgba(255,192,0,0.18)",
+    borderRadius: 10,
+    color: isLight ? L.text : "#F0F2F5",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 14,
+    padding: "11px 14px",
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const LABEL: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 10,
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    marginBottom: 6,
+    display: "block",
+  };
+
+  const SECTION_TITLE: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 300,
+    fontSize: 10,
+    color: isLight ? "rgba(0,0,0,0.45)" : "rgba(255,192,0,0.55)",
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    marginBottom: 12,
+    marginTop: 24,
+  };
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ["staff-profiles"],
@@ -234,26 +269,37 @@ function UsuariosPage() {
   const inativos = usuarios.filter((u) => u.ativo === false);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#08090E", padding: "20px 16px 120px", color: "#F0F2F5" }}>
+    <div style={{
+      minHeight: "100vh",
+      background: isLight ? "#f4f5f7" : "#08090E",
+      padding: "20px 16px 120px",
+      color: isLight ? L.text : "#F0F2F5",
+    }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <button
           onClick={() => navigate({ to: "/gerencial" })}
           style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.06)",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12, width: 40, height: 40,
             display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "#fff",
+            cursor: "pointer", color: isLight ? L.text : "#fff",
           }}
         >
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 18, color: "#fff" }}>
+          <div style={{
+            fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 18,
+            color: isLight ? L.text : "#fff",
+          }}>
             Gerenciar Usuários
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+          <div style={{
+            fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+            color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
+          }}>
             {ativos.length} ativo{ativos.length !== 1 ? "s" : ""}
             {convitesPendentes.length > 0 && ` · ${convitesPendentes.length} convite${convitesPendentes.length !== 1 ? "s" : ""} pendente${convitesPendentes.length !== 1 ? "s" : ""}`}
           </div>
@@ -276,7 +322,11 @@ function UsuariosPage() {
       {/* Formulário de convite */}
       {showInvite && (
         <div style={{ ...GLASS, marginBottom: 20 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14,
+            color: isLight ? L.text : "#fff", marginBottom: 16,
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
             <Mail size={16} /> Convidar Novo Usuário
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -302,26 +352,39 @@ function UsuariosPage() {
             <div>
               <label style={LABEL}>Cargo / Nível de acesso</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(Object.entries(CARGO_CONFIG) as [CargoId, typeof CARGO_CONFIG[string]][]).map(([id, cfg]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setInviteCargo(id)}
-                    style={{
-                      textAlign: "left", padding: "10px 14px", borderRadius: 12,
-                      background: inviteCargo === id ? `${cfg.color}12` : "rgba(255,255,255,0.03)",
-                      border: inviteCargo === id ? `1.5px solid ${cfg.color}55` : "1px solid rgba(255,255,255,0.08)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: cfg.color }}>
-                      {cfg.label}
-                    </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
-                      {cfg.desc}
-                    </div>
-                  </button>
-                ))}
+                {(Object.entries(CARGO_CONFIG) as [CargoId, typeof CARGO_CONFIG[string]][]).map(([id, cfg]) => {
+                  const lightCfg = CARGO_LIGHT[id];
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setInviteCargo(id)}
+                      style={{
+                        textAlign: "left", padding: "10px 14px", borderRadius: 12,
+                        background: inviteCargo === id
+                          ? (isLight ? lightCfg.bg : `${cfg.color}12`)
+                          : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                        border: inviteCargo === id
+                          ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
+                          : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div style={{
+                        fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                        color: isLight ? lightCfg.color : cfg.color,
+                      }}>
+                        {cfg.label}
+                      </div>
+                      <div style={{
+                        fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                        color: isLight ? L.textSub : "rgba(255,255,255,0.55)", marginTop: 2,
+                      }}>
+                        {cfg.desc}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
@@ -329,9 +392,9 @@ function UsuariosPage() {
                 onClick={() => setShowInvite(false)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "rgba(255,255,255,0.6)",
+                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                  color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
                 }}
               >
@@ -366,19 +429,26 @@ function UsuariosPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: "50%",
-                    background: "rgba(255,192,0,0.12)",
-                    border: "1px solid rgba(255,192,0,0.25)",
+                    background: isLight ? "#fef3c7" : "rgba(255,192,0,0.12)",
+                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                    color: isLight ? "#b45309" : "#FFC000",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
                     flexShrink: 0,
                   }}>
                     {iniciais(s.nome ?? s.email)}
                   </div>
                   <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: "#fff" }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      color: isLight ? L.text : "#fff",
+                    }}>
                       {s.nome ?? "—"}
                     </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      color: isLight ? L.textMuted : "rgba(255,255,255,0.5)", marginTop: 2,
+                    }}>
                       {s.email}
                     </div>
                   </div>
@@ -389,14 +459,14 @@ function UsuariosPage() {
                         onChange={(e) => setAprovarCargo(e.target.value as CargoId)}
                         style={{
                           padding: "6px 10px", borderRadius: 8,
-                          border: "1px solid rgba(255,255,255,0.20)",
-                          background: "rgba(255,255,255,0.08)",
-                          color: "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
+                          border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
+                          background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.08)",
+                          color: isLight ? L.text : "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
                         }}
                       >
-                        <option value="tecnico" style={{ background: "#0a0a14" }}>Técnico</option>
-                        <option value="comercial" style={{ background: "#0a0a14" }}>Comercial</option>
-                        <option value="admin" style={{ background: "#0a0a14" }}>Admin</option>
+                        <option value="tecnico" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Técnico</option>
+                        <option value="comercial" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Comercial</option>
+                        <option value="admin" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Admin</option>
                       </select>
                       <button
                         onClick={() => aprovarMutation.mutate({ userId: s.id, cargo: aprovarCargo })}
@@ -407,7 +477,12 @@ function UsuariosPage() {
                       </button>
                       <button
                         onClick={() => setAprovarId(null)}
-                        style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.20)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer" }}
+                        style={{
+                          padding: "6px 10px", borderRadius: 8,
+                          border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
+                          background: "transparent",
+                          color: isLight ? L.textMuted : "rgba(255,255,255,0.6)", fontSize: 13, cursor: "pointer",
+                        }}
                       >
                         Cancelar
                       </button>
@@ -416,7 +491,13 @@ function UsuariosPage() {
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
                         onClick={() => { setAprovarId(s.id); setAprovarCargo("tecnico"); }}
-                        style={{ padding: "6px 14px", borderRadius: 8, background: "rgba(255,192,0,0.15)", border: "1px solid rgba(255,192,0,0.40)", color: "#FFC000", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                        style={{
+                          padding: "6px 14px", borderRadius: 8,
+                          background: isLight ? "#fef3c7" : "rgba(255,192,0,0.15)",
+                          border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.40)",
+                          color: isLight ? "#b45309" : "#FFC000",
+                          fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        }}
                       >
                         Aprovar
                       </button>
@@ -426,7 +507,13 @@ function UsuariosPage() {
                             rejeitarMutation.mutate(s.id);
                           }
                         }}
-                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.40)", background: "rgba(239,68,68,0.10)", color: "#EF4444", fontSize: 13, cursor: "pointer" }}
+                        style={{
+                          padding: "6px 12px", borderRadius: 8,
+                          border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.40)",
+                          background: isLight ? "#fee2e2" : "rgba(239,68,68,0.10)",
+                          color: isLight ? "#dc2626" : "#EF4444",
+                          fontSize: 13, cursor: "pointer",
+                        }}
                       >
                         Rejeitar
                       </button>
@@ -447,15 +534,28 @@ function UsuariosPage() {
             {convitesPendentes.map((c) => (
               <div key={c.id} style={{ ...GLASS, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: "#fff" }}>
+                  <div style={{
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                    color: isLight ? L.text : "#fff",
+                  }}>
                     {c.nome}
                   </div>
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                  <div style={{
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                    color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
+                    display: "flex", alignItems: "center", gap: 6, marginTop: 2,
+                  }}>
                     <Mail size={11} />
                     {c.email} · {CARGO_CONFIG[c.cargo]?.label ?? c.cargo}
                   </div>
                 </div>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 10, color: "#FFC000", padding: "4px 10px", borderRadius: 999, background: "rgba(255,192,0,0.10)", border: "1px solid rgba(255,192,0,0.25)" }}>
+                <div style={{
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 10,
+                  color: isLight ? "#b45309" : "#FFC000",
+                  padding: "4px 10px", borderRadius: 999,
+                  background: isLight ? "#fef3c7" : "rgba(255,192,0,0.10)",
+                  border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
+                }}>
                   Aguardando
                 </div>
               </div>
@@ -467,22 +567,24 @@ function UsuariosPage() {
       {/* Lista de usuários ativos */}
       <div style={SECTION_TITLE}>Usuários Ativos ({ativos.length})</div>
       {isLoading ? (
-        <div style={{ ...GLASS, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>Carregando...</div>
+        <div style={{ ...GLASS, textAlign: "center", color: isLight ? L.textMuted : "rgba(255,255,255,0.5)" }}>Carregando...</div>
       ) : ativos.length === 0 ? (
-        <div style={{ ...GLASS, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>Nenhum usuário encontrado</div>
+        <div style={{ ...GLASS, textAlign: "center", color: isLight ? L.textMuted : "rgba(255,255,255,0.5)" }}>Nenhum usuário encontrado</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {ativos.map((u) => {
             const cfg = CARGO_CONFIG[u.cargo] ?? { label: u.cargo, color: "#9CA3AF", desc: "" };
+            const lightCfg = CARGO_LIGHT[u.cargo] ?? { color: "#4b5563", bg: "#f3f4f6", border: "1px solid #e5e7eb" };
             return (
               <div key={u.id} style={{ ...GLASS, padding: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: "50%",
-                    background: "rgba(255,192,0,0.12)",
-                    border: "1px solid rgba(255,192,0,0.25)",
+                    background: isLight ? "#fef3c7" : "rgba(255,192,0,0.12)",
+                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+                    color: isLight ? "#b45309" : "#FFC000",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
                     overflow: "hidden", flexShrink: 0,
                   }}>
                     {u.avatar_url
@@ -490,17 +592,25 @@ function UsuariosPage() {
                       : iniciais(u.nome)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff" }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14,
+                      color: isLight ? L.text : "#fff",
+                    }}>
                       {u.nome}
                     </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      color: isLight ? L.textMuted : "rgba(255,255,255,0.5)", marginTop: 2,
+                    }}>
                       {u.email}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                       <span style={{
                         fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10,
-                        color: cfg.color, padding: "3px 8px", borderRadius: 999,
-                        background: `${cfg.color}15`, border: `1px solid ${cfg.color}40`,
+                        color: isLight ? lightCfg.color : cfg.color,
+                        padding: "3px 8px", borderRadius: 999,
+                        background: isLight ? lightCfg.bg : `${cfg.color}15`,
+                        border: isLight ? lightCfg.border : `1px solid ${cfg.color}40`,
                         letterSpacing: "0.06em", textTransform: "uppercase",
                       }}>
                         {cfg.label}
@@ -513,8 +623,8 @@ function UsuariosPage() {
                       title="Editar permissão"
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        background: "rgba(96,165,250,0.10)",
-                        border: "1px solid rgba(96,165,250,0.25)",
+                        background: isLight ? "#f3f4f6" : "rgba(96,165,250,0.10)",
+                        border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(96,165,250,0.25)",
                         color: "#60A5FA",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
@@ -527,8 +637,8 @@ function UsuariosPage() {
                       title="Desativar usuário"
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        background: "rgba(239,68,68,0.10)",
-                        border: "1px solid rgba(239,68,68,0.25)",
+                        background: isLight ? "#f3f4f6" : "rgba(239,68,68,0.10)",
+                        border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(239,68,68,0.25)",
                         color: "#EF4444",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
@@ -554,20 +664,29 @@ function UsuariosPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: "50%",
-                    background: "rgba(255,255,255,0.06)",
+                    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.06)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "rgba(255,255,255,0.4)", fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+                    color: isLight ? "#9ca3af" : "rgba(255,255,255,0.4)",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
                   }}>
                     {iniciais(u.nome)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{u.nome}</div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.4)" }}>{u.email}</div>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      color: isLight ? L.textSub : "rgba(255,255,255,0.7)",
+                    }}>{u.nome}</div>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      color: isLight ? L.textMuted : "rgba(255,255,255,0.4)",
+                    }}>{u.email}</div>
                   </div>
                   <span style={{
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 9,
-                    color: "rgba(255,255,255,0.5)", padding: "3px 8px", borderRadius: 999,
-                    background: "rgba(255,255,255,0.05)", letterSpacing: "0.10em",
+                    color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
+                    padding: "3px 8px", borderRadius: 999,
+                    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                    letterSpacing: "0.10em",
                   }}>
                     INATIVO
                   </span>
@@ -583,51 +702,74 @@ function UsuariosPage() {
         <div
           onClick={() => setEditingUser(null)}
           style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+            position: "fixed", inset: 0, background: isLight ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.7)",
             backdropFilter: "blur(8px)", zIndex: 100,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ ...GLASS, background: "#0F1015", maxWidth: 420, width: "100%" }}
+            style={{
+              ...GLASS,
+              background: isLight ? "#ffffff" : "#0F1015",
+              maxWidth: 420, width: "100%",
+            }}
           >
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16, color: "#fff", marginBottom: 4 }}>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
+              color: isLight ? L.text : "#fff", marginBottom: 4,
+            }}>
               Editar Permissão
             </div>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 16 }}>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+              color: isLight ? L.textMuted : "rgba(255,255,255,0.55)", marginBottom: 16,
+            }}>
               {editingUser.nome}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {Object.entries(CARGO_CONFIG).map(([id, cfg]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setEditCargo(id)}
-                  style={{
-                    textAlign: "left", padding: "12px 14px", borderRadius: 12,
-                    background: editCargo === id ? `${cfg.color}12` : "rgba(255,255,255,0.03)",
-                    border: editCargo === id ? `1.5px solid ${cfg.color}55` : "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13, color: cfg.color }}>
-                    {cfg.label}
-                  </div>
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
-                    {cfg.desc}
-                  </div>
-                </button>
-              ))}
+              {Object.entries(CARGO_CONFIG).map(([id, cfg]) => {
+                const lightCfg = CARGO_LIGHT[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setEditCargo(id)}
+                    style={{
+                      textAlign: "left", padding: "12px 14px", borderRadius: 12,
+                      background: editCargo === id
+                        ? (isLight ? lightCfg.bg : `${cfg.color}12`)
+                        : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                      border: editCargo === id
+                        ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
+                        : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      color: isLight ? lightCfg.color : cfg.color,
+                    }}>
+                      {cfg.label}
+                    </div>
+                    <div style={{
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      color: isLight ? L.textSub : "rgba(255,255,255,0.55)", marginTop: 2,
+                    }}>
+                      {cfg.desc}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => setEditingUser(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "rgba(255,255,255,0.6)",
+                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                  color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
                 }}
               >
@@ -656,20 +798,32 @@ function UsuariosPage() {
         <div
           onClick={() => setDeleteConfirm(null)}
           style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+            position: "fixed", inset: 0, background: isLight ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.7)",
             backdropFilter: "blur(8px)", zIndex: 100,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ ...GLASS, background: "#0F1015", maxWidth: 380, width: "100%", textAlign: "center" }}
+            style={{
+              ...GLASS,
+              background: isLight ? "#ffffff" : "#0F1015",
+              maxWidth: 380, width: "100%", textAlign: "center",
+            }}
           >
-            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}><AlertTriangle size={36} color="#F59E0B" /></div>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16, color: "#fff", marginBottom: 8 }}>
+            <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
+              <AlertTriangle size={36} color={isLight ? "#b45309" : "#F59E0B"} />
+            </div>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
+              color: isLight ? L.text : "#fff", marginBottom: 8,
+            }}>
               Desativar {deleteConfirm.nome}?
             </div>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+              color: isLight ? L.textMuted : "rgba(255,255,255,0.55)", marginBottom: 20, lineHeight: 1.5,
+            }}>
               O usuário perderá acesso ao sistema. Esta ação pode ser revertida restaurando o acesso posteriormente.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -677,9 +831,9 @@ function UsuariosPage() {
                 onClick={() => setDeleteConfirm(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "rgba(255,255,255,0.6)",
+                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                  color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
                 }}
               >
@@ -690,9 +844,9 @@ function UsuariosPage() {
                 disabled={deleteMutation.isPending}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: "rgba(239,68,68,0.20)",
-                  border: "1px solid rgba(239,68,68,0.40)",
-                  color: "#F87171",
+                  background: isLight ? "#fee2e2" : "rgba(239,68,68,0.20)",
+                  border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.40)",
+                  color: isLight ? "#dc2626" : "#F87171",
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer",
                 }}
               >
