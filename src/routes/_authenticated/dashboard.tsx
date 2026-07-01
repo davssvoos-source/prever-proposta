@@ -357,6 +357,7 @@ function Dashboard() {
                   }}
                 />
               )}
+              <div style={{ position: 'relative', zIndex: 10 }}>
               <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
