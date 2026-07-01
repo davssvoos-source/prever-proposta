@@ -757,12 +757,13 @@ function VisitaCard({ visita }: { visita: any }) {
             fontWeight: 300,
             fontSize: 12,
             color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)",
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: 5,
+            gap: 6,
+            marginTop: 6,
           }}
         >
-          <MapPin size={12} style={{ opacity: 0.75 }} /> {visita.endereco}
+          <MapPin size={12} style={{ opacity: 0.75, flexShrink: 0 }} /> {visita.endereco}
         </div>
       )}
       {visita.data_hora_agendada && (
