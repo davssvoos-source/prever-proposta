@@ -1257,13 +1257,17 @@ function BlocosWizardPage() {
                 </div>
                 <span
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                     color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
                     fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: 1,
                   }}
                 >
-                  BARREIRA 1 {b1Done ? "✓" : ""}
+                  <DoorOpen size={20} color={b1Done ? "#22C55E" : "#F59E0B"} />
+                  Porta externa {b1Done ? "✓" : ""}
                 </span>
               </div>
               {b1Done && (
