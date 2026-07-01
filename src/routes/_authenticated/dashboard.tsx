@@ -698,14 +698,14 @@ function VisitaCard({ visita }: { visita: any }) {
       style={{
         background: isLight
           ? "linear-gradient(135deg, #ffffff 0%, #f0f1f4 100%)"
-          : "linear-gradient(135deg, #0d0e18 0%, #13141f 100%)",
+          : "linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)",
         backdropFilter: "none",
         WebkitBackdropFilter: "none",
         border: isLight
           ? "1px solid rgba(0,0,0,0.08)"
-          : "1px solid rgba(255,255,255,0.06)",
+          : "1px solid #2a2a2a",
         borderRadius: 18,
-        padding: "18px 16px",
+        padding: 16,
         marginBottom: 0,
         boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
       }}
