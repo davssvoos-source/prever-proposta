@@ -260,7 +260,7 @@ function OrcamentoPasso1() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
           <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>0</span>
-          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>200</span>
+          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>100+</span>
         </div>
       </div>
 
