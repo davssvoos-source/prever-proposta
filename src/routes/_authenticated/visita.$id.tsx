@@ -785,14 +785,37 @@ function VisitaDetail() {
           {visita.nome_sindico && (
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.45)",
-                marginTop: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 10,
               }}
             >
-              Síndico: {visita.nome_sindico}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <User size={16} color="#F59E0B" />
+                <span
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 400,
+                    fontSize: 10,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color: "#F59E0B",
+                  }}
+                >
+                  Síndico
+                </span>
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.45)",
+                }}
+              >
+                {visita.nome_sindico}
+              </span>
             </div>
           )}
         </div>
@@ -802,7 +825,10 @@ function VisitaDetail() {
       {(tecPerfil || isAdmin) && (
         <div style={GLASS}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={SECTION_LABEL}>Técnico responsável</div>
+            <div style={{ ...SECTION_LABEL, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+              <HardHat size={16} color="#F59E0B" />
+              Técnico responsável
+            </div>
             {isAdmin && !editandoTecnico && (
               <button
                 onClick={() => { setEditandoTecnico(true); setNovoTecnicoId(visita.tecnico_id ?? ""); }}
