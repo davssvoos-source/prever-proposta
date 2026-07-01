@@ -114,8 +114,8 @@ function OrcamentoPasso1() {
     marginBottom: 10,
   };
 
-  const sliderValue = Math.min(Number(qtd) || 0, 200);
-  const inputMax = 200;
+  const sliderValue = Math.min(Number(qtd) || 0, 100);
+  const inputMax = 100;
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
