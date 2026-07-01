@@ -22,7 +22,11 @@ export interface BlocoConfig {
   tecnologia?: string;
   qtdDome?: number;
   qtdBullet?: number;
+  /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial). Default: 'PR'.
+   *  Origem: campo `sistema_proposto` da visita — quando ausente assume PR. */
+  portaria?: "PR" | "PP";
 }
+
 
 // ─── Labels legíveis ─────────────────────────────────────────────────────────
 
@@ -90,18 +94,18 @@ export const OPCOES = {
 
 export function gerarCodigoBloco(config: BlocoConfig): string {
   const { tipoBloco, eclusa, b1, b2, tecnologia } = config;
+  const suf = config.portaria === "PP" ? "PP" : "PR";
 
   if (tipoBloco === "CFTV") return `CFTV-${tecnologia}`;
   if (tipoBloco === "AL") return `AL-${tecnologia}`;
   if (tipoBloco === "CER") return "CER";
-  if (tipoBloco === "CENT") return "CENT-PR";
+  if (tipoBloco === "CENT") return `CENT-${suf}`;
 
   const barreiras = eclusa ? "2B" : "1B";
 
   function seg(b: BarreiraConfig): string {
     let s = `${b.tipo}-${b.entrada}-${b.saida}`;
     if (b.tipo === "PORP" && b.abertura) {
-      // PED: só a sigla de abertura (MOL/MOT/NAD) — sem material
       s += `-${b.abertura}`;
     }
     if (b.tipo === "PORV" && b.abertura) {
@@ -120,8 +124,9 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 
   let code = `${tipoBloco}-${barreiras}-${seg(b1!)}`;
   if (eclusa && b2) code += `-${seg(b2)}`;
-  return `${code}-PR`;
+  return `${code}-${suf}`;
 }
+
 
 // ─── Gerador de descrição legível ─────────────────────────────────────────────
 
