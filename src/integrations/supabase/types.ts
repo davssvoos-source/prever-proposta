@@ -481,6 +481,81 @@ export type Database = {
           },
         ]
       }
+      regras_blocos: {
+        Row: {
+          cod_eq: string
+          condicao: string
+          created_at: string
+          escopo: string
+          id: number
+          observacao: string | null
+          qtd: number
+          regra_id: string
+        }
+        Insert: {
+          cod_eq: string
+          condicao: string
+          created_at?: string
+          escopo: string
+          id?: number
+          observacao?: string | null
+          qtd?: number
+          regra_id: string
+        }
+        Update: {
+          cod_eq?: string
+          condicao?: string
+          created_at?: string
+          escopo?: string
+          id?: number
+          observacao?: string | null
+          qtd?: number
+          regra_id?: string
+        }
+        Relationships: []
+      }
+      regras_cftv: {
+        Row: {
+          chave1: string | null
+          chave2: string | null
+          chave3: string | null
+          cod_eq: string
+          cod_eq2: string | null
+          created_at: string
+          id: number
+          observacao: string | null
+          qtd: number
+          qtd2: number | null
+          tipo: string
+        }
+        Insert: {
+          chave1?: string | null
+          chave2?: string | null
+          chave3?: string | null
+          cod_eq: string
+          cod_eq2?: string | null
+          created_at?: string
+          id?: number
+          observacao?: string | null
+          qtd?: number
+          qtd2?: number | null
+          tipo: string
+        }
+        Update: {
+          chave1?: string | null
+          chave2?: string | null
+          chave3?: string | null
+          cod_eq?: string
+          cod_eq2?: string | null
+          created_at?: string
+          id?: number
+          observacao?: string | null
+          qtd?: number
+          qtd2?: number | null
+          tipo?: string
+        }
+        Relationships: []
+      }
       servicos: {
         Row: {
           ativo_padrao: boolean
@@ -528,6 +603,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      visita_bloco_itens: {
+        Row: {
+          cod_eq: string
+          created_at: string
+          id: string
+          observacao: string | null
+          origem: string
+          qtd: number
+          removido: boolean
+          updated_at: string
+          visita_bloco_id: string
+        }
+        Insert: {
+          cod_eq: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          origem?: string
+          qtd?: number
+          removido?: boolean
+          updated_at?: string
+          visita_bloco_id: string
+        }
+        Update: {
+          cod_eq?: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          origem?: string
+          qtd?: number
+          removido?: boolean
+          updated_at?: string
+          visita_bloco_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visita_bloco_itens_visita_bloco_id_fkey"
+            columns: ["visita_bloco_id"]
+            isOneToOne: false
+            referencedRelation: "visita_blocos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visita_blocos: {
         Row: {
