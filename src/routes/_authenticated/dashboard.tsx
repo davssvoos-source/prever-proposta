@@ -310,6 +310,39 @@ function Dashboard() {
                 overflow: 'hidden',
               }}
             >
+              {proximaVisita.foto_fachada_url && (
+                <>
+                  <img
+                    src={proximaVisita.foto_fachada_url}
+                    alt="Fachada"
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '35%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      pointerEvents: 'none',
+                      zIndex: 0,
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '45%',
+                      background: isLight
+                        ? 'linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0.6) 30%, transparent 100%)'
+                        : 'linear-gradient(to right, #0a0a14 0%, rgba(10,10,20,0.6) 30%, transparent 100%)',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                  />
+                </>
+              )}
               {!isLight && (
                 <div
                   style={{
@@ -320,6 +353,7 @@ function Dashboard() {
                     height: 100,
                     background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
                     pointerEvents: 'none',
+                    zIndex: 2,
                   }}
                 />
               )}
