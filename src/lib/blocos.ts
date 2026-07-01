@@ -10,6 +10,8 @@ export interface BarreiraConfig {
   motor?: boolean;
   abertura?: string;
   folhas?: string;
+  tamanho?: string; // 200CM/350CM/450CM (PIVO) ou 15M/2M/25M/3M (BASC)
+  peso?: string;    // 800KG/1300KG/1500KG (DESL)
 }
 
 export interface BlocoConfig {
@@ -18,6 +20,8 @@ export interface BlocoConfig {
   b1?: BarreiraConfig;
   b2?: BarreiraConfig;
   tecnologia?: string;
+  qtdDome?: number;
+  qtdBullet?: number;
 }
 
 // ─── Labels legíveis ─────────────────────────────────────────────────────────
@@ -32,20 +36,29 @@ export const LABELS: Record<string, string> = {
   PORTAR: "Portaria",
   BOTANA: "Botoeira Analógica",
   BOTAPR: "Botoeira por Aproximação",
+  LPR: "Leitora de Placas",
   CAT: "Catraca",
   PORP: "Porta",
   CAN: "Cancela",
   PORV: "Portão Veicular",
-  MET: "Metal",
-  VID: "Vidro",
-  MOT: "Motorizada",
   MOL: "Mola Aérea",
-  NAD: "Sem motor e sem mola",
+  MOT: "Motor",
+  NAD: "Manual (sem motor)",
   BASC: "Basculante",
   DESL: "Deslizante",
   PIVO: "Pivotante",
   "1F": "1 Folha",
   "2F": "2 Folhas",
+  "200CM": "Até 2,0 m",
+  "350CM": "Até 3,5 m",
+  "450CM": "Até 4,5 m",
+  "15M": "1,5 m",
+  "2M": "2,0 m",
+  "25M": "2,5 m",
+  "3M": "3,0 m",
+  "800KG": "Até 800 kg",
+  "1300KG": "Até 1.300 kg",
+  "1500KG": "Até 1.500 kg",
   IP: "IP (câmeras de rede)",
   ANAL: "Analógico (cabo coaxial)",
   CAB: "Cabeado",
@@ -59,14 +72,16 @@ export const OPCOES = {
   saidaCat: ["FAC", "PORTAR"] as const,
   entradaPorp: ["FAC", "DIG", "PORTAR"] as const,
   saidaPorp: ["FAC", "DIG", "BOTANA", "BOTAPR", "PORTAR"] as const,
-  entradaCan: ["TAG", "FAC", "LAC", "PORTAR"] as const,
-  saidaCan: ["TAG", "FAC", "LAC", "FOT", "PORTAR"] as const,
-  entradaPorv: ["CTRL", "TAG", "FAC", "LAC", "PORTAR"] as const,
-  saidaPorv: ["CTRL", "TAG", "FAC", "LAC", "FOT", "PORTAR"] as const,
-  materialPorp: ["MET", "VID"] as const,
-  aberturaSemMotor: ["MOL", "NAD"] as const,
+  entradaCan: ["TAG", "FAC", "LAC", "PORTAR", "LPR"] as const,
+  saidaCan: ["TAG", "FAC", "LAC", "FOT", "PORTAR", "LPR"] as const,
+  entradaPorv: ["CTRL", "TAG", "FAC", "LAC", "PORTAR", "LPR"] as const,
+  saidaPorv: ["CTRL", "TAG", "FAC", "LAC", "FOT", "PORTAR", "LPR"] as const,
+  aberturaPed: ["MOL", "MOT", "NAD"] as const,
   aberturaVei: ["BASC", "DESL", "PIVO"] as const,
   folhasPivo: ["1F", "2F"] as const,
+  tamanhoPivo: ["200CM", "350CM", "450CM"] as const,
+  tamanhoBasc: ["15M", "2M", "25M", "3M"] as const,
+  pesoDesl: ["800KG", "1300KG", "1500KG"] as const,
   tecCftv: ["IP", "ANAL"] as const,
   tecAl: ["CAB", "SF"] as const,
 };
@@ -85,22 +100,40 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 
   function seg(b: BarreiraConfig): string {
     let s = `${b.tipo}-${b.entrada}-${b.saida}`;
-    if (b.tipo === "PORP" && b.abertura) s += `-${b.material}-${b.abertura}`;
-    if (b.tipo === "PORV" && b.abertura) s += `-${b.abertura}-${b.folhas}`;
+    if (b.tipo === "PORP" && b.abertura) {
+      // PED: só a sigla de abertura (MOL/MOT/NAD) — sem material
+      s += `-${b.abertura}`;
+    }
+    if (b.tipo === "PORV" && b.abertura) {
+      s += `-${b.abertura}`;
+      if (b.abertura === "PIVO") {
+        if (b.tamanho) s += `-${b.tamanho}`;
+        if (b.folhas) s += `-${b.folhas}`;
+      } else if (b.abertura === "DESL") {
+        if (b.peso) s += `-${b.peso}`;
+      } else if (b.abertura === "BASC") {
+        if (b.tamanho) s += `-${b.tamanho}`;
+      }
+    }
     return s;
   }
 
   let code = `${tipoBloco}-${barreiras}-${seg(b1!)}`;
   if (eclusa && b2) code += `-${seg(b2)}`;
-  return code;
+  return `${code}-PR`;
 }
 
 // ─── Gerador de descrição legível ─────────────────────────────────────────────
 
 export function gerarDescricaoBloco(config: BlocoConfig): string {
-  const { tipoBloco, eclusa, b1, b2, tecnologia } = config;
+  const { tipoBloco, eclusa, b1, b2, tecnologia, qtdDome, qtdBullet } = config;
 
-  if (tipoBloco === "CFTV") return `CFTV — ${LABELS[tecnologia!] ?? tecnologia}`;
+  if (tipoBloco === "CFTV") {
+    const dome = qtdDome ?? 0;
+    const bullet = qtdBullet ?? 0;
+    const total = dome + bullet;
+    return `CFTV — ${LABELS[tecnologia!] ?? tecnologia} · ${total} câmera(s) (${dome} dome / ${bullet} bullet)`;
+  }
   if (tipoBloco === "AL") return `Alarme — ${LABELS[tecnologia!] ?? tecnologia}`;
   if (tipoBloco === "CER") return "Cerca Elétrica";
   if (tipoBloco === "CENT") return "Central de Portaria Remota";
@@ -112,12 +145,18 @@ export function gerarDescricaoBloco(config: BlocoConfig): string {
     let d = `B${idx}: ${LABELS[b.tipo] ?? b.tipo}`;
     d += ` | E: ${LABELS[b.entrada] ?? b.entrada} | S: ${LABELS[b.saida] ?? b.saida}`;
     if (b.tipo === "PORP" && b.abertura) {
-      d += ` | ${LABELS[b.material!] ?? b.material} — ${LABELS[b.abertura] ?? b.abertura}`;
+      d += ` | ${LABELS[b.abertura] ?? b.abertura}`;
     }
-    if (b.tipo === "PORV") {
-      d += b.abertura
-        ? ` | ${LABELS[b.abertura] ?? b.abertura}${b.folhas ? " " + b.folhas : ""}`
-        : " | Sem motor";
+    if (b.tipo === "PORV" && b.abertura) {
+      d += ` | ${LABELS[b.abertura] ?? b.abertura}`;
+      if (b.abertura === "PIVO") {
+        if (b.tamanho) d += ` ${LABELS[b.tamanho] ?? b.tamanho}`;
+        if (b.folhas) d += ` — ${LABELS[b.folhas] ?? b.folhas}`;
+      } else if (b.abertura === "DESL" && b.peso) {
+        d += ` — ${LABELS[b.peso] ?? b.peso}`;
+      } else if (b.abertura === "BASC" && b.tamanho) {
+        d += ` — ${LABELS[b.tamanho] ?? b.tamanho}`;
+      }
     }
     return d;
   }
