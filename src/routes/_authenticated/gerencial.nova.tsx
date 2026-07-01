@@ -396,10 +396,10 @@ function NovaVisitaPage() {
                     style={{
                       background: ativo
                         ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.12)"
-                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                        : isLight ? L.cardSolid : GOLD_GRADIENT_BORDER,
                       border: ativo
                         ? isLight ? "2px solid #b87800" : "1.5px solid rgba(255,192,0,0.55)"
-                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.12)",
+                        : isLight ? L.borderMd : "1px solid transparent",
                       borderRadius: 12,
                       padding: "16px 8px",
                       cursor: "pointer",
@@ -411,7 +411,7 @@ function NovaVisitaPage() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "rgba(200,200,200,0.65)") }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#d1d5db") }}>
                       <t.Icon size={26} />
                     </span>
                     <span
@@ -421,7 +421,7 @@ function NovaVisitaPage() {
                         fontWeight: 300,
                         color: ativo
                           ? isLight ? L.gold : "#FFC000"
-                          : isLight ? L.textSub : "rgba(200,200,200,0.65)",
+                          : isLight ? L.textSub : "#d1d5db",
                         textAlign: "center",
                         lineHeight: 1.2,
                       }}
