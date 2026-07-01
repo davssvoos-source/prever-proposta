@@ -767,7 +767,7 @@ function BlocosWizardPage() {
         return tipoBloco === "PED"
           ? [
               { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
-              { valor: "PORP", label: "Porta de Pedestres", descricao: "Porta com controle de acesso" },
+              { valor: "PORP", label: "Porta", descricao: "Porta com controle de acesso" },
             ]
           : [
               { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
