@@ -120,16 +120,19 @@ function NovaVisitaPage() {
     fontSize: 10,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "#d1d5db",
     marginBottom: 8,
     display: "block",
   };
 
+  const GOLD_GRADIENT_BORDER =
+    "linear-gradient(#0d0e12,#0d0e12) padding-box, linear-gradient(135deg, rgba(245,158,11,0.35), rgba(217,119,6,0.15), rgba(245,158,11,0.35)) border-box";
+
   const INPUT: CSSProperties = {
     width: "100%",
-    background: isLight ? L.inputBg : "rgba(8,8,12,0.25)",
-    border: isLight ? L.inputBorder : "1px solid rgba(255,192,0,0.16)",
-    borderRadius: 10,
+    background: isLight ? L.inputBg : GOLD_GRADIENT_BORDER,
+    border: isLight ? L.inputBorder : "1px solid transparent",
+    borderRadius: 12,
     color: isLight ? L.text : "#F0F2F5",
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
