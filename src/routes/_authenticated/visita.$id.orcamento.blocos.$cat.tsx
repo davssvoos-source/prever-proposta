@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen, RefreshCw, DoorClosed } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen, RefreshCw, DoorClosed, Video, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -25,9 +25,10 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/bloco
 
 type WizardStep =
   | "eclusa"
-  | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_material" | "b1_motor" | "b1_abertura" | "b1_folhas"
-  | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_material" | "b2_motor" | "b2_abertura" | "b2_folhas"
+  | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_abertura" | "b1_folhas" | "b1_tamanho" | "b1_peso"
+  | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_abertura" | "b2_folhas" | "b2_tamanho" | "b2_peso"
   | "tecnologia"
+  | "cftv_dome" | "cftv_bullet"
   | "resumo";
 
 interface WizardState {
@@ -36,6 +37,8 @@ interface WizardState {
   b1: Partial<BarreiraConfig>;
   b2: Partial<BarreiraConfig>;
   tecnologia: string | null;
+  qtdDome: number;
+  qtdBullet: number;
 }
 
 // ─── Light palette ───────────────────────────────────────────────────────────
@@ -54,8 +57,8 @@ const L = {
 };
 
 // ─── Steps por barreira ─────────────────────────────────────────────────────
-const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
-const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_abertura", "b1_folhas", "b1_tamanho", "b1_peso"];
+const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_abertura", "b2_folhas", "b2_tamanho", "b2_peso"];
 
 function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: boolean }) {
   return (
@@ -97,49 +100,47 @@ function getStepLabel(step: WizardStep): string {
     case "b1_tipo": return "Tipo B1";
     case "b1_entrada": return "Entrada B1";
     case "b1_saida": return "Saída B1";
-    case "b1_material": return "Material B1";
-    case "b1_motor": return "Motor B1";
     case "b1_abertura": return "Abertura B1";
     case "b1_folhas": return "Folhas B1";
+    case "b1_tamanho": return "Tamanho B1";
+    case "b1_peso": return "Peso B1";
     case "b2_tipo": return "Tipo B2";
     case "b2_entrada": return "Entrada B2";
     case "b2_saida": return "Saída B2";
-    case "b2_material": return "Material B2";
-    case "b2_motor": return "Motor B2";
     case "b2_abertura": return "Abertura B2";
     case "b2_folhas": return "Folhas B2";
+    case "b2_tamanho": return "Tamanho B2";
+    case "b2_peso": return "Peso B2";
     case "tecnologia": return "Tecnologia";
+    case "cftv_dome": return "Dome";
+    case "cftv_bullet": return "Bullet";
     case "resumo": return "Resumo";
     default: return step;
   }
 }
 
+function barreiraSteps(b: Partial<BarreiraConfig>, prefix: "b1" | "b2", tipoBloco: TipoBloco): WizardStep[] {
+  const s: WizardStep[] = [`${prefix}_tipo` as WizardStep];
+  if (!b.tipo) return s;
+  s.push(`${prefix}_entrada` as WizardStep, `${prefix}_saida` as WizardStep);
+  if (tipoBloco === "PED" && b.tipo === "PORP") s.push(`${prefix}_abertura` as WizardStep);
+  if (tipoBloco === "VEI" && b.tipo === "PORV") {
+    s.push(`${prefix}_abertura` as WizardStep);
+    if (b.abertura === "PIVO") s.push(`${prefix}_folhas` as WizardStep, `${prefix}_tamanho` as WizardStep);
+    if (b.abertura === "BASC") s.push(`${prefix}_tamanho` as WizardStep);
+    if (b.abertura === "DESL") s.push(`${prefix}_peso` as WizardStep);
+  }
+  return s;
+}
+
 function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
-  if (tipo === "CFTV" || tipo === "AL") {
-    return ["tecnologia", "resumo"];
-  }
-  if (tipo === "CER") {
-    return ["resumo"];
-  }
+  if (tipo === "CFTV") return ["tecnologia", "cftv_dome", "cftv_bullet", "resumo"];
+  if (tipo === "AL") return ["tecnologia", "resumo"];
+  if (tipo === "CER") return ["resumo"];
 
   const steps: WizardStep[] = ["eclusa"];
-
-  // B1
-  steps.push("b1_tipo", "b1_entrada", "b1_saida");
-  if (w.b1.tipo === "PORP") steps.push("b1_material");
-  steps.push("b1_motor");
-  if (w.b1.motor === false || w.b1.tipo === "PORV") steps.push("b1_abertura");
-  if (w.b1.tipo === "PORV" && w.b1.abertura === "PIVO") steps.push("b1_folhas");
-
-  // B2
-  if (w.eclusa) {
-    steps.push("b2_tipo", "b2_entrada", "b2_saida");
-    if (w.b2.tipo === "PORP") steps.push("b2_material");
-    steps.push("b2_motor");
-    if (w.b2.motor === false || w.b2.tipo === "PORV") steps.push("b2_abertura");
-    if (w.b2.tipo === "PORV" && w.b2.abertura === "PIVO") steps.push("b2_folhas");
-  }
-
+  steps.push(...barreiraSteps(w.b1, "b1", tipo));
+  if (w.eclusa) steps.push(...barreiraSteps(w.b2, "b2", tipo));
   steps.push("resumo");
   return steps;
 }
@@ -164,7 +165,6 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
           const isFuture = !isCurrent && !isCompleted;
           const isLast = i === steps.length - 1;
 
-          // Colors
           const goldSolid = "#F59E0B";
           const goldText = isLight ? "#b87800" : "#FFC000";
           const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
@@ -241,7 +241,6 @@ function BlocosWizardPage() {
   const tipoBloco = (CAT_SLUG_TO_TIPO[catSlug] ?? "PED") as TipoBloco;
   const catNome = CAT_NOMES[tipoBloco] ?? catSlug;
 
-  // ── Styles computed from isLight ────────────────────────────────────────
   const PAGE: React.CSSProperties = {
     padding: "12px 14px 120px",
     display: "flex",
@@ -249,87 +248,42 @@ function BlocosWizardPage() {
     gap: 16,
     color: isLight ? L.text : "#fff",
   };
-
-  const HEADER: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 8,
-  };
-
+  const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
   const BACK_BTN: React.CSSProperties = {
     background: isLight ? L.cardSolid : "rgba(255,255,255,0.06)",
     border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.10)",
     boxShadow: isLight ? L.shadowSm : undefined,
-    borderRadius: 12,
-    width: 40,
-    height: 40,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    color: isLight ? L.text : "#fff",
+    borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", color: isLight ? L.text : "#fff",
   };
-
   const QUESTION: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 600,
-    fontSize: 14,
-    letterSpacing: "0.06em",
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14, letterSpacing: "0.06em",
     color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
-    textTransform: "uppercase",
-    margin: "4px 2px 8px",
+    textTransform: "uppercase", margin: "4px 2px 8px",
   };
 
   function optionStyle(selected = false): React.CSSProperties {
     if (isLight) {
       if (selected) {
         return {
-          width: "100%",
-          background: "rgba(180,120,0,0.08)",
-          border: "2px solid #b87800",
-          boxShadow: "0 0 0 3px rgba(180,120,0,0.10)",
-          borderRadius: 14,
-          padding: "16px 18px",
-          textAlign: "left",
-          cursor: "pointer",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          color: L.text,
+          width: "100%", background: "rgba(180,120,0,0.08)", border: "2px solid #b87800",
+          boxShadow: "0 0 0 3px rgba(180,120,0,0.10)", borderRadius: 14, padding: "16px 18px",
+          textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, color: L.text,
         };
       }
       return {
-        width: "100%",
-        background: L.cardSolid,
-        border: L.borderMd,
-        boxShadow: L.shadowSm,
-        borderRadius: 14,
-        padding: "16px 18px",
-        textAlign: "left",
-        cursor: "pointer",
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        color: L.text,
+        width: "100%", background: L.cardSolid, border: L.borderMd, boxShadow: L.shadowSm,
+        borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer",
+        display: "flex", flexDirection: "column", gap: 4, color: L.text,
       };
     }
     return {
-      width: "100%",
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,215,0,0.18)",
-      borderRadius: 14,
-      padding: "16px 18px",
-      textAlign: "left",
-      cursor: "pointer",
-      display: "flex",
-      flexDirection: "column",
-      gap: 4,
-      color: "#fff",
+      width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,215,0,0.18)",
+      borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer",
+      display: "flex", flexDirection: "column", gap: 4, color: "#fff",
     };
   }
 
-  // ── Blocos já adicionados ───────────────────────────────────────────────
   const { data: blocosAdicionados = [], isLoading } = useQuery({
     queryKey: ["visita_blocos", visitaId, tipoBloco],
     queryFn: async () => {
@@ -344,10 +298,7 @@ function BlocosWizardPage() {
     },
   });
 
-  // ── Estado do wizard ────────────────────────────────────────────────────
   const [wizard, setWizard] = useState<WizardState | null>(null);
-
-  // ── Estado de fotos (tela de resumo) ────────────────────────────────────
   const [fotos, setFotos] = useState<{ localUrl: string; file: File }[]>([]);
   const [showOpcoes, setShowOpcoes] = useState(false);
   const inputGaleriaRef = useRef<HTMLInputElement>(null);
@@ -364,10 +315,8 @@ function BlocosWizardPage() {
     setFotos((prev) => prev.filter((_, i) => i !== index));
   }
 
-  // ── Salvar bloco ────────────────────────────────────────────────────────
   const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
-      // Upload das fotos
       const fotosUrls: string[] = [];
       for (const foto of fotos) {
         const ext = foto.file.name.split(".").pop() || "jpg";
@@ -375,9 +324,7 @@ function BlocosWizardPage() {
         const { error: uploadError } = await supabase.storage
           .from("blocos-fotos")
           .upload(path, foto.file, { contentType: foto.file.type });
-        if (!uploadError) {
-          fotosUrls.push(path);
-        }
+        if (!uploadError) fotosUrls.push(path);
       }
 
       const { error } = await supabase.from("visita_blocos" as any).insert({
@@ -385,27 +332,29 @@ function BlocosWizardPage() {
         codigo_bloco: gerarCodigoBloco(config),
         nome_descritivo: gerarDescricaoBloco(config),
         tipo_bloco: config.tipoBloco,
-        qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco)
-          ? null
-          : config.eclusa
-            ? "2B"
-            : "1B",
+        qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco) ? null : config.eclusa ? "2B" : "1B",
         eclusa: config.eclusa,
         b1_tipo: config.b1?.tipo ?? null,
         b1_entrada: config.b1?.entrada ?? null,
         b1_saida: config.b1?.saida ?? null,
-        b1_material: config.b1?.material ?? null,
-        b1_motor: config.b1?.motor ?? null,
+        b1_material: null,
+        b1_motor: null,
         b1_abertura: config.b1?.abertura ?? null,
         b1_folhas: config.b1?.folhas ?? null,
+        b1_tamanho: config.b1?.tamanho ?? null,
+        b1_peso: config.b1?.peso ?? null,
         b2_tipo: config.b2?.tipo ?? null,
         b2_entrada: config.b2?.entrada ?? null,
         b2_saida: config.b2?.saida ?? null,
-        b2_material: config.b2?.material ?? null,
-        b2_motor: config.b2?.motor ?? null,
+        b2_material: null,
+        b2_motor: null,
         b2_abertura: config.b2?.abertura ?? null,
         b2_folhas: config.b2?.folhas ?? null,
+        b2_tamanho: config.b2?.tamanho ?? null,
+        b2_peso: config.b2?.peso ?? null,
         tecnologia: config.tecnologia ?? null,
+        qtd_dome: config.qtdDome ?? null,
+        qtd_bullet: config.qtdBullet ?? null,
         hh_padrao: 10,
         quantidade: 1,
         ordem: blocosAdicionados.length,
@@ -423,7 +372,6 @@ function BlocosWizardPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar bloco"),
   });
 
-  // ── Remover bloco ───────────────────────────────────────────────────────
   const removerMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", id);
@@ -435,32 +383,25 @@ function BlocosWizardPage() {
     },
   });
 
-  // ── Iniciar wizard ──────────────────────────────────────────────────────
   function iniciarWizard() {
     const primeiroStep: WizardStep =
-      tipoBloco === "CFTV" || tipoBloco === "AL"
-        ? "tecnologia"
-        : tipoBloco === "CER"
-          ? "resumo"
-          : "eclusa";
+      tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
+      : tipoBloco === "CER" ? "resumo"
+      : "eclusa";
     setWizard({
       step: primeiroStep,
       eclusa: tipoBloco === "CER" ? false : null,
-      b1: {},
-      b2: {},
+      b1: {}, b2: {},
       tecnologia: null,
+      qtdDome: 0, qtdBullet: 0,
     });
   }
 
-  // Auto-iniciar wizard quando não há blocos
   useEffect(() => {
-    if (!isLoading && blocosAdicionados.length === 0 && !wizard) {
-      iniciarWizard();
-    }
+    if (!isLoading && blocosAdicionados.length === 0 && !wizard) iniciarWizard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, blocosAdicionados.length]);
 
-  // Scroll suave ao revelar nova pergunta
   const bottomRef = useRef<HTMLDivElement>(null);
   const b2Ref = useRef<HTMLDivElement>(null);
   const [b1Collapsed, setB1Collapsed] = useState(false);
@@ -468,27 +409,13 @@ function BlocosWizardPage() {
     if (wizard) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [wizard?.step]);
 
-  // ── Edit step inline (toque em resposta confirmada) ─────────────────────
-  const B1_ORDER: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_material", "b1_motor", "b1_abertura", "b1_folhas"];
-  const B2_ORDER: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_material", "b2_motor", "b2_abertura", "b2_folhas"];
+  const B1_ORDER: WizardStep[] = B1_STEPS;
+  const B2_ORDER: WizardStep[] = B2_STEPS;
 
   function limparStep(step: WizardStep, w: WizardState) {
-    switch (step) {
-      case "b1_tipo":     w.b1.tipo     = undefined; break;
-      case "b1_entrada":  w.b1.entrada  = undefined; break;
-      case "b1_saida":    w.b1.saida    = undefined; break;
-      case "b1_material": w.b1.material = undefined; break;
-      case "b1_motor":    w.b1.motor    = undefined; break;
-      case "b1_abertura": w.b1.abertura = undefined; break;
-      case "b1_folhas":   w.b1.folhas   = undefined; break;
-      case "b2_tipo":     w.b2.tipo     = undefined; break;
-      case "b2_entrada":  w.b2.entrada  = undefined; break;
-      case "b2_saida":    w.b2.saida    = undefined; break;
-      case "b2_material": w.b2.material = undefined; break;
-      case "b2_motor":    w.b2.motor    = undefined; break;
-      case "b2_abertura": w.b2.abertura = undefined; break;
-      case "b2_folhas":   w.b2.folhas   = undefined; break;
-    }
+    const barreira = step.startsWith("b1") ? w.b1 : w.b2;
+    const key = step.replace(/^b[12]_/, "") as keyof BarreiraConfig;
+    (barreira as any)[key] = undefined;
   }
 
   function handleEditStep(step: WizardStep) {
@@ -508,148 +435,65 @@ function BlocosWizardPage() {
     setWizard(w);
   }
 
+  // ─── Próximo step após uma resposta de barreira ─────────────────────────
+  function nextStepBarreira(prefix: "b1" | "b2", b: Partial<BarreiraConfig>, current: WizardStep, eclusa: boolean | null): WizardStep {
+    const p = prefix;
+    if (current === `${p}_tipo`) return `${p}_entrada` as WizardStep;
+    if (current === `${p}_entrada`) return `${p}_saida` as WizardStep;
+    if (current === `${p}_saida`) {
+      if (tipoBloco === "PED" && b.tipo === "PORP") return `${p}_abertura` as WizardStep;
+      if (tipoBloco === "VEI" && b.tipo === "PORV") return `${p}_abertura` as WizardStep;
+      return proximoAposBarreira(p, eclusa);
+    }
+    if (current === `${p}_abertura`) {
+      if (tipoBloco === "PED") return proximoAposBarreira(p, eclusa);
+      if (tipoBloco === "VEI") {
+        if (b.abertura === "PIVO") return `${p}_folhas` as WizardStep;
+        if (b.abertura === "BASC") return `${p}_tamanho` as WizardStep;
+        if (b.abertura === "DESL") return `${p}_peso` as WizardStep;
+      }
+      return proximoAposBarreira(p, eclusa);
+    }
+    if (current === `${p}_folhas`) return `${p}_tamanho` as WizardStep;
+    if (current === `${p}_tamanho`) return proximoAposBarreira(p, eclusa);
+    if (current === `${p}_peso`) return proximoAposBarreira(p, eclusa);
+    return proximoAposBarreira(p, eclusa);
+  }
 
-
-  // ── Selecionar opção ────────────────────────────────────────────────────
   function selecionar(valor: string) {
     if (!wizard) return;
     const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
+    const prev = w.step;
 
-    switch (w.step) {
-      case "eclusa":
-        w.eclusa = valor === "SIM";
-        w.step = "b1_tipo";
-        break;
-
-      // ── B1 ─────────────────────────────────────────────────────────────
-      case "b1_tipo":
-        w.b1 = { tipo: valor } as Partial<BarreiraConfig>;
-        w.step = "b1_entrada";
-        break;
-      case "b1_entrada":
-        w.b1.entrada = valor;
-        w.step = "b1_saida";
-        break;
-      case "b1_saida":
-        w.b1.saida = valor;
-        if (w.b1.tipo === "PORP") w.step = "b1_material";
-        else if (w.b1.tipo === "PORV") w.step = "b1_motor";
-        else w.step = proximoAposBarreira("b1", w.eclusa);
-        break;
-      case "b1_material":
-        w.b1.material = valor;
-        if (valor === "VID") w.step = "b1_abertura";
-        else w.step = "b1_motor";
-        break;
-      case "b1_motor":
-        w.b1.motor = valor === "SIM";
-        if (tipoBloco === "PED") {
-          if (valor === "SIM") {
-            w.b1.abertura = "MOT";
-            w.step = proximoAposBarreira("b1", w.eclusa);
-          } else {
-            w.step = "b1_abertura";
-          }
-        } else {
-          if (valor === "SIM") {
-            w.step = "b1_abertura";
-          } else {
-            w.b1.abertura = undefined;
-            w.b1.folhas = undefined;
-            w.step = proximoAposBarreira("b1", w.eclusa);
-          }
-        }
-        break;
-      case "b1_abertura":
-        w.b1.abertura = valor;
-        if (w.b1.tipo === "PORV") {
-          if (valor === "PIVO") w.step = "b1_folhas";
-          else {
-            w.b1.folhas = "1F";
-            w.step = proximoAposBarreira("b1", w.eclusa);
-          }
-        } else {
-          w.step = proximoAposBarreira("b1", w.eclusa);
-        }
-        break;
-      case "b1_folhas":
-        w.b1.folhas = valor;
-        w.step = proximoAposBarreira("b1", w.eclusa);
-        break;
-
-      // ── B2 ─────────────────────────────────────────────────────────────
-      case "b2_tipo":
-        w.b2 = { tipo: valor } as Partial<BarreiraConfig>;
-        w.step = "b2_entrada";
-        break;
-      case "b2_entrada":
-        w.b2.entrada = valor;
-        w.step = "b2_saida";
-        break;
-      case "b2_saida":
-        w.b2.saida = valor;
-        if (w.b2.tipo === "PORP") w.step = "b2_material";
-        else if (w.b2.tipo === "PORV") w.step = "b2_motor";
-        else w.step = "resumo";
-        break;
-      case "b2_material":
-        w.b2.material = valor;
-        w.step = valor === "VID" ? "b2_abertura" : "b2_motor";
-        break;
-      case "b2_motor":
-        w.b2.motor = valor === "SIM";
-        if (tipoBloco === "PED") {
-          if (valor === "SIM") {
-            w.b2.abertura = "MOT";
-            w.step = "resumo";
-          } else {
-            w.step = "b2_abertura";
-          }
-        } else {
-          if (valor === "SIM") {
-            w.step = "b2_abertura";
-          } else {
-            w.b2.abertura = undefined;
-            w.b2.folhas = undefined;
-            w.step = "resumo";
-          }
-        }
-        break;
-      case "b2_abertura":
-        w.b2.abertura = valor;
-        if (w.b2.tipo === "PORV") {
-          if (valor === "PIVO") w.step = "b2_folhas";
-          else {
-            w.b2.folhas = "1F";
-            w.step = "resumo";
-          }
-        } else {
-          w.step = "resumo";
-        }
-        break;
-      case "b2_folhas":
-        w.b2.folhas = valor;
-        w.step = "resumo";
-        break;
-
-      case "tecnologia":
-        w.tecnologia = valor;
-        w.step = "resumo";
-        break;
+    if (w.step === "eclusa") { w.eclusa = valor === "SIM"; w.step = "b1_tipo"; }
+    else if (w.step === "tecnologia") {
+      w.tecnologia = valor;
+      w.step = tipoBloco === "CFTV" ? "cftv_dome" : "resumo";
+    }
+    else if (w.step.startsWith("b1_") || w.step.startsWith("b2_")) {
+      const prefix = w.step.startsWith("b1_") ? "b1" : "b2";
+      const barreira = prefix === "b1" ? w.b1 : w.b2;
+      const key = w.step.replace(/^b[12]_/, "") as keyof BarreiraConfig;
+      if (key === "tipo") {
+        (prefix === "b1" ? w.b1 : w.b2) = { tipo: valor } as Partial<BarreiraConfig>;
+        // reassign via mutating
+        if (prefix === "b1") w.b1 = { tipo: valor }; else w.b2 = { tipo: valor };
+      } else {
+        (barreira as any)[key] = valor;
+      }
+      w.step = nextStepBarreira(prefix as "b1"|"b2", prefix === "b1" ? w.b1 : w.b2, w.step, w.eclusa);
     }
 
-    const crossingB1ToB2 = wizard.step.startsWith("b1") && w.step === "b2_tipo";
+    const crossingB1ToB2 = prev.startsWith("b1") && w.step === "b2_tipo";
     const crossingToResumo =
-      (wizard.step.startsWith("b1") && w.step === "resumo") ||
-      (wizard.step.startsWith("b2") && w.step === "resumo");
+      (prev.startsWith("b1") && w.step === "resumo") ||
+      (prev.startsWith("b2") && w.step === "resumo");
 
     if (crossingB1ToB2) {
       setB1Collapsed(true);
       setTimeout(() => {
         setWizard(w);
-        setTimeout(() => {
-          b2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
+        setTimeout(() => { b2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, 100);
       }, 300);
     } else if (crossingToResumo) {
       setTimeout(() => setWizard(w), 400);
@@ -658,7 +502,15 @@ function BlocosWizardPage() {
     }
   }
 
-  // ── Voltar passo ────────────────────────────────────────────────────────
+  function avancarCftvDome() {
+    if (!wizard) return;
+    setWizard({ ...wizard, step: "cftv_bullet" });
+  }
+  function avancarCftvBullet() {
+    if (!wizard) return;
+    setWizard({ ...wizard, step: "resumo" });
+  }
+
   function voltarPasso() {
     if (!wizard) {
       navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
@@ -667,73 +519,22 @@ function BlocosWizardPage() {
     const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
     const s = w.step;
 
-    if (s === "eclusa" || s === "tecnologia") {
-      setWizard(null);
-      return;
-    }
-    if (s === "resumo" && tipoBloco === "CER") {
-      setWizard(null);
-      return;
-    }
+    if (s === "eclusa" || s === "tecnologia") { setWizard(null); return; }
+    if (s === "resumo" && tipoBloco === "CER") { setWizard(null); return; }
 
-    if (s === "b1_tipo") { w.step = "eclusa"; setWizard(w); return; }
-    if (s === "b1_entrada") { w.step = "b1_tipo"; setWizard(w); return; }
-    if (s === "b1_saida") { w.step = "b1_entrada"; setWizard(w); return; }
-    if (s === "b1_material") { w.step = "b1_saida"; setWizard(w); return; }
-    if (s === "b1_motor") {
-      w.step = tipoBloco === "PED" ? "b1_material" : "b1_saida";
-      setWizard(w); return;
-    }
-    if (s === "b1_abertura") {
-      w.step = w.b1.material === "VID" ? "b1_material" : "b1_motor";
-      setWizard(w); return;
-    }
-    if (s === "b1_folhas") { w.step = "b1_abertura"; setWizard(w); return; }
+    if (s === "cftv_dome") { w.step = "tecnologia"; setWizard(w); return; }
+    if (s === "cftv_bullet") { w.step = "cftv_dome"; setWizard(w); return; }
 
-    if (s === "b2_tipo") {
-      const b1 = w.b1;
-      if (b1.tipo === "CAT" || b1.tipo === "CAN") w.step = "b1_saida";
-      else if (b1.tipo === "PORP") {
-        if (b1.motor === true) w.step = "b1_motor";
-        else w.step = "b1_abertura";
-      } else if (b1.tipo === "PORV") {
-        if (b1.motor === false) w.step = "b1_motor";
-        else if (b1.abertura === "PIVO") w.step = "b1_folhas";
-        else w.step = "b1_abertura";
-      }
-      setWizard(w); return;
-    }
-    if (s === "b2_entrada") { w.step = "b2_tipo"; setWizard(w); return; }
-    if (s === "b2_saida") { w.step = "b2_entrada"; setWizard(w); return; }
-    if (s === "b2_material") { w.step = "b2_saida"; setWizard(w); return; }
-    if (s === "b2_motor") {
-      w.step = tipoBloco === "PED" ? "b2_material" : "b2_saida";
-      setWizard(w); return;
-    }
-    if (s === "b2_abertura") {
-      w.step = w.b2.material === "VID" ? "b2_material" : "b2_motor";
-      setWizard(w); return;
-    }
-    if (s === "b2_folhas") { w.step = "b2_abertura"; setWizard(w); return; }
+    if (s === "resumo" && tipoBloco === "CFTV") { w.step = "cftv_bullet"; setWizard(w); return; }
+    if (s === "resumo" && tipoBloco === "AL") { w.step = "tecnologia"; setWizard(w); return; }
 
-    if (s === "resumo") {
-      if (tipoBloco === "CFTV" || tipoBloco === "AL") { w.step = "tecnologia"; setWizard(w); return; }
-      const lastB = w.eclusa ? w.b2 : w.b1;
-      const prefix = (w.eclusa ? "b2" : "b1") as "b1" | "b2";
-      if (lastB.tipo === "CAT" || lastB.tipo === "CAN") w.step = `${prefix}_saida` as WizardStep;
-      else if (lastB.tipo === "PORP") {
-        if (lastB.motor === true) w.step = `${prefix}_motor` as WizardStep;
-        else w.step = `${prefix}_abertura` as WizardStep;
-      } else if (lastB.tipo === "PORV") {
-        if (lastB.motor === false) w.step = `${prefix}_motor` as WizardStep;
-        else if (lastB.abertura === "PIVO") w.step = `${prefix}_folhas` as WizardStep;
-        else w.step = `${prefix}_abertura` as WizardStep;
-      }
-      setWizard(w);
-    }
+    // Barreiras: voltar step-a-step conforme sequência efetiva
+    const seq = getStepSequence(w, tipoBloco);
+    const idx = seq.indexOf(s);
+    if (idx > 0) { w.step = seq[idx - 1]; setWizard(w); return; }
+    setWizard(null);
   }
 
-  // ── Opções do step atual ────────────────────────────────────────────────
   function getOpcoes(stepOverride?: WizardStep): { valor: string; label: string; descricao?: string }[] {
     if (!wizard) return [];
     const { b1, b2 } = wizard;
@@ -759,52 +560,38 @@ function BlocosWizardPage() {
     switch (step) {
       case "eclusa":
         return [
-          { valor: "NAO", label: "Não", descricao: "Acesso simples — 1 barreira" },
-          { valor: "SIM", label: "Sim", descricao: "Eclusa — 2 barreiras em sequência" },
+          { valor: "NAO", label: "Não" },
+          { valor: "SIM", label: "Sim" },
         ];
       case "b1_tipo":
       case "b2_tipo":
         return tipoBloco === "PED"
-          ? [
-              { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
-              { valor: "PORP", label: "Porta", descricao: "Porta com controle de acesso" },
-            ]
-          : [
-              { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
-              { valor: "PORV", label: "Portão Veicular", descricao: "Portão completo para veículos" },
-            ];
+          ? [{ valor: "CAT", label: "Catraca" }, { valor: "PORP", label: "Porta" }]
+          : [{ valor: "CAN", label: "Cancela" }, { valor: "PORV", label: "Portão Veicular" }];
       case "b1_entrada": return entrada(b1.tipo);
       case "b2_entrada": return entrada(b2.tipo);
       case "b1_saida": return saida(b1.tipo);
       case "b2_saida": return saida(b2.tipo);
-      case "b1_material":
-      case "b2_material":
-        return [...OPCOES.materialPorp].map((v) => ({ valor: v, label: LABELS[v] }));
-      case "b1_motor":
-      case "b2_motor":
-        return [
-          { valor: "SIM", label: "Sim" },
-          { valor: "NAO", label: "Não" },
-        ];
-      case "b1_abertura": {
-        if (b1.tipo === "PORP") return [...OPCOES.aberturaSemMotor].map((v) => ({ valor: v, label: LABELS[v] }));
-        if (b1.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({
-          valor: v, label: LABELS[v],
-          descricao: v === "PIVO" ? "Pode ter 1 ou 2 folhas" : "Sempre 1 folha",
-        }));
-        return [];
-      }
+      case "b1_abertura":
       case "b2_abertura": {
-        if (b2.tipo === "PORP") return [...OPCOES.aberturaSemMotor].map((v) => ({ valor: v, label: LABELS[v] }));
-        if (b2.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({
-          valor: v, label: LABELS[v],
-          descricao: v === "PIVO" ? "Pode ter 1 ou 2 folhas" : "Sempre 1 folha",
-        }));
+        const b = step.startsWith("b1") ? b1 : b2;
+        if (tipoBloco === "PED" && b.tipo === "PORP") return [...OPCOES.aberturaPed].map((v) => ({ valor: v, label: LABELS[v] }));
+        if (tipoBloco === "VEI" && b.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({ valor: v, label: LABELS[v] }));
         return [];
       }
       case "b1_folhas":
       case "b2_folhas":
         return [...OPCOES.folhasPivo].map((v) => ({ valor: v, label: LABELS[v] }));
+      case "b1_tamanho":
+      case "b2_tamanho": {
+        const b = step.startsWith("b1") ? b1 : b2;
+        if (b.abertura === "PIVO") return [...OPCOES.tamanhoPivo].map((v) => ({ valor: v, label: LABELS[v] }));
+        if (b.abertura === "BASC") return [...OPCOES.tamanhoBasc].map((v) => ({ valor: v, label: LABELS[v] }));
+        return [];
+      }
+      case "b1_peso":
+      case "b2_peso":
+        return [...OPCOES.pesoDesl].map((v) => ({ valor: v, label: LABELS[v] }));
       case "tecnologia":
         return tipoBloco === "CFTV"
           ? [...OPCOES.tecCftv].map((v) => ({ valor: v, label: LABELS[v] }))
@@ -820,10 +607,15 @@ function BlocosWizardPage() {
     if (s === "b1_tipo" || s === "b2_tipo") return "";
     if (s === "b1_entrada" || s === "b2_entrada") return "ENTRADA";
     if (s === "b1_saida" || s === "b2_saida") return "SAÍDA";
-    if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
-    if (s === "b1_motor" || s === "b2_motor") return "FORNECER MOTOR?";
     if (s === "b1_abertura" || s === "b2_abertura") return "TIPO DE ABERTURA?";
     if (s === "b1_folhas" || s === "b2_folhas") return "QUANTIDADE DE FOLHAS?";
+    if (s === "b1_tamanho" || s === "b2_tamanho") {
+      const b = s.startsWith("b1") ? wizard.b1 : wizard.b2;
+      if (b.abertura === "PIVO") return "TAMANHO DA FOLHA";
+      if (b.abertura === "BASC") return "TAMANHO DO ACIONAMENTO";
+      return "TAMANHO";
+    }
+    if (s === "b1_peso" || s === "b2_peso") return "PESO DO PORTÃO";
     if (s === "tecnologia") return tipoBloco === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
     return "";
   }
@@ -832,23 +624,12 @@ function BlocosWizardPage() {
     if (!wizard) return null;
     const w = wizard;
     const map: Partial<Record<WizardStep, string | undefined>> = {
-      b1_tipo: w.b1.tipo,
-      b1_entrada: w.b1.entrada,
-      b1_saida: w.b1.saida,
-      b1_material: w.b1.material,
-      b1_motor: w.b1.motor === true ? "SIM" : w.b1.motor === false ? "NAO" : undefined,
-      b1_abertura: w.b1.abertura,
-      b1_folhas: w.b1.folhas,
-      b2_tipo: w.b2.tipo,
-      b2_entrada: w.b2.entrada,
-      b2_saida: w.b2.saida,
-      b2_material: w.b2.material,
-      b2_motor: w.b2.motor === true ? "SIM" : w.b2.motor === false ? "NAO" : undefined,
-      b2_abertura: w.b2.abertura,
-      b2_folhas: w.b2.folhas,
+      b1_tipo: w.b1.tipo, b1_entrada: w.b1.entrada, b1_saida: w.b1.saida,
+      b1_abertura: w.b1.abertura, b1_folhas: w.b1.folhas, b1_tamanho: w.b1.tamanho, b1_peso: w.b1.peso,
+      b2_tipo: w.b2.tipo, b2_entrada: w.b2.entrada, b2_saida: w.b2.saida,
+      b2_abertura: w.b2.abertura, b2_folhas: w.b2.folhas, b2_tamanho: w.b2.tamanho, b2_peso: w.b2.peso,
     };
-    const v = map[step];
-    return v ?? null;
+    return map[step] ?? null;
   }
 
   function buildConfig(): BlocoConfig {
@@ -858,12 +639,88 @@ function BlocosWizardPage() {
       b1: wizard?.b1 as BarreiraConfig,
       b2: wizard?.eclusa ? (wizard?.b2 as BarreiraConfig) : undefined,
       tecnologia: wizard?.tecnologia ?? undefined,
+      qtdDome: wizard?.qtdDome,
+      qtdBullet: wizard?.qtdBullet,
     };
+  }
+
+  // ─── UI +/- para CFTV ─────────────────────────────────────────────────────
+  function CftvCounter({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "24px 0" }}>
+        <Video size={64} color={isLight ? L.gold : "#F59E0B"} strokeWidth={1.5} />
+        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: isLight ? L.textSub : "rgba(255,255,255,0.75)", textTransform: "uppercase" }}>
+          {label}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <button
+            onClick={() => onChange(Math.max(0, value - 1))}
+            style={{
+              width: 56, height: 56, borderRadius: "50%",
+              border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.28)",
+              background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+              color: isLight ? L.text : "#fff",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <Minus size={22} />
+          </button>
+          <div
+            style={{
+              minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
+              color: isLight ? L.text : "#fff", fontFamily: "'Montserrat', sans-serif",
+            }}
+          >
+            {value}
+          </div>
+          <button
+            onClick={() => onChange(Math.min(64, value + 1))}
+            style={{
+              width: 56, height: 56, borderRadius: "50%",
+              border: "none", background: "#F59E0B", color: "#fff",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 12px rgba(245,158,11,0.35)",
+            }}
+          >
+            <Plus size={22} />
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ─── RENDER: Wizard ───────────────────────────────────────────────────────
   if (wizard) {
     const opcoes = getOpcoes();
+
+    // CFTV: telas de +/-
+    if (wizard.step === "cftv_dome" || wizard.step === "cftv_bullet") {
+      const isDome = wizard.step === "cftv_dome";
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          </div>
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          <CftvCounter
+            label={isDome ? "Quantidade de Câmeras Dome" : "Quantidade de Câmeras Bullet"}
+            value={isDome ? wizard.qtdDome : wizard.qtdBullet}
+            onChange={(n) => setWizard({ ...wizard, ...(isDome ? { qtdDome: n } : { qtdBullet: n }) })}
+          />
+          <button
+            onClick={isDome ? avancarCftvDome : avancarCftvBullet}
+            style={{
+              width: "100%", padding: "16px 0",
+              background: "#F59E0B", border: "none", borderRadius: 999,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+            }}
+          >
+            CONTINUAR
+          </button>
+        </div>
+      );
+    }
 
     if (wizard.step === "resumo") {
       const config = buildConfig();
@@ -875,140 +732,61 @@ function BlocosWizardPage() {
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>
-                {catNome}
-              </div>
-              <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
-                Configuração concluída
-              </div>
+              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+              <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>Configuração concluída</div>
             </div>
-          <CheckCircle2 size={22} color="#22C55E" />
+            <CheckCircle2 size={22} color="#22C55E" />
           </div>
 
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
-          <div
-            style={{
-              background: isLight ? L.goldBg : "rgba(255,215,0,0.06)",
-              border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.25)",
-              borderRadius: 16,
-              padding: 18,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.12em",
-                color: isLight ? L.gold : "rgba(255,215,0,0.7)",
-                fontWeight: 700,
-              }}
-            >
+          <div style={{
+            background: isLight ? L.goldBg : "rgba(255,215,0,0.06)",
+            border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.25)",
+            borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8,
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: isLight ? L.gold : "rgba(255,215,0,0.7)", fontWeight: 700 }}>
               BLOCO IDENTIFICADO
             </div>
             <div style={{ fontSize: 18, fontWeight: 600, color: isLight ? L.text : "#fff" }}>{catNome}</div>
-            <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
-              {descricao}
-            </div>
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: "monospace",
-                fontSize: 11,
-                color: isLight ? L.gold : "rgba(255,215,0,0.65)",
-                wordBreak: "break-all",
-              }}
-            >
-              {codigo}
-            </div>
+            <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>{descricao}</div>
+            <div style={{
+              marginTop: 6, fontFamily: "monospace", fontSize: 11,
+              color: isLight ? L.gold : "rgba(255,215,0,0.65)", wordBreak: "break-all",
+            }}>{codigo}</div>
           </div>
 
-          {/* ── SEÇÃO DE FOTOS ─────────────────────────────────────── */}
           <div>
-            <div
-              style={{
-                color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: "0.18em",
-                marginBottom: 10,
-              }}
-            >
+            <div style={{
+              color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", marginBottom: 10,
+            }}>
               FOTOS DO LOCAL {fotos.length > 0 ? `(${fotos.length})` : ""}
             </div>
 
             {fotos.length > 0 && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                  marginBottom: 12,
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                 {fotos.map((foto, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      position: "relative",
-                      aspectRatio: "1",
-                      borderRadius: 12,
-                      overflow: "hidden",
-                    }}
-                  >
-                    <img
-                      src={foto.localUrl}
-                      alt={`Foto ${idx + 1}`}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                    <button
-                      onClick={() => removerFoto(idx)}
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        right: 6,
-                        width: 24,
-                        height: 24,
-                        background: "rgba(0,0,0,0.7)",
-                        border: "none",
-                        borderRadius: "50%",
-                        color: "#fff",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        lineHeight: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      ×
-                    </button>
+                  <div key={idx} style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden" }}>
+                    <img src={foto.localUrl} alt={`Foto ${idx + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <button onClick={() => removerFoto(idx)} style={{
+                      position: "absolute", top: 6, right: 6, width: 24, height: 24,
+                      background: "rgba(0,0,0,0.7)", border: "none", borderRadius: "50%",
+                      color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", lineHeight: 1,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>×</button>
                   </div>
                 ))}
               </div>
             )}
 
-            <button
-              onClick={() => setShowOpcoes(true)}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                background: "transparent",
-                border: isLight ? "1.5px dashed rgba(180,120,0,0.4)" : "1.5px dashed rgba(255,215,0,0.4)",
-                borderRadius: 14,
-                color: isLight ? L.gold : "#FFD700",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
+            <button onClick={() => setShowOpcoes(true)} style={{
+              width: "100%", padding: "14px 0", background: "transparent",
+              border: isLight ? "1.5px dashed rgba(180,120,0,0.4)" : "1.5px dashed rgba(255,215,0,0.4)",
+              borderRadius: 14, color: isLight ? L.gold : "#FFD700",
+              fontSize: 14, fontWeight: 700, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
               <Camera size={18} color={isLight ? L.gold : "#FFD700"} />
               {fotos.length === 0 ? "ADICIONAR FOTOS" : "ADICIONAR MAIS FOTOS"}
             </button>
@@ -1018,132 +796,58 @@ function BlocosWizardPage() {
             onClick={() => salvarMutation.mutate(config)}
             disabled={salvarMutation.isPending}
             style={{
-              width: "100%",
-              padding: "18px 0",
+              width: "100%", padding: "18px 0",
               background: isLight ? L.gold : "linear-gradient(135deg, #FFD700, #FFB300)",
-              border: "none",
-              borderRadius: 16,
-              color: isLight ? "#ffffff" : "#0A0A0A",
-              fontSize: 15,
-              fontWeight: 800,
-              cursor: "pointer",
-              letterSpacing: 1,
+              border: "none", borderRadius: 16, color: isLight ? "#ffffff" : "#0A0A0A",
+              fontSize: 15, fontWeight: 800, cursor: "pointer", letterSpacing: 1,
               boxShadow: isLight ? "0 2px 12px rgba(180,120,0,0.30)" : undefined,
             }}
           >
             {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
           </button>
 
-          {/* Inputs ocultos */}
-          <input
-            ref={inputGaleriaRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: "none" }}
-            onChange={handleArquivos}
-          />
-          <input
-            ref={inputCameraRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: "none" }}
-            onChange={handleArquivos}
-          />
+          <input ref={inputGaleriaRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleArquivos} />
+          <input ref={inputCameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={handleArquivos} />
 
-          {/* Bottom sheet */}
           {showOpcoes && (
             <>
-              <div
-                onClick={() => setShowOpcoes(false)}
-                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40 }}
-              />
-              <div
-                style={{
-                  position: "fixed",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  background: isLight ? L.cardSolid : "#1C1A0F",
-                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.2)",
-                  borderRadius: "20px 20px 0 0",
-                  padding: "24px 20px 40px",
-                  zIndex: 50,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 12,
-                  boxShadow: isLight ? L.shadow : undefined,
-                }}
-              >
-                <div
-                  style={{
-                    color: isLight ? L.text : "#fff",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginBottom: 4,
-                    textAlign: "center",
-                  }}
-                >
+              <div onClick={() => setShowOpcoes(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40 }} />
+              <div style={{
+                position: "fixed", bottom: 0, left: 0, right: 0,
+                background: isLight ? L.cardSolid : "#1C1A0F",
+                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.2)",
+                borderRadius: "20px 20px 0 0", padding: "24px 20px 40px",
+                zIndex: 50, display: "flex", flexDirection: "column", gap: 12,
+                boxShadow: isLight ? L.shadow : undefined,
+              }}>
+                <div style={{ color: isLight ? L.text : "#fff", fontSize: 16, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>
                   Adicionar fotos
                 </div>
-                <button
-                  onClick={() => inputCameraRef.current?.click()}
-                  style={{
-                    width: "100%",
-                    padding: 16,
-                    background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
-                    border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
-                    borderRadius: 14,
-                    color: isLight ? L.gold : "#FFD700",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                  }}
-                >
-                  <Camera size={20} color={isLight ? L.gold : "#FFD700"} />
-                  Tirar foto
+                <button onClick={() => inputCameraRef.current?.click()} style={{
+                  width: "100%", padding: 16,
+                  background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
+                  border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
+                  borderRadius: 14, color: isLight ? L.gold : "#FFD700",
+                  fontSize: 15, fontWeight: 700, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <Camera size={20} color={isLight ? L.gold : "#FFD700"} /> Tirar foto
                 </button>
-                <button
-                  onClick={() => inputGaleriaRef.current?.click()}
-                  style={{
-                    width: "100%",
-                    padding: 16,
-                    background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
-                    border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
-                    borderRadius: 14,
-                    color: isLight ? L.gold : "#FFD700",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                  }}
-                >
-                  <ImageIcon size={20} color={isLight ? L.gold : "#FFD700"} />
-                  Escolher da galeria
+                <button onClick={() => inputGaleriaRef.current?.click()} style={{
+                  width: "100%", padding: 16,
+                  background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
+                  border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
+                  borderRadius: 14, color: isLight ? L.gold : "#FFD700",
+                  fontSize: 15, fontWeight: 700, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <ImageIcon size={20} color={isLight ? L.gold : "#FFD700"} /> Escolher da galeria
                 </button>
-                <button
-                  onClick={() => setShowOpcoes(false)}
-                  style={{
-                    width: "100%",
-                    padding: 14,
-                    background: "transparent",
-                    border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 14,
-                    color: "#6B7280",
-                    fontSize: 14,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancelar
-                </button>
+                <button onClick={() => setShowOpcoes(false)} style={{
+                  width: "100%", padding: 14, background: "transparent",
+                  border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 14, color: "#6B7280", fontSize: 14, cursor: "pointer",
+                }}>Cancelar</button>
               </div>
             </>
           )}
@@ -1151,7 +855,7 @@ function BlocosWizardPage() {
       );
     }
 
-    // Telas de barreira (B1 / B2): ambas na mesma página, B1 recolhível
+    // Telas de barreira (B1 / B2)
     const isB1Step = B1_STEPS.includes(wizard.step);
     const isB2Step = B2_STEPS.includes(wizard.step);
 
@@ -1179,32 +883,16 @@ function BlocosWizardPage() {
         const opcaoSel = todasOpcoes.find((o) => o.valor === resposta);
         return (
           <div style={{ marginBottom: 16 }}>
-            <p
-              style={{
-                color: isLight ? "rgba(0,0,0,0.40)" : "rgba(255,255,255,0.4)",
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: 2,
-                margin: "0 0 6px",
-                textTransform: "uppercase",
-              }}
-            >
+            <p style={{
+              color: isLight ? "rgba(0,0,0,0.40)" : "rgba(255,255,255,0.4)",
+              fontSize: 10, fontWeight: 700, letterSpacing: 2, margin: "0 0 6px", textTransform: "uppercase",
+            }}>
               {getLabelPergunta(step)}
             </p>
-            <button
-              onClick={() => handleEditStep(step)}
-              style={{
-                background: "none",
-                border: "none",
-                padding: "4px 0",
-                cursor: "pointer",
-                textAlign: "left",
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <button onClick={() => handleEditStep(step)} style={{
+              background: "none", border: "none", padding: "4px 0", cursor: "pointer",
+              textAlign: "left", width: "100%", display: "flex", alignItems: "center", gap: 8,
+            }}>
               <span style={{ color: isLight ? L.text : "#FFFFFF", fontSize: 15, fontWeight: 700 }}>
                 {opcaoSel?.label ?? LABELS[resposta] ?? resposta}
               </span>
@@ -1223,67 +911,39 @@ function BlocosWizardPage() {
 
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
-          {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
             <div
               onClick={b1Done ? () => setB1Collapsed((p) => !p) : undefined}
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: b1Collapsed ? 0 : 20,
-                cursor: b1Done ? "pointer" : "default",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                marginBottom: b1Collapsed ? 0 : 20, cursor: b1Done ? "pointer" : "default",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "50%",
-                    border: b1Done
-                      ? "2px solid #22C55E"
-                      : isLight
-                        ? `2px solid ${L.gold}`
-                        : "2px solid #FFD700",
-                    background: (!b1Done && isLight) ? "rgba(180,120,0,0.06)" : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  border: b1Done ? "2px solid #22C55E" : isLight ? `2px solid ${L.gold}` : "2px solid #FFD700",
+                  background: (!b1Done && isLight) ? "rgba(180,120,0,0.06)" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
                   <span style={{ color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
                 </div>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: 1,
-                  }}
-                >
+                <span style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
+                  fontSize: 13, fontWeight: 700, letterSpacing: 1,
+                }}>
                   <DoorOpen size={20} color={b1Done ? "#22C55E" : "#F59E0B"} />
                   Porta externa {b1Done ? "✓" : ""}
                 </span>
               </div>
               {b1Done && (
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.1)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "transform 0.2s",
-                    transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
-                  }}
-                >
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.1)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "transform 0.2s", transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
+                }}>
                   <ChevronDown size={16} color={isLight ? L.text : "#FFFFFF"} />
                 </div>
               )}
@@ -1291,9 +951,7 @@ function BlocosWizardPage() {
 
             {!b1Collapsed && (
               <div>
-                {stepsRespondidosB1.map((step) => (
-                  <ConfirmedAnswer key={step} step={step} />
-                ))}
+                {stepsRespondidosB1.map((step) => (<ConfirmedAnswer key={step} step={step} />))}
 
                 {isB1Step && (
                   <div ref={bottomRef}>
@@ -1315,14 +973,11 @@ function BlocosWizardPage() {
             )}
           </div>
 
-          {/* ── SEÇÃO BARREIRA 2 ─────────────────────────────────────── */}
           {showB2 && (
             <div ref={b2Ref}>
               <BarreiraIndicador numero="02" isLight={isLight} />
 
-              {stepsRespondidosB2.map((step) => (
-                <ConfirmedAnswer key={step} step={step} />
-              ))}
+              {stepsRespondidosB2.map((step) => (<ConfirmedAnswer key={step} step={step} />))}
 
               {isB2Step && (
                 <div ref={bottomRef}>
@@ -1346,12 +1001,12 @@ function BlocosWizardPage() {
       );
     }
 
-
+    // Eclusa / Tecnologia / outros steps simples
     return (
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-        <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
         </div>
 
         {wizard && (
@@ -1364,8 +1019,6 @@ function BlocosWizardPage() {
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
               <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
-                {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
                 <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
               </span>
             </button>
@@ -1397,62 +1050,40 @@ function BlocosWizardPage() {
         {isLoading ? (
           <div style={{ color: isLight ? L.textSub : "rgba(255,255,255,0.5)", fontSize: 13 }}>Carregando...</div>
         ) : blocosAdicionados.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "32px 16px",
-              border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
-              borderRadius: 14,
-              color: isLight ? L.textSub : "rgba(255,255,255,0.45)",
-            }}
-          >
+          <div style={{
+            textAlign: "center", padding: "32px 16px",
+            border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
+            borderRadius: 14, color: isLight ? L.textSub : "rgba(255,255,255,0.45)",
+          }}>
             <div style={{ fontSize: 13, marginBottom: 4 }}>Nenhum bloco adicionado ainda.</div>
             <div style={{ fontSize: 11 }}>Toque em "Adicionar bloco" para configurar.</div>
           </div>
         ) : (
           blocosAdicionados.map((bloco: any) => (
-            <div
-              key={bloco.id}
-              style={{
-                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
-                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
-                boxShadow: isLight ? L.shadowSm : undefined,
-                borderRadius: 14,
-                padding: "14px 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
+            <div key={bloco.id} style={{
+              background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+              border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+              boxShadow: isLight ? L.shadowSm : undefined,
+              borderRadius: 14, padding: "14px 16px",
+              display: "flex", alignItems: "center", gap: 12,
+            }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? L.text : "#fff", marginBottom: 2 }}>
                   {bloco.nome_descritivo}
                 </div>
-                <div
-                  style={{
-                    fontFamily: "monospace",
-                    fontSize: 10,
-                    color: isLight ? L.gold : "rgba(255,215,0,0.55)",
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {bloco.codigo_bloco}
-                </div>
+                <div style={{
+                  fontFamily: "monospace", fontSize: 10,
+                  color: isLight ? L.gold : "rgba(255,215,0,0.55)", wordBreak: "break-all",
+                }}>{bloco.codigo_bloco}</div>
               </div>
               <button
                 onClick={() => removerMutation.mutate(bloco.id)}
                 disabled={removerMutation.isPending}
                 style={{
-                  background: "rgba(239,68,68,0.12)",
-                  border: "1px solid rgba(239,68,68,0.3)",
-                  borderRadius: 10,
-                  width: 36,
-                  height: 36,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#EF4444",
-                  cursor: "pointer",
+                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
+                  borderRadius: 10, width: 36, height: 36,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#EF4444", cursor: "pointer",
                 }}
               >
                 <Trash2 size={16} />
@@ -1462,24 +1093,13 @@ function BlocosWizardPage() {
         )}
       </div>
 
-      <button
-        onClick={iniciarWizard}
-        style={{
-          marginTop: 8,
-          padding: "16px 0",
-          background: isLight ? L.goldBg : "linear-gradient(135deg, #FFD700, #FFB300)",
-          border: isLight ? L.goldBorder : "none",
-          borderRadius: 14,
-          color: isLight ? L.gold : "#0A0A0A",
-          fontSize: 14,
-          fontWeight: 800,
-          cursor: "pointer",
-          letterSpacing: 1,
-          boxShadow: isLight ? L.shadowSm : undefined,
-        }}
-      >
-        + ADICIONAR
-      </button>
+      <button onClick={iniciarWizard} style={{
+        marginTop: 8, padding: "16px 0",
+        background: isLight ? L.goldBg : "linear-gradient(135deg, #FFD700, #FFB300)",
+        border: isLight ? L.goldBorder : "none", borderRadius: 14,
+        color: isLight ? L.gold : "#0A0A0A", fontSize: 14, fontWeight: 800,
+        cursor: "pointer", letterSpacing: 1, boxShadow: isLight ? L.shadowSm : undefined,
+      }}>+ ADICIONAR</button>
     </div>
   );
 }
