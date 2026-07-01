@@ -31,23 +31,22 @@ export function parseGates(codigo) {
     if (BARR.has(p)) { barreiras = p; continue; }
     if (!KNOWN_SIGLAS.has(p)) continue;
     whole[p] = (whole[p] || 0) + 1;
-    if (PROJ.has(p)) { portaria = p; continue; }        // global, fora do gate
+    if (PROJ.has(p)) { portaria = p; continue; }
     if (GATE_LEADERS.has(p)) { cur = {}; gates.push(cur); cur[p] = 1; }
     else if (cur) cur[p] = (cur[p] || 0) + 1;
   }
-  if (gates.length === 0) gates.push(whole);             // fallback (ex.: CENT)
+  if (gates.length === 0) gates.push(whole);
   return { tipo, barreiras, portaria, gates, whole };
 }
 
 function tokenSatWhole(t, ctx) {
   if (BARR.has(t)) return ctx.barreiras === t;
-  return (ctx.whole[t] || 0) >= 1;                       // PR/PP/tipo/siglas
+  return (ctx.whole[t] || 0) >= 1;
 }
 function isGlobalToken(t, tipo) {
   return BARR.has(t) || PROJ.has(t) || t === tipo;
 }
 
-// ── itens POR_BLOCO de um único bloco (usado na LISTA EDITÁVEL) ────────────────
 export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
   const ctx = parseGates(codigo);
   const acc = {};
@@ -56,7 +55,7 @@ export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
   for (const r of regrasBlocos) {
     if (r.escopo !== 'POR_BLOCO') continue;
     const cond = String(r.condicao || '');
-    if (/TAG/i.test(cond) && /4/.test(cond)) continue;    // TAG÷4 é projeto
+    if (/TAG/i.test(cond) && /4/.test(cond)) continue;
     const tokens = cond.split('+').map(t => t.trim().toUpperCase()).filter(Boolean);
     if (tokens.length === 0) continue;
 
@@ -64,11 +63,11 @@ export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
     if (tokens.length === 1) {
       const t = tokens[0];
       mult = isGlobalToken(t, ctx.tipo) ? (tokenSatWhole(t, ctx) ? 1 : 0)
-                                        : (ctx.whole[t] || 0);   // por ocorrência
+                                        : (ctx.whole[t] || 0);
     } else if (tokens.some(t => isGlobalToken(t, ctx.tipo))) {
-      mult = tokens.every(t => tokenSatWhole(t, ctx)) ? 1 : 0;   // presença (bloco)
+      mult = tokens.every(t => tokenSatWhole(t, ctx)) ? 1 : 0;
     } else {
-      for (const gate of ctx.gates)                              // presença por portão
+      for (const gate of ctx.gates)
         if (tokens.every(t => (gate[t] || 0) >= 1)) mult += 1;
     }
     if (mult <= 0) continue;
@@ -81,7 +80,6 @@ export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
   return acc;
 }
 
-// ── itens de um bloco de CFTV (numérico) ──────────────────────────────────────
 export function computeCftvItens(tech, nDome, nBullet, regrasCftv, blocoQty = 1) {
   tech = String(tech || '').toUpperCase();
   nDome = parseInt(nDome) || 0; nBullet = parseInt(nBullet) || 0;
@@ -115,7 +113,6 @@ export function computeCftvItens(tech, nDome, nBullet, regrasCftv, blocoQty = 1)
   return acc;
 }
 
-// ── flags do projeto ──────────────────────────────────────────────────────────
 export function projectFlags(blocos) {
   const f = { has_pr: false, has_pp: false, has_vei: false, total_tag: 0 };
   for (const { codigo, qtd = 1 } of blocos) {
@@ -128,27 +125,15 @@ export function projectFlags(blocos) {
   return f;
 }
 
-// ── BOM do projeto inteiro ────────────────────────────────────────────────────
-// itensPorBloco (opcional): { indice_do_bloco: {cod_eq: qtd} } com a lista JÁ EDITADA.
-// Se ausente, deriva automaticamente das regras.
-export function computeProjeto({ blocos = [], cftv = [], itensPorBloco = null }, regras) {
-  const { regras_blocos, regras_cftv } = regras;
-  const bom = {};
-  const addAll = (obj) => { for (const [k, v] of Object.entries(obj)) bom[k] = (bom[k] || 0) + v; };
+export function flagsComPortaria(blocos, portaria) {
+  const f = projectFlags(blocos || []);
+  if (portaria === 'PR') { f.has_pr = true; f.has_pp = false; }
+  else if (portaria === 'PP') { f.has_pp = true; f.has_pr = false; }
+  return f;
+}
 
-  // POR_BLOCO (auto ou editado)
-  blocos.forEach((b, idx) => {
-    if (itensPorBloco && itensPorBloco[idx]) addAll(itensPorBloco[idx]);
-    else addAll(computeBlocoItens(b.codigo, regras_blocos, b.qtd || 1));
-  });
-
-  // CFTV
-  for (const c of cftv)
-    addAll(computeCftvItens(c.tech, c.nDome, c.nBullet, regras_cftv, c.qtd || 1));
-
-  // POR_PROJETO
-  const flags = projectFlags(blocos);
-  for (const r of regras_blocos) {
+export function applyProjeto(bom, regrasBlocos, flags) {
+  for (const r of regrasBlocos) {
     if (r.escopo !== 'POR_PROJETO') continue;
     const cond = String(r.condicao || '').toUpperCase().replace(/\s/g, '');
     if (cond.includes('TAG') && cond.includes('4')) {
@@ -162,7 +147,39 @@ export function computeProjeto({ blocos = [], cftv = [], itensPorBloco = null },
   return bom;
 }
 
-// ── enriquece uma lista {cod_eq:qtd} com nome/modelo/preço (p/ a UI) ───────────
+export function computeProjeto({ blocos = [], cftv = [], itensPorBloco = null, portaria = null }, regras) {
+  const { regras_blocos, regras_cftv } = regras;
+  const bom = {};
+  const addAll = (obj) => { for (const [k, v] of Object.entries(obj)) bom[k] = (bom[k] || 0) + v; };
+
+  blocos.forEach((b, idx) => {
+    if (itensPorBloco && itensPorBloco[idx]) addAll(itensPorBloco[idx]);
+    else addAll(computeBlocoItens(b.codigo, regras_blocos, b.qtd || 1));
+  });
+  for (const c of cftv)
+    addAll(computeCftvItens(c.tech, c.nDome, c.nBullet, regras_cftv, c.qtd || 1));
+
+  applyProjeto(bom, regras_blocos, flagsComPortaria(blocos, portaria));
+  return bom;
+}
+
+export function computeBomFromItens(itens, blocos, regras, portaria = null) {
+  const bom = {};
+  for (const it of (itens || [])) {
+    if (it && it.cod_eq && !it.removido)
+      bom[it.cod_eq] = (bom[it.cod_eq] || 0) + (Number(it.qtd) || 0);
+  }
+  applyProjeto(bom, regras.regras_blocos, flagsComPortaria(blocos, portaria));
+  return bom;
+}
+
+export function validarPortaria(blocos) {
+  const f = projectFlags(blocos || []);
+  if (f.has_pr && f.has_pp)
+    return { ok: false, aviso: 'Projeto tem blocos PR e PP simultaneamente — não permitido. Defina o SISTEMA PROPOSTO (PR ou PP) uma vez para todo o projeto.' };
+  return { ok: true };
+}
+
 export function enrich(bomObj, equipamentos) {
   return Object.entries(bomObj).map(([cod_eq, qtd]) => {
     const e = equipamentos[cod_eq] || {};
