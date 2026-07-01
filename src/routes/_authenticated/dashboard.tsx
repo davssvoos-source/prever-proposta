@@ -271,30 +271,25 @@ function Dashboard() {
             }}
           />
         )}
-        <div
+        <h2
           style={{
             position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            padding: '0 20px 28px 20px',
+            bottom: 16,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: 26,
+            lineHeight: 1.25,
+            color: '#FFFFFF',
+            margin: 0,
+            padding: '0 20px',
+            textShadow: '0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)',
           }}
         >
-          <h2
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: 26,
-              lineHeight: 1.25,
-              color: '#FFFFFF',
-              margin: 0,
-              textShadow: '0 1px 8px rgba(0,0,0,0.35)',
-            }}
-          >
-            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
-          </h2>
-        </div>
+          Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
+        </h2>
       </div>
 
 
