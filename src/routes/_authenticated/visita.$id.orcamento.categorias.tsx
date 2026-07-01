@@ -247,19 +247,44 @@ function CategoriasPage() {
         );
       })}
 
-      {/* Botão deslizar para próximo passo */}
-      <div style={{ marginTop: 24, paddingBottom: 16 }}>
-        <SlideToNext
-          pending={false}
-          onConfirm={() => {
-            if (totalBlocos === 0) {
-              toast.error("Adicione pelo menos um bloco antes de continuar.");
-              return;
-            }
-            navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
-          }}
-        />
-      </div>
+      {/* Botão ESCOPO CONCLUÍDO fixo */}
+      <button
+        onClick={() => {
+          if (totalBlocos === 0) {
+            toast.error("Adicione pelo menos um bloco antes de continuar.");
+            return;
+          }
+          navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
+        }}
+        style={{
+          position: "fixed",
+          bottom: "calc(72px + 16px)",
+          left: 16,
+          right: 16,
+          height: 56,
+          borderRadius: 28,
+          background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          border: "none",
+          color: isLight ? "#ffffff" : "#08090E",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          boxShadow: isLight
+            ? "0 4px 16px rgba(180,120,0,0.30)"
+            : "0 4px 24px rgba(255,192,0,0.35)",
+          zIndex: 50,
+        }}
+      >
+        Escopo concluído
+        <ChevronRight size={18} />
+      </button>
 
     </div>
   );
