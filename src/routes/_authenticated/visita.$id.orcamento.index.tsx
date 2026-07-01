@@ -45,38 +45,91 @@ function OrcamentoPasso1() {
     },
   });
 
+  // Serviços ofertados pelo admin (para default de PR/PP)
+  const { data: visita } = useQuery({
+    queryKey: ["visita_servicos", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visitas_tecnicas")
+        .select("servicos_ofertados")
+        .eq("id", id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
+  const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "">("");
   const [airbnb, setAirbnb] = useState<string>("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready) return;
-    if (orcamento) {
-      setQtd((orcamento as any).qtd_apartamentos ?? "");
-      setSistema((orcamento as any).sistema_atual ?? "");
-      setAirbnb((orcamento as any).airbnb ?? "");
-      setReady(true);
-    } else {
+    if (orcamento !== undefined && visita !== undefined) {
+      setQtd((orcamento as any)?.qtd_apartamentos ?? "");
+      setSistema((orcamento as any)?.sistema_atual ?? "");
+      const salvo = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
+      if (salvo === "PR" || salvo === "PP") {
+        setSistemaProposto(salvo);
+      } else {
+        // pré-preenche pelo que o admin cadastrou na criação
+        const svc: string[] = ((visita as any)?.servicos_ofertados ?? []) as string[];
+        const isRemota = Array.isArray(svc) && svc.some((s) =>
+          /portaria_remota|portaria_virtual|monitoramento/i.test(String(s)),
+        );
+        setSistemaProposto(isRemota ? "PR" : "PP");
+      }
+      setAirbnb((orcamento as any)?.airbnb ?? "");
       setReady(true);
     }
-  }, [orcamento, ready]);
+  }, [orcamento, visita, ready]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!qtd || Number(qtd) <= 0) throw new Error("Informe a quantidade de apartamentos.");
+      if (sistemaProposto !== "PR" && sistemaProposto !== "PP") {
+        throw new Error("Selecione o SISTEMA PROPOSTO (Remota ou Presencial).");
+      }
+
+      const anterior = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
+
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
           visita_id: id,
           qtd_apartamentos: Number(qtd),
           sistema_atual: sistema,
+          sistema_proposto: sistemaProposto,
           airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: "visita_id" },
       );
       if (error) throw error;
+
+      // Se mudou PR↔PP (ou primeira definição diferente do default), regenera códigos dos blocos existentes
+      if (anterior && anterior !== sistemaProposto) {
+        const { data: blocos } = await supabase
+          .from("visita_blocos" as any)
+          .select("*")
+          .eq("visita_id", id);
+        for (const row of ((blocos as any[]) ?? [])) {
+          const novo = codigoFromDbRow(row, sistemaProposto);
+          if (novo !== row.codigo_bloco) {
+            await supabase
+              .from("visita_blocos" as any)
+              .update({ codigo_bloco: novo })
+              .eq("id", row.id);
+            // limpa itens auto (recalcula ao reabrir o editor)
+            await supabase
+              .from("visita_bloco_itens" as any)
+              .delete()
+              .eq("visita_bloco_id", row.id)
+              .eq("origem", "auto");
+          }
+        }
+      }
     },
     onSuccess: () => {
       setErroVisible(null);
