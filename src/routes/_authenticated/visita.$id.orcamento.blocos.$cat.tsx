@@ -1336,8 +1336,12 @@ function BlocosWizardPage() {
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+        <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
         </div>
+
+        {wizard && (
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+        )}
 
         <div style={QUESTION}>{getLabelPergunta()}</div>
 
