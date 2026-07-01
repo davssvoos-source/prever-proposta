@@ -875,8 +875,10 @@ function BlocosWizardPage() {
                 Configuração concluída
               </div>
             </div>
-            <CheckCircle2 size={22} color="#22C55E" />
+          <CheckCircle2 size={22} color="#22C55E" />
           </div>
+
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
           <div
             style={{
