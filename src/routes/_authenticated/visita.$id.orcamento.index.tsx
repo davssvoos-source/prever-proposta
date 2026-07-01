@@ -291,6 +291,54 @@ function OrcamentoPasso1() {
         </Select>
       </div>
 
+      {/* Airbnb */}
+      <div style={CARD}>
+        <div style={LABEL}>O condomínio possui Airbnb?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {["Não", "Pouco", "Razoável", "Muito"].map((opt) => {
+            const selected = airbnb === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => setAirbnb(opt)}
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  border: isLight
+                    ? selected
+                      ? "none"
+                      : "1px solid rgba(0,0,0,0.12)"
+                    : selected
+                      ? "none"
+                      : "1px solid rgba(255,255,255,0.12)",
+                  background: selected
+                    ? isLight
+                      ? "#b87800"
+                      : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : isLight
+                      ? "#f5f6f8"
+                      : "rgba(255,255,255,0.04)",
+                  color: selected
+                    ? isLight
+                      ? "#ffffff"
+                      : "#08090E"
+                    : isLight
+                      ? "#0a0b0e"
+                      : "#fff",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Botão próxima etapa */}
       {erroVisible && (
         <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
