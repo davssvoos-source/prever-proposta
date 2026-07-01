@@ -127,6 +127,43 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
   return `${code}-${suf}`;
 }
 
+// ─── Regeneração de código a partir de uma linha do banco ────────────────────
+/** Regenera o `codigo_bloco` a partir de uma linha de `visita_blocos` aplicando
+ *  a portaria (PR/PP) atual do projeto. */
+export function codigoFromDbRow(row: any, portaria: "PR" | "PP"): string {
+  const cfg: BlocoConfig = {
+    tipoBloco: row.tipo_bloco as TipoBloco,
+    eclusa: !!row.eclusa,
+    b1: row.b1_tipo
+      ? {
+          tipo: row.b1_tipo,
+          entrada: row.b1_entrada,
+          saida: row.b1_saida,
+          abertura: row.b1_abertura ?? undefined,
+          folhas: row.b1_folhas ?? undefined,
+          tamanho: row.b1_tamanho ?? undefined,
+          peso: row.b1_peso ?? undefined,
+        }
+      : undefined,
+    b2: row.b2_tipo
+      ? {
+          tipo: row.b2_tipo,
+          entrada: row.b2_entrada,
+          saida: row.b2_saida,
+          abertura: row.b2_abertura ?? undefined,
+          folhas: row.b2_folhas ?? undefined,
+          tamanho: row.b2_tamanho ?? undefined,
+          peso: row.b2_peso ?? undefined,
+        }
+      : undefined,
+    tecnologia: row.tecnologia ?? undefined,
+    qtdDome: row.qtd_dome ?? undefined,
+    qtdBullet: row.qtd_bullet ?? undefined,
+    portaria,
+  };
+  return gerarCodigoBloco(cfg);
+}
+
 
 // ─── Gerador de descrição legível ─────────────────────────────────────────────
 
