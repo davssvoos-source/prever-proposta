@@ -700,9 +700,39 @@ function BlocosWizardPage() {
     );
   }
 
+  // ─── RENDER: Lista editável de equipamentos (pós-save) ───────────────────
+  if (blocoSalvoId && savedConfig) {
+    return (
+      <div style={PAGE}>
+        <div style={HEADER}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>Ajuste os equipamentos deste bloco</div>
+          </div>
+          <CheckCircle2 size={22} color="#22C55E" />
+        </div>
+        <BlocoItensEditor
+          visitaBlocoId={blocoSalvoId}
+          codigo={gerarCodigoBloco(savedConfig)}
+          tipoBloco={savedConfig.tipoBloco}
+          tecnologia={savedConfig.tecnologia ?? null}
+          qtdDome={savedConfig.qtdDome}
+          qtdBullet={savedConfig.qtdBullet}
+          isLight={isLight}
+          onConcluir={() => {
+            setBlocoSalvoId(null);
+            setSavedConfig(null);
+            setWizard(null);
+          }}
+        />
+      </div>
+    );
+  }
+
   // ─── RENDER: Wizard ───────────────────────────────────────────────────────
   if (wizard) {
     const opcoes = getOpcoes();
+
 
     // CFTV: telas de +/-
     if (wizard.step === "cftv_dome" || wizard.step === "cftv_bullet") {
