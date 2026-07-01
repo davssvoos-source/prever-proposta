@@ -72,7 +72,7 @@ function OrcamentoPasso1() {
           sistema_atual: sistema,
           airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: "visita_id" },
       );
       if (error) throw error;
