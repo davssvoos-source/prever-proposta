@@ -748,13 +748,31 @@ function UsuariosPage() {
                   </div>
                   <span style={{
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 9,
-                    color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
+                    color: isLight ? "#b91c1c" : "#FCA5A5",
                     padding: "3px 8px", borderRadius: 999,
-                    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                    background: isLight ? "#fee2e2" : "rgba(239,68,68,0.12)",
+                    border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
                     letterSpacing: "0.10em",
                   }}>
                     INATIVO
                   </span>
+                  <button
+                    onClick={() => reativarMutation.mutate(u.id)}
+                    disabled={reativarMutation.isPending}
+                    title="Reativar usuário"
+                    style={{
+                      width: 34, height: 34, borderRadius: 10, marginLeft: 8,
+                      background: isLight ? "#dcfce7" : "rgba(34,197,94,0.12)",
+                      border: isLight ? "1px solid #bbf7d0" : "1px solid rgba(34,197,94,0.30)",
+                      color: "#22C55E",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: reativarMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: reativarMutation.isPending ? 0.6 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RotateCcw size={14} />
+                  </button>
                 </div>
               </div>
             ))}
