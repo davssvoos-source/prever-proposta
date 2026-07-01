@@ -345,6 +345,59 @@ function OrcamentoPasso1() {
         </Select>
       </div>
 
+      {/* Sistema Proposto (PR/PP) */}
+      <div style={CARD}>
+        <div style={LABEL}>Sistema proposto</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {[
+            { val: "PR" as const, label: "Portaria Remota", Icon: Building2 },
+            { val: "PP" as const, label: "Portaria Presencial", Icon: User },
+          ].map(({ val, label, Icon }) => {
+            const selected = sistemaProposto === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setSistemaProposto(val)}
+                style={{
+                  height: 56,
+                  borderRadius: 12,
+                  border: isLight
+                    ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
+                    : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
+                  background: selected
+                    ? (isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)")
+                    : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)"),
+                  color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  padding: "0 10px",
+                  lineHeight: 1.2,
+                  textAlign: "center",
+                }}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{
+          fontSize: 10, marginTop: 8, color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)",
+          letterSpacing: "0.06em",
+        }}>
+          Define o sufixo (-PR / -PP) de todos os blocos deste projeto.
+        </div>
+      </div>
+
+
+
       {/* Airbnb */}
       <div style={CARD}>
         <div style={LABEL}>O condomínio possui Airbnb?</div>
