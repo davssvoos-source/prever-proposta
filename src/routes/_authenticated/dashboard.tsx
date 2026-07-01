@@ -128,7 +128,7 @@ function Dashboard() {
         .from("visitas_tecnicas")
         .select(`
           id, status, data_hora_agendada, endereco, titulo,
-          nome_sindico, nome_predio, tecnico_id,
+          nome_sindico, nome_predio, tecnico_id, foto_fachada_url,
           clientes (nome)
         `)
         .order("data_hora_agendada", { ascending: true });
