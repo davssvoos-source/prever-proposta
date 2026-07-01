@@ -475,9 +475,8 @@ function BlocosWizardPage() {
       const barreira = prefix === "b1" ? w.b1 : w.b2;
       const key = w.step.replace(/^b[12]_/, "") as keyof BarreiraConfig;
       if (key === "tipo") {
-        (prefix === "b1" ? w.b1 : w.b2) = { tipo: valor } as Partial<BarreiraConfig>;
-        // reassign via mutating
-        if (prefix === "b1") w.b1 = { tipo: valor }; else w.b2 = { tipo: valor };
+        if (prefix === "b1") w.b1 = { tipo: valor } as Partial<BarreiraConfig>;
+        else w.b2 = { tipo: valor } as Partial<BarreiraConfig>;
       } else {
         (barreira as any)[key] = valor;
       }
