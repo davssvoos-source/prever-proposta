@@ -27,7 +27,7 @@ function usePerfil() {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("nome, cargo, avatar_url, status")
+        .select("nome, cargo, avatar_url, status, ativo")
         .eq("id", user.id)
         .maybeSingle();
       return data;
@@ -40,6 +40,21 @@ function AuthenticatedLayout() {
   const navigate = useNavigate();
   const { isLight } = useTheme();
   const { data: perfil } = usePerfil();
+
+  // Bloqueia usuários desativados: força signOut e redireciona para /auth
+  useEffect(() => {
+    if (perfil && (perfil as any).ativo === false) {
+      (async () => {
+        await supabase.auth.signOut();
+        navigate({ to: "/auth", replace: true });
+      })();
+    }
+  }, [perfil, navigate]);
+
+  if (perfil && (perfil as any).ativo === false) {
+    return null;
+  }
+
 
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
     return (

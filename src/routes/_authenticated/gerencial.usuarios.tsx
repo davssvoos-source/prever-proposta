@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
@@ -280,15 +280,54 @@ function UsuariosPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("profiles").update({ ativo: false }).eq("id", id);
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ativo: false })
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        console.error("[deleteMutation] error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        console.error("[deleteMutation] Nenhuma linha atualizada — verifique permissões (RLS) ou id do usuário.", { id });
+        throw new Error("Sem permissão para desativar este usuário.");
+      }
     },
     onSuccess: () => {
       toast.success("Usuário desativado");
       setDeleteConfirm(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[deleteMutation] mutation error:", e);
+      toast.error(e.message);
+    },
+  });
+
+  const reativarMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ativo: true })
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        console.error("[reativarMutation] error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Sem permissão para reativar este usuário.");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Usuário reativado");
+      qc.invalidateQueries({ queryKey: ["staff-profiles"] });
+    },
+    onError: (e: Error) => {
+      console.error("[reativarMutation] mutation error:", e);
+      toast.error(e.message);
+    },
   });
 
   const ativos = usuarios.filter((u) => u.ativo !== false);
@@ -709,13 +748,31 @@ function UsuariosPage() {
                   </div>
                   <span style={{
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 9,
-                    color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
+                    color: isLight ? "#b91c1c" : "#FCA5A5",
                     padding: "3px 8px", borderRadius: 999,
-                    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                    background: isLight ? "#fee2e2" : "rgba(239,68,68,0.12)",
+                    border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
                     letterSpacing: "0.10em",
                   }}>
                     INATIVO
                   </span>
+                  <button
+                    onClick={() => reativarMutation.mutate(u.id)}
+                    disabled={reativarMutation.isPending}
+                    title="Reativar usuário"
+                    style={{
+                      width: 34, height: 34, borderRadius: 10, marginLeft: 8,
+                      background: isLight ? "#dcfce7" : "rgba(34,197,94,0.12)",
+                      border: isLight ? "1px solid #bbf7d0" : "1px solid rgba(34,197,94,0.30)",
+                      color: "#22C55E",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: reativarMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: reativarMutation.isPending ? 0.6 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RotateCcw size={14} />
+                  </button>
                 </div>
               </div>
             ))}
