@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, Building2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { codigoFromDbRow } from "@/lib/blocos";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
