@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -78,6 +78,140 @@ function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: 
       <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
         {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
       </span>
+    </div>
+  );
+}
+
+// ─── Step Indicator ────────────────────────────────────────────────────────
+
+function getStepLabel(step: WizardStep): string {
+  switch (step) {
+    case "eclusa": return "Eclusa";
+    case "b1_tipo": return "Tipo B1";
+    case "b1_entrada": return "Entrada B1";
+    case "b1_saida": return "Saída B1";
+    case "b1_material": return "Material B1";
+    case "b1_motor": return "Motor B1";
+    case "b1_abertura": return "Abertura B1";
+    case "b1_folhas": return "Folhas B1";
+    case "b2_tipo": return "Tipo B2";
+    case "b2_entrada": return "Entrada B2";
+    case "b2_saida": return "Saída B2";
+    case "b2_material": return "Material B2";
+    case "b2_motor": return "Motor B2";
+    case "b2_abertura": return "Abertura B2";
+    case "b2_folhas": return "Folhas B2";
+    case "tecnologia": return "Tecnologia";
+    case "resumo": return "Resumo";
+    default: return step;
+  }
+}
+
+function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
+  if (tipo === "CFTV" || tipo === "AL") {
+    return ["tecnologia", "resumo"];
+  }
+  if (tipo === "CER") {
+    return ["resumo"];
+  }
+
+  const steps: WizardStep[] = ["eclusa"];
+
+  // B1
+  steps.push("b1_tipo", "b1_entrada", "b1_saida");
+  if (w.b1.tipo === "PORP") steps.push("b1_material");
+  steps.push("b1_motor");
+  if (w.b1.motor === false || w.b1.tipo === "PORV") steps.push("b1_abertura");
+  if (w.b1.tipo === "PORV" && w.b1.abertura === "PIVO") steps.push("b1_folhas");
+
+  // B2
+  if (w.eclusa) {
+    steps.push("b2_tipo", "b2_entrada", "b2_saida");
+    if (w.b2.tipo === "PORP") steps.push("b2_material");
+    steps.push("b2_motor");
+    if (w.b2.motor === false || w.b2.tipo === "PORV") steps.push("b2_abertura");
+    if (w.b2.tipo === "PORV" && w.b2.abertura === "PIVO") steps.push("b2_folhas");
+  }
+
+  steps.push("resumo");
+  return steps;
+}
+
+interface StepIndicatorProps {
+  steps: WizardStep[];
+  currentStep: WizardStep;
+  isLight: boolean;
+}
+
+function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps) {
+  if (!steps.length) return null;
+
+  const currentIndex = steps.indexOf(currentStep);
+
+  return (
+    <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
+        {steps.map((step, i) => {
+          const isCurrent = step === currentStep;
+          const isCompleted = currentIndex > i;
+          const isFuture = !isCurrent && !isCompleted;
+          const isLast = i === steps.length - 1;
+
+          // Colors
+          const goldSolid = "#F59E0B";
+          const goldText = isLight ? "#b87800" : "#FFC000";
+          const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
+          const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
+          const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
+          const completedLabel = goldText;
+          const currentLabel = isLight ? "#0a0b0e" : "#fff";
+          const lineColor = isCompleted
+            ? (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)")
+            : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
+
+          return (
+            <div key={step} style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: isCurrent || isCompleted ? goldSolid : futureCircleBg,
+                    border: isCurrent || isCompleted ? `1.5px solid ${goldSolid}` : futureBorder,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: isCurrent || isCompleted ? "#fff" : futureText,
+                    flexShrink: 0,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {isCompleted ? <Check size={12} /> : (i + 1)}
+                </div>
+                <span
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 400,
+                    fontSize: 11,
+                    whiteSpace: "nowrap",
+                    color: isCompleted ? completedLabel : isCurrent ? currentLabel : futureText,
+                    opacity: isFuture ? 0.55 : 1,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {getStepLabel(step)}
+                </span>
+              </div>
+              {!isLast && (
+                <div style={{ width: 16, height: 1, background: lineColor, flexShrink: 0, margin: "0 2px" }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -741,8 +875,10 @@ function BlocosWizardPage() {
                 Configuração concluída
               </div>
             </div>
-            <CheckCircle2 size={22} color="#22C55E" />
+          <CheckCircle2 size={22} color="#22C55E" />
           </div>
+
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
           <div
             style={{
@@ -1078,6 +1214,8 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+
           {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
             <div
@@ -1200,8 +1338,12 @@ function BlocosWizardPage() {
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+        <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
         </div>
+
+        {wizard && (
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+        )}
 
         <div style={QUESTION}>{getLabelPergunta()}</div>
 
