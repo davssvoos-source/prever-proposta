@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
   Check, X, Play, Square, ChevronDown, CheckCircle, XCircle,
+  User, KeyRound, HardHat,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -462,7 +463,7 @@ function VisitaDetail() {
 
   const mapUrl =
     lat && lng
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.003}%2C${lat - 0.003}%2C${lng + 0.003}%2C${lat + 0.003}&layer=mapnik&marker=${lat}%2C${lng}`
       : null;
 
   const [showReprovarForm, setShowReprovarForm] = useState(false);
