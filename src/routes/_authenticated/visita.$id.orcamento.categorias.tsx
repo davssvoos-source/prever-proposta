@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap } from "lucide-react";
@@ -29,115 +29,6 @@ const CATEGORIAS = [
   { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={ICON_COLOR} />, desc: "Centrais e eletrificadores" },
 ];
 
-// ——— SlideToNext ———————————————————————————————
-function SlideToNext({
-  onConfirm,
-  pending,
-}: {
-  onConfirm: () => void;
-  pending: boolean;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const slideXRef = useRef(0);
-  const dragging = useRef(false);
-  const startClientX = useRef(0);
-  const [slideX, setSlideX] = useState(0);
-  const KNOB = 52;
-
-  const handleStart = (clientX: number) => {
-    dragging.current = true;
-    startClientX.current = clientX - slideXRef.current;
-  };
-  const handleMove = (clientX: number) => {
-    if (!dragging.current || !trackRef.current) return;
-    const max = trackRef.current.offsetWidth - KNOB;
-    const next = Math.min(Math.max(0, clientX - startClientX.current), max);
-    slideXRef.current = next;
-    setSlideX(next);
-    if (next >= max - 4) {
-      dragging.current = false;
-      onConfirm();
-    }
-  };
-  const handleEnd = () => {
-    if (!dragging.current) return;
-    dragging.current = false;
-    slideXRef.current = 0;
-    setSlideX(0);
-  };
-
-  return (
-    <div
-      ref={trackRef}
-      onMouseDown={(e) => handleStart(e.clientX)}
-      onMouseMove={(e) => handleMove(e.clientX)}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-      onTouchEnd={handleEnd}
-      style={{
-        position: "relative",
-        height: 56,
-        borderRadius: 28,
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.15)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        overflow: "hidden",
-        userSelect: "none",
-        touchAction: "none",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          height: "100%",
-          width: slideX + KNOB,
-          background: "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 600,
-          fontSize: 13,
-          color: "rgba(255,255,255,0.55)",
-          letterSpacing: "0.06em",
-          pointerEvents: "none",
-        }}
-      >
-        {pending ? "Aguarde..." : "← deslize → Seguir para o próximo passo"}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: slideX,
-          transform: "translateY(-50%)",
-          width: KNOB,
-          height: KNOB,
-          borderRadius: "50%",
-          background: "linear-gradient(135deg, #FFC000, #FFD84D)",
-          boxShadow: "0 0 12px rgba(255,192,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <span style={{ fontSize: 20 }}>›</span>
-      </div>
-    </div>
-  );
-}
 
 function CategoriasPage() {
   const { id } = Route.useParams();
@@ -258,18 +149,7 @@ function CategoriasPage() {
               color: textPrimary,
             }}
           >
-            Blocos do Orçamento
-          </div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: textSecondary,
-              marginTop: 2,
-            }}
-          >
-            Passo 2 de 3 — Selecione a categoria
+            Montagem do escopo do projeto.
           </div>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -367,19 +247,44 @@ function CategoriasPage() {
         );
       })}
 
-      {/* Botão deslizar para próximo passo */}
-      <div style={{ marginTop: 24, paddingBottom: 16 }}>
-        <SlideToNext
-          pending={false}
-          onConfirm={() => {
-            if (totalBlocos === 0) {
-              toast.error("Adicione pelo menos um bloco antes de continuar.");
-              return;
-            }
-            navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
-          }}
-        />
-      </div>
+      {/* Botão ESCOPO CONCLUÍDO fixo */}
+      <button
+        onClick={() => {
+          if (totalBlocos === 0) {
+            toast.error("Adicione pelo menos um bloco antes de continuar.");
+            return;
+          }
+          navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
+        }}
+        style={{
+          position: "fixed",
+          bottom: "calc(72px + 16px)",
+          left: 16,
+          right: 16,
+          height: 56,
+          borderRadius: 28,
+          background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          border: "none",
+          color: isLight ? "#ffffff" : "#08090E",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          boxShadow: isLight
+            ? "0 4px 16px rgba(180,120,0,0.30)"
+            : "0 4px 24px rgba(255,192,0,0.35)",
+          zIndex: 50,
+        }}
+      >
+        Escopo concluído
+        <ChevronRight size={18} />
+      </button>
 
     </div>
   );
