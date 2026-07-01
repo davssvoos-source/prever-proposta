@@ -120,16 +120,19 @@ function NovaVisitaPage() {
     fontSize: 10,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "#d1d5db",
     marginBottom: 8,
     display: "block",
   };
 
+  const GOLD_GRADIENT_BORDER =
+    "linear-gradient(#0d0e12,#0d0e12) padding-box, linear-gradient(135deg, rgba(245,158,11,0.35), rgba(217,119,6,0.15), rgba(245,158,11,0.35)) border-box";
+
   const INPUT: CSSProperties = {
     width: "100%",
-    background: isLight ? L.inputBg : "rgba(8,8,12,0.25)",
-    border: isLight ? L.inputBorder : "1px solid rgba(255,192,0,0.16)",
-    borderRadius: 10,
+    background: isLight ? L.inputBg : GOLD_GRADIENT_BORDER,
+    border: isLight ? L.inputBorder : "1px solid transparent",
+    borderRadius: 12,
     color: isLight ? L.text : "#F0F2F5",
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
@@ -393,10 +396,10 @@ function NovaVisitaPage() {
                     style={{
                       background: ativo
                         ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.12)"
-                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
+                        : isLight ? L.cardSolid : GOLD_GRADIENT_BORDER,
                       border: ativo
                         ? isLight ? "2px solid #b87800" : "1.5px solid rgba(255,192,0,0.55)"
-                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.12)",
+                        : isLight ? L.borderMd : "1px solid transparent",
                       borderRadius: 12,
                       padding: "16px 8px",
                       cursor: "pointer",
@@ -408,7 +411,7 @@ function NovaVisitaPage() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "rgba(200,200,200,0.65)") }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#d1d5db") }}>
                       <t.Icon size={26} />
                     </span>
                     <span
@@ -418,7 +421,7 @@ function NovaVisitaPage() {
                         fontWeight: 300,
                         color: ativo
                           ? isLight ? L.gold : "#FFC000"
-                          : isLight ? L.textSub : "rgba(200,200,200,0.65)",
+                          : isLight ? L.textSub : "#d1d5db",
                         textAlign: "center",
                         lineHeight: 1.2,
                       }}
@@ -835,17 +838,13 @@ function NovaVisitaPage() {
         </div>
       )}
 
-      {/* Rodapé fixo */}
+      {/* Rodapé fixo — padrão OURO acima do BottomNav */}
       <div
         style={{
           position: "fixed",
-          bottom: 72,
-          left: 0,
-          right: 0,
-          padding: "12px 16px",
-          background: isLight ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.7)",
-          backdropFilter: isLight ? "none" : "blur(20px)",
-          borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,192,0,0.10)",
+          bottom: "calc(72px + 16px)",
+          left: 16,
+          right: 16,
           display: "flex",
           gap: 10,
           zIndex: 30,
@@ -855,17 +854,19 @@ function NovaVisitaPage() {
           <button
             onClick={() => setStep(1)}
             style={{
-              height: 50,
-              width: 50,
+              height: 56,
+              width: 56,
               flexShrink: 0,
-              background: isLight ? L.cardSolid : "rgba(255,192,0,0.06)",
-              border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.20)",
-              borderRadius: 13,
+              background: isLight ? L.cardSolid : "rgba(20,20,26,0.85)",
+              backdropFilter: "blur(12px)",
+              border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.25)",
+              borderRadius: 28,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: isLight ? L.gold : "#FFC000",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
             }}
           >
             <ChevronLeft size={20} />
@@ -890,22 +891,24 @@ function NovaVisitaPage() {
           disabled={criarMutation.isPending}
           style={{
             flex: 1,
-            height: 50,
-            background: isLight ? L.gold : "linear-gradient(135deg, #FFD700 0%, #FFC000 50%, #FF9F00 100%)",
-            color: "#ffffff",
+            height: 56,
+            borderRadius: 28,
+            background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            border: "none",
+            color: isLight ? "#ffffff" : "#08090E",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 13,
-            letterSpacing: "0.10em",
+            letterSpacing: "0.18em",
             textTransform: "uppercase",
-            border: "none",
-            borderRadius: 13,
-            cursor: "pointer",
+            cursor: criarMutation.isPending ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            boxShadow: isLight ? "0 4px 14px rgba(180,120,0,0.30)" : "0 4px 18px rgba(255,192,0,0.38)",
+            boxShadow: isLight
+              ? "0 4px 16px rgba(180,120,0,0.30)"
+              : "0 4px 24px rgba(255,192,0,0.35)",
             opacity: criarMutation.isPending ? 0.7 : 1,
           }}
         >
@@ -913,11 +916,11 @@ function NovaVisitaPage() {
             "Agendando..."
           ) : step === 1 ? (
             <>
-              Próximo <ChevronRight size={16} />
+              Próximo <ChevronRight size={18} />
             </>
           ) : (
             <>
-              Agendar Visita <Check size={16} />
+              Agendar Visita <Check size={18} />
             </>
           )}
         </button>
