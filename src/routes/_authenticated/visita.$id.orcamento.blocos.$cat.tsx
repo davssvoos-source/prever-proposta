@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen, RefreshCw, DoorClosed } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -75,9 +75,16 @@ function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: 
       >
         <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
       </div>
-      <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
-        {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
-      </span>
+      {numero === "01" ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+          <DoorOpen size={20} color="#F59E0B" />
+          Porta externa
+        </span>
+      ) : (
+        <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+          BARREIRA 2
+        </span>
+      )}
     </div>
   );
 }
@@ -760,7 +767,7 @@ function BlocosWizardPage() {
         return tipoBloco === "PED"
           ? [
               { valor: "CAT", label: "Catraca", descricao: "Barreira giratória para pedestres" },
-              { valor: "PORP", label: "Porta de Pedestres", descricao: "Porta com controle de acesso" },
+              { valor: "PORP", label: "Porta", descricao: "Porta com controle de acesso" },
             ]
           : [
               { valor: "CAN", label: "Cancela", descricao: "Barra articulada de passagem rápida" },
@@ -810,7 +817,7 @@ function BlocosWizardPage() {
     if (!wizard) return "";
     const s = stepOverride ?? wizard.step;
     if (s === "eclusa") return "É UMA ECLUSA?";
-    if (s === "b1_tipo" || s === "b2_tipo") return "TIPO DE BARREIRA?";
+    if (s === "b1_tipo" || s === "b2_tipo") return "";
     if (s === "b1_entrada" || s === "b2_entrada") return "ENTRADA";
     if (s === "b1_saida" || s === "b2_saida") return "SAÍDA";
     if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
@@ -1250,13 +1257,17 @@ function BlocosWizardPage() {
                 </div>
                 <span
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
                     color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
                     fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: 1,
                   }}
                 >
-                  BARREIRA 1 {b1Done ? "✓" : ""}
+                  <DoorOpen size={20} color={b1Done ? "#22C55E" : "#F59E0B"} />
+                  Porta externa {b1Done ? "✓" : ""}
                 </span>
               </div>
               {b1Done && (
@@ -1286,14 +1297,15 @@ function BlocosWizardPage() {
 
                 {isB1Step && (
                   <div ref={bottomRef}>
-                    <div style={QUESTION}>{getLabelPergunta()}</div>
+                    {getLabelPergunta() && <div style={QUESTION}>{getLabelPergunta()}</div>}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                          <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
-                          {op.descricao && (
-                            <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-                          )}
+                          <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
+                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                            <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -1314,14 +1326,15 @@ function BlocosWizardPage() {
 
               {isB2Step && (
                 <div ref={bottomRef}>
-                  <div style={QUESTION}>{getLabelPergunta()}</div>
+                  {getLabelPergunta() && <div style={QUESTION}>{getLabelPergunta()}</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {opcoes.map((op) => (
                       <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                        <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
-                        {op.descricao && (
-                          <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-                        )}
+                        <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
+                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                          <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -1345,15 +1358,16 @@ function BlocosWizardPage() {
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
         )}
 
-        <div style={QUESTION}>{getLabelPergunta()}</div>
+        {getLabelPergunta() && <div style={QUESTION}>{getLabelPergunta()}</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
-              {op.descricao && (
-                <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-              )}
+              <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
+                {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
+              </span>
             </button>
           ))}
         </div>
