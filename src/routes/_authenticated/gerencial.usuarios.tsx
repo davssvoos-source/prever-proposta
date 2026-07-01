@@ -240,8 +240,31 @@ function UsuariosPage() {
 
   const editCargoMutation = useMutation({
     mutationFn: async ({ id, cargo }: { id: string; cargo: string }) => {
-      const { error } = await supabase.from("profiles").update({ cargo }).eq("id", id);
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ cargo })
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        console.error("[editCargo] profiles update error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        console.error("[editCargo] Nenhuma linha atualizada — verifique permissões (RLS) ou id do usuário.", { id, cargo });
+        throw new Error("Sem permissão para alterar este usuário ou usuário não encontrado.");
+      }
+      const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", id);
+      if (delErr) {
+        console.error("[editCargo] user_roles delete error:", delErr);
+        throw delErr;
+      }
+      const { error: insErr } = await supabase
+        .from("user_roles")
+        .insert({ user_id: id, role: cargo as "admin" | "comercial" | "tecnico" });
+      if (insErr) {
+        console.error("[editCargo] user_roles insert error:", insErr);
+        throw insErr;
+      }
     },
     onSuccess: () => {
       toast.success("Permissão atualizada");
@@ -249,7 +272,10 @@ function UsuariosPage() {
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[editCargo] mutation error:", e);
+      toast.error(e.message);
+    },
   });
 
   const deleteMutation = useMutation({
