@@ -70,6 +70,7 @@ function OrcamentoPasso1() {
           visita_id: id,
           qtd_apartamentos: Number(qtd),
           sistema_atual: sistema,
+          airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "visita_id" },
