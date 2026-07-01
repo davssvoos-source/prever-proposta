@@ -16,6 +16,8 @@ import {
   CAT_SLUG_TO_TIPO,
   CAT_NOMES,
 } from "@/lib/blocos";
+import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
   component: BlocosWizardPage,
