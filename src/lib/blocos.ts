@@ -33,7 +33,7 @@ export const LABELS: Record<string, string> = {
   BOTANA: "Botoeira Analógica",
   BOTAPR: "Botoeira por Aproximação",
   CAT: "Catraca",
-  PORP: "Porta de Pedestres",
+  PORP: "Porta",
   CAN: "Cancela",
   PORV: "Portão Veicular",
   MET: "Metal",

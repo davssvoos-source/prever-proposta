@@ -817,7 +817,7 @@ function BlocosWizardPage() {
     if (!wizard) return "";
     const s = stepOverride ?? wizard.step;
     if (s === "eclusa") return "É UMA ECLUSA?";
-    if (s === "b1_tipo" || s === "b2_tipo") return "TIPO DE BARREIRA?";
+    if (s === "b1_tipo" || s === "b2_tipo") return "";
     if (s === "b1_entrada" || s === "b2_entrada") return "ENTRADA";
     if (s === "b1_saida" || s === "b2_saida") return "SAÍDA";
     if (s === "b1_material" || s === "b2_material") return "TIPO DE MATERIAL?";
