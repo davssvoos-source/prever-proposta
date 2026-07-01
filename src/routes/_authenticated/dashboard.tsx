@@ -128,7 +128,7 @@ function Dashboard() {
         .from("visitas_tecnicas")
         .select(`
           id, status, data_hora_agendada, endereco, titulo,
-          nome_sindico, nome_predio, tecnico_id,
+          nome_sindico, nome_predio, tecnico_id, foto_fachada_url,
           clientes (nome)
         `)
         .order("data_hora_agendada", { ascending: true });
@@ -271,30 +271,25 @@ function Dashboard() {
             }}
           />
         )}
-        <div
+        <h2
           style={{
             position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            padding: '0 20px 28px 20px',
+            bottom: 16,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+            fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 700,
+            fontSize: 26,
+            lineHeight: 1.25,
+            color: '#FFFFFF',
+            margin: 0,
+            padding: '0 20px',
+            textShadow: '0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)',
           }}
         >
-          <h2
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: 26,
-              lineHeight: 1.25,
-              color: '#FFFFFF',
-              margin: 0,
-              textShadow: '0 1px 8px rgba(0,0,0,0.35)',
-            }}
-          >
-            Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
-          </h2>
-        </div>
+          Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
+        </h2>
       </div>
 
 
@@ -315,6 +310,39 @@ function Dashboard() {
                 overflow: 'hidden',
               }}
             >
+              {proximaVisita.foto_fachada_url && (
+                <>
+                  <img
+                    src={proximaVisita.foto_fachada_url}
+                    alt="Fachada"
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '35%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      pointerEvents: 'none',
+                      zIndex: 0,
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '45%',
+                      background: isLight
+                        ? 'linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0.6) 30%, transparent 100%)'
+                        : 'linear-gradient(to right, #0a0a14 0%, rgba(10,10,20,0.6) 30%, transparent 100%)',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                  />
+                </>
+              )}
               {!isLight && (
                 <div
                   style={{
@@ -325,9 +353,11 @@ function Dashboard() {
                     height: 100,
                     background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
                     pointerEvents: 'none',
+                    zIndex: 2,
                   }}
                 />
               )}
+              <div style={{ position: 'relative', zIndex: 10 }}>
               <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
@@ -399,6 +429,7 @@ function Dashboard() {
                 >
                   <AlarmClock size={11} /> {countdown}
                 </div>
+              </div>
               </div>
             </div>
 
@@ -667,14 +698,14 @@ function VisitaCard({ visita }: { visita: any }) {
       style={{
         background: isLight
           ? "linear-gradient(135deg, #ffffff 0%, #f0f1f4 100%)"
-          : "linear-gradient(135deg, #0d0e18 0%, #13141f 100%)",
+          : "linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)",
         backdropFilter: "none",
         WebkitBackdropFilter: "none",
         border: isLight
           ? "1px solid rgba(0,0,0,0.08)"
-          : "1px solid rgba(255,255,255,0.06)",
+          : "1px solid #2a2a2a",
         borderRadius: 18,
-        padding: "18px 16px",
+        padding: 16,
         marginBottom: 0,
         boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
       }}
@@ -726,12 +757,13 @@ function VisitaCard({ visita }: { visita: any }) {
             fontWeight: 300,
             fontSize: 12,
             color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)",
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: 5,
+            gap: 6,
+            marginTop: 6,
           }}
         >
-          <MapPin size={12} style={{ opacity: 0.75 }} /> {visita.endereco}
+          <MapPin size={12} style={{ opacity: 0.75, flexShrink: 0 }} /> {visita.endereco}
         </div>
       )}
       {visita.data_hora_agendada && (
