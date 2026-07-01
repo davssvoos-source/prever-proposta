@@ -1297,14 +1297,15 @@ function BlocosWizardPage() {
 
                 {isB1Step && (
                   <div ref={bottomRef}>
-                    <div style={QUESTION}>{getLabelPergunta()}</div>
+                    {getLabelPergunta() && <div style={QUESTION}>{getLabelPergunta()}</div>}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
-                          <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
-                          {op.descricao && (
-                            <span style={{ fontSize: 12, color: isLight ? L.textSub : "rgba(255,255,255,0.55)" }}>{op.descricao}</span>
-                          )}
+                          <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
+                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                            <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
+                          </span>
                         </button>
                       ))}
                     </div>
