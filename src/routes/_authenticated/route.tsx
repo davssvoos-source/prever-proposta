@@ -41,6 +41,21 @@ function AuthenticatedLayout() {
   const { isLight } = useTheme();
   const { data: perfil } = usePerfil();
 
+  // Bloqueia usuários desativados: força signOut e redireciona para /auth
+  useEffect(() => {
+    if (perfil && (perfil as any).ativo === false) {
+      (async () => {
+        await supabase.auth.signOut();
+        navigate({ to: "/auth", replace: true });
+      })();
+    }
+  }, [perfil, navigate]);
+
+  if (perfil && (perfil as any).ativo === false) {
+    return null;
+  }
+
+
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
     return (
       <>
