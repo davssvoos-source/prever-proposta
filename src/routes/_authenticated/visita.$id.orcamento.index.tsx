@@ -173,7 +173,7 @@ function OrcamentoPasso1() {
       <div style={CARD}>
         <div style={LABEL}>Quantidade de apartamentos</div>
         {/* Número editável acima da barra */}
-        <div style={{ textAlign: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 6 }}>
           <input
             type="number"
             min={0}
@@ -192,8 +192,11 @@ function OrcamentoPasso1() {
               textAlign: "center",
               width: 120,
               fontFamily: "'Montserrat', sans-serif",
+              appearance: "none",
+              MozAppearance: "textfield",
             }}
           />
+          <Pencil size={14} style={{ opacity: 0.3, color: isLight ? "#0a0b0e" : "#FFFFFF", flexShrink: 0 }} />
         </div>
         {/* Barra slider customizada */}
         <div style={{ position: "relative", height: 28, display: "flex", alignItems: "center" }}>
