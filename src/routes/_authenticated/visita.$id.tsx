@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
   Check, X, Play, Square, ChevronDown, CheckCircle, XCircle,
+  User, KeyRound, HardHat,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -462,7 +463,7 @@ function VisitaDetail() {
 
   const mapUrl =
     lat && lng
-      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.003}%2C${lat - 0.003}%2C${lng + 0.003}%2C${lat + 0.003}&layer=mapnik&marker=${lat}%2C${lng}`
       : null;
 
   const [showReprovarForm, setShowReprovarForm] = useState(false);
@@ -784,14 +785,37 @@ function VisitaDetail() {
           {visita.nome_sindico && (
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.45)",
-                marginTop: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 10,
               }}
             >
-              Síndico: {visita.nome_sindico}
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <User size={16} color="#F59E0B" />
+                <span
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 400,
+                    fontSize: 10,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color: "#F59E0B",
+                  }}
+                >
+                  Síndico
+                </span>
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.45)",
+                }}
+              >
+                {visita.nome_sindico}
+              </span>
             </div>
           )}
         </div>
@@ -801,7 +825,10 @@ function VisitaDetail() {
       {(tecPerfil || isAdmin) && (
         <div style={GLASS}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={SECTION_LABEL}>Técnico responsável</div>
+            <div style={{ ...SECTION_LABEL, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
+              <HardHat size={16} color="#F59E0B" />
+              Técnico responsável
+            </div>
             {isAdmin && !editandoTecnico && (
               <button
                 onClick={() => { setEditandoTecnico(true); setNovoTecnicoId(visita.tecnico_id ?? ""); }}
@@ -1407,11 +1434,33 @@ function VisitaDetail() {
       )}
 
       {showSlide && (
-        <div className="mt-4 pb-4">
-          <SlideToStart
-            onConfirm={() => iniciarMutation.mutate()}
-            pending={iniciarMutation.isPending}
-          />
+        <div className="mt-4 pb-4" style={{ paddingLeft: 16, paddingRight: 16 }}>
+          <button
+            onClick={() => iniciarMutation.mutate()}
+            disabled={iniciarMutation.isPending}
+            style={{
+              width: "100%",
+              height: 56,
+              borderRadius: 28,
+              background: "#F59E0B",
+              color: "#0A0A0A",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: iniciarMutation.isPending ? 0.7 : 1,
+            }}
+          >
+            <Play size={18} />
+            {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+          </button>
         </div>
       )}
 
