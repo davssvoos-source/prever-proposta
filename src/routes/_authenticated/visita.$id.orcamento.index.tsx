@@ -55,6 +55,7 @@ function OrcamentoPasso1() {
     if (orcamento) {
       setQtd((orcamento as any).qtd_apartamentos ?? "");
       setSistema((orcamento as any).sistema_atual ?? "");
+      setAirbnb((orcamento as any).airbnb ?? "");
       setReady(true);
     } else {
       setReady(true);
