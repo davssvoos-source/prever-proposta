@@ -130,7 +130,7 @@ export function BlocoItensEditor({
         .eq("visita_bloco_id", visitaBlocoId)
         .order("created_at");
       if (error) throw error;
-      return (data as VbiRow[]) ?? [];
+      return ((data as unknown) as VbiRow[]) ?? [];
     },
     enabled: seeded,
   });
