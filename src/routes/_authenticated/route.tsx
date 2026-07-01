@@ -27,7 +27,7 @@ function usePerfil() {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("nome, cargo, avatar_url, status")
+        .select("nome, cargo, avatar_url, status, ativo")
         .eq("id", user.id)
         .maybeSingle();
       return data;
