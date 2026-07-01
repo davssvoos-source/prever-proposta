@@ -1434,11 +1434,33 @@ function VisitaDetail() {
       )}
 
       {showSlide && (
-        <div className="mt-4 pb-4">
-          <SlideToStart
-            onConfirm={() => iniciarMutation.mutate()}
-            pending={iniciarMutation.isPending}
-          />
+        <div className="mt-4 pb-4" style={{ paddingLeft: 16, paddingRight: 16 }}>
+          <button
+            onClick={() => iniciarMutation.mutate()}
+            disabled={iniciarMutation.isPending}
+            style={{
+              width: "100%",
+              height: 56,
+              borderRadius: 28,
+              background: "#F59E0B",
+              color: "#0A0A0A",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              opacity: iniciarMutation.isPending ? 0.7 : 1,
+            }}
+          >
+            <Play size={18} />
+            {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+          </button>
         </div>
       )}
 
