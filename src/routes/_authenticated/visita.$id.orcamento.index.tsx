@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, Building2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { codigoFromDbRow } from "@/lib/blocos";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
@@ -44,38 +45,91 @@ function OrcamentoPasso1() {
     },
   });
 
+  // Serviços ofertados pelo admin (para default de PR/PP)
+  const { data: visita } = useQuery({
+    queryKey: ["visita_servicos", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visitas_tecnicas")
+        .select("servicos_ofertados")
+        .eq("id", id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
+  const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "">("");
   const [airbnb, setAirbnb] = useState<string>("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready) return;
-    if (orcamento) {
-      setQtd((orcamento as any).qtd_apartamentos ?? "");
-      setSistema((orcamento as any).sistema_atual ?? "");
-      setAirbnb((orcamento as any).airbnb ?? "");
-      setReady(true);
-    } else {
+    if (orcamento !== undefined && visita !== undefined) {
+      setQtd((orcamento as any)?.qtd_apartamentos ?? "");
+      setSistema((orcamento as any)?.sistema_atual ?? "");
+      const salvo = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
+      if (salvo === "PR" || salvo === "PP") {
+        setSistemaProposto(salvo);
+      } else {
+        // pré-preenche pelo que o admin cadastrou na criação
+        const svc: string[] = ((visita as any)?.servicos_ofertados ?? []) as string[];
+        const isRemota = Array.isArray(svc) && svc.some((s) =>
+          /portaria_remota|portaria_virtual|monitoramento/i.test(String(s)),
+        );
+        setSistemaProposto(isRemota ? "PR" : "PP");
+      }
+      setAirbnb((orcamento as any)?.airbnb ?? "");
       setReady(true);
     }
-  }, [orcamento, ready]);
+  }, [orcamento, visita, ready]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!qtd || Number(qtd) <= 0) throw new Error("Informe a quantidade de apartamentos.");
+      if (sistemaProposto !== "PR" && sistemaProposto !== "PP") {
+        throw new Error("Selecione o SISTEMA PROPOSTO (Remota ou Presencial).");
+      }
+
+      const anterior = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
+
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
           visita_id: id,
           qtd_apartamentos: Number(qtd),
           sistema_atual: sistema,
+          sistema_proposto: sistemaProposto,
           airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: "visita_id" },
       );
       if (error) throw error;
+
+      // Se mudou PR↔PP (ou primeira definição diferente do default), regenera códigos dos blocos existentes
+      if (anterior && anterior !== sistemaProposto) {
+        const { data: blocos } = await supabase
+          .from("visita_blocos" as any)
+          .select("*")
+          .eq("visita_id", id);
+        for (const row of ((blocos as any[]) ?? [])) {
+          const novo = codigoFromDbRow(row, sistemaProposto);
+          if (novo !== row.codigo_bloco) {
+            await supabase
+              .from("visita_blocos" as any)
+              .update({ codigo_bloco: novo })
+              .eq("id", row.id);
+            // limpa itens auto (recalcula ao reabrir o editor)
+            await supabase
+              .from("visita_bloco_itens" as any)
+              .delete()
+              .eq("visita_bloco_id", row.id)
+              .eq("origem", "auto");
+          }
+        }
+      }
     },
     onSuccess: () => {
       setErroVisible(null);
@@ -290,6 +344,59 @@ function OrcamentoPasso1() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Sistema Proposto (PR/PP) */}
+      <div style={CARD}>
+        <div style={LABEL}>Sistema proposto</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {[
+            { val: "PR" as const, label: "Portaria Remota", Icon: Building2 },
+            { val: "PP" as const, label: "Portaria Presencial", Icon: User },
+          ].map(({ val, label, Icon }) => {
+            const selected = sistemaProposto === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setSistemaProposto(val)}
+                style={{
+                  height: 56,
+                  borderRadius: 12,
+                  border: isLight
+                    ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
+                    : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
+                  background: selected
+                    ? (isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)")
+                    : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)"),
+                  color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  padding: "0 10px",
+                  lineHeight: 1.2,
+                  textAlign: "center",
+                }}
+              >
+                <Icon size={18} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{
+          fontSize: 10, marginTop: 8, color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)",
+          letterSpacing: "0.06em",
+        }}>
+          Define o sufixo (-PR / -PP) de todos os blocos deste projeto.
+        </div>
+      </div>
+
+
 
       {/* Airbnb */}
       <div style={CARD}>

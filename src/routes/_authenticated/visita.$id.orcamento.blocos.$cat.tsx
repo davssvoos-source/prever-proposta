@@ -286,6 +286,20 @@ function BlocosWizardPage() {
     };
   }
 
+  const { data: orcamentoRow } = useQuery({
+    queryKey: ["orcamento", visitaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visita_orcamentos")
+        .select("sistema_proposto")
+        .eq("visita_id", visitaId)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const portaria: "PR" | "PP" =
+    ((orcamentoRow as any)?.sistema_proposto === "PP") ? "PP" : "PR";
+
   const { data: blocosAdicionados = [], isLoading } = useQuery({
     queryKey: ["visita_blocos", visitaId, tipoBloco],
     queryFn: async () => {
@@ -652,6 +666,7 @@ function BlocosWizardPage() {
       tecnologia: wizard?.tecnologia ?? undefined,
       qtdDome: wizard?.qtdDome,
       qtdBullet: wizard?.qtdBullet,
+      portaria,
     };
   }
 

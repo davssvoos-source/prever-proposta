@@ -776,6 +776,7 @@ export type Database = {
           qtd_apartamentos: number | null
           servicos_ofertados: string[] | null
           sistema_atual: string | null
+          sistema_proposto: string | null
           step_atual: number | null
           updated_at: string
           valor_hora_hh: number | null
@@ -792,6 +793,7 @@ export type Database = {
           qtd_apartamentos?: number | null
           servicos_ofertados?: string[] | null
           sistema_atual?: string | null
+          sistema_proposto?: string | null
           step_atual?: number | null
           updated_at?: string
           valor_hora_hh?: number | null
@@ -808,6 +810,7 @@ export type Database = {
           qtd_apartamentos?: number | null
           servicos_ofertados?: string[] | null
           sistema_atual?: string | null
+          sistema_proposto?: string | null
           step_atual?: number | null
           updated_at?: string
           valor_hora_hh?: number | null
