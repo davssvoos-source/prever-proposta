@@ -629,6 +629,7 @@ export type Database = {
       }
       visita_orcamentos: {
         Row: {
+          airbnb: string | null
           blocos_selecionados: Json | null
           created_at: string
           fornecimento: boolean | null
@@ -644,6 +645,7 @@ export type Database = {
           visita_id: string | null
         }
         Insert: {
+          airbnb?: string | null
           blocos_selecionados?: Json | null
           created_at?: string
           fornecimento?: boolean | null
@@ -659,6 +661,7 @@ export type Database = {
           visita_id?: string | null
         }
         Update: {
+          airbnb?: string | null
           blocos_selecionados?: Json | null
           created_at?: string
           fornecimento?: boolean | null

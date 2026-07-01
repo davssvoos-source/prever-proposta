@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
@@ -46,6 +46,7 @@ function OrcamentoPasso1() {
 
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
+  const [airbnb, setAirbnb] = useState<string>("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
@@ -54,6 +55,7 @@ function OrcamentoPasso1() {
     if (orcamento) {
       setQtd((orcamento as any).qtd_apartamentos ?? "");
       setSistema((orcamento as any).sistema_atual ?? "");
+      setAirbnb((orcamento as any).airbnb ?? "");
       setReady(true);
     } else {
       setReady(true);
@@ -68,8 +70,9 @@ function OrcamentoPasso1() {
           visita_id: id,
           qtd_apartamentos: Number(qtd),
           sistema_atual: sistema,
+          airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: "visita_id" },
       );
       if (error) throw error;
@@ -111,8 +114,8 @@ function OrcamentoPasso1() {
     marginBottom: 10,
   };
 
-  const sliderValue = Math.min(Number(qtd) || 0, 200);
-  const inputMax = 200;
+  const sliderValue = Math.min(Number(qtd) || 0, 100);
+  const inputMax = 100;
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -146,18 +149,7 @@ function OrcamentoPasso1() {
               letterSpacing: "0.02em",
             }}
           >
-            Orçamento
-          </div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
-              marginTop: 2,
-            }}
-          >
-            Passo 1 de 3 — Informações gerais
+            Estrutura
           </div>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -181,7 +173,7 @@ function OrcamentoPasso1() {
       <div style={CARD}>
         <div style={LABEL}>Quantidade de apartamentos</div>
         {/* Número editável acima da barra */}
-        <div style={{ textAlign: "center", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, gap: 6 }}>
           <input
             type="number"
             min={0}
@@ -200,8 +192,11 @@ function OrcamentoPasso1() {
               textAlign: "center",
               width: 120,
               fontFamily: "'Montserrat', sans-serif",
+              appearance: "none",
+              MozAppearance: "textfield",
             }}
           />
+          <Pencil size={14} style={{ opacity: 0.3, color: isLight ? "#0a0b0e" : "#FFFFFF", flexShrink: 0 }} />
         </div>
         {/* Barra slider customizada */}
         <div style={{ position: "relative", height: 28, display: "flex", alignItems: "center" }}>
@@ -265,7 +260,7 @@ function OrcamentoPasso1() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
           <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>0</span>
-          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>200</span>
+          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>100+</span>
         </div>
       </div>
 
@@ -294,6 +289,54 @@ function OrcamentoPasso1() {
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Airbnb */}
+      <div style={CARD}>
+        <div style={LABEL}>O condomínio possui Airbnb?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {["Não", "Pouco", "Razoável", "Muito"].map((opt) => {
+            const selected = airbnb === opt;
+            return (
+              <button
+                key={opt}
+                onClick={() => setAirbnb(opt)}
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  border: isLight
+                    ? selected
+                      ? "none"
+                      : "1px solid rgba(0,0,0,0.12)"
+                    : selected
+                      ? "none"
+                      : "1px solid rgba(255,255,255,0.12)",
+                  background: selected
+                    ? isLight
+                      ? "#b87800"
+                      : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : isLight
+                      ? "#f5f6f8"
+                      : "rgba(255,255,255,0.04)",
+                  color: selected
+                    ? isLight
+                      ? "#ffffff"
+                      : "#08090E"
+                    : isLight
+                      ? "#0a0b0e"
+                      : "#fff",
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 300,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Botão próxima etapa */}
