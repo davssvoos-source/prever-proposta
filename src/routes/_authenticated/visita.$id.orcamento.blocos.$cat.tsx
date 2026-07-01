@@ -315,6 +315,9 @@ function BlocosWizardPage() {
     setFotos((prev) => prev.filter((_, i) => i !== index));
   }
 
+  const [blocoSalvoId, setBlocoSalvoId] = useState<string | null>(null);
+  const [savedConfig, setSavedConfig] = useState<BlocoConfig | null>(null);
+
   const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
       const fotosUrls: string[] = [];
@@ -327,50 +330,57 @@ function BlocosWizardPage() {
         if (!uploadError) fotosUrls.push(path);
       }
 
-      const { error } = await supabase.from("visita_blocos" as any).insert({
-        visita_id: visitaId,
-        codigo_bloco: gerarCodigoBloco(config),
-        nome_descritivo: gerarDescricaoBloco(config),
-        tipo_bloco: config.tipoBloco,
-        qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco) ? null : config.eclusa ? "2B" : "1B",
-        eclusa: config.eclusa,
-        b1_tipo: config.b1?.tipo ?? null,
-        b1_entrada: config.b1?.entrada ?? null,
-        b1_saida: config.b1?.saida ?? null,
-        b1_material: null,
-        b1_motor: null,
-        b1_abertura: config.b1?.abertura ?? null,
-        b1_folhas: config.b1?.folhas ?? null,
-        b1_tamanho: config.b1?.tamanho ?? null,
-        b1_peso: config.b1?.peso ?? null,
-        b2_tipo: config.b2?.tipo ?? null,
-        b2_entrada: config.b2?.entrada ?? null,
-        b2_saida: config.b2?.saida ?? null,
-        b2_material: null,
-        b2_motor: null,
-        b2_abertura: config.b2?.abertura ?? null,
-        b2_folhas: config.b2?.folhas ?? null,
-        b2_tamanho: config.b2?.tamanho ?? null,
-        b2_peso: config.b2?.peso ?? null,
-        tecnologia: config.tecnologia ?? null,
-        qtd_dome: config.qtdDome ?? null,
-        qtd_bullet: config.qtdBullet ?? null,
-        hh_padrao: 10,
-        quantidade: 1,
-        ordem: blocosAdicionados.length,
-        fotos_urls: fotosUrls,
-      });
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .insert({
+          visita_id: visitaId,
+          codigo_bloco: gerarCodigoBloco(config),
+          nome_descritivo: gerarDescricaoBloco(config),
+          tipo_bloco: config.tipoBloco,
+          qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco) ? null : config.eclusa ? "2B" : "1B",
+          eclusa: config.eclusa,
+          b1_tipo: config.b1?.tipo ?? null,
+          b1_entrada: config.b1?.entrada ?? null,
+          b1_saida: config.b1?.saida ?? null,
+          b1_material: null,
+          b1_motor: null,
+          b1_abertura: config.b1?.abertura ?? null,
+          b1_folhas: config.b1?.folhas ?? null,
+          b1_tamanho: config.b1?.tamanho ?? null,
+          b1_peso: config.b1?.peso ?? null,
+          b2_tipo: config.b2?.tipo ?? null,
+          b2_entrada: config.b2?.entrada ?? null,
+          b2_saida: config.b2?.saida ?? null,
+          b2_material: null,
+          b2_motor: null,
+          b2_abertura: config.b2?.abertura ?? null,
+          b2_folhas: config.b2?.folhas ?? null,
+          b2_tamanho: config.b2?.tamanho ?? null,
+          b2_peso: config.b2?.peso ?? null,
+          tecnologia: config.tecnologia ?? null,
+          qtd_dome: config.qtdDome ?? null,
+          qtd_bullet: config.qtdBullet ?? null,
+          hh_padrao: 10,
+          quantidade: 1,
+          ordem: blocosAdicionados.length,
+          fotos_urls: fotosUrls,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      return { id: (data as any).id as string, config };
     },
-    onSuccess: () => {
+    onSuccess: ({ id, config }) => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
-      toast.success("Bloco adicionado");
+      toast.success("Bloco adicionado — configure os equipamentos");
       setFotos([]);
-      setWizard(null);
+      setBlocoSalvoId(id);
+      setSavedConfig(config);
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar bloco"),
   });
+
 
   const removerMutation = useMutation({
     mutationFn: async (id: string) => {
