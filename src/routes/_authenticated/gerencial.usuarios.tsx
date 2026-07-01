@@ -280,15 +280,54 @@ function UsuariosPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("profiles").update({ ativo: false }).eq("id", id);
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ativo: false })
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        console.error("[deleteMutation] error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        console.error("[deleteMutation] Nenhuma linha atualizada — verifique permissões (RLS) ou id do usuário.", { id });
+        throw new Error("Sem permissão para desativar este usuário.");
+      }
     },
     onSuccess: () => {
       toast.success("Usuário desativado");
       setDeleteConfirm(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[deleteMutation] mutation error:", e);
+      toast.error(e.message);
+    },
+  });
+
+  const reativarMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update({ ativo: true })
+        .eq("id", id)
+        .select("id");
+      if (error) {
+        console.error("[reativarMutation] error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error("Sem permissão para reativar este usuário.");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Usuário reativado");
+      qc.invalidateQueries({ queryKey: ["staff-profiles"] });
+    },
+    onError: (e: Error) => {
+      console.error("[reativarMutation] mutation error:", e);
+      toast.error(e.message);
+    },
   });
 
   const ativos = usuarios.filter((u) => u.ativo !== false);
