@@ -1214,6 +1214,8 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+
           {/* ── SEÇÃO BARREIRA 1 ─────────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
             <div
