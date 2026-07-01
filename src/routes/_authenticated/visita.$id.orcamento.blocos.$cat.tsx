@@ -75,9 +75,16 @@ function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: 
       >
         <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
       </div>
-      <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
-        {numero === "01" ? "BARREIRA 1" : "BARREIRA 2"}
-      </span>
+      {numero === "01" ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 8, color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+          <DoorOpen size={20} color="#F59E0B" />
+          Porta externa
+        </span>
+      ) : (
+        <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
+          BARREIRA 2
+        </span>
+      )}
     </div>
   );
 }
