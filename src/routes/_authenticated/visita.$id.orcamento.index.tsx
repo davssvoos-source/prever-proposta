@@ -149,18 +149,7 @@ function OrcamentoPasso1() {
               letterSpacing: "0.02em",
             }}
           >
-            Orçamento
-          </div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 11,
-              color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
-              marginTop: 2,
-            }}
-          >
-            Passo 1 de 3 — Informações gerais
+            Estrutura
           </div>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
