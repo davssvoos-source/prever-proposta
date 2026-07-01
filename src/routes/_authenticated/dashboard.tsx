@@ -430,6 +430,7 @@ function Dashboard() {
                   <AlarmClock size={11} /> {countdown}
                 </div>
               </div>
+              </div>
             </div>
 
           </div>
