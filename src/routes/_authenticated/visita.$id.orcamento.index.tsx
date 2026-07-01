@@ -46,6 +46,7 @@ function OrcamentoPasso1() {
 
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
+  const [airbnb, setAirbnb] = useState<string>("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
