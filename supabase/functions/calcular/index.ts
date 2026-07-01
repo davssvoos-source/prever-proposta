@@ -1,17 +1,15 @@
 // supabase/functions/calcular/index.ts — Edge Function do BOM (Grupo Prever)
 //
 // Ações (POST JSON):
-//   { action: "itens_bloco", codigo }                      → lista auto de um bloco de acesso
-//   { action: "itens_bloco", tipo:"CFTV", tech, nDome, nBullet } → lista auto de um bloco CFTV
-//   { action: "bom_projeto", blocos:[{codigo,qtd}], cftv:[{tech,nDome,nBullet,qtd}], itensPorBloco }
-//   { action: "bom_projeto", visita_id }                   → lê do banco (best-effort)
-//
-// As regras vêm de regras_blocos / regras_cftv e os preços de equipamentos.
-// Deploy:  supabase functions deploy calcular
+//   { action: "itens_bloco", codigo }
+//   { action: "itens_bloco", tipo:"CFTV", tech, nDome, nBullet }
+//   { action: "bom_projeto", itens:[{cod_eq,qtd}], blocos:[{codigo,qtd}], portaria:"PR"|"PP" }
+//   { action: "bom_projeto", visita_id }
 //
 // deno-lint-ignore-file no-explicit-any
 import {
-  computeBlocoItens, computeCftvItens, computeProjeto, enrich,
+  computeBlocoItens, computeCftvItens, computeProjeto, computeBomFromItens,
+  validarPortaria, enrich,
 } from "../_shared/engine.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -51,7 +49,6 @@ async function loadRegras() {
   return { regras_blocos: rb, regras_cftv: rc, equipamentos };
 }
 
-// Lê uma visita do banco (best-effort: nomes de coluna com fallback)
 async function loadVisita(visita_id: string) {
   const rows = await tbl(`visita_blocos?visita_id=eq.${visita_id}&select=*`);
   const blocos: any[] = [], cftv: any[] = [], ids: string[] = [];
@@ -68,7 +65,6 @@ async function loadVisita(visita_id: string) {
       if (r.id) ids.push(r.id);
     }
   }
-  // itens editados (se a tabela existir)
   let itensPorBloco: Record<number, Record<string, number>> | null = null;
   if (ids.length) {
     try {
@@ -86,7 +82,7 @@ async function loadVisita(visita_id: string) {
           }
         });
       }
-    } catch (_) { /* tabela ainda não criada — usa auto */ }
+    } catch (_) { /* tabela ainda não criada */ }
   }
   return { blocos, cftv, itensPorBloco };
 }
@@ -105,13 +101,26 @@ Deno.serve(async (req) => {
     }
 
     if (body.action === "bom_projeto") {
-      const payload = (body.blocos || body.cftv)
-        ? { blocos: body.blocos ?? [], cftv: body.cftv ?? [], itensPorBloco: body.itensPorBloco ?? null }
-        : await loadVisita(body.visita_id);
-      const bom = computeProjeto(payload, regras);
+      let bom: Record<string, number>;
+      let blocosFlags: any[];
+      const portaria = body.portaria ?? null;
+
+      if (body.itens) {
+        blocosFlags = body.blocos ?? [];
+        bom = computeBomFromItens(body.itens, blocosFlags, regras, portaria);
+      } else if (body.blocos || body.cftv) {
+        blocosFlags = body.blocos ?? [];
+        bom = computeProjeto({ blocos: body.blocos ?? [], cftv: body.cftv ?? [], itensPorBloco: body.itensPorBloco ?? null, portaria }, regras);
+      } else {
+        const v = await loadVisita(body.visita_id);
+        blocosFlags = v.blocos;
+        bom = computeProjeto({ ...v, portaria }, regras);
+      }
+
       const itens = enrich(bom, regras.equipamentos);
       const total_preco = +itens.reduce((s: number, i: any) => s + i.total_preco, 0).toFixed(2);
-      return json({ itens, total_preco });
+      const check = validarPortaria(blocosFlags);
+      return json({ itens, total_preco, aviso: check.ok ? null : check.aviso });
     }
 
     return json({ error: "ação inválida (use itens_bloco | bom_projeto)" }, 400);
