@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
