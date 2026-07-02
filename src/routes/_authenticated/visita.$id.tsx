@@ -1300,6 +1300,54 @@ function VisitaDetail() {
             </div>
           )}
 
+          {status === "aguardando_aprovacao" && !showAprovarBtn && (
+            <div
+              style={{
+                background: "rgba(251,191,36,0.09)",
+                border: "1px solid rgba(251,191,36,0.28)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 13,
+                color: "#FBBF24",
+              }}
+            >
+              Aguardando aprovação do administrador.
+            </div>
+          )}
+
+          {showAprovarBtn && !showReprovarForm && (
+            <button
+              onClick={() => aprovarMutation.mutate({ aprovar: true })}
+              disabled={aprovarMutation.isPending}
+              style={{
+                width: "100%",
+                height: 48,
+                borderRadius: 14,
+                border: 0,
+                cursor: aprovarMutation.isPending ? "not-allowed" : "pointer",
+                color: "#FFFFFF",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                background: "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                boxShadow:
+                  "0 4px 20px rgba(16,185,129,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
+                textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                marginBottom: 8,
+                opacity: aprovarMutation.isPending ? 0.75 : 1,
+              }}
+            >
+              <CheckCircle size={15} style={{ display: "inline", verticalAlign: "-2px", marginRight: 6 }} />
+              Aprovar visita
+            </button>
+          )}
+
+
+
           {showReprovarBtn && !showReprovarForm && (
             <button
               onClick={() => setShowReprovarForm(true)}
