@@ -931,17 +931,18 @@ function BlocosWizardPage() {
             </button>
           </div>
 
-          {/* Botão fixo CONCLUIR BLOCO */}
+          {/* Botão CONCLUIR BLOCO (inline, ao final do scroll) */}
           <button
             onClick={concluir}
             disabled={!blocoSalvoId}
             style={{
-              position: "fixed", left: 16, right: 16, bottom: "calc(72px + 16px)",
-              padding: "16px 0", background: "#F59E0B", border: "none", borderRadius: 999,
+              width: "100%", marginTop: 24, marginBottom: 32,
+              padding: "16px", background: "#F59E0B", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: "0 6px 20px rgba(245,158,11,0.35)", zIndex: 30,
+              boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
               opacity: blocoSalvoId ? 1 : 0.6,
+              textTransform: "uppercase",
             }}
           >
             <CheckCircle2 size={18} /> CONCLUIR BLOCO
