@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar } from "lucide-react";
@@ -66,6 +66,7 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight } = useTheme();
   const GLASS = isLight ? GLASS_LIGHT : GLASS_DARK;
   const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
@@ -319,7 +320,7 @@ function Dashboard() {
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
         {proximaVisita && (
           <div
-            onClick={() => navigate(visitaRouteFor(proximaVisita.status, proximaVisita.id) as any)}
+            onClick={() => navigate({ ...visitaRouteFor(proximaVisita.status, proximaVisita.id), state: { from: location.pathname } } as any)}
             style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
           >
 
@@ -380,6 +381,21 @@ function Dashboard() {
                   }}
                 />
               )}
+              {/* Fade suave na borda esquerda do card */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '45%',
+                  background: isLight
+                    ? 'linear-gradient(to right, #ffffff 0%, #ffffff 65%, transparent 100%)'
+                    : 'linear-gradient(to right, rgba(8,8,12,0.18) 0%, rgba(8,8,12,0.18) 65%, transparent 100%)',
+                  zIndex: 2,
+                  pointerEvents: 'none',
+                }}
+              />
               <div style={{ position: 'relative', zIndex: 10 }}>
               <div
                 style={{
@@ -683,11 +699,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section items={pendentes} />}
-          {aguardando.length > 0 && <Section items={aguardando} />}
+          {pendentes.length > 0 && <Section items={pendentes} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
+          {aguardando.length > 0 && <Section items={aguardando} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
           
-          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
-          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
 
         </>
       )}
@@ -715,7 +731,7 @@ function VisitaCard({ visita }: { visita: any }) {
         background: "rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        border: "1px solid rgba(255, 215, 0, 0.2)",
         borderRadius: 16,
         padding: 16,
         marginBottom: 0,
@@ -804,18 +820,17 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
-function Section({ items }: { items: any[] }) {
+function Section({ items, onClickItem }: { items: any[]; onClickItem?: (visita: any) => void }) {
   return (
     <section>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
-          <li key={v.id}>
-            <Link
-              to={visitaRouteFor(v.status, v.id) as any}
-              style={{ textDecoration: "none", color: "inherit", display: "block" }}
-            >
-              <VisitaCard visita={v} />
-            </Link>
+          <li
+            key={v.id}
+            onClick={() => onClickItem?.(v)}
+            style={{ cursor: "pointer" }}
+          >
+            <VisitaCard visita={v} />
           </li>
         ))}
       </ul>

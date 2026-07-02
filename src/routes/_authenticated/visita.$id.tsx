@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation } from "@tanstack/react-router";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -238,6 +238,8 @@ function VisitaDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const location = useLocation();
+  const from = (location.state as any)?.from ?? "/";
   const { isLight } = useTheme();
 
 
@@ -627,7 +629,7 @@ function VisitaDetail() {
         <button
           onClick={() =>
             visita.status === "em_andamento"
-              ? navigate({ to: "/" })
+              ? navigate(from)
               : navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })
           }
 
