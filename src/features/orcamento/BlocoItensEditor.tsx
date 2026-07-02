@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Minus, Trash2, Loader2, CheckCircle2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { computeAutoItemsForBloco } from "@/features/orcamento/blockAutoItems";
 
-// ── Tipos vindos da edge function `calcular` (ação itens_bloco) ──────────────
+// ── Tipos calculados para os itens automáticos do bloco ──────────────────────
 export interface CalcItem {
   cod_eq: string;
   nome: string;
@@ -83,42 +84,38 @@ export function BlocoItensEditor({
   const [novoNome, setNovoNome] = useState("");
   const [novoQtd, setNovoQtd] = useState<number>(1);
 
-  // 1) Semeia auto items (chama edge function `calcular`) apenas 1x
+  // 1) Semeia auto items apenas 1x por bloco; itens manuais não bloqueiam o seed.
   useEffect(() => {
     let ativo = true;
     (async () => {
-      // já semeado antes?
+      // já existe algum item automático? Se sim, preserva inclusive removidos pelo usuário.
       const { data: existentes } = await supabase
         .from("visita_bloco_itens" as any)
         .select("id")
         .eq("visita_bloco_id", visitaBlocoId)
+        .eq("origem", "auto")
         .limit(1);
       if (!ativo) return;
       if (existentes && existentes.length > 0) {
         setSeeded(true);
         return;
       }
-      // pede lista automática
-      const body: any =
-        tipoBloco === "CFTV"
-          ? { action: "itens_bloco", tipo: "CFTV", tech: tecnologia, nDome: qtdDome ?? 0, nBullet: qtdBullet ?? 0 }
-          : tipoBloco === "CER"
-          ? { action: "itens_bloco", tipo: "CERCA", perimetro: perimetro ?? 0, esquinas: esquinas ?? 0 }
-          : { action: "itens_bloco", codigo };
-      const { data, error } = await supabase.functions.invoke("calcular", { body });
-      if (!ativo) return;
-      if (error) {
-        toast.error("Não foi possível calcular equipamentos: " + error.message);
-        setSeeded(true);
-        return;
-      }
-      const itens: CalcItem[] = data?.itens ?? [];
+      const itens = computeAutoItemsForBloco({
+        codigo,
+        tipoBloco: tipoBloco as any,
+        tecnologia,
+        qtdDome,
+        qtdBullet,
+        perimetro,
+        esquinas,
+      });
       if (itens.length > 0) {
         const rows = itens.map((it) => ({
           visita_bloco_id: visitaBlocoId,
           cod_eq: it.cod_eq,
           qtd: it.qtd,
           origem: "auto" as const,
+          observacao: it.observacao ?? null,
         }));
         const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
         if (insErr) toast.error("Erro ao salvar itens: " + insErr.message);

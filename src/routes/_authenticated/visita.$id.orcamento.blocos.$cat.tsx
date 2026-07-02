@@ -70,6 +70,7 @@ import {
   CAT_NOMES,
 } from "@/lib/blocos";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+import { computeAutoItemsFromConfig } from "@/features/orcamento/blockAutoItems";
 import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
 import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 import { ElevadoresWizard, type ElevadorItemCalc } from "@/features/orcamento/ElevadoresWizard";
@@ -516,61 +517,98 @@ function BlocosWizardPage() {
   const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
       const fotosUrls: string[] = [];
-      for (const foto of fotos) {
-        const ext = foto.file.name.split(".").pop() || "jpg";
-        const path = `${visitaId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("blocos-fotos")
-          .upload(path, foto.file, { contentType: foto.file.type });
-        if (!uploadError) fotosUrls.push(path);
+      const currentBlocoId = blocoSalvoId;
+      if (!currentBlocoId) {
+        for (const foto of fotos) {
+          const ext = foto.file.name.split(".").pop() || "jpg";
+          const path = `${visitaId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("blocos-fotos")
+            .upload(path, foto.file, { contentType: foto.file.type });
+          if (!uploadError) fotosUrls.push(path);
+        }
       }
 
-      const { data, error } = await supabase
-        .from("visita_blocos" as any)
-        .insert({
-          visita_id: visitaId,
-          codigo_bloco: gerarCodigoBloco(config),
-          nome_descritivo: gerarDescricaoBloco(config),
-          tipo_bloco: config.tipoBloco,
-          qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco) ? null : config.eclusa ? "2B" : "1B",
-          eclusa: config.eclusa,
-          b1_tipo: config.b1?.tipo ?? null,
-          b1_entrada: config.b1?.entrada ?? null,
-          b1_saida: config.b1?.saida ?? null,
-          b1_material: null,
-          b1_motor: null,
-          b1_abertura: config.b1?.abertura ?? null,
-          b1_folhas: config.b1?.folhas ?? null,
-          b1_tamanho: config.b1?.tamanho ?? null,
-          b1_peso: config.b1?.peso ?? null,
-          b2_tipo: config.b2?.tipo ?? null,
-          b2_entrada: config.b2?.entrada ?? null,
-          b2_saida: config.b2?.saida ?? null,
-          b2_material: null,
-          b2_motor: null,
-          b2_abertura: config.b2?.abertura ?? null,
-          b2_folhas: config.b2?.folhas ?? null,
-          b2_tamanho: config.b2?.tamanho ?? null,
-          b2_peso: config.b2?.peso ?? null,
-          tecnologia: config.tecnologia ?? null,
-          qtd_dome: config.qtdDome ?? null,
-          qtd_bullet: config.qtdBullet ?? null,
-          perimetro: config.perimetro ?? null,
-          esquinas: config.esquinas ?? null,
-          hh_padrao: 10,
-          quantidade: 1,
-          ordem: blocosAdicionados.length,
-          fotos_urls: fotosUrls,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      return { id: (data as any).id as string, config };
+      const payload = {
+        visita_id: visitaId,
+        codigo_bloco: gerarCodigoBloco(config),
+        nome_descritivo: gerarDescricaoBloco(config),
+        tipo_bloco: config.tipoBloco,
+        qtd_barreiras: ["CFTV", "AL", "CER"].includes(config.tipoBloco) ? null : config.eclusa ? "2B" : "1B",
+        eclusa: config.eclusa,
+        b1_tipo: config.b1?.tipo ?? null,
+        b1_entrada: config.b1?.entrada ?? null,
+        b1_saida: config.b1?.saida ?? null,
+        b1_material: null,
+        b1_motor: null,
+        b1_abertura: config.b1?.abertura ?? null,
+        b1_folhas: config.b1?.folhas ?? null,
+        b1_tamanho: config.b1?.tamanho ?? null,
+        b1_peso: config.b1?.peso ?? null,
+        b2_tipo: config.b2?.tipo ?? null,
+        b2_entrada: config.b2?.entrada ?? null,
+        b2_saida: config.b2?.saida ?? null,
+        b2_material: null,
+        b2_motor: null,
+        b2_abertura: config.b2?.abertura ?? null,
+        b2_folhas: config.b2?.folhas ?? null,
+        b2_tamanho: config.b2?.tamanho ?? null,
+        b2_peso: config.b2?.peso ?? null,
+        tecnologia: config.tecnologia ?? null,
+        qtd_dome: config.qtdDome ?? null,
+        qtd_bullet: config.qtdBullet ?? null,
+        perimetro: config.perimetro ?? null,
+        esquinas: config.esquinas ?? null,
+        hh_padrao: 10,
+        quantidade: 1,
+        ...(currentBlocoId ? {} : { ordem: blocosAdicionados.length, fotos_urls: fotosUrls }),
+      };
+
+      let blocoId = currentBlocoId;
+      if (currentBlocoId) {
+        const { error } = await supabase
+          .from("visita_blocos" as any)
+          .update(payload)
+          .eq("id", currentBlocoId);
+        if (error) throw error;
+        const { error: delAutoError } = await supabase
+          .from("visita_bloco_itens" as any)
+          .delete()
+          .eq("visita_bloco_id", currentBlocoId)
+          .eq("origem", "auto");
+        if (delAutoError) throw delAutoError;
+      } else {
+        const { data, error } = await supabase
+          .from("visita_blocos" as any)
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        blocoId = (data as any).id as string;
+      }
+
+      if (!blocoId) throw new Error("Bloco não identificado para salvar equipamentos");
+
+      const itensAuto = computeAutoItemsFromConfig(config).filter((it) => it.qtd > 0);
+      if (itensAuto.length > 0) {
+        const rows = itensAuto.map((it) => ({
+          visita_bloco_id: blocoId,
+          cod_eq: it.cod_eq,
+          qtd: it.qtd,
+          origem: "auto" as const,
+          observacao: it.observacao ?? null,
+        }));
+        const { error: itensError } = await supabase.from("visita_bloco_itens" as any).insert(rows);
+        if (itensError) throw itensError;
+      }
+
+      return { id: blocoId, config };
     },
     onSuccess: ({ id, config }) => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
-      toast.success("Bloco adicionado — configure os equipamentos");
+      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens", id] });
+      toast.success(blocoSalvoId ? "Bloco atualizado" : "Bloco adicionado — configure os equipamentos");
       setFotos([]);
       setBlocoSalvoId(id);
       setSavedConfig(config);
@@ -1037,16 +1075,18 @@ function BlocosWizardPage() {
   }
 
   // Auto-salva o bloco assim que entramos na tela de resumo (unificada com editor de itens).
-  const autoSaveGuardRef = useRef(false);
+  const autoSaveGuardRef = useRef<string | null>(null);
   useEffect(() => {
     if (!wizard || wizard.step !== "resumo") return;
-    if (blocoSalvoId) return;
-    if (autoSaveGuardRef.current) return;
     if (salvarMutation.isPending) return;
-    autoSaveGuardRef.current = true;
-    salvarMutation.mutate(buildConfig());
+    const config = buildConfig();
+    const configKey = JSON.stringify(config);
+    if (blocoSalvoId && savedConfig && JSON.stringify(savedConfig) === configKey) return;
+    if (autoSaveGuardRef.current === configKey) return;
+    autoSaveGuardRef.current = configKey;
+    salvarMutation.mutate(config);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wizard?.step, blocoSalvoId]);
+  }, [wizard?.step, wizard, blocoSalvoId, savedConfig]);
 
 
 
@@ -1268,7 +1308,7 @@ function BlocosWizardPage() {
       const concluir = () => {
         setBlocoSalvoId(null);
         setSavedConfig(null);
-        autoSaveGuardRef.current = false;
+        autoSaveGuardRef.current = null;
         setWizard(null);
       };
 
