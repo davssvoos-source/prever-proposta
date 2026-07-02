@@ -804,18 +804,17 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
-function Section({ items }: { items: any[] }) {
+function Section({ items, onClickItem }: { items: any[]; onClickItem?: (visita: any) => void }) {
   return (
     <section>
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
-          <li key={v.id}>
-            <Link
-              to={visitaRouteFor(v.status, v.id) as any}
-              style={{ textDecoration: "none", color: "inherit", display: "block" }}
-            >
-              <VisitaCard visita={v} />
-            </Link>
+          <li
+            key={v.id}
+            onClick={() => onClickItem?.(v)}
+            style={{ cursor: "pointer" }}
+          >
+            <VisitaCard visita={v} />
           </li>
         ))}
       </ul>
