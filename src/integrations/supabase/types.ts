@@ -697,6 +697,7 @@ export type Database = {
           fotos_urls: string[]
           hh_padrao: number
           id: string
+          nome_acesso: string | null
           nome_descritivo: string
           ordem: number | null
           perimetro: number | null
@@ -735,6 +736,7 @@ export type Database = {
           fotos_urls?: string[]
           hh_padrao?: number
           id?: string
+          nome_acesso?: string | null
           nome_descritivo: string
           ordem?: number | null
           perimetro?: number | null
@@ -773,6 +775,7 @@ export type Database = {
           fotos_urls?: string[]
           hh_padrao?: number
           id?: string
+          nome_acesso?: string | null
           nome_descritivo?: string
           ordem?: number | null
           perimetro?: number | null

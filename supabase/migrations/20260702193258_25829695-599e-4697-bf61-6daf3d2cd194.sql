@@ -1,0 +1,1 @@
+ALTER TABLE public.visita_blocos ADD COLUMN IF NOT EXISTS nome_acesso text;
