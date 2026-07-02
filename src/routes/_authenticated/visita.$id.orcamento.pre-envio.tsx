@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -24,13 +25,18 @@ const SERVICOS_LABELS: Record<string, string> = {
 };
 
 const TIPOS_NOMES: Record<string, string> = {
-  PED: "Acesso de Pedestres",
-  VEI: "Acesso de Veículos",
+  PED: "Eclusa de Pedestres",
+  VEI: "Eclusa Veicular",
   CFTV: "CFTV",
   AL: "Alarme",
   CER: "Cerca Elétrica",
-  CENT: "Central",
+  CENT: "Central de Portaria Remota",
+  ELV: "Elevadores",
+  TOT: "Totem Inteligente",
 };
+
+// Tipos que existem no máximo 1 por projeto — sem numeração
+const TIPOS_UNICOS = new Set(["CENT"]);
 
 function PreEnvioPage() {
   const { id: visitaId } = Route.useParams();
