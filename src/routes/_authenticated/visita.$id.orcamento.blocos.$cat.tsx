@@ -856,8 +856,13 @@ function BlocosWizardPage() {
 
     if (wizard.step === "resumo") {
       const config = buildConfig();
-      const descricao = gerarDescricaoBloco(config);
-      const codigo = gerarCodigoBloco(config);
+
+      const concluir = () => {
+        setBlocoSalvoId(null);
+        setSavedConfig(null);
+        autoSaveGuardRef.current = false;
+        setWizard(null);
+      };
 
       return (
         <div style={PAGE}>
@@ -872,22 +877,26 @@ function BlocosWizardPage() {
 
           {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
-          <div style={{
-            background: isLight ? L.goldBg : "rgba(255,215,0,0.06)",
-            border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.25)",
-            borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8,
-          }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: isLight ? L.gold : "rgba(255,215,0,0.7)", fontWeight: 700 }}>
-              BLOCO IDENTIFICADO
+          {/* Editor de equipamentos (auto-semeado após salvar) */}
+          {blocoSalvoId && savedConfig ? (
+            <BlocoItensEditor
+              visitaBlocoId={blocoSalvoId}
+              codigo={gerarCodigoBloco(savedConfig)}
+              tipoBloco={savedConfig.tipoBloco}
+              tecnologia={savedConfig.tecnologia ?? null}
+              qtdDome={savedConfig.qtdDome}
+              qtdBullet={savedConfig.qtdBullet}
+              isLight={isLight}
+              hideSubtotal
+              hideConcluir
+            />
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, gap: 10, color: isLight ? L.textSub : "rgba(255,255,255,0.7)" }}>
+              <span>Preparando equipamentos…</span>
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: isLight ? L.text : "#fff" }}>{catNome}</div>
-            <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>{descricao}</div>
-            <div style={{
-              marginTop: 6, fontFamily: "monospace", fontSize: 11,
-              color: isLight ? L.gold : "rgba(255,215,0,0.65)", wordBreak: "break-all",
-            }}>{codigo}</div>
-          </div>
+          )}
 
+          {/* FOTOS DO LOCAL */}
           <div>
             <div style={{
               color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
@@ -914,28 +923,30 @@ function BlocosWizardPage() {
 
             <button onClick={() => setShowOpcoes(true)} style={{
               width: "100%", padding: "14px 0", background: "transparent",
-              border: isLight ? "1.5px dashed rgba(180,120,0,0.4)" : "1.5px dashed rgba(255,215,0,0.4)",
-              borderRadius: 14, color: isLight ? L.gold : "#FFD700",
-              fontSize: 14, fontWeight: 700, cursor: "pointer",
+              border: `2px dashed ${isLight ? "rgba(180,120,0,0.44)" : "rgba(245,158,11,0.44)"}`,
+              borderRadius: 14, color: isLight ? L.gold : "#F59E0B",
+              fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}>
-              <Camera size={18} color={isLight ? L.gold : "#FFD700"} />
+              <Camera size={18} color={isLight ? L.gold : "#F59E0B"} />
               {fotos.length === 0 ? "ADICIONAR FOTOS" : "ADICIONAR MAIS FOTOS"}
             </button>
           </div>
 
+          {/* Botão fixo CONCLUIR BLOCO */}
           <button
-            onClick={() => salvarMutation.mutate(config)}
-            disabled={salvarMutation.isPending}
+            onClick={concluir}
+            disabled={!blocoSalvoId}
             style={{
-              width: "100%", padding: "18px 0",
-              background: isLight ? L.gold : "linear-gradient(135deg, #FFD700, #FFB300)",
-              border: "none", borderRadius: 16, color: isLight ? "#ffffff" : "#0A0A0A",
-              fontSize: 15, fontWeight: 800, cursor: "pointer", letterSpacing: 1,
-              boxShadow: isLight ? "0 2px 12px rgba(180,120,0,0.30)" : undefined,
+              position: "fixed", left: 16, right: 16, bottom: "calc(72px + 16px)",
+              padding: "16px 0", background: "#F59E0B", border: "none", borderRadius: 999,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              boxShadow: "0 6px 20px rgba(245,158,11,0.35)", zIndex: 30,
+              opacity: blocoSalvoId ? 1 : 0.6,
             }}
           >
-            {salvarMutation.isPending ? "ADICIONANDO..." : "ADICIONAR BLOCO"}
+            <CheckCircle2 size={18} /> CONCLUIR BLOCO
           </button>
 
           <input ref={inputGaleriaRef} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={handleArquivos} />
@@ -986,6 +997,7 @@ function BlocosWizardPage() {
         </div>
       );
     }
+
 
     // Telas de barreira (B1 / B2)
     const isB1Step = B1_STEPS.includes(wizard.step);
