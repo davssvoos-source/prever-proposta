@@ -232,6 +232,23 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, [proximaVisita]);
 
+  // Foto fachada — bucket privado, precisa gerar signed URL a partir do path
+  const { data: fotoFachadaUrl } = useQuery({
+    queryKey: ["foto-fachada-signed", proximaVisita?.id, proximaVisita?.foto_fachada_url],
+    enabled: !!proximaVisita?.foto_fachada_url,
+    staleTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const raw = proximaVisita?.foto_fachada_url as string | null | undefined;
+      if (!raw) return null;
+      const m = raw.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/);
+      if (!m) return raw;
+      const [, bucket, path] = m;
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+      if (error) return null;
+      return data?.signedUrl ?? null;
+    },
+  });
+
   return (
     <>
       {/* ═══ BANNER FROTA ═══ */}
