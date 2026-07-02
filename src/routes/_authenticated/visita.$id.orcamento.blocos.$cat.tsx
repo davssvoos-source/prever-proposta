@@ -31,6 +31,7 @@ type WizardStep =
   | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_abertura" | "b2_folhas" | "b2_tamanho" | "b2_peso"
   | "tecnologia"
   | "cftv_qtd"
+  | "cerca_perimetro" | "cerca_esquinas"
   | "resumo";
 
 interface WizardState {
@@ -41,6 +42,8 @@ interface WizardState {
   tecnologia: string | null;
   qtdDome: number;
   qtdBullet: number;
+  perimetro: number;
+  esquinas: number;
 }
 
 // ─── Light palette ───────────────────────────────────────────────────────────
