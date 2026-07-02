@@ -20,6 +20,7 @@ import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
 import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 import { ElevadoresWizard, type ElevadorItemCalc } from "@/features/orcamento/ElevadoresWizard";
+import { TotemWizard, type TotemConfig, type TotemItemCalc } from "@/features/orcamento/TotemWizard";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
