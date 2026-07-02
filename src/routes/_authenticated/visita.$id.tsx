@@ -557,7 +557,8 @@ function VisitaDetail() {
   const showIniciar   = status === "pendente";
   const showContinuar = status === "em_andamento";
   const showReagendar = status === "reprovada";
-  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada");
+  const showAprovarBtn  = canApprove && status === "aguardando_aprovacao";
+  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada" || status === "aguardando_aprovacao");
   const sInfo = status ? STATUS_LABELS[status] : null;
 
 
