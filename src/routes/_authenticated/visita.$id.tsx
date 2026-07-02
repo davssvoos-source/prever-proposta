@@ -1262,7 +1262,7 @@ function VisitaDetail() {
           )}
 
 
-          {showApproval && showReprovarForm && (
+          {showReprovarBtn && showReprovarForm && (
             <div>
               <div
                 style={{
