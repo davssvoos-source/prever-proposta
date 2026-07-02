@@ -23,8 +23,11 @@ interface Props {
   qtdDome?: number;
   qtdBullet?: number;
   isLight: boolean;
-  onConcluir: () => void;
+  onConcluir?: () => void;
+  hideSubtotal?: boolean;
+  hideConcluir?: boolean;
 }
+
 
 interface VbiRow {
   id: string;
