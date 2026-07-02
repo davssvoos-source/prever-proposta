@@ -37,7 +37,7 @@ const CATEGORIAS = [
 function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  
   const { isLight } = useTheme();
   const iconColor = isLight ? "#b87800" : "#FFC000";
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
