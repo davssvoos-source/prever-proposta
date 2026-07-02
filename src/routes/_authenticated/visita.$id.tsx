@@ -464,6 +464,21 @@ function VisitaDetail() {
         .update(patch)
         .eq("id", id);
       if (error) throw error;
+
+      // Notificar técnico responsável
+      if (visita?.tecnico_id) {
+        const local = visita.nome_predio || visita.titulo || visita.endereco || "local não informado";
+        await supabase.from("notificacoes").insert({
+          user_id: visita.tecnico_id,
+          tipo: aprovar ? "visita_aprovada" : "visita_reprovada",
+          titulo: aprovar ? "Visita aprovada ✓" : "Visita reprovada",
+          corpo: aprovar
+            ? `A visita técnica em ${local} foi aprovada.`
+            : `A visita técnica em ${local} foi reprovada. Verifique o agendamento.`,
+          visita_id: id,
+          lida: false,
+        });
+      }
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["visita", id] });
@@ -473,6 +488,7 @@ function VisitaDetail() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
