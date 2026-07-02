@@ -250,7 +250,7 @@ function CategoriasPage() {
         );
       })}
 
-      {/* Botão ESCOPO CONCLUÍDO fixo */}
+      {/* Botão ESCOPO CONCLUÍDO (inline, ao final do scroll) */}
       <button
         onClick={() => {
           if (totalBlocos === 0) {
@@ -260,10 +260,9 @@ function CategoriasPage() {
           navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
         }}
         style={{
-          position: "fixed",
-          bottom: "calc(72px + 16px)",
-          left: 16,
-          right: 16,
+          width: "100%",
+          marginTop: 24,
+          marginBottom: 32,
           height: 56,
           borderRadius: 28,
           background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
@@ -282,7 +281,6 @@ function CategoriasPage() {
           boxShadow: isLight
             ? "0 4px 16px rgba(180,120,0,0.30)"
             : "0 4px 24px rgba(255,192,0,0.35)",
-          zIndex: 50,
         }}
       >
         Escopo concluído
