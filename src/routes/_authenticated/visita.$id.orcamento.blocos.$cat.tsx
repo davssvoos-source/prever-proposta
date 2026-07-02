@@ -149,7 +149,7 @@ function barreiraSteps(b: Partial<BarreiraConfig>, prefix: "b1" | "b2", tipoBloc
 }
 
 function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
-  if (tipo === "CFTV") return ["tecnologia", "cftv_dome", "cftv_bullet", "resumo"];
+  if (tipo === "CFTV") return ["tecnologia", "cftv_qtd", "resumo"];
   if (tipo === "AL") return ["tecnologia", "resumo"];
   if (tipo === "CER") return ["resumo"];
 
