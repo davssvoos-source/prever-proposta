@@ -711,10 +711,6 @@ function VisitaCard({ visita }: { visita: any }) {
     "Sem nome";
   return (
     <div
-      onClick={() => {
-        const nav = useNavigate();
-        nav({ ...visitaRouteFor(visita.status, visita.id), state: { from: location.pathname } } as any);
-      }}
       style={{
         background: "rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(12px)",
