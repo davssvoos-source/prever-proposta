@@ -1786,37 +1786,56 @@ function BlocosWizardPage() {
             <div style={{ fontSize: 11 }}>Toque em "Adicionar bloco" para configurar.</div>
           </div>
         ) : (
-          blocosAdicionados.map((bloco: any) => (
-            <div key={bloco.id} style={{
-              background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
-              border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
-              boxShadow: isLight ? L.shadowSm : undefined,
-              borderRadius: 14, padding: "14px 16px",
-              display: "flex", alignItems: "center", gap: 12,
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: isLight ? L.text : "#fff", marginBottom: 2 }}>
-                  {bloco.nome_descritivo}
-                </div>
-                <div style={{
-                  fontFamily: "monospace", fontSize: 10,
-                  color: isLight ? L.gold : "rgba(255,215,0,0.55)", wordBreak: "break-all",
-                }}>{bloco.codigo_bloco}</div>
-              </div>
-              <button
-                onClick={() => removerMutation.mutate(bloco.id)}
-                disabled={removerMutation.isPending}
+          blocosAdicionados.map((bloco: any) => {
+            const itens = (itensPorBloco as Record<string, { qtd: number; label: string }[]>)[bloco.id] ?? [];
+            const titulo = bloco.nome_acesso?.trim() || bloco.nome_descritivo;
+            return (
+              <div
+                key={bloco.id}
+                onClick={() => abrirBlocoParaEditar(bloco)}
                 style={{
-                  background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
-                  borderRadius: 10, width: 36, height: 36,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#EF4444", cursor: "pointer",
+                  background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                  boxShadow: isLight ? L.shadowSm : undefined,
+                  borderRadius: 14, padding: "14px 16px",
+                  display: "flex", flexDirection: "column", gap: 8,
+                  cursor: "pointer",
                 }}
               >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600, color: isLight ? L.text : "#fff" }}>
+                    {titulo}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removerMutation.mutate(bloco.id); }}
+                    disabled={removerMutation.isPending}
+                    style={{
+                      background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
+                      borderRadius: 10, width: 36, height: 36,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#EF4444", cursor: "pointer", flexShrink: 0,
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div style={{ height: 1, background: "rgba(255,215,0,0.15)" }} />
+                {itens.length === 0 ? (
+                  <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
+                    Nenhum equipamento configurado
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {itens.map((it, i) => (
+                      <div key={i} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                        {it.qtd}× {it.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
