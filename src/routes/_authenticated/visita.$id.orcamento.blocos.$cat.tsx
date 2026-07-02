@@ -1,7 +1,60 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen, RefreshCw, DoorClosed, Video, Minus, Plus } from "lucide-react";
+import {
+  ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen,
+  RefreshCw, DoorClosed, Video, Minus, Plus,
+  ScanFace, Nfc, Circle, Tag, Radio, Fingerprint, Settings2, Zap, Users,
+  X, CheckCircle, Wifi, Cable, ArrowLeftRight, Layers, Ruler, Weight, Signal, Eye,
+  type LucideIcon,
+} from "lucide-react";
+
+// Mapa de ícones para as opções de seleção (todas as etapas)
+const OPT_ICON: Record<string, LucideIcon> = {
+  FAC: ScanFace,
+  BOTAPR: Nfc,
+  BOTANA: Circle,
+  TAG: Tag,
+  CTRL: Radio,
+  DIG: Fingerprint,
+  CAT: RefreshCw,
+  PORP: DoorClosed,
+  PORV: DoorClosed,
+  MOT: Settings2,
+  MOL: Zap,
+  PORTAR: Users,
+  CAN: Minus,
+  NAO: X,
+  SIM: CheckCircle,
+  IP: Wifi,
+  ANAL: Cable,
+  CAB: Cable,
+  SF: Wifi,
+  LAC: Signal,
+  FOT: Eye,
+  LPR: ScanFace,
+  NAD: Circle,
+  BASC: DoorOpen,
+  DESL: ArrowLeftRight,
+  PIVO: RefreshCw,
+  "1F": Layers,
+  "2F": Layers,
+  "200CM": Ruler,
+  "350CM": Ruler,
+  "450CM": Ruler,
+  "15M": Ruler,
+  "2M": Ruler,
+  "25M": Ruler,
+  "3M": Ruler,
+  "800KG": Weight,
+  "1300KG": Weight,
+  "1500KG": Weight,
+};
+
+function OptionIcon({ valor }: { valor: string }) {
+  const Ico = OPT_ICON[valor] ?? Circle;
+  return <Ico size={16} color="#F59E0B" />;
+}
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -253,11 +306,15 @@ function MacroStepIndicator({
   step,
   tipo,
   eclusa,
+  b1Tipo,
+  b2Tipo,
   isLight,
 }: {
   step: WizardStep;
   tipo: TipoBloco;
   eclusa: boolean | null;
+  b1Tipo?: string;
+  b2Tipo?: string;
   isLight: boolean;
 }) {
   const isB1 = B1_STEPS.includes(step);
@@ -265,49 +322,72 @@ function MacroStepIndicator({
   const isResumo = step === "resumo";
   const isEclusa = step === "eclusa";
 
-  const externaLabel = tipo === "VEI" ? "Barreira Externa" : "Porta Externa";
-  const internaLabel = tipo === "VEI" ? "Barreira Interna" : "Porta Interna";
+  function labelFor(prefix: "Externa" | "Interna", tipoSel?: string): string {
+    if (tipo === "PED") {
+      if (tipoSel === "CAT") return `Catraca ${prefix}`;
+      if (tipoSel === "PORP") return `Porta ${prefix}`;
+      return `Porta ${prefix}`;
+    }
+    if (tipo === "VEI") {
+      if (tipoSel === "CAN") return `Cancela ${prefix}`;
+      if (tipoSel === "PORV") return `Portão ${prefix}`;
+      return `Barreira ${prefix}`;
+    }
+    return prefix;
+  }
+
+  const externaLabel = labelFor("Externa", b1Tipo);
+  const internaLabel = labelFor("Interna", b2Tipo);
+
+  const eclusaDenied = !isEclusa && eclusa === false;
 
   const macros = [
-    { label: "Eclusa", current: isEclusa, completed: !isEclusa },
-    { label: externaLabel, current: isB1, completed: isB2 || isResumo },
-    { label: internaLabel, current: isB2, completed: isResumo && !!eclusa },
+    { label: "Eclusa", current: isEclusa, completed: !isEclusa, denied: eclusaDenied },
+    { label: externaLabel, current: isB1, completed: isB2 || isResumo, denied: false },
+    { label: internaLabel, current: isB2, completed: isResumo && !!eclusa, denied: false, hidden: eclusa === false },
   ];
 
   const goldSolid = "#F59E0B";
+  const redSolid = "#EF4444";
   const goldText = isLight ? "#b87800" : "#FFC000";
   const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
   const currentLabel = isLight ? "#0a0b0e" : "#fff";
 
+  const visibleMacros = macros.filter((m) => !m.hidden);
+
   return (
     <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
-        {macros.map((m, i) => {
-          const isLast = i === macros.length - 1;
+        {visibleMacros.map((m, i) => {
+          const isLast = i === visibleMacros.length - 1;
           const active = m.current || m.completed;
+          const bg = m.denied ? redSolid : active ? goldSolid : futureCircleBg;
+          const border = m.denied
+            ? `1.5px solid ${redSolid}`
+            : active ? `1.5px solid ${goldSolid}` : futureBorder;
           const lineColor = m.completed
-            ? (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)")
+            ? (m.denied ? "rgba(239,68,68,0.45)" : (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)"))
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
           return (
             <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
                 <div style={{
                   width: 24, height: 24, borderRadius: "50%",
-                  background: active ? goldSolid : futureCircleBg,
-                  border: active ? `1.5px solid ${goldSolid}` : futureBorder,
+                  background: bg,
+                  border,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 11, fontWeight: 700,
-                  color: active ? "#fff" : futureText,
+                  color: active || m.denied ? "#fff" : futureText,
                   flexShrink: 0, transition: "all 0.2s ease",
                 }}>
-                  {m.completed ? <Check size={12} /> : (i + 1)}
+                  {m.denied ? <X size={12} /> : m.completed ? <Check size={12} /> : (i + 1)}
                 </div>
                 <span style={{
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 11, whiteSpace: "nowrap",
-                  color: m.completed ? goldText : m.current ? currentLabel : futureText,
-                  opacity: !active ? 0.55 : 1, transition: "all 0.2s ease",
+                  color: m.denied ? redSolid : m.completed ? goldText : m.current ? currentLabel : futureText,
+                  opacity: !active && !m.denied ? 0.55 : 1, transition: "all 0.2s ease",
                 }}>
                   {m.label}
                 </span>
@@ -1203,7 +1283,7 @@ function BlocosWizardPage() {
             <CheckCircle2 size={22} color="#22C55E" />
           </div>
 
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           {/* Editor de equipamentos (auto-semeado após salvar) */}
           {blocoSalvoId && savedConfig ? (
@@ -1384,7 +1464,7 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           <div style={{ marginBottom: 24 }}>
             <BarreiraHeader
@@ -1408,8 +1488,7 @@ function BlocosWizardPage() {
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                           <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
-                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                            <OptionIcon valor={op.valor} />
                             <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                           </span>
                         </button>
@@ -1434,8 +1513,7 @@ function BlocosWizardPage() {
                     {opcoes.map((op) => (
                       <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                         <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
-                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                          <OptionIcon valor={op.valor} />
                           <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                         </span>
                       </button>
@@ -1458,7 +1536,7 @@ function BlocosWizardPage() {
         </div>
 
         {wizard && ((tipoBloco === "PED" || tipoBloco === "VEI") ? (
-          <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />
+          <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />
         ) : (
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
         ))}
@@ -1470,6 +1548,7 @@ function BlocosWizardPage() {
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
               <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <OptionIcon valor={op.valor} />
                 <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
               </span>
             </button>
