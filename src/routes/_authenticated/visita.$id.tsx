@@ -182,11 +182,12 @@ function initials(name: string) {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pendente:     { label: "Pendente",     color: "rgba(255,192,0,0.9)" },
-  em_andamento: { label: "Em andamento", color: "rgba(96,165,250,0.9)" },
-  concluida:    { label: "Concluída",    color: "rgba(52,211,153,0.9)" },
-  aprovada:     { label: "Aprovada",     color: "rgba(52,211,153,0.9)" },
-  reprovada:    { label: "Reprovada",    color: "rgba(248,113,113,0.9)" },
+  pendente:              { label: "Pendente",              color: "rgba(255,192,0,0.9)" },
+  em_andamento:          { label: "Em andamento",          color: "rgba(96,165,250,0.9)" },
+  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "rgba(251,191,36,0.95)" },
+  concluida:             { label: "Concluída",             color: "rgba(52,211,153,0.9)" },
+  aprovada:              { label: "Aprovada",              color: "rgba(52,211,153,0.9)" },
+  reprovada:             { label: "Reprovada",             color: "rgba(248,113,113,0.9)" },
 };
 
 const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
