@@ -318,28 +318,33 @@ export function BlocoItensEditor({
         </div>
       </div>
 
-      <div style={{
-        marginTop: 6, padding: "12px 14px", borderRadius: 12,
-        background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,215,0,0.08)",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-      }}>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#b87800" }}>SUBTOTAL</span>
-        <span style={{ fontSize: 16, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
-          R$ {total.toFixed(2)}
-        </span>
-      </div>
+      {!hideSubtotal && (
+        <div style={{
+          marginTop: 6, padding: "12px 14px", borderRadius: 12,
+          background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,215,0,0.08)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#b87800" }}>SUBTOTAL</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
+            R$ {total.toFixed(2)}
+          </span>
+        </div>
+      )}
 
-      <button
-        onClick={onConcluir}
-        style={{
-          marginTop: 8, width: "100%", padding: "16px 0",
-          background: "#F59E0B", border: "none", borderRadius: 999,
-          color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        }}
-      >
-        <CheckCircle2 size={18} /> CONCLUIR BLOCO
-      </button>
+      {!hideConcluir && onConcluir && (
+        <button
+          onClick={onConcluir}
+          style={{
+            marginTop: 8, width: "100%", padding: "16px 0",
+            background: "#F59E0B", border: "none", borderRadius: 999,
+            color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}
+        >
+          <CheckCircle2 size={18} /> CONCLUIR BLOCO
+        </button>
+      )}
     </div>
   );
 }
+
