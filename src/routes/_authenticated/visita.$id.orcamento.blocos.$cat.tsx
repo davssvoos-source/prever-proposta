@@ -175,6 +175,7 @@ function BarreiraHeader({
 
 function getStepLabel(step: WizardStep): string {
   switch (step) {
+    case "nome_acesso": return "Nome";
     case "eclusa": return "Eclusa";
     case "b1_tipo": return "Tipo B1";
     case "b1_entrada": return "Entrada B1";
