@@ -157,11 +157,13 @@ function OrcamentoPasso1() {
             .single();
           // Ignora violação de unicidade (23505) — outro save concorrente já criou
           if (insErr && (insErr as any).code !== "23505") throw insErr;
-          if (novo?.id) {
+          const novoId = (novo as any)?.id as string | undefined;
+          if (novoId) {
             await supabase.from("visita_bloco_itens" as any).insert([
-              { visita_bloco_id: novo.id, cod_eq: "EQ028", qtd: 1, origem: "auto", observacao: "Servidor da Portaria Remota" },
+              { visita_bloco_id: novoId, cod_eq: "EQ028", qtd: 1, origem: "auto", observacao: "Servidor da Portaria Remota" },
             ]);
           }
+
         }
       } else if (sistemaProposto === "PP" && anterior === "PR") {
         // Remover CENT criado automaticamente ao trocar para Presencial
