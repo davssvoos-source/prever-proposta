@@ -849,7 +849,7 @@ function BlocosWizardPage() {
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
-          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
           <CftvCounter
             label={isDome ? "Quantidade de Câmeras Dome" : "Quantidade de Câmeras Bullet"}
             value={isDome ? wizard.qtdDome : wizard.qtdBullet}
@@ -885,7 +885,7 @@ function BlocosWizardPage() {
             <CheckCircle2 size={22} color="#22C55E" />
           </div>
 
-          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           <div style={{
             background: isLight ? L.goldBg : "rgba(255,215,0,0.06)",
@@ -1056,7 +1056,7 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
-          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           <div style={{ marginBottom: 24 }}>
             <div
@@ -1157,7 +1157,7 @@ function BlocosWizardPage() {
         </div>
 
         {wizard && (
-          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
         )}
 
         {getLabelPergunta() && <div style={QUESTION}>{getLabelPergunta()}</div>}
