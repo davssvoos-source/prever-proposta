@@ -102,6 +102,8 @@ export function BlocoItensEditor({
       const body: any =
         tipoBloco === "CFTV"
           ? { action: "itens_bloco", tipo: "CFTV", tech: tecnologia, nDome: qtdDome ?? 0, nBullet: qtdBullet ?? 0 }
+          : tipoBloco === "CER"
+          ? { action: "itens_bloco", tipo: "CERCA", perimetro: perimetro ?? 0, esquinas: esquinas ?? 0 }
           : { action: "itens_bloco", codigo };
       const { data, error } = await supabase.functions.invoke("calcular", { body });
       if (!ativo) return;
