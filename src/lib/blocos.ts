@@ -1,6 +1,6 @@
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export type TipoBloco = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT";
+export type TipoBloco = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV";
 
 export interface BarreiraConfig {
   tipo: string;
