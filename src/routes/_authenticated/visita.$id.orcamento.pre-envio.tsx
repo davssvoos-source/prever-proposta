@@ -129,16 +129,21 @@ function PreEnvioPage() {
     mutationFn: async () => {
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ status_aprovacao: "aguardando_aprovacao" } as any)
+        .update({
+          status: "aprovada",
+          aprovado_em: new Date().toISOString(),
+          data_hora_fim: new Date().toISOString(),
+        } as any)
         .eq("id", visitaId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Orçamento enviado para aprovação!");
+      toast.success("Visita concluída e aprovada!");
       navigate({ to: "/dashboard" });
     },
-    onError: (e: any) => toast.error(e?.message || "Erro ao enviar"),
+    onError: (e: any) => toast.error(e?.message || "Erro ao concluir"),
   });
+
 
   const dataInicio = visita?.iniciada_em || visita?.data_hora_inicio || visita?.data_hora_agendada;
   const dataFmt = dataInicio
