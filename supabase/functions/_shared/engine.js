@@ -113,6 +113,52 @@ export function computeCftvItens(tech, nDome, nBullet, regrasCftv, blocoQty = 1)
   return acc;
 }
 
+// ── Cerca Elétrica ──────────────────────────────────────────────────────────
+// Entrada: perímetro (m) e nº de esquinas.
+// `regrasCerca` é um mapa sigla→cod_eq populado a partir da tabela regras_cerca.
+// Siglas esperadas:
+//   ELC1, ELC2, ELC3            → eletrificador (até 400m / 401-1250 / 1251-1750; >1750 usa múltiplos ELC3)
+//   HASTE_IND, SAPATA           → ⌈P/3⌉ cada
+//   FIO                         → ⌈P/25⌉
+//   PLACA                       → ⌈P/6⌉
+//   CANTONEIRA                  → E (uma por esquina)
+//   BATERIA, HASTE_ATER,
+//   CONECTOR                    → 1 × nº de eletrificadores
+//   CAIXA_ATER                  → 2 × nº de eletrificadores
+export function computeCercaItens(perimetro, esquinas, regrasCerca, blocoQty = 1) {
+  const P = Math.max(0, parseInt(perimetro) || 0);
+  const E = Math.max(0, parseInt(esquinas) || 0);
+  const acc = {};
+  if (P <= 0) return acc;
+  const map = regrasCerca || {};
+  const add = (sigla, q) => {
+    const eq = map[sigla];
+    if (!eq || !q) return;
+    acc[eq] = (acc[eq] || 0) + q * blocoQty;
+  };
+
+  // Eletrificador: escolhe o menor que cobre; acima de 1750 soma unidades de ELC3
+  let elcSigla = null, elcQtd = 0;
+  if (P <= 400)        { elcSigla = 'ELC1'; elcQtd = 1; }
+  else if (P <= 1250)  { elcSigla = 'ELC2'; elcQtd = 1; }
+  else if (P <= 1750)  { elcSigla = 'ELC3'; elcQtd = 1; }
+  else                 { elcSigla = 'ELC3'; elcQtd = Math.ceil(P / 1750); }
+  add(elcSigla, elcQtd);
+
+  add('HASTE_IND', Math.ceil(P / 3));
+  add('SAPATA',    Math.ceil(P / 3));
+  add('FIO',       Math.ceil(P / 25));
+  add('PLACA',     Math.ceil(P / 6));
+  add('CANTONEIRA', E);
+
+  add('BATERIA',    elcQtd);
+  add('HASTE_ATER', elcQtd);
+  add('CONECTOR',   elcQtd);
+  add('CAIXA_ATER', 2 * elcQtd);
+
+  return acc;
+}
+
 export function projectFlags(blocos) {
   const f = { has_pr: false, has_pp: false, has_vei: false, total_tag: 0 };
   for (const { codigo, qtd = 1 } of blocos) {
