@@ -46,6 +46,7 @@ function CategoriasPage() {
     { id: "cftv", label: "CFTV", icon: <Camera size={32} color={iconColor} />, desc: "Câmeras, DVRs e NVRs" },
     { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={iconColor} />, desc: "Sensores, centrais e sirenes" },
     { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={iconColor} />, desc: "Centrais e eletrificadores" },
+    { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={iconColor} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
   ];
 
   const { data: visita } = useQuery({
