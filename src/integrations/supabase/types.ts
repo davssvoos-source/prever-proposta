@@ -671,6 +671,7 @@ export type Database = {
       }
       visita_blocos: {
         Row: {
+          alarme_config: Json | null
           b1_abertura: string | null
           b1_entrada: string | null
           b1_folhas: string | null
@@ -708,6 +709,7 @@ export type Database = {
           visita_id: string
         }
         Insert: {
+          alarme_config?: Json | null
           b1_abertura?: string | null
           b1_entrada?: string | null
           b1_folhas?: string | null
@@ -745,6 +747,7 @@ export type Database = {
           visita_id: string
         }
         Update: {
+          alarme_config?: Json | null
           b1_abertura?: string | null
           b1_entrada?: string | null
           b1_folhas?: string | null
