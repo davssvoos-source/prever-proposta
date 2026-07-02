@@ -12,7 +12,6 @@ export const KNOWN_SIGLAS = new Set([
   'CENT','CFTV','AL','CER','1F','2F','200CM','350CM','450CM','800KG','1300KG',
   '1500KG','15M','2M','25M','3M',
 ]);
-
 const BARR = new Set(['1B','2B','3B']);
 const PROJ = new Set(['PP','PR']);
 const GATE_LEADERS = new Set(['PORV','CAN','PORP','CAT']);
@@ -26,36 +25,35 @@ export function parseGates(codigo) {
   const whole = {};
   const gates = [];
   let cur = null;
-
   for (const p of parts.slice(1)) {
     if (BARR.has(p)) { barreiras = p; continue; }
     if (!KNOWN_SIGLAS.has(p)) continue;
     whole[p] = (whole[p] || 0) + 1;
-    if (PROJ.has(p)) { portaria = p; continue; }
+    if (PROJ.has(p)) { portaria = p; continue; }        // global, fora do gate
     if (GATE_LEADERS.has(p)) { cur = {}; gates.push(cur); cur[p] = 1; }
     else if (cur) cur[p] = (cur[p] || 0) + 1;
   }
-  if (gates.length === 0) gates.push(whole);
+  if (gates.length === 0) gates.push(whole);             // fallback (ex.: CENT)
   return { tipo, barreiras, portaria, gates, whole };
 }
 
 function tokenSatWhole(t, ctx) {
   if (BARR.has(t)) return ctx.barreiras === t;
-  return (ctx.whole[t] || 0) >= 1;
+  return (ctx.whole[t] || 0) >= 1;                       // PR/PP/tipo/siglas
 }
 function isGlobalToken(t, tipo) {
   return BARR.has(t) || PROJ.has(t) || t === tipo;
 }
 
+// ── itens POR_BLOCO de um único bloco (usado na LISTA EDITÁVEL) ────────────────
 export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
   const ctx = parseGates(codigo);
   const acc = {};
   const relay = {};
-
   for (const r of regrasBlocos) {
     if (r.escopo !== 'POR_BLOCO') continue;
     const cond = String(r.condicao || '');
-    if (/TAG/i.test(cond) && /4/.test(cond)) continue;
+    if (/TAG/i.test(cond) && /4/.test(cond)) continue;    // TAG÷4 é projeto
     const tokens = cond.split('+').map(t => t.trim().toUpperCase()).filter(Boolean);
     if (tokens.length === 0) continue;
 
@@ -63,15 +61,15 @@ export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
     if (tokens.length === 1) {
       const t = tokens[0];
       mult = isGlobalToken(t, ctx.tipo) ? (tokenSatWhole(t, ctx) ? 1 : 0)
-                                        : (ctx.whole[t] || 0);
+                                        : (ctx.whole[t] || 0);   // por ocorrência
     } else if (tokens.some(t => isGlobalToken(t, ctx.tipo))) {
-      mult = tokens.every(t => tokenSatWhole(t, ctx)) ? 1 : 0;
+      mult = tokens.every(t => tokenSatWhole(t, ctx)) ? 1 : 0;   // presença (bloco)
     } else {
-      for (const gate of ctx.gates)
+      for (const gate of ctx.gates)                              // presença por portão
         if (tokens.every(t => (gate[t] || 0) >= 1)) mult += 1;
     }
-    if (mult <= 0) continue;
 
+    if (mult <= 0) continue;
     const total = (r.qtd || 0) * mult * blocoQty;
     const bucket = RELAY_IDS.has(r.regra_id) ? relay : acc;
     bucket[r.cod_eq] = (bucket[r.cod_eq] || 0) + total;
@@ -80,14 +78,15 @@ export function computeBlocoItens(codigo, regrasBlocos, blocoQty = 1) {
   return acc;
 }
 
+// ── itens de um bloco de CFTV (numérico) ──────────────────────────────────────
 export function computeCftvItens(tech, nDome, nBullet, regrasCftv, blocoQty = 1) {
   tech = String(tech || '').toUpperCase();
   nDome = parseInt(nDome) || 0; nBullet = parseInt(nBullet) || 0;
   const total = nDome + nBullet;
   const acc = {};
   if (!['IP', 'ANAL'].includes(tech) || total <= 0) return acc;
-  const add = (eq, q) => { if (eq && q) acc[eq] = (acc[eq] || 0) + q * blocoQty; };
 
+  const add = (eq, q) => { if (eq && q) acc[eq] = (acc[eq] || 0) + q * blocoQty; };
   const cam = (tp) => {
     const r = regrasCftv.find(x => x.tipo === 'CAMERA' && x.chave1 === tech && x.chave2 === tp);
     return r ? r.cod_eq : null;
@@ -113,52 +112,45 @@ export function computeCftvItens(tech, nDome, nBullet, regrasCftv, blocoQty = 1)
   return acc;
 }
 
-// ── Cerca Elétrica ──────────────────────────────────────────────────────────
-// Entrada: perímetro (m) e nº de esquinas.
-// `regrasCerca` é um mapa sigla→cod_eq populado a partir da tabela regras_cerca.
-// Siglas esperadas:
-//   ELC1, ELC2, ELC3            → eletrificador (até 400m / 401-1250 / 1251-1750; >1750 usa múltiplos ELC3)
-//   HASTE_IND, SAPATA           → ⌈P/3⌉ cada
-//   FIO                         → ⌈P/25⌉
-//   PLACA                       → ⌈P/6⌉
-//   CANTONEIRA                  → E (uma por esquina)
-//   BATERIA, HASTE_ATER,
-//   CONECTOR                    → 1 × nº de eletrificadores
-//   CAIXA_ATER                  → 2 × nº de eletrificadores
+// ── itens de um bloco de CERCA ELÉTRICA (numérico) ────────────────────────────
+// perimetro em metros, esquinas = nº de esquinas. Data-driven via REGRAS_CERCA.
 export function computeCercaItens(perimetro, esquinas, regrasCerca, blocoQty = 1) {
-  const P = Math.max(0, parseInt(perimetro) || 0);
-  const E = Math.max(0, parseInt(esquinas) || 0);
+  perimetro = Number(perimetro) || 0;
+  esquinas = Number(esquinas) || 0;
   const acc = {};
-  if (P <= 0) return acc;
-  const map = regrasCerca || {};
-  const add = (sigla, q) => {
-    const eq = map[sigla];
-    if (!eq || !q) return;
-    acc[eq] = (acc[eq] || 0) + q * blocoQty;
-  };
+  if (perimetro <= 0) return acc;                 // sem perímetro, sem cerca
 
-  // Eletrificador: escolhe o menor que cobre; acima de 1750 soma unidades de ELC3
-  let elcSigla = null, elcQtd = 0;
-  if (P <= 400)        { elcSigla = 'ELC1'; elcQtd = 1; }
-  else if (P <= 1250)  { elcSigla = 'ELC2'; elcQtd = 1; }
-  else if (P <= 1750)  { elcSigla = 'ELC3'; elcQtd = 1; }
-  else                 { elcSigla = 'ELC3'; elcQtd = Math.ceil(P / 1750); }
-  add(elcSigla, elcQtd);
+  const add = (eq, q) => { if (eq && q > 0) acc[eq] = (acc[eq] || 0) + q * blocoQty; };
+  const ceil = (a, b) => Math.ceil(a / b);
 
-  add('HASTE_IND', Math.ceil(P / 3));
-  add('SAPATA',    Math.ceil(P / 3));
-  add('FIO',       Math.ceil(P / 25));
-  add('PLACA',     Math.ceil(P / 6));
-  add('CANTONEIRA', E);
+  // eletrificador: menor faixa que cobre; acima do maior teto, soma unidades
+  const bands = regrasCerca
+    .filter((r) => r.tipo === 'ELETRIFICADOR')
+    .map((r) => ({ min: parseInt(r.chave1) || 0, max: parseInt(r.chave2) || 0, eq: r.cod_eq, qtd: r.qtd || 1 }))
+    .sort((a, b) => a.min - b.min);
 
-  add('BATERIA',    elcQtd);
-  add('HASTE_ATER', elcQtd);
-  add('CONECTOR',   elcQtd);
-  add('CAIXA_ATER', 2 * elcQtd);
+  let nEnerg = 0;
+  const band = bands.find((b) => perimetro >= b.min && perimetro <= b.max);
+  if (band) { add(band.eq, band.qtd); nEnerg = band.qtd; }
+  else if (bands.length) {
+    const top = bands[bands.length - 1];
+    if (perimetro > top.max) { const n = ceil(perimetro, top.max); add(top.eq, n); nEnerg = n; }
+  }
 
+  for (const r of regrasCerca) {
+    if (r.tipo === 'POR_METRO') {
+      const div = parseInt(r.chave1) || 1;
+      add(r.cod_eq, ceil(perimetro, div) * (r.qtd || 1));
+    } else if (r.tipo === 'POR_ESQUINA') {
+      if (esquinas > 0) add(r.cod_eq, esquinas * (r.qtd || 1));
+    } else if (r.tipo === 'POR_ELETRIFICADOR') {
+      add(r.cod_eq, nEnerg * (r.qtd || 1));
+    }
+  }
   return acc;
 }
 
+// ── flags do projeto ──────────────────────────────────────────────────────────
 export function projectFlags(blocos) {
   const f = { has_pr: false, has_pp: false, has_vei: false, total_tag: 0 };
   for (const { codigo, qtd = 1 } of blocos) {
@@ -171,6 +163,7 @@ export function projectFlags(blocos) {
   return f;
 }
 
+// flags de projeto com override opcional da portaria (visita_orcamentos.sistema_proposto)
 export function flagsComPortaria(blocos, portaria) {
   const f = projectFlags(blocos || []);
   if (portaria === 'PR') { f.has_pr = true; f.has_pp = false; }
@@ -178,6 +171,7 @@ export function flagsComPortaria(blocos, portaria) {
   return f;
 }
 
+// ── aplica regras POR_PROJETO ao BOM ──────────────────────────────────────────
 export function applyProjeto(bom, regrasBlocos, flags) {
   for (const r of regrasBlocos) {
     if (r.escopo !== 'POR_PROJETO') continue;
@@ -193,8 +187,9 @@ export function applyProjeto(bom, regrasBlocos, flags) {
   return bom;
 }
 
+// ── BOM do projeto (AUTO — deriva tudo das regras). Usado offline/oráculo. ─────
 export function computeProjeto({ blocos = [], cftv = [], cerca = [], itensPorBloco = null, portaria = null }, regras) {
-  const { regras_blocos, regras_cftv, regras_cerca = {} } = regras;
+  const { regras_blocos, regras_cftv, regras_cerca = [] } = regras;
   const bom = {};
   const addAll = (obj) => { for (const [k, v] of Object.entries(obj)) bom[k] = (bom[k] || 0) + v; };
 
@@ -211,6 +206,10 @@ export function computeProjeto({ blocos = [], cftv = [], cerca = [], itensPorBlo
   return bom;
 }
 
+// ── BOM FINAL a partir dos itens JÁ EDITADOS (visita_bloco_itens) + POR_PROJETO ─
+// itens: [{cod_eq, qtd, removido?}] de TODOS os blocos (acesso + CFTV).
+// blocos: [{codigo, qtd}] apenas para as flags de projeto (PR/PP/VEI/TAG).
+// É este o caminho do TOTAL no app — reflete adições/remoções do usuário.
 export function computeBomFromItens(itens, blocos, regras, portaria = null) {
   const bom = {};
   for (const it of (itens || [])) {
@@ -221,6 +220,7 @@ export function computeBomFromItens(itens, blocos, regras, portaria = null) {
   return bom;
 }
 
+// ── valida a regra de negócio: PR e PP não coexistem no mesmo projeto ─────────
 export function validarPortaria(blocos) {
   const f = projectFlags(blocos || []);
   if (f.has_pr && f.has_pp)
@@ -228,6 +228,7 @@ export function validarPortaria(blocos) {
   return { ok: true };
 }
 
+// ── enriquece uma lista {cod_eq:qtd} com nome/modelo/preço (p/ a UI) ───────────
 export function enrich(bomObj, equipamentos) {
   return Object.entries(bomObj).map(([cod_eq, qtd]) => {
     const e = equipamentos[cod_eq] || {};
