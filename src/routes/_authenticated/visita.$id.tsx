@@ -1236,75 +1236,31 @@ function VisitaDetail() {
             </div>
           )}
 
-          {showApproval && !showReprovarForm && (
-            <>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.55)",
-                  marginBottom: 14,
-                }}
-              >
-                Visita concluída — aguardando aprovação
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    await aprovarMutation.mutateAsync({ aprovar: true });
-                    fetch("https://grupoprever.app.n8n.cloud/webhook/visita-aprovada", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ visita_id: id }),
-                    }).catch(() => {});
-                  }}
-                  disabled={aprovarMutation.isPending}
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    borderRadius: 12,
-                    border: "1px solid rgba(52,211,153,0.35)",
-                    background: "rgba(52,211,153,0.09)",
-                    color: "#34D399",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  <Check size={15} /> Aprovar
-                </button>
-                <button
-                  onClick={() => setShowReprovarForm(true)}
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    borderRadius: 12,
-                    border: "1px solid rgba(248,113,113,0.35)",
-                    background: "rgba(248,113,113,0.08)",
-                    color: "#F87171",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  <X size={15} /> Reprovar
-                </button>
-              </div>
-            </>
+          {showReprovarBtn && !showReprovarForm && (
+            <button
+              onClick={() => setShowReprovarForm(true)}
+              style={{
+                width: "100%",
+                height: 44,
+                borderRadius: 12,
+                border: "1px solid rgba(248,113,113,0.35)",
+                background: "rgba(248,113,113,0.08)",
+                color: "#F87171",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                fontSize: 12,
+                letterSpacing: "0.08em",
+              }}
+            >
+              <X size={15} /> Reprovar visita
+            </button>
           )}
+
 
           {showApproval && showReprovarForm && (
             <div>
