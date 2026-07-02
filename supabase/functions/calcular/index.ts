@@ -32,6 +32,8 @@ async function tbl(path: string): Promise<any[]> {
 }
 
 async function loadRegras() {
+  let cercaRows: any[] = [];
+  try { cercaRows = await tbl("regras_cerca?select=sigla,cod_eq"); } catch (_) { /* opcional */ }
   const [rb, rc, eqRows] = await Promise.all([
     tbl("regras_blocos?select=*"),
     tbl("regras_cftv?select=*"),
@@ -46,7 +48,9 @@ async function loadRegras() {
       custo, preco: +(custo * markup).toFixed(2),
     };
   }
-  return { regras_blocos: rb, regras_cftv: rc, equipamentos };
+  const regras_cerca: Record<string, string> = {};
+  for (const r of cercaRows) if (r?.sigla && r?.cod_eq) regras_cerca[String(r.sigla).toUpperCase()] = r.cod_eq;
+  return { regras_blocos: rb, regras_cftv: rc, regras_cerca, equipamentos };
 }
 
 async function loadVisita(visita_id: string) {
