@@ -907,7 +907,10 @@ function BlocosWizardPage() {
     const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
     const s = w.step;
 
-    if (s === "eclusa" || s === "tecnologia" || s === "cerca_perimetro") { setWizard(null); return; }
+    if (s === "nome_acesso" || s === "eclusa" || s === "tecnologia" || s === "cerca_perimetro") {
+      if (s === "eclusa" && (tipoBloco === "PED" || tipoBloco === "VEI")) { w.step = "nome_acesso"; setWizard(w); return; }
+      setWizard(null); return;
+    }
 
     if (s === "cerca_esquinas") { w.step = "cerca_perimetro"; setWizard(w); return; }
     if (s === "resumo" && tipoBloco === "CER") { w.step = "cerca_esquinas"; setWizard(w); return; }
