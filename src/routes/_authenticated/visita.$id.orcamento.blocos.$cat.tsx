@@ -30,7 +30,7 @@ type WizardStep =
   | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_abertura" | "b1_folhas" | "b1_tamanho" | "b1_peso"
   | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_abertura" | "b2_folhas" | "b2_tamanho" | "b2_peso"
   | "tecnologia"
-  | "cftv_dome" | "cftv_bullet"
+  | "cftv_qtd"
   | "resumo";
 
 interface WizardState {
@@ -128,8 +128,7 @@ function getStepLabel(step: WizardStep): string {
     case "b2_tamanho": return "Tamanho B2";
     case "b2_peso": return "Peso B2";
     case "tecnologia": return "Tecnologia";
-    case "cftv_dome": return "Dome";
-    case "cftv_bullet": return "Bullet";
+    case "cftv_qtd": return "Qtd de câmeras";
     case "resumo": return "Resumo";
     default: return step;
   }
@@ -150,7 +149,7 @@ function barreiraSteps(b: Partial<BarreiraConfig>, prefix: "b1" | "b2", tipoBloc
 }
 
 function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
-  if (tipo === "CFTV") return ["tecnologia", "cftv_dome", "cftv_bullet", "resumo"];
+  if (tipo === "CFTV") return ["tecnologia", "cftv_qtd", "resumo"];
   if (tipo === "AL") return ["tecnologia", "resumo"];
   if (tipo === "CER") return ["resumo"];
 
@@ -335,7 +334,7 @@ function BlocosWizardPage() {
   const catNome = CAT_NOMES[tipoBloco] ?? catSlug;
 
   const PAGE: React.CSSProperties = {
-    padding: "12px 14px 120px",
+    padding: "12px 16px 32px",
     display: "flex",
     flexDirection: "column",
     gap: 16,
@@ -585,7 +584,7 @@ function BlocosWizardPage() {
     if (w.step === "eclusa") { w.eclusa = valor === "SIM"; w.step = "b1_tipo"; }
     else if (w.step === "tecnologia") {
       w.tecnologia = valor;
-      w.step = tipoBloco === "CFTV" ? "cftv_dome" : "resumo";
+      w.step = tipoBloco === "CFTV" ? "cftv_qtd" : "resumo";
     }
     else if (w.step.startsWith("b1_") || w.step.startsWith("b2_")) {
       const prefix = w.step.startsWith("b1_") ? "b1" : "b2";
@@ -618,11 +617,7 @@ function BlocosWizardPage() {
     }
   }
 
-  function avancarCftvDome() {
-    if (!wizard) return;
-    setWizard({ ...wizard, step: "cftv_bullet" });
-  }
-  function avancarCftvBullet() {
+  function avancarCftvQtd() {
     if (!wizard) return;
     setWizard({ ...wizard, step: "resumo" });
   }
@@ -638,10 +633,9 @@ function BlocosWizardPage() {
     if (s === "eclusa" || s === "tecnologia") { setWizard(null); return; }
     if (s === "resumo" && tipoBloco === "CER") { setWizard(null); return; }
 
-    if (s === "cftv_dome") { w.step = "tecnologia"; setWizard(w); return; }
-    if (s === "cftv_bullet") { w.step = "cftv_dome"; setWizard(w); return; }
+    if (s === "cftv_qtd") { w.step = "tecnologia"; setWizard(w); return; }
 
-    if (s === "resumo" && tipoBloco === "CFTV") { w.step = "cftv_bullet"; setWizard(w); return; }
+    if (s === "resumo" && tipoBloco === "CFTV") { w.step = "cftv_qtd"; setWizard(w); return; }
     if (s === "resumo" && tipoBloco === "AL") { w.step = "tecnologia"; setWizard(w); return; }
 
     // Barreiras: voltar step-a-step conforme sequência efetiva
@@ -825,23 +819,27 @@ function BlocosWizardPage() {
     const opcoes = getOpcoes();
 
 
-    // CFTV: telas de +/-
-    if (wizard.step === "cftv_dome" || wizard.step === "cftv_bullet") {
-      const isDome = wizard.step === "cftv_dome";
+    // CFTV: tela unificada de quantidade (Dome + Bullet)
+    if (wizard.step === "cftv_qtd") {
       return (
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
           <CftvCounter
-            label={isDome ? "Quantidade de Câmeras Dome" : "Quantidade de Câmeras Bullet"}
-            value={isDome ? wizard.qtdDome : wizard.qtdBullet}
-            onChange={(n) => setWizard({ ...wizard, ...(isDome ? { qtdDome: n } : { qtdBullet: n }) })}
+            label="Quantidade de Câmeras Dome"
+            value={wizard.qtdDome}
+            onChange={(n) => setWizard({ ...wizard, qtdDome: n })}
+          />
+          <CftvCounter
+            label="Quantidade de Câmeras Bullet"
+            value={wizard.qtdBullet}
+            onChange={(n) => setWizard({ ...wizard, qtdBullet: n })}
           />
           <button
-            onClick={isDome ? avancarCftvDome : avancarCftvBullet}
+            onClick={avancarCftvQtd}
             style={{
               width: "100%", padding: "16px 0",
               background: "#F59E0B", border: "none", borderRadius: 999,
@@ -933,17 +931,18 @@ function BlocosWizardPage() {
             </button>
           </div>
 
-          {/* Botão fixo CONCLUIR BLOCO */}
+          {/* Botão CONCLUIR BLOCO (inline, ao final do scroll) */}
           <button
             onClick={concluir}
             disabled={!blocoSalvoId}
             style={{
-              position: "fixed", left: 16, right: 16, bottom: "calc(72px + 16px)",
-              padding: "16px 0", background: "#F59E0B", border: "none", borderRadius: 999,
+              width: "100%", marginTop: 24, marginBottom: 32,
+              padding: "16px", background: "#F59E0B", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: "0 6px 20px rgba(245,158,11,0.35)", zIndex: 30,
+              boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
               opacity: blocoSalvoId ? 1 : 0.6,
+              textTransform: "uppercase",
             }}
           >
             <CheckCircle2 size={18} /> CONCLUIR BLOCO
