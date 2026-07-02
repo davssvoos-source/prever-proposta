@@ -684,11 +684,11 @@ function Dashboard() {
         </div>
       ) : (
         <>
-          {pendentes.length > 0 && <Section items={pendentes} />}
-          {aguardando.length > 0 && <Section items={aguardando} />}
+          {pendentes.length > 0 && <Section items={pendentes} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
+          {aguardando.length > 0 && <Section items={aguardando} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
           
-          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
-          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
+          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
+          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
 
         </>
       )}
