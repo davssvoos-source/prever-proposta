@@ -189,6 +189,47 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   reprovada:    { label: "Reprovada",    color: "rgba(248,113,113,0.9)" },
 };
 
+const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
+  width: "100%",
+  height: 56,
+  borderRadius: 28,
+  background: "#F59E0B",
+  color: "#0A0A0A",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 700,
+  fontSize: 13,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  opacity: pending ? 0.7 : 1,
+});
+
+const CTA_GOLD_OUTLINE = (pending: boolean): React.CSSProperties => ({
+  width: "100%",
+  height: 56,
+  borderRadius: 28,
+  background: "transparent",
+  color: "#F59E0B",
+  border: "1.5px solid #F59E0B",
+  cursor: "pointer",
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 700,
+  fontSize: 13,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  opacity: pending ? 0.7 : 1,
+});
+
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 function VisitaDetail() {
   const { id } = Route.useParams();
