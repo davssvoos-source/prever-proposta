@@ -819,23 +819,27 @@ function BlocosWizardPage() {
     const opcoes = getOpcoes();
 
 
-    // CFTV: telas de +/-
-    if (wizard.step === "cftv_dome" || wizard.step === "cftv_bullet") {
-      const isDome = wizard.step === "cftv_dome";
+    // CFTV: tela unificada de quantidade (Dome + Bullet)
+    if (wizard.step === "cftv_qtd") {
       return (
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
           <CftvCounter
-            label={isDome ? "Quantidade de Câmeras Dome" : "Quantidade de Câmeras Bullet"}
-            value={isDome ? wizard.qtdDome : wizard.qtdBullet}
-            onChange={(n) => setWizard({ ...wizard, ...(isDome ? { qtdDome: n } : { qtdBullet: n }) })}
+            label="Quantidade de Câmeras Dome"
+            value={wizard.qtdDome}
+            onChange={(n) => setWizard({ ...wizard, qtdDome: n })}
+          />
+          <CftvCounter
+            label="Quantidade de Câmeras Bullet"
+            value={wizard.qtdBullet}
+            onChange={(n) => setWizard({ ...wizard, qtdBullet: n })}
           />
           <button
-            onClick={isDome ? avancarCftvDome : avancarCftvBullet}
+            onClick={avancarCftvQtd}
             style={{
               width: "100%", padding: "16px 0",
               background: "#F59E0B", border: "none", borderRadius: 999,
