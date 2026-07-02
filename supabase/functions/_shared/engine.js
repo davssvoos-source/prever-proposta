@@ -193,8 +193,8 @@ export function applyProjeto(bom, regrasBlocos, flags) {
   return bom;
 }
 
-export function computeProjeto({ blocos = [], cftv = [], itensPorBloco = null, portaria = null }, regras) {
-  const { regras_blocos, regras_cftv } = regras;
+export function computeProjeto({ blocos = [], cftv = [], cerca = [], itensPorBloco = null, portaria = null }, regras) {
+  const { regras_blocos, regras_cftv, regras_cerca = {} } = regras;
   const bom = {};
   const addAll = (obj) => { for (const [k, v] of Object.entries(obj)) bom[k] = (bom[k] || 0) + v; };
 
@@ -204,6 +204,8 @@ export function computeProjeto({ blocos = [], cftv = [], itensPorBloco = null, p
   });
   for (const c of cftv)
     addAll(computeCftvItens(c.tech, c.nDome, c.nBullet, regras_cftv, c.qtd || 1));
+  for (const c of cerca)
+    addAll(computeCercaItens(c.perimetro, c.esquinas, regras_cerca, c.qtd || 1));
 
   applyProjeto(bom, regras_blocos, flagsComPortaria(blocos, portaria));
   return bom;
