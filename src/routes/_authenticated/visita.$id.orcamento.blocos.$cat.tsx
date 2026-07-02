@@ -17,6 +17,8 @@ import {
   CAT_NOMES,
 } from "@/lib/blocos";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
+import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
@@ -506,6 +508,56 @@ function BlocosWizardPage() {
     },
   });
 
+  // ── Alarme: salva o bloco + insere itens calculados direto ───────────
+  const salvarAlarmeMutation = useMutation({
+    mutationFn: async ({ config, itens }: { config: AlarmeConfig; itens: AlarmeCalcRow[] }) => {
+      const codigo = `AL-${config.ramo}`;
+      const desc = config.ramo === "CAB"
+        ? "Alarme de Intrusão — AMT 4010 Smart (com fio)"
+        : "Alarme de Intrusão — AMT 8000 (sem fio)";
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .insert({
+          visita_id: visitaId,
+          codigo_bloco: codigo,
+          nome_descritivo: desc,
+          tipo_bloco: "AL",
+          eclusa: false,
+          tecnologia: config.ramo,
+          alarme_config: config as any,
+          hh_padrao: 10,
+          quantidade: 1,
+          ordem: blocosAdicionados.length,
+          fotos_urls: [],
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const blocoId = (data as any).id as string;
+
+      if (itens.length > 0) {
+        const rows = itens.map((it) => ({
+          visita_bloco_id: blocoId,
+          cod_eq: it.cod_eq,
+          qtd: it.qtd,
+          origem: "auto" as const,
+          observacao: it.regra ?? null,
+        }));
+        const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
+        if (insErr) throw insErr;
+      }
+      return blocoId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+      toast.success("Alarme adicionado à proposta");
+      setWizard(null);
+      navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar alarme"),
+  });
+
   function iniciarWizard() {
     const primeiroStep: WizardStep =
       tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
@@ -828,6 +880,21 @@ function BlocosWizardPage() {
 
   // ─── RENDER: Wizard ───────────────────────────────────────────────────────
   if (wizard) {
+    // Alarme de Intrusão: wizard próprio (10 etapas + resumo lateral)
+    if (tipoBloco === "AL") {
+      return (
+        <AlarmeWizard
+          isLight={isLight}
+          salvando={salvarAlarmeMutation.isPending}
+          onVoltar={() => {
+            setWizard(null);
+            navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+          }}
+          onConcluir={(config, itens) => salvarAlarmeMutation.mutate({ config, itens })}
+        />
+      );
+    }
+
     const opcoes = getOpcoes();
 
 
