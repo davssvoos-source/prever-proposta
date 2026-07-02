@@ -880,6 +880,21 @@ function BlocosWizardPage() {
 
   // ─── RENDER: Wizard ───────────────────────────────────────────────────────
   if (wizard) {
+    // Alarme de Intrusão: wizard próprio (10 etapas + resumo lateral)
+    if (tipoBloco === "AL") {
+      return (
+        <AlarmeWizard
+          isLight={isLight}
+          salvando={salvarAlarmeMutation.isPending}
+          onVoltar={() => {
+            setWizard(null);
+            navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+          }}
+          onConcluir={(config, itens) => salvarAlarmeMutation.mutate({ config, itens })}
+        />
+      );
+    }
+
     const opcoes = getOpcoes();
 
 
