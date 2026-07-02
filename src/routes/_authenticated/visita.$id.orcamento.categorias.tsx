@@ -28,6 +28,7 @@ const CATEGORIAS = [
   { id: "cftv", label: "CFTV", icon: <Camera size={32} color={ICON_COLOR} />, desc: "Câmeras, DVRs e NVRs" },
   { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={ICON_COLOR} />, desc: "Sensores, centrais e sirenes" },
   { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={ICON_COLOR} />, desc: "Centrais e eletrificadores" },
+  { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={ICON_COLOR} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
 ];
 
 
