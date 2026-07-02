@@ -219,7 +219,7 @@ function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
   if (tipo === "AL") return ["tecnologia", "resumo"];
   if (tipo === "CER") return ["cerca_perimetro", "cerca_esquinas", "resumo"];
 
-  const steps: WizardStep[] = ["eclusa"];
+  const steps: WizardStep[] = ["nome_acesso", "eclusa"];
   steps.push(...barreiraSteps(w.b1, "b1", tipo));
   if (w.eclusa) steps.push(...barreiraSteps(w.b2, "b2", tipo));
   steps.push("resumo");
