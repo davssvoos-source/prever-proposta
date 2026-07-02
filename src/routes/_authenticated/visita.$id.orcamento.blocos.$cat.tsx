@@ -156,7 +156,7 @@ function barreiraSteps(b: Partial<BarreiraConfig>, prefix: "b1" | "b2", tipoBloc
 function getStepSequence(w: WizardState, tipo: TipoBloco): WizardStep[] {
   if (tipo === "CFTV") return ["tecnologia", "cftv_qtd", "resumo"];
   if (tipo === "AL") return ["tecnologia", "resumo"];
-  if (tipo === "CER") return ["resumo"];
+  if (tipo === "CER") return ["cerca_perimetro", "cerca_esquinas", "resumo"];
 
   const steps: WizardStep[] = ["eclusa"];
   steps.push(...barreiraSteps(w.b1, "b1", tipo));
