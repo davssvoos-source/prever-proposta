@@ -11,6 +11,10 @@ function NotifIcon({ tipo }: { tipo: string }) {
     case 'visita_aprovada':
     case 'aprovacao':
       return <CheckCircle2 {...s} color="#10B981" />;
+    case 'visita_reprovada':
+      return <XCircle {...s} color="#EF4444" />;
+    case 'lembrete_visita':
+      return <Clock {...s} color="#FFC000" />;
     case 'visita':
     case 'visita_atribuida':
       return <CalendarCheck {...s} color="#FFC000" />;
@@ -21,6 +25,7 @@ function NotifIcon({ tipo }: { tipo: string }) {
       return <Info {...s} color="rgba(255,255,255,0.5)" />;
   }
 }
+
 
 export function NotificationPanel() {
   const [open, setOpen] = useState(false);
