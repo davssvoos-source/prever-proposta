@@ -66,6 +66,7 @@ function fmtData(iso: string) {
 function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight } = useTheme();
   const GLASS = isLight ? GLASS_LIGHT : GLASS_DARK;
   const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
