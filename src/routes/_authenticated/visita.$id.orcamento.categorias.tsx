@@ -49,6 +49,7 @@ function CategoriasPage() {
     { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={iconColor} />, desc: "Sensores, centrais e sirenes" },
     { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={iconColor} />, desc: "Centrais e eletrificadores" },
     { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={iconColor} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
+    { id: "totem", label: "Totem Inteligente", icon: <Cctv size={32} color={iconColor} />, desc: "Postes de monitoramento com switch, fonte e câmeras IP" },
   ];
 
   const { data: visita } = useQuery({
