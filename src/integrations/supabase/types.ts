@@ -514,6 +514,27 @@ export type Database = {
         }
         Relationships: []
       }
+      regras_cerca: {
+        Row: {
+          cod_eq: string
+          created_at: string
+          descricao: string | null
+          sigla: string
+        }
+        Insert: {
+          cod_eq: string
+          created_at?: string
+          descricao?: string | null
+          sigla: string
+        }
+        Update: {
+          cod_eq?: string
+          created_at?: string
+          descricao?: string | null
+          sigla?: string
+        }
+        Relationships: []
+      }
       regras_cftv: {
         Row: {
           chave1: string | null
@@ -671,11 +692,13 @@ export type Database = {
           codigo_bloco: string
           created_at: string
           eclusa: boolean | null
+          esquinas: number | null
           fotos_urls: string[]
           hh_padrao: number
           id: string
           nome_descritivo: string
           ordem: number | null
+          perimetro: number | null
           qtd_barreiras: string | null
           qtd_bullet: number | null
           qtd_dome: number | null
@@ -706,11 +729,13 @@ export type Database = {
           codigo_bloco: string
           created_at?: string
           eclusa?: boolean | null
+          esquinas?: number | null
           fotos_urls?: string[]
           hh_padrao?: number
           id?: string
           nome_descritivo: string
           ordem?: number | null
+          perimetro?: number | null
           qtd_barreiras?: string | null
           qtd_bullet?: number | null
           qtd_dome?: number | null
@@ -741,11 +766,13 @@ export type Database = {
           codigo_bloco?: string
           created_at?: string
           eclusa?: boolean | null
+          esquinas?: number | null
           fotos_urls?: string[]
           hh_padrao?: number
           id?: string
           nome_descritivo?: string
           ordem?: number | null
+          perimetro?: number | null
           qtd_barreiras?: string | null
           qtd_bullet?: number | null
           qtd_dome?: number | null
