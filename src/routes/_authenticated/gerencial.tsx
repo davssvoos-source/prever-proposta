@@ -410,12 +410,65 @@ function GerencialPage() {
                   color="#9ca3af"
                   style={{ flexShrink: 0, opacity: 0.6 }}
                 />
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingId(v.id);
+                    }}
+                    aria-label="Excluir visita"
+                    style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 6,
+                      borderRadius: 8,
+                      border: "none",
+                      background: "rgba(239, 68, 68, 0.1)",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                    }}
+                  >
+                    <Trash2 size={16} color="#EF4444" />
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
     </div>
+
+    <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && !isDeleting && setDeletingId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir visita técnica?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta ação é permanente e não pode ser desfeita. Todos os dados desta visita serão removidos.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isDeleting}
+            onClick={(e) => {
+              e.preventDefault();
+              if (deletingId) handleDelete(deletingId);
+            }}
+            className="rounded-full bg-[#EF4444] font-bold text-white hover:bg-[#DC2626]"
+          >
+            {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* FAB — Nova Proposta */}
     <button
