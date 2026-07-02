@@ -604,6 +604,52 @@ function BlocosWizardPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar Elevadores"),
   });
 
+  // ── Totem Inteligente: salva o bloco + insere itens de cada totem ─────
+  const salvarTotemMutation = useMutation({
+    mutationFn: async ({ totens, itens }: { totens: TotemConfig[]; itens: TotemItemCalc[] }) => {
+      const n = totens.length;
+      const totalCam = totens.reduce((s, t) => s + t.cameras, 0);
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .insert({
+          visita_id: visitaId,
+          codigo_bloco: `TOT-${n}x${totalCam}CAM`,
+          nome_descritivo: `Totem Inteligente — ${n} totem${n === 1 ? "" : "s"} · ${totalCam} câmeras`,
+          tipo_bloco: "TOT",
+          eclusa: false,
+          hh_padrao: 8,
+          quantidade: n,
+          ordem: blocosAdicionados.length,
+          fotos_urls: [],
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      const blocoId = (data as any).id as string;
+
+      if (itens.length > 0) {
+        const rows = itens.map((it) => ({
+          visita_bloco_id: blocoId,
+          cod_eq: it.cod_eq,
+          qtd: it.qtd,
+          origem: "auto" as const,
+          observacao: it.regra ?? null,
+        }));
+        const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
+        if (insErr) throw insErr;
+      }
+      return blocoId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
+      queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+      toast.success("Totem Inteligente adicionado à proposta");
+      setWizard(null);
+      navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao salvar Totem Inteligente"),
+  });
+
   function iniciarWizard() {
     const primeiroStep: WizardStep =
       tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
