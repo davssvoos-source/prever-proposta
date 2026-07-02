@@ -130,6 +130,67 @@ function OrcamentoPasso1() {
           }
         }
       }
+
+      // Gestão idempotente do bloco "Central de Portaria Remota" (CENT-PR)
+      if (sistemaProposto === "PR") {
+        // Garante 1 bloco CENT (idempotente — índice único no banco previne duplicata)
+        const { data: existente } = await supabase
+          .from("visita_blocos" as any)
+          .select("id")
+          .eq("visita_id", id)
+          .eq("tipo_bloco", "CENT")
+          .maybeSingle();
+        if (!existente) {
+          const { data: novo, error: insErr } = await supabase
+            .from("visita_blocos" as any)
+            .insert({
+              visita_id: id,
+              codigo_bloco: "CENT-PR",
+              nome_descritivo: "Central de Portaria Remota",
+              tipo_bloco: "CENT",
+              eclusa: false,
+              hh_padrao: 10,
+              quantidade: 1,
+              ordem: 999,
+            })
+            .select("id")
+            .single();
+          // Ignora violação de unicidade (23505) — outro save concorrente já criou
+          if (insErr && (insErr as any).code !== "23505") throw insErr;
+          const novoId = (novo as any)?.id as string | undefined;
+          if (novoId) {
+            await supabase.from("visita_bloco_itens" as any).insert([
+              { visita_bloco_id: novoId, cod_eq: "EQ028", qtd: 1, origem: "auto", observacao: "Servidor da Portaria Remota" },
+            ]);
+          }
+
+        }
+      } else if (sistemaProposto === "PP" && anterior === "PR") {
+        // Remover CENT criado automaticamente ao trocar para Presencial
+        const { data: cent } = await supabase
+          .from("visita_blocos" as any)
+          .select("id, fotos_urls")
+          .eq("visita_id", id)
+          .eq("tipo_bloco", "CENT")
+          .maybeSingle();
+        if (cent) {
+          // Verifica edições manuais (itens manuais ou fotos)
+          const { count: manualCount } = await supabase
+            .from("visita_bloco_itens" as any)
+            .select("id", { count: "exact", head: true })
+            .eq("visita_bloco_id", (cent as any).id)
+            .eq("origem", "manual");
+          const temFotos = Array.isArray((cent as any).fotos_urls) && (cent as any).fotos_urls.length > 0;
+          const temEdicoes = (manualCount ?? 0) > 0 || temFotos;
+          const ok = !temEdicoes || window.confirm(
+            "A Central de Portaria Remota possui edições manuais. Deseja remover mesmo assim?"
+          );
+          if (ok) {
+            await supabase.from("visita_blocos" as any).delete().eq("id", (cent as any).id);
+          }
+        }
+      }
+
     },
     onSuccess: () => {
       setErroVisible(null);

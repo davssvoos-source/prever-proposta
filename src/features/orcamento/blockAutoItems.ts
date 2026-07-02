@@ -119,14 +119,22 @@ function computeTotemFromCodigo(codigo: string): AutoBlockItem[] {
   ];
 }
 
+function computeCentral(): AutoBlockItem[] {
+  return [
+    { cod_eq: "EQ028", qtd: 1, observacao: "Servidor da Portaria Remota" },
+  ];
+}
+
 export function computeAutoItemsForBloco(input: ComputeInput): AutoBlockItem[] {
   if (input.tipoBloco === "PED" || input.tipoBloco === "VEI") return computeAcesso(input);
   if (input.tipoBloco === "CFTV") return computeCftv(input);
   if (input.tipoBloco === "CER") return computeCerca(input);
   if (input.tipoBloco === "ELV") return computeElevadorFromCodigo(input.codigo);
   if (input.tipoBloco === "TOT") return computeTotemFromCodigo(input.codigo);
+  if ((input.tipoBloco as string) === "CENT") return computeCentral();
   return [];
 }
+
 
 export function computeAutoItemsFromConfig(config: BlocoConfig): AutoBlockItem[] {
   return computeAutoItemsForBloco({

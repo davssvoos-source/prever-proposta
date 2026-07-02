@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap, Building2, Cctv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +37,7 @@ const CATEGORIAS = [
 function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  
   const { isLight } = useTheme();
   const iconColor = isLight ? "#b87800" : "#FFC000";
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
@@ -84,29 +84,10 @@ function CategoriasPage() {
 
   const totalBlocos = contagemBlocos.length;
 
-  useEffect(() => {
-    if (!visita) return;
-    const servicos = (visita as any).servicos_propostos as string[] | null;
-    if (!servicos?.includes("portaria_remota")) return;
-    const jaExiste = contagemBlocos.some((b: any) => b.tipo_bloco === "CENT");
-    if (jaExiste) return;
+  // A criação automática do bloco "Central de Portaria Remota" (CENT-PR)
+  // acontece no salvamento da tela Estrutura (idempotente) e é protegida
+  // por índice único no banco. Não criar aqui para evitar duplicatas.
 
-    (async () => {
-      const { error } = await supabase.from("visita_blocos" as any).insert({
-        visita_id: id,
-        codigo_bloco: "CENT-PR",
-        nome_descritivo: "Central de Portaria Remota",
-        tipo_bloco: "CENT",
-        eclusa: false,
-        hh_padrao: 10,
-        quantidade: 1,
-        ordem: 999,
-      });
-      if (!error) {
-        queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", id] });
-      }
-    })();
-  }, [visita, contagemBlocos, id, queryClient]);
 
   const CARD: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
