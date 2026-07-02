@@ -617,11 +617,7 @@ function BlocosWizardPage() {
     }
   }
 
-  function avancarCftvDome() {
-    if (!wizard) return;
-    setWizard({ ...wizard, step: "cftv_bullet" });
-  }
-  function avancarCftvBullet() {
+  function avancarCftvQtd() {
     if (!wizard) return;
     setWizard({ ...wizard, step: "resumo" });
   }
