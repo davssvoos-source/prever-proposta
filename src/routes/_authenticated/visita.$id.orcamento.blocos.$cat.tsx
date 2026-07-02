@@ -633,10 +633,9 @@ function BlocosWizardPage() {
     if (s === "eclusa" || s === "tecnologia") { setWizard(null); return; }
     if (s === "resumo" && tipoBloco === "CER") { setWizard(null); return; }
 
-    if (s === "cftv_dome") { w.step = "tecnologia"; setWizard(w); return; }
-    if (s === "cftv_bullet") { w.step = "cftv_dome"; setWizard(w); return; }
+    if (s === "cftv_qtd") { w.step = "tecnologia"; setWizard(w); return; }
 
-    if (s === "resumo" && tipoBloco === "CFTV") { w.step = "cftv_bullet"; setWizard(w); return; }
+    if (s === "resumo" && tipoBloco === "CFTV") { w.step = "cftv_qtd"; setWizard(w); return; }
     if (s === "resumo" && tipoBloco === "AL") { w.step = "tecnologia"; setWizard(w); return; }
 
     // Barreiras: voltar step-a-step conforme sequência efetiva
