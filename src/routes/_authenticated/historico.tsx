@@ -9,13 +9,14 @@ export const Route = createFileRoute("/_authenticated/historico")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  concluida: { label: "Concluída", color: "#10B981", icon: CheckCircle },
-  aprovada: { label: "Aprovada", color: "#8B5CF6", icon: CheckCircle },
-  cancelada: { label: "Cancelada", color: "#EF4444", icon: XCircle },
-  pendente: { label: "Pendente", color: "#FFC000", icon: Clock },
-  agendada: { label: "Agendada", color: "#3B82F6", icon: CalendarDays },
-  em_andamento: { label: "Em andamento", color: "#F59E0B", icon: Play },
-  reprovada: { label: "Reprovada", color: "#EF4444", icon: XCircle },
+  pendente:              { label: "Pendente",              color: "#FFC000", icon: Clock },
+  em_andamento:          { label: "Pendente",              color: "#FFC000", icon: Play },
+  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "#60A5FA", icon: CalendarDays },
+  concluida:             { label: "Aguardando aprovação",  color: "#60A5FA", icon: CheckCircle },
+  aprovada:              { label: "Aprovada",              color: "#8B5CF6", icon: CheckCircle },
+  reprovada:             { label: "Reprovada",             color: "#EF4444", icon: XCircle },
+  cancelada:             { label: "Cancelada",             color: "#EF4444", icon: XCircle },
+  agendada:              { label: "Pendente",              color: "#FFC000", icon: CalendarDays },
 };
 
 type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "em_andamento" | "reprovada";

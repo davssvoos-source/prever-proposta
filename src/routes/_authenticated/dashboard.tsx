@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
+import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -30,11 +31,11 @@ const GLASS_LIGHT: React.CSSProperties = {
 };
 
 const STATUS_OPCOES = [
-  { key: 'todos',        label: 'Todos os status',   color: 'rgba(255,255,255,0.35)' },
-  { key: 'pendente',     label: 'Pendentes',         color: '#FFC000' },
-  { key: 'em_andamento', label: 'Ag. Aprovação',     color: '#3B82F6' },
-  { key: 'aprovada',     label: 'Aprovadas',         color: '#10B981' },
-  { key: 'reprovada',    label: 'Reprovadas',        color: '#EF4444' },
+  { key: 'todos',                label: 'Todos os status',       color: 'rgba(255,255,255,0.35)' },
+  { key: 'pendente',             label: 'Pendentes',             color: '#FFC000' },
+  { key: 'aguardando_aprovacao', label: 'Aguardando aprovação',  color: '#60A5FA' },
+  { key: 'aprovada',             label: 'Aprovadas',             color: '#10B981' },
+  { key: 'reprovada',            label: 'Reprovadas',            color: '#EF4444' },
 ];
 
 
@@ -183,18 +184,22 @@ function Dashboard() {
 
   const visitasExibidas = statusFiltro === 'todos'
     ? visitasFiltradas
-    : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
+    : statusFiltro === 'pendente'
+      ? visitasFiltradas.filter((v: any) => isPendenteBucket(v.status))
+      : statusFiltro === 'aguardando_aprovacao'
+        ? visitasFiltradas.filter((v: any) => isAguardandoAprovacaoBucket(v.status))
+        : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
 
-  const pendentes   = visitasExibidas.filter((v: any) => v.status === "pendente");
-  const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
-  const aprovadas   = visitasExibidas.filter((v: any) => v.status === "aprovada");
-  const reprovadas  = visitasExibidas.filter((v: any) => v.status === "reprovada");
+  const pendentes    = visitasExibidas.filter((v: any) => isPendenteBucket(v.status));
+  const aguardando   = visitasExibidas.filter((v: any) => isAguardandoAprovacaoBucket(v.status));
+  const aprovadas    = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const reprovadas   = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
-    { label: "Pendentes",     value: pendentes.length,   color: "#FFC000", icon: <Clock size={14} /> },
-    { label: "Ag. Aprovação", value: emAndamento.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
-    { label: "Aprovadas",     value: aprovadas.length,   color: "#34D399", icon: <CheckCircle2 size={14} /> },
-    { label: "Reprovadas",    value: reprovadas.length,  color: "#F87171", icon: <XCircle size={14} /> },
+    { label: "Pendentes",             value: pendentes.length,  color: "#FFC000", icon: <Clock size={14} /> },
+    { label: "Aguardando aprovação",  value: aguardando.length, color: "#60A5FA", icon: <CalendarDays size={14} /> },
+    { label: "Aprovadas",             value: aprovadas.length,  color: "#34D399", icon: <CheckCircle2 size={14} /> },
+    { label: "Reprovadas",            value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
   ];
 
 
@@ -661,7 +666,7 @@ function Dashboard() {
       ) : (
         <>
           {pendentes.length > 0 && <Section items={pendentes} />}
-          {emAndamento.length > 0 && <Section items={emAndamento} />}
+          {aguardando.length > 0 && <Section items={aguardando} />}
           
           {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
           {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
@@ -673,20 +678,13 @@ function Dashboard() {
   );
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  pendente:     { label: "Visita Técnica Pendente", color: "#FFC000",  bg: "rgba(255,192,0,0.12)"   },
-  em_andamento: { label: "Em Andamento",            color: "#60A5FA",  bg: "rgba(96,165,250,0.12)"  },
-  concluida:    { label: "Aguardando Aprovação",    color: "#FBBF24",  bg: "rgba(251,191,36,0.12)"  },
-  aprovada:     { label: "Aprovada",                color: "#34D399",  bg: "rgba(52,211,153,0.12)"  },
-  reprovada:    { label: "Reprovada",               color: "#F87171",  bg: "rgba(248,113,113,0.12)" },
-};
-
 function VisitaCard({ visita }: { visita: any }) {
   const { isLight } = useTheme();
-  const sInfoBase = STATUS_LABELS[visita.status] ?? { label: visita.status, color: "#fff", bg: "rgba(255,255,255,0.08)" };
-  const sInfo = isLight && visita.status === 'pendente'
+  const info = getStatusInfo(visita.status);
+  const sInfoBase = { label: info.label, color: info.color, bg: info.bg };
+  const sInfo = isLight && info.bucket === 'pendente'
     ? { label: sInfoBase.label, color: '#7a5000', bg: 'rgba(180,120,0,0.10)', border: 'rgba(180,120,0,0.25)' }
-    : { ...sInfoBase, border: `${sInfoBase.color}40` };
+    : { ...sInfoBase, border: info.border };
   const nome =
     visita.nome_predio ??
     visita.clientes?.nome ??

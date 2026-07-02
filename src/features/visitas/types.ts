@@ -12,7 +12,7 @@ export const STATUS_VISITA: Record<
     icon: "🕓",
   },
   aguardando_aprovacao: {
-    label: "Ag. Aprovação",
+    label: "Aguardando aprovação",
     color: "#60A5FA",
     bg: "rgba(96,165,250,0.12)",
     pin: "#60A5FA",

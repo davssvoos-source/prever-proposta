@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { getStatusInfo } from "@/lib/visita-status";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
@@ -181,14 +182,14 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pendente:              { label: "Pendente",              color: "rgba(255,192,0,0.9)" },
-  em_andamento:          { label: "Em andamento",          color: "rgba(96,165,250,0.9)" },
-  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "rgba(251,191,36,0.95)" },
-  concluida:             { label: "Concluída",             color: "rgba(52,211,153,0.9)" },
-  aprovada:              { label: "Aprovada",              color: "rgba(52,211,153,0.9)" },
-  reprovada:             { label: "Reprovada",             color: "rgba(248,113,113,0.9)" },
-};
+// Legado — proxy para o helper único (getStatusInfo). Mantido para minimizar
+// diff em referências espalhadas neste arquivo.
+const STATUS_LABELS: Record<string, { label: string; color: string }> = new Proxy({}, {
+  get: (_t, key: string) => {
+    const info = getStatusInfo(key);
+    return info.bucket ? { label: info.label, color: info.color } : undefined;
+  },
+}) as unknown as Record<string, { label: string; color: string }>;
 
 const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
   width: "100%",

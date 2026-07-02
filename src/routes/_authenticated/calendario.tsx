@@ -20,9 +20,11 @@ const STATUS_CORES: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluida: "Concluída",
+  em_andamento: "Pendente",
+  aguardando_aprovacao: "Aguardando aprovação",
+  concluida: "Aguardando aprovação",
   aprovada: "Aprovada",
+  reprovada: "Reprovada",
   cancelada: "Cancelada",
 };
 

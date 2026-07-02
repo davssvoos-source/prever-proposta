@@ -24,11 +24,13 @@ export const Route = createFileRoute("/_authenticated/gerencial")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pendente:    { label: "Pendente",     color: "#FFC000", icon: Clock },
-  em_andamento:{ label: "Em andamento", color: "#3B82F6", icon: Clock },
-  concluida:   { label: "Concluída",    color: "#10B981", icon: CheckCircle },
-  cancelada:   { label: "Cancelada",    color: "#EF4444", icon: XCircle },
-  aprovada:    { label: "Aprovada",     color: "#8B5CF6", icon: CheckCircle },
+  pendente:              { label: "Pendente",              color: "#FFC000", icon: Clock },
+  em_andamento:          { label: "Pendente",              color: "#FFC000", icon: Clock },
+  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "#60A5FA", icon: Clock },
+  concluida:             { label: "Aguardando aprovação",  color: "#60A5FA", icon: CheckCircle },
+  cancelada:             { label: "Cancelada",             color: "#EF4444", icon: XCircle },
+  aprovada:              { label: "Aprovada",              color: "#8B5CF6", icon: CheckCircle },
+  reprovada:             { label: "Reprovada",             color: "#EF4444", icon: XCircle },
 };
 
 function GerencialPage() {
