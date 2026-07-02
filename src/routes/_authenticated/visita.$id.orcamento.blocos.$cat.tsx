@@ -471,6 +471,8 @@ function BlocosWizardPage() {
           tecnologia: config.tecnologia ?? null,
           qtd_dome: config.qtdDome ?? null,
           qtd_bullet: config.qtdBullet ?? null,
+          perimetro: config.perimetro ?? null,
+          esquinas: config.esquinas ?? null,
           hh_padrao: 10,
           quantidade: 1,
           ordem: blocosAdicionados.length,
