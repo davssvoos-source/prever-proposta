@@ -84,6 +84,7 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/bloco
 // ─── Tipos internos do wizard ────────────────────────────────────────────────
 
 type WizardStep =
+  | "nome_acesso"
   | "eclusa"
   | "b1_tipo" | "b1_entrada" | "b1_saida" | "b1_abertura" | "b1_folhas" | "b1_tamanho" | "b1_peso"
   | "b2_tipo" | "b2_entrada" | "b2_saida" | "b2_abertura" | "b2_folhas" | "b2_tamanho" | "b2_peso"
@@ -94,6 +95,7 @@ type WizardStep =
 
 interface WizardState {
   step: WizardStep;
+  nomeAcesso: string;
   eclusa: boolean | null;
   b1: Partial<BarreiraConfig>;
   b2: Partial<BarreiraConfig>;
