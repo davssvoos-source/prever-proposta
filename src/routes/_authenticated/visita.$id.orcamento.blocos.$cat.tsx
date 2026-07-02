@@ -505,7 +505,7 @@ function BlocosWizardPage() {
   function iniciarWizard() {
     const primeiroStep: WizardStep =
       tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
-      : tipoBloco === "CER" ? "resumo"
+      : tipoBloco === "CER" ? "cerca_perimetro"
       : "eclusa";
     setWizard({
       step: primeiroStep,
@@ -513,6 +513,7 @@ function BlocosWizardPage() {
       b1: {}, b2: {},
       tecnologia: null,
       qtdDome: 0, qtdBullet: 0,
+      perimetro: 0, esquinas: 0,
     });
   }
 
