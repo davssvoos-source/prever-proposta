@@ -497,6 +497,41 @@ function BlocosWizardPage() {
     },
   });
 
+  // Itens de todos os blocos exibidos, para preview no card da lista
+  const blocoIdsAdicionados = blocosAdicionados.map((b: any) => b.id).filter(Boolean);
+  const { data: itensPorBloco = {} } = useQuery({
+    queryKey: ["visita_bloco_itens_preview", blocoIdsAdicionados.sort().join(",")],
+    enabled: blocoIdsAdicionados.length > 0,
+    queryFn: async () => {
+      const { data: itensRows, error } = await supabase
+        .from("visita_bloco_itens" as any)
+        .select("visita_bloco_id, cod_eq, qtd, removido, observacao")
+        .in("visita_bloco_id", blocoIdsAdicionados);
+      if (error) throw error;
+      const rows = ((itensRows as any[]) ?? []).filter((r) => !r.removido && Number(r.qtd) > 0);
+      const codes = Array.from(new Set(rows.map((r) => r.cod_eq)));
+      let eqMap: Record<string, { nome: string; modelo: string | null }> = {};
+      if (codes.length > 0) {
+        const { data: eqRows } = await supabase
+          .from("equipamentos")
+          .select("code,nome,modelo")
+          .in("code", codes);
+        for (const e of (eqRows as any[]) ?? []) {
+          eqMap[e.code] = { nome: e.nome, modelo: e.modelo };
+        }
+      }
+      const grouped: Record<string, { qtd: number; label: string }[]> = {};
+      for (const r of rows) {
+        const eq = eqMap[r.cod_eq];
+        const label = eq?.modelo || eq?.nome || r.observacao || r.cod_eq;
+        if (!grouped[r.visita_bloco_id]) grouped[r.visita_bloco_id] = [];
+        grouped[r.visita_bloco_id].push({ qtd: Number(r.qtd), label });
+      }
+      return grouped;
+    },
+  });
+
+
   const [wizard, setWizard] = useState<WizardState | null>(null);
   const [fotos, setFotos] = useState<{ localUrl: string; file: File }[]>([]);
   const [showOpcoes, setShowOpcoes] = useState(false);
