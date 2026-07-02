@@ -496,11 +496,12 @@ function VisitaDetail() {
   const canApprove =
     mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
   const isAdmin = canApprove;
-  const showSlide =
-    status === "pendente" && isTecnico && !visita?.data_hora_inicio;
-  const showFinalizar = status === "em_andamento" && isTecnico;
-  const showApproval = canApprove && status === "concluida";
+  const showIniciar   = status === "pendente";
+  const showContinuar = status === "em_andamento";
+  const showReagendar = status === "reprovada";
+  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada");
   const sInfo = status ? STATUS_LABELS[status] : null;
+
 
   const GLASS: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
