@@ -896,6 +896,8 @@ function BlocosWizardPage() {
               tecnologia={savedConfig.tecnologia ?? null}
               qtdDome={savedConfig.qtdDome}
               qtdBullet={savedConfig.qtdBullet}
+              perimetro={savedConfig.perimetro}
+              esquinas={savedConfig.esquinas}
               isLight={isLight}
               hideSubtotal
               hideConcluir
