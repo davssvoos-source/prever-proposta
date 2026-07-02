@@ -1260,7 +1260,7 @@ function VisitaDetail() {
 
 
       {/* Aprovação */}
-      {(status === "aprovada" || status === "reprovada" || showReprovarBtn) && (
+      {(status === "aprovada" || status === "reprovada" || status === "aguardando_aprovacao" || showReprovarBtn) && (
         <div style={GLASS}>
           {status === "aprovada" && (
             <div
