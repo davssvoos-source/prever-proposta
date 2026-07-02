@@ -132,6 +132,8 @@ function getStepLabel(step: WizardStep): string {
     case "b2_peso": return "Peso B2";
     case "tecnologia": return "Tecnologia";
     case "cftv_qtd": return "Qtd de câmeras";
+    case "cerca_perimetro": return "Perímetro";
+    case "cerca_esquinas": return "Esquinas";
     case "resumo": return "Resumo";
     default: return step;
   }
