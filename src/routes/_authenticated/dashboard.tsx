@@ -381,6 +381,21 @@ function Dashboard() {
                   }}
                 />
               )}
+              {/* Fade suave na borda esquerda do card */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '45%',
+                  background: isLight
+                    ? 'linear-gradient(to right, #ffffff 0%, #ffffff 65%, transparent 100%)'
+                    : 'linear-gradient(to right, rgba(8,8,12,0.18) 0%, rgba(8,8,12,0.18) 65%, transparent 100%)',
+                  zIndex: 2,
+                  pointerEvents: 'none',
+                }}
+              />
               <div style={{ position: 'relative', zIndex: 10 }}>
               <div
                 style={{
