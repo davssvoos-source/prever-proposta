@@ -1,9 +1,21 @@
 import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
@@ -82,6 +94,44 @@ function GerencialPage() {
       return data ?? [];
     },
   });
+
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin-gerencial"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return false;
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+      return (data ?? []).some((r) => r.role === "admin");
+    },
+    staleTime: 60_000,
+  });
+
+  const handleDelete = async (visitaId: string) => {
+    setIsDeleting(true);
+    try {
+      const { data: blocos } = await supabase.from("visita_blocos").select("id").eq("visita_id", visitaId);
+      const blocoIds = (blocos ?? []).map((b) => b.id);
+      if (blocoIds.length) {
+        await supabase.from("visita_bloco_itens").delete().in("visita_bloco_id", blocoIds);
+      }
+      await supabase.from("visita_blocos").delete().eq("visita_id", visitaId);
+      await supabase.from("fotos_visita").delete().eq("visita_id", visitaId);
+      await supabase.from("visita_orcamentos").delete().eq("visita_id", visitaId);
+      const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", visitaId);
+      if (error) throw error;
+      toast.success("Visita excluída com sucesso");
+      setDeletingId(null);
+      await queryClient.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+    } catch (e: any) {
+      toast.error("Erro ao excluir visita", { description: e?.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const tecMap = new Map(tecnicos.map((t) => [t.id, t.nome]));
 
@@ -360,12 +410,65 @@ function GerencialPage() {
                   color="#9ca3af"
                   style={{ flexShrink: 0, opacity: 0.6 }}
                 />
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingId(v.id);
+                    }}
+                    aria-label="Excluir visita"
+                    style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 6,
+                      borderRadius: 8,
+                      border: "none",
+                      background: "rgba(239, 68, 68, 0.1)",
+                      cursor: "pointer",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
+                    }}
+                  >
+                    <Trash2 size={16} color="#EF4444" />
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
     </div>
+
+    <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && !isDeleting && setDeletingId(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir visita técnica?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta ação é permanente e não pode ser desfeita. Todos os dados desta visita serão removidos.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isDeleting}
+            onClick={(e) => {
+              e.preventDefault();
+              if (deletingId) handleDelete(deletingId);
+            }}
+            className="rounded-full bg-[#EF4444] font-bold text-white hover:bg-[#DC2626]"
+          >
+            {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
     {/* FAB — Nova Proposta */}
     <button
