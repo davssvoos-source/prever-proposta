@@ -1,0 +1,1 @@
+ALTER TABLE public.equipamentos DROP CONSTRAINT IF EXISTS equipamentos_modelo_key;
