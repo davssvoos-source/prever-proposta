@@ -16,6 +16,7 @@ const SLUG_TO_TIPO: Record<string, string> = {
   cftv: "CFTV",
   alarme: "AL",
   cerca: "CER",
+  totem: "TOT",
   elevadores: "ELV",
 };
 
