@@ -1283,7 +1283,7 @@ function BlocosWizardPage() {
             <CheckCircle2 size={22} color="#22C55E" />
           </div>
 
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           {/* Editor de equipamentos (auto-semeado após salvar) */}
           {blocoSalvoId && savedConfig ? (
@@ -1464,7 +1464,7 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
-          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
+          {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           <div style={{ marginBottom: 24 }}>
             <BarreiraHeader
@@ -1538,7 +1538,7 @@ function BlocosWizardPage() {
         </div>
 
         {wizard && ((tipoBloco === "PED" || tipoBloco === "VEI") ? (
-          <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />
+          <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />
         ) : (
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
         ))}
