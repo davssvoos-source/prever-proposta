@@ -1150,6 +1150,65 @@ function BlocosWizardPage() {
 
     const opcoes = getOpcoes();
 
+    // Nome do acesso (PED / VEI) — primeira etapa
+    if (wizard.step === "nome_acesso") {
+      const nome = wizard.nomeAcesso ?? "";
+      const podeAvancar = nome.trim().length > 0;
+      const avancar = () => {
+        if (!podeAvancar) return;
+        setWizard({ ...wizard, nomeAcesso: nome.trim(), step: "eclusa" });
+      };
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          </div>
+          <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />
+
+          <div>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+              letterSpacing: "0.18em", textTransform: "uppercase",
+              color: isLight ? L.gold : "#FFC000", marginBottom: 10,
+            }}>
+              Nome do acesso
+            </div>
+            <input
+              autoFocus
+              value={nome}
+              onChange={(e) => setWizard({ ...wizard, nomeAcesso: e.target.value })}
+              onKeyDown={(e) => { if (e.key === "Enter") avancar(); }}
+              placeholder="Ex: Entrada Principal, Portão Lateral..."
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                borderRadius: 10,
+                border: isLight ? "1px solid rgba(180,120,0,0.35)" : "1px solid rgba(255,192,0,0.35)",
+                background: isLight ? "#ffffff" : "#1a1a1a",
+                color: isLight ? L.text : "#fff",
+                fontSize: 15,
+                outline: "none",
+                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "0 0 0 1px rgba(255,192,0,0.15) inset",
+              }}
+            />
+          </div>
+
+          <button
+            onClick={avancar}
+            disabled={!podeAvancar}
+            style={{
+              marginTop: 8, width: "100%", padding: "16px 0",
+              background: "#F59E0B", border: "none", borderRadius: 999,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: podeAvancar ? "pointer" : "not-allowed",
+              opacity: podeAvancar ? 1 : 0.5,
+            }}
+          >
+            CONTINUAR
+          </button>
+        </div>
+      );
+    }
 
     // CFTV: tela unificada de quantidade (Dome + Bullet)
     if (wizard.step === "cftv_qtd") {
