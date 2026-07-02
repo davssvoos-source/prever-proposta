@@ -1002,6 +1002,22 @@ function BlocosWizardPage() {
       );
     }
 
+    // Totem Inteligente: wizard próprio (lista dinâmica de totens)
+    if (tipoBloco === "TOT") {
+      return (
+        <TotemWizard
+          isLight={isLight}
+          salvando={salvarTotemMutation.isPending}
+          onVoltar={() => {
+            setWizard(null);
+            navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+          }}
+          onConcluir={(totens, itens) => salvarTotemMutation.mutate({ totens, itens })}
+        />
+      );
+    }
+
+
     const opcoes = getOpcoes();
 
 
