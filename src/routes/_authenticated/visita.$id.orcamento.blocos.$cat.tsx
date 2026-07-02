@@ -636,8 +636,10 @@ function BlocosWizardPage() {
     const w: WizardState = { ...wizard, b1: { ...wizard.b1 }, b2: { ...wizard.b2 } };
     const s = w.step;
 
-    if (s === "eclusa" || s === "tecnologia") { setWizard(null); return; }
-    if (s === "resumo" && tipoBloco === "CER") { setWizard(null); return; }
+    if (s === "eclusa" || s === "tecnologia" || s === "cerca_perimetro") { setWizard(null); return; }
+
+    if (s === "cerca_esquinas") { w.step = "cerca_perimetro"; setWizard(w); return; }
+    if (s === "resumo" && tipoBloco === "CER") { w.step = "cerca_esquinas"; setWizard(w); return; }
 
     if (s === "cftv_qtd") { w.step = "tecnologia"; setWizard(w); return; }
 
