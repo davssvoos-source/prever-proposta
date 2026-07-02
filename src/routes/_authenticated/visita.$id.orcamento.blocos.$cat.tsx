@@ -864,6 +864,134 @@ function BlocosWizardPage() {
       );
     }
 
+    // Cerca Elétrica: perímetro (slider 0–500, editável acima de 500)
+    if (wizard.step === "cerca_perimetro") {
+      const P = wizard.perimetro || 0;
+      const atMax = P >= 500;
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          </div>
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          <div style={QUESTION}>METRAGEM DO PERÍMETRO</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "24px 0" }}>
+            {atMax ? (
+              <input
+                type="number"
+                min={0}
+                value={P}
+                onChange={(e) => setWizard({ ...wizard, perimetro: Math.max(0, parseInt(e.target.value) || 0) })}
+                style={{
+                  width: 200, textAlign: "center", fontSize: 42, fontWeight: 800,
+                  fontFamily: "'Montserrat', sans-serif",
+                  background: "transparent", border: "none", outline: "none",
+                  color: isLight ? L.text : "#fff",
+                  borderBottom: `2px solid ${isLight ? L.gold : "#F59E0B"}`,
+                }}
+              />
+            ) : (
+              <div
+                onClick={() => setWizard({ ...wizard, perimetro: 500 })}
+                style={{
+                  minWidth: 180, textAlign: "center", fontSize: 42, fontWeight: 800,
+                  color: isLight ? L.text : "#fff", fontFamily: "'Montserrat', sans-serif",
+                  cursor: "pointer",
+                }}
+              >
+                {P} <span style={{ fontSize: 18, fontWeight: 600, color: isLight ? L.textSub : "rgba(255,255,255,0.6)" }}>m</span>
+              </div>
+            )}
+            <input
+              type="range"
+              min={0}
+              max={500}
+              value={Math.min(P, 500)}
+              onChange={(e) => setWizard({ ...wizard, perimetro: parseInt(e.target.value) })}
+              style={{ width: "100%", accentColor: "#F59E0B" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
+              <span>0 m</span>
+              <span>500 m {atMax ? "· toque no número para digitar mais" : ""}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setWizard({ ...wizard, step: "cerca_esquinas" })}
+            disabled={P <= 0}
+            style={{
+              width: "100%", padding: "16px 0",
+              background: "#F59E0B", border: "none", borderRadius: 999,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              opacity: P <= 0 ? 0.5 : 1,
+            }}
+          >
+            CONTINUAR
+          </button>
+        </div>
+      );
+    }
+
+    // Cerca Elétrica: quantidade de esquinas (0–10)
+    if (wizard.step === "cerca_esquinas") {
+      const E = wizard.esquinas || 0;
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          </div>
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+          <div style={QUESTION}>QUANTIDADE DE ESQUINAS</div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "24px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+              <button
+                onClick={() => setWizard({ ...wizard, esquinas: Math.max(0, E - 1) })}
+                style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.28)",
+                  background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                  color: isLight ? L.text : "#fff", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <Minus size={22} />
+              </button>
+              <div style={{
+                minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
+                color: isLight ? L.text : "#fff", fontFamily: "'Montserrat', sans-serif",
+              }}>
+                {E}
+              </div>
+              <button
+                onClick={() => setWizard({ ...wizard, esquinas: Math.min(10, E + 1) })}
+                style={{
+                  width: 56, height: 56, borderRadius: "50%", border: "none",
+                  background: "#F59E0B", color: "#fff", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 2px 12px rgba(245,158,11,0.35)",
+                }}
+              >
+                <Plus size={22} />
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>0 a 10</div>
+          </div>
+          <button
+            onClick={() => setWizard({ ...wizard, step: "resumo" })}
+            style={{
+              width: "100%", padding: "16px 0",
+              background: "#F59E0B", border: "none", borderRadius: 999,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+            }}
+          >
+            CONTINUAR
+          </button>
+        </div>
+      );
+    }
+
+
     if (wizard.step === "resumo") {
       const config = buildConfig();
 
