@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -24,13 +25,18 @@ const SERVICOS_LABELS: Record<string, string> = {
 };
 
 const TIPOS_NOMES: Record<string, string> = {
-  PED: "Acesso de Pedestres",
-  VEI: "Acesso de Veículos",
+  PED: "Eclusa de Pedestres",
+  VEI: "Eclusa Veicular",
   CFTV: "CFTV",
   AL: "Alarme",
   CER: "Cerca Elétrica",
-  CENT: "Central",
+  CENT: "Central de Portaria Remota",
+  ELV: "Elevadores",
+  TOT: "Totem Inteligente",
 };
+
+// Tipos que existem no máximo 1 por projeto — sem numeração
+const TIPOS_UNICOS = new Set(["CENT"]);
 
 function PreEnvioPage() {
   const { id: visitaId } = Route.useParams();
@@ -130,15 +136,35 @@ function PreEnvioPage() {
       const { error } = await supabase
         .from("visitas_tecnicas")
         .update({
-          status: "aprovada",
-          aprovado_em: new Date().toISOString(),
+          status: "aguardando_aprovacao",
+          status_aprovacao: "aguardando_aprovacao",
           data_hora_fim: new Date().toISOString(),
         } as any)
         .eq("id", visitaId);
       if (error) throw error;
+
+      // Notifica admins (fila de aprovação — mesma tela/fluxo)
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("cargo", "admin")
+        .eq("ativo", true);
+      const local = visita?.nome_predio || visita?.titulo || visita?.cliente?.nome || "local não informado";
+      if (admins && admins.length > 0) {
+        await supabase.from("notificacoes").insert(
+          admins.map((a: any) => ({
+            user_id: a.id,
+            tipo: "visita_aguardando_aprovacao",
+            titulo: "Visita aguardando aprovação",
+            corpo: `A visita técnica em ${local} foi concluída e aguarda sua aprovação.`,
+            visita_id: visitaId,
+            lida: false,
+          })),
+        );
+      }
     },
     onSuccess: () => {
-      toast.success("Visita concluída e aprovada!");
+      toast.success("Visita enviada para aprovação!");
       navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e?.message || "Erro ao concluir"),
@@ -431,129 +457,119 @@ function PreEnvioPage() {
               Nenhum bloco adicionado
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {blocos.map((bloco: any, idx: number) => (
-                <div key={bloco.id}>
-                  {idx > 0 && (
-                    <div
-                      style={{
-                        height: 1,
-                        background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
-                        marginBottom: 16,
-                      }}
-                    />
-                  )}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: isLight ? "#b87800" : "#FFC000",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: 0.6,
-                        fontFamily: "'Montserrat',sans-serif",
-                      }}
-                    >
-                      {TIPOS_NOMES[bloco.tipo_bloco] || bloco.tipo_bloco}
-                    </span>
-                    <span
-                      style={{
-                        color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)",
-                        fontSize: 11,
-                        fontFamily: "'Montserrat',sans-serif",
-                      }}
-                    >
-                      #{String(idx + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      color: isLight ? "#0a0b0e" : "#fff",
-                      fontSize: 14,
-                      fontWeight: 500,
-                      marginBottom: 6,
-                      fontFamily: "'Montserrat',sans-serif",
-                    }}
-                  >
-                    {bloco.nome_descritivo}
-                  </div>
-                  <div
-                    style={{
-                      color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
-                      fontSize: 11,
-                      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                      letterSpacing: 0.4,
-                      marginBottom: 10,
-                    }}
-                  >
-                    {bloco.codigo_bloco}
-                  </div>
-                  {bloco.fotos_urls && bloco.fotos_urls.length > 0 && (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(4, 1fr)",
-                        gap: 6,
-                      }}
-                    >
-                      {(bloco.fotos_urls as string[]).map((url, fi) => (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {(() => {
+                const counters: Record<string, number> = {};
+                return blocos.map((bloco: any, idx: number) => {
+                  const tipo = bloco.tipo_bloco;
+                  counters[tipo] = (counters[tipo] || 0) + 1;
+                  const base = TIPOS_NOMES[tipo] || tipo;
+                  const label = TIPOS_UNICOS.has(tipo)
+                    ? base
+                    : `${base} ${String(counters[tipo]).padStart(2, "0")}`;
+                  return (
+                    <div key={bloco.id}>
+                      {idx > 0 && (
                         <div
-                          key={fi}
                           style={{
-                            aspectRatio: "1 / 1",
-                            borderRadius: 8,
-                            overflow: "hidden",
-                            background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
-                            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.08)",
+                            height: 1,
+                            background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+                            marginBottom: 16,
+                          }}
+                        />
+                      )}
+                      <div
+                        style={{
+                          color: isLight ? "#b87800" : "#FFC000",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: 0.6,
+                          fontFamily: "'Montserrat',sans-serif",
+                          textTransform: "uppercase",
+                          marginBottom: 10,
+                        }}
+                      >
+                        {label}
+                      </div>
+                      <BlocoItensEditor
+                        visitaBlocoId={bloco.id}
+                        codigo={bloco.codigo_bloco}
+                        tipoBloco={bloco.tipo_bloco}
+                        tecnologia={bloco.tecnologia}
+                        qtdDome={bloco.qtd_dome}
+                        qtdBullet={bloco.qtd_bullet}
+                        perimetro={bloco.perimetro}
+                        esquinas={bloco.esquinas}
+                        isLight={isLight}
+                        hideSubtotal
+                        hideConcluir
+                      />
+                      {bloco.fotos_urls && bloco.fotos_urls.length > 0 && (
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(4, 1fr)",
+                            gap: 6,
+                            marginTop: 12,
                           }}
                         >
-                          {fotosSignadas[url] && (
-                            <img
-                              src={fotosSignadas[url]}
-                              alt=""
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          )}
+                          {(bloco.fotos_urls as string[]).map((url, fi) => (
+                            <div
+                              key={fi}
+                              style={{
+                                aspectRatio: "1 / 1",
+                                borderRadius: 8,
+                                overflow: "hidden",
+                                background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+                                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.08)",
+                              }}
+                            >
+                              {fotosSignadas[url] && (
+                                <img
+                                  src={fotosSignadas[url]}
+                                  alt=""
+                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
           )}
         </SectionCard>
 
-        {/* BOTÃO ENVIAR — ao final do scroll */}
+        {/* BOTÃO CONCLUIR — padrão ouro (verde) */}
         <div style={{ padding: "24px 0 48px" }}>
           <button
             onClick={() => enviarMutation.mutate()}
             disabled={enviarMutation.isPending}
             style={{
               width: "100%",
-              padding: "18px 0",
-              background: enviarMutation.isPending ? "#166534" : "#16a34a",
-              border: "none",
-              borderRadius: 16,
-              color: "#FFFFFF",
-              fontSize: 16,
-              fontWeight: 800,
+              height: 56,
+              borderRadius: 14,
+              border: 0,
               cursor: enviarMutation.isPending ? "not-allowed" : "pointer",
-              letterSpacing: 0.5,
-              fontFamily: "'Montserrat',sans-serif",
-              boxShadow: enviarMutation.isPending
-                ? "none"
-                : "0 0 24px rgba(34,197,94,0.35), 0 4px 16px rgba(34,197,94,0.2)",
-              transition: "box-shadow 0.2s, background 0.2s",
+              color: "#FFFFFF",
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 700,
+              fontSize: 13,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              background:
+                "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+              boxShadow:
+                "0 4px 20px rgba(16,185,129,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
+              textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+              opacity: enviarMutation.isPending ? 0.75 : 1,
+              transition: "all 0.15s ease",
             }}
           >
-            {enviarMutation.isPending ? "CONCLUINDO..." : "CONCLUIR VISITA"}
+            {enviarMutation.isPending ? "ENVIANDO..." : "CONCLUIR VISITA"}
           </button>
         </div>
       </div>

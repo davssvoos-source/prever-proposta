@@ -182,11 +182,12 @@ function initials(name: string) {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pendente:     { label: "Pendente",     color: "rgba(255,192,0,0.9)" },
-  em_andamento: { label: "Em andamento", color: "rgba(96,165,250,0.9)" },
-  concluida:    { label: "Concluída",    color: "rgba(52,211,153,0.9)" },
-  aprovada:     { label: "Aprovada",     color: "rgba(52,211,153,0.9)" },
-  reprovada:    { label: "Reprovada",    color: "rgba(248,113,113,0.9)" },
+  pendente:              { label: "Pendente",              color: "rgba(255,192,0,0.9)" },
+  em_andamento:          { label: "Em andamento",          color: "rgba(96,165,250,0.9)" },
+  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "rgba(251,191,36,0.95)" },
+  concluida:             { label: "Concluída",             color: "rgba(52,211,153,0.9)" },
+  aprovada:              { label: "Aprovada",              color: "rgba(52,211,153,0.9)" },
+  reprovada:             { label: "Reprovada",             color: "rgba(248,113,113,0.9)" },
 };
 
 const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
@@ -556,7 +557,8 @@ function VisitaDetail() {
   const showIniciar   = status === "pendente";
   const showContinuar = status === "em_andamento";
   const showReagendar = status === "reprovada";
-  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada");
+  const showAprovarBtn  = canApprove && status === "aguardando_aprovacao";
+  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada" || status === "aguardando_aprovacao");
   const sInfo = status ? STATUS_LABELS[status] : null;
 
 
@@ -1258,7 +1260,7 @@ function VisitaDetail() {
 
 
       {/* Aprovação */}
-      {(status === "aprovada" || status === "reprovada" || showReprovarBtn) && (
+      {(status === "aprovada" || status === "reprovada" || status === "aguardando_aprovacao" || showReprovarBtn) && (
         <div style={GLASS}>
           {status === "aprovada" && (
             <div
@@ -1297,6 +1299,54 @@ function VisitaDetail() {
               {visita.motivo_reprovacao ? ` — ${visita.motivo_reprovacao}` : ""}
             </div>
           )}
+
+          {status === "aguardando_aprovacao" && !showAprovarBtn && (
+            <div
+              style={{
+                background: "rgba(251,191,36,0.09)",
+                border: "1px solid rgba(251,191,36,0.28)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 300,
+                fontSize: 13,
+                color: "#FBBF24",
+              }}
+            >
+              Aguardando aprovação do administrador.
+            </div>
+          )}
+
+          {showAprovarBtn && !showReprovarForm && (
+            <button
+              onClick={() => aprovarMutation.mutate({ aprovar: true })}
+              disabled={aprovarMutation.isPending}
+              style={{
+                width: "100%",
+                height: 48,
+                borderRadius: 14,
+                border: 0,
+                cursor: aprovarMutation.isPending ? "not-allowed" : "pointer",
+                color: "#FFFFFF",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                background: "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                boxShadow:
+                  "0 4px 20px rgba(16,185,129,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
+                textShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                marginBottom: 8,
+                opacity: aprovarMutation.isPending ? 0.75 : 1,
+              }}
+            >
+              <CheckCircle size={15} style={{ display: "inline", verticalAlign: "-2px", marginRight: 6 }} />
+              Aprovar visita
+            </button>
+          )}
+
+
 
           {showReprovarBtn && !showReprovarForm && (
             <button
