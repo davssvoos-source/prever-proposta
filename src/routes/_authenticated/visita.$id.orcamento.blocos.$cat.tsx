@@ -770,18 +770,21 @@ function BlocosWizardPage() {
     onError: (e: any) => toast.error(e.message ?? "Erro ao salvar Totem Inteligente"),
   });
 
-  function iniciarWizard() {
+  function iniciarWizard(overrides?: Partial<WizardState>) {
     const primeiroStep: WizardStep =
-      tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
+      tipoBloco === "PED" || tipoBloco === "VEI" ? "nome_acesso"
+      : tipoBloco === "CFTV" || tipoBloco === "AL" ? "tecnologia"
       : tipoBloco === "CER" ? "cerca_perimetro"
       : "eclusa";
     setWizard({
       step: primeiroStep,
+      nomeAcesso: "",
       eclusa: tipoBloco === "CER" ? false : null,
       b1: {}, b2: {},
       tecnologia: null,
       qtdDome: 0, qtdBullet: 0,
       perimetro: 0, esquinas: 0,
+      ...overrides,
     });
   }
 
