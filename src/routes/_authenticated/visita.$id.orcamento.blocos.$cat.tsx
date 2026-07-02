@@ -1488,8 +1488,7 @@ function BlocosWizardPage() {
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                           <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
-                            {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                            <OptionIcon valor={op.valor} />
                             <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                           </span>
                         </button>
@@ -1514,8 +1513,7 @@ function BlocosWizardPage() {
                     {opcoes.map((op) => (
                       <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                         <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "CAT" && <RefreshCw size={18} color="#F59E0B" />}
-                          {(wizard.step === "b1_tipo" || wizard.step === "b2_tipo") && op.valor === "PORP" && <DoorClosed size={18} color="#F59E0B" />}
+                          <OptionIcon valor={op.valor} />
                           <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                         </span>
                       </button>
@@ -1550,6 +1548,7 @@ function BlocosWizardPage() {
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
               <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <OptionIcon valor={op.valor} />
                 <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
               </span>
             </button>
