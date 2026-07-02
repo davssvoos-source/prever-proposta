@@ -666,7 +666,7 @@ function Dashboard() {
       ) : (
         <>
           {pendentes.length > 0 && <Section items={pendentes} />}
-          {emAndamento.length > 0 && <Section items={emAndamento} />}
+          {aguardando.length > 0 && <Section items={aguardando} />}
           
           {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
           {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
