@@ -113,7 +113,12 @@ function GerencialPage() {
   const handleDelete = async (visitaId: string) => {
     setIsDeleting(true);
     try {
-      await supabase.from("visita_bloco_itens").delete().eq("visita_id", visitaId);
+      const { data: blocos } = await supabase.from("visita_blocos").select("id").eq("visita_id", visitaId);
+      const blocoIds = (blocos ?? []).map((b) => b.id);
+      if (blocoIds.length) {
+        await supabase.from("visita_bloco_itens").delete().in("visita_bloco_id", blocoIds);
+      }
+      await supabase.from("visita_blocos").delete().eq("visita_id", visitaId);
       await supabase.from("fotos_visita").delete().eq("visita_id", visitaId);
       await supabase.from("visita_orcamentos").delete().eq("visita_id", visitaId);
       const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", visitaId);
