@@ -562,6 +562,7 @@ function BlocosWizardPage() {
         qtd_bullet: config.qtdBullet ?? null,
         perimetro: config.perimetro ?? null,
         esquinas: config.esquinas ?? null,
+        nome_acesso: wizard?.nomeAcesso?.trim() || null,
         hh_padrao: 10,
         quantidade: 1,
         ...(currentBlocoId ? {} : { ordem: blocosAdicionados.length, fotos_urls: fotosUrls }),
