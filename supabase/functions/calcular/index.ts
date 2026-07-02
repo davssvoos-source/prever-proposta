@@ -98,9 +98,15 @@ Deno.serve(async (req) => {
     const regras = await loadRegras();
 
     if (body.action === "itens_bloco") {
-      const bom = (String(body.tipo).toUpperCase() === "CFTV" || body.tech)
-        ? computeCftvItens(body.tech, body.nDome, body.nBullet, regras.regras_cftv, body.qtd ?? 1)
-        : computeBlocoItens(body.codigo, regras.regras_blocos, body.qtd ?? 1);
+      const t = String(body.tipo ?? "").toUpperCase();
+      let bom: Record<string, number>;
+      if (t === "CERCA") {
+        bom = computeCercaItens(body.perimetro, body.esquinas, regras.regras_cerca, body.qtd ?? 1);
+      } else if (t === "CFTV" || body.tech) {
+        bom = computeCftvItens(body.tech, body.nDome, body.nBullet, regras.regras_cftv, body.qtd ?? 1);
+      } else {
+        bom = computeBlocoItens(body.codigo, regras.regras_blocos, body.qtd ?? 1);
+      }
       return json({ itens: enrich(bom, regras.equipamentos) });
     }
 
