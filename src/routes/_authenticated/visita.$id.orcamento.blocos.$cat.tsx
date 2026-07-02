@@ -62,37 +62,51 @@ const L = {
 const B1_STEPS: WizardStep[] = ["b1_tipo", "b1_entrada", "b1_saida", "b1_abertura", "b1_folhas", "b1_tamanho", "b1_peso"];
 const B2_STEPS: WizardStep[] = ["b2_tipo", "b2_entrada", "b2_saida", "b2_abertura", "b2_folhas", "b2_tamanho", "b2_peso"];
 
-function BarreiraIndicador({ numero, isLight }: { numero: "01" | "02"; isLight: boolean }) {
+function BarreiraHeader({
+  label,
+  done,
+  isLight,
+  collapsible,
+  collapsed,
+  onToggle,
+}: {
+  label: string;
+  done: boolean;
+  isLight: boolean;
+  collapsible?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
+}) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          border: isLight ? `2px solid ${L.gold}` : "2px solid #FFD700",
-          background: isLight ? "rgba(180,120,0,0.06)" : "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>{numero}</span>
-      </div>
-      {numero === "01" ? (
-        <span style={{ display: "flex", alignItems: "center", gap: 8, color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
-          <DoorOpen size={20} color="#F59E0B" />
-          Porta externa
-        </span>
-      ) : (
-        <span style={{ color: isLight ? L.gold : "#FFD700", fontSize: 13, fontWeight: 700, letterSpacing: 1 }}>
-          BARREIRA 2
-        </span>
+    <div
+      onClick={collapsible ? onToggle : undefined}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        marginBottom: collapsed ? 0 : 20, cursor: collapsible ? "pointer" : "default",
+      }}
+    >
+      <span style={{
+        display: "flex", alignItems: "center", gap: 10,
+        color: done ? "#22C55E" : isLight ? L.gold : "#FFD700",
+        fontSize: 13, fontWeight: 700, letterSpacing: 1,
+      }}>
+        <DoorOpen size={20} color={done ? "#22C55E" : "#F59E0B"} />
+        {label} {done ? "✓" : ""}
+      </span>
+      {collapsible && (
+        <div style={{
+          width: 28, height: 28, borderRadius: "50%",
+          background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.1)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "transform 0.2s", transform: collapsed ? "rotate(0deg)" : "rotate(180deg)",
+        }}>
+          <ChevronDown size={16} color={isLight ? L.text : "#FFFFFF"} />
+        </div>
       )}
     </div>
   );
 }
+
 
 // ─── Step Indicator ────────────────────────────────────────────────────────
 
