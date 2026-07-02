@@ -306,11 +306,15 @@ function MacroStepIndicator({
   step,
   tipo,
   eclusa,
+  b1Tipo,
+  b2Tipo,
   isLight,
 }: {
   step: WizardStep;
   tipo: TipoBloco;
   eclusa: boolean | null;
+  b1Tipo?: string;
+  b2Tipo?: string;
   isLight: boolean;
 }) {
   const isB1 = B1_STEPS.includes(step);
@@ -318,49 +322,72 @@ function MacroStepIndicator({
   const isResumo = step === "resumo";
   const isEclusa = step === "eclusa";
 
-  const externaLabel = tipo === "VEI" ? "Barreira Externa" : "Porta Externa";
-  const internaLabel = tipo === "VEI" ? "Barreira Interna" : "Porta Interna";
+  function labelFor(prefix: "Externa" | "Interna", tipoSel?: string): string {
+    if (tipo === "PED") {
+      if (tipoSel === "CAT") return `Catraca ${prefix}`;
+      if (tipoSel === "PORP") return `Porta ${prefix}`;
+      return `Porta ${prefix}`;
+    }
+    if (tipo === "VEI") {
+      if (tipoSel === "CAN") return `Cancela ${prefix}`;
+      if (tipoSel === "PORV") return `Portão ${prefix}`;
+      return `Barreira ${prefix}`;
+    }
+    return prefix;
+  }
+
+  const externaLabel = labelFor("Externa", b1Tipo);
+  const internaLabel = labelFor("Interna", b2Tipo);
+
+  const eclusaDenied = !isEclusa && eclusa === false;
 
   const macros = [
-    { label: "Eclusa", current: isEclusa, completed: !isEclusa },
-    { label: externaLabel, current: isB1, completed: isB2 || isResumo },
-    { label: internaLabel, current: isB2, completed: isResumo && !!eclusa },
+    { label: "Eclusa", current: isEclusa, completed: !isEclusa, denied: eclusaDenied },
+    { label: externaLabel, current: isB1, completed: isB2 || isResumo, denied: false },
+    { label: internaLabel, current: isB2, completed: isResumo && !!eclusa, denied: false, hidden: eclusa === false },
   ];
 
   const goldSolid = "#F59E0B";
+  const redSolid = "#EF4444";
   const goldText = isLight ? "#b87800" : "#FFC000";
   const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
   const currentLabel = isLight ? "#0a0b0e" : "#fff";
 
+  const visibleMacros = macros.filter((m) => !m.hidden);
+
   return (
     <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
-        {macros.map((m, i) => {
-          const isLast = i === macros.length - 1;
+        {visibleMacros.map((m, i) => {
+          const isLast = i === visibleMacros.length - 1;
           const active = m.current || m.completed;
+          const bg = m.denied ? redSolid : active ? goldSolid : futureCircleBg;
+          const border = m.denied
+            ? `1.5px solid ${redSolid}`
+            : active ? `1.5px solid ${goldSolid}` : futureBorder;
           const lineColor = m.completed
-            ? (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)")
+            ? (m.denied ? "rgba(239,68,68,0.45)" : (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)"))
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
           return (
             <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
                 <div style={{
                   width: 24, height: 24, borderRadius: "50%",
-                  background: active ? goldSolid : futureCircleBg,
-                  border: active ? `1.5px solid ${goldSolid}` : futureBorder,
+                  background: bg,
+                  border,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 11, fontWeight: 700,
-                  color: active ? "#fff" : futureText,
+                  color: active || m.denied ? "#fff" : futureText,
                   flexShrink: 0, transition: "all 0.2s ease",
                 }}>
-                  {m.completed ? <Check size={12} /> : (i + 1)}
+                  {m.denied ? <X size={12} /> : m.completed ? <Check size={12} /> : (i + 1)}
                 </div>
                 <span style={{
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 11, whiteSpace: "nowrap",
-                  color: m.completed ? goldText : m.current ? currentLabel : futureText,
-                  opacity: !active ? 0.55 : 1, transition: "all 0.2s ease",
+                  color: m.denied ? redSolid : m.completed ? goldText : m.current ? currentLabel : futureText,
+                  opacity: !active && !m.denied ? 0.55 : 1, transition: "all 0.2s ease",
                 }}>
                   {m.label}
                 </span>
