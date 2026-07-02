@@ -8,7 +8,7 @@
 //
 // deno-lint-ignore-file no-explicit-any
 import {
-  computeBlocoItens, computeCftvItens, computeProjeto, computeBomFromItens,
+  computeBlocoItens, computeCftvItens, computeCercaItens, computeProjeto, computeBomFromItens,
   validarPortaria, enrich,
 } from "../_shared/engine.js";
 
