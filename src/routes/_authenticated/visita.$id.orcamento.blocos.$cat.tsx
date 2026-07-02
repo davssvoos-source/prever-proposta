@@ -1668,7 +1668,7 @@ function BlocosWizardPage() {
         )}
       </div>
 
-      <button onClick={iniciarWizard} style={{
+      <button onClick={() => iniciarWizard()} style={{
         marginTop: 8, padding: "16px 0",
         background: isLight ? L.goldBg : "linear-gradient(135deg, #FFD700, #FFB300)",
         border: isLight ? L.goldBorder : "none", borderRadius: 14,
