@@ -1,6 +1,6 @@
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-export type TipoBloco = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT";
+export type TipoBloco = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV";
 
 export interface BarreiraConfig {
   tipo: string;
@@ -218,6 +218,7 @@ export const CAT_SLUG_TO_TIPO: Record<string, TipoBloco> = {
   cftv: "CFTV",
   alarme: "AL",
   cerca: "CER",
+  elevadores: "ELV",
 };
 
 export const CAT_NOMES: Record<string, string> = {
@@ -227,4 +228,5 @@ export const CAT_NOMES: Record<string, string> = {
   AL: "Alarme",
   CER: "Cerca Elétrica",
   CENT: "Central",
+  ELV: "Elevadores",
 };

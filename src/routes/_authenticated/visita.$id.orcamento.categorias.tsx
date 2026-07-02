@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap } from "lucide-react";
+import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -16,6 +16,7 @@ const SLUG_TO_TIPO: Record<string, string> = {
   cftv: "CFTV",
   alarme: "AL",
   cerca: "CER",
+  elevadores: "ELV",
 };
 
 
@@ -27,6 +28,7 @@ const CATEGORIAS = [
   { id: "cftv", label: "CFTV", icon: <Camera size={32} color={ICON_COLOR} />, desc: "Câmeras, DVRs e NVRs" },
   { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={ICON_COLOR} />, desc: "Sensores, centrais e sirenes" },
   { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={ICON_COLOR} />, desc: "Centrais e eletrificadores" },
+  { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={ICON_COLOR} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
 ];
 
 
@@ -44,6 +46,7 @@ function CategoriasPage() {
     { id: "cftv", label: "CFTV", icon: <Camera size={32} color={iconColor} />, desc: "Câmeras, DVRs e NVRs" },
     { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={iconColor} />, desc: "Sensores, centrais e sirenes" },
     { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={iconColor} />, desc: "Centrais e eletrificadores" },
+    { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={iconColor} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
   ];
 
   const { data: visita } = useQuery({
@@ -120,7 +123,7 @@ function CategoriasPage() {
 
 
   return (
-    <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "12px 14px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
         <button
@@ -247,7 +250,7 @@ function CategoriasPage() {
         );
       })}
 
-      {/* Botão ESCOPO CONCLUÍDO fixo */}
+      {/* Botão ESCOPO CONCLUÍDO (inline, ao final do scroll) */}
       <button
         onClick={() => {
           if (totalBlocos === 0) {
@@ -257,10 +260,9 @@ function CategoriasPage() {
           navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
         }}
         style={{
-          position: "fixed",
-          bottom: "calc(72px + 16px)",
-          left: 16,
-          right: 16,
+          width: "100%",
+          marginTop: 24,
+          marginBottom: 32,
           height: 56,
           borderRadius: 28,
           background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
@@ -279,7 +281,6 @@ function CategoriasPage() {
           boxShadow: isLight
             ? "0 4px 16px rgba(180,120,0,0.30)"
             : "0 4px 24px rgba(255,192,0,0.35)",
-          zIndex: 50,
         }}
       >
         Escopo concluído
