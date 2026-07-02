@@ -8,7 +8,7 @@
 //
 // deno-lint-ignore-file no-explicit-any
 import {
-  computeBlocoItens, computeCftvItens, computeProjeto, computeBomFromItens,
+  computeBlocoItens, computeCftvItens, computeCercaItens, computeProjeto, computeBomFromItens,
   validarPortaria, enrich,
 } from "../_shared/engine.js";
 
@@ -32,6 +32,8 @@ async function tbl(path: string): Promise<any[]> {
 }
 
 async function loadRegras() {
+  let cercaRows: any[] = [];
+  try { cercaRows = await tbl("regras_cerca?select=sigla,cod_eq"); } catch (_) { /* opcional */ }
   const [rb, rc, eqRows] = await Promise.all([
     tbl("regras_blocos?select=*"),
     tbl("regras_cftv?select=*"),
@@ -46,7 +48,9 @@ async function loadRegras() {
       custo, preco: +(custo * markup).toFixed(2),
     };
   }
-  return { regras_blocos: rb, regras_cftv: rc, equipamentos };
+  const regras_cerca: Record<string, string> = {};
+  for (const r of cercaRows) if (r?.sigla && r?.cod_eq) regras_cerca[String(r.sigla).toUpperCase()] = r.cod_eq;
+  return { regras_blocos: rb, regras_cftv: rc, regras_cerca, equipamentos };
 }
 
 async function loadVisita(visita_id: string) {
@@ -94,9 +98,15 @@ Deno.serve(async (req) => {
     const regras = await loadRegras();
 
     if (body.action === "itens_bloco") {
-      const bom = (String(body.tipo).toUpperCase() === "CFTV" || body.tech)
-        ? computeCftvItens(body.tech, body.nDome, body.nBullet, regras.regras_cftv, body.qtd ?? 1)
-        : computeBlocoItens(body.codigo, regras.regras_blocos, body.qtd ?? 1);
+      const t = String(body.tipo ?? "").toUpperCase();
+      let bom: Record<string, number>;
+      if (t === "CERCA") {
+        bom = computeCercaItens(body.perimetro, body.esquinas, regras.regras_cerca, body.qtd ?? 1);
+      } else if (t === "CFTV" || body.tech) {
+        bom = computeCftvItens(body.tech, body.nDome, body.nBullet, regras.regras_cftv, body.qtd ?? 1);
+      } else {
+        bom = computeBlocoItens(body.codigo, regras.regras_blocos, body.qtd ?? 1);
+      }
       return json({ itens: enrich(bom, regras.equipamentos) });
     }
 
