@@ -761,6 +761,8 @@ function BlocosWizardPage() {
       tecnologia: wizard?.tecnologia ?? undefined,
       qtdDome: wizard?.qtdDome,
       qtdBullet: wizard?.qtdBullet,
+      perimetro: wizard?.perimetro,
+      esquinas: wizard?.esquinas,
       portaria,
     };
   }
