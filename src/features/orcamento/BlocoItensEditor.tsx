@@ -22,6 +22,8 @@ interface Props {
   tecnologia?: string | null;
   qtdDome?: number;
   qtdBullet?: number;
+  perimetro?: number;
+  esquinas?: number;
   isLight: boolean;
   onConcluir?: () => void;
   hideSubtotal?: boolean;
