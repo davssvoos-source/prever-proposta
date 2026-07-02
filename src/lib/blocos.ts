@@ -22,6 +22,8 @@ export interface BlocoConfig {
   tecnologia?: string;
   qtdDome?: number;
   qtdBullet?: number;
+  perimetro?: number;
+  esquinas?: number;
   /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial). Default: 'PR'.
    *  Origem: campo `sistema_proposto` da visita — quando ausente assume PR. */
   portaria?: "PR" | "PP";
