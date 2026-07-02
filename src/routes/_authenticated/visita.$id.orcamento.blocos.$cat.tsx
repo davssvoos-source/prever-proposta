@@ -17,6 +17,8 @@ import {
   CAT_NOMES,
 } from "@/lib/blocos";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
+import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
