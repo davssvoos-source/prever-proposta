@@ -185,18 +185,18 @@ function Dashboard() {
     ? visitasFiltradas
     : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
 
-  const pendentes = visitasExibidas.filter((v: any) => v.status === "pendente");
+  const pendentes   = visitasExibidas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitasExibidas.filter((v: any) => v.status === "aguardando_aprovacao");
-  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovado");
-  const reprovadas = visitasExibidas.filter((v: any) => v.status === "reprovada");
+  const aprovadas   = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const reprovadas  = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
-    { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={14} /> },
-    { label: "Ag. Aprovação", value: aguardando.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
-    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={14} /> },
-    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
+    { label: "Pendentes",     value: pendentes.length,   color: "#FFC000", icon: <Clock size={14} /> },
+    { label: "Ag. Aprovação", value: emAndamento.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
+    { label: "Aprovadas",     value: aprovadas.length,   color: "#34D399", icon: <CheckCircle2 size={14} /> },
+    { label: "Reprovadas",    value: reprovadas.length,  color: "#F87171", icon: <XCircle size={14} /> },
   ];
+
 
   // ─── Banner data ──────────────────────────────────────────
   const visitasHoje = visitas.filter((v: any) => {
