@@ -1344,82 +1344,53 @@ function VisitaDetail() {
       )}
 
 
-      {/* CTA fixo: Finalizar */}
-      {showFinalizar && (
-        <div
-          style={{
-            marginTop: 24,
-            marginBottom: 32,
-            paddingLeft: 16,
-            paddingRight: 16,
-          }}
-        >
-          <button
-            onClick={async () => {
-              await finalizarMutation.mutateAsync();
-              fetch("https://grupoprever.app.n8n.cloud/webhook/visita-concluida", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ visita_id: id }),
-              }).catch(() => {});
-            }}
-            disabled={finalizarMutation.isPending}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 28,
-              background: "rgba(239,68,68,0.12)",
-              border: "1.5px solid rgba(239,68,68,0.35)",
-              color: "#EF4444",
-              cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 13,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              opacity: finalizarMutation.isPending ? 0.6 : 1,
-            }}
-          >
-            <Square size={18} />
-            {finalizarMutation.isPending ? "Finalizando…" : "Finalizar Visita"}
-          </button>
+      {/* CTA principal por status */}
+      {(showIniciar || showContinuar || showReagendar) && (
+        <div style={{ marginTop: 16, paddingLeft: 16, paddingRight: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {showIniciar && (
+            <button
+              onClick={() => iniciarMutation.mutate()}
+              disabled={iniciarMutation.isPending}
+              style={CTA_GOLD(iniciarMutation.isPending)}
+            >
+              <Play size={18} />
+              {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+            </button>
+          )}
+
+          {showContinuar && (
+            <button
+              onClick={() => navigate({ to: "/visita/$id/orcamento", params: { id } })}
+              style={CTA_GOLD(false)}
+            >
+              <Play size={18} />
+              Continuar Orçamento
+            </button>
+          )}
+
+          {showReagendar && (
+            <>
+              <button
+                onClick={() => navigate({ to: "/visita/$id/reagendar", params: { id } })}
+                style={CTA_GOLD(false)}
+              >
+                <Play size={18} style={{ transform: "rotate(-45deg)" }} />
+                Reagendar Visita
+              </button>
+              <button
+                onClick={() => iniciarMutation.mutate()}
+                disabled={iniciarMutation.isPending}
+                style={CTA_GOLD_OUTLINE(iniciarMutation.isPending)}
+              >
+                <Play size={18} />
+                {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {showSlide && (
-        <div className="mt-4 pb-4" style={{ paddingLeft: 16, paddingRight: 16 }}>
-          <button
-            onClick={() => iniciarMutation.mutate()}
-            disabled={iniciarMutation.isPending}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 28,
-              background: "#F59E0B",
-              color: "#0A0A0A",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              opacity: iniciarMutation.isPending ? 0.7 : 1,
-            }}
-          >
-            <Play size={18} />
-            {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
-          </button>
-        </div>
-      )}
+
 
     </div>
   );
