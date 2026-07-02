@@ -1095,7 +1095,7 @@ function BlocosWizardPage() {
 
           {showB2 && (
             <div ref={b2Ref}>
-              <BarreiraIndicador numero="02" isLight={isLight} />
+              <BarreiraHeader label={tipoBloco === "VEI" ? "Barreira Interna" : "Porta Interna"} done={false} isLight={isLight} />
 
               {stepsRespondidosB2.map((step) => (<ConfirmedAnswer key={step} step={step} />))}
 
