@@ -1,1 +1,4 @@
 project_id = "jtyautqmftpwzinvhfck"
+
+[functions.notify-upcoming-visits]
+verify_jwt = false
