@@ -552,6 +552,59 @@ function BlocosWizardPage() {
   const [blocoSalvoId, setBlocoSalvoId] = useState<string | null>(null);
   const [savedConfig, setSavedConfig] = useState<BlocoConfig | null>(null);
 
+  // Referência para bloquear auto-save quando abrimos um bloco existente para edição
+  // (declarado adiante como autoSaveGuardRef)
+  function abrirBlocoParaEditar(bloco: any) {
+    const cfg: BlocoConfig = {
+      tipoBloco: bloco.tipo_bloco as TipoBloco,
+      eclusa: !!bloco.eclusa,
+      b1: bloco.b1_tipo
+        ? {
+            tipo: bloco.b1_tipo,
+            entrada: bloco.b1_entrada,
+            saida: bloco.b1_saida,
+            abertura: bloco.b1_abertura ?? undefined,
+            folhas: bloco.b1_folhas ?? undefined,
+            tamanho: bloco.b1_tamanho ?? undefined,
+            peso: bloco.b1_peso ?? undefined,
+          }
+        : undefined,
+      b2: bloco.b2_tipo
+        ? {
+            tipo: bloco.b2_tipo,
+            entrada: bloco.b2_entrada,
+            saida: bloco.b2_saida,
+            abertura: bloco.b2_abertura ?? undefined,
+            folhas: bloco.b2_folhas ?? undefined,
+            tamanho: bloco.b2_tamanho ?? undefined,
+            peso: bloco.b2_peso ?? undefined,
+          }
+        : undefined,
+      tecnologia: bloco.tecnologia ?? undefined,
+      qtdDome: bloco.qtd_dome ?? undefined,
+      qtdBullet: bloco.qtd_bullet ?? undefined,
+      perimetro: bloco.perimetro ?? undefined,
+      esquinas: bloco.esquinas ?? undefined,
+      portaria,
+    };
+    setBlocoSalvoId(bloco.id);
+    setSavedConfig(cfg);
+    autoSaveGuardRef.current = JSON.stringify(cfg);
+    setWizard({
+      step: "resumo",
+      nomeAcesso: bloco.nome_acesso ?? "",
+      eclusa: !!bloco.eclusa,
+      b1: (cfg.b1 as Partial<BarreiraConfig>) ?? {},
+      b2: (cfg.b2 as Partial<BarreiraConfig>) ?? {},
+      tecnologia: bloco.tecnologia ?? null,
+      qtdDome: bloco.qtd_dome ?? 0,
+      qtdBullet: bloco.qtd_bullet ?? 0,
+      perimetro: bloco.perimetro ?? 0,
+      esquinas: bloco.esquinas ?? 0,
+    });
+  }
+
+
   const salvarMutation = useMutation({
     mutationFn: async (config: BlocoConfig) => {
       const fotosUrls: string[] = [];
