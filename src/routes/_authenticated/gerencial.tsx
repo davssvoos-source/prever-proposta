@@ -95,6 +95,39 @@ function GerencialPage() {
     },
   });
 
+  const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { data: isAdmin = false } = useQuery({
+    queryKey: ["is-admin-gerencial"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return false;
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+      return (data ?? []).some((r) => r.role === "admin");
+    },
+    staleTime: 60_000,
+  });
+
+  const handleDelete = async (visitaId: string) => {
+    setIsDeleting(true);
+    try {
+      await supabase.from("visita_bloco_itens").delete().eq("visita_id", visitaId);
+      await supabase.from("fotos_visita").delete().eq("visita_id", visitaId);
+      await supabase.from("visita_orcamentos").delete().eq("visita_id", visitaId);
+      const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", visitaId);
+      if (error) throw error;
+      toast.success("Visita excluída com sucesso");
+      setDeletingId(null);
+      await queryClient.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+    } catch (e: any) {
+      toast.error("Erro ao excluir visita", { description: e?.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const tecMap = new Map(tecnicos.map((t) => [t.id, t.nome]));
 
   const stats = {
