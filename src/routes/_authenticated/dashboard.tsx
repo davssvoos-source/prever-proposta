@@ -937,7 +937,12 @@ function Section({ items }: { items: any[] }) {
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>
-            <SwipeableVisita visita={v} />
+            <Link
+              to={visitaRouteFor(v.status, v.id) as any}
+              style={{ textDecoration: "none", color: "inherit", display: "block" }}
+            >
+              <VisitaCard visita={v} />
+            </Link>
           </li>
         ))}
       </ul>
