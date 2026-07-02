@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { getStatusInfo } from "@/lib/visita-status";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
