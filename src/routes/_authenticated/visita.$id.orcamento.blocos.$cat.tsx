@@ -239,12 +239,89 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
   );
 }
 
+// ─── Macro Step Indicator (Eclusa → Externa → Interna) ─────────────────────
+
+function MacroStepIndicator({
+  step,
+  tipo,
+  eclusa,
+  isLight,
+}: {
+  step: WizardStep;
+  tipo: TipoBloco;
+  eclusa: boolean | null;
+  isLight: boolean;
+}) {
+  const isB1 = B1_STEPS.includes(step);
+  const isB2 = B2_STEPS.includes(step);
+  const isResumo = step === "resumo";
+  const isEclusa = step === "eclusa";
+
+  const externaLabel = tipo === "VEI" ? "Barreira Externa" : "Porta Externa";
+  const internaLabel = tipo === "VEI" ? "Barreira Interna" : "Porta Interna";
+
+  const macros = [
+    { label: "Eclusa", current: isEclusa, completed: !isEclusa },
+    { label: externaLabel, current: isB1, completed: isB2 || isResumo },
+    { label: internaLabel, current: isB2, completed: isResumo && !!eclusa },
+  ];
+
+  const goldSolid = "#F59E0B";
+  const goldText = isLight ? "#b87800" : "#FFC000";
+  const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
+  const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
+  const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
+  const currentLabel = isLight ? "#0a0b0e" : "#fff";
+
+  return (
+    <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
+        {macros.map((m, i) => {
+          const isLast = i === macros.length - 1;
+          const active = m.current || m.completed;
+          const lineColor = m.completed
+            ? (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)")
+            : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
+          return (
+            <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: "50%",
+                  background: active ? goldSolid : futureCircleBg,
+                  border: active ? `1.5px solid ${goldSolid}` : futureBorder,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, fontWeight: 700,
+                  color: active ? "#fff" : futureText,
+                  flexShrink: 0, transition: "all 0.2s ease",
+                }}>
+                  {m.completed ? <Check size={12} /> : (i + 1)}
+                </div>
+                <span style={{
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 11, whiteSpace: "nowrap",
+                  color: m.completed ? goldText : m.current ? currentLabel : futureText,
+                  opacity: !active ? 0.55 : 1, transition: "all 0.2s ease",
+                }}>
+                  {m.label}
+                </span>
+              </div>
+              {!isLast && (
+                <div style={{ width: 16, height: 1, background: lineColor, flexShrink: 0, margin: "0 2px" }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function proximoAposBarreira(prefix: "b1" | "b2", eclusa: boolean | null): WizardStep {
   if (prefix === "b1" && eclusa) return "b2_tipo";
   return "resumo";
 }
+
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
