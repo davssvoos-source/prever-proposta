@@ -1,15 +1,19 @@
 // supabase/functions/calcular/index.ts — Edge Function do BOM (Grupo Prever)
 //
 // Ações (POST JSON):
-//   { action: "itens_bloco", codigo }
-//   { action: "itens_bloco", tipo:"CFTV", tech, nDome, nBullet }
-//   { action: "bom_projeto", itens:[{cod_eq,qtd}], blocos:[{codigo,qtd}], portaria:"PR"|"PP" }
-//   { action: "bom_projeto", visita_id }
+//   { action: "itens_bloco", codigo }                      → lista auto de um bloco de acesso
+//   { action: "itens_bloco", tipo:"CFTV", tech, nDome, nBullet } → lista auto de um bloco CFTV
+//   { action: "bom_projeto", blocos:[{codigo,qtd}], cftv:[{tech,nDome,nBullet,qtd}], itensPorBloco }
+//   { action: "bom_projeto", visita_id }                   → lê do banco (best-effort)
+//
+// As regras vêm de regras_blocos / regras_cftv e os preços de equipamentos.
+// Deploy:  supabase functions deploy calcular
 //
 // deno-lint-ignore-file no-explicit-any
+
 import {
-  computeBlocoItens, computeCftvItens, computeCercaItens, computeProjeto, computeBomFromItens,
-  validarPortaria, enrich,
+  computeBlocoItens, computeCftvItens, computeCercaItens, computeProjeto,
+  computeBomFromItens, validarPortaria, enrich,
 } from "../_shared/engine.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -30,13 +34,16 @@ async function tbl(path: string): Promise<any[]> {
   if (!r.ok) throw new Error(`${path}: ${r.status} ${await r.text()}`);
   return r.json();
 }
+// tolerante: retorna [] se a tabela ainda não existir
+async function tblSafe(path: string): Promise<any[]> {
+  try { return await tbl(path); } catch { return []; }
+}
 
 async function loadRegras() {
-  let cercaRows: any[] = [];
-  try { cercaRows = await tbl("regras_cerca?select=sigla,cod_eq"); } catch (_) { /* opcional */ }
-  const [rb, rc, eqRows] = await Promise.all([
+  const [rb, rc, rce, eqRows] = await Promise.all([
     tbl("regras_blocos?select=*"),
     tbl("regras_cftv?select=*"),
+    tblSafe("regras_cerca?select=*"),
     tbl("equipamentos?select=code,nome,marca,modelo,custo,markup"),
   ]);
   const equipamentos: Record<string, any> = {};
@@ -48,11 +55,10 @@ async function loadRegras() {
       custo, preco: +(custo * markup).toFixed(2),
     };
   }
-  const regras_cerca: Record<string, string> = {};
-  for (const r of cercaRows) if (r?.sigla && r?.cod_eq) regras_cerca[String(r.sigla).toUpperCase()] = r.cod_eq;
-  return { regras_blocos: rb, regras_cftv: rc, regras_cerca, equipamentos };
+  return { regras_blocos: rb, regras_cftv: rc, regras_cerca: rce, equipamentos };
 }
 
+// Lê uma visita do banco (best-effort: nomes de coluna com fallback)
 async function loadVisita(visita_id: string) {
   const rows = await tbl(`visita_blocos?visita_id=eq.${visita_id}&select=*`);
   const blocos: any[] = [], cftv: any[] = [], ids: string[] = [];
@@ -69,6 +75,7 @@ async function loadVisita(visita_id: string) {
       if (r.id) ids.push(r.id);
     }
   }
+  // itens editados (se a tabela existir)
   let itensPorBloco: Record<number, Record<string, number>> | null = null;
   if (ids.length) {
     try {
@@ -86,7 +93,7 @@ async function loadVisita(visita_id: string) {
           }
         });
       }
-    } catch (_) { /* tabela ainda não criada */ }
+    } catch (_) { /* tabela ainda não criada — usa auto */ }
   }
   return { blocos, cftv, itensPorBloco };
 }
@@ -100,22 +107,22 @@ Deno.serve(async (req) => {
     if (body.action === "itens_bloco") {
       const t = String(body.tipo ?? "").toUpperCase();
       let bom: Record<string, number>;
-      if (t === "CERCA") {
-        bom = computeCercaItens(body.perimetro, body.esquinas, regras.regras_cerca, body.qtd ?? 1);
-      } else if (t === "CFTV" || body.tech) {
+      if (t === "CFTV" || body.tech !== undefined)
         bom = computeCftvItens(body.tech, body.nDome, body.nBullet, regras.regras_cftv, body.qtd ?? 1);
-      } else {
+      else if (t === "CERCA" || body.perimetro !== undefined)
+        bom = computeCercaItens(body.perimetro, body.esquinas, regras.regras_cerca, body.qtd ?? 1);
+      else
         bom = computeBlocoItens(body.codigo, regras.regras_blocos, body.qtd ?? 1);
-      }
       return json({ itens: enrich(bom, regras.equipamentos) });
     }
 
     if (body.action === "bom_projeto") {
       let bom: Record<string, number>;
       let blocosFlags: any[];
-      const portaria = body.portaria ?? null;
+      const portaria = body.portaria ?? null;   // 'PR' | 'PP' — visita_orcamentos.sistema_proposto
 
       if (body.itens) {
+        // TOTAL a partir dos itens EDITADOS (visita_bloco_itens) — caminho do app
         blocosFlags = body.blocos ?? [];
         bom = computeBomFromItens(body.itens, blocosFlags, regras, portaria);
       } else if (body.blocos || body.cftv) {
