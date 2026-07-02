@@ -1,7 +1,60 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen, RefreshCw, DoorClosed, Video, Minus, Plus } from "lucide-react";
+import {
+  ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen,
+  RefreshCw, DoorClosed, Video, Minus, Plus,
+  ScanFace, Nfc, Circle, Tag, Radio, Fingerprint, Settings2, Zap, Users,
+  X, CheckCircle, Wifi, Cable, ArrowLeftRight, Layers, Ruler, Weight, Signal, Eye,
+  type LucideIcon,
+} from "lucide-react";
+
+// Mapa de ícones para as opções de seleção (todas as etapas)
+const OPT_ICON: Record<string, LucideIcon> = {
+  FAC: ScanFace,
+  BOTAPR: Nfc,
+  BOTANA: Circle,
+  TAG: Tag,
+  CTRL: Radio,
+  DIG: Fingerprint,
+  CAT: RefreshCw,
+  PORP: DoorClosed,
+  PORV: DoorClosed,
+  MOT: Settings2,
+  MOL: Zap,
+  PORTAR: Users,
+  CAN: Minus,
+  NAO: X,
+  SIM: CheckCircle,
+  IP: Wifi,
+  ANAL: Cable,
+  CAB: Cable,
+  SF: Wifi,
+  LAC: Signal,
+  FOT: Eye,
+  LPR: ScanFace,
+  NAD: Circle,
+  BASC: DoorOpen,
+  DESL: ArrowLeftRight,
+  PIVO: RefreshCw,
+  "1F": Layers,
+  "2F": Layers,
+  "200CM": Ruler,
+  "350CM": Ruler,
+  "450CM": Ruler,
+  "15M": Ruler,
+  "2M": Ruler,
+  "25M": Ruler,
+  "3M": Ruler,
+  "800KG": Weight,
+  "1300KG": Weight,
+  "1500KG": Weight,
+};
+
+function OptionIcon({ valor }: { valor: string }) {
+  const Ico = OPT_ICON[valor] ?? Circle;
+  return <Ico size={16} color="#F59E0B" />;
+}
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
