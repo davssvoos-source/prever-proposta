@@ -1059,42 +1059,15 @@ function BlocosWizardPage() {
           {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
 
           <div style={{ marginBottom: 24 }}>
-            <div
-              onClick={b1Done ? () => setB1Collapsed((p) => !p) : undefined}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                marginBottom: b1Collapsed ? 0 : 20, cursor: b1Done ? "pointer" : "default",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  border: b1Done ? "2px solid #22C55E" : isLight ? `2px solid ${L.gold}` : "2px solid #FFD700",
-                  background: (!b1Done && isLight) ? "rgba(180,120,0,0.06)" : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>
-                  <span style={{ color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700", fontSize: 14, fontWeight: 800 }}>01</span>
-                </div>
-                <span style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  color: b1Done ? "#22C55E" : isLight ? L.gold : "#FFD700",
-                  fontSize: 13, fontWeight: 700, letterSpacing: 1,
-                }}>
-                  <DoorOpen size={20} color={b1Done ? "#22C55E" : "#F59E0B"} />
-                  Porta externa {b1Done ? "✓" : ""}
-                </span>
-              </div>
-              {b1Done && (
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.1)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "transform 0.2s", transform: b1Collapsed ? "rotate(0deg)" : "rotate(180deg)",
-                }}>
-                  <ChevronDown size={16} color={isLight ? L.text : "#FFFFFF"} />
-                </div>
-              )}
-            </div>
+            <BarreiraHeader
+              label={tipoBloco === "VEI" ? "Barreira Externa" : "Porta Externa"}
+              done={b1Done}
+              isLight={isLight}
+              collapsible={b1Done}
+              collapsed={b1Collapsed}
+              onToggle={() => setB1Collapsed((p) => !p)}
+            />
+
 
             {!b1Collapsed && (
               <div>
