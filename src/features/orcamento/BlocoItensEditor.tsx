@@ -69,6 +69,8 @@ export function BlocoItensEditor({
   tecnologia,
   qtdDome,
   qtdBullet,
+  perimetro,
+  esquinas,
   isLight,
   onConcluir,
   hideSubtotal = false,
