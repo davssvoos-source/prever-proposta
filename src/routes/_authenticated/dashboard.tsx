@@ -712,18 +712,14 @@ function VisitaCard({ visita }: { visita: any }) {
   return (
     <div
       style={{
-        background: isLight
-          ? "linear-gradient(135deg, #ffffff 0%, #f0f1f4 100%)"
-          : "linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)",
-        backdropFilter: "none",
-        WebkitBackdropFilter: "none",
-        border: isLight
-          ? "1px solid rgba(0,0,0,0.08)"
-          : "1px solid #2a2a2a",
-        borderRadius: 18,
+        background: "rgba(255, 255, 255, 0.05)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        borderRadius: 16,
         padding: 16,
         marginBottom: 0,
-        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+        cursor: "pointer",
       }}
     >
 
@@ -806,133 +802,6 @@ function VisitaCard({ visita }: { visita: any }) {
 
 
 
-function SwipeableVisita({ visita }: { visita: any }) {
-  const { isLight } = useTheme();
-  const navigate = useNavigate();
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [offsetX, setOffsetX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef<number | null>(null);
-  const startYRef = useRef<number | null>(null);
-  const movedRef = useRef(false);
-  const axisLockRef = useRef<"x" | "y" | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startXRef.current = e.touches[0].clientX;
-    startYRef.current = e.touches[0].clientY;
-    movedRef.current = false;
-    axisLockRef.current = null;
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (startXRef.current === null || startYRef.current === null) return;
-    const dx = e.touches[0].clientX - startXRef.current;
-    const dy = e.touches[0].clientY - startYRef.current;
-    if (axisLockRef.current === null) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      axisLockRef.current = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-    }
-    if (axisLockRef.current !== "x") return;
-    if (dx < 0) {
-      movedRef.current = true;
-      const maxSwipe = -(cardRef.current?.offsetWidth ?? 320);
-      setOffsetX(Math.max(dx, maxSwipe));
-    } else {
-      setOffsetX(0);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    const cardWidth = cardRef.current?.offsetWidth ?? 320;
-    const threshold = cardWidth * 0.6;
-    if (Math.abs(offsetX) >= threshold) {
-      setOffsetX(-cardWidth);
-      setTimeout(() => {
-        navigate({ to: "/visita/$id/reagendar", params: { id: visita.id } });
-        setOffsetX(0);
-      }, 300);
-    } else {
-      setOffsetX(0);
-    }
-    startXRef.current = null;
-    startYRef.current = null;
-    axisLockRef.current = null;
-  };
-
-  const handleClickCapture = (e: React.MouseEvent) => {
-    if (movedRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      movedRef.current = false;
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        borderRadius: 18,
-        marginBottom: 12,
-        overflow: "hidden",
-      }}
-    >
-      {/* CAMADA INFERIOR — caixa de reagendamento */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: 18,
-          background: isLight
-            ? "linear-gradient(135deg, #b87800 0%, #e6a800 100%)"
-            : "linear-gradient(135deg, #FFC000 0%, #FFD700 100%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          pointerEvents: "none",
-        }}
-      >
-        <Calendar size={28} color="#FFFFFF" />
-        <span
-          style={{
-            color: "#FFFFFF",
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: "0.04em",
-          }}
-        >
-          REAGENDAR
-        </span>
-      </div>
-
-      {/* CAMADA SUPERIOR — card de visita */}
-      <div
-        ref={cardRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClickCapture={handleClickCapture}
-        style={{
-          position: "relative",
-          transform: `translateX(${offsetX}px)`,
-          transition: isDragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          touchAction: "pan-y",
-        }}
-      >
-        <div
-          onClick={() => navigate(visitaRouteFor(visita.status, visita.id) as any)}
-          style={{ textDecoration: "none", color: "inherit", display: "block", cursor: "pointer" }}
-        >
-          <VisitaCard visita={visita} />
-        </div>
-
-      </div>
-    </div>
-  );
-}
 
 
 function Section({ items }: { items: any[] }) {
@@ -941,7 +810,12 @@ function Section({ items }: { items: any[] }) {
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {items.map((v) => (
           <li key={v.id}>
-            <SwipeableVisita visita={v} />
+            <Link
+              to={visitaRouteFor(v.status, v.id) as any}
+              style={{ textDecoration: "none", color: "inherit", display: "block" }}
+            >
+              <VisitaCard visita={v} />
+            </Link>
           </li>
         ))}
       </ul>
