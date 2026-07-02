@@ -136,15 +136,35 @@ function PreEnvioPage() {
       const { error } = await supabase
         .from("visitas_tecnicas")
         .update({
-          status: "aprovada",
-          aprovado_em: new Date().toISOString(),
+          status: "aguardando_aprovacao",
+          status_aprovacao: "aguardando_aprovacao",
           data_hora_fim: new Date().toISOString(),
         } as any)
         .eq("id", visitaId);
       if (error) throw error;
+
+      // Notifica admins (fila de aprovação — mesma tela/fluxo)
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("cargo", "admin")
+        .eq("ativo", true);
+      const local = visita?.nome_predio || visita?.titulo || visita?.cliente?.nome || "local não informado";
+      if (admins && admins.length > 0) {
+        await supabase.from("notificacoes").insert(
+          admins.map((a: any) => ({
+            user_id: a.id,
+            tipo: "visita_aguardando_aprovacao",
+            titulo: "Visita aguardando aprovação",
+            corpo: `A visita técnica em ${local} foi concluída e aguarda sua aprovação.`,
+            visita_id: visitaId,
+            lida: false,
+          })),
+        );
+      }
     },
     onSuccess: () => {
-      toast.success("Visita concluída e aprovada!");
+      toast.success("Visita enviada para aprovação!");
       navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e?.message || "Erro ao concluir"),
