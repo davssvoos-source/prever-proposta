@@ -123,7 +123,7 @@ function CategoriasPage() {
 
 
   return (
-    <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ padding: "12px 14px 32px", display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
         <button
