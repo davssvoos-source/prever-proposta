@@ -69,9 +69,12 @@ export function BlocoItensEditor({
   qtdBullet,
   isLight,
   onConcluir,
+  hideSubtotal = false,
+  hideConcluir = false,
 }: Props) {
   const qc = useQueryClient();
   const [seeded, setSeeded] = useState(false);
+
   const [novoCod, setNovoCod] = useState("");
   const [novoNome, setNovoNome] = useState("");
   const [novoQtd, setNovoQtd] = useState<number>(1);
