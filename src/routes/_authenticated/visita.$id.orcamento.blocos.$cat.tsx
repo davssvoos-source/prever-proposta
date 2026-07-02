@@ -334,7 +334,7 @@ function BlocosWizardPage() {
   const catNome = CAT_NOMES[tipoBloco] ?? catSlug;
 
   const PAGE: React.CSSProperties = {
-    padding: "12px 14px 120px",
+    padding: "12px 16px 32px",
     display: "flex",
     flexDirection: "column",
     gap: 16,
