@@ -553,7 +553,7 @@ function PreEnvioPage() {
               transition: "box-shadow 0.2s, background 0.2s",
             }}
           >
-            {enviarMutation.isPending ? "ENVIANDO..." : "ENVIAR PARA APROVAÇÃO"}
+            {enviarMutation.isPending ? "CONCLUINDO..." : "CONCLUIR VISITA"}
           </button>
         </div>
       </div>
