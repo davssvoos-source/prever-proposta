@@ -189,6 +189,47 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   reprovada:    { label: "Reprovada",    color: "rgba(248,113,113,0.9)" },
 };
 
+const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
+  width: "100%",
+  height: 56,
+  borderRadius: 28,
+  background: "#F59E0B",
+  color: "#0A0A0A",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 700,
+  fontSize: 13,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  opacity: pending ? 0.7 : 1,
+});
+
+const CTA_GOLD_OUTLINE = (pending: boolean): React.CSSProperties => ({
+  width: "100%",
+  height: 56,
+  borderRadius: 28,
+  background: "transparent",
+  color: "#F59E0B",
+  border: "1.5px solid #F59E0B",
+  cursor: "pointer",
+  fontFamily: "'Montserrat', sans-serif",
+  fontWeight: 700,
+  fontSize: 13,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  opacity: pending ? 0.7 : 1,
+});
+
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 function VisitaDetail() {
   const { id } = Route.useParams();
@@ -496,11 +537,12 @@ function VisitaDetail() {
   const canApprove =
     mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
   const isAdmin = canApprove;
-  const showSlide =
-    status === "pendente" && isTecnico && !visita?.data_hora_inicio;
-  const showFinalizar = status === "em_andamento" && isTecnico;
-  const showApproval = canApprove && status === "concluida";
+  const showIniciar   = status === "pendente";
+  const showContinuar = status === "em_andamento";
+  const showReagendar = status === "reprovada";
+  const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada");
   const sInfo = status ? STATUS_LABELS[status] : null;
+
 
   const GLASS: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
@@ -1195,7 +1237,7 @@ function VisitaDetail() {
 
 
       {/* Aprovação */}
-      {(status === "aprovada" || status === "reprovada" || showApproval) && (
+      {(status === "aprovada" || status === "reprovada" || showReprovarBtn) && (
         <div style={GLASS}>
           {status === "aprovada" && (
             <div
@@ -1235,77 +1277,33 @@ function VisitaDetail() {
             </div>
           )}
 
-          {showApproval && !showReprovarForm && (
-            <>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.55)",
-                  marginBottom: 14,
-                }}
-              >
-                Visita concluída — aguardando aprovação
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    await aprovarMutation.mutateAsync({ aprovar: true });
-                    fetch("https://grupoprever.app.n8n.cloud/webhook/visita-aprovada", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ visita_id: id }),
-                    }).catch(() => {});
-                  }}
-                  disabled={aprovarMutation.isPending}
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    borderRadius: 12,
-                    border: "1px solid rgba(52,211,153,0.35)",
-                    background: "rgba(52,211,153,0.09)",
-                    color: "#34D399",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  <Check size={15} /> Aprovar
-                </button>
-                <button
-                  onClick={() => setShowReprovarForm(true)}
-                  style={{
-                    flex: 1,
-                    height: 44,
-                    borderRadius: 12,
-                    border: "1px solid rgba(248,113,113,0.35)",
-                    background: "rgba(248,113,113,0.08)",
-                    color: "#F87171",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  <X size={15} /> Reprovar
-                </button>
-              </div>
-            </>
+          {showReprovarBtn && !showReprovarForm && (
+            <button
+              onClick={() => setShowReprovarForm(true)}
+              style={{
+                width: "100%",
+                height: 44,
+                borderRadius: 12,
+                border: "1px solid rgba(248,113,113,0.35)",
+                background: "rgba(248,113,113,0.08)",
+                color: "#F87171",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 500,
+                fontSize: 12,
+                letterSpacing: "0.08em",
+              }}
+            >
+              <X size={15} /> Reprovar visita
+            </button>
           )}
 
-          {showApproval && showReprovarForm && (
+
+          {showReprovarBtn && showReprovarForm && (
             <div>
               <div
                 style={{
@@ -1387,82 +1385,53 @@ function VisitaDetail() {
       )}
 
 
-      {/* CTA fixo: Finalizar */}
-      {showFinalizar && (
-        <div
-          style={{
-            marginTop: 24,
-            marginBottom: 32,
-            paddingLeft: 16,
-            paddingRight: 16,
-          }}
-        >
-          <button
-            onClick={async () => {
-              await finalizarMutation.mutateAsync();
-              fetch("https://grupoprever.app.n8n.cloud/webhook/visita-concluida", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ visita_id: id }),
-              }).catch(() => {});
-            }}
-            disabled={finalizarMutation.isPending}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 28,
-              background: "rgba(239,68,68,0.12)",
-              border: "1.5px solid rgba(239,68,68,0.35)",
-              color: "#EF4444",
-              cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 13,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              opacity: finalizarMutation.isPending ? 0.6 : 1,
-            }}
-          >
-            <Square size={18} />
-            {finalizarMutation.isPending ? "Finalizando…" : "Finalizar Visita"}
-          </button>
+      {/* CTA principal por status */}
+      {(showIniciar || showContinuar || showReagendar) && (
+        <div style={{ marginTop: 16, paddingLeft: 16, paddingRight: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {showIniciar && (
+            <button
+              onClick={() => iniciarMutation.mutate()}
+              disabled={iniciarMutation.isPending}
+              style={CTA_GOLD(iniciarMutation.isPending)}
+            >
+              <Play size={18} />
+              {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+            </button>
+          )}
+
+          {showContinuar && (
+            <button
+              onClick={() => navigate({ to: "/visita/$id/orcamento", params: { id } })}
+              style={CTA_GOLD(false)}
+            >
+              <Play size={18} />
+              Continuar Orçamento
+            </button>
+          )}
+
+          {showReagendar && (
+            <>
+              <button
+                onClick={() => navigate({ to: "/visita/$id/reagendar", params: { id } })}
+                style={CTA_GOLD(false)}
+              >
+                <Play size={18} style={{ transform: "rotate(-45deg)" }} />
+                Reagendar Visita
+              </button>
+              <button
+                onClick={() => iniciarMutation.mutate()}
+                disabled={iniciarMutation.isPending}
+                style={CTA_GOLD_OUTLINE(iniciarMutation.isPending)}
+              >
+                <Play size={18} />
+                {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
+              </button>
+            </>
+          )}
         </div>
       )}
 
-      {showSlide && (
-        <div className="mt-4 pb-4" style={{ paddingLeft: 16, paddingRight: 16 }}>
-          <button
-            onClick={() => iniciarMutation.mutate()}
-            disabled={iniciarMutation.isPending}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 28,
-              background: "#F59E0B",
-              color: "#0A0A0A",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              opacity: iniciarMutation.isPending ? 0.7 : 1,
-            }}
-          >
-            <Play size={18} />
-            {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}
-          </button>
-        </div>
-      )}
+
 
     </div>
   );

@@ -30,13 +30,13 @@ const GLASS_LIGHT: React.CSSProperties = {
 };
 
 const STATUS_OPCOES = [
-  { key: 'todos',                label: 'Todos os status',     color: 'rgba(255,255,255,0.35)' },
-  { key: 'pendente',             label: 'Visitas pendentes',   color: '#FFC000' },
-  { key: 'em_andamento',         label: 'Em andamento',        color: '#60A5FA' },
-  { key: 'aguardando_aprovacao', label: 'Ag. Aprovação',       color: '#3B82F6' },
-  { key: 'aprovado',             label: 'Aprovadas',           color: '#10B981' },
-  { key: 'reprovada',            label: 'Reprovadas',          color: '#EF4444' },
+  { key: 'todos',        label: 'Todos os status',   color: 'rgba(255,255,255,0.35)' },
+  { key: 'pendente',     label: 'Pendentes',         color: '#FFC000' },
+  { key: 'em_andamento', label: 'Ag. Aprovação',     color: '#3B82F6' },
+  { key: 'aprovada',     label: 'Aprovadas',         color: '#10B981' },
+  { key: 'reprovada',    label: 'Reprovadas',        color: '#EF4444' },
 ];
+
 
 function saudacao() {
   const h = new Date().getHours();
@@ -185,18 +185,18 @@ function Dashboard() {
     ? visitasFiltradas
     : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
 
-  const pendentes = visitasExibidas.filter((v: any) => v.status === "pendente");
+  const pendentes   = visitasExibidas.filter((v: any) => v.status === "pendente");
   const emAndamento = visitasExibidas.filter((v: any) => v.status === "em_andamento");
-  const aguardando = visitasExibidas.filter((v: any) => v.status === "aguardando_aprovacao");
-  const aprovadas = visitasExibidas.filter((v: any) => v.status === "aprovado");
-  const reprovadas = visitasExibidas.filter((v: any) => v.status === "reprovada");
+  const aprovadas   = visitasExibidas.filter((v: any) => v.status === "aprovada");
+  const reprovadas  = visitasExibidas.filter((v: any) => v.status === "reprovada");
 
   const metrics = [
-    { label: "Pendentes", value: pendentes.length, color: "#FFC000", icon: <Clock size={14} /> },
-    { label: "Ag. Aprovação", value: aguardando.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
-    { label: "Aprovadas", value: aprovadas.length, color: "#34D399", icon: <CheckCircle2 size={14} /> },
-    { label: "Reprovadas", value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
+    { label: "Pendentes",     value: pendentes.length,   color: "#FFC000", icon: <Clock size={14} /> },
+    { label: "Ag. Aprovação", value: emAndamento.length, color: "#3B82F6", icon: <CalendarDays size={14} /> },
+    { label: "Aprovadas",     value: aprovadas.length,   color: "#34D399", icon: <CheckCircle2 size={14} /> },
+    { label: "Reprovadas",    value: reprovadas.length,  color: "#F87171", icon: <XCircle size={14} /> },
   ];
+
 
   // ─── Banner data ──────────────────────────────────────────
   const visitasHoje = visitas.filter((v: any) => {
@@ -662,7 +662,7 @@ function Dashboard() {
         <>
           {pendentes.length > 0 && <Section items={pendentes} />}
           {emAndamento.length > 0 && <Section items={emAndamento} />}
-          {aguardando.length > 0 && <Section items={aguardando} />}
+          
           {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} />}
           {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} />}
 

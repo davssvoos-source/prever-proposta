@@ -47,10 +47,15 @@ function ReagendarPage() {
       const valor = dataHora ? new Date(dataHora).toISOString() : null;
       const { error } = await supabase
         .from("visitas_tecnicas")
-        .update({ data_hora_agendada: valor } as any)
+        .update({
+          data_hora_agendada: valor,
+          status: "pendente",
+          motivo_reprovacao: null,
+        } as any)
         .eq("id", id);
       if (error) throw error;
     },
+
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
       qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
