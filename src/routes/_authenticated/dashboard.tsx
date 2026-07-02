@@ -332,11 +332,12 @@ function Dashboard() {
                 overflow: 'hidden',
               }}
             >
-              {proximaVisita.foto_fachada_url && (
+              {fotoFachadaUrl && (
                 <>
                   <img
-                    src={proximaVisita.foto_fachada_url}
+                    src={fotoFachadaUrl}
                     alt="Fachada"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     style={{
                       position: 'absolute',
                       right: 0,
