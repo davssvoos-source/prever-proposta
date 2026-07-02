@@ -320,7 +320,7 @@ function Dashboard() {
         {/* ═══ CARD PRÓXIMA VISITA ═══ */}
         {proximaVisita && (
           <div
-            onClick={() => navigate(visitaRouteFor(proximaVisita.status, proximaVisita.id) as any)}
+            onClick={() => navigate({ ...visitaRouteFor(proximaVisita.status, proximaVisita.id), state: { from: location.pathname } } as any)}
             style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
           >
 
