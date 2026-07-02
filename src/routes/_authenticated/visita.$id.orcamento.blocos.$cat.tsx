@@ -584,7 +584,7 @@ function BlocosWizardPage() {
     if (w.step === "eclusa") { w.eclusa = valor === "SIM"; w.step = "b1_tipo"; }
     else if (w.step === "tecnologia") {
       w.tecnologia = valor;
-      w.step = tipoBloco === "CFTV" ? "cftv_dome" : "resumo";
+      w.step = tipoBloco === "CFTV" ? "cftv_qtd" : "resumo";
     }
     else if (w.step.startsWith("b1_") || w.step.startsWith("b2_")) {
       const prefix = w.step.startsWith("b1_") ? "b1" : "b2";
