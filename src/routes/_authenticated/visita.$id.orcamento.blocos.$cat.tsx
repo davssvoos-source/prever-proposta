@@ -940,6 +940,21 @@ function BlocosWizardPage() {
       );
     }
 
+    // Elevadores: wizard próprio (Kit Antena)
+    if (tipoBloco === "ELV") {
+      return (
+        <ElevadoresWizard
+          isLight={isLight}
+          salvando={salvarElevadoresMutation.isPending}
+          onVoltar={() => {
+            setWizard(null);
+            navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });
+          }}
+          onConcluir={(qtdKits, itens) => salvarElevadoresMutation.mutate({ qtdKits, itens })}
+        />
+      );
+    }
+
     const opcoes = getOpcoes();
 
 
