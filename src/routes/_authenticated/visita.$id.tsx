@@ -848,56 +848,107 @@ function VisitaDetail() {
         </div>
       )}
 
-      {/* Condomínio / síndico */}
-      {(visita.nome_sindico ?? visita.nome_predio) && (
-        <div style={GLASS}>
-          <div style={SECTION_LABEL}>Condomínio</div>
-          {visita.nome_predio && (
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 500,
-                fontSize: 14,
-                color: "#fff",
-              }}
-            >
-              {visita.nome_predio}
-            </div>
-          )}
+      {/* Síndico & Zelador */}
+      {(visita.nome_sindico || visita.nome_zelador) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {visita.nome_sindico && (
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginTop: 10,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,215,0,0.15)",
+                borderRadius: 16,
+                padding: 16,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <User size={16} color="#F59E0B" />
-                <span
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 400,
-                    fontSize: 10,
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: "#F59E0B",
-                  }}
-                >
-                  Síndico
-                </span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={SECTION_LABEL}>Síndico</div>
+                <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                </button>
               </div>
-              <span
+              <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#fff",
+                  marginBottom: 10,
                 }}
               >
                 {visita.nome_sindico}
-              </span>
+              </div>
+              {visita.telefone_sindico && (
+                <a
+                  href={`https://wa.me/55${String(visita.telefone_sindico).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#25D366",
+                    color: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 12,
+                    textDecoration: "none",
+                  }}
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+          {visita.nome_zelador && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,215,0,0.15)",
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={SECTION_LABEL}>Zelador(a)</div>
+                <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                </button>
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#fff",
+                  marginBottom: 10,
+                }}
+              >
+                {visita.nome_zelador}
+              </div>
+              {visita.telefone_zelador && (
+                <a
+                  href={`https://wa.me/55${String(visita.telefone_zelador).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#25D366",
+                    color: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 12,
+                    textDecoration: "none",
+                  }}
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </a>
+              )}
             </div>
           )}
         </div>
