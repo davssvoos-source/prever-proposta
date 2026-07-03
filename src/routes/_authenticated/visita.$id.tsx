@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
   Check, X, Play, Square, ChevronDown, CheckCircle, XCircle,
-  User, KeyRound, HardHat,
+  User, KeyRound, HardHat, Pencil,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -273,6 +273,7 @@ function VisitaDetail() {
         .select(`
           id, status, data_hora_agendada, endereco, complemento,
           latitude, longitude, titulo, nome_sindico, nome_predio,
+          nome_zelador, telefone_sindico, telefone_zelador,
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
@@ -731,12 +732,25 @@ function VisitaDetail() {
       <div style={{ ...GLASS, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "18px 16px" }}>
           <div style={SECTION_LABEL}>Local</div>
+          {visita.nome_predio && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 600,
+                fontSize: 14,
+                color: "#fff",
+                marginBottom: 4,
+              }}
+            >
+              {visita.nome_predio}
+            </div>
+          )}
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 400,
               fontSize: 13,
-              color: "#fff",
+              color: "rgba(255,255,255,0.55)",
             }}
           >
             {visita.endereco}
@@ -834,56 +848,107 @@ function VisitaDetail() {
         </div>
       )}
 
-      {/* Condomínio / síndico */}
-      {(visita.nome_sindico ?? visita.nome_predio) && (
-        <div style={GLASS}>
-          <div style={SECTION_LABEL}>Condomínio</div>
-          {visita.nome_predio && (
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 500,
-                fontSize: 14,
-                color: "#fff",
-              }}
-            >
-              {visita.nome_predio}
-            </div>
-          )}
+      {/* Síndico & Zelador */}
+      {(visita.nome_sindico || visita.nome_zelador) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {visita.nome_sindico && (
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginTop: 10,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,215,0,0.15)",
+                borderRadius: 16,
+                padding: 16,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <User size={16} color="#F59E0B" />
-                <span
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 400,
-                    fontSize: 10,
-                    letterSpacing: "0.14em",
-                    textTransform: "uppercase",
-                    color: "#F59E0B",
-                  }}
-                >
-                  Síndico
-                </span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={SECTION_LABEL}>Síndico</div>
+                <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                </button>
               </div>
-              <span
+              <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 12,
-                  color: "rgba(255,255,255,0.45)",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#fff",
+                  marginBottom: 10,
                 }}
               >
                 {visita.nome_sindico}
-              </span>
+              </div>
+              {visita.telefone_sindico && (
+                <a
+                  href={`https://wa.me/55${String(visita.telefone_sindico).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#25D366",
+                    color: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 12,
+                    textDecoration: "none",
+                  }}
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </a>
+              )}
+            </div>
+          )}
+          {visita.nome_zelador && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,215,0,0.15)",
+                borderRadius: 16,
+                padding: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={SECTION_LABEL}>Zelador(a)</div>
+                <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
+                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                </button>
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#fff",
+                  marginBottom: 10,
+                }}
+              >
+                {visita.nome_zelador}
+              </div>
+              {visita.telefone_zelador && (
+                <a
+                  href={`https://wa.me/55${String(visita.telefone_zelador).replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: "#25D366",
+                    color: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 12px",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 500,
+                    fontSize: 12,
+                    textDecoration: "none",
+                  }}
+                >
+                  <MessageCircle size={14} /> WhatsApp
+                </a>
+              )}
             </div>
           )}
         </div>
