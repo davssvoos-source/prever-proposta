@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
   Check, X, Play, Square, ChevronDown, CheckCircle, XCircle,
-  User, KeyRound, HardHat,
+  User, KeyRound, HardHat, Pencil,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
