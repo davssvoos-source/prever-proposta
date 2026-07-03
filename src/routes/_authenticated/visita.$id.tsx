@@ -273,6 +273,7 @@ function VisitaDetail() {
         .select(`
           id, status, data_hora_agendada, endereco, complemento,
           latitude, longitude, titulo, nome_sindico, nome_predio,
+          nome_zelador, telefone_sindico, telefone_zelador,
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
