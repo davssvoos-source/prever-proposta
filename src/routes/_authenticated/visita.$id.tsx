@@ -732,12 +732,25 @@ function VisitaDetail() {
       <div style={{ ...GLASS, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "18px 16px" }}>
           <div style={SECTION_LABEL}>Local</div>
+          {visita.nome_predio && (
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 600,
+                fontSize: 14,
+                color: "#fff",
+                marginBottom: 4,
+              }}
+            >
+              {visita.nome_predio}
+            </div>
+          )}
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 400,
               fontSize: 13,
-              color: "#fff",
+              color: "rgba(255,255,255,0.55)",
             }}
           >
             {visita.endereco}
