@@ -527,7 +527,7 @@ function PerfilPage() {
             ultimasVisitas.map((v: any) => (
               <button
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
                   background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
