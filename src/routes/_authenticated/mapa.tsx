@@ -81,7 +81,7 @@ function MapaPage() {
       const a = t.closest?.("a[data-id]") as HTMLAnchorElement | null;
       if (a) {
         e.preventDefault();
-        navigate({ to: "/visita/$id", params: { id: a.dataset.id! } });
+        navigate({ to: "/visita/$id", params: { id: a.dataset.id! }, state: { from: location.pathname } as any });
       }
     };
     document.addEventListener("click", handler);
