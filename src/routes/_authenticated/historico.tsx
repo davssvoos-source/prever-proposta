@@ -140,7 +140,7 @@ function VisitasPage() {
             return (
               <button
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } })}
+                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
