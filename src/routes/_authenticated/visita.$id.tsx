@@ -798,55 +798,6 @@ function VisitaDetail() {
         </div>
       </div>
 
-      {/* Cliente */}
-      {cliente && (
-        <div style={GLASS}>
-          <div style={SECTION_LABEL}>Cliente</div>
-          <div
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
-              fontSize: 14,
-              color: "#fff",
-            }}
-          >
-            {cliente.nome}
-          </div>
-          {cliente.tipo_empreendimento && (
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 12,
-                color: "rgba(255,255,255,0.40)",
-                marginTop: 2,
-                textTransform: "capitalize",
-              }}
-            >
-              {cliente.tipo_empreendimento}
-            </div>
-          )}
-          {cliente.telefone && (
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <a href={`tel:${cliente.telefone}`} style={BTN_GHOST}>
-                <Phone size={14} /> Ligar
-              </a>
-              <a
-                href={`https://wa.me/${String(cliente.telefone).replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  ...BTN_GHOST,
-                  border: "1px solid rgba(52,211,153,0.30)",
-                  color: "#34D399",
-                }}
-              >
-                <MessageCircle size={14} /> WhatsApp
-              </a>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Síndico & Zelador */}
       {(visita.nome_sindico || visita.nome_zelador) && (
