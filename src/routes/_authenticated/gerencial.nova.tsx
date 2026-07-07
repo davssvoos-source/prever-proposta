@@ -829,16 +829,13 @@ function NovaVisitaPage() {
         </div>
       )}
 
-      {/* Rodapé fixo — padrão OURO acima do BottomNav */}
+      {/* Rodapé — padrão OURO */}
       <div
         style={{
-          position: "fixed",
-          bottom: "calc(72px + 16px)",
-          left: 16,
-          right: 16,
           display: "flex",
           gap: 10,
-          zIndex: 30,
+          marginTop: 24,
+          marginBottom: 32,
         }}
       >
         {step === 2 && (
