@@ -743,7 +743,7 @@ function PerfilPage() {
               <button
                 key={n.id}
                 onClick={() => {
-                  if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
+                  if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id }, state: { from: location.pathname } as any });
                 }}
                 style={{
                   background: n.lida
