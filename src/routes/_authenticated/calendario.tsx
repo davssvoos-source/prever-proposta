@@ -37,6 +37,7 @@ const MESES = [
 
 function CalendarioPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
