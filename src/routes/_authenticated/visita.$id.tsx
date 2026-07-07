@@ -621,7 +621,7 @@ function VisitaDetail() {
     );
   }
 
-  const cliente = visita.clientes as any;
+  
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 160 }}>
