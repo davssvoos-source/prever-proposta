@@ -572,15 +572,6 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Observações para o Técnico</label>
-            <textarea
-              style={{ ...INPUT, minHeight: 80, resize: "vertical" }}
-              placeholder="Informações adicionais, acesso ao local..."
-              value={obsAgendamento}
-              onChange={(e) => setObsAgendamento(e.target.value)}
-            />
-          </div>
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Foto da Fachada (opcional)</label>
