@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useState, useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
@@ -37,6 +37,7 @@ const MESES = [
 
 function CalendarioPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
@@ -292,7 +293,7 @@ function CalendarioPage() {
               return (
                 <button
                   key={v.id}
-                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                   style={{
                     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(255,255,255,0.05)",
                     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, XCircle, Archive, CalendarDays, MapPin, Clock, Play } from "lucide-react";
@@ -23,6 +23,7 @@ type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "e
 
 function VisitasPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
   const { data: visitas = [], isLoading } = useQuery({
@@ -139,7 +140,7 @@ function VisitasPage() {
             return (
               <button
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",

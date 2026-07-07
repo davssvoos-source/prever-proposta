@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import L from "leaflet";
@@ -16,6 +16,7 @@ const STATUSES: VisitaStatus[] = ["pendente", "aguardando_aprovacao", "aprovado"
 
 function MapaPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -80,7 +81,7 @@ function MapaPage() {
       const a = t.closest?.("a[data-id]") as HTMLAnchorElement | null;
       if (a) {
         e.preventDefault();
-        navigate({ to: "/visita/$id", params: { id: a.dataset.id! } });
+        navigate({ to: "/visita/$id", params: { id: a.dataset.id! }, state: { from: location.pathname } as any });
       }
     };
     document.addEventListener("click", handler);

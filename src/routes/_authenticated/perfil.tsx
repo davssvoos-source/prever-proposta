@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Camera, Eye, EyeOff, LogOut, Pencil, Check, X, Sun, Moon } from "lucide-react";
@@ -21,6 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
 function PerfilPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -526,7 +527,7 @@ function PerfilPage() {
             ultimasVisitas.map((v: any) => (
               <button
                 key={v.id}
-                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id } })}
+                onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
                   background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
@@ -742,7 +743,7 @@ function PerfilPage() {
               <button
                 key={n.id}
                 onClick={() => {
-                  if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
+                  if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id }, state: { from: location.pathname } as any });
                 }}
                 style={{
                   background: n.lida
