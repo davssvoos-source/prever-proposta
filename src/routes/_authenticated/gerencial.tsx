@@ -48,6 +48,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight } = useTheme();
   const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
   const textPrimary = isLight ? "#0a0b0e" : "#F5F5F5";
@@ -324,7 +325,7 @@ function GerencialPage() {
             return (
               <div
                 key={v.id}
-                onClick={() => navigate(visitaRouteFor(v.status, v.id) as any)}
+                onClick={() => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)}
                 style={{
                   background: cardBg,
                   backdropFilter: isLight ? "none" : "blur(16px)",
