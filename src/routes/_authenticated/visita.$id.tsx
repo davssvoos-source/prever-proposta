@@ -630,7 +630,7 @@ function VisitaDetail() {
         <button
           onClick={() => {
             if (from) navigate(from);
-            else navigate(-1);
+            else window.history.back();
           }}
 
 
