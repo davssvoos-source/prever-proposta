@@ -287,7 +287,7 @@ function NovaVisitaPage() {
       : null;
 
   return (
-    <div style={{ paddingBottom: 140 }}>
+    <div>
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
         <button
