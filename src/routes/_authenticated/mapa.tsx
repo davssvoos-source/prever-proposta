@@ -16,6 +16,7 @@ const STATUSES: VisitaStatus[] = ["pendente", "aguardando_aprovacao", "aprovado"
 
 function MapaPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);

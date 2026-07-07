@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useLocation } from "@tanstack/react-router";
 import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 import { useTheme } from "@/contexts/ThemeContext";

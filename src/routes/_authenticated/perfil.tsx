@@ -21,6 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
 function PerfilPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
