@@ -287,7 +287,7 @@ function NovaVisitaPage() {
       : null;
 
   return (
-    <div style={{ paddingBottom: 140 }}>
+    <div>
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
         <button
@@ -572,15 +572,6 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Observações para o Técnico</label>
-            <textarea
-              style={{ ...INPUT, minHeight: 80, resize: "vertical" }}
-              placeholder="Informações adicionais, acesso ao local..."
-              value={obsAgendamento}
-              onChange={(e) => setObsAgendamento(e.target.value)}
-            />
-          </div>
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Foto da Fachada (opcional)</label>
@@ -838,16 +829,13 @@ function NovaVisitaPage() {
         </div>
       )}
 
-      {/* Rodapé fixo — padrão OURO acima do BottomNav */}
+      {/* Rodapé — padrão OURO */}
       <div
         style={{
-          position: "fixed",
-          bottom: "calc(72px + 16px)",
-          left: 16,
-          right: 16,
           display: "flex",
           gap: 10,
-          zIndex: 30,
+          marginTop: 24,
+          marginBottom: 32,
         }}
       >
         {step === 2 && (
