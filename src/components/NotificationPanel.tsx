@@ -31,6 +31,7 @@ export function NotificationPanel() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notificacoes, naoLidas, marcarLida, marcarTodasLidas, deletar } = useNotificacoes();
   const { isLight } = useTheme();
 
