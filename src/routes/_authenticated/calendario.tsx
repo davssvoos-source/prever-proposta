@@ -293,7 +293,7 @@ function CalendarioPage() {
               return (
                 <button
                   key={v.id}
-                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } })}
+                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                   style={{
                     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(255,255,255,0.05)",
                     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
