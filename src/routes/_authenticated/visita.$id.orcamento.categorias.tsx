@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -37,7 +37,8 @@ const CATEGORIAS = [
 function CategoriasPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const { isLight } = useTheme();
   const iconColor = isLight ? "#b87800" : "#FFC000";
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
@@ -241,7 +242,11 @@ function CategoriasPage() {
             toast.error("Adicione pelo menos um bloco antes de continuar.");
             return;
           }
-          navigate({ to: "/visita/$id/orcamento/pre-envio", params: { id } });
+          navigate({
+            to: "/visita/$id/orcamento/pre-envio",
+            params: { id },
+            state: { from: location.pathname } as any,
+          });
         }}
         style={{
           width: "100%",

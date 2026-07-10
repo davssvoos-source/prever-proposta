@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Calendar, Layers, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
@@ -41,6 +41,8 @@ const TIPOS_UNICOS = new Set(["CENT"]);
 function PreEnvioPage() {
   const { id: visitaId } = Route.useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from;
   const { isLight } = useTheme();
 
   const { data: visita } = useQuery({
@@ -237,9 +239,10 @@ function PreEnvioPage() {
             />
             {/* Botão voltar sobreposto */}
             <button
-              onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
-              }
+              onClick={() => {
+                if (from) navigate({ to: from });
+                else window.history.back();
+              }}
               style={{
                 position: "absolute",
                 top: 14,
@@ -297,9 +300,10 @@ function PreEnvioPage() {
             }}
           >
             <button
-              onClick={() =>
-                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
-              }
+              onClick={() => {
+                if (from) navigate({ to: from });
+                else window.history.back();
+              }}
               style={{
                 background: isLight ? "#ffffff" : "none",
                 border: isLight ? "1px solid rgba(0,0,0,0.10)" : "none",

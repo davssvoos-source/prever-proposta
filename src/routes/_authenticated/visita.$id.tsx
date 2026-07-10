@@ -630,7 +630,7 @@ function VisitaDetail() {
         <button
           onClick={() => {
             if (from && from !== location.pathname) {
-              navigate({ to: from });
+              navigate({ to: from }); // objeto, nunca string pura
             } else if (typeof window !== "undefined" && window.history.length > 1) {
               window.history.back();
             } else {
