@@ -239,7 +239,7 @@ function VisitaDetail() {
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const location = useLocation();
-  const from = (location.state as any)?.from ?? "/";
+  const from = (location.state as any)?.from as string | undefined;
   const { isLight } = useTheme();
 
 
