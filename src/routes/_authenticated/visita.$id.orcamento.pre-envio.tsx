@@ -238,7 +238,7 @@ function PreEnvioPage() {
             {/* Botão voltar sobreposto */}
             <button
               onClick={() =>
-                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
+                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
               }
               style={{
                 position: "absolute",
@@ -298,7 +298,7 @@ function PreEnvioPage() {
           >
             <button
               onClick={() =>
-                navigate({ to: `/visita/${visitaId}/orcamento/categorias` })
+                navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } })
               }
               style={{
                 background: isLight ? "#ffffff" : "none",
