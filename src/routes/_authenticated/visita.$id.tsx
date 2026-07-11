@@ -239,7 +239,7 @@ function VisitaDetail() {
   const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const location = useLocation();
-  const from = (location.state as any)?.from ?? "/";
+  const from = (location.state as any)?.from as string | undefined;
   const { isLight } = useTheme();
 
 
@@ -629,8 +629,13 @@ function VisitaDetail() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
           onClick={() => {
-            if (from) navigate(from);
-            else window.history.back();
+            if (from && from !== location.pathname) {
+              navigate({ to: from });
+            } else if (typeof window !== "undefined" && window.history.length > 1) {
+              window.history.back();
+            } else {
+              navigate({ to: "/dashboard" });
+            }
           }}
 
 
