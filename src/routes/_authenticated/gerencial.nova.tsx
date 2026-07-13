@@ -72,6 +72,10 @@ function NovaVisitaPage() {
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
+  // Residência/Galpão: não têm síndico/zelador — usa proprietário/encarregado(a)
+  const isResidenciaOuGalpao = tipoLocal === "residencia" || tipoLocal === "empresa";
+  const labelResponsavel1 = isResidenciaOuGalpao ? "Proprietário" : "Síndico";
+  const labelResponsavel2 = isResidenciaOuGalpao ? "Encarregado(a)" : "Zelador(a)";
 
   const [nomeSindico, setNomeSindico] = useState("");
   const [telefoneSindico, setTelefoneSindico] = useState("");
@@ -436,31 +440,31 @@ function NovaVisitaPage() {
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Nome do Síndico (opcional)</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome do síndico" />
+              <label style={LABEL}>Nome do {labelResponsavel1} (opcional)</label>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder={`Nome do ${labelResponsavel1.toLowerCase()}`} />
             </div>
             <div>
-              <label style={LABEL}>WhatsApp do Síndico</label>
+              <label style={LABEL}>WhatsApp do {labelResponsavel1}</label>
               <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="(11) 90000-0000" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do Síndico</label>
-              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder="sindico@email.com" />
+              <label style={LABEL}>E-mail do {labelResponsavel1}</label>
+              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder={`${labelResponsavel1.toLowerCase()}@email.com`} />
             </div>
           </div>
 
           <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>
-              <label style={LABEL}>Nome do Zelador(a) (opcional)</label>
-              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome do zelador(a)" />
+              <label style={LABEL}>Nome do {labelResponsavel2} (opcional)</label>
+              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder={`Nome do ${labelResponsavel2.toLowerCase()}`} />
             </div>
             <div>
-              <label style={LABEL}>WhatsApp do Zelador(a)</label>
+              <label style={LABEL}>WhatsApp do {labelResponsavel2}</label>
               <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="(11) 90000-0000" />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do Zelador(a)</label>
-              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder="zelador@email.com" />
+              <label style={LABEL}>E-mail do {labelResponsavel2}</label>
+              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder={`${labelResponsavel2.toLowerCase()}@email.com`} />
             </div>
           </div>
 
@@ -808,8 +812,8 @@ function NovaVisitaPage() {
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
-              ...(nomeSindico ? [{ label: "Síndico", value: nomeSindico }] : []),
-              ...(nomeZelador ? [{ label: "Zelador(a)", value: nomeZelador }] : []),
+              ...(nomeSindico ? [{ label: labelResponsavel1, value: nomeSindico }] : []),
+              ...(nomeZelador ? [{ label: labelResponsavel2, value: nomeZelador }] : []),
 
               { label: "Serviços", value: servicosPropostos.map((k) => SERVICOS_PROPOSTOS.find((s) => s.key === k)?.label).filter(Boolean).join(", ") },
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
