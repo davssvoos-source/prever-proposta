@@ -64,13 +64,22 @@ import {
   type BlocoConfig,
   type BarreiraConfig,
   type TipoBloco,
+  type CftvCamera,
   gerarCodigoBloco,
   gerarDescricaoBloco,
   CAT_SLUG_TO_TIPO,
   CAT_NOMES,
 } from "@/lib/blocos";
+
+// Opções de I.A integrada por câmera (CFTV)
+const CFTV_IA_OPCOES = [
+  "Leitura de Placas",
+  "Detecção de movimento",
+  "Detecção de ausência",
+  "Detecção de presença",
+];
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
-import { computeAutoItemsFromConfig } from "@/features/orcamento/blockAutoItems";
+import { computeAutoItemsFromConfig, isServicoCode } from "@/features/orcamento/blockAutoItems";
 import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
 import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 import { ElevadoresWizard, type ElevadorItemCalc } from "@/features/orcamento/ElevadoresWizard";
@@ -102,6 +111,7 @@ interface WizardState {
   tecnologia: string | null;
   qtdDome: number;
   qtdBullet: number;
+  cftvCameras: CftvCamera[];
   perimetro: number;
   esquinas: number;
 }
@@ -415,6 +425,140 @@ function proximoAposBarreira(prefix: "b1" | "b2", eclusa: boolean | null): Wizar
 }
 
 
+// ─── Gauge semicircular de cabeamento (0–100 m) ──────────────────────────────
+
+function CftvCaboGauge({ value, onChange, isLight }: { value: number; onChange: (n: number) => void; isLight: boolean }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const draggingRef = useRef(false);
+  const [editando, setEditando] = useState(false);
+
+  const VB_W = 260, VB_H = 152, CX = 130, CY = 134, R = 106;
+  const clamped = Math.max(0, Math.min(100, value));
+  const frac = clamped / 100;
+  const arcLen = Math.PI * R;
+  const ang = Math.PI * (1 - frac); // rad: π (esq, 0m) → 0 (dir, 100m)
+  const knobX = CX + R * Math.cos(ang);
+  const knobY = CY - R * Math.sin(ang);
+
+  function valueFromPointer(e: { clientX: number; clientY: number }): number | null {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * VB_W;
+    const y = ((e.clientY - rect.top) / rect.height) * VB_H;
+    const dx = x - CX;
+    const dy = CY - y;
+    let a = dy < 0 ? (dx >= 0 ? 0 : Math.PI) : Math.atan2(dy, dx);
+    a = Math.max(0, Math.min(Math.PI, a));
+    return Math.round(((Math.PI - a) / Math.PI) * 100);
+  }
+
+  return (
+    <div style={{ position: "relative", width: "100%", maxWidth: 320, margin: "0 auto" }}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        style={{ width: "100%", display: "block", touchAction: "none", overflow: "visible" }}
+        onPointerDown={(e) => {
+          draggingRef.current = true;
+          (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+          const v = valueFromPointer(e);
+          if (v !== null) onChange(v);
+        }}
+        onPointerMove={(e) => {
+          if (!draggingRef.current) return;
+          const v = valueFromPointer(e);
+          if (v !== null) onChange(v);
+        }}
+        onPointerUp={() => { draggingRef.current = false; }}
+        onPointerCancel={() => { draggingRef.current = false; }}
+      >
+        <defs>
+          <linearGradient id="cftvGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#FFD700" />
+            <stop offset="55%" stopColor="#FFC000" />
+            <stop offset="100%" stopColor="#FF9F00" />
+          </linearGradient>
+        </defs>
+        {/* Trilha */}
+        <path
+          d={`M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`}
+          fill="none"
+          stroke={isLight ? "rgba(0,0,0,0.12)" : "#FFFFFF"}
+          strokeWidth={10}
+          strokeLinecap="round"
+        />
+        {/* Progresso */}
+        {frac > 0 && (
+          <path
+            d={`M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`}
+            fill="none"
+            stroke="url(#cftvGaugeGrad)"
+            strokeWidth={10}
+            strokeLinecap="round"
+            strokeDasharray={`${frac * arcLen} ${arcLen}`}
+          />
+        )}
+        {/* Bola amarela */}
+        <circle
+          cx={knobX}
+          cy={knobY}
+          r={14}
+          fill="#FFC000"
+          stroke={isLight ? "#ffffff" : "rgba(0,0,0,0.35)"}
+          strokeWidth={3}
+          style={{ filter: "drop-shadow(0 0 8px rgba(255,192,0,0.7))", cursor: "grab" }}
+        />
+      </svg>
+      {/* Número central (editável ao toque) */}
+      <div
+        style={{
+          position: "absolute", left: 0, right: 0, bottom: 0,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+        }}
+      >
+        {editando ? (
+          <input
+            autoFocus
+            type="number"
+            min={0}
+            value={value}
+            onChange={(e) => onChange(Math.max(0, parseInt(e.target.value) || 0))}
+            onBlur={() => setEditando(false)}
+            onKeyDown={(e) => { if (e.key === "Enter") setEditando(false); }}
+            style={{
+              width: 120, textAlign: "center", fontSize: 40, fontWeight: 800,
+              fontFamily: "'Montserrat', sans-serif",
+              background: "transparent", border: "none", outline: "none",
+              color: isLight ? L.text : "#fff",
+              borderBottom: `2px solid ${isLight ? L.gold : "#FFC000"}`,
+            }}
+          />
+        ) : (
+          <div
+            onClick={() => setEditando(true)}
+            style={{
+              fontSize: 44, fontWeight: 800, lineHeight: 1, cursor: "pointer",
+              color: isLight ? L.text : "#fff", fontFamily: "'Montserrat', sans-serif",
+            }}
+          >
+            {value}
+            <span style={{ fontSize: 18, fontWeight: 600, marginLeft: 4, color: isLight ? L.textSub : "rgba(255,255,255,0.6)" }}>m</span>
+          </div>
+        )}
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: isLight ? L.textSub : "rgba(255,255,255,0.45)" }}>
+          Cabeamento
+        </div>
+      </div>
+      {/* Extremos */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
+        <span>0 m</span>
+        <span>100 m</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 function BlocosWizardPage() {
@@ -480,8 +624,9 @@ function BlocosWizardPage() {
       return data;
     },
   });
-  const portaria: "PR" | "PP" =
-    ((orcamentoRow as any)?.sistema_proposto === "PP") ? "PP" : "PR";
+  const sistemaPropostoRaw = (orcamentoRow as any)?.sistema_proposto;
+  const portaria: "PR" | "PP" | "PA" =
+    sistemaPropostoRaw === "PP" ? "PP" : sistemaPropostoRaw === "PA" ? "PA" : "PR";
 
   const { data: blocosAdicionados = [], isLoading } = useQuery({
     queryKey: ["visita_blocos", visitaId, tipoBloco],
@@ -535,6 +680,59 @@ function BlocosWizardPage() {
   const [wizard, setWizard] = useState<WizardState | null>(null);
   const [fotos, setFotos] = useState<{ localUrl: string; file: File }[]>([]);
   const [showOpcoes, setShowOpcoes] = useState(false);
+
+  // ── CFTV: câmera em configuração (antes de ser adicionada ao escopo) ──────
+  const [camTipo, setCamTipo] = useState<"dome" | "bullet">("dome");
+  const [camMetros, setCamMetros] = useState(0);
+  const [camIA, setCamIA] = useState<string[]>([]);
+
+  // BOM ao vivo (somatória de todas as câmeras já adicionadas neste fluxo)
+  const cftvCams = wizard?.cftvCameras ?? [];
+  const cftvBomAll =
+    tipoBloco === "CFTV" && wizard
+      ? computeAutoItemsFromConfig({
+          tipoBloco: "CFTV",
+          eclusa: false,
+          tecnologia: wizard.tecnologia ?? "IP",
+          qtdDome: cftvCams.filter((c) => c.tipo === "dome").length,
+          qtdBullet: cftvCams.filter((c) => c.tipo === "bullet").length,
+          cftvCameras: cftvCams,
+          portaria,
+        }).filter((it) => it.qtd > 0)
+      : [];
+  // Hardware (equipamentos) × serviços mensais (SV*)
+  const cftvBom = cftvBomAll.filter((it) => !isServicoCode(it.cod_eq));
+  const cftvBomMensal = cftvBomAll.filter((it) => isServicoCode(it.cod_eq));
+  const cftvBomCodes = cftvBom.map((it) => it.cod_eq);
+  const { data: cftvEqNomes = {} } = useQuery({
+    queryKey: ["cftv_bom_nomes", [...cftvBomCodes].sort().join(",")],
+    enabled: cftvBomCodes.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("equipamentos")
+        .select("code,nome,modelo")
+        .in("code", cftvBomCodes);
+      const map: Record<string, string> = {};
+      for (const e of (data as any[]) ?? []) map[e.code] = e.modelo || e.nome;
+      return map;
+    },
+  });
+  const cftvSvCodes = cftvBomMensal.map((it) => it.cod_eq);
+  const { data: cftvSvInfo = {} } = useQuery({
+    queryKey: ["cftv_bom_servicos", [...cftvSvCodes].sort().join(",")],
+    enabled: cftvSvCodes.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("servicos")
+        .select("code,nome,preco_unitario_mensal")
+        .in("code", cftvSvCodes);
+      const map: Record<string, { nome: string; preco: number }> = {};
+      for (const s of (data as any[]) ?? []) {
+        map[s.code] = { nome: s.nome, preco: Number(s.preco_unitario_mensal || 0) };
+      }
+      return map;
+    },
+  });
   const inputGaleriaRef = useRef<HTMLInputElement>(null);
   const inputCameraRef = useRef<HTMLInputElement>(null);
 
@@ -555,6 +753,17 @@ function BlocosWizardPage() {
   // Referência para bloquear auto-save quando abrimos um bloco existente para edição
   // (declarado adiante como autoSaveGuardRef)
   function abrirBlocoParaEditar(bloco: any) {
+    // Câmeras CFTV: restaura do JSON salvo ou sintetiza a partir das quantidades (blocos antigos)
+    const camerasSalvas: CftvCamera[] | undefined = (bloco.alarme_config as any)?.cftv_cameras;
+    const cftvCameras: CftvCamera[] =
+      bloco.tipo_bloco === "CFTV"
+        ? Array.isArray(camerasSalvas)
+          ? camerasSalvas
+          : [
+              ...Array.from({ length: bloco.qtd_dome ?? 0 }, () => ({ tipo: "dome" as const, metros: 0, ia: [] as string[] })),
+              ...Array.from({ length: bloco.qtd_bullet ?? 0 }, () => ({ tipo: "bullet" as const, metros: 0, ia: [] as string[] })),
+            ]
+        : [];
     const cfg: BlocoConfig = {
       tipoBloco: bloco.tipo_bloco as TipoBloco,
       eclusa: !!bloco.eclusa,
@@ -583,6 +792,7 @@ function BlocosWizardPage() {
       tecnologia: bloco.tecnologia ?? undefined,
       qtdDome: bloco.qtd_dome ?? undefined,
       qtdBullet: bloco.qtd_bullet ?? undefined,
+      cftvCameras: bloco.tipo_bloco === "CFTV" ? cftvCameras : undefined,
       perimetro: bloco.perimetro ?? undefined,
       esquinas: bloco.esquinas ?? undefined,
       portaria,
@@ -599,6 +809,7 @@ function BlocosWizardPage() {
       tecnologia: bloco.tecnologia ?? null,
       qtdDome: bloco.qtd_dome ?? 0,
       qtdBullet: bloco.qtd_bullet ?? 0,
+      cftvCameras,
       perimetro: bloco.perimetro ?? 0,
       esquinas: bloco.esquinas ?? 0,
     });
@@ -653,6 +864,9 @@ function BlocosWizardPage() {
         nome_acesso: wizard?.nomeAcesso?.trim() || null,
         hh_padrao: 10,
         quantidade: 1,
+        ...(config.tipoBloco === "CFTV"
+          ? { alarme_config: { cftv_cameras: config.cftvCameras ?? [] } }
+          : {}),
         ...(currentBlocoId ? {} : { ordem: blocosAdicionados.length, fotos_urls: fotosUrls }),
       };
 
@@ -873,6 +1087,7 @@ function BlocosWizardPage() {
       b1: {}, b2: {},
       tecnologia: null,
       qtdDome: 0, qtdBullet: 0,
+      cftvCameras: [],
       perimetro: 0, esquinas: 0,
       ...overrides,
     });
@@ -984,7 +1199,16 @@ function BlocosWizardPage() {
 
   function avancarCftvQtd() {
     if (!wizard) return;
-    setWizard({ ...wizard, step: "resumo" });
+    if (wizard.cftvCameras.length === 0) {
+      toast.error("Adicione pelo menos uma câmera ao escopo.");
+      return;
+    }
+    setWizard({
+      ...wizard,
+      qtdDome: wizard.cftvCameras.filter((c) => c.tipo === "dome").length,
+      qtdBullet: wizard.cftvCameras.filter((c) => c.tipo === "bullet").length,
+      step: "resumo",
+    });
   }
 
   function voltarPasso() {
@@ -1121,55 +1345,11 @@ function BlocosWizardPage() {
       tecnologia: wizard?.tecnologia ?? undefined,
       qtdDome: wizard?.qtdDome,
       qtdBullet: wizard?.qtdBullet,
+      cftvCameras: tipoBloco === "CFTV" ? wizard?.cftvCameras ?? [] : undefined,
       perimetro: wizard?.perimetro,
       esquinas: wizard?.esquinas,
       portaria,
     };
-  }
-
-  // ─── UI +/- para CFTV ─────────────────────────────────────────────────────
-  function CftvCounter({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "24px 0" }}>
-        <Video size={64} color={isLight ? L.gold : "#F59E0B"} strokeWidth={1.5} />
-        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.12em", color: isLight ? L.textSub : "rgba(255,255,255,0.75)", textTransform: "uppercase" }}>
-          {label}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <button
-            onClick={() => onChange(Math.max(0, value - 1))}
-            style={{
-              width: 56, height: 56, borderRadius: "50%",
-              border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.28)",
-              background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
-              color: isLight ? L.text : "#fff",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Minus size={22} />
-          </button>
-          <div
-            style={{
-              minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
-              color: isLight ? L.text : "#fff", fontFamily: "'Montserrat', sans-serif",
-            }}
-          >
-            {value}
-          </div>
-          <button
-            onClick={() => onChange(Math.min(64, value + 1))}
-            style={{
-              width: 56, height: 56, borderRadius: "50%",
-              border: "none", background: "#F59E0B", color: "#fff",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 12px rgba(245,158,11,0.35)",
-            }}
-          >
-            <Plus size={22} />
-          </button>
-        </div>
-      </div>
-    );
   }
 
   // Auto-salva o bloco assim que entramos na tela de resumo (unificada com editor de itens).
@@ -1298,8 +1478,27 @@ function BlocosWizardPage() {
       );
     }
 
-    // CFTV: tela unificada de quantidade (Dome + Bullet)
+    // CFTV: configuração de câmeras (switch dome/bullet + gauge de cabeamento + IA)
     if (wizard.step === "cftv_qtd") {
+      const GOLD_GRAD = "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)";
+      const totalCams = wizard.cftvCameras.length;
+      const totalMetros = wizard.cftvCameras.reduce((s, c) => s + (c.metros || 0), 0);
+
+      const adicionarCamera = () => {
+        setWizard({
+          ...wizard,
+          cftvCameras: [...wizard.cftvCameras, { tipo: camTipo, metros: camMetros, ia: camIA }],
+        });
+        setCamMetros(0);
+        setCamIA([]);
+      };
+      const removerCamera = (idx: number) => {
+        setWizard({ ...wizard, cftvCameras: wizard.cftvCameras.filter((_, i) => i !== idx) });
+      };
+      const toggleIA = (opt: string) => {
+        setCamIA((prev) => (prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]));
+      };
+
       return (
         <div style={PAGE}>
           <div style={HEADER}>
@@ -1307,22 +1506,227 @@ function BlocosWizardPage() {
             <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
-          <CftvCounter
-            label="Quantidade de Câmeras Dome"
-            value={wizard.qtdDome}
-            onChange={(n) => setWizard({ ...wizard, qtdDome: n })}
-          />
-          <CftvCounter
-            label="Quantidade de Câmeras Bullet"
-            value={wizard.qtdBullet}
-            onChange={(n) => setWizard({ ...wizard, qtdBullet: n })}
-          />
+
+          {/* Switch Dome ⟷ Bullet */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div
+              style={{
+                display: "flex", position: "relative", width: 220, height: 48,
+                borderRadius: 999,
+                background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+                border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute", top: 4, bottom: 4, width: "calc(50% - 4px)",
+                  left: camTipo === "dome" ? 4 : "calc(50%)",
+                  borderRadius: 999, background: GOLD_GRAD,
+                  boxShadow: "0 2px 10px rgba(255,192,0,0.4)",
+                  transition: "left 0.2s ease",
+                }}
+              />
+              {(["dome", "bullet"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setCamTipo(t)}
+                  style={{
+                    flex: 1, zIndex: 1, background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+                    letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: camTipo === t ? "#0A0A0A" : isLight ? L.textSub : "rgba(255,255,255,0.6)",
+                    transition: "color 0.2s",
+                  }}
+                >
+                  {t === "dome" ? "Dome" : "Bullet"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Gauge semicircular de cabeamento */}
+          <CftvCaboGauge value={camMetros} onChange={setCamMetros} isLight={isLight} />
+
+          {/* Botão adicionar câmera (mostra o total no escopo) */}
+          <button
+            onClick={adicionarCamera}
+            style={{
+              width: "100%", height: 60, borderRadius: 999, border: "none",
+              background: GOLD_GRAD, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+              boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+            }}
+          >
+            <span
+              style={{
+                width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
+                color: "#FFC000", fontSize: 17, fontWeight: 800,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "'Montserrat', sans-serif", flexShrink: 0,
+              }}
+            >
+              {totalCams}
+            </span>
+            <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>
+              Adicionar câmera
+            </span>
+          </button>
+
+          {/* I.A integrada para câmera */}
+          <div>
+            <div style={QUESTION}>I.A integrada para câmera</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {CFTV_IA_OPCOES.map((opt) => {
+                const selected = camIA.includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => toggleIA(opt)}
+                    style={{
+                      minHeight: 52, borderRadius: 14, padding: "10px 8px",
+                      border: selected ? "none" : isLight ? L.borderMd : "1px solid rgba(255,215,0,0.25)",
+                      background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                      color: selected ? "#0A0A0A" : isLight ? L.text : "#fff",
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+                      lineHeight: 1.25, textAlign: "center", cursor: "pointer",
+                      boxShadow: selected ? "0 4px 14px rgba(255,192,0,0.35)" : isLight ? L.shadowSm : undefined,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Câmeras já adicionadas */}
+          {totalCams > 0 && (
+            <div>
+              <div style={QUESTION}>Câmeras no escopo ({totalCams})</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {wizard.cftvCameras.map((cam, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                      borderRadius: 12,
+                      background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                      border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                      boxShadow: isLight ? L.shadowSm : undefined,
+                    }}
+                  >
+                    <Video size={16} color={isLight ? L.gold : "#FFC000"} style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? L.text : "#fff" }}>
+                        {cam.tipo === "dome" ? "Dome" : "Bullet"} · {cam.metros} m
+                      </div>
+                      {cam.ia.length > 0 && (
+                        <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {cam.ia.join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removerCamera(idx)}
+                      style={{
+                        width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer",
+                        background: "rgba(239,68,68,0.12)", color: "#EF4444",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Lista de equipamentos (somatória das câmeras) */}
+          <div>
+            <div style={QUESTION}>Equipamentos</div>
+            {cftvBom.length === 0 ? (
+              <div style={{
+                textAlign: "center", padding: "20px 16px", borderRadius: 14,
+                border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
+                color: isLight ? L.textSub : "rgba(255,255,255,0.45)", fontSize: 13,
+              }}>
+                Adicione câmeras para ver os equipamentos do escopo.
+              </div>
+            ) : (
+              <div style={{
+                display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
+                borderRadius: 14,
+                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                boxShadow: isLight ? L.shadowSm : undefined,
+              }}>
+                {cftvBom.map((it) => (
+                  <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                    {it.qtd}× {cftvEqNomes[it.cod_eq] ?? it.observacao ?? it.cod_eq}
+                  </div>
+                ))}
+                {totalMetros > 0 && (
+                  <div style={{
+                    fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB",
+                    borderTop: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
+                    paddingTop: 6, marginTop: 2,
+                  }}>
+                    Cabeamento total: {totalMetros} m
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Mensalidades (I.A por câmera) */}
+          {cftvBomMensal.length > 0 && (
+            <div>
+              <div style={QUESTION}>Mensalidades</div>
+              <div style={{
+                display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
+                borderRadius: 14,
+                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                boxShadow: isLight ? L.shadowSm : undefined,
+              }}>
+                {cftvBomMensal.map((it) => {
+                  const sv = cftvSvInfo[it.cod_eq];
+                  const nome = sv?.nome ?? it.observacao ?? it.cod_eq;
+                  return (
+                    <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                      <span>{it.qtd}× {nome}</span>
+                      {sv && <span style={{ flexShrink: 0, color: isLight ? L.gold : "#FFC000" }}>R$ {(sv.preco * it.qtd).toFixed(2)}/mês</span>}
+                    </div>
+                  );
+                })}
+                {Object.keys(cftvSvInfo).length > 0 && (
+                  <div style={{
+                    display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700,
+                    color: isLight ? L.text : "#fff",
+                    borderTop: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
+                    paddingTop: 6, marginTop: 2,
+                  }}>
+                    <span>Total mensal</span>
+                    <span>
+                      R$ {cftvBomMensal.reduce((s, it) => s + (cftvSvInfo[it.cod_eq]?.preco ?? 0) * it.qtd, 0).toFixed(2)}/mês
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={avancarCftvQtd}
+            disabled={totalCams === 0}
             style={{
               width: "100%", padding: "16px 0",
               background: "#F59E0B", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
+              cursor: totalCams === 0 ? "not-allowed" : "pointer",
+              opacity: totalCams === 0 ? 0.5 : 1,
             }}
           >
             CONTINUAR
@@ -1491,6 +1895,7 @@ function BlocosWizardPage() {
               tecnologia={savedConfig.tecnologia ?? null}
               qtdDome={savedConfig.qtdDome}
               qtdBullet={savedConfig.qtdBullet}
+              cftvCameras={savedConfig.cftvCameras}
               perimetro={savedConfig.perimetro}
               esquinas={savedConfig.esquinas}
               isLight={isLight}
@@ -1720,6 +2125,44 @@ function BlocosWizardPage() {
               )}
             </div>
           )}
+        </div>
+      );
+    }
+
+    // CFTV: tipo de tecnologia — botões lado a lado (fundo dourado, texto preto)
+    if (wizard.step === "tecnologia" && tipoBloco === "CFTV") {
+      return (
+        <div style={PAGE}>
+          <div style={HEADER}>
+            <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          </div>
+          <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
+
+          <div style={QUESTION}>TIPO DE TECNOLOGIA?</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {[
+              { valor: "IP", label: "IP", Icon: Wifi },
+              { valor: "ANAL", label: "Analógico", Icon: Cable },
+            ].map(({ valor, label, Icon }) => (
+              <button
+                key={valor}
+                onClick={() => selecionar(valor)}
+                style={{
+                  height: 64, borderRadius: 16, border: "none",
+                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                  color: "#0A0A0A", fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 800, fontSize: 15, letterSpacing: "0.04em",
+                  cursor: "pointer",
+                  boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+              >
+                <Icon size={18} color="#0A0A0A" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       );
     }

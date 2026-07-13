@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Minus, Trash2, Loader2, CheckCircle2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { computeAutoItemsForBloco } from "@/features/orcamento/blockAutoItems";
+import { computeAutoItemsForBloco, isServicoCode } from "@/features/orcamento/blockAutoItems";
+import type { CftvCamera } from "@/lib/blocos";
 
 // ── Tipos calculados para os itens automáticos do bloco ──────────────────────
 export interface CalcItem {
@@ -23,6 +24,7 @@ interface Props {
   tecnologia?: string | null;
   qtdDome?: number;
   qtdBullet?: number;
+  cftvCameras?: CftvCamera[] | null;
   perimetro?: number;
   esquinas?: number;
   isLight: boolean;
@@ -70,6 +72,7 @@ export function BlocoItensEditor({
   tecnologia,
   qtdDome,
   qtdBullet,
+  cftvCameras,
   perimetro,
   esquinas,
   isLight,
@@ -106,6 +109,7 @@ export function BlocoItensEditor({
         tecnologia,
         qtdDome,
         qtdBullet,
+        cftvCameras,
         perimetro,
         esquinas,
       });
@@ -169,6 +173,26 @@ export function BlocoItensEditor({
     enabled: codes.length > 0,
   });
 
+  // 3b) Serviços mensais (códigos SV*) — nome/preço vêm da tabela `servicos`
+  const svCodes = useMemo(() => codes.filter((c) => isServicoCode(c)), [codes]);
+  const { data: svMap = {} } = useQuery({
+    queryKey: ["servicos_by_code", svCodes.sort().join(",")],
+    queryFn: async () => {
+      if (svCodes.length === 0) return {};
+      const { data, error } = await supabase
+        .from("servicos")
+        .select("code,nome,preco_unitario_mensal")
+        .in("code", svCodes);
+      if (error) throw error;
+      const map: Record<string, { nome: string; preco: number }> = {};
+      for (const s of (data as any[]) ?? []) {
+        map[s.code] = { nome: s.nome, preco: Number(s.preco_unitario_mensal || 0) };
+      }
+      return map;
+    },
+    enabled: svCodes.length > 0,
+  });
+
   const atualizarMut = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<VbiRow> }) => {
       const { error } = await supabase.from("visita_bloco_itens" as any).update(patch).eq("id", id);
@@ -201,7 +225,14 @@ export function BlocoItensEditor({
   });
 
   const visiveis = itens.filter((i) => !i.removido);
-  const total = visiveis.reduce((s, i) => s + (eqMap[i.cod_eq]?.preco ?? 0) * i.qtd, 0);
+  // Serviços mensais (SV*) ficam fora da lista de equipamentos e do subtotal
+  const equipVisiveis = visiveis.filter((i) => !isServicoCode(i.cod_eq));
+  const mensaisVisiveis = visiveis.filter((i) => isServicoCode(i.cod_eq));
+  const total = equipVisiveis.reduce((s, i) => s + (eqMap[i.cod_eq]?.preco ?? 0) * i.qtd, 0);
+  const totalMensal = mensaisVisiveis.reduce(
+    (s, i) => s + (svMap[i.cod_eq]?.preco ?? 0) * i.qtd,
+    0,
+  );
 
   if (!seeded || isLoading) {
     return (
@@ -218,10 +249,10 @@ export function BlocoItensEditor({
         fontSize: 10, fontWeight: 700, letterSpacing: "0.18em",
         color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
       }}>
-        EQUIPAMENTOS DESTE BLOCO ({visiveis.length})
+        EQUIPAMENTOS DESTE BLOCO ({equipVisiveis.length})
       </div>
 
-      {visiveis.length === 0 && (
+      {equipVisiveis.length === 0 && (
         <div style={{
           padding: 16, textAlign: "center", borderRadius: 12,
           background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
@@ -231,7 +262,7 @@ export function BlocoItensEditor({
         </div>
       )}
 
-      {visiveis.map((it) => {
+      {equipVisiveis.map((it) => {
         const eq = eqMap[it.cod_eq];
         const nome = eq?.nome || it.observacao || it.cod_eq;
         const preco = eq?.preco ?? 0;
@@ -275,6 +306,72 @@ export function BlocoItensEditor({
           </div>
         );
       })}
+
+      {/* Mensalidades (serviços SV — ex.: I.A por câmera) */}
+      {mensaisVisiveis.length > 0 && (
+        <>
+          <div style={{
+            marginTop: 8, fontSize: 10, fontWeight: 700, letterSpacing: "0.18em",
+            color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
+          }}>
+            MENSALIDADES ({mensaisVisiveis.length})
+          </div>
+          {mensaisVisiveis.map((it) => {
+            const sv = svMap[it.cod_eq];
+            const nome = sv?.nome || it.observacao || it.cod_eq;
+            const preco = sv?.preco ?? 0;
+            return (
+              <div key={it.id} style={CARD(isLight)}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
+                    {nome}
+                  </div>
+                  <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
+                    {it.cod_eq}{it.origem === "manual" ? " · MANUAL" : ""}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#b87800", marginTop: 2 }}>
+                    R$ {(preco * it.qtd).toFixed(2)}/mês
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    style={CIRCLE_BTN}
+                    onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: Math.max(1, it.qtd - 1) } })}
+                    aria-label="Diminuir"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, fontSize: 14 }}>{it.qtd}</span>
+                  <button
+                    style={CIRCLE_BTN}
+                    onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: it.qtd + 1 } })}
+                    aria-label="Aumentar"
+                  >
+                    <Plus size={14} />
+                  </button>
+                  <button
+                    style={{ ...CIRCLE_BTN, borderColor: "rgba(220,38,38,0.35)", color: "#dc2626", marginLeft: 4 }}
+                    onClick={() => atualizarMut.mutate({ id: it.id, patch: { removido: true } })}
+                    aria-label="Remover"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          <div style={{
+            padding: "10px 14px", borderRadius: 12,
+            background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,215,0,0.08)",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#b87800" }}>TOTAL MENSAL</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
+              R$ {totalMensal.toFixed(2)}/mês
+            </span>
+          </div>
+        </>
+      )}
 
       {/* Add manual */}
       <div style={{ ...CARD(isLight), flexDirection: "column", alignItems: "stretch", gap: 8 }}>

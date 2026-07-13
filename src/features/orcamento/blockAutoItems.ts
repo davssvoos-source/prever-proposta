@@ -1,7 +1,7 @@
 // Motor de regras de equipamentos por bloco — base v9 (EQ codes).
 // Referências: sempre pelo CÓDIGO EQ (mesma tabela `equipamentos`).
 
-import { gerarCodigoBloco, type BlocoConfig, type TipoBloco } from "@/lib/blocos";
+import { gerarCodigoBloco, type BlocoConfig, type CftvCamera, type TipoBloco } from "@/lib/blocos";
 
 export interface AutoBlockItem {
   cod_eq: string;
@@ -15,9 +15,21 @@ type ComputeInput = {
   tecnologia?: string | null;
   qtdDome?: number | null;
   qtdBullet?: number | null;
+  cftvCameras?: CftvCamera[] | null;
   perimetro?: number | null;
   esquinas?: number | null;
 };
+
+// ─── CFTV: I.A por câmera → serviços mensais (tabela `servicos`) ─────────────
+export const CFTV_IA_SERVICOS: Record<string, string> = {
+  "Leitura de Placas": "SV030",
+  "Detecção de presença": "SV031",
+  "Detecção de ausência": "SV032",
+  "Detecção de movimento": "SV033",
+};
+
+/** Itens com código SV* são serviços mensais — exibidos em "Mensalidades", não em equipamentos. */
+export const isServicoCode = (cod: string) => /^SV\d+/i.test(cod);
 
 const ceil = (value: number, divisor: number) =>
   divisor <= 0 ? 0 : Math.ceil(Math.max(0, value) / divisor);
@@ -215,6 +227,17 @@ function computeCftv(input: ComputeInput): AutoBlockItem[] {
   if (!isIp) add(acc, "EQ073", total, "Balun passivo (analógico)");
   add(acc, "EQ098", total, "Caixa plástica organizadora");
 
+  // Cabeamento: 1 caixa de cabo de rede (300 m) a cada 300 m somados das câmeras
+  const cams = input.cftvCameras ?? [];
+  const totalMetros = cams.reduce((s, c) => s + (Number(c.metros) || 0), 0);
+  add(acc, "EQ302", ceil(totalMetros, 300), `Cabo de rede CAT5-E — caixa 300 m (total ${totalMetros} m)`);
+
+  // I.A por câmera → serviços mensais (SV) — qtd = nº de câmeras com a I.A marcada
+  for (const [ia, sv] of Object.entries(CFTV_IA_SERVICOS)) {
+    const n = cams.filter((c) => (c.ia ?? []).includes(ia)).length;
+    add(acc, sv, n, `I.A — ${ia} (mensal, por câmera)`);
+  }
+
   return Array.from(acc.values());
 }
 
@@ -271,7 +294,7 @@ function computeTotemFromCodigo(codigo: string): AutoBlockItem[] {
   return [
     { cod_eq: "EQ197", qtd: nTotens, observacao: "Switch 8P — 1× por Totem" },
     { cod_eq: "EQ174", qtd: nTotens, observacao: "Fonte 12v 5A — 1× por Totem" },
-    { cod_eq: "EQ302", qtd: nTotens, observacao: "Poste 2,6 m — 1× por Totem" },
+    { cod_eq: "EQ303", qtd: nTotens, observacao: "Poste 2,6 m — 1× por Totem" },
     { cod_eq: "EQ300", qtd: cameras, observacao: "Câmera IP Bullet — total de câmeras dos totens" },
   ];
 }
@@ -312,6 +335,7 @@ export function computeAutoItemsFromConfig(config: BlocoConfig): AutoBlockItem[]
     tecnologia: config.tecnologia,
     qtdDome: config.qtdDome,
     qtdBullet: config.qtdBullet,
+    cftvCameras: config.cftvCameras,
     perimetro: config.perimetro,
     esquinas: config.esquinas,
   });

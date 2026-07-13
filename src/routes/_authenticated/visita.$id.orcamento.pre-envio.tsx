@@ -502,6 +502,7 @@ function PreEnvioPage() {
                         tecnologia={bloco.tecnologia}
                         qtdDome={bloco.qtd_dome}
                         qtdBullet={bloco.qtd_bullet}
+                        cftvCameras={(bloco.alarme_config as any)?.cftv_cameras ?? null}
                         perimetro={bloco.perimetro}
                         esquinas={bloco.esquinas}
                         isLight={isLight}
