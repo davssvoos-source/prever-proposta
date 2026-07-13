@@ -142,6 +142,10 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 /** Regenera o `codigo_bloco` a partir de uma linha de `visita_blocos` aplicando
  *  a portaria (PR/PP/PA) atual do projeto. */
 export function codigoFromDbRow(row: any, portaria: "PR" | "PP" | "PA"): string {
+  // ELV/TOT geram o próprio código a partir da config (ex.: ELV-3KIT, TOT-2x6CAM) —
+  // não têm barreira (b1/b2) nem dependem de portaria, então nunca passam por gerarCodigoBloco.
+  if (row.tipo_bloco === "ELV" || row.tipo_bloco === "TOT") return row.codigo_bloco;
+
   const cfg: BlocoConfig = {
     tipoBloco: row.tipo_bloco as TipoBloco,
     eclusa: !!row.eclusa,
