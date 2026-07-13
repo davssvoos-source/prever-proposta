@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Pencil, Building2, User, Bot } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, Building2, User, Bot, Eye, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -23,6 +23,12 @@ const SISTEMA_PROPOSTO_OPCOES = [
   { val: "PA" as const, label: "Portaria Autônoma", Icon: Bot },
 ];
 
+// Residência/Galpão: 1ª tela alternativa — só o serviço proposto
+const SERVICO_SIMPLES_OPCOES = [
+  { val: "monitoramento_24h" as const, label: "Monitoramento 24h", Icon: Eye },
+  { val: "implantacao_sistema" as const, label: "Implantação de Sistema", Icon: Wrench },
+];
+
 function OrcamentoPasso1() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -41,23 +47,28 @@ function OrcamentoPasso1() {
     },
   });
 
-  // Serviços ofertados pelo admin (para default de PR/PP)
+  // Serviços ofertados pelo admin (para default de PR/PP) + tipo de local (define o fluxo)
   const { data: visita } = useQuery({
     queryKey: ["visita_servicos", id],
     queryFn: async () => {
       const { data } = await supabase
         .from("visitas_tecnicas")
-        .select("servicos_ofertados")
+        .select("servicos_ofertados, tipo_local")
         .eq("id", id)
         .maybeSingle();
       return data;
     },
   });
 
+  // Residência/Galpão: sem qtd de apartamentos, sistema ou airbnb — só serviço proposto
+  const tipoLocal = (visita as any)?.tipo_local as string | null | undefined;
+  const fluxoSimples = tipoLocal === "residencia" || tipoLocal === "empresa";
+
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
   const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "PA" | "">("");
   const [airbnb, setAirbnb] = useState<string>("");
+  const [servicoSimples, setServicoSimples] = useState<"monitoramento_24h" | "implantacao_sistema" | "">("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
@@ -78,9 +89,38 @@ function OrcamentoPasso1() {
         setSistemaProposto(isRemota ? "PR" : "PP");
       }
       setAirbnb((orcamento as any)?.airbnb ?? "");
+      const svcSalvo = (orcamento as any)?.servico_proposto;
+      if (svcSalvo === "monitoramento_24h" || svcSalvo === "implantacao_sistema") {
+        setServicoSimples(svcSalvo);
+      }
       setReady(true);
     }
   }, [orcamento, visita, ready]);
+
+  // Residência/Galpão: salva só o serviço proposto e segue para as categorias
+  const saveServicoMutation = useMutation({
+    mutationFn: async () => {
+      if (!servicoSimples) throw new Error("Selecione o SERVIÇO PROPOSTO.");
+      const { error } = await supabase.from("visita_orcamentos").upsert(
+        {
+          visita_id: id,
+          servico_proposto: servicoSimples,
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: "visita_id" },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setErroVisible(null);
+      qc.invalidateQueries({ queryKey: ["orcamento", id] });
+      window.location.href = `/visita/${id}/orcamento/categorias`;
+    },
+    onError: (e: Error) => {
+      setErroVisible(e.message);
+      toast.error(e.message);
+    },
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -227,6 +267,145 @@ function OrcamentoPasso1() {
 
   const sliderValue = Math.min(Number(qtd) || 0, 100);
   const inputMax = 100;
+
+  const HEADER_BTN: React.CSSProperties = {
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 12,
+    width: 40,
+    height: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: isLight ? "#0a0b0e" : "#fff",
+    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
+  };
+  const TITULO: React.CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600,
+    fontSize: 18,
+    color: isLight ? "#0a0b0e" : "#fff",
+    letterSpacing: "0.02em",
+  };
+  const CTA: React.CSSProperties = {
+    width: "100%",
+    height: 56,
+    borderRadius: 28,
+    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+    border: "none",
+    color: "#08090E",
+    fontFamily: "'Montserrat', sans-serif",
+    fontWeight: 600,
+    fontSize: 13,
+    letterSpacing: "0.18em",
+    textTransform: "uppercase",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+  };
+
+  // Aguarda saber o tipo de local para decidir qual 1ª tela mostrar
+  if (visita === undefined) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        Carregando…
+      </div>
+    );
+  }
+
+  // ── Residência / Galpão: 1ª tela simplificada (só SERVIÇO PROPOSTO) ────────
+  if (fluxoSimples) {
+    return (
+      <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => navigate({ to: "/visita/$id", params: { id } })} style={HEADER_BTN}>
+            <ArrowLeft size={18} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={TITULO}>Proposta</div>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[true, false, false].map((active, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 20,
+                  height: 4,
+                  borderRadius: 2,
+                  background: active
+                    ? isLight ? "#b87800" : "#FFC000"
+                    : isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Serviço proposto */}
+        <div style={CARD}>
+          <div style={LABEL}>Serviço proposto</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {SERVICO_SIMPLES_OPCOES.map(({ val, label, Icon }) => {
+              const selected = servicoSimples === val;
+              return (
+                <button
+                  key={val}
+                  onClick={() => setServicoSimples(val)}
+                  style={{
+                    height: 60,
+                    borderRadius: 14,
+                    border: selected
+                      ? "none"
+                      : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                    background: selected
+                      ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                      : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                    color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                    boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Icon size={20} />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {erroVisible && (
+          <p style={{ color: "#ff4d4f", fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+            {erroVisible}
+          </p>
+        )}
+        <div style={{ marginTop: 8 }}>
+          <button
+            onClick={() => saveServicoMutation.mutate()}
+            disabled={saveServicoMutation.isPending}
+            style={{ ...CTA, opacity: saveServicoMutation.isPending ? 0.7 : 1 }}
+          >
+            {saveServicoMutation.isPending ? "Salvando..." : "Próxima etapa"}
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "12px 14px 120px", display: "flex", flexDirection: "column", gap: 16 }}>

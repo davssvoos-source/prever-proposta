@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Factory, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite } from "lucide-react";
 import type { ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
@@ -33,7 +33,7 @@ const L = {
 const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: "condominio_vertical", label: "Cond. Vertical", Icon: Building2 },
   { id: "condominio_horizontal", label: "Cond. Horizontal", Icon: Home },
-  { id: "empresa", label: "Empresa", Icon: Factory },
+  { id: "empresa", label: "Galpão", Icon: Warehouse },
   { id: "residencia", label: "Residência", Icon: (props) => <Home {...props} strokeWidth={1.5} /> },
 ];
 
@@ -395,11 +395,11 @@ function NovaVisitaPage() {
                     onClick={() => setTipoLocal(t.id)}
                     style={{
                       background: ativo
-                        ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.12)"
-                        : isLight ? L.cardSolid : GOLD_GRADIENT_BORDER,
+                        ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       border: ativo
-                        ? isLight ? "2px solid #b87800" : "1.5px solid rgba(255,192,0,0.55)"
-                        : isLight ? L.borderMd : "1px solid transparent",
+                        ? "none"
+                        : isLight ? L.borderMd : "1px solid rgba(255,215,0,0.16)",
                       borderRadius: 12,
                       padding: "16px 8px",
                       cursor: "pointer",
@@ -407,20 +407,20 @@ function NovaVisitaPage() {
                       flexDirection: "column",
                       alignItems: "center",
                       gap: 6,
-                      boxShadow: ativo ? (isLight ? "none" : "0 0 16px rgba(255,192,0,0.18)") : "none",
+                      boxShadow: ativo ? "0 6px 20px rgba(255,192,0,0.35)" : "none",
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#d1d5db") }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? "#0A0A0A" : (isLight ? L.textSub : "#d1d5db") }}>
                       <t.Icon size={26} />
                     </span>
                     <span
                       style={{
                         fontFamily: "'Montserrat', sans-serif",
                         fontSize: 10,
-                        fontWeight: 300,
+                        fontWeight: 600,
                         color: ativo
-                          ? isLight ? L.gold : "#FFC000"
+                          ? "#0A0A0A"
                           : isLight ? L.textSub : "#d1d5db",
                         textAlign: "center",
                         lineHeight: 1.2,

@@ -42,7 +42,7 @@ export const SERVICOS = Object.keys(SERVICO_LABEL) as Array<keyof typeof SERVICO
 export const TIPO_LABEL: Record<string, string> = {
   condominio_vertical: "Cond. Vertical",
   condominio_horizontal: "Cond. Horizontal",
-  empresa: "Empresa",
+  empresa: "Galpão",
   residencia: "Residência",
 };
 
