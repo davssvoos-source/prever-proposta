@@ -101,7 +101,7 @@ function UsuariosPage() {
         boxShadow: L.shadow,
       }
     : {
-        background: "rgba(8,8,12,0.22)",
+        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
         backdropFilter: "blur(12px) saturate(130%)",
         border: "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
@@ -123,7 +123,7 @@ function UsuariosPage() {
 
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontWeight: 600,
     fontSize: 10,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
@@ -345,7 +345,7 @@ function UsuariosPage() {
         <button
           onClick={() => navigate({ to: "/gerencial" })}
           style={{
-            background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.06)",
+            background: isLight ? "#f3f4f6" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12, width: 40, height: 40,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -428,7 +428,7 @@ function UsuariosPage() {
                         textAlign: "left", padding: "10px 14px", borderRadius: 12,
                         background: inviteCargo === id
                           ? (isLight ? lightCfg.bg : `${cfg.color}12`)
-                          : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                          : (isLight ? "#f9fafb" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                         border: inviteCargo === id
                           ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
                           : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
@@ -457,7 +457,7 @@ function UsuariosPage() {
                 onClick={() => setShowInvite(false)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
@@ -525,7 +525,7 @@ function UsuariosPage() {
                         style={{
                           padding: "6px 10px", borderRadius: 8,
                           border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
-                          background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.08)",
+                          background: isLight ? "#f3f4f6" : "#191921",
                           color: isLight ? L.text : "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
                         }}
                       >
@@ -729,7 +729,7 @@ function UsuariosPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: "50%",
-                    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.06)",
+                    background: isLight ? "#f3f4f6" : "#191921",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: isLight ? "#9ca3af" : "rgba(255,255,255,0.4)",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
@@ -822,7 +822,7 @@ function UsuariosPage() {
                       textAlign: "left", padding: "12px 14px", borderRadius: 12,
                       background: editCargo === id
                         ? (isLight ? lightCfg.bg : `${cfg.color}12`)
-                        : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                        : (isLight ? "#f9fafb" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                       border: editCargo === id
                         ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
                         : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
@@ -850,7 +850,7 @@ function UsuariosPage() {
                 onClick={() => setEditingUser(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
@@ -914,7 +914,7 @@ function UsuariosPage() {
                 onClick={() => setDeleteConfirm(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",

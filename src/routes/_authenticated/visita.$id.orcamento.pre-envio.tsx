@@ -279,7 +279,7 @@ function PreEnvioPage() {
                 style={{
                   color: "#FFFFFF",
                   fontSize: 22,
-                  fontWeight: 800,
+                  fontWeight: 600,
                   margin: 0,
                   textShadow: "0 2px 10px rgba(0,0,0,0.9)",
                 }}
@@ -327,7 +327,7 @@ function PreEnvioPage() {
                 style={{
                   color: isLight ? "#0a0b0e" : "#FFFFFF",
                   fontSize: 17,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   margin: 0,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -477,7 +477,7 @@ function PreEnvioPage() {
                         <div
                           style={{
                             height: 1,
-                            background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+                            background: isLight ? "rgba(0,0,0,0.08)" : "#191921",
                             marginBottom: 16,
                           }}
                         />
@@ -486,7 +486,7 @@ function PreEnvioPage() {
                         style={{
                           color: isLight ? "#b87800" : "#FFC000",
                           fontSize: 12,
-                          fontWeight: 700,
+                          fontWeight: 600,
                           letterSpacing: 0.6,
                           fontFamily: "'Montserrat',sans-serif",
                           textTransform: "uppercase",
@@ -525,7 +525,7 @@ function PreEnvioPage() {
                                 aspectRatio: "1 / 1",
                                 borderRadius: 8,
                                 overflow: "hidden",
-                                background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+                                background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                                 border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.08)",
                               }}
                             >
@@ -606,7 +606,7 @@ function SectionCard({
               boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
             }
           : {
-              background: "rgba(255,255,255,0.03)",
+              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
               border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 16,
               padding: "16px",
@@ -620,7 +620,7 @@ function SectionCard({
           style={{
             color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
             fontSize: 11,
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: 1,
             fontFamily: "'Montserrat',sans-serif",
           }}

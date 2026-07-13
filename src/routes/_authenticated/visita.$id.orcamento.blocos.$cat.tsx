@@ -258,7 +258,7 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
 
           const goldSolid = "#F59E0B";
           const goldText = isLight ? "#b87800" : "#FFC000";
-          const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
+          const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
           const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
           const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
           const completedLabel = goldText;
@@ -365,7 +365,7 @@ function MacroStepIndicator({
   const goldSolid = "#F59E0B";
   const redSolid = "#EF4444";
   const goldText = isLight ? "#b87800" : "#FFC000";
-  const futureCircleBg = isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)";
+  const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
   const currentLabel = isLight ? "#0a0b0e" : "#fff";
@@ -481,15 +481,15 @@ function CftvCaboGauge({ value, onChange, isLight }: { value: number; onChange: 
             <stop offset="100%" stopColor="#FF9F00" />
           </linearGradient>
         </defs>
-        {/* Trilha */}
+        {/* Trilha — barra amarela (dourado suave até o progresso pleno) */}
         <path
           d={`M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`}
           fill="none"
-          stroke={isLight ? "rgba(0,0,0,0.12)" : "#FFFFFF"}
+          stroke={isLight ? "rgba(255,192,0,0.30)" : "rgba(255,192,0,0.28)"}
           strokeWidth={10}
           strokeLinecap="round"
         />
-        {/* Progresso */}
+        {/* Progresso — degradê dourado pleno */}
         {frac > 0 && (
           <path
             d={`M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`}
@@ -500,15 +500,20 @@ function CftvCaboGauge({ value, onChange, isLight }: { value: number; onChange: 
             strokeDasharray={`${frac * arcLen} ${arcLen}`}
           />
         )}
-        {/* Bola amarela */}
+        {/* Bola branca com glow, deslizando na barra amarela */}
         <circle
           cx={knobX}
           cy={knobY}
           r={14}
-          fill="#FFC000"
-          stroke={isLight ? "#ffffff" : "rgba(0,0,0,0.35)"}
-          strokeWidth={3}
-          style={{ filter: "drop-shadow(0 0 8px rgba(255,192,0,0.7))", cursor: "grab" }}
+          fill="#FFFFFF"
+          stroke={isLight ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.35)"}
+          strokeWidth={2}
+          style={{
+            filter: isLight
+              ? "drop-shadow(0 2px 6px rgba(0,0,0,0.25))"
+              : "drop-shadow(0 0 10px rgba(255,255,255,0.75)) drop-shadow(0 0 20px rgba(255,255,255,0.35))",
+            cursor: "grab",
+          }}
         />
       </svg>
       {/* Número central (editável ao toque) */}
@@ -580,7 +585,7 @@ function BlocosWizardPage() {
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
   const BACK_BTN: React.CSSProperties = {
-    background: isLight ? L.cardSolid : "rgba(255,255,255,0.06)",
+    background: isLight ? L.cardSolid : "#191921",
     border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.10)",
     boxShadow: isLight ? L.shadowSm : undefined,
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
@@ -608,7 +613,7 @@ function BlocosWizardPage() {
       };
     }
     return {
-      width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,215,0,0.18)",
+      width: "100%", background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)", border: "1px solid rgba(255,215,0,0.18)",
       borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer",
       display: "flex", flexDirection: "column", gap: 4, color: "#fff",
     };
@@ -1431,7 +1436,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />
 
@@ -1468,7 +1473,7 @@ function BlocosWizardPage() {
             disabled={!podeAvancar}
             style={{
               marginTop: 8, width: "100%", padding: "16px 0",
-              background: "#F59E0B", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: podeAvancar ? "pointer" : "not-allowed",
               opacity: podeAvancar ? 1 : 0.5,
             }}
@@ -1504,7 +1509,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
@@ -1514,7 +1519,7 @@ function BlocosWizardPage() {
               style={{
                 display: "flex", position: "relative", width: 220, height: 48,
                 borderRadius: 999,
-                background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+                background: isLight ? "rgba(0,0,0,0.06)" : "#191921",
                 border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.12)",
               }}
             >
@@ -1586,7 +1591,7 @@ function BlocosWizardPage() {
                     style={{
                       minHeight: 52, borderRadius: 14, padding: "10px 8px",
                       border: selected ? "none" : isLight ? L.borderMd : "1px solid rgba(255,215,0,0.25)",
-                      background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                      background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       color: selected ? "#0A0A0A" : isLight ? L.text : "#fff",
                       fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
                       lineHeight: 1.25, textAlign: "center", cursor: "pointer",
@@ -1612,7 +1617,7 @@ function BlocosWizardPage() {
                     style={{
                       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
                       borderRadius: 12,
-                      background: isLight ? L.cardSolid : "#16161d",
+                      background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                       boxShadow: isLight ? L.shadowSm : undefined,
                     }}
@@ -1659,7 +1664,7 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "#16161d",
+                background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
@@ -1688,7 +1693,7 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "#16161d",
+                background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
@@ -1724,7 +1729,7 @@ function BlocosWizardPage() {
             disabled={totalCams === 0}
             style={{
               width: "100%", padding: "16px 0",
-              background: "#F59E0B", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
               cursor: totalCams === 0 ? "not-allowed" : "pointer",
               opacity: totalCams === 0 ? 0.5 : 1,
@@ -1744,7 +1749,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
           <div style={QUESTION}>METRAGEM DO PERÍMETRO</div>
@@ -1793,7 +1798,7 @@ function BlocosWizardPage() {
             disabled={P <= 0}
             style={{
               width: "100%", padding: "16px 0",
-              background: "#F59E0B", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               opacity: P <= 0 ? 0.5 : 1,
             }}
@@ -1811,7 +1816,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
           <div style={QUESTION}>QUANTIDADE DE ESQUINAS</div>
@@ -1822,7 +1827,7 @@ function BlocosWizardPage() {
                 style={{
                   width: 56, height: 56, borderRadius: "50%",
                   border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.28)",
-                  background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   color: isLight ? L.text : "#fff", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
@@ -1839,9 +1844,9 @@ function BlocosWizardPage() {
                 onClick={() => setWizard({ ...wizard, esquinas: Math.min(10, E + 1) })}
                 style={{
                   width: 56, height: 56, borderRadius: "50%", border: "none",
-                  background: "#F59E0B", color: "#fff", cursor: "pointer",
+                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#fff", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 12px rgba(245,158,11,0.35)",
+                  boxShadow: "0 2px 12px rgba(255,192,0,0.35)",
                 }}
               >
                 <Plus size={22} />
@@ -1853,7 +1858,7 @@ function BlocosWizardPage() {
             onClick={() => setWizard({ ...wizard, step: "resumo" })}
             style={{
               width: "100%", padding: "16px 0",
-              background: "#F59E0B", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
             }}
           >
@@ -1879,7 +1884,7 @@ function BlocosWizardPage() {
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+              <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
               <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>Configuração concluída</div>
             </div>
             <CheckCircle2 size={22} color="#22C55E" />
@@ -1952,10 +1957,10 @@ function BlocosWizardPage() {
             disabled={!blocoSalvoId}
             style={{
               width: "100%", marginTop: 24, marginBottom: 32,
-              padding: "16px", background: "#F59E0B", border: "none", borderRadius: 999,
+              padding: "16px", background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
+              boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
               opacity: blocoSalvoId ? 1 : 0.6,
               textTransform: "uppercase",
             }}
@@ -2064,7 +2069,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
 
           {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
@@ -2136,7 +2141,7 @@ function BlocosWizardPage() {
         <div style={PAGE}>
           <div style={HEADER}>
             <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-            <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+            <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
           </div>
           <WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />
 
@@ -2173,7 +2178,7 @@ function BlocosWizardPage() {
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={voltarPasso}><ArrowLeft size={18} /></button>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
         </div>
 
         {wizard && ((tipoBloco === "PED" || tipoBloco === "VEI") ? (
@@ -2210,7 +2215,7 @@ function BlocosWizardPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 400, fontSize: 18, color: isLight ? L.text : "#fff" }}>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 18, color: isLight ? L.text : "#fff" }}>
             Configurar blocos
           </div>
           <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>{catNome}</div>
@@ -2238,7 +2243,7 @@ function BlocosWizardPage() {
                 key={bloco.id}
                 onClick={() => abrirBlocoParaEditar(bloco)}
                 style={{
-                  background: isLight ? L.cardSolid : "#16161d",
+                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                   boxShadow: isLight ? L.shadowSm : undefined,
                   borderRadius: 14, padding: "14px 16px",

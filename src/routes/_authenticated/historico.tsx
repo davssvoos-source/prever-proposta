@@ -96,7 +96,7 @@ function VisitasPage() {
                 padding: "7px 16px",
                 borderRadius: 20,
                 border: ativo ? "1px solid #FFC000" : "1px solid rgba(255,255,255,0.12)",
-                background: ativo ? "rgba(255,192,0,0.15)" : "rgba(255,255,255,0.05)",
+                background: ativo ? "rgba(255,192,0,0.15)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: ativo ? 600 : 400,
                 fontSize: 12,
@@ -142,7 +142,7 @@ function VisitasPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
-                  background: "rgba(255,255,255,0.05)",
+                  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: "1px solid rgba(255,255,255,0.08)",
                   borderRadius: 16,
                   padding: "16px 18px",

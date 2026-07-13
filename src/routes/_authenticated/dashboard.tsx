@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const GLASS_DARK: React.CSSProperties = {
-  background: "rgba(8, 8, 12, 0.18)",
+  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   backdropFilter: "blur(10px) saturate(120%)",
   WebkitBackdropFilter: "blur(10px) saturate(120%)",
   border: "1px solid rgba(255, 192, 0, 0.20)",
@@ -302,7 +302,7 @@ function Dashboard() {
             right: 0,
             textAlign: 'center',
             fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 700,
+            fontWeight: 600,
             fontSize: 26,
             lineHeight: 1.25,
             color: '#FFFFFF',
@@ -728,7 +728,7 @@ function VisitaCard({ visita }: { visita: any }) {
   return (
     <div
       style={{
-        background: "rgba(255, 255, 255, 0.05)",
+        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         border: "1px solid rgba(255, 215, 0, 0.2)",

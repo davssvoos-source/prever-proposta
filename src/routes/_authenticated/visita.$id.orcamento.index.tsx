@@ -208,7 +208,7 @@ function OrcamentoPasso1() {
         boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
       }
     : {
-        background: "rgba(8,8,12,0.22)",
+        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
         backdropFilter: "blur(12px) saturate(130%)",
         border: "1px solid rgba(255,192,0,0.10)",
         borderRadius: 18,
@@ -217,7 +217,7 @@ function OrcamentoPasso1() {
 
   const LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontWeight: 600,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
@@ -235,7 +235,7 @@ function OrcamentoPasso1() {
         <button
           onClick={() => navigate({ to: "/visita/$id", params: { id } })}
           style={{
-            background: isLight ? "#ffffff" : "rgba(255,255,255,0.06)",
+            background: isLight ? "#ffffff" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -254,7 +254,7 @@ function OrcamentoPasso1() {
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 400,
+              fontWeight: 600,
               fontSize: 18,
               color: isLight ? "#0a0b0e" : "#fff",
               letterSpacing: "0.02em",
@@ -392,11 +392,12 @@ function OrcamentoPasso1() {
                     ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
                     : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
                   background: selected
-                    ? (isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)")
-                    : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)"),
-                  color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
+                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
+                  color: selected ? "#08090E" : (isLight ? "#0a0b0e" : "#fff"),
+                  boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: 11,
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -435,11 +436,12 @@ function OrcamentoPasso1() {
                     ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
                     : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
                   background: selected
-                    ? (isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)")
-                    : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)"),
-                  color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
+                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
+                  color: selected ? "#08090E" : (isLight ? "#0a0b0e" : "#fff"),
+                  boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: 11,
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -483,21 +485,14 @@ function OrcamentoPasso1() {
                       ? "none"
                       : "1px solid rgba(255,255,255,0.12)",
                   background: selected
-                    ? isLight
-                      ? "#b87800"
-                      : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
                     : isLight
                       ? "#f5f6f8"
-                      : "rgba(255,255,255,0.04)",
-                  color: selected
-                    ? isLight
-                      ? "#ffffff"
-                      : "#08090E"
-                    : isLight
-                      ? "#0a0b0e"
-                      : "#fff",
+                      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                  boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontWeight: 600,
                   fontSize: 13,
                   cursor: "pointer",
                   transition: "all 0.15s",
@@ -524,7 +519,7 @@ function OrcamentoPasso1() {
             width: "100%",
             height: 56,
             borderRadius: 28,
-            background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
             border: "none",
             color: isLight ? "#ffffff" : "#08090E",
             fontFamily: "'Montserrat', sans-serif",

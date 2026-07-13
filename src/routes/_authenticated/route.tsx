@@ -79,7 +79,7 @@ function AuthenticatedLayout() {
                 padding: "10px 24px",
                 borderRadius: 20,
                 border: "1px solid rgba(255,255,255,0.20)",
-                background: "rgba(255,255,255,0.06)",
+                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 color: "rgba(255,255,255,0.7)",
                 fontSize: 14,
                 cursor: "pointer",
@@ -130,7 +130,7 @@ function AuthenticatedLayout() {
             justifyContent: "space-between",
             transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
             background: scrolled
-              ? (isLight ? "rgba(255,255,255,0.88)" : "rgba(8,8,12,0.80)")
+              ? (isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)")
               : "transparent",
             backdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
             WebkitBackdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",

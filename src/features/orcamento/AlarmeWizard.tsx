@@ -53,7 +53,7 @@ function NumberField({
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "12px 14px", borderRadius: 12,
-      background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+      background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
       border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
       gap: 12,
     }}>
@@ -87,7 +87,7 @@ function ToggleField({
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "12px 14px", borderRadius: 12,
-      background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+      background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
       border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
       gap: 12,
     }}>
@@ -173,7 +173,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
   // ── Estilos base ────────────────────────────────────────────────────
   const gold = "#F59E0B";
   const cardStyle: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "rgba(255,255,255,0.04)",
+    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.14)",
     borderRadius: 16, padding: 16,
   };
@@ -299,7 +299,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
                     style={{
                       padding: 18, borderRadius: 14, cursor: "pointer", textAlign: "left",
                       border: sel ? "2px solid #b87800" : (isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.14)"),
-                      background: sel ? "rgba(180,120,0,0.08)" : (isLight ? "#fff" : "rgba(255,255,255,0.04)"),
+                      background: sel ? "rgba(180,120,0,0.08)" : (isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                       color: isLight ? "#0a0b0e" : "#fff",
                     }}>
                     {r === "CAB" ? <Cable size={24} color={gold} /> : <Wifi size={24} color={gold} />}
@@ -359,7 +359,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
                 onChange={(v) => upd("ivp_interno_mw", v)} />
               <div style={{
                 padding: 12, borderRadius: 12,
-                background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
               }}>
                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: isLight ? "#0a0b0e" : "#fff" }}>
@@ -411,7 +411,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
                 {(cfg.perimetros ?? []).map((p, i) => (
                   <div key={i} style={{
                     padding: 12, borderRadius: 12,
-                    background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                    background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
                     display: "flex", flexDirection: "column", gap: 8,
                   }}>
@@ -430,7 +430,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
                           display: "block", width: "100%", marginTop: 4,
                           padding: "10px 12px", borderRadius: 10,
                           border: "1px solid rgba(0,0,0,0.12)",
-                          background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                          background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                           color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontWeight: 700,
                         }} />
                     </label>
@@ -603,7 +603,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
             {result.itens.length === 0 && (
               <div style={{
                 padding: 16, borderRadius: 10, textAlign: "center", fontSize: 12,
-                background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+                background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
               }}>
                 Nenhum item calculado — volte e responda as etapas.
@@ -651,7 +651,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={voltar}
           style={{
-            background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+            background: isLight ? "#fff" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12, width: 40, height: 40,
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
@@ -660,7 +660,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 16 }}>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
             Alarme de Intrusão
           </div>
           <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
@@ -694,7 +694,7 @@ export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }
                 }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",
-                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "rgba(255,255,255,0.08)"),
+                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
                   color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 800,

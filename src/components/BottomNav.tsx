@@ -52,7 +52,7 @@ export function BottomNav() {
           alignItems: "center",
           gap: 8,
           padding: "10px 14px",
-          background: isLight ? "rgba(255,255,255,0.88)" : "rgba(6, 6, 6, 0.80)",
+          background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
           backdropFilter: "blur(30px) saturate(180%)",
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255, 255, 255, 0.22)",
           borderRadius: 40,

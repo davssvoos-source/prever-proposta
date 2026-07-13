@@ -114,7 +114,7 @@ function CategoriasPage() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento", params: { id } })}
           style={{
-            background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+            background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -132,7 +132,7 @@ function CategoriasPage() {
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 400,
+              fontWeight: 600,
               fontSize: 18,
               color: textPrimary,
             }}
@@ -254,7 +254,7 @@ function CategoriasPage() {
           marginBottom: 32,
           height: 56,
           borderRadius: 28,
-          background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
           border: "none",
           color: isLight ? "#ffffff" : "#08090E",
           fontFamily: "'Montserrat', sans-serif",

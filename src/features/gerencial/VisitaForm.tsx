@@ -353,7 +353,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     style={{
                       background: active
                         ? isLight ? L.goldBg : "rgba(255,192,0,0.15)"
-                        : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       border: active
                         ? isLight ? L.goldBorder : "1px solid rgba(255,192,0,0.7)"
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
@@ -557,7 +557,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     style={{
                       background: active
                         ? PRIORIDADE_COLOR[p]
-                        : isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       border: active
                         ? `1px solid ${PRIORIDADE_BORDER[p]}`
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
@@ -670,7 +670,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         style={{
           background: active
             ? isLight ? "#b87800" : "#FFC000"
-            : isLight ? "#f0f1f4" : "rgba(255,255,255,0.08)",
+            : isLight ? "#f0f1f4" : "#191921",
           color: active ? "#ffffff" : isLight ? "#4a5060" : "#9ca3af",
           border: active ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "none",
         }}
@@ -693,7 +693,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         style={{
           background: step >= 2
             ? isLight ? "#b87800" : "linear-gradient(90deg,#FFC000,#FFC000)"
-            : isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+            : isLight ? "rgba(0,0,0,0.08)" : "#191921",
         }}
       />
       <Item n={2} label="Agendamento" active={step >= 2} />

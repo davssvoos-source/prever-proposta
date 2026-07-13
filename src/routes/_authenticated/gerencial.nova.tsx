@@ -106,7 +106,7 @@ function NovaVisitaPage() {
         boxShadow: L.shadow,
       }
     : {
-        background: "rgba(8, 8, 12, 0.18)",
+        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
         backdropFilter: "blur(10px) saturate(120%)",
         WebkitBackdropFilter: "blur(10px) saturate(120%)",
         border: "1px solid rgba(255, 192, 0, 0.20)",
@@ -116,7 +116,7 @@ function NovaVisitaPage() {
 
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontWeight: 600,
     fontSize: 10,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
@@ -582,7 +582,7 @@ function NovaVisitaPage() {
                 minHeight: fotoPreview ? "auto" : 90,
                 borderRadius: 14,
                 border: isLight ? "2px dashed rgba(180,120,0,0.30)" : "2px dashed rgba(255,192,0,0.30)",
-                background: isLight ? "rgba(0,0,0,0.02)" : "rgba(255,255,255,0.03)",
+                background: isLight ? "rgba(0,0,0,0.02)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -881,7 +881,7 @@ function NovaVisitaPage() {
             flex: 1,
             height: 56,
             borderRadius: 28,
-            background: isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
             border: "none",
             color: isLight ? "#ffffff" : "#08090E",
             fontFamily: "'Montserrat', sans-serif",

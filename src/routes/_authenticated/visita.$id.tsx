@@ -69,7 +69,7 @@ function SlideToStart({
         width: "100%",
         height: 64,
         borderRadius: 32,
-        background: "rgba(8,8,12,0.55)",
+        background: "#101014",
         border: "1px solid rgba(255,192,0,0.22)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
@@ -195,7 +195,7 @@ const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
   width: "100%",
   height: 56,
   borderRadius: 28,
-  background: "#F59E0B",
+  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
   color: "#0A0A0A",
   border: "none",
   cursor: "pointer",
@@ -577,7 +577,7 @@ function VisitaDetail() {
   };
   const SECTION_LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontWeight: 600,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
@@ -589,7 +589,7 @@ function VisitaDetail() {
     height: 40,
     borderRadius: 12,
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     color: isLight ? "#0a0b0e" : "#fff",
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
     cursor: "pointer",
@@ -640,7 +640,7 @@ function VisitaDetail() {
 
 
           style={{
-            background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+            background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -659,7 +659,7 @@ function VisitaDetail() {
           <div
             style={{
               fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 500,
+              fontWeight: 600,
               fontSize: 16,
               color: TXT_PRIMARY,
             }}
@@ -810,7 +810,7 @@ function VisitaDetail() {
           {visita.nome_sindico && (
             <div
               style={{
-                background: "rgba(255,255,255,0.05)",
+                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 border: "1px solid rgba(255,215,0,0.15)",
                 borderRadius: 16,
                 padding: 16,
@@ -860,7 +860,7 @@ function VisitaDetail() {
           {visita.nome_zelador && (
             <div
               style={{
-                background: "rgba(255,255,255,0.05)",
+                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                 border: "1px solid rgba(255,215,0,0.15)",
                 borderRadius: 16,
                 padding: 16,
@@ -1165,7 +1165,7 @@ function VisitaDetail() {
               height: 26,
               borderRadius: 8,
               border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.04)",
+              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
               color: "#fff",
               fontFamily: "'Montserrat', sans-serif",
               fontSize: 14,

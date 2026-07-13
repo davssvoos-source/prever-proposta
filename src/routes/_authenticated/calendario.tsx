@@ -56,7 +56,7 @@ function CalendarioPage() {
     width: 34,
     height: 34,
     borderRadius: 10,
-    background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+    background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary,
     display: "flex",
@@ -295,7 +295,7 @@ function CalendarioPage() {
                   key={v.id}
                   onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                   style={{
-                    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(255,255,255,0.05)",
+                    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
                     borderLeft: `3px solid ${cor}`,
                     borderRadius: 12,

@@ -81,7 +81,7 @@ function ReagendarPage() {
     visita?.nome_predio ?? visita?.clientes?.nome ?? visita?.titulo ?? undefined;
 
   const CARD: React.CSSProperties = {
-    background: "rgba(255,255,255,0.04)",
+    background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: "1px solid rgba(255,255,255,0.10)",
     borderRadius: 16,
     padding: "20px 18px",
@@ -146,7 +146,7 @@ function ReagendarPage() {
               padding: "12px 14px",
               borderRadius: 10,
               border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(255,255,255,0.06)",
+              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
               color: "#FFFFFF",
               fontSize: 15,
               outline: "none",

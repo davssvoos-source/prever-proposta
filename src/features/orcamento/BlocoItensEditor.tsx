@@ -45,7 +45,7 @@ interface VbiRow {
 
 const CARD = (isLight: boolean): React.CSSProperties => ({
   // Fundo sólido (sem transparência) para legibilidade sobre o background animado
-  background: isLight ? "#ffffff" : "#16161d",
+  background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.18)",
   borderRadius: 14,
   padding: 14,
@@ -273,7 +273,7 @@ export function BlocoItensEditor({
       {equipVisiveis.length === 0 && (
         <div style={{
           padding: 16, textAlign: "center", borderRadius: 12,
-          background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+          background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
           color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontSize: 13,
         }}>
           Nenhum equipamento — adicione um manualmente abaixo.
@@ -429,7 +429,7 @@ export function BlocoItensEditor({
           placeholder={buscaPor === "nome" ? "Buscar por nome (ex.: Leitora Facial)" : "Buscar por modelo (ex.: DS-KAB6)"}
           style={{
             padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.12)",
-            background: isLight ? "#fff" : "rgba(255,255,255,0.06)", color: isLight ? "#0a0b0e" : "#fff",
+            background: isLight ? "#fff" : "#191921", color: isLight ? "#0a0b0e" : "#fff",
             fontSize: 13,
           }}
         />
@@ -504,7 +504,7 @@ export function BlocoItensEditor({
           onClick={onConcluir}
           style={{
             marginTop: 8, width: "100%", padding: "16px 0",
-            background: "#F59E0B", border: "none", borderRadius: 999,
+            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
             color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}

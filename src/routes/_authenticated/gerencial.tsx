@@ -53,7 +53,7 @@ function GerencialPage() {
   const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
   const textPrimary = isLight ? "#0a0b0e" : "#F5F5F5";
   const textSecondary = isLight ? "#4a5060" : "#9ca3af";
-  const cardBg = isLight ? cardLight : "rgba(255,255,255,0.05)";
+  const cardBg = isLight ? cardLight : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
   const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
   const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none";
   const numberGold = isLight ? "#b87800" : "#FFC000";
@@ -166,7 +166,7 @@ function GerencialPage() {
           <h1
             style={{
               fontFamily: "Montserrat, sans-serif",
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: 24,
               color: textPrimary,
               letterSpacing: "0.05em",
@@ -192,7 +192,7 @@ function GerencialPage() {
         <button
           onClick={() => navigate({ to: "/gerencial/usuarios" })}
           style={{
-            background: isLight ? "#ffffff" : "rgba(255,255,255,0.07)",
+            background: isLight ? "#ffffff" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             borderRadius: 12,
             padding: "10px 16px",

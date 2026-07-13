@@ -84,7 +84,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
   const nTotens = totens.length;
 
   const cardStyle: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "rgba(255,255,255,0.04)",
+    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.14)",
     borderRadius: 16, padding: 16,
   };
@@ -393,7 +393,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={voltar}
           style={{
-            background: isLight ? "#fff" : "rgba(255,255,255,0.06)",
+            background: isLight ? "#fff" : "#191921",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12, width: 40, height: 40,
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
@@ -402,7 +402,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 16 }}>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
             Totem Inteligente
           </div>
           <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
@@ -436,7 +436,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                 }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",
-                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "rgba(255,255,255,0.08)"),
+                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
                   color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 800,

@@ -73,7 +73,7 @@ function RedefinirSenhaPage() {
   }
 
   const CARD: CSSProperties = {
-    background: "rgba(8,8,12,0.55)",
+    background: "#101014",
     backdropFilter: "blur(20px) saturate(160%)",
     WebkitBackdropFilter: "blur(20px) saturate(160%)",
     border: "1px solid rgba(255,255,255,0.10)",
@@ -83,7 +83,7 @@ function RedefinirSenhaPage() {
   const INPUT: CSSProperties = {
     width: "100%",
     height: 52,
-    background: "rgba(255,255,255,0.05)",
+    background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
     color: "#fff",

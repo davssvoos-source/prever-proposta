@@ -51,7 +51,7 @@ function PerfilPage() {
   const INPUT: CSSProperties = {
     width: "100%",
     height: 50,
-    background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.05)",
+    background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12,
     color: textPrimary,
@@ -349,7 +349,7 @@ function PerfilPage() {
         <div
           style={{
             fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 700,
+            fontWeight: 600,
             fontSize: 22,
             color: textPrimary,
             marginTop: 14,
@@ -529,7 +529,7 @@ function PerfilPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
-                  background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
                   borderRadius: 12,
                   padding: "10px 12px",
@@ -707,7 +707,7 @@ function PerfilPage() {
               background:
                 novaSenha && confirmarSenha
                   ? "linear-gradient(135deg,#FFD700,#FFC000)"
-                  : "rgba(255,255,255,0.07)",
+                  : "#191921",
               border: "none",
               color: novaSenha && confirmarSenha ? "#08090E" : "rgba(255,255,255,0.3)",
               fontFamily: "'Montserrat', sans-serif",
@@ -816,7 +816,7 @@ function PerfilPage() {
 }
 
 const CARD: CSSProperties = {
-  background: "rgba(8,8,12,0.22)",
+  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   backdropFilter: "blur(12px) saturate(130%)",
   WebkitBackdropFilter: "blur(12px) saturate(130%)",
   border: "1px solid rgba(255,192,0,0.10)",
@@ -839,7 +839,7 @@ const LBL: CSSProperties = {
 const INPUT: CSSProperties = {
   width: "100%",
   height: 50,
-  background: "rgba(255,255,255,0.05)",
+  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
   color: "#fff",
@@ -855,7 +855,7 @@ const iconBtn: CSSProperties = {
   width: 30,
   height: 30,
   borderRadius: 8,
-  background: "rgba(255,255,255,0.05)",
+  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: "1px solid rgba(255,255,255,0.10)",
   color: "rgba(255,255,255,0.7)",
   display: "flex",
@@ -961,7 +961,7 @@ function badgeStyle(status: string, isLight: boolean): CSSProperties {
     concluida:    { bg: "rgba(37,99,235,0.10)",  bgDark: "rgba(96,165,250,0.12)", color: "#1d4ed8", colorDark: "#93c5fd" },
     em_andamento: { bg: "rgba(180,120,0,0.10)",  bgDark: "rgba(255,192,0,0.12)",  color: "#b87800", colorDark: "#FFC000" },
     reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#f87171" },
-    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "rgba(255,255,255,0.08)",color: "#4a5060", colorDark: "#9CA3AF" },
+    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "#191921",color: "#4a5060", colorDark: "#9CA3AF" },
   };
   const s = map[status] ?? map.pendente;
   return {

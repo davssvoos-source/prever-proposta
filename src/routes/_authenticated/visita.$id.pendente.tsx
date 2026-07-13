@@ -202,7 +202,7 @@ function VisitaPendentePage() {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   padding: "8px 14px", borderRadius: 10, flex: 1,
-                  background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.07)",
+                  background: isLight ? "#f0f1f4" : "#191921",
                   border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
                   color: c.text, fontSize: 13, fontWeight: 500, cursor: "pointer",
                 }}
@@ -299,7 +299,7 @@ function VisitaPendentePage() {
                       padding: "6px 10px", borderRadius: 8,
                       background: tel
                         ? (isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)")
-                        : (isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)"),
+                        : (isLight ? "rgba(0,0,0,0.04)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                       border: tel
                         ? (isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)")
                         : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)"),
