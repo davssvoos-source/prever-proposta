@@ -44,7 +44,8 @@ interface VbiRow {
 }
 
 const CARD = (isLight: boolean): React.CSSProperties => ({
-  background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+  // Fundo sólido (sem transparência) para legibilidade sobre o background animado
+  background: isLight ? "#ffffff" : "#16161d",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.18)",
   borderRadius: 14,
   padding: 14,
@@ -83,8 +84,9 @@ export function BlocoItensEditor({
   const qc = useQueryClient();
   const [seeded, setSeeded] = useState(false);
 
-  const [novoCod, setNovoCod] = useState("");
-  const [novoNome, setNovoNome] = useState("");
+  // Item manual: busca por nome ou modelo no catálogo de equipamentos
+  const [buscaPor, setBuscaPor] = useState<"nome" | "modelo">("nome");
+  const [busca, setBusca] = useState("");
   const [novoQtd, setNovoQtd] = useState<number>(1);
 
   // 1) Semeia auto items apenas 1x por bloco; itens manuais não bloqueiam o seed.
@@ -202,21 +204,37 @@ export function BlocoItensEditor({
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
 
+  // Resultados da busca do item manual (nome ou modelo, conforme o switch)
+  const buscaLimpa = busca.trim();
+  const { data: resultadosBusca = [], isFetching: buscando } = useQuery({
+    queryKey: ["equip_busca", buscaPor, buscaLimpa],
+    enabled: buscaLimpa.length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("equipamentos")
+        .select("code,nome,modelo")
+        .ilike(buscaPor, `%${buscaLimpa}%`)
+        .order("nome")
+        .limit(8);
+      if (error) throw error;
+      return (((data as any[]) ?? []) as { code: string | null; nome: string; modelo: string | null }[])
+        .filter((e) => !!e.code);
+    },
+  });
+
   const adicionarMut = useMutation({
-    mutationFn: async () => {
-      if (!novoCod.trim()) throw new Error("Informe o código do equipamento");
+    mutationFn: async (eq: { code: string; nome: string }) => {
       const { error } = await supabase.from("visita_bloco_itens" as any).insert({
         visita_bloco_id: visitaBlocoId,
-        cod_eq: novoCod.trim().toUpperCase(),
+        cod_eq: eq.code,
         qtd: Math.max(1, novoQtd || 1),
         origem: "manual",
-        observacao: novoNome.trim() || null,
+        observacao: eq.nome || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      setNovoCod("");
-      setNovoNome("");
+      setBusca("");
       setNovoQtd(1);
       qc.invalidateQueries({ queryKey: ["visita_bloco_itens", visitaBlocoId] });
       toast.success("Item adicionado");
@@ -265,19 +283,18 @@ export function BlocoItensEditor({
       {equipVisiveis.map((it) => {
         const eq = eqMap[it.cod_eq];
         const nome = eq?.nome || it.observacao || it.cod_eq;
-        const preco = eq?.preco ?? 0;
+        const sub = [eq?.modelo, it.origem === "manual" ? "MANUAL" : null].filter(Boolean).join(" · ");
         return (
           <div key={it.id} style={CARD(isLight)}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
                 {nome}
               </div>
-              <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
-                {it.cod_eq}{eq?.modelo ? ` · ${eq.modelo}` : ""}{it.origem === "manual" ? " · MANUAL" : ""}
-              </div>
-              <div style={{ fontSize: 11, color: "#b87800", marginTop: 2 }}>
-                R$ {(preco * it.qtd).toFixed(2)}
-              </div>
+              {sub && (
+                <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
+                  {sub}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <button
@@ -327,7 +344,7 @@ export function BlocoItensEditor({
                     {nome}
                   </div>
                   <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
-                    {it.cod_eq}{it.origem === "manual" ? " · MANUAL" : ""}
+                    Serviço mensal{it.origem === "manual" ? " · MANUAL" : ""}
                   </div>
                   <div style={{ fontSize: 11, color: "#b87800", marginTop: 2 }}>
                     R$ {(preco * it.qtd).toFixed(2)}/mês
@@ -373,49 +390,100 @@ export function BlocoItensEditor({
         </>
       )}
 
-      {/* Add manual */}
+      {/* Add manual — busca por nome ou modelo */}
       <div style={{ ...CARD(isLight), flexDirection: "column", alignItems: "stretch", gap: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "#b87800" }}>
           ADICIONAR ITEM MANUAL
         </div>
+
+        {/* Switch: buscar por nome | modelo */}
+        <div style={{
+          display: "flex", borderRadius: 10, overflow: "hidden",
+          border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+        }}>
+          {([["nome", "Nome"], ["modelo", "Modelo"]] as const).map(([val, label]) => {
+            const ativo = buscaPor === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setBuscaPor(val)}
+                style={{
+                  flex: 1, padding: "8px 0", border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: 700, letterSpacing: "0.06em",
+                  background: ativo
+                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : "transparent",
+                  color: ativo ? "#0A0A0A" : isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
+                  transition: "all 0.15s",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         <input
-          value={novoCod}
-          onChange={(e) => setNovoCod(e.target.value)}
-          placeholder="Código (ex.: EQ092)"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder={buscaPor === "nome" ? "Buscar por nome (ex.: Leitora Facial)" : "Buscar por modelo (ex.: DS-KAB6)"}
           style={{
             padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.12)",
-            background: isLight ? "#fff" : "rgba(255,255,255,0.05)", color: isLight ? "#0a0b0e" : "#fff",
+            background: isLight ? "#fff" : "rgba(255,255,255,0.06)", color: isLight ? "#0a0b0e" : "#fff",
             fontSize: 13,
           }}
         />
-        <input
-          value={novoNome}
-          onChange={(e) => setNovoNome(e.target.value)}
-          placeholder="Descrição (opcional)"
-          style={{
-            padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.12)",
-            background: isLight ? "#fff" : "rgba(255,255,255,0.05)", color: isLight ? "#0a0b0e" : "#fff",
-            fontSize: 13,
-          }}
-        />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+        {/* Quantidade a adicionar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)" }}>Quantidade</span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button style={CIRCLE_BTN} onClick={() => setNovoQtd((q) => Math.max(1, q - 1))}><Minus size={14} /></button>
             <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700 }}>{novoQtd}</span>
             <button style={CIRCLE_BTN} onClick={() => setNovoQtd((q) => q + 1)}><Plus size={14} /></button>
           </div>
-          <button
-            onClick={() => adicionarMut.mutate()}
-            disabled={adicionarMut.isPending || !novoCod.trim()}
-            style={{
-              flex: 1, padding: "10px 14px", borderRadius: 10, border: "none",
-              background: "#F59E0B", color: "#0A0A0A", fontWeight: 700, fontSize: 13, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: novoCod.trim() ? 1 : 0.5,
-            }}
-          >
-            <PlusCircle size={16} /> ADICIONAR
-          </button>
         </div>
+
+        {/* Resultados da busca — toque para adicionar */}
+        {buscaLimpa.length >= 2 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {buscando && resultadosBusca.length === 0 ? (
+              <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", textAlign: "center", padding: 8 }}>
+                Buscando…
+              </div>
+            ) : resultadosBusca.length === 0 ? (
+              <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", textAlign: "center", padding: 8 }}>
+                Nenhum equipamento encontrado.
+              </div>
+            ) : (
+              resultadosBusca.map((eq) => (
+                <button
+                  key={eq.code}
+                  onClick={() => adicionarMut.mutate({ code: eq.code!, nome: eq.nome })}
+                  disabled={adicionarMut.isPending}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                    padding: "10px 12px", borderRadius: 10, cursor: "pointer",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.20)",
+                    background: isLight ? "#f5f6f8" : "#1d1d25",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
+                      {eq.nome}
+                    </div>
+                    {eq.modelo && (
+                      <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 1 }}>
+                        {eq.modelo}
+                      </div>
+                    )}
+                  </div>
+                  <PlusCircle size={18} color="#F59E0B" style={{ flexShrink: 0 }} />
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {!hideSubtotal && (

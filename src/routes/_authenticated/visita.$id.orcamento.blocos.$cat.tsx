@@ -316,6 +316,21 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
 
 // ─── Macro Step Indicator (Eclusa → Externa → Interna) ─────────────────────
 
+// Nome da barreira conforme o tipo selecionado (Catraca/Porta/Cancela/Portão)
+function nomeBarreira(tipo: TipoBloco, prefix: "Externa" | "Interna", tipoSel?: string): string {
+  if (tipo === "PED") {
+    if (tipoSel === "CAT") return `Catraca ${prefix}`;
+    if (tipoSel === "PORP") return `Porta ${prefix}`;
+    return `Porta ${prefix}`;
+  }
+  if (tipo === "VEI") {
+    if (tipoSel === "CAN") return `Cancela ${prefix}`;
+    if (tipoSel === "PORV") return `Portão ${prefix}`;
+    return `Barreira ${prefix}`;
+  }
+  return prefix;
+}
+
 function MacroStepIndicator({
   step,
   tipo,
@@ -336,22 +351,8 @@ function MacroStepIndicator({
   const isResumo = step === "resumo";
   const isEclusa = step === "eclusa";
 
-  function labelFor(prefix: "Externa" | "Interna", tipoSel?: string): string {
-    if (tipo === "PED") {
-      if (tipoSel === "CAT") return `Catraca ${prefix}`;
-      if (tipoSel === "PORP") return `Porta ${prefix}`;
-      return `Porta ${prefix}`;
-    }
-    if (tipo === "VEI") {
-      if (tipoSel === "CAN") return `Cancela ${prefix}`;
-      if (tipoSel === "PORV") return `Portão ${prefix}`;
-      return `Barreira ${prefix}`;
-    }
-    return prefix;
-  }
-
-  const externaLabel = labelFor("Externa", b1Tipo);
-  const internaLabel = labelFor("Interna", b2Tipo);
+  const externaLabel = nomeBarreira(tipo, "Externa", b1Tipo);
+  const internaLabel = nomeBarreira(tipo, "Interna", b2Tipo);
 
   const eclusaDenied = !isEclusa && eclusa === false;
 
@@ -1611,7 +1612,7 @@ function BlocosWizardPage() {
                     style={{
                       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
                       borderRadius: 12,
-                      background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                      background: isLight ? L.cardSolid : "#16161d",
                       border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                       boxShadow: isLight ? L.shadowSm : undefined,
                     }}
@@ -1658,7 +1659,7 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                background: isLight ? L.cardSolid : "#16161d",
                 border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
@@ -1687,7 +1688,7 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                background: isLight ? L.cardSolid : "#16161d",
                 border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
@@ -2070,7 +2071,7 @@ function BlocosWizardPage() {
 
           <div style={{ marginBottom: 24 }}>
             <BarreiraHeader
-              label={tipoBloco === "VEI" ? "Barreira Externa" : "Porta Externa"}
+              label={nomeBarreira(tipoBloco, "Externa", wizard.b1.tipo)}
               done={b1Done}
               isLight={isLight}
               collapsible={b1Done}
@@ -2104,7 +2105,7 @@ function BlocosWizardPage() {
 
           {showB2 && (
             <div ref={b2Ref}>
-              <BarreiraHeader label={tipoBloco === "VEI" ? "Barreira Interna" : "Porta Interna"} done={false} isLight={isLight} />
+              <BarreiraHeader label={nomeBarreira(tipoBloco, "Interna", wizard.b2.tipo)} done={false} isLight={isLight} />
 
               {stepsRespondidosB2.map((step) => (<ConfirmedAnswer key={step} step={step} />))}
 
@@ -2237,7 +2238,7 @@ function BlocosWizardPage() {
                 key={bloco.id}
                 onClick={() => abrirBlocoParaEditar(bloco)}
                 style={{
-                  background: isLight ? L.cardSolid : "rgba(255,255,255,0.04)",
+                  background: isLight ? L.cardSolid : "#16161d",
                   border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
                   boxShadow: isLight ? L.shadowSm : undefined,
                   borderRadius: 14, padding: "14px 16px",
