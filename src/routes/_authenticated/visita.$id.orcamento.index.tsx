@@ -1,15 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Pencil, Building2, User } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, Building2, User, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { codigoFromDbRow } from "@/lib/blocos";
@@ -18,13 +11,16 @@ export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
 });
 
-const SISTEMAS = [
-  "Portaria Presencial",
-  "Portaria Remota / Virtual",
-  "Portaria Autônoma",
-  "Sistema Misto",
-  "Sem portaria",
-  "Outro",
+const PORTARIA_OPCOES = [
+  { label: "Portaria Presencial", Icon: User },
+  { label: "Portaria Remota", Icon: Building2 },
+  { label: "Portaria Autônoma", Icon: Bot },
+];
+
+const SISTEMA_PROPOSTO_OPCOES = [
+  { val: "PP" as const, label: "Portaria Presencial", Icon: User },
+  { val: "PR" as const, label: "Portaria Remota", Icon: Building2 },
+  { val: "PA" as const, label: "Portaria Autônoma", Icon: Bot },
 ];
 
 function OrcamentoPasso1() {
@@ -60,7 +56,7 @@ function OrcamentoPasso1() {
 
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
-  const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "">("");
+  const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "PA" | "">("");
   const [airbnb, setAirbnb] = useState<string>("");
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
@@ -70,8 +66,8 @@ function OrcamentoPasso1() {
     if (orcamento !== undefined && visita !== undefined) {
       setQtd((orcamento as any)?.qtd_apartamentos ?? "");
       setSistema((orcamento as any)?.sistema_atual ?? "");
-      const salvo = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
-      if (salvo === "PR" || salvo === "PP") {
+      const salvo = (orcamento as any)?.sistema_proposto as "PR" | "PP" | "PA" | null | undefined;
+      if (salvo === "PR" || salvo === "PP" || salvo === "PA") {
         setSistemaProposto(salvo);
       } else {
         // pré-preenche pelo que o admin cadastrou na criação
@@ -89,11 +85,11 @@ function OrcamentoPasso1() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!qtd || Number(qtd) <= 0) throw new Error("Informe a quantidade de apartamentos.");
-      if (sistemaProposto !== "PR" && sistemaProposto !== "PP") {
-        throw new Error("Selecione o SISTEMA PROPOSTO (Remota ou Presencial).");
+      if (sistemaProposto !== "PR" && sistemaProposto !== "PP" && sistemaProposto !== "PA") {
+        throw new Error("Selecione o SISTEMA PROPOSTO.");
       }
 
-      const anterior = (orcamento as any)?.sistema_proposto as "PR" | "PP" | null | undefined;
+      const anterior = (orcamento as any)?.sistema_proposto as "PR" | "PP" | "PA" | null | undefined;
 
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
@@ -165,8 +161,8 @@ function OrcamentoPasso1() {
           }
 
         }
-      } else if (sistemaProposto === "PP" && anterior === "PR") {
-        // Remover CENT criado automaticamente ao trocar para Presencial
+      } else if (anterior === "PR") {
+        // Remover CENT criado automaticamente ao trocar para Presencial/Autônoma
         const { data: cent } = await supabase
           .from("visita_blocos" as any)
           .select("id, fotos_urls")
@@ -382,45 +378,15 @@ function OrcamentoPasso1() {
       {/* Sistema Atual */}
       <div style={CARD}>
         <div style={LABEL}>Sistema atual do condomínio</div>
-        <Select value={sistema} onValueChange={setSistema}>
-          <SelectTrigger
-            style={{
-              background: isLight ? "#f0f1f4" : "transparent",
-              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,192,0,0.22)",
-              borderRadius: 12,
-              color: isLight ? "#0a0b0e" : "#fff",
-              height: 48,
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-            }}
-          >
-            <SelectValue placeholder="Selecione o sistema atual" />
-          </SelectTrigger>
-          <SelectContent>
-            {SISTEMAS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Sistema Proposto (PR/PP) */}
-      <div style={CARD}>
-        <div style={LABEL}>Sistema proposto</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-          {[
-            { val: "PR" as const, label: "Portaria Remota", Icon: Building2 },
-            { val: "PP" as const, label: "Portaria Presencial", Icon: User },
-          ].map(({ val, label, Icon }) => {
-            const selected = sistemaProposto === val;
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {PORTARIA_OPCOES.map(({ label, Icon }) => {
+            const selected = sistema === label;
             return (
               <button
-                key={val}
-                onClick={() => setSistemaProposto(val)}
+                key={label}
+                onClick={() => setSistema(label)}
                 style={{
-                  height: 56,
+                  height: 68,
                   borderRadius: 12,
                   border: isLight
                     ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
@@ -431,32 +397,69 @@ function OrcamentoPasso1() {
                   color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
-                  fontSize: 12,
+                  fontSize: 11,
                   cursor: "pointer",
                   transition: "all 0.15s",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
-                  padding: "0 10px",
-                  lineHeight: 1.2,
+                  gap: 6,
+                  padding: "8px 4px",
+                  lineHeight: 1.15,
                   textAlign: "center",
                 }}
               >
-                <Icon size={18} />
+                <Icon size={20} />
                 <span>{label}</span>
               </button>
             );
           })}
         </div>
-        <div style={{
-          fontSize: 10, marginTop: 8, color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)",
-          letterSpacing: "0.06em",
-        }}>
-          Define o sufixo (-PR / -PP) de todos os blocos deste projeto.
-        </div>
       </div>
 
+      {/* Sistema Proposto (PR/PP/PA) */}
+      <div style={CARD}>
+        <div style={LABEL}>Sistema proposto</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+          {SISTEMA_PROPOSTO_OPCOES.map(({ val, label, Icon }) => {
+            const selected = sistemaProposto === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setSistemaProposto(val)}
+                style={{
+                  height: 68,
+                  borderRadius: 12,
+                  border: isLight
+                    ? selected ? "none" : "1px solid rgba(0,0,0,0.12)"
+                    : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
+                  background: selected
+                    ? (isLight ? "#b87800" : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)")
+                    : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)"),
+                  color: selected ? (isLight ? "#fff" : "#08090E") : (isLight ? "#0a0b0e" : "#fff"),
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 500,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "8px 4px",
+                  lineHeight: 1.15,
+                  textAlign: "center",
+                }}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
 
       {/* Airbnb */}

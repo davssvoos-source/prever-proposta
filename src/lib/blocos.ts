@@ -14,6 +14,13 @@ export interface BarreiraConfig {
   peso?: string;    // 800KG/1300KG/1500KG (DESL)
 }
 
+/** Câmera individual do escopo CFTV: tipo, metragem de cabo e recursos de I.A. */
+export interface CftvCamera {
+  tipo: "dome" | "bullet";
+  metros: number;
+  ia: string[];
+}
+
 export interface BlocoConfig {
   tipoBloco: TipoBloco;
   eclusa: boolean;
@@ -22,11 +29,13 @@ export interface BlocoConfig {
   tecnologia?: string;
   qtdDome?: number;
   qtdBullet?: number;
+  /** Lista detalhada das câmeras (CFTV) — qtdDome/qtdBullet derivam dela. */
+  cftvCameras?: CftvCamera[];
   perimetro?: number;
   esquinas?: number;
-  /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial). Default: 'PR'.
+  /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial) | 'PA' (Portaria Autônoma). Default: 'PR'.
    *  Origem: campo `sistema_proposto` da visita — quando ausente assume PR. */
-  portaria?: "PR" | "PP";
+  portaria?: "PR" | "PP" | "PA";
 }
 
 
@@ -96,7 +105,7 @@ export const OPCOES = {
 
 export function gerarCodigoBloco(config: BlocoConfig): string {
   const { tipoBloco, eclusa, b1, b2, tecnologia } = config;
-  const suf = config.portaria === "PP" ? "PP" : "PR";
+  const suf = config.portaria === "PP" ? "PP" : config.portaria === "PA" ? "PA" : "PR";
 
   if (tipoBloco === "CFTV") return `CFTV-${tecnologia}`;
   if (tipoBloco === "AL") return `AL-${tecnologia}`;
@@ -131,8 +140,8 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 
 // ─── Regeneração de código a partir de uma linha do banco ────────────────────
 /** Regenera o `codigo_bloco` a partir de uma linha de `visita_blocos` aplicando
- *  a portaria (PR/PP) atual do projeto. */
-export function codigoFromDbRow(row: any, portaria: "PR" | "PP"): string {
+ *  a portaria (PR/PP/PA) atual do projeto. */
+export function codigoFromDbRow(row: any, portaria: "PR" | "PP" | "PA"): string {
   const cfg: BlocoConfig = {
     tipoBloco: row.tipo_bloco as TipoBloco,
     eclusa: !!row.eclusa,
