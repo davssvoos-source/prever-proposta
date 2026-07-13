@@ -822,8 +822,8 @@ function VisitaCard({ visita }: { visita: any }) {
 
 function Section({ items, onClickItem }: { items: any[]; onClickItem?: (visita: any) => void }) {
   return (
-    <section>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+    <section style={{ marginBottom: 12 }}>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map((v) => (
           <li
             key={v.id}
