@@ -120,10 +120,11 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   add(acc, "EQ092", lpr, "Câmera IP LPR selecionada no bloco");
 
   // Receptores RF: 1 RTX 3004 por barreira com controle remoto (CTRL); 1 RMF3004 por TAG.
-  // Módulo Guarita IP (MG 3000): 1 a cada 4 receptores (RTX + RMF) do bloco.
+  // O Módulo Guarita IP (MG 3000 / EQ003) NÃO é adicionado aqui: é regra por PROJETO
+  // (⌈(RTX+RMF de todos os blocos)/4⌉) e é reconciliado por `reconcileGuaritaProjeto`,
+  // que o hospeda num único bloco de acesso com a contagem total.
   add(acc, "EQ004", ctrlBarreiras, "Receptor RF RTX 3004 (1 por barreira com controle remoto)");
   add(acc, "EQ007", tag, "Receptor HCS Multifunção RMF3004 (1 por TAG)");
-  add(acc, EQ_MODULO_GUARITA, qtdModulosGuarita(ctrlBarreiras + tag), "Módulo Guarita IP MG 3000 (1 a cada 4 receptores)");
 
   // Laço indutivo (por bloco)
   if (lac > 0) {

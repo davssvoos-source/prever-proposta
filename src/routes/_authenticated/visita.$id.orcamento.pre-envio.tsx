@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Calendar, Layers, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -8,6 +8,7 @@ import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+import { reconcileGuaritaProjeto } from "@/features/orcamento/guarita";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -44,6 +45,20 @@ function PreEnvioPage() {
   const location = useLocation();
   const from = (location.state as any)?.from;
   const { isLight } = useTheme();
+  const qc = useQueryClient();
+
+  // Ao abrir o resumo, garante que a guarita do projeto está reconciliada
+  // (soma dos receptores de todos os blocos). Roda uma vez por visita.
+  const guaritaReconciledRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (guaritaReconciledRef.current === visitaId) return;
+    guaritaReconciledRef.current = visitaId;
+    reconcileGuaritaProjeto(visitaId).then(() => {
+      qc.invalidateQueries({ queryKey: ["visita_bloco_itens"] });
+      qc.invalidateQueries({ queryKey: ["visita_blocos_completo", visitaId] });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visitaId]);
 
   const { data: visita } = useQuery({
     queryKey: ["visita_pre_envio", visitaId],

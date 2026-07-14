@@ -84,6 +84,7 @@ import { AlarmeWizard } from "@/features/orcamento/AlarmeWizard";
 import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcamento/alarmeEngine";
 import { ElevadoresWizard, type ElevadorItemCalc } from "@/features/orcamento/ElevadoresWizard";
 import { TotemWizard, type TotemConfig, type TotemItemCalc } from "@/features/orcamento/TotemWizard";
+import { reconcileGuaritaProjeto } from "@/features/orcamento/guarita";
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/blocos/$cat")({
@@ -914,12 +915,16 @@ function BlocosWizardPage() {
         if (itensError) throw itensError;
       }
 
+      // Guarita é regra por projeto: recalcula somando os receptores de todos os blocos
+      await reconcileGuaritaProjeto(visitaId);
+
       return { id: blocoId, config };
     },
     onSuccess: ({ id, config }) => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
-      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens", id] });
+      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens"] });
+      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens_preview"] });
       toast.success(blocoSalvoId ? "Bloco atualizado" : "Bloco adicionado — configure os equipamentos");
       setFotos([]);
       setBlocoSalvoId(id);
@@ -933,10 +938,14 @@ function BlocosWizardPage() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", id);
       if (error) throw error;
+      // Removeu um bloco → recalcula a guarita do projeto (pode reduzir/mudar de host)
+      await reconcileGuaritaProjeto(visitaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
       queryClient.invalidateQueries({ queryKey: ["visita_blocos_count", visitaId] });
+      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens"] });
+      queryClient.invalidateQueries({ queryKey: ["visita_bloco_itens_preview"] });
     },
   });
 
