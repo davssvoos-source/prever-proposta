@@ -631,9 +631,27 @@ function BlocosWizardPage() {
       return data;
     },
   });
+  // Tipo de local: Residência/Galpão (fluxo simples) não têm sistema de portaria
+  const { data: visitaRow } = useQuery({
+    queryKey: ["visita_tipo_local", visitaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("visitas_tecnicas")
+        .select("tipo_local")
+        .eq("id", visitaId)
+        .maybeSingle();
+      return data;
+    },
+  });
+  const tipoLocal = (visitaRow as any)?.tipo_local as string | null | undefined;
+  const semPortaria = tipoLocal === "residencia" || tipoLocal === "empresa";
   const sistemaPropostoRaw = (orcamentoRow as any)?.sistema_proposto;
-  const portaria: "PR" | "PP" | "PA" =
-    sistemaPropostoRaw === "PP" ? "PP" : sistemaPropostoRaw === "PA" ? "PA" : "PR";
+  const portaria: "PR" | "PP" | "PA" | "SM" =
+    sistemaPropostoRaw === "PP" ? "PP"
+    : sistemaPropostoRaw === "PA" ? "PA"
+    : sistemaPropostoRaw === "PR" ? "PR"
+    : semPortaria ? "SM"
+    : "PR";
 
   const { data: blocosAdicionados = [], isLoading } = useQuery({
     queryKey: ["visita_blocos", visitaId, tipoBloco],

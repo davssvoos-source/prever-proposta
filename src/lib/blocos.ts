@@ -33,9 +33,11 @@ export interface BlocoConfig {
   cftvCameras?: CftvCamera[];
   perimetro?: number;
   esquinas?: number;
-  /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial) | 'PA' (Portaria Autônoma). Default: 'PR'.
-   *  Origem: campo `sistema_proposto` da visita — quando ausente assume PR. */
-  portaria?: "PR" | "PP" | "PA";
+  /** 'PR' (Portaria Remota) | 'PP' (Portaria Presencial) | 'PA' (Portaria Autônoma)
+   *  | 'SM' (sem portaria — Residência/Galpão). Default: 'PR'.
+   *  Origem: campo `sistema_proposto` da visita; visitas Residência/Galpão
+   *  (fluxo simples, sem sistema de portaria) usam 'SM'. */
+  portaria?: "PR" | "PP" | "PA" | "SM";
 }
 
 
@@ -105,7 +107,11 @@ export const OPCOES = {
 
 export function gerarCodigoBloco(config: BlocoConfig): string {
   const { tipoBloco, eclusa, b1, b2, tecnologia } = config;
-  const suf = config.portaria === "PP" ? "PP" : config.portaria === "PA" ? "PA" : "PR";
+  const suf =
+    config.portaria === "PP" ? "PP"
+    : config.portaria === "PA" ? "PA"
+    : config.portaria === "SM" ? "SM"
+    : "PR";
 
   if (tipoBloco === "CFTV") return `CFTV-${tecnologia}`;
   if (tipoBloco === "AL") return `AL-${tecnologia}`;
@@ -141,7 +147,7 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
 // ─── Regeneração de código a partir de uma linha do banco ────────────────────
 /** Regenera o `codigo_bloco` a partir de uma linha de `visita_blocos` aplicando
  *  a portaria (PR/PP/PA) atual do projeto. */
-export function codigoFromDbRow(row: any, portaria: "PR" | "PP" | "PA"): string {
+export function codigoFromDbRow(row: any, portaria: "PR" | "PP" | "PA" | "SM"): string {
   // ELV/TOT geram o próprio código a partir da config (ex.: ELV-3KIT, TOT-2x6CAM) —
   // não têm barreira (b1/b2) nem dependem de portaria, então nunca passam por gerarCodigoBloco.
   if (row.tipo_bloco === "ELV" || row.tipo_bloco === "TOT") return row.codigo_bloco;
