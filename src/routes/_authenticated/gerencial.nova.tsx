@@ -56,13 +56,6 @@ const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = 
   automacao_portoes: DoorOpen,
 };
 
-const PRIORIDADES = [
-  { id: "baixa", label: "Baixa", color: "#9CA3AF" },
-  { id: "normal", label: "Normal", color: "#60A5FA" },
-  { id: "alta", label: "Alta", color: "#FFC000" },
-  { id: "urgente", label: "Urgente", color: "#F87171" },
-];
-
 
 function NovaVisitaPage() {
   const { isLight } = useTheme();
@@ -96,7 +89,8 @@ function NovaVisitaPage() {
   const [data, setData] = useState("");
   const [hora, setHora] = useState("09:00");
   const [tecnicoId, setTecnicoId] = useState("");
-  const [prioridade, setPrioridade] = useState("normal");
+  // Prioridade não é mais escolhida na criação — a coluna tem DEFAULT 'normal' no banco
+  const prioridade = "normal";
   const [descricao, setDescricao] = useState("");
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
@@ -758,39 +752,6 @@ function NovaVisitaPage() {
           </div>
 
           <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Prioridade</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              {PRIORIDADES.map((p) => {
-                const ativo = prioridade === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setPrioridade(p.id)}
-                    style={{
-                      flex: 1,
-                      background: ativo
-                        ? `${p.color}18`
-                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
-                      border: ativo
-                        ? `1.5px solid ${p.color}55`
-                        : isLight ? L.borderMd : "1px solid rgba(255,192,0,0.10)",
-                      borderRadius: 10,
-                      padding: "10px 4px",
-                      cursor: "pointer",
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontSize: 10,
-                      fontWeight: ativo ? 500 : 300,
-                      color: ativo ? p.color : isLight ? L.textSub : "rgba(200,200,200,0.5)",
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Descrição do Pedido</label>
             <textarea
               style={{ ...INPUT, minHeight: 90, resize: "vertical" }}
@@ -822,7 +783,6 @@ function NovaVisitaPage() {
                 value: data ? `${new Date(data + "T12:00:00").toLocaleDateString("pt-BR")} às ${hora}` : "—",
               },
               { label: "Técnico", value: tecnicos.find((t) => t.id === tecnicoId)?.nome ?? "Não definido" },
-              { label: "Prioridade", value: PRIORIDADES.find((p) => p.id === prioridade)?.label },
             ].map((row) => (
               <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.04)" }}>
                 <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textMuted : "rgba(200,200,200,0.45)" }}>{row.label}</span>

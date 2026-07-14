@@ -29,6 +29,9 @@ interface Props {
   salvando?: boolean;
   /** Residência/Galpão: adiciona XAR 4000 Smart à central com fio. */
   residenciaOuGalpao?: boolean;
+  /** Projeto de Portaria Remota: a central (AMT 4010 + GPRS + bateria) já vem
+   *  no bloco CENT — o Alarme COM FIO não adiciona outra. */
+  portariaRemota?: boolean;
   onVoltar: () => void;
   onConcluir: (config: AlarmeConfig, itens: CalcRow[]) => void;
 }
@@ -58,6 +61,7 @@ export function AlarmeWizard({
   isLight,
   salvando = false,
   residenciaOuGalpao = false,
+  portariaRemota = false,
   onVoltar,
   onConcluir,
 }: Props) {
@@ -77,6 +81,7 @@ export function AlarmeWizard({
     zonas,
     repetidores,
     residenciaOuGalpao,
+    portariaRemota,
   };
   const result = computeAlarme(config);
   const bomCodes = result.itens.map((i) => i.cod_eq);
@@ -437,6 +442,11 @@ export function AlarmeWizard({
       {/* Equipamentos (BOM ao vivo) */}
       <div>
         <div style={QUESTION}>Equipamentos</div>
+        {isCab && portariaRemota && (
+          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "'Montserrat', sans-serif", margin: "-4px 2px 8px" }}>
+            Central, GPRS e bateria já inclusos na Central de Portaria Remota — não duplicados aqui.
+          </div>
+        )}
         {result.itens.length === 0 ? (
           <div
             style={{

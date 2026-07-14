@@ -47,11 +47,11 @@ const CARD = (isLight: boolean): React.CSSProperties => ({
   // Fundo sólido (sem transparência) para legibilidade sobre o background animado
   background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.18)",
-  borderRadius: 14,
-  padding: 14,
+  borderRadius: 12,
+  padding: "8px 10px",
   display: "flex",
   alignItems: "center",
-  gap: 12,
+  gap: 10,
 });
 
 const CIRCLE_BTN: React.CSSProperties = {
@@ -271,7 +271,7 @@ export function BlocoItensEditor({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <div style={{
         fontSize: 10, fontWeight: 700, letterSpacing: "0.18em",
         color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",

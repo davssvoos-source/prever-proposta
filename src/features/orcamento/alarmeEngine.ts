@@ -43,6 +43,9 @@ export interface AlarmeConfig {
   repetidores?: number;
   /** Com fio: Residência/Galpão adiciona XAR 4000 Smart à central. */
   residenciaOuGalpao?: boolean;
+  /** Projeto de Portaria Remota: a central (AMT 4010 + GPRS + bateria) já vem no
+   *  bloco CENT — o Alarme COM FIO não deve adicionar outra (só as zonas/sensores). */
+  portariaRemota?: boolean;
 }
 
 export interface CalcRow {
@@ -124,9 +127,13 @@ export function computeAlarme(cfg: AlarmeConfig): CalcResult {
 
   if (cfg.ramo === "CAB") {
     // ── Central com fio ──────────────────────────────────────────────────
-    push(itens, "ALM_AMT4010", 1, true, "Central de alarme AMT 4010 (com fio)");
-    push(itens, "ALM_XEG4000", 1, true, "Módulo de comunicação GPRS/Ethernet");
-    push(itens, "ALM_XB1270", 1, true, "Bateria 12V 7Ah");
+    // Em projeto de Portaria Remota o painel AMT 4010 + GPRS + bateria já
+    // vêm no bloco CENT (mesmo painel físico) — não duplica aqui.
+    if (!cfg.portariaRemota) {
+      push(itens, "ALM_AMT4010", 1, true, "Central de alarme AMT 4010 (com fio)");
+      push(itens, "ALM_XEG4000", 1, true, "Módulo de comunicação GPRS/Ethernet");
+      push(itens, "ALM_XB1270", 1, true, "Bateria 12V 7Ah");
+    }
     if (cfg.residenciaOuGalpao) {
       push(itens, "ALM_XAR4000", 1, true, "XAR 4000 Smart — Residência/Galpão");
     }

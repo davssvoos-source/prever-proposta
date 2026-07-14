@@ -505,7 +505,7 @@ function BlocosWizardPage() {
       return data;
     },
   });
-  const tipoLocal = (visitaRow as any)?.tipo_local as string | null | undefined;
+  const tipoLocal = ((visitaRow as any)?.tipo_local as string | null | undefined)?.trim().toLowerCase();
   const semPortaria = tipoLocal === "residencia" || tipoLocal === "empresa";
   const sistemaPropostoRaw = (orcamentoRow as any)?.sistema_proposto;
   const portaria: "PR" | "PP" | "PA" | "SM" =
@@ -1272,6 +1272,7 @@ function BlocosWizardPage() {
           isLight={isLight}
           salvando={salvarAlarmeMutation.isPending}
           residenciaOuGalpao={semPortaria}
+          portariaRemota={portaria === "PR"}
           onVoltar={() => {
             setWizard(null);
             navigate({ to: "/visita/$id/orcamento/categorias", params: { id: visitaId } });

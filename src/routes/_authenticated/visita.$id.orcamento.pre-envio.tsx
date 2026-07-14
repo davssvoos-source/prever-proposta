@@ -476,14 +476,18 @@ function PreEnvioPage() {
               Nenhum bloco adicionado
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(() => {
                 const counters: Record<string, number> = {};
                 return blocos.map((bloco: any, idx: number) => {
                   const tipo = bloco.tipo_bloco;
                   counters[tipo] = (counters[tipo] || 0) + 1;
                   const base = TIPOS_NOMES[tipo] || tipo;
-                  const label = TIPOS_UNICOS.has(tipo)
+                  // Nome dado pelo usuário na montagem do bloco (PED/VEI) tem prioridade
+                  const nomeUsuario = (bloco.nome_acesso as string | null)?.trim();
+                  const label = nomeUsuario
+                    ? nomeUsuario
+                    : TIPOS_UNICOS.has(tipo)
                     ? base
                     : `${base} ${String(counters[tipo]).padStart(2, "0")}`;
                   return (
@@ -493,7 +497,7 @@ function PreEnvioPage() {
                           style={{
                             height: 1,
                             background: isLight ? "rgba(0,0,0,0.08)" : "#191921",
-                            marginBottom: 16,
+                            marginBottom: 8,
                           }}
                         />
                       )}
@@ -505,7 +509,7 @@ function PreEnvioPage() {
                           letterSpacing: 0.6,
                           fontFamily: "'Montserrat',sans-serif",
                           textTransform: "uppercase",
-                          marginBottom: 10,
+                          marginBottom: 6,
                         }}
                       >
                         {label}

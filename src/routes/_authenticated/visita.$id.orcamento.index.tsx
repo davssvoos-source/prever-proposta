@@ -62,8 +62,11 @@ function OrcamentoPasso1() {
   });
 
   // Residência/Galpão: sem qtd de apartamentos, sistema ou airbnb — só serviço proposto
-  const tipoLocal = (visita as any)?.tipo_local as string | null | undefined;
-  const fluxoSimples = tipoLocal === "residencia" || tipoLocal === "empresa";
+  // Normaliza (trim + lowercase) para não depender de espaço/maiúscula exatos salvos na criação.
+  const tipoLocalNorm = ((visita as any)?.tipo_local as string | null | undefined)
+    ?.trim()
+    .toLowerCase();
+  const fluxoSimples = tipoLocalNorm === "residencia" || tipoLocalNorm === "empresa";
 
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
