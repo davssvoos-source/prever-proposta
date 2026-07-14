@@ -31,6 +31,16 @@ export const CFTV_IA_SERVICOS: Record<string, string> = {
 /** Itens com código SV* são serviços mensais — exibidos em "Mensalidades", não em equipamentos. */
 export const isServicoCode = (cod: string) => /^SV\d+/i.test(cod);
 
+// ─── Receptores RF e Módulo Guarita (regra por projeto) ──────────────────────
+export const EQ_RECEPTOR_RTX = "EQ004"; // Receptor RF RTX 3004 (por barreira com CTRL)
+export const EQ_RECEPTOR_RMF = "EQ007"; // Receptor HCS Multifunção RMF3004 (por TAG)
+export const EQ_MODULO_GUARITA = "EQ003"; // Módulo Guarita IP MG 3000
+
+/** Módulo Guarita IP: 1 a cada 4 receptores (RTX + RMF somados) no projeto inteiro. */
+export function qtdModulosGuarita(totalReceptores: number): number {
+  return Math.ceil(Math.max(0, totalReceptores) / 4);
+}
+
 const ceil = (value: number, divisor: number) =>
   divisor <= 0 ? 0 : Math.ceil(Math.max(0, value) / divisor);
 
@@ -49,6 +59,29 @@ function countTokens(codigo: string) {
   const counts: Record<string, number> = {};
   for (const token of codigo.toUpperCase().split("-")) counts[token] = (counts[token] || 0) + 1;
   return counts;
+}
+
+// Tokens que iniciam um segmento de barreira dentro do código de um bloco de acesso.
+const BARRIER_TYPES = new Set(["CAT", "PORP", "CAN", "PORV"]);
+
+/** Conta quantas barreiras do bloco contêm um dado token (ex.: "CTRL").
+ *  Ex.: CAN-CTRL-TAG + PORV-CTRL-FAC → 2 barreiras com CTRL. */
+function countBarreirasComToken(codigo: string, token: string): number {
+  const parts = codigo.toUpperCase().split("-");
+  let count = 0;
+  let inBarrier = false;
+  let hasToken = false;
+  for (const p of parts) {
+    if (BARRIER_TYPES.has(p)) {
+      if (inBarrier && hasToken) count++;
+      inBarrier = true;
+      hasToken = false;
+    } else if (inBarrier && p === token) {
+      hasToken = true;
+    }
+  }
+  if (inBarrier && hasToken) count++;
+  return count;
 }
 
 // ─── Acesso (PED / VEI) ──────────────────────────────────────────────────────
@@ -73,13 +106,23 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   const mot = tokens.MOT || 0;
   const lpr = tokens.LPR || 0;
 
+  const ctrlBarreiras = countBarreirasComToken(input.codigo, "CTRL");
+  const tag = tokens.TAG || 0;
+
   // Leitoras / acionamentos
   add(acc, "EQ011", fac, "Leitora Facial selecionada no bloco");
+  add(acc, "EQ032", fac, "Acrílico Somente Facial (1 por leitora facial)");
   add(acc, "EQ021", botana, "Botoeira comum selecionada no bloco");
   add(acc, "EQ035", botana, "Acrílico do botão");
   add(acc, "EQ020", botapr, "Botoeira por aproximação selecionada no bloco");
   add(acc, "EQ214", dig, "Leitora Biometria Digital selecionada no bloco");
   add(acc, "EQ092", lpr, "Câmera IP LPR selecionada no bloco");
+
+  // Receptores RF: 1 RTX 3004 por barreira com controle remoto (CTRL); 1 RMF3004 por TAG.
+  // O Módulo Guarita IP (MG 3000 / EQ003) é regra por PROJETO (⌈(RTX+RMF)/4⌉) e é
+  // calculado no resumo (pré-envio), somando os receptores de todos os blocos.
+  add(acc, "EQ004", ctrlBarreiras, "Receptor RF RTX 3004 (1 por barreira com controle remoto)");
+  add(acc, "EQ007", tag, "Receptor HCS Multifunção RMF3004 (1 por TAG)");
 
   // Laço indutivo (por bloco)
   if (lac > 0) {

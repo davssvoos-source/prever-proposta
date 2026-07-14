@@ -195,12 +195,21 @@ export function BlocoItensEditor({
     enabled: svCodes.length > 0,
   });
 
+  // Invalida TODAS as telas que leem itens deste bloco: o editor, o preview da
+  // lista de blocos (chave própria) e a guarita do projeto (pré-envio). Sem isto,
+  // um item manual sumia da lista/preview por ficar em cache com chave diferente.
+  function invalidarItens() {
+    qc.invalidateQueries({ queryKey: ["visita_bloco_itens", visitaBlocoId] });
+    qc.invalidateQueries({ queryKey: ["visita_bloco_itens_preview"] });
+    qc.invalidateQueries({ queryKey: ["visita_guarita"] });
+  }
+
   const atualizarMut = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<VbiRow> }) => {
       const { error } = await supabase.from("visita_bloco_itens" as any).update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["visita_bloco_itens", visitaBlocoId] }),
+    onSuccess: () => invalidarItens(),
     onError: (e: any) => toast.error(e.message ?? "Erro"),
   });
 
@@ -236,7 +245,7 @@ export function BlocoItensEditor({
     onSuccess: () => {
       setBusca("");
       setNovoQtd(1);
-      qc.invalidateQueries({ queryKey: ["visita_bloco_itens", visitaBlocoId] });
+      invalidarItens();
       toast.success("Item adicionado");
     },
     onError: (e: any) => toast.error(e.message ?? "Erro"),
