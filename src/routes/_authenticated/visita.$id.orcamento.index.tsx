@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { codigoFromDbRow } from "@/lib/blocos";
+import { computeAutoItemsForBloco } from "@/features/orcamento/blockAutoItems";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/")({
   component: OrcamentoPasso1,
@@ -195,9 +196,24 @@ function OrcamentoPasso1() {
           if (insErr && (insErr as any).code !== "23505") throw insErr;
           const novoId = (novo as any)?.id as string | undefined;
           if (novoId) {
-            await supabase.from("visita_bloco_itens" as any).insert([
-              { visita_bloco_id: novoId, cod_eq: "EQ028", qtd: 1, origem: "auto", observacao: "Servidor da Portaria Remota" },
-            ]);
+            // Semeia a lista COMPLETA da Central de Portaria Remota (fonte única: computeCentral).
+            // Antes seedava só EQ028 (item errado), o que ainda bloqueava o BlocoItensEditor
+            // de semear a lista real — por isso o resumo mostrava um único item incorreto.
+            const itensCent = computeAutoItemsForBloco({
+              codigo: "CENT-PR",
+              tipoBloco: "CENT" as any,
+            }).filter((it) => it.qtd > 0);
+            if (itensCent.length > 0) {
+              await supabase.from("visita_bloco_itens" as any).insert(
+                itensCent.map((it) => ({
+                  visita_bloco_id: novoId,
+                  cod_eq: it.cod_eq,
+                  qtd: it.qtd,
+                  origem: "auto",
+                  observacao: it.observacao ?? null,
+                })),
+              );
+            }
           }
 
         }
