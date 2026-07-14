@@ -119,12 +119,20 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   add(acc, "EQ214", dig, "Leitora Biometria Digital selecionada no bloco");
   add(acc, "EQ092", lpr, "Câmera IP LPR selecionada no bloco");
 
-  // Receptores RF: 1 RTX 3004 por barreira com controle remoto (CTRL); 1 RMF3004 por TAG.
-  // O Módulo Guarita IP (MG 3000 / EQ003) NÃO é adicionado aqui: é regra por PROJETO
-  // (⌈(RTX+RMF de todos os blocos)/4⌉) e é reconciliado por `reconcileGuaritaProjeto`,
-  // que o hospeda num único bloco de acesso com a contagem total.
-  add(acc, "EQ004", ctrlBarreiras, "Receptor RF RTX 3004 (1 por barreira com controle remoto)");
+  // Receptores RF: 1 RTX 3004 por BLOCO com controle remoto (CTRL) — 1 receptor já
+  // atende as 2 barreiras da mesma eclusa de portão, não soma por barreira.
+  // 1 RMF3004 por TAG (esse sim, por ocorrência). O Módulo Guarita IP (MG 3000 /
+  // EQ003) NÃO é adicionado aqui: é regra por PROJETO (⌈(RTX+RMF de todos os
+  // blocos)/4⌉) e é reconciliado por `reconcileGuaritaProjeto`, que o hospeda
+  // num único bloco de acesso com a contagem total.
+  const rtxQtd = Math.min(ctrlBarreiras, 1);
+  add(acc, "EQ004", rtxQtd, "Receptor RF RTX 3004 (1 por bloco/eclusa com controle remoto)");
   add(acc, "EQ007", tag, "Receptor HCS Multifunção RMF3004 (1 por TAG)");
+
+  // XAS aço c/ suporte: 1 por portão veicular (PORV) em projetos de Portaria Remota
+  if (portariaPR && porv > 0) {
+    add(acc, "ALM_XASPAS", porv, "XAS aço c/ suporte (1 por portão veicular, Portaria Remota)");
+  }
 
   // Laço indutivo (por bloco)
   if (lac > 0) {
