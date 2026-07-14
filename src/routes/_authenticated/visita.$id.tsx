@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL, centraisAutomaticas } from "@/features/visitas/servicosPropostos";
+import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
@@ -327,68 +327,6 @@ function VisitaDetail() {
         .order("nome");
       return data ?? [];
     },
-  });
-
-  const verEquip =
-    visita?.status === "em_andamento" ||
-    visita?.status === "concluida" ||
-    visita?.status === "aprovada";
-
-  const { data: orcamento } = useQuery({
-    queryKey: ["orcamento", id],
-    enabled: !!verEquip,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("visita_orcamentos")
-        .select("blocos_selecionados, itens_variaveis, qtd_apartamentos, servicos_ofertados, sistema_atual")
-        .eq("visita_id", id)
-        .maybeSingle();
-      return data;
-    },
-  });
-
-  const blocoIds = useMemo(() => {
-    const sel =
-      (orcamento?.blocos_selecionados as Record<string, Record<string, number>> | null) ?? {};
-    return Object.values(sel).flatMap((cat) => Object.keys(cat));
-  }, [orcamento]);
-
-  const centraisAuto = useMemo(
-    () => centraisAutomaticas((visita as any)?.servicos_propostos as string[] | null),
-    [visita],
-  );
-
-  const { data: blocoDetalhes = [] } = useQuery({
-    queryKey: ["blocos-detalhe", blocoIds.sort().join(","), centraisAuto.sort().join(",")],
-    enabled: blocoIds.length > 0 || centraisAuto.length > 0,
-    queryFn: async () => {
-      const orFilter: string[] = [];
-      if (blocoIds.length) orFilter.push(`id.in.(${blocoIds.join(",")})`);
-      if (centraisAuto.length) orFilter.push(`code.in.(${centraisAuto.join(",")})`);
-      const { data, error } = await supabase
-        .from("blocos")
-        .select("id, code, name, descricao, hh, blocos_itens(*)")
-        .or(orFilter.join(","));
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const updateItemQtyMutation = useMutation({
-    mutationFn: async ({ blocoId, itemId, qty }: { blocoId: string; itemId: string; qty: number }) => {
-      const current = (orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {};
-      const next = {
-        ...current,
-        [blocoId]: { ...(current[blocoId] ?? {}), [itemId]: Math.max(0, qty) },
-      };
-      const { error } = await supabase
-        .from("visita_orcamentos")
-        .update({ itens_variaveis: next })
-        .eq("visita_id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["orcamento", id] }),
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const atribuirMutation = useMutation({
@@ -1154,134 +1092,6 @@ function VisitaDetail() {
           </p>
         </div>
       )}
-
-      {/* Equipamentos do orçamento */}
-      {verEquip && (blocoDetalhes.length > 0 || centraisAuto.length > 0) && (
-        <div style={GLASS}>
-          <div style={SECTION_LABEL}>Equipamentos do orçamento</div>
-          {(() => {
-            const STEPPER_BTN: React.CSSProperties = {
-              width: 26,
-              height: 26,
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-              color: "#fff",
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: 14,
-              lineHeight: 1,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-            };
-            const renderItemRow = (blocoId: string, item: any, currentQty: number) => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: "rgba(255,255,255,0.75)", gap: 8 }}>
-                <span style={{ flex: 1 }}>{item.nome}{item.modelo ? ` · ${item.modelo}` : ""}</span>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <button
-                    type="button"
-                    style={STEPPER_BTN}
-                    disabled={updateItemQtyMutation.isPending || currentQty <= 0}
-                    onClick={() => updateItemQtyMutation.mutate({ blocoId, itemId: item.id, qty: currentQty - 1 })}
-                  >
-                    −
-                  </button>
-                  <span style={{ fontWeight: 500, minWidth: 20, textAlign: "center" }}>{currentQty}</span>
-                  <button
-                    type="button"
-                    style={STEPPER_BTN}
-                    disabled={updateItemQtyMutation.isPending}
-                    onClick={() => updateItemQtyMutation.mutate({ blocoId, itemId: item.id, qty: currentQty + 1 })}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            );
-            return (
-              <>
-                {centraisAuto.map((code) => {
-                  const bloco = blocoDetalhes.find((b: any) => b.code === code) as any;
-                  if (!bloco) return null;
-                  const blocoItensCustom =
-                    ((orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {})[bloco.id] ?? {};
-                  return (
-                    <div
-                      key={`auto-${code}`}
-                      style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                    >
-                      {bloco.descricao && (
-                        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 6, marginTop: 0, fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                          {bloco.descricao}
-                        </p>
-                      )}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 15, color: "#fff" }}>
-                          {bloco.name}
-                        </span>
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
-                          ×1
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 4 }}>
-                        {(bloco.blocos_itens ?? []).map((item: any) => {
-                          const customQty = blocoItensCustom[item.id] ?? item.qty ?? 0;
-                          return renderItemRow(bloco.id, item, customQty);
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-                {Object.entries(
-                  (orcamento?.blocos_selecionados as Record<string, Record<string, number>>) ?? {},
-                ).map(([cat, catQtds]) =>
-                  Object.entries(catQtds).map(([blocoId, qty]) => {
-                    const bloco = blocoDetalhes.find((b: any) => b.id === blocoId) as any;
-                    if (!bloco || !qty) return null;
-                    const blocoItensCustom =
-                      ((orcamento?.itens_variaveis as Record<string, Record<string, number>> | null) ?? {})[blocoId] ?? {};
-                    return (
-                      <div
-                        key={`${cat}-${blocoId}`}
-                        style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-                      >
-                        {bloco.descricao && (
-                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 6, marginTop: 0, fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
-                            {bloco.descricao}
-                          </p>
-                        )}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 15, color: "#fff" }}>
-                            {bloco.name}
-                          </span>
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.55)" }}>
-                            ×{qty}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingLeft: 4 }}>
-                          {(bloco.blocos_itens ?? []).map((item: any) => {
-                            const customQty = blocoItensCustom[item.id] ?? item.qty ?? 0;
-                            return renderItemRow(blocoId, item, customQty);
-                          })}
-                        </div>
-                      </div>
-                    );
-                  }),
-                )}
-              </>
-            );
-          })()}
-          {orcamento?.qtd_apartamentos && (
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11, color: "rgba(255,255,255,0.40)", marginTop: 4 }}>
-              {orcamento.qtd_apartamentos} apartamentos{orcamento.sistema_atual ? ` · ${orcamento.sistema_atual}` : ""}
-            </div>
-          )}
-        </div>
-      )}
-
-
 
       {/* Aprovação */}
       {(status === "aprovada" || status === "reprovada" || status === "aguardando_aprovacao" || showReprovarBtn) && (
