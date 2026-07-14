@@ -1,780 +1,490 @@
-// Wizard completo do módulo Alarme de Intrusão.
-// Renderizado pela rota visita.$id.orcamento.blocos.$cat quando cat === "alarme".
-// Calcula o BOM em tempo real via alarmeEngine e, ao concluir, chama onConcluir(config, itens).
+// Wizard do bloco Alarme — fluxo por ZONAS (Intelbras).
+// Etapa 1: tecnologia (Com fio AMT 4010 / Sem fio AMT 8000).
+// Etapa 2: montagem das zonas (tipo de sensor + qtd + cabeamento/TX) com BOM ao vivo.
+// A central, o expansor de zonas (XEZ 4008 a cada 8 zonas), o cabo (EQ302) e o
+// XAR 4000 (Residência/Galpão) são calculados automaticamente pelo alarmeEngine.
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft, ArrowRight, Check, Info, Cable, Wifi, Plus, Minus, Trash2, AlertTriangle,
-  ShieldCheck, PanelRightOpen,
+  ArrowLeft, Cable, Wifi, Eye, Radar, Signal, DoorClosed, DoorOpen, Square,
+  X, Plus, Minus, ShieldCheck,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { CaboGauge } from "./CaboGauge";
 import {
-  computeAlarme, ALARME_LABELS, GRUPO_CODIGO,
-  type AlarmeConfig, type AlarmeRamo, type AlarmePerimetro, type CalcRow,
+  computeAlarme,
+  ALARME_LABELS,
+  SENSOR_INFO,
+  MAX_SENSORES_POR_ZONA,
+  type AlarmeConfig,
+  type AlarmeRamo,
+  type AlarmeSensorTipo,
+  type AlarmeZona,
+  type CalcRow,
 } from "./alarmeEngine";
-
-type StepId =
-  | "ramo" | "aberturas" | "ambientes" | "perimetro" | "operacao"
-  | "sirenes" | "comunicacao" | "automacoes" | "alcance" | "revisao";
 
 interface Props {
   isLight: boolean;
-  onVoltar: () => void;
-  onConcluir: (config: AlarmeConfig, itens: CalcRow[]) => Promise<void> | void;
   salvando?: boolean;
+  /** Residência/Galpão: adiciona XAR 4000 Smart à central com fio. */
+  residenciaOuGalpao?: boolean;
+  onVoltar: () => void;
+  onConcluir: (config: AlarmeConfig, itens: CalcRow[]) => void;
 }
 
-const STEP_TITLE: Record<StepId, string> = {
-  ramo: "Estrutura",
-  aberturas: "Aberturas",
-  ambientes: "Ambientes",
-  perimetro: "Perímetro",
-  operacao: "Operação",
-  sirenes: "Sirenes",
-  comunicacao: "Comunicação",
-  automacoes: "Automações",
-  alcance: "Alcance",
-  revisao: "Revisão",
-};
+const GOLD_GRAD = "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)";
+const DARK_CARD = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
 
-function stepsFor(ramo: AlarmeRamo | null): StepId[] {
-  if (!ramo) return ["ramo"];
-  if (ramo === "CAB") {
-    return ["ramo", "aberturas", "ambientes", "perimetro", "operacao", "sirenes", "comunicacao", "automacoes", "revisao"];
-  }
-  return ["ramo", "aberturas", "ambientes", "operacao", "sirenes", "comunicacao", "automacoes", "alcance", "revisao"];
-}
+// Tipos de sensor exibidos por ramo (ordem da spec)
+const SENSORES_CAB: { tipo: AlarmeSensorTipo; Icon: typeof Eye }[] = [
+  { tipo: "ivp_int", Icon: Eye },
+  { tipo: "ivp_ext", Icon: Radar },
+  { tipo: "iva40", Icon: Signal },
+  { tipo: "iva80", Icon: Signal },
+  { tipo: "porta_int", Icon: DoorClosed },
+  { tipo: "porta_ext", Icon: DoorOpen },
+  { tipo: "janela_int", Icon: Square },
+  { tipo: "janela_ext", Icon: Square },
+];
+const SENSORES_SF: { tipo: AlarmeSensorTipo; Icon: typeof Eye }[] = [
+  { tipo: "sf_ivp_int", Icon: Eye },
+  { tipo: "sf_ivp_ext", Icon: Radar },
+  { tipo: "sf_iva40", Icon: Signal },
+  { tipo: "sf_abertura", Icon: DoorClosed },
+];
 
-// ── Componentes auxiliares ────────────────────────────────────────────────
+export function AlarmeWizard({
+  isLight,
+  salvando = false,
+  residenciaOuGalpao = false,
+  onVoltar,
+  onConcluir,
+}: Props) {
+  const [step, setStep] = useState<"tecnologia" | "zonas">("tecnologia");
+  const [ramo, setRamo] = useState<AlarmeRamo | null>(null);
+  const [zonas, setZonas] = useState<AlarmeZona[]>([]);
+  const [repetidores, setRepetidores] = useState(0);
 
-function NumberField({
-  label, value, onChange, min = 0, max = 999, hint, isLight,
-}: { label: string; value: number; onChange: (n: number) => void; min?: number; max?: number; hint?: string; isLight: boolean }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "12px 14px", borderRadius: 12,
-      background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-      border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
-      gap: 12,
-    }}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>{label}</div>
-        {hint && <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)", marginTop: 2 }}>{hint}</div>}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button onClick={() => onChange(Math.max(min, value - 1))}
-          style={circleBtn(isLight)} aria-label="-"><Minus size={14} /></button>
-        <span style={{ minWidth: 28, textAlign: "center", fontWeight: 800, fontSize: 15 }}>{value}</span>
-        <button onClick={() => onChange(Math.min(max, value + 1))}
-          style={circleBtn(isLight)} aria-label="+"><Plus size={14} /></button>
-      </div>
-    </div>
-  );
-}
+  // Zona em configuração (antes de "Adicionar zona")
+  const [tipoSel, setTipoSel] = useState<AlarmeSensorTipo | null>(null);
+  const [qtdSel, setQtdSel] = useState(1);
+  const [metrosSel, setMetrosSel] = useState(0);
+  const [txSel, setTxSel] = useState(false);
 
-const circleBtn = (isLight: boolean): React.CSSProperties => ({
-  width: 32, height: 32, borderRadius: "50%",
-  border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.2)",
-  background: "transparent", cursor: "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center",
-  color: isLight ? "#0a0b0e" : "#fff",
-});
+  const config: AlarmeConfig = {
+    ramo: ramo ?? "CAB",
+    zonas,
+    repetidores,
+    residenciaOuGalpao,
+  };
+  const result = computeAlarme(config);
+  const bomCodes = result.itens.map((i) => i.cod_eq);
 
-function ToggleField({
-  label, value, onChange, hint, isLight,
-}: { label: string; value: boolean; onChange: (b: boolean) => void; hint?: string; isLight: boolean }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "12px 14px", borderRadius: 12,
-      background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-      border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
-      gap: 12,
-    }}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>{label}</div>
-        {hint && <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)", marginTop: 2 }}>{hint}</div>}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        {[
-          { v: false, label: "Não" }, { v: true, label: "Sim" },
-        ].map((opt) => (
-          <button key={String(opt.v)} onClick={() => onChange(opt.v)}
-            style={{
-              padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-              border: value === opt.v ? "2px solid #b87800" : (isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.15)"),
-              background: value === opt.v ? "rgba(180,120,0,0.10)" : "transparent",
-              color: isLight ? "#0a0b0e" : "#fff", fontSize: 12, fontWeight: 700,
-            }}>{opt.label}</button>
+  // Nomes/modelos do catálogo (fallback: ALARME_LABELS)
+  const { data: eqNomes = {} } = useQuery({
+    queryKey: ["alarme_bom_nomes", [...bomCodes].sort().join(",")],
+    enabled: bomCodes.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("equipamentos")
+        .select("code,nome,modelo")
+        .in("code", bomCodes);
+      const map: Record<string, string> = {};
+      for (const e of (data as any[]) ?? []) map[e.code] = e.modelo || e.nome;
+      return map;
+    },
+  });
+  const nomeEq = (cod: string) =>
+    eqNomes[cod] ?? (ALARME_LABELS[cod] ? `${ALARME_LABELS[cod].nome} ${ALARME_LABELS[cod].modelo}` : cod);
+
+  // ── Estilos (padrão do app) ────────────────────────────────────────────────
+  const PAGE: React.CSSProperties = {
+    padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16,
+    color: isLight ? "#0a0b0e" : "#fff",
+  };
+  const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
+  const BACK_BTN: React.CSSProperties = {
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center",
+    justifyContent: "center", cursor: "pointer", color: isLight ? "#0a0b0e" : "#fff",
+  };
+  const QUESTION: React.CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+    letterSpacing: "0.06em", color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
+    textTransform: "uppercase", margin: "4px 2px 8px",
+  };
+  const LIST_CARD: React.CSSProperties = {
+    background: isLight ? "#ffffff" : "#16161d",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.15)",
+    borderRadius: 14,
+    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
+  };
+  const CIRCLE_BTN: React.CSSProperties = {
+    width: 40, height: 40, borderRadius: "50%",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.28)",
+    background: isLight ? "#ffffff" : "#16161d",
+    color: isLight ? "#0a0b0e" : "#fff",
+    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+  };
+
+  // Indicador de passos (2 etapas)
+  function StepDots() {
+    const passos = ["Tecnologia", "Zonas e sensores"];
+    const atual = step === "tecnologia" ? 0 : 1;
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, overflowX: "auto" }}>
+        {passos.map((p, i) => (
+          <div key={p} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <span
+              style={{
+                width: 26, height: 26, borderRadius: "50%",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                background: i <= atual ? "#F59E0B" : isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)",
+                color: i <= atual ? "#0A0A0A" : isLight ? "#8a909e" : "rgba(200,200,200,0.4)",
+                fontSize: 12, fontWeight: 700, fontFamily: "'Montserrat', sans-serif",
+              }}
+            >
+              {i + 1}
+            </span>
+            <span
+              style={{
+                fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+                fontWeight: i === atual ? 700 : 400,
+                color: i === atual ? (isLight ? "#0a0b0e" : "#fff") : isLight ? "#8a909e" : "rgba(200,200,200,0.5)",
+              }}
+            >
+              {p}
+            </span>
+            {i < passos.length - 1 && (
+              <span style={{ width: 24, height: 1, background: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.15)" }} />
+            )}
+          </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ── Cálculo formatação ───────────────────────────────────────────────────
-
-function agrupar(itens: CalcRow[]) {
-  const grupos: Record<string, CalcRow[]> = { central: [], sensores: [], comunicacao: [], automacao: [] };
-  for (const it of itens) {
-    const g = GRUPO_CODIGO[it.cod_eq] ?? "central";
-    grupos[g].push(it);
-  }
-  return grupos;
-}
-
-const GRUPO_LABEL = {
-  central: "Central e acessórios",
-  sensores: "Sensores",
-  comunicacao: "Comunicação",
-  automacao: "Automação",
-};
-
-// ── Componente principal ─────────────────────────────────────────────────
-
-export function AlarmeWizard({ isLight, onVoltar, onConcluir, salvando = false }: Props) {
-  const [cfg, setCfg] = useState<AlarmeConfig>({ ramo: "CAB" });
-  const [ramoSel, setRamoSel] = useState<AlarmeRamo | null>(null);
-  const [step, setStep] = useState<StepId>("ramo");
-  const [resumoOpen, setResumoOpen] = useState(false);
-
-  const steps = stepsFor(ramoSel);
-  const idx = steps.indexOf(step);
-
-  const result = useMemo(() => computeAlarme(cfg), [cfg]);
-  const temErro = result.alertas.some((a) => a.tipo === "error");
-
-  function avancar() {
-    if (idx < steps.length - 1) setStep(steps[idx + 1]);
-  }
-  function voltar() {
-    if (idx > 0) setStep(steps[idx - 1]);
-    else onVoltar();
+    );
   }
 
-  function upd<K extends keyof AlarmeConfig>(k: K, v: AlarmeConfig[K]) {
-    setCfg((c) => ({ ...c, [k]: v }));
-  }
-  function addPerimetro() {
-    const list = cfg.perimetros ?? [];
-    upd("perimetros", [...list, { distancia: 100, feixes: 4 }] as AlarmePerimetro[]);
-  }
-  function updPerimetro(i: number, patch: Partial<AlarmePerimetro>) {
-    const list = [...(cfg.perimetros ?? [])];
-    list[i] = { ...list[i], ...patch };
-    upd("perimetros", list);
-  }
-  function delPerimetro(i: number) {
-    const list = [...(cfg.perimetros ?? [])];
-    list.splice(i, 1);
-    upd("perimetros", list);
-  }
-
-  // ── Estilos base ────────────────────────────────────────────────────
-  const gold = "#F59E0B";
-  const cardStyle: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.14)",
-    borderRadius: 16, padding: 16,
-  };
-  const secLabel: React.CSSProperties = {
-    fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)", marginBottom: 10,
-  };
-
-  // ── Painel resumo ───────────────────────────────────────────────────
-  const grupos = agrupar(result.itens);
-  const totalUnid = result.itens.reduce((s, i) => s + i.qtd, 0);
-  const contadorLabel = ramoSel === "CAB"
-    ? `Zonas: ${result.zonas_cabeadas + result.zonas_sem_fio}/64`
-    : ramoSel === "SF" ? `Dispositivos: ${result.dispositivos_sf}/64` : "";
-
-  const Resumo = (
-    <div style={{ ...cardStyle, position: "sticky", top: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ShieldCheck size={18} color={gold} />
-          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
-            RESUMO
-          </span>
+  // ── Etapa 1 — Tecnologia ───────────────────────────────────────────────────
+  if (step === "tecnologia") {
+    return (
+      <div style={PAGE}>
+        <div style={HEADER}>
+          <button style={BACK_BTN} onClick={onVoltar}><ArrowLeft size={18} /></button>
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16 }}>Alarme</div>
         </div>
-        {contadorLabel && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: gold,
-            padding: "3px 8px", borderRadius: 999, background: "rgba(245,158,11,0.12)",
-          }}>{contadorLabel}</span>
-        )}
+        <StepDots />
+
+        <div style={QUESTION}>SISTEMA DE ALARME?</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {([
+            { val: "CAB", label: "Com fio", Icon: Cable },
+            { val: "SF", label: "Sem fio", Icon: Wifi },
+          ] as { val: AlarmeRamo; label: string; Icon: typeof Cable }[]).map(({ val, label, Icon }) => (
+            <button
+              key={val}
+              onClick={() => {
+                if (val !== ramo) {
+                  // Trocou de tecnologia: sensores são incompatíveis — zera o escopo
+                  setTipoSel(null);
+                  setZonas([]);
+                  setRepetidores(0);
+                  setTxSel(false);
+                  setMetrosSel(0);
+                  setQtdSel(1);
+                }
+                setRamo(val);
+                setStep("zonas");
+              }}
+              style={{
+                height: 64, borderRadius: 16, border: "none",
+                background: GOLD_GRAD, color: "#0A0A0A",
+                fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15,
+                letterSpacing: "0.04em", cursor: "pointer",
+                boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}
+            >
+              <Icon size={18} color="#0A0A0A" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "'Montserrat', sans-serif" }}>
+          Com fio: central AMT 4010 · Sem fio: central AMT 8000
+        </div>
       </div>
-
-      {result.alertas.map((a, i) => (
-        <div key={i} style={{
-          padding: "8px 10px", borderRadius: 10, marginBottom: 8,
-          background: a.tipo === "error" ? "rgba(220,38,38,0.10)" : "rgba(234,179,8,0.12)",
-          border: `1px solid ${a.tipo === "error" ? "rgba(220,38,38,0.35)" : "rgba(234,179,8,0.35)"}`,
-          color: a.tipo === "error" ? "#dc2626" : "#a16207",
-          fontSize: 11, display: "flex", gap: 6, alignItems: "flex-start",
-        }}>
-          <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>{a.msg}</span>
-        </div>
-      ))}
-
-      {result.itens.length === 0 && (
-        <div style={{ fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)", padding: "12px 0" }}>
-          Nenhum item — responda as perguntas ao lado.
-        </div>
-      )}
-
-      {(["central", "sensores", "comunicacao", "automacao"] as const).map((g) => {
-        const lista = grupos[g];
-        if (!lista || lista.length === 0) return null;
-        return (
-          <div key={g} style={{ marginBottom: 10 }}>
-            <div style={{
-              fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
-              color: gold, marginBottom: 4, textTransform: "uppercase",
-            }}>{GRUPO_LABEL[g]}</div>
-            {lista.map((it) => {
-              const meta = ALARME_LABELS[it.cod_eq];
-              return (
-                <div key={it.cod_eq} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                  padding: "6px 0", borderBottom: isLight ? "1px dashed rgba(0,0,0,0.06)" : "1px dashed rgba(255,255,255,0.06)",
-                  gap: 8,
-                }} title={it.regra || ""}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
-                      {meta?.nome ?? it.cod_eq}
-                    </div>
-                    <div style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
-                      {meta?.modelo ?? ""}
-                      {it.auto && (
-                        <span style={{
-                          marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                          background: "rgba(180,120,0,0.15)", color: gold, fontWeight: 800, fontSize: 9,
-                        }}>AUTO</span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: gold }}>{it.qtd}</div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      {result.itens.length > 0 && (
-        <div style={{
-          marginTop: 8, padding: "10px 12px", borderRadius: 10,
-          background: "rgba(180,120,0,0.10)",
-          display: "flex", justifyContent: "space-between",
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
-        </div>
-      )}
-    </div>
-  );
-
-  // ── Corpo por step ──────────────────────────────────────────────────
-  function renderStep() {
-    switch (step) {
-      case "ramo":
-        return (
-          <div style={cardStyle}>
-            <div style={secLabel}>ESTRUTURA DO PROJETO</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: isLight ? "#0a0b0e" : "#fff" }}>
-              Qual a estrutura do projeto?
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {(["CAB", "SF"] as AlarmeRamo[]).map((r) => {
-                const sel = ramoSel === r;
-                return (
-                  <button key={r}
-                    onClick={() => {
-                      setRamoSel(r);
-                      setCfg({ ramo: r, sirenes: 1, sirenes_sf: 1, ivp_externo_modelo: "ALM_IVP7001" });
-                    }}
-                    style={{
-                      padding: 18, borderRadius: 14, cursor: "pointer", textAlign: "left",
-                      border: sel ? "2px solid #b87800" : (isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.14)"),
-                      background: sel ? "rgba(180,120,0,0.08)" : (isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
-                      color: isLight ? "#0a0b0e" : "#fff",
-                    }}>
-                    {r === "CAB" ? <Cable size={24} color={gold} /> : <Wifi size={24} color={gold} />}
-                    <div style={{ fontSize: 15, fontWeight: 800, marginTop: 8 }}>
-                      {r === "CAB" ? "COM FIO" : "SEM FIO"}
-                    </div>
-                    <div style={{ fontSize: 11, marginTop: 4, color: isLight ? "#6b7280" : "rgba(255,255,255,0.6)" }}>
-                      {r === "CAB" ? "AMT 4010 Smart" : "AMT 8000"}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-
-      case "aberturas":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>PORTAS, JANELAS E PORTÕES</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <NumberField isLight={isLight}
-                label="Portas/janelas comuns" hint="XAS Sobrepor · vendido em pacote de 5"
-                value={cfg.aberturas_comuns ?? 0} onChange={(v) => upd("aberturas_comuns", v)} />
-              <NumberField isLight={isLight}
-                label="Portões de aço pedestre" hint="XAS Porta de Aço Mini"
-                value={cfg.portao_mini ?? 0} onChange={(v) => upd("portao_mini", v)} />
-              <NumberField isLight={isLight}
-                label="Portões de aço veicular" hint="XAS Porta de Aço Normal"
-                value={cfg.portao_normal ?? 0} onChange={(v) => upd("portao_normal", v)} />
-              <NumberField isLight={isLight}
-                label="Aberturas sem cabeamento" hint="XAS 4010 Smart · requer receptor XAR 4000 (auto)"
-                value={cfg.aberturas_sf ?? 0} onChange={(v) => upd("aberturas_sf", v)} />
-            </div>
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>ABERTURAS A PROTEGER</div>
-            <NumberField isLight={isLight}
-              label="Aberturas (portas, janelas, portões)" hint="XAS 8000"
-              value={cfg.aberturas ?? 0} onChange={(v) => upd("aberturas", v)} />
-          </div>
-        );
-
-      case "ambientes":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>AMBIENTES (SENSORES DE PRESENÇA)</div>
-            <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)", marginBottom: 10 }}>
-              Regra: 1 sensor por ambiente.
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <NumberField isLight={isLight} label="Ambientes internos" hint="IVP 5001 PET"
-                value={cfg.ivp_interno ?? 0} onChange={(v) => upd("ivp_interno", v)} />
-              <NumberField isLight={isLight} label="Ambientes críticos (menos falso alarme)"
-                hint="IVP 5311 MW PET" value={cfg.ivp_interno_mw ?? 0}
-                onChange={(v) => upd("ivp_interno_mw", v)} />
-              <div style={{
-                padding: 12, borderRadius: 12,
-                background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: isLight ? "#0a0b0e" : "#fff" }}>
-                  Áreas externas
-                </div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  {[
-                    { v: "ALM_IVP7001", label: "IVP 7001" },
-                    { v: "ALM_IVP3000", label: "IVP 3000" },
-                  ].map((o) => (
-                    <button key={o.v} onClick={() => upd("ivp_externo_modelo", o.v as any)}
-                      style={{
-                        padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 700,
-                        border: cfg.ivp_externo_modelo === o.v ? "2px solid #b87800" : "1px solid rgba(0,0,0,0.12)",
-                        background: cfg.ivp_externo_modelo === o.v ? "rgba(180,120,0,0.1)" : "transparent",
-                        color: isLight ? "#0a0b0e" : "#fff",
-                      }}>{o.label}</button>
-                  ))}
-                </div>
-                <NumberField isLight={isLight} label="Quantidade" value={cfg.ivp_externo_qtd ?? 0}
-                  onChange={(v) => upd("ivp_externo_qtd", v)} />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>AMBIENTES (SENSORES DE PRESENÇA)</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <NumberField isLight={isLight} label="Ambientes internos" hint="IVP 8000 PET"
-                value={cfg.ivp_interno_sf ?? 0} onChange={(v) => upd("ivp_interno_sf", v)} />
-              <NumberField isLight={isLight} label="Ambientes c/ verificação por foto"
-                hint="IVP 8000 PET CAM · 2 fotos por disparo"
-                value={cfg.ivp_cam_sf ?? 0} onChange={(v) => upd("ivp_cam_sf", v)} />
-              <NumberField isLight={isLight} label="Áreas externas" hint="IVP 8000 EX"
-                value={cfg.ivp_externo_sf ?? 0} onChange={(v) => upd("ivp_externo_sf", v)} />
-            </div>
-          </div>
-        );
-
-      case "perimetro":
-        return (
-          <div style={cardStyle}>
-            <div style={secLabel}>PROTEÇÃO DE PERÍMETRO</div>
-            <ToggleField isLight={isLight}
-              label="O projeto tem proteção de perímetro?" value={!!cfg.perimetro_enable}
-              onChange={(v) => upd("perimetro_enable", v)} />
-            {cfg.perimetro_enable && (
-              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                {(cfg.perimetros ?? []).map((p, i) => (
-                  <div key={i} style={{
-                    padding: 12, borderRadius: 12,
-                    background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
-                    display: "flex", flexDirection: "column", gap: 8,
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: gold }}>VÃO {i + 1}</span>
-                      <button onClick={() => delPerimetro(i)}
-                        style={{ ...circleBtn(isLight), borderColor: "rgba(220,38,38,0.35)", color: "#dc2626" }}>
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    <label style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.6)" }}>
-                      Distância (m)
-                      <input type="number" min={0} value={p.distancia}
-                        onChange={(e) => updPerimetro(i, { distancia: Math.max(0, +e.target.value || 0) })}
-                        style={{
-                          display: "block", width: "100%", marginTop: 4,
-                          padding: "10px 12px", borderRadius: 10,
-                          border: "1px solid rgba(0,0,0,0.12)",
-                          background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                          color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontWeight: 700,
-                        }} />
-                    </label>
-                    <div>
-                      <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.6)", marginBottom: 6 }}>
-                        Nº de feixes
-                      </div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {[2, 4, 6, 8].map((f) => (
-                          <button key={f} onClick={() => updPerimetro(i, { feixes: f as 2 | 4 | 6 | 8 })}
-                            style={{
-                              padding: "8px 14px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 700,
-                              border: p.feixes === f ? "2px solid #b87800" : "1px solid rgba(0,0,0,0.12)",
-                              background: p.feixes === f ? "rgba(180,120,0,0.1)" : "transparent",
-                              color: isLight ? "#0a0b0e" : "#fff",
-                            }}>{f} feixes</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <button onClick={addPerimetro}
-                  style={{
-                    padding: "12px 0", borderRadius: 12, cursor: "pointer",
-                    border: "2px dashed rgba(180,120,0,0.4)", background: "transparent",
-                    color: gold, fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  }}>
-                  <Plus size={14} /> ADICIONAR VÃO
-                </button>
-              </div>
-            )}
-          </div>
-        );
-
-      case "operacao":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>OPERAÇÃO</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <NumberField isLight={isLight}
-                label="Pontos adicionais de operação" hint="XAT 4000 · 1 teclado já vem com a central (máx. 4 total)"
-                max={3} value={cfg.teclados_extras ?? 0} onChange={(v) => upd("teclados_extras", v)} />
-              <NumberField isLight={isLight}
-                label="Controles remotos" hint="Aciona receptor XAR 4000 automaticamente"
-                value={cfg.controles ?? 0} onChange={(v) => upd("controles", v)} />
-            </div>
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>OPERAÇÃO</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <NumberField isLight={isLight}
-                label="Teclados adicionais" hint="XAT 8000 · 1 já incluso automaticamente (máx. 16)"
-                max={15} value={cfg.teclados_extras_sf ?? 0} onChange={(v) => upd("teclados_extras_sf", v)} />
-              <NumberField isLight={isLight}
-                label="Usuários com controle remoto" hint="XAC 8000 · 1 por usuário (máx. 98)"
-                max={98} value={cfg.usuarios_controle ?? 0} onChange={(v) => upd("usuarios_controle", v)} />
-            </div>
-          </div>
-        );
-
-      case "sirenes":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>SIRENES</div>
-            <NumberField isLight={isLight}
-              label="Sirenes 12V Morey" hint="Máx. 2 (limite da saída da central)"
-              max={2} value={cfg.sirenes ?? 1} onChange={(v) => upd("sirenes", v)} />
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>SIRENES</div>
-            <NumberField isLight={isLight}
-              label="Sirenes XSS 8000" hint="Máx. 16"
-              max={16} value={cfg.sirenes_sf ?? 1} onChange={(v) => upd("sirenes_sf", v)} />
-          </div>
-        );
-
-      case "comunicacao":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>COMUNICAÇÃO</div>
-            <ToggleField isLight={isLight}
-              label="Cliente vai monitorar por app/internet?"
-              hint="XEG 4000 Smart · sem ele, apenas linha telefônica"
-              value={!!cfg.monitoramento_app} onChange={(v) => upd("monitoramento_app", v)} />
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>COMUNICAÇÃO</div>
-            <div style={{
-              padding: 12, borderRadius: 10, marginBottom: 10,
-              background: "rgba(59,130,246,0.10)", border: "1px solid rgba(59,130,246,0.28)",
-              color: isLight ? "#1e40af" : "#93c5fd", fontSize: 11,
-              display: "flex", gap: 8, alignItems: "flex-start",
-            }}>
-              <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>Ethernet e Wi-Fi já são nativos da AMT 8000 — app incluso sem módulo extra.</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <ToggleField isLight={isLight} label="Redundância via chip GSM?" hint="XAG 8000"
-                value={!!cfg.redundancia_gsm} onChange={(v) => upd("redundancia_gsm", v)} />
-              <ToggleField isLight={isLight} label="Reporte por linha telefônica fixa?" hint="FXO 8000"
-                value={!!cfg.linha_telefonica} onChange={(v) => upd("linha_telefonica", v)} />
-            </div>
-          </div>
-        );
-
-      case "automacoes":
-        return cfg.ramo === "CAB" ? (
-          <div style={cardStyle}>
-            <div style={secLabel}>AUTOMAÇÕES</div>
-            <NumberField isLight={isLight}
-              label="Acionamentos automáticos"
-              hint="Portão, holofote, fechadura... Central tem 3 PGMs; acima disso adiciona XEP 4004 (máx. 19)"
-              max={19} value={cfg.automacoes ?? 0} onChange={(v) => upd("automacoes", v)} />
-          </div>
-        ) : (
-          <div style={cardStyle}>
-            <div style={secLabel}>AUTOMAÇÕES</div>
-            <NumberField isLight={isLight}
-              label="Acionamentos automáticos" hint="PGM 8000 · máx. 16"
-              max={16} value={cfg.automacoes_sf ?? 0} onChange={(v) => upd("automacoes_sf", v)} />
-          </div>
-        );
-
-      case "alcance":
-        return (
-          <div style={cardStyle}>
-            <div style={secLabel}>ALCANCE</div>
-            <div style={{ fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.6)", marginBottom: 8 }}>
-              Maior distância aproximada entre a central e um dispositivo
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-              {[
-                { v: 100, label: "Até 100 m" },
-                { v: 300, label: "100–300 m" },
-                { v: 600, label: "300–600 m" },
-                { v: 1000, label: "+600 m" },
-              ].map((o) => (
-                <button key={o.v} onClick={() => upd("distancia_faixa", o.v as any)}
-                  style={{
-                    padding: "8px 14px", borderRadius: 999, cursor: "pointer", fontSize: 12, fontWeight: 700,
-                    border: cfg.distancia_faixa === o.v ? "2px solid #b87800" : "1px solid rgba(0,0,0,0.12)",
-                    background: cfg.distancia_faixa === o.v ? "rgba(180,120,0,0.1)" : "transparent",
-                    color: isLight ? "#0a0b0e" : "#fff",
-                  }}>{o.label}</button>
-              ))}
-            </div>
-            <ToggleField isLight={isLight}
-              label="Imóvel com 2+ pavimentos ou muitas paredes/lajes?"
-              value={!!cfg.muitos_obstaculos} onChange={(v) => upd("muitos_obstaculos", v)} />
-            <div style={{ marginTop: 12 }}>
-              <NumberField isLight={isLight}
-                label="Repetidores REP 8000" hint="Não podem ser ligados em cascata — alcance máx 1,2 km"
-                max={4} value={cfg.repetidores ?? 0} onChange={(v) => upd("repetidores", v)} />
-            </div>
-          </div>
-        );
-
-      case "revisao":
-        return (
-          <div style={cardStyle}>
-            <div style={secLabel}>REVISÃO FINAL</div>
-            <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-              Confira a lista de equipamentos. Ao concluir, todos serão adicionados à proposta.
-              Você poderá ajustar quantidades depois no editor do bloco.
-            </div>
-            {result.itens.length === 0 && (
-              <div style={{
-                padding: 16, borderRadius: 10, textAlign: "center", fontSize: 12,
-                background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
-              }}>
-                Nenhum item calculado — volte e responda as etapas.
-              </div>
-            )}
-            {result.itens.map((it) => {
-              const meta = ALARME_LABELS[it.cod_eq];
-              return (
-                <div key={it.cod_eq} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                  padding: "10px 0", borderBottom: isLight ? "1px dashed rgba(0,0,0,0.08)" : "1px dashed rgba(255,255,255,0.08)",
-                  gap: 12,
-                }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
-                      {meta?.nome ?? it.cod_eq}
-                    </div>
-                    <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)", marginTop: 2 }}>
-                      {meta?.modelo ?? ""} · {it.cod_eq}
-                      {it.auto && (
-                        <span style={{
-                          marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                          background: "rgba(180,120,0,0.15)", color: gold, fontWeight: 800, fontSize: 9,
-                        }}>AUTO</span>
-                      )}
-                    </div>
-                    {it.regra && (
-                      <div style={{ fontSize: 10, color: isLight ? "#8a909e" : "rgba(255,255,255,0.4)", marginTop: 2, fontStyle: "italic" }}>
-                        {it.regra}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: gold }}>×{it.qtd}</div>
-                </div>
-              );
-            })}
-          </div>
-        );
-    }
+    );
   }
+
+  // ── Etapa 2 — Zonas e sensores ─────────────────────────────────────────────
+  const isCab = ramo === "CAB";
+  const sensores = isCab ? SENSORES_CAB : SENSORES_SF;
+  const infoSel = tipoSel ? SENSOR_INFO[tipoSel] : null;
+
+  const adicionarZona = () => {
+    if (!tipoSel) return;
+    setZonas((prev) => [
+      ...prev,
+      { tipo: tipoSel, qtd: qtdSel, metros: isCab && !txSel ? metrosSel : 0, tx: isCab && txSel },
+    ]);
+    setMetrosSel(0);
+  };
+  const removerZona = (idx: number) => setZonas((prev) => prev.filter((_, i) => i !== idx));
 
   return (
-    <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16, color: isLight ? "#0a0b0e" : "#fff" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={voltar}
-          style={{
-            background: isLight ? "#fff" : "#191921",
-            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 12, width: 40, height: 40,
-            display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-            color: isLight ? "#0a0b0e" : "#fff",
-          }}>
-          <ArrowLeft size={18} />
-        </button>
+    <div style={PAGE}>
+      <div style={HEADER}>
+        <button style={BACK_BTN} onClick={() => setStep("tecnologia")}><ArrowLeft size={18} /></button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
-            Alarme de Intrusão
-          </div>
-          <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
-            {STEP_TITLE[step]} · {idx + 1}/{steps.length}
+          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16 }}>Alarme</div>
+          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+            {isCab ? "Com fio — AMT 4010" : "Sem fio — AMT 8000"}
           </div>
         </div>
-        <button onClick={() => setResumoOpen(true)}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "8px 12px", borderRadius: 999,
-            background: "rgba(180,120,0,0.10)", border: "1px solid rgba(180,120,0,0.28)",
-            color: gold, fontWeight: 700, fontSize: 11, cursor: "pointer",
-          }}>
-          <PanelRightOpen size={14} /> RESUMO
-        </button>
       </div>
+      <StepDots />
 
-      {/* Stepper compacto */}
-      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ display: "flex", gap: 4, minWidth: "max-content" }}>
-          {steps.map((s, i) => {
-            const cur = s === step, done = i < idx;
+      {/* Tipo de sensor */}
+      <div>
+        <div style={QUESTION}>Tipo de sensor</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {sensores.map(({ tipo, Icon }) => {
+            const selected = tipoSel === tipo;
+            const info = SENSOR_INFO[tipo];
             return (
-              <div key={s} onClick={() => (done || cur ? setStep(s) : undefined)}
+              <button
+                key={tipo}
+                onClick={() => setTipoSel(tipo)}
                 style={{
-                  cursor: done || cur ? "pointer" : "default",
-                  display: "flex", alignItems: "center", gap: 4, padding: "4px 8px",
-                  borderRadius: 999,
-                  background: cur ? "rgba(180,120,0,0.14)" : "transparent",
-                  border: cur ? "1px solid rgba(180,120,0,0.35)" : "1px solid transparent",
-                }}>
-                <div style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
-                  color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
-                }}>{done ? <Check size={10} /> : i + 1}</div>
-                <span style={{
-                  fontSize: 10, fontWeight: 700,
-                  color: cur ? (isLight ? "#0a0b0e" : "#fff") : (isLight ? "#6b7280" : "rgba(255,255,255,0.5)"),
-                }}>{STEP_TITLE[s]}</span>
-              </div>
+                  minHeight: 56, borderRadius: 14, padding: "10px 8px",
+                  border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                  background: selected ? GOLD_GRAD : isLight ? "#f5f6f8" : DARK_CARD,
+                  color: selected ? "#0A0A0A" : isLight ? "#0a0b0e" : "#fff",
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+                  lineHeight: 1.25, cursor: "pointer",
+                  boxShadow: selected ? "0 4px 14px rgba(255,192,0,0.35)" : undefined,
+                  transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+              >
+                <Icon size={16} />
+                <span>
+                  {info.label}
+                  {info.par ? " (par)" : ""}
+                </span>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Layout: conteúdo + resumo lateral (desktop) */}
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr", maxWidth: "100%" }}>
-        {renderStep()}
-        {/* Resumo inline em desktop (>= 900px) */}
-        <div className="alarme-resumo-desktop" style={{ display: "none" }}>{Resumo}</div>
+      {/* Sensores na zona */}
+      <div style={{ ...LIST_CARD, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+            {infoSel?.par ? "Pares na zona" : "Sensores na zona"}
+          </div>
+          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
+            Zona = ambiente · até {MAX_SENSORES_POR_ZONA} {infoSel?.par ? "pares" : "sensores"} por zona
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <button style={CIRCLE_BTN} onClick={() => setQtdSel((q) => Math.max(1, q - 1))}><Minus size={16} /></button>
+          <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }}>{qtdSel}</span>
+          <button
+            style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
+            onClick={() => setQtdSel((q) => Math.min(MAX_SENSORES_POR_ZONA, q + 1))}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Navegação */}
-      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-        <button onClick={voltar}
+      {/* Com fio: cabo ou transmissor TX */}
+      {isCab && (
+        <>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div
+              style={{
+                display: "flex", position: "relative", width: 260, height: 48, borderRadius: 999,
+                background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute", top: 4, bottom: 4, width: "calc(50% - 4px)",
+                  left: !txSel ? 4 : "calc(50%)",
+                  borderRadius: 999, background: GOLD_GRAD,
+                  boxShadow: "0 2px 10px rgba(255,192,0,0.4)", transition: "left 0.2s ease",
+                }}
+              />
+              {([[false, "Com cabo"], [true, "TX sem fio"]] as [boolean, string][]).map(([val, label]) => (
+                <button
+                  key={label}
+                  onClick={() => setTxSel(val)}
+                  style={{
+                    flex: 1, zIndex: 1, background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+                    letterSpacing: "0.06em", textTransform: "uppercase",
+                    color: txSel === val ? "#0A0A0A" : isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
+                    transition: "color 0.2s",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {txSel ? (
+            <div style={{ fontSize: 12, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif" }}>
+              Sensor distante sem cabeamento — 1 transmissor TX 4020 Smart por sensor.
+            </div>
+          ) : (
+            <CaboGauge value={metrosSel} onChange={setMetrosSel} isLight={isLight} />
+          )}
+        </>
+      )}
+
+      {/* Adicionar zona */}
+      <button
+        onClick={adicionarZona}
+        disabled={!tipoSel}
+        style={{
+          width: "100%", height: 60, borderRadius: 999, border: "none",
+          background: GOLD_GRAD, cursor: tipoSel ? "pointer" : "not-allowed",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+          boxShadow: "0 6px 20px rgba(255,192,0,0.35)", opacity: tipoSel ? 1 : 0.5,
+        }}
+      >
+        <span
           style={{
-            flex: 1, padding: "14px 0", borderRadius: 999,
-            background: "transparent",
-            border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
-            color: isLight ? "#0a0b0e" : "#fff", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
-          }}>
-          VOLTAR
-        </button>
-        {step !== "revisao" ? (
-          <button onClick={avancar}
-            disabled={step === "ramo" && !ramoSel}
+            width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
+            color: "#FFC000", fontSize: 17, fontWeight: 800,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Montserrat', sans-serif", flexShrink: 0,
+          }}
+        >
+          {zonas.length}
+        </span>
+        <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>
+          Adicionar zona
+        </span>
+      </button>
+
+      {/* Zonas do projeto */}
+      {zonas.length > 0 && (
+        <div>
+          <div style={QUESTION}>Zonas do projeto ({zonas.length})</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {zonas.map((z, idx) => {
+              const info = SENSOR_INFO[z.tipo];
+              return (
+                <div key={idx} style={{ ...LIST_CARD, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                  <ShieldCheck size={16} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      Zona {String(idx + 1).padStart(2, "0")} · {info.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+                      {z.qtd} {info.par ? (z.qtd === 1 ? "par" : "pares") : (z.qtd === 1 ? "sensor" : "sensores")}
+                      {isCab ? (z.tx ? " · TX sem fio" : ` · ${z.metros} m`) : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removerZona(idx)}
+                    style={{
+                      width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer",
+                      background: "rgba(239,68,68,0.12)", color: "#EF4444",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Sem fio: repetidor de sinal */}
+      {!isCab && (
+        <div style={{ ...LIST_CARD, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+              Repetidor de sinal REP 8000
+            </div>
+            <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
+              Sensores sem fio têm alcance limitado — avalie a distância no local.
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <button style={CIRCLE_BTN} onClick={() => setRepetidores((r) => Math.max(0, r - 1))}><Minus size={16} /></button>
+            <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }}>{repetidores}</span>
+            <button
+              style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
+              onClick={() => setRepetidores((r) => r + 1)}
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Equipamentos (BOM ao vivo) */}
+      <div>
+        <div style={QUESTION}>Equipamentos</div>
+        {result.itens.length === 0 ? (
+          <div
             style={{
-              flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
-              background: gold, color: "#0A0A0A", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
-              cursor: "pointer", opacity: step === "ramo" && !ramoSel ? 0.5 : 1,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}>
-            AVANÇAR <ArrowRight size={14} />
-          </button>
+              textAlign: "center", padding: "20px 16px", borderRadius: 14,
+              border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
+              color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13,
+            }}
+          >
+            Adicione zonas para ver os equipamentos do escopo.
+          </div>
         ) : (
-          <button onClick={() => onConcluir(cfg, result.itens)}
-            disabled={temErro || salvando || result.itens.length === 0}
-            style={{
-              flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
-              background: temErro ? "#9ca3af" : gold, color: "#0A0A0A",
-              fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
-              cursor: temErro || salvando ? "not-allowed" : "pointer",
-              opacity: salvando ? 0.7 : 1,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            }}>
-            <Check size={14} /> {salvando ? "SALVANDO…" : "ADICIONAR À PROPOSTA"}
-          </button>
+          <div style={{ ...LIST_CARD, display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px" }}>
+            {result.itens.map((it) => (
+              <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                {it.qtd}× {nomeEq(it.cod_eq)}
+              </div>
+            ))}
+            {isCab && result.totalMetros > 0 && (
+              <div
+                style={{
+                  fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB",
+                  borderTop: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
+                  paddingTop: 6, marginTop: 2,
+                }}
+              >
+                Cabeamento total: {result.totalMetros} m
+              </div>
+            )}
+          </div>
         )}
       </div>
 
-      {/* Drawer do resumo (mobile) */}
-      {resumoOpen && (
-        <>
-          <div onClick={() => setResumoOpen(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 40 }} />
-          <div style={{
-            position: "fixed", right: 0, top: 0, bottom: 0, width: "min(360px, 92vw)",
-            background: isLight ? "#f5f6f8" : "#0a0b0e", zIndex: 50,
-            padding: 16, overflowY: "auto",
-            boxShadow: "-8px 0 32px rgba(0,0,0,0.35)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.14em", color: isLight ? "#0a0b0e" : "#fff" }}>
-                RESUMO DO ORÇAMENTO
-              </span>
-              <button onClick={() => setResumoOpen(false)} style={circleBtn(isLight)}>×</button>
-            </div>
-            {Resumo}
-          </div>
-        </>
-      )}
+      {/* Concluir */}
+      <button
+        onClick={() => ramo && onConcluir({ ...config, ramo }, result.itens)}
+        disabled={zonas.length === 0 || salvando}
+        style={{
+          width: "100%", padding: "16px 0",
+          background: "#F59E0B", border: "none", borderRadius: 999,
+          color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
+          cursor: zonas.length === 0 || salvando ? "not-allowed" : "pointer",
+          opacity: zonas.length === 0 || salvando ? 0.5 : 1,
+          boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
+          textTransform: "uppercase",
+        }}
+      >
+        {salvando ? "Salvando..." : "Concluir bloco"}
+      </button>
     </div>
   );
 }
