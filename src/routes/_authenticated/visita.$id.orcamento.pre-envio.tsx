@@ -8,12 +8,6 @@ import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
-import {
-  EQ_RECEPTOR_RTX,
-  EQ_RECEPTOR_RMF,
-  EQ_MODULO_GUARITA,
-  qtdModulosGuarita,
-} from "@/features/orcamento/blockAutoItems";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -74,36 +68,6 @@ function PreEnvioPage() {
         .order("ordem");
       if (error) throw error;
       return (data as any[]) || [];
-    },
-  });
-
-  // ── Módulo Guarita IP (regra por PROJETO): ⌈(RTX + RMF de todos os blocos) / 4⌉ ──
-  const blocoIds = blocos.map((b: any) => b.id).filter(Boolean);
-  const { data: guarita } = useQuery({
-    queryKey: ["visita_guarita", visitaId, blocoIds.sort().join(",")],
-    enabled: blocoIds.length > 0,
-    queryFn: async () => {
-      const { data: itens } = await supabase
-        .from("visita_bloco_itens" as any)
-        .select("cod_eq, qtd, removido")
-        .in("visita_bloco_id", blocoIds)
-        .in("cod_eq", [EQ_RECEPTOR_RTX, EQ_RECEPTOR_RMF]);
-      const totalReceptores = ((itens as any[]) ?? [])
-        .filter((r) => !r.removido)
-        .reduce((s, r) => s + (Number(r.qtd) || 0), 0);
-      const qtd = qtdModulosGuarita(totalReceptores);
-      if (qtd <= 0) return { qtd: 0, totalReceptores: 0, nome: "", modelo: "" as string | null };
-      const { data: eq } = await supabase
-        .from("equipamentos")
-        .select("nome, modelo")
-        .eq("code", EQ_MODULO_GUARITA)
-        .maybeSingle();
-      return {
-        qtd,
-        totalReceptores,
-        nome: (eq as any)?.nome ?? "Módulo Guarita IP",
-        modelo: (eq as any)?.modelo ?? "MG 3000",
-      };
     },
   });
 
@@ -583,29 +547,6 @@ function PreEnvioPage() {
             </div>
           )}
         </SectionCard>
-
-        {/* GUARITA / PORTARIA — item de projeto (1 Módulo Guarita a cada 4 receptores) */}
-        {guarita && guarita.qtd > 0 && (
-          <SectionCard
-            icon={<Layers size={16} color={isLight ? "#b87800" : "#FFC000"} />}
-            titulo="GUARITA / PORTARIA"
-            isLight={isLight}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontWeight: 600, fontFamily: "'Montserrat',sans-serif" }}>
-                  {guarita.nome}{guarita.modelo ? ` · ${guarita.modelo}` : ""}
-                </div>
-                <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 2, fontFamily: "'Montserrat',sans-serif" }}>
-                  1 a cada 4 receptores no projeto · {guarita.totalReceptores} receptor(es)
-                </div>
-              </div>
-              <div style={{ color: isLight ? "#b87800" : "#FFC000", fontSize: 16, fontWeight: 800, fontFamily: "'Montserrat',sans-serif", flexShrink: 0 }}>
-                ×{guarita.qtd}
-              </div>
-            </div>
-          </SectionCard>
-        )}
 
         {/* BOTÃO CONCLUIR — padrão ouro (verde) */}
         <div style={{ padding: "24px 0 48px" }}>

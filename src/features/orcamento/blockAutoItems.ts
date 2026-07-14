@@ -106,6 +106,7 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   const mot = tokens.MOT || 0;
   const lpr = tokens.LPR || 0;
 
+  const porv = tokens.PORV || 0;
   const ctrlBarreiras = countBarreirasComToken(input.codigo, "CTRL");
   const tag = tokens.TAG || 0;
 
@@ -119,10 +120,10 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   add(acc, "EQ092", lpr, "Câmera IP LPR selecionada no bloco");
 
   // Receptores RF: 1 RTX 3004 por barreira com controle remoto (CTRL); 1 RMF3004 por TAG.
-  // O Módulo Guarita IP (MG 3000 / EQ003) é regra por PROJETO (⌈(RTX+RMF)/4⌉) e é
-  // calculado no resumo (pré-envio), somando os receptores de todos os blocos.
+  // Módulo Guarita IP (MG 3000): 1 a cada 4 receptores (RTX + RMF) do bloco.
   add(acc, "EQ004", ctrlBarreiras, "Receptor RF RTX 3004 (1 por barreira com controle remoto)");
   add(acc, "EQ007", tag, "Receptor HCS Multifunção RMF3004 (1 por TAG)");
+  add(acc, EQ_MODULO_GUARITA, qtdModulosGuarita(ctrlBarreiras + tag), "Módulo Guarita IP MG 3000 (1 a cada 4 receptores)");
 
   // Laço indutivo (por bloco)
   if (lac > 0) {
@@ -163,12 +164,20 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
     add(acc, "EQ213", 1, "Módulo relé adicional para eclusa (2B)");
   }
 
-  // PR + interfone/acrílico por nº de barreiras
+  // Interfone IP + acrílico (Portaria Remota):
+  //  • Pedestres (PED): 1 por barreira (mantido como estava).
+  //  • Veicular (VEI): NÃO leva interfone, exceto eclusa com portão veicular e
+  //    facial (PORV + 2B + FAC) → 1 interfone + 1 acrílico.
   if (portariaPR) {
-    add(acc, "EQ017", barreiras, `Interfone IP (Portaria Remota, ${barreiras}B)`);
-    add(acc, "EQ033", barreiras, `Acrílico do interfone (${barreiras}B)`);
+    if (tipo === "PED") {
+      add(acc, "EQ017", barreiras, `Interfone IP (Portaria Remota, ${barreiras}B)`);
+      add(acc, "EQ033", barreiras, `Acrílico do interfone (${barreiras}B)`);
+    } else if (tipo === "VEI" && porv > 0 && barreiras >= 2 && fac > 0) {
+      add(acc, "EQ017", 1, "Interfone IP (PORV + eclusa + facial)");
+      add(acc, "EQ033", 1, "Acrílico do interfone (PORV + eclusa + facial)");
+    }
   }
-  // PP + video porteiro por nº de barreiras
+  // PP + video porteiro por nº de barreiras (inalterado)
   if (portariaPP) {
     add(acc, "EQ019", barreiras, `Video porteiro (Portaria Presencial, ${barreiras}B)`);
   }
