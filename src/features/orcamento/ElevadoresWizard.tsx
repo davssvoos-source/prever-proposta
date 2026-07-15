@@ -270,7 +270,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                     style={{
                       width: 50, textAlign: "center", padding: "4px 6px",
                       border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8, background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                      borderRadius: 8, background: isLight ? "#fff" : "#16161d",
                       color: isLight ? "#0a0b0e" : "#fff", fontWeight: 700, fontSize: 13,
                     }}
                   />

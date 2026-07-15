@@ -91,8 +91,7 @@ function CategoriasPage() {
 
 
   const CARD: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
-    backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
     borderRadius: 18,
     padding: "20px 18px",
@@ -193,7 +192,7 @@ function CategoriasPage() {
               <div
                 style={{
                   fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 400,
+                  fontWeight: 600,
                   fontSize: 15,
                   color: textPrimary,
                   marginBottom: 4,

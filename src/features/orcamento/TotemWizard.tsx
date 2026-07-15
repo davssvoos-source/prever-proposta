@@ -179,7 +179,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                 <div key={t.id} style={{
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   borderRadius: 12, padding: 12,
-                  background: isLight ? "#fff" : "rgba(255,255,255,0.02)",
+                  background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
                 }}>
                   <Cctv size={22} color={gold} />
@@ -343,7 +343,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                     style={{
                       width: 50, textAlign: "center", padding: "4px 6px",
                       border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8, background: isLight ? "#fff" : "rgba(255,255,255,0.04)",
+                      borderRadius: 8, background: isLight ? "#fff" : "#16161d",
                       color: isLight ? "#0a0b0e" : "#fff", fontWeight: 700, fontSize: 13,
                     }}
                   />
