@@ -49,14 +49,15 @@ function OrcamentoPasso1() {
   });
 
   // Serviços ofertados pelo admin (para default de PR/PP) + tipo de local (define o fluxo)
-  const { data: visita } = useQuery({
+  const { data: visita, error: visitaError } = useQuery({
     queryKey: ["visita_servicos", id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("visitas_tecnicas")
         .select("servicos_ofertados, tipo_local")
         .eq("id", id)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
@@ -479,8 +480,8 @@ function OrcamentoPasso1() {
       </div>
 
       {/* DEBUG TEMPORÁRIO — remover depois de diagnosticar o bug do fluxo Residência/Galpão */}
-      <div style={{ fontSize: 10, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "6px 8px" }}>
-        DEBUG build=0e4b198+ · visita.tipo_local="{String((visita as any)?.tipo_local)}" · normalizado="{String(tipoLocalNorm)}" · fluxoSimples={String(fluxoSimples)}
+      <div style={{ fontSize: 10, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "6px 8px", wordBreak: "break-word" }}>
+        DEBUG2 id="{String(id)}" · typeof visita={typeof visita} · visita=[{JSON.stringify(visita)}] · erro=[{visitaError ? String((visitaError as any)?.message ?? visitaError) : "nenhum"}]
       </div>
 
       {/* Qtd Apartamentos */}
