@@ -12,7 +12,7 @@ import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/s
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
-import { Layers } from "lucide-react";
+import { Layers, Banknote } from "lucide-react";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 // Mesmos nomes usados no resumo de pré-envio, para o escopo ficar idêntico
@@ -1212,6 +1212,16 @@ function VisitaDetail() {
                 ? ` em ${new Date(visita.aprovado_em).toLocaleDateString("pt-BR")}`
                 : ""}
             </div>
+          )}
+
+          {status === "aprovada" && canApprove && (
+            <button
+              onClick={() => navigate({ to: "/visita/$id/pagamento", params: { id } })}
+              style={{ ...CTA_GOLD(false), marginTop: 12 }}
+            >
+              <Banknote size={18} />
+              Configurar Forma de Pagamento
+            </button>
           )}
 
           {status === "reprovada" && (
