@@ -45,7 +45,7 @@
 | CAN | EQ055 — Cancela e Braço 4m | 1 por CAN |
 | PORP | EQ022 — Display Puxe/Empurre + EQ027 — Fechadura magnética c/ sensor | 1+1 por PORP |
 | LAC | EQ064 — Central de Laço Indutivo + EQ065 — Laço físico | **1+1 por LAC** |
-| Fotocélula (só VEI) | EQ215 — Fotocélula anti-esmagamento (unidade; 1 par = 2 un) | **Cancela (CAN): 2 pares por cancela** · **Portão veicular (PORV): deslizante → 1 par; pivotante ou basculante → 2 pares por barreira** · **cada sigla FOT soma +1 par** |
+| Fotocélula (só VEI) | EQ215 — Fotocélula anti-esmagamento (já vendida em par — 1 unidade = 1 par) | **Cancela (CAN): 2 pares por cancela** · **Portão veicular (PORV): deslizante → 1 par; pivotante ou basculante → 2 pares por barreira** · **cada sigla FOT soma +1 par** |
 | MOL | EQ030 — Mola aérea | 1 por MOL |
 
 ### 1.4 Motores

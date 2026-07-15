@@ -138,7 +138,7 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   add(acc, "EQ064", lac, "Central de Laço Indutivo (1 por laço)");
   add(acc, "EQ065", lac, "Laço Indutivo físico (1 por laço)");
 
-  // Fotocélula (EQ215 = unidade; 1 par = 2 unidades) — só em blocos veiculares:
+  // Fotocélula (EQ215 já é vendida em par — 1 unidade = 1 par) — só em blocos veiculares:
   //  • Cancela (CAN): 2 pares por cancela.
   //  • Portão veicular (PORV): deslizante → 1 par; pivotante ou basculante → 2 pares.
   //  • Cada sigla FOT (saída por fotocélula) soma +1 par.
@@ -152,7 +152,7 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
       }
     }
     pares += fot;
-    add(acc, "EQ215", pares * 2, `Fotocélula anti-esmagamento (${pares} par(es))`);
+    add(acc, "EQ215", pares, `Fotocélula anti-esmagamento (${pares} par(es))`);
   }
 
   // Molas
