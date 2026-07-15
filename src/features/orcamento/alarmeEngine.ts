@@ -133,6 +133,7 @@ export function computeAlarme(cfg: AlarmeConfig): CalcResult {
       push(itens, "ALM_AMT4010", 1, true, "Central de alarme AMT 4010 (com fio)");
       push(itens, "ALM_XEG4000", 1, true, "Módulo de comunicação GPRS/Ethernet");
       push(itens, "ALM_XB1270", 1, true, "Bateria 12V 7Ah");
+      push(itens, "ALM_SIRMOREY", 1, true, "Sirene 12V (1 por projeto — com fio)");
     }
     if (cfg.residenciaOuGalpao) {
       push(itens, "ALM_XAR4000", 1, true, "XAR 4000 Smart — Residência/Galpão");
@@ -153,6 +154,8 @@ export function computeAlarme(cfg: AlarmeConfig): CalcResult {
     // ── Central sem fio ──────────────────────────────────────────────────
     push(itens, "ALM_AMT8000", 1, true, "Central de alarme AMT 8000 (sem fio)");
     push(itens, "ALM_XAG8000", 1, true, "Módulo de comunicação GPRS XAG 8000");
+    push(itens, "ALM_XSS8000", 1, true, "Sirene sem fio XSS 8000 (1 por projeto)");
+    push(itens, "ALM_XAT8000", 1, true, "Teclado XAT 8000 (central não acompanha)");
 
     // ── Repetidor de sinal (decisão do técnico) ──────────────────────────
     push(itens, "ALM_REP8000", Math.max(0, cfg.repetidores ?? 0), false,
@@ -167,6 +170,9 @@ export const ALARME_LABELS: Record<string, { nome: string; modelo: string }> = {
   ALM_AMT4010:     { nome: "Central de alarme",              modelo: "AMT 4010 Smart" },
   ALM_AMT8000:     { nome: "Central de alarme",              modelo: "AMT 8000" },
   ALM_XB1270:      { nome: "Bateria 12V 7Ah",                modelo: "XB 1270" },
+  ALM_SIRMOREY:    { nome: "Sirene 12V",                     modelo: "Morey 12V" },
+  ALM_XSS8000:     { nome: "Sirene sem fio",                 modelo: "XSS 8000" },
+  ALM_XAT8000:     { nome: "Teclado sem fio",                modelo: "XAT 8000" },
   ALM_XEG4000:     { nome: "Módulo GPRS/Ethernet",           modelo: "XEG 4000 Smart" },
   ALM_XAG8000:     { nome: "Módulo GPRS sem fio",            modelo: "XAG 8000" },
   ALM_XAR4000:     { nome: "Receptor sem fio",               modelo: "XAR 4000 Smart" },

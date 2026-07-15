@@ -64,24 +64,23 @@ function countTokens(codigo: string) {
 // Tokens que iniciam um segmento de barreira dentro do código de um bloco de acesso.
 const BARRIER_TYPES = new Set(["CAT", "PORP", "CAN", "PORV"]);
 
-/** Conta quantas barreiras do bloco contêm um dado token (ex.: "CTRL").
- *  Ex.: CAN-CTRL-TAG + PORV-CTRL-FAC → 2 barreiras com CTRL. */
-function countBarreirasComToken(codigo: string, token: string): number {
+/** Divide o código do bloco em segmentos de barreira: cada segmento começa num
+ *  token de tipo (CAT/PORP/CAN/PORV) e carrega os tokens seguintes (entrada,
+ *  saída, abertura, porte...). Ex.: VEI-2B-CAN-CTRL-TAG-PORV-CTRL-FAC-DESL-PR →
+ *  [{tipo:"CAN", toks:{CTRL,TAG}}, {tipo:"PORV", toks:{CTRL,FAC,DESL,PR}}]. */
+function parseBarreiras(codigo: string): { tipo: string; toks: Set<string> }[] {
   const parts = codigo.toUpperCase().split("-");
-  let count = 0;
-  let inBarrier = false;
-  let hasToken = false;
+  const out: { tipo: string; toks: Set<string> }[] = [];
+  let atual: { tipo: string; toks: Set<string> } | null = null;
   for (const p of parts) {
     if (BARRIER_TYPES.has(p)) {
-      if (inBarrier && hasToken) count++;
-      inBarrier = true;
-      hasToken = false;
-    } else if (inBarrier && p === token) {
-      hasToken = true;
+      atual = { tipo: p, toks: new Set() };
+      out.push(atual);
+    } else if (atual) {
+      atual.toks.add(p);
     }
   }
-  if (inBarrier && hasToken) count++;
-  return count;
+  return out;
 }
 
 // ─── Acesso (PED / VEI) ──────────────────────────────────────────────────────
@@ -107,7 +106,8 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   const lpr = tokens.LPR || 0;
 
   const porv = tokens.PORV || 0;
-  const ctrlBarreiras = countBarreirasComToken(input.codigo, "CTRL");
+  const segmentos = parseBarreiras(input.codigo);
+  const ctrlBarreiras = segmentos.filter((b) => b.toks.has("CTRL")).length;
   const tag = tokens.TAG || 0;
 
   // Leitoras / acionamentos
@@ -134,14 +134,26 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
     add(acc, "ALM_XASPAS", porv, "XAS aço c/ suporte (1 por portão veicular, Portaria Remota)");
   }
 
-  // Laço indutivo (por bloco)
-  if (lac > 0) {
-    add(acc, "EQ064", 1, "Central de Laço Indutivo (1 por bloco)");
-    add(acc, "EQ065", 1, "Laço Indutivo físico (1 por bloco)");
-  }
+  // Laço indutivo: 1 central + 1 laço físico POR LAC selecionado
+  add(acc, "EQ064", lac, "Central de Laço Indutivo (1 por laço)");
+  add(acc, "EQ065", lac, "Laço Indutivo físico (1 por laço)");
 
-  // Fotocélula (2 por bloco)
-  if (fot > 0) add(acc, "EQ215", 2, "Fotocélula anti-esmagamento (par)");
+  // Fotocélula (EQ215 = unidade; 1 par = 2 unidades) — só em blocos veiculares:
+  //  • Cancela (CAN): 2 pares por cancela.
+  //  • Portão veicular (PORV): deslizante → 1 par; pivotante ou basculante → 2 pares.
+  //  • Cada sigla FOT (saída por fotocélula) soma +1 par.
+  if (tipo === "VEI") {
+    let pares = 0;
+    for (const b of segmentos) {
+      if (b.tipo === "CAN") pares += 2;
+      else if (b.tipo === "PORV") {
+        if (b.toks.has("DESL")) pares += 1;
+        else if (b.toks.has("PIVO") || b.toks.has("BASC")) pares += 2;
+      }
+    }
+    pares += fot;
+    add(acc, "EQ215", pares * 2, `Fotocélula anti-esmagamento (${pares} par(es))`);
+  }
 
   // Molas
   add(acc, "EQ030", mol, "Mola aérea selecionada no bloco");
@@ -186,9 +198,18 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
       add(acc, "EQ033", 1, "Acrílico do interfone (PORV + eclusa + facial)");
     }
   }
-  // PP + video porteiro por nº de barreiras (inalterado)
+  // Vídeo porteiro (Portaria Presencial):
+  //  • Pedestres (PED): 1 por barreira que tenha FAC, DIG ou PORTAR.
+  //  • Veicular (VEI): mesma regra do interfone PR — só PORV + eclusa (2B) + FAC → 1.
   if (portariaPP) {
-    add(acc, "EQ019", barreiras, `Video porteiro (Portaria Presencial, ${barreiras}B)`);
+    if (tipo === "PED") {
+      const nBar = segmentos.filter(
+        (b) => b.toks.has("FAC") || b.toks.has("DIG") || b.toks.has("PORTAR"),
+      ).length;
+      add(acc, "EQ019", nBar, "Vídeo porteiro (1 por barreira com FAC/DIG/Portaria)");
+    } else if (tipo === "VEI" && porv > 0 && barreiras >= 2 && fac > 0) {
+      add(acc, "EQ019", 1, "Vídeo porteiro (PORV + eclusa + facial)");
+    }
   }
 
   // Motores veiculares por porte (basculante/deslizante)

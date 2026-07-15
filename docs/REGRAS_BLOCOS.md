@@ -11,7 +11,7 @@
 
 | Conceito | Regra atual |
 |---|---|
-| **Sufixo de portaria** | Todo bloco de acesso recebe sufixo no código: `-PR` (Portaria Remota), `-PP` (Portaria Presencial), `-PA` (Portaria Autônoma) ou `-SM` (sem portaria — Residência/Galpão sem sistema definido). Vem do "Sistema Proposto" da tela Estrutura; Residência/Galpão → sempre `SM`. |
+| **Sufixo de portaria** | Todo bloco de acesso recebe sufixo no código: `-PR` (Portaria Remota), `-PP` (Portaria Presencial), `-PA` (Portaria Autônoma) ou `-SM` (sem portaria). Vem do "Sistema Proposto". **Sufixos permitidos por tipo de local:** Condomínios → PR/PP/PA (default PR) · **Galpão → PR, PP, PA ou SM** (SM quando sem sistema definido) · **Residência → SOMENTE SM** (nunca tem portaria). |
 | **Troca de sistema (PR↔PP↔PA)** | Regenera o código de todos os blocos e apaga os itens automáticos (recalculados ao reabrir cada bloco). Blocos de Elevadores e Totem não são regenerados (código próprio, não depende de portaria). |
 | **Eclusa** | Bloco de acesso pode ser 1B (1 barreira) ou 2B (eclusa, 2 barreiras). |
 | **Itens automáticos × manuais** | Itens `auto` são recalculados pelo motor; itens `manual` (adicionados na busca por nome/modelo) são preservados. Remoções manuais de itens auto também são preservadas. |
@@ -44,8 +44,8 @@
 | CAT | EQ016 — Catraca | 1 por CAT |
 | CAN | EQ055 — Cancela e Braço 4m | 1 por CAN |
 | PORP | EQ022 — Display Puxe/Empurre + EQ027 — Fechadura magnética c/ sensor | 1+1 por PORP |
-| LAC | EQ064 — Central de Laço Indutivo + EQ065 — Laço físico | 1+1 **por bloco** (não por LAC) |
-| FOT | EQ215 — Fotocélula anti-esmagamento | **2 por bloco** (par fixo, se houver FOT) |
+| LAC | EQ064 — Central de Laço Indutivo + EQ065 — Laço físico | **1+1 por LAC** |
+| Fotocélula (só VEI) | EQ215 — Fotocélula anti-esmagamento (unidade; 1 par = 2 un) | **Cancela (CAN): 2 pares por cancela** · **Portão veicular (PORV): deslizante → 1 par; pivotante ou basculante → 2 pares por barreira** · **cada sigla FOT soma +1 par** |
 | MOL | EQ030 — Mola aérea | 1 por MOL |
 
 ### 1.4 Motores
@@ -64,7 +64,8 @@
 | Projeto PR + eclusa (2B) | EQ213 — Módulo relé 8CH ×1 adicional |
 | **Interfone (PED + PR)** | EQ017 — Interfone IP + EQ033 — Acrílico do interfone: 1 de cada **por barreira** |
 | **Interfone (VEI + PR)** | NÃO leva interfone, **exceto** PORV + eclusa (2B) + FAC → 1 interfone + 1 acrílico |
-| Projeto PP | EQ019 — Vídeo porteiro: 1 por barreira |
+| **Vídeo porteiro (PED + PP)** | EQ019: 1 por barreira de pedestres que tenha **FAC, DIG ou PORTARIA** |
+| **Vídeo porteiro (VEI + PP)** | Mesma regra do interfone PR: só **PORV + eclusa (2B) + FAC** → 1 EQ019 |
 | **PORV + projeto PR** | ALM_XASPAS — XAS Porta de Aço c/ Suporte: 1 por portão veicular |
 | Projeto SM (Residência/Galpão) | Nenhuma regra de portaria é aplicada (sem interfone, relés, sensor, vídeo porteiro) |
 
@@ -137,7 +138,7 @@ Zona = ambiente. Cada zona: tipo de sensor + qtd (1–3 sensores ou pares) + cab
 **Central (com fio)** — automática:
 | Item | Regra |
 |---|---|
-| ALM_AMT4010 + ALM_XEG4000 (GPRS) + ALM_XB1270 (bateria) | 1 de cada, **exceto em projeto de Portaria Remota** (a central já vem no bloco CENT — não duplica) |
+| ALM_AMT4010 + ALM_XEG4000 (GPRS) + ALM_XB1270 (bateria) + ALM_SIRMOREY (sirene 12V) | 1 de cada, **exceto em projeto de Portaria Remota** (a central e a sirene já vêm no bloco CENT — não duplica) |
 | ALM_XAR4000 — XAR 4000 Smart | +1 quando o local é **Residência ou Galpão** |
 | ALM_XEZ4008 — Expansor de zonas | **⌈nº de zonas ÷ 8⌉** |
 | EQ302 — Cabo (caixa 300 m) | ⌈soma dos metros das zonas cabeadas ÷ 300⌉ |
@@ -150,7 +151,7 @@ Zona = ambiente. Cada zona: tipo de sensor + qtd (1–3 sensores ou pares) + cab
 | IVA 40 m (par) | ALM_IVA8040 — IVA 8040 AT |
 | Porta / Janela | ALM_XAS8000 — XAS 8000 (1 por abertura) |
 
-**Central (sem fio)** — automática: ALM_AMT8000 + ALM_XAG8000 (GPRS), sempre (inclusive em projeto PR, pois é painel físico diferente).
+**Central (sem fio)** — automática: ALM_AMT8000 + ALM_XAG8000 (GPRS) + **ALM_XSS8000 (sirene, 1 por projeto)** + **ALM_XAT8000 (teclado — a central não acompanha)**, sempre (inclusive em projeto PR, pois é painel físico diferente).
 **Repetidor**: ALM_REP8000 — contador manual, decisão do técnico pela distância/obstáculos.
 Sem expansor de zonas e sem cabo no sem fio.
 
@@ -231,10 +232,10 @@ removida ao trocar para PP/PA (com confirmação se houver edições manuais). M
 
 ---
 
-## ❓ Dúvidas em aberto (me responda junto com as regras novas)
+## ✅ Dúvidas resolvidas (revisão de 15/07/2026)
 
-1. **Fonte auxiliar p/ IVAs (com fio)**: a versão antiga do motor de alarme tinha "≥4 conjuntos IVA → 1 fonte 12V a cada 4". A versão nova (zonas) NÃO tem essa regra. Deve existir?
-2. **Sirene no Alarme**: o motor novo não adiciona sirene em nenhum ramo (a antiga tinha Morey 12V no com fio e XSS 8000 no sem fio). Deve ter sirene automática? Quantas?
-3. **Teclado no Alarme sem fio**: a AMT 8000 não acompanha teclado — a versão antiga adicionava 1 XAT 8000 obrigatório. A nova não adiciona. Deve?
-4. **XAS 8000 em zona**: no sem fio, porta/janela conta 1 sensor por abertura — confirma que também vale a regra de zona (máx. 3 por zona)?
-5. **Guarita em Residência/Galpão**: os receptores RTX/RMF e o Módulo Guarita também se aplicam a projetos SM (sem portaria)? Hoje sim (a regra olha só CTRL/TAG).
+1. **Fonte auxiliar p/ IVAs (com fio)**: NÃO precisa — sem regra de fonte.
+2. **Sirene no Alarme**: 1 sirene automática por projeto, conforme a central: com fio → ALM_SIRMOREY (suprimida em projeto PR, já vem na CENT) · sem fio → ALM_XSS8000.
+3. **Teclado no Alarme sem fio**: SIM — 1 ALM_XAT8000 automático (a AMT 8000 não acompanha teclado).
+4. **XAS 8000 em zona**: SIM — vale a regra de zona (máx. 3 por zona) também para portas/janelas sem fio.
+5. **Guarita em Residência/Galpão**: SIM — receptores e Módulo Guarita aplicam-se a projetos SM, mas somente se houver CTRL ou TAG no escopo (comportamento atual).

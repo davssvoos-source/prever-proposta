@@ -508,8 +508,13 @@ function BlocosWizardPage() {
   const tipoLocal = ((visitaRow as any)?.tipo_local as string | null | undefined)?.trim().toLowerCase();
   const semPortaria = tipoLocal === "residencia" || tipoLocal === "empresa";
   const sistemaPropostoRaw = (orcamentoRow as any)?.sistema_proposto;
+  // Sufixos permitidos por tipo de local:
+  //  • Residência: SOMENTE SM (nunca tem portaria — ignora sistema_proposto).
+  //  • Galpão (empresa): PR/PP/PA quando definido; senão SM.
+  //  • Condomínios: PR/PP/PA; default PR.
   const portaria: "PR" | "PP" | "PA" | "SM" =
-    sistemaPropostoRaw === "PP" ? "PP"
+    tipoLocal === "residencia" ? "SM"
+    : sistemaPropostoRaw === "PP" ? "PP"
     : sistemaPropostoRaw === "PA" ? "PA"
     : sistemaPropostoRaw === "PR" ? "PR"
     : semPortaria ? "SM"
