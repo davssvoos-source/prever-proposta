@@ -49,8 +49,9 @@ function OrcamentoPasso1() {
   });
 
   // Serviços ofertados pelo admin (para default de PR/PP) + tipo de local (define o fluxo)
-  const { data: visita, error: visitaError } = useQuery({
+  const { data: visita, error: visitaError, isLoading: visitaLoading } = useQuery({
     queryKey: ["visita_servicos", id],
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
@@ -329,10 +330,23 @@ function OrcamentoPasso1() {
   };
 
   // Aguarda saber o tipo de local para decidir qual 1ª tela mostrar
-  if (visita === undefined) {
+  if (visitaLoading) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
         Carregando…
+      </div>
+    );
+  }
+
+  if (visitaError) {
+    return (
+      <div style={{ padding: 20 }}>
+        <div style={{ fontSize: 11, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "10px 12px", wordBreak: "break-word" }}>
+          DEBUG3 erro ao carregar visita — id="{String(id)}" · {String((visitaError as any)?.message ?? visitaError)}
+          {(visitaError as any)?.code ? ` · code=${(visitaError as any).code}` : ""}
+          {(visitaError as any)?.details ? ` · details=${(visitaError as any).details}` : ""}
+          {(visitaError as any)?.hint ? ` · hint=${(visitaError as any).hint}` : ""}
+        </div>
       </div>
     );
   }
