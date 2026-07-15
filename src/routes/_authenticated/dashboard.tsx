@@ -213,7 +213,10 @@ function Dashboard() {
 
   const agoraMs = Date.now();
   const proximaVisita = visitas
-    .filter((v: any) => v.data_hora_agendada && new Date(v.data_hora_agendada).getTime() > agoraMs)
+    // Só visitas ainda não iniciadas/concluídas (bucket "pendente") — uma visita
+    // já enviada para aprovação (ou além) não é mais "próxima", mesmo que a data
+    // agendada original ainda esteja no futuro (ex.: técnico adiantou o serviço).
+    .filter((v: any) => v.data_hora_agendada && new Date(v.data_hora_agendada).getTime() > agoraMs && isPendenteBucket(v.status))
     .sort((a: any, b: any) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime())[0];
 
   const [countdown, setCountdown] = useState("");
