@@ -100,13 +100,18 @@ function GerencialPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Admin = linha em user_roles OU profiles.cargo === 'admin' (padrão do app).
+  // Checar só user_roles escondia o botão de excluir de admins cadastrados via cargo.
   const { data: isAdmin = false } = useQuery({
     queryKey: ["is-admin-gerencial"],
     queryFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return false;
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
-      return (data ?? []).some((r) => r.role === "admin");
+      const [{ data: roles }, { data: perfil }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
+        supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
+      ]);
+      return (roles ?? []).some((r) => r.role === "admin") || (perfil as any)?.cargo === "admin";
     },
     staleTime: 60_000,
   });
