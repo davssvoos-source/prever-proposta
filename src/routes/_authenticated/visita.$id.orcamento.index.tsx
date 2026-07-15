@@ -77,7 +77,7 @@ function OrcamentoPasso1() {
   const [sistema, setSistema] = useState("");
   const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "PA" | "">("");
   const [airbnb, setAirbnb] = useState<string>("");
-  const [servicoSimples, setServicoSimples] = useState<"monitoramento_24h" | "implantacao_sistema" | "">("");
+  const [servicosSimples, setServicosSimples] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
 
@@ -98,10 +98,8 @@ function OrcamentoPasso1() {
         setSistemaProposto(isRemota ? "PR" : "PP");
       }
       setAirbnb((orcamento as any)?.airbnb ?? "");
-      const svcSalvo = (orcamento as any)?.servico_proposto;
-      if (svcSalvo === "monitoramento_24h" || svcSalvo === "implantacao_sistema") {
-        setServicoSimples(svcSalvo);
-      }
+      const svcSalvo = (orcamento as any)?.servicos_ofertados;
+      setServicosSimples(Array.isArray(svcSalvo) ? svcSalvo : []);
       setReady(true);
     }
   }, [orcamento, visita, ready]);
@@ -109,11 +107,11 @@ function OrcamentoPasso1() {
   // Residência/Galpão: salva só o serviço proposto e segue para as categorias
   const saveServicoMutation = useMutation({
     mutationFn: async () => {
-      if (!servicoSimples) throw new Error("Selecione o SERVIÇO PROPOSTO.");
+      if (servicosSimples.length === 0) throw new Error("Selecione o SERVIÇO PROPOSTO.");
       const { error } = await supabase.from("visita_orcamentos").upsert(
         {
           visita_id: id,
-          servico_proposto: servicoSimples,
+          servicos_ofertados: servicosSimples,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: "visita_id" },
@@ -375,11 +373,15 @@ function OrcamentoPasso1() {
           <div style={LABEL}>Serviço proposto</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {SERVICO_SIMPLES_OPCOES.map(({ val, label, Icon }) => {
-              const selected = servicoSimples === val;
+              const selected = servicosSimples.includes(val);
               return (
                 <button
                   key={val}
-                  onClick={() => setServicoSimples(val)}
+                  onClick={() =>
+                    setServicosSimples((prev) =>
+                      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val],
+                    )
+                  }
                   style={{
                     height: 60,
                     borderRadius: 14,
