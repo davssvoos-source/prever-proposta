@@ -48,14 +48,17 @@ function OrcamentoPasso1() {
     },
   });
 
-  // Serviços ofertados pelo admin (para default de PR/PP) + tipo de local (define o fluxo)
-  const { data: visita, error: visitaError, isLoading: visitaLoading } = useQuery({
+  // Serviços propostos pelo admin (para default de PR/PP) + tipo de local (define o fluxo).
+  // BUG histórico: selecionava "servicos_ofertados", coluna que não existe em
+  // visitas_tecnicas (existe só em visita_orcamentos, tabela legada não relacionada) —
+  // o erro Postgres 42703 era descartado silenciosamente, então "visita" sempre
+  // resolvia null e o fluxo Residência/Galpão nunca era detectado.
+  const { data: visita } = useQuery({
     queryKey: ["visita_servicos", id],
-    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
-        .select("servicos_ofertados, tipo_local")
+        .select("servicos_propostos, tipo_local")
         .eq("id", id)
         .maybeSingle();
       if (error) throw error;
@@ -88,7 +91,7 @@ function OrcamentoPasso1() {
         setSistemaProposto(salvo);
       } else {
         // pré-preenche pelo que o admin cadastrou na criação
-        const svc: string[] = ((visita as any)?.servicos_ofertados ?? []) as string[];
+        const svc: string[] = ((visita as any)?.servicos_propostos ?? []) as string[];
         const isRemota = Array.isArray(svc) && svc.some((s) =>
           /portaria_remota|portaria_virtual|monitoramento/i.test(String(s)),
         );
@@ -330,23 +333,10 @@ function OrcamentoPasso1() {
   };
 
   // Aguarda saber o tipo de local para decidir qual 1ª tela mostrar
-  if (visitaLoading) {
+  if (visita === undefined) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
         Carregando…
-      </div>
-    );
-  }
-
-  if (visitaError) {
-    return (
-      <div style={{ padding: 20 }}>
-        <div style={{ fontSize: 11, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "10px 12px", wordBreak: "break-word" }}>
-          DEBUG3 erro ao carregar visita — id="{String(id)}" · {String((visitaError as any)?.message ?? visitaError)}
-          {(visitaError as any)?.code ? ` · code=${(visitaError as any).code}` : ""}
-          {(visitaError as any)?.details ? ` · details=${(visitaError as any).details}` : ""}
-          {(visitaError as any)?.hint ? ` · hint=${(visitaError as any).hint}` : ""}
-        </div>
       </div>
     );
   }
@@ -491,11 +481,6 @@ function OrcamentoPasso1() {
             />
           ))}
         </div>
-      </div>
-
-      {/* DEBUG TEMPORÁRIO — remover depois de diagnosticar o bug do fluxo Residência/Galpão */}
-      <div style={{ fontSize: 10, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "6px 8px", wordBreak: "break-word" }}>
-        DEBUG2 id="{String(id)}" · typeof visita={typeof visita} · visita=[{JSON.stringify(visita)}] · erro=[{visitaError ? String((visitaError as any)?.message ?? visitaError) : "nenhum"}]
       </div>
 
       {/* Qtd Apartamentos */}
