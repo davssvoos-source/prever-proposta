@@ -478,6 +478,11 @@ function OrcamentoPasso1() {
         </div>
       </div>
 
+      {/* DEBUG TEMPORÁRIO — remover depois de diagnosticar o bug do fluxo Residência/Galpão */}
+      <div style={{ fontSize: 10, fontFamily: "monospace", color: "#F87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.35)", borderRadius: 8, padding: "6px 8px" }}>
+        DEBUG build=0e4b198+ · visita.tipo_local="{String((visita as any)?.tipo_local)}" · normalizado="{String(tipoLocalNorm)}" · fluxoSimples={String(fluxoSimples)}
+      </div>
+
       {/* Qtd Apartamentos */}
       <div style={CARD}>
         <div style={LABEL}>Quantidade de apartamentos</div>
