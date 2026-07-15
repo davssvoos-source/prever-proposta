@@ -534,7 +534,10 @@ function VisitaDetail() {
     mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
   const isAdmin = canApprove;
   const showIniciar   = status === "pendente";
-  const showContinuar = status === "em_andamento";
+  // "Continuar Orçamento" (editar escopo) fica disponível em qualquer estado já
+  // iniciado, incluindo aguardando_aprovacao — antes sumia assim que o técnico
+  // enviava para aprovação, sem dar como voltar e ajustar o escopo.
+  const showContinuar = status === "em_andamento" || status === "aguardando_aprovacao";
   const showReagendar = status === "reprovada";
   const showAprovarBtn  = canApprove && status === "aguardando_aprovacao";
   const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada" || status === "aguardando_aprovacao");
@@ -1136,7 +1139,7 @@ function VisitaDetail() {
       {blocosEscopo.length > 0 && (
         <div style={GLASS}>
           <div style={SECTION_LABEL}>Escopo técnico</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {(() => {
               const counters: Record<string, number> = {};
               return blocosEscopo.map((bloco: any, idx: number) => {
@@ -1152,17 +1155,17 @@ function VisitaDetail() {
                 return (
                   <div key={bloco.id}>
                     {idx > 0 && (
-                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 10 }} />
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 6 }} />
                     )}
                     <div
                       style={{
                         color: "#FFC000",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: 0.6,
                         fontFamily: "'Montserrat',sans-serif",
                         textTransform: "uppercase",
-                        marginBottom: 8,
+                        marginBottom: 3,
                       }}
                     >
                       {label}
@@ -1178,7 +1181,7 @@ function VisitaDetail() {
                       perimetro={bloco.perimetro}
                       esquinas={bloco.esquinas}
                       isLight={isLight}
-                      hideConcluir
+                      readOnly
                     />
                   </div>
                 );

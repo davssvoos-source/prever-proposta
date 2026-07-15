@@ -31,6 +31,9 @@ interface Props {
   onConcluir?: () => void;
   hideSubtotal?: boolean;
   hideConcluir?: boolean;
+  /** Resumo da visita: lista ultra-compacta, só nome+modelo, sem valores,
+   *  sem editar qtd/remover e sem adicionar item manual. */
+  readOnly?: boolean;
 }
 
 
@@ -80,6 +83,7 @@ export function BlocoItensEditor({
   onConcluir,
   hideSubtotal = false,
   hideConcluir = false,
+  readOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const [seeded, setSeeded] = useState(false);
@@ -266,6 +270,54 @@ export function BlocoItensEditor({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, gap: 10 }}>
         <Loader2 className="animate-spin" size={20} />
         <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)" }}>Calculando equipamentos…</span>
+      </div>
+    );
+  }
+
+  // ── Resumo (read-only): lista compacta, só nome+modelo, sem valores/edição ──
+  if (readOnly) {
+    const linha = (nome: string, modelo: string | null | undefined, qtd: number, key: string, idx: number) => (
+      <div
+        key={key}
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 6,
+          fontSize: 12,
+          padding: "3px 0",
+          borderTop: idx > 0 ? (isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)") : "none",
+        }}
+      >
+        <span style={{ fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff", flexShrink: 0 }}>{qtd}×</span>
+        <span style={{ color: isLight ? "#0a0b0e" : "#fff", flex: 1, minWidth: 0 }}>
+          {nome}
+          {modelo && <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}> — {modelo}</span>}
+        </span>
+      </div>
+    );
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {equipVisiveis.length === 0 ? (
+          <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", padding: "2px 0" }}>
+            Nenhum equipamento
+          </div>
+        ) : (
+          equipVisiveis.map((it, idx) => {
+            const eq = eqMap[it.cod_eq];
+            return linha(eq?.nome || it.observacao || it.cod_eq, eq?.modelo, it.qtd, it.id, idx);
+          })
+        )}
+        {mensaisVisiveis.length > 0 && (
+          <>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: isLight ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.45)", marginTop: 6 }}>
+              MENSALIDADES
+            </div>
+            {mensaisVisiveis.map((it, idx) => {
+              const sv = svMap[it.cod_eq];
+              return linha(sv?.nome || it.observacao || it.cod_eq, null, it.qtd, it.id, idx);
+            })}
+          </>
+        )}
       </div>
     );
   }
