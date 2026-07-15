@@ -122,6 +122,11 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  // Residência/Galpão: não têm síndico/zelador — usa proprietário/encarregado(a)
+  const isResidenciaOuGalpao = form.tipo_local === "residencia" || form.tipo_local === "empresa";
+  const labelResponsavel1 = isResidenciaOuGalpao ? "Proprietário" : "Síndico";
+  const labelResponsavel2 = isResidenciaOuGalpao ? "Encarregado(a)" : "Zelador(a)";
+
   async function handleGeocode() {
     if (!form.endereco.trim()) return;
     setGeocoding(true);
@@ -307,11 +312,11 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
-              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Síndico (opcional)</Label>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>{labelResponsavel1} (opcional)</Label>
               <Input
                 value={form.nome_sindico}
                 onChange={(e) => set("nome_sindico", e.target.value)}
-                placeholder="Nome do síndico"
+                placeholder={`Nome do ${labelResponsavel1.toLowerCase()}`}
               />
               <Input
                 value={form.telefone_sindico}
@@ -322,11 +327,11 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
             </div>
             <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
-              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>Zelador(a) (opcional)</Label>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>{labelResponsavel2} (opcional)</Label>
               <Input
                 value={form.nome_zelador}
                 onChange={(e) => set("nome_zelador", e.target.value)}
-                placeholder="Nome do zelador"
+                placeholder={`Nome do ${labelResponsavel2.toLowerCase()}`}
               />
               <Input
                 value={form.telefone_zelador}

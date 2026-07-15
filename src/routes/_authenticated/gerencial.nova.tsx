@@ -1,10 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite, Radio, Briefcase } from "lucide-react";
 import type { ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { SERVICOS_PROPOSTOS } from "@/features/visitas/servicosPropostos";
+import {
+  SERVICOS_PROPOSTOS,
+  validarServicosPropostos,
+  SERVICOS_INDISPONIVEIS_RESIDENCIA,
+  type ServicoPropostoKey,
+} from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -46,13 +51,17 @@ const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = 
   manutencao_alarmes: Wrench,
   manutencao_controle_acesso: Settings,
   manutencao_cftv: Video,
+  implantacao_cerca_eletrica: Zap,
+  manutencao_cerca_eletrica: Zap,
+  totem_monitoramento: Satellite,
+  gestao_portaria_presencial: Briefcase,
   portaria_virtual_24h: Shield,
   cftv_cameras: CameraIcon,
   controle_acesso: Lock,
   interfone_ip: Phone,
   alarme_sensores: Bell,
   cerca_eletrica: Zap,
-  monitoramento_remoto: Satellite,
+  monitoramento_remoto: Radio,
   automacao_portoes: DoorOpen,
 };
 
@@ -390,7 +399,15 @@ function NovaVisitaPage() {
                 return (
                   <button
                     key={t.id}
-                    onClick={() => setTipoLocal(t.id)}
+                    onClick={() => {
+                      setTipoLocal(t.id);
+                      // Residência não aceita Controle de Acesso/Portaria — remove se já marcado
+                      if (t.id === "residencia") {
+                        setServicosPropostos((prev) =>
+                          prev.filter((k) => !SERVICOS_INDISPONIVEIS_RESIDENCIA.includes(k as ServicoPropostoKey)),
+                        );
+                      }
+                    }}
                     style={{
                       background: ativo
                         ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
@@ -469,16 +486,37 @@ function NovaVisitaPage() {
 
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
+            {tipoLocal === "residencia" && (
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(255,255,255,0.5)", margin: "0 0 8px" }}>
+                Controle de Acesso e serviços de portaria não se aplicam a Residência.
+              </p>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {SERVICOS_PROPOSTOS.map((s) => {
+              {SERVICOS_PROPOSTOS
+                .filter((s) => !(tipoLocal === "residencia" && SERVICOS_INDISPONIVEIS_RESIDENCIA.includes(s.key)))
+                .map((s) => {
                 const ativo = servicosPropostos.includes(s.key);
                 return (
                   <button
                     key={s.key}
                     onClick={() =>
-                      setServicosPropostos((prev) =>
-                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
-                      )
+                      setServicosPropostos((prev) => {
+                        const ligando = !prev.includes(s.key);
+                        let next = prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key];
+                        // Portaria Remota × Gestão de Portaria Presencial são mutuamente exclusivas
+                        if (ligando) {
+                          const CONFLITO: Record<string, ServicoPropostoKey> = {
+                            portaria_remota: "gestao_portaria_presencial",
+                            gestao_portaria_presencial: "portaria_remota",
+                          };
+                          const oposto = CONFLITO[s.key];
+                          if (oposto && next.includes(oposto)) {
+                            next = next.filter((x) => x !== oposto);
+                            toast.info("Portaria Remota e Gestão de Portaria Presencial não podem estar juntas — a outra foi desmarcada.");
+                          }
+                        }
+                        return next;
+                      })
                     }
                     style={{
                       display: "inline-flex",

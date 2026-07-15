@@ -12,6 +12,22 @@ import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/s
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
+import { Layers } from "lucide-react";
+import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
+
+// Mesmos nomes usados no resumo de pré-envio, para o escopo ficar idêntico
+// em qualquer tela onde apareça.
+const TIPOS_NOMES: Record<string, string> = {
+  PED: "Eclusa de Pedestres",
+  VEI: "Eclusa Veicular",
+  CFTV: "CFTV",
+  AL: "Alarme",
+  CER: "Cerca Elétrica",
+  CENT: "Central de Portaria Remota",
+  ELV: "Elevadores",
+  TOT: "Totem Inteligente",
+};
+const TIPOS_UNICOS = new Set(["CENT"]);
 
 
 export const Route = createFileRoute("/_authenticated/visita/$id")({
@@ -273,7 +289,7 @@ function VisitaDetail() {
         .select(`
           id, status, data_hora_agendada, endereco, complemento,
           latitude, longitude, titulo, nome_sindico, nome_predio,
-          nome_zelador, telefone_sindico, telefone_zelador,
+          nome_zelador, telefone_sindico, telefone_zelador, tipo_local,
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
@@ -284,6 +300,21 @@ function VisitaDetail() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Escopo técnico (blocos do orçamento) — só existe depois que o técnico começa
+  // a montar; atualiza sozinho a cada vez que a tela ganha foco/é revisitada.
+  const { data: blocosEscopo = [] } = useQuery({
+    queryKey: ["visita_blocos_resumo", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("*")
+        .eq("visita_id", id)
+        .order("ordem");
+      if (error) throw error;
+      return (data as any[]) ?? [];
     },
   });
 
@@ -492,6 +523,12 @@ function VisitaDetail() {
 
   // ── computed (após todos os hooks) ──────────────────────────────────────────
   const status = visita?.status;
+  // Residência/Galpão: não têm síndico/zelador — usa proprietário/encarregado(a),
+  // mesma convenção da tela de criação (gerencial/nova).
+  const tipoLocalNorm = ((visita as any)?.tipo_local as string | null | undefined)?.trim().toLowerCase();
+  const isResidenciaOuGalpao = tipoLocalNorm === "residencia" || tipoLocalNorm === "empresa";
+  const labelResponsavel1 = isResidenciaOuGalpao ? "Proprietário" : "Síndico";
+  const labelResponsavel2 = isResidenciaOuGalpao ? "Encarregado(a)" : "Zelador(a)";
   const isTecnico = !!userId && userId === visita?.tecnico_id;
   const canApprove =
     mePerfil?.cargo === "admin" || mePerfil?.cargo === "comercial";
@@ -755,7 +792,7 @@ function VisitaDetail() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={SECTION_LABEL}>Síndico</div>
+                <div style={SECTION_LABEL}>{labelResponsavel1}</div>
                 <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
                   <Pencil size={14} color="rgba(255,255,255,0.45)" />
                 </button>
@@ -805,7 +842,7 @@ function VisitaDetail() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={SECTION_LABEL}>Zelador(a)</div>
+                <div style={SECTION_LABEL}>{labelResponsavel2}</div>
                 <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
                   <Pencil size={14} color="rgba(255,255,255,0.45)" />
                 </button>
@@ -1090,6 +1127,64 @@ function VisitaDetail() {
           >
             {visita.descricao_pedido}
           </p>
+        </div>
+      )}
+
+      {/* Escopo técnico — aparece assim que o técnico começa a montar os blocos;
+          mesma lista em todas as telas (aqui, wizard e pré-envio). Comercial/Admin
+          precisam disso para decidir aprovar ou reprovar. */}
+      {blocosEscopo.length > 0 && (
+        <div style={GLASS}>
+          <div style={SECTION_LABEL}>Escopo técnico</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {(() => {
+              const counters: Record<string, number> = {};
+              return blocosEscopo.map((bloco: any, idx: number) => {
+                const tipo = bloco.tipo_bloco;
+                counters[tipo] = (counters[tipo] || 0) + 1;
+                const base = TIPOS_NOMES[tipo] || tipo;
+                const nomeUsuario = (bloco.nome_acesso as string | null)?.trim();
+                const label = nomeUsuario
+                  ? nomeUsuario
+                  : TIPOS_UNICOS.has(tipo)
+                  ? base
+                  : `${base} ${String(counters[tipo]).padStart(2, "0")}`;
+                return (
+                  <div key={bloco.id}>
+                    {idx > 0 && (
+                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 10 }} />
+                    )}
+                    <div
+                      style={{
+                        color: "#FFC000",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: 0.6,
+                        fontFamily: "'Montserrat',sans-serif",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {label}
+                    </div>
+                    <BlocoItensEditor
+                      visitaBlocoId={bloco.id}
+                      codigo={bloco.codigo_bloco}
+                      tipoBloco={bloco.tipo_bloco}
+                      tecnologia={bloco.tecnologia}
+                      qtdDome={bloco.qtd_dome}
+                      qtdBullet={bloco.qtd_bullet}
+                      cftvCameras={(bloco.alarme_config as any)?.cftv_cameras ?? null}
+                      perimetro={bloco.perimetro}
+                      esquinas={bloco.esquinas}
+                      isLight={isLight}
+                      hideConcluir
+                    />
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </div>
       )}
 
