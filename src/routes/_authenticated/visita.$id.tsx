@@ -1214,16 +1214,6 @@ function VisitaDetail() {
             </div>
           )}
 
-          {status === "aprovada" && canApprove && (
-            <button
-              onClick={() => navigate({ to: "/visita/$id/pagamento", params: { id } })}
-              style={{ ...CTA_GOLD(false), marginTop: 12 }}
-            >
-              <Banknote size={18} />
-              Configurar Forma de Pagamento
-            </button>
-          )}
-
           {status === "reprovada" && (
             <div
               style={{
@@ -1393,6 +1383,16 @@ function VisitaDetail() {
                 </button>
               </div>
             </div>
+          )}
+
+          {status === "aprovada" && canApprove && !showReprovarForm && (
+            <button
+              onClick={() => navigate({ to: "/visita/$id/pagamento", params: { id } })}
+              style={{ ...CTA_GOLD(false), marginTop: 12 }}
+            >
+              <Banknote size={18} />
+              Configurar Forma de Pagamento
+            </button>
           )}
         </div>
       )}
