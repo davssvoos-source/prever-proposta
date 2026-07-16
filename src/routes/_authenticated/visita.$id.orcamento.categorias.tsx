@@ -242,7 +242,7 @@ function CategoriasPage() {
             return;
           }
           navigate({
-            to: "/visita/$id/orcamento/pre-envio",
+            to: "/visita/$id/orcamento/complementos",
             params: { id },
             state: { from: location.pathname } as any,
           });
