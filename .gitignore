@@ -20,6 +20,17 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Capacitor / Android (o projeto nativo em si é versionado, só build output não)
+android/app/build/
+android/app/release/
+android/.gradle/
+android/local.properties
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
