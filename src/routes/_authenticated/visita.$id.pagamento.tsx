@@ -8,6 +8,7 @@ import { ArrowLeft, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isServicoCode } from "@/features/orcamento/blockAutoItems";
+import { MARKUP_VENDA } from "@/features/comercial/regrasComerciais";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/pagamento")({
   component: PagamentoPage,
@@ -25,9 +26,7 @@ const TIPOS_NOMES: Record<string, string> = {
 };
 const TIPOS_UNICOS = new Set(["CENT"]);
 
-// Multiplicador de venda do projeto (distinto do markup por item já usado
-// no orçamento) — pedido explicitamente como venda = custo total × 1,5.
-const MULTIPLICADOR_VENDA = 1.5;
+const MULTIPLICADOR_VENDA = MARKUP_VENDA;
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

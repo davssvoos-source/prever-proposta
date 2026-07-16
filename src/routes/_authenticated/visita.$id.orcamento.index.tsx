@@ -76,7 +76,6 @@ function OrcamentoPasso1() {
   const [qtd, setQtd] = useState<number | "">("");
   const [sistema, setSistema] = useState("");
   const [sistemaProposto, setSistemaProposto] = useState<"PR" | "PP" | "PA" | "">("");
-  const [airbnb, setAirbnb] = useState<string>("");
   const [servicosSimples, setServicosSimples] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [erroVisible, setErroVisible] = useState<string | null>(null);
@@ -97,7 +96,6 @@ function OrcamentoPasso1() {
         );
         setSistemaProposto(isRemota ? "PR" : "PP");
       }
-      setAirbnb((orcamento as any)?.airbnb ?? "");
       const svcSalvo = (orcamento as any)?.servicos_ofertados;
       setServicosSimples(Array.isArray(svcSalvo) ? svcSalvo : []);
       setReady(true);
@@ -144,7 +142,6 @@ function OrcamentoPasso1() {
           qtd_apartamentos: Number(qtd),
           sistema_atual: sistema,
           sistema_proposto: sistemaProposto,
-          airbnb: airbnb || null,
           updated_at: new Date().toISOString(),
         } as any,
         { onConflict: "visita_id" },
@@ -668,47 +665,6 @@ function OrcamentoPasso1() {
         </div>
       </div>
 
-
-      {/* Airbnb */}
-      <div style={CARD}>
-        <div style={LABEL}>O condomínio possui Airbnb?</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-          {["Não", "Pouco", "Razoável", "Muito"].map((opt) => {
-            const selected = airbnb === opt;
-            return (
-              <button
-                key={opt}
-                onClick={() => setAirbnb(opt)}
-                style={{
-                  height: 44,
-                  borderRadius: 12,
-                  border: isLight
-                    ? selected
-                      ? "none"
-                      : "1px solid rgba(0,0,0,0.12)"
-                    : selected
-                      ? "none"
-                      : "1px solid rgba(255,255,255,0.12)",
-                  background: selected
-                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
-                    : isLight
-                      ? "#f5f6f8"
-                      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                  color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
-                  boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Botão próxima etapa */}
       {erroVisible && (

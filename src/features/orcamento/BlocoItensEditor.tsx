@@ -4,6 +4,7 @@ import { Plus, Minus, Trash2, Loader2, CheckCircle2, PlusCircle } from "lucide-r
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { computeAutoItemsForBloco, isServicoCode } from "@/features/orcamento/blockAutoItems";
+import { MARKUP_VENDA } from "@/features/comercial/regrasComerciais";
 import type { CftvCamera } from "@/lib/blocos";
 
 // ── Tipos calculados para os itens automáticos do bloco ──────────────────────
@@ -171,7 +172,7 @@ export function BlocoItensEditor({
           nome: e.nome,
           marca: e.marca,
           modelo: e.modelo,
-          preco: +(Number(e.custo || 0) * Number(e.markup || 1.389)).toFixed(2),
+          preco: +(Number(e.custo || 0) * Number(e.markup || MARKUP_VENDA)).toFixed(2),
         };
       }
       return map;
