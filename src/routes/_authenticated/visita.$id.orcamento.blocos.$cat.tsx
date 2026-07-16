@@ -71,12 +71,13 @@ import {
   CAT_NOMES,
 } from "@/lib/blocos";
 
-// Opções de I.A integrada por câmera (CFTV)
+// Opções de I.A integrada por câmera (CFTV) + conexão ao Smart Sampa
 const CFTV_IA_OPCOES = [
   "Leitura de Placas",
   "Detecção de movimento",
   "Detecção de ausência",
   "Detecção de presença",
+  "Smart Sampa",
 ];
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 import { computeAutoItemsFromConfig, isServicoCode } from "@/features/orcamento/blockAutoItems";
@@ -945,6 +946,14 @@ function BlocosWizardPage() {
           quantidade: n,
           ordem: blocosAdicionados.length,
           fotos_urls: [],
+          // Config por totem (câmeras, Smart Sampa, I.As) — usada no cálculo de mensalidades
+          alarme_config: {
+            totem_totens: totens.map((t) => ({
+              cameras: t.cameras,
+              smart_sampa: t.smartSampa,
+              cameras_ia: t.camerasIA,
+            })),
+          },
         })
         .select("id")
         .single();

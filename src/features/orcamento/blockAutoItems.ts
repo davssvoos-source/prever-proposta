@@ -26,7 +26,16 @@ export const CFTV_IA_SERVICOS: Record<string, string> = {
   "Detecção de presença": "SV031",
   "Detecção de ausência": "SV032",
   "Detecção de movimento": "SV033",
+  "Smart Sampa": "SV034",
 };
+
+// As 4 I.As marcáveis por câmera (Smart Sampa no Totem é por totem, não por câmera).
+export const IA_OPCOES_CAMERA = [
+  "Leitura de Placas",
+  "Detecção de presença",
+  "Detecção de ausência",
+  "Detecção de movimento",
+];
 
 /** Itens com código SV* são serviços mensais — exibidos em "Mensalidades", não em equipamentos. */
 export const isServicoCode = (cod: string) => /^SV\d+/i.test(cod);

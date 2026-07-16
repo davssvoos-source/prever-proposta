@@ -1,5 +1,7 @@
 // Wizard do módulo "Totem Inteligente".
-// Lista dinâmica de totens; cada um define sua qtd de câmeras (2, 3 ou 4 — padrão 3).
+// Lista dinâmica de totens; cada um define sua qtd de câmeras (2, 3 ou 4 — padrão 3),
+// se está conectado ao Smart Sampa (por totem, afeta a mensalidade) e as I.As de
+// cada câmera (serviços mensais SV030–SV033, mesmos códigos do CFTV).
 // Composição por totem: 1 Switch SF800Q+, 1 Fonte 12V 5A, 1 Poste 2,6m + N câmeras VIP 1230B G4.
 // Ao concluir, chama onConcluir(totens, itens) para persistir na proposta.
 
@@ -8,6 +10,8 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronDown, Minus, Plus, PanelRightOpen,
   ShieldCheck, Cctv, Trash2,
 } from "lucide-react";
+import { CFTV_IA_SERVICOS, IA_OPCOES_CAMERA, isServicoCode } from "@/features/orcamento/blockAutoItems";
+import { mensalidadeTotem, IA_MENSALIDADES } from "@/features/comercial/regrasComerciais";
 
 export interface TotemBaseItem {
   cod_eq: string;
@@ -27,6 +31,10 @@ export const TOTEM_BASE: TotemBaseItem[] = [
 export interface TotemConfig {
   id: string;
   cameras: 2 | 3 | 4;
+  /** Totem conectado ao Smart Sampa (afeta a mensalidade do totem inteiro). */
+  smartSampa: boolean;
+  /** I.As marcadas por câmera (índice = câmera; length = cameras). */
+  camerasIA: string[][];
 }
 
 export interface TotemItemCalc {
@@ -38,7 +46,7 @@ export interface TotemItemCalc {
 export function computeTotens(totens: TotemConfig[], overrides?: Record<string, number>): TotemItemCalc[] {
   const nTotens = totens.length;
   const totalCameras = totens.reduce((s, t) => s + t.cameras, 0);
-  return TOTEM_BASE.map((b) => {
+  const itens: TotemItemCalc[] = TOTEM_BASE.map((b) => {
     const base = b.qtdPorTotem === "cameras" ? totalCameras : nTotens * b.qtdPorTotem;
     return {
       cod_eq: b.cod_eq,
@@ -49,6 +57,18 @@ export function computeTotens(totens: TotemConfig[], overrides?: Record<string, 
           : `incluído pelo Totem Inteligente (1× por totem × ${nTotens} totem${nTotens === 1 ? "" : "s"})`,
     };
   });
+  // I.As por câmera → serviços mensais (mesmos códigos SV do CFTV)
+  for (const ia of IA_OPCOES_CAMERA) {
+    const sv = CFTV_IA_SERVICOS[ia];
+    const n = totens.reduce((s, t) => s + t.camerasIA.filter((l) => l.includes(ia)).length, 0);
+    if (n > 0) itens.push({ cod_eq: sv, qtd: n, regra: `I.A — ${ia} (mensal, por câmera do totem)` });
+  }
+  return itens;
+}
+
+/** Mensalidade total dos totens (500/550 + R$100 se Smart Sampa — por totem). */
+export function mensalidadeTotens(totens: TotemConfig[]): number {
+  return totens.reduce((s, t) => s + mensalidadeTotem(t.cameras, t.smartSampa), 0);
 }
 
 interface Props {
@@ -64,8 +84,10 @@ const STEP_TITLE: Record<StepId, string> = { totens: "Totens", revisao: "Revisã
 let _uid = 0;
 const newId = () => `t_${Date.now()}_${++_uid}`;
 
+const newTotem = (): TotemConfig => ({ id: newId(), cameras: 3, smartSampa: false, camerasIA: [[], [], []] });
+
 export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }: Props) {
-  const [totens, setTotens] = useState<TotemConfig[]>([{ id: newId(), cameras: 3 }]);
+  const [totens, setTotens] = useState<TotemConfig[]>([newTotem()]);
   const [step, setStep] = useState<StepId>("totens");
   const [overrides, setOverrides] = useState<Record<string, number>>({});
   const [accordionOpen, setAccordionOpen] = useState(true);
@@ -80,8 +102,12 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
     () => computeTotens(totens, step === "revisao" ? overrides : undefined),
     [totens, overrides, step],
   );
-  const totalUnid = itens.reduce((s, i) => s + i.qtd, 0);
+  const itensEquip = itens.filter((i) => !isServicoCode(i.cod_eq));
+  const itensMensais = itens.filter((i) => isServicoCode(i.cod_eq));
+  const totalUnid = itensEquip.reduce((s, i) => s + i.qtd, 0);
   const nTotens = totens.length;
+  const mensalTotens = mensalidadeTotens(totens);
+  const mensalIAs = itensMensais.reduce((s, i) => s + (IA_MENSALIDADES[i.cod_eq] ?? 0) * i.qtd, 0);
 
   const cardStyle: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
@@ -94,13 +120,33 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
   };
 
   function addTotem() {
-    setTotens((t) => [...t, { id: newId(), cameras: 3 }]);
+    setTotens((t) => [...t, newTotem()]);
   }
   function removeTotem(id: string) {
     setTotens((t) => (t.length <= 1 ? t : t.filter((x) => x.id !== id)));
   }
   function setCameras(id: string, n: 2 | 3 | 4) {
-    setTotens((t) => t.map((x) => (x.id === id ? { ...x, cameras: n } : x)));
+    setTotens((t) =>
+      t.map((x) =>
+        x.id === id
+          ? { ...x, cameras: n, camerasIA: Array.from({ length: n }, (_, i) => x.camerasIA[i] ?? []) }
+          : x,
+      ),
+    );
+  }
+  function toggleSmartSampa(id: string) {
+    setTotens((t) => t.map((x) => (x.id === id ? { ...x, smartSampa: !x.smartSampa } : x)));
+  }
+  function toggleCamIA(id: string, camIdx: number, ia: string) {
+    setTotens((t) =>
+      t.map((x) => {
+        if (x.id !== id) return x;
+        const camerasIA = x.camerasIA.map((lista, i) =>
+          i === camIdx ? (lista.includes(ia) ? lista.filter((v) => v !== ia) : [...lista, ia]) : lista,
+        );
+        return { ...x, camerasIA };
+      }),
+    );
   }
 
   const Resumo = (
@@ -124,7 +170,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
       }}>
         Totem Inteligente — {nTotens} totem{nTotens === 1 ? "" : "s"}
       </div>
-      {itens.map((it) => {
+      {itensEquip.map((it) => {
         const meta = TOTEM_BASE.find((k) => k.cod_eq === it.cod_eq)!;
         return (
           <div key={it.cod_eq} style={{
@@ -156,6 +202,26 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
         <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
       </div>
+
+      {/* Mensalidades: totens (500/550 +100 Smart Sampa) + I.As por câmera */}
+      <div style={{
+        marginTop: 8, padding: "10px 12px", borderRadius: 10,
+        border: isLight ? "1px dashed rgba(0,0,0,0.12)" : "1px dashed rgba(255,255,255,0.14)",
+        display: "flex", flexDirection: "column", gap: 4,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+          <span style={{ color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>
+            Mensalidade dos totens{totens.some((t) => t.smartSampa) ? " (c/ Smart Sampa)" : ""}
+          </span>
+          <span style={{ fontWeight: 800, color: gold }}>R$ {mensalTotens.toFixed(2)}/mês</span>
+        </div>
+        {mensalIAs > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+            <span style={{ color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>I.As por câmera</span>
+            <span style={{ fontWeight: 800, color: gold }}>R$ {mensalIAs.toFixed(2)}/mês</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -180,54 +246,112 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   borderRadius: 12, padding: 12,
                   background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                  display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                  display: "flex", flexDirection: "column", gap: 10,
                 }}>
-                  <Cctv size={22} color={gold} />
-                  <div style={{ flex: 1, minWidth: 100 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
-                      Totem {i + 1}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <Cctv size={22} color={gold} />
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
+                        Totem {i + 1}
+                      </div>
+                      <div style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
+                        Poste 2,6 m + switch + fonte + câmeras
+                      </div>
                     </div>
-                    <div style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
-                      Poste 2,6 m + switch + fonte + câmeras
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)", marginRight: 4 }}>
+                        Câmeras:
+                      </span>
+                      {[2, 3, 4].map((n) => {
+                        const sel = t.cameras === n;
+                        return (
+                          <button
+                            key={n}
+                            onClick={() => setCameras(t.id, n as 2 | 3 | 4)}
+                            style={{
+                              width: 34, height: 34, borderRadius: "50%",
+                              border: sel ? `2px solid ${gold}` : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.18)"),
+                              background: sel ? gold : "transparent",
+                              color: sel ? "#fff" : (isLight ? "#0a0b0e" : "#fff"),
+                              fontWeight: 800, fontSize: 13, cursor: "pointer",
+                            }}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
                     </div>
+                    <button
+                      onClick={() => removeTotem(t.id)}
+                      disabled={nTotens <= 1}
+                      style={{
+                        width: 34, height: 34, borderRadius: "50%",
+                        border: isLight ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(220,38,38,0.4)",
+                        background: "transparent", cursor: nTotens <= 1 ? "not-allowed" : "pointer",
+                        color: "#dc2626", opacity: nTotens <= 1 ? 0.4 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                      aria-label="Remover totem"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)", marginRight: 4 }}>
-                      Câmeras:
-                    </span>
-                    {[2, 3, 4].map((n) => {
-                      const sel = t.cameras === n;
-                      return (
-                        <button
-                          key={n}
-                          onClick={() => setCameras(t.id, n as 2 | 3 | 4)}
-                          style={{
-                            width: 34, height: 34, borderRadius: "50%",
-                            border: sel ? `2px solid ${gold}` : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.18)"),
-                            background: sel ? gold : "transparent",
-                            color: sel ? "#fff" : (isLight ? "#0a0b0e" : "#fff"),
-                            fontWeight: 800, fontSize: 13, cursor: "pointer",
-                          }}
-                        >
-                          {n}
-                        </button>
-                      );
-                    })}
-                  </div>
+
+                  {/* Smart Sampa — opcional por totem (afeta a mensalidade do totem) */}
                   <button
-                    onClick={() => removeTotem(t.id)}
-                    disabled={nTotens <= 1}
+                    onClick={() => toggleSmartSampa(t.id)}
                     style={{
-                      width: 34, height: 34, borderRadius: "50%",
-                      border: isLight ? "1px solid rgba(220,38,38,0.35)" : "1px solid rgba(220,38,38,0.4)",
-                      background: "transparent", cursor: nTotens <= 1 ? "not-allowed" : "pointer",
-                      color: "#dc2626", opacity: nTotens <= 1 ? 0.4 : 1,
-                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: "100%", padding: "10px 12px", borderRadius: 10,
+                      border: t.smartSampa ? "none" : (isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)"),
+                      background: t.smartSampa ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)" : "transparent",
+                      color: t.smartSampa ? "#0A0A0A" : (isLight ? "#4a5060" : "rgba(255,255,255,0.7)"),
+                      fontWeight: 700, fontSize: 12, letterSpacing: "0.06em",
+                      cursor: "pointer", transition: "all 0.15s",
+                      boxShadow: t.smartSampa ? "0 4px 14px rgba(255,192,0,0.35)" : undefined,
                     }}
-                    aria-label="Remover totem"
                   >
-                    <Trash2 size={14} />
+                    {t.smartSampa ? "✓ Conectado ao Smart Sampa" : "Conectar ao Smart Sampa"}
                   </button>
+
+                  {/* I.As por câmera */}
+                  <div>
+                    <div style={{
+                      fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                      color: isLight ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.45)", marginBottom: 6,
+                    }}>
+                      I.A integrada por câmera
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {Array.from({ length: t.cameras }, (_, camIdx) => (
+                        <div key={camIdx} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, flexShrink: 0, width: 44,
+                            color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)",
+                          }}>
+                            Câm. {camIdx + 1}
+                          </span>
+                          {IA_OPCOES_CAMERA.map((ia) => {
+                            const sel = (t.camerasIA[camIdx] ?? []).includes(ia);
+                            return (
+                              <button
+                                key={ia}
+                                onClick={() => toggleCamIA(t.id, camIdx, ia)}
+                                style={{
+                                  padding: "4px 8px", borderRadius: 999,
+                                  border: sel ? "none" : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,215,0,0.22)"),
+                                  background: sel ? gold : "transparent",
+                                  color: sel ? "#0A0A0A" : (isLight ? "#4a5060" : "rgba(255,255,255,0.65)"),
+                                  fontWeight: 700, fontSize: 10, cursor: "pointer", transition: "all 0.15s",
+                                }}
+                              >
+                                {ia}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -290,16 +414,16 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
     }
 
     // revisao
-    const subTotal = itens.reduce((s, i) => s + i.qtd, 0);
+    const subTotal = itensEquip.reduce((s, i) => s + i.qtd, 0);
     return (
       <div style={cardStyle}>
         <div style={secLabel}>REVISÃO DO BLOCO</div>
         <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", marginBottom: 12 }}>
           Ajuste as quantidades item a item para casos excepcionais. O padrão é <b>{nTotens} totem{nTotens === 1 ? "" : "s"}</b>{" "}
-          ({totens.map((t, i) => `T${i + 1}=${t.cameras}cam`).join(", ")}).
+          ({totens.map((t, i) => `T${i + 1}=${t.cameras}cam${t.smartSampa ? "+SS" : ""}`).join(", ")}).
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {itens.map((it) => {
+          {itensEquip.map((it) => {
             const meta = TOTEM_BASE.find((k) => k.cod_eq === it.cod_eq)!;
             const base =
               meta.qtdPorTotem === "cameras"
@@ -372,6 +496,33 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
         }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
+        </div>
+
+        {/* Mensalidades (não ajustáveis — derivam da configuração dos totens) */}
+        <div style={{
+          marginTop: 10, padding: "10px 12px", borderRadius: 10,
+          border: isLight ? "1px dashed rgba(0,0,0,0.12)" : "1px dashed rgba(255,255,255,0.14)",
+          display: "flex", flexDirection: "column", gap: 4,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: goldDark, marginBottom: 2 }}>
+            MENSALIDADES
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+            <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)" }}>
+              Totens ({totens.map((t, i) => `T${i + 1}: ${t.cameras}cam${t.smartSampa ? " + Smart Sampa" : ""}`).join(" · ")})
+            </span>
+            <span style={{ fontWeight: 800, color: gold, flexShrink: 0 }}>R$ {mensalTotens.toFixed(2)}/mês</span>
+          </div>
+          {itensMensais.map((it) => (
+            <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+              <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)" }}>
+                {it.qtd}× {it.regra.replace(" (mensal, por câmera do totem)", "")}
+              </span>
+              <span style={{ fontWeight: 800, color: gold, flexShrink: 0 }}>
+                R$ {((IA_MENSALIDADES[it.cod_eq] ?? 0) * it.qtd).toFixed(2)}/mês
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     );
