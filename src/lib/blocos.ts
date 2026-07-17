@@ -8,10 +8,13 @@ export interface BarreiraConfig {
   saida: string;
   material?: string;
   motor?: boolean;
+  /** PORP: MOL/MOT/NAD · PORV: BASC/DESL/PIVO · ELEV: PCF/NPCF (porta corta-fogo) */
   abertura?: string;
   folhas?: string;
-  tamanho?: string; // 200CM/350CM/450CM (PIVO) ou 15M/2M/25M/3M (BASC)
-  peso?: string;    // 800KG/1300KG/1500KG (DESL)
+  /** 200CM/350CM/450CM (PIVO) · 15M/2M/25M/3M (BASC) · 1EL–4EL (ELEV: qtd de elevadores) */
+  tamanho?: string;
+  /** DESL: sempre 1500KG (fixado) · PORP+MOL: MOL45/MOL65/MOL85 (peso da porta) */
+  peso?: string;
 }
 
 /** Câmera individual do escopo CFTV: tipo, metragem de cabo e recursos de I.A. */
@@ -56,9 +59,19 @@ export const LABELS: Record<string, string> = {
   LPR: "Leitora de Placas",
   CAT: "Catraca",
   PORP: "Porta",
+  ELEV: "Elevador",
   CAN: "Cancela",
   PORV: "Portão Veicular",
   MOL: "Mola Aérea",
+  MOL45: "Até 45 kg",
+  MOL65: "Até 65 kg",
+  MOL85: "Até 85 kg",
+  "1EL": "1 Elevador",
+  "2EL": "2 Elevadores",
+  "3EL": "3 Elevadores",
+  "4EL": "4 Elevadores",
+  PCF: "Com Porta Corta-Fogo",
+  NPCF: "Sem Porta Corta-Fogo",
   MOT: "Motor",
   NAD: "Manual (sem motor)",
   BASC: "Basculante",
@@ -98,7 +111,10 @@ export const OPCOES = {
   folhasPivo: ["1F", "2F"] as const,
   tamanhoPivo: ["200CM", "350CM", "450CM"] as const,
   tamanhoBasc: ["15M", "2M", "25M", "3M"] as const,
-  pesoDesl: ["800KG", "1300KG", "1500KG"] as const,
+  // DESL: peso não é mais perguntado — sempre 1500KG (só trabalhamos com esse motor)
+  pesoMola: ["MOL45", "MOL65", "MOL85"] as const,
+  qtdElevadores: ["1EL", "2EL", "3EL", "4EL"] as const,
+  cortaFogo: ["PCF", "NPCF"] as const,
   tecCftv: ["IP", "ANAL"] as const,
   tecAl: ["CAB", "SF"] as const,
 };
@@ -121,9 +137,19 @@ export function gerarCodigoBloco(config: BlocoConfig): string {
   const barreiras = eclusa ? "2B" : "1B";
 
   function seg(b: BarreiraConfig): string {
+    // Elevador (acesso de pedestres): sem entrada/saída — só qtd (tamanho=1EL..4EL)
+    // e porta corta-fogo (abertura=PCF/NPCF).
+    if (b.tipo === "ELEV") {
+      let s = "ELEV";
+      if (b.tamanho) s += `-${b.tamanho}`;
+      if (b.abertura) s += `-${b.abertura}`;
+      return s;
+    }
     let s = `${b.tipo}-${b.entrada}-${b.saida}`;
     if (b.tipo === "PORP" && b.abertura) {
       s += `-${b.abertura}`;
+      // Mola aérea: peso da porta define o modelo (MH 102/103/104)
+      if (b.abertura === "MOL" && b.peso) s += `-${b.peso}`;
     }
     if (b.tipo === "PORV" && b.abertura) {
       s += `-${b.abertura}`;
@@ -205,10 +231,17 @@ export function gerarDescricaoBloco(config: BlocoConfig): string {
   const barrNome = eclusa ? "2 Barreiras (Eclusa)" : "1 Barreira";
 
   function descrB(b: BarreiraConfig, idx: number): string {
+    if (b.tipo === "ELEV") {
+      let d = `B${idx}: Elevador`;
+      if (b.tamanho) d += ` | ${LABELS[b.tamanho] ?? b.tamanho}`;
+      if (b.abertura) d += ` | ${LABELS[b.abertura] ?? b.abertura}`;
+      return d;
+    }
     let d = `B${idx}: ${LABELS[b.tipo] ?? b.tipo}`;
     d += ` | E: ${LABELS[b.entrada] ?? b.entrada} | S: ${LABELS[b.saida] ?? b.saida}`;
     if (b.tipo === "PORP" && b.abertura) {
       d += ` | ${LABELS[b.abertura] ?? b.abertura}`;
+      if (b.abertura === "MOL" && b.peso) d += ` ${LABELS[b.peso] ?? b.peso}`;
     }
     if (b.tipo === "PORV" && b.abertura) {
       d += ` | ${LABELS[b.abertura] ?? b.abertura}`;

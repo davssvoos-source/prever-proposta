@@ -41,13 +41,25 @@ export const IA_OPCOES_CAMERA = [
 export const isServicoCode = (cod: string) => /^SV\d+/i.test(cod);
 
 // ─── Receptores RF e Módulo Guarita (regra por projeto) ──────────────────────
-export const EQ_RECEPTOR_RTX = "EQ004"; // Receptor RF RTX 3004 (por barreira com CTRL)
-export const EQ_RECEPTOR_RMF = "EQ007"; // Receptor HCS Multifunção RMF3004 (por TAG)
+export const EQ_RECEPTOR_RTX = "EQ004"; // Receptor RF RTX 3004 (1 por bloco com CTRL)
+export const EQ_RECEPTOR_RMF = "EQ007"; // Receptor HCS Multifunção RMF3004 (sub-central: 4 antenas cada)
+export const EQ_ANTENA_TAG = "EQ008"; // Antena Veicular para TAG RTAG 3000 (1 por sigla TAG)
 export const EQ_MODULO_GUARITA = "EQ003"; // Módulo Guarita IP MG 3000
 
-/** Módulo Guarita IP: 1 a cada 4 receptores (RTX + RMF somados) no projeto inteiro. */
-export function qtdModulosGuarita(totalReceptores: number): number {
-  return Math.ceil(Math.max(0, totalReceptores) / 4);
+/** Receptor HCS Multifunção: sub-central que suporta 4 Antenas TAG. */
+export function qtdMultifuncao(totalAntenas: number): number {
+  return Math.ceil(Math.max(0, totalAntenas) / 4);
+}
+
+/** Módulo Guarita IP MG 3000: 16 canais, divididos em 8 para RTX e 8 para RMF.
+ *  Ex.: 9 RTX → 2 módulos. Obrigatório (mín. 1) em Portaria Remota; em Portaria
+ *  Presencial só quando há RTX ou RMF no projeto. */
+export function qtdModulosGuarita(totalRtx: number, totalRmf: number, portariaRemota: boolean): number {
+  const porCapacidade = Math.max(
+    Math.ceil(Math.max(0, totalRtx) / 8),
+    Math.ceil(Math.max(0, totalRmf) / 8),
+  );
+  return portariaRemota ? Math.max(1, porCapacidade) : porCapacidade;
 }
 
 const ceil = (value: number, divisor: number) =>
@@ -71,7 +83,7 @@ function countTokens(codigo: string) {
 }
 
 // Tokens que iniciam um segmento de barreira dentro do código de um bloco de acesso.
-const BARRIER_TYPES = new Set(["CAT", "PORP", "CAN", "PORV"]);
+const BARRIER_TYPES = new Set(["CAT", "PORP", "CAN", "PORV", "ELEV"]);
 
 /** Divide o código do bloco em segmentos de barreira: cada segmento começa num
  *  token de tipo (CAT/PORP/CAN/PORV) e carrega os tokens seguintes (entrada,
@@ -130,13 +142,14 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
 
   // Receptores RF: 1 RTX 3004 por BLOCO com controle remoto (CTRL) — 1 receptor já
   // atende as 2 barreiras da mesma eclusa de portão, não soma por barreira.
-  // 1 RMF3004 por TAG (esse sim, por ocorrência). O Módulo Guarita IP (MG 3000 /
-  // EQ003) NÃO é adicionado aqui: é regra por PROJETO (⌈(RTX+RMF de todos os
-  // blocos)/4⌉) e é reconciliado por `reconcileGuaritaProjeto`, que o hospeda
-  // num único bloco de acesso com a contagem total.
+  // TAG: 1 Antena Veicular RTAG 3000 (EQ008) por sigla TAG. O Receptor HCS
+  // Multifunção (RMF3004/EQ007) NÃO é adicionado aqui: é sub-central por
+  // PROJETO (⌈antenas/4⌉), reconciliado por `reconcileGuaritaProjeto` — assim
+  // como o Módulo Guarita IP (EQ003: 8 canais RTX + 8 canais RMF) e o RTX
+  // adicional por eclusa veicular em Portaria Remota (hospedado na CENT).
   const rtxQtd = Math.min(ctrlBarreiras, 1);
   add(acc, "EQ004", rtxQtd, "Receptor RF RTX 3004 (1 por bloco/eclusa com controle remoto)");
-  add(acc, "EQ007", tag, "Receptor HCS Multifunção RMF3004 (1 por TAG)");
+  add(acc, "EQ008", tag, "Antena Veicular para TAG RTAG 3000 (1 por TAG)");
 
   // XAS aço c/ suporte: 1 por portão veicular (PORV) em projetos de Portaria Remota
   if (portariaPR && porv > 0) {
@@ -164,14 +177,23 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
     add(acc, "EQ215", pares, `Fotocélula anti-esmagamento (${pares} par(es))`);
   }
 
-  // Molas
-  add(acc, "EQ030", mol, "Mola aérea selecionada no bloco");
+  // Molas aéreas por peso da porta (MH 102/103/104 A Preta).
+  // Fallback: MOL sem token de peso (blocos antigos) → MH 103 A (comportamento anterior).
+  const mol45 = tokens.MOL45 || 0;
+  const mol65 = tokens.MOL65 || 0;
+  const mol85 = tokens.MOL85 || 0;
+  add(acc, "EQ029", mol45, "Mola aérea até 45 kg (MH 102 A Preta)");
+  add(acc, "EQ030", mol65, "Mola aérea até 65 kg (MH 103 A Preta)");
+  add(acc, "EQ304", mol85, "Mola aérea até 85 kg (MH 104 A Preta)");
+  add(acc, "EQ030", Math.max(0, mol - mol45 - mol65 - mol85), "Mola aérea (peso não informado — bloco antigo)");
 
   // Cancela
   add(acc, "EQ055", can, "Cancela e Braço 4m selecionada no bloco");
 
-  // Porta pedestre — display + fechadura
-  add(acc, "EQ022", porp, "Display sinalizador Puxe/Empurre");
+  // Porta pedestre — display + fechadura.
+  // Display Puxe/Empurre só em porta SEM motor de giro (com motor não precisa).
+  const porpSemMotor = segmentos.filter((b) => b.tipo === "PORP" && !b.toks.has("MOT")).length;
+  add(acc, "EQ022", porpSemMotor, "Display sinalizador Puxe/Empurre (porta sem motor)");
   add(acc, "EQ027", porp, "Fechadura magnética com sensor");
 
   // Catraca
@@ -183,15 +205,53 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
     add(acc, "EQ201", mot, "Motor de giro para porta pedestre");
   }
 
-  // PORP + PR
+  // PORP + PR: sensor magnético por porta; módulo relé por porta SEM mola aérea
+  // (com mola aérea o relé Arduino não é necessário — correção dos técnicos).
   if (porp > 0 && portariaPR) {
     add(acc, "EQ118", porp, "Sensor magnético mini (porta pedestre)");
-    add(acc, "EQ213", 2, "Módulo relé 8CH (PORP + Portaria Remota)");
+    const porpSemMola = segmentos.filter((b) => b.tipo === "PORP" && !b.toks.has("MOL")).length;
+    add(acc, "EQ213", porpSemMola, "Módulo relé (1 por porta sem mola aérea, Portaria Remota)");
   }
 
-  // PR + eclusa (2B): 1 relé adicional
+  // VEI + PR: 1 módulo relé por portão veicular (PORV)
+  if (tipo === "VEI" && portariaPR) {
+    add(acc, "EQ213", porv, "Módulo relé (1 por portão veicular, Portaria Remota)");
+  }
+
+  // PR + eclusa (2B): 1 relé adicional da eclusa (ex.: eclusa de 2 portões = 2 + 1 = 3)
   if (portariaPR && barreiras >= 2) {
     add(acc, "EQ213", 1, "Módulo relé adicional para eclusa (2B)");
+  }
+
+  // Eclusa (PED ou VEI, qualquer portaria): 1 Módulo de Intertravamento 2 Botões
+  if (barreiras >= 2) {
+    add(acc, "EQ005", 1, "Módulo de Intertravamento 2 Botões (1 por eclusa)");
+  }
+
+  // PR + portão veicular: Fechadura Magnética 300Kgf FE10300 — 1 por PORV,
+  // exceto eclusa: 1 por eclusa mesmo com 2 PORV.
+  if (portariaPR && porv > 0) {
+    const fechaduras = barreiras >= 2 ? 1 : porv;
+    add(acc, "EQ204", fechaduras, "Fechadura Magnética 300Kgf FE10300 (1 por portão; 1 por eclusa)");
+  }
+
+  // Elevador (Controle de Acesso de Pedestres — tipo de porta ELEV):
+  //  • PCF (porta corta-fogo): 1 fechadura magnética c/ sensor + 1 botoeira analógica.
+  //  • A cada 2 elevadores: 1 leitora facial + 1 interfone (IP Intercom em PR; XPE em PP).
+  for (const b of segmentos) {
+    if (b.tipo !== "ELEV") continue;
+    const nEl = b.toks.has("4EL") ? 4 : b.toks.has("3EL") ? 3 : b.toks.has("2EL") ? 2 : 1;
+    if (b.toks.has("PCF")) {
+      add(acc, "EQ027", 1, "Fechadura magnética c/ sensor (porta corta-fogo)");
+      add(acc, "EQ021", 1, "Botoeira analógica (porta corta-fogo)");
+    }
+    const kits = Math.ceil(nEl / 2);
+    add(acc, "EQ011", kits, `Leitora facial (1 a cada 2 elevadores — ${nEl} elevador(es))`);
+    if (portariaPR) {
+      add(acc, "EQ017", kits, `Interfone IP Intercom PoE (1 a cada 2 elevadores, Portaria Remota)`);
+    } else if (portariaPP) {
+      add(acc, "EQ305", kits, `Interfone XPE (1 a cada 2 elevadores, Portaria Presencial)`);
+    }
   }
 
   // Interfone IP + acrílico (Portaria Remota):

@@ -5,7 +5,7 @@ import {
   ArrowLeft, Check, CheckCircle2, Trash2, Camera, Image as ImageIcon, ChevronDown, Pencil, DoorOpen,
   RefreshCw, DoorClosed, Video, Minus, Plus,
   ScanFace, Nfc, Circle, Tag, Radio, Fingerprint, Settings2, Zap, Users,
-  X, CheckCircle, Wifi, Cable, ArrowLeftRight, Layers, Ruler, Weight, Signal, Eye,
+  X, CheckCircle, Wifi, Cable, ArrowLeftRight, ArrowUpDown, Layers, Ruler, Weight, Signal, Eye,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +49,16 @@ const OPT_ICON: Record<string, LucideIcon> = {
   "800KG": Weight,
   "1300KG": Weight,
   "1500KG": Weight,
+  ELEV: ArrowUpDown,
+  "1EL": Layers,
+  "2EL": Layers,
+  "3EL": Layers,
+  "4EL": Layers,
+  PCF: DoorClosed,
+  NPCF: X,
+  MOL45: Weight,
+  MOL65: Weight,
+  MOL85: Weight,
 };
 
 function OptionIcon({ valor }: { valor: string }) {
@@ -216,13 +226,22 @@ function getStepLabel(step: WizardStep): string {
 function barreiraSteps(b: Partial<BarreiraConfig>, prefix: "b1" | "b2", tipoBloco: TipoBloco): WizardStep[] {
   const s: WizardStep[] = [`${prefix}_tipo` as WizardStep];
   if (!b.tipo) return s;
+  // Elevador (PED): sem entrada/saída — qtd de elevadores (tamanho) + porta corta-fogo (abertura)
+  if (tipoBloco === "PED" && b.tipo === "ELEV") {
+    s.push(`${prefix}_tamanho` as WizardStep, `${prefix}_abertura` as WizardStep);
+    return s;
+  }
   s.push(`${prefix}_entrada` as WizardStep, `${prefix}_saida` as WizardStep);
-  if (tipoBloco === "PED" && b.tipo === "PORP") s.push(`${prefix}_abertura` as WizardStep);
+  if (tipoBloco === "PED" && b.tipo === "PORP") {
+    s.push(`${prefix}_abertura` as WizardStep);
+    // Mola aérea: pergunta do peso da porta
+    if (b.abertura === "MOL") s.push(`${prefix}_peso` as WizardStep);
+  }
   if (tipoBloco === "VEI" && b.tipo === "PORV") {
     s.push(`${prefix}_abertura` as WizardStep);
     if (b.abertura === "PIVO") s.push(`${prefix}_folhas` as WizardStep, `${prefix}_tamanho` as WizardStep);
     if (b.abertura === "BASC") s.push(`${prefix}_tamanho` as WizardStep);
-    if (b.abertura === "DESL") s.push(`${prefix}_peso` as WizardStep);
+    // DESL: peso não é perguntado — sempre 1500KG (fixado ao selecionar)
   }
   return s;
 }
@@ -1043,7 +1062,11 @@ function BlocosWizardPage() {
   // ─── Próximo step após uma resposta de barreira ─────────────────────────
   function nextStepBarreira(prefix: "b1" | "b2", b: Partial<BarreiraConfig>, current: WizardStep, eclusa: boolean | null): WizardStep {
     const p = prefix;
-    if (current === `${p}_tipo`) return `${p}_entrada` as WizardStep;
+    if (current === `${p}_tipo`) {
+      // Elevador: pula entrada/saída — vai direto para a qtd de elevadores
+      if (b.tipo === "ELEV") return `${p}_tamanho` as WizardStep;
+      return `${p}_entrada` as WizardStep;
+    }
     if (current === `${p}_entrada`) return `${p}_saida` as WizardStep;
     if (current === `${p}_saida`) {
       if (tipoBloco === "PED" && b.tipo === "PORP") return `${p}_abertura` as WizardStep;
@@ -1051,16 +1074,26 @@ function BlocosWizardPage() {
       return proximoAposBarreira(p, eclusa);
     }
     if (current === `${p}_abertura`) {
-      if (tipoBloco === "PED") return proximoAposBarreira(p, eclusa);
+      // Elevador: abertura = porta corta-fogo → último passo da barreira
+      if (b.tipo === "ELEV") return proximoAposBarreira(p, eclusa);
+      if (tipoBloco === "PED") {
+        // Mola aérea: pergunta o peso da porta
+        if (b.abertura === "MOL") return `${p}_peso` as WizardStep;
+        return proximoAposBarreira(p, eclusa);
+      }
       if (tipoBloco === "VEI") {
         if (b.abertura === "PIVO") return `${p}_folhas` as WizardStep;
         if (b.abertura === "BASC") return `${p}_tamanho` as WizardStep;
-        if (b.abertura === "DESL") return `${p}_peso` as WizardStep;
+        // DESL: peso fixo 1500KG (setado em selecionar) — barreira concluída
       }
       return proximoAposBarreira(p, eclusa);
     }
     if (current === `${p}_folhas`) return `${p}_tamanho` as WizardStep;
-    if (current === `${p}_tamanho`) return proximoAposBarreira(p, eclusa);
+    if (current === `${p}_tamanho`) {
+      // Elevador: da qtd de elevadores segue para a porta corta-fogo
+      if (b.tipo === "ELEV") return `${p}_abertura` as WizardStep;
+      return proximoAposBarreira(p, eclusa);
+    }
     if (current === `${p}_peso`) return proximoAposBarreira(p, eclusa);
     return proximoAposBarreira(p, eclusa);
   }
@@ -1084,6 +1117,10 @@ function BlocosWizardPage() {
         else w.b2 = { tipo: valor } as Partial<BarreiraConfig>;
       } else {
         (barreira as any)[key] = valor;
+        // Portão deslizante: só trabalhamos com motor de 1500 kg — peso fixado sem perguntar
+        if (key === "abertura" && valor === "DESL" && tipoBloco === "VEI") {
+          (barreira as any).peso = "1500KG";
+        }
       }
       w.step = nextStepBarreira(prefix as "b1"|"b2", prefix === "b1" ? w.b1 : w.b2, w.step, w.eclusa);
     }
@@ -1179,7 +1216,11 @@ function BlocosWizardPage() {
       case "b1_tipo":
       case "b2_tipo":
         return tipoBloco === "PED"
-          ? [{ valor: "CAT", label: "Catraca" }, { valor: "PORP", label: "Porta" }]
+          ? [
+              { valor: "CAT", label: "Catraca" },
+              { valor: "PORP", label: "Porta" },
+              { valor: "ELEV", label: "Elevador" },
+            ]
           : [{ valor: "CAN", label: "Cancela" }, { valor: "PORV", label: "Portão Veicular" }];
       case "b1_entrada": return entrada(b1.tipo);
       case "b2_entrada": return entrada(b2.tipo);
@@ -1188,6 +1229,13 @@ function BlocosWizardPage() {
       case "b1_abertura":
       case "b2_abertura": {
         const b = step.startsWith("b1") ? b1 : b2;
+        // Elevador: abertura = porta corta-fogo (Sim/Não)
+        if (b.tipo === "ELEV") {
+          return [
+            { valor: "PCF", label: "Sim" },
+            { valor: "NPCF", label: "Não" },
+          ];
+        }
         if (tipoBloco === "PED" && b.tipo === "PORP") return [...OPCOES.aberturaPed].map((v) => ({ valor: v, label: LABELS[v] }));
         if (tipoBloco === "VEI" && b.tipo === "PORV") return [...OPCOES.aberturaVei].map((v) => ({ valor: v, label: LABELS[v] }));
         return [];
@@ -1198,13 +1246,21 @@ function BlocosWizardPage() {
       case "b1_tamanho":
       case "b2_tamanho": {
         const b = step.startsWith("b1") ? b1 : b2;
+        // Elevador: tamanho = quantidade de elevadores
+        if (b.tipo === "ELEV") return [...OPCOES.qtdElevadores].map((v) => ({ valor: v, label: LABELS[v] }));
         if (b.abertura === "PIVO") return [...OPCOES.tamanhoPivo].map((v) => ({ valor: v, label: LABELS[v] }));
         if (b.abertura === "BASC") return [...OPCOES.tamanhoBasc].map((v) => ({ valor: v, label: LABELS[v] }));
         return [];
       }
       case "b1_peso":
-      case "b2_peso":
-        return [...OPCOES.pesoDesl].map((v) => ({ valor: v, label: LABELS[v] }));
+      case "b2_peso": {
+        const b = step.startsWith("b1") ? b1 : b2;
+        // PED + Mola Aérea: peso da porta define o modelo da mola
+        if (b.tipo === "PORP" && b.abertura === "MOL") {
+          return [...OPCOES.pesoMola].map((v) => ({ valor: v, label: LABELS[v] }));
+        }
+        return [];
+      }
       case "tecnologia":
         return tipoBloco === "CFTV"
           ? [...OPCOES.tecCftv].map((v) => ({ valor: v, label: LABELS[v] }))
@@ -1220,15 +1276,24 @@ function BlocosWizardPage() {
     if (s === "b1_tipo" || s === "b2_tipo") return "";
     if (s === "b1_entrada" || s === "b2_entrada") return "ENTRADA";
     if (s === "b1_saida" || s === "b2_saida") return "SAÍDA";
-    if (s === "b1_abertura" || s === "b2_abertura") return "TIPO DE ABERTURA?";
+    if (s === "b1_abertura" || s === "b2_abertura") {
+      const b = s.startsWith("b1") ? wizard.b1 : wizard.b2;
+      if (b.tipo === "ELEV") return "CONTÉM PORTA CORTA-FOGO?";
+      return "TIPO DE ABERTURA?";
+    }
     if (s === "b1_folhas" || s === "b2_folhas") return "QUANTIDADE DE FOLHAS?";
     if (s === "b1_tamanho" || s === "b2_tamanho") {
       const b = s.startsWith("b1") ? wizard.b1 : wizard.b2;
+      if (b.tipo === "ELEV") return "QUANTIDADE DE ELEVADORES";
       if (b.abertura === "PIVO") return "TAMANHO DA FOLHA";
       if (b.abertura === "BASC") return "TAMANHO DO ACIONAMENTO";
       return "TAMANHO";
     }
-    if (s === "b1_peso" || s === "b2_peso") return "PESO DO PORTÃO";
+    if (s === "b1_peso" || s === "b2_peso") {
+      const b = s.startsWith("b1") ? wizard.b1 : wizard.b2;
+      if (b.tipo === "PORP" && b.abertura === "MOL") return "QUAL O PESO DA PORTA?";
+      return "PESO DO PORTÃO";
+    }
     if (s === "tecnologia") return tipoBloco === "CFTV" ? "TIPO DE TECNOLOGIA?" : "TIPO DE SISTEMA?";
     return "";
   }

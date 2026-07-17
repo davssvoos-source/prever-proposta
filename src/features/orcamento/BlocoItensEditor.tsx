@@ -266,6 +266,38 @@ export function BlocoItensEditor({
     0,
   );
 
+  // ── Observação do técnico (nuances para a implantação) — visita_blocos.observacao ──
+  const { data: obsSalva } = useQuery({
+    queryKey: ["bloco_observacao", visitaBlocoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("observacao")
+        .eq("id", visitaBlocoId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.observacao as string | null) ?? "";
+    },
+  });
+  const [obs, setObs] = useState("");
+  const [obsReady, setObsReady] = useState(false);
+  useEffect(() => {
+    if (!obsReady && obsSalva !== undefined) {
+      setObs(obsSalva ?? "");
+      setObsReady(true);
+    }
+  }, [obsSalva, obsReady]);
+  const salvarObs = async () => {
+    const valor = obs.trim() || null;
+    if ((obsSalva ?? "") === (valor ?? "")) return;
+    const { error } = await supabase
+      .from("visita_blocos" as any)
+      .update({ observacao: valor })
+      .eq("id", visitaBlocoId);
+    if (error) toast.error("Erro ao salvar observação");
+    else qc.invalidateQueries({ queryKey: ["bloco_observacao", visitaBlocoId] });
+  };
+
   if (!seeded || isLoading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, gap: 10 }}>
@@ -318,6 +350,11 @@ export function BlocoItensEditor({
               return linha(sv?.nome || it.observacao || it.cod_eq, null, it.qtd, it.id, idx);
             })}
           </>
+        )}
+        {(obsSalva ?? "").trim() !== "" && (
+          <div style={{ marginTop: 6, fontSize: 12, fontStyle: "italic", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)" }}>
+            Obs.: {obsSalva}
+          </div>
         )}
       </div>
     );
@@ -546,6 +583,32 @@ export function BlocoItensEditor({
             )}
           </div>
         )}
+      </div>
+
+      {/* Observações do técnico — nuances a lembrar na implantação */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", marginBottom: 6,
+          color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)",
+        }}>
+          OBSERVAÇÕES DO BLOCO (PARA A IMPLANTAÇÃO)
+        </div>
+        <textarea
+          value={obs}
+          onChange={(e) => setObs(e.target.value)}
+          onBlur={salvarObs}
+          placeholder="Ex.: infra existente aproveitável, ponto de energia distante, detalhe do portão…"
+          rows={2}
+          style={{
+            width: "100%", boxSizing: "border-box", resize: "vertical",
+            borderRadius: 12, padding: "10px 12px", fontSize: 13,
+            fontFamily: "'Montserrat', sans-serif",
+            border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+            background: isLight ? "#ffffff" : "#16161d",
+            color: isLight ? "#0a0b0e" : "#fff",
+            outline: "none",
+          }}
+        />
       </div>
 
       {!hideSubtotal && (
