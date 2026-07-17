@@ -3,7 +3,7 @@ import { useState, useEffect, type CSSProperties } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { DatacenterBackground } from "@/components/DatacenterBackground";
 
 export const Route = createFileRoute("/redefinir-senha")({
   component: RedefinirSenhaPage,
@@ -133,7 +133,7 @@ function RedefinirSenhaPage() {
         overflow: "hidden",
       }}
     >
-      <AnimatedBackground />
+      <DatacenterBackground />
       <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <img

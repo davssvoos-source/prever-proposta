@@ -1,12 +1,25 @@
-import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useLocation, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LightBackground } from "@/components/LightBackground";
+import { DatacenterBackground } from "@/components/DatacenterBackground";
 import { BottomNav } from "@/components/BottomNav";
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { useTheme } from "@/contexts/ThemeContext";
+
+// Fundo dinâmico (canvas animado) só na Início — nas demais telas autenticadas
+// usamos o fundo estático novo (mesma regra do modo claro, que já é estático).
+function useIsInicio() {
+  const location = useLocation();
+  return location.pathname === "/dashboard" || location.pathname === "/";
+}
+
+function DarkBackground() {
+  const isInicio = useIsInicio();
+  return isInicio ? <AnimatedBackground /> : <DatacenterBackground />;
+}
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -71,7 +84,7 @@ function AuthenticatedLayout() {
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
     return (
       <>
-        {isLight ? <LightBackground /> : <AnimatedBackground />}
+        {isLight ? <LightBackground /> : <DarkBackground />}
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
@@ -116,7 +129,7 @@ function AuthenticatedLayout() {
 
   return (
     <>
-      {isLight ? <LightBackground /> : <AnimatedBackground />}
+      {isLight ? <LightBackground /> : <DarkBackground />}
       <div style={{ minHeight: "100vh", position: "relative", zIndex: 1 }}>
         {/* HEADER */}
         <div
