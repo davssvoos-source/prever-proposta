@@ -151,9 +151,9 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
   add(acc, "EQ004", rtxQtd, "Receptor RF RTX 3004 (1 por bloco/eclusa com controle remoto)");
   add(acc, "EQ008", tag, "Antena Veicular para TAG RTAG 3000 (1 por TAG)");
 
-  // XAS aço c/ suporte: 1 por portão veicular (PORV) em projetos de Portaria Remota
-  if (portariaPR && porv > 0) {
-    add(acc, "ALM_XASPAS", porv, "XAS aço c/ suporte (1 por portão veicular, Portaria Remota)");
+  // XAS porta de aço c/ suporte: 1 por portão veicular (PORV) — qualquer portaria
+  if (porv > 0) {
+    add(acc, "ALM_XASPAS", porv, "XAS porta de aço c/ suporte (1 por portão veicular)");
   }
 
   // Laço indutivo: 1 central + 1 laço físico POR LAC selecionado
@@ -424,16 +424,20 @@ function computeCerca(input: ComputeInput): AutoBlockItem[] {
 }
 
 // ─── Elevadores ──────────────────────────────────────────────────────────────
+// Kit Antena por elevador (correções dos técnicos 2026-07-17): switch TP-LINK
+// TL-SF1005D no lugar do SF 500 HI-POE, sem roteador Wi-Fi (inclusão manual se
+// necessário), com Fonte Nobreak EFB 1201 + Bateria 12V 7Ah, câmera VIP 1230D G4.
 function computeElevadorFromCodigo(codigo: string): AutoBlockItem[] {
   const kits = Number(codigo.match(/ELV-(\d+)KIT/i)?.[1] ?? 1) || 1;
   return [
-    { cod_eq: "EQ158", qtd: kits,     observacao: "Switch POE 4P — 1× por Kit Antena" },
-    { cod_eq: "EQ166", qtd: kits * 2, observacao: "Roteador W4-300S — 2× por Kit Antena" },
+    { cod_eq: "EQ307", qtd: kits,     observacao: "Switch 4P TL-SF1005D — 1× por Kit Antena" },
     { cod_eq: "EQ167", qtd: kits,     observacao: "Antena Wom 5a — 1× por Kit Antena" },
     { cod_eq: "EQ170", qtd: kits * 2, observacao: "Suporte 40cm — 2× por Kit Antena" },
     { cod_eq: "EQ169", qtd: kits,     observacao: "Telefone TDMI 400 — 1× por Kit Antena" },
-    { cod_eq: "EQ089", qtd: kits,     observacao: "Câmera IP Dome G4 — 1× por Kit Antena" },
+    { cod_eq: "EQ089", qtd: kits,     observacao: "Câmera IP Dome VIP 1230D G4 — 1× por Kit Antena" },
     { cod_eq: "EQ171", qtd: kits,     observacao: "Filtro de linha 5 tomadas — 1× por Kit Antena" },
+    { cod_eq: "EQ179", qtd: kits,     observacao: "Fonte Nobreak EFB 1201 — 1× por Kit Antena" },
+    { cod_eq: "EQ154", qtd: kits,     observacao: "Bateria 12V 7Ah — 1× por Kit Antena" },
   ];
 }
 

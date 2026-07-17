@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, PersonStanding, Car, Camera, ShieldAlert, Zap, Building2, Cctv } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/categorias")({
   component: CategoriasPage,
@@ -75,6 +76,23 @@ function CategoriasPage() {
         .eq("visita_id", id);
       if (error) throw error;
       return (data as any[]) || [];
+    },
+  });
+
+  // Bloco Central de Portaria Remota — escopo exibido no final da tela,
+  // atualizado conforme os blocos são montados (dimensionamento por projeto)
+  const { data: centralBloco } = useQuery({
+    queryKey: ["visita_bloco_central", id],
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("visita_blocos" as any)
+        .select("id, codigo_bloco")
+        .eq("visita_id", id)
+        .eq("tipo_bloco", "CENT")
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any) ?? null;
     },
   });
 
@@ -274,6 +292,43 @@ function CategoriasPage() {
         Escopo concluído
         <ChevronRight size={18} />
       </button>
+
+      {/* Central do projeto — equipamentos calculados por projeto (guarita,
+          receptores, switches, fontes, nobreak/baterias), em tempo real */}
+      {centralBloco && (
+        <div
+          style={{
+            background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+            border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+            borderRadius: 18,
+            padding: "18px 16px",
+            boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <Building2 size={16} color={iconColor} />
+            <span
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+              }}
+            >
+              Central do projeto
+            </span>
+          </div>
+          <BlocoItensEditor
+            visitaBlocoId={centralBloco.id}
+            codigo={centralBloco.codigo_bloco}
+            tipoBloco="CENT"
+            isLight={isLight}
+            readOnly
+          />
+        </div>
+      )}
 
     </div>
   );

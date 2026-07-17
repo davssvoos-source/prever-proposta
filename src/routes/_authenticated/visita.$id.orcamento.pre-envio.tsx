@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 import { reconcileGuaritaProjeto } from "@/features/orcamento/guarita";
+import { reconcileDimensionamentoProjeto } from "@/features/orcamento/dimensionamento";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/orcamento/pre-envio")({
   component: PreEnvioPage,
@@ -53,10 +54,12 @@ function PreEnvioPage() {
   useEffect(() => {
     if (guaritaReconciledRef.current === visitaId) return;
     guaritaReconciledRef.current = visitaId;
-    reconcileGuaritaProjeto(visitaId).then(() => {
-      qc.invalidateQueries({ queryKey: ["visita_bloco_itens"] });
-      qc.invalidateQueries({ queryKey: ["visita_blocos_completo", visitaId] });
-    });
+    reconcileGuaritaProjeto(visitaId)
+      .then(() => reconcileDimensionamentoProjeto(visitaId))
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ["visita_bloco_itens"] });
+        qc.invalidateQueries({ queryKey: ["visita_blocos_completo", visitaId] });
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visitaId]);
 

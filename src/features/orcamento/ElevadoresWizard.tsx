@@ -17,14 +17,18 @@ export interface KitItem {
   qtdPorKit: number;
 }
 
+// Códigos EQ reais do catálogo (antes eram placeholders ELV_KIT_* sem preço).
+// Kit atualizado pelas correções dos técnicos (2026-07-17): switch TP-LINK
+// TL-SF1005D, sem roteador Wi-Fi (manual se necessário), + Fonte Nobreak e Bateria.
 export const KIT_ANTENA: KitItem[] = [
-  { cod_eq: "ELV_KIT_SWITCH",   nome: "Switch POE 4P p/ elevadores",       marca: "Intelbras", modelo: "POE SF 500 HI-POE", qtdPorKit: 1 },
-  { cod_eq: "ELV_KIT_ROTEADOR", nome: "Roteador Wi-Fi p/ elevadores",      marca: "Intelbras", modelo: "W4-300S",           qtdPorKit: 2 },
-  { cod_eq: "ELV_KIT_ANTENA",   nome: "Antena Transmissora p/ elevadores", marca: "Intelbras", modelo: "Wom 5a",            qtdPorKit: 1 },
-  { cod_eq: "ELV_KIT_SUPORTE",  nome: "Suporte p/ IVA p/ elevadores",      marca: "ConfiSeg",  modelo: "40 cm",             qtdPorKit: 2 },
-  { cod_eq: "ELV_KIT_TELEFONE", nome: "Telefone IP POE p/ elevadores",     marca: "Intelbras", modelo: "TDMI 400 IP POE",   qtdPorKit: 1 },
-  { cod_eq: "ELV_KIT_CAMERA",   nome: "Câmera IP Dome p/ elevadores",      marca: "Intelbras", modelo: "VIP 1230 D G4",     qtdPorKit: 1 },
-  { cod_eq: "ELV_KIT_FILTRO",   nome: "Filtro de Linha p/ elevadores",     marca: "Intelbras", modelo: "5 Tomadas",         qtdPorKit: 1 },
+  { cod_eq: "EQ307", nome: "Switch 4 Portas p/ elevadores",       marca: "TP-LINK",   modelo: "TL-SF1005D",      qtdPorKit: 1 },
+  { cod_eq: "EQ167", nome: "Antena Transmissora p/ elevadores",   marca: "Intelbras", modelo: "Wom 5a",          qtdPorKit: 1 },
+  { cod_eq: "EQ170", nome: "Suporte p/ IVA p/ elevadores",        marca: "ConfiSeg",  modelo: "40 cm",           qtdPorKit: 2 },
+  { cod_eq: "EQ169", nome: "Telefone IP POE p/ elevadores",       marca: "Intelbras", modelo: "TDMI 400 IP POE", qtdPorKit: 1 },
+  { cod_eq: "EQ089", nome: "Câmera IP Dome p/ elevadores",        marca: "Intelbras", modelo: "VIP 1230D G4",    qtdPorKit: 1 },
+  { cod_eq: "EQ171", nome: "Filtro de Linha p/ elevadores",       marca: "Intelbras", modelo: "5 Tomadas",       qtdPorKit: 1 },
+  { cod_eq: "EQ179", nome: "Fonte Nobreak p/ elevadores",         marca: "Intelbras", modelo: "EFB 1201",        qtdPorKit: 1 },
+  { cod_eq: "EQ154", nome: "Bateria 12V 7Ah p/ elevadores",       marca: "SecPower",  modelo: "7A",              qtdPorKit: 1 },
 ];
 
 export interface ElevadorItemCalc {

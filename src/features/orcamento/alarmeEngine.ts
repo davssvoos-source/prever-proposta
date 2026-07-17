@@ -4,8 +4,9 @@
 // visita_blocos.alarme_config.
 //
 // Conceito de ZONA: zona = ambiente. Cada zona suporta até 3 sensores (ou 3 pares,
-// quando o sensor trabalha em par, caso dos IVA). A cada 8 zonas no projeto,
-// 1 expansor XEZ 4008 Smart (⌈zonas/8⌉ — regra confirmada com o cliente).
+// quando o sensor trabalha em par, caso dos IVA). A PRÓPRIA CENTRAL cobre as
+// primeiras 8 zonas; cada expansor XEZ 4008 adiciona +8, com limite de 8
+// expansores por central (8 + 64 = 72 zonas máx) — correção dos técnicos.
 
 export type AlarmeRamo = "CAB" | "SF";
 
@@ -139,9 +140,17 @@ export function computeAlarme(cfg: AlarmeConfig): CalcResult {
       push(itens, "ALM_XAR4000", 1, true, "XAR 4000 Smart — Residência/Galpão");
     }
 
-    // ── Expansor de zonas: 1 XEZ 4008 a cada 8 zonas ─────────────────────
-    push(itens, "ALM_XEZ4008", ceil(nZonas, 8), true,
-      `${nZonas} zona(s) → 1 expansor a cada 8`);
+    // ── Expansor de zonas: a central já cobre 8 zonas; 1 XEZ 4008 a cada 8
+    //    zonas EXCEDENTES, máx. 8 expansores por central (72 zonas no total) ──
+    const expansores = ceil(Math.max(0, nZonas - 8), 8);
+    push(itens, "ALM_XEZ4008", Math.min(expansores, 8), true,
+      `${nZonas} zona(s) — central cobre 8; 1 expansor a cada 8 excedentes`);
+    if (nZonas > 72) {
+      alertas.push({
+        tipo: "error",
+        msg: `${nZonas} zonas excedem a capacidade de 1 central (8 da central + 8 expansores × 8 = 72). Divida em mais de um bloco de alarme.`,
+      });
+    }
 
     // ── TX 4020: sensor distante convertido em sem fio (1 por sensor) ────
     push(itens, "ALM_TX4020", sensoresTx, false,

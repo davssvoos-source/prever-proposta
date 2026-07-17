@@ -96,6 +96,7 @@ import type { AlarmeConfig, CalcRow as AlarmeCalcRow } from "@/features/orcament
 import { ElevadoresWizard, type ElevadorItemCalc } from "@/features/orcamento/ElevadoresWizard";
 import { TotemWizard, type TotemConfig, type TotemItemCalc } from "@/features/orcamento/TotemWizard";
 import { reconcileGuaritaProjeto } from "@/features/orcamento/guarita";
+import { reconcileDimensionamentoProjeto } from "@/features/orcamento/dimensionamento";
 import { CaboGauge } from "@/features/orcamento/CaboGauge";
 
 
@@ -820,8 +821,10 @@ function BlocosWizardPage() {
         if (itensError) throw itensError;
       }
 
-      // Guarita é regra por projeto: recalcula somando os receptores de todos os blocos
+      // Regras por projeto: guarita/receptores primeiro (inserem consumidores),
+      // depois o dimensionamento (switches/fontes/nobreak/baterias na CENT)
       await reconcileGuaritaProjeto(visitaId);
+      await reconcileDimensionamentoProjeto(visitaId);
 
       return { id: blocoId, config };
     },
@@ -843,8 +846,9 @@ function BlocosWizardPage() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("visita_blocos" as any).delete().eq("id", id);
       if (error) throw error;
-      // Removeu um bloco → recalcula a guarita do projeto (pode reduzir/mudar de host)
+      // Removeu um bloco → recalcula guarita e dimensionamento do projeto
       await reconcileGuaritaProjeto(visitaId);
+      await reconcileDimensionamentoProjeto(visitaId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["visita_blocos", visitaId] });
@@ -892,6 +896,7 @@ function BlocosWizardPage() {
         const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
         if (insErr) throw insErr;
       }
+      await reconcileDimensionamentoProjeto(visitaId);
       return blocoId;
     },
     onSuccess: () => {
@@ -936,6 +941,7 @@ function BlocosWizardPage() {
         const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
         if (insErr) throw insErr;
       }
+      await reconcileDimensionamentoProjeto(visitaId);
       return blocoId;
     },
     onSuccess: () => {
@@ -990,6 +996,7 @@ function BlocosWizardPage() {
         const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
         if (insErr) throw insErr;
       }
+      await reconcileDimensionamentoProjeto(visitaId);
       return blocoId;
     },
     onSuccess: () => {
