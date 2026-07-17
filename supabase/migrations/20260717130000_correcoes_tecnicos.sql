@@ -28,9 +28,19 @@ SET nome = 'Fechadura Magnética 300Kgf', marca = 'Intelbras',
     fornecedor = 'Bellfone', custo = 726.57
 WHERE code = 'EQ204';
 
--- 4) Interfone XPE (elevador em Portaria Presencial — 1 a cada 2 elevadores)
---    ⚠ CUSTO PENDENTE: cadastrado com custo 0 até o usuário informar o valor real.
+-- 4) Interfones XPE (elevador em Portaria Presencial — 1 a cada 2 elevadores).
+--    EQ305 (XPE 1001 Fit) é o usado na automação; EQ306 (XPE 1001 Plus) fica
+--    disponível no catálogo para inclusão manual pelo técnico.
 INSERT INTO public.equipamentos (code, nome, cat, subcat, marca, modelo, un, custo, markup, fornecedor)
-VALUES ('EQ305', 'Interfone XPE', 'controle_acesso', 'interfonia',
-        'Intelbras', 'XPE', 'un', 0, 1.5, 'Bellfone')
-ON CONFLICT (code) DO NOTHING;
+VALUES ('EQ305', 'Interfone XPE 1001 Fit', 'controle_acesso', 'interfonia',
+        'Intelbras', 'XPE 1001 Fit', 'un', 265.58, 1.5, 'Bellfone')
+ON CONFLICT (code) DO UPDATE
+SET nome = excluded.nome, modelo = excluded.modelo, custo = excluded.custo,
+    marca = excluded.marca, fornecedor = excluded.fornecedor;
+
+INSERT INTO public.equipamentos (code, nome, cat, subcat, marca, modelo, un, custo, markup, fornecedor)
+VALUES ('EQ306', 'Interfone XPE 1001 Plus', 'controle_acesso', 'interfonia',
+        'Intelbras', 'XPE 1001 Plus', 'un', 417.62, 1.5, 'Bellfone')
+ON CONFLICT (code) DO UPDATE
+SET nome = excluded.nome, modelo = excluded.modelo, custo = excluded.custo,
+    marca = excluded.marca, fornecedor = excluded.fornecedor;
