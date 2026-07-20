@@ -5,8 +5,10 @@
 // Regras: src/features/comercial/regrasComerciais.ts
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Layers, KeyRound, Handshake, CalendarClock } from "lucide-react";
+import { ArrowLeft, Layers, KeyRound, Handshake, CalendarClock, FileText, X } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { isServicoCode } from "@/features/orcamento/blockAutoItems";
@@ -18,15 +20,9 @@ import {
   LOCACAO_PRAZO_MESES,
   mensalidadeLocacao,
   mensalidadesComodato,
-  MONITORAMENTO_24H_MENSAL,
-  valorPortariaRemota,
-  mensalidadeTotem,
-  SOFTWARE_OPERANTE_PR_MENSAL,
-  SOFTWARE_OPERANTE_PRESENCIAL_MENSAL,
-  APP_ACESSOS_PP_MENSAL,
-  LINK_INTERNET_PREVER_MENSAL,
-  IA_MENSALIDADES,
 } from "@/features/comercial/regrasComerciais";
+import { computeLinhasMensais, totalMensalServicos } from "@/features/comercial/mensalidadesProjeto";
+import { gerarPropostaDocx, FORMAS_PAGAMENTO, type FormaPagamentoOpcao } from "@/features/proposta/gerarProposta";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/pagamento")({
   component: PagamentoPage,
@@ -170,94 +166,59 @@ function PagamentoPage() {
   // ── Comodato (cascata sobre a mensalidade de locação) ───────────────────────
   const comodato = mensalidadesComodato(locacaoMensal);
 
-  // ── Mensalidades de serviços ────────────────────────────────────────────────
+  // ── Mensalidades de serviços (módulo compartilhado com a proposta) ─────────
   const tipoLocal = ((visita as any)?.tipo_local as string | null)?.trim().toLowerCase() ?? "";
-  const isResidencia = tipoLocal === "residencia";
-  const isGalpao = tipoLocal === "empresa";
-  const sistemaProposto = (orcamento as any)?.sistema_proposto as string | null;
-  const qtdApartamentos = Number((orcamento as any)?.qtd_apartamentos || 0);
-  const servicosOfertados: string[] = ((orcamento as any)?.servicos_ofertados as string[]) ?? [];
-  const linkPrever = (orcamento as any)?.link_internet_fornecimento === "prever";
-  const appAcessos = (orcamento as any)?.app_prever_acessos === true;
-
-  type LinhaMensal = { label: string; valor: number | null; obs?: string };
-  const linhasMensais: LinhaMensal[] = [];
-
-  // I.As / Smart Sampa por câmera (itens SV dos blocos)
   const svAgg: Record<string, number> = {};
   for (const it of itensSv as any[]) svAgg[it.cod_eq] = (svAgg[it.cod_eq] ?? 0) + Number(it.qtd || 0);
-  for (const [code, qtd] of Object.entries(svAgg)) {
-    if (qtd <= 0) continue;
-    const sv = svInfo[code];
-    const preco = sv?.preco ?? IA_MENSALIDADES[code] ?? 0;
-    linhasMensais.push({ label: `${qtd}× ${sv?.nome ?? code}`, valor: preco * qtd });
-  }
-
-  // Totens (mensalidade por totem, com Smart Sampa por totem)
-  for (const bloco of blocos as any[]) {
-    if (bloco.tipo_bloco !== "TOT") continue;
-    const cfg = (bloco.alarme_config as any)?.totem_totens as
-      | { cameras: number; smart_sampa: boolean }[]
-      | undefined;
-    let valor = 0;
-    let obs: string | undefined;
-    if (Array.isArray(cfg) && cfg.length > 0) {
-      valor = cfg.reduce((s, t) => s + mensalidadeTotem(Number(t.cameras || 0), !!t.smart_sampa), 0);
-      obs = cfg.map((t, i) => `T${i + 1}: ${t.cameras}cam${t.smart_sampa ? "+SS" : ""}`).join(" · ");
-    } else {
-      // Bloco antigo sem config detalhada: estima pelo código TOT-{n}x{cam}CAM
-      const m = String(bloco.codigo_bloco || "").match(/TOT-(\d+)x(\d+)CAM/i);
-      const n = m ? Number(m[1]) : Number(bloco.quantidade || 1);
-      const cams = m ? Number(m[2]) : 3 * n;
-      const camPorTotem = n > 0 ? cams / n : 3;
-      valor = n * mensalidadeTotem(camPorTotem, false);
-      obs = "estimado (bloco salvo antes da config detalhada)";
-    }
-    linhasMensais.push({ label: "Totem de Monitoramento", valor, obs });
-  }
-
-  // Operação de Portaria Remota (por faixa de apartamentos)
-  if (sistemaProposto === "PR") {
-    const v24 = valorPortariaRemota(qtdApartamentos, "24h");
-    const v12 = valorPortariaRemota(qtdApartamentos, "12h");
-    linhasMensais.push({
-      label: `Operação Portaria Remota 24H (${qtdApartamentos} aptos)`,
-      valor: v24,
-      obs: v24 === null ? "acima de 100 aptos — sob negociação" : v12 !== null ? `opção 12H: ${fmtBRL(v12)}` : undefined,
-    });
-    linhasMensais.push({ label: "Software operante (Portaria Remota)", valor: SOFTWARE_OPERANTE_PR_MENSAL });
-    if (appAcessos) {
-      linhasMensais.push({ label: "App Grupo Prever Acessos", valor: 0, obs: "incluso na operação de Portaria Remota" });
-    }
-  }
-
-  // Portaria Presencial: software operante (se há controle de acesso) + app
-  const temControleAcesso = (blocos as any[]).some((b) => b.tipo_bloco === "PED" || b.tipo_bloco === "VEI");
-  if (sistemaProposto === "PP") {
-    if (temControleAcesso) {
-      linhasMensais.push({ label: "Software operante (Acesso c/ Portaria Presencial)", valor: SOFTWARE_OPERANTE_PRESENCIAL_MENSAL });
-    }
-    if (appAcessos && !isResidencia && !isGalpao) {
-      linhasMensais.push({ label: "App Grupo Prever Acessos", valor: APP_ACESSOS_PP_MENSAL });
-    }
-  }
-
-  // Monitoramento 24H (Residência / Galpão)
-  if ((isResidencia || isGalpao) && servicosOfertados.includes("monitoramento_24h")) {
-    linhasMensais.push({
-      label: `Monitoramento 24H (${isGalpao ? "Galpão" : "Residência"})`,
-      valor: MONITORAMENTO_24H_MENSAL[isGalpao ? "galpao" : "residencia"],
-    });
-  }
-
-  // Link de internet fornecido pela Prever
-  if (linkPrever) {
-    linhasMensais.push({ label: "Link de internet (fornecido pela Prever)", valor: LINK_INTERNET_PREVER_MENSAL });
-  }
-
-  const totalMensalServicos = linhasMensais.reduce((s, l) => s + (l.valor ?? 0), 0);
+  const linhasMensais = computeLinhasMensais({
+    blocos: blocos as any[],
+    svAgg,
+    svInfo,
+    tipoLocal,
+    sistemaProposto: (orcamento as any)?.sistema_proposto ?? null,
+    qtdApartamentos: Number((orcamento as any)?.qtd_apartamentos || 0),
+    servicosOfertados: ((orcamento as any)?.servicos_ofertados as string[]) ?? [],
+    linkPrever: (orcamento as any)?.link_internet_fornecimento === "prever",
+    appAcessos: (orcamento as any)?.app_prever_acessos === true,
+  });
+  const totalServicosMensais = totalMensalServicos(linhasMensais);
 
   const nomeLocal = visita?.nome_predio || visita?.titulo || "Visita";
+
+  // ── Geração da proposta (.docx) ─────────────────────────────────────────────
+  const [modalAberto, setModalAberto] = useState(false);
+  const [formaEscolhida, setFormaEscolhida] = useState<FormaPagamentoOpcao | "">("");
+  const [numeroProposta, setNumeroProposta] = useState("");
+  const [gerando, setGerando] = useState(false);
+
+  const valorDaForma = (f: FormaPagamentoOpcao): string => {
+    if (f === "locacao_24") return `${fmtBRL(locacaoMensal)}/mês + implantação ${IMPLANTACAO_PARCELAS}× ${fmtBRL(implantacaoParcela)}`;
+    if (f === "compra_vista") return fmtBRL(vendaTotal);
+    const prazo = Number(f.replace("comodato_", "")) as 24 | 36 | 48 | 60;
+    return `${fmtBRL(comodato[prazo])}/mês`;
+  };
+
+  const gerar = async () => {
+    if (!formaEscolhida) {
+      toast.error("Selecione a forma de pagamento desejada.");
+      return;
+    }
+    const num = numeroProposta.trim();
+    if (!/^\d{4}_\d{2}_\d{2}$/.test(num)) {
+      toast.error("Número da proposta inválido — use o formato XXXX_YY_ZZ (ex.: 0148_25_01).");
+      return;
+    }
+    setGerando(true);
+    try {
+      await gerarPropostaDocx({ visitaId: id, forma: formaEscolhida, numeroProposta: num });
+      toast.success("Proposta gerada — o download foi iniciado.");
+      setModalAberto(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao gerar a proposta");
+    } finally {
+      setGerando(false);
+    }
+  };
 
   // ── Estilos ─────────────────────────────────────────────────────────────────
   const PAGE: React.CSSProperties = {
@@ -445,11 +406,161 @@ function PagamentoPage() {
             ))}
             <div style={{ ...linhaRow, borderTop: isLight ? "2px solid rgba(0,0,0,0.10)" : "2px solid rgba(255,255,255,0.12)" }}>
               <span style={{ ...linhaLabel, fontWeight: 700 }}>Total mensal de serviços</span>
-              <span style={{ ...linhaValor, fontSize: 16 }}>{fmtBRL(totalMensalServicos)}/mês</span>
+              <span style={{ ...linhaValor, fontSize: 16 }}>{fmtBRL(totalServicosMensais)}/mês</span>
             </div>
           </div>
         )}
       </div>
+
+      {/* Gerar proposta comercial (.docx) */}
+      <button
+        onClick={() => setModalAberto(true)}
+        style={{
+          width: "100%",
+          height: 56,
+          borderRadius: 28,
+          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          border: "none",
+          color: "#08090E",
+          fontFamily: "'Montserrat', sans-serif",
+          fontWeight: 700,
+          fontSize: 13,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+        }}
+      >
+        <FileText size={18} />
+        Gerar Proposta
+      </button>
+
+      {/* Popup: forma de pagamento + número da proposta */}
+      {modalAberto && (
+        <>
+          <div
+            onClick={() => !gerando && setModalAberto(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)", zIndex: 90 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "min(440px, 92vw)",
+              maxHeight: "86vh",
+              overflowY: "auto",
+              zIndex: 100,
+              borderRadius: 18,
+              padding: "20px 18px",
+              background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.16)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
+                Gerar Proposta Comercial
+              </span>
+              <button
+                onClick={() => !gerando && setModalAberto(false)}
+                style={{
+                  width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
+                  background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
+                  color: isLight ? "#0a0b0e" : "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ ...LABEL, marginBottom: 8 }}>Qual a forma de pagamento desejada?</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+              {FORMAS_PAGAMENTO.map(({ valor, label }) => {
+                const selected = formaEscolhida === valor;
+                return (
+                  <button
+                    key={valor}
+                    onClick={() => setFormaEscolhida(valor)}
+                    style={{
+                      textAlign: "left",
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      border: selected
+                        ? "none"
+                        : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                      background: selected
+                        ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                        : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+                      color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>{label}</div>
+                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                      {valorDaForma(valor)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ ...LABEL, marginBottom: 8 }}>Número da proposta</div>
+            <input
+              value={numeroProposta}
+              onChange={(e) => setNumeroProposta(e.target.value)}
+              placeholder="XXXX_YY_ZZ  (ex.: 0148_25_01)"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: 14,
+                border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                background: isLight ? "#ffffff" : "#16161d",
+                color: isLight ? "#0a0b0e" : "#fff",
+                outline: "none",
+                marginBottom: 18,
+              }}
+            />
+
+            <button
+              onClick={gerar}
+              disabled={gerando}
+              style={{
+                width: "100%",
+                height: 52,
+                borderRadius: 26,
+                background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                border: "none",
+                color: "#08090E",
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                cursor: gerando ? "wait" : "pointer",
+                opacity: gerando ? 0.7 : 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <FileText size={16} />
+              {gerando ? "Gerando proposta…" : "Gerar documento (.docx)"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
