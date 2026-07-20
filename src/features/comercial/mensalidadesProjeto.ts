@@ -69,7 +69,13 @@ export function computeLinhasMensais(input: MensalidadesInput): LinhaMensal[] {
       valor = n * mensalidadeTotem(camPorTotem, false);
       obs = "estimado (bloco salvo antes da config detalhada)";
     }
-    linhas.push({ label: "Totem de Monitoramento", valor, obs });
+    // Totem é SEMPRE locação com contrato próprio de 24 meses (sem comodato/compra)
+    const obs24 = "locação — contrato fixo de 24 meses";
+    linhas.push({
+      label: "Totem de Monitoramento",
+      valor,
+      obs: obs ? `${obs} · ${obs24}` : obs24,
+    });
   }
 
   // Operação de Portaria Remota (por faixa de apartamentos)

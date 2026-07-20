@@ -18,7 +18,8 @@ export interface TotemBaseItem {
   nome: string;
   marca: string;
   modelo: string;
-  qtdPorTotem: number | "cameras"; // "cameras" = usa a qtd escolhida
+  /** número = fixo por totem · "cameras" = qtd de câmeras · "cabo50m" = 50 m/poste em caixas de 300 m */
+  qtdPorTotem: number | "cameras" | "cabo50m";
 }
 
 export const TOTEM_BASE: TotemBaseItem[] = [
@@ -26,6 +27,7 @@ export const TOTEM_BASE: TotemBaseItem[] = [
   { cod_eq: "TOT_FONTE",  nome: "Fonte 12V 5A p/ Totem",          marca: "MCM",       modelo: "12V 5A",       qtdPorTotem: 1 },
   { cod_eq: "TOT_CAMERA", nome: "Câmera IP Bullet p/ Totem",      marca: "Intelbras", modelo: "VIP 1230B G4", qtdPorTotem: "cameras" },
   { cod_eq: "TOT_POSTE",  nome: "Poste de Monitoramento 2,6 m",   marca: "Prever",    modelo: "2,6 m",        qtdPorTotem: 1 },
+  { cod_eq: "EQ302",      nome: "Cabo de rede (caixa 300 m)",     marca: "Intelbras", modelo: "CAT5-E",       qtdPorTotem: "cabo50m" },
 ];
 
 export interface TotemConfig {
@@ -47,14 +49,21 @@ export function computeTotens(totens: TotemConfig[], overrides?: Record<string, 
   const nTotens = totens.length;
   const totalCameras = totens.reduce((s, t) => s + t.cameras, 0);
   const itens: TotemItemCalc[] = TOTEM_BASE.map((b) => {
-    const base = b.qtdPorTotem === "cameras" ? totalCameras : nTotens * b.qtdPorTotem;
+    const base =
+      b.qtdPorTotem === "cameras"
+        ? totalCameras
+        : b.qtdPorTotem === "cabo50m"
+          ? Math.ceil((nTotens * 50) / 300)
+          : nTotens * b.qtdPorTotem;
     return {
       cod_eq: b.cod_eq,
       qtd: overrides?.[b.cod_eq] ?? base,
       regra:
         b.qtdPorTotem === "cameras"
           ? `incluído pelo Totem Inteligente (${totalCameras} câmera${totalCameras === 1 ? "" : "s"} no total)`
-          : `incluído pelo Totem Inteligente (1× por totem × ${nTotens} totem${nTotens === 1 ? "" : "s"})`,
+          : b.qtdPorTotem === "cabo50m"
+            ? `Cabo de rede — ${nTotens * 50} m (50 m por poste, caixa de 300 m)`
+            : `incluído pelo Totem Inteligente (1× por totem × ${nTotens} totem${nTotens === 1 ? "" : "s"})`,
     };
   });
   // I.As por câmera → serviços mensais (mesmos códigos SV do CFTV)
@@ -402,7 +411,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                       </div>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: gold, whiteSpace: "nowrap" }}>
-                      {k.qtdPorTotem === "cameras" ? "2 a 4" : `×${k.qtdPorTotem}`}
+                      {k.qtdPorTotem === "cameras" ? "2 a 4" : k.qtdPorTotem === "cabo50m" ? "50 m/poste" : `×${k.qtdPorTotem}`}
                     </div>
                   </div>
                 ))}
@@ -428,7 +437,9 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
             const base =
               meta.qtdPorTotem === "cameras"
                 ? totens.reduce((s, t) => s + t.cameras, 0)
-                : nTotens * (meta.qtdPorTotem as number);
+                : meta.qtdPorTotem === "cabo50m"
+                  ? Math.ceil((nTotens * 50) / 300)
+                  : nTotens * (meta.qtdPorTotem as number);
             return (
               <div key={it.cod_eq} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",

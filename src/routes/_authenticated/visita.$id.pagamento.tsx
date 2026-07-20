@@ -7,7 +7,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Layers, KeyRound, Handshake, CalendarClock, FileText, X } from "lucide-react";
+import { ArrowLeft, Layers, KeyRound, Handshake, CalendarClock, FileText, X, PieChart as PieChartIcon } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -46,6 +47,14 @@ const SUBCATS_INSUMO = new Set(["cabeamento", "tubulacao"]);
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Paleta categórica validada (skill dataviz — ordem fixa, nunca ciclada;
+// CVD ΔE ≥ 8 e piso de visão normal ≥ 15 nos dois modos). Máx. 8 fatias;
+// excedente vira "Outros" (neutro, com rótulo — nunca um 9º matiz gerado).
+const PIE_CORES_DARK = ["#3987e5", "#008300", "#d55181", "#c98500", "#199e70", "#d95926", "#9085e9", "#e66767"];
+const PIE_CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"];
+const PIE_OUTROS_DARK = "#6b7280";
+const PIE_OUTROS_LIGHT = "#9ca3af";
 
 function PagamentoPage() {
   const { id } = Route.useParams();
@@ -141,15 +150,20 @@ function PagamentoPage() {
   });
 
   // ── Custos e venda ──────────────────────────────────────────────────────────
+  // Blocos TOT ficam FORA da base de venda/locação/comodato: o totem é sempre
+  // locação própria (24 meses) com mensalidade tabelada que já embute o hardware.
+  const totIds = new Set((blocos as any[]).filter((b) => b.tipo_bloco === "TOT").map((b) => b.id));
   const custoPorBloco: Record<string, number> = {};
   let custoInsumos = 0;
+  let custoTotal = 0;
   for (const it of itensEq as any[]) {
     const info = eqInfo[it.cod_eq];
     const linha = (info?.custo ?? 0) * Number(it.qtd || 0);
     custoPorBloco[it.visita_bloco_id] = (custoPorBloco[it.visita_bloco_id] ?? 0) + linha;
+    if (totIds.has(it.visita_bloco_id)) continue; // totem: fora da base financeira
+    custoTotal += linha;
     if (info?.subcat && SUBCATS_INSUMO.has(info.subcat)) custoInsumos += linha;
   }
-  const custoTotal = Object.values(custoPorBloco).reduce((s, v) => s + v, 0);
   const vendaTotal = custoTotal * MARKUP_VENDA;
 
   // ── Locação (24m): mensalidade sobre a venda dos equipamentos (sem insumos);
@@ -184,6 +198,35 @@ function PagamentoPage() {
   const totalServicosMensais = totalMensalServicos(linhasMensais);
 
   const nomeLocal = visita?.nome_predio || visita?.titulo || "Visita";
+
+  // ── Dashboard: distribuição do custo entre os blocos (donut) ────────────────
+  const custoTodosBlocos = Object.values(custoPorBloco).reduce((s, v) => s + v, 0);
+  const fatias = (() => {
+    const counters: Record<string, number> = {};
+    const todas = (blocos as any[])
+      .map((bloco) => {
+        const tipo = bloco.tipo_bloco;
+        counters[tipo] = (counters[tipo] || 0) + 1;
+        const base = TIPOS_NOMES[tipo] || tipo;
+        const nomeUsuario = (bloco.nome_acesso as string | null)?.trim();
+        const label = nomeUsuario
+          ? nomeUsuario
+          : TIPOS_UNICOS.has(tipo)
+            ? base
+            : `${base} ${String(counters[tipo]).padStart(2, "0")}`;
+        return { nome: label, valor: custoPorBloco[bloco.id] ?? 0 };
+      })
+      .filter((f) => f.valor > 0)
+      .sort((a, b) => b.valor - a.valor);
+    if (todas.length <= 8) return todas;
+    const top = todas.slice(0, 7);
+    const resto = todas.slice(7).reduce((s, f) => s + f.valor, 0);
+    return [...top, { nome: "Outros", valor: resto }];
+  })();
+  const pieCores = isLight ? PIE_CORES_LIGHT : PIE_CORES_DARK;
+  const pieOutros = isLight ? PIE_OUTROS_LIGHT : PIE_OUTROS_DARK;
+  const corFatia = (i: number, nome: string) => (nome === "Outros" ? pieOutros : pieCores[i % 8]);
+  const pieSurface = isLight ? "#ffffff" : "#101016";
 
   // ── Geração da proposta (.docx) ─────────────────────────────────────────────
   const [modalAberto, setModalAberto] = useState(false);
@@ -302,6 +345,84 @@ function PagamentoPage() {
           </div>
         </div>
       </div>
+
+      {/* Dashboard: distribuição do custo entre os blocos */}
+      {fatias.length >= 2 && (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <PieChartIcon size={16} color={isLight ? "#b87800" : "#FFC000"} />
+            <span style={SEC_TITLE}>Distribuição do custo entre os blocos</span>
+          </div>
+          <div style={{ position: "relative", width: "100%", height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={fatias}
+                  dataKey="valor"
+                  nameKey="nome"
+                  innerRadius={62}
+                  outerRadius={95}
+                  paddingAngle={0}
+                  stroke={pieSurface}
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                >
+                  {fatias.map((f, i) => (
+                    <Cell key={f.nome} fill={corFatia(i, f.nome)} />
+                  ))}
+                </Pie>
+                <RechartsTooltip
+                  formatter={(valor: number, nome: string) => [
+                    `${fmtBRL(valor)} · ${custoTodosBlocos > 0 ? Math.round((valor / custoTodosBlocos) * 100) : 0}%`,
+                    nome,
+                  ]}
+                  contentStyle={{
+                    background: isLight ? "#ffffff" : "#16161d",
+                    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                    borderRadius: 10,
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: 12,
+                    color: isLight ? "#0a0b0e" : "#fff",
+                  }}
+                  itemStyle={{ color: isLight ? "#0a0b0e" : "#fff" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Número central do donut */}
+            <div
+              style={{
+                position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", pointerEvents: "none",
+              }}
+            >
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15 }}>
+                {fmtBRL(custoTodosBlocos)}
+              </span>
+              <span style={{ ...obsStyle, fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase" }}>
+                custo total
+              </span>
+            </div>
+          </div>
+          {/* Legenda: identidade nunca só pela cor — chip + nome + % + valor */}
+          <div style={{ display: "flex", flexDirection: "column", marginTop: 4 }}>
+            {fatias.map((f, i) => (
+              <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                <span
+                  style={{
+                    width: 10, height: 10, borderRadius: 3, flexShrink: 0,
+                    background: corFatia(i, f.nome),
+                  }}
+                />
+                <span style={{ ...linhaLabel, fontSize: 12, flex: 1, minWidth: 0 }}>{f.nome}</span>
+                <span style={{ ...obsStyle, fontSize: 11 }}>
+                  {custoTodosBlocos > 0 ? Math.round((f.valor / custoTodosBlocos) * 100) : 0}%
+                </span>
+                <span style={{ ...linhaValor, fontSize: 12 }}>{fmtBRL(f.valor)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Custo por bloco */}
       <div style={CARD}>

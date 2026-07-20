@@ -38,22 +38,22 @@ export const gerarResumosProposta = createServerFn({ method: "POST" })
           visao_geral: {
             type: "string",
             description:
-              "Dissertação resumida (1 parágrafo, 3-5 frases) da visão geral dos serviços propostos no projeto.",
+              "VISÃO GERAL: 2 parágrafos curtos separados por quebra de linha. 1º parágrafo: contexto do local e o que motivou a proposta. 2º parágrafo: 'A solução contempla ...' listando as frentes (controle de acesso, CFTV, interfonia, operação etc.) e o resultado para o cliente. Sem bullets.",
           },
           escopo: {
             type: "string",
             description:
-              "Escopo do projeto: para cada bloco, uma linha começando com o nome do bloco seguido de dois pontos e um resumo de 1-2 frases. Separar blocos com quebra de linha.",
+              "ESCOPO DO PROJETO no padrão das propostas Prever: 1ª linha com o objetivo da implantação ('O objetivo da implantação é ...'). Depois uma lista de itens, um por linha, cada linha começando com '• ' em letra minúscula e terminando com ';' (último item termina com '.'). Itens concretos com quantidades reais dos blocos (ex.: '• fornecimento de 9 interfones IP distribuídos nos acessos;'). Quando for Portaria Remota, incluir também os itens operacionais padrão: fornecimento do aplicativo Grupo Prever Acessos; suporte contínuo aos moradores para uso do aplicativo, cadastros faciais e liberações; substituição dos equipamentos fornecidos em caso de falhas técnicas; até 3 dias de cadastros presenciais de moradores; fornecimento de manuais e orientações de uso; gestão da conectividade com balanceamento de carga e firewall.",
           },
           redundancia: {
             type: "string",
             description:
-              "Resumo (2-3 frases) do sistema de redundância energética (nobreaks/baterias), ou string vazia se o projeto não tiver redundância.",
+              "Resumo (2-3 frases) do sistema de redundância energética citando nobreak e baterias estacionárias dimensionados no escopo e o benefício (sistema operante em queda de energia). String vazia se o projeto não tiver redundância.",
           },
           inteligencia_artificial: {
             type: "string",
             description:
-              "Resumo (2-4 frases) das I.As de análise de vídeo oferecidas no projeto, ou string vazia se não houver I.As.",
+              "Resumo (2-4 frases) das I.As de análise de vídeo do projeto (citar quais e quantas câmeras), aplicadas para detecção e acionamentos automáticos. String vazia se não houver I.As.",
           },
         },
         required: ["visao_geral", "escopo", "redundancia", "inteligencia_artificial"],
@@ -62,18 +62,19 @@ export const gerarResumosProposta = createServerFn({ method: "POST" })
 
       const response = await client.messages.create({
         model: "claude-opus-4-8",
-        max_tokens: 4096,
+        max_tokens: 6000,
         thinking: { type: "adaptive" },
-        // Resumos curtos e formulaicos — esforço baixo mantém o botão responsivo
+        // Texto vai direto para documento de cliente — esforço médio
         output_config: {
-          effort: "low",
+          effort: "medium",
           format: { type: "json_schema", schema: schema as Record<string, unknown> },
         },
         system:
-          "Você redige trechos de propostas comerciais do Grupo Prever, empresa de controle de acesso e segurança eletrônica. " +
-          "Escreva em português do Brasil, tom profissional e direto, voz da empresa ('forneceremos', 'será instalado'). " +
-          "Use SOMENTE os fatos fornecidos — não invente equipamentos, quantidades ou serviços. " +
-          "Não use markdown, títulos nem bullets; apenas texto corrido (o escopo usa uma linha por bloco).",
+          "Você redige trechos de propostas comerciais do Grupo Prever, empresa de controle de acesso e segurança eletrônica que atua desde 1994. " +
+          "Escreva em português do Brasil, tom institucional, profissional e direto, na voz da empresa ('a proposta contempla', 'será fornecido', 'a Prever realizará'). " +
+          "Siga o padrão das propostas reais da Prever: Visão Geral em 2 parágrafos corridos; Escopo com objetivo + lista de itens iniciados por '• ' em minúscula e terminados em ';'. " +
+          "Use SOMENTE os fatos fornecidos — não invente equipamentos, quantidades ou serviços; cite quantidades reais quando existirem. " +
+          "Não use markdown nem títulos — apenas o texto de cada campo.",
         messages: [
           {
             role: "user",

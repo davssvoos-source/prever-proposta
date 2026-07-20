@@ -235,6 +235,10 @@ function computeAcesso(input: ComputeInput): AutoBlockItem[] {
     add(acc, "EQ204", fechaduras, "Fechadura Magnética 300Kgf FE10300 (1 por portão; 1 por eclusa)");
   }
 
+  // Cabeamento dos acessos: 60 m por barreira (1B = 60 m; eclusa/2B = 120 m).
+  // Caixa de cabo de rede de 300 m (EQ302) — vira insumo na implantação.
+  add(acc, "EQ302", ceil(barreiras * 60, 300), `Cabo de rede — ${barreiras * 60} m (60 m por barreira)`);
+
   // Elevador (Controle de Acesso de Pedestres — tipo de porta ELEV):
   //  • PCF (porta corta-fogo): 1 fechadura magnética c/ sensor + 1 botoeira analógica.
   //  • A cada 2 elevadores: 1 leitora facial + 1 interfone (IP Intercom em PR; XPE em PP).
@@ -451,6 +455,8 @@ function computeTotemFromCodigo(codigo: string): AutoBlockItem[] {
     { cod_eq: "EQ174", qtd: nTotens, observacao: "Fonte 12v 5A — 1× por Totem" },
     { cod_eq: "EQ303", qtd: nTotens, observacao: "Poste 2,6 m — 1× por Totem" },
     { cod_eq: "EQ300", qtd: cameras, observacao: "Câmera IP Bullet — total de câmeras dos totens" },
+    // Cabeamento: 50 m por poste (caixa de 300 m)
+    { cod_eq: "EQ302", qtd: ceil(nTotens * 50, 300), observacao: `Cabo de rede — ${nTotens * 50} m (50 m por poste)` },
   ];
 }
 

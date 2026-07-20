@@ -43,7 +43,14 @@ const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: num
 ];
 
 const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = {
+  controle_acesso: Lock,
   portaria_remota: Building2,
+  monitoramento_24h: Eye,
+  cftv: CameraIcon,
+  alarmes: Bell,
+  totem_monitoramento: Satellite,
+  cerca_eletrica: Zap,
+  // legadas (visitas antigas)
   monitoramento_alarmes: Eye,
   implantacao_controle_acesso: Lock,
   implantacao_cftv: CameraIcon,
@@ -53,14 +60,11 @@ const SERVICO_PROPOSTO_ICON: Record<string, ComponentType<{ size?: number }>> = 
   manutencao_cftv: Video,
   implantacao_cerca_eletrica: Zap,
   manutencao_cerca_eletrica: Zap,
-  totem_monitoramento: Satellite,
   gestao_portaria_presencial: Briefcase,
   portaria_virtual_24h: Shield,
   cftv_cameras: CameraIcon,
-  controle_acesso: Lock,
   interfone_ip: Phone,
   alarme_sensores: Bell,
-  cerca_eletrica: Zap,
   monitoramento_remoto: Radio,
   automacao_portoes: DoorOpen,
 };
@@ -500,23 +504,9 @@ function NovaVisitaPage() {
                   <button
                     key={s.key}
                     onClick={() =>
-                      setServicosPropostos((prev) => {
-                        const ligando = !prev.includes(s.key);
-                        let next = prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key];
-                        // Portaria Remota × Gestão de Portaria Presencial são mutuamente exclusivas
-                        if (ligando) {
-                          const CONFLITO: Record<string, ServicoPropostoKey> = {
-                            portaria_remota: "gestao_portaria_presencial",
-                            gestao_portaria_presencial: "portaria_remota",
-                          };
-                          const oposto = CONFLITO[s.key];
-                          if (oposto && next.includes(oposto)) {
-                            next = next.filter((x) => x !== oposto);
-                            toast.info("Portaria Remota e Gestão de Portaria Presencial não podem estar juntas — a outra foi desmarcada.");
-                          }
-                        }
-                        return next;
-                      })
+                      setServicosPropostos((prev) =>
+                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
+                      )
                     }
                     style={{
                       display: "inline-flex",

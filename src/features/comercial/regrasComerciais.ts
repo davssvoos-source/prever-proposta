@@ -76,6 +76,11 @@ export function valorPortariaRemota(qtdApartamentos: number, turno: "24h" | "12h
 
 // ── Totem de Monitoramento (mensalidade por totem) ───────────────────────────
 // 1–2 câmeras: R$ 500 | 3 câmeras: R$ 550 | conectado ao Smart Sampa: +R$ 100.
+// O totem NÃO tem comodato nem compra: é SEMPRE locação com contrato próprio de
+// 24 meses, independente da forma de pagamento escolhida para o restante do
+// projeto — por isso os equipamentos do bloco TOT ficam fora da base de
+// venda/locação/comodato (o hardware está embutido nesta mensalidade fixa).
+export const TOTEM_LOCACAO_PRAZO_MESES = 24;
 export function mensalidadeTotem(qtdCameras: number, smartSampa: boolean): number {
   const base = qtdCameras >= 3 ? 550 : 500;
   return base + (smartSampa ? 100 : 0);

@@ -62,26 +62,41 @@ const TIPOS_NOMES: Record<string, string> = {
 const TIPOS_UNICOS = new Set(["CENT"]);
 
 // Área curta por serviço proposto — {{Servicos_ofertados}} não deve conter os
-// termos "Implantação"/"Manutenção" (regra do usuário).
+// termos "Implantação"/"Manutenção" (regra do usuário). Inclui as 7 chaves
+// atuais e as legadas (visitas antigas).
 const AREA_SERVICO: Record<string, string> = {
+  // chaves atuais (lista de 7)
+  controle_acesso: "Controle de Acesso Eletrônico",
+  portaria_remota: "Portaria Remota",
+  monitoramento_24h: "Monitoramento 24h",
+  cftv: "CFTV",
+  alarmes: "Alarmes",
+  totem_monitoramento: "Totem de Monitoramento",
+  cerca_eletrica: "Cerca Elétrica",
+  // legadas
   implantacao_controle_acesso: "Controle de Acesso Eletrônico",
   manutencao_controle_acesso: "Controle de Acesso Eletrônico",
   implantacao_cftv: "CFTV",
   manutencao_cftv: "CFTV",
-  implantacao_alarmes: "Alarme",
-  manutencao_alarmes: "Alarme",
+  implantacao_alarmes: "Alarmes",
+  manutencao_alarmes: "Alarmes",
   implantacao_cerca_eletrica: "Cerca Elétrica",
   manutencao_cerca_eletrica: "Cerca Elétrica",
-  totem_monitoramento: "Totem de Monitoramento",
-  monitoramento_alarmes: "Monitoramento de Alarmes",
-  portaria_remota: "Portaria Remota",
-  gestao_portaria_presencial: "Gestão de Portaria Presencial",
+  monitoramento_alarmes: "Monitoramento 24h",
+  gestao_portaria_presencial: "Controle de Acesso Eletrônico",
   // fluxo Residência/Galpão (servicos_ofertados do orçamento)
-  monitoramento_24h: "Monitoramento 24h",
   implantacao_sistema: "Sistema de Segurança Eletrônica",
 };
 
 const SERVICO_LABEL_COMPLETO: Record<string, string> = {
+  controle_acesso: "Controle de Acesso Eletrônico",
+  portaria_remota: "Operação de Portaria Remota",
+  monitoramento_24h: "Monitoramento 24h",
+  cftv: "CFTV",
+  alarmes: "Alarmes",
+  totem_monitoramento: "Totem de Monitoramento",
+  cerca_eletrica: "Cerca Elétrica",
+  // legadas
   implantacao_controle_acesso: "Implantação de Controle de Acesso Eletrônico",
   manutencao_controle_acesso: "Manutenção de Controle de Acesso Eletrônico",
   implantacao_cftv: "Implantação de CFTV",
@@ -90,11 +105,8 @@ const SERVICO_LABEL_COMPLETO: Record<string, string> = {
   manutencao_alarmes: "Manutenção de Alarme",
   implantacao_cerca_eletrica: "Implantação de Cerca Elétrica",
   manutencao_cerca_eletrica: "Manutenção de Cerca Elétrica",
-  totem_monitoramento: "Totem de Monitoramento",
   monitoramento_alarmes: "Monitoramento de Alarmes",
-  portaria_remota: "Operação de Portaria Remota",
   gestao_portaria_presencial: "Gestão de Controle de Acesso — Portaria Presencial",
-  monitoramento_24h: "Monitoramento 24h",
   implantacao_sistema: "Implantação de Sistema de Segurança Eletrônica",
 };
 
@@ -185,13 +197,17 @@ export async function gerarPropostaDocx({ visitaId, forma, numeroProposta }: Ger
   }
 
   // ── 2) Financeiro (mesmas regras da página Formas de Pagamento) ─────────────
+  // Blocos TOT ficam fora da base de venda/locação/comodato — o totem é sempre
+  // locação própria de 24 meses (mensalidade tabelada que embute o hardware).
+  const totIds = new Set(blocos.filter((b) => b.tipo_bloco === "TOT").map((b) => b.id));
   let custoTotal = 0;
   let custoInsumos = 0;
   const qtdPorCode: Record<string, number> = {};
   for (const it of itensEq) {
     const info = eqInfo[it.cod_eq];
     const qtd = Number(it.qtd || 0);
-    qtdPorCode[it.cod_eq] = (qtdPorCode[it.cod_eq] ?? 0) + qtd;
+    qtdPorCode[it.cod_eq] = (qtdPorCode[it.cod_eq] ?? 0) + qtd; // tabela lista TUDO (inclusive totem)
+    if (totIds.has(it.visita_bloco_id)) continue;
     const linha = (info?.custo ?? 0) * qtd;
     custoTotal += linha;
     if (info?.subcat && SUBCATS_INSUMO.has(info.subcat)) custoInsumos += linha;
@@ -281,34 +297,53 @@ export async function gerarPropostaDocx({ visitaId, forma, numeroProposta }: Ger
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
-  // Valores propostos + prazo conforme a forma escolhida
-  const linhasServTxt = linhasMensais
-    .map((l: LinhaMensal) => `• ${l.label}: ${l.valor === null ? "sob consulta" : l.valor === 0 ? "incluso" : `${fmtBRL(l.valor)}/mês`}`)
-    .join("\n");
-  const blocoServicos = linhasMensais.length
-    ? `\n\nServiços mensais:\n${linhasServTxt}\nTotal de serviços mensais: ${fmtBRL(totalServicos)}/mês`
-    : "";
-
-  let valoresPropostos = "";
+  // Tabela de preços (template novo) + intro e prazo conforme a forma escolhida.
+  // O totem já vem em linhasMensais com a marcação de locação fixa de 24 meses.
+  const temTotem = blocos.some((b) => b.tipo_bloco === "TOT");
+  const precos: { descricao: string; valor: string }[] = [];
+  let valoresIntro = "";
   let prazoContratual = "";
+  let rotuloTotal = "";
+  let totalMensal = totalServicos;
+
   if (forma === "locacao_24") {
-    valoresPropostos =
-      `Fornecimento dos equipamentos sob regime de LOCAÇÃO:\n` +
-      `• Mensalidade dos equipamentos: ${fmtBRL(locacaoMensal)}/mês\n` +
-      `• Implantação (insumos + mão de obra): ${IMPLANTACAO_PARCELAS}× de ${fmtBRL(implantacaoTotal / IMPLANTACAO_PARCELAS)} (total ${fmtBRL(implantacaoTotal)})` +
-      blocoServicos;
+    valoresIntro = "Fornecimento dos equipamentos sob regime de LOCAÇÃO, com manutenção preventiva e corretiva inclusa durante o contrato.";
+    precos.push({ descricao: "Locação dos equipamentos / Mão de obra para manutenção preventiva e corretiva", valor: fmtBRL(locacaoMensal) });
+    precos.push({
+      descricao: `Implantação — materiais, insumos e mão de obra (cobrada à parte, somente nas ${IMPLANTACAO_PARCELAS} primeiras mensalidades)`,
+      valor: fmtBRL(implantacaoTotal / IMPLANTACAO_PARCELAS),
+    });
+    totalMensal += locacaoMensal;
     prazoContratual = PRAZO_EXTENSO[LOCACAO_PRAZO_MESES];
+    rotuloTotal = `TOTAL MENSAL DURANTE O PRAZO CONTRATUAL DE ${LOCACAO_PRAZO_MESES} MESES (implantação à parte)`;
   } else if (forma === "compra_vista") {
-    valoresPropostos =
-      `Compra dos equipamentos à vista: ${fmtBRL(vendaTotal)}` + blocoServicos;
+    valoresIntro = "Aquisição dos equipamentos com pagamento à vista; os serviços recorrentes são contratados mensalmente.";
+    precos.push({ descricao: "Aquisição dos equipamentos do projeto (pagamento à vista)", valor: fmtBRL(vendaTotal) });
     prazoContratual = "Não se aplica (compra à vista)";
+    rotuloTotal = "TOTAL MENSAL DOS SERVIÇOS RECORRENTES";
   } else {
     const prazo = Number(forma.replace("comodato_", "")) as PrazoComodato;
-    valoresPropostos =
-      `Fornecimento dos equipamentos sob regime de COMODATO (${prazo} meses), sem cobrança de implantação:\n` +
-      `• Mensalidade dos equipamentos: ${fmtBRL(comodato[prazo])}/mês` +
-      blocoServicos;
+    valoresIntro = `Fornecimento dos equipamentos sob regime de COMODATO, sem cobrança de implantação, com manutenção preventiva e corretiva inclusa durante o contrato.`;
+    precos.push({
+      descricao: "Equipamentos em comodato / Mão de obra para implantação / Materiais e Insumos / Mão de obra para manutenção preventiva e corretiva",
+      valor: fmtBRL(comodato[prazo]),
+    });
+    totalMensal += comodato[prazo];
     prazoContratual = PRAZO_EXTENSO[prazo];
+    rotuloTotal = `TOTAL MENSAL DURANTE O PRAZO CONTRATUAL DE ${prazo} MESES`;
+  }
+
+  // Serviços mensais (inclui o totem, que é sempre locação de 24 meses)
+  for (const l of linhasMensais as LinhaMensal[]) {
+    precos.push({
+      descricao: l.obs ? `${l.label} (${l.obs})` : l.label,
+      valor: l.valor === null ? "Sob consulta" : l.valor === 0 ? "Incluso" : fmtBRL(l.valor),
+    });
+  }
+
+  // Totem tem prazo próprio (24 meses de locação) — anota no prazo contratual
+  if (temTotem && forma !== "locacao_24") {
+    prazoContratual += ` · Totem de Monitoramento: ${PRAZO_EXTENSO[24]} (locação)`;
   }
 
   // ── 4) Resumos por I.A (com fallback determinístico) ────────────────────────
@@ -349,15 +384,18 @@ export async function gerarPropostaDocx({ visitaId, forma, numeroProposta }: Ger
         `Este projeto contempla o fornecimento e a implantação de soluções de ${servicosOfertadosTxt} ` +
         `para ${(visita as any).nome_predio ?? "o local"}, dimensionadas a partir da visita técnica realizada pela equipe Prever. ` +
         `O escopo abrange ${blocos.length} bloco(s) de instalação com equipamentos, infraestrutura e serviços descritos nesta proposta.`,
-      escopo: blocos
-        .map((b, i) => {
-          const top = itensEq
-            .filter((it) => it.visita_bloco_id === b.id)
-            .map((it) => eqInfo[it.cod_eq]?.nome ?? it.cod_eq)
-            .slice(0, 3);
-          return `${nomesBlocos[i]}: ${top.length ? `instalação de ${top.join(", ")} e demais equipamentos do bloco.` : "conforme escopo detalhado."}`;
-        })
-        .join("\n"),
+      escopo:
+        `O objetivo da implantação é fornecer, instalar e configurar os sistemas de ${servicosOfertadosTxt} descritos nesta proposta.\n` +
+        blocos
+          .map((b, i) => {
+            const top = itensEq
+              .filter((it) => it.visita_bloco_id === b.id)
+              .map((it) => eqInfo[it.cod_eq]?.nome ?? it.cod_eq)
+              .slice(0, 3);
+            return `• ${nomesBlocos[i]} — ${top.length ? `instalação de ${top.join(", ")} e demais equipamentos do bloco;` : "conforme escopo detalhado;"}`;
+          })
+          .join("\n")
+          .replace(/;$/, "."),
       redundancia: temRedundancia
         ? "O projeto contempla sistema de redundância energética composto por nobreak e baterias estacionárias dimensionados para o consumo dos equipamentos, mantendo o sistema operante em caso de interrupção no fornecimento de energia."
         : "",
@@ -409,10 +447,14 @@ export async function gerarPropostaDocx({ visitaId, forma, numeroProposta }: Ger
     Responsabilidades_da_contratada: respContratada,
     Responsabilidades_da_contratante: respContratante,
     Dos_servicos_propostos: dosServicos,
+    Equipamentos_do_projeto: "",
     equipamentos: equipamentosTabela,
     Sistema_de_redundancia: resumos.redundancia,
     Sistema_de_inteligencia_artificial: resumos.inteligencia_artificial,
-    Valores_propostos: valoresPropostos,
+    Valores_propostos: valoresIntro,
+    precos,
+    Rotulo_total_mensal: rotuloTotal,
+    Total_mensal: fmtBRL(totalMensal),
     Prazo_contratual: prazoContratual,
   });
 

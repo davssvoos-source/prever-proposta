@@ -930,15 +930,35 @@ function BlocosWizardPage() {
       if (error) throw error;
       const blocoId = (data as any).id as string;
 
-      if (itens.length > 0) {
-        const rows = itens.map((it) => ({
+      // Cabeamento do elevador: 0,8 m de cabo por apartamento (caixa de 300 m)
+      const { data: orcCabo } = await supabase
+        .from("visita_orcamentos")
+        .select("qtd_apartamentos")
+        .eq("visita_id", visitaId)
+        .maybeSingle();
+      const aptos = Number((orcCabo as any)?.qtd_apartamentos || 0);
+      const metrosElev = Math.round(aptos * 0.8);
+      const caixasElev = Math.ceil(metrosElev / 300);
+      const rowsElev = [
+        ...itens.map((it) => ({
           visita_bloco_id: blocoId,
           cod_eq: it.cod_eq,
           qtd: it.qtd,
           origem: "auto" as const,
           observacao: it.regra ?? null,
-        }));
-        const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rows);
+        })),
+        ...(caixasElev > 0
+          ? [{
+              visita_bloco_id: blocoId,
+              cod_eq: "EQ302",
+              qtd: caixasElev,
+              origem: "auto" as const,
+              observacao: `Cabo de rede — ${metrosElev} m (0,8 m por apartamento × ${aptos} aptos)`,
+            }]
+          : []),
+      ];
+      if (rowsElev.length > 0) {
+        const { error: insErr } = await supabase.from("visita_bloco_itens" as any).insert(rowsElev);
         if (insErr) throw insErr;
       }
       await reconcileDimensionamentoProjeto(visitaId);
