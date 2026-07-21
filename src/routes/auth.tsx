@@ -143,7 +143,7 @@ function AuthPage() {
     borderRadius: 26,
     background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
     border: "none",
-    color: isLight ? "#fff" : "#08090E",
+    color: "#08090E",
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 13,
@@ -210,7 +210,7 @@ function AuthPage() {
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.35)",
+              color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
             }}
           >
             SISTEMA DE PROJETOS ELETRÔNICOS
@@ -253,7 +253,7 @@ function AuthPage() {
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      color: "rgba(255,255,255,0.4)",
+                      color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)",
                       display: "flex",
                     }}
                   >
@@ -280,9 +280,9 @@ function AuthPage() {
                   width: "100%",
                   padding: "14px",
                   borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.20)",
-                  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                  color: "rgba(255,255,255,0.75)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
+                  background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  color: isLight ? "#1f2430" : "rgba(255,255,255,0.75)",
                   fontSize: 15,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -310,7 +310,7 @@ function AuthPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  color: "rgba(255,255,255,0.5)",
+                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
                   marginBottom: 4,
                 }}
               >
@@ -322,7 +322,7 @@ function AuthPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 500,
                     fontSize: 17,
-                    color: "#fff",
+                    color: isLight ? "#0a0b0e" : "#fff",
                     marginBottom: 6,
                   }}
                 >
@@ -333,7 +333,7 @@ function AuthPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: "rgba(255,255,255,0.45)",
+                    color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)",
                     lineHeight: 1.5,
                   }}
                 >
@@ -365,14 +365,14 @@ function AuthPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <button
                 onClick={() => setMode("login")}
-                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}
+                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginBottom: 4 }}
               >
                 <ArrowLeft size={14} /> Voltar para o login
               </button>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 17, color: "#fff" }}>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
                 Criar conta
               </div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
                 Sua solicitação será analisada por um administrador.
               </div>
 
@@ -411,7 +411,7 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setShowSenha((p) => !p)}
-                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", display: "flex" }}
+                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)", display: "flex" }}
                   >
                     {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -432,7 +432,7 @@ function AuthPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmarSenha((p) => !p)}
-                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", display: "flex" }}
+                    style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)", display: "flex" }}
                   >
                     {showConfirmarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>

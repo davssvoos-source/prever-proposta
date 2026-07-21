@@ -252,7 +252,7 @@ function PerfilPage() {
         style={{
           textAlign: "center",
           padding: 60,
-          color: "rgba(255,255,255,0.4)",
+          color: isLight ? "#6b7280" : "rgba(255,255,255,0.4)",
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 300,
         }}
@@ -280,7 +280,7 @@ function PerfilPage() {
 
 
       {/* Seção 1 - Hero */}
-      <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ ...cardStyle(isLight), display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ position: "relative" }}>
           {perfil?.avatar_url ? (
             <img
@@ -485,8 +485,8 @@ function PerfilPage() {
       </button>
 
       {/* Seção 2 - Estatísticas */}
-      <div style={CARD}>
-        <div style={LBL}>Atividade no sistema</div>
+      <div style={cardStyle(isLight)}>
+        <div style={lblStyle(isLight)}>Atividade no sistema</div>
         <div
           style={{
             display: "flex",
@@ -507,8 +507,8 @@ function PerfilPage() {
       </div>
 
       {/* Seção 3 - Últimas visitas */}
-      <div style={CARD}>
-        <div style={LBL}>Atividade recente</div>
+      <div style={cardStyle(isLight)}>
+        <div style={lblStyle(isLight)}>Atividade recente</div>
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           {ultimasVisitas.length === 0 ? (
             <div
@@ -516,7 +516,7 @@ function PerfilPage() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.4)",
+                color: isLight ? "#6b7280" : "rgba(255,255,255,0.4)",
                 padding: "16px 0",
                 textAlign: "center",
               }}
@@ -580,7 +580,7 @@ function PerfilPage() {
       </div>
 
       {/* Seção 4 - Conta */}
-      <div style={CARD}>
+      <div style={cardStyle(isLight)}>
         <div
           style={{
             display: "flex",
@@ -589,11 +589,11 @@ function PerfilPage() {
             marginBottom: 12,
           }}
         >
-          <div style={{ ...LBL, marginBottom: 0 }}>Informações da conta</div>
+          <div style={{ ...lblStyle(isLight), marginBottom: 0 }}>Informações da conta</div>
           {!editandoConta ? (
             <button
               onClick={() => setEditandoConta(true)}
-              style={iconBtn}
+              style={iconBtnStyle(isLight)}
               aria-label="Editar"
             >
               <Pencil size={14} />
@@ -603,14 +603,14 @@ function PerfilPage() {
               <button
                 onClick={() => contaMutation.mutate()}
                 disabled={contaMutation.isPending}
-                style={{ ...iconBtn, color: "#FFC000" }}
+                style={{ ...iconBtnStyle(isLight), color: isLight ? "#b87800" : "#FFC000" }}
                 aria-label="Salvar"
               >
                 <Check size={14} />
               </button>
               <button
                 onClick={() => setEditandoConta(false)}
-                style={iconBtn}
+                style={iconBtnStyle(isLight)}
                 aria-label="Cancelar"
               >
                 <X size={14} />
@@ -627,17 +627,17 @@ function PerfilPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={LBL}>Nome</label>
+              <label style={lblStyle(isLight)}>Nome</label>
               <input
-                style={INPUT}
+                style={inputStyle(isLight)}
                 value={nomeEdit}
                 onChange={(e) => setNomeEdit(e.target.value)}
               />
             </div>
             <div>
-              <label style={LBL}>Cargo</label>
+              <label style={lblStyle(isLight)}>Cargo</label>
               <input
-                style={INPUT}
+                style={inputStyle(isLight)}
                 value={cargoEdit}
                 onChange={(e) => setCargoEdit(e.target.value)}
               />
@@ -647,7 +647,7 @@ function PerfilPage() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 11,
-                color: "rgba(255,255,255,0.35)",
+                color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
               }}
             >
               E-mail não pode ser alterado por aqui.
@@ -657,14 +657,14 @@ function PerfilPage() {
       </div>
 
       {/* Seção 5 - Segurança */}
-      <div style={CARD}>
+      <div style={cardStyle(isLight)}>
         <div style={{ ...LBL, marginBottom: 14 }}>Alterar senha</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
-            <label style={LBL}>Nova senha</label>
+            <label style={lblStyle(isLight)}>Nova senha</label>
             <div style={{ position: "relative" }}>
               <input
-                style={{ ...INPUT, paddingRight: 44 }}
+                style={{ ...inputStyle(isLight), paddingRight: 44 }}
                 type={showNova ? "text" : "password"}
                 value={novaSenha}
                 onChange={(e) => setNovaSenha(e.target.value)}
@@ -673,17 +673,17 @@ function PerfilPage() {
               <button
                 type="button"
                 onClick={() => setShowNova((p) => !p)}
-                style={eyeBtnStyle}
+                style={eyeBtn(isLight)}
               >
                 {showNova ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
           <div>
-            <label style={LBL}>Confirmar nova senha</label>
+            <label style={lblStyle(isLight)}>Confirmar nova senha</label>
             <div style={{ position: "relative" }}>
               <input
-                style={{ ...INPUT, paddingRight: 44 }}
+                style={{ ...inputStyle(isLight), paddingRight: 44 }}
                 type={showConf ? "text" : "password"}
                 value={confirmarSenha}
                 onChange={(e) => setConfirmarSenha(e.target.value)}
@@ -692,7 +692,7 @@ function PerfilPage() {
               <button
                 type="button"
                 onClick={() => setShowConf((p) => !p)}
-                style={eyeBtnStyle}
+                style={eyeBtn(isLight)}
               >
                 {showConf ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -727,7 +727,7 @@ function PerfilPage() {
 
       {/* Seção 6 - Notificações recentes */}
       {ultimasNotifs.length > 0 && (
-        <div style={CARD}>
+        <div style={cardStyle(isLight)}>
           <div
             style={{
               display: "flex",
@@ -736,7 +736,7 @@ function PerfilPage() {
               marginBottom: 12,
             }}
           >
-            <div style={{ ...LBL, marginBottom: 0 }}>Notificações recentes</div>
+            <div style={{ ...lblStyle(isLight), marginBottom: 0 }}>Notificações recentes</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {ultimasNotifs.map((n: any) => (
@@ -815,56 +815,59 @@ function PerfilPage() {
   );
 }
 
-const CARD: CSSProperties = {
-  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  backdropFilter: "blur(12px) saturate(130%)",
-  WebkitBackdropFilter: "blur(12px) saturate(130%)",
-  border: "1px solid rgba(255,192,0,0.10)",
+const cardStyle = (isLight: boolean): CSSProperties => ({
+  background: isLight
+    ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+    : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+  WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
+  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
   borderRadius: 18,
   padding: "20px 16px",
   marginBottom: 16,
-};
+  boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined,
+});
 
-const LBL: CSSProperties = {
+const lblStyle = (isLight: boolean): CSSProperties => ({
   fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
+  fontWeight: isLight ? 600 : 300,
   fontSize: 11,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "rgba(255,192,0,0.65)",
+  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
   marginBottom: 8,
   display: "block",
-};
+});
 
-const INPUT: CSSProperties = {
+const inputStyle = (isLight: boolean): CSSProperties => ({
   width: "100%",
   height: 50,
-  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
-  color: "#fff",
+  color: isLight ? "#0a0b0e" : "#fff",
   fontFamily: "'Montserrat', sans-serif",
   fontWeight: 300,
   fontSize: 14,
   padding: "0 14px",
   outline: "none",
   boxSizing: "border-box",
-};
+});
 
-const iconBtn: CSSProperties = {
+const iconBtnStyle = (isLight: boolean): CSSProperties => ({
   width: 30,
   height: 30,
   borderRadius: 8,
-  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  color: "rgba(255,255,255,0.7)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+  color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
-};
+});
 
-const eyeBtnStyle: CSSProperties = {
+const eyeBtn = (isLight: boolean): CSSProperties => ({
   position: "absolute",
   right: 12,
   top: "50%",
@@ -872,9 +875,9 @@ const eyeBtnStyle: CSSProperties = {
   background: "none",
   border: "none",
   cursor: "pointer",
-  color: "rgba(255,255,255,0.4)",
+  color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)",
   display: "flex",
-};
+});
 
 function Stat({ label, value }: { label: string; value: string }) {
   const { isLight } = useTheme();

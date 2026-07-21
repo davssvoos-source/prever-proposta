@@ -488,7 +488,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                     }
                     style={{
                       width: 30, height: 30, borderRadius: "50%", border: "none",
-                      background: gold, color: "#fff", cursor: "pointer",
+                      background: gold, color: "#0A0A0A", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                     aria-label="+"

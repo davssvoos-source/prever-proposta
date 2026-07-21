@@ -174,7 +174,7 @@ function VisitaPendentePage() {
               <button
                 onClick={salvar}
                 disabled={!draftDate || updateDate.isPending}
-                style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: c.gold, color: "#fff", cursor: "pointer", fontWeight: 700 }}
+                style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: c.gold, color: "#08090E", cursor: "pointer", fontWeight: 700 }}
               >
                 {updateDate.isPending ? "Salvando..." : "Salvar"}
               </button>
@@ -358,7 +358,7 @@ function VisitaPendentePage() {
                           setSavingContact(false);
                         }
                       }}
-                      style={{ flex: 1, padding: 7, borderRadius: 8, border: "none", background: c.gold, color: "#fff", cursor: "pointer", fontWeight: 700, fontSize: 12 }}
+                      style={{ flex: 1, padding: 7, borderRadius: 8, border: "none", background: c.gold, color: "#08090E", cursor: "pointer", fontWeight: 700, fontSize: 12 }}
                     >
                       {savingContact ? "..." : "Salvar"}
                     </button>

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CalendarDays, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/reagendar")({
   component: ReagendarPage,
@@ -20,6 +21,7 @@ function ReagendarPage() {
   const { id } = useParams({ from: "/_authenticated/visita/$id/reagendar" });
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { isLight } = useTheme();
 
   const [novaData, setNovaData] = useState("");
 
@@ -80,17 +82,22 @@ function ReagendarPage() {
   const nomeCliente: string | undefined =
     visita?.nome_predio ?? visita?.clientes?.nome ?? visita?.titulo ?? undefined;
 
+  const textPrimary = isLight ? "#0a0b0e" : "#FFFFFF";
+  const textSub = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const CARD: React.CSSProperties = {
-    background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: isLight
+      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 16,
     padding: "20px 18px",
     marginBottom: 16,
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined,
   };
   const LABEL: React.CSSProperties = {
     fontSize: 11,
-    color: "rgba(255,192,0,0.65)",
-    fontWeight: 300,
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    fontWeight: isLight ? 600 : 300,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
     marginBottom: 8,
@@ -104,14 +111,14 @@ function ReagendarPage() {
           onClick={() => navigate({ to: "/dashboard" })}
           style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
         >
-          <ArrowLeft size={22} color="#FFFFFF" />
+          <ArrowLeft size={22} color={textPrimary} />
         </button>
         <div>
-          <h1 style={{ color: "#FFFFFF", fontSize: 20, fontWeight: 500, margin: 0 }}>
+          <h1 style={{ color: textPrimary, fontSize: 20, fontWeight: 500, margin: 0 }}>
             Agendar / Reagendar
           </h1>
           {nomeCliente && (
-            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "2px 0 0" }}>
+            <p style={{ color: textSub, fontSize: 13, margin: "2px 0 0" }}>
               {nomeCliente}
             </p>
           )}
@@ -122,8 +129,8 @@ function ReagendarPage() {
         {visita?.data_hora_agendada && (
           <div style={CARD}>
             <span style={LABEL}>Data atual</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#FFFFFF", fontSize: 15 }}>
-              <CalendarDays size={16} color="rgba(255,255,255,0.65)" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: textPrimary, fontSize: 15 }}>
+              <CalendarDays size={16} color={textSub} />
               {new Date(visita.data_hora_agendada).toLocaleString("pt-BR", {
                 day: "2-digit",
                 month: "2-digit",
@@ -145,13 +152,13 @@ function ReagendarPage() {
               width: "100%",
               padding: "12px 14px",
               borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-              color: "#FFFFFF",
+              border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.18)",
+              background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+              color: isLight ? "#0a0b0e" : "#FFFFFF",
               fontSize: 15,
               outline: "none",
               boxSizing: "border-box",
-              colorScheme: "dark",
+              colorScheme: isLight ? "light" : "dark",
             }}
           />
         </div>
@@ -159,7 +166,7 @@ function ReagendarPage() {
         {visita?.endereco && (
           <div style={CARD}>
             <span style={LABEL}>Endereço</span>
-            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 14 }}>
+            <div style={{ color: isLight ? "#1f2430" : "rgba(255,255,255,0.85)", fontSize: 14 }}>
               {visita.endereco}
             </div>
           </div>
@@ -172,9 +179,9 @@ function ReagendarPage() {
             width: "100%",
             padding: "14px 16px",
             borderRadius: 12,
-            border: "1px solid rgba(255,192,0,0.55)",
-            background: "rgba(255,192,0,0.16)",
-            color: "#FFC000",
+            border: isLight ? "1px solid rgba(180,120,0,0.45)" : "1px solid rgba(255,192,0,0.55)",
+            background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.16)",
+            color: isLight ? "#b87800" : "#FFC000",
             fontSize: 15,
             fontWeight: 600,
             cursor: mutation.isPending ? "not-allowed" : "pointer",

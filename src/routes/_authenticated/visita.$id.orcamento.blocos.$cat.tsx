@@ -1841,7 +1841,7 @@ function BlocosWizardPage() {
                 onClick={() => setWizard({ ...wizard, esquinas: Math.min(10, E + 1) })}
                 style={{
                   width: 56, height: 56, borderRadius: "50%", border: "none",
-                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#fff", cursor: "pointer",
+                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#0A0A0A", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   boxShadow: "0 2px 12px rgba(255,192,0,0.35)",
                 }}

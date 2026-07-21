@@ -91,7 +91,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
   });
   const circlePrimary = (): React.CSSProperties => ({
     width: 44, height: 44, borderRadius: "50%", border: "none",
-    background: gold, color: "#fff", cursor: "pointer",
+    background: gold, color: "#0A0A0A", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
     boxShadow: "0 2px 12px rgba(255,192,0,0.35)",
   });
@@ -284,7 +284,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                     }
                     style={{
                       width: 30, height: 30, borderRadius: "50%", border: "none",
-                      background: gold, color: "#fff", cursor: "pointer",
+                      background: gold, color: "#0A0A0A", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}
                     aria-label="+"

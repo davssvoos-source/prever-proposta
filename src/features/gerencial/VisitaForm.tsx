@@ -492,7 +492,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     <AvatarFallback
                       style={{
                         background: isLight ? L.gold : "#FFC000",
-                        color: "#fff",
+                        color: "#08090E",
                         fontSize: 10,
                       }}
                     >

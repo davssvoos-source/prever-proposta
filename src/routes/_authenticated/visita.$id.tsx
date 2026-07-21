@@ -687,7 +687,7 @@ function VisitaDetail() {
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 14,
-            color: "#fff",
+            color: TXT_PRIMARY,
             textTransform: "capitalize",
           }}
         >
@@ -700,7 +700,7 @@ function VisitaDetail() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
               fontSize: 12,
-              color: "rgba(255,255,255,0.55)",
+              color: TXT_SECONDARY,
               lineHeight: 1.7,
             }}
           >
@@ -721,7 +721,7 @@ function VisitaDetail() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 600,
                 fontSize: 14,
-                color: "#fff",
+                color: TXT_PRIMARY,
                 marginBottom: 4,
               }}
             >
@@ -733,7 +733,7 @@ function VisitaDetail() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 400,
               fontSize: 13,
-              color: "rgba(255,255,255,0.55)",
+              color: TXT_SECONDARY,
             }}
           >
             {visita.endereco}
@@ -744,7 +744,7 @@ function VisitaDetail() {
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 12,
-                color: "rgba(255,255,255,0.50)",
+                color: TXT_SECONDARY,
                 marginTop: 4,
               }}
             >
@@ -788,8 +788,10 @@ function VisitaDetail() {
           {visita.nome_sindico && (
             <div
               style={{
-                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: "1px solid rgba(255,215,0,0.15)",
+                background: isLight
+                  ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+                  : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
                 borderRadius: 16,
                 padding: 16,
               }}
@@ -797,7 +799,7 @@ function VisitaDetail() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={SECTION_LABEL}>{labelResponsavel1}</div>
                 <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                  <Pencil size={14} color={isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.45)"} />
                 </button>
               </div>
               <div
@@ -805,7 +807,7 @@ function VisitaDetail() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 14,
-                  color: "#fff",
+                  color: TXT_PRIMARY,
                   marginBottom: 10,
                 }}
               >
@@ -821,7 +823,7 @@ function VisitaDetail() {
                     alignItems: "center",
                     gap: 6,
                     background: "#25D366",
-                    color: "#fff",
+                    color: TXT_PRIMARY,
                     borderRadius: 999,
                     padding: "6px 12px",
                     fontFamily: "'Montserrat', sans-serif",
@@ -838,8 +840,10 @@ function VisitaDetail() {
           {visita.nome_zelador && (
             <div
               style={{
-                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: "1px solid rgba(255,215,0,0.15)",
+                background: isLight
+                  ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+                  : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
                 borderRadius: 16,
                 padding: 16,
               }}
@@ -847,7 +851,7 @@ function VisitaDetail() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={SECTION_LABEL}>{labelResponsavel2}</div>
                 <button style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>
-                  <Pencil size={14} color="rgba(255,255,255,0.45)" />
+                  <Pencil size={14} color={isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.45)"} />
                 </button>
               </div>
               <div
@@ -855,7 +859,7 @@ function VisitaDetail() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 14,
-                  color: "#fff",
+                  color: TXT_PRIMARY,
                   marginBottom: 10,
                 }}
               >
@@ -871,7 +875,7 @@ function VisitaDetail() {
                     alignItems: "center",
                     gap: 6,
                     background: "#25D366",
-                    color: "#fff",
+                    color: TXT_PRIMARY,
                     borderRadius: 999,
                     padding: "6px 12px",
                     fontFamily: "'Montserrat', sans-serif",
@@ -930,10 +934,10 @@ function VisitaDetail() {
                 {initials(tecPerfil.nome ?? "?")}
               </div>
               <div>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: "#fff" }}>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14, color: TXT_PRIMARY }}>
                   {tecPerfil.nome}
                 </div>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.40)", textTransform: "capitalize" }}>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: TXT_SECONDARY, textTransform: "capitalize" }}>
                   {tecPerfil.cargo ?? "—"}
                 </div>
               </div>
@@ -941,7 +945,7 @@ function VisitaDetail() {
           )}
 
           {!tecPerfil && !editandoTecnico && (
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13, color: TXT_SECONDARY }}>
               Nenhum técnico atribuído
             </div>
           )}
@@ -955,7 +959,7 @@ function VisitaDetail() {
                   style={{
                     width: "100%", height: 48, borderRadius: 12,
                     border: "1px solid rgba(255,192,0,0.28)",
-                    background: "rgba(255,192,0,0.06)", color: "#fff",
+                    background: isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.06)", color: TXT_PRIMARY,
                     padding: "0 40px 0 14px",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13,
                     appearance: "none", outline: "none", cursor: "pointer",
@@ -976,7 +980,7 @@ function VisitaDetail() {
                   style={{
                     flex: 1, height: 40, borderRadius: 12,
                     border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
-                    color: "rgba(255,255,255,0.45)", cursor: "pointer",
+                    color: TXT_SECONDARY, cursor: "pointer",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
                   }}
                 >
@@ -1037,7 +1041,7 @@ function VisitaDetail() {
               <div style={{ display: "flex", gap: 6 }}>
                 <button
                   onClick={() => setEditandoPropostos(false)}
-                  style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 11, padding: "4px 10px", cursor: "pointer" }}
+                  style={{ background: "transparent", border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)", borderRadius: 8, color: TXT_SECONDARY, fontFamily: "'Montserrat', sans-serif", fontSize: 11, padding: "4px 10px", cursor: "pointer" }}
                 >
                   Cancelar
                 </button>
@@ -1053,7 +1057,7 @@ function VisitaDetail() {
           </div>
           {!editandoPropostos ? (
             (((visita as any).servicos_propostos as string[] | null) ?? []).length === 0 ? (
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: "rgba(255,255,255,0.45)", margin: 0 }}>
+              <p style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: TXT_SECONDARY, margin: 0 }}>
                 Nenhum serviço proposto definido.
               </p>
             ) : (
@@ -1064,7 +1068,7 @@ function VisitaDetail() {
                     style={{
                       background: "transparent",
                       border: "1px solid #FFFFFF",
-                      color: "#FFFFFF",
+                      color: TXT_PRIMARY,
                       borderRadius: 999,
                       padding: "5px 10px",
                       fontFamily: "'Montserrat', sans-serif",
@@ -1090,7 +1094,7 @@ function VisitaDetail() {
                       )
                     }
                     style={{
-                      background: ativo ? "rgba(255,255,255,0.10)" : "rgba(8,8,12,0.20)",
+                      background: ativo ? (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)") : (isLight ? "#ffffff" : "rgba(8,8,12,0.20)"),
                       border: ativo ? "1.5px solid #FFFFFF" : "1px solid rgba(255,255,255,0.18)",
                       borderRadius: 999,
                       padding: "6px 11px",
@@ -1122,7 +1126,7 @@ function VisitaDetail() {
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 300,
               fontSize: 13,
-              color: "rgba(255,255,255,0.72)",
+              color: isLight ? "#1f2430" : "rgba(255,255,255,0.72)",
               whiteSpace: "pre-wrap",
               margin: 0,
               lineHeight: 1.6,
@@ -1155,7 +1159,7 @@ function VisitaDetail() {
                 return (
                   <div key={bloco.id}>
                     {idx > 0 && (
-                      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 6 }} />
+                      <div style={{ height: 1, background: isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)", marginBottom: 6 }} />
                     )}
                     <div
                       style={{
@@ -1259,7 +1263,7 @@ function VisitaDetail() {
                 borderRadius: 14,
                 border: 0,
                 cursor: aprovarMutation.isPending ? "not-allowed" : "pointer",
-                color: "#FFFFFF",
+                color: TXT_PRIMARY,
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 700,
                 fontSize: 12,
@@ -1330,7 +1334,7 @@ function VisitaDetail() {
                   borderRadius: 12,
                   border: "1px solid rgba(248,113,113,0.28)",
                   background: "rgba(248,113,113,0.06)",
-                  color: "#fff",
+                  color: TXT_PRIMARY,
                   padding: "10px 12px",
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
@@ -1353,7 +1357,7 @@ function VisitaDetail() {
                     borderRadius: 12,
                     border: "1px solid rgba(255,255,255,0.10)",
                     background: "transparent",
-                    color: "rgba(255,255,255,0.45)",
+                    color: TXT_SECONDARY,
                     cursor: "pointer",
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,

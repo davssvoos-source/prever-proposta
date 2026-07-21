@@ -171,7 +171,7 @@ export function NotificationPanel() {
                 style={{
                   padding: "36px 16px",
                   textAlign: "center",
-                  color: "rgba(255,255,255,0.35)",
+                  color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 12,

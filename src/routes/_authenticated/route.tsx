@@ -88,10 +88,10 @@ function AuthenticatedLayout() {
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 22, color: "#fff", marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 22, color: isLight ? "#0a0b0e" : "#fff", marginBottom: 12 }}>
               Aguardando aprovação
             </div>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
               Sua solicitação de acesso foi enviada. Um administrador irá analisá-la em breve.
             </div>
             <button
@@ -103,9 +103,9 @@ function AuthenticatedLayout() {
                 marginTop: 32,
                 padding: "10px 24px",
                 borderRadius: 20,
-                border: "1px solid rgba(255,255,255,0.20)",
-                background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                color: "rgba(255,255,255,0.7)",
+                border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
+                background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)",
                 fontSize: 14,
                 cursor: "pointer",
               }}
@@ -199,8 +199,8 @@ function AuthenticatedLayout() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 500,
                   fontSize: 13,
-                  color: scrolled ? (isLight ? "#0a0b0e" : "#fff") : "#FFFFFF",
-                  textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
+                  color: isLight ? "#0a0b0e" : "#FFFFFF",
+                  textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                   lineHeight: 1.2,
                 }}
               >
@@ -214,8 +214,8 @@ function AuthenticatedLayout() {
                     fontSize: 10,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: scrolled ? (isLight ? "#7a5000" : "rgba(255,192,0,0.6)") : "#FFC000",
-                    textShadow: scrolled ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
+                    color: isLight ? "#7a5000" : scrolled ? "rgba(255,192,0,0.6)" : "#FFC000",
+                    textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                     lineHeight: 1.2,
                   }}
                 >

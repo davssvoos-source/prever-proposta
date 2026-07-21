@@ -731,14 +731,17 @@ function VisitaCard({ visita }: { visita: any }) {
   return (
     <div
       style={{
-        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(255, 215, 0, 0.2)",
+        background: isLight
+          ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+          : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+        backdropFilter: isLight ? "none" : "blur(12px)",
+        WebkitBackdropFilter: isLight ? "none" : "blur(12px)",
+        border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255, 215, 0, 0.2)",
         borderRadius: 16,
         padding: 16,
         marginBottom: 0,
         cursor: "pointer",
+        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined,
       }}
     >
 

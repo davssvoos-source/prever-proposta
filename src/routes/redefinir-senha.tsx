@@ -4,6 +4,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DatacenterBackground } from "@/components/DatacenterBackground";
+import { LightBackground } from "@/components/LightBackground";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export const Route = createFileRoute("/redefinir-senha")({
   component: RedefinirSenhaPage,
@@ -11,6 +13,7 @@ export const Route = createFileRoute("/redefinir-senha")({
 
 function RedefinirSenhaPage() {
   const navigate = useNavigate();
+  const { isLight } = useTheme();
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [showNova, setShowNova] = useState(false);
@@ -73,20 +76,21 @@ function RedefinirSenhaPage() {
   }
 
   const CARD: CSSProperties = {
-    background: "#101014",
-    backdropFilter: "blur(20px) saturate(160%)",
-    WebkitBackdropFilter: "blur(20px) saturate(160%)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: isLight ? "#ffffff" : "#101014",
+    backdropFilter: isLight ? "none" : "blur(20px) saturate(160%)",
+    WebkitBackdropFilter: isLight ? "none" : "blur(20px) saturate(160%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 24,
     padding: "32px 24px",
+    boxShadow: isLight ? "0 4px 24px rgba(0,0,0,0.08)" : undefined,
   };
   const INPUT: CSSProperties = {
     width: "100%",
     height: 52,
-    background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
-    color: "#fff",
+    color: isLight ? "#0a0b0e" : "#fff",
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 14,
@@ -115,7 +119,7 @@ function RedefinirSenhaPage() {
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
-    color: "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
     marginBottom: 8,
     display: "block",
   };
@@ -124,7 +128,7 @@ function RedefinirSenhaPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#08090E",
+        background: isLight ? "#eef0f4" : "#08090E",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -133,7 +137,7 @@ function RedefinirSenhaPage() {
         overflow: "hidden",
       }}
     >
-      <DatacenterBackground />
+      {isLight ? <LightBackground /> : <DatacenterBackground />}
       <div style={{ width: "100%", maxWidth: 380, position: "relative", zIndex: 1 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <img
@@ -158,7 +162,7 @@ function RedefinirSenhaPage() {
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.35)",
+              color: isLight ? "#6b7280" : "rgba(255,255,255,0.35)",
             }}
           >
             SISTEMA DE PROJETOS ELETRÔNICOS
@@ -173,7 +177,7 @@ function RedefinirSenhaPage() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.55)",
+                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
                   letterSpacing: "0.08em",
                 }}
               >
@@ -188,7 +192,7 @@ function RedefinirSenhaPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 500,
                     fontSize: 17,
-                    color: "#fff",
+                    color: isLight ? "#0a0b0e" : "#fff",
                     marginBottom: 6,
                   }}
                 >
@@ -199,7 +203,7 @@ function RedefinirSenhaPage() {
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
                     fontSize: 12,
-                    color: "rgba(255,255,255,0.45)",
+                    color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)",
                     lineHeight: 1.5,
                   }}
                 >
@@ -229,7 +233,7 @@ function RedefinirSenhaPage() {
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      color: "rgba(255,255,255,0.4)",
+                      color: isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.4)",
                       display: "flex",
                     }}
                   >

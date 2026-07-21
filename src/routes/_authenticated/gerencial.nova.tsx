@@ -875,7 +875,7 @@ function NovaVisitaPage() {
             borderRadius: 28,
             background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
             border: "none",
-            color: isLight ? "#ffffff" : "#08090E",
+            color: "#08090E",
             fontFamily: "'Montserrat', sans-serif",
             fontWeight: 500,
             fontSize: 13,
