@@ -19,6 +19,9 @@ export interface ResumosProposta {
   escopo: string;
   redundancia: string;
   inteligencia_artificial: string;
+  /** Bullets extras derivados das observações do técnico (podem ser ""). */
+  responsabilidades_extras_contratada: string;
+  responsabilidades_extras_contratante: string;
 }
 
 export const gerarResumosProposta = createServerFn({ method: "POST" })
@@ -38,25 +41,42 @@ export const gerarResumosProposta = createServerFn({ method: "POST" })
           visao_geral: {
             type: "string",
             description:
-              "VISÃO GERAL: 2 parágrafos curtos separados por quebra de linha. 1º parágrafo: contexto do local e o que motivou a proposta. 2º parágrafo: 'A solução contempla ...' listando as frentes (controle de acesso, CFTV, interfonia, operação etc.) e o resultado para o cliente. Sem bullets.",
+              "VISÃO GERAL: 1 a 2 parágrafos curtos (separados por quebra de linha quando forem 2). Contexto do local e o que motivou a proposta ('O Condomínio X busca modernizar ...'); quando houver 2º parágrafo: 'A solução contempla ...' listando as frentes (controle de acesso, CFTV, interfonia, operação etc.) e o resultado para o cliente. Sem bullets.",
           },
           escopo: {
             type: "string",
             description:
-              "ESCOPO DO PROJETO no padrão das propostas Prever: 1ª linha com o objetivo da implantação ('O objetivo da implantação é ...'). Depois uma lista de itens, um por linha, cada linha começando com '• ' em letra minúscula e terminando com ';' (último item termina com '.'). Itens concretos com quantidades reais dos blocos (ex.: '• fornecimento de 9 interfones IP distribuídos nos acessos;'). Quando for Portaria Remota, incluir também os itens operacionais padrão: fornecimento do aplicativo Grupo Prever Acessos; suporte contínuo aos moradores para uso do aplicativo, cadastros faciais e liberações; substituição dos equipamentos fornecidos em caso de falhas técnicas; até 3 dias de cadastros presenciais de moradores; fornecimento de manuais e orientações de uso; gestão da conectividade com balanceamento de carga e firewall.",
+              "ESCOPO DO PROJETO no padrão das propostas Prever: 1ª linha com o objetivo da implantação ('O objetivo da implantação é ...'). Depois uma lista de itens, um por linha, cada linha começando com '• ' e inicial MAIÚSCULA, terminando com ';' (último item termina com '.'). Itens no padrão real: agrupados por acesso/bloco com as quantidades reais ('• Implantação dos equipamentos de controle de acesso na eclusa de pedestres, contemplando 3 leitoras faciais, 2 interfones IP, 2 fechaduras magnéticas, 2 molas aéreas;' ou '• Fornecimento, instalação e configuração de 16 câmeras em pontos estratégicos do condomínio;'). Quando for Portaria Remota, incluir também os itens operacionais padrão: '• Implantação de todos os equipamentos contemplados na central de portaria remota;', '• Fornecimento do aplicativo Grupo Prever Acessos para uso dos moradores;', '• Suporte contínuo aos moradores para uso do aplicativo, cadastros faciais e liberações;', '• Substituição dos equipamentos fornecidos em caso de falhas técnicas;', '• Até 3 dias de cadastros presenciais de moradores;', '• Fornecimento de manuais e orientações de uso aos moradores;', '• Gestão da conectividade com balanceamento de carga e firewall, sendo o link de internet de responsabilidade do cliente.'",
           },
           redundancia: {
             type: "string",
             description:
-              "Resumo (2-3 frases) do sistema de redundância energética citando nobreak e baterias estacionárias dimensionados no escopo e o benefício (sistema operante em queda de energia). String vazia se o projeto não tiver redundância.",
+              "Resumo (2-3 frases) do sistema de redundância energética citando ESPECIFICAMENTE o nobreak e as baterias presentes na lista de equipamentos da ficha (modelo/porte e quantidade, ex.: 'um nobreak de 3KVA e duas baterias estacionárias de 115Ah') e o benefício (sistema operante em queda de energia). String vazia se o projeto não tiver redundância.",
           },
           inteligencia_artificial: {
             type: "string",
             description:
               "Resumo (2-4 frases) das I.As de análise de vídeo do projeto (citar quais e quantas câmeras), aplicadas para detecção e acionamentos automáticos. String vazia se não houver I.As.",
           },
+          responsabilidades_extras_contratada: {
+            type: "string",
+            description:
+              "Bullets EXTRAS de responsabilidade da CONTRATADA (Prever) derivados EXCLUSIVAMENTE das observações do técnico na ficha — compromissos que a Prever assumiu explicitamente ali. Um por linha, começando com '• ' e terminando com ';'. String vazia se as observações não trouxerem nenhum. NUNCA invente nem repita os bullets padrão (fornecer/instalar equipamentos, suporte, armazenar imagens).",
+          },
+          responsabilidades_extras_contratante: {
+            type: "string",
+            description:
+              "Bullets EXTRAS de responsabilidade da CONTRATANTE (cliente) derivados EXCLUSIVAMENTE das observações do técnico — condições do local que dependem do cliente (ex.: fornecer portão/porta, compartilhar senhas do CFTV atual, serviços de serralheria, intervenções estruturais). Um por linha, começando com '• ' e terminando com ';'. String vazia se não houver. NUNCA invente nem repita os bullets padrão (acesso ao local, links de internet, agendar elevadores).",
+          },
         },
-        required: ["visao_geral", "escopo", "redundancia", "inteligencia_artificial"],
+        required: [
+          "visao_geral",
+          "escopo",
+          "redundancia",
+          "inteligencia_artificial",
+          "responsabilidades_extras_contratada",
+          "responsabilidades_extras_contratante",
+        ],
         additionalProperties: false,
       } as const;
 
@@ -72,8 +92,9 @@ export const gerarResumosProposta = createServerFn({ method: "POST" })
         system:
           "Você redige trechos de propostas comerciais do Grupo Prever, empresa de controle de acesso e segurança eletrônica que atua desde 1994. " +
           "Escreva em português do Brasil, tom institucional, profissional e direto, na voz da empresa ('a proposta contempla', 'será fornecido', 'a Prever realizará'). " +
-          "Siga o padrão das propostas reais da Prever: Visão Geral em 2 parágrafos corridos; Escopo com objetivo + lista de itens iniciados por '• ' em minúscula e terminados em ';'. " +
+          "Siga o padrão das propostas reais da Prever: Visão Geral em 1 a 2 parágrafos corridos; Escopo com objetivo + lista de itens iniciados por '• ' com inicial maiúscula e terminados em ';'. " +
           "Use SOMENTE os fatos fornecidos — não invente equipamentos, quantidades ou serviços; cite quantidades reais quando existirem. " +
+          "Quando a ficha trouxer OBSERVAÇÕES DO TÉCNICO (por bloco ou gerais), interprete-as e reflita-as nos textos: nuances de instalação e condições do local entram na visão geral/escopo com redação institucional, e condições que dependem do cliente ou compromissos extras da Prever viram bullets nos campos de responsabilidades extras. " +
           "Não use markdown nem títulos — apenas o texto de cada campo.",
         messages: [
           {

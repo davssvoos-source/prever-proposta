@@ -13,7 +13,16 @@ import {
   IA_MENSALIDADES,
 } from "@/features/comercial/regrasComerciais";
 
-export type LinhaMensal = { label: string; valor: number | null; obs?: string };
+export type LinhaMensal = {
+  label: string;
+  valor: number | null;
+  obs?: string;
+  /** Rótulo usado no documento da proposta (.docx); ausente → usa `label`. */
+  labelDoc?: string;
+  /** Observação que PODE ir para o documento; `obs` é só da página (pode ter
+   *  detalhe interno como "opção 12H" ou "estimado"). */
+  obsDoc?: string;
+};
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -31,12 +40,15 @@ export interface MensalidadesInput {
   servicosOfertados: string[];
   linkPrever: boolean;
   appAcessos: boolean;
+  /** Turno da operação de Portaria Remota (padrão 24h). */
+  turnoPortaria?: "24h" | "12h";
 }
 
 export function computeLinhasMensais(input: MensalidadesInput): LinhaMensal[] {
   const {
     blocos, svAgg, svInfo, tipoLocal, sistemaProposto,
     qtdApartamentos, servicosOfertados, linkPrever, appAcessos,
+    turnoPortaria = "24h",
   } = input;
   const isResidencia = tipoLocal === "residencia";
   const isGalpao = tipoLocal === "empresa";
@@ -75,25 +87,40 @@ export function computeLinhasMensais(input: MensalidadesInput): LinhaMensal[] {
       label: "Totem de Monitoramento",
       valor,
       obs: obs ? `${obs} · ${obs24}` : obs24,
+      labelDoc: "Totem de Monitoramento",
+      obsDoc: obs24,
     });
   }
 
-  // Operação de Portaria Remota (por faixa de apartamentos)
+  // Operação de Portaria Remota (por faixa de apartamentos, turno 24h ou 12h)
   if (sistemaProposto === "PR") {
-    const v24 = valorPortariaRemota(qtdApartamentos, "24h");
-    const v12 = valorPortariaRemota(qtdApartamentos, "12h");
+    const turno = turnoPortaria === "12h" ? "12h" : "24h";
+    const vTurno = valorPortariaRemota(qtdApartamentos, turno);
+    const vOutro = valorPortariaRemota(qtdApartamentos, turno === "24h" ? "12h" : "24h");
+    const turnoLabel = turno === "12h" ? "12H" : "24H";
     linhas.push({
-      label: `Operação Portaria Remota 24H (${qtdApartamentos} aptos)`,
-      valor: v24,
-      obs: v24 === null
+      label: `Operação Portaria Remota ${turnoLabel} (${qtdApartamentos} aptos)`,
+      valor: vTurno,
+      obs: vTurno === null
         ? "acima de 100 aptos — sob negociação"
-        : v12 !== null
-          ? `opção 12H: ${fmtBRL(v12)}`
+        : vOutro !== null
+          ? `opção ${turno === "24h" ? "12H" : "24H"}: ${fmtBRL(vOutro)}`
           : undefined,
+      // Rótulos do documento no padrão das propostas reais da Prever
+      labelDoc: turno === "12h"
+        ? "Operação Portaria Remota 12H / Cadastros dos moradores / Suporte aos moradores"
+        : "Operação Portaria Remota 24H / Suporte contínuo aos moradores",
     });
     linhas.push({ label: "Software operante (Portaria Remota)", valor: SOFTWARE_OPERANTE_PR_MENSAL });
     if (appAcessos) {
-      linhas.push({ label: "App Grupo Prever Acessos", valor: 0, obs: "incluso na operação de Portaria Remota" });
+      linhas.push({
+        label: "App Grupo Prever Acessos",
+        valor: 0,
+        obs: "incluso na operação de Portaria Remota",
+        labelDoc:
+          "App Grupo Prever Acessos / Materiais físicos e virtuais para apoio aos usuários do sistema / " +
+          "Cadastro dos moradores no sistema de Portaria Remota",
+      });
     }
   }
 

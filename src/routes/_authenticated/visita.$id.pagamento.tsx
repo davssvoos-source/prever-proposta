@@ -21,9 +21,15 @@ import {
   LOCACAO_PRAZO_MESES,
   mensalidadeLocacao,
   mensalidadesComodato,
+  valorPortariaRemota,
 } from "@/features/comercial/regrasComerciais";
 import { computeLinhasMensais, totalMensalServicos } from "@/features/comercial/mensalidadesProjeto";
-import { gerarPropostaDocx, FORMAS_PAGAMENTO, type FormaPagamentoOpcao } from "@/features/proposta/gerarProposta";
+import {
+  gerarPropostaDocx,
+  tituloPadraoProposta,
+  FORMAS_PAGAMENTO,
+  type FormaPagamentoOpcao,
+} from "@/features/proposta/gerarProposta";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/pagamento")({
   component: PagamentoPage,
@@ -181,6 +187,8 @@ function PagamentoPage() {
   const comodato = mensalidadesComodato(locacaoMensal);
 
   // ── Mensalidades de serviços (módulo compartilhado com a proposta) ─────────
+  // turnoPortaria vive aqui em cima para o card e o .docx mostrarem o MESMO total.
+  const [turnoPortaria, setTurnoPortaria] = useState<"24h" | "12h">("24h");
   const tipoLocal = ((visita as any)?.tipo_local as string | null)?.trim().toLowerCase() ?? "";
   const svAgg: Record<string, number> = {};
   for (const it of itensSv as any[]) svAgg[it.cod_eq] = (svAgg[it.cod_eq] ?? 0) + Number(it.qtd || 0);
@@ -194,6 +202,7 @@ function PagamentoPage() {
     servicosOfertados: ((orcamento as any)?.servicos_ofertados as string[]) ?? [],
     linkPrever: (orcamento as any)?.link_internet_fornecimento === "prever",
     appAcessos: (orcamento as any)?.app_prever_acessos === true,
+    turnoPortaria,
   });
   const totalServicosMensais = totalMensalServicos(linhasMensais);
 
@@ -232,11 +241,27 @@ function PagamentoPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [formaEscolhida, setFormaEscolhida] = useState<FormaPagamentoOpcao | "">("");
   const [numeroProposta, setNumeroProposta] = useState("");
+  // Campo vazio = usar o título padrão (derivado na hora, também dentro do
+  // gerador). Nada é semeado no estado — evita congelar um default calculado
+  // antes de as queries resolverem.
+  const [tituloProposta, setTituloProposta] = useState("");
+  const [parcelasCompra, setParcelasCompra] = useState(1);
+  const [consolidarValores, setConsolidarValores] = useState(false);
   const [gerando, setGerando] = useState(false);
+
+  const sistemaProposto = ((orcamento as any)?.sistema_proposto ?? null) as string | null;
+  const ehPortariaRemota = sistemaProposto === "PR";
+  const qtdAptos = Number((orcamento as any)?.qtd_apartamentos || 0);
+  const compraTotal = vendaTotal + maoDeObra; // compra inclui mão de obra de implantação
+  const tituloDefault = tituloPadraoProposta(
+    sistemaProposto,
+    ((visita as any)?.servicos_propostos as string[]) ?? [],
+    tipoLocal,
+  );
 
   const valorDaForma = (f: FormaPagamentoOpcao): string => {
     if (f === "locacao_24") return `${fmtBRL(locacaoMensal)}/mês + implantação ${IMPLANTACAO_PARCELAS}× ${fmtBRL(implantacaoParcela)}`;
-    if (f === "compra_vista") return fmtBRL(vendaTotal);
+    if (f === "compra_vista") return `${fmtBRL(compraTotal)} (equipamentos + mão de obra)`;
     const prazo = Number(f.replace("comodato_", "")) as 24 | 36 | 48 | 60;
     return `${fmtBRL(comodato[prazo])}/mês`;
   };
@@ -247,13 +272,21 @@ function PagamentoPage() {
       return;
     }
     const num = numeroProposta.trim();
-    if (!/^\d{4}_\d{2}_\d{2}$/.test(num)) {
-      toast.error("Número da proposta inválido — use o formato XXXX_YY_ZZ (ex.: 0148_25_01).");
+    if (!/^\d{4}[._]\d{2}[._]\d{2}$/.test(num)) {
+      toast.error("Número da proposta inválido — use o formato XXXX_YY_ZZ ou XXXX.YY.ZZ (ex.: 5204_08_26).");
       return;
     }
     setGerando(true);
     try {
-      await gerarPropostaDocx({ visitaId: id, forma: formaEscolhida, numeroProposta: num });
+      await gerarPropostaDocx({
+        visitaId: id,
+        forma: formaEscolhida,
+        numeroProposta: num,
+        titulo: tituloProposta.trim() || undefined,
+        turnoPortaria,
+        parcelasCompra: formaEscolhida === "compra_vista" ? parcelasCompra : 1,
+        consolidarValores: formaEscolhida.startsWith("comodato_") ? consolidarValores : false,
+      });
       toast.success("Proposta gerada — o download foi iniciado.");
       setModalAberto(false);
     } catch (e: any) {
@@ -633,11 +666,152 @@ function PagamentoPage() {
               })}
             </div>
 
+            {/* Turno da operação — só em Portaria Remota */}
+            {ehPortariaRemota && (
+              <>
+                <div style={{ ...LABEL, marginBottom: 8 }}>Operação da Portaria Remota</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
+                  {(["24h", "12h"] as const).map((t) => {
+                    const selected = turnoPortaria === t;
+                    const v = valorPortariaRemota(qtdAptos, t);
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setTurnoPortaria(t)}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 12,
+                          border: selected
+                            ? "none"
+                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                          background: selected
+                            ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                            : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+                          color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>
+                          {t === "24h" ? "24 horas" : "12 horas"}
+                        </div>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                          {v === null ? "sob negociação" : `${fmtBRL(v)}/mês`}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Apresentação dos valores — só no comodato */}
+            {formaEscolhida.startsWith("comodato_") && (
+              <>
+                <div style={{ ...LABEL, marginBottom: 8 }}>Apresentação dos valores</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 18 }}>
+                  {([
+                    { v: false, titulo: "Detalhados", desc: "linha a linha + total" },
+                    { v: true, titulo: "Linha única", desc: "valor consolidado" },
+                  ] as const).map(({ v, titulo: t, desc }) => {
+                    const selected = consolidarValores === v;
+                    return (
+                      <button
+                        key={String(v)}
+                        onClick={() => setConsolidarValores(v)}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: 12,
+                          border: selected
+                            ? "none"
+                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                          background: selected
+                            ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                            : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+                          color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                          cursor: "pointer",
+                          transition: "all 0.15s",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>{t}</div>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                          {desc}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Parcelamento — só na compra */}
+            {formaEscolhida === "compra_vista" && (
+              <>
+                <div style={{ ...LABEL, marginBottom: 8 }}>Parcelamento da compra</div>
+                <select
+                  value={parcelasCompra}
+                  onChange={(e) => setParcelasCompra(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: 14,
+                    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                    background: isLight ? "#ffffff" : "#16161d",
+                    color: isLight ? "#0a0b0e" : "#fff",
+                    outline: "none",
+                    marginBottom: 18,
+                    colorScheme: isLight ? "light" : "dark",
+                  }}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                    <option key={n} value={n}>
+                      {n === 1 ? `À vista — ${fmtBRL(compraTotal)}` : `${n}x de ${fmtBRL(compraTotal / n)}`}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            <div style={{ ...LABEL, marginBottom: 8 }}>Título da proposta</div>
+            <input
+              value={tituloProposta}
+              onChange={(e) => setTituloProposta(e.target.value)}
+              placeholder={tituloDefault}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                borderRadius: 12,
+                padding: "12px 14px",
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: 14,
+                border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                background: isLight ? "#ffffff" : "#16161d",
+                color: isLight ? "#0a0b0e" : "#fff",
+                outline: "none",
+                marginBottom: 6,
+              }}
+            />
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: 11,
+                color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
+                marginBottom: 18,
+              }}
+            >
+              Aparece no cabeçalho e na linha Ass. do documento. Vazio = usar o padrão sugerido.
+            </div>
+
             <div style={{ ...LABEL, marginBottom: 8 }}>Número da proposta</div>
             <input
               value={numeroProposta}
               onChange={(e) => setNumeroProposta(e.target.value)}
-              placeholder="XXXX_YY_ZZ  (ex.: 0148_25_01)"
+              placeholder="XXXX_YY_ZZ ou XXXX.YY.ZZ  (ex.: 5204_08_26)"
               style={{
                 width: "100%",
                 boxSizing: "border-box",
