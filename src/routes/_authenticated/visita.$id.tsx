@@ -12,7 +12,9 @@ import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/s
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
-import { Layers, Banknote } from "lucide-react";
+import { Layers, Banknote, Wrench } from "lucide-react";
+import { abrirOs } from "@/features/os/data";
+import { montarChecklistImplantacao } from "@/features/os/checklist";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 // Mesmos nomes usados no resumo de pré-envio, para o escopo ficar idêntico
@@ -397,6 +399,43 @@ function VisitaDetail() {
       qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
       qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
       navigate({ to: "/visita/$id/orcamento", params: { id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Proposta aprovada → OS de implantação, com checklist montado do escopo.
+  // Reaproveita a OS se já existir uma para esta visita (não duplica).
+  const gerarImplantacao = useMutation({
+    mutationFn: async () => {
+      const clienteId = (visita as any)?.cliente_id as string | null;
+      if (!clienteId) {
+        throw new Error("Esta visita não está vinculada a um cliente. Vincule em Gerencial → Clientes antes de gerar a OS.");
+      }
+      const { data: existente } = await supabase
+        .from("ordens_servico" as any)
+        .select("id")
+        .eq("visita_id", id)
+        .eq("tipo", "implantacao")
+        .maybeSingle();
+      if (existente) return { osId: (existente as any).id as string, nova: false };
+
+      const local = (visita as any)?.nome_predio || (visita as any)?.titulo || "cliente";
+      const osId = await abrirOs({
+        tipo: "implantacao",
+        cliente_id: clienteId,
+        visita_id: id,
+        titulo: `Implantação — ${local}`,
+        descricao_problema: "Implantação do escopo aprovado na proposta desta visita técnica.",
+        prioridade: "normal",
+        tecnico_id: (visita as any)?.tecnico_id ?? null,
+      });
+      await montarChecklistImplantacao(osId, id);
+      return { osId, nova: true };
+    },
+    onSuccess: ({ osId, nova }) => {
+      qc.invalidateQueries({ queryKey: ["ordens-servico"] });
+      toast.success(nova ? "OS de implantação criada." : "Esta visita já tem uma OS de implantação.");
+      navigate({ to: "/os/$id", params: { id: osId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1377,13 +1416,33 @@ function VisitaDetail() {
           )}
 
           {status === "aprovada" && canApprove && !showReprovarForm && (
-            <button
-              onClick={() => navigate({ to: "/visita/$id/pagamento", params: { id } })}
-              style={{ ...CTA_GOLD(false), marginTop: 12 }}
-            >
-              <Banknote size={18} />
-              Configurar Forma de Pagamento
-            </button>
+            <>
+              <button
+                onClick={() => navigate({ to: "/visita/$id/pagamento", params: { id } })}
+                style={{ ...CTA_GOLD(false), marginTop: 12 }}
+              >
+                <Banknote size={18} />
+                Configurar Forma de Pagamento
+              </button>
+              {/* Elo com o sistema de OS: a proposta aprovada vira a ordem de
+                  implantação, com checklist do escopo (docs/SISTEMA_OS.md §5.5) */}
+              <button
+                onClick={() => gerarImplantacao.mutate()}
+                disabled={gerarImplantacao.isPending}
+                style={{
+                  marginTop: 10, width: "100%", height: 52, borderRadius: 26,
+                  background: isLight ? "#ffffff" : "#191921",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                  color: isLight ? "#0a0b0e" : "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                  cursor: gerarImplantacao.isPending ? "wait" : "pointer",
+                }}
+              >
+                <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} />
+                {gerarImplantacao.isPending ? "Gerando OS…" : "Gerar OS de Implantação"}
+              </button>
+            </>
           )}
         </div>
       )}

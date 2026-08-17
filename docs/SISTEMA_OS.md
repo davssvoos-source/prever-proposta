@@ -333,13 +333,13 @@ corretivo (dor principal do SAC) sobre os fluxos derivados.
 |---|---|---|---|
 | **0** ✅ | **Saneamento e fundações** | itens do §8 (ver §11) | — |
 | **1** ✅ | **Cadastro de Clientes** | tabela promovida + telas `/clientes` + seletor na nova visita + consolidação assistida (ver §12) | 0 |
-| **2** | **Inventário (as-built)** | `cliente_sistemas`/`cliente_equipamentos` + telas no cliente + derivação de visita aprovada + edição em campo | 1 |
-| **3** | **Chamados corretivos ponta a ponta** | `ordens_servico` + abertura SAC + execução do técnico (fotos, assinatura, peças-texto) + conferência/fechamento + notificações in-app + BottomNav/dashboard/calendário | 1 (2 recomendada) |
-| **4** | **Relatório PDF da OS** | template .docx Prever + fotos + assinatura embutidas | 3 |
-| **5** | **Dashboard gerencial de OS** | stat-tiles, SLA, tempos, por cliente/técnico | 3 |
-| **6** | **Preventiva + Implantação** | checklists por tipo de sistema; "Gerar OS de Implantação" na proposta aprovada; as-built automático no fechamento | 2, 3 |
-| **7** | **Alcance de notificação** | push FCM **ou** WhatsApp/e-mail para chamados urgentes (decisão §10) | 3 |
-| **8** | **Integração ERP (futuro)** | peças da OS conciliadas com o ERP | 3, definição do ERP |
+| **2** ✅ | **Inventário (as-built)** | `cliente_sistemas`/`cliente_equipamentos` + telas no cliente + derivação de visita aprovada + edição em campo | 1 |
+| **3** ✅ | **Chamados corretivos ponta a ponta** | `ordens_servico` + abertura SAC + execução do técnico (fotos, assinatura, peças-texto) + conferência/fechamento + notificações in-app + navegação | 1 (2 recomendada) |
+| **4** ✅ | **Relatório PDF da OS** | PDF com identidade Prever (jsPDF), fotos e assinatura embutidas | 3 |
+| **5** ✅ | **Painel gerencial de OS** | indicadores, SLA, tempos, por cliente/técnico | 3 |
+| **6** ✅ | **Preventiva + Implantação** | checklists por tipo de sistema; "Gerar OS de Implantação" na proposta aprovada; as-built automático no fechamento | 2, 3 |
+| **7** ⏸ | **Alcance de notificação** | push FCM **ou** WhatsApp/e-mail para chamados urgentes — **depende da sua decisão (§10.6)** | 3 |
+| **8** ⏸ | **Integração ERP (futuro)** | peças da OS conciliadas com o ERP — depende da definição do ERP | 3 |
 
 Cada etapa começa com sua(s) migration(s) — idempotentes, aplicadas por você
 no SQL Editor — e termina com `tsc` limpo e teste do fluxo no app.
@@ -494,3 +494,99 @@ linhas do PostgREST); e `types.ts` continua defasado.
 **Pendente para a Etapa 2:** a ficha do cliente ainda não mostra inventário de
 equipamentos nem ordens de serviço — as duas seções entram nas etapas 2 e 3,
 nesta mesma tela.
+
+---
+
+## 13. Registro das Etapas 2 a 6 (2026-08-17)
+
+Migrations: `20260817140000_etapa2_inventario.sql`,
+`20260817160000_etapa3_ordens_servico.sql`,
+`20260817180000_etapa6_checklists.sql`.
+
+### Inventário (Etapa 2)
+
+`cliente_sistemas` + `cliente_equipamentos`, com **FK de verdade** para o
+catálogo (o vínculo por `cod_eq` em texto sem FK foi o que permitiu o bug do
+EQ302) e **snapshot de código e nome**, porque o catálogo é mantido por
+importação de planilha externa e muda por baixo do app.
+
+Duas fontes de dados: derivação do escopo aprovado (cada bloco vira um sistema,
+cada item vira um equipamento com origem `implantacao`; índice único em
+`origem_visita_bloco_id` impede importar o mesmo bloco duas vezes) e registro
+em campo pela equipe (origem `campo`, com busca no catálogo ou nome livre) —
+este é o caminho para os clientes antigos. Remover é mudar o `estado` para
+`removido`, preservando o histórico.
+
+### Chamados (Etapa 3)
+
+O banco assume as regras que não devem viver no app: `proximo_numero_os()` gera
+`OS-2026-0001` de forma atômica por ano, e um trigger calcula o `prazo_limite`
+a partir de `os_sla` (tabela de configuração — os prazos propostos são
+urgente 4h, alta 24h, normal 72h, baixa sem prazo; ajuste com `UPDATE`). Toda
+mudança de status entra sozinha em `os_eventos`.
+
+**Desvio consciente do §4.3:** os domínios (`tipo`, `status`, `prioridade`)
+ficaram em `text` + `CHECK` em vez de enums Postgres, por coerência com o resto
+do schema (`clientes.situacao`, `cliente_sistemas.tipo`) e para permitir
+evoluir a lista sem `ALTER TYPE`.
+
+Notificações seguem a regra da Etapa 0 — trigger `SECURITY DEFINER`, nunca
+insert client-side: técnico recebe a atribuição (com título diferente quando é
+urgente), gestores são avisados quando um chamado é executado, técnico quando é
+fechado. `ordens_servico` entra no realtime.
+
+Telas: `/os` (lista com filtros Em aberto / Meus / Atrasados / A conferir),
+`/os/nova` (abertura pelo SAC, com o prazo do SLA à vista e a agenda do técnico
+para não marcar em cima), `/os/$id` (tela única por status). Entrada pela
+navegação inferior de todos os papéis, pelo Painel Gerencial e pela ficha do
+cliente.
+
+### Relatório (Etapa 4)
+
+PDF gerado no cliente com **jsPDF** (já era dependência do projeto), não `.docx`
+— não havia template Word para OS e o PDF é o formato que o cliente recebe.
+Faixa escura com acento dourado, seções em caixa alta, dados do cliente e do
+atendimento, diagnóstico, serviço, peças, fotos antes/depois em grade e a
+assinatura sobre linha, com rodapé de contato e paginação. Disponível a partir
+do momento em que o chamado é executado.
+
+### Painel (Etapa 5)
+
+`/os/painel` (gestores): em aberto, prazo estourado, tempo médio de atendimento,
+fechados no mês, percentual de cumprimento de prazo com barra, donut da fila por
+status, barras de carga por técnico e ranking de clientes que mais chamam.
+Paleta de dataviz do §9 do DESIGN_SYSTEM.md (validada para daltonismo, ordem
+fixa, máximo 8 séries + "Outros" neutro), legenda sempre com chip + nome +
+valor.
+
+### Preventiva e Implantação (Etapa 6)
+
+`os_checklist_templates` traz **41 itens** de roteiro divididos em GERAL + os 8
+tipos de sistema (ex.: CFTV → conferir imagem, limpar lentes, verificar
+gravação e retenção, checar saúde do HD, testar acesso remoto). É uma primeira
+versão para ajustar com os técnicos — a tabela é editável por SQL.
+
+- **Preventiva**: ao abrir, o checklist é montado com os itens GERAL + os do
+  tipo de cada sistema escolhido (vazio = todos os sistemas ativos do cliente).
+- **Implantação**: o botão "Gerar OS de Implantação" na visita aprovada cria a
+  OS vinculada à visita (reaproveita se já existir) e monta o checklist com um
+  item por equipamento do escopo, agrupado por bloco, mais "Testar e validar"
+  por bloco. **Ao fechar a OS de implantação, o inventário do cliente é gerado
+  automaticamente** a partir do escopo — é o ponto em que o ciclo se fecha:
+  proposta → implantação → as-built → corretiva/preventiva.
+
+### O que ficou pendente e por quê
+
+- **Etapa 7 (alcance de notificação)** depende da sua decisão em §10.6: push
+  nativo exige adicionar FCM e **republicar o app na Play Store** (hoje o
+  binário nunca muda porque é um WebView de `prever.lovable.app`); WhatsApp ou
+  e-mail exigem uma conta de API e a chave nos secrets. Hoje a notificação
+  chega in-app e em tempo real, mas **só com o app aberto**.
+- **Etapa 8 (ERP)** aguarda a definição de qual sistema e qual interface; por
+  ora as peças ficam em texto no chamado e no relatório.
+- `types.ts` continua defasado (as tabelas novas não estão lá) — o app acessa
+  as tabelas de OS com cast, o que funciona mas perde a checagem de tipos.
+  Regenerar pela Lovable quando puder.
+- `consolidarGrupo` (Etapa 1) e as derivações de inventário fazem várias
+  chamadas sem transação. Uma RPC `SECURITY DEFINER` por operação resolveria
+  atomicidade — vale quando o volume crescer.

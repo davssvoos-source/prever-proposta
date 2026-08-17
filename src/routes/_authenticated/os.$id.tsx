@@ -8,7 +8,8 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowLeft, Building2, Camera, CheckCircle2, ClipboardList, Clock,
-  History, MapPin, Phone, PlayCircle, Trash2, User, X,
+  CheckSquare, FileDown, History, ListChecks, MapPin, Phone, PlayCircle, Square,
+  Trash2, User, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,9 @@ import {
   iniciarAtendimento, concluirAtendimento, fecharOs, reabrirOs, cancelarOs,
   atualizarOs, anexarFotoOs, excluirFotoOs, salvarAssinatura,
 } from "@/features/os/data";
+import { gerarRelatorioOs } from "@/features/os/relatorioOs";
+import { useChecklist, marcarItemChecklist } from "@/features/os/checklist";
+import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
 import {
   osStatusInfo, situacaoPrazo, textoPrazo,
   OS_TIPO_LABEL, OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES,
@@ -39,6 +43,7 @@ function OsDetalhePage() {
   const { data: os, isLoading } = useOrdem(id);
   const { data: eventos = [] } = useEventosOs(id);
   const { data: fotos = [] } = useFotosOs(id);
+  const { data: checklist = [] } = useChecklist(id);
   const { data: tecnicos = [] } = useTecnicos();
   const { data: assinaturaUrl } = useAssinaturaUrl(os?.assinatura_url);
   const [userId, setUserId] = useState<string | null>(null);
@@ -154,8 +159,33 @@ function OsDetalhePage() {
   });
 
   const fechar = useMutation({
-    mutationFn: () => fecharOs(id),
-    onSuccess: () => { invalidar(); toast.success("Chamado fechado."); },
+    mutationFn: async () => {
+      await fecharOs(id);
+      // Implantação concluída alimenta o inventário do cliente (as-built):
+      // é o que fecha o ciclo proposta → implantação → corretiva/preventiva.
+      if (os?.tipo === "implantacao" && os.visita_id) {
+        return derivarInventarioDaVisita(os.cliente_id, os.visita_id);
+      }
+      return null;
+    },
+    onSuccess: (derivado) => {
+      invalidar();
+      if (derivado && derivado.sistemas > 0) {
+        qc.invalidateQueries({ queryKey: ["cliente-inventario", os?.cliente_id] });
+        toast.success(
+          `Chamado fechado. Inventário do cliente atualizado: ${derivado.sistemas} sistema(s), ${derivado.equipamentos} equipamento(s).`,
+        );
+      } else {
+        toast.success("Chamado fechado.");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const marcarItem = useMutation({
+    mutationFn: ({ itemId, concluido }: { itemId: string; concluido: boolean }) =>
+      marcarItemChecklist(itemId, concluido),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["os-checklist", id] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -177,6 +207,19 @@ function OsDetalhePage() {
   const trocarTecnico = useMutation({
     mutationFn: (novo: string) => atualizarOs(id, { tecnico_id: novo || null }),
     onSuccess: () => { invalidar(); toast.success("Técnico atualizado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const baixarRelatorio = useMutation({
+    mutationFn: async () => {
+      if (!os) throw new Error("Chamado não carregado.");
+      await gerarRelatorioOs({
+        os,
+        tecnicoNome: (tecnicos as any[]).find((t) => t.id === os.tecnico_id)?.nome ?? null,
+        fotos: fotos.map((f) => ({ etapa: f.etapa, storage_path: f.storage_path, legenda: f.legenda })),
+      });
+    },
+    onSuccess: () => toast.success("Relatório gerado — o download foi iniciado."),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -392,6 +435,66 @@ function OsDetalhePage() {
         </div>
       )}
 
+      {/* Checklist (preventiva e implantação) */}
+      {checklist.length > 0 && (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <ListChecks size={15} color={gold} />
+            <span style={SEC}>Roteiro de verificação</span>
+            <span style={{ flex: 1 }} />
+            <span
+              style={{
+                fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 700,
+                color: checklist.every((i) => i.concluido) ? (isLight ? "#047857" : "#34D399") : gold,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {checklist.filter((i) => i.concluido).length}/{checklist.length}
+            </span>
+          </div>
+          {(() => {
+            const grupos = Array.from(new Set(checklist.map((i) => i.grupo ?? "Geral")));
+            return grupos.map((g) => (
+              <div key={g} style={{ marginTop: 6 }}>
+                <div style={{ ...LABEL, marginBottom: 4 }}>{g}</div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {checklist
+                    .filter((i) => (i.grupo ?? "Geral") === g)
+                    .map((i) => (
+                      <button
+                        key={i.id}
+                        onClick={() => emExecucao && marcarItem.mutate({ itemId: i.id, concluido: !i.concluido })}
+                        disabled={!emExecucao}
+                        style={{
+                          display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0",
+                          background: "transparent", border: "none", textAlign: "left",
+                          cursor: emExecucao ? "pointer" : "default", color: textPrimary,
+                          borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        {i.concluido ? (
+                          <CheckSquare size={16} color={isLight ? "#047857" : "#34D399"} style={{ flexShrink: 0, marginTop: 1 }} />
+                        ) : (
+                          <Square size={16} color={textSecondary} style={{ flexShrink: 0, marginTop: 1 }} />
+                        )}
+                        <span
+                          style={{
+                            flex: 1, fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
+                            opacity: i.concluido ? 0.6 : 1,
+                            textDecoration: i.concluido ? "line-through" : "none",
+                          }}
+                        >
+                          {i.item}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
+
       {/* Iniciar atendimento */}
       {podeExecutar && ["aberta", "agendada"].includes(os.status) && (
         <button style={CTA} onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>
@@ -533,6 +636,18 @@ function OsDetalhePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Relatório de atendimento (PDF) — a partir da execução */}
+      {["executada", "fechada"].includes(os.status) && (
+        <button
+          style={{ ...btnSec, height: 50, borderRadius: 25 }}
+          onClick={() => baixarRelatorio.mutate()}
+          disabled={baixarRelatorio.isPending}
+        >
+          <FileDown size={16} color={gold} />
+          {baixarRelatorio.isPending ? "Gerando relatório…" : "Baixar relatório de atendimento (PDF)"}
+        </button>
       )}
 
       {/* Conferência do gestor */}

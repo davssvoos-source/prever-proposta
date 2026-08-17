@@ -5,7 +5,7 @@
 import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Building2, ClipboardList, Clock, Plus, Search } from "lucide-react";
+import { AlertTriangle, BarChart3, Building2, ClipboardList, Clock, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente } from "@/features/gerencial/data";
@@ -109,19 +109,34 @@ function OsListaPage() {
           </div>
         </div>
         {isGerente && (
-          <button
-            onClick={() => navigate({ to: "/os/nova" })}
-            style={{
-              height: 42, padding: "0 16px", borderRadius: 12, border: "none",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
-              color: "#08090E", display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
-              cursor: "pointer", flexShrink: 0, boxShadow: "0 4px 14px rgba(255,192,0,0.30)",
-            }}
-          >
-            <Plus size={16} />
-            Abrir chamado
-          </button>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => navigate({ to: "/os/painel" })}
+              title="Painel de indicadores"
+              style={{
+                width: 42, height: 42, borderRadius: 12,
+                background: isLight ? "#ffffff" : "#191921",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <BarChart3 size={17} color={gold} />
+            </button>
+            <button
+              onClick={() => navigate({ to: "/os/nova" })}
+              style={{
+                height: 42, padding: "0 16px", borderRadius: 12, border: "none",
+                background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                color: "#08090E", display: "flex", alignItems: "center", gap: 6,
+                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+                cursor: "pointer", boxShadow: "0 4px 14px rgba(255,192,0,0.30)",
+              }}
+            >
+              <Plus size={16} />
+              Abrir chamado
+            </button>
+          </div>
         )}
       </div>
 

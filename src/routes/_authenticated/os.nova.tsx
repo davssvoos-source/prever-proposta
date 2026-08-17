@@ -13,6 +13,7 @@ import { useTecnicos } from "@/features/gerencial/data";
 import { useClientes } from "@/features/clientes/data";
 import { useInventario } from "@/features/clientes/inventario";
 import { abrirOs, useSla } from "@/features/os/data";
+import { montarChecklistPreventiva } from "@/features/os/checklist";
 import {
   OS_TIPO_LABEL, OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES,
   type OsPrioridade, type OsTipo,
@@ -138,7 +139,7 @@ function NovaOsPage() {
       if (!clienteId) throw new Error("Escolha o cliente do chamado.");
       if (!titulo.trim()) throw new Error("Descreva o assunto do chamado.");
       const agendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
-      return abrirOs({
+      const osId = await abrirOs({
         tipo,
         cliente_id: clienteId,
         cliente_sistema_id: sistemaId,
@@ -148,6 +149,17 @@ function NovaOsPage() {
         tecnico_id: tecnicoId || null,
         data_hora_agendada: agendada,
       });
+      // Preventiva já nasce com o roteiro de verificação dos sistemas
+      if (tipo === "preventiva") {
+        const alvos = sistemaId ? sistemas.filter((s) => s.id === sistemaId) : sistemas.filter((s) => s.ativo);
+        if (alvos.length > 0) {
+          await montarChecklistPreventiva(
+            osId,
+            alvos.map((s) => ({ id: s.id, nome: s.nome, tipo: s.tipo })),
+          );
+        }
+      }
+      return osId;
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["ordens-servico"] });
@@ -261,7 +273,9 @@ function NovaOsPage() {
 
         {cliente && (
           <div>
-            <label style={LABEL}>Sistema afetado (opcional)</label>
+            <label style={LABEL}>
+              {tipo === "preventiva" ? "Sistema a revisar (vazio = todos)" : "Sistema afetado (opcional)"}
+            </label>
             {sistemas.length === 0 ? (
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
                 Este cliente ainda não tem inventário — registre os sistemas na ficha do cliente.
