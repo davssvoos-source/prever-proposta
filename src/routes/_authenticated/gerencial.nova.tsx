@@ -12,6 +12,13 @@ import {
 } from "@/features/visitas/servicosPropostos";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import {
+  useClientes,
+  criarCliente,
+  atualizarCliente,
+  acharClienteEquivalente,
+  type Cliente,
+} from "@/features/clientes/data";
 
 export const Route = createFileRoute("/_authenticated/gerencial/nova")({
   component: NovaVisitaPage,
@@ -78,6 +85,10 @@ function NovaVisitaPage() {
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
+  // Vínculo com o cadastro de clientes (Etapa 1 do sistema de OS)
+  const [clienteId, setClienteId] = useState<string | null>(null);
+  const [buscaCliente, setBuscaCliente] = useState("");
+  const [sincronizarCliente, setSincronizarCliente] = useState(true);
   // Residência/Galpão: não têm síndico/zelador — usa proprietário/encarregado(a)
   const isResidenciaOuGalpao = tipoLocal === "residencia" || tipoLocal === "empresa";
   const labelResponsavel1 = isResidenciaOuGalpao ? "Proprietário" : "Síndico";
@@ -153,6 +164,57 @@ function NovaVisitaPage() {
     boxSizing: "border-box",
   };
 
+  // ── Cadastro de clientes: seleção e preenchimento automático ──────────────
+  const { data: clientes = [] } = useClientes();
+  const clienteSelecionado = clientes.find((c) => c.id === clienteId) ?? null;
+  const clientesFiltrados = (() => {
+    const termo = buscaCliente
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!termo) return [];
+    return clientes.filter((c) =>
+      `${c.nome} ${c.endereco ?? ""}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .includes(termo),
+    );
+  })();
+
+  /** true quando algum dado da visita difere do cadastro vinculado. */
+  const clienteDivergente = !!clienteSelecionado && (
+    (clienteSelecionado.nome_predio || clienteSelecionado.nome) !== nomePredio ||
+    (clienteSelecionado.endereco ?? "") !== endereco ||
+    (clienteSelecionado.complemento ?? "") !== complemento ||
+    (clienteSelecionado.nome_sindico ?? "") !== nomeSindico ||
+    (clienteSelecionado.telefone_sindico ?? "") !== telefoneSindico ||
+    (clienteSelecionado.email_sindico ?? "") !== emailSindico ||
+    (clienteSelecionado.nome_zelador ?? "") !== nomeZelador ||
+    (clienteSelecionado.telefone_zelador ?? "") !== telefoneZelador ||
+    (clienteSelecionado.email_zelador ?? "") !== emailZelador
+  );
+
+  /** Ao escolher um cliente, herda os dados dele nos campos da visita. */
+  function aplicarCliente(c: Cliente) {
+    setClienteId(c.id);
+    setBuscaCliente("");
+    setNomePredio(c.nome_predio || c.nome);
+    if (c.tipo_local) setTipoLocal(c.tipo_local);
+    if (c.endereco) setEndereco(c.endereco);
+    if (c.complemento) setComplemento(c.complemento);
+    if (c.latitude != null) setLat(c.latitude);
+    if (c.longitude != null) setLng(c.longitude);
+    if (c.latitude != null && c.longitude != null) setGeoStatus("ok");
+    if (c.nome_sindico) setNomeSindico(c.nome_sindico);
+    if (c.telefone_sindico) setTelefoneSindico(c.telefone_sindico);
+    if (c.email_sindico) setEmailSindico(c.email_sindico);
+    if (c.nome_zelador) setNomeZelador(c.nome_zelador);
+    if (c.telefone_zelador) setTelefoneZelador(c.telefone_zelador);
+    if (c.email_zelador) setEmailZelador(c.email_zelador);
+  }
+
   const { data: tecnicos = [] } = useQuery({
     queryKey: ["tecnicos-lista"],
     queryFn: async () => {
@@ -221,17 +283,44 @@ function NovaVisitaPage() {
       const dataHoraAgendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { data: clienteRow, error: clienteErr } = await supabase
-        .from("clientes")
-        .insert({
-          nome: nomeSindico || nomePredio,
-          email: emailSindico || null,
-          telefone: telefoneSindico || null,
-          owner_id: user?.id as string,
-        })
-        .select("id")
-        .single();
-      if (clienteErr) throw clienteErr;
+      // Cliente do cadastro mestre: usa o selecionado ou cria um completo
+      // (com endereço e contatos) — não mais uma linha descartável por visita.
+      const dadosDoCliente = {
+        nome: nomePredio,
+        nome_predio: nomePredio,
+        tipo_local: tipoLocal || null,
+        endereco,
+        complemento: complemento || null,
+        latitude: lat,
+        longitude: lng,
+        email: emailSindico || null,
+        telefone: telefoneSindico || null,
+        nome_sindico: nomeSindico || null,
+        telefone_sindico: telefoneSindico || null,
+        email_sindico: emailSindico || null,
+        nome_zelador: nomeZelador || null,
+        telefone_zelador: telefoneZelador || null,
+        email_zelador: emailZelador || null,
+      };
+
+      let clienteIdFinal = clienteId;
+      if (clienteIdFinal) {
+        // Cliente vinculado: se o gestor corrigiu algo aqui, o cadastro
+        // acompanha — senão a OS leria o dado velho na ficha do cliente.
+        if (sincronizarCliente && clienteDivergente) {
+          await atualizarCliente(clienteIdFinal, dadosDoCliente);
+        }
+      } else {
+        // Sem vínculo: reaproveita um cadastro equivalente (mesmo nome e
+        // endereço) em vez de criar um duplicado.
+        const equivalente = acharClienteEquivalente(clientes, nomePredio, endereco);
+        if (equivalente) {
+          clienteIdFinal = equivalente.id;
+          await atualizarCliente(equivalente.id, dadosDoCliente);
+        } else {
+          clienteIdFinal = await criarCliente({ ...dadosDoCliente, situacao: "prospecto" });
+        }
+      }
 
       let foto_fachada_url: string | null = null;
       if (fotoFile) {
@@ -251,7 +340,7 @@ function NovaVisitaPage() {
       }
 
       const payload = {
-        cliente_id: clienteRow.id,
+        cliente_id: clienteIdFinal,
         titulo: nomePredio,
         nome_predio: nomePredio,
         tipo_local: tipoLocal,
@@ -391,6 +480,97 @@ function NovaVisitaPage() {
 
       {step === 1 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Cliente: vincula a visita ao cadastro (Etapa 1 do sistema de OS).
+              Antes, cada visita criava um cliente novo e descartável. */}
+          <div style={{ ...GLASS, padding: 16 }}>
+            <label style={LABEL}>Cliente</label>
+            {clienteSelecionado ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Building2 size={18} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14, color: isLight ? L.text : "#fff" }}>
+                    {clienteSelecionado.nome}
+                  </div>
+                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                    {clienteSelecionado.endereco ?? "sem endereço no cadastro"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setClienteId(null); setBuscaCliente(""); }}
+                  style={{
+                    height: 34, padding: "0 12px", borderRadius: 10,
+                    background: isLight ? "#ffffff" : "#191921",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                    color: isLight ? L.text : "#fff", cursor: "pointer", flexShrink: 0,
+                    fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                  }}
+                >
+                  Desvincular
+                </button>
+              </div>
+            ) : null}
+            {clienteSelecionado && clienteDivergente && (
+              <button
+                onClick={() => setSincronizarCliente((v) => !v)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, marginTop: 12,
+                  background: "transparent", border: "none", padding: 0, cursor: "pointer",
+                  textAlign: "left", color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
+                }}
+              >
+                {sincronizarCliente ? (
+                  <CheckSquare size={16} color={isLight ? L.gold : "#FFC000"} style={{ flexShrink: 0 }} />
+                ) : (
+                  <Square size={16} style={{ flexShrink: 0 }} />
+                )}
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11 }}>
+                  Atualizar o cadastro do cliente com os dados desta visita
+                </span>
+              </button>
+            )}
+            {!clienteSelecionado && (
+              <>
+                <input
+                  style={INPUT}
+                  placeholder="Buscar cliente já cadastrado…"
+                  value={buscaCliente}
+                  onChange={(e) => setBuscaCliente(e.target.value)}
+                />
+                {buscaCliente.trim() !== "" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                    {clientesFiltrados.length === 0 ? (
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                        Nenhum cliente encontrado — os dados preenchidos abaixo criarão um cadastro novo.
+                      </span>
+                    ) : (
+                      clientesFiltrados.slice(0, 6).map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => aplicarCliente(c)}
+                          style={{
+                            display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
+                            padding: "10px 12px", borderRadius: 10, cursor: "pointer", textAlign: "left",
+                            background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                            border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                            color: isLight ? L.text : "#fff",
+                          }}
+                        >
+                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
+                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                            {c.endereco ?? "sem endereço"}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
+                  Deixe em branco para cadastrar um cliente novo com os dados desta visita.
+                </div>
+              </>
+            )}
+          </div>
+
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Nome do Prédio / Empresa</label>
             <input style={INPUT} placeholder="Ex: Edifício Garden Hills" value={nomePredio} onChange={(e) => setNomePredio(e.target.value)} />

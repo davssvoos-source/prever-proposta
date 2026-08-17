@@ -332,7 +332,7 @@ corretivo (dor principal do SAC) sobre os fluxos derivados.
 | # | Etapa | Entrega | Depende de |
 |---|---|---|---|
 | **0** ✅ | **Saneamento e fundações** | itens do §8 (ver §11) | — |
-| **1** | **Cadastro de Clientes** | tabela promovida + telas `/clientes` + seletor na nova visita + backfill assistido das visitas existentes | 0 |
+| **1** ✅ | **Cadastro de Clientes** | tabela promovida + telas `/clientes` + seletor na nova visita + consolidação assistida (ver §12) | 0 |
 | **2** | **Inventário (as-built)** | `cliente_sistemas`/`cliente_equipamentos` + telas no cliente + derivação de visita aprovada + edição em campo | 1 |
 | **3** | **Chamados corretivos ponta a ponta** | `ordens_servico` + abertura SAC + execução do técnico (fotos, assinatura, peças-texto) + conferência/fechamento + notificações in-app + BottomNav/dashboard/calendário | 1 (2 recomendada) |
 | **4** | **Relatório PDF da OS** | template .docx Prever + fotos + assinatura embutidas | 3 |
@@ -420,3 +420,77 @@ qualquer usuário ativo, inclusive admins.
 cria as tabelas de OS — enum sem tabela não é verificável pelo SELECT de
 conferência e tende a divergir. `types.ts` continua defasado: regenerar pela
 Lovable quando as tabelas de OS existirem.
+
+---
+
+## 12. Registro da Etapa 1 (2026-08-17)
+
+Implementada em `supabase/migrations/20260817120000_etapa1_clientes.sql` +
+telas novas. `clientes` deixou de ser uma linha descartável por visita.
+
+**Tabela promovida a registro mestre.** Ganhou endereço (com coordenadas),
+contatos de síndico e zelador, `nome_predio`, `tipo_local`, quantidade de
+unidades e de acessos, observações, `situacao` (prospecto / ativo / inativo) e
+`created_by`. `owner_id` deixou de ser obrigatório: o cadastro é da empresa,
+não de um usuário. RLS nova: todos os autenticados leem (o técnico precisa dos
+dados do cliente em campo), gestor cadastra e edita, admin exclui.
+
+**Backfill em duas partes, por segurança.** A migration faz só o que é
+inequívoco: cada cadastro antigo sem endereço que é referenciado por
+exatamente uma visita herda os dados daquela visita, e a situação vira `ativo`
+se a visita foi aprovada. A consolidação de duplicados — o caso ambíguo — é
+assistida na tela `/clientes/migrar`: as visitas são agrupadas por prédio, o
+gestor revisa nome, endereço, contatos e contagem de visitas, e um clique cria
+(ou reaproveita) um cliente, aponta todas as visitas do grupo para ele e
+descarta os cadastros que ficaram sem uso. Nada é fundido automaticamente.
+
+**Telas.** `/clientes` (busca por nome, endereço ou síndico; filtros por
+situação; aviso quando há cadastros a consolidar), `/clientes/novo`,
+`/clientes/$id` (ficha com dados, contatos, observações e histórico de visitas
+clicável) e `/clientes/migrar`. Cadastro e edição são restritos a gestores
+tanto na interface quanto na RLS. Entrada pelo Painel Gerencial, ao lado de
+Usuários.
+
+**Nova visita.** O passo "Local e Cliente" começa por um seletor de cliente:
+escolher um cadastro existente preenche prédio, tipo, endereço, coordenadas e
+contatos; deixar em branco cria um cadastro completo (com endereço) a partir
+dos dados da visita, em vez da linha só com o nome do síndico que o app criava
+antes.
+
+**Correções vindas da revisão adversarial** (vale registrar porque viram regra
+para as etapas seguintes):
+
+- `min(uuid)` **não existe** no PostgreSQL do Supabase (só no 18+). Como o SQL
+  Editor roda o script numa transação, o erro desfaria a migration inteira —
+  e o app já não envia `owner_id`, então o rollback quebraria a criação de
+  clientes em produção. Trocado por `(array_agg(id))[1]`.
+- A FK de `owner_id` continuava `ON DELETE CASCADE`: excluir um usuário no
+  dashboard apagaria os clientes dele e órfanaria as visitas. Agora é
+  `SET NULL`, coerente com o cadastro ser da empresa.
+- `DELETE` em `clientes` era restrito a admin, mas a tela de consolidação é
+  liberada a gestores — a RLS filtraria o delete **em silêncio** (PostgREST
+  devolve 204 sem erro) e os duplicados voltariam no aviso para sempre. A
+  policy virou `is_gestor` e o erro do delete passou a ser propagado.
+- A chave de agrupamento usava só o nome do prédio: "Edifício Central" em
+  endereços diferentes cairia no mesmo grupo, e a consolidação fundiria dois
+  condomínios sem desfazer. Agora a chave é nome **e** endereço — separar
+  demais é recuperável, fundir não.
+- Um cadastro compartilhado por dois grupos era renomeado a cada consolidação,
+  levando as visitas do outro grupo. Só serve de destino um cadastro cujas
+  visitas estejam todas no grupo; sem candidato limpo, cria-se um novo.
+- Cadastros vazios (sem endereço e sem visita) não apareciam em lugar nenhum e
+  mantinham o aviso aceso: ganharam a seção "Cadastros vazios" com descarte.
+- Sem vínculo de cliente, o submit da nova visita procura um cadastro
+  equivalente antes de criar — "Desvincular" não gera mais duplicata.
+- Cliente vinculado com dados editados na visita: caixa "Atualizar o cadastro
+  do cliente com os dados desta visita" (marcada por padrão, aparece só quando
+  há divergência), para a OS não ler contato velho na ficha.
+
+**Dívidas conhecidas, não bloqueantes:** `consolidarGrupo` faz três chamadas
+sem transação (uma RPC `SECURITY DEFINER` resolveria consolidação, repontamento
+e limpeza atomicamente); as listagens não paginam (limite implícito de 1000
+linhas do PostgREST); e `types.ts` continua defasado.
+
+**Pendente para a Etapa 2:** a ficha do cliente ainda não mostra inventário de
+equipamentos nem ordens de serviço — as duas seções entram nas etapas 2 e 3,
+nesta mesma tela.

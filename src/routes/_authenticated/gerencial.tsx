@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2 } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -194,30 +194,37 @@ function GerencialPage() {
             {stats.total} proposta{stats.total !== 1 ? "s" : ""} cadastrada{stats.total !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => navigate({ to: "/gerencial/usuarios" })}
-          style={{
-            background: isLight ? "#ffffff" : "#191921",
-            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 12,
-            padding: "10px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            color: textPrimary,
-            boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-            fontFamily: "Montserrat, sans-serif",
-            fontWeight: 400,
-            fontSize: 13,
-            cursor: "pointer",
-            letterSpacing: "0.06em",
-            flexShrink: 0,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <Users size={16} />
-          Usuários
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {[
+            { label: "Clientes", Icon: Building2, to: "/clientes" as const },
+            { label: "Usuários", Icon: Users, to: "/gerencial/usuarios" as const },
+          ].map(({ label, Icon, to }) => (
+            <button
+              key={label}
+              onClick={() => navigate({ to })}
+              style={{
+                background: isLight ? "#ffffff" : "#191921",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 12,
+                padding: "10px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                color: textPrimary,
+                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
+                fontFamily: "Montserrat, sans-serif",
+                fontWeight: 400,
+                fontSize: 13,
+                cursor: "pointer",
+                letterSpacing: "0.06em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Cards de estatística */}

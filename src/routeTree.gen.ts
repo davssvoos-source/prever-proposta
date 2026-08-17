@@ -18,12 +18,16 @@ import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
+import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
+import { Route as AuthenticatedClientesMigrarRouteImport } from './routes/_authenticated/clientes.migrar'
+import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
 import { Route as AuthenticatedVisitaIdReagendarRouteImport } from './routes/_authenticated/visita.$id.reagendar'
 import { Route as AuthenticatedVisitaIdPagamentoRouteImport } from './routes/_authenticated/visita.$id.pagamento'
@@ -105,6 +109,28 @@ const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   path: '/projeto/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientesNovoRoute =
+  AuthenticatedClientesNovoRouteImport.update({
+    id: '/novo',
+    path: '/novo',
+    getParentRoute: () => AuthenticatedClientesRoute,
+  } as any)
+const AuthenticatedClientesMigrarRoute =
+  AuthenticatedClientesMigrarRouteImport.update({
+    id: '/migrar',
+    path: '/migrar',
+    getParentRoute: () => AuthenticatedClientesRoute,
+  } as any)
+const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedClientesRoute,
+} as any)
 const AuthenticatedGerencialUsuariosRoute =
   AuthenticatedGerencialUsuariosRouteImport.update({
     id: '/usuarios',
@@ -184,12 +210,16 @@ export interface FileRoutesByFullPath {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
+  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/clientes/$id': typeof AuthenticatedClientesIdRoute
+  '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
+  '/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
@@ -211,12 +241,16 @@ export interface FileRoutesByTo {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
+  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/clientes/$id': typeof AuthenticatedClientesIdRoute
+  '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
+  '/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
@@ -239,12 +273,16 @@ export interface FileRoutesById {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
+  '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
+  '/_authenticated/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
+  '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
@@ -268,12 +306,16 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/admin'
     | '/calendario'
+    | '/clientes'
     | '/dashboard'
     | '/gerencial'
     | '/historico'
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/clientes/$id'
+    | '/clientes/migrar'
+    | '/clientes/novo'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/projeto/$id'
@@ -295,12 +337,16 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/admin'
     | '/calendario'
+    | '/clientes'
     | '/dashboard'
     | '/gerencial'
     | '/historico'
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/clientes/$id'
+    | '/clientes/migrar'
+    | '/clientes/novo'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/projeto/$id'
@@ -322,12 +368,16 @@ export interface FileRouteTypes {
     | '/redefinir-senha'
     | '/_authenticated/admin'
     | '/_authenticated/calendario'
+    | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
     | '/_authenticated/gerencial'
     | '/_authenticated/historico'
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
+    | '/_authenticated/clientes/$id'
+    | '/_authenticated/clientes/migrar'
+    | '/_authenticated/clientes/novo'
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/gerencial/usuarios'
     | '/_authenticated/projeto/$id'
@@ -415,6 +465,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/gerencial'
       preLoaderRoute: typeof AuthenticatedGerencialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clientes/novo': {
+      id: '/_authenticated/clientes/novo'
+      path: '/novo'
+      fullPath: '/clientes/novo'
+      preLoaderRoute: typeof AuthenticatedClientesNovoRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/_authenticated/clientes/migrar': {
+      id: '/_authenticated/clientes/migrar'
+      path: '/migrar'
+      fullPath: '/clientes/migrar'
+      preLoaderRoute: typeof AuthenticatedClientesMigrarRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/_authenticated/clientes/$id': {
+      id: '/_authenticated/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -538,6 +616,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedClientesRouteChildren {
+  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
+  AuthenticatedClientesMigrarRoute: typeof AuthenticatedClientesMigrarRoute
+  AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
+}
+
+const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
+  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRoute,
+  AuthenticatedClientesMigrarRoute: AuthenticatedClientesMigrarRoute,
+  AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
+}
+
+const AuthenticatedClientesRouteWithChildren =
+  AuthenticatedClientesRoute._addFileChildren(
+    AuthenticatedClientesRouteChildren,
+  )
+
 interface AuthenticatedGerencialRouteChildren {
   AuthenticatedGerencialNovaRoute: typeof AuthenticatedGerencialNovaRoute
   AuthenticatedGerencialUsuariosRoute: typeof AuthenticatedGerencialUsuariosRoute
@@ -607,6 +702,7 @@ const AuthenticatedVisitaIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
+  AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
@@ -620,6 +716,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
+  AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,

@@ -50,7 +50,7 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
   });
 
   const { data: clientes } = useQuery({
-    queryKey: ["clientes"],
+    queryKey: ["clientes-min"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clientes")
