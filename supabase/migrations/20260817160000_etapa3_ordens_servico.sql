@@ -245,15 +245,24 @@ DECLARE
   v_cliente text;
   v_novo text;
   v_ant text;
+  v_novo_tecnico boolean;
 BEGIN
   SELECT nome INTO v_cliente FROM public.clientes WHERE id = NEW.cliente_id;
   v_cliente := COALESCE(v_cliente, 'cliente');
   v_novo := lower(COALESCE(NEW.status, ''));
-  v_ant := CASE WHEN TG_OP = 'INSERT' THEN '' ELSE lower(COALESCE(OLD.status, '')) END;
+
+  -- OLD só é tocado no ramo de UPDATE: em INSERT ele é nulo, e ler campo de
+  -- registro nulo é justamente o tipo de detalhe que varia entre versões
+  IF TG_OP = 'INSERT' THEN
+    v_ant := '';
+    v_novo_tecnico := NEW.tecnico_id IS NOT NULL;
+  ELSE
+    v_ant := lower(COALESCE(OLD.status, ''));
+    v_novo_tecnico := NEW.tecnico_id IS NOT NULL AND NEW.tecnico_id IS DISTINCT FROM OLD.tecnico_id;
+  END IF;
 
   -- técnico recebe a atribuição (na abertura ou quando muda o responsável)
-  IF NEW.tecnico_id IS NOT NULL
-     AND (TG_OP = 'INSERT' OR NEW.tecnico_id IS DISTINCT FROM OLD.tecnico_id) THEN
+  IF v_novo_tecnico THEN
     INSERT INTO public.notificacoes (user_id, tipo, titulo, corpo, os_id)
     VALUES (NEW.tecnico_id, 'os_atribuida',
             CASE NEW.prioridade WHEN 'urgente' THEN 'Chamado URGENTE atribuído' ELSE 'Novo chamado atribuído' END,

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle, Wrench } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -15,6 +15,12 @@ function NotifIcon({ tipo }: { tipo: string }) {
       return <XCircle {...s} color="#EF4444" />;
     case 'visita_aguardando_aprovacao':
       return <Clock {...s} color="#60A5FA" />;
+    case 'os_atribuida':
+      return <Wrench {...s} color="#FFC000" />;
+    case 'os_executada':
+      return <CheckCircle2 {...s} color="#60A5FA" />;
+    case 'os_fechada':
+      return <CheckCircle2 {...s} color="#10B981" />;
     case 'lembrete_visita':
       return <Clock {...s} color="#FFC000" />;
     case 'visita':
@@ -48,7 +54,10 @@ export function NotificationPanel() {
   const handleClick = (n: Notificacao) => {
     if (!n.lida) marcarLida(n.id);
     setOpen(false);
-    if (n.visita_id) {
+    // Chamado tem precedência: notificações de OS não têm visita vinculada
+    if (n.os_id) {
+      navigate({ to: "/os/$id", params: { id: n.os_id } });
+    } else if (n.visita_id) {
       navigate({ to: "/visita/$id", params: { id: n.visita_id }, state: { from: location.pathname } as any });
     }
   };

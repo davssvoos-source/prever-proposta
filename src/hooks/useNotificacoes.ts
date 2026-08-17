@@ -10,6 +10,8 @@ export type Notificacao = {
   corpo: string | null;
   lida: boolean;
   visita_id: string | null;
+  /** Chamado (ordem de serviço) vinculado — Etapa 3 do sistema de OS. */
+  os_id?: string | null;
   created_at: string;
 };
 
