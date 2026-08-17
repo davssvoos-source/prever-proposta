@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2 } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -196,6 +196,7 @@ function GerencialPage() {
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {[
+            { label: "Chamados", Icon: Wrench, to: "/os" as const },
             { label: "Clientes", Icon: Building2, to: "/clientes" as const },
             { label: "Usuários", Icon: Users, to: "/gerencial/usuarios" as const },
           ].map(({ label, Icon, to }) => (

@@ -5,7 +5,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, MapPin, Pencil, Phone, Mail, Users, CalendarDays, X } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Pencil, Phone, Mail, Users, CalendarDays, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente } from "@/features/gerencial/data";
@@ -13,6 +13,9 @@ import { TIPO_LABEL } from "@/features/gerencial/constants";
 import { getStatusInfo } from "@/lib/visita-status";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { ClienteForm } from "@/features/clientes/ClienteForm";
+import { InventarioCliente } from "@/features/clientes/InventarioCliente";
+import { useOrdensDoCliente } from "@/features/os/data";
+import { osStatusInfo } from "@/lib/os-status";
 import {
   useCliente,
   useVisitasDoCliente,
@@ -34,6 +37,7 @@ function ClienteDetalhePage() {
   const { data: isGerente = false } = useIsGerente();
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
+  const { data: ordens = [] } = useOrdensDoCliente(id);
   const [editando, setEditando] = useState(false);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -268,6 +272,77 @@ function ClienteDetalhePage() {
               </div>
             </div>
           )}
+
+          {/* Inventário (as-built) — Etapa 2 */}
+          <InventarioCliente clienteId={id} podeEditar={true} />
+
+          {/* Chamados do cliente — Etapa 3 */}
+          <div style={CARD}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Wrench size={15} color={gold} />
+              <span style={SEC_LABEL}>Chamados</span>
+              <span style={{ flex: 1 }} />
+              {isGerente && (
+                <button
+                  onClick={() => navigate({ to: "/os/nova" })}
+                  style={{
+                    height: 34, padding: "0 12px", borderRadius: 10,
+                    background: isLight ? "#ffffff" : "#191921",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                    color: textPrimary, cursor: "pointer", flexShrink: 0,
+                    fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                  }}
+                >
+                  Abrir
+                </button>
+              )}
+            </div>
+            {ordens.length === 0 ? (
+              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+                Nenhum chamado registrado para este cliente.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                {ordens.slice(0, 8).map((o) => {
+                  const info = osStatusInfo(o.status);
+                  const cor = isLight ? info.colorLight : info.color;
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => navigate({ to: "/os/$id", params: { id: o.id } })}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "10px 12px", borderRadius: 12, cursor: "pointer", textAlign: "left",
+                        background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                        border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                        borderLeft: `3px solid ${cor}`,
+                        color: textPrimary,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                          {o.titulo}
+                        </div>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, color: textSecondary }}>
+                          {o.numero ?? "—"} · {new Date(o.created_at).toLocaleDateString("pt-BR")}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          padding: "3px 8px", borderRadius: 12, flexShrink: 0,
+                          background: info.bg, border: `1px solid ${info.border}`, color: cor,
+                          fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                          letterSpacing: "0.06em", textTransform: "uppercase",
+                        }}
+                      >
+                        {info.labelUpper}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Histórico de visitas */}
           <div style={CARD}>

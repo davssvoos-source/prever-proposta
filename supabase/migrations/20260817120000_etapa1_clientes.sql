@@ -192,7 +192,7 @@ SELECT 'policies de clientes (select/insert/update/delete)',
 FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'clientes'
   AND policyname IN ('clientes_select_autenticados','clientes_insert_gestor',
-                     'clientes_update_gestor','clientes_delete_admin')
+                     'clientes_update_gestor','clientes_delete_gestor')
 UNION ALL
 SELECT 'policies antigas por owner_id restantes',
        count(*)::text, '0'

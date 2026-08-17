@@ -1,0 +1,650 @@
+// Chamado — tela única por status (padrão de visita.$id.tsx): decide as ações
+// pelo status e pelo papel. Aqui o técnico executa (fotos antes/depois,
+// diagnóstico, peças, assinatura) e o gestor confere e fecha.
+// Etapa 3 do sistema de OS.
+
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type CSSProperties } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangle, ArrowLeft, Building2, Camera, CheckCircle2, ClipboardList, Clock,
+  History, MapPin, Phone, PlayCircle, Trash2, User, X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useIsGerente, useTecnicos } from "@/features/gerencial/data";
+import { AssinaturaCanvas } from "@/features/os/AssinaturaCanvas";
+import {
+  useOrdem, useEventosOs, useFotosOs, useAssinaturaUrl,
+  iniciarAtendimento, concluirAtendimento, fecharOs, reabrirOs, cancelarOs,
+  atualizarOs, anexarFotoOs, excluirFotoOs, salvarAssinatura,
+} from "@/features/os/data";
+import {
+  osStatusInfo, situacaoPrazo, textoPrazo,
+  OS_TIPO_LABEL, OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES,
+  type OsPrioridade,
+} from "@/lib/os-status";
+
+export const Route = createFileRoute("/_authenticated/os/$id")({
+  component: OsDetalhePage,
+});
+
+function OsDetalhePage() {
+  const { id } = Route.useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { isLight } = useTheme();
+  const { data: isGerente = false } = useIsGerente();
+  const { data: os, isLoading } = useOrdem(id);
+  const { data: eventos = [] } = useEventosOs(id);
+  const { data: fotos = [] } = useFotosOs(id);
+  const { data: tecnicos = [] } = useTecnicos();
+  const { data: assinaturaUrl } = useAssinaturaUrl(os?.assinatura_url);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  const [diagnostico, setDiagnostico] = useState("");
+  const [servico, setServico] = useState("");
+  const [pecas, setPecas] = useState("");
+  const [assinanteNome, setAssinanteNome] = useState("");
+  const [assinaturaData, setAssinaturaData] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [motivoCancel, setMotivoCancel] = useState("");
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
+  useEffect(() => {
+    if (!os) return;
+    setDiagnostico(os.diagnostico ?? "");
+    setServico(os.servico_executado ?? "");
+    setPecas(os.pecas_texto ?? "");
+    setAssinanteNome(os.assinatura_nome ?? "");
+  }, [os?.id, os?.diagnostico, os?.servico_executado, os?.pecas_texto, os?.assinatura_nome]);
+
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const gold = isLight ? "#b87800" : "#FFC000";
+
+  const CARD: CSSProperties = {
+    background: isLight
+      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
+      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    borderRadius: 18, padding: "16px",
+    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+    display: "flex", flexDirection: "column", gap: 12,
+  };
+  const SEC: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    letterSpacing: "0.16em", textTransform: "uppercase",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+  };
+  const LABEL: CSSProperties = {
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+    letterSpacing: "0.12em", textTransform: "uppercase",
+    color: textSecondary, marginBottom: 6, display: "block",
+  };
+  const INPUT: CSSProperties = {
+    width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "12px 14px",
+    background: isLight ? "#ffffff" : "#16161d",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+    outline: "none", colorScheme: isLight ? "light" : "dark",
+  };
+  const CTA: CSSProperties = {
+    width: "100%", height: 54, borderRadius: 27, border: "none",
+    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#08090E",
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+    letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+  };
+  const btnSec: CSSProperties = {
+    height: 44, padding: "0 16px", borderRadius: 22,
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center",
+    justifyContent: "center", gap: 8,
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+  };
+  const linha: CSSProperties = {
+    display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "7px 0",
+    borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+  };
+
+  const invalidar = () => {
+    qc.invalidateQueries({ queryKey: ["ordem-servico", id] });
+    qc.invalidateQueries({ queryKey: ["ordens-servico"] });
+    qc.invalidateQueries({ queryKey: ["os-eventos", id] });
+    qc.invalidateQueries({ queryKey: ["os-fotos", id] });
+  };
+
+  const iniciar = useMutation({
+    mutationFn: () => iniciarAtendimento(id),
+    onSuccess: () => { invalidar(); toast.success("Atendimento iniciado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const salvarRascunho = useMutation({
+    mutationFn: () => atualizarOs(id, { diagnostico, servico_executado: servico, pecas_texto: pecas }),
+    onSuccess: () => { invalidar(); toast.success("Anotações salvas."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const concluir = useMutation({
+    mutationFn: async () => {
+      if (!diagnostico.trim()) throw new Error("Descreva o diagnóstico do problema.");
+      if (!servico.trim()) throw new Error("Descreva o serviço executado.");
+      if (!os?.assinatura_url) {
+        if (!assinaturaData) throw new Error("Colete a assinatura de quem acompanhou o serviço.");
+        if (!assinanteNome.trim()) throw new Error("Informe o nome de quem assinou.");
+        await salvarAssinatura(id, assinaturaData, assinanteNome.trim());
+      }
+      await concluirAtendimento(id, {
+        diagnostico: diagnostico.trim(),
+        servico_executado: servico.trim(),
+        pecas_texto: pecas.trim() || null,
+      });
+    },
+    onSuccess: () => { invalidar(); toast.success("Chamado concluído — enviado para conferência."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const fechar = useMutation({
+    mutationFn: () => fecharOs(id),
+    onSuccess: () => { invalidar(); toast.success("Chamado fechado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reabrir = useMutation({
+    mutationFn: () => reabrirOs(id),
+    onSuccess: () => { invalidar(); toast.success("Chamado reaberto."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const cancelar = useMutation({
+    mutationFn: () => {
+      if (!motivoCancel.trim()) throw new Error("Informe o motivo do cancelamento.");
+      return cancelarOs(id, motivoCancel.trim());
+    },
+    onSuccess: () => { invalidar(); setCancelando(false); toast.success("Chamado cancelado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const trocarTecnico = useMutation({
+    mutationFn: (novo: string) => atualizarOs(id, { tecnico_id: novo || null }),
+    onSuccess: () => { invalidar(); toast.success("Técnico atualizado."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const removerFoto = useMutation({
+    mutationFn: ({ fotoId, path }: { fotoId: string; path: string | null }) => excluirFotoOs(fotoId, path),
+    onSuccess: () => { invalidar(); toast.success("Foto removida."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  async function enviarFoto(arquivo: File | undefined, etapa: "antes" | "depois") {
+    if (!arquivo) return;
+    setEnviandoFoto(true);
+    try {
+      await anexarFotoOs(id, arquivo, etapa);
+      invalidar();
+      toast.success(etapa === "antes" ? "Foto do problema anexada." : "Foto da solução anexada.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao enviar a foto");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: "24px 0", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        Carregando chamado…
+      </div>
+    );
+  }
+  if (!os) {
+    return (
+      <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", gap: 12, color: textPrimary }}>
+        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14 }}>Chamado não encontrado.</span>
+        <button onClick={() => navigate({ to: "/os" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
+          Voltar para chamados
+        </button>
+      </div>
+    );
+  }
+
+  const info = osStatusInfo(os.status);
+  const corStatus = isLight ? info.colorLight : info.color;
+  const prio = OS_PRIORIDADE_CORES[os.prioridade as OsPrioridade] ?? OS_PRIORIDADE_CORES.normal;
+  const prazo = situacaoPrazo(os.prazo_limite, os.status);
+  const souTecnico = !!userId && os.tecnico_id === userId;
+  const podeExecutar = souTecnico || isGerente;
+  const emExecucao = os.status === "em_atendimento";
+  const fotosAntes = fotos.filter((f) => f.etapa === "antes");
+  const fotosDepois = fotos.filter((f) => f.etapa === "depois");
+
+  return (
+    <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={() => navigate({ to: "/os" })}
+          style={{
+            width: 40, height: 40, borderRadius: 12,
+            background: isLight ? "#ffffff" : "#191921",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+            color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", flexShrink: 0,
+          }}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, color: gold, letterSpacing: "0.06em" }}>
+            {os.numero ?? "—"} · {OS_TIPO_LABEL[os.tipo] ?? os.tipo}
+          </div>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 17 }}>{os.titulo}</div>
+        </div>
+      </div>
+
+      {/* Status + prazo */}
+      <div style={{ ...CARD, gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span
+            style={{
+              padding: "4px 10px", borderRadius: 12,
+              background: info.bg, border: `1px solid ${info.border}`, color: corStatus,
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+              letterSpacing: "0.06em", textTransform: "uppercase",
+            }}
+          >
+            {info.labelUpper}
+          </span>
+          <span
+            style={{
+              padding: "4px 10px", borderRadius: 12,
+              background: prio.bg, border: `1px solid ${prio.border}`,
+              color: isLight ? prio.light : prio.dark,
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+              letterSpacing: "0.06em", textTransform: "uppercase",
+            }}
+          >
+            {OS_PRIORIDADE_LABEL[os.prioridade as OsPrioridade] ?? os.prioridade}
+          </span>
+          {(prazo === "estourado" || prazo === "proximo") && (
+            <span
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600,
+                color: prazo === "estourado" ? (isLight ? "#b91c1c" : "#F87171") : (isLight ? "#b45309" : "#FFC000"),
+              }}
+            >
+              <AlertTriangle size={13} />
+              {textoPrazo(os.prazo_limite)}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ ...linha, borderTop: "none" }}>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Cliente</span>
+            <button
+              onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id } })}
+              style={{
+                background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
+                fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: gold, fontWeight: 600,
+                display: "flex", alignItems: "center", gap: 5,
+              }}
+            >
+              <Building2 size={13} />
+              {os.cliente?.nome ?? "—"}
+            </button>
+          </div>
+          {os.cliente?.endereco && (
+            <div style={linha}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Endereço</span>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, textAlign: "right" }}>
+                <MapPin size={12} style={{ display: "inline", marginRight: 4 }} />
+                {os.cliente.endereco}
+              </span>
+            </div>
+          )}
+          {os.cliente?.telefone_sindico && (
+            <div style={linha}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Contato</span>
+              <a
+                href={`tel:${os.cliente.telefone_sindico}`}
+                style={{
+                  fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: gold, fontWeight: 600,
+                  textDecoration: "none", display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                <Phone size={12} />
+                {os.cliente.telefone_sindico}
+              </a>
+            </div>
+          )}
+          {os.sistema?.nome && (
+            <div style={linha}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Sistema</span>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>{os.sistema.nome}</span>
+            </div>
+          )}
+          {os.data_hora_agendada && (
+            <div style={linha}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Agendado</span>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+                <Clock size={12} style={{ display: "inline", marginRight: 4 }} />
+                {new Date(os.data_hora_agendada).toLocaleString("pt-BR", {
+                  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
+          <div style={linha}>
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Técnico</span>
+            {isGerente && ["aberta", "agendada", "em_atendimento"].includes(os.status) ? (
+              <select
+                value={os.tecnico_id ?? ""}
+                onChange={(e) => trocarTecnico.mutate(e.target.value)}
+                style={{
+                  ...INPUT, width: "auto", padding: "6px 10px", fontSize: 12,
+                  textAlign: "right",
+                }}
+              >
+                <option value="">Sem técnico</option>
+                {tecnicos.map((t: any) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+                <User size={12} style={{ display: "inline", marginRight: 4 }} />
+                {tecnicos.find((t: any) => t.id === os.tecnico_id)?.nome ?? "não atribuído"}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Problema relatado */}
+      {os.descricao_problema && (
+        <div style={CARD}>
+          <span style={SEC}>Problema relatado</span>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300, whiteSpace: "pre-wrap" }}>
+            {os.descricao_problema}
+          </div>
+        </div>
+      )}
+
+      {/* Cancelado */}
+      {os.status === "cancelada" && os.motivo_cancelamento && (
+        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(185,28,28,0.35)" : "rgba(248,113,113,0.30)"}` }}>
+          <span style={SEC}>Motivo do cancelamento</span>
+          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300 }}>
+            {os.motivo_cancelamento}
+          </div>
+        </div>
+      )}
+
+      {/* Iniciar atendimento */}
+      {podeExecutar && ["aberta", "agendada"].includes(os.status) && (
+        <button style={CTA} onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>
+          <PlayCircle size={18} />
+          {iniciar.isPending ? "Iniciando…" : "Iniciar atendimento"}
+        </button>
+      )}
+
+      {/* Execução */}
+      {podeExecutar && ["em_atendimento", "executada", "fechada"].includes(os.status) && (
+        <div style={CARD}>
+          <span style={SEC}>Execução</span>
+
+          {/* Fotos antes/depois */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {([["antes", fotosAntes], ["depois", fotosDepois]] as const).map(([etapa, arr]) => (
+              <div key={etapa}>
+                <label style={LABEL}>{etapa === "antes" ? "Antes (problema)" : "Depois (solução)"}</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {arr.map((f) => (
+                    <div key={f.id} style={{ position: "relative" }}>
+                      {f.signedUrl ? (
+                        <img
+                          src={f.signedUrl}
+                          alt={f.legenda ?? etapa}
+                          style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 10 }}
+                        />
+                      ) : (
+                        <div style={{ width: 68, height: 68, borderRadius: 10, background: isLight ? "#e8eaee" : "#22222c" }} />
+                      )}
+                      {emExecucao && (
+                        <button
+                          onClick={() => removerFoto.mutate({ fotoId: f.id, path: f.storage_path })}
+                          style={{
+                            position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                            background: "#0a0b0e", color: "#fff", border: "none", cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {emExecucao && (
+                    <label
+                      style={{
+                        width: 68, height: 68, borderRadius: 10, cursor: enviandoFoto ? "wait" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+                        border: isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)",
+                      }}
+                    >
+                      <Camera size={18} color={gold} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        style={{ display: "none" }}
+                        disabled={enviandoFoto}
+                        onChange={(e) => { void enviarFoto(e.target.files?.[0], etapa); e.currentTarget.value = ""; }}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <label style={LABEL}>Diagnóstico</label>
+            <textarea
+              style={{ ...INPUT, height: 88, resize: "vertical" }}
+              value={diagnostico}
+              onChange={(e) => setDiagnostico(e.target.value)}
+              disabled={!emExecucao}
+              placeholder="O que estava causando o problema"
+            />
+          </div>
+          <div>
+            <label style={LABEL}>Serviço executado</label>
+            <textarea
+              style={{ ...INPUT, height: 88, resize: "vertical" }}
+              value={servico}
+              onChange={(e) => setServico(e.target.value)}
+              disabled={!emExecucao}
+              placeholder="O que foi feito para resolver"
+            />
+          </div>
+          <div>
+            <label style={LABEL}>Peças e materiais usados</label>
+            <textarea
+              style={{ ...INPUT, height: 66, resize: "vertical" }}
+              value={pecas}
+              onChange={(e) => setPecas(e.target.value)}
+              disabled={!emExecucao}
+              placeholder="Ex.: 1 fechadura FE21150D, 5 m de cabo — a baixa é feita no ERP"
+            />
+          </div>
+
+          {/* Assinatura */}
+          {os.assinatura_url ? (
+            <div>
+              <label style={LABEL}>Assinatura de {os.assinatura_nome ?? "quem recebeu"}</label>
+              {assinaturaUrl ? (
+                <img
+                  src={assinaturaUrl}
+                  alt="Assinatura"
+                  style={{ width: "100%", maxWidth: 320, borderRadius: 10, background: "#fff" }}
+                />
+              ) : (
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                  carregando assinatura…
+                </span>
+              )}
+            </div>
+          ) : emExecucao ? (
+            <div>
+              <label style={LABEL}>Assinatura de quem acompanhou</label>
+              <input
+                style={{ ...INPUT, height: 46, marginBottom: 8 }}
+                value={assinanteNome}
+                onChange={(e) => setAssinanteNome(e.target.value)}
+                placeholder="Nome de quem assina"
+              />
+              <AssinaturaCanvas onChange={setAssinaturaData} />
+            </div>
+          ) : null}
+
+          {emExecucao && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button style={{ ...btnSec, flex: 1 }} onClick={() => salvarRascunho.mutate()} disabled={salvarRascunho.isPending}>
+                {salvarRascunho.isPending ? "Salvando…" : "Salvar anotações"}
+              </button>
+              <button style={{ ...CTA, flex: 2, width: "auto" }} onClick={() => concluir.mutate()} disabled={concluir.isPending}>
+                <CheckCircle2 size={18} />
+                {concluir.isPending ? "Concluindo…" : "Concluir atendimento"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Conferência do gestor */}
+      {isGerente && os.status === "executada" && (
+        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(52,211,153,0.30)"}` }}>
+          <span style={SEC}>Conferência</span>
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+            Revise o diagnóstico, as fotos e a assinatura. Fechar encerra o chamado e avisa o técnico.
+          </span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
+              Reabrir
+            </button>
+            <button
+              style={{
+                ...CTA, flex: 2, width: "auto",
+                background: "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                color: "#FFFFFF",
+                boxShadow: "0 4px 20px rgba(16,185,129,0.45)",
+              }}
+              onClick={() => fechar.mutate()}
+              disabled={fechar.isPending}
+            >
+              <CheckCircle2 size={18} />
+              {fechar.isPending ? "Fechando…" : "Conferir e fechar"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reabrir quando já fechada */}
+      {isGerente && os.status === "fechada" && (
+        <button style={btnSec} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
+          Reabrir chamado
+        </button>
+      )}
+
+      {/* Cancelar */}
+      {isGerente && ["aberta", "agendada", "em_atendimento"].includes(os.status) && (
+        <div style={CARD}>
+          {cancelando ? (
+            <>
+              <span style={SEC}>Cancelar chamado</span>
+              <textarea
+                style={{ ...INPUT, height: 70, resize: "vertical" }}
+                value={motivoCancel}
+                onChange={(e) => setMotivoCancel(e.target.value)}
+                placeholder="Motivo do cancelamento"
+              />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button style={{ ...btnSec, flex: 1 }} onClick={() => setCancelando(false)}>Voltar</button>
+                <button
+                  style={{
+                    ...btnSec, flex: 1,
+                    color: isLight ? "#b91c1c" : "#F87171",
+                    border: `1px solid ${isLight ? "rgba(185,28,28,0.35)" : "rgba(248,113,113,0.32)"}`,
+                  }}
+                  onClick={() => cancelar.mutate()}
+                  disabled={cancelar.isPending}
+                >
+                  {cancelar.isPending ? "Cancelando…" : "Confirmar cancelamento"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              style={{ ...btnSec, color: isLight ? "#b91c1c" : "#F87171" }}
+              onClick={() => setCancelando(true)}
+            >
+              <Trash2 size={14} />
+              Cancelar chamado
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Linha do tempo */}
+      <div style={CARD}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <History size={15} color={gold} />
+          <span style={SEC}>Linha do tempo</span>
+        </div>
+        {eventos.length === 0 ? (
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+            Sem movimentações registradas.
+          </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {eventos.map((ev, i) => (
+              <div key={ev.id} style={i === 0 ? { ...linha, borderTop: "none" } : linha}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                  {ev.descricao ?? ev.tipo}
+                </span>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
+                  {new Date(ev.created_at).toLocaleString("pt-BR", {
+                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!podeExecutar && (
+        <div style={{ ...CARD, alignItems: "center" }}>
+          <ClipboardList size={20} color={textSecondary} />
+          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, textAlign: "center" }}>
+            Este chamado está atribuído a outro técnico — você está apenas visualizando.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

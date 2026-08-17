@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, ClipboardList, User } from "lucide-react";
+import { Home, Calendar, ClipboardList, User, Wrench } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -9,10 +9,13 @@ export function BottomNav() {
   const { isLight } = useTheme();
   const isAdmin = cargo === "admin";
 
+  // "Chamados" (ordens de serviço) é o acesso do técnico ao trabalho de
+  // manutenção; o gestor também precisa dele para acompanhar a fila.
   const items = isAdmin
     ? [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
+        { to: "/os", label: "Chamados", icon: Wrench },
         { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
         { to: "/perfil", label: "Perfil", icon: User },
       ]
@@ -20,12 +23,13 @@ export function BottomNav() {
     ? [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
+        { to: "/os", label: "Chamados", icon: Wrench },
         { to: "/perfil", label: "Perfil", icon: User },
       ]
     : [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/historico", label: "Visitas", icon: ClipboardList },
+        { to: "/os", label: "Chamados", icon: Wrench },
         { to: "/perfil", label: "Perfil", icon: User },
       ];
 
@@ -66,7 +70,8 @@ export function BottomNav() {
           const active =
             pathname === item.to ||
             (item.to === "/dashboard" && pathname === "/") ||
-            (item.to === "/gerencial" && pathname.startsWith("/gerencial"));
+            (item.to === "/gerencial" && pathname.startsWith("/gerencial")) ||
+            (item.to === "/os" && pathname.startsWith("/os"));
           const Icon = item.icon;
           const color = active ? activeColor : inactiveColor;
           return (
