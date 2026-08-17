@@ -55,9 +55,12 @@ DECLARE
   v_ano int := EXTRACT(YEAR FROM now())::int;
   v_seq int;
 BEGIN
+  -- referência sem schema é a forma canônica dentro de ON CONFLICT DO UPDATE;
+  -- o RETURNING devolve a linha já incrementada, então dois chamados
+  -- simultâneos nunca recebem o mesmo número
   INSERT INTO public.os_contadores (ano, ultimo)
   VALUES (v_ano, 1)
-  ON CONFLICT (ano) DO UPDATE SET ultimo = public.os_contadores.ultimo + 1
+  ON CONFLICT (ano) DO UPDATE SET ultimo = os_contadores.ultimo + 1
   RETURNING ultimo INTO v_seq;
   RETURN 'OS-' || v_ano::text || '-' || lpad(v_seq::text, 4, '0');
 END;

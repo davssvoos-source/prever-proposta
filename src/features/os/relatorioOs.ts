@@ -20,6 +20,14 @@ interface ImagemPronta {
   dataUrl: string;
   largura: number;
   altura: number;
+  /** Formato declarado ao jsPDF — deduzido do próprio dataURL. */
+  formato: "JPEG" | "PNG" | "WEBP";
+}
+
+function formatoDoDataUrl(dataUrl: string): "JPEG" | "PNG" | "WEBP" {
+  if (dataUrl.startsWith("data:image/png")) return "PNG";
+  if (dataUrl.startsWith("data:image/webp")) return "WEBP";
+  return "JPEG";
 }
 
 /** Baixa a imagem do storage e devolve dataURL + dimensões (para não distorcer). */
@@ -41,7 +49,7 @@ async function carregarImagem(path: string | null | undefined): Promise<ImagemPr
       leitor.onerror = reject;
       leitor.readAsDataURL(blob);
     });
-    return { dataUrl, largura, altura };
+    return { dataUrl, largura, altura, formato: formatoDoDataUrl(dataUrl) };
   } catch {
     return null;
   }
@@ -243,7 +251,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos }: RelatorioOsOp
       }
       const x = MARGEM + coluna * (larguraCel + 5);
       try {
-        doc.addImage(img.dataUrl, "JPEG", x, y, larguraImg, alturaImg);
+        doc.addImage(img.dataUrl, img.formato, x, y, larguraImg, alturaImg);
       } catch {
         // formato não suportado: ignora a imagem em vez de quebrar o relatório
       }
@@ -271,7 +279,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos }: RelatorioOsOp
       const alturaAss = Math.min((assinatura.altura / assinatura.largura) * larguraAss, 32);
       espaco(alturaAss + 14);
       try {
-        doc.addImage(assinatura.dataUrl, "PNG", MARGEM, y, larguraAss, alturaAss);
+        doc.addImage(assinatura.dataUrl, assinatura.formato, MARGEM, y, larguraAss, alturaAss);
       } catch {
         /* segue sem a imagem */
       }
