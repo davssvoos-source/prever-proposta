@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
+import { osStatusInfo, situacaoPrazo } from "@/lib/os-status";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -163,6 +164,22 @@ function Dashboard() {
       supabase.removeChannel(channel);
     };
   }, [qc]);
+
+  // Próximo chamado (ordem de serviço) — Etapa 3 do sistema de OS.
+  // A RLS já limita o técnico aos chamados dele; o gestor vê o próximo da fila.
+  const { data: proximoChamado } = useQuery({
+    queryKey: ["dashboard-proximo-chamado"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ordens_servico" as any)
+        .select("id, numero, titulo, status, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
+        .in("status", ["aberta", "agendada", "em_atendimento"])
+        .order("data_hora_agendada", { ascending: true, nullsFirst: false })
+        .limit(1);
+      if (error) throw error;
+      return ((data as any[]) ?? [])[0] ?? null;
+    },
+  });
 
   // Filtro de período
   const now = new Date();
@@ -477,6 +494,78 @@ function Dashboard() {
 
           </div>
 
+        )}
+
+        {/* ═══ CARD PRÓXIMO CHAMADO ═══ */}
+        {proximoChamado && (
+          <div
+            onClick={() => navigate({ to: "/os/$id", params: { id: proximoChamado.id } })}
+            style={{
+              ...GLASS,
+              padding: "14px 16px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              borderLeft: `3px solid ${isLight ? osStatusInfo(proximoChamado.status).colorLight : osStatusInfo(proximoChamado.status).color}`,
+            }}
+          >
+            <Wrench size={18} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 9,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                }}
+              >
+                Próximo chamado
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: isLight ? "#0a0b0e" : "#fff",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {proximoChamado.titulo}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: 11,
+                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                }}
+              >
+                {proximoChamado.cliente?.nome ?? "cliente"}
+                {proximoChamado.data_hora_agendada
+                  ? ` · ${new Date(proximoChamado.data_hora_agendada).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+                  : " · sem agendamento"}
+              </div>
+            </div>
+            {situacaoPrazo(proximoChamado.prazo_limite, proximoChamado.status) === "estourado" && (
+              <span
+                style={{
+                  flexShrink: 0,
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: isLight ? "#b91c1c" : "#F87171",
+                }}
+              >
+                atrasado
+              </span>
+            )}
+          </div>
         )}
 
       <div className="grid grid-cols-4 gap-2">

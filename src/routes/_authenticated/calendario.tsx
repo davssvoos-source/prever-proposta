@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
+import { osStatusInfo } from "@/lib/os-status";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
@@ -103,12 +104,62 @@ function CalendarioPage() {
     },
   });
 
+  // Chamados agendados no mês entram no mesmo calendário (a RLS já limita o
+  // técnico aos dele). Etapa 3 do sistema de OS.
+  const { data: ordens = [] } = useQuery({
+    queryKey: ["calendario-os", mes.getFullYear(), mes.getMonth()],
+    queryFn: async () => {
+      const inicio = new Date(mes.getFullYear(), mes.getMonth(), 1).toISOString();
+      const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const { data, error } = await supabase
+        .from("ordens_servico" as any)
+        .select("id, numero, status, titulo, data_hora_agendada, cliente:clientes(nome)")
+        .not("data_hora_agendada", "is", null)
+        .gte("data_hora_agendada", inicio)
+        .lte("data_hora_agendada", fim)
+        .order("data_hora_agendada");
+      if (error) throw error;
+      return (data as any[]) ?? [];
+    },
+  });
+
+  // Visitas e chamados normalizados no mesmo formato para grade e lista
+  const eventos = useMemo(() => {
+    const deVisitas = (visitas as any[]).map((v) => ({
+      kind: "visita" as const,
+      id: v.id as string,
+      status: v.status as string,
+      data_hora_agendada: v.data_hora_agendada as string,
+      nome: (v.nome_predio ?? v.titulo ?? "Visita") as string,
+      detalhe: null as string | null,
+    }));
+    const deOs = (ordens as any[]).map((o) => ({
+      kind: "os" as const,
+      id: o.id as string,
+      status: o.status as string,
+      data_hora_agendada: o.data_hora_agendada as string,
+      nome: (o.cliente?.nome ?? "Chamado") as string,
+      detalhe: `${o.numero ?? ""} ${o.titulo}`.trim() as string | null,
+    }));
+    return [...deVisitas, ...deOs].sort(
+      (a, b) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime(),
+    );
+  }, [visitas, ordens]);
+
+  const corDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
+    e.kind === "os"
+      ? (isLight ? osStatusInfo(e.status).colorLight : osStatusInfo(e.status).color)
+      : (STATUS_CORES[e.status] ?? goldDark);
+
+  const rotuloDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
+    e.kind === "os" ? osStatusInfo(e.status).label : (STATUS_LABELS[e.status] ?? e.status);
+
   const { diasGrid, visitasPorDia } = useMemo(() => {
     const primeiroDia = new Date(mes.getFullYear(), mes.getMonth(), 1).getDay();
     const totalDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate();
 
     const map = new Map<number, any[]>();
-    visitas.forEach((v: any) => {
+    eventos.forEach((v: any) => {
       const d = new Date(v.data_hora_agendada);
       if (d.getMonth() === mes.getMonth() && d.getFullYear() === mes.getFullYear()) {
         const dia = d.getDate();
@@ -123,12 +174,12 @@ function CalendarioPage() {
     while (grid.length % 7 !== 0) grid.push(null);
 
     return { diasGrid: grid, visitasPorDia: map };
-  }, [mes, visitas]);
+  }, [mes, eventos]);
 
   const visitasDoDia = useMemo(() => {
-    if (diaSelecionado === null) return visitas;
+    if (diaSelecionado === null) return eventos;
     return visitasPorDia.get(diaSelecionado) ?? [];
-  }, [diaSelecionado, visitasPorDia, visitas]);
+  }, [diaSelecionado, visitasPorDia, eventos]);
 
   function isHoje(dia: number) {
     return (
@@ -242,7 +293,7 @@ function CalendarioPage() {
                         width: 4,
                         height: 4,
                         borderRadius: "50%",
-                        background: selecionado ? "#fff" : (STATUS_CORES[v.status] ?? goldDark),
+                        background: selecionado ? "#fff" : corDoEvento(v),
                       }} />
                     ))}
                   </div>
@@ -264,8 +315,8 @@ function CalendarioPage() {
           marginBottom: 12,
         }}>
           {diaSelecionado
-            ? `${diaSelecionado} de ${MESES[mes.getMonth()]} · ${visitasDoDia.length} visita${visitasDoDia.length !== 1 ? "s" : ""}`
-            : `${MESES[mes.getMonth()]} · ${visitas.length} visita${visitas.length !== 1 ? "s" : ""}`}
+            ? `${diaSelecionado} de ${MESES[mes.getMonth()]} · ${visitasDoDia.length} compromisso${visitasDoDia.length !== 1 ? "s" : ""}`
+            : `${MESES[mes.getMonth()]} · ${eventos.length} compromisso${eventos.length !== 1 ? "s" : ""}`}
         </div>
 
         {isLoading ? (
@@ -276,24 +327,28 @@ function CalendarioPage() {
           <div style={{ padding: 28, textAlign: "center", color: textSecondary }}>
             <CalendarDays size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
             <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
-              {diaSelecionado ? "Nenhuma visita neste dia" : "Nenhuma visita neste mês"}
+              {diaSelecionado ? "Nada agendado neste dia" : "Nada agendado neste mês"}
             </div>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {visitasDoDia.map((v: any) => {
-              const cor = STATUS_CORES[v.status] ?? goldDark;
-              const label = STATUS_LABELS[v.status] ?? v.status;
+              const cor = corDoEvento(v);
+              const label = rotuloDoEvento(v);
               const hora = new Date(v.data_hora_agendada).toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               });
-              const clienteNome = (v as any).nome_predio ?? v.titulo ?? "Visita";
+              const clienteNome = v.nome;
 
               return (
                 <button
                   key={v.id}
-                  onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
+                  onClick={() =>
+                    v.kind === "os"
+                      ? navigate({ to: "/os/$id", params: { id: v.id } })
+                      : navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })
+                  }
                   style={{
                     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
@@ -328,7 +383,8 @@ function CalendarioPage() {
                       color: textSecondary,
                       display: "inline-flex",
                       alignItems: "center",
-                    }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}</div>
+                    }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}
+                      {v.detalhe ? ` · ${v.detalhe}` : ""}</div>
 
                   </div>
                   <span style={{
