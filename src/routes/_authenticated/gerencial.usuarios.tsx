@@ -253,18 +253,9 @@ function UsuariosPage() {
         console.error("[editCargo] Nenhuma linha atualizada — verifique permissões (RLS) ou id do usuário.", { id, cargo });
         throw new Error("Sem permissão para alterar este usuário ou usuário não encontrado.");
       }
-      const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", id);
-      if (delErr) {
-        console.error("[editCargo] user_roles delete error:", delErr);
-        throw delErr;
-      }
-      const { error: insErr } = await supabase
-        .from("user_roles")
-        .insert({ user_id: id, role: cargo as "admin" | "comercial" | "tecnico" });
-      if (insErr) {
-        console.error("[editCargo] user_roles insert error:", insErr);
-        throw insErr;
-      }
+      // user_roles é sincronizado pelo trigger trg_sync_user_role a partir do
+      // cargo — fazer aqui também falharia quando um admin se rebaixa (perde a
+      // permissão de escrever em user_roles no meio da operação).
     },
     onSuccess: () => {
       toast.success("Permissão atualizada");

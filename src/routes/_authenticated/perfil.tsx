@@ -70,7 +70,6 @@ function PerfilPage() {
 
   const [editandoConta, setEditandoConta] = useState(false);
   const [nomeEdit, setNomeEdit] = useState("");
-  const [cargoEdit, setCargoEdit] = useState("");
 
   const { data: perfil, isLoading } = useQuery({
     queryKey: ["perfil"],
@@ -157,7 +156,6 @@ function PerfilPage() {
   useEffect(() => {
     if (perfil && !editandoConta) {
       setNomeEdit(perfil.nome ?? "");
-      setCargoEdit(perfil.cargo ?? "");
     }
   }, [perfil, editandoConta]);
 
@@ -211,7 +209,7 @@ function PerfilPage() {
       if (!perfil?.id) throw new Error("Sem perfil");
       const { error } = await supabase
         .from("profiles")
-        .update({ nome: nomeEdit.trim(), cargo: cargoEdit.trim() || null })
+        .update({ nome: nomeEdit.trim() })
         .eq("id", perfil.id);
       if (error) throw error;
     },
@@ -636,11 +634,9 @@ function PerfilPage() {
             </div>
             <div>
               <label style={lblStyle(isLight)}>Cargo</label>
-              <input
-                style={inputStyle(isLight)}
-                value={cargoEdit}
-                onChange={(e) => setCargoEdit(e.target.value)}
-              />
+              <div style={{ ...inputStyle(isLight), display: "flex", alignItems: "center", opacity: 0.65 }}>
+                {perfil?.cargo ?? "—"}
+              </div>
             </div>
             <div
               style={{
@@ -650,7 +646,7 @@ function PerfilPage() {
                 color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
               }}
             >
-              E-mail não pode ser alterado por aqui.
+              E-mail e cargo não podem ser alterados por aqui — fale com um administrador.
             </div>
           </div>
         )}

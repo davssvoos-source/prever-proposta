@@ -13,6 +13,8 @@ function NotifIcon({ tipo }: { tipo: string }) {
       return <CheckCircle2 {...s} color="#10B981" />;
     case 'visita_reprovada':
       return <XCircle {...s} color="#EF4444" />;
+    case 'visita_aguardando_aprovacao':
+      return <Clock {...s} color="#60A5FA" />;
     case 'lembrete_visita':
       return <Clock {...s} color="#FFC000" />;
     case 'visita':

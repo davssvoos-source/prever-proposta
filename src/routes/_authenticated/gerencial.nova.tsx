@@ -160,6 +160,7 @@ function NovaVisitaPage() {
         .from("profiles")
         .select("id, nome, cargo")
         .eq("ativo", true)
+        .eq("cargo", "tecnico")
         .order("nome");
       if (error) throw error;
       return data ?? [];

@@ -162,26 +162,8 @@ function PreEnvioPage() {
         } as any)
         .eq("id", visitaId);
       if (error) throw error;
-
-      // Notifica admins (fila de aprovação — mesma tela/fluxo)
-      const { data: admins } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("cargo", "admin")
-        .eq("ativo", true);
-      const local = visita?.nome_predio || visita?.titulo || visita?.cliente?.nome || "local não informado";
-      if (admins && admins.length > 0) {
-        await supabase.from("notificacoes").insert(
-          admins.map((a: any) => ({
-            user_id: a.id,
-            tipo: "visita_aguardando_aprovacao",
-            titulo: "Visita aguardando aprovação",
-            corpo: `A visita técnica em ${local} foi concluída e aguarda sua aprovação.`,
-            visita_id: visitaId,
-            lida: false,
-          })),
-        );
-      }
+      // Os gestores são notificados pelo trigger notify_visita_status no banco
+      // (insert client-side para outro usuário é bloqueado pela RLS).
     },
     onSuccess: () => {
       toast.success("Visita enviada para aprovação!");

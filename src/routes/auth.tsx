@@ -82,18 +82,21 @@ function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: senha,
+        // o nome vai nos metadados: handle_new_user grava o perfil mesmo se a
+        // confirmação de e-mail estiver ativa (sem sessão, o upsert abaixo não passa)
+        options: { data: { nome: nome.trim() } },
       });
       if (error) {
         toast.error(error.message);
         return;
       }
       if (data.user) {
+        // cargo e status são definidos pelo banco (handle_new_user):
+        // auto-cadastro entra como pendente_aprovacao e sem papel.
         await supabase.from("profiles").upsert({
           id: data.user.id,
           email: email.trim(),
           nome: nome.trim(),
-          cargo: null,
-          status: "pendente_aprovacao",
         } as any);
         await supabase.auth.signOut();
         toast.success("Solicitação enviada! Aguarde a aprovação do administrador.");

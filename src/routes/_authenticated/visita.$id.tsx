@@ -438,21 +438,8 @@ function VisitaDetail() {
         .update(patch)
         .eq("id", id);
       if (error) throw error;
-
-      // Notificar técnico responsável
-      if (visita?.tecnico_id) {
-        const local = visita.nome_predio || visita.titulo || visita.endereco || "local não informado";
-        await supabase.from("notificacoes").insert({
-          user_id: visita.tecnico_id,
-          tipo: aprovar ? "visita_aprovada" : "visita_reprovada",
-          titulo: aprovar ? "Visita aprovada ✓" : "Visita reprovada",
-          corpo: aprovar
-            ? `A visita técnica em ${local} foi aprovada.`
-            : `A visita técnica em ${local} foi reprovada. Verifique o agendamento.`,
-          visita_id: id,
-          lida: false,
-        });
-      }
+      // O técnico responsável é notificado pelo trigger notify_visita_status
+      // no banco (insert client-side para outro usuário é bloqueado pela RLS).
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["visita", id] });

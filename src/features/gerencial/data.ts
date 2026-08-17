@@ -13,11 +13,13 @@ export async function geocode(endereco: string): Promise<{ lat: number; lng: num
   }
 }
 
+/** Perfis atribuíveis como técnico responsável — só quem tem cargo de técnico. */
 export async function fetchTecnicos() {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, nome, email, cargo, avatar_url, telefone, ativo")
     .eq("ativo", true)
+    .eq("cargo", "tecnico")
     .order("nome");
   if (error) throw error;
   return data ?? [];
