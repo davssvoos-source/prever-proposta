@@ -575,6 +575,36 @@ versão para ajustar com os técnicos — a tabela é editável por SQL.
   automaticamente** a partir do escopo — é o ponto em que o ciclo se fecha:
   proposta → implantação → as-built → corretiva/preventiva.
 
+### Correções vindas da revisão adversarial (antes de aplicar)
+
+Todas em RLS — nenhuma abortava a migration, todas permitiam mais do que
+deveriam:
+
+- **Fotos e assinaturas no storage** eram legíveis por qualquer autenticado (a
+  policy só olhava o bucket). Como o app já grava tudo em `<os_id>/arquivo`, o
+  acesso passou a seguir a regra da própria OS via
+  `pode_acessar_os_por_path(text)` — que faz o cast do caminho dentro de bloco
+  protegido, então caminho fora do padrão devolve `false` em vez de derrubar a
+  avaliação da policy.
+- **`os_update` deixava o técnico gravar `status = 'fechada'` pela API**,
+  pulando a conferência do gestor (a interface esconde o botão, mas o banco
+  precisa garantir). Agora fechar e cancelar exigem ser gestor.
+- **`os_checklist` permitia marcar item no nome de outra pessoa** —
+  `concluido_por` agora tem que ser o próprio usuário, no mesmo padrão que
+  `os_fotos_insert` já usava.
+- **Escalar a prioridade não apertava o prazo**: novo trigger
+  `trg_os_recalcular_prazo` recalcula `prazo_limite` quando a prioridade muda,
+  exceto em chamado já encerrado (que mantém o prazo histórico).
+- **Sistemas do tipo "Outro"** (registrados em campo) ficavam sem roteiro de
+  preventiva; ganharam dois itens genéricos — o total de modelos foi de 41 para
+  43.
+
+Também confirmado pela revisão: `min(uuid)` não aparece em nenhuma das três
+(lição da Etapa 1), a ordem interna e entre arquivos está correta (função antes
+do uso, índice antes do `ON CONFLICT`), `NEW.created_at` já está preenchido no
+`BEFORE INSERT`, os triggers só tocam `OLD` dentro de ramo guardado por
+`TG_OP`, e as contagens dos SELECT de verificação batem com o que é criado.
+
 ### O que ficou pendente e por quê
 
 - **Etapa 7 (alcance de notificação)** depende da sua decisão em §10.6: push

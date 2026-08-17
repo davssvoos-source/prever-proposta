@@ -164,6 +164,36 @@ CREATE TRIGGER trg_os_numero_prazo
   BEFORE INSERT ON public.ordens_servico
   FOR EACH ROW EXECUTE FUNCTION public.os_preencher_numero_e_prazo();
 
+-- Escalar a prioridade tem que apertar o prazo: sem isto, subir uma OS de
+-- normal para urgente não mudava nada no prazo já calculado na abertura.
+CREATE OR REPLACE FUNCTION public.os_recalcular_prazo()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_horas int;
+BEGIN
+  IF NEW.prioridade IS NOT DISTINCT FROM OLD.prioridade THEN
+    RETURN NEW;
+  END IF;
+  -- chamado já encerrado mantém o prazo histórico
+  IF NEW.status IN ('fechada', 'cancelada') THEN
+    RETURN NEW;
+  END IF;
+  SELECT horas_prazo INTO v_horas FROM public.os_sla WHERE prioridade = NEW.prioridade;
+  NEW.prazo_limite := CASE
+    WHEN v_horas IS NULL THEN NULL
+    ELSE COALESCE(NEW.created_at, now()) + make_interval(hours => v_horas)
+  END;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_os_recalcular_prazo ON public.ordens_servico;
+CREATE TRIGGER trg_os_recalcular_prazo
+  BEFORE UPDATE OF prioridade ON public.ordens_servico
+  FOR EACH ROW EXECUTE FUNCTION public.os_recalcular_prazo();
+
 -- ═══════════════════════════════════════════════════════════════════════
 -- 3) FOTOS e LINHA DO TEMPO
 -- ═══════════════════════════════════════════════════════════════════════
@@ -349,12 +379,18 @@ CREATE POLICY "os_insert_gestor" ON public.ordens_servico
   FOR INSERT TO authenticated
   WITH CHECK (public.is_gestor(auth.uid()));
 
--- técnico responsável atualiza a execução; gestor atualiza tudo
+-- Técnico responsável atualiza a execução; gestor atualiza tudo.
+-- Fechar e cancelar são atos do gestor (conferência): sem o NOT IN abaixo, a
+-- policy deixaria o técnico gravar status='fechada' pela API e pular a
+-- conferência — a interface esconde o botão, mas o banco precisa garantir.
 DROP POLICY IF EXISTS "os_update" ON public.ordens_servico;
 CREATE POLICY "os_update" ON public.ordens_servico
   FOR UPDATE TO authenticated
   USING (tecnico_id = auth.uid() OR public.is_gestor(auth.uid()))
-  WITH CHECK (tecnico_id = auth.uid() OR public.is_gestor(auth.uid()));
+  WITH CHECK (
+    public.is_gestor(auth.uid())
+    OR (tecnico_id = auth.uid() AND status NOT IN ('fechada', 'cancelada'))
+  );
 
 DROP POLICY IF EXISTS "os_delete_admin" ON public.ordens_servico;
 CREATE POLICY "os_delete_admin" ON public.ordens_servico
@@ -389,15 +425,41 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'bucket fotos-os nao criado por SQL (%): crie no dashboard da Lovable como PRIVADO.', SQLERRM;
 END $$;
 
+-- O app grava tudo em <os_id>/arquivo (ver subirArquivo em features/os/data.ts),
+-- então o acesso ao arquivo pode seguir exatamente a regra da OS. Sem isso,
+-- qualquer autenticado baixaria fotos e assinaturas de qualquer chamado.
+-- O helper faz o cast dentro de um bloco protegido: caminho fora do padrão
+-- devolve false em vez de derrubar a avaliação da policy.
+CREATE OR REPLACE FUNCTION public.pode_acessar_os_por_path(_name text)
+RETURNS boolean
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  BEGIN
+    v_id := split_part(_name, '/', 1)::uuid;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN false;
+  END;
+  RETURN public.pode_acessar_os(v_id);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.pode_acessar_os_por_path(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.pode_acessar_os_por_path(text) TO authenticated, service_role;
+
 DROP POLICY IF EXISTS "fotos_os_read"   ON storage.objects;
 DROP POLICY IF EXISTS "fotos_os_insert" ON storage.objects;
 DROP POLICY IF EXISTS "fotos_os_delete" ON storage.objects;
 CREATE POLICY "fotos_os_read" ON storage.objects
-  FOR SELECT TO authenticated USING (bucket_id = 'fotos-os');
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'fotos-os' AND public.pode_acessar_os_por_path(name));
 CREATE POLICY "fotos_os_insert" ON storage.objects
-  FOR INSERT TO authenticated WITH CHECK (bucket_id = 'fotos-os');
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'fotos-os' AND public.pode_acessar_os_por_path(name));
 CREATE POLICY "fotos_os_delete" ON storage.objects
-  FOR DELETE TO authenticated USING (bucket_id = 'fotos-os' AND owner = auth.uid());
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'fotos-os' AND (owner = auth.uid() OR public.is_gestor(auth.uid())));
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO FINAL
@@ -415,12 +477,14 @@ SELECT 'constraints de dominio da OS (tipo, prioridade, status)',
 FROM pg_constraint
 WHERE conname IN ('ordens_servico_tipo_check','ordens_servico_prioridade_check','ordens_servico_status_check')
 UNION ALL
-SELECT 'triggers da OS (numero/prazo, eventos, notificacoes, updated_at)',
-       count(*)::text, '6'
+SELECT 'triggers da OS (numero/prazo, recalculo, eventos, notificacoes, updated_at)',
+       count(*)::text, '7'
 FROM pg_trigger
 WHERE NOT tgisinternal
-  AND tgname IN ('trg_os_numero_prazo','trg_os_evento_ins','trg_os_evento_upd',
-                 'trg_notify_os_ins','trg_notify_os_upd','ordens_servico_set_updated_at')
+  AND tgrelid = 'public.ordens_servico'::regclass
+  AND tgname IN ('trg_os_numero_prazo','trg_os_recalcular_prazo','trg_os_evento_ins',
+                 'trg_os_evento_upd','trg_notify_os_ins','trg_notify_os_upd',
+                 'ordens_servico_set_updated_at')
 UNION ALL
 SELECT 'policies criadas (OS 4 + fotos 3 + eventos 2 + sla 1)',
        count(*)::text, '10'
@@ -434,10 +498,17 @@ SELECT 'coluna os_id em notificacoes',
          WHERE table_schema='public' AND table_name='notificacoes' AND column_name='os_id'
        ) THEN 'sim' ELSE 'NAO' END, 'sim'
 UNION ALL
-SELECT 'funcao pode_acessar_os instalada',
+SELECT 'funcoes de acesso a OS instaladas',
+       count(*)::text, '2'
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname IN ('pode_acessar_os', 'pode_acessar_os_por_path')
+UNION ALL
+SELECT 'fotos no storage restritas por chamado',
        CASE WHEN EXISTS (
-         SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-         WHERE n.nspname='public' AND p.proname='pode_acessar_os'
+         SELECT 1 FROM pg_policies
+         WHERE schemaname = 'storage' AND tablename = 'objects'
+           AND policyname = 'fotos_os_read'
+           AND qual LIKE '%pode_acessar_os_por_path%'
        ) THEN 'sim' ELSE 'NAO' END, 'sim'
 UNION ALL
 SELECT 'ordens_servico no realtime',

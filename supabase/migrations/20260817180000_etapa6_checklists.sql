@@ -86,7 +86,11 @@ INSERT INTO public.os_checklist_templates (tipo_sistema, item, ordem) VALUES
   -- Totem
   ('TOT', 'Conferir imagem das câmeras do totem', 1),
   ('TOT', 'Verificar alimentação e switch do poste', 2),
-  ('TOT', 'Testar comunicação com a central de monitoramento', 3)
+  ('TOT', 'Testar comunicação com a central de monitoramento', 3),
+  -- Sistema fora da taxonomia (registrado em campo): roteiro mínimo, para o
+  -- grupo dele não ficar vazio na preventiva
+  ('OUTRO', 'Inspecionar visualmente o sistema e a fixação dos equipamentos', 1),
+  ('OUTRO', 'Testar o funcionamento completo e registrar pendências', 2)
 ON CONFLICT (tipo_sistema, item) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════
@@ -119,8 +123,14 @@ CREATE POLICY "os_checklist_select" ON public.os_checklist
   FOR SELECT TO authenticated USING (public.pode_acessar_os(os_id));
 CREATE POLICY "os_checklist_insert" ON public.os_checklist
   FOR INSERT TO authenticated WITH CHECK (public.pode_acessar_os(os_id));
+-- concluido_por é trilha de auditoria: ninguém marca item no nome de outro
 CREATE POLICY "os_checklist_update" ON public.os_checklist
-  FOR UPDATE TO authenticated USING (public.pode_acessar_os(os_id)) WITH CHECK (public.pode_acessar_os(os_id));
+  FOR UPDATE TO authenticated
+  USING (public.pode_acessar_os(os_id))
+  WITH CHECK (
+    public.pode_acessar_os(os_id)
+    AND (concluido_por IS NULL OR concluido_por = auth.uid())
+  );
 CREATE POLICY "os_checklist_delete" ON public.os_checklist
   FOR DELETE TO authenticated USING (public.is_gestor(auth.uid()));
 
@@ -132,10 +142,10 @@ SELECT 'tabelas criadas (os_checklist_templates, os_checklist)' AS verificacao,
 FROM information_schema.tables
 WHERE table_schema = 'public' AND table_name IN ('os_checklist_templates','os_checklist')
 UNION ALL
-SELECT 'itens de checklist cadastrados', count(*)::text, '41' FROM public.os_checklist_templates
+SELECT 'itens de checklist cadastrados', count(*)::text, '43' FROM public.os_checklist_templates
 UNION ALL
 SELECT 'tipos de sistema com roteiro',
-       string_agg(DISTINCT tipo_sistema, ', ' ORDER BY tipo_sistema), 'AL, CENT, CER, CFTV, ELV, GERAL, PED, TOT, VEI'
+       string_agg(DISTINCT tipo_sistema, ', ' ORDER BY tipo_sistema), 'AL, CENT, CER, CFTV, ELV, GERAL, OUTRO, PED, TOT, VEI'
 FROM public.os_checklist_templates
 UNION ALL
 SELECT 'policies do checklist', count(*)::text, '5'
