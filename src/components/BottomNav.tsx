@@ -1,13 +1,18 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, ClipboardList, User, Wrench } from "lucide-react";
+import { Home, Calendar, ClipboardList, KanbanSquare, User, Wrench } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
+import { useMinhaEquipe } from "@/features/demandas/data";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: cargo } = useUserCargo();
+  const { data: equipe } = useMinhaEquipe();
   const { isLight } = useTheme();
   const isAdmin = cargo === "admin";
+  // Demandas é o quadro interno (Etapa U1): quem tem equipe trabalha nele.
+  // Técnico de campo sem equipe continua com a barra enxuta de sempre.
+  const veDemandas = isAdmin || (!!equipe && equipe !== "tecnica");
 
   // "Chamados" (ordens de serviço) é o acesso do técnico ao trabalho de
   // manutenção; o gestor também precisa dele para acompanhar a fila.
@@ -16,22 +21,20 @@ export function BottomNav() {
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
         { to: "/os", label: "Chamados", icon: Wrench },
+        { to: "/demandas", label: "Demandas", icon: KanbanSquare },
         { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
-        { to: "/perfil", label: "Perfil", icon: User },
-      ]
-    : cargo === "tecnico"
-    ? [
-        { to: "/dashboard", label: "Início", icon: Home },
-        { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/os", label: "Chamados", icon: Wrench },
         { to: "/perfil", label: "Perfil", icon: User },
       ]
     : [
         { to: "/dashboard", label: "Início", icon: Home },
         { to: "/calendario", label: "Calendário", icon: Calendar },
         { to: "/os", label: "Chamados", icon: Wrench },
+        ...(veDemandas ? [{ to: "/demandas", label: "Demandas", icon: KanbanSquare }] : []),
         { to: "/perfil", label: "Perfil", icon: User },
       ];
+
+  // com 6 itens a pílula precisa apertar para caber na largura do celular
+  const apertado = items.length > 5;
 
   const inactiveColor = isLight ? "#4a5060" : "#FFFFFF";
   const activeColor = isLight ? "#b87800" : "#FFFFFF";
@@ -54,8 +57,9 @@ export function BottomNav() {
           pointerEvents: "auto",
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          padding: "10px 14px",
+          gap: apertado ? 2 : 8,
+          padding: apertado ? "10px 8px" : "10px 14px",
+          maxWidth: "calc(100vw - 16px)",
           background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
           backdropFilter: "blur(30px) saturate(180%)",
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255, 255, 255, 0.22)",
@@ -71,6 +75,7 @@ export function BottomNav() {
             pathname === item.to ||
             (item.to === "/dashboard" && pathname === "/") ||
             (item.to === "/gerencial" && pathname.startsWith("/gerencial")) ||
+            (item.to === "/demandas" && pathname.startsWith("/demandas")) ||
             (item.to === "/os" && pathname.startsWith("/os"));
           const Icon = item.icon;
           const color = active ? activeColor : inactiveColor;
@@ -79,8 +84,9 @@ export function BottomNav() {
               key={item.to}
               to={item.to as any}
               aria-current={active ? "page" : undefined}
-              className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] px-4 py-2 transition-all duration-200"
+              className="group relative flex flex-1 flex-col items-center gap-[3px] rounded-[28px] py-2 transition-all duration-200"
               style={{
+                paddingInline: apertado ? 8 : 16,
                 background: active
                   ? (isLight ? "rgba(184,120,0,0.10)" : "rgba(255, 255, 255, 0.12)")
                   : "transparent",

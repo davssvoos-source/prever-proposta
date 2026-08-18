@@ -20,6 +20,7 @@ import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedOsRouteImport } from './routes/_authenticated/os'
+import { Route as AuthenticatedDemandasRouteImport } from './routes/_authenticated/demandas'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -30,6 +31,9 @@ import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authent
 import { Route as AuthenticatedOsPainelRouteImport } from './routes/_authenticated/os.painel'
 import { Route as AuthenticatedOsNovaRouteImport } from './routes/_authenticated/os.nova'
 import { Route as AuthenticatedOsIdRouteImport } from './routes/_authenticated/os.$id'
+import { Route as AuthenticatedDemandasNovaRouteImport } from './routes/_authenticated/demandas.nova'
+import { Route as AuthenticatedDemandasImportarRouteImport } from './routes/_authenticated/demandas.importar'
+import { Route as AuthenticatedDemandasIdRouteImport } from './routes/_authenticated/demandas.$id'
 import { Route as AuthenticatedClientesMigrarRouteImport } from './routes/_authenticated/clientes.migrar'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
@@ -138,6 +142,28 @@ const AuthenticatedOsIdRoute = AuthenticatedOsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedOsRoute,
 } as any)
+const AuthenticatedDemandasRoute = AuthenticatedDemandasRouteImport.update({
+  id: '/demandas',
+  path: '/demandas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDemandasNovaRoute =
+  AuthenticatedDemandasNovaRouteImport.update({
+    id: '/nova',
+    path: '/nova',
+    getParentRoute: () => AuthenticatedDemandasRoute,
+  } as any)
+const AuthenticatedDemandasImportarRoute =
+  AuthenticatedDemandasImportarRouteImport.update({
+    id: '/importar',
+    path: '/importar',
+    getParentRoute: () => AuthenticatedDemandasRoute,
+  } as any)
+const AuthenticatedDemandasIdRoute = AuthenticatedDemandasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedDemandasRoute,
+} as any)
 const AuthenticatedClientesNovoRoute =
   AuthenticatedClientesNovoRouteImport.update({
     id: '/novo',
@@ -236,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
@@ -245,6 +272,9 @@ export interface FileRoutesByFullPath {
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/demandas/$id': typeof AuthenticatedDemandasIdRoute
+  '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
+  '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/os/$id': typeof AuthenticatedOsIdRoute
@@ -271,6 +301,7 @@ export interface FileRoutesByTo {
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
@@ -280,6 +311,9 @@ export interface FileRoutesByTo {
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/demandas/$id': typeof AuthenticatedDemandasIdRoute
+  '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
+  '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/os/$id': typeof AuthenticatedOsIdRoute
@@ -307,6 +341,7 @@ export interface FileRoutesById {
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
@@ -316,6 +351,9 @@ export interface FileRoutesById {
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/_authenticated/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/_authenticated/demandas/$id': typeof AuthenticatedDemandasIdRoute
+  '/_authenticated/demandas/importar': typeof AuthenticatedDemandasImportarRoute
+  '/_authenticated/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/_authenticated/os/$id': typeof AuthenticatedOsIdRoute
@@ -344,6 +382,7 @@ export interface FileRouteTypes {
     | '/calendario'
     | '/clientes'
     | '/dashboard'
+    | '/demandas'
     | '/gerencial'
     | '/historico'
     | '/mapa'
@@ -353,6 +392,9 @@ export interface FileRouteTypes {
     | '/clientes/$id'
     | '/clientes/migrar'
     | '/clientes/novo'
+    | '/demandas/$id'
+    | '/demandas/importar'
+    | '/demandas/nova'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/os/$id'
@@ -379,6 +421,7 @@ export interface FileRouteTypes {
     | '/calendario'
     | '/clientes'
     | '/dashboard'
+    | '/demandas'
     | '/gerencial'
     | '/historico'
     | '/mapa'
@@ -388,6 +431,9 @@ export interface FileRouteTypes {
     | '/clientes/$id'
     | '/clientes/migrar'
     | '/clientes/novo'
+    | '/demandas/$id'
+    | '/demandas/importar'
+    | '/demandas/nova'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/os/$id'
@@ -414,6 +460,7 @@ export interface FileRouteTypes {
     | '/_authenticated/calendario'
     | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
+    | '/_authenticated/demandas'
     | '/_authenticated/gerencial'
     | '/_authenticated/historico'
     | '/_authenticated/mapa'
@@ -423,6 +470,9 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes/$id'
     | '/_authenticated/clientes/migrar'
     | '/_authenticated/clientes/novo'
+    | '/_authenticated/demandas/$id'
+    | '/_authenticated/demandas/importar'
+    | '/_authenticated/demandas/nova'
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/gerencial/usuarios'
     | '/_authenticated/os/$id'
@@ -541,6 +591,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/os/$id'
       preLoaderRoute: typeof AuthenticatedOsIdRouteImport
       parentRoute: typeof AuthenticatedOsRoute
+    }
+    '/_authenticated/demandas': {
+      id: '/_authenticated/demandas'
+      path: '/demandas'
+      fullPath: '/demandas'
+      preLoaderRoute: typeof AuthenticatedDemandasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/demandas/nova': {
+      id: '/_authenticated/demandas/nova'
+      path: '/nova'
+      fullPath: '/demandas/nova'
+      preLoaderRoute: typeof AuthenticatedDemandasNovaRouteImport
+      parentRoute: typeof AuthenticatedDemandasRoute
+    }
+    '/_authenticated/demandas/importar': {
+      id: '/_authenticated/demandas/importar'
+      path: '/importar'
+      fullPath: '/demandas/importar'
+      preLoaderRoute: typeof AuthenticatedDemandasImportarRouteImport
+      parentRoute: typeof AuthenticatedDemandasRoute
+    }
+    '/_authenticated/demandas/$id': {
+      id: '/_authenticated/demandas/$id'
+      path: '/$id'
+      fullPath: '/demandas/$id'
+      preLoaderRoute: typeof AuthenticatedDemandasIdRouteImport
+      parentRoute: typeof AuthenticatedDemandasRoute
     }
     '/_authenticated/clientes': {
       id: '/_authenticated/clientes'
@@ -707,6 +785,21 @@ const AuthenticatedOsRouteChildren: AuthenticatedOsRouteChildren = {
 const AuthenticatedOsRouteWithChildren =
   AuthenticatedOsRoute._addFileChildren(AuthenticatedOsRouteChildren)
 
+interface AuthenticatedDemandasRouteChildren {
+  AuthenticatedDemandasIdRoute: typeof AuthenticatedDemandasIdRoute
+  AuthenticatedDemandasImportarRoute: typeof AuthenticatedDemandasImportarRoute
+  AuthenticatedDemandasNovaRoute: typeof AuthenticatedDemandasNovaRoute
+}
+
+const AuthenticatedDemandasRouteChildren: AuthenticatedDemandasRouteChildren = {
+  AuthenticatedDemandasIdRoute: AuthenticatedDemandasIdRoute,
+  AuthenticatedDemandasImportarRoute: AuthenticatedDemandasImportarRoute,
+  AuthenticatedDemandasNovaRoute: AuthenticatedDemandasNovaRoute,
+}
+
+const AuthenticatedDemandasRouteWithChildren =
+  AuthenticatedDemandasRoute._addFileChildren(AuthenticatedDemandasRouteChildren)
+
 interface AuthenticatedClientesRouteChildren {
   AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
   AuthenticatedClientesMigrarRoute: typeof AuthenticatedClientesMigrarRoute
@@ -795,6 +888,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDemandasRoute: typeof AuthenticatedDemandasRouteWithChildren
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
@@ -810,6 +904,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDemandasRoute: AuthenticatedDemandasRouteWithChildren,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,

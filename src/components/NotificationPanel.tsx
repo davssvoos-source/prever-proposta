@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "@tanstack/react-router";
-import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle, Wrench } from "lucide-react";
+import { Bell, CheckCircle2, CalendarCheck, Settings, Info, Trash2, Clock, XCircle, Wrench, KanbanSquare, MessageSquare, CalendarClock, UserPlus } from "lucide-react";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -23,6 +23,23 @@ function NotifIcon({ tipo }: { tipo: string }) {
       return <CheckCircle2 {...s} color="#10B981" />;
     case 'lembrete_visita':
       return <Clock {...s} color="#FFC000" />;
+    case 'demanda_atribuida':
+    case 'sprint_virada':
+    case 'resumo_semana':
+      return <KanbanSquare {...s} color="#FFC000" />;
+    case 'demanda_comentario':
+      return <MessageSquare {...s} color="#60A5FA" />;
+    case 'demanda_apoio':
+      return <UserPlus {...s} color="#9085e9" />;
+    case 'demanda_prazo':
+      return <CalendarClock {...s} color="#c98500" />;
+    case 'demanda_parada':
+    case 'demanda_atrasada':
+      return <CalendarClock {...s} color="#EF4444" />;
+    case 'demanda_aprovacao':
+      return <Clock {...s} color="#60A5FA" />;
+    case 'demanda_concluida':
+      return <CheckCircle2 {...s} color="#10B981" />;
     case 'visita':
     case 'visita_atribuida':
       return <CalendarCheck {...s} color="#FFC000" />;
@@ -54,8 +71,11 @@ export function NotificationPanel() {
   const handleClick = (n: Notificacao) => {
     if (!n.lida) marcarLida(n.id);
     setOpen(false);
-    // Chamado tem precedência: notificações de OS não têm visita vinculada
-    if (n.os_id) {
+    // Cada notificação carrega no máximo um destino; a ordem só resolve empate.
+    // Sem isto, aviso de demanda abre o sino e não leva a lugar nenhum.
+    if (n.demanda_id) {
+      navigate({ to: "/demandas/$id", params: { id: n.demanda_id } });
+    } else if (n.os_id) {
       navigate({ to: "/os/$id", params: { id: n.os_id } });
     } else if (n.visita_id) {
       navigate({ to: "/visita/$id", params: { id: n.visita_id }, state: { from: location.pathname } as any });
