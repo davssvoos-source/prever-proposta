@@ -30,6 +30,7 @@ import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
 import { Route as AuthenticatedOsPainelRouteImport } from './routes/_authenticated/os.painel'
+import { Route as AuthenticatedOsProgramacaoRouteImport } from './routes/_authenticated/os.programacao'
 import { Route as AuthenticatedOsNovaRouteImport } from './routes/_authenticated/os.nova'
 import { Route as AuthenticatedOsIdRouteImport } from './routes/_authenticated/os.$id'
 import { Route as AuthenticatedDemandasNovaRouteImport } from './routes/_authenticated/demandas.nova'
@@ -135,6 +136,12 @@ const AuthenticatedOsPainelRoute = AuthenticatedOsPainelRouteImport.update({
   path: '/painel',
   getParentRoute: () => AuthenticatedOsRoute,
 } as any)
+const AuthenticatedOsProgramacaoRoute =
+  AuthenticatedOsProgramacaoRouteImport.update({
+    id: '/programacao',
+    path: '/programacao',
+    getParentRoute: () => AuthenticatedOsRoute,
+  } as any)
 const AuthenticatedOsNovaRoute = AuthenticatedOsNovaRouteImport.update({
   id: '/nova',
   path: '/nova',
@@ -303,6 +310,7 @@ export interface FileRoutesByFullPath {
   '/os/$id': typeof AuthenticatedOsIdRoute
   '/os/nova': typeof AuthenticatedOsNovaRoute
   '/os/painel': typeof AuthenticatedOsPainelRoute
+  '/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -345,6 +353,7 @@ export interface FileRoutesByTo {
   '/os/$id': typeof AuthenticatedOsIdRoute
   '/os/nova': typeof AuthenticatedOsNovaRoute
   '/os/painel': typeof AuthenticatedOsPainelRoute
+  '/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
@@ -388,6 +397,7 @@ export interface FileRoutesById {
   '/_authenticated/os/$id': typeof AuthenticatedOsIdRoute
   '/_authenticated/os/nova': typeof AuthenticatedOsNovaRoute
   '/_authenticated/os/painel': typeof AuthenticatedOsPainelRoute
+  '/_authenticated/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -432,6 +442,7 @@ export interface FileRouteTypes {
     | '/os/$id'
     | '/os/nova'
     | '/os/painel'
+    | '/os/programacao'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/orcamento'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/os/$id'
     | '/os/nova'
     | '/os/painel'
+    | '/os/programacao'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/pendente'
@@ -516,6 +528,7 @@ export interface FileRouteTypes {
     | '/_authenticated/os/$id'
     | '/_authenticated/os/nova'
     | '/_authenticated/os/painel'
+    | '/_authenticated/os/programacao'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
     | '/_authenticated/visita/$id/orcamento'
@@ -621,6 +634,13 @@ declare module '@tanstack/react-router' {
       path: '/painel'
       fullPath: '/os/painel'
       preLoaderRoute: typeof AuthenticatedOsPainelRouteImport
+      parentRoute: typeof AuthenticatedOsRoute
+    }
+    '/_authenticated/os/programacao': {
+      id: '/_authenticated/os/programacao'
+      path: '/programacao'
+      fullPath: '/os/programacao'
+      preLoaderRoute: typeof AuthenticatedOsProgramacaoRouteImport
       parentRoute: typeof AuthenticatedOsRoute
     }
     '/_authenticated/os/$id': {
@@ -833,12 +853,14 @@ interface AuthenticatedOsRouteChildren {
   AuthenticatedOsIdRoute: typeof AuthenticatedOsIdRoute
   AuthenticatedOsNovaRoute: typeof AuthenticatedOsNovaRoute
   AuthenticatedOsPainelRoute: typeof AuthenticatedOsPainelRoute
+  AuthenticatedOsProgramacaoRoute: typeof AuthenticatedOsProgramacaoRoute
 }
 
 const AuthenticatedOsRouteChildren: AuthenticatedOsRouteChildren = {
   AuthenticatedOsIdRoute: AuthenticatedOsIdRoute,
   AuthenticatedOsNovaRoute: AuthenticatedOsNovaRoute,
   AuthenticatedOsPainelRoute: AuthenticatedOsPainelRoute,
+  AuthenticatedOsProgramacaoRoute: AuthenticatedOsProgramacaoRoute,
 }
 
 const AuthenticatedOsRouteWithChildren =

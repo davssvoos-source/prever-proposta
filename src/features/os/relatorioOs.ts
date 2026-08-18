@@ -86,10 +86,22 @@ export interface RelatorioOsOpts {
   os: DadosRelatorioOs;
   tecnicoNome: string | null;
   fotos: { etapa: "antes" | "depois" | "outra"; storage_path: string | null; legenda: string | null }[];
+  /**
+   * Movimentação de equipamento registrada na OS (Etapa U3). É o que o
+   * responsável assina junto com o serviço — e o que o SIGMA imprimia no
+   * recibo. Sem valores: o recibo é do cliente, o financeiro é interno.
+   */
+  pecas?: {
+    direcao: string;
+    descricao: string;
+    numero_serie: string | null;
+    tag_patrimonio: string | null;
+    quantidade: number;
+  }[];
 }
 
 /** Gera e baixa o PDF do relatório de atendimento. */
-export async function gerarRelatorioOs({ os, tecnicoNome, fotos }: RelatorioOsOpts): Promise<void> {
+export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: RelatorioOsOpts): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
 
@@ -217,7 +229,26 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos }: RelatorioOsOp
   tituloSecao("Serviço executado");
   paragrafo(os.servico_executado);
 
-  if (os.pecas_texto?.trim()) {
+  // Movimentação de equipamento (U3). O rótulo diz a direção, porque o que foi
+  // RETIRADO do local é justamente o que o responsável precisa conferir antes
+  // de assinar.
+  if (pecas.length > 0) {
+    tituloSecao("Equipamento instalado / retirado");
+    const rotulo: Record<string, string> = {
+      instalado: "Instalado", retirado: "Retirado", substituido: "Substituído",
+    };
+    for (const p of pecas) {
+      const qtd = Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : "";
+      const ident = [
+        p.numero_serie ? `série ${p.numero_serie}` : "",
+        p.tag_patrimonio ? `TAG ${p.tag_patrimonio}` : "",
+      ].filter(Boolean).join(", ");
+      paragrafo(
+        `• ${rotulo[p.direcao] ?? p.direcao}: ${qtd}${p.descricao}${ident ? ` (${ident})` : ""}`,
+      );
+    }
+  } else if (os.pecas_texto?.trim()) {
+    // atendimentos anteriores à U3 continuam saindo com a anotação de texto
     tituloSecao("Peças e materiais aplicados");
     paragrafo(os.pecas_texto);
   }

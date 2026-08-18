@@ -8,7 +8,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle, ArrowLeft, Building2, Camera, CheckCircle2, ClipboardList, Clock,
-  CheckSquare, FileDown, History, ListChecks, MapPin, Phone, PlayCircle, Square,
+  CheckSquare, FileDown, History, ListChecks, MapPin, Phone, PlayCircle, Plus, Square,
   Trash2, User, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +22,10 @@ import {
   atualizarOs, anexarFotoOs, excluirFotoOs, salvarAssinatura,
 } from "@/features/os/data";
 import { gerarRelatorioOs } from "@/features/os/relatorioOs";
+import {
+  useOsPecas, registrarPeca, removerPeca,
+  DIRECAO_LABEL, DIRECAO_CORES, type DirecaoPeca,
+} from "@/features/os/pecas";
 import { useChecklist, marcarItemChecklist } from "@/features/os/checklist";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
 import {
@@ -50,12 +54,17 @@ function OsDetalhePage() {
 
   const [diagnostico, setDiagnostico] = useState("");
   const [servico, setServico] = useState("");
-  const [pecas, setPecas] = useState("");
   const [assinanteNome, setAssinanteNome] = useState("");
   const [assinaturaData, setAssinaturaData] = useState<string | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [motivoCancel, setMotivoCancel] = useState("");
   const [enviandoFoto, setEnviandoFoto] = useState(false);
+  // movimentação de equipamento — Etapa U3
+  const { data: pecasOs = [] } = useOsPecas(id);
+  const [novaDirecao, setNovaDirecao] = useState<DirecaoPeca>("instalado");
+  const [novaDescricao, setNovaDescricao] = useState("");
+  const [novaSerie, setNovaSerie] = useState("");
+  const [novaQtd, setNovaQtd] = useState("1");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -65,9 +74,8 @@ function OsDetalhePage() {
     if (!os) return;
     setDiagnostico(os.diagnostico ?? "");
     setServico(os.servico_executado ?? "");
-    setPecas(os.pecas_texto ?? "");
     setAssinanteNome(os.assinatura_nome ?? "");
-  }, [os?.id, os?.diagnostico, os?.servico_executado, os?.pecas_texto, os?.assinatura_nome]);
+  }, [os?.id, os?.diagnostico, os?.servico_executado, os?.assinatura_nome]);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -134,8 +142,33 @@ function OsDetalhePage() {
   });
 
   const salvarRascunho = useMutation({
-    mutationFn: () => atualizarOs(id, { diagnostico, servico_executado: servico, pecas_texto: pecas }),
+    // pecas_texto virou legado na U3: as peças têm tabela própria e não são
+    // mais sobrescritas por este rascunho
+    mutationFn: () => atualizarOs(id, { diagnostico, servico_executado: servico }),
     onSuccess: () => { invalidar(); toast.success("Anotações salvas."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Movimentação de equipamento do atendimento — Etapa U3. */
+  const mexerPeca = useMutation({
+    mutationFn: async (acao: { tipo: "add" } | { tipo: "del"; pecaId: string }) => {
+      if (acao.tipo === "del") return removerPeca(acao.pecaId);
+      const descricao = novaDescricao.trim();
+      if (!descricao) throw new Error("Descreva o equipamento ou material.");
+      const qtd = Number(novaQtd.replace(",", "."));
+      await registrarPeca(id, {
+        descricao,
+        direcao: novaDirecao,
+        numero_serie: novaSerie.trim() || null,
+        quantidade: Number.isFinite(qtd) && qtd > 0 ? qtd : 1,
+      });
+    },
+    onSuccess: () => {
+      setNovaDescricao("");
+      setNovaSerie("");
+      setNovaQtd("1");
+      qc.invalidateQueries({ queryKey: ["os-pecas", id] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -151,7 +184,6 @@ function OsDetalhePage() {
       await concluirAtendimento(id, {
         diagnostico: diagnostico.trim(),
         servico_executado: servico.trim(),
-        pecas_texto: pecas.trim() || null,
       });
     },
     onSuccess: () => { invalidar(); toast.success("Chamado concluído — enviado para conferência."); },
@@ -217,6 +249,13 @@ function OsDetalhePage() {
         os,
         tecnicoNome: (tecnicos as any[]).find((t) => t.id === os.tecnico_id)?.nome ?? null,
         fotos: fotos.map((f) => ({ etapa: f.etapa, storage_path: f.storage_path, legenda: f.legenda })),
+        pecas: pecasOs.map((p) => ({
+          direcao: p.direcao,
+          descricao: p.descricao,
+          numero_serie: p.numero_serie,
+          tag_patrimonio: p.tag_patrimonio,
+          quantidade: Number(p.quantidade),
+        })),
       });
     },
     onSuccess: () => toast.success("Relatório gerado — o download foi iniciado."),
@@ -584,15 +623,138 @@ function OsDetalhePage() {
               placeholder="O que foi feito para resolver"
             />
           </div>
+          {/* Equipamento instalado / retirado — Etapa U3.
+              Substitui o campo de texto: o que entra aqui vira a decisão de
+              cobrança (U4) e o relatório de movimentação do QAP (U6). */}
           <div>
-            <label style={LABEL}>Peças e materiais usados</label>
-            <textarea
-              style={{ ...INPUT, height: 66, resize: "vertical" }}
-              value={pecas}
-              onChange={(e) => setPecas(e.target.value)}
-              disabled={!emExecucao}
-              placeholder="Ex.: 1 fechadura FE21150D, 5 m de cabo — a baixa é feita no ERP"
-            />
+            <label style={LABEL}>Equipamento instalado / retirado</label>
+            {pecasOs.length === 0 && (
+              <span style={{ display: "block", fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 300, color: textSecondary, marginBottom: 8 }}>
+                Nada registrado ainda.
+              </span>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: emExecucao ? 10 : 0 }}>
+              {pecasOs.map((p) => {
+                const dc = DIRECAO_CORES[p.direcao];
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "10px 12px", borderRadius: 12,
+                      background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                      border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <span style={{
+                      flexShrink: 0, padding: "3px 8px", borderRadius: 999,
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                      letterSpacing: "0.06em", textTransform: "uppercase",
+                      color: isLight ? dc.light : dc.dark, background: dc.bg, border: `1px solid ${dc.border}`,
+                    }}>
+                      {DIRECAO_LABEL[p.direcao]}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                        {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
+                      </div>
+                      {(p.numero_serie || p.tag_patrimonio) && (
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                          {p.numero_serie ? `Série ${p.numero_serie}` : ""}
+                          {p.tag_patrimonio ? `${p.numero_serie ? " · " : ""}TAG ${p.tag_patrimonio}` : ""}
+                        </div>
+                      )}
+                    </div>
+                    {emExecucao && (
+                      <button
+                        onClick={() => mexerPeca.mutate({ tipo: "del", pecaId: p.id })}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex" }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {emExecucao && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(Object.keys(DIRECAO_LABEL) as DirecaoPeca[]).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setNovaDirecao(d)}
+                      style={{
+                        padding: "7px 12px", borderRadius: 10, cursor: "pointer",
+                        border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                        background: novaDirecao === d
+                          ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                          : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+                        color: novaDirecao === d ? "#08090E" : textPrimary,
+                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
+                      }}
+                    >
+                      {DIRECAO_LABEL[d]}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  style={INPUT}
+                  value={novaDescricao}
+                  onChange={(e) => setNovaDescricao(e.target.value)}
+                  placeholder="Equipamento ou material"
+                />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 44px", gap: 8 }}>
+                  <input
+                    style={INPUT}
+                    value={novaSerie}
+                    onChange={(e) => setNovaSerie(e.target.value)}
+                    placeholder="Nº de série (quando tiver)"
+                  />
+                  <input
+                    style={INPUT}
+                    value={novaQtd}
+                    onChange={(e) => setNovaQtd(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Qtd"
+                  />
+                  <button
+                    onClick={() => mexerPeca.mutate({ tipo: "add" })}
+                    disabled={!novaDescricao.trim() || mexerPeca.isPending}
+                    style={{
+                      height: 46, borderRadius: 12, border: "none",
+                      background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                      color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: novaDescricao.trim() ? "pointer" : "default",
+                      opacity: novaDescricao.trim() ? 1 : 0.5,
+                    }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: textSecondary, lineHeight: 1.5 }}>
+                  O número de série é o que permite conciliar com o patrimônio no ERP — registre sempre que o equipamento tiver.
+                </span>
+              </div>
+            )}
+
+            {/* histórico anterior à U3, quando existir */}
+            {os.pecas_texto?.trim() && (
+              <div style={{
+                marginTop: 10, padding: "10px 12px", borderRadius: 12,
+                background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.02)",
+                border: isLight ? "1px dashed rgba(0,0,0,0.10)" : "1px dashed rgba(255,255,255,0.10)",
+              }}>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
+                  Anotação anterior
+                </div>
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, fontWeight: 300, color: textPrimary, whiteSpace: "pre-wrap" }}>
+                  {os.pecas_texto}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Assinatura */}

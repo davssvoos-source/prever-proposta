@@ -629,3 +629,55 @@ morar só na cabeça dele.
    pertence a outro cliente do cadastro, a tela avisa e deixa a pessoa decidir.
 6. **Backfill de `contrato_id` só em OS aberta** — para OS já encerrada não dá
    para afirmar qual contrato valia no dia do atendimento.
+
+### U3 — OS de campo completa (2026-08-18)
+
+**Migration:** `supabase/migrations/20260818180000_u3_os_pecas_unidades.sql` —
+depende da U0 e da U2.
+
+Fecha as três lacunas que faziam o SIGMA continuar existindo: o que foi
+instalado e retirado, o número de série de cada item no cliente, e a
+programação da equipe.
+
+**Entregue no banco**
+
+| O quê | Detalhe |
+|---|---|
+| `cliente_equipamento_unidades` | a Unidade do QAP: série, TAG, IMEI, código de barras + `qap_unidade_id`/`qap_modelo_codigo` reservados. Só para serializáveis — consumível segue por quantidade, como no QAP. |
+| `os_pecas` | movimentação do atendimento (instalado/retirado/substituído), com `chave_busca` gerada para o matching da U4. Sucede `pecas_texto`, que virou legado somente-leitura. |
+| `os_pecas_analise` | o veredito financeiro, 1:1 com a peça, com RLS própria. |
+| `os_sincronizar_unidades()` | ao fechar a OS, o que o técnico registrou vira unidade no as-built — sem isso o inventário envelhece e a conciliação com o QAP nasce errada. |
+| `alertas_os_faturamento()` | automação 5 do §6: OS executada há 2+ dias sem análise avisa o gestor (`0 12 * * 1-5`). |
+
+**Entregue no app**
+
+- `src/features/os/pecas.ts` — movimentação, unidades, busca por série/código de
+  barras e o **CSV de movimentação** (`;` + BOM) que o Gilleno vai usar na U6.
+- Tela do chamado: o campo de texto de peças deu lugar ao registro estruturado
+  com direção e número de série; a anotação antiga aparece como histórico.
+- Recibo PDF passa a listar o que foi instalado e retirado — é justamente o que
+  o responsável precisa conferir antes de assinar.
+- **`/os/programacao`** — a tela do Vinicius: semana com carga por dia, agenda
+  do dia por técnico, e a fila "aguardando programação" ordenada por prazo
+  estourado. Botão na lista de chamados.
+
+**Decisões tomadas durante a execução**
+
+1. **O veredito financeiro saiu de `os_pecas` para `os_pecas_analise`** —
+   desvio consciente do §4.1. A RLS do Postgres é por linha, não por coluna, e
+   o §4.4 exige que o técnico não veja valor. Manter tudo numa tabela pediria
+   column-level GRANT + view: mais máquina do que benefício. O movimento
+   físico continua tendo uma única fonte de verdade.
+2. **Peça não é editável depois de fechada a OS** (policy): o registro vira
+   base de cobrança, e gestor ainda pode corrigir.
+3. **Constraint `resultado <> 'faturavel' OR valor_calculado IS NOT NULL`** —
+   a invariante 2 do gestor-os ("sem preço vira REVISAR, nunca R$ 0") passa a
+   ser garantida pelo banco, não só pelo código.
+4. **Programação é por dia, não grade semana × técnico**: a grade não cabe na
+   tela do celular, que é onde o Vinicius trabalha. A semana vira uma régua
+   com a carga de cada dia.
+5. **Agendar move `aberta` → `agendada`** automaticamente — era o passo que
+   todo mundo esquecia de fazer à mão.
+6. **Unicidade de série é por linha de equipamento do cliente**, não global:
+   número de série se repete entre fabricantes (é por isso que o §8 pede um id
+   imutável de unidade ao QAP).
