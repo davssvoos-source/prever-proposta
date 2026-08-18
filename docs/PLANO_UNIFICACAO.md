@@ -737,3 +737,47 @@ de código.
 **Pendente da U4:** a **migração dos dados do gestor-os** (clientes, contratos,
 cobranças e fechamentos históricos). Depende de um export da base dele — está
 na lista de perguntas (§11.4).
+
+### U5 — Fechamentos (2026-08-18)
+
+**Migration:** `supabase/migrations/20260818220000_u5_fechamentos.sql` —
+depende da U4.
+
+Fecha o ciclo do Vinicius: **programar → executar → conferir → fechar → mandar
+para o financeiro**. Com isto o gestor-os pode ser desligado.
+
+**Entregue no banco**
+
+| O quê | Detalhe |
+|---|---|
+| `fechamentos` | tipo + referência únicos; semanal usa **ano ISO** (`IYYY-"S"IW`), o mesmo critério do `src/lib/periodos.ts`. |
+| `montar_fechamento()` | recolhe as cobranças abertas da janela. **Idempotente**: rodar de novo só pega o que entrou depois. Recusa período já fechado. |
+| `fechar_periodo()` / `reabrir_periodo()` | aberta↔fechada em lote. Reabrir **não** traz de volta o que já foi faturado — a nota saiu. |
+| `excluir_fechamento()` | descarta o período **sem apagar cobrança**: elas voltam para a fila. Bloqueado se houver item faturado. |
+| `alertas_cobrancas_orfas()` | automação 7 do §6: cobrança aprovada há 10+ dias fora de qualquer fechamento é dinheiro parado que ninguém vê. |
+| FK `cobrancas.fechamento_id` | criada aqui, já que a coluna nasceu na U4 sem destino. |
+
+**Entregue no app**
+
+- `src/features/financeiro/fechamentos.ts` — consolidação (instalações ×
+  manutenções, agrupado por cliente com CNPJ e subtotal), **CSV `;`+BOM**,
+  **PDF** no layout que o financeiro já conhece, e o lançamento avulso com
+  parcelamento em centavos.
+- `/fechamentos` — cobranças aguardando período, montar semana/mês, lançamento
+  avulso (mensalidade, acerto, parcela de instalação) e a lista de períodos.
+- `/fechamentos/$id` — total, seções, ações e os dois downloads.
+- `/gerencial` ganhou os atalhos **Contratos** e **Fechamentos** (a barra de
+  navegação já está cheia com 6 itens).
+
+**Decisões tomadas durante a execução**
+
+1. **A referência semanal é calculada no banco com `IYYY-"S"IW`** — o mesmo ano
+   ISO do TS. Verificado na própria migration: 31/12/2025 sai como `2026-S01`.
+2. **Reabrir não desfaz faturamento.** Só `fechada` volta para `aberta`; o que
+   virou nota fica como está.
+3. **Excluir período nunca apaga cobrança** e é bloqueado se algo já foi
+   faturado — apagar dinheiro por engano não tem desfazer.
+4. **Lançamento avulso ficou na tela de fechamentos**, não numa rota própria: é
+   ali que o Vinicius já está quando lembra da mensalidade.
+5. **Parcelas caem em competências seguintes** (mês a mês), com a divisão em
+   centavos e o resto na primeira.
