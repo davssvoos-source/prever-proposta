@@ -6,10 +6,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import {
   AlertTriangle, ArrowLeft, Building2, Camera, CheckCircle2, ClipboardList, Clock,
-  CheckSquare, FileDown, History, ListChecks, MapPin, Phone, PlayCircle, Plus, Square,
-  Trash2, User, X,
+  CheckSquare, FileDown, History, ListChecks, MapPin, Phone, PlayCircle, Plus, Receipt,
+  Sparkles, Square, Trash2, User, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +27,12 @@ import {
   useOsPecas, registrarPeca, removerPeca,
   DIRECAO_LABEL, DIRECAO_CORES, type DirecaoPeca,
 } from "@/features/os/pecas";
+import {
+  useAnaliseOs, useCobrancasDaOs, aprovarCobranca, marcarFaturada, ajustarItem,
+  totalFaturavel, moeda, RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL,
+  type ResultadoItem, type FaturamentoStatus,
+} from "@/features/os/cobranca";
+import { analisarCobrancaOs } from "@/lib/cobranca.functions";
 import { useChecklist, marcarItemChecklist } from "@/features/os/checklist";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
 import {
@@ -65,6 +72,13 @@ function OsDetalhePage() {
   const [novaDescricao, setNovaDescricao] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
   const [novaQtd, setNovaQtd] = useState("1");
+  // conferência de cobrança — Etapa U4
+  const { data: analise = [] } = useAnaliseOs(id);
+  const { data: cobrancasOs = [] } = useCobrancasDaOs(id);
+  const analisarFn = useServerFn(analisarCobrancaOs);
+  const [itemEditando, setItemEditando] = useState<string | null>(null);
+  const [novoResultado, setNovoResultado] = useState<ResultadoItem>("revisar");
+  const [novoValor, setNovoValor] = useState("");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -168,6 +182,68 @@ function OsDetalhePage() {
       setNovaSerie("");
       setNovaQtd("1");
       qc.invalidateQueries({ queryKey: ["os-pecas", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /** Análise de cobertura — Etapa U4. Nada é cobrado por ela; só classifica. */
+  const invalidarCobranca = () => {
+    qc.invalidateQueries({ queryKey: ["os-analise", id] });
+    qc.invalidateQueries({ queryKey: ["cobrancas-os", id] });
+    qc.invalidateQueries({ queryKey: ["ordem-servico", id] });
+  };
+
+  const analisar = useMutation({
+    mutationFn: async () => {
+      const r = await analisarFn({ data: { osId: id } });
+      if (!r.ok || !r.resumo) throw new Error(r.erro ?? "Não consegui analisar.");
+      return r.resumo;
+    },
+    onSuccess: (r) => {
+      invalidarCobranca();
+      if (r.aviso) toast.warning(r.aviso);
+      toast.success(
+        r.revisar > 0
+          ? `${r.faturaveis} faturável(is), ${r.cobertos} coberto(s) e ${r.revisar} para conferir.`
+          : `${r.faturaveis} item(ns) faturável(is) — ${moeda(r.valorFaturavel)}.`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const ajustar = useMutation({
+    mutationFn: async ({ pecaId }: { pecaId: string }) => {
+      const v = novoValor.trim() ? Number(novoValor.replace(",", ".")) : null;
+      if (novoResultado === "faturavel" && (v == null || !Number.isFinite(v) || v <= 0)) {
+        throw new Error("Item faturável precisa de valor. Sem preço, deixe em revisão.");
+      }
+      await ajustarItem(pecaId, novoResultado, novoResultado === "coberto" ? null : v);
+    },
+    onSuccess: () => {
+      setItemEditando(null);
+      invalidarCobranca();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const aprovar = useMutation({
+    mutationFn: () => aprovarCobranca(id),
+    onSuccess: (r) => {
+      invalidarCobranca();
+      toast.success(
+        r.itens === 0
+          ? "Conferência concluída: nada a cobrar neste atendimento."
+          : `${r.itens} cobrança(s) geradas — ${moeda(r.total)}.`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const faturar = useMutation({
+    mutationFn: () => marcarFaturada(id),
+    onSuccess: (n) => {
+      invalidarCobranca();
+      toast.success(`${n} cobrança(s) marcadas como faturadas.`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -810,6 +886,235 @@ function OsDetalhePage() {
           <FileDown size={16} color={gold} />
           {baixarRelatorio.isPending ? "Gerando relatório…" : "Baixar relatório de atendimento (PDF)"}
         </button>
+      )}
+
+      {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
+          técnico registra a peça e não participa da decisão de cobrar. */}
+      {isGerente && ["executada", "fechada"].includes(os.status) && pecasOs.length > 0 && (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Receipt size={15} color={gold} />
+            <span style={SEC}>Cobrança</span>
+            <span style={{
+              marginLeft: "auto", padding: "3px 8px", borderRadius: 999,
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+              letterSpacing: "0.06em", textTransform: "uppercase",
+              color: textSecondary,
+              background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+              border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+            }}>
+              {FATURAMENTO_LABEL[(os as any).faturamento_status as FaturamentoStatus] ?? "—"}
+            </span>
+          </div>
+
+          {!os.contrato_id && (
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
+              Cliente sem contrato vigente na abertura: tudo neste atendimento é faturável.
+            </span>
+          )}
+
+          {analise.length === 0 ? (
+            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 300, color: textSecondary, lineHeight: 1.5 }}>
+              Ainda não analisado. A análise confere item a item contra o contrato — nada é cobrado sem a sua
+              aprovação depois.
+            </span>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pecasOs.map((p) => {
+                const a = analise.find((x) => x.peca_id === p.id);
+                if (!a) return null;
+                const rc = RESULTADO_CORES[a.resultado];
+                const editando = itemEditando === p.id;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      padding: "10px 12px", borderRadius: 12,
+                      background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${a.resultado === "revisar" || a.resultado === "nao_identificado"
+                        ? rc.border
+                        : isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
+                      display: "flex", flexDirection: "column", gap: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                          {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
+                        </div>
+                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: textSecondary, marginTop: 2, lineHeight: 1.45 }}>
+                          {a.justificativa}
+                          {a.ajustado_manualmente && " · ajustado manualmente"}
+                          {!a.ajustado_manualmente && a.confianca != null && ` · ${Math.round(a.confianca * 100)}% de confiança`}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                        <span style={{
+                          padding: "3px 8px", borderRadius: 999,
+                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                          letterSpacing: "0.06em", textTransform: "uppercase",
+                          color: isLight ? rc.light : rc.dark, background: rc.bg, border: `1px solid ${rc.border}`,
+                        }}>
+                          {RESULTADO_LABEL[a.resultado]}
+                        </span>
+                        {a.valor_calculado != null && (
+                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                            {moeda(Number(a.valor_calculado) * Number(p.quantidade))}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {os.status === "executada" && (
+                      editando ? (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                          {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
+                            <button
+                              key={r}
+                              onClick={() => setNovoResultado(r)}
+                              style={{
+                                padding: "5px 9px", borderRadius: 8, cursor: "pointer",
+                                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10.5,
+                                border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                                background: novoResultado === r ? "linear-gradient(135deg,#FFD700,#FFC000)" : "transparent",
+                                color: novoResultado === r ? "#08090E" : textPrimary,
+                              }}
+                            >
+                              {RESULTADO_LABEL[r]}
+                            </button>
+                          ))}
+                          {novoResultado === "faturavel" && (
+                            <input
+                              value={novoValor}
+                              onChange={(e) => setNovoValor(e.target.value)}
+                              inputMode="decimal"
+                              placeholder="valor unit."
+                              style={{ ...INPUT, width: 110, padding: "6px 10px", fontSize: 12 }}
+                            />
+                          )}
+                          <button
+                            onClick={() => ajustar.mutate({ pecaId: p.id })}
+                            style={{
+                              padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                              color: "#08090E", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10.5,
+                            }}
+                          >
+                            Salvar
+                          </button>
+                          <button
+                            onClick={() => setItemEditando(null)}
+                            style={{
+                              padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+                              background: "none", border: "none",
+                              color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 10.5,
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setItemEditando(p.id);
+                            setNovoResultado(a.resultado);
+                            setNovoValor(a.valor_calculado != null ? String(a.valor_calculado) : "");
+                          }}
+                          style={{
+                            alignSelf: "flex-start", padding: "4px 9px", borderRadius: 8, cursor: "pointer",
+                            background: "none",
+                            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                            color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10.5,
+                          }}
+                        >
+                          Ajustar
+                        </button>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+
+              {(() => {
+                const emRevisao = analise.filter(
+                  (a) => a.resultado === "revisar" || a.resultado === "nao_identificado",
+                ).length;
+                const total = totalFaturavel(
+                  analise,
+                  Object.fromEntries(pecasOs.map((p) => [p.id, Number(p.quantidade) || 1])),
+                );
+                return (
+                  <>
+                    <div style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                      paddingTop: 8,
+                      borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                    }}>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                        Total faturável
+                      </span>
+                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 16, fontWeight: 700, color: gold }}>
+                        {moeda(total)}
+                      </span>
+                    </div>
+                    {emRevisao > 0 && (
+                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                        <AlertTriangle size={15} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
+                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+                          {emRevisao} item(ns) esperando decisão. A aprovação fica bloqueada até resolver — cobrança
+                          indevida custa mais caro que uma conferência.
+                        </span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {cobrancasOs.length > 0 && (
+            <div style={{
+              padding: "10px 12px", borderRadius: 12,
+              background: isLight ? "rgba(52,211,153,0.08)" : "rgba(52,211,153,0.08)",
+              border: "1px solid rgba(52,211,153,0.28)",
+            }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textPrimary }}>
+                {cobrancasOs.length} cobrança(s) geradas ·{" "}
+                <strong>{moeda(cobrancasOs.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
+                {cobrancasOs[0]?.competencia}
+              </span>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              style={{ ...btnSec, flex: 1 }}
+              onClick={() => analisar.mutate()}
+              disabled={analisar.isPending}
+            >
+              <Sparkles size={15} color={gold} />
+              {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
+            </button>
+            {analise.length > 0 && os.status === "executada" && (
+              <button
+                style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
+                onClick={() => aprovar.mutate()}
+                disabled={aprovar.isPending}
+              >
+                {aprovar.isPending ? "Aprovando…" : "Aprovar cobrança"}
+              </button>
+            )}
+            {cobrancasOs.some((c) => c.status === "aberta" || c.status === "fechada") && (
+              <button
+                style={{ ...btnSec, flex: 1 }}
+                onClick={() => faturar.mutate()}
+                disabled={faturar.isPending}
+              >
+                Marcar faturada
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Conferência do gestor */}

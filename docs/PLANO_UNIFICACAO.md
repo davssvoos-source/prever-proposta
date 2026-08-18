@@ -681,3 +681,59 @@ programação da equipe.
 6. **Unicidade de série é por linha de equipamento do cliente**, não global:
    número de série se repete entre fabricantes (é por isso que o §8 pede um id
    imutável de unidade ao QAP).
+
+### U4 — Motor de cobrança (2026-08-18)
+
+**Migration:** `supabase/migrations/20260818200000_u4_cobrancas.sql` — depende
+da U0, U2 e U3.
+
+O coração do gestor-os, agora aqui. As 7 invariantes do §3.2 estão preservadas,
+e as que o banco consegue garantir, o banco garante — não são mais convenção
+de código.
+
+**Entregue no banco**
+
+| O quê | Detalhe |
+|---|---|
+| `cobrancas` | item a item, com competência `AAAA-MM`, `tipo_servico` (as duas seções do PDF de fechamento) e ciclo aberta→fechada→faturada. Constraint impede cobrança de valor zero. |
+| `aprovar_os_financeiro()` | **o único caminho que cria cobrança.** Verifica papel financeiro, exige OS executada, **bloqueia se houver item em revisão**, apaga só as cobranças ABERTAS e recria — reaprovar substitui, nunca duplica. Tudo em uma transação. |
+| `marcar_os_faturada()` | aberta/fechada → faturada, com evento na linha do tempo. |
+| `ajustar_item_cobranca()` | o ajuste humano da conferência; trava o item contra reanálise e recusa "faturável sem valor". |
+| `visitas_na_competencia()` | conta OS **fechada** (conferida) no mês — base da regra de franquia. |
+
+**Entregue no app**
+
+- `src/lib/matching.ts` — a cascata de casamento (série 1,0 → TAG 0,95 →
+  modelo único 0,85 → marca+modelo 0,80 → descrição × 0,75 com piso 0,45), a
+  valoração com precedência estrita e a **cobertura determinística**: a regra
+  do Vinicius finalmente escrita em código.
+- `src/lib/periodos.ts` — semana ISO (`AAAA-Sxx`), competência, janelas e o
+  parcelamento em centavos com resto na primeira.
+- `src/lib/cobranca.functions.ts` — a análise: determinística primeiro, I.A só
+  no que sobrou em dúvida, e **fallback seguro** (sem chave ou com falha, o
+  item vai para revisão em vez de travar a operação).
+- `src/features/os/cobranca.ts` + a **tela de conferência** dentro do chamado:
+  item a item com justificativa e confiança, ajuste inline, total faturável e
+  aprovação bloqueada enquanto houver item em revisão.
+- `scripts/verificar-logica.cjs` — **34 verificações, todas passando**.
+
+**Decisões tomadas durante a execução**
+
+1. **Determinístico primeiro, I.A depois.** O gestor-os mandava todos os itens
+   para a I.A numa chamada. Aqui a regra que dá para decidir sem interpretar
+   texto (locação/manutenção, peça/MO/deslocamento, item marcado como não
+   coberto) é resolvida em código; a I.A vê só o que sobrou. Mais barato, mais
+   auditável e funciona sem chave de API.
+2. **Franquia consumida conta OS `fechada`, não `executada`** — enquanto a
+   conferência não aconteceu, o atendimento ainda pode ser cancelado.
+3. **Preço padrão do catálogo é `custo × markup`** — a mesma conta que o
+   orçamento já usa, para não existirem dois preços de venda no sistema.
+4. **A análise usa o cliente do próprio usuário** (não o service role): quem
+   não tem papel financeiro esbarra na RLS, sem precisar de checagem própria.
+5. **Verificação em script, não em framework de teste**: o projeto não tem um,
+   e trazer vitest só para isto seria custo sem retorno. O script transpila os
+   módulos na hora e roda as asserções.
+
+**Pendente da U4:** a **migração dos dados do gestor-os** (clientes, contratos,
+cobranças e fechamentos históricos). Depende de um export da base dele — está
+na lista de perguntas (§11.4).
