@@ -576,3 +576,56 @@ exige rede e credenciais do Supabase (é tarefa da Lovable, não deste repo).
 **Atenção na hora de subir:** o código novo lê colunas que só existem depois
 das migrations. Rode **U0 e depois U1** no SQL Editor junto com o deploy — se o
 app subir antes, a tela de clientes quebra até a U0 rodar.
+
+### U2 — Contratos do cliente (2026-08-18)
+
+**Migration:** `supabase/migrations/20260818160000_u2_contratos.sql` — depende
+da U0 (`normalizar_texto`, `pode_ver_financeiro`).
+
+Preenche a lacuna declarada na Etapa 2 do `SISTEMA_OS.md` e traz o model
+Contrato do gestor-os para o padrão banco-primeiro daqui. É a peça que faltava
+para a regra de cobrança do Vinicius ficar escrita em algum lugar em vez de
+morar só na cabeça dele.
+
+**Entregue no banco**
+
+| O quê | Detalhe |
+|---|---|
+| `cliente_contratos` | modalidade (locação/manutenção/comodato/venda, alinhada às naturezas do QAP), tipo de cobrança, vigência com fim opcional, valor, dia de vencimento, franquia de visitas, flags peças/MO/deslocamento, `origem_proposta_id` (proposta aprovada → contrato) e o rastro da leitura por I.A. |
+| `contrato_cobertura_itens` | exceções por equipamento, apontando para `cliente_equipamentos` — **não** é inventário paralelo. `chave_busca` é coluna gerada, pronta para o pré-match da U4. |
+| `contrato_precos` | preço combinado naquele contrato; vence o catálogo comercial na cascata de valoração. |
+| `contrato_vigente()` | a regra do `contratoVigente` do gestor-os em SQL; havendo dois, vence o de início mais recente. |
+| `ordens_servico.contrato_id` | preenchido na abertura pelo trigger e **congelado**: renovar o contrato não reescreve OS antiga. |
+| `alertas_contratos()` | automação 6 do §6, agendada às segundas (`0 11 * * 1`). |
+| bucket `contratos` | privado, com policies pela mesma régua financeira. |
+
+**Entregue no app**
+
+- `src/lib/contrato.functions.ts` — leitura do PDF por I.A (porta o
+  `PROMPT_CONTRATO` do gestor-os), com as regras inegociáveis preservadas:
+  nunca inventar, datas ISO, confiança honesta, alertas para o humano.
+- `src/features/contratos/data.ts` — consultas, cobertura, preços, upload e URL
+  assinada, `contratoVigente` e `diasParaVencer`.
+- Rotas `/contratos` (lista com filtro por situação e aviso de vencimento),
+  `/contratos/novo` (PDF por I.A **ou** manual) e `/contratos/$id` (condições,
+  cobertura item a item, tabela de preços).
+- Ficha do cliente ganhou o card de contratos, com selo de "vigente".
+
+**Decisões tomadas durante a execução**
+
+1. **O PDF vai inteiro para o modelo, sempre.** O gestor-os usava `unpdf` para
+   mandar só texto quando havia camada textual; o app não tem essa dependência
+   e adicioná-la é tarefa da Lovable. Custa mais tokens e funciona igual para
+   contrato escaneado — que é a maioria. Se `unpdf` entrar depois, a economia
+   volta com o corte de 200 caracteres úteis.
+2. **O arquivo sobe primeiro, a I.A lê depois.** O navegador manda o PDF para o
+   bucket e a server function baixa com o service role — evita megabytes de
+   base64 no corpo da requisição e o arquivo já fica guardado no contrato.
+3. **Contrato nasce sempre como rascunho**, mesmo lido por I.A: só o ativo
+   entra na decisão de cobrar. Ativar exige início de vigência preenchido.
+4. **`dia_vencimento` entrou** (não estava no §4.1): o fechamento da U5 vai
+   precisar dele e a coluna é barata agora.
+5. **CNPJ divergente vira aviso, não bloqueio**: se o documento lido no PDF
+   pertence a outro cliente do cadastro, a tela avisa e deixa a pessoa decidir.
+6. **Backfill de `contrato_id` só em OS aberta** — para OS já encerrada não dá
+   para afirmar qual contrato valia no dia do atendimento.

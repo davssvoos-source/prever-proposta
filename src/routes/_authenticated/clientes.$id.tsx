@@ -5,7 +5,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, MapPin, Pencil, Phone, Mail, Users, CalendarDays, Wrench, X } from "lucide-react";
+import { ArrowLeft, Building2, FileText, MapPin, Pencil, Phone, Mail, Users, CalendarDays, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente } from "@/features/gerencial/data";
@@ -16,6 +16,10 @@ import { ClienteForm } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
 import { useOrdensDoCliente } from "@/features/os/data";
 import { osStatusInfo } from "@/lib/os-status";
+import {
+  useContratosDoCliente, contratoVigente,
+  MODALIDADE_LABEL, STATUS_CONTRATO_LABEL, STATUS_CONTRATO_CORES,
+} from "@/features/contratos/data";
 import {
   useCliente,
   useVisitasDoCliente,
@@ -38,6 +42,7 @@ function ClienteDetalhePage() {
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
   const { data: ordens = [] } = useOrdensDoCliente(id);
+  const { data: contratos = [] } = useContratosDoCliente(id);
   const [editando, setEditando] = useState(false);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -275,6 +280,79 @@ function ClienteDetalhePage() {
 
           {/* Inventário (as-built) — Etapa 2 */}
           <InventarioCliente clienteId={id} podeEditar={true} />
+
+          {/* Contratos — Etapa U2. Só quem enxerga financeiro: a RLS já barra,
+              mas mostrar um card vazio ao técnico só confundiria. */}
+          {isGerente && (
+            <div style={CARD}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FileText size={15} color={gold} />
+                <span style={SEC_LABEL}>Contratos</span>
+                <button
+                  onClick={() => navigate({ to: "/contratos/novo" })}
+                  style={{
+                    marginLeft: "auto", padding: "6px 10px", borderRadius: 10, cursor: "pointer",
+                    background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+                    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11,
+                  }}
+                >
+                  Novo
+                </button>
+              </div>
+              {contratos.length === 0 ? (
+                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, fontWeight: 300, color: textSecondary, marginTop: 8 }}>
+                  Nenhum contrato cadastrado. Sem contrato vigente, todo atendimento
+                  deste cliente é faturável — mão de obra e equipamento.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                  {contratos.map((c) => {
+                    const stc = STATUS_CONTRATO_CORES[c.status];
+                    const vigente = contratoVigente(contratos)?.id === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => navigate({ to: "/contratos/$id", params: { id: c.id } })}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
+                          padding: "10px 12px", borderRadius: 12, cursor: "pointer",
+                          background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                          border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                            {MODALIDADE_LABEL[c.modalidade]}
+                            {c.numero ? ` · nº ${c.numero}` : ""}
+                            {vigente && (
+                              <span style={{ color: gold, fontSize: 11, fontWeight: 600 }}> · vigente</span>
+                            )}
+                          </div>
+                          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                            {c.vigencia_fim
+                              ? `até ${c.vigencia_fim.split("-").reverse().join("/")}`
+                              : "vigência aberta"}
+                            {c.valor_mensal != null &&
+                              ` · ${c.valor_mensal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês`}
+                          </div>
+                        </div>
+                        <span style={{
+                          flexShrink: 0, padding: "3px 8px", borderRadius: 999,
+                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                          letterSpacing: "0.06em", textTransform: "uppercase",
+                          color: isLight ? stc.light : stc.dark, background: stc.bg,
+                          border: `1px solid ${stc.border}`,
+                        }}>
+                          {STATUS_CONTRATO_LABEL[c.status]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Chamados do cliente — Etapa 3 */}
           <div style={CARD}>

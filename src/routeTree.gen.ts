@@ -21,6 +21,7 @@ import { Route as AuthenticatedGerencialRouteImport } from './routes/_authentica
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedOsRouteImport } from './routes/_authenticated/os'
 import { Route as AuthenticatedDemandasRouteImport } from './routes/_authenticated/demandas'
+import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated/contratos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -34,6 +35,8 @@ import { Route as AuthenticatedOsIdRouteImport } from './routes/_authenticated/o
 import { Route as AuthenticatedDemandasNovaRouteImport } from './routes/_authenticated/demandas.nova'
 import { Route as AuthenticatedDemandasImportarRouteImport } from './routes/_authenticated/demandas.importar'
 import { Route as AuthenticatedDemandasIdRouteImport } from './routes/_authenticated/demandas.$id'
+import { Route as AuthenticatedContratosNovoRouteImport } from './routes/_authenticated/contratos.novo'
+import { Route as AuthenticatedContratosIdRouteImport } from './routes/_authenticated/contratos.$id'
 import { Route as AuthenticatedClientesMigrarRouteImport } from './routes/_authenticated/clientes.migrar'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
@@ -164,6 +167,23 @@ const AuthenticatedDemandasIdRoute = AuthenticatedDemandasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedDemandasRoute,
 } as any)
+const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedContratosNovoRoute =
+  AuthenticatedContratosNovoRouteImport.update({
+    id: '/novo',
+    path: '/novo',
+    getParentRoute: () => AuthenticatedContratosRoute,
+  } as any)
+const AuthenticatedContratosIdRoute =
+  AuthenticatedContratosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedContratosRoute,
+  } as any)
 const AuthenticatedClientesNovoRoute =
   AuthenticatedClientesNovoRouteImport.update({
     id: '/novo',
@@ -263,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/demandas': typeof AuthenticatedDemandasRouteWithChildren
+  '/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
@@ -275,6 +296,8 @@ export interface FileRoutesByFullPath {
   '/demandas/$id': typeof AuthenticatedDemandasIdRoute
   '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
   '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
+  '/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/os/$id': typeof AuthenticatedOsIdRoute
@@ -302,6 +325,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/demandas': typeof AuthenticatedDemandasRouteWithChildren
+  '/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
@@ -314,6 +338,8 @@ export interface FileRoutesByTo {
   '/demandas/$id': typeof AuthenticatedDemandasIdRoute
   '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
   '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
+  '/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/os/$id': typeof AuthenticatedOsIdRoute
@@ -342,6 +368,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/demandas': typeof AuthenticatedDemandasRouteWithChildren
+  '/_authenticated/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
@@ -354,6 +381,8 @@ export interface FileRoutesById {
   '/_authenticated/demandas/$id': typeof AuthenticatedDemandasIdRoute
   '/_authenticated/demandas/importar': typeof AuthenticatedDemandasImportarRoute
   '/_authenticated/demandas/nova': typeof AuthenticatedDemandasNovaRoute
+  '/_authenticated/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/_authenticated/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/_authenticated/os/$id': typeof AuthenticatedOsIdRoute
@@ -383,6 +412,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/dashboard'
     | '/demandas'
+    | '/contratos'
     | '/gerencial'
     | '/historico'
     | '/mapa'
@@ -395,6 +425,8 @@ export interface FileRouteTypes {
     | '/demandas/$id'
     | '/demandas/importar'
     | '/demandas/nova'
+    | '/contratos/$id'
+    | '/contratos/novo'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/os/$id'
@@ -422,6 +454,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/dashboard'
     | '/demandas'
+    | '/contratos'
     | '/gerencial'
     | '/historico'
     | '/mapa'
@@ -434,6 +467,8 @@ export interface FileRouteTypes {
     | '/demandas/$id'
     | '/demandas/importar'
     | '/demandas/nova'
+    | '/contratos/$id'
+    | '/contratos/novo'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
     | '/os/$id'
@@ -461,6 +496,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
     | '/_authenticated/demandas'
+    | '/_authenticated/contratos'
     | '/_authenticated/gerencial'
     | '/_authenticated/historico'
     | '/_authenticated/mapa'
@@ -473,6 +509,8 @@ export interface FileRouteTypes {
     | '/_authenticated/demandas/$id'
     | '/_authenticated/demandas/importar'
     | '/_authenticated/demandas/nova'
+    | '/_authenticated/contratos/$id'
+    | '/_authenticated/contratos/novo'
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/gerencial/usuarios'
     | '/_authenticated/os/$id'
@@ -619,6 +657,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/demandas/$id'
       preLoaderRoute: typeof AuthenticatedDemandasIdRouteImport
       parentRoute: typeof AuthenticatedDemandasRoute
+    }
+    '/_authenticated/contratos': {
+      id: '/_authenticated/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof AuthenticatedContratosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contratos/novo': {
+      id: '/_authenticated/contratos/novo'
+      path: '/novo'
+      fullPath: '/contratos/novo'
+      preLoaderRoute: typeof AuthenticatedContratosNovoRouteImport
+      parentRoute: typeof AuthenticatedContratosRoute
+    }
+    '/_authenticated/contratos/$id': {
+      id: '/_authenticated/contratos/$id'
+      path: '/$id'
+      fullPath: '/contratos/$id'
+      preLoaderRoute: typeof AuthenticatedContratosIdRouteImport
+      parentRoute: typeof AuthenticatedContratosRoute
     }
     '/_authenticated/clientes': {
       id: '/_authenticated/clientes'
@@ -800,6 +859,22 @@ const AuthenticatedDemandasRouteChildren: AuthenticatedDemandasRouteChildren = {
 const AuthenticatedDemandasRouteWithChildren =
   AuthenticatedDemandasRoute._addFileChildren(AuthenticatedDemandasRouteChildren)
 
+interface AuthenticatedContratosRouteChildren {
+  AuthenticatedContratosIdRoute: typeof AuthenticatedContratosIdRoute
+  AuthenticatedContratosNovoRoute: typeof AuthenticatedContratosNovoRoute
+}
+
+const AuthenticatedContratosRouteChildren: AuthenticatedContratosRouteChildren =
+  {
+    AuthenticatedContratosIdRoute: AuthenticatedContratosIdRoute,
+    AuthenticatedContratosNovoRoute: AuthenticatedContratosNovoRoute,
+  }
+
+const AuthenticatedContratosRouteWithChildren =
+  AuthenticatedContratosRoute._addFileChildren(
+    AuthenticatedContratosRouteChildren,
+  )
+
 interface AuthenticatedClientesRouteChildren {
   AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
   AuthenticatedClientesMigrarRoute: typeof AuthenticatedClientesMigrarRoute
@@ -889,6 +964,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDemandasRoute: typeof AuthenticatedDemandasRouteWithChildren
+  AuthenticatedContratosRoute: typeof AuthenticatedContratosRouteWithChildren
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
@@ -905,6 +981,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDemandasRoute: AuthenticatedDemandasRouteWithChildren,
+  AuthenticatedContratosRoute: AuthenticatedContratosRouteWithChildren,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
