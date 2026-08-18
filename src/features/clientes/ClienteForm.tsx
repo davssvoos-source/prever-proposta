@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { geocode } from "@/features/gerencial/data";
 import { TIPO_LABEL, TIPOS_LOCAL } from "@/features/gerencial/constants";
+import { mascararDocumento, validarDocumento } from "@/lib/normalizar";
 import {
   SITUACAO_LABEL,
   type Cliente,
@@ -27,6 +28,9 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
   const { isLight } = useTheme();
 
   const [nome, setNome] = useState(inicial?.nome ?? "");
+  const [documento, setDocumento] = useState(mascararDocumento(inicial?.documento ?? ""));
+  const [respFinanceiro, setRespFinanceiro] = useState(inicial?.responsavel_financeiro ?? "");
+  const [emailFinanceiro, setEmailFinanceiro] = useState(inicial?.email_financeiro ?? "");
   const [tipoLocal, setTipoLocal] = useState(inicial?.tipo_local ?? "");
   const [situacao, setSituacao] = useState<SituacaoCliente>(inicial?.situacao ?? "ativo");
   const [endereco, setEndereco] = useState(inicial?.endereco ?? "");
@@ -139,6 +143,12 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
       toast.error("Informe o endereço — é o que identifica o local nas ordens de serviço.");
       return;
     }
+    // documento é opcional, mas errado não passa: é a chave que concilia o
+    // cliente com o QAP e sai impressa no fechamento para o financeiro
+    if (!validarDocumento(documento)) {
+      toast.error("CNPJ/CPF inválido. Confira os dígitos ou deixe o campo em branco.");
+      return;
+    }
     const nAptos = qtdAptos.trim() === "" ? null : Number(qtdAptos);
     const nAcessos = qtdAcessos.trim() === "" ? null : Number(qtdAcessos);
     if (nAptos !== null && (!Number.isFinite(nAptos) || nAptos < 0)) {
@@ -152,6 +162,9 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     onSubmit({
       nome: nome.trim(),
       nome_predio: nome.trim(),
+      documento: documento.trim() || null,
+      responsavel_financeiro: respFinanceiro.trim() || null,
+      email_financeiro: emailFinanceiro.trim() || null,
       tipo_local: tipoLocal || null,
       situacao,
       endereco: endereco.trim(),
@@ -178,6 +191,28 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
         <div>
           <label style={LABEL}>Nome do cliente / prédio</label>
           <input style={INPUT} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Condomínio Mansões do Lago" />
+        </div>
+        <div>
+          <label style={LABEL}>CNPJ / CPF</label>
+          <input
+            style={INPUT}
+            value={documento}
+            onChange={(e) => setDocumento(mascararDocumento(e.target.value))}
+            inputMode="numeric"
+            placeholder="00.000.000/0000-00"
+          />
+          <span
+            style={{
+              display: "block",
+              marginTop: 6,
+              fontFamily: "'Montserrat', sans-serif",
+              fontWeight: 300,
+              fontSize: 11,
+              color: textSecondary,
+            }}
+          >
+            Sai impresso no fechamento e é o que casa este cliente com o cadastro do QAP.
+          </span>
         </div>
         <div>
           <label style={LABEL}>Tipo de local</label>
@@ -264,6 +299,26 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
           <div>
             <label style={LABEL}>E-mail</label>
             <input style={INPUT} value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} inputMode="email" />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={LABEL}>Financeiro / cobrança</label>
+            <input
+              style={INPUT}
+              value={respFinanceiro}
+              onChange={(e) => setRespFinanceiro(e.target.value)}
+              placeholder="Nome ou setor"
+            />
+          </div>
+          <div>
+            <label style={LABEL}>E-mail do financeiro</label>
+            <input
+              style={INPUT}
+              value={emailFinanceiro}
+              onChange={(e) => setEmailFinanceiro(e.target.value)}
+              inputMode="email"
+            />
           </div>
         </div>
       </div>

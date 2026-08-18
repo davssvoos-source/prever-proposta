@@ -6,6 +6,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { somenteDigitos } from "@/lib/normalizar";
 
 export type SituacaoCliente = "prospecto" | "ativo" | "inativo";
 
@@ -28,6 +29,12 @@ export interface Cliente {
   nome_predio: string | null;
   tipo_local: string | null;
   tipo_empreendimento: string | null;
+  /** CNPJ/CPF — chave do financeiro e do de-para com o QAP (Etapa U0). */
+  documento: string | null;
+  responsavel_financeiro: string | null;
+  email_financeiro: string | null;
+  /** Id do cliente no QAP ERP, quando conciliado. */
+  qap_cliente_id: string | null;
   endereco: string | null;
   complemento: string | null;
   latitude: number | null;
@@ -51,7 +58,8 @@ export interface Cliente {
 const CAMPOS =
   "id, nome, nome_predio, tipo_local, tipo_empreendimento, endereco, complemento, latitude, longitude, " +
   "email, telefone, nome_sindico, telefone_sindico, email_sindico, nome_zelador, telefone_zelador, " +
-  "email_zelador, foto_fachada_url, qtd_apartamentos, qtd_acessos, observacoes, situacao, created_at";
+  "email_zelador, foto_fachada_url, qtd_apartamentos, qtd_acessos, observacoes, situacao, created_at, " +
+  "documento, responsavel_financeiro, email_financeiro, qap_cliente_id";
 
 export async function fetchClientes(): Promise<Cliente[]> {
   const { data, error } = await supabase
@@ -355,6 +363,18 @@ export function useClientesOrfaos() {
 export async function descartarCliente(id: string): Promise<void> {
   const { error } = await supabase.from("clientes").delete().eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Procura um cadastro pelo documento (CNPJ/CPF), ignorando máscara.
+ * O banco tem índice único parcial sobre somente_digitos(documento): sem esta
+ * checagem, o formulário só descobriria o duplicado ao levar erro de constraint
+ * na hora de salvar. Reconciliação com o QAP (§8) usa a mesma chave.
+ */
+export function acharClientePorDocumento(clientes: Cliente[], documento: string): Cliente | null {
+  const alvo = somenteDigitos(documento);
+  if (!alvo) return null;
+  return clientes.find((c) => somenteDigitos(c.documento) === alvo) ?? null;
 }
 
 /** Procura um cadastro com o mesmo nome/endereço — evita duplicar na criação. */

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 
 export const Route = createFileRoute("/_authenticated/gerencial/usuarios")({
   beforeLoad: async () => {
@@ -57,6 +58,8 @@ type StaffUser = {
   id: string;
   nome: string;
   cargo: string;
+  /** Equipe de roteamento de demandas (U0) — atributo, não permissão. */
+  equipe: string | null;
   avatar_url: string | null;
   ativo: boolean;
   email: string;
@@ -89,6 +92,7 @@ function UsuariosPage() {
 
   const [editingUser, setEditingUser] = useState<StaffUser | null>(null);
   const [editCargo, setEditCargo] = useState<string>("");
+  const [editEquipe, setEditEquipe] = useState<string>("");
   const [deleteConfirm, setDeleteConfirm] = useState<StaffUser | null>(null);
   const [aprovarId, setAprovarId] = useState<string | null>(null);
   const [aprovarCargo, setAprovarCargo] = useState<CargoId>("tecnico");
@@ -148,13 +152,14 @@ function UsuariosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, nome, cargo, avatar_url, ativo, email, created_at")
+        .select("id, nome, cargo, equipe, avatar_url, ativo, email, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []).map((p) => ({
+      return (data ?? []).map((p: any) => ({
         id: p.id,
         nome: p.nome ?? "Sem nome",
         cargo: p.cargo ?? "tecnico",
+        equipe: p.equipe ?? null,
         avatar_url: p.avatar_url,
         ativo: p.ativo,
         email: p.email ?? "",
@@ -239,10 +244,10 @@ function UsuariosPage() {
   });
 
   const editCargoMutation = useMutation({
-    mutationFn: async ({ id, cargo }: { id: string; cargo: string }) => {
+    mutationFn: async ({ id, cargo, equipe }: { id: string; cargo: string; equipe: string | null }) => {
       const { data, error } = await supabase
         .from("profiles")
-        .update({ cargo })
+        .update({ cargo, equipe } as any)
         .eq("id", id)
         .select("id");
       if (error) {
@@ -262,6 +267,7 @@ function UsuariosPage() {
       setEditingUser(null);
       qc.invalidateQueries({ queryKey: ["staff-profiles"] });
       qc.invalidateQueries({ queryKey: ["bottomnav-cargo"] });
+      qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
     },
     onError: (e: Error) => {
       console.error("[editCargo] mutation error:", e);
@@ -660,7 +666,7 @@ function UsuariosPage() {
                     }}>
                       {u.email}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <span style={{
                         fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10,
                         color: isLight ? lightCfg.color : cfg.color,
@@ -671,12 +677,24 @@ function UsuariosPage() {
                       }}>
                         {cfg.label}
                       </span>
+                      {u.equipe && (
+                        <span style={{
+                          fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10,
+                          color: isLight ? equipeCores(u.equipe).light : equipeCores(u.equipe).dark,
+                          padding: "3px 8px", borderRadius: 999,
+                          background: equipeCores(u.equipe).bg,
+                          border: `1px solid ${equipeCores(u.equipe).border}`,
+                          letterSpacing: "0.06em", textTransform: "uppercase",
+                        }}>
+                          {EQUIPE_LABEL[u.equipe as Equipe] ?? u.equipe}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     <button
-                      onClick={() => { setEditingUser(u); setEditCargo(u.cargo); }}
-                      title="Editar permissão"
+                      onClick={() => { setEditingUser(u); setEditCargo(u.cargo); setEditEquipe(u.equipe ?? ""); }}
+                      title="Editar permissão e equipe"
                       style={{
                         width: 36, height: 36, borderRadius: 10,
                         background: isLight ? "#f3f4f6" : "rgba(96,165,250,0.10)",
@@ -793,7 +811,7 @@ function UsuariosPage() {
               fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
               color: isLight ? L.text : "#fff", marginBottom: 4,
             }}>
-              Editar Permissão
+              Permissão e equipe
             </div>
             <div style={{
               fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
@@ -836,6 +854,47 @@ function UsuariosPage() {
                 );
               })}
             </div>
+
+            {/* Equipe — roteamento de demandas, não permissão (PLANO_UNIFICACAO §4.2) */}
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+              letterSpacing: "0.12em", textTransform: "uppercase",
+              color: isLight ? L.textMuted : "rgba(255,255,255,0.45)", marginBottom: 8,
+            }}>
+              Equipe
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+              {(["", ...EQUIPES] as string[]).map((eq) => {
+                const ativo = editEquipe === eq;
+                const cores = equipeCores(eq || null);
+                return (
+                  <button
+                    key={eq || "sem"}
+                    type="button"
+                    onClick={() => setEditEquipe(eq)}
+                    style={{
+                      padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11,
+                      color: ativo ? (isLight ? cores.light : cores.dark) : (isLight ? L.textSub : "rgba(255,255,255,0.55)"),
+                      background: ativo ? cores.bg : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                      border: ativo
+                        ? `1.5px solid ${cores.border}`
+                        : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
+                    }}
+                  >
+                    {eq ? EQUIPE_LABEL[eq as Equipe] : "Sem equipe"}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{
+              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+              color: isLight ? L.textMuted : "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.5,
+            }}>
+              A equipe define de quem é a fila de demandas. Não altera permissão — quem vê o quê continua
+              vindo do cargo.
+            </div>
+
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => setEditingUser(null)}
@@ -849,19 +908,33 @@ function UsuariosPage() {
               >
                 Cancelar
               </button>
-              <button
-                onClick={() => editCargoMutation.mutate({ id: editingUser.id, cargo: editCargo })}
-                disabled={editCargoMutation.isPending || editCargo === editingUser.cargo}
-                style={{
-                  flex: 2, padding: 12, borderRadius: 12,
-                  background: "linear-gradient(135deg, #FFD700, #FFC000)",
-                  border: "none", color: "#08090E",
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer",
-                  opacity: (editCargoMutation.isPending || editCargo === editingUser.cargo) ? 0.6 : 1,
-                }}
-              >
-                {editCargoMutation.isPending ? "Salvando..." : "Salvar Permissão"}
-              </button>
+              {(() => {
+                const semMudanca =
+                  editCargo === editingUser.cargo && editEquipe === (editingUser.equipe ?? "");
+                const travado = editCargoMutation.isPending || semMudanca;
+                return (
+                  <button
+                    onClick={() =>
+                      editCargoMutation.mutate({
+                        id: editingUser.id,
+                        cargo: editCargo,
+                        equipe: editEquipe || null,
+                      })
+                    }
+                    disabled={travado}
+                    style={{
+                      flex: 2, padding: 12, borderRadius: 12,
+                      background: "linear-gradient(135deg, #FFD700, #FFC000)",
+                      border: "none", color: "#08090E",
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                      cursor: travado ? "default" : "pointer",
+                      opacity: travado ? 0.6 : 1,
+                    }}
+                  >
+                    {editCargoMutation.isPending ? "Salvando..." : "Salvar"}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>
