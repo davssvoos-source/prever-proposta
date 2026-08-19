@@ -309,7 +309,100 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 14. Alcance de notificação com o app fechado (FCM × WhatsApp/e-mail) — §10.6
     do SISTEMA_OS; fica mais urgente com o SAC operando dentro do app.
 
-## 9. Estado de implementação
+## 9. Mapa de telas — o que existe hoje (revisão de 2026-08-19)
+
+Levantado do código real. É a **pauta da discussão página por página**: cada
+item abaixo pode ser ajustado.
+
+### 9.1 As barras de rodapé
+
+São **4 perfis** e **3 barras** — Admin e Comercial compartilham a mesma
+(`useUserCargo` devolve "admin" para os dois).
+
+| Perfil | Itens do rodapé |
+|---|---|
+| **Admin** (Davi, Vinicius) | Início · Calendário · **Chamados** · Demandas · Gerencial · Perfil |
+| **Comercial** | *idêntica à do Admin* |
+| **SAC** | Início · Calendário · **Chamados** · Demandas · Perfil |
+| **Técnico** (Gilleno, Nicholas, Erik, Breno, líderes de dupla) | Início · **Agenda** · Perfil |
+
+> ⚠️ **"Chamados" abre telas diferentes**: para Admin/Comercial vai para `/os`
+> (só o trilho de campo); para o SAC vai para `/chamados` (os quatro trilhos).
+> Ponto a decidir na revisão — ver §9.6.
+
+### 9.2 Admin e Comercial — 6 abas
+
+| Aba | Rota | O que tem hoje |
+|---|---|---|
+| **Início** | `/dashboard` | Banner "X visitas hoje", card da próxima visita (com contagem regressiva e foto da fachada), card do próximo chamado, 4 métricas de visitas, filtros hoje/semana/mês, filtro por técnico e por status, lista de visitas |
+| **Calendário** | `/calendario` | Grade mensal com visitas **+** chamados de todos os técnicos; filtros por técnico e por tipo |
+| **Chamados** | `/os` | Lista dos chamados **de campo**; filtros Em aberto/Meus/Atrasados/A conferir/Todos; busca. Botões: painel de campo, lista unificada, programação, abrir chamado |
+| **Demandas** | `/demandas` | Quadro por sprint (Este mês/Mês que vem/Mês passado/Backlog), filtro por equipe e "minhas", aviso de demanda sem dono |
+| **Gerencial** | `/gerencial` | Painel de visitas/propostas + atalhos para Chamados, Clientes, **Contratos**, **Fechamentos**, Usuários |
+| **Perfil** | `/perfil` | Dados, tema, sair |
+
+**Telas internas alcançáveis** (sem entrada própria no rodapé):
+`/os/$id` (execução, conferência e **cobrança**) · `/os/nova` · `/os/painel`
+(indicadores de campo) · `/os/programacao` (agenda das duplas) ·
+`/chamados` · `/chamados/painel` · `/chamados/novo` ·
+`/demandas/nova` · `/demandas/$id` · `/demandas/importar` ·
+`/clientes` · `/clientes/$id` (com inventário e contratos) · `/clientes/novo` ·
+`/clientes/migrar` · `/contratos` · `/contratos/novo` · `/contratos/$id` ·
+`/fechamentos` · `/fechamentos/$id` · `/gerencial/nova` ·
+`/gerencial/usuarios` *(só Admin)* · `/visita/$id` e todo o fluxo de orçamento
+(categorias → blocos → complementos → pré-envio → pagamento) ·
+`/historico` · `/mapa` · `/projeto/$id` · `/admin`
+
+### 9.3 SAC — 5 abas
+
+| Aba | Rota | O que tem hoje |
+|---|---|---|
+| **Início** | `/dashboard` | Mesma tela do Admin |
+| **Calendário** | `/calendario` | Tudo de todos os técnicos, com filtros por técnico e tipo |
+| **Chamados** | `/chamados` | **Lista unificada dos 4 trilhos**; filtros de situação, trilho, responsável, busca e 5 ordenações. Botões: painel, abrir chamado |
+| **Demandas** | `/demandas` | Mesmo quadro |
+| **Perfil** | `/perfil` | — |
+
+Alcança também: `/chamados/painel`, `/chamados/novo`, `/os` e `/os/$id`,
+`/os/nova`, `/demandas/*`, `/clientes` (leitura), `/gerencial/nova` (só o
+formulário de visita, pelo trilho de proposta).
+
+**Bloqueado para o SAC:** contratos, fechamentos e qualquer valor;
+`/gerencial` (o painel), `/os/painel` e `/os/programacao`.
+
+### 9.4 Técnico — 3 abas
+
+| Aba | Rota | O que tem hoje |
+|---|---|---|
+| **Início** | `/dashboard` | **"Você tem X chamados hoje"** + próxima visita + fila dele: "Seus chamados" (OS) e "Suas demandas" |
+| **Agenda** | `/calendario` | Só o que é dele |
+| **Perfil** | `/perfil` | — |
+
+Alcança pelos cards: `/os/$id` (executar: fotos, checklist, peças,
+assinatura), `/demandas/$id`, `/visita/$id` + fluxo de orçamento.
+Não vê valores em lugar nenhum.
+
+### 9.5 Telas legadas / sem dono claro
+
+`/admin` · `/historico` · `/mapa` · `/projeto/$id` · `/novo` (só redireciona
+para `/gerencial/nova`). Nenhuma tem entrada no rodapé — **candidatas a
+revisão**: manter, mover para dentro de outra tela, ou remover.
+
+### 9.6 Pontos que a revisão levantou — para decidir
+
+1. **"Chamados" leva a telas diferentes por perfil** (Admin→`/os`,
+   SAC→`/chamados`). Unificar em `/chamados` para todos? O `/os` viraria a
+   visão de campo, alcançada por filtro.
+2. **Dois painéis**: `/os/painel` (campo: SLA, carga por técnico, clientes que
+   mais chamam) e `/chamados/painel` (os 4 trilhos). Fundir num só com filtro
+   de trilho, ou manter os dois com papéis distintos?
+3. **Comercial tem a barra idêntica à do Admin.** Faz sentido, ou o Comercial
+   deveria ter uma barra própria (ex.: trocar "Demandas" por "Contratos")?
+4. **Técnico não tem "Demandas" no rodapé** — chega só pelo card da Home.
+   Suficiente?
+5. **Telas legadas** (§9.5) — o que fazer com cada uma.
+
+## 10. Estado de implementação
 
 | Módulo | Estado |
 |---|---|
