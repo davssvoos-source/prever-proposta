@@ -26,6 +26,8 @@ import { Route as AuthenticatedFechamentosRouteImport } from './routes/_authenti
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedChamadosRouteImport } from './routes/_authenticated/chamados'
+import { Route as AuthenticatedChamadosNovoRouteImport } from './routes/_authenticated/chamados.novo'
+import { Route as AuthenticatedChamadosPainelRouteImport } from './routes/_authenticated/chamados.painel'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
@@ -114,6 +116,30 @@ const AuthenticatedChamadosRoute = AuthenticatedChamadosRouteImport.update({
   path: '/chamados',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedChamadosNovoRoute = AuthenticatedChamadosNovoRouteImport.update({
+  id: '/novo',
+  path: '/novo',
+  getParentRoute: () => AuthenticatedChamadosRoute,
+} as any)
+const AuthenticatedChamadosPainelRoute =
+  AuthenticatedChamadosPainelRouteImport.update({
+    id: '/painel',
+    path: '/painel',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+
+interface AuthenticatedChamadosRouteChildren {
+  AuthenticatedChamadosNovoRoute: typeof AuthenticatedChamadosNovoRoute
+  AuthenticatedChamadosPainelRoute: typeof AuthenticatedChamadosPainelRoute
+}
+
+const AuthenticatedChamadosRouteChildren: AuthenticatedChamadosRouteChildren = {
+  AuthenticatedChamadosNovoRoute: AuthenticatedChamadosNovoRoute,
+  AuthenticatedChamadosPainelRoute: AuthenticatedChamadosPainelRoute,
+}
+
+const AuthenticatedChamadosRouteWithChildren =
+  AuthenticatedChamadosRoute._addFileChildren(AuthenticatedChamadosRouteChildren)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -307,7 +333,9 @@ export interface FileRoutesByFullPath {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
-  '/chamados': typeof AuthenticatedChamadosRoute
+  '/chamados': typeof AuthenticatedChamadosRouteWithChildren
+  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/demandas': typeof AuthenticatedDemandasRouteWithChildren
@@ -353,7 +381,9 @@ export interface FileRoutesByTo {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
-  '/chamados': typeof AuthenticatedChamadosRoute
+  '/chamados': typeof AuthenticatedChamadosRouteWithChildren
+  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/demandas': typeof AuthenticatedDemandasRouteWithChildren
@@ -400,7 +430,9 @@ export interface FileRoutesById {
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
-  '/_authenticated/chamados': typeof AuthenticatedChamadosRoute
+  '/_authenticated/chamados': typeof AuthenticatedChamadosRouteWithChildren
+  '/_authenticated/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/_authenticated/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/demandas': typeof AuthenticatedDemandasRouteWithChildren
@@ -449,6 +481,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/calendario'
     | '/chamados'
+    | '/chamados/novo'
+    | '/chamados/painel'
     | '/clientes'
     | '/dashboard'
     | '/demandas'
@@ -495,6 +529,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/calendario'
     | '/chamados'
+    | '/chamados/novo'
+    | '/chamados/painel'
     | '/clientes'
     | '/dashboard'
     | '/demandas'
@@ -541,6 +577,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/calendario'
     | '/_authenticated/chamados'
+    | '/_authenticated/chamados/novo'
+    | '/_authenticated/chamados/painel'
     | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
     | '/_authenticated/demandas'
@@ -800,6 +838,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChamadosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/chamados/novo': {
+      id: '/_authenticated/chamados/novo'
+      path: '/novo'
+      fullPath: '/chamados/novo'
+      preLoaderRoute: typeof AuthenticatedChamadosNovoRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/painel': {
+      id: '/_authenticated/chamados/painel'
+      path: '/painel'
+      fullPath: '/chamados/painel'
+      preLoaderRoute: typeof AuthenticatedChamadosPainelRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -1056,7 +1108,7 @@ const AuthenticatedVisitaIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
-  AuthenticatedChamadosRoute: typeof AuthenticatedChamadosRoute
+  AuthenticatedChamadosRoute: typeof AuthenticatedChamadosRouteWithChildren
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDemandasRoute: typeof AuthenticatedDemandasRouteWithChildren
@@ -1075,7 +1127,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
-  AuthenticatedChamadosRoute: AuthenticatedChamadosRoute,
+  AuthenticatedChamadosRoute: AuthenticatedChamadosRouteWithChildren,
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDemandasRoute: AuthenticatedDemandasRouteWithChildren,

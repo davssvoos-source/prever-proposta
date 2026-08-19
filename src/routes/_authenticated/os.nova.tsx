@@ -26,7 +26,9 @@ export const Route = createFileRoute("/_authenticated/os/nova")({
     if (!user) throw redirect({ to: "/auth" });
     const { data: perfil } = await supabase
       .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (!["admin", "comercial"].includes((perfil as any)?.cargo ?? "")) {
+    // SAC abre chamados de campo (R9 — é o trilho principal da triagem);
+    // a RLS os_insert_gestor já o aceita via is_gestor desde a U6a
+    if (!["admin", "comercial", "sac"].includes((perfil as any)?.cargo ?? "")) {
       throw redirect({ to: "/os" });
     }
   },
@@ -196,7 +198,7 @@ function NovaOsPage() {
       <div style={CARD}>
         <span style={SEC}>Tipo de atendimento</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["corretiva", "preventiva", "implantacao"] as OsTipo[]).map((t) => (
+          {(["corretiva", "preventiva", "operacional", "implantacao"] as OsTipo[]).map((t) => (
             <button key={t} style={chip(tipo === t)} onClick={() => setTipo(t)}>
               {OS_TIPO_LABEL[t]}
             </button>

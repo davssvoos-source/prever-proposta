@@ -14,7 +14,7 @@ export type OsStatus =
   | "fechada"
   | "cancelada";
 
-export type OsTipo = "corretiva" | "preventiva" | "implantacao";
+export type OsTipo = "corretiva" | "preventiva" | "implantacao" | "operacional";
 export type OsPrioridade = "baixa" | "normal" | "alta" | "urgente";
 
 export interface OsStatusInfo {
@@ -82,6 +82,9 @@ export const OS_TIPO_LABEL: Record<OsTipo, string> = {
   corretiva: "Corretiva",
   preventiva: "Preventiva",
   implantacao: "Implantação",
+  // R5: tarefa de campo que não é conserto nem rotina — entrega de controle
+  // remoto, cadastros presenciais, retirada de equipamento…
+  operacional: "Operacional",
 };
 
 export const OS_PRIORIDADE_LABEL: Record<OsPrioridade, string> = {

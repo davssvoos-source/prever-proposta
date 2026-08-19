@@ -70,7 +70,26 @@ function CalendarioPage() {
   const [diaSelecionado, setDiaSelecionado] = useState<number | null>(hoje.getDate());
 
   const { data: cargo } = useUserCargo();
-  const isAdmin = cargo === "admin";
+  // SAC é gestor de chamados: vê o calendário de TODOS os técnicos (R8, aba 2)
+  const isAdmin = cargo === "admin" || cargo === "sac";
+
+  // Filtros da aba 2 (R8): por técnico e por tipo de chamado
+  const [tecnicoFiltro, setTecnicoFiltro] = useState<string>("todos");
+  const [tipoFiltro, setTipoFiltro] = useState<string>("todos");
+
+  const { data: tecnicosLista = [] } = useQuery({
+    queryKey: ["calendario-tecnicos"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, nome")
+        .eq("cargo", "tecnico")
+        .eq("ativo", true)
+        .order("nome");
+      return data ?? [];
+    },
+  });
 
   const { data: visitas = [], isLoading } = useQuery({
     queryKey: ["calendario", mes.getFullYear(), mes.getMonth(), isAdmin],
@@ -82,7 +101,7 @@ function CalendarioPage() {
       if (isAdmin) {
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, nome_predio")
+          .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
           .order("data_hora_agendada");
@@ -93,7 +112,7 @@ function CalendarioPage() {
         if (!user) return [];
         const { data, error } = await supabase
           .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, nome_predio")
+          .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
           .eq("tecnico_id", user.id)
           .gte("data_hora_agendada", inicio)
           .lte("data_hora_agendada", fim)
@@ -113,7 +132,7 @@ function CalendarioPage() {
       const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
       const { data, error } = await supabase
         .from("ordens_servico" as any)
-        .select("id, numero, status, titulo, data_hora_agendada, cliente:clientes(nome)")
+        .select("id, numero, status, tipo, titulo, data_hora_agendada, tecnico_id, cliente:clientes(nome)")
         .not("data_hora_agendada", "is", null)
         .gte("data_hora_agendada", inicio)
         .lte("data_hora_agendada", fim)
@@ -123,12 +142,15 @@ function CalendarioPage() {
     },
   });
 
-  // Visitas e chamados normalizados no mesmo formato para grade e lista
+  // Visitas e chamados normalizados no mesmo formato para grade e lista.
+  // Os filtros (R8) entram AQUI: grade, contagem por dia e lista respeitam.
   const eventos = useMemo(() => {
     const deVisitas = (visitas as any[]).map((v) => ({
       kind: "visita" as const,
       id: v.id as string,
       status: v.status as string,
+      tipo: "visita" as string,
+      tecnico_id: (v.tecnico_id ?? null) as string | null,
       data_hora_agendada: v.data_hora_agendada as string,
       nome: (v.nome_predio ?? v.titulo ?? "Visita") as string,
       detalhe: null as string | null,
@@ -137,14 +159,19 @@ function CalendarioPage() {
       kind: "os" as const,
       id: o.id as string,
       status: o.status as string,
+      tipo: (o.tipo ?? "corretiva") as string,
+      tecnico_id: (o.tecnico_id ?? null) as string | null,
       data_hora_agendada: o.data_hora_agendada as string,
       nome: (o.cliente?.nome ?? "Chamado") as string,
       detalhe: `${o.numero ?? ""} ${o.titulo}`.trim() as string | null,
     }));
-    return [...deVisitas, ...deOs].sort(
-      (a, b) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime(),
-    );
-  }, [visitas, ordens]);
+    return [...deVisitas, ...deOs]
+      .filter((e) => tecnicoFiltro === "todos" || e.tecnico_id === tecnicoFiltro)
+      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
+      .sort(
+        (a, b) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime(),
+      );
+  }, [visitas, ordens, tecnicoFiltro, tipoFiltro]);
 
   const corDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
     e.kind === "os"
@@ -207,9 +234,60 @@ function CalendarioPage() {
           margin: "4px 0 0",
           letterSpacing: "0.06em",
         }}>
-          {isAdmin ? "Todas as visitas técnicas" : "Suas visitas agendadas"}
+          {isAdmin ? "Tudo o que está previsto — visitas e chamados de todos os técnicos" : "Sua agenda"}
         </p>
       </div>
+
+      {/* Filtros da aba 2 (R8): por técnico e por tipo de chamado */}
+      {isAdmin && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          <select
+            value={tecnicoFiltro}
+            onChange={(e) => setTecnicoFiltro(e.target.value)}
+            style={{
+              width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 12px",
+              background: isLight ? "#ffffff" : "#16161d",
+              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+              color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontSize: 13,
+              outline: "none", colorScheme: isLight ? "light" : "dark",
+            }}
+          >
+            <option value="todos">Todos os técnicos</option>
+            {(tecnicosLista as any[]).map((t) => (
+              <option key={t.id} value={t.id}>{t.nome}</option>
+            ))}
+          </select>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+            {([
+              ["todos", "Tudo"],
+              ["visita", "Visitas"],
+              ["corretiva", "Corretiva"],
+              ["preventiva", "Preventiva"],
+              ["operacional", "Operacional"],
+              ["implantacao", "Implantação"],
+            ] as const).map(([valor, rotulo]) => (
+              <button
+                key={valor}
+                onClick={() => setTipoFiltro(valor)}
+                style={{
+                  padding: "7px 13px", borderRadius: 999, flexShrink: 0, cursor: "pointer",
+                  border: tipoFiltro === valor
+                    ? "none"
+                    : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                  background: tipoFiltro === valor
+                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                  color: tipoFiltro === valor ? "#08090E" : textPrimary,
+                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {rotulo}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={CARD_T}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>

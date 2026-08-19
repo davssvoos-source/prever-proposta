@@ -19,7 +19,7 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
@@ -28,6 +28,11 @@ export const Route = createFileRoute("/_authenticated/gerencial")({
       .select("cargo")
       .eq("id", user.id)
       .maybeSingle();
+    // SAC entra SÓ no formulário de nova visita (trilho "pedido de proposta"
+    // da triagem, R9); o painel gerencial e o resto seguem admin/comercial.
+    if (perfil?.cargo === "sac" && location.pathname.startsWith("/gerencial/nova")) {
+      return;
+    }
     if (!["admin", "comercial"].includes(perfil?.cargo ?? "")) {
       throw redirect({ to: "/dashboard" });
     }

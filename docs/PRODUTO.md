@@ -317,7 +317,9 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 | Papel SAC (banco + gestão de usuários), técnico com 3 abas e "Você tem X chamados hoje" | **construído (U6a)** |
 | Import das tasks 2026 do Notion (Davi 251 + Erik 286) e equipes reais (SAC, Monitoramento) | **construído** |
 | **Lista unificada de chamados** (`/chamados` — aba 3 do SAC): quatro trilhos, filtros por situação/trilho/responsável, busca e 5 ordenações | **construído (U6b)** |
-| Abertura unificada de chamado (SAC escolhe o trilho), painel estendido, calendário com filtros, tipo operacional, pedido de compra, aceite do cliente | especificados — próximos passos da U6 |
+| **Abertura unificada** (`/chamados/novo` — R9), tipo `operacional` na OS (R5) e `pedido_compra` na demanda (R6) | **construído (U6c)** |
+| **Painel de chamados** (`/chamados/painel` — aba 1) e **calendário geral com filtros** (aba 2) | **construído (U6d)** — as 3 abas do SAC estão completas |
+| Aceite do cliente (R4), campos do pedido de compra (Q6) | especificados — próximos passos |
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U7) |
 | API QAP contínua | aguardando dev do QAP (U8) |
 | IA no WhatsApp do SAC | futuro (U9) |

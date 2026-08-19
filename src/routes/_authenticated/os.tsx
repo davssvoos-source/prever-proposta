@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, BarChart3, Building2, CalendarClock, ClipboardList, Clock, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useIsGerente } from "@/features/gerencial/data";
+import { useIsGerente, useUserCargo } from "@/features/gerencial/data";
 import { useOrdens } from "@/features/os/data";
 import {
   osStatusInfo, osEmAberto, situacaoPrazo, textoPrazo,
@@ -28,6 +28,10 @@ function OsListaPage() {
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
+  // painel de campo e programação seguem admin/comercial (questões 2-3 do
+  // PRODUTO §8); esconder do SAC evita botão que expulsa ao toque
+  const { data: cargoUi } = useUserCargo();
+  const veFerramentasCampo = cargoUi === "admin";
   const { data: ordens = [], isLoading } = useOrdens();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("abertos");
@@ -110,19 +114,21 @@ function OsListaPage() {
         </div>
         {isGerente && (
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => navigate({ to: "/os/painel" })}
-              title="Painel de indicadores"
-              style={{
-                width: 42, height: 42, borderRadius: 12,
-                background: isLight ? "#ffffff" : "#191921",
-                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <BarChart3 size={17} color={gold} />
-            </button>
+            {veFerramentasCampo && (
+              <button
+                onClick={() => navigate({ to: "/os/painel" })}
+                title="Painel de indicadores"
+                style={{
+                  width: 42, height: 42, borderRadius: 12,
+                  background: isLight ? "#ffffff" : "#191921",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                  color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <BarChart3 size={17} color={gold} />
+              </button>
+            )}
             <button
               onClick={() => navigate({ to: "/chamados" })}
               title="Todos os chamados (os quatro trilhos)"
@@ -136,19 +142,21 @@ function OsListaPage() {
             >
               <ClipboardList size={17} color={gold} />
             </button>
-            <button
-              onClick={() => navigate({ to: "/os/programacao" })}
-              title="Programação da equipe"
-              style={{
-                width: 42, height: 42, borderRadius: 12,
-                background: isLight ? "#ffffff" : "#191921",
-                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <CalendarClock size={17} color={gold} />
-            </button>
+            {veFerramentasCampo && (
+              <button
+                onClick={() => navigate({ to: "/os/programacao" })}
+                title="Programação da equipe"
+                style={{
+                  width: 42, height: 42, borderRadius: 12,
+                  background: isLight ? "#ffffff" : "#191921",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                  color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <CalendarClock size={17} color={gold} />
+              </button>
+            )}
             <button
               onClick={() => navigate({ to: "/os/nova" })}
               style={{

@@ -939,3 +939,96 @@ quatro trilhos aparecem juntos.
    o funil comercial pós-aprovação é assunto do R4, na fila).
 3. A ordenação por prazo põe **estourados primeiro**, depois quem tem prazo,
    sem prazo por último — é a fila de cobrança natural do SAC.
+
+### U6c — Abertura unificada + tipos de chamado (2026-08-18)
+
+**Migration:** `supabase/migrations/20260819010000_u6c_tipos_chamado.sql`.
+
+Materializa as regras R5, R6 e R9: a porta única de abertura e os dois tipos
+ditados que faltavam no domínio.
+
+**Entregue no banco**
+
+| O quê | Detalhe |
+|---|---|
+| `ordens_servico.tipo` aceita **`operacional`** (R5) | entrega de controle, cadastros, tarefas de campo sem conserto. SLA segue a prioridade (suposição da questão 7: normal/72h, editável no `os_sla`). |
+| `demandas.tipo` aceita **`pedido_compra`** (R6) | o chamado do Gilleno. Campos próprios aguardam a questão 6 — a descrição carrega os detalhes por enquanto. |
+| `sugerir_tipo_demanda()` | intenção de compra vem **primeiro**: "Comprar peça para conserto" é pedido de compra, mesmo contendo palavra de corretiva. Gêmeo TS atualizado junto. |
+
+**Entregue no app**
+
+- **`/chamados/novo`** — a triagem (R9): quatro cartões com descrição e
+  exemplos; cada um leva ao formulário certo já configurado:
+  Campo → `/os/nova` (o wizard completo com SLA e agenda) ·
+  T.I → `/demandas/nova?equipe=ti` ·
+  Pedido de compra → `/demandas/nova?equipe=patrimonio&tipo=pedido_compra` ·
+  Proposta → `/gerencial/nova` (o formulário de visita).
+- `/chamados` ganhou o botão **Abrir** e virou rota-pai (Outlet).
+- `/demandas/nova` aceita os parâmetros da triagem sem perder o
+  comportamento antigo (equipe do perfil quando ninguém escolheu trilho).
+- Seletor de tipo do `/os/nova` ganhou **Operacional**; labels e cores dos dois
+  tipos novos em `os-status.ts` e `demanda-status.ts`.
+- **Guard do gerencial abriu uma exceção cirúrgica**: SAC entra SÓ em
+  `/gerencial/nova` (o trilho de proposta); painel e demais telas seguem
+  admin/comercial.
+
+**Suposições registradas** (questões 5 e 7 do PRODUTO §8, fáceis de mudar):
+no trilho proposta o SAC registra e **pode** agendar — técnico e data são
+opcionais no formulário de visita; chamado operacional usa o SLA da
+prioridade escolhida.
+
+### U6d — Painel de chamados + calendário com filtros (2026-08-18)
+
+Sem migration: só código. Completa as **3 abas do SAC** (R8).
+
+**Aba 1 — `/chamados/painel`** (herda o acesso de `/chamados`):
+- **Em aberto agora** em número grande + atrasados ao lado.
+- Totais **semana / mês / ano** (criados no período).
+- **Filtros que valem para tudo** (números, gráfico e lista): trilho, técnico,
+  tipo (campo + demanda + visita) e cliente.
+- **Gráfico de quantidade de manutenções**: barras empilhadas por mês (últimos
+  12), quebradas por tipo de chamado de campo — paleta §9, ordem fixa.
+- Lista resumida dos em aberto com link para a lista completa.
+- O `/os/painel` continua como mergulho específico do campo (SLA, carga por
+  técnico); este é a visão do todo.
+
+**Aba 2 — `/calendario` com filtros:**
+- **Correção de efeito colateral da U6a**: o SAC caía no ramo de técnico
+  (`cargo === "admin"`) e via o calendário vazio — agora SAC vê **todos os
+  técnicos**, como manda a R8.
+- Filtros novos para gestores: **por técnico** (select) e **por tipo de
+  chamado** (Tudo / Visitas / Corretiva / Preventiva / Operacional /
+  Implantação) — aplicados à grade, à contagem por dia e à lista.
+
+**Verificação**: além das checagens de sintaxe/imports, uma revisão
+adversarial multi-agente (4 lentes: roteamento, SQL, lógica de UI, permissões
+→ verificação cética de cada achado) rodou sobre TODO o conjunto não
+commitado (U6c + U6d) antes do commit. **Achados confirmados e corrigidos:**
+
+1. **`/os/nova` bloqueava o SAC** (beforeLoad admin/comercial) — a triagem
+   mandaria o SAC para lá e ele seria expulso. Corrigido: `sac` entrou no
+   guard; a RLS `os_insert_gestor` já o aceitava via `is_gestor`.
+2. **A policy `visitas_select` (de 20260628) não enxergava o SAC** — checagem
+   inline `cargo IN ('admin','comercial')`, anterior ao papel. O SAC criaria a
+   visita pelo trilho de proposta e nunca mais a veria; as propostas sumiriam
+   das 3 abas dele. Corrigido na U6c: `visitas_select`/`visitas_update` agora
+   usam `is_gestor()`.
+3. **Espelho TS da classificação não colapsava whitespace** — "pedido de⏎
+   material" (Enter no textarea) casava no trigger e não na pré-visualização:
+   a tela prometia um tipo e o registro nascia outro. Corrigido:
+   `sugerirTipoDemanda` agora normaliza espaços como o `normalizar_texto()`.
+4. **Sem backfill, as compras importadas do Notion ficavam "operacional"** e o
+   filtro "Pedido de compra" nascia vazio de histórico. Corrigido: UPDATE na
+   U6c reclassifica só `origem='notion' AND tipo='operacional'` cuja própria
+   heurística reconhece como compra.
+5. **Gráfico do painel agrupava o mês pelo UTC** — chamado das 21h30 do dia 31
+   caía no mês seguinte. Corrigido: chave de mês local.
+6. Botões de painel de campo/programação apareciam para o SAC e o expulsavam
+   ao toque — escondidos (questões 2–3 do §8 seguem mandando).
+7. Texto do NOTICE das constraints dizia "não recriada" quando o bloco
+   reverte inteiro e a **antiga é mantida** — mensagem corrigida para não
+   induzir depuração errada.
+
+⚠️ **Ordem de subida** (achado confirmado): a triagem e os seletores já
+oferecem `operacional`/`pedido_compra` — **rode a U6c antes do deploy**, senão
+o INSERT falha com violação de CHECK até a migration rodar.

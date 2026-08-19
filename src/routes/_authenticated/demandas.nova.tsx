@@ -18,6 +18,12 @@ import {
 import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 
 export const Route = createFileRoute("/_authenticated/demandas/nova")({
+  // a triagem (/chamados/novo) chega aqui com o trilho já escolhido:
+  // ?equipe=ti | ?equipe=patrimonio&tipo=pedido_compra
+  validateSearch: (s: Record<string, unknown>) => ({
+    equipe: typeof s.equipe === "string" ? s.equipe : undefined,
+    tipo: typeof s.tipo === "string" ? s.tipo : undefined,
+  }),
   component: NovaDemandaPage,
 });
 
@@ -25,28 +31,39 @@ function NovaDemandaPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
+  const busca = Route.useSearch();
   const { data: clientes = [] } = useClientes();
   const { data: pessoas = [] } = usePessoas();
 
+  const equipeInicial = (EQUIPES as string[]).includes(busca.equipe ?? "")
+    ? (busca.equipe as Equipe)
+    : null;
+  const tipoInicial = (TIPOS_DEMANDA as string[]).includes(busca.tipo ?? "")
+    ? (busca.tipo as DemandaTipo)
+    : "";
+
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [equipe, setEquipe] = useState<Equipe>("ti");
+  const [equipe, setEquipe] = useState<Equipe>(equipeInicial ?? "ti");
   const [responsavelId, setResponsavelId] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [prazo, setPrazo] = useState("");
   const [sprint, setSprint] = useState<DemandaSprint>("este_mes");
-  const [tipo, setTipo] = useState<DemandaTipo | "">("");
+  const [tipo, setTipo] = useState<DemandaTipo | "">(tipoInicial);
 
-  // pré-carrega equipe e responsável com quem está registrando
+  // pré-carrega equipe e responsável com quem está registrando — sem
+  // atropelar o trilho que a triagem já escolheu
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const eu = pessoas.find((p) => p.id === data.user?.id);
       if (eu) {
         setResponsavelId((v) => v || eu.id);
-        if (eu.equipe) setEquipe((v) => (v === "ti" ? (eu.equipe as Equipe) : v));
+        if (eu.equipe && !equipeInicial) {
+          setEquipe((v) => (v === "ti" ? (eu.equipe as Equipe) : v));
+        }
       }
     });
-  }, [pessoas]);
+  }, [pessoas, equipeInicial]);
 
   const sugestao = useMemo(
     () => (titulo.trim() ? sugerirTipoDemanda(titulo, descricao) : null),

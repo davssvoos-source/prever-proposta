@@ -7,11 +7,11 @@
 // não substitui: OS continua em /os/$id, demanda em /demandas/$id, visita no
 // fluxo dela.
 
-import { createFileRoute, useNavigate, redirect, useLocation } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect, useLocation, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDownUp, Building2, CalendarClock, CheckCircle2, ClipboardList,
+  ArrowDownUp, BarChart3, Building2, CalendarClock, CheckCircle2, ClipboardList,
   FileText, Inbox, Search, Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +78,7 @@ const ORDENACOES: { key: Ordenacao; label: string }[] = [
 ];
 
 function ChamadosPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const location = useLocation();
   const qc = useQueryClient();
@@ -297,6 +298,9 @@ function ChamadosPage() {
     proposta: FileText,
   };
 
+  // rota filha (/chamados/novo) entra pelo Outlet
+  if (pathname !== "/chamados") return <Outlet />;
+
   return (
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* Header */}
@@ -307,6 +311,33 @@ function ChamadosPage() {
             {contagens.abertos} em aberto · {contagens.campo} de campo · {contagens.proposta} proposta(s)
           </div>
         </div>
+        {/* Painel (aba 1 do SAC, R8) */}
+        <button
+          onClick={() => navigate({ to: "/chamados/painel" })}
+          title="Painel de chamados"
+          style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: isLight ? "#ffffff" : "#191921",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+            color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <BarChart3 size={17} color={gold} />
+        </button>
+        {/* Abertura unificada (R9): uma porta, quatro trilhos */}
+        <button
+          onClick={() => navigate({ to: "/chamados/novo" })}
+          style={{
+            height: 42, padding: "0 14px", borderRadius: 12, border: "none", flexShrink: 0,
+            background: GOLD_GRAD, color: "#08090E",
+            display: "flex", alignItems: "center", gap: 6,
+            fontFamily: FONT, fontWeight: 700, fontSize: 12, cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(255,192,0,0.30)",
+          }}
+        >
+          Abrir
+        </button>
         {/* Ordenação — o "ícone para ordenar" da R8 */}
         <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
           <button

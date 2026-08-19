@@ -24,7 +24,8 @@ export type DemandaTipo =
   | "implantacao"
   | "corretiva"
   | "preventiva"
-  | "operacional";
+  | "operacional"
+  | "pedido_compra";
 
 export interface DemandaStatusInfo {
   label: string;
@@ -102,18 +103,21 @@ export const TIPO_DEMANDA_LABEL: Record<DemandaTipo, string> = {
   corretiva: "Corretiva",
   preventiva: "Preventiva",
   operacional: "Operacional",
+  // R6: o chamado do Controle Patrimonial
+  pedido_compra: "Pedido de compra",
 };
 
 export const TIPOS_DEMANDA: DemandaTipo[] = [
-  "melhoria", "implantacao", "corretiva", "preventiva", "operacional",
+  "melhoria", "implantacao", "corretiva", "preventiva", "operacional", "pedido_compra",
 ];
 
 export const TIPO_DEMANDA_CORES: Record<DemandaTipo, { dark: string; light: string; bg: string; border: string }> = {
-  melhoria:    { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
-  implantacao: { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  corretiva:   { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
-  preventiva:  { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
-  operacional: { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
+  melhoria:      { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
+  implantacao:   { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
+  corretiva:     { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
+  preventiva:    { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
+  operacional:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
+  pedido_compra: { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
 };
 
 /**
@@ -126,7 +130,15 @@ export function sugerirTipoDemanda(titulo: string, descricao?: string | null): D
   const t = `${titulo ?? ""} ${descricao ?? ""}`
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    // colapsa whitespace como o normalizar_texto() do banco: sem isto,
+    // "pedido de\nmaterial" (Enter no textarea) casaria no trigger e N\u00c3O na
+    // pr\u00e9-visualiza\u00e7\u00e3o \u2014 a tela prometeria um tipo e o registro nasceria outro
+    .replace(/\s+/g, " ")
+    .trim();
+  // inten\u00e7\u00e3o de compra vem primeiro: "Comprar pe\u00e7a para conserto" \u00e9 compra
+  if (/(compra|comprar|cotacao|cotar|aquisicao|adquirir|fornecedor|pedido de material)/.test(t))
+    return "pedido_compra";
   if (/(nao funciona|nao esta funcionando|parou|caiu|travand|travou|quebrad|defeito|falha|falhou|erro|bug|corrig|conserto|reparo|urgente|sem sinal|sem acesso|offline)/.test(t))
     return "corretiva";
   if (/(preventiv|revisao|inspec|limpeza|checagem|vistoria|rotina de manutencao|manutencao programada)/.test(t))
