@@ -171,6 +171,15 @@
     color: var(--color-foreground);
     font-family: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    /* O quadro da Início se opera arrastando em todas as direções, e no topo
+       da rolagem um arrasto para baixo dispara o pull-to-refresh do Android —
+       que aqui é recarga completa com cache frio: refaz a autenticação, refaz
+       todas as consultas e perde a posição do quadro. Sem service worker, é
+       caro demais para acontecer por acidente. */
+    overscroll-behavior-y: contain;
+    /* nenhum trilho horizontal pode rolar a página inteira junto e desalinhar
+       o cabeçalho fixo e a barra inferior flutuante */
+    overflow-x: hidden;
   }
   body {
     background:

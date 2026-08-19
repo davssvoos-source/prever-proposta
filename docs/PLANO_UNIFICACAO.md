@@ -1302,3 +1302,110 @@ migration se o pg_cron estiver desligado (mesmo padrão da U1).
 | 1 | `20260819120000_u7_fusao_chamados.sql` | **deploy do app na mesma janela** — não há convivência |
 | 2 | `20260819140000_u8_aceite_cliente.sql` | confira a lista de clientes rebaixados que ela imprime |
 | 3 | `20260819160000_u9_pedido_compra.sql` | — |
+
+### U10 — A Início vira tela de atividades (2026-08-19)
+
+Regra **R17**. Ditada em duas partes: *"Na página home devem aparecer todas as
+atividades possíveis que envolvam o usuário. Crie visualizações diferentes com
+um botão seletor: lista com cards (atualmente usado) e kanban."* E depois:
+*"kanban principal pode ser por status. Podem ter botões com padrões de kanban:
+sprint este mês, outra opção é standby. Aí dá pra filtrar por responsável, por
+apoio, etc."*
+
+**Só código — nenhuma migration.**
+
+**O problema que não estava no pedido.** A Home junta atividades de tabelas que
+não compartilham vocabulário de status: chamado tem oito, visita tem os buckets
+dela (e o CHECK foi derrubado, hoje é texto livre), pedido de compra tem seis
+situações. Um quadro "por status" precisa decidir de quem é o status. Três
+estratégias foram desenhadas e julgadas por três lentes independentes (uso no
+celular, correção/segurança, custo de manutenção). Venceu **traduzir tudo para
+o vocabulário do chamado**, 16,5 × 13,5 × 12,5.
+
+O perdedor mais interessante foi o que inventava cinco estágios genéricos: era
+o melhor no celular (rótulos curtos, cinco colunas) e caiu porque se apoiava em
+três premissas que não sobrevivem à leitura das migrations — entre elas a de
+que `chamados.equipe` seria nula fora do interno (é `NOT NULL DEFAULT 'tecnica'`,
+u7:90; a nulidade é convenção do cliente) e a de que um override de
+`faturamento_status` teria janela (não tem: a coluna é `NOT NULL DEFAULT
+'a_analisar'` e o backfill da U0 só alcançou o que já estava fechado, então a
+coluna receberia o histórico inteiro e crescente).
+
+**A tradução** vive em `src/features/atividades/modelo.ts`, função total com
+precedência ordenada: terminal do chamado → situação da compra → status da
+visita → identidade → `sem_status`. Nada some em silêncio. Onde ela mente está
+escrito no próprio arquivo, sem suavizar — a pior mentira é "Aguardando
+aprovação", que junta o aval interno do comercial (minutos, quem decide está na
+sala) com a espera pela resposta do cliente (semanas, fora do nosso controle).
+O campo `bolaCom` devolve no card a diferença que a coluna apagou.
+
+**O que a revisão adversarial pegou, e que virou código**
+
+1. **O cabeçalho da coluna sumia na rolagem.** Deixar a coluna crescer e a
+   página rolar é o instinto errado: a 600px de rolagem a única coisa que diz o
+   que a coluna significa sai da tela. Pior, com "Aberto" em 20 cards e
+   "Cancelado" em 2, arrastar de lado lá embaixo mostra branco e parece coluna
+   vazia. Trilho de altura fixa, rolagem por coluna.
+2. **Coluna de 260px, não 300.** Em 375px, 300 deixa 31px da próxima coluna
+   aparecendo — lê como padding. 260 deixa ~75px, que lê como "tem mais coisa".
+   É a única pista de que rola de lado: o Chrome do Android não mostra barra.
+3. **O app proíbe zoom** (`maximum-scale=1`) e a base usa tipografia de 9,5px.
+   Piso de 11px no card e no cabeçalho — quem lê está no sol, de luva.
+4. **Alvos de toque.** Os chips tinham ~31px de altura. Passaram a 40px: cada
+   erro de toque aqui TROCA o que está na tela.
+5. **`overscroll-behavior`.** Sem isso, arrastar no topo dispara o
+   pull-to-refresh do Android, que aqui é recarga completa com cache frio.
+   Entrou em `html, body` junto com `overflow-x: hidden`.
+6. **A posição volta.** Abrir um card na coluna 6 e voltar recaindo na coluna 1
+   é o imposto clássico de kanban em celular — o roteador não restaura offset
+   de container interno. Guardado em `sessionStorage`.
+7. **Falha de rede não pode parecer "não tenho trabalho hoje".** Coluna vazia e
+   consulta falhada tinham a mesma aparência. Agora o erro é explícito.
+8. **`useChamadosRealtime()` existia com ZERO call sites** — `/chamados` tinha
+   inlinado um canal próprio, e a Home ia abrir o terceiro na mesma tabela. O
+   hook virou o canal único, com debounce de 1,2s: a policy entrega todo
+   chamado interno a qualquer autenticado (537 do Notion + o fluxo diário), e
+   sem agrupar o técnico refazia as consultas a cada edição de qualquer demanda
+   da empresa. `chamado_compra` deliberadamente **não** entra no canal: ela não
+   está na publicação do realtime, e inscrição em tabela fora da publicação não
+   dá erro — conecta, fica viva e nunca dispara.
+9. **O valor da compra não é buscado.** `chamado_compra_select` usa
+   `pode_acessar_chamado()`, que devolve true quando `responsavel_id IS NULL` —
+   ou seja, o `valor_estimado` de um pedido recém-aberto é legível por qualquer
+   autenticado. Em vez de buscar e esconder no cliente (um spread de distância
+   do vazamento), a Home não pede as colunas. **A policy continua larga e isso
+   é questão para o Davi**, não conserto de tela.
+10. **`dashboard-visitas` não foi renomeada.** Cinco arquivos a invalidam de
+    fora; renomear não quebraria nada visivelmente, só deixaria a tela de
+    entrada velha depois de aprovar, reprovar ou reagendar uma visita.
+11. **As chaves passaram a carregar o usuário.** As três consultas de chamado
+    da Home antiga tinham chave estática: ao trocar de conta, o React Query
+    servia o dado do usuário anterior.
+12. **A invariante "campo não tem equipe nem sprint" desceu para o modelo.**
+    Estava na camada de render de `/chamados`; a primeira pessoa que ligasse um
+    filtro de equipe sem o guard de natureza puxaria todo o campo, sem erro.
+
+**Asserções**: `scripts/verificar-logica.cjs` foi de 34 para **75** — a tabela
+de tradução é o artefato onde teste é trivialmente lucrativo, e a promessa
+"nada some em silêncio" só é verdade se cada status cru de cada origem tiver
+destino. Um caso por status por origem, mais exaustividade sobre as 8 colunas.
+O carregador ganhou um esqueleto para o cliente do Supabase (`import.meta.env`
+não existe em CommonJS).
+
+**Removido de propósito, e reversível**
+- **Os quatro tiles de métrica de visita.** Liam `visitasExibidas`, que já
+  passara pelo filtro de status: com um status escolhido, três dos quatro
+  ficavam obrigatoriamente em zero. E custavam 70px de uma tela que, com o
+  banner de 187px, já abre o quadro mostrando um card e meio num aparelho de
+  667px.
+- **O dropdown de status.** Filtro de status sobre um quadro de status é
+  redundante — e era ele que quebrava as métricas.
+- **Os blocos "Seus chamados" e "Suas demandas"**, que eram duas listas
+  separadas por tabela de origem. Viraram a fila única que foi pedida.
+
+**Conclusão que o painel escreveu e eu registro sem ter agido sobre ela:** o
+técnico típico tem 3 a 8 itens abertos, o que é uma lista, não um quadro. O
+kanban é ferramenta de coordenação (SAC e admin). A visão padrão é lista para
+todo mundo e o seletor existe para todos os perfis, como foi pedido — mas se o
+técnico nunca usar o quadro, a resposta certa é tirar o botão dele, não
+defender a simetria.

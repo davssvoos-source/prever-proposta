@@ -1,1108 +1,430 @@
-import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
-import { useEffect, useState, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar, ClipboardList, Wrench } from "lucide-react";
+// Início — todas as atividades que envolvem o usuário, em duas visões.
+// Regra ditada pelo Davi: "Na página home devem aparecer todas as atividades
+// possíveis que envolvam o usuário. Crie visualizações diferentes com um botão
+// seletor: lista com cards (atual) e kanban." E depois: "kanban principal pode
+// ser por status. Podem ter botões com padrões de kanban: sprint este mês,
+// outra opção é standby. Aí dá pra filtrar por responsável, por apoio, etc."
+//
+// O que mudou de estrutura em relação à Home antiga:
+//
+// · Era uma tela de VISITAS com dois apêndices de chamado para o técnico, e
+//   quatro consultas independentes. Virou uma tela de ATIVIDADES: um array só
+//   alimenta banner, lista e quadro, então o número do banner não pode
+//   discordar do que está logo abaixo dele.
+// · "Seus chamados" e "Suas demandas" eram dois blocos separados por tabela de
+//   origem. Viraram uma fila só — que é o que foi pedido.
+// · Os quatro tiles de métrica de visita saíram: liam `visitasExibidas`, que já
+//   passara pelo filtro de status, então com um status escolhido três dos
+//   quatro ficavam obrigatoriamente em zero. E ocupavam viewport que o quadro
+//   não tem sobrando num aparelho de 667px.
+// · O dropdown de status saiu: filtro de status sobre um quadro de status é
+//   redundante, e era ele que quebrava as métricas.
+//
+// Ver docs/PRODUTO.md §9 e o registro da etapa em docs/PLANO_UNIFICACAO.md.
 
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Inbox, KanbanSquare, List as ListIcon, Search, WifiOff } from "lucide-react";
+
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
+import { FONT, GOLD_GRAD } from "@/lib/ui";
+import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
-import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
-import { chamadoStatusInfo, situacaoPrazo, prazoParaData } from "@/lib/chamado-status";
-
+import { usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime } from "@/features/chamados/data";
+import { atividadesDeHoje, type Atividade } from "@/features/atividades/modelo";
+import { useSessao, useAtividades } from "@/features/home/data";
+import {
+  aplicarLentes, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
+  FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
+} from "@/features/home/lentes";
+import { CardAtividade } from "@/features/home/CardAtividade";
+import { Quadro } from "@/features/home/Quadro";
+import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  component: Dashboard,
+  component: Home,
 });
 
-const GLASS_DARK: React.CSSProperties = {
-  background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  backdropFilter: "blur(10px) saturate(120%)",
-  WebkitBackdropFilter: "blur(10px) saturate(120%)",
-  border: "1px solid rgba(255, 192, 0, 0.20)",
-  borderRadius: 18,
-  boxShadow: "0 0 0 1px rgba(255,192,0,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
-};
-
-const GLASS_LIGHT: React.CSSProperties = {
-  background: "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)",
-  border: "1px solid rgba(0,0,0,0.07)",
-  borderRadius: 18,
-  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-};
-
-const STATUS_OPCOES = [
-  { key: 'todos',                label: 'Todos os status',       color: 'rgba(255,255,255,0.35)' },
-  { key: 'pendente',             label: 'Pendentes',             color: '#FFC000' },
-  { key: 'aguardando_aprovacao', label: 'Aguardando aprovação',  color: '#60A5FA' },
-  { key: 'aprovada',             label: 'Aprovadas',             color: '#10B981' },
-  { key: 'reprovada',            label: 'Reprovadas',            color: '#EF4444' },
+const CHAVE_VISAO = "prever-home-visao";
+const VINCULOS: { chave: Vinculo; label: string }[] = [
+  { chave: "responsavel", label: "Responsável" },
+  { chave: "apoio", label: "Apoio" },
+  { chave: "autor", label: "Eu abri" },
+];
+const PERIODOS: { chave: Exclude<Periodo, null>; label: string }[] = [
+  { chave: "hoje", label: "Hoje" },
+  { chave: "semana", label: "Semana" },
+  { chave: "mes", label: "Mês" },
 ];
 
-
-function saudacao() {
-  const h = new Date().getHours();
-  if (h < 12) return "Bom dia";
-  if (h < 18) return "Boa tarde";
-  return "Boa noite";
-}
-
-function fmtData(iso: string) {
-  const d = new Date(iso);
-  const hoje = new Date();
-  const amanha = new Date();
-  amanha.setDate(hoje.getDate() + 1);
-  const hhmm = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  if (d.toDateString() === hoje.toDateString()) return `Hoje, ${hhmm}`;
-  if (d.toDateString() === amanha.toDateString()) return `Amanhã, ${hhmm}`;
-  return d.toLocaleString("pt-BR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function Dashboard() {
-  const qc = useQueryClient();
+function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLight } = useTheme();
-  const GLASS = isLight ? GLASS_LIGHT : GLASS_DARK;
-  const [filtroAtivo, setFiltroAtivo] = useState<'hoje' | 'semana' | 'mes' | null>(null);
-  const [tecnicoFiltro, setTecnicoFiltro] = useState<string>('todos');
-  const [statusFiltro, setStatusFiltro] = useState<string>('todos');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
-  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
+  const { data: sessao } = useSessao();
+  const s = sessao ?? { userId: null, cargo: null };
+  const gestor = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac";
 
+  const [visao, setVisao] = useState<"lista" | "quadro">(() => {
+    try {
+      const v = localStorage.getItem(CHAVE_VISAO);
+      return v === "quadro" ? "quadro" : "lista";
+    } catch { return "lista"; }
+  });
   useEffect(() => {
-    if (!showStatusDropdown) return;
-    const handler = (e: Event) => {
-      if (statusDropdownRef.current && statusDropdownRef.current.contains(e.target as Node)) return;
-      setShowStatusDropdown(false);
-    };
-    const timeout = setTimeout(
-      () => document.addEventListener('pointerdown', handler),
-      100
-    );
-    return () => {
-      clearTimeout(timeout);
-      document.removeEventListener('pointerdown', handler);
-    };
-  }, [showStatusDropdown]);
+    try { localStorage.setItem(CHAVE_VISAO, visao); } catch { /* modo privado */ }
+  }, [visao]);
 
-  const { data: perfil } = useQuery({
-    queryKey: ["meu-perfil"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("cargo, nome")
-        .eq("id", user.id)
-        .maybeSingle();
-      return data;
-    },
-  });
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIAIS);
+  const [buscaAberta, setBuscaAberta] = useState(false);
 
-  // admin/comercial/sac veem a visão de gestor; técnico vê só o que é dele
-  const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial" || perfil?.cargo === "sac";
-  const isTecnico = perfil?.cargo === "tecnico";
-
-  const { data: listaTecnicos } = useQuery({
-    queryKey: ['tecnicos'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, nome, email')
-        .eq('cargo', 'tecnico')
-        .order('nome');
-      return data ?? [];
-    },
-    enabled: isAdmin,
-  });
-
-  const { data: visitas = [], isLoading } = useQuery({
-    queryKey: ["dashboard-visitas", perfil?.cargo, tecnicoFiltro],
-    enabled: !!perfil,
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      let q = supabase
-        .from("visitas_tecnicas")
-        .select(`
-          id, status, data_hora_agendada, endereco, titulo,
-          nome_sindico, nome_predio, tecnico_id, foto_fachada_url,
-          clientes (nome)
-        `)
-        .order("data_hora_agendada", { ascending: true });
-
-      if (perfil?.cargo === "tecnico") {
-        q = q.eq("tecnico_id", user!.id);
-      } else if (isAdmin && tecnicoFiltro !== 'todos') {
-        q = q.eq("tecnico_id", tecnicoFiltro);
-      }
-
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
+  // o preset padrão depende do perfil, que chega depois — aplicado uma vez só
+  const [presetInicializado, setPresetInicializado] = useState(false);
   useEffect(() => {
-    const channel = supabase
-      .channel("visitas-realtime-dashboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "visitas_tecnicas" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["dashboard-visitas"] });
-          qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
+    if (presetInicializado || !s.cargo) return;
+    const p = presetPadrao(s.cargo);
+    if (p) setFiltros((f) => ({ ...f, preset: p }));
+    setPresetInicializado(true);
+  }, [s.cargo, presetInicializado]);
 
-  // Próximo chamado de campo. A RLS já limita o técnico aos dele; o gestor
-  // vê o próximo da fila inteira.
-  const { data: proximoChamado } = useQuery({
-    queryKey: ["dashboard-proximo-chamado"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("id, numero, titulo, status, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
-        .eq("natureza", "campo")
-        .in("status", ["aberto", "agendado", "em_andamento"])
-        .order("data_hora_agendada", { ascending: true, nullsFirst: false })
-        .limit(1);
-      if (error) throw error;
-      return ((data as any[]) ?? [])[0] ?? null;
-    },
+  const { atividades, visitas, carregando, erro } = useAtividades(s, filtros.pessoa);
+  useChamadosRealtime();
+  const { data: pessoas = [] } = usePessoas();
+  const { data: minhaEquipe = null } = useMinhaEquipe();
+  const nomePorId = useMemo(() => {
+    const m = mapaDePessoas(pessoas);
+    const r: Record<string, string> = {};
+    for (const [id, p] of Object.entries(m)) r[id] = p.nome;
+    return r;
+  }, [pessoas]);
+
+  const agora = useMemo(() => new Date(), [atividades]);
+  const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
+
+  const filtradas = useMemo(
+    () => ordenar(aplicarLentes(atividades, filtros, ctx, normalizarTexto), ordemDoPreset(filtros.preset)),
+    [atividades, filtros, ctx],
+  );
+  const hoje = useMemo(() => atividadesDeHoje(atividades, agora), [atividades, agora]);
+  const proxima = useMemo(() => proximaVisitaDe(visitas), [visitas]);
+  const presets = useMemo(() => presetsDoCargo(s.cargo), [s.cargo]);
+
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const gold = isLight ? "#b87800" : "#FFC000";
+
+  // Alvo de 40px: o app trava o zoom e quem opera está de luva. Os chips
+  // antigos tinham ~31px de altura, o que dá erro de toque — e cada erro aqui
+  // TROCA o que está na tela.
+  const chip = (ativo: boolean): CSSProperties => ({
+    minHeight: 40,
+    padding: "0 15px",
+    borderRadius: 999,
+    display: "inline-flex",
+    alignItems: "center",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#08090E" : textPrimary,
+    fontFamily: FONT,
+    fontWeight: 600,
+    fontSize: 12.5,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
   });
 
-  // ── Fila do técnico (R7/R11/R12): chamados de campo e internos dele viraram
-  // cards da Home — as abas próprias saíram da barra. A RLS limita os de campo
-  // aos dele; os internos são filtrados por responsável aqui.
-  const { data: chamadosTecnico = [] } = useQuery({
-    queryKey: ["dashboard-chamados-tecnico"],
-    enabled: isTecnico,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("id, numero, titulo, status, tipo, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
-        .eq("natureza", "campo")
-        .in("status", ["aberto", "agendado", "em_andamento", "executado"])
-        .order("data_hora_agendada", { ascending: true, nullsFirst: false });
-      if (error) throw error;
-      return (data as any[]) ?? [];
-    },
-  });
+  const botaoIcone: CSSProperties = {
+    width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer",
+  };
 
-  const { data: demandasTecnico = [] } = useQuery({
-    queryKey: ["dashboard-demandas-tecnico"],
-    enabled: isTecnico,
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("id, numero, titulo, status, tipo, equipe, prazo_limite, sprint")
-        .eq("natureza", "interno")
-        .eq("responsavel_id", user.id)
-        .in("status", ["aberto", "em_andamento", "stand_by", "aguardando_aprovacao"])
-        .order("prazo_limite", { ascending: true, nullsFirst: false });
-      if (error) return [];
-      return (data as any[]) ?? [];
-    },
-  });
+  const trilhoChips: CSSProperties = {
+    display: "flex", gap: 8, overflowX: "auto",
+    overscrollBehaviorX: "contain",
+    margin: "0 -16px", padding: "0 16px",
+    scrollbarWidth: "none",
+  };
 
-  // Filtro de período
-  const now = new Date();
-  const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(now); endOfDay.setHours(23, 59, 59, 999);
-  const startOfWeek = new Date(startOfDay); startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
-  const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23, 59, 59, 999);
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  function abrir(a: Atividade) {
+    if (a.fonte === "visita") {
+      const v = visitas.find((x) => x.id === a.registroId);
+      navigate({ ...visitaRouteFor((v?.status ?? "pendente") as any, a.registroId), state: { from: location.pathname } } as any);
+    } else {
+      navigate({ to: "/chamados/$id", params: { id: a.registroId } });
+    }
+  }
 
-  const visitasFiltradas = visitas.filter((v: any) => {
-    if (!filtroAtivo) return true;
-    if (!v.data_hora_agendada) return false;
-    const d = new Date(v.data_hora_agendada);
-    if (filtroAtivo === 'hoje') return d >= startOfDay && d <= endOfDay;
-    if (filtroAtivo === 'semana') return d >= startOfWeek && d <= endOfWeek;
-    if (filtroAtivo === 'mes') return d >= startOfMonth && d <= endOfMonth;
-    return true;
-  });
+  function trocarVinculo(v: Vinculo) {
+    setFiltros((f) => ({
+      ...f,
+      vinculos: f.vinculos.includes(v) ? f.vinculos.filter((x) => x !== v) : [...f.vinculos, v],
+    }));
+  }
 
-  const visitasExibidas = statusFiltro === 'todos'
-    ? visitasFiltradas
-    : statusFiltro === 'pendente'
-      ? visitasFiltradas.filter((v: any) => isPendenteBucket(v.status))
-      : statusFiltro === 'aguardando_aprovacao'
-        ? visitasFiltradas.filter((v: any) => isAguardandoAprovacaoBucket(v.status))
-        : visitasFiltradas.filter((v: any) => v.status === statusFiltro);
+  // composição do banner: o número sozinho não é auditável
+  const composicao = useMemo(() => {
+    const partes: string[] = [];
+    const ch = hoje.filter((a) => a.fonte === "chamado").length;
+    const vi = hoje.filter((a) => a.fonte === "visita").length;
+    const atr = hoje.filter((a) => a.prazoEstourado).length;
+    if (ch) partes.push(`${ch} chamado${ch > 1 ? "s" : ""}`);
+    if (vi) partes.push(`${vi} visita${vi > 1 ? "s" : ""}`);
+    if (atr) partes.push(`${atr} atrasad${atr > 1 ? "os" : "o"}`);
+    return partes.join(" · ");
+  }, [hoje]);
 
-  const pendentes    = visitasExibidas.filter((v: any) => isPendenteBucket(v.status));
-  const aguardando   = visitasExibidas.filter((v: any) => isAguardandoAprovacaoBucket(v.status));
-  const aprovadas    = visitasExibidas.filter((v: any) => v.status === "aprovada");
-  const reprovadas   = visitasExibidas.filter((v: any) => v.status === "reprovada");
-
-  const metrics = [
-    { label: "Pendentes",             value: pendentes.length,  color: "#FFC000", icon: <Clock size={14} /> },
-    { label: "Aguardando aprovação",  value: aguardando.length, color: "#60A5FA", icon: <CalendarDays size={14} /> },
-    { label: "Aprovadas",             value: aprovadas.length,  color: "#34D399", icon: <CheckCircle2 size={14} /> },
-    { label: "Reprovadas",            value: reprovadas.length, color: "#F87171", icon: <XCircle size={14} /> },
-  ];
-
-
-  // ─── Banner data ──────────────────────────────────────────
-  const visitasHoje = visitas.filter((v: any) => {
-    if (!v.data_hora_agendada) return false;
-    const d = new Date(v.data_hora_agendada);
-    return d >= startOfDay && d <= endOfDay;
-  });
-
-  // R11: "Você tem X chamados hoje" — para o técnico, visita É chamado.
-  // Conta: visitas de hoje + OS agendadas para hoje ou em atendimento agora
-  // + demandas com prazo hoje.
-  const hojeIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const osHoje = chamadosTecnico.filter((o: any) => {
-    if (o.status === "em_andamento") return true;
-    if (!o.data_hora_agendada) return false;
-    const d = new Date(o.data_hora_agendada);
-    return d >= startOfDay && d <= endOfDay;
-  });
-  const demandasHoje = demandasTecnico.filter((d: any) => prazoParaData(d.prazo_limite) === hojeIso);
-  const chamadosHoje = visitasHoje.length + osHoje.length + demandasHoje.length;
-
-  const agoraMs = Date.now();
-  const proximaVisita = visitas
-    // Só visitas ainda não iniciadas/concluídas (bucket "pendente") — uma visita
-    // já enviada para aprovação (ou além) não é mais "próxima", mesmo que a data
-    // agendada original ainda esteja no futuro (ex.: técnico adiantou o serviço).
-    .filter((v: any) => v.data_hora_agendada && new Date(v.data_hora_agendada).getTime() > agoraMs && isPendenteBucket(v.status))
-    .sort((a: any, b: any) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime())[0];
-
-  const [countdown, setCountdown] = useState("");
-  useEffect(() => {
-    if (!proximaVisita?.data_hora_agendada) return;
-    const update = () => {
-      const diff = new Date(proximaVisita.data_hora_agendada!).getTime() - Date.now();
-      if (diff <= 0) { setCountdown("Agora"); return; }
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      if (h > 0) setCountdown(`${h}h ${m.toString().padStart(2, '0')}m`);
-      else setCountdown(`${m}m ${s.toString().padStart(2, '0')}s`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [proximaVisita]);
-
-  // Foto fachada — bucket privado, precisa gerar signed URL a partir do path
-  const { data: fotoFachadaUrl } = useQuery({
-    queryKey: ["foto-fachada-signed", proximaVisita?.id, proximaVisita?.foto_fachada_url],
-    enabled: !!proximaVisita?.foto_fachada_url,
-    staleTime: 30 * 60 * 1000,
-    queryFn: async () => {
-      const raw = proximaVisita?.foto_fachada_url as string | null | undefined;
-      if (!raw) return null;
-      const m = raw.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/);
-      if (!m) return raw;
-      const [, bucket, path] = m;
-      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-      if (error) return null;
-      return data?.signedUrl ?? null;
-    },
-  });
+  const semPerfil = !s.cargo;
 
   return (
     <>
-      {/* ═══ BANNER FROTA ═══ */}
-      <div
-        style={{
-          marginTop: -76,
-          marginLeft: -16,
-          marginRight: -16,
-          position: 'relative',
-          height: '28vh',
-          minHeight: 180,
-          overflow: 'hidden',
-        }}
-      >
+      {/* Banner — margens negativas casadas com o padding do <main> */}
+      <div style={{
+        marginTop: -76, marginLeft: -16, marginRight: -16,
+        position: "relative", height: "28vh", minHeight: 180, overflow: "hidden",
+      }}>
         <img
-          src={isLight ? '/banner-home-light.jpg' : bannerAsset.url}
+          src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
           alt="Frota Prever"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 60%' }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%" }}
         />
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: isLight
-              ? 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 40%, rgba(244,245,247,0.9) 100%)'
-              : 'linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)',
-            pointerEvents: 'none',
-          }}
-        />
-        {/* Fade inferior — transição suave para o fundo da página */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: isLight
+            ? "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0) 40%, rgba(244,245,247,0.9) 100%)"
+            : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(8,8,12,0.45) 60%, rgba(8,8,12,0.55) 100%)",
+          pointerEvents: "none",
+        }} />
         {!isLight && (
-          <div
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "40%",
+            background: "linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)",
+            pointerEvents: "none",
+          }} />
+        )}
+
+        {/* O banner virou alvo de toque: aplica "Meu dia" e leva à lista que
+            produziu o número. Antes era um enfeite não auditável. */}
+        <button
+          onClick={() => setFiltros((f) => ({ ...f, preset: "meu_dia", situacao: "abertos" }))}
+          style={{
+            position: "absolute", bottom: 14, left: 0, right: 0,
+            background: "transparent", border: "none", cursor: "pointer",
+            padding: "0 20px", textAlign: "center",
+          }}
+        >
+          <div style={{
+            fontFamily: FONT, fontWeight: 600, fontSize: 24, lineHeight: 1.2, color: "#FFFFFF",
+            textShadow: "0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)",
+          }}>
+            {semPerfil
+              ? "Carregando seu dia"
+              : hoje.length === 0
+                ? "Nada para hoje."
+                : `Você tem ${hoje.length} ${hoje.length === 1 ? "atividade" : "atividades"} hoje.`}
+          </div>
+          {composicao && (
+            <div style={{
+              fontFamily: FONT, fontWeight: 300, fontSize: 12.5, color: "rgba(255,255,255,0.85)",
+              marginTop: 4, textShadow: "0 1px 6px rgba(0,0,0,0.6)",
+            }}>
+              {composicao}
+            </div>
+          )}
+        </button>
+      </div>
+
+      <div style={{ paddingTop: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+        <ProximaVisita
+          visita={proxima}
+          onAbrir={() => proxima && navigate({
+            ...visitaRouteFor(proxima.status as any, proxima.id),
+            state: { from: location.pathname },
+          } as any)}
+        />
+
+        {/* Falha de rede não pode parecer "não tenho trabalho hoje" — é a
+            mentira mais cara possível para quem está em campo. */}
+        {erro && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 9, padding: "12px 14px", borderRadius: 12,
+            background: isLight ? "rgba(185,28,28,0.06)" : "rgba(248,113,113,0.08)",
+            border: isLight ? "1px solid rgba(185,28,28,0.22)" : "1px solid rgba(248,113,113,0.24)",
+            fontFamily: FONT, fontSize: 12.5, color: isLight ? "#b91c1c" : "#F87171",
+          }}>
+            <WifiOff size={15} style={{ flexShrink: 0 }} />
+            Não consegui carregar suas atividades. O que está abaixo pode estar incompleto.
+          </div>
+        )}
+
+        {/* Padrões de kanban + seletor de visão */}
+        {!semPerfil && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ ...trilhoChips, flex: 1, minWidth: 0, marginRight: 0, paddingRight: 4 }}>
+              {presets.map((p) => (
+                <button
+                  key={p.chave}
+                  style={chip(filtros.preset === p.chave)}
+                  onClick={() => setFiltros((f) => ({
+                    ...f,
+                    preset: f.preset === p.chave ? null : p.chave,
+                    // trocar de padrão zera o período: a interseção vazia entre
+                    // preset e período custa três toques cegos para descobrir
+                    periodo: null,
+                  }))}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setBuscaAberta((b) => !b)}
+              title="Buscar"
+              style={botaoIcone}
+            >
+              <Search size={17} color={gold} />
+            </button>
+            <button
+              onClick={() => setVisao((v) => (v === "lista" ? "quadro" : "lista"))}
+              title={visao === "lista" ? "Ver como quadro por status" : "Ver como lista"}
+              style={botaoIcone}
+            >
+              {/* o ícone mostra o DESTINO, igual a /chamados — trocar isso
+                  deixaria as duas telas incoerentes entre si */}
+              {visao === "lista" ? <KanbanSquare size={17} color={gold} /> : <ListIcon size={17} color={gold} />}
+            </button>
+          </div>
+        )}
+
+        {buscaAberta && (
+          <input
+            autoFocus
+            value={filtros.busca}
+            onChange={(e) => setFiltros((f) => ({ ...f, busca: e.target.value }))}
+            placeholder="Número, título ou cliente"
             style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '40%',
-              background:
-                'linear-gradient(to bottom, rgba(8,9,14,0) 0%, rgba(8,9,14,0.7) 55%, rgb(8,9,14) 100%)',
-              pointerEvents: 'none',
+              width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 14px",
+              background: isLight ? "#ffffff" : "#16161d",
+              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+              color: textPrimary, fontFamily: FONT, fontSize: 14, outline: "none",
             }}
           />
         )}
-        <h2
-          style={{
-            position: 'absolute',
-            bottom: 16,
-            left: 0,
-            right: 0,
-            textAlign: 'center',
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 600,
-            fontSize: 26,
-            lineHeight: 1.25,
-            color: '#FFFFFF',
-            margin: 0,
-            padding: '0 20px',
-            textShadow: '0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)',
-          }}
-        >
-          {isTecnico
-            ? `Você tem ${chamadosHoje} ${chamadosHoje === 1 ? 'chamado' : 'chamados'} hoje.`
-            : `Você tem ${visitasHoje.length} ${visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.`}
-        </h2>
-      </div>
 
-
-      <div className="space-y-5" style={{ paddingTop: 20 }}>
-        {/* ═══ CARD PRÓXIMA VISITA ═══ */}
-        {proximaVisita && (
-          <div
-            onClick={() => navigate({ ...visitaRouteFor(proximaVisita.status, proximaVisita.id), state: { from: location.pathname } } as any)}
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
-          >
-
-            <div
-              style={{
-                ...GLASS,
-                ...(isLight ? { border: '1px solid rgba(180,120,0,0.25)', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' } : {}),
-                padding: '20px 18px',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              {fotoFachadaUrl && (
-                <>
-                  <img
-                    src={fotoFachadaUrl}
-                    alt="Fachada"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '35%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      pointerEvents: 'none',
-                      zIndex: 0,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '45%',
-                      background: isLight
-                        ? 'linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0.6) 30%, transparent 100%)'
-                        : 'linear-gradient(to right, #0a0a14 0%, rgba(10,10,20,0.6) 30%, transparent 100%)',
-                      pointerEvents: 'none',
-                      zIndex: 1,
-                    }}
-                  />
-                </>
-              )}
-              {!isLight && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: -30,
-                    right: -30,
-                    width: 100,
-                    height: 100,
-                    background: 'radial-gradient(circle, rgba(255,192,0,0.20), transparent 70%)',
-                    pointerEvents: 'none',
-                    zIndex: 2,
-                  }}
-                />
-              )}
-              {/* Fade suave na borda esquerda do card */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '45%',
-                  background: isLight
-                    ? 'linear-gradient(to right, #ffffff 0%, #ffffff 65%, transparent 100%)'
-                    : 'linear-gradient(to right, rgba(8,8,12,0.18) 0%, rgba(8,8,12,0.18) 65%, transparent 100%)',
-                  zIndex: 2,
-                  pointerEvents: 'none',
-                }}
-              />
-              <div style={{ position: 'relative', zIndex: 10 }}>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
-                  fontSize: 11,
-                  color: isLight ? '#b87800' : 'rgba(255,192,0,0.7)',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  marginBottom: 8,
-                }}
+        {/* Vínculo — o filtro que o Davi pediu nominalmente — e período */}
+        {!semPerfil && (
+          <div style={trilhoChips}>
+            {VINCULOS.map((v) => (
+              <button key={v.chave} style={chip(filtros.vinculos.includes(v.chave))} onClick={() => trocarVinculo(v.chave)}>
+                {v.label}
+              </button>
+            ))}
+            <span style={{
+              width: 1, flexShrink: 0, alignSelf: "stretch", margin: "6px 2px",
+              background: isLight ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.12)",
+            }} />
+            {PERIODOS.map((p) => (
+              <button
+                key={p.chave}
+                style={chip(filtros.periodo === p.chave)}
+                onClick={() => setFiltros((f) => ({ ...f, periodo: f.periodo === p.chave ? null : p.chave }))}
               >
-                Próxima visita
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 16,
-                  color: isLight ? '#0a0b0e' : '#FFFFFF',
-                  marginBottom: 6,
-                }}
-              >
-                {proximaVisita.nome_predio ?? proximaVisita.clientes?.nome ?? proximaVisita.nome_sindico ?? proximaVisita.titulo ?? 'Sem nome'}
-              </div>
-              {proximaVisita.endereco && (
-                <div
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    color: isLight ? '#4a5060' : 'rgba(255,255,255,0.65)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    marginBottom: 4,
-                  }}
-                >
-                  <MapPin size={12} style={{ opacity: 0.75 }} /> {proximaVisita.endereco}
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                <div
-                  style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
-                    fontSize: 12,
-                    color: isLight ? '#0a0b0e' : '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                  }}
-                >
-                  <CalendarDays size={12} /> {fmtData(proximaVisita.data_hora_agendada!)}
-                </div>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.12)',
-                    border: isLight ? '1px solid rgba(180,120,0,0.30)' : '1px solid rgba(255,192,0,0.30)',
-                    borderRadius: 20,
-                    padding: '4px 10px',
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 600,
-                    fontSize: 11,
-                    color: isLight ? '#b87800' : '#FFC000',
-                  }}
-                >
-                  <AlarmClock size={11} /> {countdown}
-                </div>
-              </div>
-              </div>
-            </div>
-
-          </div>
-
-        )}
-
-        {/* ═══ FILA DO TÉCNICO (R7): chamados de campo + demandas na Home ═══ */}
-        {isTecnico && chamadosTecnico.length > 0 && (
-          <div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
-                letterSpacing: "0.16em", textTransform: "uppercase",
-                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
-                marginBottom: 8,
-              }}
+                {p.label}
+              </button>
+            ))}
+            <button
+              style={chip(filtros.situacao === "encerrados")}
+              onClick={() => setFiltros((f) => ({
+                ...f, situacao: f.situacao === "encerrados" ? "abertos" : "encerrados",
+              }))}
             >
-              Seus chamados ({chamadosTecnico.length})
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {chamadosTecnico.map((o: any) => {
-                const st = chamadoStatusInfo(o.status);
-                const atrasado = situacaoPrazo(o.prazo_limite, o.status) === "estourado";
-                return (
-                  <div
-                    key={o.id}
-                    onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
-                    style={{
-                      ...GLASS,
-                      padding: "13px 15px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      borderLeft: `3px solid ${isLight ? st.colorLight : st.color}`,
-                    }}
-                  >
-                    <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
-                          color: isLight ? "#0a0b0e" : "#fff",
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}
-                      >
-                        {o.titulo}
-                      </div>
-                      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
-                        {o.numero} · {o.cliente?.nome ?? "cliente"}
-                        {o.data_hora_agendada
-                          ? ` · ${fmtData(o.data_hora_agendada)}`
-                          : " · sem agendamento"}
-                      </div>
-                    </div>
-                    <span
-                      style={{
-                        flexShrink: 0, padding: "3px 9px", borderRadius: 999,
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
-                        letterSpacing: "0.06em", textTransform: "uppercase",
-                        color: atrasado ? (isLight ? "#b91c1c" : "#F87171") : (isLight ? st.colorLight : st.color),
-                        background: st.bg, border: `1px solid ${st.border}`,
-                      }}
-                    >
-                      {atrasado ? "atrasado" : st.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+              Encerrados
+            </button>
           </div>
         )}
 
-        {isTecnico && demandasTecnico.length > 0 && (
-          <div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
-                letterSpacing: "0.16em", textTransform: "uppercase",
-                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
-                marginBottom: 8,
-              }}
-            >
-              Suas demandas ({demandasTecnico.length})
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {demandasTecnico.map((d: any) => (
-                <div
-                  key={d.id}
-                  onClick={() => navigate({ to: "/chamados/$id", params: { id: d.id } })}
-                  style={{ ...GLASS, padding: "13px 15px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
-                >
-                  <ClipboardList size={17} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
-                        color: isLight ? "#0a0b0e" : "#fff",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}
-                    >
-                      {d.titulo}
-                    </div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
-                      {d.numero}
-                      {d.prazo_limite ? ` · prazo ${prazoParaData(d.prazo_limite).split("-").reverse().join("/")}` : " · sem prazo"}
-                    </div>
-                  </div>
-                  <span
-                    style={{
-                      flexShrink: 0, padding: "3px 9px", borderRadius: 999,
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
-                      letterSpacing: "0.06em", textTransform: "uppercase",
-                      color: isLight ? chamadoStatusInfo(d.status).colorLight : chamadoStatusInfo(d.status).color,
-                      background: chamadoStatusInfo(d.status).bg,
-                      border: `1px solid ${chamadoStatusInfo(d.status).border}`,
-                    }}
-                  >
-                    {chamadoStatusInfo(d.status).label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ═══ CARD PRÓXIMO CHAMADO (visão do gestor) ═══ */}
-        {!isTecnico && proximoChamado && (
-          <div
-            onClick={() => navigate({ to: "/chamados/$id", params: { id: proximoChamado.id } })}
+        {/* Pessoa — só gestor; o técnico fica travado nele mesmo */}
+        {gestor && pessoas.length > 0 && (
+          <select
+            value={filtros.pessoa}
+            onChange={(e) => setFiltros((f) => ({ ...f, pessoa: e.target.value }))}
             style={{
-              ...GLASS,
-              padding: "14px 16px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              borderLeft: `3px solid ${isLight ? chamadoStatusInfo(proximoChamado.status).colorLight : chamadoStatusInfo(proximoChamado.status).color}`,
+              width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
+              background: isLight ? "#ffffff" : "#16161d",
+              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+              color: textPrimary, fontFamily: FONT, fontSize: 13.5,
+              outline: "none", colorScheme: isLight ? "light" : "dark",
             }}
           >
-            <Wrench size={18} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 700,
-                  fontSize: 9,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
-                }}
-              >
-                Próximo chamado
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: isLight ? "#0a0b0e" : "#fff",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {proximoChamado.titulo}
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontSize: 11,
-                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
-                }}
-              >
-                {proximoChamado.cliente?.nome ?? "cliente"}
-                {proximoChamado.data_hora_agendada
-                  ? ` · ${new Date(proximoChamado.data_hora_agendada).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
-                  : " · sem agendamento"}
-              </div>
-            </div>
-            {situacaoPrazo(proximoChamado.prazo_limite, proximoChamado.status) === "estourado" && (
-              <span
-                style={{
-                  flexShrink: 0,
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 700,
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: isLight ? "#b91c1c" : "#F87171",
-                }}
-              >
-                atrasado
+            <option value="todos">Todos os responsáveis</option>
+            {pessoas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+        )}
+
+        {/* Conteúdo */}
+        {carregando || semPerfil ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{
+                height: 84, borderRadius: 14,
+                background: isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.03)",
+              }} />
+            ))}
+          </div>
+        ) : filtradas.length === 0 ? (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 9,
+            padding: "30px 16px", borderRadius: 16,
+            background: isLight ? "#ffffff" : "rgba(255,255,255,0.02)",
+            border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <Inbox size={28} color={gold} />
+            <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, color: textPrimary }}>
+              Nada nesta combinação
+            </span>
+            {/* o vazio nomeia a combinação culpada em vez de ficar mudo */}
+            <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
+              {[
+                filtros.preset && presets.find((p) => p.chave === filtros.preset)?.label,
+                filtros.periodo && PERIODOS.find((p) => p.chave === filtros.periodo)?.label,
+                filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
+              ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
+            </span>
+            {(filtros.preset || filtros.periodo || filtros.vinculos.length > 0) && (
+              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => setFiltros(FILTROS_INICIAIS)}>
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        ) : visao === "quadro" ? (
+          <Quadro
+            atividades={filtradas}
+            foco={focoDoPreset(filtros.preset)}
+            nomePorId={nomePorId}
+            onAbrir={abrir}
+          />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtradas.slice(0, 60).map((a) => (
+              <CardAtividade
+                key={a.id}
+                a={a}
+                responsavelNome={a.responsavelId ? nomePorId[a.responsavelId] ?? null : null}
+                onClick={() => abrir(a)}
+              />
+            ))}
+            {filtradas.length > 60 && (
+              <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
+                Mostrando 60 de {filtradas.length} — use a busca ou os filtros.
               </span>
             )}
           </div>
         )}
-
-      <div className="grid grid-cols-4 gap-2">
-        {metrics.map((m) => (
-          <div key={m.label} style={{ ...GLASS, padding: "8px 6px", textAlign: "center" }}>
-            <div style={{ color: m.color, display: "flex", justifyContent: "center" }}>{m.icon}</div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 600,
-                fontSize: 18,
-                color: m.color,
-                marginTop: 4,
-              }}
-            >
-              {m.value}
-            </div>
-            <div
-              style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
-                fontSize: 10,
-                color: isLight ? "#4a5060" : "rgba(200,200,200,0.55)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                marginTop: 2,
-              }}
-            >
-              {m.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 16, marginBottom: 8 }}>
-        {isAdmin && listaTecnicos && listaTecnicos.length > 0 && (
-          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <UserRound
-              size={14}
-              style={{
-                position: 'absolute',
-                left: 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: isLight ? '#4a5060' : 'rgba(255,255,255,0.6)',
-                pointerEvents: 'none',
-              }}
-            />
-            <select
-              value={tecnicoFiltro}
-              onChange={(e) => setTecnicoFiltro(e.target.value)}
-              style={{
-                padding: '7px 12px 7px 30px', borderRadius: 20,
-                border: isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)',
-                background: isLight ? '#ffffff' : 'rgba(255,255,255,0.06)',
-                color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 13, cursor: 'pointer',
-                outline: 'none', appearance: 'none', WebkitAppearance: 'none', minWidth: 170,
-                boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
-              }}
-            >
-              <option value="todos" style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>Todos os técnicos</option>
-              {listaTecnicos.map((t: any) => (
-                <option key={t.id} value={t.id} style={{ background: isLight ? '#fff' : '#0a0a14', color: isLight ? '#0a0b0e' : '#fff' }}>
-                  {t.nome ?? t.email}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        paddingLeft: 16,
-        paddingRight: 16,
-        marginBottom: 8,
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
-        {(['hoje','semana','mes'] as const).map((key) => {
-          const active = filtroAtivo === key;
-          const Icon = key === 'hoje' ? CalendarDays : key === 'semana' ? CalendarRange : CalendarCheck;
-          const label = key === 'hoje' ? 'Hoje' : key === 'semana' ? 'Essa semana' : 'Esse mês';
-          return (
-            <button
-              key={key}
-              onClick={() => setFiltroAtivo(active ? null : key)}
-              style={{
-                flex: 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                paddingTop: 8, paddingBottom: 8, paddingLeft: 4, paddingRight: 4, borderRadius: 20,
-                border: active
-                  ? (isLight ? '1px solid #b87800' : '1px solid rgba(255,192,0,0.60)')
-                  : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.20)'),
-                background: active
-                  ? (isLight ? '#b87800' : 'rgba(255,192,0,0.12)')
-                  : (isLight ? '#ffffff' : 'rgba(255,255,255,0.06)'),
-                color: active
-                  ? (isLight ? '#ffffff' : '#FFC000')
-                  : (isLight ? '#0a0b0e' : '#FFFFFF'),
-                fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: active
-                  ? (isLight ? '0 2px 8px rgba(184,120,0,0.25)' : '0 0 10px rgba(255,192,0,0.25)')
-                  : (isLight ? '0 1px 3px rgba(0,0,0,0.05)' : '0 0 6px rgba(255,255,255,0.08)'),
-                transition: 'all 0.2s',
-              }}
-            >
-              <Icon size={14} /> {label}
-            </button>
-          );
-        })}
-      </div>
-
-
-
-      {/* Filtro de status — full width */}
-      <div ref={statusDropdownRef} style={{ position: 'relative', marginTop: 16, marginBottom: 16 }}>
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowStatusDropdown((v) => !v); }}
-          style={{
-            width: '100%',
-            padding: '11px 16px',
-            borderRadius: 24,
-            border: statusFiltro !== 'todos'
-              ? (isLight ? '1px solid rgba(180,120,0,0.50)' : '1px solid rgba(255,192,0,0.50)')
-              : (isLight ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(255,255,255,0.16)'),
-            background: statusFiltro !== 'todos'
-              ? (isLight ? 'rgba(180,120,0,0.08)' : 'rgba(255,192,0,0.08)')
-              : (isLight ? '#ffffff' : 'rgba(255,255,255,0.04)'),
-            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              style={{
-                width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                background: STATUS_OPCOES.find((o) => o.key === statusFiltro)?.color ?? 'rgba(255,255,255,0.35)',
-              }}
-            />
-            <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, fontWeight: 500 }}>
-              {STATUS_OPCOES.find((o) => o.key === statusFiltro)?.label ?? 'Filtrar por status'}
-            </span>
-          </div>
-          <ChevronDown
-            size={18}
-            color={isLight ? '#4a5060' : 'rgba(255,255,255,0.6)'}
-            style={{ transform: showStatusDropdown ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-          />
-        </button>
-
-        {showStatusDropdown && (
-          <div
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 30,
-              background: isLight ? '#ffffff' : 'rgba(10,10,20,0.96)',
-              backdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
-              WebkitBackdropFilter: isLight ? 'none' : 'blur(14px) saturate(140%)',
-              border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 16,
-              overflow: 'hidden',
-              boxShadow: isLight ? '0 10px 30px rgba(0,0,0,0.12)' : '0 12px 40px rgba(0,0,0,0.5)',
-            }}
-          >
-            {STATUS_OPCOES.map((opt, i) => (
-              <button
-                key={opt.key}
-                onClick={() => { setStatusFiltro(opt.key); setShowStatusDropdown(false); }}
-                style={{
-                  width: '100%',
-                  padding: '13px 16px',
-                  background: statusFiltro === opt.key
-                    ? (isLight ? 'rgba(180,120,0,0.10)' : 'rgba(255,192,0,0.10)')
-                    : 'transparent',
-                  border: 'none',
-                  borderBottom: i < STATUS_OPCOES.length - 1
-                    ? (isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.07)')
-                    : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: opt.color, flexShrink: 0 }} />
-                <span style={{ color: isLight ? '#0a0b0e' : '#FFFFFF', fontSize: 14, flex: 1 }}>{opt.label}</span>
-                {statusFiltro === opt.key && <CheckCircle size={16} color={isLight ? '#b87800' : '#FFC000'} />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-
-      {isLoading ? (
-        <div style={{ ...GLASS, padding: 24, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
-          Carregando visitas...
-        </div>
-      ) : visitasExibidas.length === 0 ? (
-        <div style={{ ...GLASS, padding: 32, textAlign: "center" }}>
-          <p
-            style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
-              fontSize: 13,
-              color: "rgba(200,200,200,0.6)",
-              margin: 0,
-            }}
-          >
-            {filtroAtivo === 'hoje' ? 'Nenhuma visita hoje' : filtroAtivo === 'semana' ? 'Nenhuma visita esta semana' : filtroAtivo === 'mes' ? 'Nenhuma visita este mês' : 'Nenhuma visita encontrada'}
-          </p>
-        </div>
-      ) : (
-        <>
-          {pendentes.length > 0 && <Section items={pendentes} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
-          {aguardando.length > 0 && <Section items={aguardando} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
-          
-          {aprovadas.length > 0 && <Section items={aprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
-          {reprovadas.length > 0 && <Section items={reprovadas.slice(0, 5)} onClickItem={(v) => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)} />}
-
-        </>
-      )}
       </div>
     </>
-  );
-}
-
-function VisitaCard({ visita }: { visita: any }) {
-  const { isLight } = useTheme();
-  const info = getStatusInfo(visita.status);
-  const sInfoBase = { label: info.label, color: info.color, bg: info.bg };
-  const sInfo = isLight && info.bucket === 'pendente'
-    ? { label: sInfoBase.label, color: '#7a5000', bg: 'rgba(180,120,0,0.10)', border: 'rgba(180,120,0,0.25)' }
-    : { ...sInfoBase, border: info.border };
-  const nome =
-    visita.nome_predio ??
-    visita.clientes?.nome ??
-    visita.nome_sindico ??
-    visita.titulo ??
-    "Sem nome";
-  return (
-    <div
-      style={{
-        background: isLight
-          ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-          : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-        backdropFilter: isLight ? "none" : "blur(12px)",
-        WebkitBackdropFilter: isLight ? "none" : "blur(12px)",
-        border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255, 215, 0, 0.2)",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 0,
-        cursor: "pointer",
-        boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined,
-      }}
-    >
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 8,
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            fontSize: 15,
-            color: isLight ? "#0a0b0e" : "#fff",
-            flex: 1,
-          }}
-        >
-          {nome}
-        </div>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            background: sInfo.bg,
-            border: `1px solid ${sInfo.border}`,
-            borderRadius: 20,
-            padding: "3px 10px",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 500,
-            fontSize: 10,
-            color: sInfo.color,
-            letterSpacing: "0.08em",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {sInfo.label}
-        </div>
-      </div>
-      {visita.endereco && (
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 12,
-            color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 6,
-          }}
-        >
-          <MapPin size={12} style={{ opacity: 0.75, flexShrink: 0 }} /> {visita.endereco}
-        </div>
-      )}
-      {visita.data_hora_agendada && (
-        <div
-          style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
-            fontSize: 11,
-            color: isLight ? "#0a0b0e" : "#FFFFFF",
-            marginTop: 6,
-            letterSpacing: "0.06em",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <CalendarDays size={12} /> {fmtData(visita.data_hora_agendada)}
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-
-
-
-
-function Section({ items, onClickItem }: { items: any[]; onClickItem?: (visita: any) => void }) {
-  return (
-    <section style={{ marginBottom: 12 }}>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-        {items.map((v) => (
-          <li
-            key={v.id}
-            onClick={() => onClickItem?.(v)}
-            style={{ cursor: "pointer" }}
-          >
-            <VisitaCard visita={v} />
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }

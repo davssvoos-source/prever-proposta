@@ -267,6 +267,13 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   e **Monitoramento / Portaria** — entraram no domínio junto com as demais.
   "T.I / Técnica" do Notion vira **T.I.** aqui; "Marketing / Comercial" vira
   **Comercial**. Célula com várias equipes usa a primeira.
+- **R17** — **A Início mostra TODAS as atividades que envolvem a pessoa**, numa
+  fila só, com duas visões: lista de cards e **quadro por status**. O quadro
+  tem botões de *padrão* (Meu dia · Tudo meu · Sprint deste mês · Stand-by ·
+  Atrasados · A conferir · Sem responsável · Minha equipe) e filtros de
+  **vínculo** (responsável · apoio · eu abri), período e pessoa. Padrão filtra
+  e destaca colunas; **nunca reagrupa** — o eixo é sempre o status, senão o
+  botão vira um segundo seletor de visualização escondido.
 - **R16** — **Chamado e demanda são a mesma coisa: chamado.** Um registro só,
   com `natureza` dizendo como se executa: `campo` (a dupla se desloca, tira
   foto, colhe assinatura, gera cobrança) ou `interno` (equipe, sprint, apoio —
@@ -449,6 +456,7 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | **Fusão chamado × demanda** (U7): tabela `chamados` única com `natureza`, endereço único `/chamados/*`, rodapé com uma aba só, quadro por sprint como modo de visualização | **construído (U7)** |
 | **Aceite do cliente** (U8 — R4): pós-aprovação na visita, promoção do cliente só no aceite, correção do backfill "aprovada ⇒ ativo", funil comercial | **construído (U8)** |
 | **Pedido de compra completo** (U9 — Q6): ficha `chamado_compra`, caminho solicitado→recebido, alçada de aprovação no financeiro, alerta de pedido parado | **construído (U9)** |
+| **Home de atividades** (U10 — R17): todas as atividades do usuário numa fila só, seletor lista ↔ quadro, quadro por status, padrões de kanban e filtro por vínculo | **construído (U10)** — só código, sem migration |
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
 | API QAP contínua | aguardando dev do QAP (U11) |
 | IA no WhatsApp do SAC | futuro (U12) |

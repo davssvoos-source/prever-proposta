@@ -21,9 +21,16 @@ function carregar(rel) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const m = new Module(arq); m.filename = arq; m.paths = Module._nodeModulePaths(path.dirname(arq));
-  const req = (spec) => spec.startsWith('./') || spec.startsWith('@/')
-    ? carregar(spec.startsWith('@/') ? 'src/' + spec.slice(2) + '.ts' : path.join(path.dirname(rel), spec) + '.ts')
-    : require(spec);
+  const req = (spec) => {
+    // O cliente do Supabase usa import.meta.env, que não existe em CommonJS —
+    // e as funções aqui são puras, nenhuma toca no banco. Um esqueleto basta
+    // para o módulo que só importa o cliente por causa de um vizinho de arquivo.
+    if (spec.endsWith('integrations/supabase/client')) return { supabase: {} };
+    if (spec === 'react' || spec === '@tanstack/react-query') return new Proxy({}, { get: () => () => undefined });
+    return spec.startsWith('./') || spec.startsWith('@/')
+      ? carregar(spec.startsWith('@/') ? 'src/' + spec.slice(2) + '.ts' : path.join(path.dirname(rel), spec) + '.ts')
+      : require(spec);
+  };
   m.exports = {}; cache[arq] = m.exports;
   new Function('exports','require','module','__filename','__dirname', js)(m.exports, req, m, arq, path.dirname(arq));
   cache[arq] = m.exports; return m.exports;
@@ -110,6 +117,105 @@ eq('soma fecha exata', P.parcelar(100, 3).reduce((a, b) => a + b, 0), 100);
 eq('1000,01 em 7 fecha exato',
    Math.round(P.parcelar(1000.01, 7).reduce((a, b) => a + b, 0) * 100) / 100, 1000.01);
 eq('1 parcela = valor cheio', P.parcelar(250.5, 1), [250.5]);
+
+// ── Home: a tradução de status para coluna do quadro ────────────────────────
+// É O artefato onde teste é trivialmente lucrativo: a promessa "nada some em
+// silêncio" só é verdade se cada status cru de cada origem tiver destino, e
+// isso é uma tabela finita. Sem estas asserções a promessa é boa intenção.
+const A = carregar('src/features/atividades/modelo.ts');
+
+const chamado = (status, extra = {}) => ({
+  id: 'x', numero: 'CH-2026-0001', titulo: 't', status, natureza: 'campo', tipo: 'corretiva',
+  prioridade: 'normal', equipe: null, sprint: null, prazo_limite: null,
+  data_hora_agendada: null, responsavel_id: 'u1', aberto_por: 'u1',
+  created_at: '2026-01-01T00:00:00Z', updated_at: null, ...extra,
+});
+const visita = (status, extra = {}) => ({
+  id: 'v', status, titulo: null, nome_predio: 'Predio', tecnico_id: 'u1',
+  data_hora_agendada: null, created_at: '2026-01-01T00:00:00Z', ...extra,
+});
+
+// exaustividade: os 8 status do CHECK viram os 8 da coluna, sem sobra nem falta
+for (const st of A.COLUNAS) {
+  eq(`chamado "${st}" cai na coluna homonima`,
+     A.colunaDoChamado(chamado(st), null, false).coluna, st);
+}
+eq('status fora do CHECK nunca some — vai para sem_status',
+   A.colunaDoChamado(chamado('inventado'), null, false).coluna, 'sem_status');
+eq('e é marcado como desconhecido',
+   A.colunaDoChamado(chamado('inventado'), null, false).alerta, 'status_desconhecido');
+eq('aberto sem responsavel é sinalizado',
+   A.colunaDoChamado(chamado('aberto', { responsavel_id: null }), null, false).alerta, 'sem_responsavel');
+
+// compra: as 6 situações têm destino, e o terminal do chamado tem precedência
+const compra = (situacao, st = 'em_andamento') => A.colunaDoChamado(chamado(st), { situacao }, true);
+eq('compra solicitada → Aberto', compra('solicitado').coluna, 'aberto');
+eq('compra em cotação → Em andamento', compra('em_cotacao').coluna, 'em_andamento');
+eq('compra aprovada → Em andamento', compra('aprovado').coluna, 'em_andamento');
+eq('comprado esperando entrega → Stand-by', compra('comprado').coluna, 'stand_by');
+eq('compra recebida → Concluído', compra('recebido').coluna, 'concluido');
+eq('compra recusada → Cancelado', compra('recusado').coluna, 'cancelado');
+eq('chamado terminal manda mesmo com compra andando',
+   compra('em_cotacao', 'cancelado').coluna, 'cancelado');
+eq('gasto em mesa aparece como espera de decisão',
+   compra('solicitado', 'aguardando_aprovacao').coluna, 'aguardando_aprovacao');
+eq('e a bola fica com o financeiro',
+   compra('solicitado', 'aguardando_aprovacao').bolaCom, 'financeiro');
+eq('ficha ausente é falta de ACESSO, não de dado',
+   A.colunaDoChamado(chamado('aberto'), null, true).alerta, 'sem_acesso_ficha');
+
+// visita: cada status cru tem destino — o CHECK foi derrubado, é texto livre
+eq('visita pendente com data → Agendado',
+   A.colunaDaVisita(visita('pendente', { data_hora_agendada: '2026-03-01T10:00:00Z' })).coluna, 'agendado');
+eq('visita pendente sem data → Aberto',
+   A.colunaDaVisita(visita('pendente')).coluna, 'aberto');
+eq('visita em andamento → Em andamento',
+   A.colunaDaVisita(visita('em_andamento')).coluna, 'em_andamento');
+eq('visita aguardando o comercial → Aguardando aprovação',
+   A.colunaDaVisita(visita('aguardando_aprovacao')).coluna, 'aguardando_aprovacao');
+eq('legado "concluida" cai no mesmo lugar',
+   A.colunaDaVisita(visita('concluida')).coluna, 'aguardando_aprovacao');
+eq('aprovada sem proposta enviada → Executado (o funil parou)',
+   A.colunaDaVisita(visita('aprovada')).coluna, 'executado');
+eq('proposta com o cliente → Aguardando aprovação',
+   A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' })).coluna,
+   'aguardando_aprovacao');
+eq('e a bola é do cliente, não nossa',
+   A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' })).bolaCom,
+   'cliente');
+eq('enviada com resultado nulo não fica sem destino',
+   A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z' })).coluna,
+   'aguardando_aprovacao');
+eq('proposta aceita → Concluído',
+   A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aceita' })).coluna, 'concluido');
+eq('proposta recusada → Cancelado',
+   A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'recusada' })).coluna, 'cancelado');
+eq('reprovada volta para a fila, não vira lixo',
+   A.colunaDaVisita(visita('reprovada')).coluna, 'aberto');
+eq('e pede reagendamento', A.colunaDaVisita(visita('reprovada')).alerta, 'reagendar');
+eq('status de visita fora do vocabulario nunca some',
+   A.colunaDaVisita(visita('qualquer_coisa')).coluna, 'sem_status');
+
+// o banner conta o mesmo array que a tela mostra
+const ctxVazio = { userId: 'u1', apoios: new Set(), fichas: new Map() };
+const hojeIso = new Date(2026, 2, 10, 9, 0, 0).toISOString();
+const doDia = [
+  A.atividadeDoChamado(chamado('agendado', { data_hora_agendada: hojeIso }), ctxVazio),
+  A.atividadeDoChamado(chamado('aberto', { data_hora_agendada: '2026-12-01T10:00:00Z' }), ctxVazio),
+];
+eq('banner conta só o que é de hoje',
+   A.atividadesDeHoje(doDia, new Date(2026, 2, 10, 15, 0, 0)).length, 1);
+eq('encerrado não entra no banner',
+   A.atividadesDeHoje([A.atividadeDoChamado(chamado('concluido', { data_hora_agendada: hojeIso }), ctxVazio)],
+                      new Date(2026, 2, 10, 15, 0, 0)).length, 0);
+
+// invariante do modelo: campo não carrega equipe nem sprint
+const interno = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', equipe: 'ti', sprint: 'este_mes' }), ctxVazio);
+const campo = A.atividadeDoChamado(chamado('aberto', { natureza: 'campo', equipe: 'tecnica', sprint: 'este_mes' }), ctxVazio);
+eq('interno mantém equipe', interno.equipe, 'ti');
+eq('campo NÃO carrega equipe (equipe é NOT NULL no banco: a nulidade é do modelo)', campo.equipe, null);
+eq('campo NÃO carrega sprint', campo.sprint, null);
+eq('interno não entra na fila por prioridade', interno.prioridadeRank, 4);
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

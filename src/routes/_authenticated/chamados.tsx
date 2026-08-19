@@ -25,7 +25,7 @@ import {
   type ChamadoPrioridade,
 } from "@/lib/chamado-status";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
-import { useChamados, usePessoas, mapaDePessoas } from "@/features/chamados/data";
+import { useChamados, useChamadosRealtime, usePessoas, mapaDePessoas } from "@/features/chamados/data";
 
 export const Route = createFileRoute("/_authenticated/chamados")({
   // A trava é só da LISTA: o técnico não coordena a fila de todo mundo, mas
@@ -128,12 +128,12 @@ function ChamadosPage() {
   const { data: pessoas = [] } = usePessoas();
   const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
 
-  // realtime dos dois trilhos num canal só
+  // chamados vêm pelo hook compartilhado (canal único, com debounce);
+  // aqui sobra só a visita, que é fonte desta tela e de mais nenhuma
+  useChamadosRealtime();
   useEffect(() => {
     const canal = supabase
-      .channel("chamados-unificado")
-      .on("postgres_changes", { event: "*", schema: "public", table: "chamados" }, () =>
-        qc.invalidateQueries({ queryKey: ["chamados"] }))
+      .channel("chamados-visitas-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "visitas_tecnicas" }, () =>
         qc.invalidateQueries({ queryKey: ["chamados-visitas"] }))
       .subscribe();

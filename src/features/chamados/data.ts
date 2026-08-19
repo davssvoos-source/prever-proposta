@@ -550,18 +550,44 @@ export function mapaDePessoas(pessoas: Pessoa[] | undefined): Record<string, Pes
 
 // ── Realtime ────────────────────────────────────────────────────────────────
 
-/** Mantém a lista viva enquanto o time trabalha. */
+/**
+ * O ÚNICO canal de realtime de chamados do app. Antes desta versão ele existia
+ * e não era usado por ninguém: /chamados tinha escrito um canal inline próprio,
+ * e a Home estava prestes a abrir um terceiro na mesma tabela.
+ *
+ * Dois cuidados que não são opcionais:
+ *
+ * 1. DEBOUNCE. A policy `chamados_select` entrega TODO chamado com
+ *    natureza='interno' a qualquer autenticado — são os 537 vindos do Notion
+ *    mais o fluxo diário de todas as equipes. Sem agrupar, o técnico em campo
+ *    refaz as consultas a cada edição de qualquer demanda da empresa.
+ *
+ * 2. `chamado_compra` NÃO ENTRA AQUI. Só `public.chamados` foi adicionada à
+ *    publicação do realtime (na U7); uma inscrição em tabela fora da publicação
+ *    não dá erro — ela conecta, fica viva e nunca dispara, que é pior do que
+ *    não existir. Como toda decisão de compra também mexe no chamado pai
+ *    (decidir_pedido_compra atualiza o status), o evento de `chamados` já
+ *    cobre a compra.
+ */
 export function useChamadosRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
+    let pendente: ReturnType<typeof setTimeout> | null = null;
+    const invalidar = () => {
+      if (pendente) clearTimeout(pendente);
+      pendente = setTimeout(() => {
+        for (const k of [["chamados"], ["home-chamados"], ["chamado-compra"], ["home-compras-situacao"]]) {
+          qc.invalidateQueries({ queryKey: k });
+        }
+      }, 1200);
+    };
     const canal = supabase
-      .channel("chamados-lista")
-      .on("postgres_changes", { event: "*", schema: "public", table: "chamados" }, () => {
-        qc.invalidateQueries({ queryKey: ["chamados"] });
-      })
+      .channel("chamados-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "chamados" }, invalidar)
       .subscribe();
     return () => {
-      supabase.removeChannel(canal);
+      if (pendente) clearTimeout(pendente);
+      void supabase.removeChannel(canal);
     };
   }, [qc]);
 }

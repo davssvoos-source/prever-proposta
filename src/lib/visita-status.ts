@@ -43,6 +43,12 @@ export interface VisitaStatusInfo {
   label: string;
   labelUpper: string;
   color: string;
+  /**
+   * Par de `color` para o tema claro. Sem isto, quem monta chip de visita
+   * acaba escrevendo `light: info.color` e repete o anti-padrão nº 3 do
+   * DESIGN_SYSTEM (dourado #FFC000 sobre fundo branco não tem contraste).
+   */
+  colorLight: string;
   bg: string;
   border: string;
 }
@@ -52,6 +58,7 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
     label: "Pendente",
     labelUpper: "PENDENTE",
     color: "#FFC000",
+    colorLight: "#b87800",
     bg: "rgba(255,192,0,0.12)",
     border: "rgba(255,192,0,0.30)",
   },
@@ -59,6 +66,7 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
     label: "Aguardando aprovação",
     labelUpper: "AGUARDANDO APROVAÇÃO",
     color: "#60A5FA",
+    colorLight: "#1d4ed8",
     bg: "rgba(96,165,250,0.12)",
     border: "rgba(96,165,250,0.30)",
   },
@@ -66,6 +74,7 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
     label: "Aprovada",
     labelUpper: "APROVADA",
     color: "#34D399",
+    colorLight: "#047857",
     bg: "rgba(52,211,153,0.12)",
     border: "rgba(52,211,153,0.30)",
   },
@@ -73,6 +82,7 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
     label: "Reprovada",
     labelUpper: "REPROVADA",
     color: "#F87171",
+    colorLight: "#b91c1c",
     bg: "rgba(248,113,113,0.12)",
     border: "rgba(248,113,113,0.30)",
   },
@@ -82,6 +92,7 @@ const FALLBACK: Omit<VisitaStatusInfo, "bucket"> = {
   label: "—",
   labelUpper: "—",
   color: "#9ca3af",
+  colorLight: "#6b7280",
   bg: "rgba(156,163,175,0.10)",
   border: "rgba(156,163,175,0.25)",
 };
