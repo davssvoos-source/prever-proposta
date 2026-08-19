@@ -18,12 +18,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
-import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
+import { SPRINT_ORDEM, SPRINT_LABEL } from "@/lib/chamado-status";
 import {
-  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
-  PRIORIDADE_CORES, PRIORIDADE_LABEL, SPRINT_ORDEM, SPRINT_LABEL,
-  type ChamadoPrioridade,
-} from "@/lib/chamado-status";
+  atividadeDoChamado, atividadeDaVisita, type Atividade,
+} from "@/features/atividades/modelo";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import { useChamados, useChamadosRealtime, usePessoas, mapaDePessoas } from "@/features/chamados/data";
 
@@ -44,34 +42,17 @@ export const Route = createFileRoute("/_authenticated/chamados")({
   component: ChamadosPage,
 });
 
-// ── Modelo unificado do card ────────────────────────────────────────────────
+// ── Modelo do card ──────────────────────────────────────────────────────────
+// Vem de features/atividades — o MESMO que a Início usa. Antes esta tela tinha
+// o normalizador dela e a Home ia escrever um segundo: duas traduções de visita
+// para cor, dois cálculos de prazo, dois esquemas de id para manter em sincronia.
+// Com um só, status novo no banco é um arquivo para as duas telas.
 
 type Trilho = "campo" | "demanda" | "proposta";
 
-interface CardChamado {
-  id: string;
-  trilho: Trilho;
-  /** equipe do chamado interno — vira filtro */
-  equipe: string | null;
-  /** sprint do chamado interno — agrupa o quadro */
-  sprint: string | null;
-  titulo: string;
-  numero: string | null;
-  cliente: string | null;
-  responsavelId: string | null;
-  emAberto: boolean;
-  statusLabel: string;
-  statusCor: { dark: string; light: string; bg: string; border: string };
-  /** prioridade para ordenar (urgente=0 … baixa=3; visita fica em 4) */
-  prioridadeRank: number;
-  prioridadeLabel: string | null;
-  prioridadeCor: { dark: string; light: string; bg: string; border: string } | null;
-  /** referência de "prazo": prazo_limite do chamado, agendamento da visita */
-  prazoTexto: string | null;
-  prazoEstourado: boolean;
-  criadoEm: string;
-  atualizadoEm: string;
-  navegar: () => void;
+function trilhoDe(a: Atividade): Trilho {
+  if (a.fonte === "visita") return "proposta";
+  return a.natureza === "interno" ? "demanda" : "campo";
 }
 
 type Situacao = "abertos" | "encerrados" | "todos";
@@ -119,7 +100,8 @@ function ChamadosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
-        .select("id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, clientes(nome)")
+        .select("id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +
+                "proposta_enviada_em, proposta_resultado, clientes(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as any[]) ?? [];
@@ -144,77 +126,31 @@ function ChamadosPage() {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#b87800" : "#FFC000";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
-  const PRI_RANK: Record<string, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
 
-  // ── Normalização para o modelo unificado ──────────────────────────────────
-  const cards = useMemo<CardChamado[]>(() => {
-    const lista: CardChamado[] = [];
+  // ── Normalização ──────────────────────────────────────────────────────────
+  const cards = useMemo<Atividade[]>(() => {
+    // esta tela não lê apoio nem ficha de compra: o contexto entra vazio, e o
+    // modelo degrada com honestidade (o card marca "ficha sem acesso")
+    const ctx = { userId: null, apoios: new Set<string>(), fichas: new Map() };
+    return [
+      ...chamados.map((c) => atividadeDoChamado(c as any, ctx)),
+      ...visitas.map((v) => atividadeDaVisita(v as any, ctx)),
+    ];
+  }, [chamados, visitas]);
 
-    for (const c of chamados) {
-      const st = chamadoStatusInfo(c.status);
-      const aberto = chamadoEmAberto(c.status);
-      const interno = c.natureza === "interno";
-      const pr = PRIORIDADE_CORES[c.prioridade as ChamadoPrioridade] ?? null;
-      lista.push({
-        id: `ch-${c.id}`,
-        trilho: interno ? "demanda" : "campo",
-        equipe: interno ? c.equipe : null,
-        sprint: interno ? c.sprint : null,
-        titulo: c.titulo,
-        numero: c.numero,
-        cliente: c.cliente?.nome ?? null,
-        responsavelId: c.responsavel_id,
-        emAberto: aberto,
-        statusLabel: st.label,
-        statusCor: { dark: st.color, light: st.colorLight, bg: st.bg, border: st.border },
-        // no interno a fila é pelo prazo combinado, não por prioridade
-        prioridadeRank: interno ? 4 : PRI_RANK[c.prioridade] ?? 4,
-        prioridadeLabel: interno ? null : PRIORIDADE_LABEL[c.prioridade as ChamadoPrioridade] ?? null,
-        prioridadeCor: interno ? null : pr,
-        prazoTexto: c.prazo_limite && aberto ? textoPrazo(c.prazo_limite) : null,
-        prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
-        criadoEm: c.created_at,
-        atualizadoEm: c.updated_at ?? c.created_at,
-        navegar: () => navigate({ to: "/chamados/$id", params: { id: c.id } }),
-      });
+  function abrir(a: Atividade) {
+    if (a.fonte === "visita") {
+      const v = visitas.find((x: any) => x.id === a.registroId);
+      navigate({ ...visitaRouteFor(v?.status, a.registroId), state: { from: location.pathname } } as any);
+    } else {
+      navigate({ to: "/chamados/$id", params: { id: a.registroId } });
     }
-
-    for (const v of visitas) {
-      const info = getStatusInfo(v.status);
-      const aberto = isPendenteBucket(v.status) || isAguardandoAprovacaoBucket(v.status);
-      lista.push({
-        id: `vis-${v.id}`,
-        trilho: "proposta",
-        equipe: null,
-        sprint: null,
-        titulo: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? "Visita técnica",
-        numero: null,
-        cliente: v.clientes?.nome ?? v.nome_predio ?? null,
-        responsavelId: v.tecnico_id ?? null,
-        emAberto: aberto,
-        statusLabel: info.label,
-        statusCor: { dark: info.color, light: info.color, bg: info.bg, border: info.border },
-        prioridadeRank: 4,
-        prioridadeLabel: null,
-        prioridadeCor: null,
-        prazoTexto:
-          v.data_hora_agendada && aberto
-            ? new Date(v.data_hora_agendada).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-            : null,
-        prazoEstourado: false,
-        criadoEm: v.created_at,
-        atualizadoEm: v.created_at,
-        navegar: () =>
-          navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any),
-      });
-    }
-    return lista;
-  }, [chamados, visitas, navigate, location.pathname]);
+  }
 
   // ── Filtros ───────────────────────────────────────────────────────────────
   const equipesComItens = useMemo(() => {
     const s = new Set<string>();
-    for (const c of cards) if (c.trilho === "demanda" && c.equipe) s.add(c.equipe);
+    for (const c of cards) if (trilhoDe(c) === "demanda" && c.equipe) s.add(c.equipe);
     return Array.from(s);
   }, [cards]);
 
@@ -223,9 +159,9 @@ function ChamadosPage() {
     return cards.filter((c) => {
       if (situacao === "abertos" && !c.emAberto) return false;
       if (situacao === "encerrados" && c.emAberto) return false;
-      if (trilho === "campo" && c.trilho !== "campo") return false;
-      if (trilho === "proposta" && c.trilho !== "proposta") return false;
-      if (trilho.startsWith("eq:") && !(c.trilho === "demanda" && c.equipe === trilho.slice(3))) return false;
+      if (trilho === "campo" && trilhoDe(c) !== "campo") return false;
+      if (trilho === "proposta" && trilhoDe(c) !== "proposta") return false;
+      if (trilho.startsWith("eq:") && !(trilhoDe(c) === "demanda" && c.equipe === trilho.slice(3))) return false;
       if (responsavel !== "todos" && c.responsavelId !== responsavel) return false;
       if (!termo) return true;
       const resp = c.responsavelId ? pessoasPorId[c.responsavelId]?.nome ?? "" : "";
@@ -268,8 +204,8 @@ function ChamadosPage() {
 
   const contagens = useMemo(() => ({
     abertos: cards.filter((c) => c.emAberto).length,
-    campo: cards.filter((c) => c.trilho === "campo" && c.emAberto).length,
-    proposta: cards.filter((c) => c.trilho === "proposta" && c.emAberto).length,
+    campo: cards.filter((c) => trilhoDe(c) === "campo" && c.emAberto).length,
+    proposta: cards.filter((c) => trilhoDe(c) === "proposta" && c.emAberto).length,
   }), [cards]);
 
   const chip = (ativo: boolean): CSSProperties => ({
@@ -433,7 +369,7 @@ function ChamadosPage() {
           Propostas ({contagens.proposta})
         </button>
         {equipesComItens.map((e) => {
-          const n = cards.filter((c) => c.trilho === "demanda" && c.equipe === e && c.emAberto).length;
+          const n = cards.filter((c) => trilhoDe(c) === "demanda" && c.equipe === e && c.emAberto).length;
           return (
             <button key={e} style={chip(trilho === `eq:${e}`)} onClick={() => setTrilho(`eq:${e}`)}>
               {EQUIPE_LABEL[e as Equipe] ?? e} ({n})
@@ -482,13 +418,13 @@ function ChamadosPage() {
             </div>
           )}
           {g.itens.map((c) => {
-            const Icone = TRILHO_ICONE[c.trilho];
+            const Icone = TRILHO_ICONE[trilhoDe(c)];
             const eqc = c.equipe ? equipeCores(c.equipe) : null;
             const resp = c.responsavelId ? pessoasPorId[c.responsavelId]?.nome ?? null : null;
             return (
               <button
                 key={c.id}
-                onClick={c.navegar}
+                onClick={() => abrir(c)}
                 style={{ ...CARD, display: "block", width: "100%", textAlign: "left", cursor: "pointer" }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -499,7 +435,7 @@ function ChamadosPage() {
                     </div>
                     <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
                       {c.numero ? `${c.numero} · ` : ""}
-                      {c.trilho === "campo" ? "Campo" : c.trilho === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Interno")}
+                      {trilhoDe(c) === "campo" ? "Campo" : trilhoDe(c) === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Interno")}
                       {resp ? ` · ${resp}` : " · sem responsável"}
                     </div>
                   </div>
