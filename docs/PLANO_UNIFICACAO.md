@@ -908,3 +908,34 @@ apoio. Aborta com mensagem clara se o perfil do Erik ainda não existir.
 Residence", "Laudo técnico - Queima NoBreaks") · 5 abertas sem sprint (ex.:
 "Atualizar firmware - Draytek", "Alarme off-line") · 1 sem título · 1 com
 equipe "Dados" ("Relatório de atendimento").
+
+### U6b — Lista unificada de chamados (2026-08-18)
+
+Sem migration: só código. É a **aba 3 do SAC** (R8/R9), a primeira tela onde os
+quatro trilhos aparecem juntos.
+
+**Entregue**
+
+- **`/chamados`** — agrega OS de campo + demandas internas + visitas técnicas
+  (propostas) num modelo único de card: trilho, título, número, cliente,
+  responsável, status com as cores do trilho, prioridade (OS), prazo/agenda e
+  o link para a página certa de cada um. Realtime nos três registros.
+- **Filtros**: situação (em aberto / encerrados / todos), trilho (campo,
+  propostas e as equipes de demanda que tiverem itens), responsável (todas as
+  pessoas) e busca por número/título/cliente/responsável.
+- **Ordenação** (o "ícone para ordenar" da R8), 5 critérios: mais recentes ·
+  prazo mais apertado (estourados primeiro) · prioridade · cliente A→Z ·
+  última atualização.
+- **Acesso**: admin, comercial e SAC (`beforeLoad`). A aba "Chamados" do SAC
+  aponta para cá; admin/comercial chegam pelo botão novo na lista de campo
+  (`/os`). Renderiza até 200 cards por vez, com aviso para refinar.
+
+**Decisões da execução**
+
+1. A tela **agrega, não substitui**: nenhum fluxo mudou de lugar — o card leva
+   para `/os/$id`, `/demandas/$id` ou o fluxo da visita.
+2. "Encerrado" por trilho: OS fechada/cancelada · demanda concluída/cancelada ·
+   visita aprovada/reprovada (aprovação interna encerra o CHAMADO de proposta;
+   o funil comercial pós-aprovação é assunto do R4, na fila).
+3. A ordenação por prazo põe **estourados primeiro**, depois quem tem prazo,
+   sem prazo por último — é a fila de cobrança natural do SAC.

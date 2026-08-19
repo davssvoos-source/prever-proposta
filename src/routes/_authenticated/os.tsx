@@ -124,6 +124,19 @@ function OsListaPage() {
               <BarChart3 size={17} color={gold} />
             </button>
             <button
+              onClick={() => navigate({ to: "/chamados" })}
+              title="Todos os chamados (os quatro trilhos)"
+              style={{
+                width: 42, height: 42, borderRadius: 12,
+                background: isLight ? "#ffffff" : "#191921",
+                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              <ClipboardList size={17} color={gold} />
+            </button>
+            <button
               onClick={() => navigate({ to: "/os/programacao" })}
               title="Programação da equipe"
               style={{

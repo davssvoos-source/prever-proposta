@@ -26,7 +26,8 @@ export function BottomNav() {
         ? [
             { to: "/dashboard", label: "Início", icon: Home },
             { to: "/calendario", label: "Calendário", icon: Calendar },
-            { to: "/os", label: "Chamados", icon: Wrench },
+            // a aba 3 do SAC (R8): a lista unificada dos quatro trilhos
+            { to: "/chamados", label: "Chamados", icon: Wrench },
             { to: "/demandas", label: "Demandas", icon: KanbanSquare },
             { to: "/perfil", label: "Perfil", icon: User },
           ]
@@ -79,6 +80,7 @@ export function BottomNav() {
             (item.to === "/dashboard" && pathname === "/") ||
             (item.to === "/gerencial" && pathname.startsWith("/gerencial")) ||
             (item.to === "/demandas" && pathname.startsWith("/demandas")) ||
+            (item.to === "/chamados" && pathname.startsWith("/chamados")) ||
             (item.to === "/os" && pathname.startsWith("/os"));
           const Icon = item.icon;
           const color = active ? activeColor : inactiveColor;
