@@ -359,6 +359,12 @@ exportável) para conciliar `cliente_equipamento_unidades`; chaves naturais
 `qap_unidade_id`/`qap_modelo_codigo`/`qap_cliente_id` reservadas — a fase 2
 vira um de-para, não uma migração.
 
+> **Atualização 2026-08-18:** o Davi consegue **puxar pela API do QAP** os
+> clientes, o estoque e os equipamentos por cliente. A fase 1 deixa de ser
+> "ponte humana às cegas" e vira **importação de dados reais** (etapa U7). O
+> pedido formal ao dev (fase 2) segue valendo para a parte contínua:
+> movimentação via POST, delta e lookup em campo.
+
 **Fase 2 — o pedido ao dev do QAP** (a lista pronta para "o momento certo"):
 
 1. `GET` **clientes** (id estável, nome, CNPJ/CPF, endereço, responsável) —
@@ -411,9 +417,10 @@ código → tsc → commit.
 | **U3** | **OS de campo completa** (mata o SIGMA) | `os_pecas` com direção + `cliente_equipamento_unidades`; tela de programação do Vinicius (agenda por dupla, prioridades); recibo PDF ajustado; automação 5 | U0 (U2 recomendada) |
 | **U4** | **Motor de cobrança** | matching/valoração/períodos portados com testes; análise de cobertura (pré-match + IA em server function); tela de conferência; `cobrancas` + RPC de aprovação; migração dos dados do gestor-os | U2, U3 |
 | **U5** | **Fechamentos** | `fechamentos` + RPCs; CSV `;`+BOM; PDF (instalações × manutenções, subtotal por cliente com CNPJ); automações 6–7; lançamento manual com parcelamento | U4 |
-| **U6** | **Ponte QAP fase 1** | relatório de movimentações para o Gilleno; conciliação de unidades por import; automação 9 | U3 |
-| **U7** | **API QAP fase 2** | de-para de modelos; consulta de unidades/estoque; POST de movimentação com referência à OS | U6 + pedido ao dev (§8) |
-| **U8** | **IA no WhatsApp** | leitura das mensagens SAC/portaria → sugestão de OS | núcleo estável + decisões §9 |
+| **U6** | **Perfis e o chamado unificado (SAC)** | papel `sac` (+ decisão sobre o papel do Vinicius); painel, calendário geral e lista de chamados do SAC; trilhos do chamado (campo/TI/patrimônio/proposta); tipo `operacional` na OS e `pedido_compra` nas demandas; técnico com 3 abas; ciclo da proposta com aceite do cliente (R4) | U0–U5 + respostas do PRODUTO.md §8 |
+| **U7** | **Integração QAP — import** | import de clientes (CNPJ, `qap_cliente_id`, correção de `situacao`), estoque e equipamentos por cliente; conciliação com o as-built; relatório de movimentações p/ Gilleno; automação 9 | U3 + export do QAP (Davi puxa pela API) |
+| **U8** | **API QAP contínua** | de-para de modelos; consulta de unidades/estoque; POST de movimentação com referência à OS; delta | U7 + pedido ao dev (§8) |
+| **U9** | **IA no WhatsApp** | leitura das mensagens SAC/portaria → sugestão de chamado | núcleo estável + conversas do SAC + decisões §9 |
 
 Paralelismo: U1 e U2 podem andar juntas (não se tocam); U3 depois de U2 para a
 OS já nascer vinculada ao contrato. O desligamento do Notion acontece ao fim de
@@ -422,6 +429,9 @@ completo (programar → executar → conferir → fechar → enviar ao financeir
 no app.
 
 ## 11. Questões em aberto
+
+> **A lista viva e consolidada mudou de casa: PRODUTO.md §8.** Os itens abaixo
+> ficam como registro histórico; o que segue em aberto foi reescrito lá.
 
 1. **CNPJ dos clientes** (U0): a fonte é o QAP (todos os clientes estão lá).
    Resta saber se o QAP **exporta** a lista de clientes hoje (relatório/CSV) —
@@ -781,3 +791,37 @@ para o financeiro**. Com isto o gestor-os pode ser desligado.
    ali que o Vinicius já está quando lembra da mensalidade.
 5. **Parcelas caem em competências seguintes** (mês a mês), com a divisão em
    centavos e o resto na primeira.
+
+### Ajuste de rumo — decisões de produto (2026-08-18)
+
+Conversa de produto com o Davi mudou o modo de trabalho e corrigiu premissas.
+A especificação completa foi para o **docs/PRODUTO.md** (novo documento mestre
+do produto, com as regras numeradas R1–R10 e as questões consolidadas no §8).
+Resumo do que muda aqui:
+
+1. **Novo modo de trabalho**: o Davi dita funções/regras/estrutura → tudo é
+   organizado no PRODUTO.md → implementação vem depois, gradual e revisada.
+2. **O SAC é um pilar** que faltava: gestor (não técnico) com 3 abas — painel
+   de chamados com dashboards e filtros, calendário geral de todos os técnicos
+   e lista de cards de todos os chamados. Vira a etapa **U6**.
+3. **Chamado unificado**: o SAC abre chamados de quatro trilhos — campo
+   (ordens_servico, agora também tipo `operacional`), T.I (demandas),
+   Controle Patrimonial (demandas tipo `pedido_compra`; Gilleno usa perfil de
+   técnico) e proposta (visitas_tecnicas).
+4. **Correção importante (R4): visita aprovada ≠ cliente.** A aprovação do
+   comercial é interna; quem aceita ou recusa a proposta é o CLIENTE. O
+   backfill da Etapa 1 (visita aprovada → situacao ativo), a sugestão da tela
+   de consolidação, o gatilho do botão de implantação e o elo
+   `origem_proposta_id` do contrato serão corrigidos para o **aceite**.
+   O modelo ganha `proposta_enviada_em` / `proposta_resultado` /
+   `proposta_resultado_em` na visita.
+5. **Técnico passa a 3 abas** (Home com os cards, Agenda, Perfil) — os
+   chamados saem da barra e entram na Home.
+6. **QAP**: o Davi puxa clientes, estoque e equipamentos por cliente pela API.
+   O roadmap final ficou U6 perfis/SAC → U7 import QAP → U8 API contínua →
+   U9 IA no WhatsApp.
+7. **Nada foi implementado nesta rodada** — por decisão: primeiro o Davi
+   responde as questões do PRODUTO.md §8, depois a U6 começa.
+
+**Insumos aguardados**: conversas do SAC (export), export do QAP via API,
+CSV do Notion, base do gestor-os.
