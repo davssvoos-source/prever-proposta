@@ -40,17 +40,19 @@ const L = {
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
-type CargoId = "tecnico" | "comercial" | "admin";
+type CargoId = "tecnico" | "sac" | "comercial" | "admin";
 
 const CARGO_LIGHT: Record<string, { color: string; bg: string; border: string }> = {
   tecnico:   { color: "#15803d", bg: "#dcfce7", border: "1px solid #bbf7d0" },
+  sac:       { color: "#6d28d9", bg: "#ede9fe", border: "1px solid #ddd6fe" },
   comercial: { color: "#1d4ed8", bg: "#dbeafe", border: "1px solid #bfdbfe" },
   admin:     { color: "#b45309", bg: "#fef3c7", border: "1px solid #fde68a" },
 };
 
 const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
-  tecnico:   { label: "Técnico",   color: "#34D399", desc: "Acessa apenas visitas atribuídas a ele" },
-  comercial: { label: "Comercial", color: "#60A5FA", desc: "Acessa painel gerencial e todas as visitas" },
+  tecnico:   { label: "Técnico",   color: "#34D399", desc: "Executa o que está atribuído a ele (3 abas)" },
+  sac:       { label: "SAC",       color: "#A78BFA", desc: "Gestor de chamados — abre e acompanha tudo, não vê valores" },
+  comercial: { label: "Comercial", color: "#60A5FA", desc: "Gestor que vê valores: propostas, contratos e fechamentos" },
   admin:     { label: "Admin",     color: "#F87171", desc: "Acesso total + gerenciamento de usuários" },
 };
 

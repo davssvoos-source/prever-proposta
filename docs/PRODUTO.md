@@ -34,12 +34,26 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
 
 ### 2.1 Os papéis
 
-| Papel | Quem é | Resumo |
+| Papel | Vê valores? | Resumo |
+|---|:-:|---|
+| **Admin** | ✅ | **Tudo.** Todas as telas, todas as ações, gestão de usuários. |
+| **Comercial** | ✅ | Gestor **que vê valores** e aprova visita técnica para fazer propostas. Contratos, cobrança, fechamentos. **Não é técnico.** |
+| **SAC** | ❌ | Gestor de chamados — **não vê valores**. Recebe, abre, tria e acompanha chamados de todos os trilhos. **Não é técnico.** |
+| **Técnico** | ❌ | Executa o que está atribuído a ele. Perfil enxuto de 3 abas. |
+
+**Quem é quem** (definido em 2026-08-18):
+
+| Pessoa | Papel | Equipe |
 |---|---|---|
-| **Admin** | Davi | **Tudo.** Todas as telas, todas as ações, gestão de usuários. |
-| **Comercial** | time comercial | Gestor. Aprova visitas, prepara e envia propostas, contratos, financeiro. **Não é técnico** — não executa OS. |
-| **SAC** | atendentes do SAC | Gestor de chamados. Recebe, abre, tria e acompanha chamados de todos os trilhos. Coordena, planeja, programa — **não é técnico**, não executa. |
-| **Técnico** | técnicos de orçamento, duplas de campo, Controle Patrimonial | Executa o que está atribuído a ele. Perfil enxuto de 3 abas. |
+| Davi | **Admin** | — |
+| Vinicius | **Admin** | Técnica (coordenação) |
+| Atendentes do SAC | **SAC** | — |
+| Time comercial | **Comercial** | Comercial |
+| Gilleno | **Técnico** | Controle Patrimonial |
+| Nicholas | **Técnico** | T.I |
+| Erik | **Técnico** | T.I |
+| Breno | **Técnico** | ❓ (confirmar equipe) |
+| Duplas de campo | **Técnico** | Técnica |
 
 - **Gestor não é técnico**: gestor coordena, planeja e programa as atividades
   dos outros (R1).
@@ -63,7 +77,7 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
 | Visitas / propostas (gerencial) | ✅ | ✅ | — | as suas |
 | Demandas internas (quadro) | ✅ | ✅ | ✅ | as suas |
 | Contratos | ✅ | ✅ | — | — |
-| Cobrança e fechamentos (valores) | ✅ | ✅ | ❓ (proposta: não) | — |
+| Cobrança e fechamentos (valores) | ✅ | ✅ | **❌ (decidido)** | — |
 | Clientes (cadastro) | ✅ | ✅ | leitura | leitura |
 | Usuários | ✅ | — | — | — |
 
@@ -140,13 +154,23 @@ trilhos juntos.
 
 | Aba | Conteúdo |
 |---|---|
-| **Home** | Cards do trabalho dele: visitas técnicas atribuídas, chamados de campo atribuídos e demandas em que é responsável — tudo numa fila só, ordenada por data/prazo. |
+| **Home** | Topo: **"Você tem X chamados hoje"** (R11). Abaixo, cards do trabalho dele: visitas técnicas atribuídas, chamados de campo e demandas em que é responsável — tudo numa fila só, ordenada por data/prazo. |
 | **Agenda** | O calendário só com o que é dele. |
 | **Perfil** | Dados, tema, sair. |
 
-Muda em relação a hoje: a barra do técnico tem 4 itens (Início, Calendário,
-Chamados, Perfil) — passa a 3, com os chamados dentro da Home. O Controle
-Patrimonial vê a mesma coisa; a fila dele são os pedidos de compra.
+- **R11** — o contador do topo soma tudo que é dele com data para hoje (visitas
+  agendadas, chamados agendados, o que está em atendimento agora e demandas com
+  prazo hoje). **Visita técnica conta como chamado** nesse número.
+- **R12** — no perfil do técnico, a visita técnica para proposta comercial é
+  **tratada como um chamado** (mesmo card, mesma fila); ao **iniciar**, ela
+  leva para o fluxo de montagem do orçamento que já existe. O trilho por trás
+  não muda — muda a apresentação.
+
+Muda em relação a hoje: a barra do técnico tinha 4–5 itens (Início, Calendário,
+Chamados, Demandas, Perfil) — passa a 3, com chamados e demandas dentro da
+Home. O Controle Patrimonial vê a mesma coisa; a fila dele são os pedidos de
+compra. O quadro completo de demandas passa a ser tela de gestor; o técnico
+chega ao detalhe da demanda pelo card da Home.
 
 ### 4.3 Comercial
 
@@ -223,47 +247,54 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   de proposta (visita técnica → proposta → decisão do cliente).
 - **R10** — Clientes e equipamentos (estoque e por cliente) vêm do QAP via
   API; o resto é centralizado no app.
+- **R11** — A Home do técnico abre com **"Você tem X chamados hoje"** no topo.
+- **R12** — Para o técnico, a visita técnica de proposta é um chamado como os
+  outros; iniciar a visita leva ao fluxo de montagem do orçamento existente.
+- **R13** — Papéis definidos: Davi e Vinicius são **Admin**; Gilleno, Nicholas,
+  Erik e Breno são **Técnicos**; o SAC é **gestor que não vê valores**; o
+  Comercial é **gestor que vê valores** e aprova visitas para fazer propostas.
 
 ## 8. Questões em aberto — para responder de uma vez
 
+**Respondidas em 2026-08-18** (viraram a R13): ~~papel do Vinicius~~ → admin;
+~~SAC vê valores?~~ → não.
+
 **Papéis e permissões**
-1. **Papel do Vinicius** (coordena a técnica, programa as duplas, decide
-   cobrança): admin, comercial, ou criamos um papel `gestor`? Ele precisa ver
-   valores (cobrança/fechamentos).
-2. **SAC vê valores?** Proposta: **não** — SAC coordena chamados, mas cobrança
-   e fechamentos ficam com admin + comercial (e Vinicius). Confirma?
-3. **SAC programa técnicos?** (tela `/os/programacao`) Ou só abre/acompanha e a
-   programação fica com o Vinicius?
-4. **SAC confere e fecha OS?** Hoje fechar é do gestor. O SAC fecha, ou avisa e
-   quem fecha é Vinicius/comercial?
-5. **Técnico pode abrir chamado?** (pergunta herdada da etapa 3 — hoje só
+1. **Equipe do Breno**: Técnica (campo), T.I ou outra?
+2. **SAC programa técnicos?** (tela `/os/programacao`) Ou só abre/acompanha e a
+   programação fica com o Vinicius? *(enquanto não responde: SAC não vê a
+   programação)*
+3. **SAC confere e fecha OS?** Hoje fechar é do gestor. O SAC fecha, ou avisa e
+   quem fecha é Vinicius/admin? *(enquanto não responde: o botão de fechar
+   aparece para o SAC, já que é gestor)*
+4. **Técnico pode abrir chamado?** (pergunta herdada da etapa 3 — hoje só
    gestor abre.)
 
 **Chamado unificado**
-6. Chamado de **proposta**: o SAC já agenda a visita (escolhe técnico de
+5. Chamado de **proposta**: o SAC já agenda a visita (escolhe técnico de
    orçamento e data), ou só registra o pedido e o comercial agenda?
-7. **Pedido de compra**: precisa de campos próprios? (fornecedor sugerido,
+6. **Pedido de compra**: precisa de campos próprios? (fornecedor sugerido,
    valor estimado, link do produto, quem aprova a compra?)
-8. Chamado **operacional** de campo tem SLA? (proposta: usa o padrão "normal",
+7. Chamado **operacional** de campo tem SLA? (proposta: usa o padrão "normal",
    72h, editável no os_sla.)
-9. A **ordenação** da lista do SAC (recentes / prazo / prioridade / cliente /
+8. A **ordenação** da lista do SAC (recentes / prazo / prioridade / cliente /
    última atualização) — está bom esse conjunto?
 
 **Ciclo comercial**
-10. O registro do **aceite do cliente** (proposta aceita/recusada + datas) no
-    modelo da visita — confirma? Quer registrar também o motivo da recusa?
+9. O registro do **aceite do cliente** (proposta aceita/recusada + datas) no
+   modelo da visita — confirma? Quer registrar também o motivo da recusa?
 
 **Insumos aguardados**
-11. **Conversas do SAC** (export do WhatsApp) — para eu ler, interpretar os
+10. **Conversas do SAC** (export do WhatsApp) — para eu ler, interpretar os
     padrões de demanda e refinar o chamado (e alimentar a futura IA, U9).
-12. **Export do QAP via API** — clientes + estoque + equipamentos por cliente.
+11. **Export do QAP via API** — clientes + estoque + equipamentos por cliente.
     Em que formato vem (JSON/CSV)? Assim que chegar, desenho a importação.
-13. **Export do Notion** (CSV) — para a importação de demandas já construída.
-14. **Base do gestor-os** — contratos/cobranças históricos para migrar (U4
+12. **Export do Notion** (CSV) — para a importação de demandas já construída.
+13. **Base do gestor-os** — contratos/cobranças históricos para migrar (U4
     pendente).
 
 **Herdadas**
-15. Alcance de notificação com o app fechado (FCM × WhatsApp/e-mail) — §10.6
+14. Alcance de notificação com o app fechado (FCM × WhatsApp/e-mail) — §10.6
     do SISTEMA_OS; fica mais urgente com o SAC operando dentro do app.
 
 ## 9. Estado de implementação
@@ -271,7 +302,8 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 | Módulo | Estado |
 |---|---|
 | Propostas/orçamento, OS de campo (etapas 0–6), demandas, contratos, cobrança, fechamentos | construídos (U0–U5) |
-| Papel SAC, chamado unificado, painel/calendário/lista do SAC, técnico com 3 abas, tipo operacional, pedido de compra, aceite do cliente | **especificados aqui — a implementar (U6)** |
+| Papel SAC (banco + gestão de usuários), técnico com 3 abas e "Você tem X chamados hoje" | **construído (U6a)** |
+| Chamado unificado, painel/calendário/lista do SAC, tipo operacional, pedido de compra, aceite do cliente | especificados — próximos passos da U6 |
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U7) |
 | API QAP contínua | aguardando dev do QAP (U8) |
 | IA no WhatsApp do SAC | futuro (U9) |

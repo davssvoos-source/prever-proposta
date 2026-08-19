@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar, Wrench } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock, XCircle, MapPin, CalendarRange, CalendarCheck, UserRound, ChevronDown, CheckCircle, AlarmClock, Calendar, ClipboardList, Wrench } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
@@ -9,6 +9,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
 import { osStatusInfo, situacaoPrazo } from "@/lib/os-status";
+import { demandaStatusInfo } from "@/lib/demanda-status";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -107,7 +108,9 @@ function Dashboard() {
     },
   });
 
-  const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial";
+  // admin/comercial/sac veem a visão de gestor; técnico vê só o que é dele
+  const isAdmin = perfil?.cargo === "admin" || perfil?.cargo === "comercial" || perfil?.cargo === "sac";
+  const isTecnico = perfil?.cargo === "tecnico";
 
   const { data: listaTecnicos } = useQuery({
     queryKey: ['tecnicos'],
@@ -181,6 +184,40 @@ function Dashboard() {
     },
   });
 
+  // ── Fila do técnico (R7/R11/R12): chamados de campo e demandas dele viraram
+  // cards da Home — as abas próprias saíram da barra. A RLS limita as OS às
+  // dele; as demandas são filtradas por responsável aqui.
+  const { data: chamadosTecnico = [] } = useQuery({
+    queryKey: ["dashboard-chamados-tecnico"],
+    enabled: isTecnico,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ordens_servico" as any)
+        .select("id, numero, titulo, status, tipo, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
+        .in("status", ["aberta", "agendada", "em_atendimento", "executada"])
+        .order("data_hora_agendada", { ascending: true, nullsFirst: false });
+      if (error) throw error;
+      return (data as any[]) ?? [];
+    },
+  });
+
+  const { data: demandasTecnico = [] } = useQuery({
+    queryKey: ["dashboard-demandas-tecnico"],
+    enabled: isTecnico,
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("demandas" as any)
+        .select("id, numero, titulo, status, tipo, equipe, prazo, sprint")
+        .eq("responsavel_id", user.id)
+        .in("status", ["nao_iniciada", "em_andamento", "stand_by", "aguardando_aprovacao"])
+        .order("prazo", { ascending: true, nullsFirst: false });
+      if (error) return [];
+      return (data as any[]) ?? [];
+    },
+  });
+
   // Filtro de período
   const now = new Date();
   const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
@@ -227,6 +264,19 @@ function Dashboard() {
     const d = new Date(v.data_hora_agendada);
     return d >= startOfDay && d <= endOfDay;
   });
+
+  // R11: "Você tem X chamados hoje" — para o técnico, visita É chamado.
+  // Conta: visitas de hoje + OS agendadas para hoje ou em atendimento agora
+  // + demandas com prazo hoje.
+  const hojeIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const osHoje = chamadosTecnico.filter((o: any) => {
+    if (o.status === "em_atendimento") return true;
+    if (!o.data_hora_agendada) return false;
+    const d = new Date(o.data_hora_agendada);
+    return d >= startOfDay && d <= endOfDay;
+  });
+  const demandasHoje = demandasTecnico.filter((d: any) => (d.prazo ?? "") === hojeIso);
+  const chamadosHoje = visitasHoje.length + osHoje.length + demandasHoje.length;
 
   const agoraMs = Date.now();
   const proximaVisita = visitas
@@ -331,7 +381,9 @@ function Dashboard() {
             textShadow: '0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)',
           }}
         >
-          Você tem {visitasHoje.length} {visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.
+          {isTecnico
+            ? `Você tem ${chamadosHoje} ${chamadosHoje === 1 ? 'chamado' : 'chamados'} hoje.`
+            : `Você tem ${visitasHoje.length} ${visitasHoje.length === 1 ? 'visita' : 'visitas'} hoje.`}
         </h2>
       </div>
 
@@ -496,8 +548,128 @@ function Dashboard() {
 
         )}
 
-        {/* ═══ CARD PRÓXIMO CHAMADO ═══ */}
-        {proximoChamado && (
+        {/* ═══ FILA DO TÉCNICO (R7): chamados de campo + demandas na Home ═══ */}
+        {isTecnico && chamadosTecnico.length > 0 && (
+          <div>
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+                letterSpacing: "0.16em", textTransform: "uppercase",
+                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                marginBottom: 8,
+              }}
+            >
+              Seus chamados ({chamadosTecnico.length})
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {chamadosTecnico.map((o: any) => {
+                const st = osStatusInfo(o.status);
+                const atrasado = situacaoPrazo(o.prazo_limite, o.status) === "estourado";
+                return (
+                  <div
+                    key={o.id}
+                    onClick={() => navigate({ to: "/os/$id", params: { id: o.id } })}
+                    style={{
+                      ...GLASS,
+                      padding: "13px 15px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      borderLeft: `3px solid ${isLight ? st.colorLight : st.color}`,
+                    }}
+                  >
+                    <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+                          color: isLight ? "#0a0b0e" : "#fff",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}
+                      >
+                        {o.titulo}
+                      </div>
+                      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+                        {o.numero} · {o.cliente?.nome ?? "cliente"}
+                        {o.data_hora_agendada
+                          ? ` · ${fmtData(o.data_hora_agendada)}`
+                          : " · sem agendamento"}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        flexShrink: 0, padding: "3px 9px", borderRadius: 999,
+                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        color: atrasado ? (isLight ? "#b91c1c" : "#F87171") : (isLight ? st.colorLight : st.color),
+                        background: st.bg, border: `1px solid ${st.border}`,
+                      }}
+                    >
+                      {atrasado ? "atrasado" : st.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {isTecnico && demandasTecnico.length > 0 && (
+          <div>
+            <div
+              style={{
+                fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+                letterSpacing: "0.16em", textTransform: "uppercase",
+                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                marginBottom: 8,
+              }}
+            >
+              Suas demandas ({demandasTecnico.length})
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {demandasTecnico.map((d: any) => (
+                <div
+                  key={d.id}
+                  onClick={() => navigate({ to: "/demandas/$id", params: { id: d.id } })}
+                  style={{ ...GLASS, padding: "13px 15px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+                >
+                  <ClipboardList size={17} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+                        color: isLight ? "#0a0b0e" : "#fff",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                    >
+                      {d.titulo}
+                    </div>
+                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+                      {d.numero}
+                      {d.prazo ? ` · prazo ${d.prazo.split("-").reverse().join("/")}` : " · sem prazo"}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      flexShrink: 0, padding: "3px 9px", borderRadius: 999,
+                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                      letterSpacing: "0.06em", textTransform: "uppercase",
+                      color: isLight ? demandaStatusInfo(d.status).colorLight : demandaStatusInfo(d.status).color,
+                      background: demandaStatusInfo(d.status).bg,
+                      border: `1px solid ${demandaStatusInfo(d.status).border}`,
+                    }}
+                  >
+                    {demandaStatusInfo(d.status).label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CARD PRÓXIMO CHAMADO (visão do gestor) ═══ */}
+        {!isTecnico && proximoChamado && (
           <div
             onClick={() => navigate({ to: "/os/$id", params: { id: proximoChamado.id } })}
             style={{

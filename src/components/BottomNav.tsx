@@ -1,37 +1,40 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Calendar, ClipboardList, KanbanSquare, User, Wrench } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
-import { useMinhaEquipe } from "@/features/demandas/data";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: cargo } = useUserCargo();
-  const { data: equipe } = useMinhaEquipe();
   const { isLight } = useTheme();
-  const isAdmin = cargo === "admin";
-  // Demandas é o quadro interno (Etapa U1): quem tem equipe trabalha nele.
-  // Técnico de campo sem equipe continua com a barra enxuta de sempre.
-  const veDemandas = isAdmin || (!!equipe && equipe !== "tecnica");
 
-  // "Chamados" (ordens de serviço) é o acesso do técnico ao trabalho de
-  // manutenção; o gestor também precisa dele para acompanhar a fila.
-  const items = isAdmin
-    ? [
-        { to: "/dashboard", label: "Início", icon: Home },
-        { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/os", label: "Chamados", icon: Wrench },
-        { to: "/demandas", label: "Demandas", icon: KanbanSquare },
-        { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
-        { to: "/perfil", label: "Perfil", icon: User },
-      ]
-    : [
-        { to: "/dashboard", label: "Início", icon: Home },
-        { to: "/calendario", label: "Calendário", icon: Calendar },
-        { to: "/os", label: "Chamados", icon: Wrench },
-        ...(veDemandas ? [{ to: "/demandas", label: "Demandas", icon: KanbanSquare }] : []),
-        { to: "/perfil", label: "Perfil", icon: User },
-      ];
+  // Barras por perfil (PRODUTO.md §4):
+  //  admin/comercial → gestão completa
+  //  sac             → gestor de chamados, sem gerencial e sem financeiro
+  //  técnico (R7)    → 3 abas; chamados e demandas dele vivem na Home
+  const items =
+    cargo === "admin"
+      ? [
+          { to: "/dashboard", label: "Início", icon: Home },
+          { to: "/calendario", label: "Calendário", icon: Calendar },
+          { to: "/os", label: "Chamados", icon: Wrench },
+          { to: "/demandas", label: "Demandas", icon: KanbanSquare },
+          { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
+          { to: "/perfil", label: "Perfil", icon: User },
+        ]
+      : cargo === "sac"
+        ? [
+            { to: "/dashboard", label: "Início", icon: Home },
+            { to: "/calendario", label: "Calendário", icon: Calendar },
+            { to: "/os", label: "Chamados", icon: Wrench },
+            { to: "/demandas", label: "Demandas", icon: KanbanSquare },
+            { to: "/perfil", label: "Perfil", icon: User },
+          ]
+        : [
+            { to: "/dashboard", label: "Início", icon: Home },
+            { to: "/calendario", label: "Agenda", icon: Calendar },
+            { to: "/perfil", label: "Perfil", icon: User },
+          ];
 
   // com 6 itens a pílula precisa apertar para caber na largura do celular
   const apertado = items.length > 5;

@@ -825,3 +825,42 @@ Resumo do que muda aqui:
 
 **Insumos aguardados**: conversas do SAC (export), export do QAP via API,
 CSV do Notion, base do gestor-os.
+
+### U6a — Papel SAC + Home do técnico (2026-08-18)
+
+Primeira fatia da U6, destravada pelas respostas do Davi (PRODUTO.md R13):
+Davi e Vinicius admins; Gilleno, Nicholas, Erik e Breno técnicos; SAC é gestor
+**sem valores**; Comercial é gestor **com valores**.
+
+**Migration:** `supabase/migrations/20260818230000_u6a_papel_sac.sql`.
+
+| O quê | Detalhe |
+|---|---|
+| enum `app_role` + CHECK de cargo | ganham `'sac'`. Cuidado respeitado: o valor novo de enum não é usado na mesma transação (regra do PG 12+) — nada no script faz cast para `app_role`. |
+| `is_gestor()` | passa a incluir `sac` (operação: abrir/acompanhar chamados, editar demandas…). |
+| **`pode_ver_financeiro()`** | **deixa de delegar para `is_gestor()`**: agora só admin+comercial. É a costura deixada pronta na U0 sendo usada — contratos, cobranças, fechamentos, análise e o bucket de contratos ficaram fechados para o SAC numa única mudança. |
+| `handle_new_user()` | aceita convite com cargo `sac`. |
+
+**App**
+
+- `useUserCargo` agora devolve `admin | sac | tecnico`; novo hook
+  `useVeFinanceiro` (admin/comercial) espelha a régua do banco na interface.
+- `useIsGerente` inclui o SAC (gestor operacional).
+- **BottomNav por perfil**: admin 6 itens; **SAC 5** (Início, Calendário,
+  Chamados, Demandas, Perfil — sem Gerencial e sem financeiro); **técnico 3**
+  (Início, **Agenda**, Perfil — R7): Chamados e Demandas saíram da barra dele.
+- **Home do técnico (R11/R12)**: banner passa a "**Você tem X chamados
+  hoje**" — soma visitas de hoje + OS agendadas p/ hoje ou em atendimento +
+  demandas com prazo hoje (visita conta como chamado). Abaixo, a fila dele:
+  seções "Seus chamados" (OS em aberto) e "Suas demandas", cards que levam
+  direto ao fluxo de cada trilho — visita continua abrindo o fluxo de
+  orçamento existente.
+- Card de Cobrança na OS e card de Contratos na ficha do cliente passaram de
+  `isGerente` para `veFinanceiro` (senão o SAC veria cascas vazias).
+- `/gerencial/usuarios` ganhou o cargo **SAC** (convite e edição); o convite
+  (`convites.functions.ts`) aceita o cargo novo.
+
+**Decisões da execução**: enquanto as questões 2–3 do PRODUTO.md §8 não são
+respondidas, o SAC **não** vê a tela de programação (`beforeLoad` continua
+admin/comercial) e **vê** o botão de conferir/fechar (é gestor). Fáceis de
+inverter depois.

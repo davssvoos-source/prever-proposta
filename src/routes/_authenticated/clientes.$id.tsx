@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Building2, FileText, MapPin, Pencil, Phone, Mail, Users, CalendarDays, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useIsGerente } from "@/features/gerencial/data";
+import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
 import { TIPO_LABEL } from "@/features/gerencial/constants";
 import { getStatusInfo } from "@/lib/visita-status";
 import { visitaRouteFor } from "@/lib/visita-route";
@@ -39,6 +39,7 @@ function ClienteDetalhePage() {
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
+  const { data: veFinanceiro = false } = useVeFinanceiro();
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
   const { data: ordens = [] } = useOrdensDoCliente(id);
@@ -281,9 +282,9 @@ function ClienteDetalhePage() {
           {/* Inventário (as-built) — Etapa 2 */}
           <InventarioCliente clienteId={id} podeEditar={true} />
 
-          {/* Contratos — Etapa U2. Só quem enxerga financeiro: a RLS já barra,
-              mas mostrar um card vazio ao técnico só confundiria. */}
-          {isGerente && (
+          {/* Contratos — Etapa U2. Só quem enxerga financeiro (admin/comercial):
+              a RLS já barra, e o card seria eternamente vazio para SAC/técnico. */}
+          {veFinanceiro && (
             <div style={CARD}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <FileText size={15} color={gold} />

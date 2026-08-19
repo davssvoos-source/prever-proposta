@@ -44,6 +44,7 @@ export function useVisitasGerencial() {
   return useQuery({ queryKey: ["visitas-gerencial"], queryFn: fetchVisitasGerencial });
 }
 
+/** Gestor OPERACIONAL: admin, comercial e SAC (PRODUTO.md R1/R13). */
 export function useIsGerente() {
   return useQuery({
     queryKey: ["is-gerente"],
@@ -54,16 +55,43 @@ export function useIsGerente() {
         supabase.from("user_roles").select("role").eq("user_id", u.user.id),
         supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
       ]);
+      const gestores = ["admin", "comercial", "sac"];
       const roleStrs = (roles ?? []).map((r) => r.role as string);
-      if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return true;
-      const c = profile?.cargo ?? "";
-      return c === "admin" || c === "comercial";
+      if (roleStrs.some((r) => gestores.includes(r))) return true;
+      return gestores.includes(profile?.cargo ?? "");
     },
     staleTime: 60_000,
   });
 }
 
-/** Retorna "admin" para admin/comercial, "tecnico" para os demais. */
+/**
+ * Quem enxerga VALORES (contratos, cobranças, fechamentos): admin e comercial.
+ * O SAC é gestor mas não vê dinheiro — espelho do pode_ver_financeiro() do
+ * banco (U6a). A RLS já bloqueia os dados; este hook esconde a interface.
+ */
+export function useVeFinanceiro() {
+  return useQuery({
+    queryKey: ["ve-financeiro"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return false;
+      const [{ data: roles }, { data: profile }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
+        supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
+      ]);
+      const financeiro = ["admin", "comercial"];
+      const roleStrs = (roles ?? []).map((r) => r.role as string);
+      if (roleStrs.some((r) => financeiro.includes(r))) return true;
+      return financeiro.includes(profile?.cargo ?? "");
+    },
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Perfil de interface: "admin" (admin/comercial — telas de gestão completas),
+ * "sac" (gestor de chamados, sem gerencial/financeiro) ou "tecnico" (3 abas).
+ */
 export function useUserCargo() {
   return useQuery({
     queryKey: ["user-cargo"],
@@ -75,9 +103,10 @@ export function useUserCargo() {
         supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
       ]);
       const roleStrs = (roles ?? []).map((r) => r.role as string);
-      if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return "admin" as const;
       const c = profile?.cargo ?? "";
+      if (roleStrs.includes("admin") || roleStrs.includes("comercial")) return "admin" as const;
       if (c === "admin" || c === "comercial") return "admin" as const;
+      if (roleStrs.includes("sac") || c === "sac") return "sac" as const;
       return "tecnico" as const;
     },
     staleTime: 60_000,

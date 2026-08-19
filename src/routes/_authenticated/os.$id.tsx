@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useIsGerente, useTecnicos } from "@/features/gerencial/data";
+import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { AssinaturaCanvas } from "@/features/os/AssinaturaCanvas";
 import {
   useOrdem, useEventosOs, useFotosOs, useAssinaturaUrl,
@@ -51,6 +51,8 @@ function OsDetalhePage() {
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
+  // SAC é gestor mas não vê valores (R13): o card de cobrança é só financeiro
+  const { data: veFinanceiro = false } = useVeFinanceiro();
   const { data: os, isLoading } = useOrdem(id);
   const { data: eventos = [] } = useEventosOs(id);
   const { data: fotos = [] } = useFotosOs(id);
@@ -889,8 +891,9 @@ function OsDetalhePage() {
       )}
 
       {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
-          técnico registra a peça e não participa da decisão de cobrar. */}
-      {isGerente && ["executada", "fechada"].includes(os.status) && pecasOs.length > 0 && (
+          técnico registra a peça e não participa da decisão de cobrar, e o
+          SAC (gestor sem valores, R13) também não vê este card. */}
+      {veFinanceiro && ["executada", "fechada"].includes(os.status) && pecasOs.length > 0 && (
         <div style={CARD}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Receipt size={15} color={gold} />
