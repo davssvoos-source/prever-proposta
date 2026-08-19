@@ -12,9 +12,9 @@ import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/s
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
-import { Layers, Banknote, Wrench } from "lucide-react";
-import { abrirOs } from "@/features/os/data";
-import { montarChecklistImplantacao } from "@/features/os/checklist";
+import { Layers, Banknote, Wrench, Send, CheckCircle2 } from "lucide-react";
+import { abrirChamado } from "@/features/chamados/data";
+import { montarChecklistImplantacao } from "@/features/chamados/checklist";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
 
 // Mesmos nomes usados no resumo de pré-envio, para o escopo ficar idêntico
@@ -295,6 +295,8 @@ function VisitaDetail() {
           descricao_pedido, tecnico_id, cliente_id, prioridade,
           data_hora_inicio, data_hora_fim,
           aprovado_por, aprovado_em, motivo_reprovacao,
+          proposta_enviada_em, proposta_resultado, proposta_resultado_em,
+          proposta_motivo_recusa,
           servicos_solicitados, servicos_propostos,
           clientes (nome, email, telefone, tipo_empreendimento)
         `)
@@ -403,39 +405,40 @@ function VisitaDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  // Proposta aprovada → OS de implantação, com checklist montado do escopo.
-  // Reaproveita a OS se já existir uma para esta visita (não duplica).
+  // Proposta aprovada → chamado de implantação, com checklist montado do
+  // escopo. Reaproveita o chamado se já existir um para esta visita.
   const gerarImplantacao = useMutation({
     mutationFn: async () => {
       const clienteId = (visita as any)?.cliente_id as string | null;
       if (!clienteId) {
-        throw new Error("Esta visita não está vinculada a um cliente. Vincule em Gerencial → Clientes antes de gerar a OS.");
+        throw new Error("Esta visita não está vinculada a um cliente. Vincule em Gerencial → Clientes antes de gerar o chamado.");
       }
       const { data: existente } = await supabase
-        .from("ordens_servico" as any)
+        .from("chamados" as any)
         .select("id")
         .eq("visita_id", id)
         .eq("tipo", "implantacao")
         .maybeSingle();
-      if (existente) return { osId: (existente as any).id as string, nova: false };
+      if (existente) return { chamadoId: (existente as any).id as string, nova: false };
 
       const local = (visita as any)?.nome_predio || (visita as any)?.titulo || "cliente";
-      const osId = await abrirOs({
+      const chamadoId = await abrirChamado({
+        natureza: "campo",
         tipo: "implantacao",
         cliente_id: clienteId,
         visita_id: id,
         titulo: `Implantação — ${local}`,
         descricao_problema: "Implantação do escopo aprovado na proposta desta visita técnica.",
         prioridade: "normal",
-        tecnico_id: (visita as any)?.tecnico_id ?? null,
+        responsavel_id: (visita as any)?.tecnico_id ?? null,
       });
-      await montarChecklistImplantacao(osId, id);
-      return { osId, nova: true };
+      await montarChecklistImplantacao(chamadoId, id);
+      return { chamadoId, nova: true };
     },
-    onSuccess: ({ osId, nova }) => {
-      qc.invalidateQueries({ queryKey: ["ordens-servico"] });
-      toast.success(nova ? "OS de implantação criada." : "Esta visita já tem uma OS de implantação.");
-      navigate({ to: "/os/$id", params: { id: osId } });
+    onSuccess: ({ chamadoId, nova }) => {
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      toast.success(nova ? "Chamado de implantação criado." : "Esta visita já tem um chamado de implantação.");
+      navigate({ to: "/chamados/$id", params: { id: chamadoId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -489,6 +492,50 @@ function VisitaDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+
+  // ── R4: depois da aprovação INTERNA vem a proposta, e quem decide é o
+  // cliente. Aprovar a visita não faz dele cliente; o aceite faz.
+  const enviarProposta = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("registrar_envio_proposta" as any, {
+        _visita_id: id,
+      } as any);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      toast.success("Proposta marcada como enviada. Agora é aguardar o cliente.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const [showRecusaForm, setShowRecusaForm] = useState(false);
+  const [motivoRecusa, setMotivoRecusa] = useState("");
+
+  const responderCliente = useMutation({
+    mutationFn: async ({ resultado, motivo }: { resultado: "aceita" | "recusada"; motivo?: string }) => {
+      const { error } = await supabase.rpc("registrar_resultado_proposta" as any, {
+        _visita_id: id,
+        _resultado: resultado,
+        _motivo: motivo ?? null,
+      } as any);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["visita", id] });
+      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      qc.invalidateQueries({ queryKey: ["clientes"] });
+      setShowRecusaForm(false);
+      setMotivoRecusa("");
+      toast.success(
+        vars.resultado === "aceita"
+          ? "Proposta aceita! O cliente foi ativado."
+          : "Recusa registrada. O cliente segue como prospecto.",
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
@@ -565,6 +612,21 @@ function VisitaDetail() {
   // enviava para aprovação, sem dar como voltar e ajustar o escopo.
   const showContinuar = status === "em_andamento" || status === "aguardando_aprovacao";
   const showReagendar = status === "reprovada";
+  // R4 — o pós-aprovação: proposta enviada e resposta do cliente
+  const propostaEnviada = !!(visita as any)?.proposta_enviada_em;
+  const resultadoProposta = ((visita as any)?.proposta_resultado ?? null) as
+    | "aguardando" | "aceita" | "recusada" | null;
+
+  const ACAO_SECUNDARIA: React.CSSProperties = {
+    marginTop: 10, width: "100%", height: 52, borderRadius: 26,
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    color: isLight ? "#0a0b0e" : "#fff",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+    cursor: "pointer",
+  };
+
   const showAprovarBtn  = canApprove && status === "aguardando_aprovacao";
   const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada" || status === "aguardando_aprovacao");
   const sInfo = status ? STATUS_LABELS[status] : null;
@@ -1424,24 +1486,133 @@ function VisitaDetail() {
                 <Banknote size={18} />
                 Configurar Forma de Pagamento
               </button>
-              {/* Elo com o sistema de OS: a proposta aprovada vira a ordem de
-                  implantação, com checklist do escopo (docs/SISTEMA_OS.md §5.5) */}
-              <button
-                onClick={() => gerarImplantacao.mutate()}
-                disabled={gerarImplantacao.isPending}
-                style={{
-                  marginTop: 10, width: "100%", height: 52, borderRadius: 26,
-                  background: isLight ? "#ffffff" : "#191921",
-                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                  color: isLight ? "#0a0b0e" : "#fff",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
-                  cursor: gerarImplantacao.isPending ? "wait" : "pointer",
-                }}
-              >
-                <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} />
-                {gerarImplantacao.isPending ? "Gerando OS…" : "Gerar OS de Implantação"}
-              </button>
+
+              {/* ── R4: a partir daqui quem decide é o CLIENTE ────────────── */}
+              {!propostaEnviada && (
+                <>
+                  <div style={{
+                    marginTop: 12, padding: "10px 12px", borderRadius: 12,
+                    background: isLight ? "rgba(184,120,0,0.07)" : "rgba(255,192,0,0.07)",
+                    border: isLight ? "1px solid rgba(184,120,0,0.20)" : "1px solid rgba(255,192,0,0.20)",
+                    fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+                    color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", lineHeight: 1.5,
+                  }}>
+                    A visita está aprovada internamente. Isso ainda não faz do
+                    prospecto um cliente — só o aceite da proposta faz.
+                  </div>
+                  <button
+                    onClick={() => enviarProposta.mutate()}
+                    disabled={enviarProposta.isPending}
+                    style={{ ...ACAO_SECUNDARIA, cursor: enviarProposta.isPending ? "wait" : "pointer" }}
+                  >
+                    <Send size={17} color={isLight ? "#b87800" : "#FFC000"} />
+                    {enviarProposta.isPending ? "Registrando…" : "Marcar proposta como enviada"}
+                  </button>
+                </>
+              )}
+
+              {propostaEnviada && resultadoProposta === "aguardando" && !showRecusaForm && (
+                <>
+                  <div style={{
+                    marginTop: 12, fontFamily: "'Montserrat', sans-serif", fontWeight: 300,
+                    fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                  }}>
+                    Proposta enviada em{" "}
+                    {new Date(visita.proposta_enviada_em as string).toLocaleDateString("pt-BR")}
+                    {" "}— aguardando a resposta do cliente.
+                  </div>
+                  <button
+                    onClick={() => responderCliente.mutate({ resultado: "aceita" })}
+                    disabled={responderCliente.isPending}
+                    style={{ ...ACAO_SECUNDARIA, cursor: responderCliente.isPending ? "wait" : "pointer" }}
+                  >
+                    <CheckCircle2 size={17} color="#34D399" />
+                    O cliente ACEITOU a proposta
+                  </button>
+                  <button
+                    onClick={() => setShowRecusaForm(true)}
+                    style={ACAO_SECUNDARIA}
+                  >
+                    <XCircle size={17} color="#F87171" />
+                    O cliente RECUSOU
+                  </button>
+                </>
+              )}
+
+              {showRecusaForm && (
+                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <textarea
+                    value={motivoRecusa}
+                    onChange={(e) => setMotivoRecusa(e.target.value)}
+                    placeholder="Por que o cliente recusou? (preço, prazo, escolheu concorrente…)"
+                    rows={3}
+                    style={{
+                      width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "10px 12px",
+                      background: isLight ? "#ffffff" : "#16161d",
+                      border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                      color: isLight ? "#0a0b0e" : "#fff",
+                      fontFamily: "'Montserrat', sans-serif", fontSize: 13, outline: "none", resize: "vertical",
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => responderCliente.mutate({ resultado: "recusada", motivo: motivoRecusa.trim() || undefined })}
+                      disabled={responderCliente.isPending}
+                      style={{ ...ACAO_SECUNDARIA, marginTop: 0, flex: 1 }}
+                    >
+                      Registrar recusa
+                    </button>
+                    <button
+                      onClick={() => { setShowRecusaForm(false); setMotivoRecusa(""); }}
+                      style={{ ...ACAO_SECUNDARIA, marginTop: 0, flex: 1 }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {resultadoProposta === "recusada" && (
+                <div style={{
+                  marginTop: 12, padding: "10px 12px", borderRadius: 12,
+                  background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)",
+                  fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
+                  color: isLight ? "#b91c1c" : "#F87171", lineHeight: 1.5,
+                }}>
+                  Proposta recusada pelo cliente
+                  {visita.proposta_resultado_em
+                    ? ` em ${new Date(visita.proposta_resultado_em as string).toLocaleDateString("pt-BR")}`
+                    : ""}.
+                  {visita.proposta_motivo_recusa ? ` Motivo: ${visita.proposta_motivo_recusa}` : ""}
+                </div>
+              )}
+
+              {/* O elo com o chamado de implantação nasce do ACEITE, não da
+                  aprovação interna (R4) — antes ele aparecia cedo demais. */}
+              {resultadoProposta === "aceita" && (
+                <>
+                  <div style={{
+                    marginTop: 12, padding: "10px 12px", borderRadius: 12,
+                    background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.28)",
+                    fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
+                    color: isLight ? "#047857" : "#34D399", lineHeight: 1.5,
+                  }}>
+                    Proposta aceita
+                    {visita.proposta_resultado_em
+                      ? ` em ${new Date(visita.proposta_resultado_em as string).toLocaleDateString("pt-BR")}`
+                      : ""}
+                    {" "}— este agora é um cliente ativo.
+                  </div>
+                  <button
+                    onClick={() => gerarImplantacao.mutate()}
+                    disabled={gerarImplantacao.isPending}
+                    style={{ ...ACAO_SECUNDARIA, cursor: gerarImplantacao.isPending ? "wait" : "pointer" }}
+                  >
+                    <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} />
+                    {gerarImplantacao.isPending ? "Gerando chamado…" : "Gerar chamado de implantação"}
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>

@@ -22,7 +22,7 @@ import {
 } from "@/lib/matching";
 import { competencia } from "@/lib/periodos";
 
-const inputSchema = z.object({ osId: z.string().uuid() });
+const inputSchema = z.object({ chamadoId: z.string().uuid() });
 
 interface VereditoItem {
   peca_id: string;
@@ -78,7 +78,7 @@ const SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const analisarCobrancaOs = createServerFn({ method: "POST" })
+export const analisarCobrancaChamado = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data, context }): Promise<{ ok: boolean; resumo?: ResumoAnalise; erro?: string }> => {
@@ -88,16 +88,16 @@ export const analisarCobrancaOs = createServerFn({ method: "POST" })
     const userId = (context as any).userId as string;
 
     const { data: os, error: erroOs } = await sb
-      .from("ordens_servico")
+      .from("chamados")
       .select("id, cliente_id, contrato_id, tipo_servico, finalizada_em, created_at, titulo")
-      .eq("id", data.osId)
+      .eq("id", data.chamadoId)
       .maybeSingle();
     if (erroOs || !os) return { ok: false, erro: "Chamado não encontrado." };
 
     const { data: pecas, error: erroPecas } = await sb
-      .from("os_pecas")
+      .from("chamado_pecas")
       .select("id, descricao, marca, modelo, numero_serie, tag_patrimonio, quantidade, tipo, valor_unitario_informado")
-      .eq("os_id", data.osId)
+      .eq("chamado_id", data.chamadoId)
       .order("created_at");
     if (erroPecas) return { ok: false, erro: erroPecas.message };
     if (!pecas || pecas.length === 0) {
@@ -106,9 +106,9 @@ export const analisarCobrancaOs = createServerFn({ method: "POST" })
 
     // ajuste manual trava o item: reanálise não pode desfazer decisão humana
     const { data: analiseAtual } = await sb
-      .from("os_pecas_analise")
+      .from("chamado_pecas_analise")
       .select("peca_id, ajustado_manualmente")
-      .eq("os_id", data.osId);
+      .eq("chamado_id", data.chamadoId);
     const travados = new Set(
       ((analiseAtual as any[]) ?? []).filter((a) => a.ajustado_manualmente).map((a) => a.peca_id as string),
     );
@@ -308,7 +308,7 @@ export const analisarCobrancaOs = createServerFn({ method: "POST" })
     // ── 3) grava ────────────────────────────────────────────────────────────
     const linhas = Object.values(veredito).map((v) => ({
       peca_id: v.peca_id,
-      os_id: data.osId,
+      chamado_id: data.chamadoId,
       resultado: v.resultado,
       cobertura_item_id: v.cobertura_item_id,
       valor_calculado: v.valor_calculado,
@@ -320,17 +320,17 @@ export const analisarCobrancaOs = createServerFn({ method: "POST" })
     }));
 
     if (linhas.length > 0) {
-      const { error } = await sb.from("os_pecas_analise").upsert(linhas, { onConflict: "peca_id" });
+      const { error } = await sb.from("chamado_pecas_analise").upsert(linhas, { onConflict: "peca_id" });
       if (error) return { ok: false, erro: error.message };
     }
 
-    await sb.from("ordens_servico").update({ faturamento_status: "em_conferencia" }).eq("id", data.osId);
+    await sb.from("chamados").update({ faturamento_status: "em_conferencia" }).eq("id", data.chamadoId);
 
     // resumo considera TODOS os itens, inclusive os travados por ajuste manual
     const { data: final } = await sb
-      .from("os_pecas_analise")
+      .from("chamado_pecas_analise")
       .select("resultado, valor_calculado, peca_id")
-      .eq("os_id", data.osId);
+      .eq("chamado_id", data.chamadoId);
     const linhasFinais = ((final as any[]) ?? []);
     const qtdPorPeca = new Map(pecas.map((p: any) => [p.id as string, Number(p.quantidade) || 1]));
 
@@ -348,6 +348,6 @@ export const analisarCobrancaOs = createServerFn({ method: "POST" })
       aviso,
     };
     // userId entra no log para rastrear quem disparou a análise
-    console.info(`[cobranca] análise da OS ${data.osId} por ${userId}:`, resumo);
+    console.info(`[cobranca] análise do chamado ${data.chamadoId} por ${userId}:`, resumo);
     return { ok: true, resumo };
   });

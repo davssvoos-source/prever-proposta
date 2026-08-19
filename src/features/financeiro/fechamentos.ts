@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatarDocumento } from "@/lib/normalizar";
 import { rotuloReferencia, parcelar, dataIso, competencia } from "@/lib/periodos";
-import { moeda, type Cobranca } from "@/features/os/cobranca";
+import { moeda, type Cobranca } from "@/features/chamados/cobranca";
 
 export type TipoFechamento = "semanal" | "mensal";
 
@@ -67,7 +67,7 @@ export function useCobrancasDoFechamento(fechamentoId: string | undefined) {
       const { data, error } = await supabase
         .from("cobrancas" as any)
         .select(
-          "id, cliente_id, os_id, descricao, quantidade, valor_unitario, valor, competencia, " +
+          "id, cliente_id, chamado_id, descricao, quantidade, valor_unitario, valor, competencia, " +
             "data_referencia, tipo_servico, status, fechamento_id, created_at, " +
             "cliente:clientes(id, nome, documento)",
         )

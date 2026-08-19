@@ -4,7 +4,10 @@
 // escuro. Inclui fotos antes/depois e a assinatura de quem recebeu o serviço.
 
 import { supabase } from "@/integrations/supabase/client";
-import { OS_PRIORIDADE_LABEL, OS_TIPO_LABEL, osStatusInfo, type OsPrioridade, type OsTipo } from "@/lib/os-status";
+import {
+  PRIORIDADE_LABEL, TIPO_LABEL, chamadoStatusInfo,
+  type ChamadoPrioridade, type ChamadoTipo,
+} from "@/lib/chamado-status";
 
 const OURO: [number, number, number] = [255, 192, 0];
 const ESCURO: [number, number, number] = [10, 11, 14];
@@ -185,7 +188,7 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   // ── Página 1 ──────────────────────────────────────────────────────────────
   faixaTopo(true);
 
-  const info = osStatusInfo(os.status);
+  const info = chamadoStatusInfo(os.status);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12.5);
   doc.setTextColor(...ESCURO);
@@ -197,8 +200,8 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
   doc.setFontSize(8.5);
   doc.setTextColor(...CINZA);
   doc.text(
-    `${OS_TIPO_LABEL[os.tipo as OsTipo] ?? os.tipo} · Prioridade ${
-      OS_PRIORIDADE_LABEL[os.prioridade as OsPrioridade] ?? os.prioridade
+    `${TIPO_LABEL[os.tipo as ChamadoTipo] ?? os.tipo} · Prioridade ${
+      PRIORIDADE_LABEL[os.prioridade as ChamadoPrioridade] ?? os.prioridade
     } · ${info.label}`,
     MARGEM,
     y,

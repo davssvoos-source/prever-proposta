@@ -1,6 +1,7 @@
-// Nova demanda interna — Etapa U1 da unificação.
+// Novo chamado INTERNO — o formulário do trabalho que não sai da mesa.
 // A classificação (tipo) é sugerida pelo título enquanto se digita; quem grava
-// de verdade é o banco, no trigger. Ver docs/PLANO_UNIFICACAO.md §6, automação 1.
+// de verdade é o banco, no trigger. Quando o tipo é pedido de compra, os campos
+// da compra entram junto (Q6). Ver docs/PLANO_UNIFICACAO.md §6 e §12.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -10,24 +11,25 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useClientes } from "@/features/clientes/data";
-import { criarDemanda, usePessoas } from "@/features/demandas/data";
+import { abrirChamado, usePessoas } from "@/features/chamados/data";
 import {
-  sugerirTipoDemanda, SPRINT_ORDEM, SPRINT_LABEL, TIPOS_DEMANDA, TIPO_DEMANDA_LABEL,
-  type DemandaSprint, type DemandaTipo,
-} from "@/lib/demanda-status";
+  sugerirTipoChamado, SPRINT_ORDEM, SPRINT_LABEL, tiposDaNatureza, TIPO_LABEL, dataParaPrazo,
+  type ChamadoSprint, type ChamadoTipo,
+} from "@/lib/chamado-status";
 import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
+import { salvarCompra } from "@/features/chamados/compra";
 
-export const Route = createFileRoute("/_authenticated/demandas/nova")({
+export const Route = createFileRoute("/_authenticated/chamados/novo-interno")({
   // a triagem (/chamados/novo) chega aqui com o trilho já escolhido:
   // ?equipe=ti | ?equipe=patrimonio&tipo=pedido_compra
   validateSearch: (s: Record<string, unknown>) => ({
     equipe: typeof s.equipe === "string" ? s.equipe : undefined,
     tipo: typeof s.tipo === "string" ? s.tipo : undefined,
   }),
-  component: NovaDemandaPage,
+  component: NovaChamadoPage,
 });
 
-function NovaDemandaPage() {
+function NovaChamadoPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
@@ -38,8 +40,8 @@ function NovaDemandaPage() {
   const equipeInicial = (EQUIPES as string[]).includes(busca.equipe ?? "")
     ? (busca.equipe as Equipe)
     : null;
-  const tipoInicial = (TIPOS_DEMANDA as string[]).includes(busca.tipo ?? "")
-    ? (busca.tipo as DemandaTipo)
+  const tipoInicial = (tiposDaNatureza("interno") as string[]).includes(busca.tipo ?? "")
+    ? (busca.tipo as ChamadoTipo)
     : "";
 
   const [titulo, setTitulo] = useState("");
@@ -47,9 +49,15 @@ function NovaDemandaPage() {
   const [equipe, setEquipe] = useState<Equipe>(equipeInicial ?? "ti");
   const [responsavelId, setResponsavelId] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [prazo, setPrazo] = useState("");
-  const [sprint, setSprint] = useState<DemandaSprint>("este_mes");
-  const [tipo, setTipo] = useState<DemandaTipo | "">(tipoInicial);
+  const [prazo_limite, setPrazo] = useState("");
+  const [sprint, setSprint] = useState<ChamadoSprint>("este_mes");
+  const [tipo, setTipo] = useState<ChamadoTipo | "">(tipoInicial);
+  // Pedido de compra (Q6): quem pede geralmente já sabe o que quer e de quem.
+  // O resto da ficha (cotação, aprovação, recebimento) vive na página do chamado.
+  const [qtd, setQtd] = useState("1");
+  const [fornecedor, setFornecedor] = useState("");
+  const [valorEstimado, setValorEstimado] = useState("");
+  const [linkProduto, setLinkProduto] = useState("");
 
   // pré-carrega equipe e responsável com quem está registrando — sem
   // atropelar o trilho que a triagem já escolheu
@@ -66,10 +74,13 @@ function NovaDemandaPage() {
   }, [pessoas, equipeInicial]);
 
   const sugestao = useMemo(
-    () => (titulo.trim() ? sugerirTipoDemanda(titulo, descricao) : null),
+    () => (titulo.trim() ? sugerirTipoChamado(titulo, descricao) : null),
     [titulo, descricao],
   );
+
+  // sem tipo escolhido, vale a sugestão — é o que o banco vai gravar
   const tipoEfetivo = tipo || sugestao;
+  const ehCompra = tipoEfetivo === "pedido_compra";
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -111,23 +122,35 @@ function NovaDemandaPage() {
 
   const criar = useMutation({
     mutationFn: async () => {
-      if (!titulo.trim()) throw new Error("Informe o título da demanda.");
-      return criarDemanda({
+      if (!titulo.trim()) throw new Error("Informe o título do chamado.");
+      const novoId = await abrirChamado({
+        natureza: "interno",
         titulo: titulo.trim(),
-        descricao: descricao.trim() || null,
+        descricao_problema: descricao.trim() || null,
         equipe,
         responsavel_id: responsavelId || null,
         cliente_id: clienteId || null,
-        prazo: prazo || null,
+        prazo_limite: dataParaPrazo(prazo_limite),
         sprint,
         // vazio = deixa o banco sugerir (mesma heurística da pré-visualização)
-        tipo: (tipo || null) as DemandaTipo | null,
+        tipo: (tipo || null) as ChamadoTipo | null,
       });
+      // a ficha de compra nasce por trigger; aqui só preenchemos o que o
+      // solicitante já informou
+      if (ehCompra) {
+        await salvarCompra(novoId, {
+          quantidade: Number(qtd) > 0 ? Number(qtd) : 1,
+          fornecedor_sugerido: fornecedor.trim() || null,
+          valor_estimado: valorEstimado === "" ? null : Number(valorEstimado),
+          link_produto: linkProduto.trim() || null,
+        });
+      }
+      return novoId;
     },
     onSuccess: (id) => {
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      toast.success("Demanda registrada.");
-      navigate({ to: "/demandas/$id", params: { id } });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      toast.success("Chamado registrado.");
+      navigate({ to: "/chamados/$id", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -136,7 +159,7 @@ function NovaDemandaPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/demandas" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -182,23 +205,60 @@ function NovaDemandaPage() {
               fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: gold,
             }}>
               <Sparkles size={13} />
-              Sugestão pelo título: <strong>{TIPO_DEMANDA_LABEL[sugestao]}</strong> — toque para trocar.
+              Sugestão pelo título: <strong>{TIPO_LABEL[sugestao]}</strong> — toque para trocar.
             </div>
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {TIPOS_DEMANDA.map((t) => (
+            {tiposDaNatureza("interno").map((t) => (
               <button
                 key={t}
                 type="button"
                 style={chip(tipoEfetivo === t)}
                 onClick={() => setTipo(tipo === t ? "" : t)}
               >
-                {TIPO_DEMANDA_LABEL[t]}
+                {TIPO_LABEL[t]}
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Pedido de compra (Q6): o que dá para responder já na abertura. Cotação,
+          aprovação e recebimento acontecem depois, na página do chamado. */}
+      {ehCompra && (
+        <div style={CARD}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={LABEL}>Quantidade</label>
+              <input
+                style={INPUT} type="number" min="1" step="1"
+                value={qtd} onChange={(e) => setQtd(e.target.value)}
+              />
+            </div>
+            <div>
+              <label style={LABEL}>Valor estimado (R$)</label>
+              <input
+                style={INPUT} type="number" min="0" step="0.01" placeholder="opcional"
+                value={valorEstimado} onChange={(e) => setValorEstimado(e.target.value)}
+              />
+            </div>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <label style={LABEL}>Fornecedor sugerido</label>
+            <input
+              style={INPUT} placeholder="De quem costumamos comprar isso?"
+              value={fornecedor} onChange={(e) => setFornecedor(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <label style={LABEL}>Link do produto</label>
+            <input
+              style={INPUT} placeholder="https://…"
+              value={linkProduto} onChange={(e) => setLinkProduto(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
 
       <div style={CARD}>
         <div>
@@ -223,7 +283,7 @@ function NovaDemandaPage() {
         <div>
           <label style={LABEL}>Cliente (opcional)</label>
           <select style={INPUT} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Demanda interna, sem cliente</option>
+            <option value="">Chamado interna, sem cliente</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
@@ -232,14 +292,14 @@ function NovaDemandaPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
             <label style={LABEL}>Prazo</label>
-            <input style={INPUT} type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+            <input style={INPUT} type="date" value={prazo_limite} onChange={(e) => setPrazo(e.target.value)} />
           </div>
           <div>
             <label style={LABEL}>Sprint</label>
             <select
               style={INPUT}
               value={sprint}
-              onChange={(e) => setSprint(e.target.value as DemandaSprint)}
+              onChange={(e) => setSprint(e.target.value as ChamadoSprint)}
             >
               {SPRINT_ORDEM.map((s) => (
                 <option key={s} value={s}>{SPRINT_LABEL[s]}</option>

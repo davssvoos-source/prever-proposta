@@ -5,7 +5,7 @@
 // DOIS consumidores — a decisão de cobrança (U4) e o relatório de movimentação
 // que o Gilleno lança no QAP (U6). Por isso o número de série importa.
 //
-// O veredito financeiro NÃO vive aqui: mora em os_pecas_analise, com RLS
+// O veredito financeiro NÃO vive aqui: mora em chamado_pecas_analise, com RLS
 // própria, para o técnico não enxergar o que vai ser cobrado.
 
 import { useQuery } from "@tanstack/react-query";
@@ -34,9 +34,9 @@ export const TIPO_PECA_LABEL: Record<TipoPeca, string> = {
   outro: "Outro",
 };
 
-export interface OsPeca {
+export interface ChamadoPeca {
   id: string;
-  os_id: string;
+  chamado_id: string;
   direcao: DirecaoPeca;
   tipo: TipoPeca;
   equipamento_id: string | null;
@@ -54,43 +54,43 @@ export interface OsPeca {
 }
 
 const CAMPOS =
-  "id, os_id, direcao, tipo, equipamento_id, cliente_equipamento_id, unidade_id, descricao, " +
+  "id, chamado_id, direcao, tipo, equipamento_id, cliente_equipamento_id, unidade_id, descricao, " +
   "marca, modelo, numero_serie, tag_patrimonio, quantidade, valor_unitario_informado, " +
   "observacao, created_at";
 
-export function useOsPecas(osId: string | undefined) {
+export function usePecas(chamadoId: string | undefined) {
   return useQuery({
-    queryKey: ["os-pecas", osId],
-    enabled: !!osId,
-    queryFn: async (): Promise<OsPeca[]> => {
+    queryKey: ["chamado-pecas", chamadoId],
+    enabled: !!chamadoId,
+    queryFn: async (): Promise<ChamadoPeca[]> => {
       const { data, error } = await supabase
-        .from("os_pecas" as any)
+        .from("chamado_pecas" as any)
         .select(CAMPOS)
-        .eq("os_id", osId as string)
+        .eq("chamado_id", chamadoId as string)
         .order("created_at");
       if (error) throw error;
-      return ((data as any[]) ?? []) as OsPeca[];
+      return ((data as any[]) ?? []) as ChamadoPeca[];
     },
   });
 }
 
-export type OsPecaNova = Partial<Omit<OsPeca, "id" | "os_id" | "created_at">> & { descricao: string };
+export type PecaNova = Partial<Omit<ChamadoPeca, "id" | "chamado_id" | "created_at">> & { descricao: string };
 
-export async function registrarPeca(osId: string, item: OsPecaNova): Promise<void> {
+export async function registrarPeca(chamadoId: string, item: PecaNova): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   const { error } = await supabase
-    .from("os_pecas" as any)
-    .insert({ ...item, os_id: osId, created_by: u.user?.id ?? null } as any);
+    .from("chamado_pecas" as any)
+    .insert({ ...item, chamado_id: chamadoId, created_by: u.user?.id ?? null } as any);
   if (error) throw error;
 }
 
-export async function atualizarPeca(id: string, patch: Partial<OsPeca>): Promise<void> {
-  const { error } = await supabase.from("os_pecas" as any).update(patch as any).eq("id", id);
+export async function atualizarPeca(id: string, patch: Partial<ChamadoPeca>): Promise<void> {
+  const { error } = await supabase.from("chamado_pecas" as any).update(patch as any).eq("id", id);
   if (error) throw error;
 }
 
 export async function removerPeca(id: string): Promise<void> {
-  const { error } = await supabase.from("os_pecas" as any).delete().eq("id", id);
+  const { error } = await supabase.from("chamado_pecas" as any).delete().eq("id", id);
   if (error) throw error;
 }
 

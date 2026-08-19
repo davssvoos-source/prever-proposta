@@ -37,7 +37,7 @@ export const FATURAMENTO_LABEL: Record<FaturamentoStatus, string> = {
 
 export interface AnaliseItem {
   peca_id: string;
-  os_id: string;
+  chamado_id: string;
   resultado: ResultadoItem;
   cobertura_item_id: string | null;
   valor_calculado: number | null;
@@ -47,18 +47,18 @@ export interface AnaliseItem {
   analisado_em: string;
 }
 
-export function useAnaliseOs(osId: string | undefined) {
+export function useAnaliseChamado(chamadoId: string | undefined) {
   return useQuery({
-    queryKey: ["os-analise", osId],
-    enabled: !!osId,
+    queryKey: ["chamado-analise", chamadoId],
+    enabled: !!chamadoId,
     queryFn: async (): Promise<AnaliseItem[]> => {
       const { data, error } = await supabase
-        .from("os_pecas_analise" as any)
+        .from("chamado_pecas_analise" as any)
         .select(
-          "peca_id, os_id, resultado, cobertura_item_id, valor_calculado, confianca, " +
+          "peca_id, chamado_id, resultado, cobertura_item_id, valor_calculado, confianca, " +
             "justificativa, ajustado_manualmente, analisado_em",
         )
-        .eq("os_id", osId as string);
+        .eq("chamado_id", chamadoId as string);
       // técnico não enxerga análise: lista vazia é resposta válida, não erro
       if (error) return [];
       return ((data as any[]) ?? []) as AnaliseItem[];
@@ -69,7 +69,7 @@ export function useAnaliseOs(osId: string | undefined) {
 export interface Cobranca {
   id: string;
   cliente_id: string;
-  os_id: string | null;
+  chamado_id: string | null;
   descricao: string;
   quantidade: number;
   valor_unitario: number;
@@ -84,19 +84,19 @@ export interface Cobranca {
 }
 
 const CAMPOS_COBRANCA =
-  "id, cliente_id, os_id, descricao, quantidade, valor_unitario, valor, competencia, " +
+  "id, cliente_id, chamado_id, descricao, quantidade, valor_unitario, valor, competencia, " +
   "data_referencia, tipo_servico, status, fechamento_id, created_at, " +
   "cliente:clientes(id, nome, documento)";
 
-export function useCobrancasDaOs(osId: string | undefined) {
+export function useCobrancasDoChamado(chamadoId: string | undefined) {
   return useQuery({
-    queryKey: ["cobrancas-os", osId],
-    enabled: !!osId,
+    queryKey: ["cobrancas-chamado", chamadoId],
+    enabled: !!chamadoId,
     queryFn: async (): Promise<Cobranca[]> => {
       const { data, error } = await supabase
         .from("cobrancas" as any)
         .select(CAMPOS_COBRANCA)
-        .eq("os_id", osId as string)
+        .eq("chamado_id", chamadoId as string)
         .order("created_at");
       if (error) return [];
       return ((data as any[]) ?? []) as Cobranca[];
@@ -122,15 +122,15 @@ export function useCobrancasAbertas() {
 
 // ── Ações (todas por RPC) ───────────────────────────────────────────────────
 
-export async function aprovarCobranca(osId: string): Promise<{ itens: number; total: number }> {
-  const { data, error } = await supabase.rpc("aprovar_os_financeiro" as any, { _os_id: osId } as any);
+export async function aprovarCobranca(chamadoId: string): Promise<{ itens: number; total: number }> {
+  const { data, error } = await supabase.rpc("aprovar_chamado_financeiro" as any, { _chamado_id: chamadoId } as any);
   if (error) throw new Error(error.message);
   const linha = Array.isArray(data) ? data[0] : data;
   return { itens: Number((linha as any)?.itens ?? 0), total: Number((linha as any)?.total ?? 0) };
 }
 
-export async function marcarFaturada(osId: string): Promise<number> {
-  const { data, error } = await supabase.rpc("marcar_os_faturada" as any, { _os_id: osId } as any);
+export async function marcarFaturada(chamadoId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("marcar_chamado_faturado" as any, { _chamado_id: chamadoId } as any);
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
 }

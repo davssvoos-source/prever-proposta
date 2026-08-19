@@ -10,7 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import { rotuloReferencia } from "@/lib/periodos";
 import { formatarDocumento } from "@/lib/normalizar";
-import { moeda } from "@/features/os/cobranca";
+import { moeda } from "@/features/chamados/cobranca";
 import {
   useFechamento, useCobrancasDoFechamento, consolidar, csvFechamento,
   gerarPdfFechamento, baixarArquivo, montarFechamento, fecharPeriodo,

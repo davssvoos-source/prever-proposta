@@ -1,51 +1,60 @@
-// Detalhe da demanda — edição, feed de comentários, apoio e equipamentos.
-// Etapa U1 da unificação. Ver docs/PLANO_UNIFICACAO.md §5.1.
+// Chamado INTERNO — o corpo da tela quando natureza = 'interno'.
+// Edição, feed de comentários, apoio e equipamentos envolvidos: é o que era o
+// quadro do Notion. Extraído de /demandas/$id na Etapa U7 — quem monta a
+// página é /chamados/$id. Ver docs/PLANO_UNIFICACAO.md §5.1.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, CalendarClock, MessageSquare, Plus, Send, Trash2, UserPlus, Wrench,
+  ArrowLeft, Building2, CalendarClock, ExternalLink, MessageSquare, Plus, Send, Trash2,
+  UserPlus, Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useIsGerente } from "@/features/gerencial/data";
+import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
 import {
-  useDemanda, useDemandaEventos, useDemandaApoios, useDemandaEquipamentos,
-  usePessoas, mapaDePessoas, atualizarDemanda, comentarDemanda, excluirDemanda,
-  adicionarApoio, removerApoio, adicionarEquipamentoDemanda, removerEquipamentoDemanda,
-  type DemandaPatch,
-} from "@/features/demandas/data";
+  useChamado, useChamadoEventos, useChamadoApoios, useChamadoEquipamentos,
+  usePessoas, mapaDePessoas, atualizarChamado, comentarChamado, excluirChamado,
+  adicionarApoio, removerApoio, adicionarEquipamentoChamado, removerEquipamentoChamado,
+  type ChamadoPatch,
+} from "@/features/chamados/data";
 import {
-  demandaStatusInfo, demandaEmAberto, situacaoPrazoDemanda, textoPrazoDemanda,
-  DEMANDA_STATUS_ORDEM, SPRINT_ORDEM, SPRINT_LABEL,
-  TIPOS_DEMANDA, TIPO_DEMANDA_LABEL,
-  type DemandaSprint, type DemandaStatus, type DemandaTipo,
-} from "@/lib/demanda-status";
+  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
+  SPRINT_ORDEM, SPRINT_LABEL, prazoParaData, dataParaPrazo,
+  statusDaNatureza, tiposDaNatureza, TIPO_LABEL,
+  type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
+} from "@/lib/chamado-status";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import {
+  useCompra, salvarCompra, decidirCompra, proximasSituacoes,
+  SITUACAO_LABEL, SITUACAO_CORES, SITUACOES_DE_DECISAO, moedaBR,
+  type SituacaoCompra,
+} from "@/features/chamados/compra";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 
-export const Route = createFileRoute("/_authenticated/demandas/$id")({
-  component: DemandaDetalhePage,
-});
-
-function DemandaDetalhePage() {
-  const { id } = Route.useParams();
+export function DetalheInterno({ id }: { id: string }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
-  const { data: demanda, isLoading } = useDemanda(id);
-  const { data: eventos = [] } = useDemandaEventos(id);
-  const { data: apoios = [] } = useDemandaApoios(id);
-  const { data: equipamentos = [] } = useDemandaEquipamentos(id);
+  const { data: chamado, isLoading } = useChamado(id);
+  const { data: eventos = [] } = useChamadoEventos(id, "asc");
+  const { data: apoios = [] } = useChamadoApoios(id);
+  const { data: equipamentos = [] } = useChamadoEquipamentos(id);
   const { data: pessoas = [] } = usePessoas();
+  // R6/Q6: pedido de compra tem ficha própria — só carrega quando é o caso
+  const ehCompra = chamado?.tipo === "pedido_compra";
+  const { data: compra } = useCompra(id, ehCompra);
+  const { data: veFinanceiro = false } = useVeFinanceiro();
 
   const [comentario, setComentario] = useState("");
   const [novoEquip, setNovoEquip] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
   const [addApoio, setAddApoio] = useState(false);
+  const [motivoRecusaCompra, setMotivoRecusaCompra] = useState("");
+  const [pedindoRecusa, setPedindoRecusa] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -86,25 +95,46 @@ function DemandaDetalhePage() {
   };
 
   const salvar = useMutation({
-    mutationFn: async (patch: DemandaPatch) => atualizarDemanda(id, patch),
+    mutationFn: async (patch: ChamadoPatch) => atualizarChamado(id, patch),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["demanda", id] });
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      qc.invalidateQueries({ queryKey: ["demanda-eventos", id] });
+      qc.invalidateQueries({ queryKey: ["chamado", id] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
     },
     onError: (e: any) =>
       toast.error(e?.message ?? "Não foi possível salvar. Confira se você é responsável ou gestor."),
+  });
+
+  const salvarFichaCompra = useMutation({
+    mutationFn: async (patch: Parameters<typeof salvarCompra>[1]) => salvarCompra(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chamado-compra", id] }),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar o pedido."),
+  });
+
+  const andarCompra = useMutation({
+    mutationFn: async ({ situacao, motivo }: { situacao: SituacaoCompra; motivo?: string }) =>
+      decidirCompra(id, situacao, motivo),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["chamado-compra", id] });
+      qc.invalidateQueries({ queryKey: ["chamado", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      setPedindoRecusa(false);
+      setMotivoRecusaCompra("");
+      toast.success(`Pedido marcado como "${SITUACAO_LABEL[v.situacao]}".`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível mover o pedido."),
   });
 
   const enviarComentario = useMutation({
     mutationFn: async () => {
       const t = comentario.trim();
       if (!t) throw new Error("Escreva alguma coisa antes de enviar.");
-      await comentarDemanda(id, t);
+      await comentarChamado(id, t);
     },
     onSuccess: () => {
       setComentario("");
-      qc.invalidateQueries({ queryKey: ["demanda-eventos", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -114,16 +144,16 @@ function DemandaDetalhePage() {
       entrar ? adicionarApoio(id, profileId) : removerApoio(id, profileId),
     onSuccess: () => {
       setAddApoio(false);
-      qc.invalidateQueries({ queryKey: ["demanda-apoios", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-apoios", id] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível alterar o apoio."),
   });
 
   const mexerEquip = useMutation({
     mutationFn: async (acao: { tipo: "add" } | { tipo: "del"; equipId: string }) => {
-      if (acao.tipo === "del") return removerEquipamentoDemanda(acao.equipId);
+      if (acao.tipo === "del") return removerEquipamentoChamado(acao.equipId);
       if (!novoEquip.trim()) throw new Error("Descreva o equipamento.");
-      await adicionarEquipamentoDemanda(id, {
+      await adicionarEquipamentoChamado(id, {
         descricao: novoEquip.trim(),
         numero_serie: novaSerie.trim() || null,
       });
@@ -131,17 +161,17 @@ function DemandaDetalhePage() {
     onSuccess: () => {
       setNovoEquip("");
       setNovaSerie("");
-      qc.invalidateQueries({ queryKey: ["demanda-equipamentos", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-equipamentos", id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const excluir = useMutation({
-    mutationFn: async () => excluirDemanda(id),
+    mutationFn: async () => excluirChamado(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      toast.success("Demanda excluída.");
-      navigate({ to: "/demandas" });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      toast.success("Chamado excluída.");
+      navigate({ to: "/chamados" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir."),
   });
@@ -153,24 +183,24 @@ function DemandaDetalhePage() {
       </div>
     );
   }
-  if (!demanda) {
+  if (!chamado) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif" }}>
-        Demanda não encontrada.
+        Chamado não encontrada.
       </div>
     );
   }
 
-  const st = demandaStatusInfo(demanda.status);
-  const eqc = equipeCores(demanda.equipe);
-  const sp = situacaoPrazoDemanda(demanda.prazo, demanda.status);
+  const st = chamadoStatusInfo(chamado.status);
+  const eqc = equipeCores(chamado.equipe);
+  const sp = situacaoPrazo(chamado.prazo_limite, chamado.status);
   const comentarios = eventos.filter((e) => e.tipo === "comentario");
   const timeline = eventos.filter((e) => e.tipo !== "comentario");
   const podeEditar =
     isGerente ||
-    demanda.responsavel_id === userId ||
-    demanda.criada_por === userId ||
-    !demanda.responsavel_id ||
+    chamado.responsavel_id === userId ||
+    chamado.aberto_por === userId ||
+    !chamado.responsavel_id ||
     apoios.includes(userId ?? "");
 
   const chip = (ativo: boolean): CSSProperties => ({
@@ -189,7 +219,7 @@ function DemandaDetalhePage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/demandas" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -202,14 +232,14 @@ function DemandaDetalhePage() {
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18, lineHeight: 1.3 }}>
-            {demanda.titulo}
+            {chamado.titulo}
           </div>
           <div style={{
             fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11.5,
             color: textSecondary, marginTop: 3,
           }}>
-            {demanda.numero} · aberta {tempoRelativo(demanda.created_at)}
-            {demanda.origem === "notion" && " · importada do Notion"}
+            {chamado.numero} · aberto {tempoRelativo(chamado.created_at)}
+            {chamado.origem === "notion" && " · importada do Notion"}
           </div>
         </div>
         <span style={{
@@ -227,21 +257,21 @@ function DemandaDetalhePage() {
       <div style={CARD}>
         <span style={SEC}>Status</span>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {DEMANDA_STATUS_ORDEM.map((s) => (
+          {statusDaNatureza("interno").map((s) => (
             <button
               key={s}
               type="button"
               disabled={!podeEditar || salvar.isPending}
-              style={chip(demanda.status === s)}
-              onClick={() => salvar.mutate({ status: s as DemandaStatus })}
+              style={chip(chamado.status === s)}
+              onClick={() => salvar.mutate({ status: s as ChamadoStatus })}
             >
-              {demandaStatusInfo(s).label}
+              {chamadoStatusInfo(s).label}
             </button>
           ))}
         </div>
-        {demanda.concluida_em && (
+        {chamado.concluida_em && (
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary }}>
-            Concluída {tempoRelativo(demanda.concluida_em)}.
+            Concluído {tempoRelativo(chamado.concluida_em)}.
           </div>
         )}
       </div>
@@ -254,7 +284,7 @@ function DemandaDetalhePage() {
           <select
             style={INPUT}
             disabled={!podeEditar}
-            value={demanda.responsavel_id ?? ""}
+            value={chamado.responsavel_id ?? ""}
             onChange={(e) => salvar.mutate({ responsavel_id: e.target.value || null })}
           >
             <option value="">Sem responsável</option>
@@ -304,7 +334,7 @@ function DemandaDetalhePage() {
               >
                 <option value="">Escolher pessoa…</option>
                 {pessoas
-                  .filter((p) => !apoios.includes(p.id) && p.id !== demanda.responsavel_id)
+                  .filter((p) => !apoios.includes(p.id) && p.id !== chamado.responsavel_id)
                   .map((p) => (
                     <option key={p.id} value={p.id}>{p.nome}</option>
                   ))}
@@ -334,7 +364,7 @@ function DemandaDetalhePage() {
                 key={e}
                 type="button"
                 disabled={!podeEditar}
-                style={chip(demanda.equipe === e)}
+                style={chip(chamado.equipe === e)}
                 onClick={() => salvar.mutate({ equipe: e as Equipe })}
               >
                 {EQUIPE_LABEL[e]}
@@ -354,16 +384,16 @@ function DemandaDetalhePage() {
               style={INPUT}
               type="date"
               disabled={!podeEditar}
-              value={demanda.prazo ?? ""}
-              onChange={(e) => salvar.mutate({ prazo: e.target.value || null })}
+              value={prazoParaData(chamado.prazo_limite)}
+              onChange={(e) => salvar.mutate({ prazo_limite: dataParaPrazo(e.target.value) })}
             />
-            {demanda.prazo && demandaEmAberto(demanda.status) && (
+            {chamado.prazo_limite && chamadoEmAberto(chamado.status) && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 5, marginTop: 6,
                 fontFamily: "'Montserrat', sans-serif", fontSize: 11,
                 color: sp === "atrasada" ? (isLight ? "#b91c1c" : "#F87171") : textSecondary,
               }}>
-                <CalendarClock size={12} /> {textoPrazoDemanda(demanda.prazo)}
+                <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
               </div>
             )}
           </div>
@@ -372,8 +402,8 @@ function DemandaDetalhePage() {
             <select
               style={INPUT}
               disabled={!podeEditar}
-              value={demanda.sprint}
-              onChange={(e) => salvar.mutate({ sprint: e.target.value as DemandaSprint })}
+              value={chamado.sprint}
+              onChange={(e) => salvar.mutate({ sprint: e.target.value as ChamadoSprint })}
             >
               {SPRINT_ORDEM.map((s) => (
                 <option key={s} value={s}>{SPRINT_LABEL[s]}</option>
@@ -384,25 +414,25 @@ function DemandaDetalhePage() {
         <div>
           <label style={LABEL}>Classificação</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {TIPOS_DEMANDA.map((t) => (
+            {tiposDaNatureza("interno").map((t) => (
               <button
                 key={t}
                 type="button"
                 disabled={!podeEditar}
-                style={chip(demanda.tipo === t)}
-                onClick={() => salvar.mutate({ tipo: t as DemandaTipo })}
+                style={chip(chamado.tipo === t)}
+                onClick={() => salvar.mutate({ tipo: t as ChamadoTipo })}
               >
-                {TIPO_DEMANDA_LABEL[t]}
+                {TIPO_LABEL[t]}
               </button>
             ))}
           </div>
         </div>
-        {demanda.cliente && (
+        {chamado.cliente && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, color: textSecondary,
           }}>
-            <Building2 size={14} color={gold} /> {demanda.cliente.nome}
+            <Building2 size={14} color={gold} /> {chamado.cliente.nome}
           </div>
         )}
         <span style={{
@@ -411,22 +441,196 @@ function DemandaDetalhePage() {
           letterSpacing: "0.06em", textTransform: "uppercase",
           color: isLight ? eqc.light : eqc.dark, background: eqc.bg, border: `1px solid ${eqc.border}`,
         }}>
-          {EQUIPE_LABEL[demanda.equipe] ?? demanda.equipe}
+          {EQUIPE_LABEL[chamado.equipe] ?? chamado.equipe}
         </span>
       </div>
 
       {/* Descrição */}
-      {demanda.descricao && (
+      {chamado.descricao_problema && (
         <div style={CARD}>
           <span style={SEC}>Descrição</span>
           <div style={{
             fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13.5,
             color: textPrimary, lineHeight: 1.6, whiteSpace: "pre-wrap",
           }}>
-            {demanda.descricao}
+            {chamado.descricao_problema}
           </div>
         </div>
       )}
+
+      {/* Pedido de compra (R6/Q6) — o que é, quanto custa, de quem, quem liberou */}
+      {ehCompra && compra && (() => {
+        const cor = SITUACAO_CORES[compra.situacao];
+        const passos = proximasSituacoes(compra.situacao);
+        const podeAndar = (p: SituacaoCompra) =>
+          !SITUACOES_DE_DECISAO.includes(p) || veFinanceiro;
+        const editavel = podeEditar && !["recebido", "recusado"].includes(compra.situacao);
+        return (
+          <div style={CARD}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ ...SEC, marginBottom: 0 }}>Pedido de compra</span>
+              <span style={{
+                padding: "3px 9px", borderRadius: 999,
+                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9.5,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                color: isLight ? cor.light : cor.dark,
+                background: cor.bg, border: `1px solid ${cor.border}`,
+              }}>
+                {SITUACAO_LABEL[compra.situacao]}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                  Quantidade
+                </span>
+                <input
+                  type="number" min="0" step="1" defaultValue={compra.quantidade}
+                  disabled={!editavel}
+                  onBlur={(e) => {
+                    const q = Number(e.target.value);
+                    if (q > 0 && q !== compra.quantidade) salvarFichaCompra.mutate({ quantidade: q });
+                  }}
+                  style={INPUT}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                  Valor estimado (R$)
+                </span>
+                <input
+                  type="number" min="0" step="0.01"
+                  defaultValue={compra.valor_estimado ?? ""}
+                  disabled={!editavel}
+                  onBlur={(e) => {
+                    const v = e.target.value === "" ? null : Number(e.target.value);
+                    if (v !== compra.valor_estimado) salvarFichaCompra.mutate({ valor_estimado: v });
+                  }}
+                  style={INPUT}
+                />
+              </label>
+            </div>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                Fornecedor sugerido
+              </span>
+              <input
+                defaultValue={compra.fornecedor_sugerido ?? ""}
+                placeholder="De quem costumamos comprar isso?"
+                disabled={!editavel}
+                onBlur={(e) => {
+                  const v = e.target.value.trim() || null;
+                  if (v !== compra.fornecedor_sugerido) salvarFichaCompra.mutate({ fornecedor_sugerido: v });
+                }}
+                style={INPUT}
+              />
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                Link do produto
+              </span>
+              <input
+                defaultValue={compra.link_produto ?? ""}
+                placeholder="https://…"
+                disabled={!editavel}
+                onBlur={(e) => {
+                  const v = e.target.value.trim() || null;
+                  if (v !== compra.link_produto) salvarFichaCompra.mutate({ link_produto: v });
+                }}
+                style={INPUT}
+              />
+            </label>
+
+            {compra.link_produto && (
+              <a
+                href={compra.link_produto} target="_blank" rel="noopener noreferrer"
+                style={{
+                  marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: 11.5,
+                  color: gold, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
+                }}
+              >
+                Abrir o produto <ExternalLink size={11} />
+              </a>
+            )}
+
+            {compra.valor_final != null && (
+              <div style={{
+                marginTop: 10, fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, color: textPrimary,
+              }}>
+                Valor pago: <strong>{moedaBR(compra.valor_final)}</strong>
+              </div>
+            )}
+
+            {compra.situacao === "recusado" && compra.motivo_recusa && (
+              <div style={{
+                marginTop: 10, padding: "9px 11px", borderRadius: 10,
+                background: SITUACAO_CORES.recusado.bg,
+                border: `1px solid ${SITUACAO_CORES.recusado.border}`,
+                fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+                color: isLight ? SITUACAO_CORES.recusado.light : SITUACAO_CORES.recusado.dark,
+                lineHeight: 1.5,
+              }}>
+                Motivo: {compra.motivo_recusa}
+              </div>
+            )}
+
+            {/* Próximo passo. Aprovar e recusar só aparecem para quem responde
+                pelo dinheiro — o banco recusa de qualquer jeito, mas botão que
+                sempre dá erro é armadilha. */}
+            {passos.length > 0 && podeEditar && !pedindoRecusa && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                {passos.filter(podeAndar).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() =>
+                      p === "recusado"
+                        ? setPedindoRecusa(true)
+                        : andarCompra.mutate({ situacao: p })
+                    }
+                    disabled={andarCompra.isPending}
+                    style={chip(false)}
+                  >
+                    {p === "solicitado" ? "Reabrir" : SITUACAO_LABEL[p]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {pedindoRecusa && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                <textarea
+                  value={motivoRecusaCompra}
+                  onChange={(e) => setMotivoRecusaCompra(e.target.value)}
+                  placeholder="Por que a compra não foi autorizada?"
+                  rows={2}
+                  style={{ ...INPUT, height: "auto", padding: "10px 12px", resize: "vertical" }}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => andarCompra.mutate({
+                      situacao: "recusado",
+                      motivo: motivoRecusaCompra.trim() || undefined,
+                    })}
+                    disabled={andarCompra.isPending}
+                    style={chip(false)}
+                  >
+                    Registrar recusa
+                  </button>
+                  <button
+                    onClick={() => { setPedindoRecusa(false); setMotivoRecusaCompra(""); }}
+                    style={chip(false)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Equipamentos envolvidos — a lacuna do Notion */}
       <div style={CARD}>
@@ -579,7 +783,7 @@ function DemandaDetalhePage() {
       {isGerente && (
         <button
           onClick={() => {
-            if (confirm(`Excluir a demanda ${demanda.numero}? Não tem desfazer.`)) excluir.mutate();
+            if (confirm(`Excluir a chamado ${chamado.numero}? Não tem desfazer.`)) excluir.mutate();
           }}
           style={{
             height: 46, borderRadius: 23,
@@ -590,7 +794,7 @@ function DemandaDetalhePage() {
             cursor: "pointer",
           }}
         >
-          Excluir demanda
+          Excluir chamado
         </button>
       )}
     </div>

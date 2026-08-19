@@ -14,8 +14,8 @@ import { getStatusInfo } from "@/lib/visita-status";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { ClienteForm } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
-import { useOrdensDoCliente } from "@/features/os/data";
-import { osStatusInfo } from "@/lib/os-status";
+import { useChamadosDoCliente } from "@/features/chamados/data";
+import { chamadoStatusInfo } from "@/lib/chamado-status";
 import {
   useContratosDoCliente, contratoVigente,
   MODALIDADE_LABEL, STATUS_CONTRATO_LABEL, STATUS_CONTRATO_CORES,
@@ -42,7 +42,7 @@ function ClienteDetalhePage() {
   const { data: veFinanceiro = false } = useVeFinanceiro();
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
-  const { data: ordens = [] } = useOrdensDoCliente(id);
+  const { data: ordens = [] } = useChamadosDoCliente(id);
   const { data: contratos = [] } = useContratosDoCliente(id);
   const [editando, setEditando] = useState(false);
 
@@ -363,7 +363,7 @@ function ClienteDetalhePage() {
               <span style={{ flex: 1 }} />
               {isGerente && (
                 <button
-                  onClick={() => navigate({ to: "/os/nova" })}
+                  onClick={() => navigate({ to: "/chamados/novo" })}
                   style={{
                     height: 34, padding: "0 12px", borderRadius: 10,
                     background: isLight ? "#ffffff" : "#191921",
@@ -383,12 +383,12 @@ function ClienteDetalhePage() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
                 {ordens.slice(0, 8).map((o) => {
-                  const info = osStatusInfo(o.status);
+                  const info = chamadoStatusInfo(o.status);
                   const cor = isLight ? info.colorLight : info.color;
                   return (
                     <button
                       key={o.id}
-                      onClick={() => navigate({ to: "/os/$id", params: { id: o.id } })}
+                      onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
                       style={{
                         display: "flex", alignItems: "center", gap: 10,
                         padding: "10px 12px", borderRadius: 12, cursor: "pointer", textAlign: "left",

@@ -14,21 +14,21 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
-import { useOrdens, atualizarOs, type OrdemServico } from "@/features/os/data";
+import { useChamadosPorNatureza, atualizarChamado, type Chamado } from "@/features/chamados/data";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import {
-  osStatusInfo, osEmAberto, situacaoPrazo, textoPrazo,
-  OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES, type OsPrioridade,
-} from "@/lib/os-status";
+  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
+  PRIORIDADE_LABEL, PRIORIDADE_CORES, type ChamadoPrioridade,
+} from "@/lib/chamado-status";
 
-export const Route = createFileRoute("/_authenticated/os/programacao")({
+export const Route = createFileRoute("/_authenticated/chamados/programacao")({
   beforeLoad: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
     const { data: perfil } = await supabase
       .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (perfil?.cargo !== "admin" && perfil?.cargo !== "comercial") {
-      throw redirect({ to: "/os" });
+    if (!["admin", "comercial", "sac"].includes(perfil?.cargo ?? "")) {
+      throw redirect({ to: "/chamados" });
     }
   },
   component: ProgramacaoPage,
@@ -45,11 +45,12 @@ function ProgramacaoPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
-  const { data: ordens = [], isLoading } = useOrdens();
+  // programação é sobre deslocamento: só chamado de campo entra aqui
+  const { data: ordens = [], isLoading } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
 
   const [dia, setDia] = useState(() => new Date());
-  const [agendando, setAgendando] = useState<OrdemServico | null>(null);
+  const [agendando, setAgendando] = useState<Chamado | null>(null);
   const [novaData, setNovaData] = useState("");
   const [novoTecnico, setNovoTecnico] = useState("");
 
@@ -69,7 +70,7 @@ function ProgramacaoPage() {
     });
   }, [dia]);
 
-  const abertas = useMemo(() => ordens.filter((o) => osEmAberto(o.status)), [ordens]);
+  const abertas = useMemo(() => ordens.filter((o) => chamadoEmAberto(o.status)), [ordens]);
 
   const doDia = useMemo(() => {
     const k = chaveDia(dia);
@@ -101,12 +102,12 @@ function ProgramacaoPage() {
   }, [abertas]);
 
   const porTecnico = useMemo(() => {
-    const grupos: { id: string | null; nome: string; ordens: OrdemServico[] }[] = [];
+    const grupos: { id: string | null; nome: string; ordens: Chamado[] }[] = [];
     for (const t of tecnicos as any[]) {
-      const lista = doDia.filter((o) => o.tecnico_id === t.id);
+      const lista = doDia.filter((o) => o.responsavel_id === t.id);
       if (lista.length > 0) grupos.push({ id: t.id, nome: t.nome ?? "—", ordens: lista });
     }
-    const semDono = doDia.filter((o) => !o.tecnico_id);
+    const semDono = doDia.filter((o) => !o.responsavel_id);
     if (semDono.length > 0) grupos.push({ id: null, nome: "Sem técnico definido", ordens: semDono });
     return grupos;
   }, [doDia, tecnicos]);
@@ -118,24 +119,24 @@ function ProgramacaoPage() {
       // meio-dia local evita o pulo de fuso que jogaria o agendamento para o
       // dia anterior no UTC
       const quando = new Date(`${novaData}T12:00:00`);
-      await atualizarOs(agendando.id, {
+      await atualizarChamado(agendando.id, {
         data_hora_agendada: quando.toISOString(),
-        tecnico_id: novoTecnico || null,
+        responsavel_id: novoTecnico || null,
         // agendar é o que tira o chamado da fila de triagem
-        status: agendando.status === "aberta" ? "agendada" : agendando.status,
+        status: agendando.status === "aberto" ? "agendado" : agendando.status,
       } as any);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["ordens-servico"] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
       setAgendando(null);
       toast.success("Chamado programado.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const cartaoOs = (o: OrdemServico) => {
-    const st = osStatusInfo(o.status);
-    const pr = OS_PRIORIDADE_CORES[o.prioridade as OsPrioridade];
+  const cartaoOs = (o: Chamado) => {
+    const st = chamadoStatusInfo(o.status);
+    const pr = PRIORIDADE_CORES[o.prioridade as ChamadoPrioridade];
     const atrasado = situacaoPrazo(o.prazo_limite, o.status) === "estourado";
     return (
       <div
@@ -148,7 +149,7 @@ function ProgramacaoPage() {
         }}
       >
         <button
-          onClick={() => navigate({ to: "/os/$id", params: { id: o.id } })}
+          onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
           style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
         >
           <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: textPrimary }}>
@@ -165,7 +166,7 @@ function ProgramacaoPage() {
             letterSpacing: "0.06em", textTransform: "uppercase",
             color: isLight ? pr.light : pr.dark, background: pr.bg, border: `1px solid ${pr.border}`,
           }}>
-            {OS_PRIORIDADE_LABEL[o.prioridade as OsPrioridade]}
+            {PRIORIDADE_LABEL[o.prioridade as ChamadoPrioridade]}
           </span>
           <span style={{
             padding: "3px 8px", borderRadius: 999,
@@ -187,7 +188,7 @@ function ProgramacaoPage() {
             onClick={() => {
               setAgendando(o);
               setNovaData(o.data_hora_agendada ? chaveDia(new Date(o.data_hora_agendada)) : chaveDia(dia));
-              setNovoTecnico(o.tecnico_id ?? "");
+              setNovoTecnico(o.responsavel_id ?? "");
             }}
             style={{
               padding: "5px 10px", borderRadius: 8, cursor: "pointer",
@@ -207,7 +208,7 @@ function ProgramacaoPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/os" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

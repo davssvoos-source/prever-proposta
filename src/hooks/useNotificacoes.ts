@@ -10,10 +10,8 @@ export type Notificacao = {
   corpo: string | null;
   lida: boolean;
   visita_id: string | null;
-  /** Chamado (ordem de serviço) vinculado — Etapa 3 do sistema de OS. */
-  os_id?: string | null;
-  /** Demanda interna vinculada — Etapa U1 da unificação. */
-  demanda_id?: string | null;
+  /** Chamado vinculado — campo ou interno, um só desde a fusão (U7). */
+  chamado_id?: string | null;
   created_at: string;
 };
 

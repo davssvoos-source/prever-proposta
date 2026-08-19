@@ -72,11 +72,8 @@ export function NotificationPanel() {
     if (!n.lida) marcarLida(n.id);
     setOpen(false);
     // Cada notificação carrega no máximo um destino; a ordem só resolve empate.
-    // Sem isto, aviso de demanda abre o sino e não leva a lugar nenhum.
-    if (n.demanda_id) {
-      navigate({ to: "/demandas/$id", params: { id: n.demanda_id } });
-    } else if (n.os_id) {
-      navigate({ to: "/os/$id", params: { id: n.os_id } });
+    if (n.chamado_id) {
+      navigate({ to: "/chamados/$id", params: { id: n.chamado_id } });
     } else if (n.visita_id) {
       navigate({ to: "/visita/$id", params: { id: n.visita_id }, state: { from: location.pathname } as any });
     }

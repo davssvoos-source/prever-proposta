@@ -1,4 +1,4 @@
-// Painel gerencial de chamados — Etapa 5 do sistema de OS.
+// Indicadores da operação de campo — Etapa 5 do sistema de OS, portada na U7.
 // Indicadores da operação técnica: fila por status, cumprimento de prazo,
 // tempo médio de atendimento, carga por técnico e clientes que mais chamam.
 // Paleta de dataviz conforme DESIGN_SYSTEM.md §9 (validada para daltonismo,
@@ -11,18 +11,18 @@ import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, Timer } from "lucide-rea
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
-import { useOrdens } from "@/features/os/data";
-import { osStatusInfo, osEmAberto, situacaoPrazo, OS_STATUS_ORDEM } from "@/lib/os-status";
+import { useChamadosPorNatureza } from "@/features/chamados/data";
+import { chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, STATUS_ORDEM } from "@/lib/chamado-status";
 
-export const Route = createFileRoute("/_authenticated/os/painel")({
+export const Route = createFileRoute("/_authenticated/chamados/indicadores")({
   beforeLoad: async () => {
     const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
     const { data: perfil } = await supabase
       .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (!["admin", "comercial"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/os" });
+    if (!["admin", "comercial", "sac"].includes((perfil as any)?.cargo ?? "")) {
+      throw redirect({ to: "/chamados" });
     }
   },
   component: PainelOsPage,
@@ -37,7 +37,8 @@ const OUTROS_LIGHT = "#9ca3af";
 function PainelOsPage() {
   const navigate = useNavigate();
   const { isLight } = useTheme();
-  const { data: ordens = [], isLoading } = useOrdens();
+  // SLA, carga por técnico e tempo de atendimento são da operação de campo
+  const { data: ordens = [], isLoading } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -69,7 +70,7 @@ function PainelOsPage() {
   const m = useMemo(() => {
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    const abertos = ordens.filter((o) => osEmAberto(o.status));
+    const abertos = ordens.filter((o) => chamadoEmAberto(o.status));
     const atrasados = ordens.filter((o) => situacaoPrazo(o.prazo_limite, o.status) === "estourado");
     const fechadasMes = ordens.filter(
       (o) => o.fechada_em && new Date(o.fechada_em) >= inicioMes,
@@ -90,16 +91,16 @@ function PainelOsPage() {
     const pctPrazo = comPrazo.length ? Math.round((noPrazo / comPrazo.length) * 100) : null;
 
     // fila por status (só o que está em aberto)
-    const porStatus = OS_STATUS_ORDEM
-      .filter((s) => osEmAberto(s))
-      .map((s) => ({ nome: osStatusInfo(s).label, valor: abertos.filter((o) => o.status === s).length }))
+    const porStatus = STATUS_ORDEM
+      .filter((s) => chamadoEmAberto(s))
+      .map((s) => ({ nome: chamadoStatusInfo(s).label, valor: abertos.filter((o) => o.status === s).length }))
       .filter((f) => f.valor > 0);
 
     // carga por técnico (em aberto)
     const nomeTecnico = new Map((tecnicos as any[]).map((t) => [t.id, t.nome as string]));
     const porTecnicoMapa = new Map<string, number>();
     for (const o of abertos) {
-      const chave = o.tecnico_id ? nomeTecnico.get(o.tecnico_id) ?? "Técnico" : "Sem técnico";
+      const chave = o.responsavel_id ? nomeTecnico.get(o.responsavel_id) ?? "Técnico" : "Sem técnico";
       porTecnicoMapa.set(chave, (porTecnicoMapa.get(chave) ?? 0) + 1);
     }
     const porTecnico = Array.from(porTecnicoMapa, ([nome, valor]) => ({ nome, valor }))
@@ -161,7 +162,7 @@ function PainelOsPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/os" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

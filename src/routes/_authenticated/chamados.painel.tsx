@@ -2,9 +2,9 @@
 // trilhos, com filtros por técnico, tipo, cliente e trilho aplicados a TUDO
 // (números, gráfico e lista). Ver docs/PRODUTO.md §4.1.
 //
-// Herda o acesso do pai /chamados (admin, comercial e SAC). O /os/painel
-// continua existindo como mergulho específico da operação de campo (SLA,
-// carga por técnico); este aqui é a visão gerencial do TODO.
+// Herda o acesso do pai /chamados (admin, comercial e SAC).
+// /chamados/indicadores continua existindo como mergulho da operação de campo
+// (SLA, carga por técnico); este aqui é a visão gerencial do TODO.
 // Paleta de dataviz conforme DESIGN_SYSTEM.md §9.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -18,11 +18,10 @@ import { ArrowLeft, AlertTriangle, CalendarDays, CalendarRange, CalendarCheck, C
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { osEmAberto, situacaoPrazo, OS_TIPO_LABEL, type OsTipo } from "@/lib/os-status";
-import { demandaEmAberto, TIPO_DEMANDA_LABEL, type DemandaTipo } from "@/lib/demanda-status";
+import { chamadoEmAberto, situacaoPrazo, TIPO_LABEL, type ChamadoTipo } from "@/lib/chamado-status";
 import { isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
 import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
-import { useDemandas, usePessoas } from "@/features/demandas/data";
+import { useChamados, usePessoas } from "@/features/chamados/data";
 
 export const Route = createFileRoute("/_authenticated/chamados/painel")({
   component: PainelChamadosPage,
@@ -54,18 +53,7 @@ function PainelChamadosPage() {
   const [cliente, setCliente] = useState<string>("todos");
 
   // mesmos queryKeys da lista: cache compartilhado entre as abas do SAC
-  const { data: ordens = [], isLoading: l1 } = useQuery({
-    queryKey: ["chamados-os"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ordens_servico" as any)
-        .select("id, numero, titulo, status, tipo, prioridade, prazo_limite, data_hora_agendada, tecnico_id, created_at, updated_at, cliente:clientes(nome)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data as any[]) ?? [];
-    },
-  });
-  const { data: demandas = [], isLoading: l2 } = useDemandas();
+  const { data: chamados = [], isLoading: l1 } = useChamados();
   const { data: visitas = [], isLoading: l3 } = useQuery({
     queryKey: ["chamados-visitas"],
     queryFn: async () => {
@@ -79,7 +67,7 @@ function PainelChamadosPage() {
   });
   const { data: pessoas = [] } = usePessoas();
 
-  const isLoading = l1 || l2 || l3;
+  const isLoading = l1 || l3;
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#b87800" : "#FFC000";
@@ -105,28 +93,17 @@ function PainelChamadosPage() {
   // ── Normalização ──────────────────────────────────────────────────────────
   const itens = useMemo<Item[]>(() => {
     const l: Item[] = [];
-    for (const o of ordens) {
+    for (const c of chamados) {
+      const interno = c.natureza === "interno";
       l.push({
-        trilho: "campo",
-        equipe: null,
-        tipo: o.tipo ?? "corretiva",
-        cliente: o.cliente?.nome ?? null,
-        responsavelId: o.tecnico_id ?? null,
-        emAberto: osEmAberto(o.status),
-        atrasado: situacaoPrazo(o.prazo_limite, o.status) === "estourado",
-        criadoEm: o.created_at,
-      });
-    }
-    for (const d of demandas) {
-      l.push({
-        trilho: "demanda",
-        equipe: d.equipe,
-        tipo: d.tipo ?? "operacional",
-        cliente: d.cliente?.nome ?? null,
-        responsavelId: d.responsavel_id,
-        emAberto: demandaEmAberto(d.status),
-        atrasado: demandaEmAberto(d.status) && !!d.prazo && d.prazo < new Date().toISOString().slice(0, 10),
-        criadoEm: d.created_at,
+        trilho: interno ? "demanda" : "campo",
+        equipe: interno ? c.equipe : null,
+        tipo: c.tipo ?? (interno ? "operacional" : "corretiva"),
+        cliente: c.cliente?.nome ?? null,
+        responsavelId: c.responsavel_id,
+        emAberto: chamadoEmAberto(c.status),
+        atrasado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
+        criadoEm: c.created_at,
       });
     }
     for (const v of visitas) {
@@ -142,7 +119,7 @@ function PainelChamadosPage() {
       });
     }
     return l;
-  }, [ordens, demandas, visitas]);
+  }, [chamados, visitas]);
 
   // ── Filtros — aplicados a TUDO ────────────────────────────────────────────
   const filtrados = useMemo(() => {
@@ -184,7 +161,7 @@ function PainelChamadosPage() {
         rotulo: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
       });
     }
-    const tiposCampo: OsTipo[] = ["corretiva", "preventiva", "operacional", "implantacao"];
+    const tiposCampo: ChamadoTipo[] = ["corretiva", "preventiva", "operacional", "implantacao"];
     const base = meses.map((m) => {
       const linha: Record<string, string | number> = { mes: m.rotulo };
       for (const t of tiposCampo) linha[t] = 0;
@@ -224,11 +201,11 @@ function PainelChamadosPage() {
   // tipos disponíveis para o filtro: os de campo + os de demanda + visita
   const tiposFiltro: { valor: string; rotulo: string }[] = [
     { valor: "todos", rotulo: "Todos os tipos" },
-    ...(["corretiva", "preventiva", "operacional", "implantacao"] as OsTipo[]).map((t) => ({
-      valor: t, rotulo: OS_TIPO_LABEL[t],
+    ...(["corretiva", "preventiva", "operacional", "implantacao"] as ChamadoTipo[]).map((t) => ({
+      valor: t, rotulo: TIPO_LABEL[t],
     })),
-    { valor: "melhoria", rotulo: TIPO_DEMANDA_LABEL.melhoria },
-    { valor: "pedido_compra", rotulo: TIPO_DEMANDA_LABEL.pedido_compra as string },
+    { valor: "melhoria", rotulo: TIPO_LABEL.melhoria },
+    { valor: "pedido_compra", rotulo: TIPO_LABEL.pedido_compra as string },
     { valor: "visita", rotulo: "Visita (proposta)" },
   ];
 
@@ -362,14 +339,14 @@ function PainelChamadosPage() {
                     <Legend
                       formatter={(v: string) => (
                         <span style={{ fontFamily: FONT, fontSize: 11, color: textPrimary }}>
-                          {OS_TIPO_LABEL[v as OsTipo] ?? v}
+                          {TIPO_LABEL[v as ChamadoTipo] ?? v}
                         </span>
                       )}
                     />
                     {grafico.tiposCampo.map((t, i) => (
                       <Bar
                         key={t} dataKey={t} stackId="campo"
-                        name={OS_TIPO_LABEL[t]}
+                        name={TIPO_LABEL[t]}
                         fill={cores[i % 8]}
                         isAnimationActive={false}
                         radius={i === grafico.tiposCampo.length - 1 ? [4, 4, 0, 0] : undefined}
@@ -410,10 +387,10 @@ function PainelChamadosPage() {
                   </span>
                   <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary, flexShrink: 0 }}>
                     {i.trilho === "campo"
-                      ? OS_TIPO_LABEL[i.tipo as OsTipo] ?? i.tipo
+                      ? TIPO_LABEL[i.tipo as ChamadoTipo] ?? i.tipo
                       : i.trilho === "proposta"
                         ? "Proposta"
-                        : TIPO_DEMANDA_LABEL[i.tipo as DemandaTipo] ?? i.tipo}
+                        : TIPO_LABEL[i.tipo as ChamadoTipo] ?? i.tipo}
                   </span>
                 </div>
               ))}

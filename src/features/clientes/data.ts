@@ -168,7 +168,7 @@ export interface GrupoConsolidacao {
   telefoneZelador: string | null;
   emailZelador: string | null;
   fotoFachadaUrl: string | null;
-  /** Situação sugerida: ativo quando o grupo tem visita aprovada. */
+  /** Situação sugerida: ativo só com proposta ACEITA pelo cliente (R4). */
   situacaoSugerida: SituacaoCliente;
   visitaIds: string[];
   /** Clientes já referenciados pelas visitas do grupo (candidatos a fundir). */
@@ -185,7 +185,7 @@ export function useGruposConsolidacao() {
         supabase
           .from("visitas_tecnicas")
           .select(
-            "id, cliente_id, status, created_at, nome_predio, titulo, tipo_local, endereco, complemento, " +
+            "id, cliente_id, status, proposta_resultado, created_at, nome_predio, titulo, tipo_local, endereco, complemento, " +
               "latitude, longitude, nome_sindico, telefone_sindico, email_sindico, nome_zelador, " +
               "telefone_zelador, email_zelador, foto_fachada_url",
           )
@@ -233,7 +233,9 @@ export function useGruposConsolidacao() {
         }
         g.visitaIds.push(v.id as string);
         if (v.cliente_id && !g.clienteIds.includes(v.cliente_id)) g.clienteIds.push(v.cliente_id);
-        if (String(v.status ?? "").toLowerCase() === "aprovada") g.situacaoSugerida = "ativo";
+        // R4: aprovar a visita é decisão nossa; quem faz do prospecto um
+        // cliente é o aceite DELE. Antes daqui saía "ativo" cedo demais.
+        if (String(v.proposta_resultado ?? "") === "aceita") g.situacaoSugerida = "ativo";
         // completa lacunas com dados de visitas mais antigas
         g.endereco ??= v.endereco ?? null;
         g.complemento ??= v.complemento ?? null;

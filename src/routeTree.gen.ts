@@ -18,37 +18,34 @@ import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/n
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
-import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
-import { Route as AuthenticatedOsRouteImport } from './routes/_authenticated/os'
-import { Route as AuthenticatedDemandasRouteImport } from './routes/_authenticated/demandas'
-import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated/contratos'
 import { Route as AuthenticatedFechamentosRouteImport } from './routes/_authenticated/fechamentos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
+import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated/contratos'
+import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedChamadosRouteImport } from './routes/_authenticated/chamados'
-import { Route as AuthenticatedChamadosNovoRouteImport } from './routes/_authenticated/chamados.novo'
-import { Route as AuthenticatedChamadosPainelRouteImport } from './routes/_authenticated/chamados.painel'
+import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authenticated/calendario'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
-import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
-import { Route as AuthenticatedOsPainelRouteImport } from './routes/_authenticated/os.painel'
-import { Route as AuthenticatedOsProgramacaoRouteImport } from './routes/_authenticated/os.programacao'
-import { Route as AuthenticatedOsNovaRouteImport } from './routes/_authenticated/os.nova'
-import { Route as AuthenticatedOsIdRouteImport } from './routes/_authenticated/os.$id'
-import { Route as AuthenticatedDemandasNovaRouteImport } from './routes/_authenticated/demandas.nova'
-import { Route as AuthenticatedDemandasImportarRouteImport } from './routes/_authenticated/demandas.importar'
-import { Route as AuthenticatedDemandasIdRouteImport } from './routes/_authenticated/demandas.$id'
+import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
+import { Route as AuthenticatedFechamentosIdRouteImport } from './routes/_authenticated/fechamentos.$id'
 import { Route as AuthenticatedContratosNovoRouteImport } from './routes/_authenticated/contratos.novo'
 import { Route as AuthenticatedContratosIdRouteImport } from './routes/_authenticated/contratos.$id'
-import { Route as AuthenticatedFechamentosIdRouteImport } from './routes/_authenticated/fechamentos.$id'
+import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
 import { Route as AuthenticatedClientesMigrarRouteImport } from './routes/_authenticated/clientes.migrar'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
-import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
+import { Route as AuthenticatedChamadosProgramacaoRouteImport } from './routes/_authenticated/chamados.programacao'
+import { Route as AuthenticatedChamadosPainelRouteImport } from './routes/_authenticated/chamados.painel'
+import { Route as AuthenticatedChamadosNovoInternoRouteImport } from './routes/_authenticated/chamados.novo-interno'
+import { Route as AuthenticatedChamadosNovoCampoRouteImport } from './routes/_authenticated/chamados.novo-campo'
+import { Route as AuthenticatedChamadosNovoRouteImport } from './routes/_authenticated/chamados.novo'
+import { Route as AuthenticatedChamadosIndicadoresRouteImport } from './routes/_authenticated/chamados.indicadores'
+import { Route as AuthenticatedChamadosImportarRouteImport } from './routes/_authenticated/chamados.importar'
+import { Route as AuthenticatedChamadosIdRouteImport } from './routes/_authenticated/chamados.$id'
 import { Route as AuthenticatedVisitaIdReagendarRouteImport } from './routes/_authenticated/visita.$id.reagendar'
-import { Route as AuthenticatedVisitaIdPagamentoRouteImport } from './routes/_authenticated/visita.$id.pagamento'
 import { Route as AuthenticatedVisitaIdPendenteRouteImport } from './routes/_authenticated/visita.$id.pendente'
+import { Route as AuthenticatedVisitaIdPagamentoRouteImport } from './routes/_authenticated/visita.$id.pagamento'
 import { Route as AuthenticatedVisitaIdOrcamentoRouteImport } from './routes/_authenticated/visita.$id.orcamento'
 import { Route as AuthenticatedVisitaIdOrcamentoIndexRouteImport } from './routes/_authenticated/visita.$id.orcamento.index'
 import { Route as AuthenticatedVisitaIdOrcamentoPreEnvioRouteImport } from './routes/_authenticated/visita.$id.orcamento.pre-envio'
@@ -101,14 +98,25 @@ const AuthenticatedGerencialRoute = AuthenticatedGerencialRouteImport.update({
   path: '/gerencial',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFechamentosRoute =
+  AuthenticatedFechamentosRouteImport.update({
+    id: '/fechamentos',
+    path: '/fechamentos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
-  id: '/calendario',
-  path: '/calendario',
+const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChamadosRoute = AuthenticatedChamadosRouteImport.update({
@@ -116,30 +124,11 @@ const AuthenticatedChamadosRoute = AuthenticatedChamadosRouteImport.update({
   path: '/chamados',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedChamadosNovoRoute = AuthenticatedChamadosNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AuthenticatedChamadosRoute,
+const AuthenticatedCalendarioRoute = AuthenticatedCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedChamadosPainelRoute =
-  AuthenticatedChamadosPainelRouteImport.update({
-    id: '/painel',
-    path: '/painel',
-    getParentRoute: () => AuthenticatedChamadosRoute,
-  } as any)
-
-interface AuthenticatedChamadosRouteChildren {
-  AuthenticatedChamadosNovoRoute: typeof AuthenticatedChamadosNovoRoute
-  AuthenticatedChamadosPainelRoute: typeof AuthenticatedChamadosPainelRoute
-}
-
-const AuthenticatedChamadosRouteChildren: AuthenticatedChamadosRouteChildren = {
-  AuthenticatedChamadosNovoRoute: AuthenticatedChamadosNovoRoute,
-  AuthenticatedChamadosPainelRoute: AuthenticatedChamadosPainelRoute,
-}
-
-const AuthenticatedChamadosRouteWithChildren =
-  AuthenticatedChamadosRoute._addFileChildren(AuthenticatedChamadosRouteChildren)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -155,64 +144,24 @@ const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   path: '/projeto/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedOsRoute = AuthenticatedOsRouteImport.update({
-  id: '/os',
-  path: '/os',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedOsPainelRoute = AuthenticatedOsPainelRouteImport.update({
-  id: '/painel',
-  path: '/painel',
-  getParentRoute: () => AuthenticatedOsRoute,
-} as any)
-const AuthenticatedOsProgramacaoRoute =
-  AuthenticatedOsProgramacaoRouteImport.update({
-    id: '/programacao',
-    path: '/programacao',
-    getParentRoute: () => AuthenticatedOsRoute,
+const AuthenticatedGerencialUsuariosRoute =
+  AuthenticatedGerencialUsuariosRouteImport.update({
+    id: '/usuarios',
+    path: '/usuarios',
+    getParentRoute: () => AuthenticatedGerencialRoute,
   } as any)
-const AuthenticatedOsNovaRoute = AuthenticatedOsNovaRouteImport.update({
-  id: '/nova',
-  path: '/nova',
-  getParentRoute: () => AuthenticatedOsRoute,
-} as any)
-const AuthenticatedOsIdRoute = AuthenticatedOsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedOsRoute,
-} as any)
-const AuthenticatedDemandasRoute = AuthenticatedDemandasRouteImport.update({
-  id: '/demandas',
-  path: '/demandas',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDemandasNovaRoute =
-  AuthenticatedDemandasNovaRouteImport.update({
+const AuthenticatedGerencialNovaRoute =
+  AuthenticatedGerencialNovaRouteImport.update({
     id: '/nova',
     path: '/nova',
-    getParentRoute: () => AuthenticatedDemandasRoute,
+    getParentRoute: () => AuthenticatedGerencialRoute,
   } as any)
-const AuthenticatedDemandasImportarRoute =
-  AuthenticatedDemandasImportarRouteImport.update({
-    id: '/importar',
-    path: '/importar',
-    getParentRoute: () => AuthenticatedDemandasRoute,
+const AuthenticatedFechamentosIdRoute =
+  AuthenticatedFechamentosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedFechamentosRoute,
   } as any)
-const AuthenticatedDemandasIdRoute = AuthenticatedDemandasIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedDemandasRoute,
-} as any)
-const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
-  id: '/contratos',
-  path: '/contratos',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedContratosNovoRoute =
   AuthenticatedContratosNovoRouteImport.update({
     id: '/novo',
@@ -224,18 +173,6 @@ const AuthenticatedContratosIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AuthenticatedContratosRoute,
-  } as any)
-const AuthenticatedFechamentosRoute =
-  AuthenticatedFechamentosRouteImport.update({
-    id: '/fechamentos',
-    path: '/fechamentos',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFechamentosIdRoute =
-  AuthenticatedFechamentosIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedFechamentosRoute,
   } as any)
 const AuthenticatedClientesNovoRoute =
   AuthenticatedClientesNovoRouteImport.update({
@@ -254,34 +191,69 @@ const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedClientesRoute,
 } as any)
-const AuthenticatedGerencialUsuariosRoute =
-  AuthenticatedGerencialUsuariosRouteImport.update({
-    id: '/usuarios',
-    path: '/usuarios',
-    getParentRoute: () => AuthenticatedGerencialRoute,
+const AuthenticatedChamadosProgramacaoRoute =
+  AuthenticatedChamadosProgramacaoRouteImport.update({
+    id: '/programacao',
+    path: '/programacao',
+    getParentRoute: () => AuthenticatedChamadosRoute,
   } as any)
-const AuthenticatedGerencialNovaRoute =
-  AuthenticatedGerencialNovaRouteImport.update({
-    id: '/nova',
-    path: '/nova',
-    getParentRoute: () => AuthenticatedGerencialRoute,
+const AuthenticatedChamadosPainelRoute =
+  AuthenticatedChamadosPainelRouteImport.update({
+    id: '/painel',
+    path: '/painel',
+    getParentRoute: () => AuthenticatedChamadosRoute,
   } as any)
+const AuthenticatedChamadosNovoInternoRoute =
+  AuthenticatedChamadosNovoInternoRouteImport.update({
+    id: '/novo-interno',
+    path: '/novo-interno',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+const AuthenticatedChamadosNovoCampoRoute =
+  AuthenticatedChamadosNovoCampoRouteImport.update({
+    id: '/novo-campo',
+    path: '/novo-campo',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+const AuthenticatedChamadosNovoRoute =
+  AuthenticatedChamadosNovoRouteImport.update({
+    id: '/novo',
+    path: '/novo',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+const AuthenticatedChamadosIndicadoresRoute =
+  AuthenticatedChamadosIndicadoresRouteImport.update({
+    id: '/indicadores',
+    path: '/indicadores',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+const AuthenticatedChamadosImportarRoute =
+  AuthenticatedChamadosImportarRouteImport.update({
+    id: '/importar',
+    path: '/importar',
+    getParentRoute: () => AuthenticatedChamadosRoute,
+  } as any)
+const AuthenticatedChamadosIdRoute = AuthenticatedChamadosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedChamadosRoute,
+} as any)
 const AuthenticatedVisitaIdReagendarRoute =
   AuthenticatedVisitaIdReagendarRouteImport.update({
     id: '/reagendar',
     path: '/reagendar',
     getParentRoute: () => AuthenticatedVisitaIdRoute,
   } as any)
-const AuthenticatedVisitaIdPagamentoRoute =
-  AuthenticatedVisitaIdPagamentoRouteImport.update({
-    id: '/pagamento',
-    path: '/pagamento',
-    getParentRoute: () => AuthenticatedVisitaIdRoute,
-  } as any)
 const AuthenticatedVisitaIdPendenteRoute =
   AuthenticatedVisitaIdPendenteRouteImport.update({
     id: '/pendente',
     path: '/pendente',
+    getParentRoute: () => AuthenticatedVisitaIdRoute,
+  } as any)
+const AuthenticatedVisitaIdPagamentoRoute =
+  AuthenticatedVisitaIdPagamentoRouteImport.update({
+    id: '/pagamento',
+    path: '/pagamento',
     getParentRoute: () => AuthenticatedVisitaIdRoute,
   } as any)
 const AuthenticatedVisitaIdOrcamentoRoute =
@@ -334,44 +306,41 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/chamados': typeof AuthenticatedChamadosRouteWithChildren
-  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
-  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
-  '/dashboard': typeof AuthenticatedDashboardRoute
-  '/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/contratos': typeof AuthenticatedContratosRouteWithChildren
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
-  '/os': typeof AuthenticatedOsRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/chamados/$id': typeof AuthenticatedChamadosIdRoute
+  '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
+  '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
+  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
+  '/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
+  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
+  '/chamados/programacao': typeof AuthenticatedChamadosProgramacaoRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
-  '/demandas/$id': typeof AuthenticatedDemandasIdRoute
-  '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
-  '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/contratos/$id': typeof AuthenticatedContratosIdRoute
   '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
-  '/os/$id': typeof AuthenticatedOsIdRoute
-  '/os/nova': typeof AuthenticatedOsNovaRoute
-  '/os/painel': typeof AuthenticatedOsPainelRoute
-  '/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
+  '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
   '/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
-  '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
-  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento/complementos': typeof AuthenticatedVisitaIdOrcamentoComplementosRoute
+  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento/': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -382,43 +351,40 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/calendario': typeof AuthenticatedCalendarioRoute
   '/chamados': typeof AuthenticatedChamadosRouteWithChildren
-  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
-  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
-  '/dashboard': typeof AuthenticatedDashboardRoute
-  '/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/contratos': typeof AuthenticatedContratosRouteWithChildren
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
-  '/os': typeof AuthenticatedOsRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/chamados/$id': typeof AuthenticatedChamadosIdRoute
+  '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
+  '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
+  '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
+  '/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
+  '/chamados/painel': typeof AuthenticatedChamadosPainelRoute
+  '/chamados/programacao': typeof AuthenticatedChamadosProgramacaoRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
-  '/demandas/$id': typeof AuthenticatedDemandasIdRoute
-  '/demandas/importar': typeof AuthenticatedDemandasImportarRoute
-  '/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/contratos/$id': typeof AuthenticatedContratosIdRoute
   '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
-  '/os/$id': typeof AuthenticatedOsIdRoute
-  '/os/nova': typeof AuthenticatedOsNovaRoute
-  '/os/painel': typeof AuthenticatedOsPainelRoute
-  '/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
+  '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
   '/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
-  '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
-  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento/complementos': typeof AuthenticatedVisitaIdOrcamentoComplementosRoute
+  '/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -431,44 +397,41 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/calendario': typeof AuthenticatedCalendarioRoute
   '/_authenticated/chamados': typeof AuthenticatedChamadosRouteWithChildren
-  '/_authenticated/chamados/novo': typeof AuthenticatedChamadosNovoRoute
-  '/_authenticated/chamados/painel': typeof AuthenticatedChamadosPainelRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/demandas': typeof AuthenticatedDemandasRouteWithChildren
   '/_authenticated/contratos': typeof AuthenticatedContratosRouteWithChildren
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
-  '/_authenticated/os': typeof AuthenticatedOsRouteWithChildren
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/chamados/$id': typeof AuthenticatedChamadosIdRoute
+  '/_authenticated/chamados/importar': typeof AuthenticatedChamadosImportarRoute
+  '/_authenticated/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
+  '/_authenticated/chamados/novo': typeof AuthenticatedChamadosNovoRoute
+  '/_authenticated/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
+  '/_authenticated/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
+  '/_authenticated/chamados/painel': typeof AuthenticatedChamadosPainelRoute
+  '/_authenticated/chamados/programacao': typeof AuthenticatedChamadosProgramacaoRoute
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/_authenticated/clientes/migrar': typeof AuthenticatedClientesMigrarRoute
   '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
-  '/_authenticated/demandas/$id': typeof AuthenticatedDemandasIdRoute
-  '/_authenticated/demandas/importar': typeof AuthenticatedDemandasImportarRoute
-  '/_authenticated/demandas/nova': typeof AuthenticatedDemandasNovaRoute
   '/_authenticated/contratos/$id': typeof AuthenticatedContratosIdRoute
   '/_authenticated/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/_authenticated/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
-  '/_authenticated/os/$id': typeof AuthenticatedOsIdRoute
-  '/_authenticated/os/nova': typeof AuthenticatedOsNovaRoute
-  '/_authenticated/os/painel': typeof AuthenticatedOsPainelRoute
-  '/_authenticated/os/programacao': typeof AuthenticatedOsProgramacaoRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
+  '/_authenticated/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/_authenticated/visita/$id/pendente': typeof AuthenticatedVisitaIdPendenteRoute
   '/_authenticated/visita/$id/reagendar': typeof AuthenticatedVisitaIdReagendarRoute
-  '/_authenticated/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
   '/_authenticated/gerencial/visita/$id/editar': typeof AuthenticatedGerencialVisitaIdEditarRoute
   '/_authenticated/visita/$id/orcamento/categorias': typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
-  '/_authenticated/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/_authenticated/visita/$id/orcamento/complementos': typeof AuthenticatedVisitaIdOrcamentoComplementosRoute
+  '/_authenticated/visita/$id/orcamento/pre-envio': typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   '/_authenticated/visita/$id/orcamento/': typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   '/_authenticated/visita/$id/orcamento/blocos/$cat': typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -481,44 +444,41 @@ export interface FileRouteTypes {
     | '/admin'
     | '/calendario'
     | '/chamados'
-    | '/chamados/novo'
-    | '/chamados/painel'
     | '/clientes'
-    | '/dashboard'
-    | '/demandas'
     | '/contratos'
+    | '/dashboard'
     | '/fechamentos'
     | '/gerencial'
     | '/historico'
     | '/mapa'
     | '/novo'
-    | '/os'
     | '/perfil'
+    | '/chamados/$id'
+    | '/chamados/importar'
+    | '/chamados/indicadores'
+    | '/chamados/novo'
+    | '/chamados/novo-campo'
+    | '/chamados/novo-interno'
+    | '/chamados/painel'
+    | '/chamados/programacao'
     | '/clientes/$id'
     | '/clientes/migrar'
     | '/clientes/novo'
-    | '/demandas/$id'
-    | '/demandas/importar'
-    | '/demandas/nova'
     | '/contratos/$id'
     | '/contratos/novo'
     | '/fechamentos/$id'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
-    | '/os/$id'
-    | '/os/nova'
-    | '/os/painel'
-    | '/os/programacao'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/orcamento'
+    | '/visita/$id/pagamento'
     | '/visita/$id/pendente'
     | '/visita/$id/reagendar'
-    | '/visita/$id/pagamento'
     | '/gerencial/visita/$id/editar'
     | '/visita/$id/orcamento/categorias'
-    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento/complementos'
+    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento/'
     | '/visita/$id/orcamento/blocos/$cat'
   fileRoutesByTo: FileRoutesByTo
@@ -529,43 +489,40 @@ export interface FileRouteTypes {
     | '/admin'
     | '/calendario'
     | '/chamados'
-    | '/chamados/novo'
-    | '/chamados/painel'
     | '/clientes'
-    | '/dashboard'
-    | '/demandas'
     | '/contratos'
+    | '/dashboard'
     | '/fechamentos'
     | '/gerencial'
     | '/historico'
     | '/mapa'
     | '/novo'
-    | '/os'
     | '/perfil'
+    | '/chamados/$id'
+    | '/chamados/importar'
+    | '/chamados/indicadores'
+    | '/chamados/novo'
+    | '/chamados/novo-campo'
+    | '/chamados/novo-interno'
+    | '/chamados/painel'
+    | '/chamados/programacao'
     | '/clientes/$id'
     | '/clientes/migrar'
     | '/clientes/novo'
-    | '/demandas/$id'
-    | '/demandas/importar'
-    | '/demandas/nova'
     | '/contratos/$id'
     | '/contratos/novo'
     | '/fechamentos/$id'
     | '/gerencial/nova'
     | '/gerencial/usuarios'
-    | '/os/$id'
-    | '/os/nova'
-    | '/os/painel'
-    | '/os/programacao'
     | '/projeto/$id'
     | '/visita/$id'
+    | '/visita/$id/pagamento'
     | '/visita/$id/pendente'
     | '/visita/$id/reagendar'
-    | '/visita/$id/pagamento'
     | '/gerencial/visita/$id/editar'
     | '/visita/$id/orcamento/categorias'
-    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento/complementos'
+    | '/visita/$id/orcamento/pre-envio'
     | '/visita/$id/orcamento'
     | '/visita/$id/orcamento/blocos/$cat'
   id:
@@ -577,44 +534,41 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/calendario'
     | '/_authenticated/chamados'
-    | '/_authenticated/chamados/novo'
-    | '/_authenticated/chamados/painel'
     | '/_authenticated/clientes'
-    | '/_authenticated/dashboard'
-    | '/_authenticated/demandas'
     | '/_authenticated/contratos'
+    | '/_authenticated/dashboard'
     | '/_authenticated/fechamentos'
     | '/_authenticated/gerencial'
     | '/_authenticated/historico'
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
-    | '/_authenticated/os'
     | '/_authenticated/perfil'
+    | '/_authenticated/chamados/$id'
+    | '/_authenticated/chamados/importar'
+    | '/_authenticated/chamados/indicadores'
+    | '/_authenticated/chamados/novo'
+    | '/_authenticated/chamados/novo-campo'
+    | '/_authenticated/chamados/novo-interno'
+    | '/_authenticated/chamados/painel'
+    | '/_authenticated/chamados/programacao'
     | '/_authenticated/clientes/$id'
     | '/_authenticated/clientes/migrar'
     | '/_authenticated/clientes/novo'
-    | '/_authenticated/demandas/$id'
-    | '/_authenticated/demandas/importar'
-    | '/_authenticated/demandas/nova'
     | '/_authenticated/contratos/$id'
     | '/_authenticated/contratos/novo'
     | '/_authenticated/fechamentos/$id'
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/gerencial/usuarios'
-    | '/_authenticated/os/$id'
-    | '/_authenticated/os/nova'
-    | '/_authenticated/os/painel'
-    | '/_authenticated/os/programacao'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
     | '/_authenticated/visita/$id/orcamento'
+    | '/_authenticated/visita/$id/pagamento'
     | '/_authenticated/visita/$id/pendente'
     | '/_authenticated/visita/$id/reagendar'
-    | '/_authenticated/visita/$id/pagamento'
     | '/_authenticated/gerencial/visita/$id/editar'
     | '/_authenticated/visita/$id/orcamento/categorias'
-    | '/_authenticated/visita/$id/orcamento/pre-envio'
     | '/_authenticated/visita/$id/orcamento/complementos'
+    | '/_authenticated/visita/$id/orcamento/pre-envio'
     | '/_authenticated/visita/$id/orcamento/'
     | '/_authenticated/visita/$id/orcamento/blocos/$cat'
   fileRoutesById: FileRoutesById
@@ -691,131 +645,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGerencialRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/os': {
-      id: '/_authenticated/os'
-      path: '/os'
-      fullPath: '/os'
-      preLoaderRoute: typeof AuthenticatedOsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/os/nova': {
-      id: '/_authenticated/os/nova'
-      path: '/nova'
-      fullPath: '/os/nova'
-      preLoaderRoute: typeof AuthenticatedOsNovaRouteImport
-      parentRoute: typeof AuthenticatedOsRoute
-    }
-    '/_authenticated/os/painel': {
-      id: '/_authenticated/os/painel'
-      path: '/painel'
-      fullPath: '/os/painel'
-      preLoaderRoute: typeof AuthenticatedOsPainelRouteImport
-      parentRoute: typeof AuthenticatedOsRoute
-    }
-    '/_authenticated/os/programacao': {
-      id: '/_authenticated/os/programacao'
-      path: '/programacao'
-      fullPath: '/os/programacao'
-      preLoaderRoute: typeof AuthenticatedOsProgramacaoRouteImport
-      parentRoute: typeof AuthenticatedOsRoute
-    }
-    '/_authenticated/os/$id': {
-      id: '/_authenticated/os/$id'
-      path: '/$id'
-      fullPath: '/os/$id'
-      preLoaderRoute: typeof AuthenticatedOsIdRouteImport
-      parentRoute: typeof AuthenticatedOsRoute
-    }
-    '/_authenticated/demandas': {
-      id: '/_authenticated/demandas'
-      path: '/demandas'
-      fullPath: '/demandas'
-      preLoaderRoute: typeof AuthenticatedDemandasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/demandas/nova': {
-      id: '/_authenticated/demandas/nova'
-      path: '/nova'
-      fullPath: '/demandas/nova'
-      preLoaderRoute: typeof AuthenticatedDemandasNovaRouteImport
-      parentRoute: typeof AuthenticatedDemandasRoute
-    }
-    '/_authenticated/demandas/importar': {
-      id: '/_authenticated/demandas/importar'
-      path: '/importar'
-      fullPath: '/demandas/importar'
-      preLoaderRoute: typeof AuthenticatedDemandasImportarRouteImport
-      parentRoute: typeof AuthenticatedDemandasRoute
-    }
-    '/_authenticated/demandas/$id': {
-      id: '/_authenticated/demandas/$id'
-      path: '/$id'
-      fullPath: '/demandas/$id'
-      preLoaderRoute: typeof AuthenticatedDemandasIdRouteImport
-      parentRoute: typeof AuthenticatedDemandasRoute
-    }
-    '/_authenticated/contratos': {
-      id: '/_authenticated/contratos'
-      path: '/contratos'
-      fullPath: '/contratos'
-      preLoaderRoute: typeof AuthenticatedContratosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/contratos/novo': {
-      id: '/_authenticated/contratos/novo'
-      path: '/novo'
-      fullPath: '/contratos/novo'
-      preLoaderRoute: typeof AuthenticatedContratosNovoRouteImport
-      parentRoute: typeof AuthenticatedContratosRoute
-    }
-    '/_authenticated/contratos/$id': {
-      id: '/_authenticated/contratos/$id'
-      path: '/$id'
-      fullPath: '/contratos/$id'
-      preLoaderRoute: typeof AuthenticatedContratosIdRouteImport
-      parentRoute: typeof AuthenticatedContratosRoute
-    }
     '/_authenticated/fechamentos': {
       id: '/_authenticated/fechamentos'
       path: '/fechamentos'
       fullPath: '/fechamentos'
       preLoaderRoute: typeof AuthenticatedFechamentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/fechamentos/$id': {
-      id: '/_authenticated/fechamentos/$id'
-      path: '/$id'
-      fullPath: '/fechamentos/$id'
-      preLoaderRoute: typeof AuthenticatedFechamentosIdRouteImport
-      parentRoute: typeof AuthenticatedFechamentosRoute
-    }
-    '/_authenticated/clientes': {
-      id: '/_authenticated/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AuthenticatedClientesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clientes/novo': {
-      id: '/_authenticated/clientes/novo'
-      path: '/novo'
-      fullPath: '/clientes/novo'
-      preLoaderRoute: typeof AuthenticatedClientesNovoRouteImport
-      parentRoute: typeof AuthenticatedClientesRoute
-    }
-    '/_authenticated/clientes/migrar': {
-      id: '/_authenticated/clientes/migrar'
-      path: '/migrar'
-      fullPath: '/clientes/migrar'
-      preLoaderRoute: typeof AuthenticatedClientesMigrarRouteImport
-      parentRoute: typeof AuthenticatedClientesRoute
-    }
-    '/_authenticated/clientes/$id': {
-      id: '/_authenticated/clientes/$id'
-      path: '/$id'
-      fullPath: '/clientes/$id'
-      preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
-      parentRoute: typeof AuthenticatedClientesRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -824,11 +659,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/calendario': {
-      id: '/_authenticated/calendario'
-      path: '/calendario'
-      fullPath: '/calendario'
-      preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
+    '/_authenticated/contratos': {
+      id: '/_authenticated/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof AuthenticatedContratosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clientes': {
+      id: '/_authenticated/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof AuthenticatedClientesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chamados': {
@@ -838,19 +680,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChamadosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/chamados/novo': {
-      id: '/_authenticated/chamados/novo'
-      path: '/novo'
-      fullPath: '/chamados/novo'
-      preLoaderRoute: typeof AuthenticatedChamadosNovoRouteImport
-      parentRoute: typeof AuthenticatedChamadosRoute
-    }
-    '/_authenticated/chamados/painel': {
-      id: '/_authenticated/chamados/painel'
-      path: '/painel'
-      fullPath: '/chamados/painel'
-      preLoaderRoute: typeof AuthenticatedChamadosPainelRouteImport
-      parentRoute: typeof AuthenticatedChamadosRoute
+    '/_authenticated/calendario': {
+      id: '/_authenticated/calendario'
+      path: '/calendario'
+      fullPath: '/calendario'
+      preLoaderRoute: typeof AuthenticatedCalendarioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
@@ -887,6 +722,104 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGerencialNovaRouteImport
       parentRoute: typeof AuthenticatedGerencialRoute
     }
+    '/_authenticated/fechamentos/$id': {
+      id: '/_authenticated/fechamentos/$id'
+      path: '/$id'
+      fullPath: '/fechamentos/$id'
+      preLoaderRoute: typeof AuthenticatedFechamentosIdRouteImport
+      parentRoute: typeof AuthenticatedFechamentosRoute
+    }
+    '/_authenticated/contratos/novo': {
+      id: '/_authenticated/contratos/novo'
+      path: '/novo'
+      fullPath: '/contratos/novo'
+      preLoaderRoute: typeof AuthenticatedContratosNovoRouteImport
+      parentRoute: typeof AuthenticatedContratosRoute
+    }
+    '/_authenticated/contratos/$id': {
+      id: '/_authenticated/contratos/$id'
+      path: '/$id'
+      fullPath: '/contratos/$id'
+      preLoaderRoute: typeof AuthenticatedContratosIdRouteImport
+      parentRoute: typeof AuthenticatedContratosRoute
+    }
+    '/_authenticated/clientes/novo': {
+      id: '/_authenticated/clientes/novo'
+      path: '/novo'
+      fullPath: '/clientes/novo'
+      preLoaderRoute: typeof AuthenticatedClientesNovoRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/_authenticated/clientes/migrar': {
+      id: '/_authenticated/clientes/migrar'
+      path: '/migrar'
+      fullPath: '/clientes/migrar'
+      preLoaderRoute: typeof AuthenticatedClientesMigrarRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/_authenticated/clientes/$id': {
+      id: '/_authenticated/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
+    '/_authenticated/chamados/programacao': {
+      id: '/_authenticated/chamados/programacao'
+      path: '/programacao'
+      fullPath: '/chamados/programacao'
+      preLoaderRoute: typeof AuthenticatedChamadosProgramacaoRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/painel': {
+      id: '/_authenticated/chamados/painel'
+      path: '/painel'
+      fullPath: '/chamados/painel'
+      preLoaderRoute: typeof AuthenticatedChamadosPainelRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/novo-interno': {
+      id: '/_authenticated/chamados/novo-interno'
+      path: '/novo-interno'
+      fullPath: '/chamados/novo-interno'
+      preLoaderRoute: typeof AuthenticatedChamadosNovoInternoRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/novo-campo': {
+      id: '/_authenticated/chamados/novo-campo'
+      path: '/novo-campo'
+      fullPath: '/chamados/novo-campo'
+      preLoaderRoute: typeof AuthenticatedChamadosNovoCampoRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/novo': {
+      id: '/_authenticated/chamados/novo'
+      path: '/novo'
+      fullPath: '/chamados/novo'
+      preLoaderRoute: typeof AuthenticatedChamadosNovoRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/indicadores': {
+      id: '/_authenticated/chamados/indicadores'
+      path: '/indicadores'
+      fullPath: '/chamados/indicadores'
+      preLoaderRoute: typeof AuthenticatedChamadosIndicadoresRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/importar': {
+      id: '/_authenticated/chamados/importar'
+      path: '/importar'
+      fullPath: '/chamados/importar'
+      preLoaderRoute: typeof AuthenticatedChamadosImportarRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
+    '/_authenticated/chamados/$id': {
+      id: '/_authenticated/chamados/$id'
+      path: '/$id'
+      fullPath: '/chamados/$id'
+      preLoaderRoute: typeof AuthenticatedChamadosIdRouteImport
+      parentRoute: typeof AuthenticatedChamadosRoute
+    }
     '/_authenticated/visita/$id/reagendar': {
       id: '/_authenticated/visita/$id/reagendar'
       path: '/reagendar'
@@ -894,18 +827,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVisitaIdReagendarRouteImport
       parentRoute: typeof AuthenticatedVisitaIdRoute
     }
-    '/_authenticated/visita/$id/pagamento': {
-      id: '/_authenticated/visita/$id/pagamento'
-      path: '/pagamento'
-      fullPath: '/visita/$id/pagamento'
-      preLoaderRoute: typeof AuthenticatedVisitaIdPagamentoRouteImport
-      parentRoute: typeof AuthenticatedVisitaIdRoute
-    }
     '/_authenticated/visita/$id/pendente': {
       id: '/_authenticated/visita/$id/pendente'
       path: '/pendente'
       fullPath: '/visita/$id/pendente'
       preLoaderRoute: typeof AuthenticatedVisitaIdPendenteRouteImport
+      parentRoute: typeof AuthenticatedVisitaIdRoute
+    }
+    '/_authenticated/visita/$id/pagamento': {
+      id: '/_authenticated/visita/$id/pagamento'
+      path: '/pagamento'
+      fullPath: '/visita/$id/pagamento'
+      preLoaderRoute: typeof AuthenticatedVisitaIdPagamentoRouteImport
       parentRoute: typeof AuthenticatedVisitaIdRoute
     }
     '/_authenticated/visita/$id/orcamento': {
@@ -960,37 +893,49 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedOsRouteChildren {
-  AuthenticatedOsIdRoute: typeof AuthenticatedOsIdRoute
-  AuthenticatedOsNovaRoute: typeof AuthenticatedOsNovaRoute
-  AuthenticatedOsPainelRoute: typeof AuthenticatedOsPainelRoute
-  AuthenticatedOsProgramacaoRoute: typeof AuthenticatedOsProgramacaoRoute
+interface AuthenticatedChamadosRouteChildren {
+  AuthenticatedChamadosIdRoute: typeof AuthenticatedChamadosIdRoute
+  AuthenticatedChamadosImportarRoute: typeof AuthenticatedChamadosImportarRoute
+  AuthenticatedChamadosIndicadoresRoute: typeof AuthenticatedChamadosIndicadoresRoute
+  AuthenticatedChamadosNovoRoute: typeof AuthenticatedChamadosNovoRoute
+  AuthenticatedChamadosNovoCampoRoute: typeof AuthenticatedChamadosNovoCampoRoute
+  AuthenticatedChamadosNovoInternoRoute: typeof AuthenticatedChamadosNovoInternoRoute
+  AuthenticatedChamadosPainelRoute: typeof AuthenticatedChamadosPainelRoute
+  AuthenticatedChamadosProgramacaoRoute: typeof AuthenticatedChamadosProgramacaoRoute
 }
 
-const AuthenticatedOsRouteChildren: AuthenticatedOsRouteChildren = {
-  AuthenticatedOsIdRoute: AuthenticatedOsIdRoute,
-  AuthenticatedOsNovaRoute: AuthenticatedOsNovaRoute,
-  AuthenticatedOsPainelRoute: AuthenticatedOsPainelRoute,
-  AuthenticatedOsProgramacaoRoute: AuthenticatedOsProgramacaoRoute,
+const AuthenticatedChamadosRouteChildren: AuthenticatedChamadosRouteChildren = {
+  AuthenticatedChamadosIdRoute: AuthenticatedChamadosIdRoute,
+  AuthenticatedChamadosImportarRoute: AuthenticatedChamadosImportarRoute,
+  AuthenticatedChamadosIndicadoresRoute: AuthenticatedChamadosIndicadoresRoute,
+  AuthenticatedChamadosNovoRoute: AuthenticatedChamadosNovoRoute,
+  AuthenticatedChamadosNovoCampoRoute: AuthenticatedChamadosNovoCampoRoute,
+  AuthenticatedChamadosNovoInternoRoute: AuthenticatedChamadosNovoInternoRoute,
+  AuthenticatedChamadosPainelRoute: AuthenticatedChamadosPainelRoute,
+  AuthenticatedChamadosProgramacaoRoute: AuthenticatedChamadosProgramacaoRoute,
 }
 
-const AuthenticatedOsRouteWithChildren =
-  AuthenticatedOsRoute._addFileChildren(AuthenticatedOsRouteChildren)
+const AuthenticatedChamadosRouteWithChildren =
+  AuthenticatedChamadosRoute._addFileChildren(
+    AuthenticatedChamadosRouteChildren,
+  )
 
-interface AuthenticatedDemandasRouteChildren {
-  AuthenticatedDemandasIdRoute: typeof AuthenticatedDemandasIdRoute
-  AuthenticatedDemandasImportarRoute: typeof AuthenticatedDemandasImportarRoute
-  AuthenticatedDemandasNovaRoute: typeof AuthenticatedDemandasNovaRoute
+interface AuthenticatedClientesRouteChildren {
+  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
+  AuthenticatedClientesMigrarRoute: typeof AuthenticatedClientesMigrarRoute
+  AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
 }
 
-const AuthenticatedDemandasRouteChildren: AuthenticatedDemandasRouteChildren = {
-  AuthenticatedDemandasIdRoute: AuthenticatedDemandasIdRoute,
-  AuthenticatedDemandasImportarRoute: AuthenticatedDemandasImportarRoute,
-  AuthenticatedDemandasNovaRoute: AuthenticatedDemandasNovaRoute,
+const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
+  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRoute,
+  AuthenticatedClientesMigrarRoute: AuthenticatedClientesMigrarRoute,
+  AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
 }
 
-const AuthenticatedDemandasRouteWithChildren =
-  AuthenticatedDemandasRoute._addFileChildren(AuthenticatedDemandasRouteChildren)
+const AuthenticatedClientesRouteWithChildren =
+  AuthenticatedClientesRoute._addFileChildren(
+    AuthenticatedClientesRouteChildren,
+  )
 
 interface AuthenticatedContratosRouteChildren {
   AuthenticatedContratosIdRoute: typeof AuthenticatedContratosIdRoute
@@ -1022,23 +967,6 @@ const AuthenticatedFechamentosRouteWithChildren =
     AuthenticatedFechamentosRouteChildren,
   )
 
-interface AuthenticatedClientesRouteChildren {
-  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
-  AuthenticatedClientesMigrarRoute: typeof AuthenticatedClientesMigrarRoute
-  AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
-}
-
-const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
-  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRoute,
-  AuthenticatedClientesMigrarRoute: AuthenticatedClientesMigrarRoute,
-  AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
-}
-
-const AuthenticatedClientesRouteWithChildren =
-  AuthenticatedClientesRoute._addFileChildren(
-    AuthenticatedClientesRouteChildren,
-  )
-
 interface AuthenticatedGerencialRouteChildren {
   AuthenticatedGerencialNovaRoute: typeof AuthenticatedGerencialNovaRoute
   AuthenticatedGerencialUsuariosRoute: typeof AuthenticatedGerencialUsuariosRoute
@@ -1060,8 +988,8 @@ const AuthenticatedGerencialRouteWithChildren =
 
 interface AuthenticatedVisitaIdOrcamentoRouteChildren {
   AuthenticatedVisitaIdOrcamentoCategoriasRoute: typeof AuthenticatedVisitaIdOrcamentoCategoriasRoute
-  AuthenticatedVisitaIdOrcamentoPreEnvioRoute: typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   AuthenticatedVisitaIdOrcamentoComplementosRoute: typeof AuthenticatedVisitaIdOrcamentoComplementosRoute
+  AuthenticatedVisitaIdOrcamentoPreEnvioRoute: typeof AuthenticatedVisitaIdOrcamentoPreEnvioRoute
   AuthenticatedVisitaIdOrcamentoIndexRoute: typeof AuthenticatedVisitaIdOrcamentoIndexRoute
   AuthenticatedVisitaIdOrcamentoBlocosCatRoute: typeof AuthenticatedVisitaIdOrcamentoBlocosCatRoute
 }
@@ -1070,10 +998,10 @@ const AuthenticatedVisitaIdOrcamentoRouteChildren: AuthenticatedVisitaIdOrcament
   {
     AuthenticatedVisitaIdOrcamentoCategoriasRoute:
       AuthenticatedVisitaIdOrcamentoCategoriasRoute,
-    AuthenticatedVisitaIdOrcamentoPreEnvioRoute:
-      AuthenticatedVisitaIdOrcamentoPreEnvioRoute,
     AuthenticatedVisitaIdOrcamentoComplementosRoute:
       AuthenticatedVisitaIdOrcamentoComplementosRoute,
+    AuthenticatedVisitaIdOrcamentoPreEnvioRoute:
+      AuthenticatedVisitaIdOrcamentoPreEnvioRoute,
     AuthenticatedVisitaIdOrcamentoIndexRoute:
       AuthenticatedVisitaIdOrcamentoIndexRoute,
     AuthenticatedVisitaIdOrcamentoBlocosCatRoute:
@@ -1087,17 +1015,17 @@ const AuthenticatedVisitaIdOrcamentoRouteWithChildren =
 
 interface AuthenticatedVisitaIdRouteChildren {
   AuthenticatedVisitaIdOrcamentoRoute: typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
+  AuthenticatedVisitaIdPagamentoRoute: typeof AuthenticatedVisitaIdPagamentoRoute
   AuthenticatedVisitaIdPendenteRoute: typeof AuthenticatedVisitaIdPendenteRoute
   AuthenticatedVisitaIdReagendarRoute: typeof AuthenticatedVisitaIdReagendarRoute
-  AuthenticatedVisitaIdPagamentoRoute: typeof AuthenticatedVisitaIdPagamentoRoute
 }
 
 const AuthenticatedVisitaIdRouteChildren: AuthenticatedVisitaIdRouteChildren = {
   AuthenticatedVisitaIdOrcamentoRoute:
     AuthenticatedVisitaIdOrcamentoRouteWithChildren,
+  AuthenticatedVisitaIdPagamentoRoute: AuthenticatedVisitaIdPagamentoRoute,
   AuthenticatedVisitaIdPendenteRoute: AuthenticatedVisitaIdPendenteRoute,
   AuthenticatedVisitaIdReagendarRoute: AuthenticatedVisitaIdReagendarRoute,
-  AuthenticatedVisitaIdPagamentoRoute: AuthenticatedVisitaIdPagamentoRoute,
 }
 
 const AuthenticatedVisitaIdRouteWithChildren =
@@ -1110,15 +1038,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarioRoute: typeof AuthenticatedCalendarioRoute
   AuthenticatedChamadosRoute: typeof AuthenticatedChamadosRouteWithChildren
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedDemandasRoute: typeof AuthenticatedDemandasRouteWithChildren
   AuthenticatedContratosRoute: typeof AuthenticatedContratosRouteWithChildren
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFechamentosRoute: typeof AuthenticatedFechamentosRouteWithChildren
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
-  AuthenticatedOsRoute: typeof AuthenticatedOsRouteWithChildren
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProjetoIdRoute: typeof AuthenticatedProjetoIdRoute
   AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRouteWithChildren
@@ -1129,15 +1055,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarioRoute: AuthenticatedCalendarioRoute,
   AuthenticatedChamadosRoute: AuthenticatedChamadosRouteWithChildren,
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedDemandasRoute: AuthenticatedDemandasRouteWithChildren,
   AuthenticatedContratosRoute: AuthenticatedContratosRouteWithChildren,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFechamentosRoute: AuthenticatedFechamentosRouteWithChildren,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
-  AuthenticatedOsRoute: AuthenticatedOsRouteWithChildren,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProjetoIdRoute: AuthenticatedProjetoIdRoute,
   AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRouteWithChildren,
@@ -1155,13 +1079,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

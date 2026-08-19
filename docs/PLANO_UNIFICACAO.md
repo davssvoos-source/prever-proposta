@@ -1032,3 +1032,273 @@ commitado (U6c + U6d) antes do commit. **Achados confirmados e corrigidos:**
 ⚠️ **Ordem de subida** (achado confirmado): a triagem e os seletores já
 oferecem `operacional`/`pedido_compra` — **rode a U6c antes do deploy**, senão
 o INSERT falha com violação de CHECK até a migration rodar.
+
+### U7 — Fusão chamado × demanda (2026-08-19)
+
+**Ordem ditada:** "Chamados e Demanda devem ser a mesma coisa, vamos chamar
+tudo de 'Chamado'. Faça toda a alteração estrutural para tal regra." Escolha
+do Davi entre as opções apresentadas: **fusão real das tabelas** (virou a R16
+do PRODUTO.md).
+
+**Migration** `20260819120000_u7_fusao_chamados.sql` (1003 linhas). Estratégia
+de menor risco: em vez de criar tabela nova e religar os 9 satélites, a
+`ordens_servico` foi **renomeada** e as `demandas` foram **absorvidas dentro
+dela preservando os ids** — é isso que faz apoios, feed e equipamentos
+continuarem apontando para o registro certo sem nenhum UPDATE de FK.
+
+| Antes | Depois |
+|---|---|
+| `ordens_servico` | `chamados` |
+| `os_fotos`, `os_eventos`, `os_checklist`, `os_checklist_templates`, `os_pecas`, `os_pecas_analise`, `os_sla`, `os_contadores` | `chamado_*` |
+| `demanda_apoios`, `demanda_equipamentos` | `chamado_apoios`, `chamado_equipamentos` |
+| `demanda_eventos` | absorvida em `chamado_eventos` |
+| `demandas` | absorvida em `chamados`, depois `DROP` |
+| `ordens_servico.tecnico_id` | `chamados.responsavel_id` |
+| `cobrancas.os_id` / `.peca_id` | `.chamado_id` / `.chamado_peca_id` |
+| `notificacoes.os_id` + `.demanda_id` | `notificacoes.chamado_id` |
+
+**Vocabulário de status** — o ciclo virou um só, com dois recortes:
+
+| OS de campo | Demanda interna | Chamado |
+|---|---|---|
+| `aberta` | `nao_iniciada` | `aberto` |
+| `agendada` | — | `agendado` |
+| `em_atendimento` | `em_andamento` | `em_andamento` |
+| — | `stand_by` | `stand_by` (agora vale para os dois) |
+| — | `aguardando_aprovacao` | `aguardando_aprovacao` |
+| `executada` | — | `executado` |
+| `fechada` | `concluida` | `concluido` |
+| `cancelada` | `cancelada` | `cancelado` |
+
+`statusDaNatureza()` decide o que aparece em cada tela: "agendado" e
+"executado" pressupõem deslocamento e conferência, então não cabem no interno;
+"aguardando aprovação" não cabe no campo.
+
+**Numeração** — todo mundo renumerado por `created_at` como `CH-AAAA-NNNN`; o
+número antigo (OS-… / DEM-…) ficou em `numero_legado`, indexado, para quem
+procurar pelo que já circulou em conversa.
+
+**17 funções reescritas**: `chamado_preencher`, `chamado_registrar_evento`,
+`notify_chamado{,_comentario,_apoio}`, `pode_acessar_chamado{,_por_path}`,
+`aprovar_chamado_financeiro`, `marcar_chamado_faturado`,
+`chamado_sincronizar_unidades`, `virada_sprint`, `alertas_chamados`,
+`resumo_semanal_chamados`, `alertas_chamado_faturamento`,
+`proximo_numero_chamado`.
+
+**App** — 29 arquivos tocados:
+
+- **Domínio**: `lib/os-status.ts` + `lib/demanda-status.ts` → **`lib/chamado-status.ts`**
+  (8 status, `Natureza`, `statusDaNatureza`/`tiposDaNatureza`, `prazoParaData`/
+  `dataParaPrazo` para o input de data ↔ `timestamptz`).
+- **Dados**: `features/os/*` + `features/demandas/*` → **`features/chamados/*`**
+  (`data.ts` unificado, `pecas`, `cobranca`, `checklist`, `relatorio`,
+  `AssinaturaCanvas`, e os dois corpos de tela `DetalheCampo`/`DetalheInterno`).
+- **Rotas**: `/os*` e `/demandas*` deixaram de existir. Ficou
+  `/chamados` · `/chamados/$id` · `/chamados/novo` (triagem) ·
+  `/chamados/novo-campo` · `/chamados/novo-interno` · `/chamados/painel` ·
+  `/chamados/indicadores` · `/chamados/programacao` · `/chamados/importar`.
+- **Rodapé**: uma aba "Chamados" para todos os perfis; a aba "Demandas" saiu e
+  o quadro por sprint virou um **modo de visualização** dentro da lista.
+- **Bordas**: dashboard, calendário, ficha do cliente, notificações,
+  fechamentos, visita → chamado de implantação, `cobranca.functions.ts`.
+
+**Descobertas registradas nesta etapa**
+
+1. **O `routeTree.gen.ts` não precisa mais ser editado à mão.** O
+   `@tanstack/router-generator` roda direto pelo Node, sem passar pelo
+   `vite.config.ts` (que exige rede e por isso nunca completou aqui). Basta um
+   script na raiz do projeto — tem que ser na raiz, senão o import do pacote
+   não resolve:
+   ```js
+   import { Generator, getConfig } from '@tanstack/router-generator'
+   const root = process.argv[2]
+   const config = await getConfig({ routesDirectory: root + '/src/routes',
+     generatedRouteTree: root + '/src/routeTree.gen.ts' }, root)
+   await new Generator({ config, root }).run()
+   ```
+   Gerou as 9 rotas de chamado com o censo perfeito (11 ocorrências por filha).
+   Isso encerra o cuidado manual que vinha desde a Etapa 3 do sistema de OS.
+2. **A trava da rota-pai derrubaria o técnico.** `/chamados` bloqueia quem não
+   é gestor; como `/chamados/$id` é filha, o técnico seria mandado para o
+   dashboard ao tocar num card da Home. O `beforeLoad` passou a checar
+   `location.pathname` e só barra a **lista**, não os filhos.
+3. **O feed interno é cronológico, o de campo é invertido.** Ao fundir os dois
+   hooks isso quase se perdeu: `useChamadoEventos(id, "asc" | "desc")` mantém
+   cada tela como era.
+4. **O importador de CSV duplicaria as 537 tasks.** A migration do Notion
+   gravou `origem_id` como `titulo|prazo|criacao|cliente`; a tela montava
+   `titulo|prazo`. O `ON CONFLICT` não pegaria. Passou a conferir título +
+   prazo contra o que já está no banco antes de gravar.
+5. **`prazo` (date) virou `prazo_limite` (timestamptz)** às 23:59 de Brasília.
+   Fatiar a string ISO dá o dia seguinte — por isso `prazoParaData()` existe e
+   é usada em toda comparação de data.
+6. **Programação e indicadores abertos para o SAC**, pela definição do papel
+   ("coordena, planeja, programa as atividades dos outros"). Nenhuma das duas
+   mostra valor, então não fere a R13. Fecha a questão 2 do PRODUTO §8.
+
+**Verificação**: 169 arquivos conferidos pelo parser do TypeScript — 0 erros de
+sintaxe, 0 imports quebrados, 0 símbolos importados que não existem (os 2
+avisos restantes são `?url` de CSS e `.asset.json`, falsos positivos).
+`scripts/verificar-logica.cjs`: 34/34.
+
+**Ordem de publicação (obrigatória):** a migration e o deploy vão na **mesma
+janela**. O app novo não fala com o banco velho e vice-versa — diferente das
+etapas anteriores, aqui não existe período de convivência.
+
+**Correção depois da primeira tentativa (2026-08-19).** A migration quebrou no
+SQL Editor e o motivo era estrutural, não de digitação: **renomear uma tabela
+leva os triggers junto, mas não reescreve o corpo das funções deles.** Os sete
+triggers herdados de `ordens_servico` continuavam procurando `public.os_sla`,
+`public.os_eventos` e `NEW.tecnico_id` — que a seção 1 tinha acabado de
+renomear. O primeiro `UPDATE` de status da seção 3 já morria com
+`relation "public.os_sla" does not exist`, e a fusão inteira voltava atrás.
+
+A correção é uma linha em cada ponta: `ALTER TABLE public.chamados DISABLE
+TRIGGER USER` logo depois dos renames (seção 1.1) e `ENABLE TRIGGER USER`
+depois que a seção 7 troca os antigos pelos novos. Isso resolve um segundo
+problema que teria passado despercebido: com o `ordens_servico_set_updated_at`
+ativo, a renumeração da seção 5 carimbaria `now()` em `updated_at` de **todos**
+os registros, e os 537 chamados vindos do Notion perderiam a data real.
+
+Lição para as próximas migrations que renomeiam tabelas: **desligar os triggers
+da tabela renomeada antes de encostar nos dados** é regra, não precaução.
+`supabase/diagnostico_u7.sql` mostra se uma tentativa que falhou desfez tudo.
+
+### U8 — O aceite do cliente (2026-08-19)
+
+Fecha a regra **R4**, a correção que o Davi ditou: *"quando o comercial aprova
+uma visita técnica, ele está aprovando a visita… mas o cliente quem aprova ou
+não a proposta. Todas as visitas que foram aprovadas não significam que a
+proposta foi aprovada, ou seja, não significa que são nossos clientes."*
+
+**Migration** `20260819140000_u8_aceite_cliente.sql` (223 linhas).
+**Roda depois da U7** — o rebaixamento consulta `public.chamados`.
+
+**1. O pós-aprovação na visita.** `visitas_tecnicas` ganhou
+`proposta_enviada_em`, `proposta_resultado` (`aguardando|aceita|recusada`),
+`proposta_resultado_em` e `proposta_motivo_recusa`. `NULL` em
+`proposta_resultado` quer dizer "a proposta nem saiu ainda" — é o que separa
+"aprovamos internamente" de "o cliente está decidindo".
+
+**2. Duas RPCs**, `SECURITY DEFINER` porque o aceite atravessa tabelas (visita
++ cliente) e pela RLS o comercial não conseguiria fazer os dois:
+- `registrar_envio_proposta(_visita_id)` — só a partir de `status = 'aprovada'`.
+- `registrar_resultado_proposta(_visita_id, _resultado, _motivo)` — exige envio
+  registrado antes, e é **o único ponto do sistema** que promove
+  `clientes.situacao` de `prospecto` para `ativo`.
+
+**3. Desfaz o atalho "visita aprovada ⇒ cliente ativo".** O backfill da Etapa 1
+(`20260817120000`) marcava como ativo qualquer cliente com uma visita aprovada.
+Um rebaixamento cego devolveria todo mundo para prospecto, inclusive clientes
+reais — então o critério para **continuar ativo** é qualquer prova de relação:
+proposta aceita · contrato cadastrado · chamado de campo executado/concluído ·
+cobrança gerada · `qap_cliente_id` preenchido. Quem não tem nenhuma volta a
+prospecto, e a lista exata fica em `clientes_rebaixados_u8` — desfazer é um
+UPDATE só, documentado no `COMMENT` da tabela. A verificação final da migration
+imprime quantos e **quais** foram rebaixados, para conferência antes de seguir.
+
+**4. Funil comercial.** `funil_comercial(_desde date)` devolve visitas →
+aprovadas → enviadas → aceitas → recusadas. A tela `/gerencial` calcula o mesmo
+funil do lado do cliente (os dados já estavam carregados; evita uma ida a mais
+ao banco) — a RPC fica disponível para relatório com recorte de data, ainda sem
+consumidor.
+
+**App**
+- `visita/$id`: depois de aprovada aparece um aviso de que aprovação interna
+  não faz cliente, e o botão **"Marcar proposta como enviada"**. Enviada, surgem
+  **"O cliente ACEITOU"** e **"O cliente RECUSOU"** (com campo de motivo).
+- **O botão de gerar implantação saiu da aprovação e foi para o aceite** — antes
+  aparecia cedo demais e podia gerar chamado para negócio que nunca fechou.
+- `features/clientes/data.ts`: a consolidação parou de sugerir "ativo" a partir
+  de `status = 'aprovada'`; agora só a partir de `proposta_resultado = 'aceita'`.
+- `/gerencial`: card do funil, com a frase que resume a regra — "visita aprovada
+  é aprovação interna; cliente de verdade é o que aceitou a proposta". O card
+  "Total" saiu dos indicadores porque o funil já abre com ele.
+
+**Suposição registrada** (questão 9 do PRODUTO §8): o **motivo da recusa** entrou
+como campo livre opcional — é o dado que responde "por que perdemos". Se não
+fizer sentido, é só dizer.
+
+**Pendência declarada:** o elo `origem_proposta_id` do contrato (U2) deveria
+nascer do aceite. Hoje o contrato é cadastrado à mão e o campo fica livre — não
+mexi porque exige decidir se o aceite passa a **oferecer** a criação do contrato.
+
+**Verificação**: 169 arquivos pelo parser do TypeScript — 0 erros de sintaxe,
+0 imports quebrados. `verificar-logica.cjs` 34/34. Migration com `$$` e aspas
+balanceados.
+
+### U9 — O pedido de compra ganha corpo (2026-08-19)
+
+Fecha a **questão 6** do PRODUTO §8. Até aqui "pedido de compra" era só um
+`tipo` de chamado interno: dava para abrir e classificar, mas não para
+responder o que o Controle Patrimonial pergunta na prática — o que é, quanto
+custa, de quem, e quem autorizou a gastar.
+
+**Migration** `20260819160000_u9_pedido_compra.sql`. **Roda depois da U7.**
+
+**Satélite 1:1 `chamado_compra`**, não colunas soltas em `chamados`: só uma
+fatia dos chamados é compra, e a decisão de gasto tem dono próprio.
+Campos: quantidade + unidade, fornecedor sugerido, link do produto, valor
+estimado, valor final, justificativa, situação, quem decidiu e quando, motivo
+da recusa, datas de compra e recebimento.
+
+**O caminho:**
+
+```
+solicitado → em cotação → aprovado → comprado → recebido
+                  └────── recusado (com motivo)
+```
+
+**A alçada** — a parte que exigia decisão de produto, registrada como suposição:
+
+| Ato | Quem |
+|---|---|
+| Abrir o pedido, acompanhar | qualquer um com acesso ao chamado (SAC inclusive) |
+| Cotar, comprar, receber | quem executa (Controle Patrimonial) |
+| **Aprovar / recusar** | **`pode_ver_financeiro` — admin e comercial** |
+
+Se a alçada real for outra (Patrimônio aprova até certo valor, por exemplo), é
+um `IF` na RPC `decidir_pedido_compra`.
+
+**Decisão de modelagem registrada:** o valor da compra **não** entrou na régua
+do `pode_ver_financeiro` para leitura. A R13 ("SAC não vê valores") é sobre o
+que **cobramos do cliente**; custo de aquisição é outra coisa, e quem compra
+precisa enxergar o que gasta. Se a intenção era esconder também o custo, o
+caminho é o mesmo do veredito financeiro da U3: policy de SELECT no satélite.
+
+**Automações**
+- `chamado_criar_ficha_compra()` — todo chamado `pedido_compra` nasce com a
+  ficha (INSERT e também UPDATE do tipo). Sem isso a primeira decisão falharia.
+  Backfill para os pedidos que a U6c já reclassificou.
+- A situação **move o chamado**: `recebido` conclui, `recusado` cancela com o
+  motivo, e cotar/aprovar/comprar tira de `aberto` para `em_andamento`.
+- Cada passo entra na linha do tempo (`chamado_eventos`, tipo `compra`).
+- `alertas_compras(dias)` + job `alertas-compras` às 07:30 de dia útil: avisa
+  admin e comercial de pedido parado em `solicitado`/`em_cotacao`.
+
+**App**
+- `features/chamados/compra.ts` — dados, rótulos, cores e `proximasSituacoes()`,
+  que é o que impede a tela de oferecer um passo que o banco vai negar.
+- `DetalheInterno`: cartão "Pedido de compra" com os campos editáveis (salvam
+  no blur), o link do produto clicável, o valor pago quando existe, o motivo da
+  recusa, e os botões do próximo passo — **aprovar e recusar só aparecem para
+  quem pode**, porque botão que sempre dá erro é armadilha.
+- `chamados/novo-interno`: quando o tipo (escolhido **ou sugerido**) é compra,
+  o formulário mostra quantidade, valor estimado, fornecedor e link — o que o
+  solicitante já sabe na hora de pedir. O resto do caminho acontece na página
+  do chamado.
+
+**Verificação**: 170 arquivos pelo parser do TypeScript — 0 erros de sintaxe,
+0 imports quebrados. `verificar-logica.cjs` 34/34. Migration balanceada; o
+agendamento do cron vai dentro de `DO … EXCEPTION` para não derrubar a
+migration se o pg_cron estiver desligado (mesmo padrão da U1).
+
+---
+
+## Fila de migrations a aplicar (nesta ordem)
+
+| # | Arquivo | Observação |
+|---|---|---|
+| 1 | `20260819120000_u7_fusao_chamados.sql` | **deploy do app na mesma janela** — não há convivência |
+| 2 | `20260819140000_u8_aceite_cliente.sql` | confira a lista de clientes rebaixados que ela imprime |
+| 3 | `20260819160000_u9_pedido_compra.sql` | — |

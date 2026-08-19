@@ -1,9 +1,9 @@
-// Chamado — tela única por status (padrão de visita.$id.tsx): decide as ações
-// pelo status e pelo papel. Aqui o técnico executa (fotos antes/depois,
-// diagnóstico, peças, assinatura) e o gestor confere e fecha.
-// Etapa 3 do sistema de OS.
+// Chamado de CAMPO — o corpo da tela quando natureza = 'campo'.
+// Decide as ações pelo status e pelo papel: aqui o técnico executa (fotos
+// antes/depois, diagnóstico, peças, assinatura) e o gestor confere e fecha.
+// Extraído de /os/$id na Etapa U7 — quem monta a página é /chamados/$id.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,46 +16,41 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
-import { AssinaturaCanvas } from "@/features/os/AssinaturaCanvas";
+import { AssinaturaCanvas } from "@/features/chamados/AssinaturaCanvas";
 import {
-  useOrdem, useEventosOs, useFotosOs, useAssinaturaUrl,
-  iniciarAtendimento, concluirAtendimento, fecharOs, reabrirOs, cancelarOs,
-  atualizarOs, anexarFotoOs, excluirFotoOs, salvarAssinatura,
-} from "@/features/os/data";
-import { gerarRelatorioOs } from "@/features/os/relatorioOs";
+  useChamado, useChamadoEventos, useChamadoFotos, useAssinaturaUrl,
+  iniciarChamado, executarChamado, concluirChamado, reabrirChamado, cancelarChamado,
+  atualizarChamado, anexarFoto, excluirFoto, salvarAssinatura,
+} from "@/features/chamados/data";
+import { gerarRelatorioOs } from "@/features/chamados/relatorio";
 import {
-  useOsPecas, registrarPeca, removerPeca,
+  usePecas, registrarPeca, removerPeca,
   DIRECAO_LABEL, DIRECAO_CORES, type DirecaoPeca,
-} from "@/features/os/pecas";
+} from "@/features/chamados/pecas";
 import {
-  useAnaliseOs, useCobrancasDaOs, aprovarCobranca, marcarFaturada, ajustarItem,
+  useAnaliseChamado, useCobrancasDoChamado, aprovarCobranca, marcarFaturada, ajustarItem,
   totalFaturavel, moeda, RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL,
   type ResultadoItem, type FaturamentoStatus,
-} from "@/features/os/cobranca";
-import { analisarCobrancaOs } from "@/lib/cobranca.functions";
-import { useChecklist, marcarItemChecklist } from "@/features/os/checklist";
+} from "@/features/chamados/cobranca";
+import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
+import { useChecklist, marcarItemChecklist } from "@/features/chamados/checklist";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
 import {
-  osStatusInfo, situacaoPrazo, textoPrazo,
-  OS_TIPO_LABEL, OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES,
-  type OsPrioridade,
-} from "@/lib/os-status";
+  chamadoStatusInfo, situacaoPrazo, textoPrazo,
+  TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES,
+  type ChamadoPrioridade,
+} from "@/lib/chamado-status";
 
-export const Route = createFileRoute("/_authenticated/os/$id")({
-  component: OsDetalhePage,
-});
-
-function OsDetalhePage() {
-  const { id } = Route.useParams();
+export function DetalheCampo({ id }: { id: string }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: isGerente = false } = useIsGerente();
   // SAC é gestor mas não vê valores (R13): o card de cobrança é só financeiro
   const { data: veFinanceiro = false } = useVeFinanceiro();
-  const { data: os, isLoading } = useOrdem(id);
-  const { data: eventos = [] } = useEventosOs(id);
-  const { data: fotos = [] } = useFotosOs(id);
+  const { data: os, isLoading } = useChamado(id);
+  const { data: eventos = [] } = useChamadoEventos(id);
+  const { data: fotos = [] } = useChamadoFotos(id);
   const { data: checklist = [] } = useChecklist(id);
   const { data: tecnicos = [] } = useTecnicos();
   const { data: assinaturaUrl } = useAssinaturaUrl(os?.assinatura_url);
@@ -69,15 +64,15 @@ function OsDetalhePage() {
   const [motivoCancel, setMotivoCancel] = useState("");
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   // movimentação de equipamento — Etapa U3
-  const { data: pecasOs = [] } = useOsPecas(id);
+  const { data: pecasOs = [] } = usePecas(id);
   const [novaDirecao, setNovaDirecao] = useState<DirecaoPeca>("instalado");
   const [novaDescricao, setNovaDescricao] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
   const [novaQtd, setNovaQtd] = useState("1");
   // conferência de cobrança — Etapa U4
-  const { data: analise = [] } = useAnaliseOs(id);
-  const { data: cobrancasOs = [] } = useCobrancasDaOs(id);
-  const analisarFn = useServerFn(analisarCobrancaOs);
+  const { data: analise = [] } = useAnaliseChamado(id);
+  const { data: cobrancasOs = [] } = useCobrancasDoChamado(id);
+  const analisarFn = useServerFn(analisarCobrancaChamado);
   const [itemEditando, setItemEditando] = useState<string | null>(null);
   const [novoResultado, setNovoResultado] = useState<ResultadoItem>("revisar");
   const [novoValor, setNovoValor] = useState("");
@@ -145,14 +140,14 @@ function OsDetalhePage() {
   };
 
   const invalidar = () => {
-    qc.invalidateQueries({ queryKey: ["ordem-servico", id] });
-    qc.invalidateQueries({ queryKey: ["ordens-servico"] });
-    qc.invalidateQueries({ queryKey: ["os-eventos", id] });
-    qc.invalidateQueries({ queryKey: ["os-fotos", id] });
+    qc.invalidateQueries({ queryKey: ["chamado", id] });
+    qc.invalidateQueries({ queryKey: ["chamados"] });
+    qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
+    qc.invalidateQueries({ queryKey: ["chamado-fotos", id] });
   };
 
   const iniciar = useMutation({
-    mutationFn: () => iniciarAtendimento(id),
+    mutationFn: () => iniciarChamado(id),
     onSuccess: () => { invalidar(); toast.success("Atendimento iniciado."); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -160,7 +155,7 @@ function OsDetalhePage() {
   const salvarRascunho = useMutation({
     // pecas_texto virou legado na U3: as peças têm tabela própria e não são
     // mais sobrescritas por este rascunho
-    mutationFn: () => atualizarOs(id, { diagnostico, servico_executado: servico }),
+    mutationFn: () => atualizarChamado(id, { diagnostico, servico_executado: servico }),
     onSuccess: () => { invalidar(); toast.success("Anotações salvas."); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -183,21 +178,21 @@ function OsDetalhePage() {
       setNovaDescricao("");
       setNovaSerie("");
       setNovaQtd("1");
-      qc.invalidateQueries({ queryKey: ["os-pecas", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-pecas", id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   /** Análise de cobertura — Etapa U4. Nada é cobrado por ela; só classifica. */
   const invalidarCobranca = () => {
-    qc.invalidateQueries({ queryKey: ["os-analise", id] });
-    qc.invalidateQueries({ queryKey: ["cobrancas-os", id] });
-    qc.invalidateQueries({ queryKey: ["ordem-servico", id] });
+    qc.invalidateQueries({ queryKey: ["chamado-analise", id] });
+    qc.invalidateQueries({ queryKey: ["cobrancas-chamado", id] });
+    qc.invalidateQueries({ queryKey: ["chamado", id] });
   };
 
   const analisar = useMutation({
     mutationFn: async () => {
-      const r = await analisarFn({ data: { osId: id } });
+      const r = await analisarFn({ data: { chamadoId: id } });
       if (!r.ok || !r.resumo) throw new Error(r.erro ?? "Não consegui analisar.");
       return r.resumo;
     },
@@ -259,7 +254,7 @@ function OsDetalhePage() {
         if (!assinanteNome.trim()) throw new Error("Informe o nome de quem assinou.");
         await salvarAssinatura(id, assinaturaData, assinanteNome.trim());
       }
-      await concluirAtendimento(id, {
+      await executarChamado(id, {
         diagnostico: diagnostico.trim(),
         servico_executado: servico.trim(),
       });
@@ -270,7 +265,7 @@ function OsDetalhePage() {
 
   const fechar = useMutation({
     mutationFn: async () => {
-      await fecharOs(id);
+      await concluirChamado(id);
       // Implantação concluída alimenta o inventário do cliente (as-built):
       // é o que fecha o ciclo proposta → implantação → corretiva/preventiva.
       if (os?.tipo === "implantacao" && os.visita_id) {
@@ -295,12 +290,12 @@ function OsDetalhePage() {
   const marcarItem = useMutation({
     mutationFn: ({ itemId, concluido }: { itemId: string; concluido: boolean }) =>
       marcarItemChecklist(itemId, concluido),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["os-checklist", id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chamado-checklist", id] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   const reabrir = useMutation({
-    mutationFn: () => reabrirOs(id),
+    mutationFn: () => reabrirChamado(id),
     onSuccess: () => { invalidar(); toast.success("Chamado reaberto."); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -308,14 +303,14 @@ function OsDetalhePage() {
   const cancelar = useMutation({
     mutationFn: () => {
       if (!motivoCancel.trim()) throw new Error("Informe o motivo do cancelamento.");
-      return cancelarOs(id, motivoCancel.trim());
+      return cancelarChamado(id, motivoCancel.trim());
     },
     onSuccess: () => { invalidar(); setCancelando(false); toast.success("Chamado cancelado."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const trocarTecnico = useMutation({
-    mutationFn: (novo: string) => atualizarOs(id, { tecnico_id: novo || null }),
+    mutationFn: (novo: string) => atualizarChamado(id, { responsavel_id: novo || null }),
     onSuccess: () => { invalidar(); toast.success("Técnico atualizado."); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -325,7 +320,7 @@ function OsDetalhePage() {
       if (!os) throw new Error("Chamado não carregado.");
       await gerarRelatorioOs({
         os,
-        tecnicoNome: (tecnicos as any[]).find((t) => t.id === os.tecnico_id)?.nome ?? null,
+        tecnicoNome: (tecnicos as any[]).find((t) => t.id === os.responsavel_id)?.nome ?? null,
         fotos: fotos.map((f) => ({ etapa: f.etapa, storage_path: f.storage_path, legenda: f.legenda })),
         pecas: pecasOs.map((p) => ({
           direcao: p.direcao,
@@ -341,7 +336,7 @@ function OsDetalhePage() {
   });
 
   const removerFoto = useMutation({
-    mutationFn: ({ fotoId, path }: { fotoId: string; path: string | null }) => excluirFotoOs(fotoId, path),
+    mutationFn: ({ fotoId, path }: { fotoId: string; path: string | null }) => excluirFoto(fotoId, path),
     onSuccess: () => { invalidar(); toast.success("Foto removida."); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -350,7 +345,7 @@ function OsDetalhePage() {
     if (!arquivo) return;
     setEnviandoFoto(true);
     try {
-      await anexarFotoOs(id, arquivo, etapa);
+      await anexarFoto(id, arquivo, etapa);
       invalidar();
       toast.success(etapa === "antes" ? "Foto do problema anexada." : "Foto da solução anexada.");
     } catch (e: any) {
@@ -371,20 +366,20 @@ function OsDetalhePage() {
     return (
       <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", gap: 12, color: textPrimary }}>
         <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14 }}>Chamado não encontrado.</span>
-        <button onClick={() => navigate({ to: "/os" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
+        <button onClick={() => navigate({ to: "/chamados" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
           Voltar para chamados
         </button>
       </div>
     );
   }
 
-  const info = osStatusInfo(os.status);
+  const info = chamadoStatusInfo(os.status);
   const corStatus = isLight ? info.colorLight : info.color;
-  const prio = OS_PRIORIDADE_CORES[os.prioridade as OsPrioridade] ?? OS_PRIORIDADE_CORES.normal;
+  const prio = PRIORIDADE_CORES[os.prioridade as ChamadoPrioridade] ?? PRIORIDADE_CORES.normal;
   const prazo = situacaoPrazo(os.prazo_limite, os.status);
-  const souTecnico = !!userId && os.tecnico_id === userId;
+  const souTecnico = !!userId && os.responsavel_id === userId;
   const podeExecutar = souTecnico || isGerente;
-  const emExecucao = os.status === "em_atendimento";
+  const emExecucao = os.status === "em_andamento";
   const fotosAntes = fotos.filter((f) => f.etapa === "antes");
   const fotosDepois = fotos.filter((f) => f.etapa === "depois");
 
@@ -393,7 +388,7 @@ function OsDetalhePage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/os" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -406,7 +401,7 @@ function OsDetalhePage() {
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, color: gold, letterSpacing: "0.06em" }}>
-            {os.numero ?? "—"} · {OS_TIPO_LABEL[os.tipo] ?? os.tipo}
+            {os.numero ?? "—"} · {TIPO_LABEL[os.tipo] ?? os.tipo}
           </div>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 17 }}>{os.titulo}</div>
         </div>
@@ -434,7 +429,7 @@ function OsDetalhePage() {
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
           >
-            {OS_PRIORIDADE_LABEL[os.prioridade as OsPrioridade] ?? os.prioridade}
+            {PRIORIDADE_LABEL[os.prioridade as ChamadoPrioridade] ?? os.prioridade}
           </span>
           {(prazo === "estourado" || prazo === "proximo") && (
             <span
@@ -508,9 +503,9 @@ function OsDetalhePage() {
           )}
           <div style={linha}>
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Técnico</span>
-            {isGerente && ["aberta", "agendada", "em_atendimento"].includes(os.status) ? (
+            {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) ? (
               <select
-                value={os.tecnico_id ?? ""}
+                value={os.responsavel_id ?? ""}
                 onChange={(e) => trocarTecnico.mutate(e.target.value)}
                 style={{
                   ...INPUT, width: "auto", padding: "6px 10px", fontSize: 12,
@@ -525,7 +520,7 @@ function OsDetalhePage() {
             ) : (
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
                 <User size={12} style={{ display: "inline", marginRight: 4 }} />
-                {tecnicos.find((t: any) => t.id === os.tecnico_id)?.nome ?? "não atribuído"}
+                {tecnicos.find((t: any) => t.id === os.responsavel_id)?.nome ?? "não atribuído"}
               </span>
             )}
           </div>
@@ -543,7 +538,7 @@ function OsDetalhePage() {
       )}
 
       {/* Cancelado */}
-      {os.status === "cancelada" && os.motivo_cancelamento && (
+      {os.status === "cancelado" && os.motivo_cancelamento && (
         <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(185,28,28,0.35)" : "rgba(248,113,113,0.30)"}` }}>
           <span style={SEC}>Motivo do cancelamento</span>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300 }}>
@@ -613,7 +608,7 @@ function OsDetalhePage() {
       )}
 
       {/* Iniciar atendimento */}
-      {podeExecutar && ["aberta", "agendada"].includes(os.status) && (
+      {podeExecutar && ["aberto", "agendado"].includes(os.status) && (
         <button style={CTA} onClick={() => iniciar.mutate()} disabled={iniciar.isPending}>
           <PlayCircle size={18} />
           {iniciar.isPending ? "Iniciando…" : "Iniciar atendimento"}
@@ -621,7 +616,7 @@ function OsDetalhePage() {
       )}
 
       {/* Execução */}
-      {podeExecutar && ["em_atendimento", "executada", "fechada"].includes(os.status) && (
+      {podeExecutar && ["em_andamento", "executado", "concluido"].includes(os.status) && (
         <div style={CARD}>
           <span style={SEC}>Execução</span>
 
@@ -879,7 +874,7 @@ function OsDetalhePage() {
       )}
 
       {/* Relatório de atendimento (PDF) — a partir da execução */}
-      {["executada", "fechada"].includes(os.status) && (
+      {["executado", "concluido"].includes(os.status) && (
         <button
           style={{ ...btnSec, height: 50, borderRadius: 25 }}
           onClick={() => baixarRelatorio.mutate()}
@@ -893,7 +888,7 @@ function OsDetalhePage() {
       {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
           técnico registra a peça e não participa da decisão de cobrar, e o
           SAC (gestor sem valores, R13) também não vê este card. */}
-      {veFinanceiro && ["executada", "fechada"].includes(os.status) && pecasOs.length > 0 && (
+      {veFinanceiro && ["executado", "concluido"].includes(os.status) && pecasOs.length > 0 && (
         <div style={CARD}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Receipt size={15} color={gold} />
@@ -968,7 +963,7 @@ function OsDetalhePage() {
                       </div>
                     </div>
 
-                    {os.status === "executada" && (
+                    {os.status === "executado" && (
                       editando ? (
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                           {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
@@ -1098,7 +1093,7 @@ function OsDetalhePage() {
               <Sparkles size={15} color={gold} />
               {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
             </button>
-            {analise.length > 0 && os.status === "executada" && (
+            {analise.length > 0 && os.status === "executado" && (
               <button
                 style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
                 onClick={() => aprovar.mutate()}
@@ -1107,7 +1102,7 @@ function OsDetalhePage() {
                 {aprovar.isPending ? "Aprovando…" : "Aprovar cobrança"}
               </button>
             )}
-            {cobrancasOs.some((c) => c.status === "aberta" || c.status === "fechada") && (
+            {cobrancasOs.some((c) => c.status === "aberto" || c.status === "concluido") && (
               <button
                 style={{ ...btnSec, flex: 1 }}
                 onClick={() => faturar.mutate()}
@@ -1121,7 +1116,7 @@ function OsDetalhePage() {
       )}
 
       {/* Conferência do gestor */}
-      {isGerente && os.status === "executada" && (
+      {isGerente && os.status === "executado" && (
         <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(52,211,153,0.30)"}` }}>
           <span style={SEC}>Conferência</span>
           <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
@@ -1149,14 +1144,14 @@ function OsDetalhePage() {
       )}
 
       {/* Reabrir quando já fechada */}
-      {isGerente && os.status === "fechada" && (
+      {isGerente && os.status === "concluido" && (
         <button style={btnSec} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
           Reabrir chamado
         </button>
       )}
 
       {/* Cancelar */}
-      {isGerente && ["aberta", "agendada", "em_atendimento"].includes(os.status) && (
+      {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) && (
         <div style={CARD}>
           {cancelando ? (
             <>

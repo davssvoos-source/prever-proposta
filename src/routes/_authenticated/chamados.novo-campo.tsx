@@ -1,4 +1,4 @@
-// Abertura de chamado pelo gestor (SAC) — Etapa 3 do sistema de OS.
+// Novo chamado de CAMPO — a dupla se desloca até o cliente (U7).
 // Cliente → sistema afetado → problema/prioridade → técnico e agenda.
 // O número e o prazo de atendimento (SLA) são preenchidos pelo banco.
 
@@ -12,14 +12,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
 import { useClientes } from "@/features/clientes/data";
 import { useInventario } from "@/features/clientes/inventario";
-import { abrirOs, useSla } from "@/features/os/data";
-import { montarChecklistPreventiva } from "@/features/os/checklist";
+import { abrirChamado, useSla } from "@/features/chamados/data";
+import { montarChecklistPreventiva } from "@/features/chamados/checklist";
 import {
-  OS_TIPO_LABEL, OS_PRIORIDADE_LABEL, OS_PRIORIDADE_CORES,
-  type OsPrioridade, type OsTipo,
-} from "@/lib/os-status";
+  TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES,
+  type ChamadoPrioridade, type ChamadoTipo,
+} from "@/lib/chamado-status";
 
-export const Route = createFileRoute("/_authenticated/os/nova")({
+export const Route = createFileRoute("/_authenticated/chamados/novo-campo")({
   beforeLoad: async () => {
     const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/os/nova")({
     // SAC abre chamados de campo (R9 — é o trilho principal da triagem);
     // a RLS os_insert_gestor já o aceita via is_gestor desde a U6a
     if (!["admin", "comercial", "sac"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/os" });
+      throw redirect({ to: "/chamados" });
     }
   },
   component: NovaOsPage,
@@ -43,13 +43,13 @@ function NovaOsPage() {
   const { data: tecnicos = [] } = useTecnicos();
   const { data: sla = {} } = useSla();
 
-  const [tipo, setTipo] = useState<OsTipo>("corretiva");
+  const [tipo, setTipo] = useState<ChamadoTipo>("corretiva");
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [buscaCliente, setBuscaCliente] = useState("");
   const [sistemaId, setSistemaId] = useState<string | null>(null);
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [prioridade, setPrioridade] = useState<OsPrioridade>("normal");
+  const [prioridade, setPrioridade] = useState<ChamadoPrioridade>("normal");
   const [tecnicoId, setTecnicoId] = useState("");
   const [data, setData] = useState("");
   const [hora, setHora] = useState("09:00");
@@ -116,15 +116,15 @@ function NovaOsPage() {
       const de = new Date(); de.setDate(de.getDate() - 1);
       const ate = new Date(); ate.setDate(ate.getDate() + 14);
       const { data, error } = await supabase
-        .from("ordens_servico" as any)
+        .from("chamados" as any)
         .select("id, numero, titulo, data_hora_agendada, status")
-        .eq("tecnico_id", tecnicoId)
+        .eq("responsavel_id", tecnicoId)
         .not("data_hora_agendada", "is", null)
         .gte("data_hora_agendada", de.toISOString())
         .lte("data_hora_agendada", ate.toISOString())
         .order("data_hora_agendada");
       if (error) throw error;
-      return ((data as any[]) ?? []).filter((o) => ["aberta", "agendada", "em_atendimento"].includes(o.status));
+      return ((data as any[]) ?? []).filter((o) => ["aberto", "agendado", "em_andamento"].includes(o.status));
     },
   });
 
@@ -141,14 +141,15 @@ function NovaOsPage() {
       if (!clienteId) throw new Error("Escolha o cliente do chamado.");
       if (!titulo.trim()) throw new Error("Descreva o assunto do chamado.");
       const agendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
-      const osId = await abrirOs({
+      const chamadoId = await abrirChamado({
+        natureza: "campo",
         tipo,
         cliente_id: clienteId,
         cliente_sistema_id: sistemaId,
         titulo: titulo.trim(),
         descricao_problema: descricao.trim() || null,
         prioridade,
-        tecnico_id: tecnicoId || null,
+        responsavel_id: tecnicoId || null,
         data_hora_agendada: agendada,
       });
       // Preventiva já nasce com o roteiro de verificação dos sistemas
@@ -156,17 +157,17 @@ function NovaOsPage() {
         const alvos = sistemaId ? sistemas.filter((s) => s.id === sistemaId) : sistemas.filter((s) => s.ativo);
         if (alvos.length > 0) {
           await montarChecklistPreventiva(
-            osId,
+            chamadoId,
             alvos.map((s) => ({ id: s.id, nome: s.nome, tipo: s.tipo })),
           );
         }
       }
-      return osId;
+      return chamadoId;
     },
     onSuccess: (id) => {
-      qc.invalidateQueries({ queryKey: ["ordens-servico"] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
       toast.success("Chamado aberto!");
-      navigate({ to: "/os/$id", params: { id } });
+      navigate({ to: "/chamados/$id", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -175,7 +176,7 @@ function NovaOsPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/os" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -198,9 +199,9 @@ function NovaOsPage() {
       <div style={CARD}>
         <span style={SEC}>Tipo de atendimento</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["corretiva", "preventiva", "operacional", "implantacao"] as OsTipo[]).map((t) => (
+          {(["corretiva", "preventiva", "operacional", "implantacao"] as ChamadoTipo[]).map((t) => (
             <button key={t} style={chip(tipo === t)} onClick={() => setTipo(t)}>
-              {OS_TIPO_LABEL[t]}
+              {TIPO_LABEL[t]}
             </button>
           ))}
         </div>
@@ -323,15 +324,15 @@ function NovaOsPage() {
         <div>
           <label style={LABEL}>Prioridade</label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(["baixa", "normal", "alta", "urgente"] as OsPrioridade[]).map((p) => {
-              const c = OS_PRIORIDADE_CORES[p];
+            {(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[]).map((p) => {
+              const c = PRIORIDADE_CORES[p];
               return (
                 <button
                   key={p}
                   style={chip(prioridade === p, { bg: c.bg, border: c.border, cor: isLight ? c.light : c.dark })}
                   onClick={() => setPrioridade(p)}
                 >
-                  {OS_PRIORIDADE_LABEL[p]}
+                  {PRIORIDADE_LABEL[p]}
                 </button>
               );
             })}

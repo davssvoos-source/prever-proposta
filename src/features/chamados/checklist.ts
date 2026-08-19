@@ -16,15 +16,15 @@ export interface ItemChecklist {
   observacao: string | null;
 }
 
-export function useChecklist(osId: string | undefined) {
+export function useChecklist(chamadoId: string | undefined) {
   return useQuery({
-    queryKey: ["os-checklist", osId],
-    enabled: !!osId,
+    queryKey: ["chamado-checklist", chamadoId],
+    enabled: !!chamadoId,
     queryFn: async (): Promise<ItemChecklist[]> => {
       const { data, error } = await supabase
-        .from("os_checklist" as any)
+        .from("chamado_checklist" as any)
         .select("id, grupo, item, ordem, concluido, observacao")
-        .eq("os_id", osId as string)
+        .eq("chamado_id", chamadoId as string)
         .order("ordem");
       if (error) throw error;
       return ((data as any[]) ?? []) as ItemChecklist[];
@@ -35,7 +35,7 @@ export function useChecklist(osId: string | undefined) {
 export async function marcarItemChecklist(id: string, concluido: boolean): Promise<void> {
   const { data: u } = await supabase.auth.getUser();
   const { error } = await supabase
-    .from("os_checklist" as any)
+    .from("chamado_checklist" as any)
     .update({
       concluido,
       concluido_em: concluido ? new Date().toISOString() : null,
@@ -47,7 +47,7 @@ export async function marcarItemChecklist(id: string, concluido: boolean): Promi
 
 export async function anotarItemChecklist(id: string, observacao: string | null): Promise<void> {
   const { error } = await supabase
-    .from("os_checklist" as any)
+    .from("chamado_checklist" as any)
     .update({ observacao } as any)
     .eq("id", id);
   if (error) throw error;
@@ -59,20 +59,20 @@ export async function anotarItemChecklist(id: string, observacao: string | null)
  * checklist na OS.
  */
 export async function montarChecklistPreventiva(
-  osId: string,
+  chamadoId: string,
   sistemas: { id: string; nome: string; tipo: TipoSistema }[],
 ): Promise<number> {
   const { data: existente, error: errE } = await supabase
-    .from("os_checklist" as any)
+    .from("chamado_checklist" as any)
     .select("id")
-    .eq("os_id", osId)
+    .eq("chamado_id", chamadoId)
     .limit(1);
   if (errE) throw errE;
   if (((existente as any[]) ?? []).length > 0) return 0;
 
   const tipos = Array.from(new Set(["GERAL", ...sistemas.map((s) => s.tipo)]));
   const { data: modelos, error } = await supabase
-    .from("os_checklist_templates" as any)
+    .from("chamado_checklist_templates" as any)
     .select("tipo_sistema, item, ordem")
     .in("tipo_sistema", tipos)
     .eq("ativo", true)
@@ -86,20 +86,20 @@ export async function montarChecklistPreventiva(
     porTipo.set(m.tipo_sistema as string, arr);
   }
 
-  const linhas: { os_id: string; grupo: string; item: string; ordem: number }[] = [];
+  const linhas: { chamado_id: string; grupo: string; item: string; ordem: number }[] = [];
   let ordem = 0;
 
   for (const g of porTipo.get("GERAL") ?? []) {
-    linhas.push({ os_id: osId, grupo: "Geral", item: g.item, ordem: ordem++ });
+    linhas.push({ chamado_id: chamadoId, grupo: "Geral", item: g.item, ordem: ordem++ });
   }
   for (const s of sistemas) {
     for (const it of porTipo.get(s.tipo) ?? []) {
-      linhas.push({ os_id: osId, grupo: s.nome, item: it.item, ordem: ordem++ });
+      linhas.push({ chamado_id: chamadoId, grupo: s.nome, item: it.item, ordem: ordem++ });
     }
   }
   if (linhas.length === 0) return 0;
 
-  const { error: errIns } = await supabase.from("os_checklist" as any).insert(linhas as any);
+  const { error: errIns } = await supabase.from("chamado_checklist" as any).insert(linhas as any);
   if (errIns) throw errIns;
   return linhas.length;
 }
@@ -108,11 +108,11 @@ export async function montarChecklistPreventiva(
  * Monta o checklist de uma implantação a partir do escopo aprovado da visita:
  * um item por equipamento (com quantidade), agrupado pelo bloco.
  */
-export async function montarChecklistImplantacao(osId: string, visitaId: string): Promise<number> {
+export async function montarChecklistImplantacao(chamadoId: string, visitaId: string): Promise<number> {
   const { data: existente } = await supabase
-    .from("os_checklist" as any)
+    .from("chamado_checklist" as any)
     .select("id")
-    .eq("os_id", osId)
+    .eq("chamado_id", chamadoId)
     .limit(1);
   if (((existente as any[]) ?? []).length > 0) return 0;
 
@@ -142,7 +142,7 @@ export async function montarChecklistImplantacao(osId: string, visitaId: string)
   }
 
   const contador: Record<string, number> = {};
-  const linhas: { os_id: string; grupo: string; item: string; ordem: number }[] = [];
+  const linhas: { chamado_id: string; grupo: string; item: string; ordem: number }[] = [];
   let ordem = 0;
 
   for (const b of blocos) {
@@ -156,16 +156,16 @@ export async function montarChecklistImplantacao(osId: string, visitaId: string)
       const cod = String(it.cod_eq);
       const qtd = Number(it.qtd || 0);
       linhas.push({
-        os_id: osId,
+        chamado_id: chamadoId,
         grupo,
         item: `Instalar ${qtd}× ${nomes[cod] ?? cod}`,
         ordem: ordem++,
       });
     }
-    linhas.push({ os_id: osId, grupo, item: `Testar e validar ${grupo}`, ordem: ordem++ });
+    linhas.push({ chamado_id: chamadoId, grupo, item: `Testar e validar ${grupo}`, ordem: ordem++ });
   }
 
-  const { error: errIns } = await supabase.from("os_checklist" as any).insert(linhas as any);
+  const { error: errIns } = await supabase.from("chamado_checklist" as any).insert(linhas as any);
   if (errIns) throw errIns;
   return linhas.length;
 }

@@ -11,7 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD, GOLD_GLOW, card } from "@/lib/ui";
 import { rotuloReferencia, dataIso } from "@/lib/periodos";
 import { useClientes } from "@/features/clientes/data";
-import { moeda, useCobrancasAbertas } from "@/features/os/cobranca";
+import { moeda, useCobrancasAbertas } from "@/features/chamados/cobranca";
 import {
   useFechamentos, montarFechamento, lancarCobrancaAvulsa, type TipoFechamento,
 } from "@/features/financeiro/fechamentos";

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, ClipboardList, KanbanSquare, User, Wrench } from "lucide-react";
+import { Home, Calendar, ClipboardList, User, Wrench } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -11,14 +11,16 @@ export function BottomNav() {
   // Barras por perfil (PRODUTO.md §4):
   //  admin/comercial → gestão completa
   //  sac             → gestor de chamados, sem gerencial e sem financeiro
-  //  técnico (R7)    → 3 abas; chamados e demandas dele vivem na Home
+  //  técnico (R7)    → 3 abas; os chamados dele vivem na Home
+  //
+  // Depois da fusão (U7) existe uma aba "Chamados" só: campo e interno são o
+  // mesmo registro, separados por filtro dentro da lista — não por menu.
   const items =
     cargo === "admin"
       ? [
           { to: "/dashboard", label: "Início", icon: Home },
           { to: "/calendario", label: "Calendário", icon: Calendar },
-          { to: "/os", label: "Chamados", icon: Wrench },
-          { to: "/demandas", label: "Demandas", icon: KanbanSquare },
+          { to: "/chamados", label: "Chamados", icon: Wrench },
           { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
           { to: "/perfil", label: "Perfil", icon: User },
         ]
@@ -26,9 +28,7 @@ export function BottomNav() {
         ? [
             { to: "/dashboard", label: "Início", icon: Home },
             { to: "/calendario", label: "Calendário", icon: Calendar },
-            // a aba 3 do SAC (R8): a lista unificada dos quatro trilhos
             { to: "/chamados", label: "Chamados", icon: Wrench },
-            { to: "/demandas", label: "Demandas", icon: KanbanSquare },
             { to: "/perfil", label: "Perfil", icon: User },
           ]
         : [

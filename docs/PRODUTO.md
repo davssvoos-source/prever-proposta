@@ -195,17 +195,24 @@ visita técnica (orçamento)
        RECUSADA → registrado; cliente segue prospecto
 ```
 
-Consequências no sistema (a implementar):
-- `visitas_tecnicas` ganha o pós-aprovação: `proposta_enviada_em`,
-  `proposta_resultado` (aguardando | aceita | recusada), `proposta_resultado_em`.
-- **Visita aprovada ≠ cliente.** `clientes.situacao = 'ativo'` só com aceite do
-  cliente (ou presença no QAP — §6). O backfill da Etapa 1 e a sugestão da tela
-  de consolidação usavam "visita aprovada → ativo": **serão corrigidos**.
-- O elo `origem_proposta_id` do contrato (U2) passa a nascer do **aceite**, não
-  da aprovação.
-- O botão "gerar implantação" (etapa 5) passa a aparecer no aceite.
-- Painel comercial ganha o funil real: visitas → aprovadas → enviadas →
-  aceitas.
+Consequências no sistema — **construídas na U8**:
+- `visitas_tecnicas` ganhou o pós-aprovação: `proposta_enviada_em`,
+  `proposta_resultado` (aguardando | aceita | recusada), `proposta_resultado_em`
+  e `proposta_motivo_recusa`.
+- Duas RPCs: `registrar_envio_proposta()` e `registrar_resultado_proposta()`.
+  O aceite é o único ponto que promove `clientes.situacao` para `ativo`.
+- **Visita aprovada ≠ cliente.** O backfill da Etapa 1 marcava "visita aprovada
+  → ativo": foi **desfeito**. Continua ativo só quem tem prova de relação real
+  — proposta aceita, contrato, chamado de campo executado, cobrança gerada, ou
+  presença no QAP. Os rebaixados ficaram registrados em
+  `clientes_rebaixados_u8` (reversível).
+- A tela de consolidação parou de sugerir "ativo" a partir da aprovação.
+- O botão de gerar implantação **saiu da aprovação e foi para o aceite**.
+- Painel comercial ganhou o funil real: visitas → aprovadas → enviadas →
+  aceitas / recusadas.
+
+Ainda em aberto: o elo `origem_proposta_id` do contrato (U2) deve passar a
+nascer do aceite — hoje o contrato é cadastrado à mão e o campo fica livre.
 
 ## 6. Integração QAP — atualizada
 
@@ -260,6 +267,13 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   e **Monitoramento / Portaria** — entraram no domínio junto com as demais.
   "T.I / Técnica" do Notion vira **T.I.** aqui; "Marketing / Comercial" vira
   **Comercial**. Célula com várias equipes usa a primeira.
+- **R16** — **Chamado e demanda são a mesma coisa: chamado.** Um registro só,
+  com `natureza` dizendo como se executa: `campo` (a dupla se desloca, tira
+  foto, colhe assinatura, gera cobrança) ou `interno` (equipe, sprint, apoio —
+  o que era o quadro do Notion). Um endereço só (`/chamados`), um número só
+  (`CH-AAAA-NNNN`), uma aba só no rodapé. O que era "trilho" virou filtro
+  dentro da lista, não menu separado. Visita técnica de proposta continua
+  fora da tabela: ela é o funil comercial, não o trabalho.
 
 ## 8. Questões em aberto — para responder de uma vez
 
@@ -268,9 +282,11 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 
 **Papéis e permissões**
 1. ~~Equipe do Breno~~ → **respondida**: Técnica, líder de dupla (R14).
-2. **SAC programa técnicos?** (tela `/os/programacao`) Ou só abre/acompanha e a
-   programação fica com o Vinicius? *(enquanto não responde: SAC não vê a
-   programação)*
+2. ~~SAC programa técnicos?~~ → **respondida pela sua própria definição do
+   papel**: "o SAC é gestor… ele coordena, ele planeja, **programa as
+   atividades dos outros**". `/chamados/programacao` e `/chamados/indicadores`
+   foram abertos para o SAC na U7 — nenhuma das duas mostra valor. Se a
+   intenção era outra, é só dizer e eu fecho de volta.
 3. **SAC confere e fecha OS?** Hoje fechar é do gestor. O SAC fecha, ou avisa e
    quem fecha é Vinicius/admin? *(enquanto não responde: o botão de fechar
    aparece para o SAC, já que é gestor)*
@@ -280,16 +296,22 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 **Chamado unificado**
 5. Chamado de **proposta**: o SAC já agenda a visita (escolhe técnico de
    orçamento e data), ou só registra o pedido e o comercial agenda?
-6. **Pedido de compra**: precisa de campos próprios? (fornecedor sugerido,
-   valor estimado, link do produto, quem aprova a compra?)
+6. ~~Pedido de compra: precisa de campos próprios?~~ → **construído na U9**
+   com as suposições: quantidade, fornecedor sugerido, valor estimado, link do
+   produto e justificativa; caminho `solicitado → em cotação → aprovado →
+   comprado → recebido` (ou `recusado` com motivo); **quem libera o gasto é
+   quem responde pelo financeiro** (admin e comercial) — SAC abre e acompanha,
+   Patrimônio cota, compra e recebe. Se a alçada for outra (ex.: Patrimônio
+   aprova até certo valor), é um IF na RPC `decidir_pedido_compra`.
 7. Chamado **operacional** de campo tem SLA? (proposta: usa o padrão "normal",
    72h, editável no os_sla.)
 8. A **ordenação** da lista do SAC (recentes / prazo / prioridade / cliente /
    última atualização) — está bom esse conjunto?
 
 **Ciclo comercial**
-9. O registro do **aceite do cliente** (proposta aceita/recusada + datas) no
-   modelo da visita — confirma? Quer registrar também o motivo da recusa?
+9. ~~O registro do aceite do cliente~~ → **construído na U8** com a suposição
+   de que o motivo da recusa vale a pena (campo livre, opcional): é o dado que
+   responde "por que perdemos". Se não quiser esse campo, digo e removo.
 
 **Insumos aguardados**
 10. **Conversas do SAC** (export do WhatsApp) — para eu ler, interpretar os
@@ -309,10 +331,17 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 14. Alcance de notificação com o app fechado (FCM × WhatsApp/e-mail) — §10.6
     do SISTEMA_OS; fica mais urgente com o SAC operando dentro do app.
 
-## 9. Mapa de telas — o que existe hoje (revisão de 2026-08-19)
+## 9. Mapa de telas — depois da fusão (revisão de 2026-08-19)
 
 Levantado do código real. É a **pauta da discussão página por página**: cada
 item abaixo pode ser ajustado.
+
+> **Fusão (U7).** Chamado e demanda viraram o mesmo registro. Não existe mais
+> `/os/*` nem `/demandas/*`: tudo mora em `/chamados/*`, e o que separa os dois
+> modos de trabalho é o campo **natureza** — `campo` (a dupla se desloca, tira
+> foto, colhe assinatura, gera cobrança) e `interno` (o antigo quadro do
+> Notion: equipe, sprint, apoio). Isso responde os pontos 1 e 2 da revisão
+> anterior.
 
 ### 9.1 As barras de rodapé
 
@@ -321,65 +350,70 @@ São **4 perfis** e **3 barras** — Admin e Comercial compartilham a mesma
 
 | Perfil | Itens do rodapé |
 |---|---|
-| **Admin** (Davi, Vinicius) | Início · Calendário · **Chamados** · Demandas · Gerencial · Perfil |
+| **Admin** (Davi, Vinicius) | Início · Calendário · **Chamados** · Gerencial · Perfil |
 | **Comercial** | *idêntica à do Admin* |
-| **SAC** | Início · Calendário · **Chamados** · Demandas · Perfil |
+| **SAC** | Início · Calendário · **Chamados** · Perfil |
 | **Técnico** (Gilleno, Nicholas, Erik, Breno, líderes de dupla) | Início · **Agenda** · Perfil |
 
-> ⚠️ **"Chamados" abre telas diferentes**: para Admin/Comercial vai para `/os`
-> (só o trilho de campo); para o SAC vai para `/chamados` (os quatro trilhos).
-> Ponto a decidir na revisão — ver §9.6.
+Agora "Chamados" leva **todo mundo para o mesmo lugar** (`/chamados`), e a
+antiga aba "Demandas" saiu: o quadro por sprint virou um modo de visualização
+dentro da própria lista (botão de alternar lista ↔ quadro).
 
-### 9.2 Admin e Comercial — 6 abas
+### 9.2 Admin e Comercial — 5 abas
 
 | Aba | Rota | O que tem hoje |
 |---|---|---|
-| **Início** | `/dashboard` | Banner "X visitas hoje", card da próxima visita (com contagem regressiva e foto da fachada), card do próximo chamado, 4 métricas de visitas, filtros hoje/semana/mês, filtro por técnico e por status, lista de visitas |
+| **Início** | `/dashboard` | Banner "X visitas hoje", card da próxima visita (contagem regressiva + foto da fachada), card do próximo chamado, 4 métricas de visitas, filtros hoje/semana/mês, filtro por técnico e por status, lista de visitas |
 | **Calendário** | `/calendario` | Grade mensal com visitas **+** chamados de todos os técnicos; filtros por técnico e por tipo |
-| **Chamados** | `/os` | Lista dos chamados **de campo**; filtros Em aberto/Meus/Atrasados/A conferir/Todos; busca. Botões: painel de campo, lista unificada, programação, abrir chamado |
-| **Demandas** | `/demandas` | Quadro por sprint (Este mês/Mês que vem/Mês passado/Backlog), filtro por equipe e "minhas", aviso de demanda sem dono |
+| **Chamados** | `/chamados` | A fila inteira: campo, interno e visitas de proposta. Filtros de situação, trilho (campo / proposta / por equipe), responsável, busca, 5 ordenações e alternância **lista ↔ quadro por sprint**. Botões: painel, abrir chamado |
 | **Gerencial** | `/gerencial` | Painel de visitas/propostas + atalhos para Chamados, Clientes, **Contratos**, **Fechamentos**, Usuários |
 | **Perfil** | `/perfil` | Dados, tema, sair |
 
 **Telas internas alcançáveis** (sem entrada própria no rodapé):
-`/os/$id` (execução, conferência e **cobrança**) · `/os/nova` · `/os/painel`
-(indicadores de campo) · `/os/programacao` (agenda das duplas) ·
-`/chamados` · `/chamados/painel` · `/chamados/novo` ·
-`/demandas/nova` · `/demandas/$id` · `/demandas/importar` ·
-`/clientes` · `/clientes/$id` (com inventário e contratos) · `/clientes/novo` ·
+`/chamados/$id` (a página do chamado — corpo de campo ou interno conforme a
+natureza) · `/chamados/novo` (triagem) · `/chamados/novo-campo` ·
+`/chamados/novo-interno` · `/chamados/painel` (gerencial dos trilhos) ·
+`/chamados/indicadores` (mergulho da operação de campo: SLA, carga por técnico,
+clientes que mais chamam) · `/chamados/programacao` (agenda das duplas) ·
+`/chamados/importar` (CSV do Notion) ·
+`/clientes` · `/clientes/$id` (inventário e contratos) · `/clientes/novo` ·
 `/clientes/migrar` · `/contratos` · `/contratos/novo` · `/contratos/$id` ·
 `/fechamentos` · `/fechamentos/$id` · `/gerencial/nova` ·
 `/gerencial/usuarios` *(só Admin)* · `/visita/$id` e todo o fluxo de orçamento
 (categorias → blocos → complementos → pré-envio → pagamento) ·
 `/historico` · `/mapa` · `/projeto/$id` · `/admin`
 
-### 9.3 SAC — 5 abas
+### 9.3 SAC — 4 abas
 
 | Aba | Rota | O que tem hoje |
 |---|---|---|
 | **Início** | `/dashboard` | Mesma tela do Admin |
 | **Calendário** | `/calendario` | Tudo de todos os técnicos, com filtros por técnico e tipo |
-| **Chamados** | `/chamados` | **Lista unificada dos 4 trilhos**; filtros de situação, trilho, responsável, busca e 5 ordenações. Botões: painel, abrir chamado |
-| **Demandas** | `/demandas` | Mesmo quadro |
+| **Chamados** | `/chamados` | A mesma lista do Admin — é a aba 3 do R8 |
 | **Perfil** | `/perfil` | — |
 
-Alcança também: `/chamados/painel`, `/chamados/novo`, `/os` e `/os/$id`,
-`/os/nova`, `/demandas/*`, `/clientes` (leitura), `/gerencial/nova` (só o
-formulário de visita, pelo trilho de proposta).
+Alcança também: `/chamados/painel`, `/chamados/novo` e os dois formulários,
+`/chamados/$id`, `/chamados/indicadores`, `/chamados/programacao`
+(coordenar e programar é papel do SAC, R13), `/clientes` (leitura),
+`/gerencial/nova` (só o formulário de visita, pelo trilho de proposta).
 
-**Bloqueado para o SAC:** contratos, fechamentos e qualquer valor;
-`/gerencial` (o painel), `/os/painel` e `/os/programacao`.
+**Bloqueado para o SAC:** contratos, fechamentos e **qualquer valor** — o card
+de cobrança dentro do chamado só aparece para quem passa em
+`pode_ver_financeiro` (admin e comercial). `/gerencial` (o painel) também fica
+fora.
 
 ### 9.4 Técnico — 3 abas
 
 | Aba | Rota | O que tem hoje |
 |---|---|---|
-| **Início** | `/dashboard` | **"Você tem X chamados hoje"** + próxima visita + fila dele: "Seus chamados" (OS) e "Suas demandas" |
+| **Início** | `/dashboard` | **"Você tem X chamados hoje"** + próxima visita + a fila dele: chamados de campo e chamados internos |
 | **Agenda** | `/calendario` | Só o que é dele |
 | **Perfil** | `/perfil` | — |
 
-Alcança pelos cards: `/os/$id` (executar: fotos, checklist, peças,
-assinatura), `/demandas/$id`, `/visita/$id` + fluxo de orçamento.
+Alcança pelos cards: `/chamados/$id` (executar: fotos, checklist, peças,
+assinatura — ou tocar o chamado interno) e `/visita/$id` + fluxo de orçamento.
+A lista `/chamados` fica fora do rodapé dele e a rota barra a entrada direta,
+mas **os filhos passam**: tocar um card da Home abre o chamado normalmente.
 Não vê valores em lugar nenhum.
 
 ### 9.5 Telas legadas / sem dono claro
@@ -388,19 +422,19 @@ Não vê valores em lugar nenhum.
 para `/gerencial/nova`). Nenhuma tem entrada no rodapé — **candidatas a
 revisão**: manter, mover para dentro de outra tela, ou remover.
 
-### 9.6 Pontos que a revisão levantou — para decidir
+### 9.6 Pontos que a revisão levantou
 
-1. **"Chamados" leva a telas diferentes por perfil** (Admin→`/os`,
-   SAC→`/chamados`). Unificar em `/chamados` para todos? O `/os` viraria a
-   visão de campo, alcançada por filtro.
-2. **Dois painéis**: `/os/painel` (campo: SLA, carga por técnico, clientes que
-   mais chamam) e `/chamados/painel` (os 4 trilhos). Fundir num só com filtro
-   de trilho, ou manter os dois com papéis distintos?
+1. ~~"Chamados" leva a telas diferentes por perfil~~ — **resolvido na U7**:
+   um endereço só, `/chamados`, para todos os perfis.
+2. **Dois painéis ainda**: `/chamados/painel` (visão gerencial dos trilhos) e
+   `/chamados/indicadores` (SLA, carga por técnico, tempo médio — só campo).
+   Fundir num só com aba interna, ou manter os dois? *Em aberto.*
 3. **Comercial tem a barra idêntica à do Admin.** Faz sentido, ou o Comercial
-   deveria ter uma barra própria (ex.: trocar "Demandas" por "Contratos")?
-4. **Técnico não tem "Demandas" no rodapé** — chega só pelo card da Home.
-   Suficiente?
-5. **Telas legadas** (§9.5) — o que fazer com cada uma.
+   deveria ter uma barra própria (ex.: trocar "Gerencial" por "Contratos")?
+   *Em aberto.*
+4. **Técnico não tem "Chamados" no rodapé** — chega só pelo card da Home.
+   Suficiente? *Em aberto.*
+5. **Telas legadas** (§9.5) — o que fazer com cada uma. *Em aberto.*
 
 ## 10. Estado de implementação
 
@@ -412,7 +446,9 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | **Lista unificada de chamados** (`/chamados` — aba 3 do SAC): quatro trilhos, filtros por situação/trilho/responsável, busca e 5 ordenações | **construído (U6b)** |
 | **Abertura unificada** (`/chamados/novo` — R9), tipo `operacional` na OS (R5) e `pedido_compra` na demanda (R6) | **construído (U6c)** |
 | **Painel de chamados** (`/chamados/painel` — aba 1) e **calendário geral com filtros** (aba 2) | **construído (U6d)** — as 3 abas do SAC estão completas |
-| Aceite do cliente (R4), campos do pedido de compra (Q6) | especificados — próximos passos |
-| Import QAP (clientes/estoque/equipamentos) | aguardando export (U7) |
-| API QAP contínua | aguardando dev do QAP (U8) |
-| IA no WhatsApp do SAC | futuro (U9) |
+| **Fusão chamado × demanda** (U7): tabela `chamados` única com `natureza`, endereço único `/chamados/*`, rodapé com uma aba só, quadro por sprint como modo de visualização | **construído (U7)** |
+| **Aceite do cliente** (U8 — R4): pós-aprovação na visita, promoção do cliente só no aceite, correção do backfill "aprovada ⇒ ativo", funil comercial | **construído (U8)** |
+| **Pedido de compra completo** (U9 — Q6): ficha `chamado_compra`, caminho solicitado→recebido, alçada de aprovação no financeiro, alerta de pedido parado | **construído (U9)** |
+| Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
+| API QAP contínua | aguardando dev do QAP (U11) |
+| IA no WhatsApp do SAC | futuro (U12) |

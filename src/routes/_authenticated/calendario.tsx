@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
-import { osStatusInfo } from "@/lib/os-status";
+import { chamadoStatusInfo } from "@/lib/chamado-status";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
@@ -131,7 +131,7 @@ function CalendarioPage() {
       const inicio = new Date(mes.getFullYear(), mes.getMonth(), 1).toISOString();
       const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
       const { data, error } = await supabase
-        .from("ordens_servico" as any)
+        .from("chamados" as any)
         .select("id, numero, status, tipo, titulo, data_hora_agendada, tecnico_id, cliente:clientes(nome)")
         .not("data_hora_agendada", "is", null)
         .gte("data_hora_agendada", inicio)
@@ -175,11 +175,11 @@ function CalendarioPage() {
 
   const corDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
     e.kind === "os"
-      ? (isLight ? osStatusInfo(e.status).colorLight : osStatusInfo(e.status).color)
+      ? (isLight ? chamadoStatusInfo(e.status).colorLight : chamadoStatusInfo(e.status).color)
       : (STATUS_CORES[e.status] ?? goldDark);
 
   const rotuloDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
-    e.kind === "os" ? osStatusInfo(e.status).label : (STATUS_LABELS[e.status] ?? e.status);
+    e.kind === "os" ? chamadoStatusInfo(e.status).label : (STATUS_LABELS[e.status] ?? e.status);
 
   const { diasGrid, visitasPorDia } = useMemo(() => {
     const primeiroDia = new Date(mes.getFullYear(), mes.getMonth(), 1).getDay();
@@ -424,7 +424,7 @@ function CalendarioPage() {
                   key={v.id}
                   onClick={() =>
                     v.kind === "os"
-                      ? navigate({ to: "/os/$id", params: { id: v.id } })
+                      ? navigate({ to: "/chamados/$id", params: { id: v.id } })
                       : navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })
                   }
                   style={{

@@ -8,8 +8,7 @@ import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
-import { osStatusInfo, situacaoPrazo } from "@/lib/os-status";
-import { demandaStatusInfo } from "@/lib/demanda-status";
+import { chamadoStatusInfo, situacaoPrazo, prazoParaData } from "@/lib/chamado-status";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -168,15 +167,16 @@ function Dashboard() {
     };
   }, [qc]);
 
-  // Próximo chamado (ordem de serviço) — Etapa 3 do sistema de OS.
-  // A RLS já limita o técnico aos chamados dele; o gestor vê o próximo da fila.
+  // Próximo chamado de campo. A RLS já limita o técnico aos dele; o gestor
+  // vê o próximo da fila inteira.
   const { data: proximoChamado } = useQuery({
     queryKey: ["dashboard-proximo-chamado"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("ordens_servico" as any)
+        .from("chamados" as any)
         .select("id, numero, titulo, status, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
-        .in("status", ["aberta", "agendada", "em_atendimento"])
+        .eq("natureza", "campo")
+        .in("status", ["aberto", "agendado", "em_andamento"])
         .order("data_hora_agendada", { ascending: true, nullsFirst: false })
         .limit(1);
       if (error) throw error;
@@ -184,17 +184,18 @@ function Dashboard() {
     },
   });
 
-  // ── Fila do técnico (R7/R11/R12): chamados de campo e demandas dele viraram
-  // cards da Home — as abas próprias saíram da barra. A RLS limita as OS às
-  // dele; as demandas são filtradas por responsável aqui.
+  // ── Fila do técnico (R7/R11/R12): chamados de campo e internos dele viraram
+  // cards da Home — as abas próprias saíram da barra. A RLS limita os de campo
+  // aos dele; os internos são filtrados por responsável aqui.
   const { data: chamadosTecnico = [] } = useQuery({
     queryKey: ["dashboard-chamados-tecnico"],
     enabled: isTecnico,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("ordens_servico" as any)
+        .from("chamados" as any)
         .select("id, numero, titulo, status, tipo, prioridade, prazo_limite, data_hora_agendada, cliente:clientes(nome)")
-        .in("status", ["aberta", "agendada", "em_atendimento", "executada"])
+        .eq("natureza", "campo")
+        .in("status", ["aberto", "agendado", "em_andamento", "executado"])
         .order("data_hora_agendada", { ascending: true, nullsFirst: false });
       if (error) throw error;
       return (data as any[]) ?? [];
@@ -208,11 +209,12 @@ function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
-        .from("demandas" as any)
-        .select("id, numero, titulo, status, tipo, equipe, prazo, sprint")
+        .from("chamados" as any)
+        .select("id, numero, titulo, status, tipo, equipe, prazo_limite, sprint")
+        .eq("natureza", "interno")
         .eq("responsavel_id", user.id)
-        .in("status", ["nao_iniciada", "em_andamento", "stand_by", "aguardando_aprovacao"])
-        .order("prazo", { ascending: true, nullsFirst: false });
+        .in("status", ["aberto", "em_andamento", "stand_by", "aguardando_aprovacao"])
+        .order("prazo_limite", { ascending: true, nullsFirst: false });
       if (error) return [];
       return (data as any[]) ?? [];
     },
@@ -270,12 +272,12 @@ function Dashboard() {
   // + demandas com prazo hoje.
   const hojeIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const osHoje = chamadosTecnico.filter((o: any) => {
-    if (o.status === "em_atendimento") return true;
+    if (o.status === "em_andamento") return true;
     if (!o.data_hora_agendada) return false;
     const d = new Date(o.data_hora_agendada);
     return d >= startOfDay && d <= endOfDay;
   });
-  const demandasHoje = demandasTecnico.filter((d: any) => (d.prazo ?? "") === hojeIso);
+  const demandasHoje = demandasTecnico.filter((d: any) => prazoParaData(d.prazo_limite) === hojeIso);
   const chamadosHoje = visitasHoje.length + osHoje.length + demandasHoje.length;
 
   const agoraMs = Date.now();
@@ -563,12 +565,12 @@ function Dashboard() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {chamadosTecnico.map((o: any) => {
-                const st = osStatusInfo(o.status);
+                const st = chamadoStatusInfo(o.status);
                 const atrasado = situacaoPrazo(o.prazo_limite, o.status) === "estourado";
                 return (
                   <div
                     key={o.id}
-                    onClick={() => navigate({ to: "/os/$id", params: { id: o.id } })}
+                    onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
                     style={{
                       ...GLASS,
                       padding: "13px 15px",
@@ -631,7 +633,7 @@ function Dashboard() {
               {demandasTecnico.map((d: any) => (
                 <div
                   key={d.id}
-                  onClick={() => navigate({ to: "/demandas/$id", params: { id: d.id } })}
+                  onClick={() => navigate({ to: "/chamados/$id", params: { id: d.id } })}
                   style={{ ...GLASS, padding: "13px 15px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
                 >
                   <ClipboardList size={17} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
@@ -647,7 +649,7 @@ function Dashboard() {
                     </div>
                     <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
                       {d.numero}
-                      {d.prazo ? ` · prazo ${d.prazo.split("-").reverse().join("/")}` : " · sem prazo"}
+                      {d.prazo_limite ? ` · prazo ${prazoParaData(d.prazo_limite).split("-").reverse().join("/")}` : " · sem prazo"}
                     </div>
                   </div>
                   <span
@@ -655,12 +657,12 @@ function Dashboard() {
                       flexShrink: 0, padding: "3px 9px", borderRadius: 999,
                       fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
                       letterSpacing: "0.06em", textTransform: "uppercase",
-                      color: isLight ? demandaStatusInfo(d.status).colorLight : demandaStatusInfo(d.status).color,
-                      background: demandaStatusInfo(d.status).bg,
-                      border: `1px solid ${demandaStatusInfo(d.status).border}`,
+                      color: isLight ? chamadoStatusInfo(d.status).colorLight : chamadoStatusInfo(d.status).color,
+                      background: chamadoStatusInfo(d.status).bg,
+                      border: `1px solid ${chamadoStatusInfo(d.status).border}`,
                     }}
                   >
-                    {demandaStatusInfo(d.status).label}
+                    {chamadoStatusInfo(d.status).label}
                   </span>
                 </div>
               ))}
@@ -671,7 +673,7 @@ function Dashboard() {
         {/* ═══ CARD PRÓXIMO CHAMADO (visão do gestor) ═══ */}
         {!isTecnico && proximoChamado && (
           <div
-            onClick={() => navigate({ to: "/os/$id", params: { id: proximoChamado.id } })}
+            onClick={() => navigate({ to: "/chamados/$id", params: { id: proximoChamado.id } })}
             style={{
               ...GLASS,
               padding: "14px 16px",
@@ -679,7 +681,7 @@ function Dashboard() {
               display: "flex",
               alignItems: "center",
               gap: 12,
-              borderLeft: `3px solid ${isLight ? osStatusInfo(proximoChamado.status).colorLight : osStatusInfo(proximoChamado.status).color}`,
+              borderLeft: `3px solid ${isLight ? chamadoStatusInfo(proximoChamado.status).colorLight : chamadoStatusInfo(proximoChamado.status).color}`,
             }}
           >
             <Wrench size={18} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />

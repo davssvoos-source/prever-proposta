@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench, CircleDollarSign } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench, CircleDollarSign, ChevronRight } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -80,6 +80,8 @@ function GerencialPage() {
             titulo,
             nome_sindico,
             nome_predio,
+            proposta_enviada_em,
+            proposta_resultado,
             clientes (nome, email)
           `)
         .order("created_at", { ascending: false });
@@ -154,6 +156,16 @@ function GerencialPage() {
     aprovadas:    visitasRaw.filter((v: any) => v.status === "aprovada").length,
   };
 
+  // Funil comercial real (R4): a aprovação é interna, o aceite é do cliente.
+  // "Aprovadas" nunca foi sinônimo de negócio fechado — aqui isso fica visível.
+  const funil = [
+    { label: "Visitas",   value: visitasRaw.length,                                                                 color: numberGold },
+    { label: "Aprovadas", value: visitasRaw.filter((v: any) => v.status === "aprovada").length,                     color: "#3B82F6" },
+    { label: "Enviadas",  value: visitasRaw.filter((v: any) => v.proposta_enviada_em).length,                       color: "#2DD4BF" },
+    { label: "Aceitas",   value: visitasRaw.filter((v: any) => v.proposta_resultado === "aceita").length,           color: "#10B981" },
+    { label: "Recusadas", value: visitasRaw.filter((v: any) => v.proposta_resultado === "recusada").length,         color: "#F87171" },
+  ];
+
   const visitas = visitasRaw as any[];
 
   if (pathname !== "/gerencial") {
@@ -201,7 +213,7 @@ function GerencialPage() {
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {[
-            { label: "Chamados", Icon: Wrench, to: "/os" as const },
+            { label: "Chamados", Icon: Wrench, to: "/chamados" as const },
             { label: "Clientes", Icon: Building2, to: "/clientes" as const },
             // financeiro (U2/U5): fora da barra de navegação, que já está cheia
             { label: "Contratos", Icon: FileText, to: "/contratos" as const },
@@ -246,7 +258,6 @@ function GerencialPage() {
         }}
       >
         {[
-          { label: "Total",        value: stats.total,        color: numberGold },
           { label: "Pendentes",    value: stats.pendentes,    color: numberGold },
           { label: "Em Andamento", value: stats.em_andamento, color: "#3B82F6" },
           { label: "Concluídas",   value: stats.concluidas,   color: "#10B981" },
@@ -288,6 +299,67 @@ function GerencialPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Funil comercial (R4) — a leitura honesta: aprovar a visita é decisão
+          nossa; o que fecha negócio é o aceite do cliente. */}
+      <div
+        style={{
+          background: cardBg,
+          backdropFilter: isLight ? "none" : "blur(16px)",
+          border: cardBorder,
+          borderRadius: 16,
+          padding: "18px 20px",
+          boxShadow: cardShadow,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "Montserrat, sans-serif", fontSize: 11, fontWeight: 600,
+            letterSpacing: "0.10em", textTransform: "uppercase",
+            color: textSecondary, marginBottom: 14,
+          }}
+        >
+          Funil comercial
+        </div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+          {funil.map((f, i) => (
+            <div key={f.label} style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+              {i > 0 && i < 4 && (
+                <ChevronRight size={16} color={textSecondary} style={{ marginBottom: 6, flexShrink: 0 }} />
+              )}
+              <div style={{ minWidth: 74 }}>
+                <div
+                  style={{
+                    fontFamily: "Montserrat, sans-serif", fontSize: 24, fontWeight: 700,
+                    color: f.color, letterSpacing: "0.02em",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {f.value}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "Montserrat, sans-serif", fontSize: 10, fontWeight: 300,
+                    color: textSecondary, letterSpacing: "0.08em",
+                    textTransform: "uppercase", marginTop: 2,
+                  }}
+                >
+                  {f.label}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div
+          style={{
+            fontFamily: "Montserrat, sans-serif", fontSize: 11, fontWeight: 300,
+            color: textSecondary, marginTop: 12, lineHeight: 1.5,
+          }}
+        >
+          Visita aprovada é aprovação interna. Cliente de verdade é o que aceitou a proposta.
+        </div>
       </div>
 
       {/* Lista de visitas */}

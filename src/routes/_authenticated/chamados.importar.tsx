@@ -11,16 +11,16 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useClientes } from "@/features/clientes/data";
-import { usePessoas } from "@/features/demandas/data";
+import { usePessoas } from "@/features/chamados/data";
 import { normalizarTexto } from "@/lib/normalizar";
 import {
-  SPRINT_LABEL, TIPO_DEMANDA_LABEL, sugerirTipoDemanda,
-  type DemandaSprint, type DemandaStatus, type DemandaTipo,
-} from "@/lib/demanda-status";
+  SPRINT_LABEL, TIPO_LABEL, sugerirTipoChamado, dataParaPrazo, prazoParaData,
+  type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
+} from "@/lib/chamado-status";
 import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 
-export const Route = createFileRoute("/_authenticated/demandas/importar")({
-  component: ImportarDemandasPage,
+export const Route = createFileRoute("/_authenticated/chamados/importar")({
+  component: ImportarChamadosPage,
 });
 
 // ── CSV ─────────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ const SINONIMOS: Record<string, string[]> = {
   apoio: ["apoio", "support", "colaborador"],
   cliente: ["cliente", "client", "condominio", "empresa"],
   sprint: ["sprint", "ciclo", "mes"],
-  prazo: ["prazo", "due", "data limite", "deadline", "vencimento"],
+  prazo_limite: ["prazo", "prazo limite", "due", "data limite", "deadline", "vencimento"],
   equipe: ["equipe", "team", "time", "area"],
   status: ["status", "situacao", "estado"],
 };
@@ -68,10 +68,10 @@ function acharColuna(cabecalho: string[], chave: string): number {
   });
 }
 
-const STATUS_NOTION: Record<string, DemandaStatus> = {
-  "nao iniciada": "nao_iniciada",
-  "nao iniciado": "nao_iniciada",
-  "a fazer": "nao_iniciada",
+const STATUS_NOTION: Record<string, ChamadoStatus> = {
+  "nao iniciada": "aberto",
+  "nao iniciado": "aberto",
+  "a fazer": "aberto",
   "em andamento": "em_andamento",
   "fazendo": "em_andamento",
   "stand by": "stand_by",
@@ -79,14 +79,14 @@ const STATUS_NOTION: Record<string, DemandaStatus> = {
   "pausada": "stand_by",
   "aguardando aprovacao": "aguardando_aprovacao",
   "aguardando": "aguardando_aprovacao",
-  "concluido": "concluida",
-  "concluida": "concluida",
-  "feito": "concluida",
-  "cancelada": "cancelada",
-  "cancelado": "cancelada",
+  "concluido": "concluido",
+  "concluido": "concluido",
+  "feito": "concluido",
+  "cancelado": "cancelado",
+  "cancelado": "cancelado",
 };
 
-const SPRINT_NOTION: Record<string, DemandaSprint> = {
+const SPRINT_NOTION: Record<string, ChamadoSprint> = {
   "este mes": "este_mes",
   "esse mes": "este_mes",
   "mes que vem": "mes_que_vem",
@@ -122,10 +122,10 @@ interface LinhaImport {
   clienteNome: string;
   clienteId: string | null;
   equipe: Equipe;
-  sprint: DemandaSprint;
-  status: DemandaStatus;
-  tipo: DemandaTipo;
-  prazo: string | null;
+  sprint: ChamadoSprint;
+  status: ChamadoStatus;
+  tipo: ChamadoTipo;
+  prazo_limite: string | null;
   origemId: string;
 }
 
@@ -144,7 +144,7 @@ function lerData(v: string): string | null {
   return null;
 }
 
-function ImportarDemandasPage() {
+function ImportarChamadosPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isLight } = useTheme();
@@ -205,7 +205,7 @@ function ImportarDemandasPage() {
       responsavel: acharColuna(cab, "responsavel"),
       cliente: acharColuna(cab, "cliente"),
       sprint: acharColuna(cab, "sprint"),
-      prazo: acharColuna(cab, "prazo"),
+      prazo_limite: acharColuna(cab, "prazo_limite"),
       equipe: acharColuna(cab, "equipe"),
       status: acharColuna(cab, "status"),
     };
@@ -218,7 +218,7 @@ function ImportarDemandasPage() {
       const descricao = pega(l, idx.descricao) || null;
       const respNome = pega(l, idx.responsavel);
       const cliNome = pega(l, idx.cliente);
-      const prazo = lerData(pega(l, idx.prazo));
+      const prazo_limite = lerData(pega(l, idx.prazo_limite));
       out.push({
         titulo,
         descricao,
@@ -229,11 +229,11 @@ function ImportarDemandasPage() {
         // célula multi-equipe ("Controle Patrimonial, T.I / Técnica") usa a primeira
         equipe: EQUIPE_NOTION[normalizarTexto(pega(l, idx.equipe).split(",")[0])] ?? "ti",
         sprint: SPRINT_NOTION[normalizarTexto(pega(l, idx.sprint))] ?? "backlog",
-        status: STATUS_NOTION[normalizarTexto(pega(l, idx.status))] ?? "nao_iniciada",
-        tipo: sugerirTipoDemanda(titulo, descricao),
-        prazo,
-        // chave de reimportação: mesmo título + mesmo prazo não entra duas vezes
-        origemId: `${normalizarTexto(titulo)}|${prazo ?? ""}`,
+        status: STATUS_NOTION[normalizarTexto(pega(l, idx.status))] ?? "aberto",
+        tipo: sugerirTipoChamado(titulo, descricao),
+        prazo_limite,
+        // chave de reimportação: mesmo título + mesmo prazo_limite não entra duas vezes
+        origemId: `${normalizarTexto(titulo)}|${prazo_limite ?? ""}`,
       });
     }
     if (out.length === 0) {
@@ -247,31 +247,47 @@ function ImportarDemandasPage() {
     mutationFn: async () => {
       if (!linhas?.length) throw new Error("Nada para importar.");
       const { data: u } = await supabase.auth.getUser();
-      const registros = linhas.map((l) => ({
+      // o lote de 537 já entrou pela migration com outra chave de origem;
+      // conferimos por título + prazo para não duplicar o que já está lá
+      const { data: jaImportados } = await supabase
+        .from("chamados" as any)
+        .select("titulo, prazo_limite")
+        .eq("origem", "notion");
+      const existentes = new Set(
+        ((jaImportados as any[]) ?? []).map(
+          (c) => `${normalizarTexto(c.titulo ?? "")}|${prazoParaData(c.prazo_limite) ?? ""}`,
+        ),
+      );
+      const novas = linhas.filter(
+        (l) => !existentes.has(`${normalizarTexto(l.titulo)}|${l.prazo_limite ?? ""}`),
+      );
+      if (!novas.length) throw new Error("Todas as linhas já estão no app.");
+      const registros = novas.map((l) => ({
+        natureza: "interno",
         titulo: l.titulo,
-        descricao: l.descricao,
+        descricao_problema: l.descricao,
         cliente_id: l.clienteId,
         equipe: l.equipe,
         responsavel_id: l.responsavelId,
-        prazo: l.prazo,
+        prazo_limite: dataParaPrazo(l.prazo_limite),
         sprint: l.sprint,
         tipo: l.tipo,
         status: l.status,
-        criada_por: u.user?.id ?? null,
+        aberto_por: u.user?.id ?? null,
         origem: "notion",
         origem_id: l.origemId,
       }));
       // o índice único (origem, origem_id) garante que rodar de novo não duplica
       const { error, count } = await supabase
-        .from("demandas" as any)
+        .from("chamados" as any)
         .upsert(registros as any, { onConflict: "origem,origem_id", ignoreDuplicates: true, count: "exact" });
       if (error) throw error;
       return count ?? registros.length;
     },
     onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ["demandas"] });
-      toast.success(`${n} demanda(s) importada(s).`);
-      navigate({ to: "/demandas" });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      toast.success(`${n} chamado(s) importado(s).`);
+      navigate({ to: "/chamados" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha na importação."),
   });
@@ -283,7 +299,7 @@ function ImportarDemandasPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/demandas" })}
+          onClick={() => navigate({ to: "/chamados" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -339,7 +355,7 @@ function ImportarDemandasPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <CheckCircle2 size={17} color="#34D399" />
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14 }}>
-                {linhas.length} demanda(s) prontas para importar
+                {linhas.length} chamado(s) prontos para importar
               </span>
             </div>
             {(semResponsavel > 0 || semCliente > 0) && (
@@ -350,7 +366,7 @@ function ImportarDemandasPage() {
                   color: textSecondary, lineHeight: 1.5,
                 }}>
                   {semResponsavel > 0 && `${semResponsavel} sem responsável reconhecido (entram sem dono, dá para atribuir depois). `}
-                  {semCliente > 0 && `${semCliente} com cliente que não existe no cadastro (entram como demanda interna).`}
+                  {semCliente > 0 && `${semCliente} com cliente que não existe no cadastro (entram sem cliente vinculado).`}
                 </span>
               </div>
             )}
@@ -358,7 +374,7 @@ function ImportarDemandasPage() {
               fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11.5,
               color: textSecondary, lineHeight: 1.5,
             }}>
-              Reimportar o mesmo arquivo não duplica: título + prazo é a chave de origem.
+              Reimportar o mesmo arquivo não duplica: conferimos título + prazo antes de gravar.
             </span>
           </div>
 
@@ -379,8 +395,8 @@ function ImportarDemandasPage() {
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
                   color: textSecondary, marginTop: 3,
                 }}>
-                  {EQUIPE_LABEL[l.equipe]} · {SPRINT_LABEL[l.sprint]} · {TIPO_DEMANDA_LABEL[l.tipo]}
-                  {l.prazo ? ` · prazo ${l.prazo.split("-").reverse().join("/")}` : ""}
+                  {EQUIPE_LABEL[l.equipe]} · {SPRINT_LABEL[l.sprint]} · {TIPO_LABEL[l.tipo]}
+                  {l.prazo_limite ? ` · prazo ${l.prazo_limite.split("-").reverse().join("/")}` : ""}
                   {" · "}
                   {l.responsavelId
                     ? l.responsavelNome
@@ -411,7 +427,7 @@ function ImportarDemandasPage() {
               boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
             }}
           >
-            {importar.isPending ? "Importando…" : `Importar ${linhas.length} demanda(s)`}
+            {importar.isPending ? "Importando…" : `Importar ${linhas.length} chamado(s)`}
           </button>
         </>
       )}

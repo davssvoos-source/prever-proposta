@@ -1,18 +1,17 @@
-// Chamados — a lista unificada dos quatro trilhos (R8/R9): OS de campo,
-// demandas internas (T.I, Patrimônio, SAC, Monitoramento…) e visitas técnicas
-// de proposta, numa fila só. É a aba 3 do SAC; admin e comercial também usam.
+// Chamados — a lista. É a aba 3 do SAC; admin e comercial também usam.
 // Ver docs/PRODUTO.md §3 e §4.1.
 //
-// Cada card leva para a página do trilho correspondente — esta tela agrega,
-// não substitui: OS continua em /os/$id, demanda em /demandas/$id, visita no
-// fluxo dela.
+// Depois da fusão (U7) chamado é um registro só: a natureza separa campo de
+// interno, e o filtro de trilho é uma leitura da natureza + equipe. A visita
+// técnica de proposta continua vindo de visitas_tecnicas — ela ainda não é
+// um chamado, é o funil comercial.
 
 import { createFileRoute, useNavigate, redirect, useLocation, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownUp, BarChart3, Building2, CalendarClock, CheckCircle2, ClipboardList,
-  FileText, Inbox, Search, Wrench,
+  FileText, Inbox, KanbanSquare, List as ListIcon, Search, Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -20,15 +19,22 @@ import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { getStatusInfo, isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
-import { osStatusInfo, osEmAberto, situacaoPrazo, textoPrazo, OS_PRIORIDADE_CORES, OS_PRIORIDADE_LABEL, type OsPrioridade } from "@/lib/os-status";
-import { demandaStatusInfo, demandaEmAberto, textoPrazoDemanda } from "@/lib/demanda-status";
+import {
+  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
+  PRIORIDADE_CORES, PRIORIDADE_LABEL, SPRINT_ORDEM, SPRINT_LABEL,
+  type ChamadoPrioridade,
+} from "@/lib/chamado-status";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
-import { useDemandas, usePessoas, mapaDePessoas } from "@/features/demandas/data";
+import { useChamados, usePessoas, mapaDePessoas } from "@/features/chamados/data";
 
 export const Route = createFileRoute("/_authenticated/chamados")({
-  beforeLoad: async () => {
+  // A trava é só da LISTA: o técnico não coordena a fila de todo mundo, mas
+  // abre os chamados dele em /chamados/$id vindo da Home (R7/R11). Guardar o
+  // pai inteiro derrubaria o técnico para o dashboard ao tocar num card.
+  beforeLoad: async ({ location }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
+    if (location.pathname.replace(/\/$/, "") !== "/chamados") return;
     const { data: perfil } = await supabase
       .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
     if (!["admin", "comercial", "sac"].includes(perfil?.cargo ?? "")) {
@@ -45,8 +51,10 @@ type Trilho = "campo" | "demanda" | "proposta";
 interface CardChamado {
   id: string;
   trilho: Trilho;
-  /** equipe da demanda (só trilho demanda) — vira filtro */
+  /** equipe do chamado interno — vira filtro */
   equipe: string | null;
+  /** sprint do chamado interno — agrupa o quadro */
+  sprint: string | null;
   titulo: string;
   numero: string | null;
   cliente: string | null;
@@ -54,11 +62,11 @@ interface CardChamado {
   emAberto: boolean;
   statusLabel: string;
   statusCor: { dark: string; light: string; bg: string; border: string };
-  /** OS: prioridade para ordenar (urgente=0 … baixa=3; demais trilhos 4) */
+  /** prioridade para ordenar (urgente=0 … baixa=3; visita fica em 4) */
   prioridadeRank: number;
   prioridadeLabel: string | null;
   prioridadeCor: { dark: string; light: string; bg: string; border: string } | null;
-  /** instante de referência para "prazo": OS prazo_limite, demanda prazo, visita agendamento */
+  /** referência de "prazo": prazo_limite do chamado, agendamento da visita */
   prazoTexto: string | null;
   prazoEstourado: boolean;
   criadoEm: string;
@@ -89,6 +97,8 @@ function ChamadosPage() {
   const [trilho, setTrilho] = useState<string>("todos"); // todos | campo | proposta | eq:<equipe>
   const [responsavel, setResponsavel] = useState("todos");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>("recentes");
+  // o quadro é o antigo Notion: mesma fila, agrupada por sprint
+  const [visao, setVisao] = useState<"lista" | "quadro">("lista");
   const [menuOrdenar, setMenuOrdenar] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -102,19 +112,8 @@ function ChamadosPage() {
     return () => { clearTimeout(t); document.removeEventListener("pointerdown", h); };
   }, [menuOrdenar]);
 
-  // ── Fontes: os três registros (a RLS de gestor enxerga tudo) ──────────────
-  const { data: ordens = [] } = useQuery({
-    queryKey: ["chamados-os"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ordens_servico" as any)
-        .select("id, numero, titulo, status, tipo, prioridade, prazo_limite, data_hora_agendada, tecnico_id, created_at, updated_at, cliente:clientes(nome)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data as any[]) ?? [];
-    },
-  });
-  const { data: demandas = [] } = useDemandas();
+  // ── Fontes: chamados (uma tabela) + visitas (o funil comercial) ──────────
+  const { data: chamados = [] } = useChamados();
   const { data: visitas = [] } = useQuery({
     queryKey: ["chamados-visitas"],
     queryFn: async () => {
@@ -129,14 +128,12 @@ function ChamadosPage() {
   const { data: pessoas = [] } = usePessoas();
   const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
 
-  // realtime dos três trilhos num canal só
+  // realtime dos dois trilhos num canal só
   useEffect(() => {
     const canal = supabase
       .channel("chamados-unificado")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ordens_servico" }, () =>
-        qc.invalidateQueries({ queryKey: ["chamados-os"] }))
-      .on("postgres_changes", { event: "*", schema: "public", table: "demandas" }, () =>
-        qc.invalidateQueries({ queryKey: ["demandas"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "chamados" }, () =>
+        qc.invalidateQueries({ queryKey: ["chamados"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "visitas_tecnicas" }, () =>
         qc.invalidateQueries({ queryKey: ["chamados-visitas"] }))
       .subscribe();
@@ -153,53 +150,32 @@ function ChamadosPage() {
   const cards = useMemo<CardChamado[]>(() => {
     const lista: CardChamado[] = [];
 
-    for (const o of ordens) {
-      const st = osStatusInfo(o.status);
-      const pr = OS_PRIORIDADE_CORES[o.prioridade as OsPrioridade] ?? null;
+    for (const c of chamados) {
+      const st = chamadoStatusInfo(c.status);
+      const aberto = chamadoEmAberto(c.status);
+      const interno = c.natureza === "interno";
+      const pr = PRIORIDADE_CORES[c.prioridade as ChamadoPrioridade] ?? null;
       lista.push({
-        id: `os-${o.id}`,
-        trilho: "campo",
-        equipe: null,
-        titulo: o.titulo,
-        numero: o.numero,
-        cliente: o.cliente?.nome ?? null,
-        responsavelId: o.tecnico_id ?? null,
-        emAberto: osEmAberto(o.status),
-        statusLabel: st.label,
-        statusCor: { dark: st.color, light: st.colorLight, bg: st.bg, border: st.border },
-        prioridadeRank: PRI_RANK[o.prioridade] ?? 4,
-        prioridadeLabel: OS_PRIORIDADE_LABEL[o.prioridade as OsPrioridade] ?? null,
-        prioridadeCor: pr,
-        prazoTexto: o.prazo_limite && osEmAberto(o.status) ? textoPrazo(o.prazo_limite) : null,
-        prazoEstourado: situacaoPrazo(o.prazo_limite, o.status) === "estourado",
-        criadoEm: o.created_at,
-        atualizadoEm: o.updated_at ?? o.created_at,
-        navegar: () => navigate({ to: "/os/$id", params: { id: o.id } }),
-      });
-    }
-
-    for (const d of demandas) {
-      const st = demandaStatusInfo(d.status);
-      const aberto = demandaEmAberto(d.status);
-      lista.push({
-        id: `dem-${d.id}`,
-        trilho: "demanda",
-        equipe: d.equipe,
-        titulo: d.titulo,
-        numero: d.numero,
-        cliente: d.cliente?.nome ?? null,
-        responsavelId: d.responsavel_id,
+        id: `ch-${c.id}`,
+        trilho: interno ? "demanda" : "campo",
+        equipe: interno ? c.equipe : null,
+        sprint: interno ? c.sprint : null,
+        titulo: c.titulo,
+        numero: c.numero,
+        cliente: c.cliente?.nome ?? null,
+        responsavelId: c.responsavel_id,
         emAberto: aberto,
         statusLabel: st.label,
         statusCor: { dark: st.color, light: st.colorLight, bg: st.bg, border: st.border },
-        prioridadeRank: 4,
-        prioridadeLabel: null,
-        prioridadeCor: null,
-        prazoTexto: d.prazo && aberto ? textoPrazoDemanda(d.prazo) : null,
-        prazoEstourado: aberto && !!d.prazo && d.prazo < new Date().toISOString().slice(0, 10),
-        criadoEm: d.created_at,
-        atualizadoEm: d.updated_at ?? d.created_at,
-        navegar: () => navigate({ to: "/demandas/$id", params: { id: d.id } }),
+        // no interno a fila é pelo prazo combinado, não por prioridade
+        prioridadeRank: interno ? 4 : PRI_RANK[c.prioridade] ?? 4,
+        prioridadeLabel: interno ? null : PRIORIDADE_LABEL[c.prioridade as ChamadoPrioridade] ?? null,
+        prioridadeCor: interno ? null : pr,
+        prazoTexto: c.prazo_limite && aberto ? textoPrazo(c.prazo_limite) : null,
+        prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
+        criadoEm: c.created_at,
+        atualizadoEm: c.updated_at ?? c.created_at,
+        navegar: () => navigate({ to: "/chamados/$id", params: { id: c.id } }),
       });
     }
 
@@ -210,6 +186,7 @@ function ChamadosPage() {
         id: `vis-${v.id}`,
         trilho: "proposta",
         equipe: null,
+        sprint: null,
         titulo: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? "Visita técnica",
         numero: null,
         cliente: v.clientes?.nome ?? v.nome_predio ?? null,
@@ -232,7 +209,7 @@ function ChamadosPage() {
       });
     }
     return lista;
-  }, [ordens, demandas, visitas, navigate, location.pathname]);
+  }, [chamados, visitas, navigate, location.pathname]);
 
   // ── Filtros ───────────────────────────────────────────────────────────────
   const equipesComItens = useMemo(() => {
@@ -277,6 +254,18 @@ function ChamadosPage() {
     }
   }, [filtrados, ordenacao]);
 
+  const grupos = useMemo(() => {
+    const teto = ordenados.slice(0, 200);
+    if (visao === "lista") return [{ chave: "tudo", titulo: null as string | null, itens: teto }];
+    return SPRINT_ORDEM.map((sp) => ({
+      chave: sp as string,
+      titulo: SPRINT_LABEL[sp],
+      itens: teto.filter((c) => c.sprint === sp),
+    }))
+      .concat([{ chave: "sem", titulo: "Sem sprint", itens: teto.filter((c) => !c.sprint) }])
+      .filter((g) => g.itens.length > 0);
+  }, [ordenados, visao]);
+
   const contagens = useMemo(() => ({
     abertos: cards.filter((c) => c.emAberto).length,
     campo: cards.filter((c) => c.trilho === "campo" && c.emAberto).length,
@@ -298,7 +287,7 @@ function ChamadosPage() {
     proposta: FileText,
   };
 
-  // rota filha (/chamados/novo) entra pelo Outlet
+  // rotas filhas (/chamados/novo, /$id, /painel, /programacao…) entram pelo Outlet
   if (pathname !== "/chamados") return <Outlet />;
 
   return (
@@ -337,6 +326,22 @@ function ChamadosPage() {
           }}
         >
           Abrir
+        </button>
+        {/* Visão: fila corrida ou quadro por sprint (o antigo Notion) */}
+        <button
+          onClick={() => setVisao((v) => (v === "lista" ? "quadro" : "lista"))}
+          title={visao === "lista" ? "Ver como quadro por sprint" : "Ver como lista"}
+          style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: isLight ? "#ffffff" : "#191921",
+            border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+            color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          {visao === "lista"
+            ? <KanbanSquare size={17} color={gold} />
+            : <ListIcon size={17} color={gold} />}
         </button>
         {/* Ordenação — o "ícone para ordenar" da R8 */}
         <div ref={menuRef} style={{ position: "relative", flexShrink: 0 }}>
@@ -466,7 +471,17 @@ function ChamadosPage() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {ordenados.slice(0, 200).map((c) => {
+          {grupos.map((g) => (
+          <div key={g.chave} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {g.titulo && (
+            <div style={{
+              fontFamily: FONT, fontWeight: 600, fontSize: 10.5, letterSpacing: "0.10em",
+              textTransform: "uppercase", color: gold, marginTop: 4,
+            }}>
+              {g.titulo} · {g.itens.length}
+            </div>
+          )}
+          {g.itens.map((c) => {
             const Icone = TRILHO_ICONE[c.trilho];
             const eqc = c.equipe ? equipeCores(c.equipe) : null;
             const resp = c.responsavelId ? pessoasPorId[c.responsavelId]?.nome ?? null : null;
@@ -484,7 +499,7 @@ function ChamadosPage() {
                     </div>
                     <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
                       {c.numero ? `${c.numero} · ` : ""}
-                      {c.trilho === "campo" ? "Campo" : c.trilho === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Demanda")}
+                      {c.trilho === "campo" ? "Campo" : c.trilho === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Interno")}
                       {resp ? ` · ${resp}` : " · sem responsável"}
                     </div>
                   </div>
@@ -542,6 +557,8 @@ function ChamadosPage() {
               </button>
             );
           })}
+          </div>
+          ))}
           {ordenados.length > 200 && (
             <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
               Mostrando 200 de {ordenados.length} — refine a busca ou os filtros.
