@@ -95,17 +95,23 @@ const SPRINT_NOTION: Record<string, DemandaSprint> = {
   "backlog": "backlog",
 };
 
+// nomes REAIS do quadro do Notion (confirmados no export de 2026-08-18)
 const EQUIPE_NOTION: Record<string, Equipe> = {
+  "t.i / tecnica": "ti",
   "t.i": "ti",
   "ti": "ti",
   "tecnologia": "ti",
   "controle patrimonial": "patrimonio",
   "patrimonio": "patrimonio",
+  "marketing / comercial": "comercial",
+  "comercial": "comercial",
+  "sac": "sac",
+  "monitoramento / portaria": "monitoramento",
+  "monitoramento": "monitoramento",
   "audiovisual": "audiovisual",
   "business ops": "business_ops",
   "businessops": "business_ops",
   "tecnica": "tecnica",
-  "comercial": "comercial",
 };
 
 interface LinhaImport {
@@ -220,7 +226,8 @@ function ImportarDemandasPage() {
         responsavelId: pessoaPorNome[normalizarTexto(respNome)] ?? null,
         clienteNome: cliNome,
         clienteId: clientePorNome[normalizarTexto(cliNome)] ?? null,
-        equipe: EQUIPE_NOTION[normalizarTexto(pega(l, idx.equipe))] ?? "ti",
+        // célula multi-equipe ("Controle Patrimonial, T.I / Técnica") usa a primeira
+        equipe: EQUIPE_NOTION[normalizarTexto(pega(l, idx.equipe).split(",")[0])] ?? "ti",
         sprint: SPRINT_NOTION[normalizarTexto(pega(l, idx.sprint))] ?? "backlog",
         status: STATUS_NOTION[normalizarTexto(pega(l, idx.status))] ?? "nao_iniciada",
         tipo: sugerirTipoDemanda(titulo, descricao),

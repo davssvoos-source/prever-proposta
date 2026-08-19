@@ -7,34 +7,42 @@
 //
 // A lista vem do Notion (campo Equipe), que a U1 substitui.
 
-export type Equipe = "ti" | "patrimonio" | "audiovisual" | "business_ops" | "tecnica" | "comercial";
+export type Equipe =
+  | "ti" | "patrimonio" | "audiovisual" | "business_ops" | "tecnica"
+  | "comercial" | "sac" | "monitoramento";
 
 export const EQUIPES: Equipe[] = [
   "ti",
   "patrimonio",
   "tecnica",
+  "sac",
+  "monitoramento",
+  "comercial",
   "audiovisual",
   "business_ops",
-  "comercial",
 ];
 
 export const EQUIPE_LABEL: Record<Equipe, string> = {
   ti: "T.I.",
   patrimonio: "Controle Patrimonial",
   tecnica: "Técnica",
+  sac: "SAC",
+  monitoramento: "Monitoramento / Portaria",
+  comercial: "Comercial",
   audiovisual: "Audiovisual",
   business_ops: "Business Ops",
-  comercial: "Comercial",
 };
 
 /** Cores por equipe — claro/escuro, no padrão do design system (§9). */
 export const EQUIPE_CORES: Record<Equipe, { dark: string; light: string; bg: string; border: string }> = {
-  ti:           { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  patrimonio:   { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
-  tecnica:      { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
-  audiovisual:  { dark: "#F472B6", light: "#be185d", bg: "rgba(244,114,182,0.12)", border: "rgba(244,114,182,0.30)" },
-  business_ops: { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
-  comercial:    { dark: "#FB923C", light: "#c2410c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.30)" },
+  ti:            { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
+  patrimonio:    { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
+  tecnica:       { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
+  sac:           { dark: "#2DD4BF", light: "#0f766e", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.30)" },
+  monitoramento: { dark: "#818CF8", light: "#4338ca", bg: "rgba(129,140,248,0.12)", border: "rgba(129,140,248,0.30)" },
+  comercial:     { dark: "#FB923C", light: "#c2410c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.30)" },
+  audiovisual:   { dark: "#F472B6", light: "#be185d", bg: "rgba(244,114,182,0.12)", border: "rgba(244,114,182,0.30)" },
+  business_ops:  { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
 };
 
 export function equipeLabel(e: string | null | undefined): string {

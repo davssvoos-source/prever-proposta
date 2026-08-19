@@ -41,3 +41,7 @@ android/app/src/main/assets/capacitor.config.json
 *.njsproj
 *.sln
 *.sw?
+
+# Export do Notion (dados privados + 181MB de anexos) — a importação vive na
+# migration 20260819000000_import_notion_davi_erik.sql
+/notion/

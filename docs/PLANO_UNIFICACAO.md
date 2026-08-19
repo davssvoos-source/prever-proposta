@@ -864,3 +864,47 @@ Davi e Vinicius admins; Gilleno, Nicholas, Erik e Breno técnicos; SAC é gestor
 respondidas, o SAC **não** vê a tela de programação (`beforeLoad` continua
 admin/comercial) e **vê** o botão de conferir/fechar (é gestor). Fáceis de
 inverter depois.
+
+### Importação do Notion — tasks 2026 do Davi e do Erik (2026-08-18)
+
+**Migration:** `supabase/migrations/20260819000000_import_notion_davi_erik.sql`
+(gerada por script a partir de `notion/Administrativo *_all.csv`, 2.322 linhas).
+
+**Números:** 537 demandas importadas (Davi 251, Erik 286) + 283 vínculos de
+apoio. Aborta com mensagem clara se o perfil do Erik ainda não existir.
+
+**O Notion real ≠ o briefing** — o export revelou e o import respeitou:
+- Status reais: Concluído, Não iniciado, Em andamento, Aguardando aprovação,
+  **Aguardando terceiros** e **Aguardando material** (os dois → `stand_by`,
+  com o status original anotado na descrição). Não existe "Stand-by" lá.
+- **79% das linhas têm sprint vazio** — a automação do Notion limpa o campo
+  das concluídas. Regra: concluída sem sprint → `mes_passado`; **aberta** sem
+  sprint → não importa (info obrigatória faltando).
+- Equipes reais: `T.I / Técnica`→ti, `Marketing / Comercial`→comercial,
+  `Controle Patrimonial`→patrimonio, **`SAC`→sac** e **`Monitoramento /
+  Portaria`→monitoramento** — os dois últimos ENTRARAM no CHECK de demandas e
+  profiles (parte 0 da migration) e no `src/lib/equipes.ts`. Multi-equipe usa
+  a primeira.
+- A coluna `Demanda` é a classificação: Operação diária→operacional,
+  Manutenção Corretiva→corretiva, Projeto de melhoria→melhoria,
+  Implantação→implantacao, Manutenção Preventiva→preventiva.
+- Cliente `Prever`/vazio = interna; outros tentam casar com o cadastro por
+  nome normalizado; não casando, "Cliente (Notion): X" vai para a descrição
+  (o import do QAP religa depois).
+- `Risco Operacional` não tem campo equivalente — **não importado** (anotado).
+- Davi+Erik na mesma célula: o primeiro é o responsável, o outro vira apoio;
+  outros nomes (Gilleno, Nicholas, Vinicius…) viram apoio se tiverem conta.
+- `created_at` preserva a data de criação original; conclusão usa a coluna
+  Conclusão (fallback: prazo → criação).
+- **Chave de origem**: título|prazo|criação|cliente — mais rica que a da tela
+  `/demandas/importar` (título|prazo), porque o quadro tem 13 "Proposta
+  Comercial" distintas sem prazo que colapsariam. Por isso: **não reimportar
+  este CSV pela tela**.
+- Notificações desligadas durante o insert (500+ sinos de uma vez) e
+  religadas ao fim — a verificação confere.
+
+**Fora da importação (por regra, recuperáveis sob pedido):** 564 tasks só de
+2024/2025 · 31 sem equipe (ex.: "Croqui técnico", "Visita Técnica - Duplex
+Residence", "Laudo técnico - Queima NoBreaks") · 5 abertas sem sprint (ex.:
+"Atualizar firmware - Draytek", "Alarme off-line") · 1 sem título · 1 com
+equipe "Dados" ("Relatório de atendimento").

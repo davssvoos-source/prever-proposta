@@ -52,8 +52,8 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
 | Gilleno | **Técnico** | Controle Patrimonial |
 | Nicholas | **Técnico** | T.I |
 | Erik | **Técnico** | T.I |
-| Breno | **Técnico** | ❓ (confirmar equipe) |
-| Duplas de campo | **Técnico** | Técnica |
+| Breno | **Técnico** | Técnica (líder de dupla) |
+| Líderes das duplas de campo | **Técnico** | Técnica |
 
 - **Gestor não é técnico**: gestor coordena, planeja e programa as atividades
   dos outros (R1).
@@ -253,6 +253,13 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 - **R13** — Papéis definidos: Davi e Vinicius são **Admin**; Gilleno, Nicholas,
   Erik e Breno são **Técnicos**; o SAC é **gestor que não vê valores**; o
   Comercial é **gestor que vê valores** e aprova visitas para fazer propostas.
+- **R14** — Nas duplas de campo, **só o líder tem conta no app**; o ajudante
+  não. Tudo é registrado no nome do líder. O Breno é líder de uma das duplas
+  (equipe Técnica).
+- **R15** — As equipes reais (confirmadas no export do Notion) incluem **SAC**
+  e **Monitoramento / Portaria** — entraram no domínio junto com as demais.
+  "T.I / Técnica" do Notion vira **T.I.** aqui; "Marketing / Comercial" vira
+  **Comercial**. Célula com várias equipes usa a primeira.
 
 ## 8. Questões em aberto — para responder de uma vez
 
@@ -260,7 +267,7 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 ~~SAC vê valores?~~ → não.
 
 **Papéis e permissões**
-1. **Equipe do Breno**: Técnica (campo), T.I ou outra?
+1. ~~Equipe do Breno~~ → **respondida**: Técnica, líder de dupla (R14).
 2. **SAC programa técnicos?** (tela `/os/programacao`) Ou só abre/acompanha e a
    programação fica com o Vinicius? *(enquanto não responde: SAC não vê a
    programação)*
@@ -289,7 +296,12 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
     padrões de demanda e refinar o chamado (e alimentar a futura IA, U9).
 11. **Export do QAP via API** — clientes + estoque + equipamentos por cliente.
     Em que formato vem (JSON/CSV)? Assim que chegar, desenho a importação.
-12. **Export do Notion** (CSV) — para a importação de demandas já construída.
+12. ~~Export do Notion~~ → **recebido e importado** (2026-08-18): 537 tasks de
+    2026 do Davi e do Erik entraram pela migration
+    `20260819000000_import_notion_davi_erik.sql`. **Não reimportar o mesmo CSV
+    pela tela /demandas/importar** (chave de origem diferente duplicaria).
+    Ficaram de fora, por regra: 564 tasks só de 2024/2025, 31 sem equipe,
+    5 abertas sem sprint, 1 sem título — lista no PLANO_UNIFICACAO §12.
 13. **Base do gestor-os** — contratos/cobranças históricos para migrar (U4
     pendente).
 
