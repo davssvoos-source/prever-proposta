@@ -7,6 +7,10 @@
 // o modo de voz (o blob gigante de IA) — o pedido foi "escrever texto e
 // colocar arquivo"; e o degradê roxo do botão de envio virou o da marca.
 //
+// Raio: o painel é 20px (em styles.css, com !important — o inline do card()
+// diria 18) e a caixa de texto é 16px. A de fora PRECISA ser mais redonda que a
+// de dentro; invertido, o olho lê a interna como solta.
+//
 // É o ÚNICO painel do topo com o degradê no fundo (pedido do Davi, 2026-08-20):
 // nos gráficos ele competia com os dados, aqui não há dado nenhum para competir
 // — é um convite a escrever, e a cor faz o convite. Granulado em 10%, quase
@@ -124,7 +128,7 @@ export function CriarRapido() {
           minHeight: 0,
           margin: "10px 0",
           padding: "10px 12px",
-          borderRadius: 18,
+          borderRadius: 16,
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
           // sobre o degradê a caixa precisa de mais corpo, senão o texto
           // digitado disputa com a cor de trás
@@ -182,12 +186,13 @@ export function CriarRapido() {
           disabled={enviando}
           title="Anexar arquivo"
           aria-label="Anexar arquivo"
+          className="clip-anexo"
           style={{
             width: 38, height: 38, borderRadius: 999, border: "none",
             background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
             color: textSecondary, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: CURVA, flexShrink: 0,
+            flexShrink: 0,
           }}
         >
           <Paperclip size={16} />

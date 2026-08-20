@@ -757,3 +757,26 @@ do card sem virar farol numa lista com dez delas.
 A cor sai de um **hash do id da pessoa**, não de sorteio. Sorteio de verdade
 trocaria a cor a cada render, e a cor do avatar é justamente como se reconhece
 alguém de relance numa lista. Travado por asserção (`degradeAvatar` estável).
+
+## 14. O campo "Abrir chamado"
+
+O único painel com o degradê no fundo. Quatro regras, todas aprendidas errando:
+
+**Raio 20px, declarado uma vez.** `.campo-degrade` usa `!important` porque o
+`card()` inline diria 18. A caixa de texto interna é 16 — **a de fora precisa
+ser mais redonda que a de dentro**; invertido, o olho lê a interna como solta.
+
+**O canto parecia reto e não era.** A 150° o degradê começa pelo azul, e em
+opacidade baixa aquele canto ficava quase preto — igual ao fundo da página. O
+arredondamento estava lá, invisível. Diagnóstico de cor, não de geometria.
+
+**O brilho é constante: 0.80 (0.42 no claro).** Era o valor que só aparecia no
+hover, e era o certo.
+
+**O hover movimenta, não acende.** O degradê expande (`scale(1.14)`, 450ms) e o
+card sobe (`.elevavel`). Nenhuma mudança de opacidade. Anulado sob
+`prefers-reduced-motion`.
+
+O clipe de anexo acende no amarelo principal (`--amarelo-principal`, que espelha
+`PRISMA.amarelo`) com `!important` — o fundo do botão é inline, e inline ganha
+de classe.
