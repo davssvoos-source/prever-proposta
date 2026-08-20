@@ -632,6 +632,49 @@ input::placeholder, textarea::placeholder {
   opacity: 0.55;
 }
 
+/* ── Vidro sobre o degradê ─────────────────────────────────────────────────
+   A imagem de referência do Davi é exatamente isto: um degradê borrado visto
+   através de vidro fosco. Reproduzido em três camadas, sem markup de sobra
+   além do próprio fundo:
+     .prisma-fundo    → o degradê, estourado para fora da caixa e desfocado a
+                        46px, para que nenhuma emenda de cor apareça na borda;
+     ::after          → o granulado em soft-light = o fosco, o "ofuscado";
+     .prisma-conteudo → o texto, acima de tudo.
+   O `inset: -35%` importa: sem ele o blur puxa transparência das bordas e o
+   painel ganha um halo esbranquiçado nos cantos. */
+.vidro-prisma { position: relative; overflow: hidden; isolation: isolate; }
+.vidro-prisma > .prisma-fundo {
+  position: absolute;
+  inset: -35%;
+  z-index: 0;
+  filter: blur(46px) saturate(1.2);
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+.vidro-prisma::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: var(--ruido);
+  background-size: 140px 140px;
+  mix-blend-mode: soft-light;
+  opacity: 0.38;
+}
+.vidro-prisma > .prisma-conteudo {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* o degradê acende no hover — o painel inteiro responde, não só o cursor */
+  .vidro-prisma:hover > .prisma-fundo { opacity: 1 !important; }
+}
+
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
 .ruido { position: relative; isolation: isolate; }
 .ruido::after {

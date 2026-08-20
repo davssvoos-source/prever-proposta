@@ -4,19 +4,31 @@
 // Piso de tipografia: 11px. O app trava o zoom (`maximum-scale=1` em
 // __root.tsx), então texto pequeno demais não tem conserto do lado do usuário —
 // e quem lê isto está no sol, com luva, brilho reduzido pelo calor.
+//
+// COR DE FUNDO = PRAZO (2026-08-20). O card inteiro responde "quando vence?"
+// antes de a pessoa ler uma palavra: amarelo esta semana, azul dali em diante,
+// vermelho em atraso. As três cores saem do PRISMA, a paleta do degradê.
 
 import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
+import { PRISMA } from "@/lib/paleta";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
-  BOLA_LABEL, ALERTA_LABEL, type Atividade, type Cores,
+  BOLA_LABEL, ALERTA_LABEL, faixaPrazo,
+  type Atividade, type Cores, type FaixaPrazo,
 } from "@/features/atividades/modelo";
 
 export const PISO_TIPO = 11;
 
-export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
+/**
+ * Chip de rótulo. `sobreFaixa` troca o véu colorido por um cinza translúcido:
+ * num card amarelo, um chip amarelo some, e um chip azul briga. A cor da
+ * categoria sobrevive no TEXTO, que é onde ela precisa estar — o fundo do chip
+ * volta a ser só um suporte de leitura.
+ */
+export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSProperties {
   return {
     padding: "3px 9px",
     borderRadius: 999,
@@ -25,10 +37,29 @@ export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
     fontSize: PISO_TIPO,
     letterSpacing: "0.04em",
     color: isLight ? c.light : c.dark,
-    background: c.bg,
+    background: sobreFaixa
+      ? (isLight ? "rgba(255,255,255,0.62)" : "rgba(0,0,0,0.24)")
+      : c.bg,
     whiteSpace: "nowrap",
   };
 }
+
+/**
+ * A pintura de cada faixa. O véu do tema claro é mais forte no amarelo e mais
+ * fraco no vermelho e no azul de propósito: sobre branco, amarelo em 8% não
+ * aparece, e vermelho em 16% vira alarme. O `glow` é uma sombra na própria cor
+ * — é o que faz as três faixas se lerem de longe, varrendo o quadro.
+ */
+const FAIXA: Record<Exclude<FaixaPrazo, null>, {
+  rgb: string; bgDark: number; bgLight: number; brDark: number; brLight: number;
+}> = {
+  // o vermelho do degradê, não o vermelho de erro do sistema
+  atraso:      { rgb: "224,72,63",  bgDark: 0.17, bgLight: 0.075, brDark: 0.34, brLight: 0.20 },
+  // o amarelo — a cor principal, e a faixa que decide o dia
+  esta_semana: { rgb: "245,190,69", bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
+  // o azul profundo do degradê: presente, mas sem pressa
+  adiante:     { rgb: "30,95,141",  bgDark: 0.24, bgLight: 0.085, brDark: 0.38, brLight: 0.18 },
+};
 
 interface Props {
   a: Atividade;
@@ -43,22 +74,22 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
-  const vermelho = isLight ? "#B1242E" : "#F17881";
-  const ambar = isLight ? "#A63E17" : "#E2791D";
+  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
+  const ambar = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
 
-  // atrasada em aberto = o card INTEIRO avisa: fundo vermelho (pedido do
-  // Davi). Translúcido para seguir sendo vidro sobre o glow.
-  const atrasada = a.emAberto && a.prazoEstourado;
+  const faixa = faixaPrazo(a);
+  const f = faixa ? FAIXA[faixa] : null;
 
-  // v4 neo-minimalista: superfície sólida, canto redondo, sombra leve — a
-  // borda colorida lateral saiu; o status virou um ponto discreto no título.
-  // Atrasada continua sendo o card inteiro em vermelho (pedido anterior).
+  // v4 neo-minimalista: superfície sólida, canto redondo, sombra leve. Sobre
+  // ela, quando há prazo, o véu da faixa + um halo na mesma cor.
   const CARD: CSSProperties = {
     ...card(isLight),
-    ...(atrasada ? {
-      // vermelho de aviso, não de alarme: um véu sobre a superfície do card
-      background: isLight ? "rgba(230,57,70,0.045)" : "rgba(139,30,45,0.16)",
-      border: isLight ? "1px solid rgba(139,30,45,0.14)" : "1px solid rgba(230,57,70,0.20)",
+    ...(f ? {
+      background: `rgba(${f.rgb},${isLight ? f.bgLight : f.bgDark})`,
+      border: `1px solid rgba(${f.rgb},${isLight ? f.brLight : f.brDark})`,
+      boxShadow: isLight
+        ? `0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(${f.rgb},0.16)`
+        : `0 1px 2px rgba(0,0,0,0.50), 0 8px 26px rgba(${f.rgb},0.14)`,
     } : {}),
     borderRadius: 16,
     padding: "12px 14px",
@@ -69,6 +100,8 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
     // alvo confortável mesmo com luva
     minHeight: 76,
   };
+
+  const emFaixa = !!f;
 
   return (
     <button onClick={onClick} className="elevavel" style={CARD}>
@@ -88,7 +121,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           </div>
         </div>
         {mostrarStatus && (
-          <span style={{ ...chipStyle(a.statusCor, isLight), flexShrink: 0 }}>
+          <span style={{ ...chipStyle(a.statusCor, isLight, emFaixa), flexShrink: 0 }}>
             {a.statusLabel}
           </span>
         )}
@@ -109,12 +142,10 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
         {/* categoria com cor própria — o "strategic color" das referências */}
         {a.tipoLabel && a.tipoCor && (
-          <span style={chipStyle(a.tipoCor, isLight)}>{a.tipoLabel}</span>
+          <span style={chipStyle(a.tipoCor, isLight, emFaixa)}>{a.tipoLabel}</span>
         )}
         {a.fonte === "visita" && (
-          <span style={chipStyle({ dark: "#457B9D", light: "#457B9D", bg: "rgba(69,123,157,0.14)", border: "rgba(69,123,157,0.32)" }, isLight)}>
-            Visita técnica
-          </span>
+          <span style={chipStyle(PRISMA.azulClaro, isLight, emFaixa)}>Visita técnica</span>
         )}
         {a.cliente && (
           <span style={{
@@ -130,13 +161,11 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         )}
 
         {a.prioridadeLabel && a.prioridadeCor && (
-          <span style={chipStyle(a.prioridadeCor, isLight)}>{a.prioridadeLabel}</span>
+          <span style={chipStyle(a.prioridadeCor, isLight, emFaixa)}>{a.prioridadeLabel}</span>
         )}
 
         {a.compra && (
-          <span style={{
-            ...chipStyle({ dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" }, isLight),
-          }}>
+          <span style={chipStyle(PRISMA.pessego, isLight, emFaixa)}>
             {a.compra.situacaoLabel}
           </span>
         )}

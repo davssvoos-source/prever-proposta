@@ -596,40 +596,100 @@ Regras:
 
 ---
 
-## 11. Espectro de gráfico (v4.1 — 2026-08-20)
+## 11. PRISMA — a paleta do degradê (v5 — 2026-08-20)
 
-Rampa de 8 cores para séries de dados, derivada das cores escolhidas pelo Davi
-(`#411139 #d8ad1a #01847f #AA1C41 #760031 #403D88 #7F2020`).
+A partir da v5 a Início inteira fala uma cor só. A fonte é uma imagem que o
+Davi mandou: um degradê fosco laranja → vermelho → rosa → amarelo → azul, visto
+através de vidro. Dela saíram nove cores nomeadas (`PRISMA`, em `paleta.ts`) e
+uma rampa de oito passos (`ESPECTRO`).
 
-**O que foi feito com elas.** As matizes foram mantidas; a luminosidade e o
-croma, normalizados. As originais iam de **L\*0.28 a L\*0.77** — quase três
-vezes de diferença, o que numa série faz barra sumir e barra gritar. Agora as
-oito têm a mesma L e o mesmo croma em oklch, com as matizes espaçadas do frio
-ao quente.
+**O amarelo é o principal.** É a cor da marca, é a cor da ação e é a cor do que
+vence esta semana. Onde houver dúvida, é ele.
 
-| # | Escuro (L .74 / C .145) | Claro (L .52 / C .155) |
+### 11.1 As nove cores
+
+| nome | escuro | claro | onde manda |
+|---|---|---|---|
+| `amarelo` | `#F5BE45` | `#B5840F` | **principal** · status `aberto` · tipo `preventiva` · prazo desta semana · KPI "faltam" |
+| `pessego` | `#F5A96B` | `#C07A3E` | `aguardando_aprovacao` · `pedido_compra` |
+| `laranja` | `#F0763A` | `#C25217` | `stand_by` · prioridade `alta` · "com você" |
+| `vermelho` | `#E0483F` | `#B22F28` | tipo `corretiva` · prioridade `urgente` · **prazo em atraso** |
+| `rosa` | `#F090A2` | `#C25370` | tipo `melhoria` *(amarração pedida por nome)* |
+| `azulClaro` | `#7CC2E4` | `#3C88AE` | `agendado` · chip de visita técnica |
+| `azul` | `#3B93C4` | `#1D6690` | `em_andamento` *(amarração pedida por nome)* · prioridade `normal` |
+| `azulEscuro` | `#6FA6CE`¹ | `#123F63` | `concluido` · tipo `implantacao` · **prazo adiante** |
+| `neutro` | `#9AA6B2` | `#657585` | `cancelado` · `operacional` · prioridade `baixa` |
+
+¹ O `dark` do azul escuro é mais claro que o `#1E5F8D` da imagem porque ele é
+**texto de chip sobre preto** e o tom original some. O véu (`bg`/`border`)
+continua no azul profundo da imagem — é ele que pinta o fundo do card.
+
+Cada entrada carrega `dark`, `light`, `bg` (véu translúcido) e `border`. Quem
+consome nunca escolhe alfa na mão.
+
+### 11.2 A rampa (`ESPECTRO`)
+
+Oito passos, do quente ao frio, na ordem em que a imagem lê da esquerda para a
+direita. O centro é o amarelo — e o centro do gráfico de demanda é a semana
+corrente, que é justamente a semana amarela nos cards. Não é coincidência: é o
+que faz o painel de cima e o quadro de baixo contarem a mesma história.
+
+| # | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| escuro | `#C0392B` | `#E14620` | `#F0763A` | `#F5A96B` | `#F5BE45` | `#9FC8DC` | `#4A9BC9` | `#1B5E8C` |
+| claro | `#8E2A20` | `#B23718` | `#C25217` | `#C07A3E` | `#B5840F` | `#5E93AC` | `#2A7BA5` | `#123F63` |
+
+`espectro(i, isLight)` dá a cor n com laço. `degradePrisma(isLight, angulo)`
+devolve a rampa inteira como CSS.
+
+### 11.3 Prazo → cor de fundo do card
+
+A regra mais visível do sistema. `faixaPrazo()` (em `atividades/modelo.ts`)
+responde, e o card inteiro se pinta:
+
+| faixa | cor | quando |
 |---|---|---|
-| 0 | `#00C6C7` | `#008284` |
-| 1 | `#20B9F6` | `#0074B1` |
-| 2 | `#84A6FF` | `#4360C1` |
-| 3 | `#B994F8` | `#784FB3` |
-| 4 | `#DB88D9` | `#964295` |
-| 5 | `#EF82B4` | `#A73A72` |
-| 6 | `#F98281` | `#B1393E` |
-| 7 | `#DC9E24` | `#985900` |
+| `atraso` | vermelho | prazo já passou |
+| `esta_semana` | **amarelo** | vence até domingo 23:59 da semana corrente |
+| `adiante` | azul profundo | vence da segunda seguinte em diante |
+| `null` | nenhuma | sem prazo, ou já encerrado |
 
-**Uso:** `espectro(i, isLight)` em `src/lib/paleta.ts`, com laço para séries de
-qualquer tamanho. Como a rampa é perceptualmente contínua, séries vizinhas se
-emendam: no gráfico de barras, cada barra vai da própria cor à cor da seguinte
-(`linear-gradient(90deg, cor, corFim)`), e as oito lêem como um degradê só.
+Dois detalhes que custaram decisão:
 
-**Textura.** Duas classes em `styles.css`, ambas por pseudo-elemento:
+- **O corte é o fim da semana, não "daqui a 7 dias".** Na quinta-feira, "esta
+  semana" precisa querer dizer dois dias. Sete dias corridos jogariam a terça
+  que vem no amarelo e apagariam a fronteira que o quadro existe para mostrar.
+  Travado em `verificar-logica.cjs` (10 asserções).
+- **Sobre card pintado, os chips perdem o véu colorido** e ganham um cinza
+  translúcido (`chipStyle(..., sobreFaixa)`). Num card amarelo, um chip amarelo
+  some e um chip azul briga. A cor da categoria sobrevive no texto, que é onde
+  ela precisa estar.
 
-- `.textura` — brilho especular (`::before`) + granulado em `soft-light`
-  (`::after`). É o "glossy ofuscado" das barras e de qualquer superfície de
-  dado colorida.
-- `.ruido` — só o granulado, em `overlay`. Para ícones, pastilhas e avatares,
-  onde o especular seria demais.
+O véu do tema claro não é o mesmo do escuro: amarelo a 8% sobre branco não
+aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
 
-O granulado vem de `--ruido`, um SVG `feTurbulence` inline reaproveitado pelas
-duas.
+### 11.4 Os efeitos, e quando cada um cabe
+
+| efeito | classe | onde | onde NÃO |
+|---|---|---|---|
+| degradê sob vidro fosco | `.vidro-prisma` + `.prisma-fundo` | os 4 painéis do topo | fundo da página (v4 decidiu que fundo é silêncio) |
+| especular + granulado | `.textura` | barras do gráfico | superfícies grandes |
+| granulado só | `.ruido` | ícones, pastilhas, avatares | **linhas curvas finas** |
+| halo de cor | `feDropShadow` | arco da rosca | texto |
+| sombra colorida | inline | cards com faixa de prazo | cards neutros |
+
+A linha do "onde NÃO" do granulado é uma correção do Davi: sobre o arco de 14px
+da rosca ele serrilhou a borda em vez de dar textura. Granulado quer área.
+
+O `.prisma-fundo` usa `inset: -35%` — sem isso o `blur(46px)` puxa transparência
+das bordas e o painel ganha um halo esbranquiçado nos cantos.
+
+### 11.5 Um amarelo só
+
+O dourado da marca (`SUPERNOVA[400]`, `#F8C811`) e o amarelo do prisma
+(`#F5BE45`) ficam a poucos graus de matiz um do outro. Lado a lado, a diferença
+não lê como escolha — lê como erro. Por isso, **na Início vale o prisma**, em
+tudo: micro-rótulos, filtros, alvo de arraste, contador de notificações.
+
+O dourado da marca continua onde é gradiente e lê como coisa própria:
+`GRAD_PRIMARIA` nos botões de ação e o logotipo.

@@ -13,7 +13,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
-import { DATAVIZ, SUPERNOVA } from "@/lib/paleta";
+import { PRISMA } from "@/lib/paleta";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
 import { LARGURA_RAIL } from "@/components/SideNav";
 
@@ -48,7 +48,8 @@ export function NotificacoesSidebar() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const ambar = isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark;
+  // o amarelo é o principal do sistema — a contagem de não lidas é dele
+  const ambar = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   function abrirNotificacao(n: Notificacao) {
     if (!n.lida) marcarLida(n.id);
@@ -128,7 +129,7 @@ export function NotificacoesSidebar() {
             <span style={{
               fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
               letterSpacing: "0.10em", textTransform: "uppercase",
-              color: isLight ? SUPERNOVA[700] : SUPERNOVA[400],
+              color: ambar,
             }}>
               Notificações
             </span>

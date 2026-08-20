@@ -29,6 +29,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { PRISMA } from "@/lib/paleta";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 
 export interface OpcaoFiltro {
@@ -234,7 +235,7 @@ export function MenuFiltro({
                 <span style={{
                   width: 18, height: 18, borderRadius: multi ? 5 : 9, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: marcada ? (isLight ? "#A06108" : "#F8C811") : "transparent",
+                  background: marcada ? (isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark) : "transparent",
                   border: marcada
                     ? "none"
                     : isLight ? "1.5px solid rgba(0,0,0,0.25)" : "1.5px solid rgba(255,255,255,0.28)",

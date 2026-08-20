@@ -20,8 +20,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowUp, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
-import { GRAD_PRIMARIA, SOBRE_PRIMARIA, SUPERNOVA } from "@/lib/paleta";
+import { FONT, vidro } from "@/lib/ui";
+import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA, degradePrisma } from "@/lib/paleta";
 import { interpretarChamado } from "@/lib/chamado-rapido.functions";
 import { abrirChamado, anexarFoto } from "@/features/chamados/data";
 
@@ -41,7 +41,7 @@ export function CriarRapido() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? SUPERNOVA[700] : SUPERNOVA[400];
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   const MICRO: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
@@ -93,7 +93,10 @@ export function CriarRapido() {
   const temTexto = texto.trim().length > 0;
 
   return (
-    <div style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      {/* mesmo degradê dos gráficos: os quatro painéis do topo são uma coisa só */}
+      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "205deg"), opacity: isLight ? 0.20 : 0.28 }} />
+      <div className="prisma-conteudo">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={MICRO}>Abrir chamado</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
@@ -203,7 +206,7 @@ export function CriarRapido() {
             transition: CURVA,
             transform: temTexto || enviando ? "scale(1)" : "scale(0.25)",
             opacity: temTexto || enviando ? 1 : 0,
-            boxShadow: "0 4px 14px rgba(248,200,17,0.35)",
+            boxShadow: `0 4px 14px rgba(245,190,69,0.38)`,
             flexShrink: 0,
           }}
         >
@@ -211,6 +214,7 @@ export function CriarRapido() {
             ? <Loader2 size={16} className="animate-spin" />
             : <ArrowUp size={16} strokeWidth={2.5} />}
         </button>
+      </div>
       </div>
     </div>
   );

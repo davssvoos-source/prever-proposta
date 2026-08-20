@@ -81,24 +81,63 @@ export const DATAVIZ = {
   vinho:  { dark: "#8B1E2D", light: "#8B1E2D" },
 } as const;
 
-// ── Espectro de gráfico ─────────────────────────────────────────────────────
-// Derivado das cores que o Davi escolheu (#411139 #d8ad1a #01847f #AA1C41
-// #760031 #403D88 #7F2020). As MATIZES dele foram mantidas; a luminosidade e o
-// croma foram normalizados, porque as originais iam de L*0.28 a L*0.77 — quase
-// três vezes de diferença, o que faz barra sumir e barra gritar no mesmo
-// gráfico. Todas as oito têm agora a mesma L e o mesmo croma em oklch, com as
-// matizes espaçadas do frio ao quente.
+// ── PRISMA — a paleta do degradê (imagem de referência do Davi) ─────────────
+// Cores tiradas do degradê fosco laranja→vermelho→rosa→amarelo→azul. Ela é a
+// linguagem de cor da Início inteira: status, tipo, prioridade, gráficos e o
+// fundo dos cards. Cada entrada tem par por tema — o tom que canta sobre preto
+// apaga sobre branco — mais o véu (`bg`) para fundos e a borda.
 //
-// A ordem é a do espectro: teal → azul → índigo → violeta → magenta → rosa →
-// vermelho → ouro. Como a rampa é perceptualmente contínua, barras vizinhas
-// se emendam e a série inteira lê como um degradê só.
+// O AMARELO É O PRINCIPAL. É a cor da marca e continua sendo a de ação; no
+// espectro ele ocupa o centro, que é para onde a semana corrente cai.
+
+export interface CorPrisma {
+  dark: string;
+  light: string;
+  bg: string;
+  border: string;
+}
+
+const cor = (dark: string, light: string, rgb: string, a = 0.14, b = 0.30): CorPrisma => ({
+  dark, light,
+  bg: `rgba(${rgb},${a})`,
+  border: `rgba(${rgb},${b})`,
+});
+
+export const PRISMA = {
+  /** o amarelo da imagem — o mais próximo do dourado da marca. PRINCIPAL. */
+  amarelo:    cor("#F5BE45", "#B5840F", "245,190,69"),
+  pessego:    cor("#F5A96B", "#C07A3E", "245,169,107"),
+  laranja:    cor("#F0763A", "#C25217", "240,118,58"),
+  vermelho:   cor("#E0483F", "#B22F28", "224,72,63"),
+  rosa:       cor("#F090A2", "#C25370", "240,144,162"),
+  azulClaro:  cor("#7CC2E4", "#3C88AE", "124,194,228"),
+  azul:       cor("#3B93C4", "#1D6690", "59,147,196"),
+  // o `dark` é mais claro que o azul da imagem de propósito: ele é TEXTO de
+  // chip sobre preto, e #1E5F8D some. O véu (`bg`) continua no azul profundo
+  // da imagem — é ele que pinta o fundo do card de prazo adiante.
+  azulEscuro: cor("#6FA6CE", "#123F63", "30,95,141"),
+  neutro:     cor("#9AA6B2", "#657585", "154,166,178", 0.10, 0.22),
+} as const;
+
+/**
+ * O degradê da imagem, da esquerda (quente) para a direita (fria), em 8
+ * passos — é o que os gráficos percorrem. O centro é o amarelo, que é onde a
+ * semana corrente cai no gráfico de demanda: o mesmo amarelo que pinta o card
+ * de quem vence esta semana.
+ */
 export const ESPECTRO = {
-  dark: ["#00C6C7", "#20B9F6", "#84A6FF", "#B994F8", "#DB88D9", "#EF82B4", "#F98281", "#DC9E24"],
-  light: ["#008284", "#0074B1", "#4360C1", "#784FB3", "#964295", "#A73A72", "#B1393E", "#985900"],
+  dark: ["#C0392B", "#E14620", "#F0763A", "#F5A96B", "#F5BE45", "#9FC8DC", "#4A9BC9", "#1B5E8C"],
+  light: ["#8E2A20", "#B23718", "#C25217", "#C07A3E", "#B5840F", "#5E93AC", "#2A7BA5", "#123F63"],
 } as const;
 
 /** Cor n do espectro, com laço — para séries de tamanho qualquer. */
 export function espectro(i: number, isLight: boolean): string {
   const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
   return c[((i % c.length) + c.length) % c.length];
+}
+
+/** O degradê inteiro como CSS — fundo de gráfico, arco de rosca, realces. */
+export function degradePrisma(isLight: boolean, angulo = "90deg"): string {
+  const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
+  return `linear-gradient(${angulo}, ${c.join(", ")})`;
 }

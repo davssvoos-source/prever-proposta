@@ -12,6 +12,11 @@
 // uma) e as próximas 4 (quantos têm prazo em cada uma). Minimalista por ordem
 // expressa: título, o primeiro dia de cada semana e a quantidade — nada mais.
 //
+// O DEGRADÊ DA IMAGEM é o fundo dos três painéis: gradiente borrado a 46px sob
+// vidro fosco e granulado (.vidro-prisma em styles.css) — a referência que o
+// Davi mandou é literalmente isso, e reproduzi-la de verdade valeu mais do que
+// citá-la em cores soltas. No hover ele acende.
+//
 // As cores são o ESPECTRO normalizado (paleta.ts), e o degradê ATRAVESSA as
 // barras: cada barra vai da sua cor à cor da barra seguinte, então o pé
 // direito de uma emenda no pé esquerdo da próxima e as oito lêem como uma
@@ -34,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, vidro } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { SUPERNOVA, ESPECTRO, espectro } from "@/lib/paleta";
+import { PRISMA, ESPECTRO, espectro, degradePrisma } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -51,7 +56,9 @@ function useCoresBase() {
     isLight,
     textPrimary: isLight ? "#0a0b0e" : "#ffffff",
     textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
-    gold: isLight ? SUPERNOVA[700] : SUPERNOVA[400],
+    // um amarelo só na Início: o do degradê. O dourado da marca fica nos
+    // botões e no logotipo, onde ele é gradiente e lê como coisa própria.
+    gold: isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
     tile: isLight ? "#f7f7f5" : "rgba(255,255,255,0.03)",
   };
 }
@@ -128,7 +135,9 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
   return (
-    <div className="elevavel" style={{ ...vidro(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "115deg"), opacity: isLight ? 0.22 : 0.30 }} />
+      <div className="prisma-conteudo">
       <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 3, paddingTop: 12 }}>
@@ -161,6 +170,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
             </span>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );
@@ -207,7 +217,9 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const cores = isLight ? ESPECTRO.light : ESPECTRO.dark;
 
   return (
-    <div className="elevavel" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "150deg"), opacity: isLight ? 0.20 : 0.28 }} />
+      <div className="prisma-conteudo">
       <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>{mesNome}</span>
@@ -223,7 +235,10 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
         </div>
       ) : (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
-          <div className="rosca-meta ruido" style={{ position: "relative", borderRadius: "50%", lineHeight: 0 }}>
+          {/* sem .ruido: sobre uma linha curva de 14px o granulado serrilhou
+              a borda em vez de dar textura — pedido do Davi para tirar. O
+              acabamento aqui é o halo do próprio arco (feDropShadow). */}
+          <div className="rosca-meta" style={{ position: "relative", borderRadius: "50%", lineHeight: 0 }}>
             <svg width={176} height={176} viewBox="0 0 176 176">
               <defs>
                 {/* o mesmo espectro das barras, agora percorrendo o arco */}
@@ -232,6 +247,11 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
                     <stop key={c} offset={`${(i / (cores.length - 1)) * 100}%`} stopColor={c} />
                   ))}
                 </linearGradient>
+                {/* glow: o arco derrama a própria cor no fundo, de leve */}
+                <filter id="glow-meta" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="7"
+                    floodColor={cores[4]} floodOpacity={isLight ? 0.30 : 0.55} />
+                </filter>
               </defs>
               <circle
                 cx="88" cy="88" r={R} fill="none" strokeWidth="14"
@@ -243,6 +263,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
                 strokeLinecap="round"
                 strokeDasharray={`${(pct / 100) * CIRC} ${CIRC}`}
                 transform="rotate(-90 88 88)"
+                filter="url(#glow-meta)"
                 style={{ transition: "stroke-dasharray .6s ease" }}
               />
               <text
@@ -257,6 +278,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -272,15 +294,17 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
   ).length;
   const atrasadas = atividades.filter((a) => a.emAberto && a.prazoEstourado).length;
 
-  // as quatro cores saem do MESMO espectro dos gráficos, em posições
-  // afastadas: teal (feito), violeta (a fazer), rosa e vermelho (o que arde)
+  // As quatro cores são as MESMAS do fundo dos cards, e de propósito: quem vê
+  // "3" em vermelho aqui procura os três cards vermelhos no quadro abaixo e os
+  // acha. Azul = feito, amarelo = a fazer, laranja/vermelho = o que arde.
+  const cor = (c: { dark: string; light: string }) => (isLight ? c.light : c.dark);
   const kpis = [
-    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: espectro(0, isLight) },
-    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: espectro(3, isLight) },
-    { rotulo: "Corretivas urgentes", valor: urgentes, cor: espectro(5, isLight) },
+    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: cor(PRISMA.azul) },
+    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: cor(PRISMA.amarelo) },
+    { rotulo: "Corretivas urgentes", valor: urgentes, cor: cor(PRISMA.laranja) },
     // a quarta ficou por minha conta: atrasado em aberto é o que pega fogo —
     // é o número que decide o começo do dia de quem coordena
-    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: espectro(6, isLight) },
+    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: cor(PRISMA.vermelho) },
   ];
 
   return (

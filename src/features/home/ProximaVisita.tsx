@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlarmClock, MapPin, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { PRISMA } from "@/lib/paleta";
 import { FONT } from "@/lib/ui";
 import { isPendenteBucket } from "@/lib/visita-status";
 import type { BrutoVisita } from "@/features/atividades/modelo";
@@ -97,8 +98,8 @@ export function ProximaVisita({ visita, onAbrir }: Props) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
-  const gold = isLight ? "#A06108" : "#F8C811";
-  const vermelho = isLight ? "#B1242E" : "#F17881";
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
 
   const CARD: CSSProperties = {
     background: isLight

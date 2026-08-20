@@ -37,6 +37,8 @@ export type ChamadoTipo =
 export type ChamadoPrioridade = "baixa" | "normal" | "alta" | "urgente";
 export type ChamadoSprint = "este_mes" | "mes_que_vem" | "mes_passado" | "backlog";
 
+import { PRISMA, type CorPrisma } from "@/lib/paleta";
+
 export interface StatusInfo {
   label: string;
   labelUpper: string;
@@ -46,43 +48,51 @@ export interface StatusInfo {
   border: string;
 }
 
+// A cor de cada estado sai do PRISMA — a paleta do degradê (paleta.ts). Duas
+// amarrações foram pedidas de nome: EM ANDAMENTO é o azul, MELHORIA é o rosa.
+// O resto segue a lógica da rampa, do quente ao frio: o que espera você é
+// amarelo (a principal), o que trava é laranja, o que já rodou é azul.
 const STATUS: Record<ChamadoStatus, StatusInfo> = {
   aberto: {
     // O valor gravado continua 'aberto' (está no CHECK chamados_status_check,
     // em triggers e em policies). Só o que a pessoa lê mudou.
+    // Amarelo porque é o principal: a fila que espera alguém é o que a tela
+    // existe para mostrar.
     label: "Aguardando início", labelUpper: "AGUARDANDO INÍCIO",
-    color: "#F8C811", colorLight: "#A06108",
-    bg: "rgba(248,200,17,0.12)", border: "rgba(248,200,17,0.30)",
+    color: PRISMA.amarelo.dark, colorLight: PRISMA.amarelo.light,
+    bg: PRISMA.amarelo.bg, border: PRISMA.amarelo.border,
   },
   agendado: {
     label: "Agendado", labelUpper: "AGENDADO",
-    color: "#60A5FA", colorLight: "#1d4ed8",
-    bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.30)",
+    color: PRISMA.azulClaro.dark, colorLight: PRISMA.azulClaro.light,
+    bg: PRISMA.azulClaro.bg, border: PRISMA.azulClaro.border,
   },
   em_andamento: {
     label: "Em andamento", labelUpper: "EM ANDAMENTO",
-    color: "#9085e9", colorLight: "#4a3aa7",
-    bg: "rgba(144,133,233,0.14)", border: "rgba(144,133,233,0.32)",
+    color: PRISMA.azul.dark, colorLight: PRISMA.azul.light,
+    bg: PRISMA.azul.bg, border: PRISMA.azul.border,
   },
   stand_by: {
     label: "Stand-by", labelUpper: "STAND-BY",
-    color: "#E2791D", colorLight: "#A63E17",
-    bg: "rgba(226,121,29,0.14)", border: "rgba(226,121,29,0.32)",
+    color: PRISMA.laranja.dark, colorLight: PRISMA.laranja.light,
+    bg: PRISMA.laranja.bg, border: PRISMA.laranja.border,
   },
   aguardando_aprovacao: {
     label: "Aguardando aprovação", labelUpper: "AGUARDANDO APROVAÇÃO",
-    color: "#2DD4BF", colorLight: "#0f766e",
-    bg: "rgba(45,212,191,0.12)", border: "rgba(45,212,191,0.30)",
+    color: PRISMA.pessego.dark, colorLight: PRISMA.pessego.light,
+    bg: PRISMA.pessego.bg, border: PRISMA.pessego.border,
   },
   concluido: {
     label: "Concluído", labelUpper: "CONCLUÍDO",
-    color: "#2DD2A5", colorLight: "#047862",
-    bg: "rgba(45,210,165,0.12)", border: "rgba(45,210,165,0.30)",
+    color: PRISMA.azulEscuro.dark, colorLight: PRISMA.azulEscuro.light,
+    bg: PRISMA.azulEscuro.bg, border: PRISMA.azulEscuro.border,
   },
   cancelado: {
+    // cinza, não vermelho: o vermelho do prisma agora é ATRASO, e um chip
+    // vermelho num quadro onde vermelho já quer dizer outra coisa mente.
     label: "Cancelado", labelUpper: "CANCELADO",
-    color: "#F17881", colorLight: "#B1242E",
-    bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)",
+    color: PRISMA.neutro.dark, colorLight: PRISMA.neutro.light,
+    bg: PRISMA.neutro.bg, border: PRISMA.neutro.border,
   },
 };
 
@@ -144,13 +154,13 @@ export const TIPOS: ChamadoTipo[] = [
   "corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra",
 ];
 
-export const TIPO_CORES: Record<ChamadoTipo, { dark: string; light: string; bg: string; border: string }> = {
-  corretiva:     { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)" },
-  preventiva:    { dark: "#F8C811", light: "#A06108", bg: "rgba(248,200,17,0.12)",   border: "rgba(248,200,17,0.30)" },
-  operacional:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
-  implantacao:   { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  melhoria:      { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
-  pedido_compra: { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
+export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
+  corretiva:     PRISMA.vermelho,   // o que quebrou
+  preventiva:    PRISMA.amarelo,    // o que se antecipa
+  operacional:   PRISMA.neutro,     // o dia a dia, sem tensão
+  implantacao:   PRISMA.azulEscuro, // obra nova, de fôlego longo
+  melhoria:      PRISMA.rosa,       // amarração pedida pelo Davi
+  pedido_compra: PRISMA.pessego,    // dinheiro, mas sem urgência própria
 };
 
 // ── Prioridade ──────────────────────────────────────────────────────────────
@@ -162,11 +172,14 @@ export const PRIORIDADE_LABEL: Record<ChamadoPrioridade, string> = {
   urgente: "Urgente",
 };
 
-export const PRIORIDADE_CORES: Record<ChamadoPrioridade, { dark: string; light: string; bg: string; border: string }> = {
-  baixa:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
-  normal:  { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  alta:    { dark: "#E2791D", light: "#A63E17", bg: "rgba(226,121,29,0.14)",   border: "rgba(226,121,29,0.32)" },
-  urgente: { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.14)", border: "rgba(241,120,129,0.34)" },
+// Prioridade sobe a rampa do frio ao quente — é a única escala do sistema em
+// que a ordem das cores carrega ordem de verdade, então ela percorre o
+// espectro em linha reta: azul, azul claro, laranja, vermelho.
+export const PRIORIDADE_CORES: Record<ChamadoPrioridade, CorPrisma> = {
+  baixa:   PRISMA.neutro,
+  normal:  PRISMA.azul,
+  alta:    PRISMA.laranja,
+  urgente: PRISMA.vermelho,
 };
 
 // ── Sprint (organiza a fila do trabalho interno) ────────────────────────────

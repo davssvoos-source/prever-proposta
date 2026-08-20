@@ -331,5 +331,33 @@ const divergem = TL.TELAS.filter((t) =>
   ['tecnico', 'comercial', 'sac'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));
 eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
 
+// ── Faixa de prazo: a cor de fundo do card (2026-08-20) ────────────────────
+// Esta regra é visual, mas é lógica: errar a faixa pinta de azul um card que
+// vence amanhã. O corte é o FIM da semana corrente, não "daqui a 7 dias".
+{
+  const seg = new Date(2026, 7, 17, 9, 0);         // segunda-feira
+  const qui = new Date(2026, 7, 20, 9, 0);         // quinta da mesma semana
+  const base = { emAberto: true, prazoEstourado: false, prazoLimite: null, agendadaEm: null };
+  const em = (prazo, extra) => A.faixaPrazo({ ...base, prazoLimite: prazo, ...extra }, qui);
+
+  eq('sem prazo → sem faixa', em(null), null);
+  eq('encerrada nunca pinta', em(new Date(2026, 7, 21).toISOString(), { emAberto: false }), null);
+  eq('prazo estourado → atraso', em(null, { prazoEstourado: true }), 'atraso');
+  eq('prazo no passado → atraso mesmo sem a bandeira',
+     em(new Date(2026, 7, 18, 9, 0).toISOString()), 'atraso');
+  eq('vence amanhã (mesma semana) → esta_semana',
+     em(new Date(2026, 7, 21, 12, 0).toISOString()), 'esta_semana');
+  eq('vence no domingo, último instante da semana → esta_semana',
+     em(new Date(2026, 7, 23, 23, 0).toISOString()), 'esta_semana');
+  eq('vence na segunda seguinte → adiante',
+     em(new Date(2026, 7, 24, 9, 0).toISOString()), 'adiante');
+  eq('daqui a 5 dias mas já na outra semana → adiante (o corte é a semana, não 7 dias)',
+     em(new Date(2026, 7, 25, 9, 0).toISOString()), 'adiante');
+  eq('visita usa a hora marcada quando não há prazo',
+     A.faixaPrazo({ ...base, agendadaEm: new Date(2026, 7, 21, 14, 0).toISOString() }, qui), 'esta_semana');
+  eq('na segunda, a semana inteira ainda é "esta semana"',
+     A.faixaPrazo({ ...base, prazoLimite: new Date(2026, 7, 23, 20, 0).toISOString() }, seg), 'esta_semana');
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

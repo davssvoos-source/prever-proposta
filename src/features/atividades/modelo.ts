@@ -23,6 +23,7 @@ import {
   TIPO_LABEL, TIPO_CORES, PRIORIDADE_LABEL, PRIORIDADE_CORES, STATUS_ORDEM,
   type ChamadoStatus, type ChamadoPrioridade, type ChamadoTipo, type Natureza,
 } from "@/lib/chamado-status";
+import { fimSemana } from "@/lib/periodos";
 import { getStatusInfo, statusBucket } from "@/lib/visita-status";
 import { SITUACAO_LABEL, type SituacaoCompra } from "@/features/chamados/compra";
 
@@ -104,6 +105,34 @@ export interface Atividade {
   compra: { situacao: SituacaoCompra; situacaoLabel: string } | null;
   /** Marcador âmbar: o que está esquisito neste registro, se algo estiver. */
   alerta: "sem_responsavel" | "sem_acesso_ficha" | "status_desconhecido" | "reagendar" | null;
+}
+
+// ── Faixa de prazo ──────────────────────────────────────────────────────────
+// A regra de cor de fundo do card (pedido do Davi, 2026-08-20): o card inteiro
+// diz QUANDO vence, antes de a pessoa ler qualquer palavra.
+//
+//   atraso        → vermelho
+//   esta semana   → amarelo   (o principal — é o que decide o dia)
+//   dali em diante→ azul      (existe, mas não é hoje)
+//   sem prazo /
+//   já encerrado  → nenhuma   (o card fica na superfície neutra)
+//
+// A data considerada é `prazoLimite` OU, quando não há, `agendadaEm`: a visita
+// não tem prazo, tem hora marcada — e para quem olha a tela dá no mesmo.
+// O corte é o FIM da semana corrente (domingo 23:59), não "sete dias a partir
+// de agora": a semana é a unidade em que as pessoas planejam, e na quinta-feira
+// "esta semana" precisa querer dizer dois dias, não sete.
+
+export type FaixaPrazo = "atraso" | "esta_semana" | "adiante" | null;
+
+export function faixaPrazo(a: Atividade, agora: Date = new Date()): FaixaPrazo {
+  if (!a.emAberto) return null;
+  if (a.prazoEstourado) return "atraso";
+  const quando = a.prazoLimite ?? a.agendadaEm;
+  if (!quando) return null;
+  const t = new Date(quando).getTime();
+  if (t < agora.getTime()) return "atraso";
+  return t <= fimSemana(agora).getTime() ? "esta_semana" : "adiante";
 }
 
 const CINZA: Cores = {

@@ -26,6 +26,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { PRISMA } from "@/lib/paleta";
 import { FONT } from "@/lib/ui";
 import {
   COLUNAS, colunaLabel, colunaCores, colunaVisivel,
@@ -148,7 +149,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                 background: alvoArrasto === c
                   ? (isLight ? "rgba(200,136,6,0.07)" : "rgba(248,200,17,0.06)")
                   : "transparent",
-                outline: alvoArrasto === c ? `1.5px solid ${isLight ? "#A06108" : "#F8C811"}` : "none",
+                outline: alvoArrasto === c ? `1.5px solid ${isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark}` : "none",
                 outlineOffset: 2,
               }}
             >
@@ -176,7 +177,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                 }}>
                   {itens.length}
                   {c === "aguardando_aprovacao" && comVoce > 0 && (
-                    <span style={{ color: isLight ? "#A63E17" : "#E2791D" }}> · {comVoce}</span>
+                    <span style={{ color: isLight ? PRISMA.laranja.light : PRISMA.laranja.dark }}> · {comVoce}</span>
                   )}
                 </span>
               </div>
@@ -223,7 +224,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                         onClick={() => setTetos((t) => ({ ...t, [c]: (t[c] ?? TETO) + 25 }))}
                         style={{
                           fontFamily: FONT, fontWeight: 600, fontSize: PISO_TIPO,
-                          color: isLight ? "#A06108" : "#F8C811",
+                          color: isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
                           background: "transparent", border: "none", cursor: "pointer",
                           padding: "10px 0", minHeight: 40,
                         }}
