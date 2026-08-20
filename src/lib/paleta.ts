@@ -80,3 +80,25 @@ export const DATAVIZ = {
   /** vinho — segundo alarme, quando o vermelho já está em uso ao lado */
   vinho:  { dark: "#8B1E2D", light: "#8B1E2D" },
 } as const;
+
+// ── Espectro de gráfico ─────────────────────────────────────────────────────
+// Derivado das cores que o Davi escolheu (#411139 #d8ad1a #01847f #AA1C41
+// #760031 #403D88 #7F2020). As MATIZES dele foram mantidas; a luminosidade e o
+// croma foram normalizados, porque as originais iam de L*0.28 a L*0.77 — quase
+// três vezes de diferença, o que faz barra sumir e barra gritar no mesmo
+// gráfico. Todas as oito têm agora a mesma L e o mesmo croma em oklch, com as
+// matizes espaçadas do frio ao quente.
+//
+// A ordem é a do espectro: teal → azul → índigo → violeta → magenta → rosa →
+// vermelho → ouro. Como a rampa é perceptualmente contínua, barras vizinhas
+// se emendam e a série inteira lê como um degradê só.
+export const ESPECTRO = {
+  dark: ["#00C6C7", "#20B9F6", "#84A6FF", "#B994F8", "#DB88D9", "#EF82B4", "#F98281", "#DC9E24"],
+  light: ["#008284", "#0074B1", "#4360C1", "#784FB3", "#964295", "#A73A72", "#B1393E", "#985900"],
+} as const;
+
+/** Cor n do espectro, com laço — para séries de tamanho qualquer. */
+export function espectro(i: number, isLight: boolean): string {
+  const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
+  return c[((i % c.length) + c.length) % c.length];
+}

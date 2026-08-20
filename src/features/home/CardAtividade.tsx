@@ -56,8 +56,9 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const CARD: CSSProperties = {
     ...card(isLight),
     ...(atrasada ? {
-      background: isLight ? "rgba(230,57,70,0.08)" : "rgba(139,30,45,0.32)",
-      border: isLight ? "1px solid rgba(139,30,45,0.22)" : "1px solid rgba(230,57,70,0.32)",
+      // vermelho de aviso, não de alarme: um véu sobre a superfície do card
+      background: isLight ? "rgba(230,57,70,0.045)" : "rgba(139,30,45,0.16)",
+      border: isLight ? "1px solid rgba(139,30,45,0.14)" : "1px solid rgba(230,57,70,0.20)",
     } : {}),
     borderRadius: 16,
     padding: "12px 14px",

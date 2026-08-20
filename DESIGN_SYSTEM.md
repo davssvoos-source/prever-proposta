@@ -593,3 +593,43 @@ Regras:
 - [ ] Status sempre com ícone + rótulo, nunca só cor
 - [ ] Transição global de 0.35s para troca de tema
 - [ ] Navegação inferior flutuante respeitando `env(safe-area-inset-bottom)`
+
+---
+
+## 11. Espectro de gráfico (v4.1 — 2026-08-20)
+
+Rampa de 8 cores para séries de dados, derivada das cores escolhidas pelo Davi
+(`#411139 #d8ad1a #01847f #AA1C41 #760031 #403D88 #7F2020`).
+
+**O que foi feito com elas.** As matizes foram mantidas; a luminosidade e o
+croma, normalizados. As originais iam de **L\*0.28 a L\*0.77** — quase três
+vezes de diferença, o que numa série faz barra sumir e barra gritar. Agora as
+oito têm a mesma L e o mesmo croma em oklch, com as matizes espaçadas do frio
+ao quente.
+
+| # | Escuro (L .74 / C .145) | Claro (L .52 / C .155) |
+|---|---|---|
+| 0 | `#00C6C7` | `#008284` |
+| 1 | `#20B9F6` | `#0074B1` |
+| 2 | `#84A6FF` | `#4360C1` |
+| 3 | `#B994F8` | `#784FB3` |
+| 4 | `#DB88D9` | `#964295` |
+| 5 | `#EF82B4` | `#A73A72` |
+| 6 | `#F98281` | `#B1393E` |
+| 7 | `#DC9E24` | `#985900` |
+
+**Uso:** `espectro(i, isLight)` em `src/lib/paleta.ts`, com laço para séries de
+qualquer tamanho. Como a rampa é perceptualmente contínua, séries vizinhas se
+emendam: no gráfico de barras, cada barra vai da própria cor à cor da seguinte
+(`linear-gradient(90deg, cor, corFim)`), e as oito lêem como um degradê só.
+
+**Textura.** Duas classes em `styles.css`, ambas por pseudo-elemento:
+
+- `.textura` — brilho especular (`::before`) + granulado em `soft-light`
+  (`::after`). É o "glossy ofuscado" das barras e de qualquer superfície de
+  dado colorida.
+- `.ruido` — só o granulado, em `overlay`. Para ícones, pastilhas e avatares,
+  onde o especular seria demais.
+
+O granulado vem de `--ruido`, um SVG `feTurbulence` inline reaproveitado pelas
+duas.

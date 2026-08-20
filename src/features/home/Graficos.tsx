@@ -2,16 +2,21 @@
 //
 //   [ Prazos futuros ][ Meta do mês ][ 4 indicadores ][ Notificações ]
 //
-// Todos minimalistas, todos nas cartelas de dataviz (paleta.ts → DATAVIZ), que
-// existem separadas das escalas de status de propósito: gráfico fala de DADOS,
-// chip de status fala de ESTADO — misturar os vocabulários faria o quadro e os
+// Todos minimalistas, todos no ESPECTRO (paleta.ts) — a rampa de 8 cores
+// derivada da paleta do Davi, normalizada em luminosidade e croma. Ela existe
+// separada das escalas de status de propósito: gráfico fala de DADOS, chip de
+// status fala de ESTADO — misturar os vocabulários faria o quadro e os
 // gráficos parecerem discordar um do outro.
 //
 // DEMANDA NO TEMPO: as últimas 4 semanas (quantos foram concluídos em cada
 // uma) e as próximas 4 (quantos têm prazo em cada uma). Minimalista por ordem
 // expressa: título, o primeiro dia de cada semana e a quantidade — nada mais.
-// As cores contam a história: o passado esfria do azul para o verde (feito),
-// o futuro esquenta do vermelho (semana atual) para o amarelo (adiante).
+//
+// As cores são o ESPECTRO normalizado (paleta.ts), e o degradê ATRAVESSA as
+// barras: cada barra vai da sua cor à cor da barra seguinte, então o pé
+// direito de uma emenda no pé esquerdo da próxima e as oito lêem como uma
+// rampa só. Barras quase coladas, com brilho especular e granulado
+// (.textura) — material, não plástico.
 // Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
 // 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
@@ -29,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, vidro } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { DATAVIZ, SUPERNOVA } from "@/lib/paleta";
+import { SUPERNOVA, ESPECTRO, espectro } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -85,24 +90,13 @@ function useConcluidosPorSemana() {
   });
 }
 
-// o passado esfria (azul → verde: feito); o futuro esquenta a partir de agora
-// (vermelho na semana atual → amarelo adiante). Cartelas do Davi.
-const CORES_PASSADO = {
-  dark: ["#547792", "#457B9D", "#6EE7C2", "#2DD2A5"],
-  light: ["#1A3263", "#457B9D", "#059676", "#047862"],
-};
-const CORES_FUTURO = {
-  dark: ["#E63946", "#EA9A35", "#FAB95B", "#F4D35E"],
-  light: ["#8B1E2D", "#A63E17", "#C85917", "#E4B028"],
-};
-
 export function GraficoDemanda({ atividades }: PropsDemanda) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
   const { data: concluidos } = useConcluidosPorSemana();
 
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
-    const lista: { chave: string; rotulo: string; valor: number; cor: string; atual: boolean }[] = [];
+    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string; atual: boolean }[] = [];
 
     // futuro por prazo, contado das atividades em aberto
     const futuros: Record<string, number> = {};
@@ -117,13 +111,14 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
       d.setDate(base.getDate() + i * 7);
       const chave = dataIso(d);
       const passado = i < 0;
-      const cores = passado ? CORES_PASSADO : CORES_FUTURO;
-      const idx = passado ? i + 4 : i;
+      const idx = i + 4;                       // 0..7 ao longo do espectro
       lista.push({
         chave,
         rotulo: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         valor: passado ? (concluidos?.[chave] ?? 0) : (futuros[chave] ?? 0),
-        cor: isLight ? cores.light[idx] : cores.dark[idx],
+        // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
+        cor: espectro(idx, isLight),
+        corFim: espectro(idx + 1, isLight),
         atual: i === 0,
       });
     }
@@ -136,7 +131,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
     <div className="elevavel" style={{ ...vidro(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 10, paddingTop: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 3, paddingTop: 12 }}>
         {barras.map((b) => (
           <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
             <span style={{
@@ -146,15 +141,14 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
               {b.valor}
             </span>
             <div
-              className="barra-demanda"
+              className="barra-demanda textura"
               title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo}`}
               style={{
                 width: "100%",
-                maxWidth: 40,
-                height: b.valor === 0 ? 3 : Math.max(8, Math.round((b.valor / maximo) * 128)),
-                borderRadius: 8,
-                background: b.cor,
-                opacity: b.valor === 0 ? 0.28 : 1,
+                height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
+                borderRadius: 7,
+                background: `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
+                opacity: b.valor === 0 ? 0.3 : 1,
               }} />
             <span style={{
               fontFamily: FONT,
@@ -206,51 +200,62 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const feitas = data?.feitas ?? 0;
   const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
 
-  const R = 52;
+  // rosca maior, centrada e sem texto auxiliar: só a porcentagem
+  const R = 68;
   const CIRC = 2 * Math.PI * R;
   const mesNome = new Date().toLocaleDateString("pt-BR", { month: "long" });
-  const arco = isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark;
-  const cheio = isLight ? DATAVIZ.azul.light : DATAVIZ.azul.dark;
+  const cores = isLight ? ESPECTRO.light : ESPECTRO.dark;
 
   return (
-    <div className="elevavel" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 7, alignSelf: "stretch" }}>
+    <div className="elevavel" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>{mesNome}</span>
       </div>
 
       {total === 0 ? (
         <div style={{
-          flex: 1, display: "flex", alignItems: "center",
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary,
           textAlign: "center", lineHeight: 1.5,
         }}>
           Sem prioridades no sprint deste mês.
         </div>
       ) : (
-        <>
-          <svg className="rosca-meta" width={140} height={140} viewBox="0 0 140 140" style={{ marginTop: 8 }}>
-            <circle
-              cx="70" cy="70" r={R} fill="none" strokeWidth="11"
-              stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)"}
-            />
-            <circle
-              cx="70" cy="70" r={R} fill="none" strokeWidth="11"
-              stroke={pct >= 100 ? cheio : arco}
-              strokeLinecap="round"
-              strokeDasharray={`${(pct / 100) * CIRC} ${CIRC}`}
-              transform="rotate(-90 70 70)"
-              style={{ transition: "stroke-dasharray .6s ease" }}
-            />
-            <text x="70" y="68" textAnchor="middle" fontFamily={FONT} fontWeight="700" fontSize="27" fill={textPrimary}>
-              {pct}%
-            </text>
-            <text x="70" y="87" textAnchor="middle" fontFamily={FONT} fontWeight="400" fontSize="11"
-              fill={isLight ? "#4a5060" : "rgba(255,255,255,0.55)"}>
-              {feitas} de {total}
-            </text>
-          </svg>
-        </>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0 }}>
+          <div className="rosca-meta ruido" style={{ position: "relative", borderRadius: "50%", lineHeight: 0 }}>
+            <svg width={176} height={176} viewBox="0 0 176 176">
+              <defs>
+                {/* o mesmo espectro das barras, agora percorrendo o arco */}
+                <linearGradient id="grad-meta" x1="0" y1="1" x2="1" y2="0">
+                  {cores.map((c, i) => (
+                    <stop key={c} offset={`${(i / (cores.length - 1)) * 100}%`} stopColor={c} />
+                  ))}
+                </linearGradient>
+              </defs>
+              <circle
+                cx="88" cy="88" r={R} fill="none" strokeWidth="14"
+                stroke={isLight ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.06)"}
+              />
+              <circle
+                cx="88" cy="88" r={R} fill="none" strokeWidth="14"
+                stroke="url(#grad-meta)"
+                strokeLinecap="round"
+                strokeDasharray={`${(pct / 100) * CIRC} ${CIRC}`}
+                transform="rotate(-90 88 88)"
+                style={{ transition: "stroke-dasharray .6s ease" }}
+              />
+              <text
+                x="88" y="88" textAnchor="middle" dominantBaseline="central"
+                fontFamily={FONT} fontWeight="600" fontSize="44"
+                fill={textPrimary}
+                style={{ letterSpacing: "-0.02em" } as any}
+              >
+                {pct}%
+              </text>
+            </svg>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -267,20 +272,21 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
   ).length;
   const atrasadas = atividades.filter((a) => a.emAberto && a.prazoEstourado).length;
 
-  const tema = (p: { dark: string; light: string }) => (isLight ? p.light : p.dark);
+  // as quatro cores saem do MESMO espectro dos gráficos, em posições
+  // afastadas: teal (feito), violeta (a fazer), rosa e vermelho (o que arde)
   const kpis = [
-    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: tema(DATAVIZ.azul) },
-    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: tema(DATAVIZ.ambar) },
-    { rotulo: "Corretivas urgentes", valor: urgentes, cor: tema(DATAVIZ.alerta) },
+    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: espectro(0, isLight) },
+    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: espectro(3, isLight) },
+    { rotulo: "Corretivas urgentes", valor: urgentes, cor: espectro(5, isLight) },
     // a quarta ficou por minha conta: atrasado em aberto é o que pega fogo —
     // é o número que decide o começo do dia de quem coordena
-    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: tema(DATAVIZ.vinho) },
+    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: espectro(6, isLight) },
   ];
 
   return (
     <div style={{ width: 268, flexShrink: 0, height: ALTURA, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box" }}>
       {kpis.map((k) => (
-        <div key={k.rotulo} className="elevavel kpi-tile" style={{
+        <div key={k.rotulo} className="elevavel kpi-tile ruido" style={{
           ...card(isLight),
           padding: "10px 12px",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",

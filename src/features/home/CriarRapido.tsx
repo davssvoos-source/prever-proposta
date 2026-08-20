@@ -193,6 +193,7 @@ export function CriarRapido() {
           onClick={() => void enviar()}
           disabled={!temTexto || enviando}
           aria-label="Criar chamado"
+          className="ruido"
           style={{
             width: 38, height: 38, borderRadius: 999, border: "none",
             background: GRAD_PRIMARIA,

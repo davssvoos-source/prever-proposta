@@ -59,6 +59,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
           <span
             key={id}
             title={p?.nome}
+            className="ruido"
             style={{
               ...circulo,
               marginLeft: i === 0 ? 0 : -7,

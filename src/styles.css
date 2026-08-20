@@ -169,6 +169,8 @@
        tamanho, nunca por troca de fonte. */
     --fonte: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
              Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* granulado reaproveitado por .textura e .ruido */
+    --ruido: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
     --rail: 0px;
     /* altura reservada ao header fixo. No desktop o header não existe (a
        identidade mora na sidebar e as notificações no painel da Início),
@@ -594,4 +596,52 @@ input::placeholder, textarea::placeholder {
 
   .rosca-meta { transition: transform .22s ease; }
   .rosca-meta:hover { transform: scale(1.04); }
+}
+
+/* ── Superfícies de gráfico: glossy + noise ────────────────────────────────
+   Duas camadas por cima da cor, ambas em pseudo-elemento para não exigir
+   markup extra:
+     ::before → brilho especular (claro no topo, sombra no pé) = o "glossy";
+     ::after  → granulado em soft-light = o "noise", que quebra o chapado e
+                dá o aspecto ofuscado, de material, em vez de plástico. */
+.textura {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.textura::before,
+.textura::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.textura::before {
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.38) 0%,
+    rgba(255,255,255,0.10) 38%,
+    rgba(255,255,255,0.00) 62%,
+    rgba(0,0,0,0.16) 100%
+  );
+}
+.textura::after {
+  background-image: var(--ruido);
+  background-size: 120px 120px;
+  mix-blend-mode: soft-light;
+  opacity: 0.55;
+}
+
+/* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
+.ruido { position: relative; isolation: isolate; }
+.ruido::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--ruido);
+  background-size: 110px 110px;
+  mix-blend-mode: overlay;
+  opacity: 0.42;
+  pointer-events: none;
 }

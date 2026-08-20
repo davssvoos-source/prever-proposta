@@ -107,7 +107,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
           <X size={17} />
         </button>
       ) : (
-        <span style={{ ...botao, cursor: "default" }} aria-hidden>
+        <span className="ruido" style={{ ...botao, cursor: "default" }} aria-hidden>
           <Search size={17} />
         </span>
       )}

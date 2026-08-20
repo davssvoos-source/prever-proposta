@@ -162,7 +162,7 @@ export function SideNav() {
             ? pathname === "/dashboard" || pathname === "/"
             : pathname.startsWith(to);
           return (
-            <Link key={to} to={to} className={ativo ? undefined : "hover-suave"} style={item(ativo)}>
+            <Link key={to} to={to} className={ativo ? "ruido" : "hover-suave"} style={item(ativo)}>
               <Icon size={17} style={{ flexShrink: 0 }} />
               {label}
             </Link>
@@ -205,7 +205,7 @@ export function SideNav() {
             }}
           />
         ) : (
-          <span style={{
+          <span className="ruido" style={{
             width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
             background: GOLD_GRAD, color: SOBRE_PRIMARIA,
             display: "flex", alignItems: "center", justifyContent: "center",
