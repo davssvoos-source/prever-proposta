@@ -120,18 +120,75 @@ export const PRISMA = {
 } as const;
 
 /**
- * O degradê da imagem, da esquerda (quente) para a direita (fria), em 8
- * passos — é o que os gráficos percorrem. O centro é o amarelo, que é onde a
- * semana corrente cai no gráfico de demanda: o mesmo amarelo que pinta o card
- * de quem vence esta semana.
+ * A RAMPA (v5.1 — 2026-08-20). Nove passos, do quente ao frio.
+ *
+ * Ajustada a pedido do Davi: a MAIOR PARTE é amarelo (seis dos nove passos) e
+ * o azul foi bem mais fundo. Os dois tons que ele escolheu entram exatos no
+ * tema escuro — `#C9A227` no passo 2 e `#9C7A1E` no passo 5.
+ *
+ * Nota sobre os valores que ele mandou: o hex e o oklch "aprox." discordavam.
+ * `oklch(0.72 0.17 84)` está FORA do sRGB — o navegador cortaria para `#D69900`,
+ * mais laranja e mais saturado do que `#C9A227`. Segui o HEX, que é a cor que
+ * ele de fato vê. Os oklch reais são L .728 C .138 H 90 e L .597 C .112 H 87.
+ *
+ * O tema claro repete os MATIZES com a luminosidade rebaixada: sobre branco,
+ * os tons originais não passam de 4.5:1, e o número da barra é texto de 13px
+ * pintado com a cor da barra.
+ *
+ * A rampa sobe até o pico no passo 3 e mergulha: o meio do gráfico de demanda
+ * é a semana corrente, e é onde ela acende.
+ *
+ * NOVE, e não oito, por um motivo prático: cada barra vai da sua cor à da
+ * seguinte, então a última barra precisa de um passo além do fim. Com oito, o
+ * laço de `espectro()` levava a última barra de marinho de volta ao bronze.
  */
 export const ESPECTRO = {
-  dark: ["#C0392B", "#E14620", "#F0763A", "#F5A96B", "#F5BE45", "#9FC8DC", "#4A9BC9", "#1B5E8C"],
-  light: ["#8E2A20", "#B23718", "#C25217", "#C07A3E", "#B5840F", "#5E93AC", "#2A7BA5", "#123F63"],
+  dark:  ["#A37729", "#B98C1E", "#C9A227", "#E1BD46", "#CDA839", "#9C7A1E", "#25537C", "#17325A", "#102145"],
+  light: ["#6B4800", "#7C5A00", "#896C05", "#8C7109", "#896C0B", "#755900", "#11446D", "#0E2951", "#091738"],
 } as const;
 
-/** Cor n do espectro, com laço — para séries de tamanho qualquer. */
+/**
+ * A mesma rampa, mas legível como TEXTO. Os azuis do fim são escuros de
+ * propósito — como preenchimento de barra funcionam, como número de 13px sobre
+ * preto somem (contraste 1.4:1). Aqui os três últimos passos sobem de
+ * luminosidade mantendo o matiz; os amarelos são idênticos.
+ * No tema claro os azuis escuros já contrastam de sobra: a rampa é a mesma.
+ */
+export const ESPECTRO_TEXTO = {
+  dark:  ["#A37729", "#B98C1E", "#C9A227", "#E1BD46", "#CDA839", "#9C7A1E", "#619ED6", "#6087C2", "#5B78B3"],
+  light: ESPECTRO.light,
+} as const;
+
+/**
+ * A cor de ponte da emenda quente→fria. Interpolar ocre até marinho em sRGB
+ * passa OBRIGATORIAMENTE pelo cinza — o ponto médio dava `#61674D`, croma
+ * 0.04, um oliva lavado. Este petróleo é o desvio: as duas metades da emenda
+ * ficam acima de 0.07 de croma. Quem escolhe a cor da transição sou eu, não a
+ * interpolação.
+ */
+export const PONTE: ParTema = { dark: "#05585F", light: "#00474E" };
+
+/** O índice da emenda: a barra que vai do último amarelo ao primeiro azul. */
+export const EMENDA = 5;
+
+/** Cor n da rampa (preenchimento), com laço. */
 export function espectro(i: number, isLight: boolean): string {
   const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
   return c[((i % c.length) + c.length) % c.length];
 }
+
+/** Cor n da rampa para TEXTO — garantidamente legível sobre a superfície. */
+export function espectroTexto(i: number, isLight: boolean): string {
+  const c = isLight ? ESPECTRO_TEXTO.light : ESPECTRO_TEXTO.dark;
+  return c[((i % c.length) + c.length) % c.length];
+}
+
+/** A rampa inteira como CSS, atravessando a ponte. */
+export function degradePrisma(isLight: boolean, angulo = "90deg"): string {
+  const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
+  const ponte = isLight ? PONTE.light : PONTE.dark;
+  const paradas = [...c.slice(0, EMENDA + 1), ponte, ...c.slice(EMENDA + 1)];
+  return `linear-gradient(${angulo}, ${paradas.join(", ")})`;
+}
+
+

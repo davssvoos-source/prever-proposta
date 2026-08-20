@@ -18,11 +18,19 @@
 // sequência, o painel virou o assunto da tela, e o assunto é o quadro embaixo.
 // O degradê vive nos DADOS — nas barras, no arco — não atrás deles.
 //
-// As cores são o ESPECTRO normalizado (paleta.ts), e o degradê ATRAVESSA as
-// barras: cada barra vai da sua cor à cor da barra seguinte, então o pé
-// direito de uma emenda no pé esquerdo da próxima e as oito lêem como uma
+// As cores são o ESPECTRO (paleta.ts) — v5.1, majoritariamente amarela — e o
+// degradê ATRAVESSA as barras: cada uma vai da sua cor à da seguinte, então o
+// pé direito de uma emenda no pé esquerdo da próxima e as oito lêem como uma
 // rampa só. Barras quase coladas, com brilho especular e granulado
 // (.textura) — material, não plástico.
+//
+// A barra da EMENDA (a que sai do último amarelo para o primeiro azul) leva uma
+// parada extra no meio, a PONTE: sem ela, o sRGB interpola ocre→marinho pelo
+// cinza e aquela barra fica com um oliva lavado no miolo.
+//
+// O NÚMERO da barra não usa a cor da barra: usa espectroTexto(). Os azuis do
+// fim da rampa são escuros de propósito, e como texto de 13px sobre preto
+// sumiriam (1,4:1).
 // Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
 // 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
@@ -40,7 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { PRISMA, ESPECTRO, espectro } from "@/lib/paleta";
+import { PRISMA, ESPECTRO, PONTE, EMENDA, espectro, espectroTexto } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -104,7 +112,8 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
 
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
-    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string; atual: boolean }[] = [];
+    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string;
+                   corTexto: string; naEmenda: boolean; atual: boolean }[] = [];
 
     // futuro por prazo, contado das atividades em aberto
     const futuros: Record<string, number> = {};
@@ -127,6 +136,8 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
         cor: espectro(idx, isLight),
         corFim: espectro(idx + 1, isLight),
+        corTexto: espectroTexto(idx, isLight),
+        naEmenda: idx === EMENDA,
         atual: i === 0,
       });
     }
@@ -143,7 +154,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         {barras.map((b) => (
           <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
             <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.cor,
+              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.corTexto,
               fontVariantNumeric: "tabular-nums", lineHeight: 1,
             }}>
               {b.valor}
@@ -155,7 +166,9 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
                 width: "100%",
                 height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
                 borderRadius: 7,
-                background: `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
+                background: b.naEmenda
+                  ? `linear-gradient(90deg, ${b.cor}, ${isLight ? PONTE.light : PONTE.dark} 50%, ${b.corFim})`
+                  : `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
                 opacity: b.valor === 0 ? 0.3 : 1,
               }} />
             <span style={{
@@ -212,7 +225,10 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const R = 68;
   const CIRC = 2 * Math.PI * R;
   const mesNome = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  // as mesmas paradas do degradê das barras, ponte incluída: sem ela o arco
+  // lava no mesmo ponto em que a barra lavava
   const cores = isLight ? ESPECTRO.light : ESPECTRO.dark;
+  const paradas = [...cores.slice(0, EMENDA + 1), isLight ? PONTE.light : PONTE.dark, ...cores.slice(EMENDA + 1)];
 
   return (
     <div className="elevavel" style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
@@ -239,14 +255,14 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
               <defs>
                 {/* o mesmo espectro das barras, agora percorrendo o arco */}
                 <linearGradient id="grad-meta" x1="0" y1="1" x2="1" y2="0">
-                  {cores.map((c, i) => (
-                    <stop key={c} offset={`${(i / (cores.length - 1)) * 100}%`} stopColor={c} />
+                  {paradas.map((c, i) => (
+                    <stop key={`${c}-${i}`} offset={`${(i / (paradas.length - 1)) * 100}%`} stopColor={c} />
                   ))}
                 </linearGradient>
                 {/* glow: o arco derrama a própria cor no fundo, de leve */}
                 <filter id="glow-meta" x="-30%" y="-30%" width="160%" height="160%">
                   <feDropShadow dx="0" dy="0" stdDeviation="7"
-                    floodColor={cores[4]} floodOpacity={isLight ? 0.30 : 0.55} />
+                    floodColor={cores[3]} floodOpacity={isLight ? 0.30 : 0.55} />
                 </filter>
               </defs>
               <circle

@@ -627,19 +627,55 @@ continua no azul profundo da imagem — é ele que pinta o fundo do card.
 Cada entrada carrega `dark`, `light`, `bg` (véu translúcido) e `border`. Quem
 consome nunca escolhe alfa na mão.
 
-### 11.2 A rampa (`ESPECTRO`)
+### 11.2 A rampa (`ESPECTRO`) — v5.1
 
-Oito passos, do quente ao frio, na ordem em que a imagem lê da esquerda para a
-direita. O centro é o amarelo — e o centro do gráfico de demanda é a semana
-corrente, que é justamente a semana amarela nos cards. Não é coincidência: é o
-que faz o painel de cima e o quadro de baixo contarem a mesma história.
+Nove passos, do quente ao frio. **Seis dos nove são amarelo** e o azul é fundo:
+ajuste pedido pelo Davi em 2026-08-20. A rampa sobe até o pico no passo 3 e
+mergulha — o meio do gráfico de demanda é a semana corrente, e é onde ela
+acende. É o que faz o painel de cima e o quadro de baixo contarem a mesma
+história: amarelo é agora, azul é depois.
 
-| # | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-|---|---|---|---|---|---|---|---|---|
-| escuro | `#C0392B` | `#E14620` | `#F0763A` | `#F5A96B` | `#F5BE45` | `#9FC8DC` | `#4A9BC9` | `#1B5E8C` |
-| claro | `#8E2A20` | `#B23718` | `#C25217` | `#C07A3E` | `#B5840F` | `#5E93AC` | `#2A7BA5` | `#123F63` |
+| # | 0 | 1 | **2** | 3 | 4 | **5** | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| escuro | `#A37729` | `#B98C1E` | **`#C9A227`** | `#E1BD46` | `#CDA839` | **`#9C7A1E`** | `#25537C` | `#17325A` | `#102145` |
+| claro | `#6B4800` | `#7C5A00` | `#896C05` | `#8C7109` | `#896C0B` | `#755900` | `#11446D` | `#0E2951` | `#091738` |
 
-`espectro(i, isLight)` dá a cor n com laço.
+Em negrito, os dois amarelos que o Davi escolheu, exatos, no tema escuro.
+
+**Nove, e não oito.** Cada barra vai da sua cor à da seguinte, então a última
+barra precisa de um passo além do fim. Com oito, o laço de `espectro()` levava
+a última barra de marinho de volta ao bronze. Travado por asserção.
+
+**O hex manda, não o oklch.** O Davi mandou os dois tons em hex *e* em oklch
+"aprox.", e os dois discordam: `oklch(0.72 0.17 84)` está fora do sRGB e o
+navegador cortaria para `#D69900` — mais laranja e mais saturado que `#C9A227`.
+Vale o hex, que é a cor que ele de fato vê. Os oklch reais são L .728 C .138
+H 90 e L .597 C .112 H 87.
+
+**O tema claro repete os matizes com a luminosidade rebaixada.** Sobre branco,
+os tons originais não passam de 4.5:1 — e o número da barra é texto de 13px
+pintado com a cor da barra.
+
+#### A ponte
+
+Interpolar ocre até marinho em sRGB passa **obrigatoriamente pelo cinza**: o
+ponto médio de `#9C7A1E` com `#25537C` é `#61674D`, croma 0.04, um oliva
+lavado. `PONTE` (`#05585F` no escuro, `#00474E` no claro) é o desvio — um
+petróleo fundo que põe as duas metades da emenda acima de 0.07 de croma.
+
+A barra da emenda (`EMENDA = 5`) e o arco da rosca levam a ponte como parada
+extra no meio. Quem escolhe a cor da transição somos nós, não a interpolação.
+
+#### A rampa de texto
+
+`ESPECTRO_TEXTO` existe porque os azuis do fim são escuros **de propósito**:
+como preenchimento de barra funcionam, como número de 13px sobre preto somem
+(1,4:1). Nos seis amarelos as duas rampas são idênticas; nos três azuis a de
+texto sobe de luminosidade mantendo o matiz. No tema claro os azuis já
+contrastam de sobra e a rampa é a mesma.
+
+`espectro(i, isLight)` dá o preenchimento; `espectroTexto(i, isLight)` dá o
+rótulo; `degradePrisma(isLight, angulo)` dá a rampa inteira em CSS, com ponte.
 
 ### 11.3 Prazo → cor de fundo do card
 
@@ -679,12 +715,18 @@ aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
 A linha do "onde NÃO" do granulado é uma correção do Davi: sobre o arco de 14px
 da rosca ele serrilhou a borda em vez de dar textura. Granulado quer área.
 
-**O degradê não vai atrás dos dados.** Cheguei a pôr a imagem inteira borrada
-sob vidro fosco nos quatro painéis do topo; o Davi mandou reverter
-(2026-08-20). O motivo vale guardar: com quatro caixas coloridas em sequência,
-o painel superior virou o assunto da tela — e o assunto é o quadro embaixo. O
-degradê mora nos **dados** (barras, arco, números), não atrás deles. Os painéis
-usam a superfície normal do sistema, `card()`, a mesma dos tiles de indicador.
+**O degradê não vai atrás dos dados — vai atrás do convite.** Cheguei a pôr a
+imagem borrada sob vidro nos quatro painéis do topo; o Davi mandou reverter
+(2026-08-20). Com quatro caixas coloridas em sequência, o painel superior virava
+o assunto da tela, e o assunto é o quadro embaixo.
+
+A exceção, que ele pediu no mesmo dia, prova a regra: **"Abrir chamado" é o
+único painel com o degradê no fundo** (`.campo-degrade`). Ali não há dado para
+competir — é um convite a escrever, e a cor faz o convite. Granulado em **0.10**
+contra 0.38 do resto: quase invisível, presente só para quebrar o *banding* que
+um blur de 46px produz num degradê tão liso.
+
+Os outros três painéis usam `card()`, a superfície normal do sistema.
 
 ### 11.5 Um amarelo só
 

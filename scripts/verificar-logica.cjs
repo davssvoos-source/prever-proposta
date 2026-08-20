@@ -359,5 +359,52 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      A.faixaPrazo({ ...base, prazoLimite: new Date(2026, 7, 23, 20, 0).toISOString() }, seg), 'esta_semana');
 }
 
+// ── A rampa de cor (v5.1) ──────────────────────────────────────────────────
+{
+  const P = carregar('src/lib/paleta.ts');
+  const croma = (hex) => {  // croma oklch, para provar que a emenda não lava
+    const fi = (x) => (x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+    const n = parseInt(hex.slice(1), 16);
+    const r = fi(((n >> 16) & 255) / 255), g = fi(((n >> 8) & 255) / 255), b = fi((n & 255) / 255);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return Math.hypot(1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2,
+                      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2);
+  };
+  const meio = (a, b) => {
+    const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const [x, y] = [p(a), p(b)];
+    return '#' + x.map((v, i) => Math.round((v + y[i]) / 2).toString(16).padStart(2, '0')).join('');
+  };
+
+  // NOVE passos, não oito: a última barra vai da cor 7 à cor 8. Com oito, o
+  // laço de espectro() levava marinho de volta a bronze.
+  eq('espectro escuro tem 9 passos', P.ESPECTRO.dark.length, 9);
+  eq('espectro claro tem 9 passos', P.ESPECTRO.light.length, 9);
+  eq('rampa de texto acompanha o tamanho', P.ESPECTRO_TEXTO.dark.length, 9);
+
+  // os dois amarelos do Davi entram exatos no tema escuro
+  eq('Amarelo 1 do Davi está no passo 2', P.ESPECTRO.dark[2], '#C9A227');
+  eq('Amarelo 2 do Davi está no passo 5', P.ESPECTRO.dark[5], '#9C7A1E');
+
+  // a ponte existe justamente para a emenda não passar pelo cinza
+  const semPonte = croma(meio(P.ESPECTRO.dark[P.EMENDA], P.ESPECTRO.dark[P.EMENDA + 1]));
+  eq('sem ponte a emenda LAVA (é por isso que ela existe)', semPonte < 0.05, true);
+  eq('com ponte, a primeira metade tem croma',
+     croma(meio(P.ESPECTRO.dark[P.EMENDA], P.PONTE.dark)) > 0.06, true);
+  eq('com ponte, a segunda metade tem croma',
+     croma(meio(P.PONTE.dark, P.ESPECTRO.dark[P.EMENDA + 1])) > 0.06, true);
+
+  // o texto nunca usa os azuis escuros do preenchimento
+  eq('rótulo do azul escuro é erguido, não é a cor da barra',
+     P.ESPECTRO_TEXTO.dark[7] !== P.ESPECTRO.dark[7], true);
+  eq('nos amarelos, rótulo e preenchimento são a mesma cor',
+     P.ESPECTRO_TEXTO.dark.slice(0, 6).join() === P.ESPECTRO.dark.slice(0, 6).join(), true);
+
+  // o degradê CSS carrega a ponte
+  eq('degradePrisma inclui a ponte', P.degradePrisma(false).includes(P.PONTE.dark), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

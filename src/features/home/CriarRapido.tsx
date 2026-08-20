@@ -7,6 +7,12 @@
 // o modo de voz (o blob gigante de IA) — o pedido foi "escrever texto e
 // colocar arquivo"; e o degradê roxo do botão de envio virou o da marca.
 //
+// É o ÚNICO painel do topo com o degradê no fundo (pedido do Davi, 2026-08-20):
+// nos gráficos ele competia com os dados, aqui não há dado nenhum para competir
+// — é um convite a escrever, e a cor faz o convite. Granulado em 10%, quase
+// invisível: o pouco que sobrou existe para quebrar o banding do blur de 46px,
+// que num degradê tão liso apareceria em faixas.
+//
 // O fluxo: o texto vai para a IA interpretar (chamado-rapido.functions.ts),
 // o chamado é criado pelo MESMO abrirChamado() do formulário — mesmos
 // triggers, mesmas policies, nenhum segundo caminho de escrita — e os anexos
@@ -21,7 +27,7 @@ import { ArrowUp, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA } from "@/lib/paleta";
+import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA, degradePrisma } from "@/lib/paleta";
 import { interpretarChamado } from "@/lib/chamado-rapido.functions";
 import { abrirChamado, anexarFoto } from "@/features/chamados/data";
 
@@ -93,7 +99,9 @@ export function CriarRapido() {
   const temTexto = texto.trim().length > 0;
 
   return (
-    <div className="elevavel" style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div className="elevavel campo-degrade" style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <div className="campo-degrade-fundo" aria-hidden style={{ background: degradePrisma(isLight, "150deg") }} />
+      <div className="campo-degrade-conteudo">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={MICRO}>Abrir chamado</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
@@ -116,7 +124,9 @@ export function CriarRapido() {
           padding: "10px 12px",
           borderRadius: 14,
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-          background: isLight ? "rgba(255,255,255,0.55)" : "rgba(10,10,15,0.45)",
+          // sobre o degradê a caixa precisa de mais corpo, senão o texto
+          // digitado disputa com a cor de trás
+          background: isLight ? "rgba(255,255,255,0.72)" : "rgba(10,10,15,0.62)",
           color: textPrimary,
           fontFamily: FONT,
           fontWeight: 400,
@@ -211,6 +221,7 @@ export function CriarRapido() {
             ? <Loader2 size={16} className="animate-spin" />
             : <ArrowUp size={16} strokeWidth={2.5} />}
         </button>
+      </div>
       </div>
     </div>
   );

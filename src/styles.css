@@ -632,6 +632,47 @@ input::placeholder, textarea::placeholder {
   opacity: 0.55;
 }
 
+/* ── Degradê de fundo do campo de abrir chamado ────────────────────────────
+   Só aqui. Nos gráficos o degradê disputava com os dados; neste painel não há
+   dado — é um convite a escrever, e a cor faz o convite.
+   O `inset: -35%` evita que o blur puxe transparência das bordas e deixe um
+   halo esbranquiçado nos cantos. O granulado é 0.10 (contra 0.38 do resto):
+   praticamente invisível, presente só para quebrar o banding do blur. */
+.campo-degrade { position: relative; overflow: hidden; isolation: isolate; }
+.campo-degrade > .campo-degrade-fundo {
+  position: absolute;
+  inset: -35%;
+  z-index: 0;
+  filter: blur(46px) saturate(1.15);
+  opacity: 0.62;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+html[data-theme="light"] .campo-degrade > .campo-degrade-fundo { opacity: 0.30; }
+.campo-degrade::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: var(--ruido);
+  background-size: 140px 140px;
+  mix-blend-mode: soft-light;
+  opacity: 0.10;
+}
+.campo-degrade > .campo-degrade-conteudo {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+@media (hover: hover) and (pointer: fine) {
+  .campo-degrade:hover > .campo-degrade-fundo { opacity: 0.80; }
+  html[data-theme="light"] .campo-degrade:hover > .campo-degrade-fundo { opacity: 0.42; }
+}
+
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
 .ruido { position: relative; isolation: isolate; }
 .ruido::after {
