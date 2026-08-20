@@ -522,10 +522,10 @@ input::placeholder, textarea::placeholder {
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  margin-left: -16px;
-  margin-right: -16px;
-  padding-left: 16px;
-  padding-right: 16px;
+  /* margens NÃO moram aqui: são da .sangra-x, aplicada junto no JSX. Quando
+     moravam, esta regra vinha depois no arquivo e vencia a sangria no
+     desktop — os filtros nasciam na margem do <main>, e o quadro na da
+     tela: o desalinhamento do "quadrado vermelho" do Davi. */
 }
 .barra-filtros::-webkit-scrollbar { display: none; height: 0; }
 @media (min-width: 1024px) {

@@ -1671,3 +1671,41 @@ sem elemento extra nem `filter: blur`, que força camada de composição); e o t
 escuro ganhou tratamento próprio, porque o original é claro-only e a pílula
 branca sobre preto fica estridente. No desktop mora na faixa superior; no
 celular continua abrindo pela lupa, onde não há largura para os dois.
+
+### U17 — Quadro de página única, gráficos da faixa superior e alinhamentos (2026-08-20)
+
+Pedidos sobre o desenho anotado do Davi (quadrado vermelho e azul no print):
+
+**Quadrado vermelho — filtros na margem do quadro.** A causa era uma briga de
+CSS: `.barra-filtros` declarava as próprias margens de celular e, por vir
+depois no arquivo, vencia a `.sangra-x` no desktop — os filtros nasciam na
+margem do `<main>` e o quadro na da tela. As margens saíram da `.barra-filtros`;
+a sangria manda nos dois breakpoints.
+
+**Quadrado azul — busca desce para a barra de filtros.** A busca saiu da faixa
+superior e mora no fim da barra, com os botões (alternador de visão) à esquerda
+dela, encostada na margem direita do quadro.
+
+**Quadro vira página única.** Reversão consciente da decisão da U10 (altura
+fixa + rolagem por coluna): *"o kanban seja tudo uma página só — se o usuário
+scrolla para baixo, a página toda desce"*. A coluna cresce até o conteúdo e
+quem rola é a página. O handler de roda saiu inteiro — e com ele as pendências
+P2, P6 e P9 ficaram **sem objeto** (a normalização de deltaMode do Firefox, a
+delegação por coluna e a inércia do trackpad só existiam por causa dele). O
+teto de 25 + "ver mais" por coluna continua: nada some.
+
+**Gráficos da faixa superior** (`Graficos.tsx`, desktop):
+
+1. *Entregas por semana* — semana atual + 4, semanas de segunda a domingo
+   (mesma régua de `lib/periodos`, a do financeiro). Cada **pedaço arredondado
+   é UM chamado** (referência Nixtio), na cor do status — vermelho quando o
+   prazo estourou — e clicável: abre o chamado. Teto de 10 pedaços por semana
+   com "+N". Entram as atividades em aberto com prazo.
+2. *Meta do mês* — rosca com % das prioridades do mês concluídas. O mapeamento
+   da reunião de alinhamento JÁ EXISTE no sistema: é o sprint `este_mes` dos
+   chamados internos. A rosca é pessoal (conta o que é do usuário logado) e
+   consulta o banco à parte de propósito: a Home poda encerrados com mais de
+   7 dias, e uma meta mensal que esquece o que foi concluído no início do mês
+   estaria sempre errada na última semana. Verde quando bate 100%.
+
+Nenhuma migration.

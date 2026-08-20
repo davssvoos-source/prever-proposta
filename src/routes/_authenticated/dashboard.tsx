@@ -42,6 +42,7 @@ import {
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { CampoBusca } from "@/features/home/CampoBusca";
+import { GraficoSemanas, GraficoMeta } from "@/features/home/Graficos";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
@@ -293,21 +294,19 @@ function Home() {
             direita do quadro; o meio fica livre de propósito — o Davi vai
             definir o que entra. */}
         <div className="so-desktop sangra-x" style={{ alignItems: "center", gap: 16, paddingTop: 8, paddingBottom: 2 }}>
-          <div style={{ minWidth: 0 }}>
-            <h1 style={{
-              fontFamily: FONT, fontWeight: 600, fontSize: 24, margin: 0,
-              color: textPrimary, letterSpacing: "-0.01em",
-            }}>
-              Suas atividades
-            </h1>
-          </div>
+          <h1 style={{
+            fontFamily: FONT, fontWeight: 600, fontSize: 24, margin: 0,
+            color: textPrimary, letterSpacing: "-0.01em",
+          }}>
+            Suas atividades
+          </h1>
+        </div>
 
-          <div style={{ flex: 1, minWidth: 24 }} />
-
-          <CampoBusca
-            valor={filtros.busca}
-            onMudar={(v) => setFiltros((f) => ({ ...f, busca: v }))}
-          />
+        {/* Os dois gráficos da faixa superior (U17): entregas por semana, com
+            cada pedaço sendo um chamado clicável, e a rosca da meta do mês. */}
+        <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch" }}>
+          <GraficoSemanas atividades={atividades} onAbrir={abrir} />
+          <GraficoMeta userId={s.userId} />
         </div>
 
         <ProximaVisita
@@ -418,6 +417,14 @@ function Home() {
                   deixaria as duas telas incoerentes entre si */}
               {visao === "lista" ? <KanbanSquare size={17} color={gold} /> : <ListIcon size={17} color={gold} />}
             </button>
+            {/* no desktop a busca mora aqui, depois dos botões — encostada na
+                margem direita do quadro, como o Davi desenhou */}
+            <div className="so-desktop" style={{ width: 300, flexShrink: 0 }}>
+              <CampoBusca
+                valor={filtros.busca}
+                onMudar={(v) => setFiltros((f) => ({ ...f, busca: v }))}
+              />
+            </div>
           </div>
         )}
 

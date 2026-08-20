@@ -1,34 +1,19 @@
-// O quadro por status. Território novo: não existia kanban neste app.
+// O quadro por status — página única (U17).
 //
-// Quatro decisões que vieram da revisão adversarial, e o porquê de cada uma:
+// A primeira versão tinha altura fixa com rolagem interna por coluna, para o
+// cabeçalho nunca sair da tela. O Davi decidiu o contrário: "o kanban seja
+// tudo uma página só — se o usuário scrolla para baixo, a página toda desce,
+// não seja separado por status o scroll". Então:
 //
-// 1. ALTURA FIXA COM ROLAGEM POR COLUNA. Deixar a coluna crescer e a página
-//    rolar parece mais simples e é pior: a 600px de rolagem o cabeçalho — a
-//    única coisa que diz o que a coluna significa — sai da tela, e a partir
-//    dali se arrasta de lado às cegas. Pior ainda, com "Aberto" em 20 cards e
-//    "Cancelado" em 2, arrastar lá embaixo mostra espaço em branco e parece
-//    coluna vazia. Altura fixa resolve os dois.
+// · a coluna cresce até o próprio conteúdo e quem rola é a página;
+// · a roda do mouse NÃO é mais traduzida em rolagem lateral — roda é página,
+//   como em qualquer página (o handler de wheel, com a normalização de
+//   deltaMode do Firefox e a delegação por coluna, saiu junto; as pendências
+//   P2/P6/P9 ficam sem objeto);
+// · o trilho continua rolando de lado (barra escondida, .trilho-x) para as
+//   colunas que não cabem, e a posição lateral segue voltando ao reabrir.
 //
-// 2. COLUNA DE 260px, NÃO 300. Num aparelho de 375px, 300px deixa 31px da
-//    próxima coluna aparecendo — isso lê como padding, não como "tem mais
-//    coisa aqui". 260px deixa ~75px, que lê de verdade. O espião é a única
-//    pista de que rola de lado: o Chrome do Android não mostra barra.
-//
-// 3. `overscroll-behavior` CONTIDO. Sem isto, arrastar até o fim de uma coluna
-//    continua na página, e arrastar para baixo no topo dispara o pull-to-refresh
-//    do Android — que aqui é recarga completa com cache frio, refazendo auth e
-//    todas as consultas.
-//
-// 4. A POSIÇÃO VOLTA. Abrir um card na coluna 6 e voltar recaindo na coluna 1
-//    é o imposto clássico de kanban em celular: o roteador não restaura offset
-//    de container interno. Guardamos em sessionStorage.
-//
-// 5. NO DESKTOP O QUADRO SANGRA ATÉ AS BORDAS e a roda do mouse rola de lado.
-//    Um trilho horizontal não responde à roda vertical — sem tradução, quem
-//    está no mouse precisa arrastar a barra, e a barra está escondida. A
-//    conversão só acontece quando NÃO há para onde rolar na vertical dentro da
-//    coluna sob o cursor, senão a roda deixaria de ler a coluna, que é o
-//    gesto mais frequente.
+// O teto de renderização por coluna continua: 25 + "ver mais" — nada some.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -74,49 +59,6 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
     return () => el.removeEventListener("scroll", guardar);
   }, []);
 
-  // Roda do mouse → rolagem lateral. Precisa de `passive: false` para poder
-  // chamar preventDefault, e por isso não dá para usar onWheel do React, que
-  // registra passivo. Trackpad com gesto horizontal (deltaX) passa direto.
-  useEffect(() => {
-    const el = trilhoRef.current;
-    if (!el) return;
-    const naRoda = (e: WheelEvent) => {
-      if (e.ctrlKey) return;                       // zoom do navegador
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;  // já é lateral
-
-      // Se a coluna sob o cursor ainda tem para onde rolar na vertical, a roda
-      // é dela. Só quando ela chega ao fim é que o movimento vira lateral.
-      //
-      // A busca é pela COLUNA e daí para o corpo, não direto pelo corpo: o
-      // cabeçalho é irmão do corpo, não ancestral, então com o cursor sobre o
-      // título da coluna o `closest` devolvia null e a roda arrastava o quadro.
-      const raiz = (e.target as HTMLElement)?.closest?.("[data-coluna]") as HTMLElement | null;
-      const coluna = raiz?.querySelector("[data-corpo-coluna]") as HTMLElement | null;
-      if (coluna) {
-        const sobra = coluna.scrollHeight - coluna.clientHeight - coluna.scrollTop;
-        if (e.deltaY > 0 && sobra > 1) return;
-        if (e.deltaY < 0 && coluna.scrollTop > 0) return;
-      }
-
-      // Firefox entrega deltaMode=1 (LINHAS, deltaY≈3); Chrome entrega pixels
-      // (≈100). Sem normalizar, o quadro andava 3px por clique no Firefox.
-      const passo =
-        e.deltaMode === 1 ? e.deltaY * 16 :
-        e.deltaMode === 2 ? e.deltaY * el.clientWidth :
-        e.deltaY;
-
-      const max = el.scrollWidth - el.clientWidth;
-      if (max <= 0) return;
-      const alvo = el.scrollLeft + passo;
-      // no limite, devolve a roda para a página em vez de travar o gesto
-      if ((passo < 0 && el.scrollLeft <= 0) || (passo > 0 && el.scrollLeft >= max)) return;
-      e.preventDefault();
-      el.scrollLeft = alvo;
-    };
-    el.addEventListener("wheel", naRoda, { passive: false });
-    return () => el.removeEventListener("wheel", naRoda);
-  }, []);
-
   const porColuna = new Map<ColunaQuadro, Atividade[]>();
   for (const c of COLUNAS) porColuna.set(c, []);
   porColuna.set("sem_status", []);
@@ -137,7 +79,6 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
 
   const COLUNA: CSSProperties = {
     width: LARGURA_COLUNA,
-    height: "100%",
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
@@ -151,14 +92,8 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
     <div
       ref={trilhoRef}
       className="trilho-x sangra-x"
-      style={{
-        // altura fixa: é o que mantém o cabeçalho na tela e as colunas
-        // do mesmo tamanho, para não se arrastar de lado para o vazio
-        height: "min(64vh, 680px)",
-        minHeight: 340,
-      }}
     >
-      <div style={{ display: "flex", gap: 10, minWidth: "max-content", height: "100%", paddingBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, minWidth: "max-content", paddingBottom: 4 }}>
         {colunas.map((c) => {
           const itens = porColuna.get(c) ?? [];
           const cor = colunaCores(c);
@@ -201,18 +136,11 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
               </div>
 
               <div
-                data-corpo-coluna
-                className="rolagem-fina"
                 style={{
-                flex: 1,
-                overflowY: "auto",
-                overscrollBehavior: "contain",
-                WebkitOverflowScrolling: "touch",
                 padding: 10,
                 display: "flex",
                 flexDirection: "column",
                 gap: 9,
-                minHeight: 0,
               }}
               >
                 {itens.length === 0 ? (

@@ -2,9 +2,10 @@
 
 Registro formal do que a revisão adversarial encontrou.
 
-**Situação em 2026-08-20:** dos 12 itens, **9 foram corrigidos** — todos os
-CONFIRMADOS mais dois dos A CONFIRMAR que se verificaram no caminho. Restam 3,
-marcados como PENDENTE abaixo. O histórico dos resolvidos fica aqui de
+**Situação em 2026-08-20 (fim do dia):** dos 12 itens, 9 foram corrigidos e
+3 (P2, P6, P9) ficaram **sem objeto** — o handler de roda do quadro, origem dos
+três, foi removido quando o kanban virou página única (U17). Pendente de
+verdade resta só o **P7**. O histórico dos resolvidos fica aqui de
 propósito: quando um deles voltar, o caminho de quebra já está escrito.
 
 Este documento existe para que nada aqui vire descoberta futura. Cada item traz
@@ -52,7 +53,7 @@ z-index não resolve, porque o problema não é o valor.
 
 ## P2 · ALTO · A roda do mouse anda 3px por clique no Firefox
 
-**Status:** **RESOLVIDO** (2026-08-20) — `deltaMode` normalizado (linhas ×16, páginas × largura).
+**Status:** **SEM OBJETO** desde a U17 — o handler de roda foi removido inteiro: o quadro virou página única e a roda rola a página, como o Davi pediu.
 **Arquivo:** `src/features/home/Quadro.tsx`, handler `naRoda`
 
 **Como quebra.** O handler usa `e.deltaY` cru. O Firefox entrega
@@ -133,7 +134,7 @@ texto do botão fechado quando o valor é o padrão.
 
 ## P6 · MÉDIO · Roda sobre o cabeçalho da coluna arrasta o quadro
 
-**Status:** **RESOLVIDO** (2026-08-20) — busca por `[data-coluna]` e daí para o corpo.
+**Status:** **SEM OBJETO** desde a U17 — o handler de roda foi removido inteiro (quadro de página única).
 **Arquivo:** `src/features/home/Quadro.tsx`, `naRoda`
 
 **Como quebra.** A delegação usa `closest("[data-corpo-coluna]")`. O cabeçalho
@@ -182,7 +183,7 @@ de pular.
 
 ## P9 · MÉDIO · Inércia do trackpad vaza para o quadro
 
-**Status:** PENDENTE · a confirmar
+**Status:** **SEM OBJETO** desde a U17 — a inércia do trackpad só vazava por causa do handler de roda, que não existe mais.
 **Arquivo:** `src/features/home/Quadro.tsx`, `naRoda`
 
 **Como quebra (alegado).** No macOS, terminar uma rolagem vertical dentro da
