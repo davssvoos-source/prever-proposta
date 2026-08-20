@@ -1842,3 +1842,32 @@ ficha e pela RPC de decisão). HTML5 DnD não dispara em toque: no celular o
 quadro segue de leitura e mover é pela página do chamado.
 
 Nenhuma migration.
+
+### U22 — Redesign v4: minimalismo apple-like (2026-08-20)
+
+Reforma sobre as diretrizes de minimalismo que o Davi colou. **Nenhuma
+migration.** Publicado sem revisão adversarial a pedido ("não gaste créditos
+revisando — progrida e suba").
+
+- **Tipografia**: UMA família, a da plataforma (SF/Segoe/Roboto via
+  `--fonte`), trocada em 56+ arquivos num sweep; peso 300 virou 400 (o thin do
+  Montserrat não existe bem em SF); o webfont do Google saiu do `__root` — a
+  página não baixa mais fonte nenhuma.
+- **Fundo**: degradê de preto (escuro) e de tons de branco (claro), puros. O
+  Yellow Glow (manchas/grade/granulado) saiu — fundo é silêncio, profundidade
+  vem de sombra e vidro.
+- **Superfícies**: `card()` virou NEO-MINIMAL — sólido, canto 18, sombra leve
+  em duas camadas. `vidro()` novo, reservado aos PAINÉIS: os dois gráficos,
+  sidebar e popovers. Racional dado ao Davi: vidro em tudo sobre fundo liso é
+  ruído; em pontos escolhidos é hierarquia de material.
+- **Card de atividade**: sólido, ponto de status no título no lugar da borda
+  lateral colorida, chips sem borda (só tinta), atrasado segue vermelho
+  (agora em tom mais contido).
+- **Kanban**: as colunas perderam a caixa — cards flutuam no fundo, coluna é
+  cabeçalho + pilha ("whitespace no lugar de divisores"). O alvo do arrasto é
+  um banho dourado leve.
+- **Hover em tudo** (`.elevavel`, `.hover-suave`, `.barra-demanda`,
+  `.kpi-tile`, `.rosca-meta`): cards levantam 2px com sombra maior, barras do
+  gráfico crescem e clareiam com tooltip nativo, número do KPI escala, rosca
+  escala, itens de menu/notificação/opção ganham fundo — tudo atrás de
+  `(hover:hover) and (pointer:fine)`, porque no toque hover é fantasma.

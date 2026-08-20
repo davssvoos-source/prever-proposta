@@ -275,7 +275,7 @@ function OrcamentoPasso1() {
       };
 
   const LABEL: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
@@ -301,7 +301,7 @@ function OrcamentoPasso1() {
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
   };
   const TITULO: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 18,
     color: isLight ? "#0a0b0e" : "#fff",
@@ -314,7 +314,7 @@ function OrcamentoPasso1() {
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
     color: "#08090E",
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 13,
     letterSpacing: "0.18em",
@@ -330,7 +330,7 @@ function OrcamentoPasso1() {
   // Aguarda saber o tipo de local para decidir qual 1ª tela mostrar
   if (visita === undefined) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+      <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "var(--fonte)", fontSize: 13 }}>
         Carregando…
       </div>
     );
@@ -390,7 +390,7 @@ function OrcamentoPasso1() {
                       : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                     color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
                     boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: 600,
                     fontSize: 14,
                     letterSpacing: "0.04em",
@@ -412,7 +412,7 @@ function OrcamentoPasso1() {
         </div>
 
         {erroVisible && (
-          <p style={{ color: "#ff4d4f", fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+          <p style={{ color: "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
             {erroVisible}
           </p>
         )}
@@ -455,7 +455,7 @@ function OrcamentoPasso1() {
         <div style={{ flex: 1 }}>
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
               color: isLight ? "#0a0b0e" : "#fff",
@@ -504,7 +504,7 @@ function OrcamentoPasso1() {
               fontSize: 36,
               textAlign: "center",
               width: 120,
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               appearance: "none",
               MozAppearance: "textfield",
             }}
@@ -598,7 +598,7 @@ function OrcamentoPasso1() {
                     : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                   color: selected ? "#08090E" : (isLight ? "#0a0b0e" : "#fff"),
                   boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: 600,
                   fontSize: 11,
                   cursor: "pointer",
@@ -642,7 +642,7 @@ function OrcamentoPasso1() {
                     : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
                   color: selected ? "#08090E" : (isLight ? "#0a0b0e" : "#fff"),
                   boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: 600,
                   fontSize: 11,
                   cursor: "pointer",
@@ -668,7 +668,7 @@ function OrcamentoPasso1() {
 
       {/* Botão próxima etapa */}
       {erroVisible && (
-        <p style={{ color: '#ff4d4f', fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
+        <p style={{ color: '#ff4d4f', fontFamily: "var(--fonte)", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
           {erroVisible}
         </p>
       )}
@@ -683,8 +683,8 @@ function OrcamentoPasso1() {
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
             color: "#08090E",
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
+            fontFamily: "var(--fonte)",
+            fontWeight: 400,
             fontSize: 13,
             letterSpacing: "0.18em",
             textTransform: "uppercase",

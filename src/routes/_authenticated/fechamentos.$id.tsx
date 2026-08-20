@@ -109,7 +109,7 @@ function FechamentoDetalhePage() {
           <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 18 }}>
             {rotuloReferencia(f.referencia)}
           </div>
-          <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
             {f.tipo === "semanal" ? "Semanal" : "Mensal"} ·{" "}
             {f.inicio.split("-").reverse().join("/")} a {f.fim.split("-").reverse().join("/")}
             {fechado && f.fechado_em && ` · fechado em ${new Date(f.fechado_em).toLocaleDateString("pt-BR")}`}
@@ -137,7 +137,7 @@ function FechamentoDetalhePage() {
         <span style={{ fontFamily: FONT, fontSize: 30, fontWeight: 700, color: gold }}>
           {moeda(total)}
         </span>
-        <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 300, color: textSecondary }}>
+        <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 400, color: textSecondary }}>
           {cobrancas.length} cobrança(s)
         </span>
       </div>
@@ -199,7 +199,7 @@ function FechamentoDetalhePage() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600 }}>{g.nome}</div>
                     {g.documento && (
-                      <div style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 300, color: textSecondary }}>
+                      <div style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 400, color: textSecondary }}>
                         {formatarDocumento(g.documento)}
                       </div>
                     )}
@@ -214,7 +214,7 @@ function FechamentoDetalhePage() {
                       <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary, flexShrink: 0 }}>
                         {it.data_referencia.split("-").reverse().join("/")}
                       </span>
-                      <span style={{ flex: 1, fontFamily: FONT, fontSize: 11.5, fontWeight: 300, color: textPrimary }}>
+                      <span style={{ flex: 1, fontFamily: FONT, fontSize: 11.5, fontWeight: 400, color: textPrimary }}>
                         {it.descricao}
                       </span>
                       <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 500, flexShrink: 0 }}>

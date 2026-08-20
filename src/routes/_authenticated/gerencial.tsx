@@ -183,7 +183,7 @@ function GerencialPage() {
         <div style={{ minWidth: 0 }}>
           <h1
             style={{
-              fontFamily: "Montserrat, sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 24,
               color: textPrimary,
@@ -195,8 +195,8 @@ function GerencialPage() {
           </h1>
           <p
             style={{
-              fontFamily: "Montserrat, sans-serif",
-              fontWeight: 300,
+              fontFamily: "var(--fonte)",
+              fontWeight: 400,
               fontSize: 13,
               color: textSecondary,
               letterSpacing: "0.08em",
@@ -233,7 +233,7 @@ function GerencialPage() {
                 gap: 8,
                 color: textPrimary,
                 boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-                fontFamily: "Montserrat, sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 13,
                 cursor: "pointer",
@@ -275,7 +275,7 @@ function GerencialPage() {
           >
             <div
               style={{
-                fontFamily: "Montserrat, sans-serif",
+                fontFamily: "var(--fonte)",
                 fontSize: 28,
                 fontWeight: 700,
                 color: s.color,
@@ -286,9 +286,9 @@ function GerencialPage() {
             </div>
             <div
               style={{
-                fontFamily: "Montserrat, sans-serif",
+                fontFamily: "var(--fonte)",
                 fontSize: 11,
-                fontWeight: 300,
+                fontWeight: 400,
                 color: textSecondary,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
@@ -316,7 +316,7 @@ function GerencialPage() {
       >
         <div
           style={{
-            fontFamily: "Montserrat, sans-serif", fontSize: 11, fontWeight: 600,
+            fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
             letterSpacing: "0.10em", textTransform: "uppercase",
             color: textSecondary, marginBottom: 14,
           }}
@@ -332,7 +332,7 @@ function GerencialPage() {
               <div style={{ minWidth: 74 }}>
                 <div
                   style={{
-                    fontFamily: "Montserrat, sans-serif", fontSize: 24, fontWeight: 700,
+                    fontFamily: "var(--fonte)", fontSize: 24, fontWeight: 700,
                     color: f.color, letterSpacing: "0.02em",
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -341,7 +341,7 @@ function GerencialPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "Montserrat, sans-serif", fontSize: 10, fontWeight: 300,
+                    fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400,
                     color: textSecondary, letterSpacing: "0.08em",
                     textTransform: "uppercase", marginTop: 2,
                   }}
@@ -354,7 +354,7 @@ function GerencialPage() {
         </div>
         <div
           style={{
-            fontFamily: "Montserrat, sans-serif", fontSize: 11, fontWeight: 300,
+            fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400,
             color: textSecondary, marginTop: 12, lineHeight: 1.5,
           }}
         >
@@ -374,7 +374,7 @@ function GerencialPage() {
           }}
         >
           <FileText size={40} style={{ marginBottom: 16, opacity: 0.3 }} />
-          <p style={{ fontFamily: "Montserrat, sans-serif", fontSize: 14 }}>
+          <p style={{ fontFamily: "var(--fonte)", fontSize: 14 }}>
             Nenhuma proposta cadastrada ainda.
           </p>
           <button
@@ -386,7 +386,7 @@ function GerencialPage() {
               borderRadius: 10,
               padding: "10px 24px",
               color: "#08090E",
-              fontFamily: "Montserrat, sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 13,
               cursor: "pointer",
@@ -443,7 +443,7 @@ function GerencialPage() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     style={{
-                      fontFamily: "Montserrat, sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontWeight: 600,
                       fontSize: 14,
                       color: textPrimary,
@@ -457,9 +457,9 @@ function GerencialPage() {
                   </div>
                   <div
                     style={{
-                      fontFamily: "Montserrat, sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontSize: 12,
-                      fontWeight: 300,
+                      fontWeight: 400,
                       color: textSecondary,
                       lineHeight: 1.5,
                       display: "flex",
@@ -487,7 +487,7 @@ function GerencialPage() {
                   <Icon size={14} color={cfg.color} />
                   <span
                     style={{
-                      fontFamily: "Montserrat, sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontSize: 11,
                       fontWeight: 600,
                       color: cfg.color,

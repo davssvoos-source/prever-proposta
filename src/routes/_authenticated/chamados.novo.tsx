@@ -115,13 +115,13 @@ function NovoChamadoPage() {
                 {t.titulo}
               </span>
               <span style={{
-                display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 12.5,
+                display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 12.5,
                 color: textSecondary, marginTop: 3, lineHeight: 1.5,
               }}>
                 {t.descricao}
               </span>
               <span style={{
-                display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 11,
+                display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 11,
                 color: gold, marginTop: 5,
               }}>
                 {t.exemplos}

@@ -151,7 +151,7 @@ function ProgramacaoPage() {
           <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: textPrimary }}>
             {o.titulo}
           </div>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 300, color: textSecondary, marginTop: 2 }}>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 2 }}>
             {o.numero} · {o.cliente?.nome ?? "cliente"}
           </div>
         </button>
@@ -337,7 +337,7 @@ function ProgramacaoPage() {
           >
             <div>
               <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 15 }}>{agendando.titulo}</div>
-              <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
+              <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
                 {agendando.numero} · {agendando.cliente?.nome ?? "cliente"}
               </div>
             </div>

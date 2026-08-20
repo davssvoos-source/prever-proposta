@@ -105,7 +105,7 @@ function ReagendarPage() {
   };
 
   return (
-    <div style={{ fontFamily: "'Montserrat', sans-serif", padding: "0 0 80px" }}>
+    <div style={{ fontFamily: "var(--fonte)", padding: "0 0 80px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0 20px" }}>
         <button
           onClick={() => navigate({ to: "/dashboard" })}

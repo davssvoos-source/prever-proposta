@@ -58,7 +58,7 @@
   --color-gold: var(--gold-primary);
   --color-gold-bright: var(--gold-bright);
   --color-gold-dim: var(--gold-dim);
-  --font-sans: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--fonte);
 }
 
 :root {
@@ -164,6 +164,11 @@
 
 @layer base {
   :root {
+    /* Tipografia v4 (apple-like): a fonte da PLATAFORMA — SF no Apple, Segoe
+       no Windows, Roboto no Android. Uma família só, hierarquia por peso e
+       tamanho, nunca por troca de fonte. */
+    --fonte: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+             Roboto, "Helvetica Neue", Arial, sans-serif;
     --rail: 0px;
     /* altura reservada ao header fixo. No desktop o header não existe (a
        identidade mora na sidebar e as notificações no painel da Início),
@@ -189,7 +194,7 @@
   html, body {
     background-color: var(--bg-base);
     color: var(--color-foreground);
-    font-family: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--fonte);
     -webkit-font-smoothing: antialiased;
     /* O quadro da Início se opera arrastando em todas as direções, e no topo
        da rolagem um arrasto para baixo dispara o pull-to-refresh do Android —
@@ -394,11 +399,11 @@
 
 /* Inputs/textarea — glass */
 input, textarea, select {
-  font-family: "Montserrat", sans-serif;
+  font-family: var(--fonte);
 }
 input::placeholder, textarea::placeholder {
   color: rgba(200,200,200,0.40);
-  font-weight: 300;
+  font-weight: 400;
 }
 
 /* ── Sidebar (desktop) × barra inferior (celular) ───────────────────────────
@@ -568,4 +573,25 @@ input::placeholder, textarea::placeholder {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   50%  { transform: translate3d(3%, -2%, 0) scale(1.08); }
   100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* ── Hover v4 — o investimento pedido: tudo que se toca responde ───────────
+   Só onde há ponteiro fino; no toque, hover é fantasma que gruda. */
+.elevavel { transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease; }
+@media (hover: hover) and (pointer: fine) {
+  .elevavel:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,0.40); }
+  html[data-theme="light"] .elevavel:hover { box-shadow: 0 14px 34px rgba(0,0,0,0.11); }
+
+  /* !important: vários alvos têm background inline transparente */
+  .hover-suave { transition: background .15s ease; }
+  .hover-suave:hover { background: rgba(120,120,128,0.14) !important; }
+
+  .barra-demanda { transform-origin: bottom; transition: transform .18s ease, filter .18s ease; }
+  .barra-demanda:hover { transform: scaleY(1.05); filter: brightness(1.18); }
+
+  .kpi-num { transition: transform .18s ease; }
+  .kpi-tile:hover .kpi-num { transform: scale(1.09); }
+
+  .rosca-meta { transition: transform .22s ease; }
+  .rosca-meta:hover { transform: scale(1.04); }
 }

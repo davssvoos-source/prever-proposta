@@ -333,8 +333,8 @@ function PainelChamadosPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={grafico.dados} margin={{ left: -18, right: 8, top: 4, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} />
-                    <XAxis dataKey="mes" tick={{ fill: textSecondary, fontSize: 10.5, fontFamily: "Montserrat" }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fill: textSecondary, fontSize: 10.5, fontFamily: "Montserrat" }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="mes" tick={{ fill: textSecondary, fontSize: 10.5, fontFamily: "var(--fonte)" }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fill: textSecondary, fontSize: 10.5, fontFamily: "var(--fonte)" }} axisLine={false} tickLine={false} />
                     <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
                     <Legend
                       formatter={(v: string) => (

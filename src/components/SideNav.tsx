@@ -162,7 +162,7 @@ export function SideNav() {
             ? pathname === "/dashboard" || pathname === "/"
             : pathname.startsWith(to);
           return (
-            <Link key={to} to={to} style={item(ativo)}>
+            <Link key={to} to={to} className={ativo ? undefined : "hover-suave"} style={item(ativo)}>
               <Icon size={17} style={{ flexShrink: 0 }} />
               {label}
             </Link>
@@ -181,6 +181,7 @@ export function SideNav() {
 
       <button
         onClick={() => navigate({ to: "/perfil" })}
+        className="hover-suave"
         style={{
           display: "flex",
           alignItems: "center",
@@ -222,7 +223,7 @@ export function SideNav() {
           </span>
           {perfil?.cargo && (
             <span style={{
-              display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 10,
+              display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 10,
               letterSpacing: "0.10em", textTransform: "uppercase",
               color: isLight ? SUPERNOVA[800] : SUPERNOVA[400],
             }}>

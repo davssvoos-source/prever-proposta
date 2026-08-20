@@ -133,8 +133,8 @@ function AuthPage() {
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
     color: textPrimary,
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     padding: "0 16px",
     outline: "none",
@@ -147,8 +147,8 @@ function AuthPage() {
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
     color: "#08090E",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 13,
     letterSpacing: "0.18em",
     textTransform: "uppercase",
@@ -159,15 +159,15 @@ function AuthPage() {
     background: "none",
     border: "none",
     cursor: "pointer",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 12,
     color: textSecondary,
     letterSpacing: "0.06em",
   };
   const LBL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
@@ -208,8 +208,8 @@ function AuthPage() {
           />
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
+              fontFamily: "var(--fonte)",
+              fontWeight: 400,
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -289,7 +289,7 @@ function AuthPage() {
                   fontSize: 15,
                   fontWeight: 500,
                   cursor: "pointer",
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   marginTop: 8,
                   transition: "all 0.2s",
                 }}
@@ -322,7 +322,7 @@ function AuthPage() {
               <div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: 500,
                     fontSize: 17,
                     color: isLight ? "#0a0b0e" : "#fff",
@@ -333,8 +333,8 @@ function AuthPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
+                    fontFamily: "var(--fonte)",
+                    fontWeight: 400,
                     fontSize: 12,
                     color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)",
                     lineHeight: 1.5,
@@ -372,10 +372,10 @@ function AuthPage() {
               >
                 <ArrowLeft size={14} /> Voltar para o login
               </button>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
                 Criar conta
               </div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>
                 Sua solicitação será analisada por um administrador.
               </div>
 

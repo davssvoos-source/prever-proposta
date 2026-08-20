@@ -8,7 +8,7 @@
 import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, VIDRO_BG_DARK, VIDRO_BG_LIGHT } from "@/lib/ui";
+import { FONT, card } from "@/lib/ui";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
   BOLA_LABEL, ALERTA_LABEL, type Atividade, type Cores,
@@ -26,7 +26,6 @@ export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
     letterSpacing: "0.04em",
     color: isLight ? c.light : c.dark,
     background: c.bg,
-    border: `1px solid ${c.border}`,
     whiteSpace: "nowrap",
   };
 }
@@ -51,22 +50,17 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   // Davi). Translúcido para seguir sendo vidro sobre o glow.
   const atrasada = a.emAberto && a.prazoEstourado;
 
+  // v4 neo-minimalista: superfície sólida, canto redondo, sombra leve — a
+  // borda colorida lateral saiu; o status virou um ponto discreto no título.
+  // Atrasada continua sendo o card inteiro em vermelho (pedido anterior).
   const CARD: CSSProperties = {
-    // vidro sobre o glow (v3) — no celular o blur sai via --vidro-blur
-    background: atrasada
-      ? (isLight ? "rgba(230,57,70,0.14)" : "rgba(139,30,45,0.45)")
-      : (isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK),
-    border: atrasada
-      ? (isLight ? "1px solid rgba(139,30,45,0.30)" : "1px solid rgba(230,57,70,0.40)")
-      : (isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.09)"),
-    borderLeft: `3px solid ${atrasada
-      ? (isLight ? "#8B1E2D" : "#E63946")
-      : (isLight ? a.statusCor.light : a.statusCor.dark)}`,
-    borderRadius: 14,
-    padding: "12px 13px",
-    boxShadow: isLight ? "0 4px 18px rgba(26,50,99,0.08)" : "0 4px 18px rgba(0,0,0,0.30)",
-    backdropFilter: "var(--vidro-blur)" as any,
-    WebkitBackdropFilter: "var(--vidro-blur)" as any,
+    ...card(isLight),
+    ...(atrasada ? {
+      background: isLight ? "rgba(230,57,70,0.08)" : "rgba(139,30,45,0.32)",
+      border: isLight ? "1px solid rgba(139,30,45,0.22)" : "1px solid rgba(230,57,70,0.32)",
+    } : {}),
+    borderRadius: 16,
+    padding: "12px 14px",
     width: "100%",
     textAlign: "left",
     cursor: "pointer",
@@ -76,14 +70,20 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   };
 
   return (
-    <button onClick={onClick} style={CARD}>
+    <button onClick={onClick} className="elevavel" style={CARD}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontFamily: FONT, fontWeight: 600, fontSize: 14, lineHeight: 1.35,
             color: textPrimary, textWrap: "pretty" as any,
+            display: "flex", alignItems: "baseline", gap: 7,
           }}>
-            {a.titulo}
+            <span aria-hidden style={{
+              width: 7, height: 7, borderRadius: 4, flexShrink: 0,
+              background: isLight ? a.statusCor.light : a.statusCor.dark,
+              transform: "translateY(-1px)",
+            }} />
+            <span style={{ minWidth: 0 }}>{a.titulo}</span>
           </div>
         </div>
         {mostrarStatus && (

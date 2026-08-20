@@ -60,7 +60,7 @@ function MigrarClientesPage() {
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SEC_LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 700,
     fontSize: 10,
     letterSpacing: "0.16em",
@@ -117,10 +117,10 @@ function MigrarClientesPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>
             Consolidar clientes
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             {pendentes.length} local{pendentes.length === 1 ? "" : "is"} a revisar
             {orfaos.length > 0 && ` · ${orfaos.length} cadastro${orfaos.length === 1 ? "" : "s"} vazio${orfaos.length === 1 ? "" : "s"}`}
           </div>
@@ -130,7 +130,7 @@ function MigrarClientesPage() {
       {/* Explicação */}
       <div style={{ ...CARD, display: "flex", gap: 12, alignItems: "flex-start" }}>
         <Wand2 size={18} color={gold} style={{ flexShrink: 0, marginTop: 2 }} />
-        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+        <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
           Cada grupo abaixo reúne as visitas de um mesmo prédio. Ao consolidar, os dados da visita mais
           recente formam o cadastro do cliente, todas as visitas do grupo passam a apontar para ele e os
           cadastros duplicados que ficarem sem uso são removidos. Revise o nome e o endereço antes —
@@ -139,16 +139,16 @@ function MigrarClientesPage() {
       </div>
 
       {isLoading ? (
-        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
           Analisando visitas…
         </div>
       ) : nada ? (
         <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 16px" }}>
           <Building2 size={28} color={gold} />
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14, fontWeight: 600 }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 14, fontWeight: 600 }}>
             Nenhuma visita para consolidar
           </span>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, textAlign: "center" }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
             Cadastre os clientes diretamente pela lista.
           </span>
         </div>
@@ -163,39 +163,39 @@ function MigrarClientesPage() {
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <Building2 size={18} color={gold} style={{ flexShrink: 0, marginTop: 2 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>
                           {g.nome || "(sem nome)"}
                         </div>
                         {g.endereco && (
                           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
                             <MapPin size={12} color={textSecondary} style={{ flexShrink: 0 }} />
-                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                            <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                               {g.endereco}
                             </span>
                           </div>
                         )}
                         <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                             {g.visitaIds.length} visita{g.visitaIds.length === 1 ? "" : "s"}
                           </span>
                           {g.clienteIds.length > 1 && (
-                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#A63E17" : "#F8C811" }}>
+                            <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#A63E17" : "#F8C811" }}>
                               {g.clienteIds.length} cadastros duplicados
                             </span>
                           )}
                           {g.tipoLocal && (
-                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                            <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                               {TIPO_LABEL[g.tipoLocal] ?? g.tipoLocal}
                             </span>
                           )}
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                             será {SITUACAO_LABEL[g.situacaoSugerida].toLowerCase()}
                           </span>
                         </div>
                         {g.nomeSindico && (
                           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
                             <Users size={11} color={textSecondary} style={{ flexShrink: 0 }} />
-                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                            <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                               {g.nomeSindico}
                               {g.telefoneSindico ? ` · ${g.telefoneSindico}` : ""}
                             </span>
@@ -213,7 +213,7 @@ function MigrarClientesPage() {
                         width: "100%", height: 44, marginTop: 12, borderRadius: 22, border: "none",
                         background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                         color: "#08090E",
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+                        fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
                         letterSpacing: "0.12em", textTransform: "uppercase",
                         cursor: processando ? "wait" : "pointer",
                         opacity: processando !== null && processando !== g.chave ? 0.5 : 1,
@@ -231,7 +231,7 @@ function MigrarClientesPage() {
             <>
               <span style={{ ...SEC_LABEL, marginTop: 6 }}>Cadastros vazios</span>
               <div style={{ ...CARD, padding: "12px 14px" }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
                   Sem endereço e sem nenhuma visita — sobraram do modelo antigo e podem ser descartados.
                 </span>
               </div>
@@ -239,7 +239,7 @@ function MigrarClientesPage() {
                 {orfaos.map((o) => (
                   <div key={o.id} style={{ ...CARD, display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
                     <Building2 size={16} color={textSecondary} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "var(--fonte)", fontSize: 13 }}>
                       {o.nome}
                     </span>
                     <button
@@ -254,7 +254,7 @@ function MigrarClientesPage() {
                         border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                         color: isLight ? "#B1242E" : "#F17881",
                         cursor: processando ? "wait" : "pointer",
-                        fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                        fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
                         opacity: processando !== null && processando !== o.id ? 0.5 : 1,
                       }}
                     >
@@ -273,10 +273,10 @@ function MigrarClientesPage() {
                 {prontos.map((g) => (
                   <div key={g.chave} style={{ ...CARD, display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
                     <CheckCircle2 size={16} color={verde} style={{ flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "var(--fonte)", fontSize: 13 }}>
                       {g.nome}
                     </span>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
                       {g.visitaIds.length} visita{g.visitaIds.length === 1 ? "" : "s"}
                     </span>
                   </div>

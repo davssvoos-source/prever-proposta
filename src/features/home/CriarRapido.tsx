@@ -96,7 +96,7 @@ export function CriarRapido() {
     <div style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={MICRO}>Abrir chamado</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
           descreva e a IA monta
         </span>
       </div>
@@ -181,7 +181,7 @@ export function CriarRapido() {
           <Paperclip size={16} />
         </button>
 
-        <span style={{ flex: 1, fontFamily: FONT, fontWeight: 300, fontSize: 10, color: textSecondary }}>
+        <span style={{ flex: 1, fontFamily: FONT, fontWeight: 400, fontSize: 10, color: textSecondary }}>
           {arquivos.length > 0
             ? `${arquivos.length} anexo${arquivos.length > 1 ? "s" : ""} · entram no chamado`
             : "Enter envia · Shift+Enter quebra linha"}

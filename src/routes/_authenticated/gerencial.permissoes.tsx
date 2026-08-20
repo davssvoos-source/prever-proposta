@@ -143,7 +143,7 @@ function PermissoesPage() {
         border: isLight ? "1px solid rgba(160,97,8,0.20)" : "1px solid rgba(248,200,17,0.20)",
       }}>
         <ShieldCheck size={15} color={gold} style={{ flexShrink: 0, marginTop: 1 }} />
-        <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+        <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
           <b style={{ color: textPrimary, fontWeight: 600 }}>Administrador sempre vê tudo</b> — por isso
           não tem coluna aqui. Isto controla a <b style={{ color: textPrimary, fontWeight: 600 }}>navegação</b>:
           impede de abrir a tela, mas não substitui a regra de dado. O técnico continua vendo só os
@@ -203,12 +203,12 @@ function PermissoesPage() {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary, marginTop: 1 }}>
+                      <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary, marginTop: 1 }}>
                         {t.rota}
                       </div>
                       {t.nota && (
                         <div style={{
-                          fontFamily: FONT, fontWeight: 300, fontSize: 10.5,
+                          fontFamily: FONT, fontWeight: 400, fontSize: 10.5,
                           color: gold, marginTop: 2, lineHeight: 1.35,
                         }}>
                           {t.nota}

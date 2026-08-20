@@ -119,8 +119,8 @@ function UsuariosPage() {
     border: isLight ? L.inputBorder : "1px solid rgba(248,200,17,0.18)",
     borderRadius: 10,
     color: isLight ? L.text : "#F0F2F5",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     padding: "11px 14px",
     outline: "none",
@@ -128,7 +128,7 @@ function UsuariosPage() {
   };
 
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 10,
     letterSpacing: "0.14em",
@@ -139,8 +139,8 @@ function UsuariosPage() {
   };
 
   const SECTION_TITLE: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 10,
     color: isLight ? "rgba(0,0,0,0.45)" : "rgba(248,200,17,0.55)",
     letterSpacing: "0.12em",
@@ -355,13 +355,13 @@ function UsuariosPage() {
         </button>
         <div style={{ flex: 1 }}>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 18,
+            fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 18,
             color: isLight ? L.text : "#fff",
           }}>
             Gerenciar Usuários
           </div>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
             color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
           }}>
             {ativos.length} ativo{ativos.length !== 1 ? "s" : ""}
@@ -374,7 +374,7 @@ function UsuariosPage() {
             background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
             border: "none", borderRadius: 12, padding: "10px 16px",
             display: "flex", alignItems: "center", gap: 8,
-            color: "#08090E", fontFamily: "Montserrat, sans-serif",
+            color: "#08090E", fontFamily: "var(--fonte)",
             fontWeight: 600, fontSize: 12, cursor: "pointer",
           }}
         >
@@ -387,7 +387,7 @@ function UsuariosPage() {
       {showInvite && (
         <div style={{ ...GLASS, marginBottom: 20 }}>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14,
+            fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 14,
             color: isLight ? L.text : "#fff", marginBottom: 16,
             display: "flex", alignItems: "center", gap: 8,
           }}>
@@ -435,13 +435,13 @@ function UsuariosPage() {
                       }}
                     >
                       <div style={{
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                        fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
                         color: isLight ? lightCfg.color : cfg.color,
                       }}>
                         {cfg.label}
                       </div>
                       <div style={{
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                        fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                         color: isLight ? L.textSub : "rgba(255,255,255,0.55)", marginTop: 2,
                       }}>
                         {cfg.desc}
@@ -459,7 +459,7 @@ function UsuariosPage() {
                   background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
-                  fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
+                  fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",
                 }}
               >
                 Cancelar
@@ -471,7 +471,7 @@ function UsuariosPage() {
                   flex: 2, padding: 12, borderRadius: 12,
                   background: "linear-gradient(135deg, #FCDE48, #F8C811)",
                   border: "none", color: "#08090E",
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600,
+                  fontFamily: "var(--fonte)", fontWeight: 600,
                   fontSize: 13, cursor: "pointer",
                   opacity: (inviteMutation.isPending || !inviteEmail.trim() || !inviteNome.trim()) ? 0.6 : 1,
                 }}
@@ -497,20 +497,20 @@ function UsuariosPage() {
                     border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: isLight ? "#A63E17" : "#F8C811",
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
                     flexShrink: 0,
                   }}>
                     {iniciais(s.nome ?? s.email)}
                   </div>
                   <div style={{ flex: 1, minWidth: 140 }}>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
                       color: isLight ? L.text : "#fff",
                     }}>
                       {s.nome ?? "—"}
                     </div>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                       color: isLight ? L.textMuted : "rgba(255,255,255,0.5)", marginTop: 2,
                     }}>
                       {s.email}
@@ -599,13 +599,13 @@ function UsuariosPage() {
               <div key={c.id} style={{ ...GLASS, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                    fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
                     color: isLight ? L.text : "#fff",
                   }}>
                     {c.nome}
                   </div>
                   <div style={{
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                     color: isLight ? L.textMuted : "rgba(255,255,255,0.5)",
                     display: "flex", alignItems: "center", gap: 6, marginTop: 2,
                   }}>
@@ -614,7 +614,7 @@ function UsuariosPage() {
                   </div>
                 </div>
                 <div style={{
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 10,
+                  fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
                   color: isLight ? "#A63E17" : "#F8C811",
                   padding: "4px 10px", borderRadius: 999,
                   background: isLight ? "#fef3c7" : "rgba(248,200,17,0.10)",
@@ -648,7 +648,7 @@ function UsuariosPage() {
                     border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: isLight ? "#A63E17" : "#F8C811",
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+                    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14,
                     overflow: "hidden", flexShrink: 0,
                   }}>
                     {u.avatar_url
@@ -657,20 +657,20 @@ function UsuariosPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 14,
+                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 14,
                       color: isLight ? L.text : "#fff",
                     }}>
                       {u.nome}
                     </div>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                       color: isLight ? L.textMuted : "rgba(255,255,255,0.5)", marginTop: 2,
                     }}>
                       {u.email}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <span style={{
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10,
+                        fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 10,
                         color: isLight ? lightCfg.color : cfg.color,
                         padding: "3px 8px", borderRadius: 999,
                         background: isLight ? lightCfg.bg : `${cfg.color}15`,
@@ -681,7 +681,7 @@ function UsuariosPage() {
                       </span>
                       {u.equipe && (
                         <span style={{
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 10,
+                          fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 10,
                           color: isLight ? equipeCores(u.equipe).light : equipeCores(u.equipe).dark,
                           padding: "3px 8px", borderRadius: 999,
                           background: equipeCores(u.equipe).bg,
@@ -743,22 +743,22 @@ function UsuariosPage() {
                     background: isLight ? "#f3f4f6" : "#191921",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: isLight ? "#9ca3af" : "rgba(255,255,255,0.4)",
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+                    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
                   }}>
                     {iniciais(u.nome)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
                       color: isLight ? L.textSub : "rgba(255,255,255,0.7)",
                     }}>{u.nome}</div>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                       color: isLight ? L.textMuted : "rgba(255,255,255,0.4)",
                     }}>{u.email}</div>
                   </div>
                   <span style={{
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 9,
+                    fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 9,
                     color: isLight ? "#B1242E" : "#FCA5A5",
                     padding: "3px 8px", borderRadius: 999,
                     background: isLight ? "#fee2e2" : "rgba(239,68,68,0.12)",
@@ -810,13 +810,13 @@ function UsuariosPage() {
             }}
           >
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
+              fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 16,
               color: isLight ? L.text : "#fff", marginBottom: 4,
             }}>
               Permissão e equipe
             </div>
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
               color: isLight ? L.textMuted : "rgba(255,255,255,0.55)", marginBottom: 16,
             }}>
               {editingUser.nome}
@@ -841,13 +841,13 @@ function UsuariosPage() {
                     }}
                   >
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
                       color: isLight ? lightCfg.color : cfg.color,
                     }}>
                       {cfg.label}
                     </div>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                       color: isLight ? L.textSub : "rgba(255,255,255,0.55)", marginTop: 2,
                     }}>
                       {cfg.desc}
@@ -859,7 +859,7 @@ function UsuariosPage() {
 
             {/* Equipe — roteamento de demandas, não permissão (PLANO_UNIFICACAO §4.2) */}
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
               letterSpacing: "0.12em", textTransform: "uppercase",
               color: isLight ? L.textMuted : "rgba(255,255,255,0.45)", marginBottom: 8,
             }}>
@@ -876,7 +876,7 @@ function UsuariosPage() {
                     onClick={() => setEditEquipe(eq)}
                     style={{
                       padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11,
+                      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11,
                       color: ativo ? (isLight ? cores.light : cores.dark) : (isLight ? L.textSub : "rgba(255,255,255,0.55)"),
                       background: ativo ? cores.bg : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
                       border: ativo
@@ -890,7 +890,7 @@ function UsuariosPage() {
               })}
             </div>
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
               color: isLight ? L.textMuted : "rgba(255,255,255,0.45)", marginBottom: 16, lineHeight: 1.5,
             }}>
               A equipe define de quem é a fila de demandas. Não altera permissão — quem vê o quê continua
@@ -905,7 +905,7 @@ function UsuariosPage() {
                   background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
-                  fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
+                  fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",
                 }}
               >
                 Cancelar
@@ -928,7 +928,7 @@ function UsuariosPage() {
                       flex: 2, padding: 12, borderRadius: 12,
                       background: "linear-gradient(135deg, #FCDE48, #F8C811)",
                       border: "none", color: "#08090E",
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
                       cursor: travado ? "default" : "pointer",
                       opacity: travado ? 0.6 : 1,
                     }}
@@ -964,13 +964,13 @@ function UsuariosPage() {
               <AlertTriangle size={36} color={isLight ? "#A63E17" : "#F59E0B"} />
             </div>
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
+              fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 16,
               color: isLight ? L.text : "#fff", marginBottom: 8,
             }}>
               Desativar {deleteConfirm.nome}?
             </div>
             <div style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
               color: isLight ? L.textMuted : "rgba(255,255,255,0.55)", marginBottom: 20, lineHeight: 1.5,
             }}>
               O usuário perderá acesso ao sistema. Esta ação pode ser revertida restaurando o acesso posteriormente.
@@ -983,7 +983,7 @@ function UsuariosPage() {
                   background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
-                  fontFamily: "'Montserrat', sans-serif", fontSize: 13, cursor: "pointer",
+                  fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",
                 }}
               >
                 Cancelar
@@ -996,7 +996,7 @@ function UsuariosPage() {
                   background: isLight ? "#fee2e2" : "rgba(239,68,68,0.20)",
                   border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.40)",
                   color: isLight ? "#dc2626" : "#F17881",
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer",
+                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13, cursor: "pointer",
                 }}
               >
                 {deleteMutation.isPending ? "Desativando..." : "Desativar"}

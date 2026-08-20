@@ -169,7 +169,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 </button>
                 <div style={{
                   minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
-                  color: isLight ? "#0a0b0e" : "#fff", fontFamily: "'Montserrat', sans-serif",
+                  color: isLight ? "#0a0b0e" : "#fff", fontFamily: "var(--fonte)",
                 }}>{qtdKits}</div>
                 <button style={circlePrimary()} onClick={() => setQtdKits((n) => Math.min(50, n + 1))} aria-label="+">
                   <Plus size={20} />
@@ -333,7 +333,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>
             Elevadores
           </div>
           <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>

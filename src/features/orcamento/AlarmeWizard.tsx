@@ -116,7 +116,7 @@ export function AlarmeWizard({
     justifyContent: "center", cursor: "pointer", color: isLight ? "#0a0b0e" : "#fff",
   };
   const QUESTION: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14,
     letterSpacing: "0.06em", color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.85)",
     textTransform: "uppercase", margin: "4px 2px 8px",
   };
@@ -148,14 +148,14 @@ export function AlarmeWizard({
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 background: i <= atual ? "#F59E0B" : isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)",
                 color: i <= atual ? "#0A0A0A" : isLight ? "#8a909e" : "rgba(200,200,200,0.4)",
-                fontSize: 12, fontWeight: 700, fontFamily: "'Montserrat', sans-serif",
+                fontSize: 12, fontWeight: 700, fontFamily: "var(--fonte)",
               }}
             >
               {i + 1}
             </span>
             <span
               style={{
-                fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+                fontFamily: "var(--fonte)", fontSize: 12,
                 fontWeight: i === atual ? 700 : 400,
                 color: i === atual ? (isLight ? "#0a0b0e" : "#fff") : isLight ? "#8a909e" : "rgba(200,200,200,0.5)",
               }}
@@ -177,7 +177,7 @@ export function AlarmeWizard({
       <div style={PAGE}>
         <div style={HEADER}>
           <button style={BACK_BTN} onClick={onVoltar}><ArrowLeft size={18} /></button>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16 }}>Alarme</div>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>Alarme</div>
         </div>
         <StepDots />
 
@@ -205,7 +205,7 @@ export function AlarmeWizard({
               style={{
                 height: 64, borderRadius: 16, border: "none",
                 background: GOLD_GRAD, color: "#0A0A0A",
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15,
+                fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 15,
                 letterSpacing: "0.04em", cursor: "pointer",
                 boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -216,7 +216,7 @@ export function AlarmeWizard({
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "'Montserrat', sans-serif" }}>
+        <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)" }}>
           Com fio: central AMT 4010 · Sem fio: central AMT 8000
         </div>
       </div>
@@ -243,7 +243,7 @@ export function AlarmeWizard({
       <div style={HEADER}>
         <button style={BACK_BTN} onClick={() => setStep("tecnologia")}><ArrowLeft size={18} /></button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat'", fontWeight: 600, fontSize: 16 }}>Alarme</div>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>Alarme</div>
           <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
             {isCab ? "Com fio — AMT 4010" : "Sem fio — AMT 8000"}
           </div>
@@ -267,7 +267,7 @@ export function AlarmeWizard({
                   border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: selected ? GOLD_GRAD : isLight ? "#f5f6f8" : DARK_CARD,
                   color: selected ? "#0A0A0A" : isLight ? "#0a0b0e" : "#fff",
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
                   lineHeight: 1.25, cursor: "pointer",
                   boxShadow: selected ? "0 4px 14px rgba(248,200,17,0.35)" : undefined,
                   transition: "all 0.15s",
@@ -288,7 +288,7 @@ export function AlarmeWizard({
       {/* Sensores na zona */}
       <div style={{ ...LIST_CARD, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
             {infoSel?.par ? "Pares na zona" : "Sensores na zona"}
           </div>
           <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
@@ -297,7 +297,7 @@ export function AlarmeWizard({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <button style={CIRCLE_BTN} onClick={() => setQtdSel((q) => Math.max(1, q - 1))}><Minus size={16} /></button>
-          <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }}>{qtdSel}</span>
+          <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "var(--fonte)" }}>{qtdSel}</span>
           <button
             style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
             onClick={() => setQtdSel((q) => Math.min(MAX_SENSORES_POR_ZONA, q + 1))}
@@ -332,7 +332,7 @@ export function AlarmeWizard({
                   onClick={() => setTxSel(val)}
                   style={{
                     flex: 1, zIndex: 1, background: "none", border: "none", cursor: "pointer",
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+                    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
                     letterSpacing: "0.06em", textTransform: "uppercase",
                     color: txSel === val ? "#0A0A0A" : isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
                     transition: "color 0.2s",
@@ -344,7 +344,7 @@ export function AlarmeWizard({
             </div>
           </div>
           {txSel ? (
-            <div style={{ fontSize: 12, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", fontFamily: "'Montserrat', sans-serif" }}>
+            <div style={{ fontSize: 12, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", fontFamily: "var(--fonte)" }}>
               Sensor distante sem cabeamento — 1 transmissor TX 4020 Smart por sensor.
             </div>
           ) : (
@@ -369,7 +369,7 @@ export function AlarmeWizard({
             width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
             color: "#F8C811", fontSize: 17, fontWeight: 800,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Montserrat', sans-serif", flexShrink: 0,
+            fontFamily: "var(--fonte)", flexShrink: 0,
           }}
         >
           {zonas.length}
@@ -419,7 +419,7 @@ export function AlarmeWizard({
       {!isCab && (
         <div style={{ ...LIST_CARD, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+            <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
               Repetidor de sinal REP 8000
             </div>
             <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
@@ -428,7 +428,7 @@ export function AlarmeWizard({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <button style={CIRCLE_BTN} onClick={() => setRepetidores((r) => Math.max(0, r - 1))}><Minus size={16} /></button>
-            <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "'Montserrat', sans-serif" }}>{repetidores}</span>
+            <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "var(--fonte)" }}>{repetidores}</span>
             <button
               style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
               onClick={() => setRepetidores((r) => r + 1)}
@@ -443,7 +443,7 @@ export function AlarmeWizard({
       <div>
         <div style={QUESTION}>Equipamentos</div>
         {isCab && portariaRemota && (
-          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "'Montserrat', sans-serif", margin: "-4px 2px 8px" }}>
+          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)", margin: "-4px 2px 8px" }}>
             Central, GPRS e bateria já inclusos na Central de Portaria Remota — não duplicados aqui.
           </div>
         )}

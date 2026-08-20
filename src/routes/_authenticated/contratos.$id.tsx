@@ -54,7 +54,7 @@ function ContratoDetalhePage() {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
     background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-    color: textPrimary, fontFamily: FONT, fontWeight: 300, fontSize: 13.5,
+    color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const chip = (ativo: boolean): CSSProperties => ({
@@ -152,7 +152,7 @@ function ContratoDetalhePage() {
           <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 18, lineHeight: 1.3 }}>
             {contrato.cliente?.nome ?? "Cliente removido"}
           </div>
-          <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
             {MODALIDADE_LABEL[contrato.modalidade]}
             {contrato.numero ? ` · nº ${contrato.numero}` : ""}
             {contrato.cliente?.documento ? ` · ${formatarDocumento(contrato.cliente.documento)}` : ""}
@@ -190,7 +190,7 @@ function ContratoDetalhePage() {
           ))}
         </div>
         {contrato.status === "rascunho" && (
-          <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
+          <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
             Rascunho não vale para nada ainda: só o contrato <strong>ativo</strong> entra na decisão de cobrar.
             {podeAtivar ? "" : " Preencha o início da vigência para poder ativar."}
           </span>
@@ -204,7 +204,7 @@ function ContratoDetalhePage() {
           </div>
         )}
         {contrato.confianca_extracao != null && (
-          <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
+          <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
             Preenchido por leitura de PDF · confiança {Math.round(contrato.confianca_extracao * 100)}%
           </span>
         )}
@@ -240,7 +240,7 @@ function ContratoDetalhePage() {
               </button>
             ))}
           </div>
-          <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
+          <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
             {MODALIDADE_REGRA[contrato.modalidade]}
           </span>
         </div>
@@ -302,7 +302,7 @@ function ContratoDetalhePage() {
       {/* Cobertura por equipamento */}
       <div style={CARD}>
         <span style={SEC}>Cobertura por equipamento</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
           Só o que foge da regra geral precisa entrar aqui. O que não estiver listado segue as condições acima.
         </span>
         {cobertura.map((it) => (
@@ -367,7 +367,7 @@ function ContratoDetalhePage() {
       {/* Preços do contrato */}
       <div style={CARD}>
         <span style={SEC}>Preços deste contrato</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
           Vencem a tabela padrão do catálogo. Sem preço aqui nem no catálogo, o item vai para conferência — nunca é cobrado a zero.
         </span>
         {precos.map((p) => (

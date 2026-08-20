@@ -39,8 +39,8 @@ function PerfilPage() {
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const LBL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
@@ -55,8 +55,8 @@ function PerfilPage() {
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12,
     color: textPrimary,
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     padding: "0 14px",
     outline: "none",
@@ -251,8 +251,8 @@ function PerfilPage() {
           textAlign: "center",
           padding: 60,
           color: isLight ? "#6b7280" : "rgba(255,255,255,0.4)",
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
         }}
       >
         Carregando...
@@ -266,7 +266,7 @@ function PerfilPage() {
     <div style={{ paddingBottom: 40 }}>
       <div
         style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 600,
           fontSize: 22,
           color: textPrimary,
@@ -303,7 +303,7 @@ function PerfilPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: 700,
                 fontSize: 28,
                 color: "#08090E",
@@ -346,7 +346,7 @@ function PerfilPage() {
         />
         <div
           style={{
-            fontFamily: "'Montserrat', sans-serif",
+            fontFamily: "var(--fonte)",
             fontWeight: 600,
             fontSize: 22,
             color: textPrimary,
@@ -358,7 +358,7 @@ function PerfilPage() {
         {perfil?.cargo && (
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 11,
               letterSpacing: "0.16em",
@@ -372,8 +372,8 @@ function PerfilPage() {
         )}
         <div
           style={{
-            fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 300,
+            fontFamily: "var(--fonte)",
+            fontWeight: 400,
             fontSize: 12,
             color: textSecondary,
             marginTop: 4,
@@ -389,7 +389,7 @@ function PerfilPage() {
               borderRadius: 999,
               background: "rgba(248,200,17,0.10)",
               border: "1px solid rgba(248,200,17,0.30)",
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 500,
               fontSize: 11,
               letterSpacing: "0.10em",
@@ -434,7 +434,7 @@ function PerfilPage() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 14,
               color: "var(--text-primary, #fff)",
@@ -444,8 +444,8 @@ function PerfilPage() {
           </div>
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
+              fontFamily: "var(--fonte)",
+              fontWeight: 400,
               fontSize: 11,
               color: "var(--text-secondary, rgba(255,255,255,0.5))",
               marginTop: 2,
@@ -511,8 +511,8 @@ function PerfilPage() {
           {ultimasVisitas.length === 0 ? (
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
+                fontFamily: "var(--fonte)",
+                fontWeight: 400,
                 fontSize: 12,
                 color: isLight ? "#6b7280" : "rgba(255,255,255,0.4)",
                 padding: "16px 0",
@@ -543,7 +543,7 @@ function PerfilPage() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div
                     style={{
-                      fontFamily: "'Montserrat', sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontWeight: 500,
                       fontSize: 13,
                       color: isLight ? "#0a0b0e" : "#fff",
@@ -556,8 +556,8 @@ function PerfilPage() {
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
+                      fontFamily: "var(--fonte)",
+                      fontWeight: 400,
                       fontSize: 11,
                       color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                       marginTop: 2,
@@ -640,8 +640,8 @@ function PerfilPage() {
             </div>
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
+                fontFamily: "var(--fonte)",
+                fontWeight: 400,
                 fontSize: 11,
                 color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
               }}
@@ -706,7 +706,7 @@ function PerfilPage() {
                   : "#191921",
               border: "none",
               color: novaSenha && confirmarSenha ? "#08090E" : "rgba(255,255,255,0.3)",
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 13,
               letterSpacing: "0.14em",
@@ -757,7 +757,7 @@ function PerfilPage() {
               >
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: n.lida ? 400 : 500,
                     fontSize: 12,
                     color: isLight ? "#0a0b0e" : "#FFFFFF",
@@ -767,8 +767,8 @@ function PerfilPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
+                    fontFamily: "var(--fonte)",
+                    fontWeight: 400,
                     fontSize: 10,
                     color: isLight ? "#8a909e" : "rgba(255,255,255,0.40)",
                     marginTop: 3,
@@ -792,7 +792,7 @@ function PerfilPage() {
           background: "rgba(239,68,68,0.10)",
           border: "1px solid rgba(239,68,68,0.30)",
           color: "rgba(239,68,68,0.85)",
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 400,
           fontSize: 13,
           letterSpacing: "0.14em",
@@ -825,7 +825,7 @@ const cardStyle = (isLight: boolean): CSSProperties => ({
 });
 
 const lblStyle = (isLight: boolean): CSSProperties => ({
-  fontFamily: "'Montserrat', sans-serif",
+  fontFamily: "var(--fonte)",
   fontWeight: isLight ? 600 : 300,
   fontSize: 11,
   letterSpacing: "0.12em",
@@ -842,8 +842,8 @@ const inputStyle = (isLight: boolean): CSSProperties => ({
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
   color: isLight ? "#0a0b0e" : "#fff",
-  fontFamily: "'Montserrat', sans-serif",
-  fontWeight: 300,
+  fontFamily: "var(--fonte)",
+  fontWeight: 400,
   fontSize: 14,
   padding: "0 14px",
   outline: "none",
@@ -881,7 +881,7 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div style={{ textAlign: "center", flex: 1 }}>
       <div
         style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 700,
           fontSize: 28,
           color: isLight ? "#A06108" : "#F8C811",
@@ -892,8 +892,8 @@ function Stat({ label, value }: { label: string; value: string }) {
       </div>
       <div
         style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
           fontSize: 11,
           letterSpacing: "0.10em",
           textTransform: "uppercase",
@@ -932,8 +932,8 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
     >
       <span
         style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
           fontSize: 12,
           color: isLight ? "#4a5060" : "rgba(255,255,255,0.60)",
         }}
@@ -942,7 +942,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
       </span>
       <span
         style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 400,
           fontSize: 12,
           color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#0a0b0e" : "#FFFFFF"),

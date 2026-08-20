@@ -302,7 +302,7 @@ function Home() {
           </div>
           {composicao && (
             <div style={{
-              fontFamily: FONT, fontWeight: 300, fontSize: 12.5, color: "rgba(255,255,255,0.85)",
+              fontFamily: FONT, fontWeight: 400, fontSize: 12.5, color: "rgba(255,255,255,0.85)",
               marginTop: 4, textShadow: "0 1px 6px rgba(0,0,0,0.6)",
             }}>
               {composicao}

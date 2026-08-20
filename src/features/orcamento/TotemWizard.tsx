@@ -564,7 +564,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>
             Totem Inteligente
           </div>
           <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>

@@ -137,7 +137,7 @@ function NovaVisitaPage() {
       };
 
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 10,
     letterSpacing: "0.14em",
@@ -156,8 +156,8 @@ function NovaVisitaPage() {
     border: isLight ? L.inputBorder : "1px solid transparent",
     borderRadius: 12,
     color: isLight ? L.text : "#F0F2F5",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     padding: "12px 14px",
     outline: "none",
@@ -406,7 +406,7 @@ function NovaVisitaPage() {
         <div style={{ flex: 1 }}>
           <h1
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 500,
               fontSize: 18,
               color: isLight ? L.text : "#F0F2F5",
@@ -416,7 +416,7 @@ function NovaVisitaPage() {
             Nova Visita Técnica
           </h1>
         </div>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12, color: isLight ? L.gold : "rgba(248,200,17,0.7)" }}>
+        <span style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? L.gold : "rgba(248,200,17,0.7)" }}>
           {step}/2
         </span>
       </div>
@@ -454,8 +454,8 @@ function NovaVisitaPage() {
               </div>
               <span
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontFamily: "var(--fonte)",
+                  fontWeight: 400,
                   fontSize: 11,
                   color: step >= s.n
                     ? isLight ? L.gold : "#F8C811"
@@ -488,10 +488,10 @@ function NovaVisitaPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Building2 size={18} color={isLight ? "#A06108" : "#F8C811"} style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14, color: isLight ? L.text : "#fff" }}>
+                  <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14, color: isLight ? L.text : "#fff" }}>
                     {clienteSelecionado.nome}
                   </div>
-                  <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                  <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
                     {clienteSelecionado.endereco ?? "sem endereço no cadastro"}
                   </div>
                 </div>
@@ -502,7 +502,7 @@ function NovaVisitaPage() {
                     background: isLight ? "#ffffff" : "#191921",
                     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                     color: isLight ? L.text : "#fff", cursor: "pointer", flexShrink: 0,
-                    fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                    fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
                   }}
                 >
                   Desvincular
@@ -523,7 +523,7 @@ function NovaVisitaPage() {
                 ) : (
                   <Square size={16} style={{ flexShrink: 0 }} />
                 )}
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11 }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11 }}>
                   Atualizar o cadastro do cliente com os dados desta visita
                 </span>
               </button>
@@ -539,7 +539,7 @@ function NovaVisitaPage() {
                 {buscaCliente.trim() !== "" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {clientesFiltrados.length === 0 ? (
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
                         Nenhum cliente encontrado — os dados preenchidos abaixo criarão um cadastro novo.
                       </span>
                     ) : (
@@ -555,8 +555,8 @@ function NovaVisitaPage() {
                             color: isLight ? L.text : "#fff",
                           }}
                         >
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                          <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
                             {c.endereco ?? "sem endereço"}
                           </span>
                         </button>
@@ -564,7 +564,7 @@ function NovaVisitaPage() {
                     )}
                   </div>
                 )}
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
                   Deixe em branco para cadastrar um cliente novo com os dados desta visita.
                 </div>
               </>
@@ -616,7 +616,7 @@ function NovaVisitaPage() {
                     </span>
                     <span
                       style={{
-                        fontFamily: "'Montserrat', sans-serif",
+                        fontFamily: "var(--fonte)",
                         fontSize: 10,
                         fontWeight: 600,
                         color: ativo
@@ -672,7 +672,7 @@ function NovaVisitaPage() {
           <div style={{ ...GLASS, padding: 16 }}>
             <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
             {tipoLocal === "residencia" && (
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(255,255,255,0.5)", margin: "0 0 8px" }}>
+              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textSub : "rgba(255,255,255,0.5)", margin: "0 0 8px" }}>
                 Controle de Acesso e serviços de portaria não se aplicam a Residência.
               </p>
             )}
@@ -701,9 +701,9 @@ function NovaVisitaPage() {
                         : isLight ? L.borderMd : "1px solid rgba(248,200,17,0.14)",
                       borderRadius: 999,
                       padding: "7px 12px",
-                      fontFamily: "'Montserrat', sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontSize: 11,
-                      fontWeight: 300,
+                      fontWeight: 400,
                       color: ativo
                         ? isLight ? L.gold : "#F8C811"
                         : isLight ? L.textSub : "rgba(255,255,255,0.70)",
@@ -759,12 +759,12 @@ function NovaVisitaPage() {
               </button>
             </div>
             {geoStatus === "loading" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? L.textMuted : "rgba(200,200,200,0.55)", fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? L.textMuted : "rgba(200,200,200,0.55)", fontFamily: "var(--fonte)", fontWeight: 400 }}>
                 Buscando localização...
               </p>
             )}
             {geoStatus === "err" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: "#F17881", fontFamily: "'Montserrat', sans-serif", fontWeight: 300 }}>
+              <p style={{ marginTop: 8, fontSize: 11, color: "#F17881", fontFamily: "var(--fonte)", fontWeight: 400 }}>
                 Endereço não encontrado.
               </p>
             )}
@@ -813,8 +813,8 @@ function NovaVisitaPage() {
                       background: isLight ? "rgba(255,255,255,0.85)" : "rgba(8,8,12,0.7)",
                       borderRadius: 20,
                       padding: "4px 10px",
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
+                      fontFamily: "var(--fonte)",
+                      fontWeight: 400,
                       fontSize: 11,
                       color: isLight ? L.gold : "#F8C811",
                     }}
@@ -829,8 +829,8 @@ function NovaVisitaPage() {
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
+                      fontFamily: "var(--fonte)",
+                      fontWeight: 400,
                       fontSize: 12,
                       color: isLight ? L.textMuted : "rgba(255,255,255,0.45)",
                     }}
@@ -891,9 +891,9 @@ function NovaVisitaPage() {
                     border: isLight ? L.goldBorder : "1px solid rgba(248,200,17,0.18)",
                     borderRadius: 999,
                     padding: "5px 10px",
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontSize: 10,
-                    fontWeight: 300,
+                    fontWeight: 400,
                     color: isLight ? L.gold : "rgba(248,200,17,0.75)",
                     cursor: "pointer",
                   }}
@@ -921,7 +921,7 @@ function NovaVisitaPage() {
 
             {tecnicoId && visitasTecnico.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 300, color: isLight ? L.gold : "rgba(248,200,17,0.6)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 6px" }}>
+                <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: isLight ? L.gold : "rgba(248,200,17,0.6)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 6px" }}>
                   Agenda dos próximos 7 dias
                 </p>
                 {visitasTecnico.map((v, i) => (
@@ -938,7 +938,7 @@ function NovaVisitaPage() {
                     }}
                   >
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLight ? L.gold : "#F8C811", flexShrink: 0, boxShadow: isLight ? "none" : "0 0 6px rgba(248,200,17,0.5)" }} />
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
                       {new Date(v.data_hora_agendada!).toLocaleString("pt-BR", {
                         weekday: "short",
                         day: "2-digit",
@@ -954,7 +954,7 @@ function NovaVisitaPage() {
               </div>
             )}
             {tecnicoId && visitasTecnico.length === 0 && (
-              <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: "rgba(45,210,165,0.7)", margin: "8px 0 0" }}>
+              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: "rgba(45,210,165,0.7)", margin: "8px 0 0" }}>
                 Técnico livre nos próximos 7 dias
               </p>
             )}
@@ -976,7 +976,7 @@ function NovaVisitaPage() {
             borderColor: isLight ? "rgba(45,210,165,0.20)" : "rgba(45,210,165,0.25)",
             background: isLight ? "rgba(45,210,165,0.05)" : "rgba(45,210,165,0.04)",
           }}>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 300, color: "rgba(45,210,165,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
+            <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: "rgba(45,210,165,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
               Resumo da visita
             </p>
             {[
@@ -994,8 +994,8 @@ function NovaVisitaPage() {
               { label: "Técnico", value: tecnicos.find((t) => t.id === tecnicoId)?.nome ?? "Não definido" },
             ].map((row) => (
               <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.04)" }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: isLight ? L.textMuted : "rgba(200,200,200,0.45)" }}>{row.label}</span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 400, color: isLight ? L.text : "#F0F2F5", textAlign: "right", maxWidth: "60%" }}>{row.value || "—"}</span>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textMuted : "rgba(200,200,200,0.45)" }}>{row.label}</span>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.text : "#F0F2F5", textAlign: "right", maxWidth: "60%" }}>{row.value || "—"}</span>
               </div>
             ))}
           </div>
@@ -1057,7 +1057,7 @@ function NovaVisitaPage() {
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
             color: "#08090E",
-            fontFamily: "'Montserrat', sans-serif",
+            fontFamily: "var(--fonte)",
             fontWeight: 500,
             fontSize: 13,
             letterSpacing: "0.18em",

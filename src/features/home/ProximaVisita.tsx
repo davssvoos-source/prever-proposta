@@ -166,7 +166,7 @@ export function ProximaVisita({ visita, onAbrir }: Props) {
         {(visita as any).endereco && (
           <div style={{
             display: "flex", alignItems: "center", gap: 5, marginTop: 7,
-            fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary,
+            fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary,
           }}>
             <MapPin size={12} style={{ flexShrink: 0 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

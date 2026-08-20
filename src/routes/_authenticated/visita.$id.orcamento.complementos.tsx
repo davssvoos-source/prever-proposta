@@ -107,7 +107,7 @@ function ComplementosPage() {
       };
 
   const LABEL: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
@@ -130,7 +130,7 @@ function ComplementosPage() {
       : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
     boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 13,
     cursor: "pointer",
@@ -179,7 +179,7 @@ function ComplementosPage() {
         <div style={{ flex: 1 }}>
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
               color: isLight ? "#0a0b0e" : "#fff",
@@ -228,7 +228,7 @@ function ComplementosPage() {
       {perguntaSimNao("Fornecer o aplicativo Grupo Prever Acessos?", Smartphone, appAcessos, setAppAcessos)}
 
       {erroVisible && (
-        <p style={{ color: "#ff4d4f", fontFamily: "'Montserrat', sans-serif", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+        <p style={{ color: "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
           {erroVisible}
         </p>
       )}
@@ -243,7 +243,7 @@ function ComplementosPage() {
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
             color: "#08090E",
-            fontFamily: "'Montserrat', sans-serif",
+            fontFamily: "var(--fonte)",
             fontWeight: 600,
             fontSize: 13,
             letterSpacing: "0.18em",

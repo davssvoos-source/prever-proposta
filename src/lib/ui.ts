@@ -11,7 +11,7 @@
 
 import type React from "react";
 
-export const FONT = "'Montserrat', sans-serif";
+export const FONT = "var(--fonte)";
 
 /** Degradê de preto bem escuro — fundo padrão de cards no tema escuro. */
 export const CARD_BG_DARK = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
@@ -29,18 +29,33 @@ export const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
 /** Glow externo dos botões dourados. */
 export const GOLD_GLOW = "0 6px 20px rgba(248,200,17,0.35)";
 
-/** Superfícies de vidro (v3). */
-export const VIDRO_BG_DARK = "rgba(18,18,24,0.52)";
-export const VIDRO_BG_LIGHT = "rgba(255,255,255,0.58)";
+/** Vidro — reservado aos PAINÉIS (gráficos, sidebar, popovers). v4. */
+export const VIDRO_BG_DARK = "rgba(255,255,255,0.05)";
+export const VIDRO_BG_LIGHT = "rgba(255,255,255,0.55)";
 export const VIDRO_BORDER_DARK = "1px solid rgba(255,255,255,0.09)";
 export const VIDRO_BORDER_LIGHT = "1px solid rgba(255,255,255,0.72)";
 
-/** Card padrão (tema claro/escuro) — vidro sobre o glow. */
+/**
+ * Card padrão v4 — NEO-MINIMALISTA: superfície sólida, canto bem redondo e
+ * uma sombra leve em relação ao fundo. O vidro saiu do conteúdo e ficou nos
+ * painéis (vidro() abaixo): sobre um degradê quase liso, vidro em tudo vira
+ * ruído; em pontos escolhidos vira hierarquia de material.
+ */
 export const card = (isLight: boolean): React.CSSProperties => ({
+  background: isLight ? "#ffffff" : "#141416",
+  border: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 18,
+  boxShadow: isLight
+    ? "0 1px 2px rgba(0,0,0,0.04), 0 10px 30px rgba(0,0,0,0.07)"
+    : "0 1px 2px rgba(0,0,0,0.50), 0 10px 30px rgba(0,0,0,0.30)",
+});
+
+/** Painel de vidro — gráficos, sidebar, popovers. */
+export const vidro = (isLight: boolean): React.CSSProperties => ({
   background: isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK,
   border: isLight ? VIDRO_BORDER_LIGHT : VIDRO_BORDER_DARK,
-  borderRadius: 16,
-  boxShadow: isLight ? "0 8px 28px rgba(26,50,99,0.10)" : "0 8px 28px rgba(0,0,0,0.35)",
+  borderRadius: 18,
+  boxShadow: isLight ? "0 8px 28px rgba(0,0,0,0.06)" : "0 8px 28px rgba(0,0,0,0.30)",
   backdropFilter: "var(--vidro-blur)" as any,
   WebkitBackdropFilter: "var(--vidro-blur)" as any,
 });

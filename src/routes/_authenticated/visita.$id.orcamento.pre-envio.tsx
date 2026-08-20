@@ -353,7 +353,7 @@ function PreEnvioPage() {
         }}
       >
         <SectionCard icon={<MapPin size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="LOCAL" isLight={isLight}>
-          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
+          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {endereco}
           </div>
           <div
@@ -370,7 +370,7 @@ function PreEnvioPage() {
                 color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
                 fontSize: 12,
                 margin: 0,
-                fontFamily: "'Montserrat',sans-serif",
+                fontFamily: "var(--fonte)",
               }}
             >
               {nomeLocal}
@@ -404,7 +404,7 @@ function PreEnvioPage() {
                 style={{
                   color: isLight ? "#4a5060" : "#9CA3AF",
                   fontSize: 11,
-                  fontFamily: "'Montserrat',sans-serif",
+                  fontFamily: "var(--fonte)",
                 }}
               >
                 {fotoBanner ? "Trocar foto da fachada" : "Adicionar foto da fachada"}
@@ -418,7 +418,7 @@ function PreEnvioPage() {
           titulo="DATA E HORÁRIO DA VISITA"
           isLight={isLight}
         >
-          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
+          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {dataFmt}
           </div>
         </SectionCard>
@@ -445,7 +445,7 @@ function PreEnvioPage() {
                     padding: "5px 12px",
                     fontSize: 12,
                     fontWeight: 600,
-                    fontFamily: "'Montserrat',sans-serif",
+                    fontFamily: "var(--fonte)",
                   }}
                 >
                   {SERVICOS_LABELS[s] || s}
@@ -492,7 +492,7 @@ function PreEnvioPage() {
                           fontSize: 12,
                           fontWeight: 600,
                           letterSpacing: 0.6,
-                          fontFamily: "'Montserrat',sans-serif",
+                          fontFamily: "var(--fonte)",
                           textTransform: "uppercase",
                           marginBottom: 6,
                         }}
@@ -564,7 +564,7 @@ function PreEnvioPage() {
               border: 0,
               cursor: enviarMutation.isPending ? "not-allowed" : "pointer",
               color: "#FFFFFF",
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 700,
               fontSize: 13,
               letterSpacing: "0.16em",
@@ -626,7 +626,7 @@ function SectionCard({
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: 1,
-            fontFamily: "'Montserrat',sans-serif",
+            fontFamily: "var(--fonte)",
           }}
         >
           {titulo}

@@ -27,7 +27,7 @@ import { useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
+import { FONT, card, vidro } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
 import { DATAVIZ, SUPERNOVA } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
@@ -133,7 +133,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
   return (
-    <div style={{ ...card(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div className="elevavel" style={{ ...vidro(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 10, paddingTop: 12 }}>
@@ -145,15 +145,17 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
             }}>
               {b.valor}
             </span>
-            <div style={{
-              width: "100%",
-              maxWidth: 40,
-              height: b.valor === 0 ? 3 : Math.max(8, Math.round((b.valor / maximo) * 128)),
-              borderRadius: 8,
-              background: b.cor,
-              opacity: b.valor === 0 ? 0.28 : 1,
-              transition: "height .4s ease",
-            }} />
+            <div
+              className="barra-demanda"
+              title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo}`}
+              style={{
+                width: "100%",
+                maxWidth: 40,
+                height: b.valor === 0 ? 3 : Math.max(8, Math.round((b.valor / maximo) * 128)),
+                borderRadius: 8,
+                background: b.cor,
+                opacity: b.valor === 0 ? 0.28 : 1,
+              }} />
             <span style={{
               fontFamily: FONT,
               fontWeight: b.atual ? 700 : 300,
@@ -211,23 +213,23 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const cheio = isLight ? DATAVIZ.azul.light : DATAVIZ.azul.dark;
 
   return (
-    <div style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" }}>
+    <div className="elevavel" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 7, alignSelf: "stretch" }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>{mesNome}</span>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>{mesNome}</span>
       </div>
 
       {total === 0 ? (
         <div style={{
           flex: 1, display: "flex", alignItems: "center",
-          fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary,
+          fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary,
           textAlign: "center", lineHeight: 1.5,
         }}>
           Sem prioridades no sprint deste mês.
         </div>
       ) : (
         <>
-          <svg width={140} height={140} viewBox="0 0 140 140" style={{ marginTop: 8 }}>
+          <svg className="rosca-meta" width={140} height={140} viewBox="0 0 140 140" style={{ marginTop: 8 }}>
             <circle
               cx="70" cy="70" r={R} fill="none" strokeWidth="11"
               stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)"}
@@ -243,7 +245,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
             <text x="70" y="68" textAnchor="middle" fontFamily={FONT} fontWeight="700" fontSize="27" fill={textPrimary}>
               {pct}%
             </text>
-            <text x="70" y="87" textAnchor="middle" fontFamily={FONT} fontWeight="300" fontSize="11"
+            <text x="70" y="87" textAnchor="middle" fontFamily={FONT} fontWeight="400" fontSize="11"
               fill={isLight ? "#4a5060" : "rgba(255,255,255,0.55)"}>
               {feitas} de {total}
             </text>
@@ -278,7 +280,7 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
   return (
     <div style={{ width: 268, flexShrink: 0, height: ALTURA, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box" }}>
       {kpis.map((k) => (
-        <div key={k.rotulo} style={{
+        <div key={k.rotulo} className="elevavel kpi-tile" style={{
           ...card(isLight),
           padding: "10px 12px",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -286,7 +288,7 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
           boxSizing: "border-box",
         }}>
           {/* a cor mora no NÚMERO — a bolinha saiu */}
-          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <div className="kpi-num" style={{ fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {k.valor}
           </div>
           <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>

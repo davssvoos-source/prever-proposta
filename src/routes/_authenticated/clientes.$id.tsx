@@ -60,7 +60,7 @@ function ClienteDetalhePage() {
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SEC_LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 700,
     fontSize: 10,
     letterSpacing: "0.16em",
@@ -71,9 +71,9 @@ function ClienteDetalhePage() {
     display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "7px 0",
     borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
   };
-  const linhaLabel: CSSProperties = { fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 };
+  const linhaLabel: CSSProperties = { fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 };
   const linhaValor: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 400,
+    fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400,
     color: textSecondary, textAlign: "right", minWidth: 0, wordBreak: "break-word",
   };
 
@@ -92,7 +92,7 @@ function ClienteDetalhePage() {
 
   if (isLoading) {
     return (
-      <div style={{ padding: "24px 0", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+      <div style={{ padding: "24px 0", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
         Carregando cliente…
       </div>
     );
@@ -100,13 +100,13 @@ function ClienteDetalhePage() {
   if (!cliente) {
     return (
       <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", gap: 12, color: textPrimary }}>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14 }}>Cliente não encontrado.</span>
+        <span style={{ fontFamily: "var(--fonte)", fontSize: 14 }}>Cliente não encontrado.</span>
         <button
           onClick={voltar}
           style={{
             alignSelf: "flex-start", height: 44, padding: "0 18px", borderRadius: 22, border: "none",
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, cursor: "pointer",
+            fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, cursor: "pointer",
           }}
         >
           Voltar para clientes
@@ -143,10 +143,10 @@ function ClienteDetalhePage() {
           {editando ? <X size={18} /> : <ArrowLeft size={18} />}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {editando ? "Editar cliente" : cliente.nome}
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             {editando ? cliente.nome : `${visitas.length} visita${visitas.length === 1 ? "" : "s"} no histórico`}
           </div>
         </div>
@@ -158,7 +158,7 @@ function ClienteDetalhePage() {
               background: isLight ? "#ffffff" : "#191921",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
               cursor: "pointer", flexShrink: 0,
             }}
           >
@@ -191,21 +191,21 @@ function ClienteDetalhePage() {
                 <Building2 size={20} color={gold} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>{cliente.nome}</div>
+                <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>{cliente.nome}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                   <span
                     style={{
                       padding: "3px 9px", borderRadius: 12,
                       background: cor.bg, border: `1px solid ${cor.border}`,
                       color: isLight ? cor.light : cor.dark,
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                      fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                       letterSpacing: "0.06em", textTransform: "uppercase",
                     }}
                   >
                     {SITUACAO_LABEL[cliente.situacao] ?? cliente.situacao}
                   </span>
                   {cliente.tipo_local && (
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                       {TIPO_LABEL[cliente.tipo_local] ?? cliente.tipo_local}
                     </span>
                   )}
@@ -251,7 +251,7 @@ function ClienteDetalhePage() {
           <div style={CARD}>
             <span style={SEC_LABEL}>Contatos</span>
             {contatos.length === 0 ? (
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
                 Nenhum contato cadastrado.
               </div>
             ) : (
@@ -273,7 +273,7 @@ function ClienteDetalhePage() {
           {cliente.observacoes && (
             <div style={CARD}>
               <span style={SEC_LABEL}>Observações</span>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300, color: textPrimary, marginTop: 8, whiteSpace: "pre-wrap" }}>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400, color: textPrimary, marginTop: 8, whiteSpace: "pre-wrap" }}>
                 {cliente.observacoes}
               </div>
             </div>
@@ -295,14 +295,14 @@ function ClienteDetalhePage() {
                     marginLeft: "auto", padding: "6px 10px", borderRadius: 10, cursor: "pointer",
                     background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
                     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-                    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11,
+                    color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11,
                   }}
                 >
                   Novo
                 </button>
               </div>
               {contratos.length === 0 ? (
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, fontWeight: 300, color: textSecondary, marginTop: 8 }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 12.5, fontWeight: 400, color: textSecondary, marginTop: 8 }}>
                   Nenhum contrato cadastrado. Sem contrato vigente, todo atendimento
                   deste cliente é faturável — mão de obra e equipamento.
                 </div>
@@ -323,14 +323,14 @@ function ClienteDetalhePage() {
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
                             {MODALIDADE_LABEL[c.modalidade]}
                             {c.numero ? ` · nº ${c.numero}` : ""}
                             {vigente && (
                               <span style={{ color: gold, fontSize: 11, fontWeight: 600 }}> · vigente</span>
                             )}
                           </div>
-                          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                          <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                             {c.vigencia_fim
                               ? `até ${c.vigencia_fim.split("-").reverse().join("/")}`
                               : "vigência aberta"}
@@ -340,7 +340,7 @@ function ClienteDetalhePage() {
                         </div>
                         <span style={{
                           flexShrink: 0, padding: "3px 8px", borderRadius: 999,
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
                           color: isLight ? stc.light : stc.dark, background: stc.bg,
                           border: `1px solid ${stc.border}`,
@@ -369,7 +369,7 @@ function ClienteDetalhePage() {
                     background: isLight ? "#ffffff" : "#191921",
                     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                     color: textPrimary, cursor: "pointer", flexShrink: 0,
-                    fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                    fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
                   }}
                 >
                   Abrir
@@ -377,7 +377,7 @@ function ClienteDetalhePage() {
               )}
             </div>
             {ordens.length === 0 ? (
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
                 Nenhum chamado registrado para este cliente.
               </div>
             ) : (
@@ -399,10 +399,10 @@ function ClienteDetalhePage() {
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
                           {o.titulo}
                         </div>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, color: textSecondary }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 10, color: textSecondary }}>
                           {o.numero ?? "—"} · {new Date(o.created_at).toLocaleDateString("pt-BR")}
                         </div>
                       </div>
@@ -410,7 +410,7 @@ function ClienteDetalhePage() {
                         style={{
                           padding: "3px 8px", borderRadius: 12, flexShrink: 0,
                           background: info.bg, border: `1px solid ${info.border}`, color: cor,
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                          fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
                         }}
                       >
@@ -427,7 +427,7 @@ function ClienteDetalhePage() {
           <div style={CARD}>
             <span style={SEC_LABEL}>Histórico de visitas</span>
             {visitas.length === 0 ? (
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
                 Nenhuma visita técnica registrada para este cliente.
               </div>
             ) : (
@@ -449,7 +449,7 @@ function ClienteDetalhePage() {
                       }}
                     >
                       <CalendarDays size={14} color={textSecondary} style={{ flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Montserrat', sans-serif", fontSize: 12 }}>
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: "var(--fonte)", fontSize: 12 }}>
                         {quando
                           ? new Date(quando).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
                           : "sem data"}
@@ -459,7 +459,7 @@ function ClienteDetalhePage() {
                           padding: "3px 8px", borderRadius: 12, flexShrink: 0,
                           background: info.bg, border: `1px solid ${info.border}`,
                           color: info.color,
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                          fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
                         }}
                       >

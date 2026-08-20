@@ -340,7 +340,7 @@ function ChamadosPage() {
             width: "100%", boxSizing: "border-box", height: 46, borderRadius: 14, padding: "0 14px 0 38px",
             background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
             border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-            color: textPrimary, fontFamily: FONT, fontWeight: 300, fontSize: 14,
+            color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 14,
             outline: "none", colorScheme: isLight ? "light" : "dark",
           }}
         />
@@ -433,7 +433,7 @@ function ChamadosPage() {
                     <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, lineHeight: 1.35 }}>
                       {c.titulo}
                     </div>
-                    <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
+                    <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
                       {trilhoDe(c) === "campo" ? "Campo" : trilhoDe(c) === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Interno")}
                       {resp ? ` · ${resp}` : " · sem responsável"}
                     </div>

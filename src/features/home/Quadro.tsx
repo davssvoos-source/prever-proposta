@@ -65,10 +65,9 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  // a coluna é o painel de vidro; os cards são vidro sobre vidro, como nas
-  // referências Versa — o custo do blur duplo é só do desktop (--vidro-blur)
-  const fundoColuna = isLight ? "rgba(255,255,255,0.42)" : "rgba(14,14,20,0.42)";
-  const fundoCabecalho = isLight ? "rgba(255,255,255,0.55)" : "rgba(18,18,26,0.55)";
+  // v4: a coluna perdeu a caixa — os cards flutuam direto no fundo e a coluna
+  // é só o cabeçalho + a pilha. Menos linha, mais espaço em branco (a regra
+  // "use whitespace no lugar de divisores" das referências).
 
   // devolve o usuário onde ele estava ao voltar de um card
   useEffect(() => {
@@ -104,12 +103,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
-    background: fundoColuna,
-    borderRadius: 14,
-    border: isLight ? "1px solid rgba(255,255,255,0.65)" : "1px solid rgba(255,255,255,0.07)",
-    overflow: "hidden",
-    backdropFilter: "var(--vidro-blur)" as any,
-    WebkitBackdropFilter: "var(--vidro-blur)" as any,
+    borderRadius: 16,
   };
 
   return (
@@ -150,15 +144,17 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
               style={{
                 ...COLUNA,
                 opacity: apagada ? 0.5 : 1,
-                outline: alvoArrasto === c ? `2px solid ${isLight ? "#A06108" : "#F8C811"}` : "none",
-                outlineOffset: -2,
+                // alvo do arrasto: um leve banho dourado, sem caixa
+                background: alvoArrasto === c
+                  ? (isLight ? "rgba(200,136,6,0.07)" : "rgba(248,200,17,0.06)")
+                  : "transparent",
+                outline: alvoArrasto === c ? `1.5px solid ${isLight ? "#A06108" : "#F8C811"}` : "none",
+                outlineOffset: 2,
               }}
             >
               <div style={{
                 flexShrink: 0,
-                background: fundoCabecalho,
-                padding: "10px 12px",
-                borderBottom: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                padding: "4px 6px 10px",
                 display: "flex", alignItems: "center", gap: 7,
               }}>
                 <span style={{
@@ -187,7 +183,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
 
               <div
                 style={{
-                padding: 10,
+                padding: "0 0 8px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 9,
@@ -195,7 +191,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
               >
                 {itens.length === 0 ? (
                   <span style={{
-                    fontFamily: FONT, fontWeight: 300, fontSize: PISO_TIPO,
+                    fontFamily: FONT, fontWeight: 400, fontSize: PISO_TIPO,
                     color: textSecondary, textAlign: "center", padding: "18px 0",
                   }}>
                     vazia

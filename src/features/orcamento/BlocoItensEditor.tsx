@@ -602,7 +602,7 @@ export function BlocoItensEditor({
           style={{
             width: "100%", boxSizing: "border-box", resize: "vertical",
             borderRadius: 12, padding: "10px 12px", fontSize: 13,
-            fontFamily: "'Montserrat', sans-serif",
+            fontFamily: "var(--fonte)",
             border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
             background: isLight ? "#ffffff" : "#16161d",
             color: isLight ? "#0a0b0e" : "#fff",

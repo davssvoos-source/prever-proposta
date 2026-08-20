@@ -70,7 +70,7 @@ function NovoContratoPage() {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
     background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-    color: textPrimary, fontFamily: FONT, fontWeight: 300, fontSize: 14,
+    color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const chip = (ativo: boolean): CSSProperties => ({
@@ -268,7 +268,7 @@ function NovoContratoPage() {
         {alertas.length > 0 && (
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
             <TriangleAlert size={16} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
-            <ul style={{ margin: 0, paddingLeft: 16, fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary, lineHeight: 1.6 }}>
+            <ul style={{ margin: 0, paddingLeft: 16, fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, lineHeight: 1.6 }}>
               {alertas.map((a, i) => <li key={i}>{a}</li>)}
             </ul>
           </div>
@@ -297,7 +297,7 @@ function NovoContratoPage() {
               </button>
             ))}
           </div>
-          <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
+          <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
             {MODALIDADE_REGRA[modalidade]}
           </span>
         </div>
@@ -351,7 +351,7 @@ function NovoContratoPage() {
             Deslocamento
           </button>
         </div>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
           É a regra geral. Equipamento com tratamento diferente entra na aba de cobertura, depois de salvar.
         </span>
         <div>

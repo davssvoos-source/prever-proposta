@@ -44,7 +44,7 @@ function ClientesPage() {
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 700,
     fontSize: 10,
     letterSpacing: "0.16em",
@@ -91,7 +91,7 @@ function ClientesPage() {
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 12,
     cursor: "pointer",
@@ -116,8 +116,8 @@ function ClientesPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>Clientes</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>Clientes</div>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"} · {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"}
           </div>
         </div>
@@ -128,7 +128,7 @@ function ClientesPage() {
               height: 40, padding: "0 16px", borderRadius: 12, border: "none",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
               color: "#08090E", display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
+              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
               cursor: "pointer", flexShrink: 0,
             }}
           >
@@ -151,7 +151,7 @@ function ClientesPage() {
           }}
         >
           <Wand2 size={18} color={isLight ? "#1d4ed8" : "#60A5FA"} />
-          <span style={{ flex: 1, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+          <span style={{ flex: 1, fontFamily: "var(--fonte)", fontSize: 13 }}>
             {semEndereco} cadastro{semEndereco === 1 ? "" : "s"} sem endereço, vindo{semEndereco === 1 ? "" : "s"} das visitas antigas.
             <br />
             <span style={{ color: textSecondary, fontSize: 12 }}>Toque para revisar e consolidar por prédio.</span>
@@ -175,7 +175,7 @@ function ClientesPage() {
             padding: "0 14px 0 38px",
             background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
             border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-            color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+            color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
             outline: "none", colorScheme: isLight ? "light" : "dark",
           }}
         />
@@ -197,16 +197,16 @@ function ClientesPage() {
 
       {/* Lista */}
       {isLoading ? (
-        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
           Carregando clientes…
         </div>
       ) : lista.length === 0 ? (
         <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 16px" }}>
           <Building2 size={28} color={gold} />
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14, fontWeight: 600 }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 14, fontWeight: 600 }}>
             {clientes.length === 0 ? "Nenhum cliente cadastrado" : "Nenhum cliente encontrado"}
           </span>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, textAlign: "center" }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
             {clientes.length === 0
               ? "Cadastre os condomínios e empresas atendidos pela Prever para abrir chamados e registrar os equipamentos."
               : "Ajuste a busca ou o filtro de situação."}
@@ -233,13 +233,13 @@ function ClientesPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14 }}>{c.nome}</span>
+                    <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>{c.nome}</span>
                     <span
                       style={{
                         padding: "3px 8px", borderRadius: 12,
                         background: cor.bg, border: `1px solid ${cor.border}`,
                         color: isLight ? cor.light : cor.dark,
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                        fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                         letterSpacing: "0.06em", textTransform: "uppercase",
                       }}
                     >
@@ -249,12 +249,12 @@ function ClientesPage() {
                   {c.endereco ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
                       <MapPin size={12} color={textSecondary} style={{ flexShrink: 0 }} />
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                         {c.endereco}
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: isLight ? "#A63E17" : "#F8C811", marginTop: 4 }}>
+                    <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#A63E17" : "#F8C811", marginTop: 4 }}>
                       sem endereço — precisa de revisão
                     </div>
                   )}
@@ -263,7 +263,7 @@ function ClientesPage() {
                       <span style={{ ...LABEL, color: textSecondary }}>{TIPO_LABEL[c.tipo_local] ?? c.tipo_local}</span>
                     )}
                     {c.nome_sindico && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                         <Users size={11} /> {c.nome_sindico}
                       </span>
                     )}

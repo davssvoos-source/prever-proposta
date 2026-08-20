@@ -220,15 +220,15 @@ function CalendarioPage() {
     <div>
       <div style={{ marginBottom: 16 }}>
         <h1 style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 600,
           fontSize: 22,
           color: textPrimary,
           margin: 0,
         }}>Calendário</h1>
         <p style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
           fontSize: 12,
           color: textSecondary,
           margin: "4px 0 0",
@@ -248,7 +248,7 @@ function CalendarioPage() {
               width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 12px",
               background: isLight ? "#ffffff" : "#16161d",
               border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-              color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontSize: 13,
+              color: textPrimary, fontFamily: "var(--fonte)", fontSize: 13,
               outline: "none", colorScheme: isLight ? "light" : "dark",
             }}
           >
@@ -278,7 +278,7 @@ function CalendarioPage() {
                     ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                     : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                   color: tipoFiltro === valor ? "#08090E" : textPrimary,
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
+                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
                   whiteSpace: "nowrap",
                 }}
               >
@@ -298,7 +298,7 @@ function CalendarioPage() {
             <ChevronLeft size={18} />
           </button>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif",
+            fontFamily: "var(--fonte)",
             fontWeight: 600,
             fontSize: 15,
             color: textPrimary,
@@ -317,7 +317,7 @@ function CalendarioPage() {
           {DIAS_SEMANA.map((d) => (
             <div key={d} style={{
               textAlign: "center",
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 500,
               fontSize: 10,
               color: textSecondary,
@@ -358,7 +358,7 @@ function CalendarioPage() {
                 }}
               >
                 <span style={{
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: selecionado || hoje_ ? 600 : 400,
                   fontSize: 13,
                   color: selecionado ? "#fff" : textPrimary,
@@ -384,7 +384,7 @@ function CalendarioPage() {
 
       <div>
         <div style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 500,
           fontSize: 12,
           color: goldDark,
@@ -398,13 +398,13 @@ function CalendarioPage() {
         </div>
 
         {isLoading ? (
-          <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+          <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
             Carregando...
           </div>
         ) : visitasDoDia.length === 0 ? (
           <div style={{ padding: 28, textAlign: "center", color: textSecondary }}>
             <CalendarDays size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+            <div style={{ fontFamily: "var(--fonte)", fontSize: 13 }}>
               {diaSelecionado ? "Nada agendado neste dia" : "Nada agendado neste mês"}
             </div>
           </div>
@@ -445,7 +445,7 @@ function CalendarioPage() {
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif",
+                      fontFamily: "var(--fonte)",
                       fontWeight: 600,
                       fontSize: 14,
                       color: textPrimary,
@@ -455,8 +455,8 @@ function CalendarioPage() {
                       whiteSpace: "nowrap",
                     }}>{clienteNome}</div>
                     <div style={{
-                      fontFamily: "'Montserrat', sans-serif",
-                      fontWeight: 300,
+                      fontFamily: "var(--fonte)",
+                      fontWeight: 400,
                       fontSize: 11,
                       color: textSecondary,
                       display: "inline-flex",
@@ -471,7 +471,7 @@ function CalendarioPage() {
                     borderRadius: 12,
                     background: `${cor}22`,
                     color: cor,
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: 600,
                     fontSize: 10,
                     letterSpacing: "0.06em",

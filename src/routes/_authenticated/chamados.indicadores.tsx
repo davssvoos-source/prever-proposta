@@ -51,14 +51,14 @@ function PainelOsPage() {
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SEC: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const tooltipStyle = {
     background: isLight ? "#ffffff" : "#16161d",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 10, fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+    borderRadius: 10, fontFamily: "var(--fonte)", fontSize: 12,
     color: textPrimary,
   } as CSSProperties;
 
@@ -169,20 +169,20 @@ function PainelOsPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>Painel de chamados</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>Painel de chamados</div>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             {m.total} chamado{m.total === 1 ? "" : "s"} no histórico
           </div>
         </div>
       </div>
 
       {isLoading ? (
-        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
           Calculando indicadores…
         </div>
       ) : m.total === 0 ? (
         <div style={{ ...CARD, textAlign: "center", padding: "28px 16px" }}>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
             Nenhum chamado registrado ainda — os indicadores aparecem aqui conforme a operação andar.
           </span>
         </div>
@@ -198,7 +198,7 @@ function PainelOsPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 22,
+                    fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 22,
                     color: t.cor, fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -215,14 +215,14 @@ function PainelOsPage() {
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
                 <span
                   style={{
-                    fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 26,
+                    fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 26,
                     color: m.pctPrazo >= 80 ? (isLight ? "#047862" : "#2DD2A5") : m.pctPrazo >= 50 ? gold : (isLight ? "#B1242E" : "#F17881"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
                   {m.pctPrazo}%
                 </span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                   dos {m.comPrazo} chamados com prazo foram concluídos dentro dele
                 </span>
               </div>
@@ -278,7 +278,7 @@ function PainelOsPage() {
                     alignItems: "center", justifyContent: "center", pointerEvents: "none",
                   }}
                 >
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
                     {m.abertos}
                   </span>
                   <span style={{ ...SEC, fontSize: 9, color: textSecondary }}>em aberto</span>
@@ -289,8 +289,8 @@ function PainelOsPage() {
                 {fatias.map((f, i) => (
                   <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
                     <span style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: corFatia(i, f.nome) }} />
-                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Montserrat', sans-serif", fontSize: 12 }}>{f.nome}</span>
-                    <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 700, color: gold, fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "var(--fonte)", fontSize: 12 }}>{f.nome}</span>
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 700, color: gold, fontVariantNumeric: "tabular-nums" }}>
                       {f.valor}
                     </span>
                   </div>
@@ -312,12 +312,12 @@ function PainelOsPage() {
                     />
                     <XAxis
                       type="number" allowDecimals={false}
-                      tick={{ fill: textSecondary, fontSize: 11, fontFamily: "Montserrat" }}
+                      tick={{ fill: textSecondary, fontSize: 11, fontFamily: "var(--fonte)" }}
                       axisLine={false} tickLine={false}
                     />
                     <YAxis
                       type="category" dataKey="nome" width={110}
-                      tick={{ fill: textPrimary, fontSize: 11, fontFamily: "Montserrat" }}
+                      tick={{ fill: textPrimary, fontSize: 11, fontFamily: "var(--fonte)" }}
                       axisLine={false} tickLine={false}
                     />
                     <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
@@ -345,7 +345,7 @@ function PainelOsPage() {
                       borderTop: i === 0 ? "none" : isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
-                    <span style={{ flex: 1, minWidth: 0, fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>
                       {c.nome}
                     </span>
                     <div
@@ -364,7 +364,7 @@ function PainelOsPage() {
                     <span
                       style={{
                         minWidth: 22, textAlign: "right", flexShrink: 0,
-                        fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700,
+                        fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 700,
                         color: gold, fontVariantNumeric: "tabular-nums",
                       }}
                     >

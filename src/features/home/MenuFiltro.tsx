@@ -218,6 +218,7 @@ export function MenuFiltro({
             return (
               <button
                 key={o.valor}
+                className="hover-suave"
                 role="option"
                 aria-selected={marcada}
                 onClick={() => alternar(o.valor)}
@@ -249,7 +250,7 @@ export function MenuFiltro({
                   </span>
                   {o.nota && (
                     <span style={{
-                      display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 11,
+                      display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 11,
                       color: textSecondary, marginTop: 1, lineHeight: 1.3,
                     }}>
                       {o.nota}

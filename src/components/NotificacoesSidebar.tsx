@@ -61,6 +61,7 @@ export function NotificacoesSidebar() {
     <>
       <button
         ref={botaoRef}
+        className="hover-suave"
         onClick={() => setAberto((a) => !a)}
         aria-label={`Notificações${naoLidas ? ` — ${naoLidas} não lida(s)` : ""}`}
         style={{
@@ -148,7 +149,7 @@ export function NotificacoesSidebar() {
           {notificacoes.length === 0 ? (
             <div style={{
               padding: "22px 0", textAlign: "center",
-              fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary,
+              fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary,
             }}>
               Nada por enquanto.
             </div>
@@ -156,6 +157,7 @@ export function NotificacoesSidebar() {
             notificacoes.map((n) => (
               <button
                 key={n.id}
+                className="hover-suave"
                 onClick={() => abrirNotificacao(n)}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
@@ -180,7 +182,7 @@ export function NotificacoesSidebar() {
                   </span>
                   {n.corpo && (
                     <span style={{
-                      display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 10.5,
+                      display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 10.5,
                       color: textSecondary,
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                     }}>
@@ -188,7 +190,7 @@ export function NotificacoesSidebar() {
                     </span>
                   )}
                 </span>
-                <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 9.5, color: textSecondary, flexShrink: 0 }}>
+                <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 9.5, color: textSecondary, flexShrink: 0 }}>
                   {tempoRelativo(n.created_at)}
                 </span>
               </button>

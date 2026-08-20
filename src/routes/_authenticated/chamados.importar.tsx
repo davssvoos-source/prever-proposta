@@ -311,10 +311,10 @@ function ImportarChamadosPage() {
           <ArrowLeft size={18} />
         </button>
         <div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 20 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 20 }}>
             Importar do Notion
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Exporte o quadro como CSV e escolha o arquivo aqui.
           </div>
         </div>
@@ -329,10 +329,10 @@ function ImportarChamadosPage() {
           }}
         >
           <Upload size={26} color={gold} />
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13.5 }}>
+          <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13.5 }}>
             {arquivo || "Escolher arquivo CSV"}
           </span>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary, textAlign: "center" }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, textAlign: "center" }}>
             No Notion: ··· → Export → Markdown &amp; CSV, sem subpáginas.
           </span>
           <input
@@ -354,7 +354,7 @@ function ImportarChamadosPage() {
           <div style={CARD}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <CheckCircle2 size={17} color="#2DD2A5" />
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14 }}>
+              <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>
                 {linhas.length} chamado(s) prontos para importar
               </span>
             </div>
@@ -362,7 +362,7 @@ function ImportarChamadosPage() {
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                 <AlertTriangle size={16} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
                 <span style={{
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+                  fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                   color: textSecondary, lineHeight: 1.5,
                 }}>
                   {semResponsavel > 0 && `${semResponsavel} sem responsável reconhecido (entram sem dono, dá para atribuir depois). `}
@@ -371,7 +371,7 @@ function ImportarChamadosPage() {
               </div>
             )}
             <span style={{
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11.5,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11.5,
               color: textSecondary, lineHeight: 1.5,
             }}>
               Reimportar o mesmo arquivo não duplica: conferimos título + prazo antes de gravar.
@@ -388,11 +388,11 @@ function ImportarChamadosPage() {
                   border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                 }}
               >
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+                <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
                   {l.titulo}
                 </div>
                 <div style={{
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11,
+                  fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                   color: textSecondary, marginTop: 3,
                 }}>
                   {EQUIPE_LABEL[l.equipe]} · {SPRINT_LABEL[l.sprint]} · {TIPO_LABEL[l.tipo]}
@@ -407,7 +407,7 @@ function ImportarChamadosPage() {
               </div>
             ))}
             {linhas.length > 200 && (
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
                 …e mais {linhas.length - 200}. Todas serão importadas.
               </span>
             )}
@@ -420,7 +420,7 @@ function ImportarChamadosPage() {
               height: 52, borderRadius: 26, border: "none",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
               color: "#08090E",
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
               letterSpacing: "0.14em", textTransform: "uppercase",
               cursor: importar.isPending ? "wait" : "pointer",
               opacity: importar.isPending ? 0.7 : 1,

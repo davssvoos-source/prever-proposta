@@ -45,17 +45,12 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     padding: "8px 8px 8px 18px",
     borderRadius: 999,
     boxSizing: "border-box",
-    background: isLight ? "rgba(255,255,255,0.62)" : "rgba(20,20,27,0.55)",
-    backdropFilter: "var(--vidro-blur)" as any,
-    WebkitBackdropFilter: "var(--vidro-blur)" as any,
-    border: isLight
-      ? "1px solid rgba(255,255,255,0.72)"
-      : "1px solid rgba(255,255,255,0.10)",
-    // o "shadow__input" do original, feito com box-shadow em vez de uma div
-    // borrada — mesmo halo, sem elemento extra nem camada de composição
+    // v4: pílula sólida, sombra leve — o halo dourado saiu junto com o glow
+    background: isLight ? "#ffffff" : "#17171a",
+    border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.08)",
     boxShadow: isLight
-      ? "0 12px 34px rgba(200,136,6,0.16), 0 2px 6px rgba(0,0,0,0.05)"
-      : "0 12px 34px rgba(248,200,17,0.10)",
+      ? "0 1px 2px rgba(0,0,0,0.04), 0 8px 22px rgba(0,0,0,0.06)"
+      : "0 1px 2px rgba(0,0,0,0.45), 0 8px 22px rgba(0,0,0,0.25)",
   };
 
   const input: CSSProperties = {

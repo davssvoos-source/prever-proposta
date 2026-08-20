@@ -113,7 +113,7 @@ export function NotificationPanel() {
               borderRadius: 9,
               background: "linear-gradient(135deg,#FCDE48,#F8C811)",
               color: "#08090E",
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 700,
               fontSize: 10,
               display: "flex",
@@ -166,7 +166,7 @@ export function NotificationPanel() {
           >
             <span
               style={{
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: 600,
                 fontSize: 13,
                 color: isLight ? "#0a0b0e" : "#fff",
@@ -181,7 +181,7 @@ export function NotificationPanel() {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 11,
                   color: isLight ? "#A06108" : "rgba(248,200,17,0.85)",
@@ -200,8 +200,8 @@ export function NotificationPanel() {
                   padding: "36px 16px",
                   textAlign: "center",
                   color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontFamily: "var(--fonte)",
+                  fontWeight: 400,
                   fontSize: 12,
                 }}
               >
@@ -333,7 +333,7 @@ function NotifItem({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: n.lida ? 400 : 600,
                 fontSize: 13,
                 color: isLight
@@ -347,8 +347,8 @@ function NotifItem({
             {n.corpo && (
               <div
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontFamily: "var(--fonte)",
+                  fontWeight: 400,
                   fontSize: 12,
                   color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
                   marginTop: 3,
@@ -360,8 +360,8 @@ function NotifItem({
             )}
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
-                fontWeight: 300,
+                fontFamily: "var(--fonte)",
+                fontWeight: 400,
                 fontSize: 10,
                 color: isLight ? "#A06108" : "rgba(248,200,17,0.55)",
                 marginTop: 5,

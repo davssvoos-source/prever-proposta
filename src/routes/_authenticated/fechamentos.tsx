@@ -50,7 +50,7 @@ function FechamentosPage() {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
     background: isLight ? "#ffffff" : "#16161d",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-    color: textPrimary, fontFamily: FONT, fontWeight: 300, fontSize: 14,
+    color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const LABEL: CSSProperties = {
@@ -181,7 +181,7 @@ function FechamentosPage() {
             ))}
           </div>
           {Number(parcelas) > 1 && (
-            <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
+            <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
               Cada parcela cai numa competência seguinte. A divisão é em centavos, com o resto na primeira —
               a soma fecha exatamente o total.
             </span>
@@ -208,7 +208,7 @@ function FechamentosPage() {
             <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600 }}>
               {moeda(totalSolto)} aguardando fechamento
             </div>
-            <div style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 300, color: textSecondary }}>
+            <div style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 400, color: textSecondary }}>
               {semFechamento.length} cobrança(s) aprovadas ainda sem período
             </div>
           </div>
@@ -232,7 +232,7 @@ function FechamentosPage() {
             </button>
           ))}
         </div>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary, lineHeight: 1.5 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary, lineHeight: 1.5 }}>
           Montar o período recolhe as cobranças da janela. Pode rodar de novo à vontade: só entra o que ainda
           não estava em nenhum fechamento.
         </span>
@@ -263,7 +263,7 @@ function FechamentosPage() {
                 <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>
                   {rotuloReferencia(f.referencia)}
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 300, color: textSecondary, marginTop: 2 }}>
+                <div style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 400, color: textSecondary, marginTop: 2 }}>
                   {f.tipo === "semanal" ? "Semanal" : "Mensal"} ·{" "}
                   {f.inicio.split("-").reverse().join("/")} a {f.fim.split("-").reverse().join("/")}
                 </div>

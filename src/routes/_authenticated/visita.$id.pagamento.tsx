@@ -314,12 +314,12 @@ function PagamentoPage() {
     borderRadius: 16, padding: "16px 18px",
   };
   const LABEL: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)", marginBottom: 10,
   };
   const SEC_TITLE: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
@@ -329,14 +329,14 @@ function PagamentoPage() {
     borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
   };
   const linhaLabel: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600, minWidth: 0,
+    fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600, minWidth: 0,
   };
   const linhaValor: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700,
+    fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 700,
     color: isLight ? "#A06108" : "#F8C811", flexShrink: 0,
   };
   const obsStyle: React.CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontSize: 11,
+    fontFamily: "var(--fonte)", fontSize: 11,
     color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
   };
 
@@ -347,10 +347,10 @@ function PagamentoPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>
             Formas de Pagamento
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {nomeLocal}
           </div>
         </div>
@@ -360,7 +360,7 @@ function PagamentoPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={CARD}>
           <div style={LABEL}>Custo total do projeto</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 20 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20 }}>
             {fmtBRL(custoTotal)}
           </div>
         </div>
@@ -373,7 +373,7 @@ function PagamentoPage() {
           }}
         >
           <div style={{ ...LABEL, color: "rgba(10,11,14,0.65)" }}>Valor de venda ({MARKUP_VENDA}×)</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 20, color: "#0A0A0A" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20, color: "#0A0A0A" }}>
             {fmtBRL(vendaTotal)}
           </div>
         </div>
@@ -413,7 +413,7 @@ function PagamentoPage() {
                     background: isLight ? "#ffffff" : "#16161d",
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                     borderRadius: 10,
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontSize: 12,
                     color: isLight ? "#0a0b0e" : "#fff",
                   }}
@@ -428,7 +428,7 @@ function PagamentoPage() {
                 alignItems: "center", justifyContent: "center", pointerEvents: "none",
               }}
             >
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15 }}>
+              <span style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 15 }}>
                 {fmtBRL(custoTodosBlocos)}
               </span>
               <span style={{ ...obsStyle, fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase" }}>
@@ -576,7 +576,7 @@ function PagamentoPage() {
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
           color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 700,
           fontSize: 13,
           letterSpacing: "0.16em",
@@ -618,7 +618,7 @@ function PagamentoPage() {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 }}>
+              <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>
                 Gerar Proposta Comercial
               </span>
               <button
@@ -657,8 +657,8 @@ function PagamentoPage() {
                       transition: "all 0.15s",
                     }}
                   >
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>{label}</div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                    <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13 }}>{label}</div>
+                    <div style={{ fontFamily: "var(--fonte)", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
                       {valorDaForma(valor)}
                     </div>
                   </button>
@@ -693,10 +693,10 @@ function PagamentoPage() {
                           textAlign: "center",
                         }}
                       >
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13 }}>
                           {t === "24h" ? "24 horas" : "12 horas"}
                         </div>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
                           {v === null ? "sob negociação" : `${fmtBRL(v)}/mês`}
                         </div>
                       </button>
@@ -735,8 +735,8 @@ function PagamentoPage() {
                           textAlign: "center",
                         }}
                       >
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13 }}>{t}</div>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13 }}>{t}</div>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, opacity: selected ? 0.75 : 0.6 }}>
                           {desc}
                         </div>
                       </button>
@@ -758,7 +758,7 @@ function PagamentoPage() {
                     boxSizing: "border-box",
                     borderRadius: 12,
                     padding: "12px 14px",
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontSize: 14,
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                     background: isLight ? "#ffffff" : "#16161d",
@@ -787,7 +787,7 @@ function PagamentoPage() {
                 boxSizing: "border-box",
                 borderRadius: 12,
                 padding: "12px 14px",
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                 background: isLight ? "#ffffff" : "#16161d",
@@ -798,7 +798,7 @@ function PagamentoPage() {
             />
             <div
               style={{
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontSize: 11,
                 color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
                 marginBottom: 18,
@@ -817,7 +817,7 @@ function PagamentoPage() {
                 boxSizing: "border-box",
                 borderRadius: 12,
                 padding: "12px 14px",
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                 background: isLight ? "#ffffff" : "#16161d",
@@ -837,7 +837,7 @@ function PagamentoPage() {
                 background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                 border: "none",
                 color: "#08090E",
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: 700,
                 fontSize: 13,
                 letterSpacing: "0.14em",

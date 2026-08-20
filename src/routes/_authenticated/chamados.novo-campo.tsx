@@ -64,12 +64,12 @@ function NovaOsPage() {
     display: "flex", flexDirection: "column", gap: 12,
   };
   const SEC: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",
     color: textSecondary, marginBottom: 6, display: "block",
   };
@@ -77,7 +77,7 @@ function NovaOsPage() {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
     background: isLight ? "#ffffff" : "#16161d",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+    color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const chip = (ativo: boolean, cores?: { bg: string; border: string; cor: string }): CSSProperties => ({
@@ -90,7 +90,7 @@ function NovaOsPage() {
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? (cores ? cores.cor : "#08090E") : textPrimary,
     boxShadow: ativo && cores ? `inset 0 0 0 1px ${cores.border}` : undefined,
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer",
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12, cursor: "pointer",
   });
 
   const clientesFiltrados = useMemo(() => {
@@ -181,8 +181,8 @@ function NovaOsPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>Abrir chamado</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>Abrir chamado</div>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             O número é gerado ao salvar
           </div>
         </div>
@@ -207,8 +207,8 @@ function NovaOsPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Building2 size={18} color={gold} style={{ flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14 }}>{cliente.nome}</div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>{cliente.nome}</div>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                 {cliente.endereco ?? "sem endereço"}
               </div>
             </div>
@@ -219,7 +219,7 @@ function NovaOsPage() {
                 background: isLight ? "#ffffff" : "#191921",
                 border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                 color: textPrimary, cursor: "pointer",
-                fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
               }}
             >
               Trocar
@@ -239,7 +239,7 @@ function NovaOsPage() {
             {buscaCliente.trim() !== "" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 240, overflowY: "auto" }}>
                 {clientesFiltrados.length === 0 ? (
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                     Nenhum cliente encontrado. Cadastre em Gerencial → Clientes.
                   </span>
                 ) : (
@@ -255,8 +255,8 @@ function NovaOsPage() {
                         color: textPrimary,
                       }}
                     >
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                         {c.endereco ?? "sem endereço"}
                       </span>
                     </button>
@@ -273,7 +273,7 @@ function NovaOsPage() {
               {tipo === "preventiva" ? "Sistema a revisar (vazio = todos)" : "Sistema afetado (opcional)"}
             </label>
             {sistemas.length === 0 ? (
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                 Este cliente ainda não tem inventário — registre os sistemas na ficha do cliente.
               </span>
             ) : (
@@ -330,7 +330,7 @@ function NovaOsPage() {
               );
             })}
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary, marginTop: 8 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, marginTop: 8 }}>
             {horasPrazo == null
               ? "Sem prazo definido — agendável livremente."
               : `Prazo de atendimento: ${horasPrazo}h · vence ${prazoPrevisto?.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
@@ -365,7 +365,7 @@ function NovaOsPage() {
             <label style={LABEL}>Já agendado para este técnico</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {agenda.slice(0, 6).map((a: any) => (
-                <span key={a.id} style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                <span key={a.id} style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                   {new Date(a.data_hora_agendada).toLocaleString("pt-BR", {
                     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                   })} · {a.numero} {a.titulo}
@@ -382,7 +382,7 @@ function NovaOsPage() {
         style={{
           width: "100%", height: 56, borderRadius: 28, border: "none",
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+          fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.16em", textTransform: "uppercase",
           cursor: criar.isPending ? "wait" : "pointer", opacity: criar.isPending ? 0.7 : 1,
           boxShadow: "0 6px 20px rgba(248,200,17,0.35)",

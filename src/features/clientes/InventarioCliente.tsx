@@ -55,7 +55,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SEC_LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 700, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
@@ -64,7 +64,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
     background: isLight ? "#ffffff" : "#191921",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
   };
 
   const invalidar = () => {
@@ -134,21 +134,21 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
       </div>
 
       {sistemas.length > 0 && (
-        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, marginTop: 8 }}>
+        <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, marginTop: 8 }}>
           {sistemas.length} sistema{sistemas.length === 1 ? "" : "s"} · {totalEquipamentos} equipamento{totalEquipamentos === 1 ? "" : "s"} ativo{totalEquipamentos === 1 ? "" : "s"}
         </div>
       )}
 
       {isLoading ? (
-        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, paddingTop: 12 }}>
+        <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 12 }}>
           Carregando inventário…
         </div>
       ) : sistemas.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14 }}>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
             Nenhum equipamento registrado neste cliente.
           </span>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             {podeImportar
               ? "Importe do escopo aprovado de uma visita ou registre os sistemas manualmente."
               : "Registre os sistemas manualmente — é o que os chamados vão usar para saber o que existe no local."}
@@ -185,8 +185,8 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                 >
                   {aberto ? <ChevronDown size={16} color={textSecondary} /> : <ChevronRight size={16} color={textSecondary} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>{s.nome}</div>
-                    <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                    <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{s.nome}</div>
+                    <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                       {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo} · {ativos} item{ativos === 1 ? "" : "ns"}
                       {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
                     </div>
@@ -196,7 +196,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                 {aberto && (
                   <div style={{ padding: "0 14px 14px" }}>
                     {s.equipamentos.length === 0 ? (
-                      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, padding: "6px 0" }}>
+                      <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, padding: "6px 0" }}>
                         Sem equipamentos registrados neste sistema.
                       </div>
                     ) : (
@@ -212,10 +212,10 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                               }}
                             >
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                                <div style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
                                   {nomeEquipamento(e)}
                                 </div>
-                                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, color: textSecondary }}>
+                                <div style={{ fontFamily: "var(--fonte)", fontSize: 10, color: textSecondary }}>
                                   {[e.cod_eq, e.equipamento?.marca, e.equipamento?.modelo].filter(Boolean).join(" · ")}
                                   {e.origem !== "implantacao" ? ` · ${ORIGEM_LABEL[e.origem]}` : ""}
                                 </div>
@@ -233,7 +233,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                   >
                                     <Minus size={12} />
                                   </button>
-                                  <span style={{ minWidth: 26, textAlign: "center", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12 }}>
+                                  <span style={{ minWidth: 26, textAlign: "center", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12 }}>
                                     {Number(e.qtd)}
                                   </span>
                                   <button
@@ -249,7 +249,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                   </button>
                                 </div>
                               ) : (
-                                <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+                                <span style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
                                   {Number(e.qtd)}
                                 </span>
                               )}
@@ -266,7 +266,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                   padding: "3px 8px", borderRadius: 12, flexShrink: 0,
                                   background: cor.bg, border: `1px solid ${cor.border}`,
                                   color: isLight ? cor.light : cor.dark,
-                                  fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 9,
+                                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                                   letterSpacing: "0.06em", textTransform: "uppercase",
                                   cursor: podeEditar ? "pointer" : "default",
                                 }}
@@ -361,9 +361,9 @@ function useModalEstilos() {
       boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
       color: textPrimary,
     } as CSSProperties,
-    titulo: { fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 16 } as CSSProperties,
+    titulo: { fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 } as CSSProperties,
     label: {
-      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
       letterSpacing: "0.12em", textTransform: "uppercase",
       color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", marginBottom: 6, display: "block",
     } as CSSProperties,
@@ -371,13 +371,13 @@ function useModalEstilos() {
       width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
       background: isLight ? "#ffffff" : "#16161d",
       border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-      color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+      color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
       outline: "none", colorScheme: isLight ? "light" : "dark",
     } as CSSProperties,
     cta: {
       width: "100%", height: 50, borderRadius: 25, border: "none",
       background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
-      fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+      fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
       letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     } as CSSProperties,
   };
@@ -417,7 +417,7 @@ function ModalImportar({
           <span style={s.titulo}>Importar do escopo aprovado</span>
           <BotaoFechar onClick={onFechar} />
         </div>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: s.textSecondary, lineHeight: 1.5, marginBottom: 14 }}>
+        <p style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary, lineHeight: 1.5, marginBottom: 14 }}>
           Cada bloco do orçamento aprovado vira um sistema instalado, com os equipamentos dimensionados.
           Blocos já importados são ignorados.
         </p>
@@ -437,10 +437,10 @@ function ModalImportar({
                 opacity: v.qtdBlocosNovos === 0 ? 0.55 : 1,
               }}
             >
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>
+              <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
                 {v.data ? new Date(v.data).toLocaleDateString("pt-BR") : "sem data"} · {v.nome}
               </span>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: s.textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: s.textSecondary }}>
                 {v.qtdBlocosNovos === 0
                   ? `${v.qtdBlocos} bloco(s) — já importados`
                   : `${v.qtdBlocosNovos} de ${v.qtdBlocos} bloco(s) a importar`}
@@ -501,7 +501,7 @@ function ModalSistema({
                     ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                     : s.isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                   color: ativo ? "#08090E" : s.textPrimary,
-                  fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11, cursor: "pointer",
+                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11, cursor: "pointer",
                 }}
               >
                 {TIPO_SISTEMA_LABEL[t]}
@@ -575,7 +575,7 @@ function ModalEquipamento({
           <span style={s.titulo}>Equipamento</span>
           <BotaoFechar onClick={onFechar} />
         </div>
-        <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: s.textSecondary, marginBottom: 14 }}>
+        <p style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary, marginBottom: 14 }}>
           em {sistema.nome}
         </p>
 
@@ -588,8 +588,8 @@ function ModalEquipamento({
             }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13 }}>{escolhido.nome}</div>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: s.textSecondary }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{escolhido.nome}</div>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: s.textSecondary }}>
                 {[escolhido.code, escolhido.marca, escolhido.modelo].filter(Boolean).join(" · ")}
               </div>
             </div>
@@ -600,7 +600,7 @@ function ModalEquipamento({
                 background: s.isLight ? "#ffffff" : "#191921",
                 border: s.isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                 color: s.textPrimary, cursor: "pointer",
-                fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+                fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
               }}
             >
               Trocar
@@ -621,9 +621,9 @@ function ModalEquipamento({
             {busca.trim().length >= 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12, maxHeight: 220, overflowY: "auto" }}>
                 {isFetching ? (
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: s.textSecondary }}>Buscando…</span>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary }}>Buscando…</span>
                 ) : resultados.length === 0 ? (
-                  <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: s.textSecondary }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary }}>
                     Nada no catálogo — informe o nome abaixo para registrar como equipamento avulso.
                   </span>
                 ) : (
@@ -639,8 +639,8 @@ function ModalEquipamento({
                         color: s.textPrimary,
                       }}
                     >
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12 }}>{r.nome}</span>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, color: s.textSecondary }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12 }}>{r.nome}</span>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 10, color: s.textSecondary }}>
                         {[r.code, r.marca, r.modelo].filter(Boolean).join(" · ")}
                       </span>
                     </button>

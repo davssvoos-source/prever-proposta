@@ -80,15 +80,15 @@ function VisitasPage() {
     <div>
       <div style={{ marginBottom: 16 }}>
         <h1 style={{
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 600,
           fontSize: 22,
           color: textPrimary,
           margin: 0,
         }}>Visitas</h1>
         <p style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
           fontSize: 12,
           color: textSub,
           margin: "4px 0 0",
@@ -120,7 +120,7 @@ function VisitasPage() {
                 background: ativo
                   ? isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.15)"
                   : cardBg,
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: ativo ? 600 : 400,
                 fontSize: 12,
                 color: ativo ? gold : textSub,
@@ -137,13 +137,13 @@ function VisitasPage() {
       </div>
 
       {isLoading ? (
-        <div style={{ padding: 24, textAlign: "center", color: textMuted, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+        <div style={{ padding: 24, textAlign: "center", color: textMuted, fontFamily: "var(--fonte)", fontSize: 13 }}>
           Carregando...
         </div>
       ) : filtradas.length === 0 ? (
         <div style={{ padding: 40, textAlign: "center", color: textMuted }}>
           <Archive size={40} style={{ opacity: 0.4, marginBottom: 10 }} />
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 13 }}>
             Nenhuma visita encontrada
           </div>
         </div>
@@ -196,7 +196,7 @@ function VisitasPage() {
 
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: 600,
                     fontSize: 14,
                     color: textPrimary,
@@ -206,8 +206,8 @@ function VisitasPage() {
                     whiteSpace: "nowrap",
                   }}>{clienteNome}</div>
                   <div style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
+                    fontFamily: "var(--fonte)",
+                    fontWeight: 400,
                     fontSize: 11,
                     color: textSub,
                     overflow: "hidden",
@@ -230,7 +230,7 @@ function VisitasPage() {
                   borderRadius: 12,
                   background: `${cfg.color}22`,
                   color: statusColor,
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: 600,
                   fontSize: 10,
                   letterSpacing: "0.06em",

@@ -65,7 +65,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     gap: 12,
   };
   const SEC_LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 700,
     fontSize: 10,
     letterSpacing: "0.16em",
@@ -73,7 +73,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 10,
     letterSpacing: "0.12em",
@@ -91,8 +91,8 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary,
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     outline: "none",
     colorScheme: isLight ? "light" : "dark",
@@ -107,7 +107,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "'Montserrat', sans-serif",
+    fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 12,
     cursor: "pointer",
@@ -205,8 +205,8 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
             style={{
               display: "block",
               marginTop: 6,
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
+              fontFamily: "var(--fonte)",
+              fontWeight: 400,
               fontSize: 11,
               color: textSecondary,
             }}
@@ -258,13 +258,13 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
               background: isLight ? "#ffffff" : "#191921",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, cursor: geocodificando ? "wait" : "pointer",
-              fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600,
+              fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
             }}
           >
             {geocodificando ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} color={gold} />}
             Localizar no mapa
           </button>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
             {lat != null && lng != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "sem coordenadas"}
           </span>
         </div>
@@ -358,7 +358,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
               background: isLight ? "#ffffff" : "#191921",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, cursor: "pointer",
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
+              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
             }}
           >
             Cancelar
@@ -372,7 +372,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
             flex: 1, height: 52, borderRadius: 26, border: "none",
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             color: "#08090E",
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+            fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
             letterSpacing: "0.14em", textTransform: "uppercase",
             cursor: salvando ? "wait" : "pointer",
             opacity: salvando ? 0.7 : 1,

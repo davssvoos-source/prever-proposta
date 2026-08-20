@@ -114,7 +114,7 @@ export function AssinaturaCanvas({ onChange, altura = 170 }: AssinaturaCanvasPro
             style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
               pointerEvents: "none", color: "#8a909e",
-              fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+              fontFamily: "var(--fonte)", fontSize: 12,
             }}
           >
             Assine com o dedo ou o mouse
@@ -130,7 +130,7 @@ export function AssinaturaCanvas({ onChange, altura = 170 }: AssinaturaCanvasPro
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
           color: isLight ? "#0a0b0e" : "#fff", cursor: "pointer",
           display: "flex", alignItems: "center", gap: 6,
-          fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
+          fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
         }}
       >
         <Eraser size={13} />

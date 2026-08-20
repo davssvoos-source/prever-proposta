@@ -91,8 +91,8 @@ function RedefinirSenhaPage() {
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
     color: isLight ? "#0a0b0e" : "#fff",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 14,
     padding: "0 16px",
     outline: "none",
@@ -105,8 +105,8 @@ function RedefinirSenhaPage() {
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
     color: "#08090E",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 13,
     letterSpacing: "0.18em",
     textTransform: "uppercase",
@@ -114,8 +114,8 @@ function RedefinirSenhaPage() {
     boxShadow: "0 4px 24px rgba(248,200,17,0.35)",
   };
   const LBL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
@@ -157,8 +157,8 @@ function RedefinirSenhaPage() {
           />
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontWeight: 300,
+              fontFamily: "var(--fonte)",
+              fontWeight: 400,
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
@@ -174,8 +174,8 @@ function RedefinirSenhaPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center", padding: "16px 0" }}>
               <div
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontFamily: "var(--fonte)",
+                  fontWeight: 400,
                   fontSize: 13,
                   color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
                   letterSpacing: "0.08em",
@@ -189,7 +189,7 @@ function RedefinirSenhaPage() {
               <div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
+                    fontFamily: "var(--fonte)",
                     fontWeight: 500,
                     fontSize: 17,
                     color: isLight ? "#0a0b0e" : "#fff",
@@ -200,8 +200,8 @@ function RedefinirSenhaPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "'Montserrat', sans-serif",
-                    fontWeight: 300,
+                    fontFamily: "var(--fonte)",
+                    fontWeight: 400,
                     fontSize: 12,
                     color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)",
                     lineHeight: 1.5,

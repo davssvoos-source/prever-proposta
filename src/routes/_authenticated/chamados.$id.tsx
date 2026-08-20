@@ -25,8 +25,8 @@ function ChamadoPage() {
   const aviso: CSSProperties = {
     padding: "40px 0",
     textAlign: "center",
-    fontFamily: "'Montserrat', sans-serif",
-    fontWeight: 300,
+    fontFamily: "var(--fonte)",
+    fontWeight: 400,
     fontSize: 13,
     color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
   };

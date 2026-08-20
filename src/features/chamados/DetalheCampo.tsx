@@ -102,12 +102,12 @@ export function DetalheCampo({ id }: { id: string }) {
     display: "flex", flexDirection: "column", gap: 12,
   };
   const SEC: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",
     color: textSecondary, marginBottom: 6, display: "block",
   };
@@ -115,13 +115,13 @@ export function DetalheCampo({ id }: { id: string }) {
     width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "12px 14px",
     background: isLight ? "#ffffff" : "#16161d",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+    color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const CTA: CSSProperties = {
     width: "100%", height: 54, borderRadius: 27, border: "none",
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
     letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
     boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
@@ -132,7 +132,7 @@ export function DetalheCampo({ id }: { id: string }) {
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center",
     justifyContent: "center", gap: 8,
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
   };
   const linha: CSSProperties = {
     display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "7px 0",
@@ -357,7 +357,7 @@ export function DetalheCampo({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ padding: "24px 0", color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 13 }}>
+      <div style={{ padding: "24px 0", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
         Carregando chamado…
       </div>
     );
@@ -365,7 +365,7 @@ export function DetalheCampo({ id }: { id: string }) {
   if (!os) {
     return (
       <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", gap: 12, color: textPrimary }}>
-        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14 }}>Chamado não encontrado.</span>
+        <span style={{ fontFamily: "var(--fonte)", fontSize: 14 }}>Chamado não encontrado.</span>
         <button onClick={() => navigate({ to: "/chamados" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
           Voltar para chamados
         </button>
@@ -400,10 +400,10 @@ export function DetalheCampo({ id }: { id: string }) {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, color: gold, letterSpacing: "0.06em" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, color: gold, letterSpacing: "0.06em" }}>
             {os.numero ?? "—"} · {TIPO_LABEL[os.tipo] ?? os.tipo}
           </div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 17 }}>{os.titulo}</div>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 17 }}>{os.titulo}</div>
         </div>
       </div>
 
@@ -414,7 +414,7 @@ export function DetalheCampo({ id }: { id: string }) {
             style={{
               padding: "4px 10px", borderRadius: 12,
               background: info.bg, border: `1px solid ${info.border}`, color: corStatus,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
           >
@@ -425,7 +425,7 @@ export function DetalheCampo({ id }: { id: string }) {
               padding: "4px 10px", borderRadius: 12,
               background: prio.bg, border: `1px solid ${prio.border}`,
               color: isLight ? prio.light : prio.dark,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
           >
@@ -435,7 +435,7 @@ export function DetalheCampo({ id }: { id: string }) {
             <span
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600,
+                fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
                 color: prazo === "estourado" ? (isLight ? "#B1242E" : "#F17881") : (isLight ? "#A63E17" : "#F8C811"),
               }}
             >
@@ -447,12 +447,12 @@ export function DetalheCampo({ id }: { id: string }) {
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ ...linha, borderTop: "none" }}>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Cliente</span>
+            <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Cliente</span>
             <button
               onClick={() => navigate({ to: "/clientes/$id", params: { id: os.cliente_id } })}
               style={{
                 background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "right",
-                fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: gold, fontWeight: 600,
+                fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
                 display: "flex", alignItems: "center", gap: 5,
               }}
             >
@@ -462,8 +462,8 @@ export function DetalheCampo({ id }: { id: string }) {
           </div>
           {os.cliente?.endereco && (
             <div style={linha}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Endereço</span>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary, textAlign: "right" }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Endereço</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, textAlign: "right" }}>
                 <MapPin size={12} style={{ display: "inline", marginRight: 4 }} />
                 {os.cliente.endereco}
               </span>
@@ -471,11 +471,11 @@ export function DetalheCampo({ id }: { id: string }) {
           )}
           {os.cliente?.telefone_sindico && (
             <div style={linha}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Contato</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Contato</span>
               <a
                 href={`tel:${os.cliente.telefone_sindico}`}
                 style={{
-                  fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: gold, fontWeight: 600,
+                  fontFamily: "var(--fonte)", fontSize: 13, color: gold, fontWeight: 600,
                   textDecoration: "none", display: "flex", alignItems: "center", gap: 5,
                 }}
               >
@@ -486,14 +486,14 @@ export function DetalheCampo({ id }: { id: string }) {
           )}
           {os.sistema?.nome && (
             <div style={linha}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Sistema</span>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>{os.sistema.nome}</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Sistema</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>{os.sistema.nome}</span>
             </div>
           )}
           {os.data_hora_agendada && (
             <div style={linha}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Agendado</span>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Agendado</span>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
                 <Clock size={12} style={{ display: "inline", marginRight: 4 }} />
                 {new Date(os.data_hora_agendada).toLocaleString("pt-BR", {
                   day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -502,7 +502,7 @@ export function DetalheCampo({ id }: { id: string }) {
             </div>
           )}
           <div style={linha}>
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 600 }}>Técnico</span>
+            <span style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 600 }}>Técnico</span>
             {isGerente && ["aberto", "agendado", "em_andamento"].includes(os.status) ? (
               <select
                 value={os.responsavel_id ?? ""}
@@ -518,7 +518,7 @@ export function DetalheCampo({ id }: { id: string }) {
                 ))}
               </select>
             ) : (
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
                 <User size={12} style={{ display: "inline", marginRight: 4 }} />
                 {tecnicos.find((t: any) => t.id === os.responsavel_id)?.nome ?? "não atribuído"}
               </span>
@@ -531,7 +531,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {os.descricao_problema && (
         <div style={CARD}>
           <span style={SEC}>Problema relatado</span>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300, whiteSpace: "pre-wrap" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400, whiteSpace: "pre-wrap" }}>
             {os.descricao_problema}
           </div>
         </div>
@@ -541,7 +541,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {os.status === "cancelado" && os.motivo_cancelamento && (
         <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.30)"}` }}>
           <span style={SEC}>Motivo do cancelamento</span>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400 }}>
             {os.motivo_cancelamento}
           </div>
         </div>
@@ -556,7 +556,7 @@ export function DetalheCampo({ id }: { id: string }) {
             <span style={{ flex: 1 }} />
             <span
               style={{
-                fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 700,
+                fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 700,
                 color: checklist.every((i) => i.concluido) ? (isLight ? "#047862" : "#2DD2A5") : gold,
                 fontVariantNumeric: "tabular-nums",
               }}
@@ -591,7 +591,7 @@ export function DetalheCampo({ id }: { id: string }) {
                         )}
                         <span
                           style={{
-                            flex: 1, fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
+                            flex: 1, fontFamily: "var(--fonte)", fontSize: 12.5,
                             opacity: i.concluido ? 0.6 : 1,
                             textDecoration: i.concluido ? "line-through" : "none",
                           }}
@@ -702,7 +702,7 @@ export function DetalheCampo({ id }: { id: string }) {
           <div>
             <label style={LABEL}>Equipamento instalado / retirado</label>
             {pecasOs.length === 0 && (
-              <span style={{ display: "block", fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 300, color: textSecondary, marginBottom: 8 }}>
+              <span style={{ display: "block", fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, marginBottom: 8 }}>
                 Nada registrado ainda.
               </span>
             )}
@@ -721,18 +721,18 @@ export function DetalheCampo({ id }: { id: string }) {
                   >
                     <span style={{
                       flexShrink: 0, padding: "3px 8px", borderRadius: 999,
-                      fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
                       letterSpacing: "0.06em", textTransform: "uppercase",
                       color: isLight ? dc.light : dc.dark, background: dc.bg, border: `1px solid ${dc.border}`,
                     }}>
                       {DIRECAO_LABEL[p.direcao]}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                      <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
                         {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
                       </div>
                       {(p.numero_serie || p.tag_patrimonio) && (
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                           {p.numero_serie ? `Série ${p.numero_serie}` : ""}
                           {p.tag_patrimonio ? `${p.numero_serie ? " · " : ""}TAG ${p.tag_patrimonio}` : ""}
                         </div>
@@ -766,7 +766,7 @@ export function DetalheCampo({ id }: { id: string }) {
                           ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                           : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                         color: novaDirecao === d ? "#08090E" : textPrimary,
-                        fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
+                        fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
                       }}
                     >
                       {DIRECAO_LABEL[d]}
@@ -807,7 +807,7 @@ export function DetalheCampo({ id }: { id: string }) {
                     <Plus size={16} />
                   </button>
                 </div>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: textSecondary, lineHeight: 1.5 }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
                   O número de série é o que permite conciliar com o patrimônio no ERP — registre sempre que o equipamento tiver.
                 </span>
               </div>
@@ -820,10 +820,10 @@ export function DetalheCampo({ id }: { id: string }) {
                 background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.02)",
                 border: isLight ? "1px dashed rgba(0,0,0,0.10)" : "1px dashed rgba(255,255,255,0.10)",
               }}>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
                   Anotação anterior
                 </div>
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, fontWeight: 300, color: textPrimary, whiteSpace: "pre-wrap" }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 12.5, fontWeight: 400, color: textPrimary, whiteSpace: "pre-wrap" }}>
                   {os.pecas_texto}
                 </div>
               </div>
@@ -841,7 +841,7 @@ export function DetalheCampo({ id }: { id: string }) {
                   style={{ width: "100%", maxWidth: 320, borderRadius: 10, background: "#fff" }}
                 />
               ) : (
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                   carregando assinatura…
                 </span>
               )}
@@ -895,7 +895,7 @@ export function DetalheCampo({ id }: { id: string }) {
             <span style={SEC}>Cobrança</span>
             <span style={{
               marginLeft: "auto", padding: "3px 8px", borderRadius: 999,
-              fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
               letterSpacing: "0.06em", textTransform: "uppercase",
               color: textSecondary,
               background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
@@ -906,13 +906,13 @@ export function DetalheCampo({ id }: { id: string }) {
           </div>
 
           {!os.contrato_id && (
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
+            <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: gold, lineHeight: 1.5 }}>
               Cliente sem contrato vigente na abertura: tudo neste atendimento é faturável.
             </span>
           )}
 
           {analise.length === 0 ? (
-            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 300, color: textSecondary, lineHeight: 1.5 }}>
+            <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 400, color: textSecondary, lineHeight: 1.5 }}>
               Ainda não analisado. A análise confere item a item contra o contrato — nada é cobrado sem a sua
               aprovação depois.
             </span>
@@ -937,10 +937,10 @@ export function DetalheCampo({ id }: { id: string }) {
                   >
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
                           {Number(p.quantidade) !== 1 ? `${p.quantidade}× ` : ""}{p.descricao}
                         </div>
-                        <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 300, color: textSecondary, marginTop: 2, lineHeight: 1.45 }}>
+                        <div style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 2, lineHeight: 1.45 }}>
                           {a.justificativa}
                           {a.ajustado_manualmente && " · ajustado manualmente"}
                           {!a.ajustado_manualmente && a.confianca != null && ` · ${Math.round(a.confianca * 100)}% de confiança`}
@@ -949,14 +949,14 @@ export function DetalheCampo({ id }: { id: string }) {
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                         <span style={{
                           padding: "3px 8px", borderRadius: 999,
-                          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9,
+                          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
                           color: isLight ? rc.light : rc.dark, background: rc.bg, border: `1px solid ${rc.border}`,
                         }}>
                           {RESULTADO_LABEL[a.resultado]}
                         </span>
                         {a.valor_calculado != null && (
-                          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
                             {moeda(Number(a.valor_calculado) * Number(p.quantidade))}
                           </span>
                         )}
@@ -972,7 +972,7 @@ export function DetalheCampo({ id }: { id: string }) {
                               onClick={() => setNovoResultado(r)}
                               style={{
                                 padding: "5px 9px", borderRadius: 8, cursor: "pointer",
-                                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10.5,
+                                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
                                 border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                                 background: novoResultado === r ? "linear-gradient(135deg,#FCDE48,#F8C811)" : "transparent",
                                 color: novoResultado === r ? "#08090E" : textPrimary,
@@ -995,7 +995,7 @@ export function DetalheCampo({ id }: { id: string }) {
                             style={{
                               padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
                               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                              color: "#08090E", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10.5,
+                              color: "#08090E", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10.5,
                             }}
                           >
                             Salvar
@@ -1005,7 +1005,7 @@ export function DetalheCampo({ id }: { id: string }) {
                             style={{
                               padding: "5px 10px", borderRadius: 8, cursor: "pointer",
                               background: "none", border: "none",
-                              color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontSize: 10.5,
+                              color: textSecondary, fontFamily: "var(--fonte)", fontSize: 10.5,
                             }}
                           >
                             Cancelar
@@ -1022,7 +1022,7 @@ export function DetalheCampo({ id }: { id: string }) {
                             alignSelf: "flex-start", padding: "4px 9px", borderRadius: 8, cursor: "pointer",
                             background: "none",
                             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-                            color: textSecondary, fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10.5,
+                            color: textSecondary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
                           }}
                         >
                           Ajustar
@@ -1048,17 +1048,17 @@ export function DetalheCampo({ id }: { id: string }) {
                       paddingTop: 8,
                       borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
                     }}>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                         Total faturável
                       </span>
-                      <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 16, fontWeight: 700, color: gold }}>
+                      <span style={{ fontFamily: "var(--fonte)", fontSize: 16, fontWeight: 700, color: gold }}>
                         {moeda(total)}
                       </span>
                     </div>
                     {emRevisao > 0 && (
                       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                         <AlertTriangle size={15} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+                        <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
                           {emRevisao} item(ns) esperando decisão. A aprovação fica bloqueada até resolver — cobrança
                           indevida custa mais caro que uma conferência.
                         </span>
@@ -1076,7 +1076,7 @@ export function DetalheCampo({ id }: { id: string }) {
               background: isLight ? "rgba(45,210,165,0.08)" : "rgba(45,210,165,0.08)",
               border: "1px solid rgba(45,210,165,0.28)",
             }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textPrimary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
                 {cobrancasOs.length} cobrança(s) geradas ·{" "}
                 <strong>{moeda(cobrancasOs.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
                 {cobrancasOs[0]?.competencia}
@@ -1121,7 +1121,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
         <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(45,210,165,0.30)"}` }}>
           <span style={SEC}>Conferência</span>
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
           </span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1198,17 +1198,17 @@ export function DetalheCampo({ id }: { id: string }) {
           <span style={SEC}>Linha do tempo</span>
         </div>
         {eventos.length === 0 ? (
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Sem movimentações registradas.
           </span>
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
             {eventos.map((ev, i) => (
               <div key={ev.id} style={i === 0 ? { ...linha, borderTop: "none" } : linha}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600 }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
                   {ev.descricao ?? ev.tipo}
                 </span>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, flexShrink: 0 }}>
                   {new Date(ev.created_at).toLocaleString("pt-BR", {
                     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                   })}
@@ -1222,7 +1222,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {!podeExecutar && (
         <div style={{ ...CARD, alignItems: "center" }}>
           <ClipboardList size={20} color={textSecondary} />
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary, textAlign: "center" }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
             Este chamado está atribuído a outro técnico — você está apenas visualizando.
           </span>
         </div>

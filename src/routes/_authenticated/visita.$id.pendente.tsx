@@ -85,7 +85,7 @@ function VisitaPendentePage() {
     : null;
 
   const card: React.CSSProperties = { background: c.bg, border: c.border, borderRadius: 16, padding: 16, boxShadow: c.shadow };
-  const label: React.CSSProperties = { color: c.muted, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: 0, marginBottom: 10, fontFamily: "'Montserrat',sans-serif" };
+  const label: React.CSSProperties = { color: c.muted, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: 0, marginBottom: 10, fontFamily: "var(--fonte)" };
 
   function salvar() {
     if (!draftDate) return;

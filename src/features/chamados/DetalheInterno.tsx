@@ -77,12 +77,12 @@ export function DetalheInterno({ id }: { id: string }) {
     display: "flex", flexDirection: "column", gap: 12,
   };
   const SEC: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
     color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",
     color: textSecondary, marginBottom: 6, display: "block",
   };
@@ -90,7 +90,7 @@ export function DetalheInterno({ id }: { id: string }) {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
     background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13.5,
+    color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
 
@@ -178,14 +178,14 @@ export function DetalheInterno({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif" }}>
+      <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)" }}>
         Carregando…
       </div>
     );
   }
   if (!chamado) {
     return (
-      <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "'Montserrat', sans-serif" }}>
+      <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)" }}>
         Chamado não encontrada.
       </div>
     );
@@ -210,7 +210,7 @@ export function DetalheInterno({ id }: { id: string }) {
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
     cursor: podeEditar ? "pointer" : "default", opacity: podeEditar ? 1 : 0.6,
   });
 
@@ -231,11 +231,11 @@ export function DetalheInterno({ id }: { id: string }) {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18, lineHeight: 1.3 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18, lineHeight: 1.3 }}>
             {chamado.titulo}
           </div>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 11.5,
+            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11.5,
             color: textSecondary, marginTop: 3,
           }}>
             {chamado.numero} · aberto {tempoRelativo(chamado.created_at)}
@@ -244,7 +244,7 @@ export function DetalheInterno({ id }: { id: string }) {
         </div>
         <span style={{
           flexShrink: 0, padding: "5px 10px", borderRadius: 999,
-          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9.5,
+          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
           letterSpacing: "0.08em", textTransform: "uppercase",
           color: isLight ? st.colorLight : st.color,
           background: st.bg, border: `1px solid ${st.border}`,
@@ -270,7 +270,7 @@ export function DetalheInterno({ id }: { id: string }) {
           ))}
         </div>
         {chamado.concluida_em && (
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
             Concluído {tempoRelativo(chamado.concluida_em)}.
           </div>
         )}
@@ -298,7 +298,7 @@ export function DetalheInterno({ id }: { id: string }) {
           <label style={LABEL}>Apoio</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             {apoios.length === 0 && !addApoio && (
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
                 ninguém ainda
               </span>
             )}
@@ -310,7 +310,7 @@ export function DetalheInterno({ id }: { id: string }) {
                   padding: "6px 10px", borderRadius: 999,
                   background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.05)",
                   border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-                  fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textPrimary,
+                  fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary,
                 }}
               >
                 {pessoasPorId[pid]?.nome ?? "—"}
@@ -347,7 +347,7 @@ export function DetalheInterno({ id }: { id: string }) {
                   padding: "6px 10px", borderRadius: 999, cursor: "pointer",
                   background: "none",
                   border: isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.20)",
-                  color: gold, fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600,
+                  color: gold, fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
                 }}
               >
                 <UserPlus size={13} /> Adicionar
@@ -390,7 +390,7 @@ export function DetalheInterno({ id }: { id: string }) {
             {chamado.prazo_limite && chamadoEmAberto(chamado.status) && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 5, marginTop: 6,
-                fontFamily: "'Montserrat', sans-serif", fontSize: 11,
+                fontFamily: "var(--fonte)", fontSize: 11,
                 color: sp === "atrasada" ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
               }}>
                 <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
@@ -430,14 +430,14 @@ export function DetalheInterno({ id }: { id: string }) {
         {chamado.cliente && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
-            fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, color: textSecondary,
+            fontFamily: "var(--fonte)", fontSize: 12.5, color: textSecondary,
           }}>
             <Building2 size={14} color={gold} /> {chamado.cliente.nome}
           </div>
         )}
         <span style={{
           alignSelf: "flex-start", padding: "3px 8px", borderRadius: 999,
-          fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9.5,
+          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
           letterSpacing: "0.06em", textTransform: "uppercase",
           color: isLight ? eqc.light : eqc.dark, background: eqc.bg, border: `1px solid ${eqc.border}`,
         }}>
@@ -450,7 +450,7 @@ export function DetalheInterno({ id }: { id: string }) {
         <div style={CARD}>
           <span style={SEC}>Descrição</span>
           <div style={{
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13.5,
+            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13.5,
             color: textPrimary, lineHeight: 1.6, whiteSpace: "pre-wrap",
           }}>
             {chamado.descricao_problema}
@@ -471,7 +471,7 @@ export function DetalheInterno({ id }: { id: string }) {
               <span style={{ ...SEC, marginBottom: 0 }}>Pedido de compra</span>
               <span style={{
                 padding: "3px 9px", borderRadius: 999,
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 9.5,
+                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
                 letterSpacing: "0.08em", textTransform: "uppercase",
                 color: isLight ? cor.light : cor.dark,
                 background: cor.bg, border: `1px solid ${cor.border}`,
@@ -482,7 +482,7 @@ export function DetalheInterno({ id }: { id: string }) {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
                   Quantidade
                 </span>
                 <input
@@ -496,7 +496,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
                   Valor estimado (R$)
                 </span>
                 <input
@@ -513,7 +513,7 @@ export function DetalheInterno({ id }: { id: string }) {
             </div>
 
             <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
                 Fornecedor sugerido
               </span>
               <input
@@ -529,7 +529,7 @@ export function DetalheInterno({ id }: { id: string }) {
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-              <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 10.5, color: textSecondary }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
                 Link do produto
               </span>
               <input
@@ -548,7 +548,7 @@ export function DetalheInterno({ id }: { id: string }) {
               <a
                 href={compra.link_produto} target="_blank" rel="noopener noreferrer"
                 style={{
-                  marginTop: 6, fontFamily: "'Montserrat', sans-serif", fontSize: 11.5,
+                  marginTop: 6, fontFamily: "var(--fonte)", fontSize: 11.5,
                   color: gold, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
                 }}
               >
@@ -558,7 +558,7 @@ export function DetalheInterno({ id }: { id: string }) {
 
             {compra.valor_final != null && (
               <div style={{
-                marginTop: 10, fontFamily: "'Montserrat', sans-serif", fontSize: 12.5, color: textPrimary,
+                marginTop: 10, fontFamily: "var(--fonte)", fontSize: 12.5, color: textPrimary,
               }}>
                 Valor pago: <strong>{moedaBR(compra.valor_final)}</strong>
               </div>
@@ -569,7 +569,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 marginTop: 10, padding: "9px 11px", borderRadius: 10,
                 background: SITUACAO_CORES.recusado.bg,
                 border: `1px solid ${SITUACAO_CORES.recusado.border}`,
-                fontFamily: "'Montserrat', sans-serif", fontSize: 12,
+                fontFamily: "var(--fonte)", fontSize: 12,
                 color: isLight ? SITUACAO_CORES.recusado.light : SITUACAO_CORES.recusado.dark,
                 lineHeight: 1.5,
               }}>
@@ -636,7 +636,7 @@ export function DetalheInterno({ id }: { id: string }) {
       <div style={CARD}>
         <span style={SEC}>Equipamentos envolvidos</span>
         {equipamentos.length === 0 && (
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Nenhum equipamento vinculado.
           </span>
         )}
@@ -652,11 +652,11 @@ export function DetalheInterno({ id }: { id: string }) {
           >
             <Wrench size={14} color={gold} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, color: textPrimary }}>
+              <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
                 {eq.descricao ?? "Equipamento"}
               </div>
               {eq.numero_serie && (
-                <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: textSecondary }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
                   Série {eq.numero_serie}
                 </div>
               )}
@@ -705,7 +705,7 @@ export function DetalheInterno({ id }: { id: string }) {
       <div style={CARD}>
         <span style={SEC}>Comentários</span>
         {comentarios.length === 0 && (
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Ninguém comentou ainda.
           </span>
         )}
@@ -714,13 +714,13 @@ export function DetalheInterno({ id }: { id: string }) {
             <MessageSquare size={15} color={gold} style={{ marginTop: 3, flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5, color: textPrimary,
+                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5, color: textPrimary,
               }}>
                 {c.user_id ? pessoasPorId[c.user_id]?.nome ?? "—" : "—"}
-                <span style={{ fontWeight: 300, color: textSecondary }}> · {tempoRelativo(c.created_at)}</span>
+                <span style={{ fontWeight: 400, color: textSecondary }}> · {tempoRelativo(c.created_at)}</span>
               </div>
               <div style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13,
+                fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                 color: textPrimary, lineHeight: 1.55, whiteSpace: "pre-wrap", marginTop: 2,
               }}>
                 {c.descricao}
@@ -763,14 +763,14 @@ export function DetalheInterno({ id }: { id: string }) {
                 width: 6, height: 6, borderRadius: 3, background: gold, flexShrink: 0,
               }} />
               <span style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
+                fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                 color: textSecondary, flex: 1,
               }}>
                 {e.descricao}
                 {e.user_id ? ` — ${pessoasPorId[e.user_id]?.nome ?? ""}` : ""}
               </span>
               <span style={{
-                fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 10.5,
+                fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10.5,
                 color: textSecondary, flexShrink: 0,
               }}>
                 {tempoRelativo(e.created_at)}
@@ -790,7 +790,7 @@ export function DetalheInterno({ id }: { id: string }) {
             background: "none",
             border: isLight ? "1px solid rgba(177,36,46,0.30)" : "1px solid rgba(241,120,129,0.30)",
             color: isLight ? "#B1242E" : "#F17881",
-            fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12.5,
+            fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12.5,
             cursor: "pointer",
           }}
         >

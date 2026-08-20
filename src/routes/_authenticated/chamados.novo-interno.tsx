@@ -96,7 +96,7 @@ function NovaChamadoPage() {
     display: "flex", flexDirection: "column", gap: 12,
   };
   const LABEL: CSSProperties = {
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
     letterSpacing: "0.12em", textTransform: "uppercase",
     color: textSecondary, marginBottom: 6, display: "block",
   };
@@ -104,7 +104,7 @@ function NovaChamadoPage() {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
     background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-    color: textPrimary, fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
+    color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const TEXTAREA: CSSProperties = { ...INPUT, height: 110, padding: "12px 14px", resize: "vertical" };
@@ -116,7 +116,7 @@ function NovaChamadoPage() {
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
+    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
     cursor: "pointer",
   });
 
@@ -170,7 +170,7 @@ function NovaChamadoPage() {
         >
           <ArrowLeft size={18} />
         </button>
-        <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 20 }}>
+        <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 20 }}>
           Nova demanda
         </div>
       </div>
@@ -202,7 +202,7 @@ function NovaChamadoPage() {
           {sugestao && !tipo && (
             <div style={{
               display: "flex", alignItems: "center", gap: 6, marginBottom: 8,
-              fontFamily: "'Montserrat', sans-serif", fontSize: 11.5, color: gold,
+              fontFamily: "var(--fonte)", fontSize: 11.5, color: gold,
             }}>
               <Sparkles size={13} />
               Sugestão pelo título: <strong>{TIPO_LABEL[sugestao]}</strong> — toque para trocar.
@@ -317,7 +317,7 @@ function NovaChamadoPage() {
           height: 52, borderRadius: 26, border: "none",
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
+          fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.14em", textTransform: "uppercase",
           cursor: criar.isPending || !titulo.trim() ? "default" : "pointer",
           opacity: criar.isPending || !titulo.trim() ? 0.6 : 1,

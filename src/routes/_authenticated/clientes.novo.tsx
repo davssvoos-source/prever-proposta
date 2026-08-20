@@ -59,8 +59,8 @@ function NovoClientePage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 18 }}>Novo cliente</div>
-          <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>Novo cliente</div>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Condomínio, empresa ou residência atendida
           </div>
         </div>

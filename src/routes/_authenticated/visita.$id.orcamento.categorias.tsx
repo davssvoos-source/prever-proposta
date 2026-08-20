@@ -148,7 +148,7 @@ function CategoriasPage() {
         <div style={{ flex: 1 }}>
           <div
             style={{
-              fontFamily: "'Montserrat', sans-serif",
+              fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
               color: textPrimary,
@@ -174,8 +174,8 @@ function CategoriasPage() {
 
       <div
         style={{
-          fontFamily: "'Montserrat', sans-serif",
-          fontWeight: 300,
+          fontFamily: "var(--fonte)",
+          fontWeight: 400,
           fontSize: 12,
           color: textSecondary,
           marginBottom: 4,
@@ -209,7 +209,7 @@ function CategoriasPage() {
             <div style={{ flex: 1 }}>
               <div
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   fontWeight: 600,
                   fontSize: 15,
                   color: textPrimary,
@@ -220,8 +220,8 @@ function CategoriasPage() {
               </div>
               <div
                 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontWeight: 300,
+                  fontFamily: "var(--fonte)",
+                  fontWeight: 400,
                   fontSize: 11,
                   color: textSecondary,
                   lineHeight: 1.4,
@@ -240,7 +240,7 @@ function CategoriasPage() {
                   padding: "4px 10px",
                   fontSize: 11,
                   fontWeight: 700,
-                  fontFamily: "'Montserrat', sans-serif",
+                  fontFamily: "var(--fonte)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -274,7 +274,7 @@ function CategoriasPage() {
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
           color: "#08090E",
-          fontFamily: "'Montserrat', sans-serif",
+          fontFamily: "var(--fonte)",
           fontWeight: 700,
           fontSize: 13,
           letterSpacing: "0.18em",
@@ -309,7 +309,7 @@ function CategoriasPage() {
             <Building2 size={16} color={iconColor} />
             <span
               style={{
-                fontFamily: "'Montserrat', sans-serif",
+                fontFamily: "var(--fonte)",
                 fontWeight: 700,
                 fontSize: 10,
                 letterSpacing: "0.16em",
