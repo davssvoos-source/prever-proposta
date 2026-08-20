@@ -192,8 +192,11 @@ export function MenuFiltro({
             overscrollBehavior: "contain",
             borderRadius: 14,
             padding: 6,
-            background: isLight ? "#ffffff" : "#16161d",
-            border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+            // vidro mais opaco que os cards: menu precisa de leitura perfeita
+            background: isLight ? "rgba(255,255,255,0.88)" : "rgba(20,20,27,0.88)",
+            backdropFilter: "var(--vidro-blur)" as any,
+            WebkitBackdropFilter: "var(--vidro-blur)" as any,
+            border: isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.12)",
             boxShadow: "0 12px 32px rgba(0,0,0,0.32)",
           }}
         >

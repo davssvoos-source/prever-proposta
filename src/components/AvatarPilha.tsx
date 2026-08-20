@@ -1,0 +1,93 @@
+// Pilha de avatares — os participantes de uma atividade, sobrepostos como nas
+// referências Versa UI. Foto quando o perfil tem, iniciais sobre o degradê da
+// marca quando não tem, e "+N" quando não cabem todos.
+
+import type { CSSProperties } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { FONT, GOLD_GRAD } from "@/lib/ui";
+import { SOBRE_PRIMARIA } from "@/lib/paleta";
+
+export interface PessoaAvatar {
+  nome: string;
+  avatar_url: string | null;
+}
+
+interface Props {
+  ids: string[];
+  pessoas: Record<string, PessoaAvatar>;
+  max?: number;
+  tamanho?: number;
+}
+
+export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
+  const { isLight } = useTheme();
+  if (ids.length === 0) return null;
+
+  const visiveis = ids.slice(0, max);
+  const resto = ids.length - visiveis.length;
+  // a borda na cor da superfície é o que faz a sobreposição ler como pilha
+  const anel = isLight ? "#ffffff" : "#1a1a20";
+
+  const circulo: CSSProperties = {
+    width: tamanho,
+    height: tamanho,
+    borderRadius: "50%",
+    border: `2px solid ${anel}`,
+    boxSizing: "content-box",
+    flexShrink: 0,
+    objectFit: "cover",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
+
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center" }} aria-label={`${ids.length} participante(s)`}>
+      {visiveis.map((id, i) => {
+        const p = pessoas[id];
+        const iniciais = (p?.nome ?? "?")
+          .split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+        return p?.avatar_url ? (
+          <img
+            key={id}
+            src={p.avatar_url}
+            alt={p.nome}
+            title={p.nome}
+            style={{ ...circulo, marginLeft: i === 0 ? 0 : -7 }}
+          />
+        ) : (
+          <span
+            key={id}
+            title={p?.nome}
+            style={{
+              ...circulo,
+              marginLeft: i === 0 ? 0 : -7,
+              background: GOLD_GRAD,
+              color: SOBRE_PRIMARIA,
+              fontFamily: FONT,
+              fontWeight: 700,
+              fontSize: Math.round(tamanho * 0.38),
+            }}
+          >
+            {iniciais}
+          </span>
+        );
+      })}
+      {resto > 0 && (
+        <span
+          style={{
+            ...circulo,
+            marginLeft: -7,
+            background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)",
+            color: isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
+            fontFamily: FONT,
+            fontWeight: 700,
+            fontSize: Math.round(tamanho * 0.36),
+          }}
+        >
+          +{resto}
+        </span>
+      )}
+    </span>
+  );
+}

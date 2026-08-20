@@ -29,14 +29,16 @@ const CHAVE_ROLAGEM = "prever-home-quadro-x";
 /** Teto inicial por coluna. O "ver mais" sobe daqui — nada fica inalcançável. */
 const TETO = 25;
 
+import type { PessoaAvatar } from "@/components/AvatarPilha";
+
 interface Props {
   atividades: Atividade[];
   foco: ColunaQuadro[];
-  nomePorId: Record<string, string>;
+  pessoas: Record<string, PessoaAvatar>;
   onAbrir: (a: Atividade) => void;
 }
 
-export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
+export function Quadro({ atividades, foco, pessoas, onAbrir }: Props) {
   const { isLight } = useTheme();
   const trilhoRef = useRef<HTMLDivElement>(null);
   // teto por coluna: sem isto o "+ N nesta coluna" era um texto morto e os
@@ -45,8 +47,10 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const fundoColuna = isLight ? "rgba(0,0,0,0.025)" : "rgba(255,255,255,0.022)";
-  const fundoCabecalho = isLight ? "#f2f3f5" : "#101017";
+  // a coluna é o painel de vidro; os cards são vidro sobre vidro, como nas
+  // referências Versa — o custo do blur duplo é só do desktop (--vidro-blur)
+  const fundoColuna = isLight ? "rgba(255,255,255,0.42)" : "rgba(14,14,20,0.42)";
+  const fundoCabecalho = isLight ? "rgba(255,255,255,0.55)" : "rgba(18,18,26,0.55)";
 
   // devolve o usuário onde ele estava ao voltar de um card
   useEffect(() => {
@@ -84,8 +88,10 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
     flexDirection: "column",
     background: fundoColuna,
     borderRadius: 14,
-    border: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.05)",
+    border: isLight ? "1px solid rgba(255,255,255,0.65)" : "1px solid rgba(255,255,255,0.07)",
     overflow: "hidden",
+    backdropFilter: "var(--vidro-blur)" as any,
+    WebkitBackdropFilter: "var(--vidro-blur)" as any,
   };
 
   return (
@@ -157,7 +163,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                         key={a.id}
                         a={a}
                         mostrarStatus={false}
-                        responsavelNome={a.responsavelId ? nomePorId[a.responsavelId] ?? null : null}
+                        pessoas={pessoas}
                         onClick={() => onAbrir(a)}
                       />
                     ))}

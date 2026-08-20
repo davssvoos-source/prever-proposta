@@ -120,8 +120,11 @@ function AuthenticatedLayout() {
       <SideNav />
       {/* --rail: 0 no celular, largura da sidebar no desktop (styles.css) */}
       <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, paddingLeft: "var(--rail)" }}>
-        {/* HEADER */}
+        {/* HEADER — só no celular. No desktop os dois itens dele foram
+            removidos a pedido: o perfil mora na sidebar e as notificações no
+            painel da Início. O conteúdo sobe junto (--topo). */}
         <div
+          className="so-celular"
           style={{
             position: "fixed",
             top: 0,
@@ -220,7 +223,7 @@ function AuthenticatedLayout() {
         {/* CONTEÚDO */}
         <main
           className="mx-auto max-w-5xl lg:max-w-7xl"
-          style={{ paddingTop: 76, paddingBottom: 110, paddingLeft: 16, paddingRight: 16 }}
+          style={{ paddingTop: "var(--topo)" as any, paddingBottom: 110, paddingLeft: 16, paddingRight: 16 }}
         >
           <Outlet />
         </main>

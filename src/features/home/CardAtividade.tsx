@@ -8,7 +8,8 @@
 import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT } from "@/lib/ui";
+import { FONT, VIDRO_BG_DARK, VIDRO_BG_LIGHT } from "@/lib/ui";
+import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
   BOLA_LABEL, ALERTA_LABEL, type Atividade, type Cores,
 } from "@/features/atividades/modelo";
@@ -35,10 +36,11 @@ interface Props {
   onClick: () => void;
   /** No quadro a coluna já diz o status; repetir o chip é ruído. */
   mostrarStatus?: boolean;
-  responsavelNome?: string | null;
+  /** Perfis para a pilha de avatares dos participantes. */
+  pessoas?: Record<string, PessoaAvatar>;
 }
 
-export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNome }: Props) {
+export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Props) {
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
@@ -46,14 +48,15 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNom
   const ambar = isLight ? "#A63E17" : "#E2791D";
 
   const CARD: CSSProperties = {
-    background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
+    // vidro sobre o glow (v3) — no celular o blur sai via --vidro-blur
+    background: isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK,
+    border: isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.09)",
     borderLeft: `3px solid ${isLight ? a.statusCor.light : a.statusCor.dark}`,
     borderRadius: 14,
     padding: "12px 13px",
-    boxShadow: isLight ? "0 1px 4px rgba(0,0,0,0.05)" : "none",
+    boxShadow: isLight ? "0 4px 18px rgba(26,50,99,0.08)" : "0 4px 18px rgba(0,0,0,0.30)",
+    backdropFilter: "var(--vidro-blur)" as any,
+    WebkitBackdropFilter: "var(--vidro-blur)" as any,
     width: "100%",
     textAlign: "left",
     cursor: "pointer",
@@ -76,9 +79,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNom
             fontFamily: FONT, fontWeight: 300, fontSize: PISO_TIPO + 0.5,
             color: textSecondary, marginTop: 3,
           }}>
-            {a.numero ? `${a.numero} · ` : ""}
-            {a.tipoLabel ?? (a.fonte === "visita" ? "Visita técnica" : "Chamado")}
-            {responsavelNome ? ` · ${responsavelNome}` : ""}
+            {a.numero ?? (a.fonte === "visita" ? "Visita técnica" : "Chamado")}
           </div>
         </div>
         {mostrarStatus && (
@@ -101,6 +102,15 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNom
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
+        {/* categoria com cor própria — o "strategic color" das referências */}
+        {a.tipoLabel && a.tipoCor && (
+          <span style={chipStyle(a.tipoCor, isLight)}>{a.tipoLabel}</span>
+        )}
+        {a.fonte === "visita" && (
+          <span style={chipStyle({ dark: "#457B9D", light: "#457B9D", bg: "rgba(69,123,157,0.14)", border: "rgba(69,123,157,0.32)" }, isLight)}>
+            Visita técnica
+          </span>
+        )}
         {a.cliente && (
           <span style={{
             display: "flex", alignItems: "center", gap: 4,
@@ -136,16 +146,22 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNom
           </span>
         )}
 
-        {a.prazoTexto && (
-          <span style={{
-            marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
-            fontFamily: FONT, fontWeight: 500, fontSize: PISO_TIPO,
-            color: a.prazoEstourado ? vermelho : textSecondary,
-          }}>
-            <CalendarClock size={12} /> {a.prazoTexto}
-          </span>
-        )}
       </div>
+
+      {(a.participantes.length > 0 || a.prazoTexto) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
+          {pessoas && <AvatarPilha ids={a.participantes} pessoas={pessoas} />}
+          {a.prazoTexto && (
+            <span style={{
+              marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
+              fontFamily: FONT, fontWeight: 500, fontSize: PISO_TIPO,
+              color: a.prazoEstourado ? vermelho : textSecondary,
+            }}>
+              <CalendarClock size={12} /> {a.prazoTexto}
+            </span>
+          )}
+        </div>
+      )}
     </button>
   );
 }

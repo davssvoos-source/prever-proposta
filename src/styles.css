@@ -163,11 +163,24 @@
 }
 
 @layer base {
-  :root { --rail: 0px; }
+  :root {
+    --rail: 0px;
+    /* altura reservada ao header fixo. No desktop o header não existe (a
+       identidade mora na sidebar e as notificações no painel da Início),
+       então o conteúdo sobe. */
+    --topo: 76px;
+    /* o desfoque do vidro é caro em GPU de celular: lá os cards ficam
+       semiopacos sem blur, e o efeito completo é do desktop */
+    --vidro-blur: none;
+  }
   @media (min-width: 1024px) {
     /* largura da sidebar (SideNav.tsx — LARGURA_RAIL). Os dois valores
        precisam andar juntos: este empurra o conteúdo, aquele desenha o menu. */
-    :root { --rail: 232px; }
+    :root {
+      --rail: 232px;
+      --topo: 24px;
+      --vidro-blur: blur(22px) saturate(150%);
+    }
   }
 
   * {
@@ -544,4 +557,13 @@ input::placeholder, textarea::placeholder {
 .so-desktop.sangra-x { display: none; }
 @media (min-width: 1024px) {
   .so-desktop.sangra-x { display: flex; }
+}
+
+/* ── Fundo "Yellow Glow" (claude.design, projeto 5e4850a6) ──────────────────
+   A deriva das manchas de luz vem do arquivo importado: 34s, escala até 1.08.
+   A regra global de prefers-reduced-motion congela — o fundo fica estático. */
+@keyframes deriva-glow {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(3%, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
 }

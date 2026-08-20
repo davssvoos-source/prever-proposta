@@ -31,8 +31,15 @@ Princípios que governam as decisões:
 1. **Um acento só.** Dourado é ação, destaque e identidade. Nunca introduza
    uma segunda cor de marca; cores adicionais existem apenas como status
    semântico (sucesso/erro/info).
-2. **Superfícies em degradê, nunca chapadas.** Todo card usa gradiente de
-   160° no escuro e 135° no claro — dá profundidade sem sombra pesada.
+2. **Superfícies de VIDRO sobre o glow (v3, 2026-08-20).** Todo card é
+   translúcido com desfoque (`backdrop-filter: var(--vidro-blur)`) sobre o
+   fundo Yellow Glow — profundidade vem do fundo atravessando a superfície.
+   No celular o desfoque é desligado pela variável (`--vidro-blur: none`):
+   blur é caro na GPU, e lá fica a superfície semiopaca. Os valores:
+   `rgba(18,18,24,0.52)` escuro / `rgba(255,255,255,0.58)` claro, borda
+   `rgba(255,255,255,0.09)` / `rgba(255,255,255,0.72)`. A regra v1/v2
+   ("nunca glassy") foi invertida pelo Davi junto com o fundo novo —
+   referências Versa UI.
 3. **Tipografia com peso, não com tamanho.** Montserrat SemiBold/Bold para
    títulos; hierarquia vem de peso, `letter-spacing` e maiúsculas.
 4. **Rótulos em caixa alta espaçada.** Toda seção é anunciada por um micro-label
@@ -222,32 +229,24 @@ body::before {
 
 ---
 
-## 5. Fundos de página (v2 — degradê com glow)
+## 5. Fundos de página (v3 — Yellow Glow, importado do claude.design)
 
-Um fundo por tema, estático, num componente só (`GlowBackground.tsx`). Os
-fundos animados da v1 (constelação em canvas, datacenter SVG) saíram: custavam
-bateria no celular e o glow fixo dá a mesma profundidade de graça.
+O fundo oficial é o **Yellow Glow Background** (claude.design, projeto
+`5e4850a6`, arquivo `Yellow Glow Background - Export.dc.html`), traduzido de
+DC para React em `GlowBackground.tsx`. Quatro camadas, na ordem:
 
-**Escuro — degradê de preto com glow da marca:**
-```css
-background:
-  radial-gradient(1100px 560px at 15% -10%, rgba(248,200,17,0.09), transparent 55%),
-  radial-gradient(900px 640px at 88% 112%, rgba(45,210,165,0.06), transparent 60%),
-  linear-gradient(180deg, #141414 0%, #0a0a0a 45%, #000000 100%);
-```
+1. **palco** — quase-preto quente, `oklch(0.075 0.013 98)` (matiz 98 = o
+   amarelo da marca);
+2. **deriva** — duas manchas de luz amarela (`oklch(0.72 0.17 84)` e
+   `oklch(0.62 0.16 94)`) com `blur(80px)`, animadas em 34s
+   (`@keyframes deriva-glow`, escala até 1.08) — é o glow que o vidro dos
+   cards desfoca;
+3. **grade** — linhas de 40px em `rgba(0,0,0,0.34)` mascaradas num oval
+   central;
+4. **granulado** — ruído SVG em `mix-blend-mode: overlay`, opacidade 0.4.
 
-**Claro — degradê de branco, mesmos glows mais presentes** (sobre branco o
-brilho some mais rápido):
-```css
-background:
-  radial-gradient(1100px 560px at 15% -10%, rgba(248,200,17,0.16), transparent 55%),
-  radial-gradient(900px 640px at 88% 112%, rgba(45,210,165,0.09), transparent 60%),
-  linear-gradient(180deg, #ffffff 0%, #f8f8f6 55%, #eeeeeb 100%);
-```
-
-O `body` fica só com a cor de base (`#050505` escuro / `#f2f2ef` claro via
-`html[data-theme="light"]`) — é o que aparece no overscroll e antes do React
-montar. A textura de ruído (§4) continua por cima.
+O tema claro é derivação: palco `oklch(0.97 0.008 98)`, manchas mais suaves
+(`0.87/0.12` e `0.90/0.09`), grade a 0.08 e granulado a 0.22.
 
 As telas públicas (login, redefinir senha) mantiveram os fundos da v1 por
 enquanto — trocar é decisão à parte, o login tem identidade própria.

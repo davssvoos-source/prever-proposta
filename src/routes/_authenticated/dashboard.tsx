@@ -132,12 +132,7 @@ function Home() {
   }, [qc]);
   const { data: pessoas = [] } = usePessoas();
   const { data: minhaEquipe = null } = useMinhaEquipe();
-  const nomePorId = useMemo(() => {
-    const m = mapaDePessoas(pessoas);
-    const r: Record<string, string> = {};
-    for (const [id, p] of Object.entries(m)) r[id] = p.nome;
-    return r;
-  }, [pessoas]);
+  const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
 
   const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
 
@@ -502,7 +497,7 @@ function Home() {
           <Quadro
             atividades={filtradas}
             foco={focoDoPreset(filtros.preset)}
-            nomePorId={nomePorId}
+            pessoas={pessoasPorId}
             onAbrir={abrir}
           />
         ) : (
@@ -511,7 +506,7 @@ function Home() {
               <CardAtividade
                 key={a.id}
                 a={a}
-                responsavelNome={a.responsavelId ? nomePorId[a.responsavelId] ?? null : null}
+                pessoas={pessoasPorId}
                 onClick={() => abrir(a)}
               />
             ))}

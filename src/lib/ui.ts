@@ -1,8 +1,10 @@
 // ─── Padrão de design do app (referência: montagem do bloco CFTV) ────────────
 //
-// Regras:
-// - Cards/itens de lista: fundo degradê de preto bem escuro (nunca glassy/translúcido).
-//   No tema claro: degradê branco suave com borda e sombra leves.
+// Regras (v3 — vidro, 2026-08-20):
+// - Cards/itens de lista: VIDRO sobre o fundo Yellow Glow — superfície
+//   translúcida com desfoque (a regra antiga proibia blur; o Davi a inverteu
+//   junto com o fundo novo, referências Versa UI). No celular o desfoque sai
+//   (--vidro-blur: none) e fica a superfície semiopaca: blur é caro na GPU.
 // - Botões de ação: amarelo degradê + glow externo, texto preto, Montserrat SemiBold.
 // - Títulos: Montserrat SemiBold (600).
 // - Sem backdrop-filter/blur em cards de conteúdo.
@@ -27,12 +29,20 @@ export const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
 /** Glow externo dos botões dourados. */
 export const GOLD_GLOW = "0 6px 20px rgba(248,200,17,0.35)";
 
-/** Card padrão (tema claro/escuro). */
+/** Superfícies de vidro (v3). */
+export const VIDRO_BG_DARK = "rgba(18,18,24,0.52)";
+export const VIDRO_BG_LIGHT = "rgba(255,255,255,0.58)";
+export const VIDRO_BORDER_DARK = "1px solid rgba(255,255,255,0.09)";
+export const VIDRO_BORDER_LIGHT = "1px solid rgba(255,255,255,0.72)";
+
+/** Card padrão (tema claro/escuro) — vidro sobre o glow. */
 export const card = (isLight: boolean): React.CSSProperties => ({
-  background: isLight ? CARD_BG_LIGHT : CARD_BG_DARK,
-  border: isLight ? CARD_BORDER_LIGHT : CARD_BORDER_DARK,
+  background: isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK,
+  border: isLight ? VIDRO_BORDER_LIGHT : VIDRO_BORDER_DARK,
   borderRadius: 16,
-  boxShadow: isLight ? CARD_SHADOW_LIGHT : CARD_SHADOW_DARK,
+  boxShadow: isLight ? "0 8px 28px rgba(26,50,99,0.10)" : "0 8px 28px rgba(0,0,0,0.35)",
+  backdropFilter: "var(--vidro-blur)" as any,
+  WebkitBackdropFilter: "var(--vidro-blur)" as any,
 });
 
 /** Botão dourado padrão (igual nos dois temas). */

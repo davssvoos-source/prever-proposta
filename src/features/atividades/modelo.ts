@@ -70,6 +70,8 @@ export interface Atividade {
   cliente: string | null;
 
   responsavelId: string | null;
+  /** Quem está na atividade: responsável + apoios (ids de perfil, sem repetição). */
+  participantes: string[];
   souResponsavel: boolean;
   souApoio: boolean;
   souAutor: boolean;
@@ -304,8 +306,10 @@ export function colunaDaVisita(v: BrutoVisita): Traduzido {
 
 export interface ContextoMontagem {
   userId: string | null;
-  apoios: Set<string>;          // ids de chamado onde sou apoio
+  apoios: Set<string>;          // ids de chamado onde EU sou apoio
   fichas: Map<string, FichaCompra>;
+  /** chamado_id → perfis de apoio — alimenta a pilha de avatares do card. */
+  apoiosDoChamado?: Map<string, string[]>;
 }
 
 export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Atividade {
@@ -335,6 +339,10 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     numero: c.numero,
     cliente: c.cliente?.nome ?? null,
     responsavelId: c.responsavel_id,
+    participantes: Array.from(new Set([
+      ...(c.responsavel_id ? [c.responsavel_id] : []),
+      ...(ctx.apoiosDoChamado?.get(c.id) ?? []),
+    ])),
     souResponsavel: !!ctx.userId && c.responsavel_id === ctx.userId,
     souApoio: ctx.apoios.has(c.id),
     souAutor: !!ctx.userId && c.aberto_por === ctx.userId,
@@ -387,6 +395,7 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     numero: null,
     cliente: v.clientes?.nome ?? v.nome_predio ?? null,
     responsavelId: v.tecnico_id,
+    participantes: v.tecnico_id ? [v.tecnico_id] : [],
     souResponsavel: !!ctx.userId && v.tecnico_id === ctx.userId,
     souApoio: false,
     souAutor: false,

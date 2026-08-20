@@ -78,12 +78,14 @@ export function SideNav() {
     padding: "0 14px 18px",
     boxSizing: "border-box",
     overflow: "hidden",
-    background: isLight
-      ? "#ffffff"
-      : "linear-gradient(180deg, #121216 0%, #0a0a0e 100%)",
+    // vidro sobre o glow: a sidebar desfoca as manchas de luz que passam
+    // por trás, como nas referências Versa
+    background: isLight ? "rgba(255,255,255,0.62)" : "rgba(12,12,17,0.60)",
+    backdropFilter: "var(--vidro-blur)" as any,
+    WebkitBackdropFilter: "var(--vidro-blur)" as any,
     borderRight: isLight
-      ? "1px solid rgba(0,0,0,0.08)"
-      : "1px solid rgba(248,200,17,0.10)",
+      ? "1px solid rgba(255,255,255,0.65)"
+      : "1px solid rgba(255,255,255,0.07)",
   };
 
   const item = (ativo: boolean): CSSProperties => ({
@@ -135,8 +137,8 @@ export function SideNav() {
         <div style={{
           position: "absolute", inset: 0,
           background: isLight
-            ? "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(255,255,255,0.55) 62%, #ffffff 100%)"
-            : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(10,10,14,0.82) 62%, #121216 100%)",
+            ? "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(255,255,255,0.55) 62%, rgba(255,255,255,0.92) 100%)"
+            : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(10,10,14,0.78) 62%, rgba(14,14,19,0.92) 100%)",
           pointerEvents: "none",
         }} />
       </div>

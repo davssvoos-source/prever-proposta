@@ -1746,3 +1746,38 @@ novo foi criado.
 cabeçalho da área de trabalho, logo acima dos filtros, como no desenho.
 
 Nenhuma migration.
+
+### U19 — Vidro sobre o Yellow Glow, avatares e header enxuto (2026-08-20)
+
+Sobre o terceiro desenho anotado (dois ícones em vermelho) e as referências
+Versa UI anexadas. **Nenhuma migration.**
+
+**Fundo importado do claude.design.** O projeto `5e4850a6` ("Yellow Glow
+Background") foi lido pelo MCP de design e traduzido de DC para React puro em
+`GlowBackground.tsx`: palco oklch quente, duas manchas de luz derivando em 34s
+com blur de 80px, grade de 40px mascarada e granulado em overlay. O tema claro
+é derivação (o arquivo é escuro). A animação respeita `prefers-reduced-motion`
+pela regra global.
+
+**Header removido no desktop.** Os dois itens marcados — chip de perfil e sino
+— saíram: o perfil já mora na sidebar e as notificações no painel da Início. O
+header virou `.so-celular` e o conteúdo subiu (`--topo`: 76px no celular, 24px
+no desktop). Consequência assumida: nas OUTRAS telas do desktop não há sino;
+as notificações chegam pela Início.
+
+**Vidro (v3).** A regra v1 "nunca glassy" foi invertida por decisão do Davi:
+`card()` do ui.ts, cards de atividade, colunas do quadro, gráficos, sidebar,
+popover de filtro e campo de busca viraram superfícies translúcidas com
+`backdrop-filter: var(--vidro-blur)`. A variável desliga o desfoque no celular
+— blur é caro na GPU de quem está em campo — e lá fica a superfície semiopaca.
+
+**Cards ao estilo Versa.** A categoria (tipo) virou chip colorido
+(`TIPO_CORES`), a visita ganhou chip azul de dataviz, e o rodapé do card tem a
+**pilha de avatares dos participantes** (responsável + apoios, sobrepostos,
+`AvatarPilha.tsx` — foto quando há, iniciais no degradê da marca quando não,
+"+N" quando não cabem). Os apoios de todos os chamados vêm numa consulta única
+(`chamado_apoios` inteira, tabela de centenas de linhas com leitura aberta) —
+mais barato que um `.in()` com centenas de ids na URL.
+
+`participantes` entrou no modelo de Atividade; a prop `responsavelNome` do
+card morreu em favor do mapa completo de pessoas (nome + avatar).

@@ -82,6 +82,32 @@ export function useChamadosDaHome(s: Sessao) {
   });
 }
 
+/**
+ * TODOS os apoios, para a pilha de avatares dos cards. A tabela é pequena
+ * (centenas de linhas) e a leitura é aberta — buscar tudo numa consulta é mais
+ * barato que um `.in()` com centenas de ids na URL.
+ */
+export function useApoiosDeTodos() {
+  return useQuery({
+    queryKey: ["home-apoios-todos"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Map<string, string[]>> => {
+      const { data, error } = await supabase
+        .from("chamado_apoios" as any)
+        .select("chamado_id, profile_id")
+        .limit(2000);
+      const m = new Map<string, string[]>();
+      if (error) return m;
+      for (const r of ((data as any[]) ?? [])) {
+        const lista = m.get(r.chamado_id as string) ?? [];
+        lista.push(r.profile_id as string);
+        m.set(r.chamado_id as string, lista);
+      }
+      return m;
+    },
+  });
+}
+
 /** Chamados onde entrei como apoio — não dá para join, a RLS não devolveria. */
 export function useMeusApoios(s: Sessao) {
   return useQuery({
@@ -153,6 +179,7 @@ export interface AtividadesDaHome {
 export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): AtividadesDaHome {
   const chamados = useChamadosDaHome(s);
   const apoios = useMeusApoios(s);
+  const apoiosDeTodos = useApoiosDeTodos();
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
 
   const idsCompra = useMemo(
@@ -168,6 +195,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       fichas: new Map<string, FichaCompra>(
         Object.entries(fichas.data ?? {}).map(([k, v]) => [k, { situacao: v }]),
       ),
+      apoiosDoChamado: apoiosDeTodos.data,
     };
     const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
@@ -202,7 +230,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     return lista;
     // `agora` entra nas dependências de propósito: sem isso o "atrasado"
     // calculado na montagem nunca mais muda enquanto a tela fica aberta
-  }, [chamados.data, visitas.data, apoios.data, fichas.data, s.userId, s.cargo, agora]);
+  }, [chamados.data, visitas.data, apoios.data, apoiosDeTodos.data, fichas.data, s.userId, s.cargo, agora]);
 
   return {
     atividades,

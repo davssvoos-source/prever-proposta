@@ -45,12 +45,12 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     padding: "8px 8px 8px 18px",
     borderRadius: 999,
     boxSizing: "border-box",
-    background: isLight
-      ? "linear-gradient(to bottom, #ffffff, #fbfbf8)"
-      : "linear-gradient(to bottom, #1a1a20, #131318)",
+    background: isLight ? "rgba(255,255,255,0.62)" : "rgba(20,20,27,0.55)",
+    backdropFilter: "var(--vidro-blur)" as any,
+    WebkitBackdropFilter: "var(--vidro-blur)" as any,
     border: isLight
-      ? "1px solid rgba(0,0,0,0.06)"
-      : "1px solid rgba(248,200,17,0.14)",
+      ? "1px solid rgba(255,255,255,0.72)"
+      : "1px solid rgba(255,255,255,0.10)",
     // o "shadow__input" do original, feito com box-shadow em vez de uma div
     // borrada — mesmo halo, sem elemento extra nem camada de composição
     boxShadow: isLight
