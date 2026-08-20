@@ -81,7 +81,7 @@ export function NotificacoesSidebar() {
             : "transparent",
           color: textSecondary,
           fontFamily: FONT,
-          fontWeight: 500,
+          fontWeight: 400,
           fontSize: 13.5,
         }}
       >

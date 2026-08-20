@@ -359,51 +359,76 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      A.faixaPrazo({ ...base, prazoLimite: new Date(2026, 7, 23, 20, 0).toISOString() }, seg), 'esta_semana');
 }
 
-// ── A rampa de cor (v5.1) ──────────────────────────────────────────────────
+// ── A rampa de cor (v6: 20% azul · 40% amarelo · 20% laranja · 20% vermelho) ─
 {
   const P = carregar('src/lib/paleta.ts');
-  const croma = (hex) => {  // croma oklch, para provar que a emenda não lava
-    const fi = (x) => (x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  const fi = (x) => (x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
+  const oklch = (hex) => {
     const n = parseInt(hex.slice(1), 16);
-    const r = fi(((n >> 16) & 255) / 255), g = fi(((n >> 8) & 255) / 255), b = fi((n & 255) / 255);
-    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-    const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-    return Math.hypot(1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2,
-                      0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2);
+    const r = fi(((n >> 16) & 255) / 255), g = fi(((n >> 8) & 255) / 255), b2 = fi((n & 255) / 255);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b2);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b2);
+    const s3 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b2);
+    const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s3;
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s3;
+    let H = Math.atan2(B, A) * 180 / Math.PI; if (H < 0) H += 360;
+    return { L: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s3, C: Math.hypot(A, B), H };
   };
-  const meio = (a, b) => {
-    const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-    const [x, y] = [p(a), p(b)];
-    return '#' + x.map((v, i) => Math.round((v + y[i]) / 2).toString(16).padStart(2, '0')).join('');
-  };
+  const lum = (hex) => { const n = parseInt(hex.slice(1), 16);
+    const [r, g, b2] = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255].map(fi);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2; };
+  const contraste = (a2, b2) => { const [x, y] = [lum(a2), lum(b2)].sort((p, q) => q - p);
+    return (x + 0.05) / (y + 0.05); };
+  const meio = (a2, b2) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const [x, y] = [p(a2), p(b2)];
+    return '#' + x.map((v, i) => Math.round((v + y[i]) / 2).toString(16).padStart(2, '0')).join(''); };
 
-  // NOVE passos, não oito: a última barra vai da cor 7 à cor 8. Com oito, o
-  // laço de espectro() levava marinho de volta a bronze.
-  eq('espectro escuro tem 9 passos', P.ESPECTRO.dark.length, 9);
-  eq('espectro claro tem 9 passos', P.ESPECTRO.light.length, 9);
-  eq('rampa de texto acompanha o tamanho', P.ESPECTRO_TEXTO.dark.length, 9);
+  // NOVE passos: a última barra vai da cor 7 à cor 8. Com oito, o laço de
+  // espectro() levava a última barra da ponta vermelha de volta ao azul.
+  eq('rampa escura tem 9 passos', P.ESPECTRO.dark.length, 9);
+  eq('rampa clara tem 9 passos', P.ESPECTRO.light.length, 9);
 
-  // os dois amarelos do Davi entram exatos no tema escuro
-  eq('Amarelo 1 do Davi está no passo 2', P.ESPECTRO.dark[2], '#C9A227');
-  eq('Amarelo 2 do Davi está no passo 5', P.ESPECTRO.dark[5], '#9C7A1E');
+  // as pontas: o degradê PERCORRE a paleta, não corre por fora dela
+  eq('a ponta quente é o vermelho dos botões (escuro)', P.ESPECTRO.dark[8], '#F17881');
+  eq('a ponta quente é o vermelho dos botões (claro)', P.ESPECTRO.light[8], '#B1242E');
+  eq('vermelho do PRISMA é a ponta quente', P.PRISMA.vermelho.dark, P.ESPECTRO.dark[8]);
+  eq('azul do PRISMA é a ponta fria', P.PRISMA.azul.dark, P.ESPECTRO.dark[0]);
+  eq('amarelo do PRISMA está no miolo amarelo', P.PRISMA.amarelo.dark, P.ESPECTRO.dark[4]);
 
-  // a ponte existe justamente para a emenda não passar pelo cinza
-  const semPonte = croma(meio(P.ESPECTRO.dark[P.EMENDA], P.ESPECTRO.dark[P.EMENDA + 1]));
-  eq('sem ponte a emenda LAVA (é por isso que ela existe)', semPonte < 0.05, true);
-  eq('com ponte, a primeira metade tem croma',
-     croma(meio(P.ESPECTRO.dark[P.EMENDA], P.PONTE.dark)) > 0.06, true);
-  eq('com ponte, a segunda metade tem croma',
-     croma(meio(P.PONTE.dark, P.ESPECTRO.dark[P.EMENDA + 1])) > 0.06, true);
+  for (const [tema, chave, fundo] of [['escuro', 'dark', '#141416'], ['claro', 'light', '#ffffff']]) {
+    const r = P.ESPECTRO[chave];
+    // azul→amarelo cruza o VERDE em matiz: a costura precisa ser estreita e
+    // quase acromática, senão sobra uma barra verde no meio do gráfico.
+    const verdes = r.filter((h) => { const o = oklch(h); return o.H > 120 && o.H < 190 && o.C > 0.05; });
+    eq(`${tema}: nenhuma amostra caiu no verde`, verdes, []);
+    // a rampa serve de TEXTO — é ela que pinta o número de 13px da barra
+    const fracos = r.filter((h) => contraste(h, fundo) < 4.5);
+    eq(`${tema}: todas as amostras passam de 4.5:1`, fracos, []);
+    // emenda entre barras vizinhas não pode passar pelo cinza
+    const lavadas = r.slice(0, -1)
+      .map((h, i) => [i, oklch(meio(h, r[i + 1])).C])
+      .filter(([, c]) => c < 0.045).map(([i]) => i);
+    eq(`${tema}: nenhuma emenda passa pelo cinza`, lavadas, []);
+    // a composição pedida: as paradas cobrem 0→100% em ordem crescente
+    const pos = P.ESPECTRO_STOPS[chave].map((p) => parseFloat(p.split(' ')[1]));
+    eq(`${tema}: paradas começam em 0% e terminam em 100%`, [pos[0], pos[pos.length - 1]], [0, 100]);
+    eq(`${tema}: paradas em ordem crescente`,
+       pos.every((v, i) => i === 0 || v >= pos[i - 1]), true);
+    // 20/40/20/20 — a fronteira azul→amarelo mora em 20%, a amarelo→laranja em
+    // 60%, a laranja→vermelho em 80%. Se alguém mexer nas paradas sem mexer na
+    // composição, isto acusa.
+    eq(`${tema}: a costura azul→amarelo está em 20%`, pos.includes(20.5), true);
+    eq(`${tema}: a fronteira amarelo→laranja está em 60%`, pos.includes(60), true);
+    eq(`${tema}: a fronteira laranja→vermelho está em 80%`, pos.includes(80), true);
+  }
 
-  // o texto nunca usa os azuis escuros do preenchimento
-  eq('rótulo do azul escuro é erguido, não é a cor da barra',
-     P.ESPECTRO_TEXTO.dark[7] !== P.ESPECTRO.dark[7], true);
-  eq('nos amarelos, rótulo e preenchimento são a mesma cor',
-     P.ESPECTRO_TEXTO.dark.slice(0, 6).join() === P.ESPECTRO.dark.slice(0, 6).join(), true);
-
-  // o degradê CSS carrega a ponte
-  eq('degradePrisma inclui a ponte', P.degradePrisma(false).includes(P.PONTE.dark), true);
+  // avatares: a cor tem de ser ESTÁVEL para a mesma pessoa
+  const id = 'a1b2c3d4-0000-4000-8000-000000000001';
+  eq('degradê de avatar é estável para o mesmo id',
+     P.degradeAvatar(id).grad, P.degradeAvatar(id).grad);
+  eq('ids diferentes espalham pelas quatro famílias',
+     new Set(['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8'].map((k) => P.degradeAvatar(k).grad)).size > 1, true);
+  eq('todo degradê de avatar tem glow', ['x1', 'x2', 'x3', 'x4'].every((k) => !!P.degradeAvatar(k).glow), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

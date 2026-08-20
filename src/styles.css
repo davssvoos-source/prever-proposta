@@ -167,7 +167,7 @@
     /* Tipografia v4 (apple-like): a fonte da PLATAFORMA — SF no Apple, Segoe
        no Windows, Roboto no Android. Uma família só, hierarquia por peso e
        tamanho, nunca por troca de fonte. */
-    --fonte: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    --fonte: "Montserrat", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
              Roboto, "Helvetica Neue", Arial, sans-serif;
     /* granulado reaproveitado por .textura e .ruido */
     --ruido: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -293,7 +293,7 @@
 
 @utility stat-value {
   font-size: 36px;
-  font-weight: 800;
+  font-weight: 700;
   color: #F0F2F5;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -316,7 +316,7 @@
 @utility link-action {
   font-size: 13px;
   color: #F8C811;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* ============= Primary button (gold shimmer) ============= */
@@ -638,8 +638,9 @@ input::placeholder, textarea::placeholder {
    O `inset: -35%` evita que o blur puxe transparência das bordas e deixe um
    halo esbranquiçado nos cantos. O granulado é 0.10 (contra 0.38 do resto):
    praticamente invisível, presente só para quebrar o banding do blur. */
-.campo-degrade { position: relative; overflow: hidden; isolation: isolate; }
+.campo-degrade { position: relative; overflow: hidden; isolation: isolate; border-radius: 18px; }
 .campo-degrade > .campo-degrade-fundo {
+  border-radius: inherit;
   position: absolute;
   inset: -35%;
   z-index: 0;
@@ -653,6 +654,7 @@ html[data-theme="light"] .campo-degrade > .campo-degrade-fundo { opacity: 0.30; 
   content: "";
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   z-index: 1;
   pointer-events: none;
   background-image: var(--ruido);
@@ -660,6 +662,14 @@ html[data-theme="light"] .campo-degrade > .campo-degrade-fundo { opacity: 0.30; 
   mix-blend-mode: soft-light;
   opacity: 0.10;
 }
+/* O campo de IA fica vazio quase o tempo todo, então o placeholder é o texto
+   que mais aparece nele. Sem isto ele herda o cinza morto do navegador e some
+   sobre o degradê. */
+.campo-ia::placeholder { color: rgba(255,255,255,0.62); }
+html[data-theme="light"] .campo-ia::placeholder { color: rgba(20,24,34,0.55); }
+.campo-ia:focus { outline: none; border-color: rgba(255,255,255,0.22) !important; }
+html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !important; }
+
 .campo-degrade > .campo-degrade-conteudo {
   position: relative;
   z-index: 2;

@@ -1471,7 +1471,7 @@ function BlocosWizardPage() {
             style={{
               marginTop: 8, width: "100%", padding: "16px 0",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: podeAvancar ? "pointer" : "not-allowed",
+              color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, cursor: podeAvancar ? "pointer" : "not-allowed",
               opacity: podeAvancar ? 1 : 0.5,
             }}
           >
@@ -1563,14 +1563,14 @@ function BlocosWizardPage() {
             <span
               style={{
                 width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
-                color: "#F8C811", fontSize: 17, fontWeight: 800,
+                color: "#F8C811", fontSize: 17, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: "var(--fonte)", flexShrink: 0,
               }}
             >
               {totalCams}
             </span>
-            <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>
+            <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
               Adicionar câmera
             </span>
           </button>
@@ -1727,7 +1727,7 @@ function BlocosWizardPage() {
             style={{
               width: "100%", padding: "16px 0",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
+              color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1,
               cursor: totalCams === 0 ? "not-allowed" : "pointer",
               opacity: totalCams === 0 ? 0.5 : 1,
             }}
@@ -1758,7 +1758,7 @@ function BlocosWizardPage() {
                 value={P}
                 onChange={(e) => setWizard({ ...wizard, perimetro: Math.max(0, parseInt(e.target.value) || 0) })}
                 style={{
-                  width: 200, textAlign: "center", fontSize: 42, fontWeight: 800,
+                  width: 200, textAlign: "center", fontSize: 42, fontWeight: 700,
                   fontFamily: "var(--fonte)",
                   background: "transparent", border: "none", outline: "none",
                   color: isLight ? L.text : "#fff",
@@ -1769,7 +1769,7 @@ function BlocosWizardPage() {
               <div
                 onClick={() => setWizard({ ...wizard, perimetro: 500 })}
                 style={{
-                  minWidth: 180, textAlign: "center", fontSize: 42, fontWeight: 800,
+                  minWidth: 180, textAlign: "center", fontSize: 42, fontWeight: 700,
                   color: isLight ? L.text : "#fff", fontFamily: "var(--fonte)",
                   cursor: "pointer",
                 }}
@@ -1796,7 +1796,7 @@ function BlocosWizardPage() {
             style={{
               width: "100%", padding: "16px 0",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
               opacity: P <= 0 ? 0.5 : 1,
             }}
           >
@@ -1832,7 +1832,7 @@ function BlocosWizardPage() {
                 <Minus size={22} />
               </button>
               <div style={{
-                minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
+                minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 700,
                 color: isLight ? L.text : "#fff", fontFamily: "var(--fonte)",
               }}>
                 {E}
@@ -1856,7 +1856,7 @@ function BlocosWizardPage() {
             style={{
               width: "100%", padding: "16px 0",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
             }}
           >
             CONTINUAR
@@ -1955,7 +1955,7 @@ function BlocosWizardPage() {
             style={{
               width: "100%", marginTop: 24, marginBottom: 32,
               padding: "16px", background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-              color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+              color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
               opacity: blocoSalvoId ? 1 : 0.6,
@@ -2155,7 +2155,7 @@ function BlocosWizardPage() {
                   height: 64, borderRadius: 16, border: "none",
                   background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                   color: "#0A0A0A", fontFamily: "var(--fonte)",
-                  fontWeight: 800, fontSize: 15, letterSpacing: "0.04em",
+                  fontWeight: 700, fontSize: 15, letterSpacing: "0.04em",
                   cursor: "pointer",
                   boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -2289,7 +2289,7 @@ function BlocosWizardPage() {
         marginTop: 8, padding: "16px 0",
         background: isLight ? L.goldBg : "linear-gradient(135deg, #FCDE48, #FFB300)",
         border: isLight ? L.goldBorder : "none", borderRadius: 14,
-        color: isLight ? L.gold : "#0A0A0A", fontSize: 14, fontWeight: 800,
+        color: isLight ? L.gold : "#0A0A0A", fontSize: 14, fontWeight: 700,
         cursor: "pointer", letterSpacing: 1, boxShadow: isLight ? L.shadowSm : undefined,
       }}>+ ADICIONAR</button>
     </div>

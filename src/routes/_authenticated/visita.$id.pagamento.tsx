@@ -360,7 +360,7 @@ function PagamentoPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={CARD}>
           <div style={LABEL}>Custo total do projeto</div>
-          <div style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20 }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 20 }}>
             {fmtBRL(custoTotal)}
           </div>
         </div>
@@ -373,7 +373,7 @@ function PagamentoPage() {
           }}
         >
           <div style={{ ...LABEL, color: "rgba(10,11,14,0.65)" }}>Valor de venda ({MARKUP_VENDA}×)</div>
-          <div style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20, color: "#0A0A0A" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 20, color: "#0A0A0A" }}>
             {fmtBRL(vendaTotal)}
           </div>
         </div>
@@ -428,7 +428,7 @@ function PagamentoPage() {
                 alignItems: "center", justifyContent: "center", pointerEvents: "none",
               }}
             >
-              <span style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 15 }}>
+              <span style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 15 }}>
                 {fmtBRL(custoTodosBlocos)}
               </span>
               <span style={{ ...obsStyle, fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase" }}>

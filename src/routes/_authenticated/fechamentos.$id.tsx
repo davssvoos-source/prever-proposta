@@ -217,7 +217,7 @@ function FechamentoDetalhePage() {
                       <span style={{ flex: 1, fontFamily: FONT, fontSize: 11.5, fontWeight: 400, color: textPrimary }}>
                         {it.descricao}
                       </span>
-                      <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 500, flexShrink: 0 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 400, flexShrink: 0 }}>
                         {moeda(Number(it.valor))}
                       </span>
                     </div>

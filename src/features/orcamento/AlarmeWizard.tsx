@@ -205,7 +205,7 @@ export function AlarmeWizard({
               style={{
                 height: 64, borderRadius: 16, border: "none",
                 background: GOLD_GRAD, color: "#0A0A0A",
-                fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 15,
+                fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 15,
                 letterSpacing: "0.04em", cursor: "pointer",
                 boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -297,7 +297,7 @@ export function AlarmeWizard({
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <button style={CIRCLE_BTN} onClick={() => setQtdSel((q) => Math.max(1, q - 1))}><Minus size={16} /></button>
-          <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "var(--fonte)" }}>{qtdSel}</span>
+          <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 700, fontFamily: "var(--fonte)" }}>{qtdSel}</span>
           <button
             style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
             onClick={() => setQtdSel((q) => Math.min(MAX_SENSORES_POR_ZONA, q + 1))}
@@ -367,14 +367,14 @@ export function AlarmeWizard({
         <span
           style={{
             width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
-            color: "#F8C811", fontSize: 17, fontWeight: 800,
+            color: "#F8C811", fontSize: 17, fontWeight: 700,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "var(--fonte)", flexShrink: 0,
           }}
         >
           {zonas.length}
         </span>
-        <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>
+        <span style={{ color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
           Adicionar zona
         </span>
       </button>
@@ -428,7 +428,7 @@ export function AlarmeWizard({
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <button style={CIRCLE_BTN} onClick={() => setRepetidores((r) => Math.max(0, r - 1))}><Minus size={16} /></button>
-            <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 800, fontFamily: "var(--fonte)" }}>{repetidores}</span>
+            <span style={{ minWidth: 24, textAlign: "center", fontSize: 20, fontWeight: 700, fontFamily: "var(--fonte)" }}>{repetidores}</span>
             <button
               style={{ ...CIRCLE_BTN, border: "none", background: "#F59E0B", color: "#0A0A0A", boxShadow: "0 2px 12px rgba(245,158,11,0.35)" }}
               onClick={() => setRepetidores((r) => r + 1)}
@@ -486,7 +486,7 @@ export function AlarmeWizard({
         style={{
           width: "100%", padding: "16px 0",
           background: "#F59E0B", border: "none", borderRadius: 999,
-          color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
+          color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1,
           cursor: zonas.length === 0 || salvando ? "not-allowed" : "pointer",
           opacity: zonas.length === 0 || salvando ? 0.5 : 1,
           boxShadow: "0 6px 20px rgba(245,158,11,0.35)",

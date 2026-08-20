@@ -115,7 +115,7 @@ export function CaboGauge({
             onBlur={() => setEditando(false)}
             onKeyDown={(e) => { if (e.key === "Enter") setEditando(false); }}
             style={{
-              width: 120, textAlign: "center", fontSize: 40, fontWeight: 800,
+              width: 120, textAlign: "center", fontSize: 40, fontWeight: 700,
               fontFamily: "var(--fonte)",
               background: "transparent", border: "none", outline: "none",
               color: isLight ? L.text : "#fff",
@@ -126,7 +126,7 @@ export function CaboGauge({
           <div
             onClick={() => setEditando(true)}
             style={{
-              fontSize: 44, fontWeight: 800, lineHeight: 1, cursor: "pointer",
+              fontSize: 44, fontWeight: 700, lineHeight: 1, cursor: "pointer",
               color: isLight ? L.text : "#fff", fontFamily: "var(--fonte)",
             }}
           >

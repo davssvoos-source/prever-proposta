@@ -60,7 +60,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     outline: "none",
     background: "transparent",
     fontFamily: FONT,
-    fontWeight: 500,
+    fontWeight: 400,
     fontSize: 14,
     color: isLight ? "#0a0b0e" : "#ffffff",
   };

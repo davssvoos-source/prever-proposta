@@ -114,7 +114,7 @@ function ReagendarPage() {
           <ArrowLeft size={22} color={textPrimary} />
         </button>
         <div>
-          <h1 style={{ color: textPrimary, fontSize: 20, fontWeight: 500, margin: 0 }}>
+          <h1 style={{ color: textPrimary, fontSize: 20, fontWeight: 400, margin: 0 }}>
             Agendar / Reagendar
           </h1>
           {nomeCliente && (

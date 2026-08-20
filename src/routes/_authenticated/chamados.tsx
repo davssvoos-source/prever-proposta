@@ -482,7 +482,7 @@ function ChamadosPage() {
                   {c.prazoTexto && (
                     <span style={{
                       marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
-                      fontFamily: FONT, fontWeight: 500, fontSize: 11,
+                      fontFamily: FONT, fontWeight: 400, fontSize: 11,
                       color: c.prazoEstourado ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
                     }}>
                       <CalendarClock size={12} /> {c.prazoTexto}

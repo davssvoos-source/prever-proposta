@@ -390,7 +390,7 @@ function PerfilPage() {
               background: "rgba(248,200,17,0.10)",
               border: "1px solid rgba(248,200,17,0.30)",
               fontFamily: "var(--fonte)",
-              fontWeight: 500,
+              fontWeight: 400,
               fontSize: 11,
               letterSpacing: "0.10em",
               textTransform: "uppercase",
@@ -544,7 +544,7 @@ function PerfilPage() {
                   <div
                     style={{
                       fontFamily: "var(--fonte)",
-                      fontWeight: 500,
+                      fontWeight: 400,
                       fontSize: 13,
                       color: isLight ? "#0a0b0e" : "#fff",
                       whiteSpace: "nowrap",

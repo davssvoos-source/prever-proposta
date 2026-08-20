@@ -198,7 +198,7 @@ function PainelOsPage() {
                 </div>
                 <div
                   style={{
-                    fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 22,
+                    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 22,
                     color: t.cor, fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -215,7 +215,7 @@ function PainelOsPage() {
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
                 <span
                   style={{
-                    fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 26,
+                    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 26,
                     color: m.pctPrazo >= 80 ? (isLight ? "#047862" : "#2DD2A5") : m.pctPrazo >= 50 ? gold : (isLight ? "#B1242E" : "#F17881"),
                     fontVariantNumeric: "tabular-nums",
                   }}
@@ -278,7 +278,7 @@ function PainelOsPage() {
                     alignItems: "center", justifyContent: "center", pointerEvents: "none",
                   }}
                 >
-                  <span style={{ fontFamily: "var(--fonte)", fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
+                  <span style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
                     {m.abertos}
                   </span>
                   <span style={{ ...SEC, fontSize: 9, color: textSecondary }}>em aberto</span>

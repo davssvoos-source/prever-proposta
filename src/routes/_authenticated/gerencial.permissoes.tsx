@@ -198,7 +198,7 @@ function PermissoesPage() {
                       <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5, color: textPrimary }}>
                         {t.label}
                         {t.sempre && (
-                          <span style={{ fontFamily: FONT, fontWeight: 500, fontSize: 10.5, color: textSecondary }}>
+                          <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 10.5, color: textSecondary }}>
                             {" "}· sempre
                           </span>
                         )}

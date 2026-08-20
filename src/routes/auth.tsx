@@ -287,7 +287,7 @@ function AuthPage() {
                   background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   color: isLight ? "#1f2430" : "rgba(255,255,255,0.75)",
                   fontSize: 15,
-                  fontWeight: 500,
+                  fontWeight: 400,
                   cursor: "pointer",
                   fontFamily: "var(--fonte)",
                   marginTop: 8,
@@ -323,7 +323,7 @@ function AuthPage() {
                 <div
                   style={{
                     fontFamily: "var(--fonte)",
-                    fontWeight: 500,
+                    fontWeight: 400,
                     fontSize: 17,
                     color: isLight ? "#0a0b0e" : "#fff",
                     marginBottom: 6,
@@ -372,7 +372,7 @@ function AuthPage() {
               >
                 <ArrowLeft size={14} /> Voltar para o login
               </button>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
                 Criar conta
               </div>
               <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>

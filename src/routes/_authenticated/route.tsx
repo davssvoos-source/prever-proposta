@@ -189,7 +189,7 @@ function AuthenticatedLayout() {
               <div
                 style={{
                   fontFamily: "var(--fonte)",
-                  fontWeight: 500,
+                  fontWeight: 400,
                   fontSize: 13,
                   color: isLight ? "#0a0b0e" : "#FFFFFF",
                   textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",

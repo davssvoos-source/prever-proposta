@@ -53,12 +53,14 @@ export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSPr
 const FAIXA: Record<Exclude<FaixaPrazo, null>, {
   rgb: string; bgDark: number; bgLight: number; brDark: number; brLight: number;
 }> = {
-  // o vermelho do degradê, não o vermelho de erro do sistema
-  atraso:      { rgb: "224,72,63",  bgDark: 0.17, bgLight: 0.075, brDark: 0.34, brLight: 0.20 },
-  // o amarelo — a cor principal, e a faixa que decide o dia
-  esta_semana: { rgb: "245,190,69", bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
-  // o azul profundo do degradê: presente, mas sem pressa
-  adiante:     { rgb: "30,95,141",  bgDark: 0.24, bgLight: 0.085, brDark: 0.38, brLight: 0.18 },
+  // As três cores são LITERALMENTE as pontas e o meio do degradê (v6), não
+  // aproximações dele: PRISMA.vermelho, PRISMA.amarelo e PRISMA.azul. O
+  // vermelho é o mesmo dos botões do sistema.
+  atraso:      { rgb: "241,120,129", bgDark: 0.16, bgLight: 0.075, brDark: 0.34, brLight: 0.22 },
+  // o amarelo — 40% do degradê, o principal, e a faixa que decide o dia
+  esta_semana: { rgb: "231,185,37",  bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
+  // o azul da ponta fria: presente, mas sem pressa
+  adiante:     { rgb: "72,133,223",  bgDark: 0.17, bgLight: 0.10,  brDark: 0.34, brLight: 0.22 },
 };
 
 interface Props {
@@ -130,7 +132,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
       {/* O que a coluna apagou: por que este item está aqui, e com quem está a bola */}
       {(a.rotuloNativo || a.bolaCom) && (
         <div style={{
-          fontFamily: FONT, fontWeight: 500, fontSize: PISO_TIPO,
+          fontFamily: FONT, fontWeight: 400, fontSize: PISO_TIPO,
           color: textSecondary, marginTop: 7, lineHeight: 1.4,
         }}>
           {a.rotuloNativo}
@@ -188,7 +190,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           {a.prazoTexto && (
             <span style={{
               marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
-              fontFamily: FONT, fontWeight: 500, fontSize: PISO_TIPO,
+              fontFamily: FONT, fontWeight: 400, fontSize: PISO_TIPO,
               color: a.prazoEstourado ? vermelho : textSecondary,
             }}>
               <CalendarClock size={12} /> {a.prazoTexto}

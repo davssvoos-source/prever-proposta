@@ -318,7 +318,7 @@ function CalendarioPage() {
             <div key={d} style={{
               textAlign: "center",
               fontFamily: "var(--fonte)",
-              fontWeight: 500,
+              fontWeight: 400,
               fontSize: 10,
               color: textSecondary,
               letterSpacing: "0.08em",
@@ -385,7 +385,7 @@ function CalendarioPage() {
       <div>
         <div style={{
           fontFamily: "var(--fonte)",
-          fontWeight: 500,
+          fontWeight: 400,
           fontSize: 12,
           color: goldDark,
           letterSpacing: "0.08em",

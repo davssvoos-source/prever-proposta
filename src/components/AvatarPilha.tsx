@@ -1,11 +1,16 @@
 // Pilha de avatares — os participantes de uma atividade, sobrepostos como nas
-// referências Versa UI. Foto quando o perfil tem, iniciais sobre o degradê da
-// marca quando não tem, e "+N" quando não cabem todos.
+// referências Versa UI. Foto quando o perfil tem, iniciais sobre um degradê da
+// paleta quando não tem, e "+N" quando não cabem todos.
+//
+// Quem não tem foto ganha um dos quatro degradês do prisma (azul, amarelo,
+// laranja, vermelho) com glow fraco. A escolha é por HASH do id, não por
+// sorteio: sorteio de verdade trocaria a cor a cada render, e a cor do avatar
+// é justamente como se reconhece alguém de relance numa lista.
 
 import type { CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, GOLD_GRAD } from "@/lib/ui";
-import { SOBRE_PRIMARIA } from "@/lib/paleta";
+import { FONT } from "@/lib/ui";
+import { degradeAvatar } from "@/lib/paleta";
 
 export interface PessoaAvatar {
   nome: string;
@@ -47,6 +52,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
         const p = pessoas[id];
         const iniciais = (p?.nome ?? "?")
           .split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+        const d = degradeAvatar(id);
         return p?.avatar_url ? (
           <img
             key={id}
@@ -59,12 +65,14 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
           <span
             key={id}
             title={p?.nome}
-            className="ruido"
             style={{
               ...circulo,
               marginLeft: i === 0 ? 0 : -7,
-              background: GOLD_GRAD,
-              color: SOBRE_PRIMARIA,
+              background: d.grad,
+              color: d.sobre,
+              // glow fraco: o suficiente para a pastilha descolar do card sem
+              // virar farol numa lista com dez delas
+              boxShadow: `0 0 10px ${d.glow}`,
               fontFamily: FONT,
               fontWeight: 700,
               fontSize: Math.round(tamanho * 0.38),

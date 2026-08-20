@@ -482,7 +482,7 @@ export function BlocoItensEditor({
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>TOTAL MENSAL</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
               R$ {totalMensal.toFixed(2)}/mês
             </span>
           </div>
@@ -618,7 +618,7 @@ export function BlocoItensEditor({
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>SUBTOTAL</span>
-          <span style={{ fontSize: 16, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
             R$ {total.toFixed(2)}
           </span>
         </div>
@@ -630,7 +630,7 @@ export function BlocoItensEditor({
           style={{
             marginTop: 8, width: "100%", padding: "16px 0",
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
-            color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
+            color: "#0A0A0A", fontSize: 14, fontWeight: 700, letterSpacing: 1, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}
         >

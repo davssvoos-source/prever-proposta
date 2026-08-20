@@ -284,7 +284,7 @@ function PainelChamadosPage() {
             <div style={{ flex: 1 }}>
               <span style={SEC}>Em aberto agora</span>
               <div style={{
-                fontFamily: FONT, fontWeight: 800, fontSize: 40, lineHeight: 1.1,
+                fontFamily: FONT, fontWeight: 700, fontSize: 40, lineHeight: 1.1,
                 color: gold, fontVariantNumeric: "tabular-nums",
               }}>
                 {numeros.abertos}
@@ -297,7 +297,7 @@ function PainelChamadosPage() {
                   color: isLight ? "#B1242E" : "#F17881",
                 }}>
                   <AlertTriangle size={15} />
-                  <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 22, fontVariantNumeric: "tabular-nums" }}>
+                  <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, fontVariantNumeric: "tabular-nums" }}>
                     {numeros.atrasados}
                   </span>
                 </div>
@@ -314,7 +314,7 @@ function PainelChamadosPage() {
                   <t.Icon size={12} color={gold} />
                   <span style={{ ...SEC, fontSize: 8.5 }}>{t.label}</span>
                 </div>
-                <div style={{ fontFamily: FONT, fontWeight: 800, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
+                <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 20, fontVariantNumeric: "tabular-nums" }}>
                   {t.valor}
                 </div>
               </div>

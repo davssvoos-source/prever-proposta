@@ -79,7 +79,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
     borderRadius: 16, padding: 16,
   };
   const secLabel: React.CSSProperties = {
-    fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.16em",
     color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)", marginBottom: 10,
   };
   const circle = (): React.CSSProperties => ({
@@ -101,7 +101,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ShieldCheck size={18} color={gold} />
-          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
             RESUMO
           </span>
         </div>
@@ -112,7 +112,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
       </div>
 
       <div style={{
-        fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
+        fontSize: 9, fontWeight: 700, letterSpacing: "0.14em",
         color: gold, marginBottom: 6, textTransform: "uppercase",
       }}>
         Elevadores — {qtdKits} Kit{qtdKits === 1 ? "" : "s"} Antena
@@ -133,11 +133,11 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 {meta.marca} · {meta.modelo}
                 <span style={{
                   marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 800, fontSize: 9,
+                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 700, fontSize: 9,
                 }}>AUTO</span>
               </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: gold }}>{it.qtd}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: gold }}>{it.qtd}</div>
           </div>
         );
       })}
@@ -146,8 +146,8 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
         background: "rgba(160,97,8,0.10)",
         display: "flex", justifyContent: "space-between",
       }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: gold }}>ITENS</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
       </div>
     </div>
   );
@@ -168,7 +168,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                   <Minus size={20} />
                 </button>
                 <div style={{
-                  minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 800,
+                  minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 700,
                   color: isLight ? "#0a0b0e" : "#fff", fontFamily: "var(--fonte)",
                 }}>{qtdKits}</div>
                 <button style={circlePrimary()} onClick={() => setQtdKits((n) => Math.min(50, n + 1))} aria-label="+">
@@ -190,7 +190,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 color: isLight ? "#0a0b0e" : "#fff",
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em" }}>
                 O QUE COMPÕE CADA KIT
               </span>
               <ChevronDown size={16}
@@ -213,7 +213,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                         {k.marca} · {k.modelo}
                       </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: gold, whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: gold, whiteSpace: "nowrap" }}>
                       ×{k.qtdPorKit}
                     </div>
                   </div>
@@ -301,8 +301,8 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
           background: "rgba(160,97,8,0.10)",
           display: "flex", justifyContent: "space-between",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
         </div>
       </div>
     );
@@ -370,7 +370,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                   background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
                   color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
+                  fontSize: 10, fontWeight: 700,
                 }}>{done ? <Check size={10} /> : i + 1}</div>
                 <span style={{
                   fontSize: 10, fontWeight: 700,
@@ -391,7 +391,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             flex: 1, padding: "14px 0", borderRadius: 999,
             background: "transparent",
             border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
-            color: isLight ? "#0a0b0e" : "#fff", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
+            color: isLight ? "#0a0b0e" : "#fff", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
           }}>
           VOLTAR
         </button>
@@ -400,7 +400,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             disabled={qtdKits < 1}
             style={{
               flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
-              background: gold, color: "#0A0A0A", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
+              background: gold, color: "#0A0A0A", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em",
               cursor: "pointer", opacity: qtdKits < 1 ? 0.5 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
@@ -412,7 +412,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             style={{
               flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
               background: !podeConcluir ? "#9ca3af" : gold, color: "#0A0A0A",
-              fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
+              fontWeight: 700, fontSize: 12, letterSpacing: "0.14em",
               cursor: !podeConcluir || salvando ? "not-allowed" : "pointer",
               opacity: salvando ? 0.7 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -434,7 +434,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             boxShadow: "-8px 0 32px rgba(0,0,0,0.35)",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.14em", color: isLight ? "#0a0b0e" : "#fff" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", color: isLight ? "#0a0b0e" : "#fff" }}>
                 RESUMO DO ORÇAMENTO
               </span>
               <button onClick={() => setResumoOpen(false)}

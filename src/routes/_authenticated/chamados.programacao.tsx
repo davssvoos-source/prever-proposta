@@ -174,7 +174,7 @@ function ProgramacaoPage() {
           </span>
           {o.prazo_limite && (
             <span style={{
-              marginLeft: "auto", fontFamily: FONT, fontSize: 10.5, fontWeight: 500,
+              marginLeft: "auto", fontFamily: FONT, fontSize: 10.5, fontWeight: 400,
               color: atrasado ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
             }}>
               {textoPrazo(o.prazo_limite)}
@@ -250,7 +250,7 @@ function ProgramacaoPage() {
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
               }}
             >
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 500, opacity: 0.75 }}>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 400, opacity: 0.75 }}>
                 {DIA_CURTO[d.getDay()]}
               </span>
               <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>{d.getDate()}</span>

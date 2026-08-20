@@ -407,7 +407,7 @@ function NovaVisitaPage() {
           <h1
             style={{
               fontFamily: "var(--fonte)",
-              fontWeight: 500,
+              fontWeight: 400,
               fontSize: 18,
               color: isLight ? L.text : "#F0F2F5",
               margin: 0,
@@ -1058,7 +1058,7 @@ function NovaVisitaPage() {
             border: "none",
             color: "#08090E",
             fontFamily: "var(--fonte)",
-            fontWeight: 500,
+            fontWeight: 400,
             fontSize: 13,
             letterSpacing: "0.18em",
             textTransform: "uppercase",

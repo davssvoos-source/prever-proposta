@@ -91,8 +91,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        // v4: a fonte é a do sistema (var(--fonte)) — sem webfont para baixar
-        href: "data:text/css,",
+        // v6: Montserrat em quatro pesos e só quatro — Thin 100 para numeral
+        // grande, Regular 400 para corpo, SemiBold 600 para título e chip,
+        // Bold 700 para micro-rótulo em caixa alta. `display=swap` para o
+        // texto aparecer na fonte do sistema enquanto a webfont carrega, em
+        // vez de a tela ficar em branco no 4G de obra.
+        href: "https://fonts.googleapis.com/css2?family=Montserrat:wght@100;400;600;700&display=swap",
       },
     ],
   }),

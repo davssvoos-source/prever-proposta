@@ -204,7 +204,7 @@ function VisitaPendentePage() {
                   padding: "8px 14px", borderRadius: 10, flex: 1,
                   background: isLight ? "#f0f1f4" : "#191921",
                   border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-                  color: c.text, fontSize: 13, fontWeight: 500, cursor: "pointer",
+                  color: c.text, fontSize: 13, fontWeight: 400, cursor: "pointer",
                 }}
               >
                 <Copy size={14} />
@@ -220,7 +220,7 @@ function VisitaPendentePage() {
                   background: isLight ? "rgba(37,99,235,0.08)" : "rgba(96,165,250,0.10)",
                   border: isLight ? "1px solid rgba(37,99,235,0.18)" : "1px solid rgba(96,165,250,0.22)",
                   color: isLight ? "#1d4ed8" : "#93c5fd",
-                  fontSize: 13, fontWeight: 500, textDecoration: "none", cursor: "pointer",
+                  fontSize: 13, fontWeight: 400, textDecoration: "none", cursor: "pointer",
                 }}
               >
                 <Map size={14} />
@@ -286,7 +286,7 @@ function VisitaPendentePage() {
 
               {!isEditing && (
                 <>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: c.text, lineHeight: 1.3 }}>
+                  <span style={{ fontSize: 13, fontWeight: 400, color: c.text, lineHeight: 1.3 }}>
                     {nome || <span style={{ color: c.muted, fontWeight: 400 }}>Não informado</span>}
                   </span>
                   <a

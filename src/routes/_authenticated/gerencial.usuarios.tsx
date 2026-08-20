@@ -355,7 +355,7 @@ function UsuariosPage() {
         </button>
         <div style={{ flex: 1 }}>
           <div style={{
-            fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 18,
+            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 18,
             color: isLight ? L.text : "#fff",
           }}>
             Gerenciar Usuários
@@ -387,7 +387,7 @@ function UsuariosPage() {
       {showInvite && (
         <div style={{ ...GLASS, marginBottom: 20 }}>
           <div style={{
-            fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 14,
+            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
             color: isLight ? L.text : "#fff", marginBottom: 16,
             display: "flex", alignItems: "center", gap: 8,
           }}>
@@ -435,7 +435,7 @@ function UsuariosPage() {
                       }}
                     >
                       <div style={{
-                        fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
+                        fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                         color: isLight ? lightCfg.color : cfg.color,
                       }}>
                         {cfg.label}
@@ -504,7 +504,7 @@ function UsuariosPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 140 }}>
                     <div style={{
-                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                       color: isLight ? L.text : "#fff",
                     }}>
                       {s.nome ?? "—"}
@@ -599,7 +599,7 @@ function UsuariosPage() {
               <div key={c.id} style={{ ...GLASS, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
+                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                     color: isLight ? L.text : "#fff",
                   }}>
                     {c.nome}
@@ -657,7 +657,7 @@ function UsuariosPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 14,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
                       color: isLight ? L.text : "#fff",
                     }}>
                       {u.nome}
@@ -670,7 +670,7 @@ function UsuariosPage() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <span style={{
-                        fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 10,
+                        fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
                         color: isLight ? lightCfg.color : cfg.color,
                         padding: "3px 8px", borderRadius: 999,
                         background: isLight ? lightCfg.bg : `${cfg.color}15`,
@@ -681,7 +681,7 @@ function UsuariosPage() {
                       </span>
                       {u.equipe && (
                         <span style={{
-                          fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 10,
+                          fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
                           color: isLight ? equipeCores(u.equipe).light : equipeCores(u.equipe).dark,
                           padding: "3px 8px", borderRadius: 999,
                           background: equipeCores(u.equipe).bg,
@@ -749,7 +749,7 @@ function UsuariosPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                       color: isLight ? L.textSub : "rgba(255,255,255,0.7)",
                     }}>{u.nome}</div>
                     <div style={{
@@ -758,7 +758,7 @@ function UsuariosPage() {
                     }}>{u.email}</div>
                   </div>
                   <span style={{
-                    fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 9,
+                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 9,
                     color: isLight ? "#B1242E" : "#FCA5A5",
                     padding: "3px 8px", borderRadius: 999,
                     background: isLight ? "#fee2e2" : "rgba(239,68,68,0.12)",
@@ -810,7 +810,7 @@ function UsuariosPage() {
             }}
           >
             <div style={{
-              fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 16,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 16,
               color: isLight ? L.text : "#fff", marginBottom: 4,
             }}>
               Permissão e equipe
@@ -841,7 +841,7 @@ function UsuariosPage() {
                     }}
                   >
                     <div style={{
-                      fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 13,
+                      fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13,
                       color: isLight ? lightCfg.color : cfg.color,
                     }}>
                       {cfg.label}
@@ -964,7 +964,7 @@ function UsuariosPage() {
               <AlertTriangle size={36} color={isLight ? "#A63E17" : "#F59E0B"} />
             </div>
             <div style={{
-              fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 16,
+              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 16,
               color: isLight ? L.text : "#fff", marginBottom: 8,
             }}>
               Desativar {deleteConfirm.nome}?

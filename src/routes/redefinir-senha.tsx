@@ -190,7 +190,7 @@ function RedefinirSenhaPage() {
                 <div
                   style={{
                     fontFamily: "var(--fonte)",
-                    fontWeight: 500,
+                    fontWeight: 400,
                     fontSize: 17,
                     color: isLight ? "#0a0b0e" : "#fff",
                     marginBottom: 6,

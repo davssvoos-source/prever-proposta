@@ -627,55 +627,42 @@ continua no azul profundo da imagem — é ele que pinta o fundo do card.
 Cada entrada carrega `dark`, `light`, `bg` (véu translúcido) e `border`. Quem
 consome nunca escolhe alfa na mão.
 
-### 11.2 A rampa (`ESPECTRO`) — v5.1
+### 11.2 O degradê (v6 — 2026-08-20)
 
-Nove passos, do quente ao frio. **Seis dos nove são amarelo** e o azul é fundo:
-ajuste pedido pelo Davi em 2026-08-20. A rampa sobe até o pico no passo 3 e
-mergulha — o meio do gráfico de demanda é a semana corrente, e é onde ela
-acende. É o que faz o painel de cima e o quadro de baixo contarem a mesma
-história: amarelo é agora, azul é depois.
+O degradê da casa tem **composição fixa**, definida pelo Davi:
 
-| # | 0 | 1 | **2** | 3 | 4 | **5** | 6 | 7 | 8 |
-|---|---|---|---|---|---|---|---|---|---|
-| escuro | `#A37729` | `#B98C1E` | **`#C9A227`** | `#E1BD46` | `#CDA839` | **`#9C7A1E`** | `#25537C` | `#17325A` | `#102145` |
-| claro | `#6B4800` | `#7C5A00` | `#896C05` | `#8C7109` | `#896C0B` | `#755900` | `#11446D` | `#0E2951` | `#091738` |
+| faixa | fatia | do quê |
+|---|---|---|
+| azul | **20%** | `#4885DF` → `#9AD2DF` |
+| costura | 18–23% | quase acromática — ver abaixo |
+| amarelo | **40%** | `#E0DCA7` → `#E9A40A` |
+| laranja | **20%** | `#F98D23` → `#FB7A39` |
+| vermelho | **20%** | `#ED7665` → `#F17881` |
 
-Em negrito, os dois amarelos que o Davi escolheu, exatos, no tema escuro.
+Nessa ordem, do frio ao quente. O amarelo é 40% porque é o principal. E a ponta
+quente termina **exatamente no vermelho que os botões do sistema já usam** —
+`#F17881` no escuro, `#B1242E` no claro: o degradê *percorre* a paleta em vez de
+correr por fora dela. Travado por asserção.
 
-**Nove, e não oito.** Cada barra vai da sua cor à da seguinte, então a última
-barra precisa de um passo além do fim. Com oito, o laço de `espectro()` levava
-a última barra de marinho de volta ao bronze. Travado por asserção.
+`ESPECTRO_STOPS` é a fonte (paradas CSS com as porcentagens). `ESPECTRO` são 9
+amostras dela, que é o que as barras usam — nove e não oito porque cada barra
+vai da sua cor à da seguinte, e a última precisa de um passo além do fim.
 
-**O hex manda, não o oklch.** O Davi mandou os dois tons em hex *e* em oklch
-"aprox.", e os dois discordam: `oklch(0.72 0.17 84)` está fora do sRGB e o
-navegador cortaria para `#D69900` — mais laranja e mais saturado que `#C9A227`.
-Vale o hex, que é a cor que ele de fato vê. Os oklch reais são L .728 C .138
-H 90 e L .597 C .112 H 87.
+#### A costura, e por que ela é clara
 
-**O tema claro repete os matizes com a luminosidade rebaixada.** Sobre branco,
-os tons originais não passam de 4.5:1 — e o número da barra é texto de 13px
-pintado com a cor da barra.
+Azul e amarelo estão em pontas opostas do matiz, e o caminho entre eles **cruza
+o verde**. Não há como evitar interpolando: ou passa pelo verde, ou pelo
+magenta. A saída é passar por lá tão rápido e com croma tão baixo que o matiz
+não chega a aparecer — daí a costura estreita (18–23%) e quase acromática.
 
-#### A ponte
+E ela é **clara**, não média. Cinza é baixo croma em luminosidade média; em
+luminosidade alta, o mesmo baixo croma lê como **brilho**. É de onde vem a
+sensação de brilho que faltava na v5.1, onde a rampa afundava no preto.
 
-Interpolar ocre até marinho em sRGB passa **obrigatoriamente pelo cinza**: o
-ponto médio de `#9C7A1E` com `#25537C` é `#61674D`, croma 0.04, um oliva
-lavado. `PONTE` (`#05585F` no escuro, `#00474E` no claro) é o desvio — um
-petróleo fundo que põe as duas metades da emenda acima de 0.07 de croma.
-
-A barra da emenda (`EMENDA = 5`) e o arco da rosca levam a ponte como parada
-extra no meio. Quem escolhe a cor da transição somos nós, não a interpolação.
-
-#### A rampa de texto
-
-`ESPECTRO_TEXTO` existe porque os azuis do fim são escuros **de propósito**:
-como preenchimento de barra funcionam, como número de 13px sobre preto somem
-(1,4:1). Nos seis amarelos as duas rampas são idênticas; nos três azuis a de
-texto sobe de luminosidade mantendo o matiz. No tema claro os azuis já
-contrastam de sobra e a rampa é a mesma.
-
-`espectro(i, isLight)` dá o preenchimento; `espectroTexto(i, isLight)` dá o
-rótulo; `degradePrisma(isLight, angulo)` dá a rampa inteira em CSS, com ponte.
+Três invariantes estão travados em `verificar-logica.cjs`, um por tema:
+nenhuma amostra cai no verde; nenhuma emenda entre barras vizinhas passa pelo
+cinza; e **todas as 9 passam de 4.5:1** sobre a superfície do tema — por isso a
+v6 pôde apagar a rampa-de-texto separada que a v5.1 precisava ter.
 
 ### 11.3 Prazo → cor de fundo do card
 
@@ -684,9 +671,12 @@ responde, e o card inteiro se pinta:
 
 | faixa | cor | quando |
 |---|---|---|
-| `atraso` | vermelho | prazo já passou |
-| `esta_semana` | **amarelo** | vence até domingo 23:59 da semana corrente |
-| `adiante` | azul profundo | vence da segunda seguinte em diante |
+| `atraso` | vermelho `#F17881` | prazo já passou |
+| `esta_semana` | **amarelo `#E7B925`** | vence até domingo 23:59 da semana corrente |
+| `adiante` | azul `#4885DF` | vence da segunda seguinte em diante |
+
+As três são literalmente as pontas e o miolo do degradê, não aproximações
+dele — é o que faz o quadro e os gráficos parecerem a mesma peça.
 | `null` | nenhuma | sem prazo, ou já encerrado |
 
 Dois detalhes que custaram decisão:
@@ -737,3 +727,33 @@ tudo: micro-rótulos, filtros, alvo de arraste, contador de notificações.
 
 O dourado da marca continua onde é gradiente e lê como coisa própria:
 `GRAD_PRIMARIA` nos botões de ação e o logotipo.
+
+## 12. Tipografia (v6 — 2026-08-20)
+
+**Montserrat**, em quatro pesos e só quatro. Carregada do Google Fonts com
+`display=swap`: o texto aparece na fonte do sistema enquanto a webfont baixa,
+em vez de a tela ficar em branco no 4G de obra.
+
+| peso | onde | por quê |
+|---|---|---|
+| **100 Thin** | numeral grande (% da rosca, valor do KPI) | no tamanho, o peso vira ruído: quem carrega a hierarquia é o corpo do número |
+| **400 Regular** | corpo, texto secundário, descrição, placeholder | leitura longa |
+| **600 SemiBold** | título de card, chip, item de menu, botão | o degrau de hierarquia mais usado |
+| **700 Bold** | micro-rótulo em caixa alta, contagem, valor de barra | texto pequeno precisa de peso para existir |
+
+**Não existe 500 nem 800 no sistema.** Foram varridos (48 e 72 ocorrências).
+Pedir um peso que não foi carregado faz o navegador *sintetizar* — engordar ou
+afinar o desenho por conta — e Montserrat sintetizada fica borrada. Se algum
+peso novo for preciso, ele entra na URL da fonte primeiro.
+
+Numeral em coluna leva `fontVariantNumeric: "tabular-nums"`.
+
+## 13. Avatares sem foto
+
+Quatro degradês, um por família do prisma — azul, amarelo, laranja, vermelho —
+com **glow fraco** (`0 0 10px`, alfa .42): o suficiente para a pastilha descolar
+do card sem virar farol numa lista com dez delas.
+
+A cor sai de um **hash do id da pessoa**, não de sorteio. Sorteio de verdade
+trocaria a cor a cada render, e a cor do avatar é justamente como se reconhece
+alguém de relance numa lista. Travado por asserção (`degradeAvatar` estável).

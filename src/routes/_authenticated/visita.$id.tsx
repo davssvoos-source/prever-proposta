@@ -773,7 +773,7 @@ function VisitaDetail() {
         <div
           style={{
             fontFamily: "var(--fonte)",
-            fontWeight: 500,
+            fontWeight: 400,
             fontSize: 14,
             color: TXT_PRIMARY,
             textTransform: "capitalize",
@@ -893,7 +893,7 @@ function VisitaDetail() {
               <div
                 style={{
                   fontFamily: "var(--fonte)",
-                  fontWeight: 500,
+                  fontWeight: 400,
                   fontSize: 14,
                   color: TXT_PRIMARY,
                   marginBottom: 10,
@@ -915,7 +915,7 @@ function VisitaDetail() {
                     borderRadius: 999,
                     padding: "6px 12px",
                     fontFamily: "var(--fonte)",
-                    fontWeight: 500,
+                    fontWeight: 400,
                     fontSize: 12,
                     textDecoration: "none",
                   }}
@@ -945,7 +945,7 @@ function VisitaDetail() {
               <div
                 style={{
                   fontFamily: "var(--fonte)",
-                  fontWeight: 500,
+                  fontWeight: 400,
                   fontSize: 14,
                   color: TXT_PRIMARY,
                   marginBottom: 10,
@@ -967,7 +967,7 @@ function VisitaDetail() {
                     borderRadius: 999,
                     padding: "6px 12px",
                     fontFamily: "var(--fonte)",
-                    fontWeight: 500,
+                    fontWeight: 400,
                     fontSize: 12,
                     textDecoration: "none",
                   }}
@@ -1022,7 +1022,7 @@ function VisitaDetail() {
                 {initials(tecPerfil.nome ?? "?")}
               </div>
               <div>
-                <div style={{ fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 14, color: TXT_PRIMARY }}>
+                <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14, color: TXT_PRIMARY }}>
                   {tecPerfil.nome}
                 </div>
                 <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: TXT_SECONDARY, textTransform: "capitalize" }}>
@@ -1081,7 +1081,7 @@ function VisitaDetail() {
                     flex: 2, height: 40, borderRadius: 12,
                     border: "1px solid rgba(248,200,17,0.35)", background: "rgba(248,200,17,0.12)",
                     color: "#F8C811", cursor: "pointer",
-                    fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 12,
+                    fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                     letterSpacing: "0.08em", opacity: novoTecnicoId ? 1 : 0.4,
                   }}
                 >
@@ -1136,7 +1136,7 @@ function VisitaDetail() {
                 <button
                   onClick={() => propostosMutation.mutate(propostosDraft)}
                   disabled={propostosMutation.isPending || propostosDraft.length === 0}
-                  style={{ background: "rgba(248,200,17,0.12)", border: "1px solid rgba(248,200,17,0.45)", borderRadius: 8, color: "#F8C811", fontFamily: "var(--fonte)", fontWeight: 500, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
+                  style={{ background: "rgba(248,200,17,0.12)", border: "1px solid rgba(248,200,17,0.45)", borderRadius: 8, color: "#F8C811", fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
                 >
                   Salvar
                 </button>
@@ -1388,7 +1388,7 @@ function VisitaDetail() {
                 justifyContent: "center",
                 gap: 6,
                 fontFamily: "var(--fonte)",
-                fontWeight: 500,
+                fontWeight: 400,
                 fontSize: 12,
                 letterSpacing: "0.08em",
               }}

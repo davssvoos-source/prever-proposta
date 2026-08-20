@@ -124,7 +124,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
     borderRadius: 16, padding: 16,
   };
   const secLabel: React.CSSProperties = {
-    fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
+    fontSize: 10, fontWeight: 700, letterSpacing: "0.16em",
     color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,255,255,0.55)", marginBottom: 10,
   };
 
@@ -163,7 +163,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ShieldCheck size={18} color={gold} />
-          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
             RESUMO
           </span>
         </div>
@@ -174,7 +174,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
       </div>
 
       <div style={{
-        fontSize: 9, fontWeight: 800, letterSpacing: "0.14em",
+        fontSize: 9, fontWeight: 700, letterSpacing: "0.14em",
         color: gold, marginBottom: 6, textTransform: "uppercase",
       }}>
         Totem Inteligente — {nTotens} totem{nTotens === 1 ? "" : "s"}
@@ -195,11 +195,11 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                 {meta.marca} · {meta.modelo}
                 <span style={{
                   marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 800, fontSize: 9,
+                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 700, fontSize: 9,
                 }}>AUTO</span>
               </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: gold }}>{it.qtd}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: gold }}>{it.qtd}</div>
           </div>
         );
       })}
@@ -208,8 +208,8 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
         background: "rgba(160,97,8,0.10)",
         display: "flex", justifyContent: "space-between",
       }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: gold }}>ITENS</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
       </div>
 
       {/* Mensalidades: totens (500/550 +100 Smart Sampa) + I.As por câmera */}
@@ -222,12 +222,12 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           <span style={{ color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>
             Mensalidade dos totens{totens.some((t) => t.smartSampa) ? " (c/ Smart Sampa)" : ""}
           </span>
-          <span style={{ fontWeight: 800, color: gold }}>R$ {mensalTotens.toFixed(2)}/mês</span>
+          <span style={{ fontWeight: 700, color: gold }}>R$ {mensalTotens.toFixed(2)}/mês</span>
         </div>
         {mensalIAs > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
             <span style={{ color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>I.As por câmera</span>
-            <span style={{ fontWeight: 800, color: gold }}>R$ {mensalIAs.toFixed(2)}/mês</span>
+            <span style={{ fontWeight: 700, color: gold }}>R$ {mensalIAs.toFixed(2)}/mês</span>
           </div>
         )}
       </div>
@@ -282,7 +282,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                               border: sel ? `2px solid ${gold}` : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.18)"),
                               background: sel ? gold : "transparent",
                               color: sel ? "#fff" : (isLight ? "#0a0b0e" : "#fff"),
-                              fontWeight: 800, fontSize: 13, cursor: "pointer",
+                              fontWeight: 700, fontSize: 13, cursor: "pointer",
                             }}
                           >
                             {n}
@@ -325,7 +325,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                   {/* I.As por câmera */}
                   <div>
                     <div style={{
-                      fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                      fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase",
                       color: isLight ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.45)", marginBottom: 6,
                     }}>
                       I.A integrada por câmera
@@ -387,7 +387,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                 color: isLight ? "#0a0b0e" : "#fff",
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em" }}>
                 O QUE COMPÕE CADA TOTEM
               </span>
               <ChevronDown size={16}
@@ -410,7 +410,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                         {k.marca} · {k.modelo}
                       </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: gold, whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: gold, whiteSpace: "nowrap" }}>
                       {k.qtdPorTotem === "cameras" ? "2 a 4" : k.qtdPorTotem === "cabo50m" ? "50 m/poste" : `×${k.qtdPorTotem}`}
                     </div>
                   </div>
@@ -505,8 +505,8 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           background: "rgba(160,97,8,0.10)",
           display: "flex", justifyContent: "space-between",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
-          <span style={{ fontSize: 13, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
         </div>
 
         {/* Mensalidades (não ajustáveis — derivam da configuração dos totens) */}
@@ -515,21 +515,21 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           border: isLight ? "1px dashed rgba(0,0,0,0.12)" : "1px dashed rgba(255,255,255,0.14)",
           display: "flex", flexDirection: "column", gap: 4,
         }}>
-          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: goldDark, marginBottom: 2 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: goldDark, marginBottom: 2 }}>
             MENSALIDADES
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
             <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)" }}>
               Totens ({totens.map((t, i) => `T${i + 1}: ${t.cameras}cam${t.smartSampa ? " + Smart Sampa" : ""}`).join(" · ")})
             </span>
-            <span style={{ fontWeight: 800, color: gold, flexShrink: 0 }}>R$ {mensalTotens.toFixed(2)}/mês</span>
+            <span style={{ fontWeight: 700, color: gold, flexShrink: 0 }}>R$ {mensalTotens.toFixed(2)}/mês</span>
           </div>
           {itensMensais.map((it) => (
             <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
               <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)" }}>
                 {it.qtd}× {it.regra.replace(" (mensal, por câmera do totem)", "")}
               </span>
-              <span style={{ fontWeight: 800, color: gold, flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, color: gold, flexShrink: 0 }}>
                 R$ {((IA_MENSALIDADES[it.cod_eq] ?? 0) * it.qtd).toFixed(2)}/mês
               </span>
             </div>
@@ -601,7 +601,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                   background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
                   color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
+                  fontSize: 10, fontWeight: 700,
                 }}>{done ? <Check size={10} /> : i + 1}</div>
                 <span style={{
                   fontSize: 10, fontWeight: 700,
@@ -622,7 +622,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
             flex: 1, padding: "14px 0", borderRadius: 999,
             background: "transparent",
             border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
-            color: isLight ? "#0a0b0e" : "#fff", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
+            color: isLight ? "#0a0b0e" : "#fff", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
           }}>
           VOLTAR
         </button>
@@ -631,7 +631,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
             disabled={nTotens < 1}
             style={{
               flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
-              background: gold, color: "#0A0A0A", fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
+              background: gold, color: "#0A0A0A", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em",
               cursor: "pointer", opacity: nTotens < 1 ? 0.5 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}>
@@ -643,7 +643,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
             style={{
               flex: 2, padding: "14px 0", borderRadius: 999, border: "none",
               background: !podeConcluir ? "#9ca3af" : gold, color: "#0A0A0A",
-              fontWeight: 800, fontSize: 12, letterSpacing: "0.14em",
+              fontWeight: 700, fontSize: 12, letterSpacing: "0.14em",
               cursor: !podeConcluir || salvando ? "not-allowed" : "pointer",
               opacity: salvando ? 0.7 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
@@ -665,7 +665,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
             boxShadow: "-8px 0 32px rgba(0,0,0,0.35)",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.14em", color: isLight ? "#0a0b0e" : "#fff" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", color: isLight ? "#0a0b0e" : "#fff" }}>
                 RESUMO DO ORÇAMENTO
               </span>
               <button onClick={() => setResumoOpen(false)}

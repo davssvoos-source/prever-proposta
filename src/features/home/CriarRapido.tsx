@@ -46,7 +46,8 @@ export function CriarRapido() {
   const arquivoRef = useRef<HTMLInputElement>(null);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  // sobre o degradê o cinza de 55% afundava; aqui o secundário é mais claro
+  const textSecondary = isLight ? "#3a4152" : "rgba(255,255,255,0.80)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   const MICRO: CSSProperties = {
@@ -115,6 +116,7 @@ export function CriarRapido() {
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void enviar(); }
         }}
+        className="campo-ia"
         placeholder={'Ex.: "portão do Green Village travando, urgente" — cliente, problema e pressa; o resto a IA resolve.'}
         disabled={enviando}
         style={{
@@ -122,7 +124,7 @@ export function CriarRapido() {
           minHeight: 0,
           margin: "10px 0",
           padding: "10px 12px",
-          borderRadius: 14,
+          borderRadius: 18,
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
           // sobre o degradê a caixa precisa de mais corpo, senão o texto
           // digitado disputa com a cor de trás
@@ -130,8 +132,8 @@ export function CriarRapido() {
           color: textPrimary,
           fontFamily: FONT,
           fontWeight: 400,
-          fontSize: 12.5,
-          lineHeight: 1.5,
+          fontSize: 13,
+          lineHeight: 1.55,
           outline: "none",
           resize: "none",
         }}
@@ -144,7 +146,7 @@ export function CriarRapido() {
               display: "flex", alignItems: "center", gap: 5,
               padding: "3px 8px", borderRadius: 999,
               background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-              fontFamily: FONT, fontWeight: 500, fontSize: 10.5, color: textSecondary,
+              fontFamily: FONT, fontWeight: 400, fontSize: 10.5, color: textSecondary,
               maxWidth: 160,
             }}>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

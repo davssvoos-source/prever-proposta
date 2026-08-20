@@ -24,13 +24,10 @@
 // rampa só. Barras quase coladas, com brilho especular e granulado
 // (.textura) — material, não plástico.
 //
-// A barra da EMENDA (a que sai do último amarelo para o primeiro azul) leva uma
-// parada extra no meio, a PONTE: sem ela, o sRGB interpola ocre→marinho pelo
-// cinza e aquela barra fica com um oliva lavado no miolo.
-//
-// O NÚMERO da barra não usa a cor da barra: usa espectroTexto(). Os azuis do
-// fim da rampa são escuros de propósito, e como texto de 13px sobre preto
-// sumiriam (1,4:1).
+// A v6 tornou a ponte e a rampa-de-texto desnecessárias: a costura azul→amarelo
+// já vive dentro das paradas do degradê (estreita e quase acromática, 18–23%),
+// e todas as 9 amostras passam de 4.5:1 sobre a superfície do tema — então o
+// número da barra usa a cor da própria barra, como sempre deveria.
 // Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
 // 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
@@ -48,7 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { PRISMA, ESPECTRO, PONTE, EMENDA, espectro, espectroTexto } from "@/lib/paleta";
+import { PRISMA, ESPECTRO_STOPS, espectro } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -112,8 +109,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
 
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
-    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string;
-                   corTexto: string; naEmenda: boolean; atual: boolean }[] = [];
+    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string; atual: boolean }[] = [];
 
     // futuro por prazo, contado das atividades em aberto
     const futuros: Record<string, number> = {};
@@ -136,8 +132,6 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
         cor: espectro(idx, isLight),
         corFim: espectro(idx + 1, isLight),
-        corTexto: espectroTexto(idx, isLight),
-        naEmenda: idx === EMENDA,
         atual: i === 0,
       });
     }
@@ -154,7 +148,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         {barras.map((b) => (
           <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
             <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.corTexto,
+              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.cor,
               fontVariantNumeric: "tabular-nums", lineHeight: 1,
             }}>
               {b.valor}
@@ -166,9 +160,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
                 width: "100%",
                 height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
                 borderRadius: 7,
-                background: b.naEmenda
-                  ? `linear-gradient(90deg, ${b.cor}, ${isLight ? PONTE.light : PONTE.dark} 50%, ${b.corFim})`
-                  : `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
+                background: `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
                 opacity: b.valor === 0 ? 0.3 : 1,
               }} />
             <span style={{
@@ -225,10 +217,9 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const R = 68;
   const CIRC = 2 * Math.PI * R;
   const mesNome = new Date().toLocaleDateString("pt-BR", { month: "long" });
-  // as mesmas paradas do degradê das barras, ponte incluída: sem ela o arco
-  // lava no mesmo ponto em que a barra lavava
-  const cores = isLight ? ESPECTRO.light : ESPECTRO.dark;
-  const paradas = [...cores.slice(0, EMENDA + 1), isLight ? PONTE.light : PONTE.dark, ...cores.slice(EMENDA + 1)];
+  // as MESMAS paradas do degradê da casa, com a composição 20/40/20/20
+  const paradas = (isLight ? ESPECTRO_STOPS.light : ESPECTRO_STOPS.dark)
+    .map((p) => { const [cor, pos] = p.split(" "); return { cor, pos }; });
 
   return (
     <div className="elevavel" style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
@@ -255,14 +246,15 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
               <defs>
                 {/* o mesmo espectro das barras, agora percorrendo o arco */}
                 <linearGradient id="grad-meta" x1="0" y1="1" x2="1" y2="0">
-                  {paradas.map((c, i) => (
-                    <stop key={`${c}-${i}`} offset={`${(i / (paradas.length - 1)) * 100}%`} stopColor={c} />
+                  {paradas.map((p, i) => (
+                    <stop key={`${p.cor}-${i}`} offset={p.pos} stopColor={p.cor} />
                   ))}
                 </linearGradient>
                 {/* glow: o arco derrama a própria cor no fundo, de leve */}
                 <filter id="glow-meta" x="-30%" y="-30%" width="160%" height="160%">
                   <feDropShadow dx="0" dy="0" stdDeviation="7"
-                    floodColor={cores[3]} floodOpacity={isLight ? 0.30 : 0.55} />
+                    floodColor={isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark}
+                    floodOpacity={isLight ? 0.30 : 0.55} />
                 </filter>
               </defs>
               <circle
@@ -280,7 +272,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
               />
               <text
                 x="88" y="88" textAnchor="middle" dominantBaseline="central"
-                fontFamily={FONT} fontWeight="600" fontSize="44"
+                fontFamily={FONT} fontWeight="100" fontSize="52"
                 fill={textPrimary}
                 style={{ letterSpacing: "-0.02em" } as any}
               >
@@ -329,10 +321,12 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
           boxSizing: "border-box",
         }}>
           {/* a cor mora no NÚMERO — a bolinha saiu */}
-          <div className="kpi-num" style={{ fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <div className="kpi-num" style={{ // Thin em numeral grande: no tamanho, o peso vira ruído — quem
+            // carrega a hierarquia aqui é o corpo do número, não a espessura
+            fontFamily: FONT, fontWeight: 100, fontSize: 46, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {k.valor}
           </div>
-          <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>
             {k.rotulo}
           </div>
         </div>
