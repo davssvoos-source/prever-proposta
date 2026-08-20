@@ -1598,3 +1598,45 @@ eles o crítico:
 
 Ficaram **P7** (vínculo implícito do preset) e **P9** (inércia do trackpad),
 os dois ainda por confirmar.
+
+### U15 — Reforma visual v2: paleta Supernova, sidebar e fundo com glow (2026-08-20)
+
+Pedido: sidebar no lugar da barra inferior no desktop, paleta nova em tokens
+W3C (quatro escalas nomeadas), logotipo novo, alternador de tema do Uiverse, e
+fundo em degradê com glow por tema. **Só código — nenhuma migration.**
+
+**Paleta.** `src/lib/paleta.ts` guarda as quatro escalas completas — Supernova
+(primária), Shamrock (sucesso), Christine (aviso), Flush Mahogany (erro) — e a
+regra de tema que vale para todas: tom 300–400 no escuro, 600–700 no claro.
+A migração foi um sweep mecânico de 69 arquivos (14 pares de hex + 19 de rgba),
+conferido por grep de resíduo: zero hex antigo sobrando. Azuis e violetas
+(agendado, em andamento, pedido de compra) não estão nas escalas fornecidas e
+ficaram como estavam, registrados no DESIGN_SYSTEM §2.
+
+**Sidebar (≥1024px).** `SideNav.tsx`, 232px: logotipo, itens, alternador de
+tema e cartão de perfil. A barra inferior continua no celular. As duas leem a
+MESMA lista (`nav-itens.ts`) e a mesma matriz de permissões — antes de extrair,
+cada uma teria a sua cópia e a primeira mudança de menu as faria divergir. A
+troca desktop×celular é por CSS (`.so-desktop`/`.so-celular`), não por JS.
+O deslocamento é a variável `--rail`; a sangria `.sangra-x` compensa
+`var(--rail)/2`, com a conta verificada em 1024/1280/1440/1920.
+
+**Fundo.** `GlowBackground.tsx` substitui os TRÊS fundos autenticados da v1
+(constelação canvas na Início, datacenter SVG nas demais, claro próprio) por um
+degradê com glow por tema. Os animados custavam bateria no celular do técnico.
+Login e redefinição de senha mantiveram os fundos antigos — identidade própria,
+trocar é decisão à parte.
+
+**Logotipo.** `LogoPrever.tsx` é RECRIAÇÃO vetorial do escudo novo (o original
+chegou como imagem) — se o vetor oficial existir, troca-se o conteúdo do
+componente e todos os usos acompanham. Supernova 400 no escuro, 600 no claro.
+
+**Toggle.** `ThemeToggle.tsx` adapta o Uiverse do Davi: pílula Light/Dark com
+botão deslizante + sol/lua com crescente animado. O mockup de celular em volta
+ficou de fora; o sol usa Supernova em vez do rosa-laranja original; virou
+`<button role="switch">` de verdade em vez de checkbox escondido.
+
+**DESIGN_SYSTEM.md** atualizado para v2: §1 (identidade + logotipo), §2.1 (as
+quatro escalas com tabela completa e tom-chave), §5 (fundos glow), §5b
+(navegação sidebar×barra). Os hexes v1 que apareciam em exemplos foram varridos
+para os equivalentes v2.

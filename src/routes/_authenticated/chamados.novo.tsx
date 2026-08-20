@@ -31,7 +31,7 @@ function NovoChamadoPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const trilhos: Trilho[] = [
     {
@@ -104,8 +104,8 @@ function NovoChamadoPage() {
           <button key={t.titulo} style={CARD} onClick={() => t.ir(navigate)}>
             <span style={{
               width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-              background: isLight ? "rgba(184,120,0,0.10)" : "rgba(255,192,0,0.10)",
-              border: isLight ? "1px solid rgba(184,120,0,0.25)" : "1px solid rgba(255,192,0,0.25)",
+              background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.10)",
+              border: isLight ? "1px solid rgba(160,97,8,0.25)" : "1px solid rgba(248,200,17,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <Icone size={20} color={gold} />

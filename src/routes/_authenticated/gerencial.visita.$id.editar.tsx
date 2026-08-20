@@ -28,7 +28,7 @@ function EditarVisitaPage() {
     <div className="space-y-4">
       <Link
         to="/gerencial"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[#FFC000]"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[#F8C811]"
       >
         <ArrowLeft className="h-3 w-3" /> Voltar
       </Link>

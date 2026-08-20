@@ -88,7 +88,7 @@ function SlideToStart({
         height: 64,
         borderRadius: 32,
         background: "#101014",
-        border: "1px solid rgba(255,192,0,0.22)",
+        border: "1px solid rgba(248,200,17,0.22)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         overflow: "hidden",
@@ -104,7 +104,7 @@ function SlideToStart({
           height: "100%",
           width: slideX + KNOB,
           background:
-            "linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,160,0,0.30))",
+            "linear-gradient(135deg, rgba(252,222,72,0.35), rgba(255,160,0,0.30))",
         }}
       />
       <div
@@ -157,9 +157,9 @@ function SlideToStart({
           width: KNOB,
           height: KNOB,
           borderRadius: "50%",
-          background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+          background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
           boxShadow:
-            "0 4px 18px rgba(255,192,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
+            "0 4px 18px rgba(248,200,17,0.55), inset 0 1px 0 rgba(255,255,255,0.35)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -213,7 +213,7 @@ const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
   width: "100%",
   height: 56,
   borderRadius: 28,
-  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+  background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
   color: "#0A0A0A",
   border: "none",
   cursor: "pointer",
@@ -636,7 +636,7 @@ function VisitaDetail() {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
     backdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "18px 16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -647,7 +647,7 @@ function VisitaDetail() {
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
-    color: isLight ? "#b87800" : "rgba(255,192,0,0.65)",
+    color: isLight ? "#A06108" : "rgba(248,200,17,0.65)",
     marginBottom: 10,
   };
   const BTN_GHOST: React.CSSProperties = {
@@ -879,7 +879,7 @@ function VisitaDetail() {
                 background: isLight
                   ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
                   : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
+                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.15)",
                 borderRadius: 16,
                 padding: 16,
               }}
@@ -931,7 +931,7 @@ function VisitaDetail() {
                 background: isLight
                   ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
                   : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.15)",
+                border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.15)",
                 borderRadius: 16,
                 padding: 16,
               }}
@@ -992,14 +992,14 @@ function VisitaDetail() {
               <button
                 onClick={() => { setEditandoTecnico(true); setNovoTecnicoId(visita.tecnico_id ?? ""); }}
                 style={{
-                  background: "rgba(255,192,0,0.10)",
-                  border: "1px solid rgba(255,192,0,0.28)",
+                  background: "rgba(248,200,17,0.10)",
+                  border: "1px solid rgba(248,200,17,0.28)",
                   borderRadius: 10,
                   padding: "4px 12px",
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 11,
-                  color: "#FFC000",
+                  color: "#F8C811",
                   cursor: "pointer",
                   letterSpacing: "0.08em",
                 }}
@@ -1014,7 +1014,7 @@ function VisitaDetail() {
               <div
                 style={{
                   width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-                  background: "linear-gradient(135deg,#FFD700,#FFC000)",
+                  background: "linear-gradient(135deg,#FCDE48,#F8C811)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 16, color: "#08090E",
                 }}
@@ -1046,8 +1046,8 @@ function VisitaDetail() {
                   onChange={(e) => setNovoTecnicoId(e.target.value)}
                   style={{
                     width: "100%", height: 48, borderRadius: 12,
-                    border: "1px solid rgba(255,192,0,0.28)",
-                    background: isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.06)", color: TXT_PRIMARY,
+                    border: "1px solid rgba(248,200,17,0.28)",
+                    background: isLight ? "rgba(160,97,8,0.06)" : "rgba(248,200,17,0.06)", color: TXT_PRIMARY,
                     padding: "0 40px 0 14px",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 13,
                     appearance: "none", outline: "none", cursor: "pointer",
@@ -1060,7 +1060,7 @@ function VisitaDetail() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={16} color="rgba(255,192,0,0.6)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                <ChevronDown size={16} color="rgba(248,200,17,0.6)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -1079,8 +1079,8 @@ function VisitaDetail() {
                   disabled={!novoTecnicoId || atribuirMutation.isPending}
                   style={{
                     flex: 2, height: 40, borderRadius: 12,
-                    border: "1px solid rgba(255,192,0,0.35)", background: "rgba(255,192,0,0.12)",
-                    color: "#FFC000", cursor: "pointer",
+                    border: "1px solid rgba(248,200,17,0.35)", background: "rgba(248,200,17,0.12)",
+                    color: "#F8C811", cursor: "pointer",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 12,
                     letterSpacing: "0.08em", opacity: novoTecnicoId ? 1 : 0.4,
                   }}
@@ -1092,7 +1092,7 @@ function VisitaDetail() {
           )}
 
           {isTecnico && !editandoTecnico && (
-            <div style={{ marginTop: 10, fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 12, color: "#FFC000" }}>
+            <div style={{ marginTop: 10, fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 12, color: "#F8C811" }}>
               Você é o responsável por esta visita
             </div>
           )}
@@ -1112,9 +1112,9 @@ function VisitaDetail() {
                 }}
                 style={{
                   background: "transparent",
-                  border: "1px solid rgba(255,192,0,0.30)",
+                  border: "1px solid rgba(248,200,17,0.30)",
                   borderRadius: 8,
-                  color: "#FFC000",
+                  color: "#F8C811",
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 400,
                   fontSize: 11,
@@ -1136,7 +1136,7 @@ function VisitaDetail() {
                 <button
                   onClick={() => propostosMutation.mutate(propostosDraft)}
                   disabled={propostosMutation.isPending || propostosDraft.length === 0}
-                  style={{ background: "rgba(255,192,0,0.12)", border: "1px solid rgba(255,192,0,0.45)", borderRadius: 8, color: "#FFC000", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
+                  style={{ background: "rgba(248,200,17,0.12)", border: "1px solid rgba(248,200,17,0.45)", borderRadius: 8, color: "#F8C811", fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
                 >
                   Salvar
                 </button>
@@ -1251,7 +1251,7 @@ function VisitaDetail() {
                     )}
                     <div
                       style={{
-                        color: "#FFC000",
+                        color: "#F8C811",
                         fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: 0.6,
@@ -1289,14 +1289,14 @@ function VisitaDetail() {
           {status === "aprovada" && (
             <div
               style={{
-                background: "rgba(52,211,153,0.09)",
-                border: "1px solid rgba(52,211,153,0.22)",
+                background: "rgba(45,210,165,0.09)",
+                border: "1px solid rgba(45,210,165,0.22)",
                 borderRadius: 12,
                 padding: "12px 14px",
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 13,
-                color: "#34D399",
+                color: "#2DD2A5",
               }}
             >
               <CheckCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
@@ -1309,14 +1309,14 @@ function VisitaDetail() {
           {status === "reprovada" && (
             <div
               style={{
-                background: "rgba(248,113,113,0.09)",
-                border: "1px solid rgba(248,113,113,0.22)",
+                background: "rgba(241,120,129,0.09)",
+                border: "1px solid rgba(241,120,129,0.22)",
                 borderRadius: 12,
                 padding: "12px 14px",
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 13,
-                color: "#F87171",
+                color: "#F17881",
               }}
             >
               <XCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Reprovada
@@ -1357,9 +1357,9 @@ function VisitaDetail() {
                 fontSize: 12,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
-                background: "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                background: "linear-gradient(135deg,#2DD2A5 0%,#059676 40%,#047862 100%)",
                 boxShadow:
-                  "0 4px 20px rgba(16,185,129,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
+                  "0 4px 20px rgba(5,150,118,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
                 textShadow: "0 1px 3px rgba(0,0,0,0.35)",
                 marginBottom: 8,
                 opacity: aprovarMutation.isPending ? 0.75 : 1,
@@ -1379,9 +1379,9 @@ function VisitaDetail() {
                 width: "100%",
                 height: 44,
                 borderRadius: 12,
-                border: "1px solid rgba(248,113,113,0.35)",
-                background: "rgba(248,113,113,0.08)",
-                color: "#F87171",
+                border: "1px solid rgba(241,120,129,0.35)",
+                background: "rgba(241,120,129,0.08)",
+                color: "#F17881",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -1405,7 +1405,7 @@ function VisitaDetail() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 300,
                   fontSize: 12,
-                  color: "rgba(248,113,113,0.80)",
+                  color: "rgba(241,120,129,0.80)",
                   marginBottom: 10,
                   letterSpacing: "0.08em",
                 }}
@@ -1420,8 +1420,8 @@ function VisitaDetail() {
                 style={{
                   width: "100%",
                   borderRadius: 12,
-                  border: "1px solid rgba(248,113,113,0.28)",
-                  background: "rgba(248,113,113,0.06)",
+                  border: "1px solid rgba(241,120,129,0.28)",
+                  background: "rgba(241,120,129,0.06)",
                   color: TXT_PRIMARY,
                   padding: "10px 12px",
                   fontFamily: "'Montserrat', sans-serif",
@@ -1461,9 +1461,9 @@ function VisitaDetail() {
                     flex: 1,
                     height: 40,
                     borderRadius: 12,
-                    border: "1px solid rgba(248,113,113,0.35)",
-                    background: "rgba(248,113,113,0.10)",
-                    color: "#F87171",
+                    border: "1px solid rgba(241,120,129,0.35)",
+                    background: "rgba(241,120,129,0.10)",
+                    color: "#F17881",
                     cursor: "pointer",
                     fontFamily: "'Montserrat', sans-serif",
                     fontWeight: 300,
@@ -1492,8 +1492,8 @@ function VisitaDetail() {
                 <>
                   <div style={{
                     marginTop: 12, padding: "10px 12px", borderRadius: 12,
-                    background: isLight ? "rgba(184,120,0,0.07)" : "rgba(255,192,0,0.07)",
-                    border: isLight ? "1px solid rgba(184,120,0,0.20)" : "1px solid rgba(255,192,0,0.20)",
+                    background: isLight ? "rgba(160,97,8,0.07)" : "rgba(248,200,17,0.07)",
+                    border: isLight ? "1px solid rgba(160,97,8,0.20)" : "1px solid rgba(248,200,17,0.20)",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 12,
                     color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", lineHeight: 1.5,
                   }}>
@@ -1505,7 +1505,7 @@ function VisitaDetail() {
                     disabled={enviarProposta.isPending}
                     style={{ ...ACAO_SECUNDARIA, cursor: enviarProposta.isPending ? "wait" : "pointer" }}
                   >
-                    <Send size={17} color={isLight ? "#b87800" : "#FFC000"} />
+                    <Send size={17} color={isLight ? "#A06108" : "#F8C811"} />
                     {enviarProposta.isPending ? "Registrando…" : "Marcar proposta como enviada"}
                   </button>
                 </>
@@ -1526,14 +1526,14 @@ function VisitaDetail() {
                     disabled={responderCliente.isPending}
                     style={{ ...ACAO_SECUNDARIA, cursor: responderCliente.isPending ? "wait" : "pointer" }}
                   >
-                    <CheckCircle2 size={17} color="#34D399" />
+                    <CheckCircle2 size={17} color="#2DD2A5" />
                     O cliente ACEITOU a proposta
                   </button>
                   <button
                     onClick={() => setShowRecusaForm(true)}
                     style={ACAO_SECUNDARIA}
                   >
-                    <XCircle size={17} color="#F87171" />
+                    <XCircle size={17} color="#F17881" />
                     O cliente RECUSOU
                   </button>
                 </>
@@ -1575,9 +1575,9 @@ function VisitaDetail() {
               {resultadoProposta === "recusada" && (
                 <div style={{
                   marginTop: 12, padding: "10px 12px", borderRadius: 12,
-                  background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.28)",
+                  background: "rgba(241,120,129,0.10)", border: "1px solid rgba(241,120,129,0.28)",
                   fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
-                  color: isLight ? "#b91c1c" : "#F87171", lineHeight: 1.5,
+                  color: isLight ? "#B1242E" : "#F17881", lineHeight: 1.5,
                 }}>
                   Proposta recusada pelo cliente
                   {visita.proposta_resultado_em
@@ -1593,9 +1593,9 @@ function VisitaDetail() {
                 <>
                   <div style={{
                     marginTop: 12, padding: "10px 12px", borderRadius: 12,
-                    background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.28)",
+                    background: "rgba(45,210,165,0.10)", border: "1px solid rgba(45,210,165,0.28)",
                     fontFamily: "'Montserrat', sans-serif", fontSize: 12.5,
-                    color: isLight ? "#047857" : "#34D399", lineHeight: 1.5,
+                    color: isLight ? "#047862" : "#2DD2A5", lineHeight: 1.5,
                   }}>
                     Proposta aceita
                     {visita.proposta_resultado_em
@@ -1608,7 +1608,7 @@ function VisitaDetail() {
                     disabled={gerarImplantacao.isPending}
                     style={{ ...ACAO_SECUNDARIA, cursor: gerarImplantacao.isPending ? "wait" : "pointer" }}
                   >
-                    <Wrench size={17} color={isLight ? "#b87800" : "#FFC000"} />
+                    <Wrench size={17} color={isLight ? "#A06108" : "#F8C811"} />
                     {gerarImplantacao.isPending ? "Gerando chamado…" : "Gerar chamado de implantação"}
                   </button>
                 </>

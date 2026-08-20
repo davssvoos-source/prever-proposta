@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/chamados/indicadores")({
 });
 
 // Paleta categórica validada (DESIGN_SYSTEM.md §9) — ordem fixa, nunca ciclada
-const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#c98500", "#199e70", "#d95926", "#9085e9", "#e66767"];
+const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#E2791D", "#199e70", "#d95926", "#9085e9", "#e66767"];
 const CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"];
 const OUTROS_DARK = "#6b7280";
 const OUTROS_LIGHT = "#9ca3af";
@@ -38,7 +38,7 @@ function PainelOsPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const superficie = isLight ? "#ffffff" : "#101016";
   const cores = isLight ? CORES_LIGHT : CORES_DARK;
 
@@ -46,14 +46,14 @@ function PainelOsPage() {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 16, padding: "16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
   };
   const SEC: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const tooltipStyle = {
     background: isLight ? "#ffffff" : "#16161d",
@@ -142,7 +142,7 @@ function PainelOsPage() {
       label: "Prazo estourado",
       valor: String(m.atrasados),
       Icon: AlertTriangle,
-      cor: m.atrasados > 0 ? (isLight ? "#b91c1c" : "#F87171") : textSecondary,
+      cor: m.atrasados > 0 ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
     },
     {
       label: "Tempo médio",
@@ -150,7 +150,7 @@ function PainelOsPage() {
       Icon: Timer,
       cor: isLight ? "#1d4ed8" : "#60A5FA",
     },
-    { label: "Fechados no mês", valor: String(m.fechadasMes), Icon: CheckCircle2, cor: isLight ? "#047857" : "#34D399" },
+    { label: "Fechados no mês", valor: String(m.fechadasMes), Icon: CheckCircle2, cor: isLight ? "#047862" : "#2DD2A5" },
   ];
 
   return (
@@ -216,7 +216,7 @@ function PainelOsPage() {
                 <span
                   style={{
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 26,
-                    color: m.pctPrazo >= 80 ? (isLight ? "#047857" : "#34D399") : m.pctPrazo >= 50 ? gold : (isLight ? "#b91c1c" : "#F87171"),
+                    color: m.pctPrazo >= 80 ? (isLight ? "#047862" : "#2DD2A5") : m.pctPrazo >= 50 ? gold : (isLight ? "#B1242E" : "#F17881"),
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -236,10 +236,10 @@ function PainelOsPage() {
                   style={{
                     width: `${m.pctPrazo}%`, height: "100%",
                     background: m.pctPrazo >= 80
-                      ? "linear-gradient(90deg,#34D399,#059669)"
+                      ? "linear-gradient(90deg,#2DD2A5,#047862)"
                       : m.pctPrazo >= 50
-                        ? "linear-gradient(90deg,#FFD700,#FF9F00)"
-                        : "linear-gradient(90deg,#F87171,#b91c1c)",
+                        ? "linear-gradient(90deg,#FCDE48,#E8B00A)"
+                        : "linear-gradient(90deg,#F17881,#B1242E)",
                   }}
                 />
               </div>

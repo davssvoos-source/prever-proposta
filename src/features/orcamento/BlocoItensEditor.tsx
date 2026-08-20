@@ -50,7 +50,7 @@ interface VbiRow {
 const CARD = (isLight: boolean): React.CSSProperties => ({
   // Fundo sólido (sem transparência) para legibilidade sobre o background animado
   background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.18)",
+  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.18)",
   borderRadius: 12,
   padding: "8px 10px",
   display: "flex",
@@ -445,7 +445,7 @@ export function BlocoItensEditor({
                   <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
                     Serviço mensal{it.origem === "manual" ? " · MANUAL" : ""}
                   </div>
-                  <div style={{ fontSize: 11, color: "#b87800", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "#A06108", marginTop: 2 }}>
                     R$ {(preco * it.qtd).toFixed(2)}/mês
                   </div>
                 </div>
@@ -478,10 +478,10 @@ export function BlocoItensEditor({
           })}
           <div style={{
             padding: "10px 14px", borderRadius: 12,
-            background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,215,0,0.08)",
+            background: isLight ? "rgba(160,97,8,0.10)" : "rgba(252,222,72,0.08)",
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#b87800" }}>TOTAL MENSAL</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>TOTAL MENSAL</span>
             <span style={{ fontSize: 14, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
               R$ {totalMensal.toFixed(2)}/mês
             </span>
@@ -491,7 +491,7 @@ export function BlocoItensEditor({
 
       {/* Add manual — busca por nome ou modelo */}
       <div style={{ ...CARD(isLight), flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "#b87800" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: "#A06108" }}>
           ADICIONAR ITEM MANUAL
         </div>
 
@@ -510,7 +510,7 @@ export function BlocoItensEditor({
                   flex: 1, padding: "8px 0", border: "none", cursor: "pointer",
                   fontSize: 12, fontWeight: 700, letterSpacing: "0.06em",
                   background: ativo
-                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                     : "transparent",
                   color: ativo ? "#0A0A0A" : isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
                   transition: "all 0.15s",
@@ -563,7 +563,7 @@ export function BlocoItensEditor({
                   style={{
                     display: "flex", alignItems: "center", gap: 10, textAlign: "left",
                     padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.20)",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.20)",
                     background: isLight ? "#f5f6f8" : "#1d1d25",
                   }}
                 >
@@ -614,10 +614,10 @@ export function BlocoItensEditor({
       {!hideSubtotal && (
         <div style={{
           marginTop: 6, padding: "12px 14px", borderRadius: 12,
-          background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,215,0,0.08)",
+          background: isLight ? "rgba(160,97,8,0.10)" : "rgba(252,222,72,0.08)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#b87800" }}>SUBTOTAL</span>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>SUBTOTAL</span>
           <span style={{ fontSize: 16, fontWeight: 800, color: isLight ? "#0a0b0e" : "#fff" }}>
             R$ {total.toFixed(2)}
           </span>
@@ -629,7 +629,7 @@ export function BlocoItensEditor({
           onClick={onConcluir}
           style={{
             marginTop: 8, width: "100%", padding: "16px 0",
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
             color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}

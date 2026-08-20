@@ -42,8 +42,8 @@ export const STATUS_CONTRATO_LABEL: Record<StatusContrato, string> = {
 
 export const STATUS_CONTRATO_CORES: Record<StatusContrato, { dark: string; light: string; bg: string; border: string }> = {
   rascunho:  { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
-  ativo:     { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
-  encerrado: { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
+  ativo:     { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
+  encerrado: { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)" },
 };
 
 export const COBERTURA_LABEL: Record<Cobertura, string> = {

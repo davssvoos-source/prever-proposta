@@ -12,11 +12,11 @@ export const Route = createFileRoute("/_authenticated/calendario")({
 });
 
 const STATUS_CORES: Record<string, string> = {
-  pendente: "#FFC000",
+  pendente: "#F8C811",
   em_andamento: "#3B82F6",
-  concluida: "#10B981",
+  concluida: "#059676",
   aprovada: "#8B5CF6",
-  cancelada: "#EF4444",
+  cancelada: "#E64D58",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -42,12 +42,12 @@ function CalendarioPage() {
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
-  const goldDark = isLight ? "#b87800" : "#FFC000";
+  const goldDark = isLight ? "#A06108" : "#F8C811";
   const CARD_T: CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
     backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "20px 16px",
     marginBottom: 20,
@@ -275,7 +275,7 @@ function CalendarioPage() {
                     ? "none"
                     : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                   background: tipoFiltro === valor
-                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                     : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                   color: tipoFiltro === valor ? "#08090E" : textPrimary,
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
@@ -349,7 +349,7 @@ function CalendarioPage() {
                   padding: "6px 2px",
                   borderRadius: 10,
                   border: hoje_ && !selecionado
-                    ? `1.5px solid ${isLight ? "rgba(180,120,0,0.55)" : "rgba(255,192,0,0.55)"}`
+                    ? `1.5px solid ${isLight ? "rgba(160,97,8,0.55)" : "rgba(248,200,17,0.55)"}`
                     : "1.5px solid transparent",
                   background: selecionado ? goldDark : "transparent",
                   cursor: "pointer",

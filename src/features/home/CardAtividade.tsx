@@ -42,14 +42,14 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, responsavelNom
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
-  const vermelho = isLight ? "#b91c1c" : "#F87171";
-  const ambar = isLight ? "#b45309" : "#c98500";
+  const vermelho = isLight ? "#B1242E" : "#F17881";
+  const ambar = isLight ? "#A63E17" : "#E2791D";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderLeft: `3px solid ${isLight ? a.statusCor.light : a.statusCor.dark}`,
     borderRadius: 14,
     padding: "12px 13px",

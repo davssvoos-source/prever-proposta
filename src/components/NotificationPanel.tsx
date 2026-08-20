@@ -10,39 +10,39 @@ function NotifIcon({ tipo }: { tipo: string }) {
   switch (tipo) {
     case 'visita_aprovada':
     case 'aprovacao':
-      return <CheckCircle2 {...s} color="#10B981" />;
+      return <CheckCircle2 {...s} color="#059676" />;
     case 'visita_reprovada':
-      return <XCircle {...s} color="#EF4444" />;
+      return <XCircle {...s} color="#E64D58" />;
     case 'visita_aguardando_aprovacao':
       return <Clock {...s} color="#60A5FA" />;
     case 'os_atribuida':
-      return <Wrench {...s} color="#FFC000" />;
+      return <Wrench {...s} color="#F8C811" />;
     case 'os_executada':
       return <CheckCircle2 {...s} color="#60A5FA" />;
     case 'os_fechada':
-      return <CheckCircle2 {...s} color="#10B981" />;
+      return <CheckCircle2 {...s} color="#059676" />;
     case 'lembrete_visita':
-      return <Clock {...s} color="#FFC000" />;
+      return <Clock {...s} color="#F8C811" />;
     case 'demanda_atribuida':
     case 'sprint_virada':
     case 'resumo_semana':
-      return <KanbanSquare {...s} color="#FFC000" />;
+      return <KanbanSquare {...s} color="#F8C811" />;
     case 'demanda_comentario':
       return <MessageSquare {...s} color="#60A5FA" />;
     case 'demanda_apoio':
       return <UserPlus {...s} color="#9085e9" />;
     case 'demanda_prazo':
-      return <CalendarClock {...s} color="#c98500" />;
+      return <CalendarClock {...s} color="#E2791D" />;
     case 'demanda_parada':
     case 'demanda_atrasada':
-      return <CalendarClock {...s} color="#EF4444" />;
+      return <CalendarClock {...s} color="#E64D58" />;
     case 'demanda_aprovacao':
       return <Clock {...s} color="#60A5FA" />;
     case 'demanda_concluida':
-      return <CheckCircle2 {...s} color="#10B981" />;
+      return <CheckCircle2 {...s} color="#059676" />;
     case 'visita':
     case 'visita_atribuida':
-      return <CalendarCheck {...s} color="#FFC000" />;
+      return <CalendarCheck {...s} color="#F8C811" />;
     case 'sistema':
       return <Settings {...s} color="#60A5FA" />;
     case 'info':
@@ -111,7 +111,7 @@ export function NotificationPanel() {
               height: 18,
               padding: "0 5px",
               borderRadius: 9,
-              background: "linear-gradient(135deg,#FFD700,#FFC000)",
+              background: "linear-gradient(135deg,#FCDE48,#F8C811)",
               color: "#08090E",
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 700,
@@ -119,7 +119,7 @@ export function NotificationPanel() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 10px rgba(255,192,0,0.55)",
+              boxShadow: "0 0 10px rgba(248,200,17,0.55)",
               animation: "pulseBadge 1.8s ease-in-out infinite",
               border: "1.5px solid #08090E",
             }}
@@ -129,8 +129,8 @@ export function NotificationPanel() {
         )}
         <style>{`
           @keyframes pulseBadge {
-            0%,100% { transform: scale(1); box-shadow: 0 0 10px rgba(255,192,0,0.55); }
-            50%     { transform: scale(1.12); box-shadow: 0 0 16px rgba(255,192,0,0.85); }
+            0%,100% { transform: scale(1); box-shadow: 0 0 10px rgba(248,200,17,0.55); }
+            50%     { transform: scale(1.12); box-shadow: 0 0 16px rgba(248,200,17,0.85); }
           }
         `}</style>
       </button>
@@ -184,7 +184,7 @@ export function NotificationPanel() {
                   fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 400,
                   fontSize: 11,
-                  color: isLight ? "#b87800" : "rgba(255,192,0,0.85)",
+                  color: isLight ? "#A06108" : "rgba(248,200,17,0.85)",
                   letterSpacing: "0.04em",
                 }}
               >
@@ -299,8 +299,8 @@ function NotifItem({
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-          <Trash2 size={18} color="#EF4444" />
-          <span style={{ color: "#EF4444", fontSize: 10, fontWeight: 700 }}>REMOVER</span>
+          <Trash2 size={18} color="#E64D58" />
+          <span style={{ color: "#E64D58", fontSize: 10, fontWeight: 700 }}>REMOVER</span>
         </div>
       </div>
       <button
@@ -363,7 +363,7 @@ function NotifItem({
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: 300,
                 fontSize: 10,
-                color: isLight ? "#b87800" : "rgba(255,192,0,0.55)",
+                color: isLight ? "#A06108" : "rgba(248,200,17,0.55)",
                 marginTop: 5,
                 letterSpacing: "0.06em",
               }}
@@ -377,10 +377,10 @@ function NotifItem({
                 width: 7,
                 height: 7,
                 borderRadius: "50%",
-                background: isLight ? "#b87800" : "#FFC000",
+                background: isLight ? "#A06108" : "#F8C811",
                 marginTop: 6,
                 flexShrink: 0,
-                boxShadow: "0 0 6px rgba(255,192,0,0.7)",
+                boxShadow: "0 0 6px rgba(248,200,17,0.7)",
               }}
             />
           )}

@@ -47,14 +47,14 @@ function MigrarClientesPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
-  const verde = isLight ? "#047857" : "#34D399";
+  const gold = isLight ? "#A06108" : "#F8C811";
+  const verde = isLight ? "#047862" : "#2DD2A5";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 16,
     padding: "14px 16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -65,7 +65,7 @@ function MigrarClientesPage() {
     fontSize: 10,
     letterSpacing: "0.16em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
 
   const invalidarTudo = () => {
@@ -179,7 +179,7 @@ function MigrarClientesPage() {
                             {g.visitaIds.length} visita{g.visitaIds.length === 1 ? "" : "s"}
                           </span>
                           {g.clienteIds.length > 1 && (
-                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#b45309" : "#FFC000" }}>
+                            <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 11, color: isLight ? "#A63E17" : "#F8C811" }}>
                               {g.clienteIds.length} cadastros duplicados
                             </span>
                           )}
@@ -211,7 +211,7 @@ function MigrarClientesPage() {
                       disabled={processando !== null}
                       style={{
                         width: "100%", height: 44, marginTop: 12, borderRadius: 22, border: "none",
-                        background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                        background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                         color: "#08090E",
                         fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
                         letterSpacing: "0.12em", textTransform: "uppercase",
@@ -252,7 +252,7 @@ function MigrarClientesPage() {
                         height: 34, padding: "0 12px", borderRadius: 10, flexShrink: 0,
                         background: isLight ? "#ffffff" : "#191921",
                         border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                        color: isLight ? "#b91c1c" : "#F87171",
+                        color: isLight ? "#B1242E" : "#F17881",
                         cursor: processando ? "wait" : "pointer",
                         fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 600,
                         opacity: processando !== null && processando !== o.id ? 0.5 : 1,

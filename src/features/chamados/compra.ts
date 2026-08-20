@@ -46,12 +46,12 @@ export const SITUACAO_LABEL: Record<SituacaoCompra, string> = {
 };
 
 export const SITUACAO_CORES: Record<SituacaoCompra, { dark: string; light: string; bg: string; border: string }> = {
-  solicitado: { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
+  solicitado: { dark: "#F8C811", light: "#A06108", bg: "rgba(248,200,17,0.12)",   border: "rgba(248,200,17,0.30)" },
   em_cotacao: { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
   aprovado:   { dark: "#2DD4BF", light: "#0f766e", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.30)" },
   comprado:   { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
-  recebido:   { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
-  recusado:   { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
+  recebido:   { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
+  recusado:   { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)" },
 };
 
 /** Só admin e comercial liberam gasto — o resto do fluxo é de quem executa. */

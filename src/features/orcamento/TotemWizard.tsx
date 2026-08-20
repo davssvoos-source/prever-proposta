@@ -103,7 +103,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
   const [resumoOpen, setResumoOpen] = useState(false);
 
   const gold = "#F59E0B";
-  const goldDark = "#b87800";
+  const goldDark = "#A06108";
   const steps: StepId[] = ["totens", "revisao"];
   const idx = steps.indexOf(step);
 
@@ -120,7 +120,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
 
   const cardStyle: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.14)",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.14)",
     borderRadius: 16, padding: 16,
   };
   const secLabel: React.CSSProperties = {
@@ -195,7 +195,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                 {meta.marca} · {meta.modelo}
                 <span style={{
                   marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                  background: "rgba(180,120,0,0.15)", color: gold, fontWeight: 800, fontSize: 9,
+                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 800, fontSize: 9,
                 }}>AUTO</span>
               </div>
             </div>
@@ -205,7 +205,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
       })}
       <div style={{
         marginTop: 8, padding: "10px 12px", borderRadius: 10,
-        background: "rgba(180,120,0,0.10)",
+        background: "rgba(160,97,8,0.10)",
         display: "flex", justifyContent: "space-between",
       }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
@@ -312,11 +312,11 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                     style={{
                       width: "100%", padding: "10px 12px", borderRadius: 10,
                       border: t.smartSampa ? "none" : (isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)"),
-                      background: t.smartSampa ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)" : "transparent",
+                      background: t.smartSampa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : "transparent",
                       color: t.smartSampa ? "#0A0A0A" : (isLight ? "#4a5060" : "rgba(255,255,255,0.7)"),
                       fontWeight: 700, fontSize: 12, letterSpacing: "0.06em",
                       cursor: "pointer", transition: "all 0.15s",
-                      boxShadow: t.smartSampa ? "0 4px 14px rgba(255,192,0,0.35)" : undefined,
+                      boxShadow: t.smartSampa ? "0 4px 14px rgba(248,200,17,0.35)" : undefined,
                     }}
                   >
                     {t.smartSampa ? "✓ Conectado ao Smart Sampa" : "Conectar ao Smart Sampa"}
@@ -347,7 +347,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                                 onClick={() => toggleCamIA(t.id, camIdx, ia)}
                                 style={{
                                   padding: "4px 8px", borderRadius: 999,
-                                  border: sel ? "none" : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,215,0,0.22)"),
+                                  border: sel ? "none" : (isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(252,222,72,0.22)"),
                                   background: sel ? gold : "transparent",
                                   color: sel ? "#0A0A0A" : (isLight ? "#4a5060" : "rgba(255,255,255,0.65)"),
                                   fontWeight: 700, fontSize: 10, cursor: "pointer", transition: "all 0.15s",
@@ -502,7 +502,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
         </div>
         <div style={{
           marginTop: 12, padding: "10px 12px", borderRadius: 10,
-          background: "rgba(180,120,0,0.10)",
+          background: "rgba(160,97,8,0.10)",
           display: "flex", justifyContent: "space-between",
         }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
@@ -575,7 +575,7 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
           style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "8px 12px", borderRadius: 999,
-            background: "rgba(180,120,0,0.10)", border: "1px solid rgba(180,120,0,0.28)",
+            background: "rgba(160,97,8,0.10)", border: "1px solid rgba(160,97,8,0.28)",
             color: gold, fontWeight: 700, fontSize: 11, cursor: "pointer",
           }}>
           <PanelRightOpen size={14} /> RESUMO
@@ -593,8 +593,8 @@ export function TotemWizard({ isLight, onVoltar, onConcluir, salvando = false }:
                   cursor: done || cur ? "pointer" : "default",
                   display: "flex", alignItems: "center", gap: 4, padding: "4px 8px",
                   borderRadius: 999,
-                  background: cur ? "rgba(180,120,0,0.14)" : "transparent",
-                  border: cur ? "1px solid rgba(180,120,0,0.35)" : "1px solid transparent",
+                  background: cur ? "rgba(160,97,8,0.14)" : "transparent",
+                  border: cur ? "1px solid rgba(160,97,8,0.35)" : "1px solid transparent",
                 }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",

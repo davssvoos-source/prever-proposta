@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/chamados/painel")({
 });
 
 // Paleta categórica validada (§9) — ordem fixa, nunca ciclada
-const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#c98500", "#199e70", "#d95926", "#9085e9", "#e66767"];
+const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#E2791D", "#199e70", "#d95926", "#9085e9", "#e66767"];
 const CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"];
 
 /** Item já normalizado para os números do painel. */
@@ -70,12 +70,12 @@ function PainelChamadosPage() {
   const isLoading = l1 || l3;
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const cores = isLight ? CORES_LIGHT : CORES_DARK;
   const CARD: CSSProperties = { ...card(isLight), padding: "16px" };
   const SEC: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.16em",
-    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const SELECT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 12px",
@@ -213,7 +213,7 @@ function PainelChamadosPage() {
     padding: "7px 13px", borderRadius: 999, flexShrink: 0, cursor: "pointer",
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativo
-      ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
@@ -294,7 +294,7 @@ function PainelChamadosPage() {
               <div style={{ textAlign: "right" }}>
                 <div style={{
                   display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end",
-                  color: isLight ? "#b91c1c" : "#F87171",
+                  color: isLight ? "#B1242E" : "#F17881",
                 }}>
                   <AlertTriangle size={15} />
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: 22, fontVariantNumeric: "tabular-nums" }}>
@@ -381,7 +381,7 @@ function PainelChamadosPage() {
                     borderTop: idx === 0 ? "none" : isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                   }}
                 >
-                  <Clock size={12} color={i.atrasado ? (isLight ? "#b91c1c" : "#F87171") : textSecondary} style={{ flexShrink: 0 }} />
+                  <Clock size={12} color={i.atrasado ? (isLight ? "#B1242E" : "#F17881") : textSecondary} style={{ flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {i.cliente ?? "Interno"}
                   </span>

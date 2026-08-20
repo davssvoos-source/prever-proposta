@@ -63,7 +63,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
   const [resumoOpen, setResumoOpen] = useState(false);
 
   const gold = "#F59E0B";
-  const goldDark = "#b87800";
+  const goldDark = "#A06108";
   const steps: StepId[] = ["kits", "revisao"];
   const idx = steps.indexOf(step);
 
@@ -75,7 +75,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
 
   const cardStyle: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,215,0,0.14)",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.14)",
     borderRadius: 16, padding: 16,
   };
   const secLabel: React.CSSProperties = {
@@ -93,7 +93,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
     width: 44, height: 44, borderRadius: "50%", border: "none",
     background: gold, color: "#0A0A0A", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
-    boxShadow: "0 2px 12px rgba(255,192,0,0.35)",
+    boxShadow: "0 2px 12px rgba(248,200,17,0.35)",
   });
 
   const Resumo = (
@@ -133,7 +133,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 {meta.marca} · {meta.modelo}
                 <span style={{
                   marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                  background: "rgba(180,120,0,0.15)", color: gold, fontWeight: 800, fontSize: 9,
+                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 800, fontSize: 9,
                 }}>AUTO</span>
               </div>
             </div>
@@ -143,7 +143,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
       })}
       <div style={{
         marginTop: 8, padding: "10px 12px", borderRadius: 10,
-        background: "rgba(180,120,0,0.10)",
+        background: "rgba(160,97,8,0.10)",
         display: "flex", justifyContent: "space-between",
       }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: gold }}>ITENS</span>
@@ -298,7 +298,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
         </div>
         <div style={{
           marginTop: 12, padding: "10px 12px", borderRadius: 10,
-          background: "rgba(180,120,0,0.10)",
+          background: "rgba(160,97,8,0.10)",
           display: "flex", justifyContent: "space-between",
         }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
@@ -344,7 +344,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
           style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "8px 12px", borderRadius: 999,
-            background: "rgba(180,120,0,0.10)", border: "1px solid rgba(180,120,0,0.28)",
+            background: "rgba(160,97,8,0.10)", border: "1px solid rgba(160,97,8,0.28)",
             color: gold, fontWeight: 700, fontSize: 11, cursor: "pointer",
           }}>
           <PanelRightOpen size={14} /> RESUMO
@@ -362,8 +362,8 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                   cursor: done || cur ? "pointer" : "default",
                   display: "flex", alignItems: "center", gap: 4, padding: "4px 8px",
                   borderRadius: 999,
-                  background: cur ? "rgba(180,120,0,0.14)" : "transparent",
-                  border: cur ? "1px solid rgba(180,120,0,0.35)" : "1px solid transparent",
+                  background: cur ? "rgba(160,97,8,0.14)" : "transparent",
+                  border: cur ? "1px solid rgba(160,97,8,0.35)" : "1px solid transparent",
                 }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",

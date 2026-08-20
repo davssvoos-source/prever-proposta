@@ -33,9 +33,9 @@ const L = {
   text: "#0a0b0e",
   textSub: "#4a5060",
   textMuted: "#8a909e",
-  gold: "#b87800",
-  goldBg: "rgba(180,120,0,0.10)",
-  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  gold: "#A06108",
+  goldBg: "rgba(160,97,8,0.10)",
+  goldBorder: "1px solid rgba(160,97,8,0.22)",
   inputBg: "#f0f1f4",
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
@@ -46,14 +46,14 @@ const CARGO_LIGHT: Record<string, { color: string; bg: string; border: string }>
   tecnico:   { color: "#15803d", bg: "#dcfce7", border: "1px solid #bbf7d0" },
   sac:       { color: "#6d28d9", bg: "#ede9fe", border: "1px solid #ddd6fe" },
   comercial: { color: "#1d4ed8", bg: "#dbeafe", border: "1px solid #bfdbfe" },
-  admin:     { color: "#b45309", bg: "#fef3c7", border: "1px solid #fde68a" },
+  admin:     { color: "#A63E17", bg: "#fef3c7", border: "1px solid #fde68a" },
 };
 
 const CARGO_CONFIG: Record<string, { label: string; color: string; desc: string }> = {
-  tecnico:   { label: "Técnico",   color: "#34D399", desc: "Executa o que está atribuído a ele (3 abas)" },
+  tecnico:   { label: "Técnico",   color: "#2DD2A5", desc: "Executa o que está atribuído a ele (3 abas)" },
   sac:       { label: "SAC",       color: "#A78BFA", desc: "Gestor de chamados — abre e acompanha tudo, não vê valores" },
   comercial: { label: "Comercial", color: "#60A5FA", desc: "Gestor que vê valores: propostas, contratos e fechamentos" },
-  admin:     { label: "Admin",     color: "#F87171", desc: "Acesso total + gerenciamento de usuários" },
+  admin:     { label: "Admin",     color: "#F17881", desc: "Acesso total + gerenciamento de usuários" },
 };
 
 type StaffUser = {
@@ -109,14 +109,14 @@ function UsuariosPage() {
     : {
         background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
         backdropFilter: "blur(12px) saturate(130%)",
-        border: "1px solid rgba(255,192,0,0.10)",
+        border: "1px solid rgba(248,200,17,0.10)",
         borderRadius: 18,
       };
 
   const INPUT: CSSProperties = {
     width: "100%",
     background: isLight ? L.inputBg : "rgba(8,8,12,0.30)",
-    border: isLight ? L.inputBorder : "1px solid rgba(255,192,0,0.18)",
+    border: isLight ? L.inputBorder : "1px solid rgba(248,200,17,0.18)",
     borderRadius: 10,
     color: isLight ? L.text : "#F0F2F5",
     fontFamily: "'Montserrat', sans-serif",
@@ -133,7 +133,7 @@ function UsuariosPage() {
     fontSize: 10,
     letterSpacing: "0.14em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
     marginBottom: 6,
     display: "block",
   };
@@ -142,7 +142,7 @@ function UsuariosPage() {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 300,
     fontSize: 10,
-    color: isLight ? "rgba(0,0,0,0.45)" : "rgba(255,192,0,0.55)",
+    color: isLight ? "rgba(0,0,0,0.45)" : "rgba(248,200,17,0.55)",
     letterSpacing: "0.12em",
     textTransform: "uppercase",
     marginBottom: 12,
@@ -371,7 +371,7 @@ function UsuariosPage() {
         <button
           onClick={() => setShowInvite(true)}
           style={{
-            background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+            background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
             border: "none", borderRadius: 12, padding: "10px 16px",
             display: "flex", alignItems: "center", gap: 8,
             color: "#08090E", fontFamily: "Montserrat, sans-serif",
@@ -469,7 +469,7 @@ function UsuariosPage() {
                 disabled={inviteMutation.isPending || !inviteEmail.trim() || !inviteNome.trim()}
                 style={{
                   flex: 2, padding: 12, borderRadius: 12,
-                  background: "linear-gradient(135deg, #FFD700, #FFC000)",
+                  background: "linear-gradient(135deg, #FCDE48, #F8C811)",
                   border: "none", color: "#08090E",
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600,
                   fontSize: 13, cursor: "pointer",
@@ -493,10 +493,10 @@ function UsuariosPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <div style={{
                     width: 40, height: 40, borderRadius: "50%",
-                    background: isLight ? "#fef3c7" : "rgba(255,192,0,0.12)",
-                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
+                    background: isLight ? "#fef3c7" : "rgba(248,200,17,0.12)",
+                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: isLight ? "#b45309" : "#FFC000",
+                    color: isLight ? "#A63E17" : "#F8C811",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
                     flexShrink: 0,
                   }}>
@@ -535,7 +535,7 @@ function UsuariosPage() {
                       <button
                         onClick={() => aprovarMutation.mutate({ userId: s.id, cargo: aprovarCargo })}
                         disabled={aprovarMutation.isPending}
-                        style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#10B981", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                        style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: "#059676", color: "#FFFFFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                       >
                         Confirmar
                       </button>
@@ -557,9 +557,9 @@ function UsuariosPage() {
                         onClick={() => { setAprovarId(s.id); setAprovarCargo("tecnico"); }}
                         style={{
                           padding: "6px 14px", borderRadius: 8,
-                          background: isLight ? "#fef3c7" : "rgba(255,192,0,0.15)",
-                          border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.40)",
-                          color: isLight ? "#b45309" : "#FFC000",
+                          background: isLight ? "#fef3c7" : "rgba(248,200,17,0.15)",
+                          border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.40)",
+                          color: isLight ? "#A63E17" : "#F8C811",
                           fontSize: 13, fontWeight: 600, cursor: "pointer",
                         }}
                       >
@@ -575,7 +575,7 @@ function UsuariosPage() {
                           padding: "6px 12px", borderRadius: 8,
                           border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.40)",
                           background: isLight ? "#fee2e2" : "rgba(239,68,68,0.10)",
-                          color: isLight ? "#dc2626" : "#EF4444",
+                          color: isLight ? "#dc2626" : "#E64D58",
                           fontSize: 13, cursor: "pointer",
                         }}
                       >
@@ -615,10 +615,10 @@ function UsuariosPage() {
                 </div>
                 <div style={{
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 400, fontSize: 10,
-                  color: isLight ? "#b45309" : "#FFC000",
+                  color: isLight ? "#A63E17" : "#F8C811",
                   padding: "4px 10px", borderRadius: 999,
-                  background: isLight ? "#fef3c7" : "rgba(255,192,0,0.10)",
-                  border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
+                  background: isLight ? "#fef3c7" : "rgba(248,200,17,0.10)",
+                  border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
                 }}>
                   Aguardando
                 </div>
@@ -644,10 +644,10 @@ function UsuariosPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: "50%",
-                    background: isLight ? "#fef3c7" : "rgba(255,192,0,0.12)",
-                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(255,192,0,0.25)",
+                    background: isLight ? "#fef3c7" : "rgba(248,200,17,0.12)",
+                    border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: isLight ? "#b45309" : "#FFC000",
+                    color: isLight ? "#A63E17" : "#F8C811",
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 14,
                     overflow: "hidden", flexShrink: 0,
                   }}>
@@ -715,7 +715,7 @@ function UsuariosPage() {
                         width: 36, height: 36, borderRadius: 10,
                         background: isLight ? "#f3f4f6" : "rgba(239,68,68,0.10)",
                         border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(239,68,68,0.25)",
-                        color: "#EF4444",
+                        color: "#E64D58",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
                       }}
@@ -759,7 +759,7 @@ function UsuariosPage() {
                   </div>
                   <span style={{
                     fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 9,
-                    color: isLight ? "#b91c1c" : "#FCA5A5",
+                    color: isLight ? "#B1242E" : "#FCA5A5",
                     padding: "3px 8px", borderRadius: 999,
                     background: isLight ? "#fee2e2" : "rgba(239,68,68,0.12)",
                     border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
@@ -926,7 +926,7 @@ function UsuariosPage() {
                     disabled={travado}
                     style={{
                       flex: 2, padding: 12, borderRadius: 12,
-                      background: "linear-gradient(135deg, #FFD700, #FFC000)",
+                      background: "linear-gradient(135deg, #FCDE48, #F8C811)",
                       border: "none", color: "#08090E",
                       fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13,
                       cursor: travado ? "default" : "pointer",
@@ -961,7 +961,7 @@ function UsuariosPage() {
             }}
           >
             <div style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
-              <AlertTriangle size={36} color={isLight ? "#b45309" : "#F59E0B"} />
+              <AlertTriangle size={36} color={isLight ? "#A63E17" : "#F59E0B"} />
             </div>
             <div style={{
               fontFamily: "'Montserrat', sans-serif", fontWeight: 500, fontSize: 16,
@@ -995,7 +995,7 @@ function UsuariosPage() {
                   flex: 1, padding: 12, borderRadius: 12,
                   background: isLight ? "#fee2e2" : "rgba(239,68,68,0.20)",
                   border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.40)",
-                  color: isLight ? "#dc2626" : "#F87171",
+                  color: isLight ? "#dc2626" : "#F17881",
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 13, cursor: "pointer",
                 }}
               >

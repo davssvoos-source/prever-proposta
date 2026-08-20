@@ -52,13 +52,13 @@ function NovaOsPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18, padding: "16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
     display: "flex", flexDirection: "column", gap: 12,
@@ -66,7 +66,7 @@ function NovaOsPage() {
   const SEC: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
@@ -82,11 +82,11 @@ function NovaOsPage() {
   };
   const chip = (ativo: boolean, cores?: { bg: string; border: string; cor: string }): CSSProperties => ({
     padding: "9px 13px", borderRadius: 11,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo
       ? cores
         ? cores.bg
-        : "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+        : "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? (cores ? cores.cor : "#08090E") : textPrimary,
     boxShadow: ativo && cores ? `inset 0 0 0 1px ${cores.border}` : undefined,
@@ -381,11 +381,11 @@ function NovaOsPage() {
         disabled={criar.isPending}
         style={{
           width: "100%", height: 56, borderRadius: 28, border: "none",
-          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#08090E",
+          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
           fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.16em", textTransform: "uppercase",
           cursor: criar.isPending ? "wait" : "pointer", opacity: criar.isPending ? 0.7 : 1,
-          boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+          boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
         }}
       >
         {criar.isPending ? "Abrindo…" : "Abrir chamado"}

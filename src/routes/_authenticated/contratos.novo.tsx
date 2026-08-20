@@ -55,12 +55,12 @@ function NovoContratoPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = { ...card(isLight), padding: "18px 16px", display: "flex", flexDirection: "column", gap: 12 };
   const SEC: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.16em",
-    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: FONT, fontWeight: 600, fontSize: 10, letterSpacing: "0.12em",
@@ -75,7 +75,7 @@ function NovoContratoPage() {
   };
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "9px 14px", borderRadius: 12,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 12, cursor: "pointer",
@@ -227,7 +227,7 @@ function NovoContratoPage() {
             padding: "24px 16px", borderRadius: 14,
             cursor: clienteId && !lerPdf.isPending ? "pointer" : "not-allowed",
             opacity: clienteId ? 1 : 0.55,
-            border: isLight ? "1.5px dashed rgba(0,0,0,0.18)" : "1.5px dashed rgba(255,192,0,0.28)",
+            border: isLight ? "1.5px dashed rgba(0,0,0,0.18)" : "1.5px dashed rgba(248,200,17,0.28)",
           }}
         >
           {lerPdf.isPending ? <Sparkles size={24} color={gold} /> : <FileUp size={24} color={gold} />}
@@ -257,7 +257,7 @@ function NovoContratoPage() {
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             fontFamily: FONT, fontSize: 12,
-            color: confianca >= 0.8 ? (isLight ? "#047857" : "#34D399") : gold,
+            color: confianca >= 0.8 ? (isLight ? "#047862" : "#2DD2A5") : gold,
           }}>
             <Sparkles size={14} />
             Confiança da leitura: {Math.round(confianca * 100)}%

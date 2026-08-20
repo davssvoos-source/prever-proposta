@@ -44,9 +44,9 @@ const L = {
   text: "#0a0b0e",
   textSub: "#4a5060",
   textMuted: "#8a909e",
-  gold: "#b87800",
-  goldBg: "rgba(180,120,0,0.10)",
-  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  gold: "#A06108",
+  goldBg: "rgba(160,97,8,0.10)",
+  goldBorder: "1px solid rgba(160,97,8,0.22)",
   inputBg: "#f0f1f4",
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
@@ -289,10 +289,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     className="flex flex-col items-center justify-center gap-2 rounded-xl p-4 transition-all"
                     style={{
                       background: active
-                        ? isLight ? "rgba(180,120,0,0.08)" : "rgba(255,192,0,0.10)"
+                        ? isLight ? "rgba(160,97,8,0.08)" : "rgba(248,200,17,0.10)"
                         : isLight ? L.cardSolid : "rgba(255,255,255,0.02)",
                       border: active
-                        ? isLight ? "2px solid #b87800" : "1px solid rgba(255,192,0,0.6)"
+                        ? isLight ? "2px solid #A06108" : "1px solid rgba(248,200,17,0.6)"
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.06)",
                       minHeight: 92,
                     }}
@@ -300,7 +300,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     <span className="text-2xl">{TIPO_ICON[t]}</span>
                     <span
                       className="text-xs font-medium"
-                      style={{ color: active ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#F5F5F5") }}
+                      style={{ color: active ? (isLight ? L.gold : "#F8C811") : (isLight ? L.textSub : "#F5F5F5") }}
                     >
                       {TIPO_LABEL[t]}
                     </span>
@@ -312,7 +312,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
-              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>{labelResponsavel1} (opcional)</Label>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#F8C811" }}>{labelResponsavel1} (opcional)</Label>
               <Input
                 value={form.nome_sindico}
                 onChange={(e) => set("nome_sindico", e.target.value)}
@@ -327,7 +327,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
             </div>
             <div className="space-y-2 rounded-lg p-3" style={{ border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)" }}>
-              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#FFC000" }}>{labelResponsavel2} (opcional)</Label>
+              <Label className="text-xs uppercase tracking-wide" style={{ color: isLight ? L.gold : "#F8C811" }}>{labelResponsavel2} (opcional)</Label>
               <Input
                 value={form.nome_zelador}
                 onChange={(e) => set("nome_zelador", e.target.value)}
@@ -357,12 +357,12 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-all"
                     style={{
                       background: active
-                        ? isLight ? L.goldBg : "rgba(255,192,0,0.15)"
+                        ? isLight ? L.goldBg : "rgba(248,200,17,0.15)"
                         : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       border: active
-                        ? isLight ? L.goldBorder : "1px solid rgba(255,192,0,0.7)"
+                        ? isLight ? L.goldBorder : "1px solid rgba(248,200,17,0.7)"
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
-                      color: active ? (isLight ? L.gold : "#FFC000") : (isLight ? L.textSub : "#F5F5F5"),
+                      color: active ? (isLight ? L.gold : "#F8C811") : (isLight ? L.textSub : "#F5F5F5"),
                     }}
                   >
                     <span>{SERVICO_ICON[s]}</span>
@@ -387,7 +387,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
             {coords && (
               <div
                 className="mt-2 overflow-hidden rounded-lg"
-                style={{ border: isLight ? L.border : "1px solid rgba(255,192,0,0.2)" }}
+                style={{ border: isLight ? L.border : "1px solid rgba(248,200,17,0.2)" }}
               >
                 <iframe
                   title="Mini mapa"
@@ -483,7 +483,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               <div
                 className="mt-3 rounded-lg p-3"
                 style={{
-                  border: isLight ? L.borderMd : "1px solid rgba(255,192,0,0.12)",
+                  border: isLight ? L.borderMd : "1px solid rgba(248,200,17,0.12)",
                   background: isLight ? L.cardSolid : "rgba(0,0,0,0.30)",
                 }}
               >
@@ -491,7 +491,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                   <Avatar className="h-7 w-7">
                     <AvatarFallback
                       style={{
-                        background: isLight ? L.gold : "#FFC000",
+                        background: isLight ? L.gold : "#F8C811",
                         color: "#08090E",
                         fontSize: 10,
                       }}
@@ -580,7 +580,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
           <Card className="p-4 space-y-2 text-sm">
             <div
               className="text-xs uppercase tracking-wide"
-              style={{ color: isLight ? L.gold : "#FFC000" }}
+              style={{ color: isLight ? L.gold : "#F8C811" }}
             >
               Resumo
             </div>
@@ -657,9 +657,9 @@ function QuickDate({ label, onClick, isLight }: { label: string; onClick: () => 
       onClick={onClick}
       className="rounded-full px-3 py-1 text-[11px] font-medium transition"
       style={{
-        background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.06)",
-        border: isLight ? "1px solid rgba(180,120,0,0.22)" : "1px solid rgba(255,192,0,0.25)",
-        color: isLight ? "#b87800" : "#FFC000",
+        background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.06)",
+        border: isLight ? "1px solid rgba(160,97,8,0.22)" : "1px solid rgba(248,200,17,0.25)",
+        color: isLight ? "#A06108" : "#F8C811",
       }}
     >
       {label}
@@ -674,7 +674,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
         style={{
           background: active
-            ? isLight ? "#b87800" : "#FFC000"
+            ? isLight ? "#A06108" : "#F8C811"
             : isLight ? "#f0f1f4" : "#191921",
           color: active ? "#ffffff" : isLight ? "#4a5060" : "#9ca3af",
           border: active ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "none",
@@ -684,7 +684,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
       </div>
       <span
         className="text-xs font-medium"
-        style={{ color: active ? (isLight ? "#b87800" : "#FFC000") : (isLight ? "#4a5060" : "#9ca3af") }}
+        style={{ color: active ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#4a5060" : "#9ca3af") }}
       >
         {label}
       </span>
@@ -697,7 +697,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         className="h-px flex-1"
         style={{
           background: step >= 2
-            ? isLight ? "#b87800" : "linear-gradient(90deg,#FFC000,#FFC000)"
+            ? isLight ? "#A06108" : "linear-gradient(90deg,#F8C811,#F8C811)"
             : isLight ? "rgba(0,0,0,0.08)" : "#191921",
         }}
       />

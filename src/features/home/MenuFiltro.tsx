@@ -221,7 +221,7 @@ export function MenuFiltro({
                 style={{
                   width: "100%", minHeight: 44, padding: "6px 10px", borderRadius: 9,
                   background: marcada
-                    ? isLight ? "rgba(184,120,0,0.10)" : "rgba(255,192,0,0.09)"
+                    ? isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.09)"
                     : "transparent",
                   border: "none", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 9, textAlign: "left",
@@ -230,7 +230,7 @@ export function MenuFiltro({
                 <span style={{
                   width: 18, height: 18, borderRadius: multi ? 5 : 9, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  background: marcada ? (isLight ? "#b87800" : "#FFC000") : "transparent",
+                  background: marcada ? (isLight ? "#A06108" : "#F8C811") : "transparent",
                   border: marcada
                     ? "none"
                     : isLight ? "1.5px solid rgba(0,0,0,0.25)" : "1.5px solid rgba(255,255,255,0.28)",

@@ -27,9 +27,9 @@ export const SERVICO_ICON: Record<string, string> = {
 export const SERVICO_COLOR: Record<string, string> = {
   portaria_remota: "#3B82F6",
   cftv: "#8B5CF6",
-  alarme: "#EF4444",
+  alarme: "#E64D58",
   cerca_eletrica: "#F59E0B",
-  acesso_pedestre: "#10B981",
+  acesso_pedestre: "#059676",
   acesso_veicular: "#06B6D4",
   elevadores: "#6B7280",
   manutencao: "#F97316",

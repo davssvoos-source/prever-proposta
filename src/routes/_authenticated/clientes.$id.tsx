@@ -48,13 +48,13 @@ function ClienteDetalhePage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "16px 16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -65,7 +65,7 @@ function ClienteDetalhePage() {
     fontSize: 10,
     letterSpacing: "0.16em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const linha: CSSProperties = {
     display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "7px 0",
@@ -105,7 +105,7 @@ function ClienteDetalhePage() {
           onClick={voltar}
           style={{
             alignSelf: "flex-start", height: 44, padding: "0 18px", borderRadius: 22, border: "none",
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#08090E",
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
             fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12, cursor: "pointer",
           }}
         >
@@ -184,7 +184,7 @@ function ClienteDetalhePage() {
               <div
                 style={{
                   width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                  background: isLight ? "rgba(184,120,0,0.10)" : "rgba(255,192,0,0.12)",
+                  background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.12)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >

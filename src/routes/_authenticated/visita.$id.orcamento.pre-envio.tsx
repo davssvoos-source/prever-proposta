@@ -352,7 +352,7 @@ function PreEnvioPage() {
           gap: 14,
         }}
       >
-        <SectionCard icon={<MapPin size={16} color={isLight ? "#b87800" : "#FFC000"} />} titulo="LOCAL" isLight={isLight}>
+        <SectionCard icon={<MapPin size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="LOCAL" isLight={isLight}>
           <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "'Montserrat',sans-serif" }}>
             {endereco}
           </div>
@@ -414,7 +414,7 @@ function PreEnvioPage() {
         </SectionCard>
 
         <SectionCard
-          icon={<Calendar size={16} color={isLight ? "#b87800" : "#FFC000"} />}
+          icon={<Calendar size={16} color={isLight ? "#A06108" : "#F8C811"} />}
           titulo="DATA E HORÁRIO DA VISITA"
           isLight={isLight}
         >
@@ -424,7 +424,7 @@ function PreEnvioPage() {
         </SectionCard>
 
         <SectionCard
-          icon={<CheckCircle2 size={16} color={isLight ? "#b87800" : "#FFC000"} />}
+          icon={<CheckCircle2 size={16} color={isLight ? "#A06108" : "#F8C811"} />}
           titulo="SERVIÇOS PROPOSTOS"
           isLight={isLight}
         >
@@ -438,9 +438,9 @@ function PreEnvioPage() {
                 <span
                   key={s}
                   style={{
-                    background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.10)",
-                    border: isLight ? "1px solid rgba(180,120,0,0.22)" : "1px solid rgba(255,192,0,0.35)",
-                    color: isLight ? "#b87800" : "#FFD700",
+                    background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.10)",
+                    border: isLight ? "1px solid rgba(160,97,8,0.22)" : "1px solid rgba(248,200,17,0.35)",
+                    color: isLight ? "#A06108" : "#FCDE48",
                     borderRadius: 999,
                     padding: "5px 12px",
                     fontSize: 12,
@@ -455,7 +455,7 @@ function PreEnvioPage() {
           )}
         </SectionCard>
 
-        <SectionCard icon={<Layers size={16} color={isLight ? "#b87800" : "#FFC000"} />} titulo="ESCOPO DO PROJETO" isLight={isLight}>
+        <SectionCard icon={<Layers size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="ESCOPO DO PROJETO" isLight={isLight}>
           {blocos.length === 0 ? (
             <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
               Nenhum bloco adicionado
@@ -488,7 +488,7 @@ function PreEnvioPage() {
                       )}
                       <div
                         style={{
-                          color: isLight ? "#b87800" : "#FFC000",
+                          color: isLight ? "#A06108" : "#F8C811",
                           fontSize: 12,
                           fontWeight: 600,
                           letterSpacing: 0.6,
@@ -570,9 +570,9 @@ function PreEnvioPage() {
               letterSpacing: "0.16em",
               textTransform: "uppercase",
               background:
-                "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                "linear-gradient(135deg,#2DD2A5 0%,#059676 40%,#047862 100%)",
               boxShadow:
-                "0 4px 20px rgba(16,185,129,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
+                "0 4px 20px rgba(5,150,118,0.45), inset 0 0 0 1px rgba(110,231,183,0.35), inset 0 1px 0 rgba(255,255,255,0.20)",
               textShadow: "0 1px 3px rgba(0,0,0,0.35)",
               opacity: enviarMutation.isPending ? 0.75 : 1,
               transition: "all 0.15s ease",

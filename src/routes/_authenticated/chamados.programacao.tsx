@@ -52,7 +52,7 @@ function ProgramacaoPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
 
   // a semana começa no domingo do dia escolhido
@@ -175,7 +175,7 @@ function ProgramacaoPage() {
           {o.prazo_limite && (
             <span style={{
               marginLeft: "auto", fontFamily: FONT, fontSize: 10.5, fontWeight: 500,
-              color: atrasado ? (isLight ? "#b91c1c" : "#F87171") : textSecondary,
+              color: atrasado ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
             }}>
               {textoPrazo(o.prazo_limite)}
             </span>
@@ -291,7 +291,7 @@ function ProgramacaoPage() {
               {g.id === null && <UserX size={15} color={gold} />}
               <span style={{
                 fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
               }}>
                 {g.nome}
               </span>
@@ -311,7 +311,7 @@ function ProgramacaoPage() {
             <AlertTriangle size={15} color={gold} />
             <span style={{
               fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
-              textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+              textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
             }}>
               Aguardando programação ({semData.length})
             </span>

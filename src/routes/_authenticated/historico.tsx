@@ -10,22 +10,22 @@ export const Route = createFileRoute("/_authenticated/historico")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  pendente:              { label: "Pendente",              color: "#FFC000", icon: Clock },
-  em_andamento:          { label: "Pendente",              color: "#FFC000", icon: Play },
+  pendente:              { label: "Pendente",              color: "#F8C811", icon: Clock },
+  em_andamento:          { label: "Pendente",              color: "#F8C811", icon: Play },
   aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "#60A5FA", icon: CalendarDays },
   concluida:             { label: "Aguardando aprovação",  color: "#60A5FA", icon: CheckCircle },
   aprovada:              { label: "Aprovada",              color: "#8B5CF6", icon: CheckCircle },
-  reprovada:             { label: "Reprovada",             color: "#EF4444", icon: XCircle },
-  cancelada:             { label: "Cancelada",             color: "#EF4444", icon: XCircle },
-  agendada:              { label: "Pendente",              color: "#FFC000", icon: CalendarDays },
+  reprovada:             { label: "Reprovada",             color: "#E64D58", icon: XCircle },
+  cancelada:             { label: "Cancelada",             color: "#E64D58", icon: XCircle },
+  agendada:              { label: "Pendente",              color: "#F8C811", icon: CalendarDays },
 };
 
 // Cores dos chips de status no modo claro (mais escuras p/ contraste em fundo branco)
 const STATUS_COLOR_LIGHT: Record<string, string> = {
-  "#FFC000": "#b87800",
+  "#F8C811": "#A06108",
   "#60A5FA": "#1d4ed8",
   "#8B5CF6": "#6d28d9",
-  "#EF4444": "#b91c1c",
+  "#E64D58": "#B1242E",
 };
 
 type Filtro = "todos" | "concluida" | "aprovada" | "cancelada" | "pendente" | "em_andamento" | "reprovada";
@@ -44,7 +44,7 @@ function VisitasPage() {
     : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
   const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
   const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined;
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const { data: visitas = [], isLoading } = useQuery({
     queryKey: ["visitas-todas"],
@@ -118,7 +118,7 @@ function VisitasPage() {
                   ? `1px solid ${gold}`
                   : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                 background: ativo
-                  ? isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.15)"
+                  ? isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.15)"
                   : cardBg,
                 fontFamily: "'Montserrat', sans-serif",
                 fontWeight: ativo ? 600 : 400,

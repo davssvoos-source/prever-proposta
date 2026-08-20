@@ -21,8 +21,8 @@ export const DIRECAO_LABEL: Record<DirecaoPeca, string> = {
 };
 
 export const DIRECAO_CORES: Record<DirecaoPeca, { dark: string; light: string; bg: string; border: string }> = {
-  instalado:   { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
-  retirado:    { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
+  instalado:   { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
+  retirado:    { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)" },
   substituido: { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
 };
 

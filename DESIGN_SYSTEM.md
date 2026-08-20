@@ -1,4 +1,4 @@
-# Prever — Dark Gold Design System
+# Prever — Design System v2 (Supernova)
 
 Contexto de design extraído do app **Prever Proposta**. Este documento é
 autossuficiente: contém todos os tokens, padrões de componente e regras
@@ -13,10 +13,19 @@ Tailwind, CSS-in-JS ou CSS puro — o que importa são os valores.
 
 ## 1. Identidade
 
-**Dark-first, dourado como único acento.** Fundo quase preto com brilho
-radial, superfícies elevadas em degradê sutil, e um dourado (`#FFC000`)
-que carrega toda a hierarquia de ação. Referências estéticas: Robinhood,
-Linear, Vercel Dashboard.
+**Dark-first, dourado como único acento.** Fundo em degradê com glow,
+superfícies elevadas em degradê sutil, e o dourado **Supernova** (`#F8C811`)
+que carrega toda a hierarquia de ação. Desde a v2 (2026-08-20) a paleta segue
+os tokens W3C fornecidos pelo Grupo Prever, com quatro escalas nomeadas —
+Supernova (primária), Shamrock (sucesso), Christine (aviso) e Flush Mahogany
+(erro) — e o desktop ganhou navegação lateral. Referências de layout: os
+dashboards Nixtio (escuro) e "My Organization" (claro) escolhidos pelo Davi.
+
+**Logotipo**: escudo de topo ondulado com "GRUPO" dentro e "PREVER"
+atravessando mais largo que o escudo, monocromático no dourado da marca —
+componente `src/components/LogoPrever.tsx` (Supernova 400 no escuro, 600 no
+claro). É recriação vetorial; se o vetor oficial chegar, troca-se o conteúdo
+do componente e todos os usos acompanham.
 
 Princípios que governam as decisões:
 
@@ -37,29 +46,58 @@ Princípios que governam as decisões:
 
 ## 2. Tokens de cor
 
-### 2.1 Dourado (acento único)
+### 2.1 As quatro escalas (tokens W3C — `src/lib/paleta.ts`)
 
-| Token | Escuro | Claro | Uso |
-|---|---|---|---|
-| `gold-primary` | `#FFC000` | `#b87800` | Ícones, textos de destaque, bordas ativas |
-| `gold-bright` | `#FFD340` | `#d99000` | Realce, glow |
-| `gold-dim` | `#B88A00` | `#7a5000` | Texto dourado secundário |
-| `gold-glow` | `rgba(255,192,0,0.18)` | `rgba(184,120,0,0.10)` | Fundo de chip/badge ativo |
+**Supernova — primária (o dourado da marca)**
 
-> **Regra crítica:** no modo claro o dourado **escurece** para `#b87800`.
-> `#FFC000` sobre branco tem contraste ~1.9:1 — ilegível. Nunca use o dourado
-> do escuro em fundo claro para texto ou ícone.
+| 50 | 100 | 200 | 300 | 400 ● | 500 | 600 | 700 | 800 | 900 | 950 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `#FEFCE8` | `#FEF9C3` | `#FDEE8B` | `#FCDE48` | `#F8C811` | `#E8B00A` | `#C88806` | `#A06108` | `#844C0F` | `#703E13` | `#422006` |
 
-**Gradiente dourado (CTA primário)** — idêntico nos dois temas:
+**Shamrock — sucesso**
+
+| 50 | 100 | 200 | 300 | 400 ● | 500 | 600 | 700 | 800 | 900 | 950 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `#ECFDF7` | `#D1FAE9` | `#A7F3D7` | `#6EE7C2` | `#2DD2A5` | `#10B991` | `#059676` | `#047862` | `#065F4E` | `#064E42` | `#022C26` |
+
+**Christine — aviso**
+
+| 50 | 100 | 200 | 300 | 400 | 500 ● | 600 | 700 | 800 | 900 | 950 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `#FDF7ED` | `#FAE9CB` | `#F4D193` | `#EEB45B` | `#EA9A35` | `#E2791D` | `#C85917` | `#A63E17` | `#873119` | `#702917` | `#401208` |
+
+**Flush Mahogany — erro**
+
+| 50 | 100 | 200 | 300 | 400 | 500 | 600 ● | 700 | 800 | 900 | 950 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `#FDF3F4` | `#FDE3E5` | `#FBCDD0` | `#F7AAB0` | `#F17881` | `#E64D58` | `#D22D39` | `#B1242E` | `#92222A` | `#7A2228` | `#420D11` |
+
+(● = tom-chave da escala, como marcado nos tokens.)
+
+**Regra de tema, igual para as quatro escalas:**
+
+| Papel | Escuro | Claro |
+|---|---|---|
+| primária (texto/ícone) | Supernova **400** `#F8C811` | Supernova **700** `#A06108` |
+| sucesso | Shamrock **400** `#2DD2A5` | Shamrock **700** `#047862` |
+| aviso | Christine **500** `#E2791D` | Christine **700** `#A63E17` |
+| erro | Flush Mahogany **400** `#F17881` | Flush Mahogany **700** `#B1242E` |
+
+> **Regra crítica (inalterada da v1):** tom 300–400 é para fundo escuro; sobre
+> branco ele cai para ~2:1 de contraste. No claro, texto e ícone usam 600–700.
+
+**Gradiente primário (CTA, pílula ativa do menu)** — idêntico nos dois temas:
 
 ```css
-background: linear-gradient(135deg, #FFD700, #FFC000, #FF9F00);
+background: linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A);  /* 300→400→500 */
 color: #08090E;                                  /* SEMPRE texto escuro */
-box-shadow: 0 6px 20px rgba(255,192,0,0.35);
+box-shadow: 0 6px 20px rgba(248,200,17,0.35);
 ```
 
-> Texto **branco** sobre esse gradiente dá ~2:1 de contraste. O par correto é
-> sempre `#08090E` / `#0A0A0A`, nos dois temas.
+**Matizes fora das escalas** (informativos, sem papel de marca — mantidos da
+v1): azul `#60A5FA/#1d4ed8` (agendado), violeta `#9085e9/#4a3aa7` (em
+andamento), lilás `#A78BFA/#6d28d9` (pedido de compra), teal `#2DD4BF/#0f766e`
+(aguardando aprovação).
 
 ### 2.2 Superfícies
 
@@ -69,7 +107,7 @@ box-shadow: 0 6px 20px rgba(255,192,0,0.35);
 | `bg-elevated` (card) | `#0F111A` | `#ffffff` |
 | `bg-overlay` (popover/modal) | `#161926` | `#e8eaee` |
 | `card-gradient` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)` |
-| `card-border` | `1px solid rgba(255,192,0,0.10)` | `1px solid rgba(0,0,0,0.07)` |
+| `card-border` | `1px solid rgba(248,200,17,0.10)` | `1px solid rgba(0,0,0,0.07)` |
 | `card-shadow` | `none` (ou glow) | `0 1px 6px rgba(0,0,0,0.07)` |
 | `input-bg` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `#ffffff` |
 | `input-border` | `1px solid rgba(255,255,255,0.10)` | `1px solid rgba(0,0,0,0.12)` |
@@ -82,7 +120,7 @@ box-shadow: 0 6px 20px rgba(255,192,0,0.35);
 | `text-secondary` | `rgba(255,255,255,0.55)` | `#4a5060` |
 | `text-muted` | `rgba(255,255,255,0.40)` | `#8a909e` |
 | `text-on-gold` | `#08090E` | `#08090E` |
-| `label-caps` (micro-label) | `rgba(255,192,0,0.65)` | `rgba(0,0,0,0.55)` |
+| `label-caps` (micro-label) | `rgba(248,200,17,0.65)` | `rgba(0,0,0,0.55)` |
 | `border-subtle` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.07)` |
 | `divider` | `rgba(255,255,255,0.06)` | `rgba(0,0,0,0.07)` |
 | `placeholder` | herda `text-muted` | `rgba(0,0,0,0.35)` |
@@ -94,10 +132,10 @@ e a `border` a 30% — mantenha essa proporção ao criar novos status.
 
 | Status | Cor (escuro) | Cor (claro) | bg | border |
 |---|---|---|---|---|
-| Pendente / aviso | `#FFC000` | `#b87800` | `rgba(255,192,0,0.12)` | `rgba(255,192,0,0.30)` |
+| Pendente / aviso | `#F8C811` | `#A06108` | `rgba(248,200,17,0.12)` | `rgba(248,200,17,0.30)` |
 | Info / em análise | `#60A5FA` | `#1d4ed8` | `rgba(96,165,250,0.12)` | `rgba(96,165,250,0.30)` |
-| Sucesso / aprovado | `#34D399` | `#047857` | `rgba(52,211,153,0.12)` | `rgba(52,211,153,0.30)` |
-| Erro / reprovado | `#F87171` | `#b91c1c` | `rgba(248,113,113,0.12)` | `rgba(248,113,113,0.30)` |
+| Sucesso / aprovado | `#2DD2A5` | `#047862` | `rgba(52,211,153,0.12)` | `rgba(52,211,153,0.30)` |
+| Erro / reprovado | `#F17881` | `#B1242E` | `rgba(248,113,113,0.12)` | `rgba(248,113,113,0.30)` |
 | Neutro / vazio | `#9ca3af` | `#6b7280` | `rgba(156,163,175,0.10)` | `rgba(156,163,175,0.25)` |
 
 > Status **nunca** é comunicado só por cor: sempre acompanha ícone + rótulo.
@@ -107,7 +145,7 @@ e a `border` a 30% — mantenha essa proporção ao criar novos status.
 Verde sólido com brilho, usado para a ação de confirmação final:
 
 ```css
-background: linear-gradient(135deg, #34D399 0%, #10B981 40%, #059669 100%);
+background: linear-gradient(135deg, #2DD2A5 0%, #059676 40%, #059669 100%);
 color: #FFFFFF;
 box-shadow: 0 4px 20px rgba(16,185,129,0.45),
             inset 0 0 0 1px rgba(110,231,183,0.35),
@@ -185,33 +223,57 @@ body::before {
 
 ---
 
-## 5. Fundos de página
+## 5. Fundos de página (v2 — degradê com glow)
 
-Três fundos, escolhidos por contexto:
+Um fundo por tema, estático, num componente só (`GlowBackground.tsx`). Os
+fundos animados da v1 (constelação em canvas, datacenter SVG) saíram: custavam
+bateria no celular e o glow fixo dá a mesma profundidade de graça.
 
-**Escuro — gradiente radial base (sempre no `body`):**
+**Escuro — degradê de preto com glow da marca:**
 ```css
-background: radial-gradient(ellipse at top center, #131828 0%, #08090E 55%, #05060A 100%);
-background-attachment: fixed;
+background:
+  radial-gradient(1100px 560px at 15% -10%, rgba(248,200,17,0.09), transparent 55%),
+  radial-gradient(900px 640px at 88% 112%, rgba(45,210,165,0.06), transparent 60%),
+  linear-gradient(180deg, #141414 0%, #0a0a0a 45%, #000000 100%);
 ```
 
-**Escuro — constelação animada** (canvas): nós dourados pulsantes conectados
-por linhas + polígonos irregulares girando lentamente. Densidade ~38 nós /
-1280×800 (20 em telas < 768px), distância de conexão 190px, acento `#FFC000`.
-Reserve para telas de entrada (login, home) — é caro em CPU.
-
-**Escuro — versão estática** (SVG): mesma linguagem visual, sem animação —
-nós dourados (`radialGradient` de `#ffe27a` → `#e8b923`) sobre
-`radial-gradient(ellipse 120% 90% at 30% 20%, #14140f, #0a0a08, #050504, #000)`,
-com vinheta `radial-gradient(ellipse 70% 60% at 50% 50%, transparent, rgba(0,0,0,0.45))`.
-Use em todas as telas internas.
-
-**Claro:**
+**Claro — degradê de branco, mesmos glows mais presentes** (sobre branco o
+brilho some mais rápido):
 ```css
-background: radial-gradient(ellipse at top, #f7f8fa 0%, #eef0f4 60%, #e4e7ec 100%);
+background:
+  radial-gradient(1100px 560px at 15% -10%, rgba(248,200,17,0.16), transparent 55%),
+  radial-gradient(900px 640px at 88% 112%, rgba(45,210,165,0.09), transparent 60%),
+  linear-gradient(180deg, #ffffff 0%, #f8f8f6 55%, #eeeeeb 100%);
 ```
-Mesma constelação, com acento `#d99000`, linhas `rgba(150,156,165,0.7)` e
-vinheta `rgba(0,0,0,0.06)`.
+
+O `body` fica só com a cor de base (`#050505` escuro / `#f2f2ef` claro via
+`html[data-theme="light"]`) — é o que aparece no overscroll e antes do React
+montar. A textura de ruído (§4) continua por cima.
+
+As telas públicas (login, redefinir senha) mantiveram os fundos da v1 por
+enquanto — trocar é decisão à parte, o login tem identidade própria.
+
+---
+
+## 5b. Navegação — sidebar no desktop, barra no celular (v2)
+
+| Contexto | Navegação |
+|---|---|
+| ≥ 1024px | **Sidebar fixa à esquerda, 232px** (`SideNav.tsx`): logotipo no topo, itens com ícone+rótulo, alternador de tema e cartão de perfil no rodapé. Item ativo = pílula no gradiente primário com texto `#08090E`. |
+| < 1024px | **Barra inferior flutuante** (`BottomNav.tsx`), como sempre foi — é onde o polegar alcança. |
+
+Regras de implementação:
+- As duas leem a **mesma lista** (`nav-itens.ts`) e a mesma matriz de
+  permissões (U11). Menu novo = editar um arquivo.
+- A troca é por **CSS** (`.so-desktop` / `.so-celular`, breakpoint 1024px),
+  nunca por JS — media query não pisca no primeiro render.
+- O deslocamento do conteúdo é a variável `--rail` (0 no celular, 232px no
+  desktop). Header fixo usa `left: var(--rail)`; o wrapper do `<main>` usa
+  `padding-left: var(--rail)`; a sangria `.sangra-x` compensa `var(--rail)/2`
+  na margem — a conta está comentada no styles.css.
+- O alternador de tema (`ThemeToggle.tsx`) é a pílula Light/Dark com botão
+  deslizante + o disco sol/lua com crescente animado (adaptado do Uiverse de
+  Pradeepsaranbishnoi; o degradê do sol é Supernova 300→500).
 
 ---
 
@@ -226,7 +288,7 @@ const CARD = {
   background: isLight
     ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
     : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
   borderRadius: 18,
   padding: "20px 18px",
   boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -248,7 +310,7 @@ const LABEL = {
   fontSize: 11,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
   marginBottom: 8,
 };
 ```
@@ -258,13 +320,13 @@ const LABEL = {
 ```jsx
 const CTA_GOLD = {
   width: "100%", height: 56, borderRadius: 28, border: "none",
-  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+  background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
   color: "#08090E",                                  // nos DOIS temas
   fontFamily: "'Montserrat', sans-serif",
   fontWeight: 700, fontSize: 13,
   letterSpacing: "0.16em", textTransform: "uppercase",
   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-  boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+  boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
   cursor: "pointer",
 };
 ```
@@ -280,12 +342,12 @@ O padrão mais usado do app — grid de opções onde a selecionada vira dourada
 {
   height: 60, borderRadius: 14,
   border: selected ? "none"
-    : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
   background: selected
-    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
     : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
-  boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
+  boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
   fontWeight: 600, fontSize: 14, textTransform: "uppercase",
   transition: "all 0.15s",
 }
@@ -372,7 +434,7 @@ Pílula centralizada, fixa acima da safe-area:
 }
 ```
 
-Item ativo: fundo `rgba(184,120,0,0.10)` (claro) / `rgba(255,255,255,0.12)` (escuro),
+Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escuro),
 ícone com `strokeWidth` 2.4 (vs 1.8), ponto de 4px abaixo, e glow
 `drop-shadow(0 0 8px …)` apenas no escuro.
 
@@ -388,7 +450,7 @@ Item ativo: fundo `rgba(184,120,0,0.10)` (claro) / `rgba(255,255,255,0.12)` (esc
   width: "min(440px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
   borderRadius: 18, padding: "20px 18px",
   background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.16)",
+  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
   boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
 }
 ```
@@ -433,13 +495,13 @@ precisam ser calculados em JS.
   --bg-base: #08090E;   --text-primary: #ffffff;
   --text-secondary: #9CA3AF;   --text-muted: #4B5563;
   --border-color: rgba(255,255,255,0.08);
-  --gold-primary: #FFC000;
+  --gold-primary: #F8C811;
 }
 [data-theme="light"] {
   --bg-base: #f4f5f7;   --text-primary: #0a0b0e;
   --text-secondary: #4a5060;   --text-muted: #8a909e;
   --border-color: rgba(0,0,0,0.10);
-  --gold-primary: #b87800;
+  --gold-primary: #A06108;
 }
 ```
 
@@ -457,7 +519,7 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
    grep -rnE 'background: ?"(linear-gradient\(160deg, ?#14141b|#191921|#101014)' src/ | grep -v isLight
    ```
 2. **Texto branco sobre o gradiente dourado.** ~2:1 de contraste. Use `#08090E`.
-3. **Dourado `#FFC000` como texto/ícone no modo claro.** Use `#b87800`.
+3. **Dourado `#F8C811` como texto/ícone no modo claro.** Use `#A06108`.
 4. **Constantes de estilo em nível de módulo.** `const CARD = {…}` fora do
    componente não enxerga o tema — transforme em função: `cardStyle(isLight)`.
 5. **`colorScheme` fixo em inputs nativos.** `colorScheme: "dark"` num
@@ -482,7 +544,7 @@ nunca cicle as cores**:
 | 1 | `#3987e5` | `#2a78d6` |
 | 2 | `#008300` | `#008300` |
 | 3 | `#d55181` | `#e87ba4` |
-| 4 | `#c98500` | `#eda100` |
+| 4 | `#E2791D` | `#eda100` |
 | 5 | `#199e70` | `#1baf7a` |
 | 6 | `#d95926` | `#eb6834` |
 | 7 | `#9085e9` | `#4a3aa7` |
@@ -505,7 +567,7 @@ Regras:
 - [ ] CTA principal = pílula dourada 56px com texto escuro maiúsculo espaçado
 - [ ] Cards com gradiente (160° escuro / 135° claro), raio 16–18px
 - [ ] Nenhuma cor fixa fora de branch de tema (rodar os `grep` da §8)
-- [ ] Dourado escurecido para `#b87800` em todo texto/ícone do tema claro
+- [ ] Dourado escurecido para `#A06108` em todo texto/ícone do tema claro
 - [ ] Inputs com `colorScheme` acompanhando o tema
 - [ ] Status sempre com ícone + rótulo, nunca só cor
 - [ ] Transição global de 0.35s para troca de tema

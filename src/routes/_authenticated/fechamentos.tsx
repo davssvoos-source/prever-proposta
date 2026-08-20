@@ -44,7 +44,7 @@ function FechamentosPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
@@ -135,7 +135,7 @@ function FechamentosPage() {
         <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
           <span style={{
             fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.16em",
-            textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+            textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
           }}>
             Lançamento avulso
           </span>
@@ -170,7 +170,7 @@ function FechamentosPage() {
                 onClick={() => setTipoServico(t)}
                 style={{
                   flex: 1, padding: "9px 12px", borderRadius: 12, cursor: "pointer",
-                  border: tipoServico === t ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                  border: tipoServico === t ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: tipoServico === t ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                   color: tipoServico === t ? "#08090E" : textPrimary,
                   fontFamily: FONT, fontWeight: 600, fontSize: 12,

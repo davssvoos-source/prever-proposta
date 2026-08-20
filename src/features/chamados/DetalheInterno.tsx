@@ -65,13 +65,13 @@ export function DetalheInterno({ id }: { id: string }) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18, padding: "16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
     display: "flex", flexDirection: "column", gap: 12,
@@ -79,7 +79,7 @@ export function DetalheInterno({ id }: { id: string }) {
   const SEC: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
@@ -205,9 +205,9 @@ export function DetalheInterno({ id }: { id: string }) {
 
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "8px 12px", borderRadius: 10,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo
-      ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
@@ -391,7 +391,7 @@ export function DetalheInterno({ id }: { id: string }) {
               <div style={{
                 display: "flex", alignItems: "center", gap: 5, marginTop: 6,
                 fontFamily: "'Montserrat', sans-serif", fontSize: 11,
-                color: sp === "atrasada" ? (isLight ? "#b91c1c" : "#F87171") : textSecondary,
+                color: sp === "atrasada" ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
               }}>
                 <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
               </div>
@@ -690,7 +690,7 @@ export function DetalheInterno({ id }: { id: string }) {
               disabled={!novoEquip.trim()}
               style={{
                 height: 44, borderRadius: 12, border: "none",
-                background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                 color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: novoEquip.trim() ? "pointer" : "default", opacity: novoEquip.trim() ? 1 : 0.5,
               }}
@@ -743,7 +743,7 @@ export function DetalheInterno({ id }: { id: string }) {
             disabled={!comentario.trim() || enviarComentario.isPending}
             style={{
               height: 44, borderRadius: 12, border: "none",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
               color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
               cursor: comentario.trim() ? "pointer" : "default", opacity: comentario.trim() ? 1 : 0.5,
             }}
@@ -788,8 +788,8 @@ export function DetalheInterno({ id }: { id: string }) {
           style={{
             height: 46, borderRadius: 23,
             background: "none",
-            border: isLight ? "1px solid rgba(185,28,28,0.30)" : "1px solid rgba(248,113,113,0.30)",
-            color: isLight ? "#b91c1c" : "#F87171",
+            border: isLight ? "1px solid rgba(177,36,46,0.30)" : "1px solid rgba(241,120,129,0.30)",
+            color: isLight ? "#B1242E" : "#F17881",
             fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12.5,
             cursor: "pointer",
           }}

@@ -1,25 +1,12 @@
-import { createFileRoute, Outlet, useNavigate, useLocation, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LightBackground } from "@/components/LightBackground";
-import { DatacenterBackground } from "@/components/DatacenterBackground";
+import { GlowBackground } from "@/components/GlowBackground";
 import { BottomNav } from "@/components/BottomNav";
+import { SideNav } from "@/components/SideNav";
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { useTheme } from "@/contexts/ThemeContext";
-
-// Fundo dinâmico (canvas animado) só na Início — nas demais telas autenticadas
-// usamos o fundo estático novo (mesma regra do modo claro, que já é estático).
-function useIsInicio() {
-  const location = useLocation();
-  return location.pathname === "/dashboard" || location.pathname === "/";
-}
-
-function DarkBackground() {
-  const isInicio = useIsInicio();
-  return isInicio ? <AnimatedBackground /> : <DatacenterBackground />;
-}
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -84,7 +71,7 @@ function AuthenticatedLayout() {
   if (perfil && (perfil as any).status === "pendente_aprovacao") {
     return (
       <>
-        {isLight ? <LightBackground /> : <DarkBackground />}
+        <GlowBackground />
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
@@ -129,14 +116,16 @@ function AuthenticatedLayout() {
 
   return (
     <>
-      {isLight ? <LightBackground /> : <DarkBackground />}
-      <div style={{ minHeight: "100vh", position: "relative", zIndex: 1 }}>
+      <GlowBackground />
+      <SideNav />
+      {/* --rail: 0 no celular, largura da sidebar no desktop (styles.css) */}
+      <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, paddingLeft: "var(--rail)" }}>
         {/* HEADER */}
         <div
           style={{
             position: "fixed",
             top: 0,
-            left: 0,
+            left: "var(--rail)" as any,
             right: 0,
             zIndex: 50,
             padding: "12px 16px",
@@ -168,7 +157,7 @@ function AuthenticatedLayout() {
                   height: 36,
                   borderRadius: "50%",
                   objectFit: "cover",
-                  border: "2px solid rgba(255,192,0,0.45)",
+                  border: "2px solid rgba(248,200,17,0.45)",
                   flexShrink: 0,
                 }}
               />
@@ -178,7 +167,7 @@ function AuthenticatedLayout() {
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg,#FFD700,#FF9F00)",
+                  background: "linear-gradient(135deg,#FCDE48,#E8B00A)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -187,7 +176,7 @@ function AuthenticatedLayout() {
                   fontSize: 13,
                   color: "#08090E",
                   flexShrink: 0,
-                  border: "2px solid rgba(255,192,0,0.3)",
+                  border: "2px solid rgba(248,200,17,0.3)",
                 }}
               >
                 {iniciais}
@@ -214,7 +203,7 @@ function AuthenticatedLayout() {
                     fontSize: 10,
                     letterSpacing: "0.12em",
                     textTransform: "uppercase",
-                    color: isLight ? "#7a5000" : scrolled ? "rgba(255,192,0,0.6)" : "#FFC000",
+                    color: isLight ? "#844C0F" : scrolled ? "rgba(248,200,17,0.6)" : "#F8C811",
                     textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                     lineHeight: 1.2,
                   }}

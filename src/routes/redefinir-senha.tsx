@@ -102,7 +102,7 @@ function RedefinirSenhaPage() {
     width: "100%",
     height: 52,
     borderRadius: 26,
-    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+    background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
     color: "#08090E",
     fontFamily: "'Montserrat', sans-serif",
@@ -111,7 +111,7 @@ function RedefinirSenhaPage() {
     letterSpacing: "0.18em",
     textTransform: "uppercase",
     cursor: "pointer",
-    boxShadow: "0 4px 24px rgba(255,192,0,0.35)",
+    boxShadow: "0 4px 24px rgba(248,200,17,0.35)",
   };
   const LBL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
@@ -119,7 +119,7 @@ function RedefinirSenhaPage() {
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
     marginBottom: 8,
     display: "block",
   };
@@ -150,9 +150,9 @@ function RedefinirSenhaPage() {
               display: "block",
               margin: "0 auto 12px",
               filter:
-                "drop-shadow(0 0 8px rgba(255,192,0,0.90)) " +
-                "drop-shadow(0 0 20px rgba(255,192,0,0.55)) " +
-                "drop-shadow(0 0 40px rgba(255,192,0,0.25))",
+                "drop-shadow(0 0 8px rgba(248,200,17,0.90)) " +
+                "drop-shadow(0 0 20px rgba(248,200,17,0.55)) " +
+                "drop-shadow(0 0 40px rgba(248,200,17,0.25))",
             }}
           />
           <div

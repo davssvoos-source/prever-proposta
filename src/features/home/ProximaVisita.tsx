@@ -97,14 +97,14 @@ export function ProximaVisita({ visita, onAbrir }: Props) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
-  const gold = isLight ? "#b87800" : "#FFC000";
-  const vermelho = isLight ? "#b91c1c" : "#F87171";
+  const gold = isLight ? "#A06108" : "#F8C811";
+  const vermelho = isLight ? "#B1242E" : "#F17881";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(180,120,0,0.25)" : "1px solid rgba(255,192,0,0.20)",
+    border: isLight ? "1px solid rgba(160,97,8,0.25)" : "1px solid rgba(248,200,17,0.20)",
     borderRadius: 18,
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "0 8px 32px rgba(0,0,0,0.35)",
     padding: "18px 16px",

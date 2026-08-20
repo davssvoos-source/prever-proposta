@@ -16,16 +16,16 @@ export const CARD_BG_DARK = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
 /** Fundo padrão de cards no tema claro. */
 export const CARD_BG_LIGHT = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
 
-export const CARD_BORDER_DARK = "1px solid rgba(255,215,0,0.16)";
+export const CARD_BORDER_DARK = "1px solid rgba(252,222,72,0.16)";
 export const CARD_BORDER_LIGHT = "1px solid rgba(0,0,0,0.07)";
 
 export const CARD_SHADOW_DARK = "0 8px 24px rgba(0,0,0,0.45)";
 export const CARD_SHADOW_LIGHT = "0 1px 6px rgba(0,0,0,0.07)";
 
 /** Amarelo degradê padrão dos botões. */
-export const GOLD_GRAD = "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)";
+export const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
 /** Glow externo dos botões dourados. */
-export const GOLD_GLOW = "0 6px 20px rgba(255,192,0,0.35)";
+export const GOLD_GLOW = "0 6px 20px rgba(248,200,17,0.35)";
 
 /** Card padrão (tema claro/escuro). */
 export const card = (isLight: boolean): React.CSSProperties => ({

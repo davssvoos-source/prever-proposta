@@ -4,7 +4,7 @@ export function AnimatedBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const accent = '#FFC000';
+    const accent = '#F8C811';
     const speed = 1;
     const baseDensity = 38;
     const density = window.innerWidth < 768 ? 20 : baseDensity;

@@ -43,13 +43,13 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -57,7 +57,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   const SEC_LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 700, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const btnSec: CSSProperties = {
     height: 38, padding: "0 14px", borderRadius: 12,
@@ -279,7 +279,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                   style={{
                                     width: 26, height: 26, borderRadius: 8, cursor: "pointer", flexShrink: 0,
                                     background: "transparent", border: "none",
-                                    color: isLight ? "#b91c1c" : "#F87171",
+                                    color: isLight ? "#B1242E" : "#F17881",
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                   }}
                                 >
@@ -299,7 +299,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                           Equipamento
                         </button>
                         <button
-                          style={{ ...btnSec, color: isLight ? "#b91c1c" : "#F87171" }}
+                          style={{ ...btnSec, color: isLight ? "#B1242E" : "#F17881" }}
                           onClick={() => removerSistema.mutate(s.id)}
                         >
                           <Trash2 size={14} />
@@ -350,14 +350,14 @@ function useModalEstilos() {
     isLight,
     textPrimary,
     textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
-    gold: isLight ? "#b87800" : "#FFC000",
+    gold: isLight ? "#A06108" : "#F8C811",
     backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)", zIndex: 90 } as CSSProperties,
     painel: {
       position: "fixed", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
       width: "min(440px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
       borderRadius: 18, padding: "20px 18px",
       background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-      border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.16)",
+      border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
       boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
       color: textPrimary,
     } as CSSProperties,
@@ -376,7 +376,7 @@ function useModalEstilos() {
     } as CSSProperties,
     cta: {
       width: "100%", height: 50, borderRadius: 25, border: "none",
-      background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#08090E",
+      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
       fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
       letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     } as CSSProperties,
@@ -496,9 +496,9 @@ function ModalSistema({
                 onClick={() => setTipo(t)}
                 style={{
                   padding: "8px 12px", borderRadius: 10,
-                  border: ativo ? "none" : s.isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                  border: ativo ? "none" : s.isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: ativo
-                    ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                     : s.isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                   color: ativo ? "#08090E" : s.textPrimary,
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11, cursor: "pointer",

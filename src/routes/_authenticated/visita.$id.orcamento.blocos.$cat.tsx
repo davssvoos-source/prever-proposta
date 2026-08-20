@@ -140,9 +140,9 @@ const L = {
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
   text: "#0a0b0e",
   textSub: "#4a5060",
-  gold: "#b87800",
-  goldBg: "rgba(180,120,0,0.10)",
-  goldBorder: "1px solid rgba(180,120,0,0.22)",
+  gold: "#A06108",
+  goldBg: "rgba(160,97,8,0.10)",
+  goldBorder: "1px solid rgba(160,97,8,0.22)",
 };
 
 // ─── Steps por barreira ─────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ function BarreiraHeader({
     >
       <span style={{
         display: "flex", alignItems: "center", gap: 10,
-        color: done ? "#22C55E" : isLight ? L.gold : "#FFD700",
+        color: done ? "#22C55E" : isLight ? L.gold : "#FCDE48",
         fontSize: 13, fontWeight: 700, letterSpacing: 1,
       }}>
         <DoorOpen size={20} color={done ? "#22C55E" : "#F59E0B"} />
@@ -280,14 +280,14 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
           const isLast = i === steps.length - 1;
 
           const goldSolid = "#F59E0B";
-          const goldText = isLight ? "#b87800" : "#FFC000";
+          const goldText = isLight ? "#A06108" : "#F8C811";
           const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
           const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
           const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
           const completedLabel = goldText;
           const currentLabel = isLight ? "#0a0b0e" : "#fff";
           const lineColor = isCompleted
-            ? (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)")
+            ? (isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.4)")
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
 
           return (
@@ -386,8 +386,8 @@ function MacroStepIndicator({
   ];
 
   const goldSolid = "#F59E0B";
-  const redSolid = "#EF4444";
-  const goldText = isLight ? "#b87800" : "#FFC000";
+  const redSolid = "#E64D58";
+  const goldText = isLight ? "#A06108" : "#F8C811";
   const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
@@ -406,7 +406,7 @@ function MacroStepIndicator({
             ? `1.5px solid ${redSolid}`
             : active ? `1.5px solid ${goldSolid}` : futureBorder;
           const lineColor = m.completed
-            ? (m.denied ? "rgba(239,68,68,0.45)" : (isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.4)"))
+            ? (m.denied ? "rgba(239,68,68,0.45)" : (isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.4)"))
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
           return (
             <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 0, flexShrink: 0 }}>
@@ -485,8 +485,8 @@ function BlocosWizardPage() {
     if (isLight) {
       if (selected) {
         return {
-          width: "100%", background: "rgba(180,120,0,0.08)", border: "2px solid #b87800",
-          boxShadow: "0 0 0 3px rgba(180,120,0,0.10)", borderRadius: 14, padding: "16px 18px",
+          width: "100%", background: "rgba(160,97,8,0.08)", border: "2px solid #A06108",
+          boxShadow: "0 0 0 3px rgba(160,97,8,0.10)", borderRadius: 14, padding: "16px 18px",
           textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, color: L.text,
         };
       }
@@ -497,7 +497,7 @@ function BlocosWizardPage() {
       };
     }
     return {
-      width: "100%", background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)", border: "1px solid rgba(255,215,0,0.18)",
+      width: "100%", background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)", border: "1px solid rgba(252,222,72,0.18)",
       borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer",
       display: "flex", flexDirection: "column", gap: 4, color: "#fff",
     };
@@ -1441,7 +1441,7 @@ function BlocosWizardPage() {
             <div style={{
               fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
               letterSpacing: "0.18em", textTransform: "uppercase",
-              color: isLight ? L.gold : "#FFC000", marginBottom: 10,
+              color: isLight ? L.gold : "#F8C811", marginBottom: 10,
             }}>
               Nome do acesso
             </div>
@@ -1455,12 +1455,12 @@ function BlocosWizardPage() {
                 width: "100%",
                 padding: "14px 16px",
                 borderRadius: 10,
-                border: isLight ? "1px solid rgba(180,120,0,0.35)" : "1px solid rgba(255,192,0,0.35)",
+                border: isLight ? "1px solid rgba(160,97,8,0.35)" : "1px solid rgba(248,200,17,0.35)",
                 background: isLight ? "#ffffff" : "#1a1a1a",
                 color: isLight ? L.text : "#fff",
                 fontSize: 15,
                 outline: "none",
-                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "0 0 0 1px rgba(255,192,0,0.15) inset",
+                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "0 0 0 1px rgba(248,200,17,0.15) inset",
               }}
             />
           </div>
@@ -1470,7 +1470,7 @@ function BlocosWizardPage() {
             disabled={!podeAvancar}
             style={{
               marginTop: 8, width: "100%", padding: "16px 0",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: podeAvancar ? "pointer" : "not-allowed",
               opacity: podeAvancar ? 1 : 0.5,
             }}
@@ -1483,7 +1483,7 @@ function BlocosWizardPage() {
 
     // CFTV: configuração de câmeras (switch dome/bullet + gauge de cabeamento + IA)
     if (wizard.step === "cftv_qtd") {
-      const GOLD_GRAD = "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)";
+      const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
       const totalCams = wizard.cftvCameras.length;
       const totalMetros = wizard.cftvCameras.reduce((s, c) => s + (c.metros || 0), 0);
 
@@ -1525,7 +1525,7 @@ function BlocosWizardPage() {
                   position: "absolute", top: 4, bottom: 4, width: "calc(50% - 4px)",
                   left: camTipo === "dome" ? 4 : "calc(50%)",
                   borderRadius: 999, background: GOLD_GRAD,
-                  boxShadow: "0 2px 10px rgba(255,192,0,0.4)",
+                  boxShadow: "0 2px 10px rgba(248,200,17,0.4)",
                   transition: "left 0.2s ease",
                 }}
               />
@@ -1557,13 +1557,13 @@ function BlocosWizardPage() {
               width: "100%", height: 60, borderRadius: 999, border: "none",
               background: GOLD_GRAD, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-              boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+              boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
             }}
           >
             <span
               style={{
                 width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
-                color: "#FFC000", fontSize: 17, fontWeight: 800,
+                color: "#F8C811", fontSize: 17, fontWeight: 800,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: "'Montserrat', sans-serif", flexShrink: 0,
               }}
@@ -1587,12 +1587,12 @@ function BlocosWizardPage() {
                     onClick={() => toggleIA(opt)}
                     style={{
                       minHeight: 52, borderRadius: 14, padding: "10px 8px",
-                      border: selected ? "none" : isLight ? L.borderMd : "1px solid rgba(255,215,0,0.25)",
+                      border: selected ? "none" : isLight ? L.borderMd : "1px solid rgba(252,222,72,0.25)",
                       background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                       color: selected ? "#0A0A0A" : isLight ? L.text : "#fff",
                       fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 12,
                       lineHeight: 1.25, textAlign: "center", cursor: "pointer",
-                      boxShadow: selected ? "0 4px 14px rgba(255,192,0,0.35)" : isLight ? L.shadowSm : undefined,
+                      boxShadow: selected ? "0 4px 14px rgba(248,200,17,0.35)" : isLight ? L.shadowSm : undefined,
                       transition: "all 0.15s",
                     }}
                   >
@@ -1615,11 +1615,11 @@ function BlocosWizardPage() {
                       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
                       borderRadius: 12,
                       background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                      border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                      border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                       boxShadow: isLight ? L.shadowSm : undefined,
                     }}
                   >
-                    <Video size={16} color={isLight ? L.gold : "#FFC000"} style={{ flexShrink: 0 }} />
+                    <Video size={16} color={isLight ? L.gold : "#F8C811"} style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? L.text : "#fff" }}>
                         {cam.tipo === "dome" ? "Dome" : "Bullet"} · {cam.metros} m
@@ -1634,7 +1634,7 @@ function BlocosWizardPage() {
                       onClick={() => removerCamera(idx)}
                       style={{
                         width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer",
-                        background: "rgba(239,68,68,0.12)", color: "#EF4444",
+                        background: "rgba(239,68,68,0.12)", color: "#E64D58",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                       }}
                     >
@@ -1662,7 +1662,7 @@ function BlocosWizardPage() {
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
                 background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
                 {cftvBom.map((it) => (
@@ -1691,7 +1691,7 @@ function BlocosWizardPage() {
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
                 background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
                 {cftvBomMensal.map((it) => {
@@ -1700,7 +1700,7 @@ function BlocosWizardPage() {
                   return (
                     <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
                       <span>{it.qtd}× {nome}</span>
-                      {sv && <span style={{ flexShrink: 0, color: isLight ? L.gold : "#FFC000" }}>R$ {(sv.preco * it.qtd).toFixed(2)}/mês</span>}
+                      {sv && <span style={{ flexShrink: 0, color: isLight ? L.gold : "#F8C811" }}>R$ {(sv.preco * it.qtd).toFixed(2)}/mês</span>}
                     </div>
                   );
                 })}
@@ -1726,7 +1726,7 @@ function BlocosWizardPage() {
             disabled={totalCams === 0}
             style={{
               width: "100%", padding: "16px 0",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1,
               cursor: totalCams === 0 ? "not-allowed" : "pointer",
               opacity: totalCams === 0 ? 0.5 : 1,
@@ -1795,7 +1795,7 @@ function BlocosWizardPage() {
             disabled={P <= 0}
             style={{
               width: "100%", padding: "16px 0",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               opacity: P <= 0 ? 0.5 : 1,
             }}
@@ -1823,7 +1823,7 @@ function BlocosWizardPage() {
                 onClick={() => setWizard({ ...wizard, esquinas: Math.max(0, E - 1) })}
                 style={{
                   width: 56, height: 56, borderRadius: "50%",
-                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.28)",
+                  border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.28)",
                   background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
                   color: isLight ? L.text : "#fff", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -1841,9 +1841,9 @@ function BlocosWizardPage() {
                 onClick={() => setWizard({ ...wizard, esquinas: Math.min(10, E + 1) })}
                 style={{
                   width: 56, height: 56, borderRadius: "50%", border: "none",
-                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#0A0A0A", cursor: "pointer",
+                  background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0A0A0A", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 2px 12px rgba(255,192,0,0.35)",
+                  boxShadow: "0 2px 12px rgba(248,200,17,0.35)",
                 }}
               >
                 <Plus size={22} />
@@ -1855,7 +1855,7 @@ function BlocosWizardPage() {
             onClick={() => setWizard({ ...wizard, step: "resumo" })}
             style={{
               width: "100%", padding: "16px 0",
-              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
             }}
           >
@@ -1938,7 +1938,7 @@ function BlocosWizardPage() {
 
             <button onClick={() => setShowOpcoes(true)} style={{
               width: "100%", padding: "14px 0", background: "transparent",
-              border: `2px dashed ${isLight ? "rgba(180,120,0,0.44)" : "rgba(245,158,11,0.44)"}`,
+              border: `2px dashed ${isLight ? "rgba(160,97,8,0.44)" : "rgba(245,158,11,0.44)"}`,
               borderRadius: 14, color: isLight ? L.gold : "#F59E0B",
               fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 0.5,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -1954,10 +1954,10 @@ function BlocosWizardPage() {
             disabled={!blocoSalvoId}
             style={{
               width: "100%", marginTop: 24, marginBottom: 32,
-              padding: "16px", background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", border: "none", borderRadius: 999,
+              padding: "16px", background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", border: "none", borderRadius: 999,
               color: "#0A0A0A", fontSize: 14, fontWeight: 800, letterSpacing: 1, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+              boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
               opacity: blocoSalvoId ? 1 : 0.6,
               textTransform: "uppercase",
             }}
@@ -1974,7 +1974,7 @@ function BlocosWizardPage() {
               <div style={{
                 position: "fixed", bottom: 0, left: 0, right: 0,
                 background: isLight ? L.cardSolid : "#1C1A0F",
-                border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.2)",
+                border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.2)",
                 borderRadius: "20px 20px 0 0", padding: "24px 20px 40px",
                 zIndex: 50, display: "flex", flexDirection: "column", gap: 12,
                 boxShadow: isLight ? L.shadow : undefined,
@@ -1984,23 +1984,23 @@ function BlocosWizardPage() {
                 </div>
                 <button onClick={() => inputCameraRef.current?.click()} style={{
                   width: "100%", padding: 16,
-                  background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
-                  border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
-                  borderRadius: 14, color: isLight ? L.gold : "#FFD700",
+                  background: isLight ? L.goldBg : "rgba(252,222,72,0.08)",
+                  border: isLight ? L.goldBorder : "1px solid rgba(252,222,72,0.2)",
+                  borderRadius: 14, color: isLight ? L.gold : "#FCDE48",
                   fontSize: 15, fontWeight: 700, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 }}>
-                  <Camera size={20} color={isLight ? L.gold : "#FFD700"} /> Tirar foto
+                  <Camera size={20} color={isLight ? L.gold : "#FCDE48"} /> Tirar foto
                 </button>
                 <button onClick={() => inputGaleriaRef.current?.click()} style={{
                   width: "100%", padding: 16,
-                  background: isLight ? L.goldBg : "rgba(255,215,0,0.08)",
-                  border: isLight ? L.goldBorder : "1px solid rgba(255,215,0,0.2)",
-                  borderRadius: 14, color: isLight ? L.gold : "#FFD700",
+                  background: isLight ? L.goldBg : "rgba(252,222,72,0.08)",
+                  border: isLight ? L.goldBorder : "1px solid rgba(252,222,72,0.2)",
+                  borderRadius: 14, color: isLight ? L.gold : "#FCDE48",
                   fontSize: 15, fontWeight: 700, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
                 }}>
-                  <ImageIcon size={20} color={isLight ? L.gold : "#FFD700"} /> Escolher da galeria
+                  <ImageIcon size={20} color={isLight ? L.gold : "#FCDE48"} /> Escolher da galeria
                 </button>
                 <button onClick={() => setShowOpcoes(false)} style={{
                   width: "100%", padding: 14, background: "transparent",
@@ -2153,11 +2153,11 @@ function BlocosWizardPage() {
                 onClick={() => selecionar(valor)}
                 style={{
                   height: 64, borderRadius: 16, border: "none",
-                  background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                  background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                   color: "#0A0A0A", fontFamily: "'Montserrat', sans-serif",
                   fontWeight: 800, fontSize: 15, letterSpacing: "0.04em",
                   cursor: "pointer",
-                  boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+                  boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}
               >
@@ -2241,7 +2241,7 @@ function BlocosWizardPage() {
                 onClick={() => abrirBlocoParaEditar(bloco)}
                 style={{
                   background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                  border: isLight ? L.borderMd : "1px solid rgba(255,215,0,0.15)",
+                  border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                   boxShadow: isLight ? L.shadowSm : undefined,
                   borderRadius: 14, padding: "14px 16px",
                   display: "flex", flexDirection: "column", gap: 8,
@@ -2259,13 +2259,13 @@ function BlocosWizardPage() {
                       background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
                       borderRadius: 10, width: 36, height: 36,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#EF4444", cursor: "pointer", flexShrink: 0,
+                      color: "#E64D58", cursor: "pointer", flexShrink: 0,
                     }}
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <div style={{ height: 1, background: "rgba(255,215,0,0.15)" }} />
+                <div style={{ height: 1, background: "rgba(252,222,72,0.15)" }} />
                 {itens.length === 0 ? (
                   <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
                     Nenhum equipamento configurado
@@ -2287,7 +2287,7 @@ function BlocosWizardPage() {
 
       <button onClick={() => iniciarWizard()} style={{
         marginTop: 8, padding: "16px 0",
-        background: isLight ? L.goldBg : "linear-gradient(135deg, #FFD700, #FFB300)",
+        background: isLight ? L.goldBg : "linear-gradient(135deg, #FCDE48, #FFB300)",
         border: isLight ? L.goldBorder : "none", borderRadius: 14,
         color: isLight ? L.gold : "#0A0A0A", fontSize: 14, fontWeight: 800,
         cursor: "pointer", letterSpacing: 1, boxShadow: isLight ? L.shadowSm : undefined,

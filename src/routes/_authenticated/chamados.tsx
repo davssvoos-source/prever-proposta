@@ -124,7 +124,7 @@ function ChamadosPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
 
   // ── Normalização ──────────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ function ChamadosPage() {
             background: GOLD_GRAD, color: "#08090E",
             display: "flex", alignItems: "center", gap: 6,
             fontFamily: FONT, fontWeight: 700, fontSize: 12, cursor: "pointer",
-            boxShadow: "0 4px 14px rgba(255,192,0,0.30)",
+            boxShadow: "0 4px 14px rgba(248,200,17,0.30)",
           }}
         >
           Abrir
@@ -311,7 +311,7 @@ function ChamadosPage() {
                   onClick={() => { setOrdenacao(o.key); setMenuOrdenar(false); }}
                   style={{
                     width: "100%", padding: "12px 14px", textAlign: "left",
-                    background: ordenacao === o.key ? (isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.10)") : "transparent",
+                    background: ordenacao === o.key ? (isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.10)") : "transparent",
                     border: "none",
                     borderBottom: i < ORDENACOES.length - 1
                       ? (isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.07)")
@@ -484,7 +484,7 @@ function ChamadosPage() {
                     <span style={{
                       marginLeft: "auto", display: "flex", alignItems: "center", gap: 4,
                       fontFamily: FONT, fontWeight: 500, fontSize: 11,
-                      color: c.prazoEstourado ? (isLight ? "#b91c1c" : "#F87171") : textSecondary,
+                      color: c.prazoEstourado ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
                     }}>
                       <CalendarClock size={12} /> {c.prazoTexto}
                     </span>

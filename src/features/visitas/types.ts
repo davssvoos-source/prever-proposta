@@ -6,9 +6,9 @@ export const STATUS_VISITA: Record<
 > = {
   pendente: {
     label: "Pendente",
-    color: "#FFC000",
-    bg: "rgba(255,192,0,0.12)",
-    pin: "#FFC000",
+    color: "#F8C811",
+    bg: "rgba(248,200,17,0.12)",
+    pin: "#F8C811",
     icon: "🕓",
   },
   aguardando_aprovacao: {
@@ -20,9 +20,9 @@ export const STATUS_VISITA: Record<
   },
   aprovado: {
     label: "Aprovado",
-    color: "#34D399",
-    bg: "rgba(52,211,153,0.12)",
-    pin: "#34D399",
+    color: "#2DD2A5",
+    bg: "rgba(45,210,165,0.12)",
+    pin: "#2DD2A5",
     icon: "✅",
   },
 };

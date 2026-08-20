@@ -90,13 +90,13 @@ export function DetalheCampo({ id }: { id: string }) {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18, padding: "16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
     display: "flex", flexDirection: "column", gap: 12,
@@ -104,7 +104,7 @@ export function DetalheCampo({ id }: { id: string }) {
   const SEC: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10,
@@ -120,11 +120,11 @@ export function DetalheCampo({ id }: { id: string }) {
   };
   const CTA: CSSProperties = {
     width: "100%", height: 54, borderRadius: 27, border: "none",
-    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)", color: "#08090E",
+    background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
     letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+    boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
   };
   const btnSec: CSSProperties = {
     height: 44, padding: "0 16px", borderRadius: 22,
@@ -436,7 +436,7 @@ export function DetalheCampo({ id }: { id: string }) {
               style={{
                 display: "flex", alignItems: "center", gap: 5,
                 fontFamily: "'Montserrat', sans-serif", fontSize: 12, fontWeight: 600,
-                color: prazo === "estourado" ? (isLight ? "#b91c1c" : "#F87171") : (isLight ? "#b45309" : "#FFC000"),
+                color: prazo === "estourado" ? (isLight ? "#B1242E" : "#F17881") : (isLight ? "#A63E17" : "#F8C811"),
               }}
             >
               <AlertTriangle size={13} />
@@ -539,7 +539,7 @@ export function DetalheCampo({ id }: { id: string }) {
 
       {/* Cancelado */}
       {os.status === "cancelado" && os.motivo_cancelamento && (
-        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(185,28,28,0.35)" : "rgba(248,113,113,0.30)"}` }}>
+        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.30)"}` }}>
           <span style={SEC}>Motivo do cancelamento</span>
           <div style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 300 }}>
             {os.motivo_cancelamento}
@@ -557,7 +557,7 @@ export function DetalheCampo({ id }: { id: string }) {
             <span
               style={{
                 fontFamily: "'Montserrat', sans-serif", fontSize: 11, fontWeight: 700,
-                color: checklist.every((i) => i.concluido) ? (isLight ? "#047857" : "#34D399") : gold,
+                color: checklist.every((i) => i.concluido) ? (isLight ? "#047862" : "#2DD2A5") : gold,
                 fontVariantNumeric: "tabular-nums",
               }}
             >
@@ -585,7 +585,7 @@ export function DetalheCampo({ id }: { id: string }) {
                         }}
                       >
                         {i.concluido ? (
-                          <CheckSquare size={16} color={isLight ? "#047857" : "#34D399"} style={{ flexShrink: 0, marginTop: 1 }} />
+                          <CheckSquare size={16} color={isLight ? "#047862" : "#2DD2A5"} style={{ flexShrink: 0, marginTop: 1 }} />
                         ) : (
                           <Square size={16} color={textSecondary} style={{ flexShrink: 0, marginTop: 1 }} />
                         )}
@@ -761,9 +761,9 @@ export function DetalheCampo({ id }: { id: string }) {
                       onClick={() => setNovaDirecao(d)}
                       style={{
                         padding: "7px 12px", borderRadius: 10, cursor: "pointer",
-                        border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                        border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                         background: novaDirecao === d
-                          ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                          ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                           : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                         color: novaDirecao === d ? "#08090E" : textPrimary,
                         fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 11.5,
@@ -798,7 +798,7 @@ export function DetalheCampo({ id }: { id: string }) {
                     disabled={!novaDescricao.trim() || mexerPeca.isPending}
                     style={{
                       height: 46, borderRadius: 12, border: "none",
-                      background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                       color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
                       cursor: novaDescricao.trim() ? "pointer" : "default",
                       opacity: novaDescricao.trim() ? 1 : 0.5,
@@ -974,7 +974,7 @@ export function DetalheCampo({ id }: { id: string }) {
                                 padding: "5px 9px", borderRadius: 8, cursor: "pointer",
                                 fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 10.5,
                                 border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                                background: novoResultado === r ? "linear-gradient(135deg,#FFD700,#FFC000)" : "transparent",
+                                background: novoResultado === r ? "linear-gradient(135deg,#FCDE48,#F8C811)" : "transparent",
                                 color: novoResultado === r ? "#08090E" : textPrimary,
                               }}
                             >
@@ -994,7 +994,7 @@ export function DetalheCampo({ id }: { id: string }) {
                             onClick={() => ajustar.mutate({ pecaId: p.id })}
                             style={{
                               padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
-                              background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                               color: "#08090E", fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10.5,
                             }}
                           >
@@ -1073,8 +1073,8 @@ export function DetalheCampo({ id }: { id: string }) {
           {cobrancasOs.length > 0 && (
             <div style={{
               padding: "10px 12px", borderRadius: 12,
-              background: isLight ? "rgba(52,211,153,0.08)" : "rgba(52,211,153,0.08)",
-              border: "1px solid rgba(52,211,153,0.28)",
+              background: isLight ? "rgba(45,210,165,0.08)" : "rgba(45,210,165,0.08)",
+              border: "1px solid rgba(45,210,165,0.28)",
             }}>
               <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textPrimary }}>
                 {cobrancasOs.length} cobrança(s) geradas ·{" "}
@@ -1119,7 +1119,7 @@ export function DetalheCampo({ id }: { id: string }) {
           chamado — é a fila do faturamento, que é onde ela sempre morou de
           verdade. Um chamado sem nada a cobrar sai dela sozinho. */}
       {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
-        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(52,211,153,0.30)"}` }}>
+        <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(45,210,165,0.30)"}` }}>
           <span style={SEC}>Conferência</span>
           <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
             Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
@@ -1131,9 +1131,9 @@ export function DetalheCampo({ id }: { id: string }) {
             <button
               style={{
                 ...CTA, flex: 2, width: "auto",
-                background: "linear-gradient(135deg,#34D399 0%,#10B981 40%,#059669 100%)",
+                background: "linear-gradient(135deg,#2DD2A5 0%,#059676 40%,#047862 100%)",
                 color: "#FFFFFF",
-                boxShadow: "0 4px 20px rgba(16,185,129,0.45)",
+                boxShadow: "0 4px 20px rgba(5,150,118,0.45)",
               }}
               onClick={() => fechar.mutate()}
               disabled={fechar.isPending}
@@ -1169,8 +1169,8 @@ export function DetalheCampo({ id }: { id: string }) {
                 <button
                   style={{
                     ...btnSec, flex: 1,
-                    color: isLight ? "#b91c1c" : "#F87171",
-                    border: `1px solid ${isLight ? "rgba(185,28,28,0.35)" : "rgba(248,113,113,0.32)"}`,
+                    color: isLight ? "#B1242E" : "#F17881",
+                    border: `1px solid ${isLight ? "rgba(177,36,46,0.35)" : "rgba(241,120,129,0.32)"}`,
                   }}
                   onClick={() => cancelar.mutate()}
                   disabled={cancelar.isPending}
@@ -1181,7 +1181,7 @@ export function DetalheCampo({ id }: { id: string }) {
             </>
           ) : (
             <button
-              style={{ ...btnSec, color: isLight ? "#b91c1c" : "#F87171" }}
+              style={{ ...btnSec, color: isLight ? "#B1242E" : "#F17881" }}
               onClick={() => setCancelando(true)}
             >
               <Trash2 size={14} />

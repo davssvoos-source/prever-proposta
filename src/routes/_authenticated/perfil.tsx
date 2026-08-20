@@ -27,12 +27,12 @@ function PerfilPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
-  const goldDark = isLight ? "#b87800" : "#FFC000";
+  const goldDark = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
     backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "20px 16px",
     marginBottom: 16,
@@ -289,7 +289,7 @@ function PerfilPage() {
                 height: 88,
                 borderRadius: "50%",
                 objectFit: "cover",
-                border: "3px solid rgba(255,192,0,0.45)",
+                border: "3px solid rgba(248,200,17,0.45)",
                 display: "block",
               }}
             />
@@ -299,7 +299,7 @@ function PerfilPage() {
                 width: 88,
                 height: 88,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg,#FFD700,#FF9F00)",
+                background: "linear-gradient(135deg,#FCDE48,#E8B00A)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -307,7 +307,7 @@ function PerfilPage() {
                 fontWeight: 700,
                 fontSize: 28,
                 color: "#08090E",
-                border: "3px solid rgba(255,192,0,0.3)",
+                border: "3px solid rgba(248,200,17,0.3)",
               }}
             >
               {iniciais}
@@ -323,7 +323,7 @@ function PerfilPage() {
               width: 30,
               height: 30,
               borderRadius: "50%",
-              background: "linear-gradient(135deg,#FFD700,#FFC000)",
+              background: "linear-gradient(135deg,#FCDE48,#F8C811)",
               border: isLight ? "2px solid #f4f5f7" : "2px solid #08090E",
               display: "flex",
               alignItems: "center",
@@ -387,8 +387,8 @@ function PerfilPage() {
               marginTop: 12,
               padding: "5px 12px",
               borderRadius: 999,
-              background: "rgba(255,192,0,0.10)",
-              border: "1px solid rgba(255,192,0,0.30)",
+              background: "rgba(248,200,17,0.10)",
+              border: "1px solid rgba(248,200,17,0.30)",
               fontFamily: "'Montserrat', sans-serif",
               fontWeight: 500,
               fontSize: 11,
@@ -421,15 +421,15 @@ function PerfilPage() {
             width: 42,
             height: 42,
             borderRadius: 12,
-            background: "rgba(255,192,0,0.10)",
-            border: "1px solid rgba(255,192,0,0.25)",
+            background: "rgba(248,200,17,0.10)",
+            border: "1px solid rgba(248,200,17,0.25)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
           }}
         >
-          {isLight ? <Sun size={20} color="#FFC000" /> : <Moon size={20} color="#FFC000" />}
+          {isLight ? <Sun size={20} color="#F8C811" /> : <Moon size={20} color="#F8C811" />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -459,8 +459,8 @@ function PerfilPage() {
             width: 44,
             height: 26,
             borderRadius: 999,
-            background: isLight ? "#FFC000" : "rgba(255,255,255,0.12)",
-            border: "1px solid rgba(255,192,0,0.30)",
+            background: isLight ? "#F8C811" : "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(248,200,17,0.30)",
             position: "relative",
             flexShrink: 0,
             transition: "background 0.3s ease",
@@ -601,7 +601,7 @@ function PerfilPage() {
               <button
                 onClick={() => contaMutation.mutate()}
                 disabled={contaMutation.isPending}
-                style={{ ...iconBtnStyle(isLight), color: isLight ? "#b87800" : "#FFC000" }}
+                style={{ ...iconBtnStyle(isLight), color: isLight ? "#A06108" : "#F8C811" }}
                 aria-label="Salvar"
               >
                 <Check size={14} />
@@ -702,7 +702,7 @@ function PerfilPage() {
               borderRadius: 24,
               background:
                 novaSenha && confirmarSenha
-                  ? "linear-gradient(135deg,#FFD700,#FFC000)"
+                  ? "linear-gradient(135deg,#FCDE48,#F8C811)"
                   : "#191921",
               border: "none",
               color: novaSenha && confirmarSenha ? "#08090E" : "rgba(255,255,255,0.3)",
@@ -744,9 +744,9 @@ function PerfilPage() {
                 style={{
                   background: n.lida
                     ? (isLight ? "#ffffff" : "transparent")
-                    : (isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.05)"),
+                    : (isLight ? "rgba(160,97,8,0.06)" : "rgba(248,200,17,0.05)"),
                   border: isLight
-                    ? (n.lida ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(180,120,0,0.14)")
+                    ? (n.lida ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(160,97,8,0.14)")
                     : "1px solid rgba(255,255,255,0.05)",
                   borderRadius: 10,
                   padding: "10px 12px",
@@ -817,7 +817,7 @@ const cardStyle = (isLight: boolean): CSSProperties => ({
     : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
   WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
-  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+  border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
   borderRadius: 18,
   padding: "20px 16px",
   marginBottom: 16,
@@ -830,7 +830,7 @@ const lblStyle = (isLight: boolean): CSSProperties => ({
   fontSize: 11,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+  color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
   marginBottom: 8,
   display: "block",
 });
@@ -884,7 +884,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 700,
           fontSize: 28,
-          color: isLight ? "#b87800" : "#FFC000",
+          color: isLight ? "#A06108" : "#F8C811",
           lineHeight: 1.1,
         }}
       >
@@ -913,7 +913,7 @@ function Divisor() {
       style={{
         width: 1,
         height: 36,
-        background: "linear-gradient(180deg,transparent,rgba(255,192,0,0.35),transparent)",
+        background: "linear-gradient(180deg,transparent,rgba(248,200,17,0.35),transparent)",
       }}
     />
   );
@@ -945,7 +945,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "'Montserrat', sans-serif",
           fontWeight: 400,
           fontSize: 12,
-          color: highlight ? (isLight ? "#b87800" : "#FFC000") : (isLight ? "#0a0b0e" : "#FFFFFF"),
+          color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#0a0b0e" : "#FFFFFF"),
         }}
       >
         {value}
@@ -958,8 +958,8 @@ function badgeStyle(status: string, isLight: boolean): CSSProperties {
   const map: Record<string, { bg: string; bgDark: string; color: string; colorDark: string }> = {
     aprovada:     { bg: "rgba(22,163,74,0.10)",  bgDark: "rgba(34,197,94,0.12)",  color: "#15803d", colorDark: "#4ade80" },
     concluida:    { bg: "rgba(37,99,235,0.10)",  bgDark: "rgba(96,165,250,0.12)", color: "#1d4ed8", colorDark: "#93c5fd" },
-    em_andamento: { bg: "rgba(180,120,0,0.10)",  bgDark: "rgba(255,192,0,0.12)",  color: "#b87800", colorDark: "#FFC000" },
-    reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#f87171" },
+    em_andamento: { bg: "rgba(160,97,8,0.10)",  bgDark: "rgba(248,200,17,0.12)",  color: "#A06108", colorDark: "#F8C811" },
+    reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#F17881" },
     pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "#191921",color: "#4a5060", colorDark: "#9CA3AF" },
   };
   const s = map[status] ?? map.pendente;

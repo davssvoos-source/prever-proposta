@@ -36,7 +36,7 @@ interface Props {
   onConcluir: (config: AlarmeConfig, itens: CalcRow[]) => void;
 }
 
-const GOLD_GRAD = "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)";
+const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
 const DARK_CARD = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
 
 // Tipos de sensor exibidos por ramo (ordem da spec)
@@ -122,13 +122,13 @@ export function AlarmeWizard({
   };
   const LIST_CARD: React.CSSProperties = {
     background: isLight ? "#ffffff" : "#16161d",
-    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.15)",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.15)",
     borderRadius: 14,
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
   };
   const CIRCLE_BTN: React.CSSProperties = {
     width: 40, height: 40, borderRadius: "50%",
-    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.28)",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.28)",
     background: isLight ? "#ffffff" : "#16161d",
     color: isLight ? "#0a0b0e" : "#fff",
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -207,7 +207,7 @@ export function AlarmeWizard({
                 background: GOLD_GRAD, color: "#0A0A0A",
                 fontFamily: "'Montserrat', sans-serif", fontWeight: 800, fontSize: 15,
                 letterSpacing: "0.04em", cursor: "pointer",
-                boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+                boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               }}
             >
@@ -264,12 +264,12 @@ export function AlarmeWizard({
                 onClick={() => setTipoSel(tipo)}
                 style={{
                   minHeight: 56, borderRadius: 14, padding: "10px 8px",
-                  border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                  border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: selected ? GOLD_GRAD : isLight ? "#f5f6f8" : DARK_CARD,
                   color: selected ? "#0A0A0A" : isLight ? "#0a0b0e" : "#fff",
                   fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: 12,
                   lineHeight: 1.25, cursor: "pointer",
-                  boxShadow: selected ? "0 4px 14px rgba(255,192,0,0.35)" : undefined,
+                  boxShadow: selected ? "0 4px 14px rgba(248,200,17,0.35)" : undefined,
                   transition: "all 0.15s",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}
@@ -323,7 +323,7 @@ export function AlarmeWizard({
                   position: "absolute", top: 4, bottom: 4, width: "calc(50% - 4px)",
                   left: !txSel ? 4 : "calc(50%)",
                   borderRadius: 999, background: GOLD_GRAD,
-                  boxShadow: "0 2px 10px rgba(255,192,0,0.4)", transition: "left 0.2s ease",
+                  boxShadow: "0 2px 10px rgba(248,200,17,0.4)", transition: "left 0.2s ease",
                 }}
               />
               {([[false, "Com cabo"], [true, "TX sem fio"]] as [boolean, string][]).map(([val, label]) => (
@@ -361,13 +361,13 @@ export function AlarmeWizard({
           width: "100%", height: 60, borderRadius: 999, border: "none",
           background: GOLD_GRAD, cursor: tipoSel ? "pointer" : "not-allowed",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-          boxShadow: "0 6px 20px rgba(255,192,0,0.35)", opacity: tipoSel ? 1 : 0.5,
+          boxShadow: "0 6px 20px rgba(248,200,17,0.35)", opacity: tipoSel ? 1 : 0.5,
         }}
       >
         <span
           style={{
             width: 38, height: 38, borderRadius: "50%", background: "#0A0A0A",
-            color: "#FFC000", fontSize: 17, fontWeight: 800,
+            color: "#F8C811", fontSize: 17, fontWeight: 800,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "'Montserrat', sans-serif", flexShrink: 0,
           }}
@@ -388,7 +388,7 @@ export function AlarmeWizard({
               const info = SENSOR_INFO[z.tipo];
               return (
                 <div key={idx} style={{ ...LIST_CARD, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
-                  <ShieldCheck size={16} color={isLight ? "#b87800" : "#FFC000"} style={{ flexShrink: 0 }} />
+                  <ShieldCheck size={16} color={isLight ? "#A06108" : "#F8C811"} style={{ flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>
                       Zona {String(idx + 1).padStart(2, "0")} · {info.label}
@@ -402,7 +402,7 @@ export function AlarmeWizard({
                     onClick={() => removerZona(idx)}
                     style={{
                       width: 28, height: 28, borderRadius: "50%", border: "none", cursor: "pointer",
-                      background: "rgba(239,68,68,0.12)", color: "#EF4444",
+                      background: "rgba(239,68,68,0.12)", color: "#E64D58",
                       display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                     }}
                   >

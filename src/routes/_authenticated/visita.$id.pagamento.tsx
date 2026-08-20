@@ -57,7 +57,7 @@ const fmtBRL = (v: number) =>
 // Paleta categórica validada (skill dataviz — ordem fixa, nunca ciclada;
 // CVD ΔE ≥ 8 e piso de visão normal ≥ 15 nos dois modos). Máx. 8 fatias;
 // excedente vira "Outros" (neutro, com rótulo — nunca um 9º matiz gerado).
-const PIE_CORES_DARK = ["#3987e5", "#008300", "#d55181", "#c98500", "#199e70", "#d95926", "#9085e9", "#e66767"];
+const PIE_CORES_DARK = ["#3987e5", "#008300", "#d55181", "#E2791D", "#199e70", "#d95926", "#9085e9", "#e66767"];
 const PIE_CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"];
 const PIE_OUTROS_DARK = "#6b7280";
 const PIE_OUTROS_LIGHT = "#9ca3af";
@@ -310,18 +310,18 @@ function PagamentoPage() {
   };
   const CARD: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,215,0,0.12)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(252,222,72,0.12)",
     borderRadius: 16, padding: "16px 18px",
   };
   const LABEL: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)", marginBottom: 10,
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)", marginBottom: 10,
   };
   const SEC_TITLE: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 10,
     letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const linhaRow: React.CSSProperties = {
     display: "flex", justifyContent: "space-between", alignItems: "baseline",
@@ -333,7 +333,7 @@ function PagamentoPage() {
   };
   const linhaValor: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700,
-    color: isLight ? "#b87800" : "#FFC000", flexShrink: 0,
+    color: isLight ? "#A06108" : "#F8C811", flexShrink: 0,
   };
   const obsStyle: React.CSSProperties = {
     fontFamily: "'Montserrat', sans-serif", fontSize: 11,
@@ -367,9 +367,9 @@ function PagamentoPage() {
         <div
           style={{
             ...CARD,
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
-            boxShadow: "0 6px 20px rgba(255,192,0,0.30)",
+            boxShadow: "0 6px 20px rgba(248,200,17,0.30)",
           }}
         >
           <div style={{ ...LABEL, color: "rgba(10,11,14,0.65)" }}>Valor de venda ({MARKUP_VENDA}×)</div>
@@ -383,7 +383,7 @@ function PagamentoPage() {
       {fatias.length >= 2 && (
         <div style={CARD}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <PieChartIcon size={16} color={isLight ? "#b87800" : "#FFC000"} />
+            <PieChartIcon size={16} color={isLight ? "#A06108" : "#F8C811"} />
             <span style={SEC_TITLE}>Distribuição do custo entre os blocos</span>
           </div>
           <div style={{ position: "relative", width: "100%", height: 220 }}>
@@ -460,7 +460,7 @@ function PagamentoPage() {
       {/* Custo por bloco */}
       <div style={CARD}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <Layers size={16} color={isLight ? "#b87800" : "#FFC000"} />
+          <Layers size={16} color={isLight ? "#A06108" : "#F8C811"} />
           <span style={SEC_TITLE}>Custo por bloco</span>
         </div>
         {blocos.length === 0 ? (
@@ -496,7 +496,7 @@ function PagamentoPage() {
       {/* Fornecimento — Locação */}
       <div style={CARD}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <KeyRound size={16} color={isLight ? "#b87800" : "#FFC000"} />
+          <KeyRound size={16} color={isLight ? "#A06108" : "#F8C811"} />
           <span style={SEC_TITLE}>Locação — contrato {LOCACAO_PRAZO_MESES} meses</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
@@ -522,7 +522,7 @@ function PagamentoPage() {
       {/* Fornecimento — Comodato */}
       <div style={CARD}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <Handshake size={16} color={isLight ? "#b87800" : "#FFC000"} />
+          <Handshake size={16} color={isLight ? "#A06108" : "#F8C811"} />
           <span style={SEC_TITLE}>Comodato — sem implantação</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
@@ -538,7 +538,7 @@ function PagamentoPage() {
       {/* Mensalidades de serviços */}
       <div style={CARD}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <CalendarClock size={16} color={isLight ? "#b87800" : "#FFC000"} />
+          <CalendarClock size={16} color={isLight ? "#A06108" : "#F8C811"} />
           <span style={SEC_TITLE}>Mensalidades de serviços</span>
         </div>
         {linhasMensais.length === 0 ? (
@@ -573,7 +573,7 @@ function PagamentoPage() {
           width: "100%",
           height: 56,
           borderRadius: 28,
-          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
           color: "#08090E",
           fontFamily: "'Montserrat', sans-serif",
@@ -586,7 +586,7 @@ function PagamentoPage() {
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
-          boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+          boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
         }}
       >
         <FileText size={18} />
@@ -613,7 +613,7 @@ function PagamentoPage() {
               borderRadius: 18,
               padding: "20px 18px",
               background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,215,0,0.16)",
+              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
               boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
             }}
           >
@@ -648,9 +648,9 @@ function PagamentoPage() {
                       borderRadius: 12,
                       border: selected
                         ? "none"
-                        : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                        : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                       background: selected
-                        ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                        ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                         : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                       color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
                       cursor: "pointer",
@@ -683,9 +683,9 @@ function PagamentoPage() {
                           borderRadius: 12,
                           border: selected
                             ? "none"
-                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                           background: selected
-                            ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                            ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                             : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                           color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
                           cursor: "pointer",
@@ -725,9 +725,9 @@ function PagamentoPage() {
                           borderRadius: 12,
                           border: selected
                             ? "none"
-                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+                            : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                           background: selected
-                            ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+                            ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                             : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
                           color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
                           cursor: "pointer",
@@ -834,7 +834,7 @@ function PagamentoPage() {
                 width: "100%",
                 height: 52,
                 borderRadius: 26,
-                background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+                background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                 border: "none",
                 color: "#08090E",
                 fontFamily: "'Montserrat', sans-serif",

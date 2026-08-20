@@ -163,7 +163,7 @@ function Home() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   // Alvo de 40px: o app trava o zoom e quem opera está de luva. Os chips
   // antigos tinham ~31px de altura, o que dá erro de toque — e cada erro aqui
@@ -299,9 +299,9 @@ function Home() {
         {erro && (
           <div style={{
             display: "flex", alignItems: "center", gap: 9, padding: "12px 14px", borderRadius: 12,
-            background: isLight ? "rgba(185,28,28,0.06)" : "rgba(248,113,113,0.08)",
-            border: isLight ? "1px solid rgba(185,28,28,0.22)" : "1px solid rgba(248,113,113,0.24)",
-            fontFamily: FONT, fontSize: 12.5, color: isLight ? "#b91c1c" : "#F87171",
+            background: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
+            border: isLight ? "1px solid rgba(177,36,46,0.22)" : "1px solid rgba(241,120,129,0.24)",
+            fontFamily: FONT, fontSize: 12.5, color: isLight ? "#B1242E" : "#F17881",
           }}>
             <WifiOff size={15} style={{ flexShrink: 0 }} />
             Não consegui carregar suas atividades. O que está abaixo pode estar incompleto.

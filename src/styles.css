@@ -7,7 +7,7 @@
 /*
  * Prever — Dark Gold Design System
  * Inspired by Robinhood / Linear / Vercel Dashboard.
- * Background: near-black with radial glow. Accent: Prever gold #FFC000.
+ * Background: near-black with radial glow. Accent: Prever gold #F8C811.
  */
 
 @theme inline {
@@ -70,11 +70,11 @@
   --bg-overlay: #161926;
 
   /* Gold */
-  --gold-primary: #FFC000;
+  --gold-primary: #F8C811;
   --gold-bright: #FFD340;
   --gold-dim: #B88A00;
-  --gold-glow: rgba(255, 192, 0, 0.18);
-  --gold-glow-hv: rgba(255, 192, 0, 0.30);
+  --gold-glow: rgba(248,200,17, 0.18);
+  --gold-glow-hv: rgba(248,200,17, 0.30);
 
   /* Semantic mapping (shadcn tokens → dark gold) */
   --background: #08090E;
@@ -84,7 +84,7 @@
   --popover: #161926;
   --popover-foreground: #F0F2F5;
 
-  --primary: #FFC000;
+  --primary: #F8C811;
   --primary-foreground: #08090E;
 
   --secondary: #161926;
@@ -94,38 +94,38 @@
   --muted-foreground: #8A8FA8;
 
   --accent: #1A1D2A;
-  --accent-foreground: #FFC000;
+  --accent-foreground: #F8C811;
 
-  --destructive: #F87171;
+  --destructive: #F17881;
   --destructive-foreground: #08090E;
 
-  --success: #34D399;
+  --success: #2DD2A5;
   --success-foreground: #08090E;
 
-  --warning: #FFC000;
+  --warning: #F8C811;
   --warning-foreground: #08090E;
 
   --info: #60A5FA;
   --info-foreground: #08090E;
 
-  --border: rgba(255, 192, 0, 0.12);
+  --border: rgba(248,200,17, 0.12);
   --input: rgba(255, 255, 255, 0.06);
-  --ring: #FFC000;
+  --ring: #F8C811;
 
-  --chart-1: #FFC000;
+  --chart-1: #F8C811;
   --chart-2: #FFD340;
   --chart-3: #60A5FA;
-  --chart-4: #34D399;
-  --chart-5: #F87171;
+  --chart-4: #2DD2A5;
+  --chart-5: #F17881;
 
   --sidebar: #0F111A;
   --sidebar-foreground: #F0F2F5;
-  --sidebar-primary: #FFC000;
+  --sidebar-primary: #F8C811;
   --sidebar-primary-foreground: #08090E;
   --sidebar-accent: #161926;
-  --sidebar-accent-foreground: #FFC000;
-  --sidebar-border: rgba(255, 192, 0, 0.12);
-  --sidebar-ring: #FFC000;
+  --sidebar-accent-foreground: #F8C811;
+  --sidebar-border: rgba(248,200,17, 0.12);
+  --sidebar-ring: #F8C811;
 
   /* Theme tokens */
   --text-primary:   #ffffff;
@@ -150,7 +150,7 @@
   --icon-color:     #0a0b0e;
   --border-color:   rgba(0,0,0,0.10);
   --card-bg:        rgba(255,255,255,0.70);
-  --gold-primary:   #b87800;
+  --gold-primary:   #A06108;
 }
 
 [data-theme="light"] input::placeholder,
@@ -163,6 +163,13 @@
 }
 
 @layer base {
+  :root { --rail: 0px; }
+  @media (min-width: 1024px) {
+    /* largura da sidebar (SideNav.tsx — LARGURA_RAIL). Os dois valores
+       precisam andar juntos: este empurra o conteúdo, aquele desenha o menu. */
+    :root { --rail: 232px; }
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -184,12 +191,9 @@
        `position: sticky` descendente — os cartões fixos do TotemWizard e do
        ElevadoresWizard parariam de grudar. `clip` não cria container. */
     overflow-x: clip;
-    background:
-      radial-gradient(ellipse at top center,
-        #131828 0%,
-        #08090E 55%,
-        #05060A 100%);
-    background-attachment: fixed;
+    /* Fundo v2 (2026-08-20): o degradê com glow mora no GlowBackground; aqui
+       fica só a cor de base, que aparece no overscroll e antes do React. */
+    background: #050505;
     min-height: 100vh;
     position: relative;
   }
@@ -220,23 +224,23 @@
 @utility card-glass {
   background: linear-gradient(
     135deg,
-    rgba(255, 192, 0, 0.06) 0%,
+    rgba(248,200,17, 0.06) 0%,
     rgba(15, 17, 26, 0.95) 100%
   );
-  border: 1px solid rgba(255, 192, 0, 0.14);
+  border: 1px solid rgba(248,200,17, 0.14);
   border-radius: 20px;
   backdrop-filter: blur(20px) saturate(150%);
   box-shadow:
-    0 0 0 1px rgba(255, 192, 0, 0.06) inset,
+    0 0 0 1px rgba(248,200,17, 0.06) inset,
     0 8px 32px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(255, 192, 0, 0.04);
+    0 0 40px rgba(248,200,17, 0.04);
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
   &:hover {
-    border-color: rgba(255, 192, 0, 0.28);
+    border-color: rgba(248,200,17, 0.28);
     box-shadow:
-      0 0 0 1px rgba(255, 192, 0, 0.12) inset,
+      0 0 0 1px rgba(248,200,17, 0.12) inset,
       0 8px 40px rgba(0, 0, 0, 0.5),
-      0 0 60px rgba(255, 192, 0, 0.10);
+      0 0 60px rgba(248,200,17, 0.10);
   }
 }
 
@@ -244,8 +248,8 @@
 @utility stat-card {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 192, 0, 0.07);
-  border: 1px solid rgba(255, 192, 0, 0.16);
+  background: rgba(248,200,17, 0.07);
+  border: 1px solid rgba(248,200,17, 0.16);
   border-radius: 18px;
   padding: 16px;
   &::before {
@@ -255,15 +259,15 @@
     left: -20px;
     width: 80px;
     height: 80px;
-    background: radial-gradient(circle, rgba(255, 192, 0, 0.25), transparent 70%);
+    background: radial-gradient(circle, rgba(248,200,17, 0.25), transparent 70%);
     pointer-events: none;
   }
 }
 
 @utility stat-card-highlight {
-  background: linear-gradient(135deg, #FFC000 0%, #B88A00 100%);
-  border: 1px solid #FFC000;
-  box-shadow: 0 4px 24px rgba(255, 192, 0, 0.35);
+  background: linear-gradient(135deg, #F8C811 0%, #B88A00 100%);
+  border: 1px solid #F8C811;
+  box-shadow: 0 4px 24px rgba(248,200,17, 0.35);
   color: #08090E;
 }
 
@@ -291,26 +295,26 @@
 
 @utility link-action {
   font-size: 13px;
-  color: #FFC000;
+  color: #F8C811;
   font-weight: 500;
 }
 
 /* ============= Primary button (gold shimmer) ============= */
 @utility btn-gold {
-  background: linear-gradient(135deg, #FFC000 0%, #FFD740 50%, #FFC000 100%);
+  background: linear-gradient(135deg, #F8C811 0%, #FFD740 50%, #F8C811 100%);
   background-size: 200% 200%;
   color: #08090E;
   font-weight: 700;
   border: none;
   border-radius: 16px;
   box-shadow:
-    0 4px 20px rgba(255, 192, 0, 0.40),
+    0 4px 20px rgba(248,200,17, 0.40),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
   animation: gold-shimmer 3s infinite;
   &:active {
     transform: scale(0.97);
-    box-shadow: 0 2px 10px rgba(255, 192, 0, 0.30);
+    box-shadow: 0 2px 10px rgba(248,200,17, 0.30);
   }
 }
 
@@ -330,11 +334,11 @@
   font-weight: 600;
   line-height: 1;
 }
-@utility badge-pending  { background: rgba(255, 192, 0, 0.15); color: #FFC000; }
+@utility badge-pending  { background: rgba(248,200,17, 0.15); color: #F8C811; }
 @utility badge-running  { background: rgba(96, 165, 250, 0.15); color: #60A5FA; }
-@utility badge-done     { background: rgba(52, 211, 153, 0.15); color: #34D399; }
-@utility badge-approved { background: rgba(52, 211, 153, 0.15); color: #34D399; }
-@utility badge-rejected { background: rgba(248, 113, 113, 0.15); color: #F87171; }
+@utility badge-done     { background: rgba(45,210,165, 0.15); color: #2DD2A5; }
+@utility badge-approved { background: rgba(45,210,165, 0.15); color: #2DD2A5; }
+@utility badge-rejected { background: rgba(241,120,129, 0.15); color: #F17881; }
 
 /* ============= Progress bar ============= */
 @utility progress-track {
@@ -347,8 +351,8 @@
 @utility progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #FFC000, #FFD740);
-  box-shadow: 0 0 10px rgba(255, 192, 0, 0.5);
+  background: linear-gradient(90deg, #F8C811, #FFD740);
+  box-shadow: 0 0 10px rgba(248,200,17, 0.5);
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -359,7 +363,7 @@
   z-index: 50;
   background: rgba(0, 0, 0, 0.70);
   backdrop-filter: blur(30px) saturate(160%);
-  border-bottom: 1px solid rgba(255, 192, 0, 0.12);
+  border-bottom: 1px solid rgba(248,200,17, 0.12);
 }
 
 /* Ensure app content sits above fixed noise overlay */
@@ -370,8 +374,8 @@
 
 /* ============= Pulse glow for primary CTAs ============= */
 @keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 4px 20px rgba(255,192,0,0.40), 0 0 0 1px rgba(255,220,0,0.3) inset; }
-  50%      { box-shadow: 0 4px 30px rgba(255,192,0,0.65), 0 0 0 1px rgba(255,220,0,0.4) inset; }
+  0%, 100% { box-shadow: 0 4px 20px rgba(248,200,17,0.40), 0 0 0 1px rgba(252,222,72,0.3) inset; }
+  50%      { box-shadow: 0 4px 30px rgba(248,200,17,0.65), 0 0 0 1px rgba(252,222,72,0.4) inset; }
 }
 @utility btn-pulse-gold { animation: pulse-gold 2.4s ease-in-out infinite; }
 
@@ -382,6 +386,15 @@ input, textarea, select {
 input::placeholder, textarea::placeholder {
   color: rgba(200,200,200,0.40);
   font-weight: 300;
+}
+
+/* ── Sidebar (desktop) × barra inferior (celular) ───────────────────────────
+   A troca é por CSS, não por JS: media query não pisca no primeiro render nem
+   depende de listener de resize. */
+.so-desktop { display: none; }
+@media (min-width: 1024px) {
+  .so-desktop { display: flex; }
+  .so-celular { display: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -422,8 +435,11 @@ input::placeholder, textarea::placeholder {
        existe para resolver.
        Sobra ~7px de estouro porque 100vw conta a barra de rolagem vertical e
        100% não. É clipado pelo `overflow-x: clip` do body. */
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    /* Com a sidebar, o conteúdo é centrado em (100vw - rail): o centro do
+       elemento fica rail/2 à direita do centro da janela, e a margem esquerda
+       precisa devolver essa metade — senão o trilho invade o rail por baixo. */
+    margin-left: calc(50% - 50vw + var(--rail) / 2);
+    margin-right: calc(50% - 50vw - var(--rail) / 2 + var(--rail));
     padding-left: 24px;
     padding-right: 24px;
   }
@@ -472,7 +488,7 @@ input::placeholder, textarea::placeholder {
     /* sem `border-radius` aqui: ele sobrescreveria o raio real do elemento e
        um chip de 999px viraria retângulo ao receber foco. O outline já
        acompanha o raio de quem ele contorna. */
-    outline: 2px solid #FFC000;
+    outline: 2px solid #F8C811;
     outline-offset: 2px;
   }
 }

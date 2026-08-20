@@ -22,7 +22,7 @@ const SLUG_TO_TIPO: Record<string, string> = {
 };
 
 
-const ICON_COLOR = "#FFC000";
+const ICON_COLOR = "#F8C811";
 
 const CATEGORIAS = [
   { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={ICON_COLOR} />, desc: "Portas, cancelas e leitores de pedestre" },
@@ -41,7 +41,7 @@ function CategoriasPage() {
   const location = useLocation();
 
   const { isLight } = useTheme();
-  const iconColor = isLight ? "#b87800" : "#FFC000";
+  const iconColor = isLight ? "#A06108" : "#F8C811";
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
   const CATEGORIAS_T = [
@@ -110,7 +110,7 @@ function CategoriasPage() {
 
   const CARD: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "20px 18px",
     display: "flex",
@@ -197,8 +197,8 @@ function CategoriasPage() {
               })
             }
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background = isLight ? "rgba(180,120,0,0.06)" : "rgba(255,192,0,0.08)";
-              (e.currentTarget as HTMLDivElement).style.border = isLight ? "1px solid rgba(180,120,0,0.30)" : "1px solid rgba(255,192,0,0.30)";
+              (e.currentTarget as HTMLDivElement).style.background = isLight ? "rgba(160,97,8,0.06)" : "rgba(248,200,17,0.08)";
+              (e.currentTarget as HTMLDivElement).style.border = isLight ? "1px solid rgba(160,97,8,0.30)" : "1px solid rgba(248,200,17,0.30)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLDivElement).style.background = (CARD.background as string) || "";
@@ -271,7 +271,7 @@ function CategoriasPage() {
           marginBottom: 32,
           height: 56,
           borderRadius: 28,
-          background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
           color: "#08090E",
           fontFamily: "'Montserrat', sans-serif",
@@ -285,8 +285,8 @@ function CategoriasPage() {
           justifyContent: "center",
           gap: 8,
           boxShadow: isLight
-            ? "0 4px 16px rgba(180,120,0,0.30)"
-            : "0 4px 24px rgba(255,192,0,0.35)",
+            ? "0 4px 16px rgba(160,97,8,0.30)"
+            : "0 4px 24px rgba(248,200,17,0.35)",
         }}
       >
         Escopo concluído
@@ -299,7 +299,7 @@ function CategoriasPage() {
         <div
           style={{
             background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-            border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+            border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
             borderRadius: 18,
             padding: "18px 16px",
             boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -314,7 +314,7 @@ function CategoriasPage() {
                 fontSize: 10,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
-                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
               }}
             >
               Central do projeto

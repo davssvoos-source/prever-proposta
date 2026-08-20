@@ -101,7 +101,7 @@ function ComplementosPage() {
       }
     : {
         background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-        border: "1px solid rgba(255,192,0,0.10)",
+        border: "1px solid rgba(248,200,17,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
       };
@@ -112,7 +112,7 @@ function ComplementosPage() {
     letterSpacing: "0.14em",
     textTransform: "uppercase",
     fontSize: 10,
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
     marginBottom: 10,
     display: "flex",
     alignItems: "center",
@@ -126,10 +126,10 @@ function ComplementosPage() {
       ? "none"
       : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: selected
-      ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
-    boxShadow: selected ? "0 6px 20px rgba(255,192,0,0.35)" : undefined,
+    boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
     fontFamily: "'Montserrat', sans-serif",
     fontWeight: 600,
     fontSize: 13,
@@ -198,7 +198,7 @@ function ComplementosPage() {
                 height: 4,
                 borderRadius: 2,
                 background: active
-                  ? isLight ? "#b87800" : "#FFC000"
+                  ? isLight ? "#A06108" : "#F8C811"
                   : isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.12)",
               }}
             />
@@ -240,7 +240,7 @@ function ComplementosPage() {
             width: "100%",
             height: 56,
             borderRadius: 28,
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
             color: "#08090E",
             fontFamily: "'Montserrat', sans-serif",
@@ -253,7 +253,7 @@ function ComplementosPage() {
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+            boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
             opacity: saveMutation.isPending ? 0.7 : 1,
           }}
         >

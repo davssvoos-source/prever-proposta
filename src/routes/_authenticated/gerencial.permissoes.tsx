@@ -54,7 +54,7 @@ function PermissoesPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const linhaBorda = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)";
 
   const salvo = useMemo(() => matrizCompleta(doBanco), [doBanco]);
@@ -93,7 +93,7 @@ function PermissoesPage() {
   const CAIXA = (marcada: boolean, travada: boolean): CSSProperties => ({
     width: 24, height: 24, borderRadius: 7, flexShrink: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
-    background: marcada ? (isLight ? "#b87800" : "#FFC000") : "transparent",
+    background: marcada ? (isLight ? "#A06108" : "#F8C811") : "transparent",
     border: marcada
       ? "none"
       : isLight ? "1.5px solid rgba(0,0,0,0.25)" : "1.5px solid rgba(255,255,255,0.28)",
@@ -139,8 +139,8 @@ function PermissoesPage() {
 
       <div style={{
         display: "flex", alignItems: "flex-start", gap: 9, padding: "11px 13px", borderRadius: 12,
-        background: isLight ? "rgba(184,120,0,0.07)" : "rgba(255,192,0,0.07)",
-        border: isLight ? "1px solid rgba(184,120,0,0.20)" : "1px solid rgba(255,192,0,0.20)",
+        background: isLight ? "rgba(160,97,8,0.07)" : "rgba(248,200,17,0.07)",
+        border: isLight ? "1px solid rgba(160,97,8,0.20)" : "1px solid rgba(248,200,17,0.20)",
       }}>
         <ShieldCheck size={15} color={gold} style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>

@@ -74,8 +74,8 @@ function VisitaPendentePage() {
   });
 
   const c = isLight
-    ? { bg: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)", border: "1px solid rgba(0,0,0,0.07)", shadow: "0 1px 6px rgba(0,0,0,0.07)", text: "#0a0b0e", sub: "#4a5060", muted: "#8a909e", gold: "#b87800", goldBg: "rgba(180,120,0,0.10)" }
-    : { bg: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", shadow: "none", text: "#FFFFFF", sub: "rgba(255,255,255,0.65)", muted: "rgba(255,255,255,0.45)", gold: "#FFC000", goldBg: "rgba(255,192,0,0.10)" };
+    ? { bg: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)", border: "1px solid rgba(0,0,0,0.07)", shadow: "0 1px 6px rgba(0,0,0,0.07)", text: "#0a0b0e", sub: "#4a5060", muted: "#8a909e", gold: "#A06108", goldBg: "rgba(160,97,8,0.10)" }
+    : { bg: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", shadow: "none", text: "#FFFFFF", sub: "rgba(255,255,255,0.65)", muted: "rgba(255,255,255,0.45)", gold: "#F8C811", goldBg: "rgba(248,200,17,0.10)" };
 
   const sLabel = statusLabel(visita?.status);
   const endereco = [visita?.endereco, visita?.complemento].filter(Boolean).join(" — ");
@@ -440,9 +440,9 @@ function VisitaPendentePage() {
             border: "none",
             cursor: iniciando ? "not-allowed" : "pointer",
             background: iniciando
-              ? (isLight ? "#d4a800" : "rgba(255,192,0,0.50)")
-              : "linear-gradient(135deg, #FFC000 0%, #FFD700 50%, #FFA500 100%)",
-            boxShadow: iniciando ? "none" : "0 4px 20px rgba(255,192,0,0.35)",
+              ? (isLight ? "#d4a800" : "rgba(248,200,17,0.50)")
+              : "linear-gradient(135deg, #F8C811 0%, #FCDE48 50%, #FFA500 100%)",
+            boxShadow: iniciando ? "none" : "0 4px 20px rgba(248,200,17,0.35)",
             color: "#0a0b0e",
             fontSize: 15,
             fontWeight: 700,

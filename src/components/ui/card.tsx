@@ -19,10 +19,10 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
             : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
           backdropFilter: isLight ? "none" : "blur(10px) saturate(140%)",
           WebkitBackdropFilter: isLight ? "none" : "blur(10px) saturate(140%)",
-          border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255, 192, 0, 0.20)",
+          border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(248,200,17, 0.20)",
           boxShadow: isLight
             ? "0 1px 6px rgba(0,0,0,0.07)"
-            : "0 0 0 1px rgba(255, 192, 0, 0.06) inset, 0 8px 32px rgba(0, 0, 0, 0.40)",
+            : "0 0 0 1px rgba(248,200,17, 0.06) inset, 0 8px 32px rgba(0, 0, 0, 0.40)",
           ...style,
         }}
         {...props}

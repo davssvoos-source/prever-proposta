@@ -51,8 +51,8 @@ const STATUS: Record<ChamadoStatus, StatusInfo> = {
     // O valor gravado continua 'aberto' (está no CHECK chamados_status_check,
     // em triggers e em policies). Só o que a pessoa lê mudou.
     label: "Aguardando início", labelUpper: "AGUARDANDO INÍCIO",
-    color: "#FFC000", colorLight: "#b87800",
-    bg: "rgba(255,192,0,0.12)", border: "rgba(255,192,0,0.30)",
+    color: "#F8C811", colorLight: "#A06108",
+    bg: "rgba(248,200,17,0.12)", border: "rgba(248,200,17,0.30)",
   },
   agendado: {
     label: "Agendado", labelUpper: "AGENDADO",
@@ -66,8 +66,8 @@ const STATUS: Record<ChamadoStatus, StatusInfo> = {
   },
   stand_by: {
     label: "Stand-by", labelUpper: "STAND-BY",
-    color: "#c98500", colorLight: "#b45309",
-    bg: "rgba(201,133,0,0.14)", border: "rgba(201,133,0,0.32)",
+    color: "#E2791D", colorLight: "#A63E17",
+    bg: "rgba(226,121,29,0.14)", border: "rgba(226,121,29,0.32)",
   },
   aguardando_aprovacao: {
     label: "Aguardando aprovação", labelUpper: "AGUARDANDO APROVAÇÃO",
@@ -76,13 +76,13 @@ const STATUS: Record<ChamadoStatus, StatusInfo> = {
   },
   concluido: {
     label: "Concluído", labelUpper: "CONCLUÍDO",
-    color: "#34D399", colorLight: "#047857",
-    bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.30)",
+    color: "#2DD2A5", colorLight: "#047862",
+    bg: "rgba(45,210,165,0.12)", border: "rgba(45,210,165,0.30)",
   },
   cancelado: {
     label: "Cancelado", labelUpper: "CANCELADO",
-    color: "#F87171", colorLight: "#b91c1c",
-    bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)",
+    color: "#F17881", colorLight: "#B1242E",
+    bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)",
   },
 };
 
@@ -145,11 +145,11 @@ export const TIPOS: ChamadoTipo[] = [
 ];
 
 export const TIPO_CORES: Record<ChamadoTipo, { dark: string; light: string; bg: string; border: string }> = {
-  corretiva:     { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.30)" },
-  preventiva:    { dark: "#FFC000", light: "#b87800", bg: "rgba(255,192,0,0.12)",   border: "rgba(255,192,0,0.30)" },
+  corretiva:     { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.12)", border: "rgba(241,120,129,0.30)" },
+  preventiva:    { dark: "#F8C811", light: "#A06108", bg: "rgba(248,200,17,0.12)",   border: "rgba(248,200,17,0.30)" },
   operacional:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
   implantacao:   { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  melhoria:      { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)",  border: "rgba(52,211,153,0.30)" },
+  melhoria:      { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
   pedido_compra: { dark: "#A78BFA", light: "#6d28d9", bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.30)" },
 };
 
@@ -165,8 +165,8 @@ export const PRIORIDADE_LABEL: Record<ChamadoPrioridade, string> = {
 export const PRIORIDADE_CORES: Record<ChamadoPrioridade, { dark: string; light: string; bg: string; border: string }> = {
   baixa:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
   normal:  { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)",  border: "rgba(96,165,250,0.30)" },
-  alta:    { dark: "#c98500", light: "#b45309", bg: "rgba(201,133,0,0.14)",   border: "rgba(201,133,0,0.32)" },
-  urgente: { dark: "#F87171", light: "#b91c1c", bg: "rgba(248,113,113,0.14)", border: "rgba(248,113,113,0.34)" },
+  alta:    { dark: "#E2791D", light: "#A63E17", bg: "rgba(226,121,29,0.14)",   border: "rgba(226,121,29,0.32)" },
+  urgente: { dark: "#F17881", light: "#B1242E", bg: "rgba(241,120,129,0.14)", border: "rgba(241,120,129,0.34)" },
 };
 
 // ── Sprint (organiza a fila do trabalho interno) ────────────────────────────

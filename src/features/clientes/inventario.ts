@@ -33,7 +33,7 @@ export const ESTADO_LABEL: Record<EstadoEquipamento, string> = {
 };
 
 export const ESTADO_CORES: Record<EstadoEquipamento, { dark: string; light: string; bg: string; border: string }> = {
-  ativo:       { dark: "#34D399", light: "#047857", bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.30)" },
+  ativo:       { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)", border: "rgba(45,210,165,0.30)" },
   substituido: { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.30)" },
   removido:    { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
 };

@@ -46,7 +46,7 @@ export interface VisitaStatusInfo {
   /**
    * Par de `color` para o tema claro. Sem isto, quem monta chip de visita
    * acaba escrevendo `light: info.color` e repete o anti-padrão nº 3 do
-   * DESIGN_SYSTEM (dourado #FFC000 sobre fundo branco não tem contraste).
+   * DESIGN_SYSTEM (dourado #F8C811 sobre fundo branco não tem contraste).
    */
   colorLight: string;
   bg: string;
@@ -57,10 +57,10 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
   pendente: {
     label: "Pendente",
     labelUpper: "PENDENTE",
-    color: "#FFC000",
-    colorLight: "#b87800",
-    bg: "rgba(255,192,0,0.12)",
-    border: "rgba(255,192,0,0.30)",
+    color: "#F8C811",
+    colorLight: "#A06108",
+    bg: "rgba(248,200,17,0.12)",
+    border: "rgba(248,200,17,0.30)",
   },
   aguardando_aprovacao: {
     label: "Aguardando aprovação",
@@ -73,18 +73,18 @@ const INFO: Record<VisitaStatusBucket, Omit<VisitaStatusInfo, "bucket">> = {
   aprovada: {
     label: "Aprovada",
     labelUpper: "APROVADA",
-    color: "#34D399",
-    colorLight: "#047857",
-    bg: "rgba(52,211,153,0.12)",
-    border: "rgba(52,211,153,0.30)",
+    color: "#2DD2A5",
+    colorLight: "#047862",
+    bg: "rgba(45,210,165,0.12)",
+    border: "rgba(45,210,165,0.30)",
   },
   reprovada: {
     label: "Reprovada",
     labelUpper: "REPROVADA",
-    color: "#F87171",
-    colorLight: "#b91c1c",
-    bg: "rgba(248,113,113,0.12)",
-    border: "rgba(248,113,113,0.30)",
+    color: "#F17881",
+    colorLight: "#B1242E",
+    bg: "rgba(241,120,129,0.12)",
+    border: "rgba(241,120,129,0.30)",
   },
 };
 

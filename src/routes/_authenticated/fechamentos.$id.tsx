@@ -31,7 +31,7 @@ function FechamentoDetalhePage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "16px", display: "flex", flexDirection: "column", gap: 12 };
   const btn: CSSProperties = {
     height: 44, padding: "0 14px", borderRadius: 22, cursor: "pointer",
@@ -120,9 +120,9 @@ function FechamentoDetalhePage() {
           padding: "5px 10px", borderRadius: 999,
           fontFamily: FONT, fontWeight: 600, fontSize: 9.5,
           letterSpacing: "0.08em", textTransform: "uppercase",
-          color: fechado ? (isLight ? "#047857" : "#34D399") : gold,
-          background: fechado ? "rgba(52,211,153,0.12)" : "rgba(255,192,0,0.12)",
-          border: `1px solid ${fechado ? "rgba(52,211,153,0.30)" : "rgba(255,192,0,0.30)"}`,
+          color: fechado ? (isLight ? "#047862" : "#2DD2A5") : gold,
+          background: fechado ? "rgba(45,210,165,0.12)" : "rgba(248,200,17,0.12)",
+          border: `1px solid ${fechado ? "rgba(45,210,165,0.30)" : "rgba(248,200,17,0.30)"}`,
         }}>
           {fechado ? <Lock size={10} /> : null}
           {fechado ? "Fechado" : "Aberto"}
@@ -181,7 +181,7 @@ function FechamentoDetalhePage() {
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span style={{
                 fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+                textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
               }}>
                 {secao.titulo}
               </span>
@@ -269,8 +269,8 @@ function FechamentoDetalhePage() {
         }}
         style={{
           height: 46, borderRadius: 23, background: "none",
-          border: isLight ? "1px solid rgba(185,28,28,0.30)" : "1px solid rgba(248,113,113,0.30)",
-          color: isLight ? "#b91c1c" : "#F87171",
+          border: isLight ? "1px solid rgba(177,36,46,0.30)" : "1px solid rgba(241,120,129,0.30)",
+          color: isLight ? "#B1242E" : "#F17881",
           fontFamily: FONT, fontWeight: 600, fontSize: 12.5, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
         }}

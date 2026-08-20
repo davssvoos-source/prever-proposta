@@ -1,17 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, Calendar, ClipboardList, User, Wrench } from "lucide-react";
+
+import { itensDoCargo } from "@/components/nav-itens";
 import { useUserCargo } from "@/features/gerencial/data";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
-
-/** Rota do rodapé → chave da tela no catálogo (src/lib/telas.ts). */
-const CHAVE_POR_ROTA: Record<string, string> = {
-  "/dashboard": "dashboard",
-  "/calendario": "calendario",
-  "/chamados": "chamados",
-  "/gerencial": "gerencial",
-  "/perfil": "perfil",
-};
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -19,52 +11,24 @@ export function BottomNav() {
   const { podeVer } = usePermissoes();
   const { isLight } = useTheme();
 
-  // Barras por perfil (PRODUTO.md §4):
-  //  admin/comercial → gestão completa
-  //  sac             → gestor de chamados, sem gerencial e sem financeiro
-  //  técnico (R7)    → 3 abas; os chamados dele vivem na Home
-  //
-  // Depois da fusão (U7) existe uma aba "Chamados" só: campo e interno são o
-  // mesmo registro, separados por filtro dentro da lista — não por menu.
-  const items =
-    cargo === "admin"
-      ? [
-          { to: "/dashboard", label: "Início", icon: Home },
-          { to: "/calendario", label: "Calendário", icon: Calendar },
-          { to: "/chamados", label: "Chamados", icon: Wrench },
-          { to: "/gerencial", label: "Gerencial", icon: ClipboardList },
-          { to: "/perfil", label: "Perfil", icon: User },
-        ]
-      : cargo === "sac"
-        ? [
-            { to: "/dashboard", label: "Início", icon: Home },
-            { to: "/calendario", label: "Calendário", icon: Calendar },
-            { to: "/chamados", label: "Chamados", icon: Wrench },
-            { to: "/perfil", label: "Perfil", icon: User },
-          ]
-        : [
-            { to: "/dashboard", label: "Início", icon: Home },
-            { to: "/calendario", label: "Agenda", icon: Calendar },
-            { to: "/perfil", label: "Perfil", icon: User },
-          ];
-
-  // A matriz de permissões (U11) manda no rodapé: item cuja tela está
-  // bloqueada some. `undefined` enquanto carrega — mantemos o item, senão a
-  // barra pisca com abas aparecendo e sumindo a cada carga.
-  const visiveis = items.filter((i) => {
-    const chave = CHAVE_POR_ROTA[i.to];
-    if (!chave) return true;
-    return podeVer(chave) !== false;
-  });
+  // A lista vem de nav-itens.ts — a MESMA que a sidebar do desktop lê. A
+  // matriz de permissões (U11) filtra por cima: item cuja tela está bloqueada
+  // some. `undefined` enquanto carrega — mantemos o item, senão a barra pisca
+  // com abas aparecendo e sumindo a cada carga.
+  const visiveis = itensDoCargo(cargo).filter(
+    (i) => !i.tela || podeVer(i.tela) !== false,
+  );
 
   // com 6 itens a pílula precisa apertar para caber na largura do celular
   const apertado = visiveis.length > 5;
 
   const inactiveColor = isLight ? "#4a5060" : "#FFFFFF";
-  const activeColor = isLight ? "#b87800" : "#FFFFFF";
+  const activeColor = isLight ? "#A06108" : "#FFFFFF";
 
   return (
+    // .so-celular: some no desktop, onde a navegação é a sidebar (U15)
     <div
+      className="so-celular"
       aria-hidden={false}
       style={{
         position: "fixed",
@@ -113,7 +77,7 @@ export function BottomNav() {
               style={{
                 paddingInline: apertado ? 8 : 16,
                 background: active
-                  ? (isLight ? "rgba(184,120,0,0.10)" : "rgba(255, 255, 255, 0.12)")
+                  ? (isLight ? "rgba(160,97,8,0.10)" : "rgba(255, 255, 255, 0.12)")
                   : "transparent",
               }}
             >
@@ -143,8 +107,8 @@ export function BottomNav() {
                   aria-hidden
                   className="absolute -bottom-1 h-1 w-1 rounded-full"
                   style={{
-                    background: isLight ? "#b87800" : "#FFFFFF",
-                    boxShadow: isLight ? "0 0 6px rgba(184,120,0,0.6)" : "0 0 8px rgba(255,255,255,0.7)",
+                    background: isLight ? "#A06108" : "#FFFFFF",
+                    boxShadow: isLight ? "0 0 6px rgba(160,97,8,0.6)" : "0 0 8px rgba(255,255,255,0.7)",
                   }}
                 />
               )}

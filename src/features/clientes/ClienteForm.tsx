@@ -50,13 +50,13 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
       ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
       : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,192,0,0.10)",
+    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "18px 16px",
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
@@ -70,7 +70,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     fontSize: 10,
     letterSpacing: "0.16em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: "'Montserrat', sans-serif",
@@ -102,9 +102,9 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "9px 14px",
     borderRadius: 12,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo
-      ? "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)"
+      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
     fontFamily: "'Montserrat', sans-serif",
@@ -370,13 +370,13 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
           disabled={salvando}
           style={{
             flex: 1, height: 52, borderRadius: 26, border: "none",
-            background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             color: "#08090E",
             fontFamily: "'Montserrat', sans-serif", fontWeight: 700, fontSize: 13,
             letterSpacing: "0.14em", textTransform: "uppercase",
             cursor: salvando ? "wait" : "pointer",
             opacity: salvando ? 0.7 : 1,
-            boxShadow: "0 6px 20px rgba(255,192,0,0.35)",
+            boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
           }}
         >
           {salvando ? "Salvando…" : (rotuloAcao ?? "Salvar cliente")}

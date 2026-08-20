@@ -36,13 +36,13 @@ export const Route = createFileRoute("/_authenticated/gerencial")({
 });
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pendente:              { label: "Pendente",              color: "#FFC000", icon: Clock },
-  em_andamento:          { label: "Pendente",              color: "#FFC000", icon: Clock },
+  pendente:              { label: "Pendente",              color: "#F8C811", icon: Clock },
+  em_andamento:          { label: "Pendente",              color: "#F8C811", icon: Clock },
   aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "#60A5FA", icon: Clock },
   concluida:             { label: "Aguardando aprovação",  color: "#60A5FA", icon: CheckCircle },
-  cancelada:             { label: "Cancelada",             color: "#EF4444", icon: XCircle },
+  cancelada:             { label: "Cancelada",             color: "#E64D58", icon: XCircle },
   aprovada:              { label: "Aprovada",              color: "#8B5CF6", icon: CheckCircle },
-  reprovada:             { label: "Reprovada",             color: "#EF4444", icon: XCircle },
+  reprovada:             { label: "Reprovada",             color: "#E64D58", icon: XCircle },
 };
 
 function GerencialPage() {
@@ -56,7 +56,7 @@ function GerencialPage() {
   const cardBg = isLight ? cardLight : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
   const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
   const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none";
-  const numberGold = isLight ? "#b87800" : "#FFC000";
+  const numberGold = isLight ? "#A06108" : "#F8C811";
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
@@ -158,8 +158,8 @@ function GerencialPage() {
     { label: "Visitas",   value: visitasRaw.length,                                                                 color: numberGold },
     { label: "Aprovadas", value: visitasRaw.filter((v: any) => v.status === "aprovada").length,                     color: "#3B82F6" },
     { label: "Enviadas",  value: visitasRaw.filter((v: any) => v.proposta_enviada_em).length,                       color: "#2DD4BF" },
-    { label: "Aceitas",   value: visitasRaw.filter((v: any) => v.proposta_resultado === "aceita").length,           color: "#10B981" },
-    { label: "Recusadas", value: visitasRaw.filter((v: any) => v.proposta_resultado === "recusada").length,         color: "#F87171" },
+    { label: "Aceitas",   value: visitasRaw.filter((v: any) => v.proposta_resultado === "aceita").length,           color: "#059676" },
+    { label: "Recusadas", value: visitasRaw.filter((v: any) => v.proposta_resultado === "recusada").length,         color: "#F17881" },
   ];
 
   const visitas = visitasRaw as any[];
@@ -260,7 +260,7 @@ function GerencialPage() {
         {[
           { label: "Pendentes",    value: stats.pendentes,    color: numberGold },
           { label: "Em Andamento", value: stats.em_andamento, color: "#3B82F6" },
-          { label: "Concluídas",   value: stats.concluidas,   color: "#10B981" },
+          { label: "Concluídas",   value: stats.concluidas,   color: "#059676" },
         ].map((s) => (
           <div
             key={s.label}
@@ -381,7 +381,7 @@ function GerencialPage() {
             onClick={() => navigate({ to: "/gerencial/nova" })}
             style={{
               marginTop: 16,
-              background: "linear-gradient(135deg, #FFD700, #FFC000)",
+              background: "linear-gradient(135deg, #FCDE48, #F8C811)",
               border: "none",
               borderRadius: 10,
               padding: "10px 24px",
@@ -434,7 +434,7 @@ function GerencialPage() {
                   boxShadow: cardShadow,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = isLight ? "rgba(180,120,0,0.4)" : "rgba(255,192,0,0.3)";
+                  e.currentTarget.style.borderColor = isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.3)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)";
@@ -530,7 +530,7 @@ function GerencialPage() {
                       e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
                     }}
                   >
-                    <Trash2 size={16} color="#EF4444" />
+                    <Trash2 size={16} color="#E64D58" />
                   </button>
                 )}
               </div>
@@ -556,7 +556,7 @@ function GerencialPage() {
               e.preventDefault();
               if (deletingId) handleDelete(deletingId);
             }}
-            className="rounded-full bg-[#EF4444] font-bold text-white hover:bg-[#DC2626]"
+            className="rounded-full bg-[#E64D58] font-bold text-white hover:bg-[#DC2626]"
           >
             {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
           </AlertDialogAction>
@@ -574,23 +574,23 @@ function GerencialPage() {
         width: 60,
         height: 60,
         borderRadius: "50%",
-        background: "linear-gradient(135deg, #FFD700, #FFC000, #FF9F00)",
+        background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
         border: "none",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        boxShadow: "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)",
+        boxShadow: "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)",
         zIndex: 50,
         transition: "transform 0.15s, box-shadow 0.15s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "scale(1.08)";
-        e.currentTarget.style.boxShadow = "0 6px 28px rgba(255,192,0,0.7), 0 0 50px rgba(255,192,0,0.35)";
+        e.currentTarget.style.boxShadow = "0 6px 28px rgba(248,200,17,0.7), 0 0 50px rgba(248,200,17,0.35)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 20px rgba(255,192,0,0.55), 0 0 40px rgba(255,192,0,0.25)";
+        e.currentTarget.style.boxShadow = "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)";
       }}
       aria-label="Nova Proposta"
     >

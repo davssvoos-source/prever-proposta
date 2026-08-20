@@ -36,7 +36,7 @@ function ContratosPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
 
   const vencendo = useMemo(
@@ -121,7 +121,7 @@ function ContratosPage() {
 
       {vencendo.length > 0 && filtro !== "todos" && (
         <div style={{ ...CARD, display: "flex", gap: 10, alignItems: "center",
-          borderColor: isLight ? "rgba(180,120,0,0.30)" : "rgba(255,192,0,0.28)" }}>
+          borderColor: isLight ? "rgba(160,97,8,0.30)" : "rgba(248,200,17,0.28)" }}>
           <TriangleAlert size={18} color={gold} />
           <span style={{ fontFamily: FONT, fontSize: 12.5 }}>
             {vencendo.length} contrato(s) vencem nos próximos 60 dias.

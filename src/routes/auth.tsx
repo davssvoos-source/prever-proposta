@@ -116,7 +116,7 @@ function AuthPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
-  const goldDark = isLight ? "#b87800" : "rgba(255,192,0,0.65)";
+  const goldDark = isLight ? "#A06108" : "rgba(248,200,17,0.65)";
   const CARD: CSSProperties = {
     background: isLight ? "rgba(255,255,255,0.92)" : "rgba(8,8,12,0.55)",
     backdropFilter: "blur(20px) saturate(160%)",
@@ -144,7 +144,7 @@ function AuthPage() {
     width: "100%",
     height: 52,
     borderRadius: 26,
-    background: "linear-gradient(135deg,#FFD700,#FFC000,#FF9F00)",
+    background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
     color: "#08090E",
     fontFamily: "'Montserrat', sans-serif",
@@ -153,7 +153,7 @@ function AuthPage() {
     letterSpacing: "0.18em",
     textTransform: "uppercase",
     cursor: "pointer",
-    boxShadow: isLight ? "0 4px 16px rgba(180,120,0,0.35)" : "0 4px 24px rgba(255,192,0,0.35)",
+    boxShadow: isLight ? "0 4px 16px rgba(160,97,8,0.35)" : "0 4px 24px rgba(248,200,17,0.35)",
   };
   const BTN_GHOST: CSSProperties = {
     background: "none",
@@ -202,8 +202,8 @@ function AuthPage() {
               display: "block",
               margin: "0 auto 12px",
             filter:
-              "drop-shadow(0 0 4px rgba(255,192,0,0.45)) " +
-              "drop-shadow(0 0 10px rgba(255,192,0,0.20))",
+              "drop-shadow(0 0 4px rgba(248,200,17,0.45)) " +
+              "drop-shadow(0 0 10px rgba(248,200,17,0.20))",
             }}
           />
           <div

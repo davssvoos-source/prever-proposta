@@ -96,7 +96,7 @@ function ReagendarPage() {
   };
   const LABEL: React.CSSProperties = {
     fontSize: 11,
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(255,192,0,0.65)",
+    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
     fontWeight: isLight ? 600 : 300,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
@@ -179,9 +179,9 @@ function ReagendarPage() {
             width: "100%",
             padding: "14px 16px",
             borderRadius: 12,
-            border: isLight ? "1px solid rgba(180,120,0,0.45)" : "1px solid rgba(255,192,0,0.55)",
-            background: isLight ? "rgba(180,120,0,0.10)" : "rgba(255,192,0,0.16)",
-            color: isLight ? "#b87800" : "#FFC000",
+            border: isLight ? "1px solid rgba(160,97,8,0.45)" : "1px solid rgba(248,200,17,0.55)",
+            background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.16)",
+            color: isLight ? "#A06108" : "#F8C811",
             fontSize: 15,
             fontWeight: 600,
             cursor: mutation.isPending ? "not-allowed" : "pointer",

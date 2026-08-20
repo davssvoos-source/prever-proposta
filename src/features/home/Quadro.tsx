@@ -195,7 +195,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                 }}>
                   {itens.length}
                   {c === "aguardando_aprovacao" && comVoce > 0 && (
-                    <span style={{ color: isLight ? "#b45309" : "#c98500" }}> · {comVoce}</span>
+                    <span style={{ color: isLight ? "#A63E17" : "#E2791D" }}> · {comVoce}</span>
                   )}
                 </span>
               </div>
@@ -238,7 +238,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                         onClick={() => setTetos((t) => ({ ...t, [c]: (t[c] ?? TETO) + 25 }))}
                         style={{
                           fontFamily: FONT, fontWeight: 600, fontSize: PISO_TIPO,
-                          color: isLight ? "#b87800" : "#FFC000",
+                          color: isLight ? "#A06108" : "#F8C811",
                           background: "transparent", border: "none", cursor: "pointer",
                           padding: "10px 0", minHeight: 40,
                         }}

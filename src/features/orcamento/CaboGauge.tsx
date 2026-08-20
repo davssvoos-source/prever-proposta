@@ -5,7 +5,7 @@
 
 import { useRef, useState } from "react";
 
-const L = { text: "#0a0b0e", textSub: "#4a5060", gold: "#b87800" };
+const L = { text: "#0a0b0e", textSub: "#4a5060", gold: "#A06108" };
 
 export function CaboGauge({
   value,
@@ -63,9 +63,9 @@ export function CaboGauge({
       >
         <defs>
           <linearGradient id="caboGaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#FFD700" />
-            <stop offset="55%" stopColor="#FFC000" />
-            <stop offset="100%" stopColor="#FF9F00" />
+            <stop offset="0%" stopColor="#FCDE48" />
+            <stop offset="55%" stopColor="#F8C811" />
+            <stop offset="100%" stopColor="#E8B00A" />
           </linearGradient>
         </defs>
         {/* Trilha */}
@@ -92,10 +92,10 @@ export function CaboGauge({
           cx={knobX}
           cy={knobY}
           r={14}
-          fill="#FFC000"
+          fill="#F8C811"
           stroke={isLight ? "#ffffff" : "rgba(0,0,0,0.35)"}
           strokeWidth={3}
-          style={{ filter: "drop-shadow(0 0 8px rgba(255,192,0,0.7))", cursor: "grab" }}
+          style={{ filter: "drop-shadow(0 0 8px rgba(248,200,17,0.7))", cursor: "grab" }}
         />
       </svg>
       {/* Número central (editável ao toque) */}
@@ -119,7 +119,7 @@ export function CaboGauge({
               fontFamily: "'Montserrat', sans-serif",
               background: "transparent", border: "none", outline: "none",
               color: isLight ? L.text : "#fff",
-              borderBottom: `2px solid ${isLight ? L.gold : "#FFC000"}`,
+              borderBottom: `2px solid ${isLight ? L.gold : "#F8C811"}`,
             }}
           />
         ) : (

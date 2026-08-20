@@ -39,12 +39,12 @@ function ContratoDetalhePage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#b87800" : "#FFC000";
+  const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = { ...card(isLight), padding: "16px", display: "flex", flexDirection: "column", gap: 12 };
   const SEC: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.16em",
-    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(255,192,0,0.65)",
+    textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
   };
   const LABEL: CSSProperties = {
     fontFamily: FONT, fontWeight: 600, fontSize: 10, letterSpacing: "0.12em",
@@ -59,7 +59,7 @@ function ContratoDetalhePage() {
   };
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "8px 12px", borderRadius: 10,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,215,0,0.16)",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
     color: ativo ? "#08090E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 11.5, cursor: "pointer",
@@ -411,8 +411,8 @@ function ContratoDetalhePage() {
         }}
         style={{
           height: 46, borderRadius: 23, background: "none",
-          border: isLight ? "1px solid rgba(185,28,28,0.30)" : "1px solid rgba(248,113,113,0.30)",
-          color: isLight ? "#b91c1c" : "#F87171",
+          border: isLight ? "1px solid rgba(177,36,46,0.30)" : "1px solid rgba(241,120,129,0.30)",
+          color: isLight ? "#B1242E" : "#F17881",
           fontFamily: FONT, fontWeight: 600, fontSize: 12.5, cursor: "pointer",
         }}
       >
