@@ -271,7 +271,7 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
   const currentIndex = steps.indexOf(currentStep);
 
   return (
-    <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+    <div className="trilho-x" style={{ marginBottom: 20, WebkitOverflowScrolling: "touch" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
         {steps.map((step, i) => {
           const isCurrent = step === currentStep;
@@ -396,7 +396,7 @@ function MacroStepIndicator({
   const visibleMacros = macros.filter((m) => !m.hidden);
 
   return (
-    <div style={{ marginBottom: 20, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+    <div className="trilho-x" style={{ marginBottom: 20, WebkitOverflowScrolling: "touch" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0, minWidth: "max-content", paddingBottom: 4 }}>
         {visibleMacros.map((m, i) => {
           const isLast = i === visibleMacros.length - 1;

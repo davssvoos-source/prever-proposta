@@ -109,7 +109,7 @@ function ContratosPage() {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
         {(["ativo", "rascunho", "encerrado", "todos"] as const).map((f) => (
           <button key={f} style={chip(filtro === f)} onClick={() => setFiltro(f)}>
             {f === "todos"

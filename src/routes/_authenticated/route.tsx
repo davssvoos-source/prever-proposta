@@ -230,7 +230,7 @@ function AuthenticatedLayout() {
 
         {/* CONTEÚDO */}
         <main
-          className="mx-auto max-w-5xl"
+          className="mx-auto max-w-5xl lg:max-w-7xl"
           style={{ paddingTop: 76, paddingBottom: 110, paddingLeft: 16, paddingRight: 16 }}
         >
           <Outlet />

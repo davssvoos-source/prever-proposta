@@ -41,6 +41,7 @@ import {
   semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
+import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
 
@@ -192,12 +193,7 @@ function Home() {
     cursor: "pointer",
   };
 
-  const trilhoChips: CSSProperties = {
-    display: "flex", gap: 8, overflowX: "auto",
-    overscrollBehaviorX: "contain",
-    margin: "0 -16px", padding: "0 16px",
-    scrollbarWidth: "none",
-  };
+
 
   function abrir(a: Atividade) {
     if (a.fonte === "visita") {
@@ -232,7 +228,7 @@ function Home() {
   return (
     <>
       {/* Banner — margens negativas casadas com o padding do <main> */}
-      <div style={{
+      <div className="banner-home" style={{
         marginTop: -76, marginLeft: -16, marginRight: -16,
         position: "relative", height: "28vh", minHeight: 180, overflow: "hidden",
       }}>
@@ -312,30 +308,74 @@ function Home() {
           </div>
         )}
 
-        {/* Padrões de kanban + seletor de visão */}
+        {/* Barra de controle: um botão por dimensão de filtro, cada um dizendo
+            o que está escolhido sem precisar ser aberto. Antes eram duas
+            fileiras de chips disputando a largura — quinze alvos sem hierarquia. */}
         {!semPerfil && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ ...trilhoChips, flex: 1, minWidth: 0, marginRight: 0, paddingRight: 4 }}>
-              {presets.map((p) => (
-                <button
-                  key={p.chave}
-                  style={chip(filtros.preset === p.chave)}
-                  onClick={() => setFiltros((f) => ({
-                    ...f,
-                    preset: f.preset === p.chave ? null : p.chave,
-                    // trocar de padrão zera o período: a interseção vazia entre
-                    // preset e período custa três toques cegos para descobrir
-                    periodo: null,
-                  }))}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <MenuFiltro
+              rotulo="Padrão"
+              vazio="Padrão"
+              opcoes={presets.map((p) => ({ valor: p.chave, label: p.label }))}
+              selecionados={filtros.preset ? [filtros.preset] : []}
+              onMudar={(v) => setFiltros((f) => ({
+                ...f,
+                preset: v[0] ?? null,
+                // trocar de padrão zera o período: a interseção vazia entre
+                // preset e período custa três toques cegos para descobrir
+                periodo: null,
+              }))}
+            />
+            <MenuFiltro
+              rotulo="Vínculo"
+              vazio="Meu vínculo"
+              multi
+              opcoes={VINCULOS.map((v) => ({ valor: v.chave, label: v.label }))}
+              selecionados={filtros.vinculos}
+              onMudar={(v) => setFiltros((f) => ({ ...f, vinculos: v as Vinculo[] }))}
+            />
+            <MenuFiltro
+              rotulo="Período"
+              vazio="Período"
+              opcoes={PERIODOS.map((p) => ({ valor: p.chave, label: p.label }))}
+              selecionados={filtros.periodo ? [filtros.periodo] : []}
+              onMudar={(v) => setFiltros((f) => ({ ...f, periodo: (v[0] ?? null) as Periodo }))}
+            />
+            <MenuFiltro
+              rotulo="Situação"
+              vazio="Em aberto"
+              opcoes={[
+                { valor: "abertos", label: "Em aberto" },
+                { valor: "encerrados", label: "Encerrados", nota: "últimos 7 dias" },
+                { valor: "todos", label: "Todos" },
+              ]}
+              selecionados={filtros.situacao === "abertos" ? [] : [filtros.situacao]}
+              onMudar={(v) => setFiltros((f) => {
+                const sit = (v[0] ?? "abertos") as Filtros["situacao"];
+                return {
+                  ...f,
+                  situacao: sit,
+                  // todo padrão exige item em aberto: manter um ligado aqui
+                  // daria lista vazia por construção, sem o usuário saber
+                  preset: sit === "abertos" ? f.preset : null,
+                };
+              })}
+            />
+            {gestor && pessoas.length > 0 && (
+              <MenuFiltro
+                rotulo="Pessoa"
+                vazio="Responsável"
+                larguraMenu={260}
+                opcoes={pessoas.map((p) => ({ valor: p.id, label: p.nome }))}
+                selecionados={filtros.pessoa === "todos" ? [] : [filtros.pessoa]}
+                onMudar={(v) => setFiltros((f) => ({ ...f, pessoa: v[0] ?? "todos" }))}
+              />
+            )}
+
+            <div style={{ flex: 1, minWidth: 8 }} />
+
             <button
               onClick={() => {
-                // fechar limpa: um filtro invisível que continua filtrando é a
-                // pior forma de esconder resultado
                 if (buscaAberta) setFiltros((f) => ({ ...f, busca: "" }));
                 setBuscaAberta((b) => !b);
               }}
@@ -369,60 +409,6 @@ function Home() {
               color: textPrimary, fontFamily: FONT, fontSize: 14, outline: "none",
             }}
           />
-        )}
-
-        {/* Vínculo — o filtro que o Davi pediu nominalmente — e período */}
-        {!semPerfil && (
-          <div style={trilhoChips}>
-            {VINCULOS.map((v) => (
-              <button key={v.chave} style={chip(filtros.vinculos.includes(v.chave))} onClick={() => trocarVinculo(v.chave)}>
-                {v.label}
-              </button>
-            ))}
-            <span style={{
-              width: 1, flexShrink: 0, alignSelf: "stretch", margin: "6px 2px",
-              background: isLight ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.12)",
-            }} />
-            {PERIODOS.map((p) => (
-              <button
-                key={p.chave}
-                style={chip(filtros.periodo === p.chave)}
-                onClick={() => setFiltros((f) => ({ ...f, periodo: f.periodo === p.chave ? null : p.chave }))}
-              >
-                {p.label}
-              </button>
-            ))}
-            <button
-              style={chip(filtros.situacao === "encerrados")}
-              onClick={() => setFiltros((f) => ({
-                ...f,
-                situacao: f.situacao === "encerrados" ? "abertos" : "encerrados",
-                // todo preset exige item em aberto: manter um ligado aqui daria
-                // lista vazia por construção, sem o usuário ter como saber
-                preset: f.situacao === "encerrados" ? f.preset : null,
-              }))}
-            >
-              Encerrados
-            </button>
-          </div>
-        )}
-
-        {/* Pessoa — só gestor; o técnico fica travado nele mesmo */}
-        {gestor && pessoas.length > 0 && (
-          <select
-            value={filtros.pessoa}
-            onChange={(e) => setFiltros((f) => ({ ...f, pessoa: e.target.value }))}
-            style={{
-              width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
-              background: isLight ? "#ffffff" : "#16161d",
-              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-              color: textPrimary, fontFamily: FONT, fontSize: 13.5,
-              outline: "none", colorScheme: isLight ? "light" : "dark",
-            }}
-          >
-            <option value="todos">Todos os responsáveis</option>
-            {pessoas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
         )}
 
         {/* Conteúdo */}
@@ -486,7 +472,7 @@ function Home() {
             onAbrir={abrir}
           />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="lista-atividades">
             {filtradas.slice(0, 60).map((a) => (
               <CardAtividade
                 key={a.id}

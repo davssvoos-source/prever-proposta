@@ -182,7 +182,7 @@ function ClientesPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
         {([
           ["todos", `Todos (${contagem.todos})`],
           ["ativo", `Ativos (${contagem.ativo})`],

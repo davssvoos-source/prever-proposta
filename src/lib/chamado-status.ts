@@ -3,8 +3,8 @@
  * Substitui os-status.ts (campo) e demanda-status.ts (interno): depois da
  * fusão existe um conceito só, com dois modos de execução.
  *
- * Ciclo do campo:   aberto → agendado → em andamento → executado → concluído
- * Ciclo do interno: aberto → em andamento → (stand-by | aguardando aprovação) → concluído
+ * Ciclo do campo:   aguardando início → agendado → em andamento → executado → concluído
+ * Ciclo do interno: aguardando início → em andamento → (stand-by | aguardando aprovação) → concluído
  * Cancelado sai de qualquer ponto, com motivo.
  *
  * "Executado" é o portão da conferência que libera a cobrança — por isso
@@ -47,7 +47,9 @@ export interface StatusInfo {
 
 const STATUS: Record<ChamadoStatus, StatusInfo> = {
   aberto: {
-    label: "Aberto", labelUpper: "ABERTO",
+    // O valor gravado continua 'aberto' (está no CHECK chamados_status_check,
+    // em triggers e em policies). Só o que a pessoa lê mudou.
+    label: "Aguardando início", labelUpper: "AGUARDANDO INÍCIO",
     color: "#FFC000", colorLight: "#b87800",
     bg: "rgba(255,192,0,0.12)", border: "rgba(255,192,0,0.30)",
   },

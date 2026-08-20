@@ -158,9 +158,9 @@ function PermissoesPage() {
           ))}
         </div>
       ) : (
-        <div style={{
+        <div className="trilho-x" style={{
           margin: "0 -16px", padding: "0 16px",
-          overflowX: "auto", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch",
+          overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch",
         }}>
           <div style={{ minWidth: "max-content" }}>
             {/* cabeçalho */}

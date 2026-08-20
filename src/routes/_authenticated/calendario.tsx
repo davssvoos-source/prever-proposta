@@ -257,7 +257,7 @@ function CalendarioPage() {
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
             {([
               ["todos", "Tudo"],
               ["visita", "Visitas"],

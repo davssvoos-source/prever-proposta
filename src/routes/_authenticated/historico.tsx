@@ -98,11 +98,10 @@ function VisitasPage() {
         </p>
       </div>
 
-      <div style={{
+      <div className="trilho-x" style={{
         display: "flex",
         gap: 8,
-        overflowX: "auto",
-        marginBottom: 16,
+                marginBottom: 16,
         paddingBottom: 4,
       }}>
         {FILTROS.map((f) => {

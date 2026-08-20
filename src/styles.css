@@ -177,11 +177,13 @@
        todas as consultas e perde a posição do quadro. Sem service worker, é
        caro demais para acontecer por acidente. */
     overscroll-behavior-y: contain;
-    /* nenhum trilho horizontal pode rolar a página inteira junto e desalinhar
-       o cabeçalho fixo e a barra inferior flutuante */
-    overflow-x: hidden;
   }
   body {
+    /* `clip`, não `hidden`. Os dois contêm o estouro lateral, mas `hidden`
+       transforma o body em container de rolagem e com isso QUEBRA todo
+       `position: sticky` descendente — os cartões fixos do TotemWizard e do
+       ElevadoresWizard parariam de grudar. `clip` não cria container. */
+    overflow-x: clip;
     background:
       radial-gradient(ellipse at top center,
         #131828 0%,
@@ -380,4 +382,104 @@ input, textarea, select {
 input::placeholder, textarea::placeholder {
   color: rgba(200,200,200,0.40);
   font-weight: 300;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Trilho horizontal — quadro, chips de filtro e a matriz de permissões
+   ═══════════════════════════════════════════════════════════════════════════
+   Três coisas que só dão para fazer em CSS, não em estilo inline:
+   1. esconder a barra de rolagem (pseudo-elemento);
+   2. o quadro sangrar até as bordas da tela no desktop, saindo do max-w-5xl
+      do <main> sem que o resto do conteúdo saia junto;
+   3. a coluna crescer quando há espaço, em vez de ficar em 260px num monitor. */
+
+.trilho-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* Edge legado */
+}
+.trilho-x::-webkit-scrollbar { display: none; height: 0; width: 0; }
+
+/* Sangria: o <main> é mx-auto max-w-5xl com 16px de padding. Na largura de
+   celular, -16px basta. No desktop, o quadro precisa alcançar a borda da
+   janela, e a conta é "metade do que sobra fora do container, mais o padding".
+   `50% - 50vw` é exatamente isso, e funciona sem o componente saber a largura. */
+.sangra-x {
+  margin-left: -16px;
+  margin-right: -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 1024px) {
+  .sangra-x {
+    /* A margem negativa leva o trilho até a borda da janela. O padding é uma
+       constante pequena, e não uma fórmula: a margem já resolveu a posição, e
+       somar `50vw - 50%` de volta empurrava a primeira coluna 352px para
+       dentro num monitor de 1920 — que é justamente o problema que a sangria
+       existe para resolver.
+       Sobra ~7px de estouro porque 100vw conta a barra de rolagem vertical e
+       100% não. É clipado pelo `overflow-x: clip` do body. */
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  /* No desktop a coluna respira: 300px de piso, e cresce até 360 quando cabe.
+     Em telas largas isso troca "sete colunas espremidas com espaço morto ao
+     lado" por sete colunas legíveis usando a tela toda. */
+  .coluna-quadro { width: clamp(300px, 22vw, 360px) !important; }
+}
+
+/* O ponteiro fino do desktop merece a barra de volta em containers que rolam
+   na vertical — só o eixo horizontal é escondido. */
+@media (hover: hover) and (pointer: fine) {
+  .rolagem-fina { scrollbar-width: thin; }
+  .rolagem-fina::-webkit-scrollbar { width: 8px; }
+  .rolagem-fina::-webkit-scrollbar-thumb {
+    background: rgba(128,128,128,0.35); border-radius: 4px;
+  }
+  .rolagem-fina::-webkit-scrollbar-track { background: transparent; }
+}
+
+/* ── Lista de atividades: comprimento de linha ──────────────────────────────
+   Um card ocupando 1280px de largura com título de 14px é ruim de ler: o olho
+   perde a linha na volta. A partir de 1024px a lista vira grade, e a coluna
+   fica na faixa de 400-600px que é onde texto curto se lê bem. */
+.lista-atividades {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .lista-atividades { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  /* o banner de foto não precisa de 28vh num monitor: rouba a dobra do
+     conteúdo, que é o que a pessoa veio ver */
+  .banner-home { height: 210px !important; min-height: 0 !important; }
+}
+@media (min-width: 1600px) {
+  .lista-atividades { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Foco visível — o app é operado por toque, mas no desktop existe teclado, e
+   sem isto navegar por Tab é invisível. */
+@media (hover: hover) and (pointer: fine) {
+  button:focus-visible, a:focus-visible, input:focus-visible,
+  select:focus-visible, textarea:focus-visible, [role="option"]:focus-visible {
+    outline: 2px solid #FFC000;
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

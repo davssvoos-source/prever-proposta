@@ -22,6 +22,13 @@
 // 4. A POSIÇÃO VOLTA. Abrir um card na coluna 6 e voltar recaindo na coluna 1
 //    é o imposto clássico de kanban em celular: o roteador não restaura offset
 //    de container interno. Guardamos em sessionStorage.
+//
+// 5. NO DESKTOP O QUADRO SANGRA ATÉ AS BORDAS e a roda do mouse rola de lado.
+//    Um trilho horizontal não responde à roda vertical — sem tradução, quem
+//    está no mouse precisa arrastar a barra, e a barra está escondida. A
+//    conversão só acontece quando NÃO há para onde rolar na vertical dentro da
+//    coluna sob o cursor, senão a roda deixaria de ler a coluna, que é o
+//    gesto mais frequente.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -67,6 +74,37 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
     return () => el.removeEventListener("scroll", guardar);
   }, []);
 
+  // Roda do mouse → rolagem lateral. Precisa de `passive: false` para poder
+  // chamar preventDefault, e por isso não dá para usar onWheel do React, que
+  // registra passivo. Trackpad com gesto horizontal (deltaX) passa direto.
+  useEffect(() => {
+    const el = trilhoRef.current;
+    if (!el) return;
+    const naRoda = (e: WheelEvent) => {
+      if (e.ctrlKey) return;                       // zoom do navegador
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;  // já é lateral
+
+      // Se a coluna sob o cursor ainda tem para onde rolar na vertical, a roda
+      // é dela. Só quando ela chega ao fim é que o movimento vira lateral.
+      const coluna = (e.target as HTMLElement)?.closest?.("[data-corpo-coluna]") as HTMLElement | null;
+      if (coluna) {
+        const sobra = coluna.scrollHeight - coluna.clientHeight - coluna.scrollTop;
+        if (e.deltaY > 0 && sobra > 1) return;
+        if (e.deltaY < 0 && coluna.scrollTop > 0) return;
+      }
+
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 0) return;
+      const alvo = el.scrollLeft + e.deltaY;
+      // no limite, devolve a roda para a página em vez de travar o gesto
+      if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max)) return;
+      e.preventDefault();
+      el.scrollLeft = alvo;
+    };
+    el.addEventListener("wheel", naRoda, { passive: false });
+    return () => el.removeEventListener("wheel", naRoda);
+  }, []);
+
   const porColuna = new Map<ColunaQuadro, Atividade[]>();
   for (const c of COLUNAS) porColuna.set(c, []);
   porColuna.set("sem_status", []);
@@ -97,15 +135,11 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
   return (
     <div
       ref={trilhoRef}
+      className="trilho-x sangra-x"
       style={{
-        margin: "0 -16px",
-        padding: "0 16px",
-        overflowX: "auto",
-        overscrollBehaviorX: "contain",
-        WebkitOverflowScrolling: "touch",
         // altura fixa: é o que mantém o cabeçalho na tela e as colunas
         // do mesmo tamanho, para não se arrastar de lado para o vazio
-        height: "min(62vh, 620px)",
+        height: "min(64vh, 680px)",
         minHeight: 340,
       }}
     >
@@ -119,7 +153,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
           const comVoce = itens.filter((a) => a.souResponsavel || a.souApoio).length;
 
           return (
-            <div key={c} style={{ ...COLUNA, opacity: apagada ? 0.5 : 1 }}>
+            <div key={c} className="coluna-quadro" style={{ ...COLUNA, opacity: apagada ? 0.5 : 1 }}>
               <div style={{
                 flexShrink: 0,
                 background: fundoCabecalho,
@@ -151,7 +185,10 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                 </span>
               </div>
 
-              <div style={{
+              <div
+                data-corpo-coluna
+                className="rolagem-fina"
+                style={{
                 flex: 1,
                 overflowY: "auto",
                 overscrollBehavior: "contain",
@@ -161,7 +198,8 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                 flexDirection: "column",
                 gap: 9,
                 minHeight: 0,
-              }}>
+              }}
+              >
                 {itens.length === 0 ? (
                   <span style={{
                     fontFamily: FONT, fontWeight: 300, fontSize: PISO_TIPO,

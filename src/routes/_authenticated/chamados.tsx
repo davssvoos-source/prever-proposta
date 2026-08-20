@@ -347,7 +347,7 @@ function ChamadosPage() {
       </div>
 
       {/* Situação */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
         <button style={chip(situacao === "abertos")} onClick={() => setSituacao("abertos")}>
           Em aberto ({contagens.abertos})
         </button>
@@ -360,7 +360,7 @@ function ChamadosPage() {
       </div>
 
       {/* Trilho */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
         <button style={chip(trilho === "todos")} onClick={() => setTrilho("todos")}>Todos os trilhos</button>
         <button style={chip(trilho === "campo")} onClick={() => setTrilho("campo")}>
           Campo ({contagens.campo})
