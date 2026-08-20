@@ -3,7 +3,11 @@
 // Estrutura, de cima para baixo, seguindo as referências de layout que o Davi
 // mandou (rail à esquerda, conteúdo à direita):
 //
-//   logotipo · itens de navegação · [respiro] · alternador de tema · perfil
+//   banner da fachada · logotipo · itens · [respiro] · tema · perfil
+//
+// O banner da frota saiu do topo da Home e virou o cabeçalho DO MENU (pedido
+// do Davi). Faz sentido: na Home ele comia 210px da dobra — o espaço onde o
+// trabalho aparece — e aqui identifica o produto sem disputar com conteúdo.
 //
 // O item ativo é uma pílula no degradê da marca com texto escuro — o mesmo
 // tratamento dos botões de ação do app, para "onde estou" e "o que posso
@@ -14,6 +18,7 @@
 // (nav-itens.ts) e a mesma matriz de permissões.
 
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,8 +74,10 @@ export function SideNav() {
     zIndex: 55,
     flexDirection: "column",
     gap: 6,
-    padding: "20px 14px 18px",
+    // sem padding no topo: o banner sangra até a borda da sidebar
+    padding: "0 14px 18px",
     boxSizing: "border-box",
+    overflow: "hidden",
     background: isLight
       ? "#ffffff"
       : "linear-gradient(180deg, #121216 0%, #0a0a0e 100%)",
@@ -107,12 +114,43 @@ export function SideNav() {
   return (
     // .so-desktop: display none no celular, flex no desktop (styles.css)
     <aside className="so-desktop" style={ASIDE} aria-label="Navegação principal">
+      {/* Banner da fachada — sangra até as bordas da sidebar (os -14px anulam
+          o padding lateral) e escurece embaixo para o logotipo pousar em cima. */}
+      <div style={{
+        position: "relative",
+        margin: "0 -14px 0",
+        height: 132,
+        flexShrink: 0,
+        overflow: "hidden",
+      }}>
+        <img
+          src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
+          alt=""
+          style={{
+            position: "absolute", inset: 0,
+            width: "100%", height: "100%",
+            objectFit: "cover", objectPosition: "center 60%",
+          }}
+        />
+        <div style={{
+          position: "absolute", inset: 0,
+          background: isLight
+            ? "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(255,255,255,0.55) 62%, #ffffff 100%)"
+            : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(10,10,14,0.82) 62%, #121216 100%)",
+          pointerEvents: "none",
+        }} />
+      </div>
+
       <Link
         to="/dashboard"
         aria-label="Início"
-        style={{ display: "flex", justifyContent: "center", padding: "4px 0 14px" }}
+        style={{
+          display: "flex", justifyContent: "center",
+          // sobe sobre o degradê do banner: o logotipo fecha a composição
+          marginTop: -46, marginBottom: 14, position: "relative", zIndex: 1,
+        }}
       >
-        <LogoPrever altura={64} cor={isLight ? SUPERNOVA[600] : SUPERNOVA[400]} />
+        <LogoPrever altura={74} />
       </Link>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>

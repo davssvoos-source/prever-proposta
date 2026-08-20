@@ -21,11 +21,10 @@ Supernova (primária), Shamrock (sucesso), Christine (aviso) e Flush Mahogany
 (erro) — e o desktop ganhou navegação lateral. Referências de layout: os
 dashboards Nixtio (escuro) e "My Organization" (claro) escolhidos pelo Davi.
 
-**Logotipo**: escudo de topo ondulado com "GRUPO" dentro e "PREVER"
-atravessando mais largo que o escudo, monocromático no dourado da marca —
-componente `src/components/LogoPrever.tsx` (Supernova 400 no escuro, 600 no
-claro). É recriação vetorial; se o vetor oficial chegar, troca-se o conteúdo
-do componente e todos os usos acompanham.
+**Logotipo**: o arquivo oficial `public/logo-grupo-prever.png` (999×641, PNG
+vazado), servido **sem modificação** pelo componente
+`src/components/LogoPrever.tsx`. Monocromático dourado com transparência,
+serve nos dois temas. Não aplicar filtro de cor nem recolorir.
 
 Princípios que governam as decisões:
 
@@ -259,7 +258,7 @@ enquanto — trocar é decisão à parte, o login tem identidade própria.
 
 | Contexto | Navegação |
 |---|---|
-| ≥ 1024px | **Sidebar fixa à esquerda, 232px** (`SideNav.tsx`): logotipo no topo, itens com ícone+rótulo, alternador de tema e cartão de perfil no rodapé. Item ativo = pílula no gradiente primário com texto `#08090E`. |
+| ≥ 1024px | **Sidebar fixa à esquerda, 232px** (`SideNav.tsx`): banner da fachada sangrando no topo, logotipo pousado sobre o degradê dele, itens com ícone+rótulo, alternador de tema e cartão de perfil no rodapé. Item ativo = pílula no gradiente primário com texto `#08090E`. |
 | < 1024px | **Barra inferior flutuante** (`BottomNav.tsx`), como sempre foi — é onde o polegar alcança. |
 
 Regras de implementação:
@@ -274,6 +273,29 @@ Regras de implementação:
 - O alternador de tema (`ThemeToggle.tsx`) é a pílula Light/Dark com botão
   deslizante + o disco sol/lua com crescente animado (adaptado do Uiverse de
   Pradeepsaranbishnoi; o degradê do sol é Supernova 300→500).
+- **O banner da fachada é cabeçalho do MENU, não da Home.** No desktop a dobra
+  da Início abre direto no trabalho; a identidade mora na sidebar. No celular
+  o banner segue no topo da Home, com a frase "Você tem X atividades hoje" —
+  lá não há sidebar para carregá-la.
+
+### Alinhamento à margem do quadro
+
+Faixa superior, barra de filtros e quadro compartilham a classe `.sangra-x`.
+Sem isso, o quadro sangrava até a borda e os controles começavam onde o
+`<main>` começa: nunca se alinhavam. Com a sangria compartilhada, título e
+filtros nascem na coluna da primeira coluna do quadro, e a busca encosta na
+margem da última.
+
+### Campo de busca (`CampoBusca.tsx`)
+
+Pílula clara com halo difuso e botão de lupa em bloco à direita — adaptação do
+Uiverse de Gautammsharma. Três desvios do original, registrados: a paleta verde
+virou a da marca (verde é *sucesso* aqui, usá-lo numa busca diria algo falso); o
+`filter: blur` de uma div de sombra virou `box-shadow` no container (mesmo halo,
+sem elemento extra nem camada de composição); e o tema escuro ganhou tratamento
+próprio, porque o original é claro-only e a pílula branca sobre preto fica
+estridente. No desktop mora na faixa superior; no celular abre pela lupa, onde
+não há largura para conviver com os cinco filtros.
 
 ---
 

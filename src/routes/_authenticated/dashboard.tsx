@@ -41,6 +41,7 @@ import {
   semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
+import { CampoBusca } from "@/features/home/CampoBusca";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
@@ -228,7 +229,7 @@ function Home() {
   return (
     <>
       {/* Banner — margens negativas casadas com o padding do <main> */}
-      <div className="banner-home" style={{
+      <div className="banner-home so-celular" style={{
         marginTop: -76, marginLeft: -16, marginRight: -16,
         position: "relative", height: "28vh", minHeight: 180, overflow: "hidden",
       }}>
@@ -286,6 +287,29 @@ function Home() {
       </div>
 
       <div style={{ paddingTop: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Faixa superior do desktop. O banner e a frase "Você tem X hoje"
+            saíram daqui (viraram cabeçalho da sidebar e conteúdo de celular),
+            então a dobra abre com o trabalho. A busca encosta na margem
+            direita do quadro; o meio fica livre de propósito — o Davi vai
+            definir o que entra. */}
+        <div className="so-desktop sangra-x" style={{ alignItems: "center", gap: 16, paddingTop: 8, paddingBottom: 2 }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{
+              fontFamily: FONT, fontWeight: 600, fontSize: 24, margin: 0,
+              color: textPrimary, letterSpacing: "-0.01em",
+            }}>
+              Suas atividades
+            </h1>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 24 }} />
+
+          <CampoBusca
+            valor={filtros.busca}
+            onMudar={(v) => setFiltros((f) => ({ ...f, busca: v }))}
+          />
+        </div>
+
         <ProximaVisita
           visita={proxima}
           onAbrir={() => proxima && navigate({
@@ -312,7 +336,7 @@ function Home() {
             o que está escolhido sem precisar ser aberto. Antes eram duas
             fileiras de chips disputando a largura — quinze alvos sem hierarquia. */}
         {!semPerfil && (
-          <div className="barra-filtros" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="barra-filtros sangra-x" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MenuFiltro
               rotulo="Padrão"
               vazio="Padrão"
@@ -397,19 +421,16 @@ function Home() {
           </div>
         )}
 
+        {/* No celular o campo abre pela lupa — não há largura para ele morar
+            na barra junto dos cinco filtros. */}
         {buscaAberta && (
-          <input
-            autoFocus
-            value={filtros.busca}
-            onChange={(e) => setFiltros((f) => ({ ...f, busca: e.target.value }))}
-            placeholder="Número, título ou cliente"
-            style={{
-              width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 14px",
-              background: isLight ? "#ffffff" : "#16161d",
-              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-              color: textPrimary, fontFamily: FONT, fontSize: 14, outline: "none",
-            }}
-          />
+          <div className="so-celular">
+            <CampoBusca
+              autoFoco
+              valor={filtros.busca}
+              onMudar={(v) => setFiltros((f) => ({ ...f, busca: v }))}
+            />
+          </div>
         )}
 
         {/* Conteúdo */}

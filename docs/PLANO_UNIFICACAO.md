@@ -1640,3 +1640,34 @@ ficou de fora; o sol usa Supernova em vez do rosa-laranja original; virou
 quatro escalas com tabela completa e tom-chave), §5 (fundos glow), §5b
 (navegação sidebar×barra). Os hexes v1 que apareciam em exemplos foram varridos
 para os equivalentes v2.
+
+### U16 — Ajustes do layout desktop e campo de busca (2026-08-20)
+
+Pedidos pontuais depois de ver a v2 no ar:
+
+**Alinhamento.** Faixa superior e barra de filtros ganharam a mesma `.sangra-x`
+do quadro. Antes o quadro sangrava até a borda e os controles começavam onde o
+`<main>` começa — os dois nunca se alinhavam. Agora título e filtros nascem na
+coluna da primeira coluna do quadro, e a busca encosta na margem da última.
+
+**Banner da fachada → cabeçalho da sidebar.** Saiu do topo da Home, onde comia
+210px da dobra (o espaço onde o trabalho aparece), e virou o cabeçalho do menu:
+sangra até as bordas da sidebar e escurece embaixo para o logotipo pousar sobre
+ele. No **celular** o banner continua na Home, com a frase "Você tem X
+atividades hoje" — lá não há sidebar para carregá-la.
+
+**Logotipo oficial.** `public/logo-grupo-prever.png` é o arquivo entregue, sem
+modificação. A recriação vetorial da U15 foi descartada.
+
+**"Você tem X hoje" fora do desktop**, com o subtexto. A faixa superior abre
+com um título simples e a busca à direita; o meio fica livre de propósito, para
+o Davi definir o que entra.
+
+**Campo de busca** (`CampoBusca.tsx`), adaptado do Uiverse de Gautammsharma.
+Três desvios do original, e o porquê de cada um: a paleta verde virou a da marca
+(verde é *sucesso* no nosso sistema — usá-lo numa busca diria algo que não é
+verdade); a div borrada de sombra virou `box-shadow` no container (mesmo halo,
+sem elemento extra nem `filter: blur`, que força camada de composição); e o tema
+escuro ganhou tratamento próprio, porque o original é claro-only e a pílula
+branca sobre preto fica estridente. No desktop mora na faixa superior; no
+celular continua abrindo pela lupa, onde não há largura para os dois.

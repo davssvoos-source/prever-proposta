@@ -529,10 +529,19 @@ input::placeholder, textarea::placeholder {
 }
 .barra-filtros::-webkit-scrollbar { display: none; height: 0; }
 @media (min-width: 1024px) {
+  /* No desktop a barra herda a sangria (.sangra-x, aplicada junto no JSX) para
+     encostar na MESMA margem do quadro — antes ela começava onde o <main>
+     começa, e o quadro sangrava até a borda: os dois nunca se alinhavam. */
   .barra-filtros {
     flex-wrap: wrap;
     overflow: visible;
-    margin-left: 0; margin-right: 0;
-    padding-left: 0; padding-right: 0;
   }
+}
+
+/* A faixa superior do desktop e a barra de filtros compartilham a sangria,
+   então o título, os filtros e o campo de busca ficam na mesma coluna visual
+   da primeira e da última coluna do quadro. */
+.so-desktop.sangra-x { display: none; }
+@media (min-width: 1024px) {
+  .so-desktop.sangra-x { display: flex; }
 }
