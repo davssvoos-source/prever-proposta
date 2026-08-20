@@ -1464,3 +1464,62 @@ própria de admin). O rodapé some com item cuja tela está bloqueada, e os
 atalhos do painel gerencial também — atalho que leva a tela bloqueada é
 armadilha. Enquanto a matriz carrega, nada some: `podeVer` devolve `undefined`
 e o item fica, senão a barra pisca abas aparecendo e sumindo a cada carga.
+
+### U12 — Desktop: quadro de borda a borda, roda do mouse, filtros em menus (2026-08-19)
+
+Pedido: *"Altere o status 'Aberto' para 'Aguardando inicio'. Além disso, otimize
+a versão desktop... o kanban ocupe da esquerda para direita da tela, o scroll do
+mouse funcione, que não seja visivel essa barra de scroll. Una as opções de
+filtro em botões com caixas que abrem para multi seleção."*
+
+**Só código — nenhuma migration.**
+
+**O rótulo, não o valor.** `aberto` continua sendo o que o banco grava: está no
+`CHECK chamados_status_check`, em triggers, em funções e em policies. Trocar o
+valor seria migration de risco alto para mudança de texto. Só
+`chamadoStatusInfo().label` mudou — que é exatamente para isso que ele existe.
+
+**Sangria até a borda.** `calc(50% - 50vw)` funciona sem o componente conhecer a
+largura do container. A coluna deixou de ser fixa em 260px e virou
+`clamp(300px, 22vw, 360px)`: num monitor, sete colunas espremidas com espaço
+morto ao lado viraram sete colunas legíveis.
+
+**Roda do mouse.** Trilho horizontal não responde à roda vertical, e a barra
+agora está escondida — sem tradução, quem usa mouse fica sem saída. A conversão
+só acontece quando a coluna sob o cursor não tem mais o que rolar na vertical,
+senão a roda deixaria de ler a coluna, que é o gesto mais frequente. Exige
+`passive: false`, e por isso não dá para usar o `onWheel` do React.
+
+**Filtros em cinco menus** (Padrão · Vínculo multi · Período · Situação ·
+Pessoa) no lugar de quinze chips em duas fileiras. O botão fechado já mostra a
+escolha: filtro cujo estado só se descobre abrindo é filtro que a pessoa esquece
+ligado e depois acha que o sistema perdeu dados.
+
+**Layout**: container 1024 → 1280px; lista em grade de 2 colunas a partir de
+1024px e 3 a partir de 1600px, porque card de 1280px com título de 14px é ruim
+de ler; banner deixa de comer 28vh num monitor; entraram foco visível por
+teclado e `prefers-reduced-motion`.
+
+**Dois defeitos meus, achados na revisão antes de subir**
+
+1. **A conta da sangria estava errada.** O padding era
+   `max(24px, calc(50vw - 50% + 24px))` — a margem negativa já resolvia a
+   posição, e somar a fórmula de volta empurrava a primeira coluna para **352px
+   da borda** num monitor de 1920, que é exatamente o problema que a sangria
+   existe para resolver. Virou constante de 24px, conferida em 1024, 1280, 1440
+   e 1920.
+2. **`overflow-x: hidden` em `html, body` quebraria os wizards.** `hidden`
+   transforma o elemento em container de rolagem e anula todo `position: sticky`
+   descendente — os cartões fixos de `TotemWizard` e `ElevadoresWizard`
+   parariam de grudar. Trocado por `overflow-x: clip`, que contém o estouro sem
+   criar container.
+
+**Revisão encerrada a pedido, com 17 achados registrados.** A fase de refutação
+não chegou a rodar, então os achados foram separados entre os que eu mesmo
+verifiquei no código e os que seguem por confirmar. Estão em
+**`docs/PENDENCIAS_TECNICAS.md`**, com arquivo, caminho de quebra e correção
+mínima de cada um. O mais grave: o **menu de filtro é pintado atrás da
+BottomNav** — `#root, main, header, nav { z-index: 1 }` faz do `<main>` um
+contexto de empilhamento, então o `z-index: 60` do popover só compete lá dentro,
+e no celular tocar na última opção navega para outra tela. A correção é portal
+para o `body`; subir o z-index não resolve, porque o problema não é o valor.
