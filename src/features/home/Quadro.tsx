@@ -23,7 +23,7 @@
 //    é o imposto clássico de kanban em celular: o roteador não restaura offset
 //    de container interno. Guardamos em sessionStorage.
 
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import {
@@ -34,7 +34,7 @@ import { CardAtividade, PISO_TIPO } from "./CardAtividade";
 
 const LARGURA_COLUNA = 260;
 const CHAVE_ROLAGEM = "prever-home-quadro-x";
-/** Teto de render por coluna — o resto entra num botão, nunca some calado. */
+/** Teto inicial por coluna. O "ver mais" sobe daqui — nada fica inalcançável. */
 const TETO = 25;
 
 interface Props {
@@ -47,6 +47,9 @@ interface Props {
 export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
   const { isLight } = useTheme();
   const trilhoRef = useRef<HTMLDivElement>(null);
+  // teto por coluna: sem isto o "+ N nesta coluna" era um texto morto e os
+  // itens além do 25º ficavam sem nenhuma forma de serem alcançados no quadro
+  const [tetos, setTetos] = useState<Record<string, number>>({});
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -168,7 +171,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                   </span>
                 ) : (
                   <>
-                    {itens.slice(0, TETO).map((a) => (
+                    {itens.slice(0, tetos[c] ?? TETO).map((a) => (
                       <CardAtividade
                         key={a.id}
                         a={a}
@@ -177,13 +180,18 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
                         onClick={() => onAbrir(a)}
                       />
                     ))}
-                    {itens.length > TETO && (
-                      <span style={{
-                        fontFamily: FONT, fontSize: PISO_TIPO, color: textSecondary,
-                        textAlign: "center", padding: "8px 0",
-                      }}>
-                        + {itens.length - TETO} nesta coluna
-                      </span>
+                    {itens.length > (tetos[c] ?? TETO) && (
+                      <button
+                        onClick={() => setTetos((t) => ({ ...t, [c]: (t[c] ?? TETO) + 25 }))}
+                        style={{
+                          fontFamily: FONT, fontWeight: 600, fontSize: PISO_TIPO,
+                          color: isLight ? "#b87800" : "#FFC000",
+                          background: "transparent", border: "none", cursor: "pointer",
+                          padding: "10px 0", minHeight: 40,
+                        }}
+                      >
+                        ver mais {itens.length - (tetos[c] ?? TETO)}
+                      </button>
                     )}
                   </>
                 )}

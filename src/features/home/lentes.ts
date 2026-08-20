@@ -171,11 +171,17 @@ export const FILTROS_INICIAIS: Filtros = {
   busca: "",
 };
 
+export function semData(a: Atividade): boolean {
+  return !a.quando;
+}
+
 function dentroDoPeriodo(a: Atividade, p: Periodo, agora: Date): boolean {
   if (!p) return true;
-  // Regra dura: item SEM data nunca é escondido pelo período. Sumir em
-  // silêncio um chamado sem prazo é a pior falha possível nesta tela.
-  if (!a.quando) return true;
+  // Item sem data NÃO passa quando há período escolhido — deixá-lo passar
+  // fazia "Hoje" devolver a base inteira, porque a maioria dos chamados
+  // internos não tem prazo. Mas ele também não some calado: a tela conta
+  // quantos ficaram de fora e oferece tirar o filtro (ver `semData`).
+  if (!a.quando) return false;
   const d = new Date(a.quando);
   if (p === "hoje") return mesmoDia(a.quando, agora);
   if (p === "semana") {

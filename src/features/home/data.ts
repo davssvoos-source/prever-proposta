@@ -38,7 +38,7 @@ const CAMPOS_CHAMADO =
 const CAMPOS_VISITA =
   "id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +
   "foto_fachada_url, endereco, nome_sindico, proposta_enviada_em, proposta_resultado, " +
-  "clientes(nome)";
+  "proposta_resultado_em, clientes(nome)";
 
 export interface Sessao {
   userId: string | null;
@@ -103,10 +103,10 @@ export function useMeusApoios(s: Sessao) {
  * Quando um pedido volta sem ficha a causa é acesso, não legado: a U9 garante
  * ficha para 100% dos pedidos por trigger e backfill.
  */
-export function useFichasDeCompra(ids: string[]) {
+export function useFichasDeCompra(ids: string[], userId: string | null) {
   const chave = ids.slice().sort().join(",");
   return useQuery({
-    queryKey: ["home-compras-situacao", chave],
+    queryKey: ["home-compras-situacao", userId, chave],
     enabled: ids.length > 0,
     queryFn: async (): Promise<Record<string, SituacaoCompra>> => {
       const { data, error } = await supabase
@@ -149,7 +149,7 @@ export interface AtividadesDaHome {
  * quadro — sem consulta paralela, então o número do banner não pode discordar
  * do que está na tela.
  */
-export function useAtividades(s: Sessao, tecnicoFiltro: string): AtividadesDaHome {
+export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): AtividadesDaHome {
   const chamados = useChamadosDaHome(s);
   const apoios = useMeusApoios(s);
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
@@ -158,7 +158,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string): AtividadesDaHom
     () => (chamados.data ?? []).filter((c) => c.tipo === "pedido_compra").map((c) => c.id),
     [chamados.data],
   );
-  const fichas = useFichasDeCompra(idsCompra);
+  const fichas = useFichasDeCompra(idsCompra, s.userId);
 
   const atividades = useMemo<Atividade[]>(() => {
     const ctx = {
@@ -168,11 +168,16 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string): AtividadesDaHom
         Object.entries(fichas.data ?? {}).map(([k, v]) => [k, { situacao: v }]),
       ),
     };
-    const corte = Date.now() - DIAS_ENCERRADO * 864e5;
+    const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
 
+    const soMeus = s.cargo === "tecnico";
     for (const c of chamados.data ?? []) {
       const a = atividadeDoChamado(c, ctx);
+      // "todas as atividades que ENVOLVEM o usuário" — para o técnico isso é
+      // recorte, não decoração: sem ele a Home dele mostra os 537 chamados
+      // internos que a policy entrega a qualquer autenticado
+      if (soMeus && !(a.souResponsavel || a.souApoio || a.souAutor)) continue;
       if (!a.emAberto) {
         // refino do corte: quando o chamado saiu da fila de verdade.
         // `finalizada_em` NÃO é usada aqui de propósito — ela é o carimbo do
@@ -185,14 +190,18 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string): AtividadesDaHom
     }
     for (const v of visitas.data ?? []) {
       const a = atividadeDaVisita(v, ctx);
-      if (!a.emAberto && new Date(v.created_at).getTime() < corte) {
-        // visita encerrada só some quando o desfecho já é antigo
-        if (a.coluna === "concluido" || a.coluna === "cancelado") continue;
+      if (!a.emAberto) {
+        // pela data do DESFECHO, não pela de criação: uma proposta aceita hoje
+        // numa visita de três meses atrás sumia no instante do registro
+        const fim = (v as any).proposta_resultado_em ?? v.created_at;
+        if (new Date(fim).getTime() < corte) continue;
       }
       lista.push(a);
     }
     return lista;
-  }, [chamados.data, visitas.data, apoios.data, fichas.data, s.userId]);
+    // `agora` entra nas dependências de propósito: sem isso o "atrasado"
+    // calculado na montagem nunca mais muda enquanto a tela fica aberta
+  }, [chamados.data, visitas.data, apoios.data, fichas.data, s.userId, s.cargo, agora]);
 
   return {
     atividades,

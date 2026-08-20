@@ -323,7 +323,9 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
     agendadaEm: c.data_hora_agendada,
     quando: c.data_hora_agendada ?? c.prazo_limite ?? null,
-    emAberto: chamadoEmAberto(c.status),
+    // status fora do vocabulário conta como aberto: a coluna "Sem status"
+    // seria inalcançável se o filtro padrão o cortasse
+    emAberto: t.coluna === "sem_status" ? true : chamadoEmAberto(c.status),
     criadoEm: c.created_at,
     atualizadoEm: c.updated_at ?? c.created_at,
     compra: ficha ? { situacao: ficha.situacao, situacaoLabel: SITUACAO_LABEL[ficha.situacao] } : null,
@@ -365,13 +367,24 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     equipe: null,
     sprint: null,
     prazoLimite: null,
-    prazoTexto: null,
+    // a visita não tem prazo, tem hora marcada — sem isto o card não dizia
+    // quando ela é, nem na Início nem em /chamados
+    prazoTexto: v.data_hora_agendada
+      ? new Date(v.data_hora_agendada).toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+        })
+      : null,
     prazoEstourado: !!v.data_hora_agendada
       && new Date(v.data_hora_agendada).getTime() < Date.now()
       && (bucket === "pendente"),
     agendadaEm: v.data_hora_agendada,
     quando: v.data_hora_agendada ?? null,
-    emAberto: bucket === "pendente" || bucket === "aguardando_aprovacao",
+    // Derivado da COLUNA traduzida, não do bucket do status cru. Vindo do
+    // bucket, 'aprovada' e 'reprovada' ficavam encerradas — e a proposta na
+    // mão do cliente e a visita a reagendar, que este arquivo acabou de mandar
+    // para colunas de trabalho vivo, sumiam da tela no filtro padrão.
+    // `sem_status` fica em aberto de propósito: é a regra de nunca sumir calado.
+    emAberto: t.coluna !== "concluido" && t.coluna !== "cancelado",
     criadoEm: v.created_at,
     atualizadoEm: v.created_at,
     compra: null,

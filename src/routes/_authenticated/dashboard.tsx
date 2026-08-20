@@ -24,9 +24,11 @@
 
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Inbox, KanbanSquare, List as ListIcon, Search, WifiOff } from "lucide-react";
 
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 import { normalizarTexto } from "@/lib/normalizar";
@@ -36,7 +38,7 @@ import { atividadesDeHoje, type Atividade } from "@/features/atividades/modelo";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
-  FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
+  semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { Quadro } from "@/features/home/Quadro";
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const CHAVE_VISAO = "prever-home-visao";
+const CHAVE_FILTROS = "prever-home-filtros";
 const VINCULOS: { chave: Vinculo; label: string }[] = [
   { chave: "responsavel", label: "Responsável" },
   { chave: "apoio", label: "Apoio" },
@@ -62,6 +65,7 @@ function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLight } = useTheme();
+  const qc = useQueryClient();
 
   const { data: sessao } = useSessao();
   const s = sessao ?? { userId: null, cargo: null };
@@ -77,20 +81,52 @@ function Home() {
     try { localStorage.setItem(CHAVE_VISAO, visao); } catch { /* modo privado */ }
   }, [visao]);
 
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIAIS);
-  const [buscaAberta, setBuscaAberta] = useState(false);
+  // Os filtros sobrevivem a abrir e fechar um card. Antes só a rolagem do
+  // quadro voltava: preset, vínculo, período e busca eram perdidos, e quem
+  // tinha montado um recorte refazia tudo a cada card aberto.
+  const [filtros, setFiltros] = useState<Filtros>(() => {
+    try {
+      const bruto = sessionStorage.getItem(CHAVE_FILTROS);
+      return bruto ? { ...FILTROS_INICIAIS, ...JSON.parse(bruto) } : FILTROS_INICIAIS;
+    } catch { return FILTROS_INICIAIS; }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem(CHAVE_FILTROS, JSON.stringify(filtros)); } catch { /* modo privado */ }
+  }, [filtros]);
+  const [buscaAberta, setBuscaAberta] = useState(() => !!filtros.busca);
 
   // o preset padrão depende do perfil, que chega depois — aplicado uma vez só
   const [presetInicializado, setPresetInicializado] = useState(false);
   useEffect(() => {
     if (presetInicializado || !s.cargo) return;
     const p = presetPadrao(s.cargo);
-    if (p) setFiltros((f) => ({ ...f, preset: p }));
+    // só aplica se a pessoa ainda não escolheu nada nesta sessão
+    if (p) setFiltros((f) => (f.preset === null && !f.busca && !f.periodo && !f.vinculos.length
+      ? { ...f, preset: p } : f));
     setPresetInicializado(true);
   }, [s.cargo, presetInicializado]);
 
-  const { atividades, visitas, carregando, erro } = useAtividades(s, filtros.pessoa);
+  // Um relógio que anda. Antes era `useMemo(() => new Date(), [atividades])`:
+  // congelava na primeira carga, e um chamado que vencia às 14h continuava
+  // "no prazo" para quem tinha deixado a tela aberta desde as 13h.
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setAgora(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const { atividades, visitas, carregando, erro } = useAtividades(s, filtros.pessoa, agora);
   useChamadosRealtime();
+  useEffect(() => {
+    // o canal compartilhado cobre `chamados`; a visita é fonte da Início
+    // também, e sem isto aprovar ou reagendar não refletia mais aqui
+    const canal = supabase
+      .channel("home-visitas-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "visitas_tecnicas" }, () =>
+        qc.invalidateQueries({ queryKey: ["dashboard-visitas"] }))
+      .subscribe();
+    return () => { void supabase.removeChannel(canal); };
+  }, [qc]);
   const { data: pessoas = [] } = usePessoas();
   const { data: minhaEquipe = null } = useMinhaEquipe();
   const nomePorId = useMemo(() => {
@@ -100,15 +136,28 @@ function Home() {
     return r;
   }, [pessoas]);
 
-  const agora = useMemo(() => new Date(), [atividades]);
   const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
 
   const filtradas = useMemo(
     () => ordenar(aplicarLentes(atividades, filtros, ctx, normalizarTexto), ordemDoPreset(filtros.preset)),
     [atividades, filtros, ctx],
   );
-  const hoje = useMemo(() => atividadesDeHoje(atividades, agora), [atividades, agora]);
-  const proxima = useMemo(() => proximaVisitaDe(visitas), [visitas]);
+  // O banner precisa contar a MESMA população que o toque nele abre. Contando
+  // o array cru, o técnico lia "41 atividades hoje", tocava, e caía numa lista
+  // de 1 — porque o preset "Meu dia" recorta por responsável e apoio.
+  // quantos o período está escondendo por não terem data — some calado seria
+  // a pior falha desta tela, e o número é o que torna a escolha auditável
+  const ocultosSemData = useMemo(() => {
+    if (!filtros.periodo) return 0;
+    const semPeriodo = aplicarLentes(atividades, { ...filtros, periodo: null }, ctx, normalizarTexto);
+    return semPeriodo.filter(semData).length;
+  }, [atividades, filtros, ctx]);
+
+  const hoje = useMemo(
+    () => atividadesDeHoje(atividades.filter((a) => a.souResponsavel || a.souApoio), agora),
+    [atividades, agora],
+  );
+  const proxima = useMemo(() => proximaVisitaDe(visitas, s.userId), [visitas, s.userId]);
   const presets = useMemo(() => presetsDoCargo(s.cargo), [s.cargo]);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -210,7 +259,9 @@ function Home() {
         {/* O banner virou alvo de toque: aplica "Meu dia" e leva à lista que
             produziu o número. Antes era um enfeite não auditável. */}
         <button
-          onClick={() => setFiltros((f) => ({ ...f, preset: "meu_dia", situacao: "abertos" }))}
+          onClick={() => setFiltros((f) => ({
+            ...f, preset: "meu_dia", situacao: "abertos", pessoa: "todos",
+          }))}
           style={{
             position: "absolute", bottom: 14, left: 0, right: 0,
             background: "transparent", border: "none", cursor: "pointer",
@@ -282,7 +333,12 @@ function Home() {
               ))}
             </div>
             <button
-              onClick={() => setBuscaAberta((b) => !b)}
+              onClick={() => {
+                // fechar limpa: um filtro invisível que continua filtrando é a
+                // pior forma de esconder resultado
+                if (buscaAberta) setFiltros((f) => ({ ...f, busca: "" }));
+                setBuscaAberta((b) => !b);
+              }}
               title="Buscar"
               style={botaoIcone}
             >
@@ -339,7 +395,11 @@ function Home() {
             <button
               style={chip(filtros.situacao === "encerrados")}
               onClick={() => setFiltros((f) => ({
-                ...f, situacao: f.situacao === "encerrados" ? "abertos" : "encerrados",
+                ...f,
+                situacao: f.situacao === "encerrados" ? "abertos" : "encerrados",
+                // todo preset exige item em aberto: manter um ligado aqui daria
+                // lista vazia por construção, sem o usuário ter como saber
+                preset: f.situacao === "encerrados" ? f.preset : null,
               }))}
             >
               Encerrados
@@ -392,15 +452,33 @@ function Home() {
                 filtros.preset && presets.find((p) => p.chave === filtros.preset)?.label,
                 filtros.periodo && PERIODOS.find((p) => p.chave === filtros.periodo)?.label,
                 filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
+                filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
+                filtros.situacao === "encerrados" ? "Encerrados" : null,
               ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
             </span>
-            {(filtros.preset || filtros.periodo || filtros.vinculos.length > 0) && (
-              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => setFiltros(FILTROS_INICIAIS)}>
+            {(filtros.preset || filtros.periodo || filtros.vinculos.length > 0
+              || filtros.busca.trim() || filtros.situacao !== "abertos") && (
+              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => { setFiltros(FILTROS_INICIAIS); setBuscaAberta(false); }}>
                 Limpar filtros
               </button>
             )}
           </div>
-        ) : visao === "quadro" ? (
+        ) : (
+          <>
+            {ocultosSemData > 0 && (
+              <button
+                onClick={() => setFiltros((f) => ({ ...f, periodo: null }))}
+                style={{
+                  fontFamily: FONT, fontSize: 12, color: textSecondary,
+                  background: "transparent", border: "none", cursor: "pointer",
+                  textAlign: "left", padding: "0 0 2px", minHeight: 32,
+                }}
+              >
+                {ocultosSemData} sem data {ocultosSemData === 1 ? "está oculto" : "estão ocultos"} pelo período ·{" "}
+                <span style={{ color: gold, fontWeight: 600 }}>mostrar</span>
+              </button>
+            )}
+            {visao === "quadro" ? (
           <Quadro
             atividades={filtradas}
             foco={focoDoPreset(filtros.preset)}
@@ -423,6 +501,8 @@ function Home() {
               </span>
             )}
           </div>
+            )}
+          </>
         )}
       </div>
     </>

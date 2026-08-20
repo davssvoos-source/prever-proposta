@@ -217,5 +217,46 @@ eq('campo NÃO carrega equipe (equipe é NOT NULL no banco: a nulidade é do mod
 eq('campo NÃO carrega sprint', campo.sprint, null);
 eq('interno não entra na fila por prioridade', interno.prioridadeRank, 4);
 
+// ── regressões que a revisão adversarial pegou (U10) ────────────────────────
+// Cada uma destas quebrou de verdade em código publicado. Ficam travadas.
+
+// o funil comercial inteiro sumia: emAberto vinha do bucket do status cru e
+// ignorava a tradução, então visita aprovada e reprovada nasciam encerradas
+const vAtiv = (status, extra = {}) =>
+  A.atividadeDaVisita(visita(status, extra), { userId: null, apoios: new Set(), fichas: new Map() });
+eq('visita aprovada sem proposta continua em aberto', vAtiv('aprovada').emAberto, true);
+eq('proposta com o cliente continua em aberto',
+   vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' }).emAberto, true);
+eq('visita reprovada continua em aberto (tem que ser reagendada)',
+   vAtiv('reprovada').emAberto, true);
+eq('proposta aceita encerra',
+   vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aceita' }).emAberto, false);
+eq('proposta recusada encerra',
+   vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'recusada' }).emAberto, false);
+eq('visita com status desconhecido nunca é escondida pelo filtro padrão',
+   vAtiv('sei_la').emAberto, true);
+
+// chamado com status fora do CHECK também não pode ser cortado pelo padrão,
+// senão a coluna "Sem status" seria inalcançável
+eq('chamado com status desconhecido fica em aberto',
+   A.atividadeDoChamado(chamado('inventado'), ctxVazio).emAberto, true);
+
+// o card de visita não mostrava quando ela é, nem na Início nem em /chamados
+eq('visita mostra a hora marcada no card',
+   vAtiv('pendente', { data_hora_agendada: '2026-03-01T13:30:00Z' }).prazoTexto !== null, true);
+eq('visita sem data não inventa hora', vAtiv('pendente').prazoTexto, null);
+
+// o período tem que filtrar de verdade: deixar item sem data passar fazia
+// "Hoje" devolver a base inteira, porque interno em geral não tem prazo
+const L = carregar('src/features/home/lentes.ts');
+const semPrazo = A.atividadeDoChamado(chamado('aberto'), ctxVazio);
+eq('item sem data é reconhecido como tal', L.semData(semPrazo), true);
+eq('e o período o esconde (a tela avisa quantos)',
+   L.aplicarLentes([semPrazo], { ...L.FILTROS_INICIAIS, periodo: 'hoje' },
+                   { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 0);
+eq('sem período escolhido ele aparece',
+   L.aplicarLentes([semPrazo], L.FILTROS_INICIAIS,
+                   { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 1);
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

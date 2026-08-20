@@ -17,17 +17,34 @@ import { FONT } from "@/lib/ui";
 import { isPendenteBucket } from "@/lib/visita-status";
 import type { BrutoVisita } from "@/features/atividades/modelo";
 
-export function proximaVisitaDe(visitas: BrutoVisita[]): (BrutoVisita & { atrasada: boolean }) | null {
+/**
+ * A próxima visita. Para gestor, a DELE vem antes da do time: dizer "A seguir"
+ * sobre o compromisso de outra pessoa é uma frase errada — e como agora a
+ * atrasada tem prioridade, sem este recorte o admin abria o app olhando a
+ * visita que outro técnico furou semana passada.
+ */
+export function proximaVisitaDe(
+  visitas: BrutoVisita[],
+  userId?: string | null,
+): (BrutoVisita & { atrasada: boolean }) | null {
   const agora = Date.now();
-  const candidatas = visitas
+  const ordenadas = visitas
     .filter((v) => v.data_hora_agendada && isPendenteBucket(v.status as any))
     .sort((a, b) =>
       new Date(a.data_hora_agendada as string).getTime() - new Date(b.data_hora_agendada as string).getTime());
-  // atrasada primeiro: é a que exige decisão agora
-  const atrasada = candidatas.find((v) => new Date(v.data_hora_agendada as string).getTime() <= agora);
-  if (atrasada) return { ...atrasada, atrasada: true };
-  const futura = candidatas.find((v) => new Date(v.data_hora_agendada as string).getTime() > agora);
-  return futura ? { ...futura, atrasada: false } : null;
+
+  const escolher = (lista: BrutoVisita[]) => {
+    const atrasada = lista.find((v) => new Date(v.data_hora_agendada as string).getTime() <= agora);
+    if (atrasada) return { ...atrasada, atrasada: true };
+    const futura = lista.find((v) => new Date(v.data_hora_agendada as string).getTime() > agora);
+    return futura ? { ...futura, atrasada: false } : null;
+  };
+
+  if (userId) {
+    const minhas = escolher(ordenadas.filter((v) => v.tecnico_id === userId));
+    if (minhas) return minhas;
+  }
+  return escolher(ordenadas);
 }
 
 function useContagem(quando: string | null | undefined, ativo: boolean) {
