@@ -639,8 +639,7 @@ que faz o painel de cima e o quadro de baixo contarem a mesma história.
 | escuro | `#C0392B` | `#E14620` | `#F0763A` | `#F5A96B` | `#F5BE45` | `#9FC8DC` | `#4A9BC9` | `#1B5E8C` |
 | claro | `#8E2A20` | `#B23718` | `#C25217` | `#C07A3E` | `#B5840F` | `#5E93AC` | `#2A7BA5` | `#123F63` |
 
-`espectro(i, isLight)` dá a cor n com laço. `degradePrisma(isLight, angulo)`
-devolve a rampa inteira como CSS.
+`espectro(i, isLight)` dá a cor n com laço.
 
 ### 11.3 Prazo → cor de fundo do card
 
@@ -672,7 +671,6 @@ aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
 
 | efeito | classe | onde | onde NÃO |
 |---|---|---|---|
-| degradê sob vidro fosco | `.vidro-prisma` + `.prisma-fundo` | os 4 painéis do topo | fundo da página (v4 decidiu que fundo é silêncio) |
 | especular + granulado | `.textura` | barras do gráfico | superfícies grandes |
 | granulado só | `.ruido` | ícones, pastilhas, avatares | **linhas curvas finas** |
 | halo de cor | `feDropShadow` | arco da rosca | texto |
@@ -681,8 +679,12 @@ aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
 A linha do "onde NÃO" do granulado é uma correção do Davi: sobre o arco de 14px
 da rosca ele serrilhou a borda em vez de dar textura. Granulado quer área.
 
-O `.prisma-fundo` usa `inset: -35%` — sem isso o `blur(46px)` puxa transparência
-das bordas e o painel ganha um halo esbranquiçado nos cantos.
+**O degradê não vai atrás dos dados.** Cheguei a pôr a imagem inteira borrada
+sob vidro fosco nos quatro painéis do topo; o Davi mandou reverter
+(2026-08-20). O motivo vale guardar: com quatro caixas coloridas em sequência,
+o painel superior virou o assunto da tela — e o assunto é o quadro embaixo. O
+degradê mora nos **dados** (barras, arco, números), não atrás deles. Os painéis
+usam a superfície normal do sistema, `card()`, a mesma dos tiles de indicador.
 
 ### 11.5 Um amarelo só
 

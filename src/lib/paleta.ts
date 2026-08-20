@@ -135,9 +135,3 @@ export function espectro(i: number, isLight: boolean): string {
   const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
   return c[((i % c.length) + c.length) % c.length];
 }
-
-/** O degradê inteiro como CSS — fundo de gráfico, arco de rosca, realces. */
-export function degradePrisma(isLight: boolean, angulo = "90deg"): string {
-  const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
-  return `linear-gradient(${angulo}, ${c.join(", ")})`;
-}

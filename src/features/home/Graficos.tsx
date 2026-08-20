@@ -12,10 +12,11 @@
 // uma) e as próximas 4 (quantos têm prazo em cada uma). Minimalista por ordem
 // expressa: título, o primeiro dia de cada semana e a quantidade — nada mais.
 //
-// O DEGRADÊ DA IMAGEM é o fundo dos três painéis: gradiente borrado a 46px sob
-// vidro fosco e granulado (.vidro-prisma em styles.css) — a referência que o
-// Davi mandou é literalmente isso, e reproduzi-la de verdade valeu mais do que
-// citá-la em cores soltas. No hover ele acende.
+// O fundo dos painéis é a superfície normal do sistema — a mesma dos tiles de
+// indicador ao lado. Cheguei a pôr o degradê da imagem borrado por trás do
+// vidro; o Davi mandou tirar (2026-08-20): com quatro caixas coloridas em
+// sequência, o painel virou o assunto da tela, e o assunto é o quadro embaixo.
+// O degradê vive nos DADOS — nas barras, no arco — não atrás deles.
 //
 // As cores são o ESPECTRO normalizado (paleta.ts), e o degradê ATRAVESSA as
 // barras: cada barra vai da sua cor à cor da barra seguinte, então o pé
@@ -37,9 +38,9 @@ import { useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card, vidro } from "@/lib/ui";
+import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { PRISMA, ESPECTRO, espectro, degradePrisma } from "@/lib/paleta";
+import { PRISMA, ESPECTRO, espectro } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -135,9 +136,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
   return (
-    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "115deg"), opacity: isLight ? 0.22 : 0.30 }} />
-      <div className="prisma-conteudo">
+    <div className="elevavel" style={{ ...card(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 3, paddingTop: 12 }}>
@@ -170,7 +169,6 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
             </span>
           </div>
         ))}
-      </div>
       </div>
     </div>
   );
@@ -217,9 +215,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const cores = isLight ? ESPECTRO.light : ESPECTRO.dark;
 
   return (
-    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "150deg"), opacity: isLight ? 0.20 : 0.28 }} />
-      <div className="prisma-conteudo">
+    <div className="elevavel" style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>{mesNome}</span>
@@ -278,7 +274,6 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }

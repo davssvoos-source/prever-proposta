@@ -20,8 +20,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowUp, Loader2, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, vidro } from "@/lib/ui";
-import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA, degradePrisma } from "@/lib/paleta";
+import { FONT, card } from "@/lib/ui";
+import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA } from "@/lib/paleta";
 import { interpretarChamado } from "@/lib/chamado-rapido.functions";
 import { abrirChamado, anexarFoto } from "@/features/chamados/data";
 
@@ -93,10 +93,7 @@ export function CriarRapido() {
   const temTexto = texto.trim().length > 0;
 
   return (
-    <div className="elevavel vidro-prisma" style={{ ...vidro(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      {/* mesmo degradê dos gráficos: os quatro painéis do topo são uma coisa só */}
-      <div className="prisma-fundo" aria-hidden style={{ background: degradePrisma(isLight, "205deg"), opacity: isLight ? 0.20 : 0.28 }} />
-      <div className="prisma-conteudo">
+    <div className="elevavel" style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={MICRO}>Abrir chamado</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
@@ -214,7 +211,6 @@ export function CriarRapido() {
             ? <Loader2 size={16} className="animate-spin" />
             : <ArrowUp size={16} strokeWidth={2.5} />}
         </button>
-      </div>
       </div>
     </div>
   );
