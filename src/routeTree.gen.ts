@@ -28,6 +28,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
 import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
+import { Route as AuthenticatedGerencialPermissoesRouteImport } from './routes/_authenticated/gerencial.permissoes'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
 import { Route as AuthenticatedFechamentosIdRouteImport } from './routes/_authenticated/fechamentos.$id'
 import { Route as AuthenticatedContratosNovoRouteImport } from './routes/_authenticated/contratos.novo'
@@ -148,6 +149,12 @@ const AuthenticatedGerencialUsuariosRoute =
   AuthenticatedGerencialUsuariosRouteImport.update({
     id: '/usuarios',
     path: '/usuarios',
+    getParentRoute: () => AuthenticatedGerencialRoute,
+  } as any)
+const AuthenticatedGerencialPermissoesRoute =
+  AuthenticatedGerencialPermissoesRouteImport.update({
+    id: '/permissoes',
+    path: '/permissoes',
     getParentRoute: () => AuthenticatedGerencialRoute,
   } as any)
 const AuthenticatedGerencialNovaRoute =
@@ -330,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
@@ -375,6 +383,7 @@ export interface FileRoutesByTo {
   '/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
@@ -421,6 +430,7 @@ export interface FileRoutesById {
   '/_authenticated/contratos/novo': typeof AuthenticatedContratosNovoRoute
   '/_authenticated/fechamentos/$id': typeof AuthenticatedFechamentosIdRoute
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
+  '/_authenticated/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/contratos/novo'
     | '/fechamentos/$id'
     | '/gerencial/nova'
+    | '/gerencial/permissoes'
     | '/gerencial/usuarios'
     | '/projeto/$id'
     | '/visita/$id'
@@ -513,6 +524,7 @@ export interface FileRouteTypes {
     | '/contratos/novo'
     | '/fechamentos/$id'
     | '/gerencial/nova'
+    | '/gerencial/permissoes'
     | '/gerencial/usuarios'
     | '/projeto/$id'
     | '/visita/$id'
@@ -558,6 +570,7 @@ export interface FileRouteTypes {
     | '/_authenticated/contratos/novo'
     | '/_authenticated/fechamentos/$id'
     | '/_authenticated/gerencial/nova'
+    | '/_authenticated/gerencial/permissoes'
     | '/_authenticated/gerencial/usuarios'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
@@ -713,6 +726,13 @@ declare module '@tanstack/react-router' {
       path: '/usuarios'
       fullPath: '/gerencial/usuarios'
       preLoaderRoute: typeof AuthenticatedGerencialUsuariosRouteImport
+      parentRoute: typeof AuthenticatedGerencialRoute
+    }
+    '/_authenticated/gerencial/permissoes': {
+      id: '/_authenticated/gerencial/permissoes'
+      path: '/permissoes'
+      fullPath: '/gerencial/permissoes'
+      preLoaderRoute: typeof AuthenticatedGerencialPermissoesRouteImport
       parentRoute: typeof AuthenticatedGerencialRoute
     }
     '/_authenticated/gerencial/nova': {
@@ -969,6 +989,7 @@ const AuthenticatedFechamentosRouteWithChildren =
 
 interface AuthenticatedGerencialRouteChildren {
   AuthenticatedGerencialNovaRoute: typeof AuthenticatedGerencialNovaRoute
+  AuthenticatedGerencialPermissoesRoute: typeof AuthenticatedGerencialPermissoesRoute
   AuthenticatedGerencialUsuariosRoute: typeof AuthenticatedGerencialUsuariosRoute
   AuthenticatedGerencialVisitaIdEditarRoute: typeof AuthenticatedGerencialVisitaIdEditarRoute
 }
@@ -976,6 +997,8 @@ interface AuthenticatedGerencialRouteChildren {
 const AuthenticatedGerencialRouteChildren: AuthenticatedGerencialRouteChildren =
   {
     AuthenticatedGerencialNovaRoute: AuthenticatedGerencialNovaRoute,
+    AuthenticatedGerencialPermissoesRoute:
+      AuthenticatedGerencialPermissoesRoute,
     AuthenticatedGerencialUsuariosRoute: AuthenticatedGerencialUsuariosRoute,
     AuthenticatedGerencialVisitaIdEditarRoute:
       AuthenticatedGerencialVisitaIdEditarRoute,

@@ -1,11 +1,22 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Calendar, ClipboardList, User, Wrench } from "lucide-react";
 import { useUserCargo } from "@/features/gerencial/data";
+import { usePermissoes } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
+
+/** Rota do rodapé → chave da tela no catálogo (src/lib/telas.ts). */
+const CHAVE_POR_ROTA: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/calendario": "calendario",
+  "/chamados": "chamados",
+  "/gerencial": "gerencial",
+  "/perfil": "perfil",
+};
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: cargo } = useUserCargo();
+  const { podeVer } = usePermissoes();
   const { isLight } = useTheme();
 
   // Barras por perfil (PRODUTO.md §4):
@@ -37,8 +48,17 @@ export function BottomNav() {
             { to: "/perfil", label: "Perfil", icon: User },
           ];
 
+  // A matriz de permissões (U11) manda no rodapé: item cuja tela está
+  // bloqueada some. `undefined` enquanto carrega — mantemos o item, senão a
+  // barra pisca com abas aparecendo e sumindo a cada carga.
+  const visiveis = items.filter((i) => {
+    const chave = CHAVE_POR_ROTA[i.to];
+    if (!chave) return true;
+    return podeVer(chave) !== false;
+  });
+
   // com 6 itens a pílula precisa apertar para caber na largura do celular
-  const apertado = items.length > 5;
+  const apertado = visiveis.length > 5;
 
   const inactiveColor = isLight ? "#4a5060" : "#FFFFFF";
   const activeColor = isLight ? "#b87800" : "#FFFFFF";
@@ -74,7 +94,7 @@ export function BottomNav() {
           minWidth: 220,
         }}
       >
-        {items.map((item) => {
+        {visiveis.map((item) => {
           const active =
             pathname === item.to ||
             (item.to === "/dashboard" && pathname === "/") ||

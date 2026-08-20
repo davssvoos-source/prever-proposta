@@ -6,6 +6,7 @@
 // na tela), um dia por vez, com a fila de quem ainda não foi agendado logo
 // abaixo — que é a pergunta que ele realmente precisa responder.
 
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,13 +24,8 @@ import {
 
 export const Route = createFileRoute("/_authenticated/chamados/programacao")({
   beforeLoad: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (!["admin", "comercial", "sac"].includes(perfil?.cargo ?? "")) {
-      throw redirect({ to: "/chamados" });
-    }
+    const { ok } = await guardaDeTela("chamados.programacao");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.programacao") as any });
   },
   component: ProgramacaoPage,
 });

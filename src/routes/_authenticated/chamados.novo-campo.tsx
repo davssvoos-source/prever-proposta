@@ -2,7 +2,8 @@
 // Cliente → sistema afetado → problema/prioridade → técnico e agenda.
 // O número e o prazo de atendimento (SLA) são preenchidos pelo banco.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Search } from "lucide-react";
@@ -21,16 +22,8 @@ import {
 
 export const Route = createFileRoute("/_authenticated/chamados/novo-campo")({
   beforeLoad: async () => {
-    const { redirect } = await import("@tanstack/react-router");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    // SAC abre chamados de campo (R9 — é o trilho principal da triagem);
-    // a RLS os_insert_gestor já o aceita via is_gestor desde a U6a
-    if (!["admin", "comercial", "sac"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/chamados" });
-    }
+    const { ok } = await guardaDeTela("chamados.novo");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.novo") as any });
   },
   component: NovaOsPage,
 });

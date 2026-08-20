@@ -258,5 +258,60 @@ eq('sem período escolhido ele aparece',
    L.aplicarLentes([semPrazo], L.FILTROS_INICIAIS,
                    { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 1);
 
+// ── permissão por tela (U11) ────────────────────────────────────────────────
+// A régua tem que estar certa mesmo com o banco fora do ar: um erro aqui ou
+// tranca gente para fora, ou libera o que não devia.
+const TL = carregar('src/lib/telas.ts');
+
+eq('admin passa em tudo, inclusive no que ninguém tem',
+   TL.podeAbrir('gerencial.permissoes', 'admin', {}), true);
+eq('admin passa mesmo com a matriz dizendo não',
+   TL.podeAbrir('contratos', 'admin', { contratos: { admin: false } }), true);
+eq('sem cargo não passa em nada', TL.podeAbrir('dashboard', null, {}), false);
+
+// o banco manda quando responde
+eq('matriz libera', TL.podeAbrir('contratos', 'sac', { contratos: { sac: true } }), true);
+eq('matriz bloqueia', TL.podeAbrir('contratos', 'comercial', { contratos: { comercial: false } }), false);
+
+// sem linha no banco vale o padrão do catálogo — banco fora do ar não pode
+// trancar todo mundo para fora
+eq('sem matriz, o padrão do catálogo vale (comercial vê contratos)',
+   TL.podeAbrir('contratos', 'comercial', undefined), true);
+eq('sem matriz, o padrão do catálogo vale (SAC não vê contratos — R13)',
+   TL.podeAbrir('contratos', 'sac', undefined), false);
+eq('sem matriz, técnico não abre a lista de chamados',
+   TL.podeAbrir('chamados', 'tecnico', undefined), false);
+eq('matriz vazia é o mesmo que sem matriz',
+   TL.podeAbrir('chamados', 'tecnico', {}), false);
+
+// telas obrigatórias não podem ser bloqueadas nem por engano nem de propósito
+eq('perfil é sempre acessível — é por onde se sai do app',
+   TL.podeAbrir('perfil', 'tecnico', { perfil: { tecnico: false } }), true);
+eq('início é sempre acessível',
+   TL.podeAbrir('dashboard', 'sac', { dashboard: { sac: false } }), true);
+
+// tela fora do catálogo não é bloqueada por omissão
+eq('chave desconhecida não tranca ninguém', TL.podeAbrir('tela_nova', 'tecnico', {}), true);
+
+// o catálogo e a semente da migration têm que falar das mesmas telas
+const fs2 = require('fs');
+const sql = fs2.readFileSync('supabase/migrations/20260819180000_u11_permissoes_tela.sql', 'utf8');
+const bloco = sql.slice(sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES'),
+                        sql.indexOf('ON CONFLICT (tela, cargo) DO NOTHING;'));
+const naSemente = new Set([...bloco.matchAll(/\('([a-z._]+)',\s*'(?:tecnico|comercial|sac)'/g)].map((m) => m[1]));
+const noCatalogo = new Set(TL.TELAS.map((t) => t.chave));
+eq('catálogo e semente têm as mesmas telas',
+   [...noCatalogo].filter((c) => !naSemente.has(c)).concat([...naSemente].filter((c) => !noCatalogo.has(c))), []);
+
+// e o padrão do catálogo tem que bater com a semente, senão o app se comporta
+// de um jeito antes da migration e de outro depois
+const semente = {};
+for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac)',\s*(true|false)\)/g)) {
+  (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
+}
+const divergem = TL.TELAS.filter((t) =>
+  ['tecnico', 'comercial', 'sac'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));
+eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

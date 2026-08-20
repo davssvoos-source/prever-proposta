@@ -2,6 +2,7 @@
 // Rotas filhas (/contratos/novo, /contratos/$id) entram pelo Outlet.
 // Ver docs/PLANO_UNIFICACAO.md §4.1.
 
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, Outlet, useRouterState, redirect } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { FileText, Plus, Search, TriangleAlert } from "lucide-react";
@@ -19,13 +20,8 @@ export const Route = createFileRoute("/_authenticated/contratos")({
   // Contrato é dado financeiro: a RLS já barra, mas mandar o técnico para uma
   // tela permanentemente vazia seria pior do que não mostrar a tela.
   beforeLoad: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (perfil?.cargo !== "admin" && perfil?.cargo !== "comercial") {
-      throw redirect({ to: "/dashboard" });
-    }
+    const { ok } = await guardaDeTela("contratos");
+    if (!ok) throw redirect({ to: destinoNegado("contratos") as any });
   },
   component: ContratosPage,
 });

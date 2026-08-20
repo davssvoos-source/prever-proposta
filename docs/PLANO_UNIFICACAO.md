@@ -1409,3 +1409,58 @@ kanban é ferramenta de coordenação (SAC e admin). A visão padrão é lista p
 todo mundo e o seletor existe para todos os perfis, como foi pedido — mas se o
 técnico nunca usar o quadro, a resposta certa é tirar o botão dele, não
 defender a simetria.
+
+### U11 — Permissão por tela, editável pelo admin (2026-08-19)
+
+Regra **R18**. Pedido: *"Crie um campo assim para o admin gerenciar as
+permissões dos usuários... Coloque todas as telas do app e o esquema de check
+para permissão"*, com um exemplo de outro sistema em anexo.
+
+Até aqui quem abre cada tela estava escrito em código, espalhado por doze
+`beforeLoad` que repetiam a mesma consulta e listavam cargos na mão. Mudar um
+acesso exigia deploy.
+
+**Migration** `20260819180000_u11_permissoes_tela.sql`: tabela `permissoes_tela`
+(tela, cargo, permitido + quem mudou e quando), RLS de leitura aberta ao time e
+escrita só de admin, e a RPC `salvar_permissoes(jsonb)` que grava a matriz
+inteira de uma vez.
+
+**Três decisões que valem mais que o código**
+
+1. **O admin não entra na matriz.** Tem tudo por regra de sistema. Se fosse
+   linha de tabela, um clique errado trancaria o próprio admin fora da tela de
+   permissões, e só o SQL Editor destrancaria. Pela mesma razão, a guarda de
+   `/gerencial/permissoes` NÃO passa pela matriz: ela olha o cargo direto.
+2. **A semente reproduz o código de hoje, guarda por guarda** — inclusive onde
+   o que existe hoje é discutível. `/clientes/migrar` funde cadastros
+   duplicados e hoje qualquer um entra; entrou assim. Aplicar a migration não
+   muda nada; toda mudança passa a ser ato explícito com nome e hora.
+3. **Sem linha no banco vale o padrão do catálogo.** Banco fora do ar, consulta
+   que falha ou tela recém-criada não podem trancar todo mundo para fora — o
+   app degrada para o comportamento que sempre teve, e não para o vazio. É por
+   isso que `useMatrizPermissoes` devolve `{}` em erro em vez de propagar.
+
+**Ordem de publicação, e por que ela é frouxa aqui:** ao contrário da U7, dá
+para publicar o código ANTES de rodar a migration. Sem a tabela, toda consulta
+falha, cai no padrão do catálogo, e o app se comporta exatamente como antes. A
+tela de permissões abre mostrando os padrões e só o Salvar falharia.
+
+**Catálogo** em `src/lib/telas.ts` — 21 telas em 7 grupos. Fica no código
+porque É o mapa de rotas: uma tela existe quando existe rota, o que é fato de
+deploy. Ficam de fora as páginas de detalhe (`/chamados/$id` e afins), que
+herdam de quem lista — o técnico chega no chamado dele pelos cards da Início
+mesmo sem ver a lista.
+
+**Asserção que impede o pior erro desta etapa:** `verificar-logica.cjs` lê o
+INSERT da migration e compara com o catálogo em TS — mesmas telas, mesmos
+padrões. Se alguém editar um e esquecer o outro, o app se comportaria de um
+jeito antes da migration e de outro depois, e ninguém notaria. 87 → **101**
+asserções.
+
+**Fiação**: seis `beforeLoad` trocados por `guardaDeTela(chave)`; o de
+`/gerencial` preservou os dois casos especiais que tinha (SAC entra em
+`/gerencial/nova` sem entrar no painel; `usuarios` e `permissoes` têm guarda
+própria de admin). O rodapé some com item cuja tela está bloqueada, e os
+atalhos do painel gerencial também — atalho que leva a tela bloqueada é
+armadilha. Enquanto a matriz carrega, nada some: `podeVer` devolve `undefined`
+e o item fica, senão a barra pisca abas aparecendo e sumindo a cada carga.

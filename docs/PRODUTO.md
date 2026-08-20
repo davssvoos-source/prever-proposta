@@ -267,6 +267,14 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   e **Monitoramento / Portaria** — entraram no domínio junto com as demais.
   "T.I / Técnica" do Notion vira **T.I.** aqui; "Marketing / Comercial" vira
   **Comercial**. Célula com várias equipes usa a primeira.
+- **R18** — **Quem abre cada tela é configuração, não código.** O admin edita
+  uma matriz de 21 telas × 3 papéis em `/gerencial/permissoes`; o rodapé e as
+  guardas de rota leem dela. O **admin não entra na matriz** (tem tudo por
+  regra de sistema — se fosse linha de tabela, um clique errado trancaria o
+  admin fora da própria tela). Início e Perfil são obrigatórias e não podem ser
+  desmarcadas. Permissão de tela é **navegação**: impede de abrir, não
+  substitui RLS — o técnico continua vendo só os chamados dele mesmo com o
+  calendário liberado.
 - **R17** — **A Início mostra TODAS as atividades que envolvem a pessoa**, numa
   fila só, com duas visões: lista de cards e **quadro por status**. O quadro
   tem botões de *padrão* (Meu dia · Tudo meu · Sprint deste mês · Stand-by ·
@@ -456,6 +464,7 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | **Fusão chamado × demanda** (U7): tabela `chamados` única com `natureza`, endereço único `/chamados/*`, rodapé com uma aba só, quadro por sprint como modo de visualização | **construído (U7)** |
 | **Aceite do cliente** (U8 — R4): pós-aprovação na visita, promoção do cliente só no aceite, correção do backfill "aprovada ⇒ ativo", funil comercial | **construído (U8)** |
 | **Pedido de compra completo** (U9 — Q6): ficha `chamado_compra`, caminho solicitado→recebido, alçada de aprovação no financeiro, alerta de pedido parado | **construído (U9)** |
+| **Permissões por tela** (U11 — R18): matriz tela × papel editável pelo admin em `/gerencial/permissoes`, rodapé e guardas de rota obedecendo | **construído (U11)** |
 | **Home de atividades** (U10 — R17): todas as atividades do usuário numa fila só, seletor lista ↔ quadro, quadro por status, padrões de kanban e filtro por vínculo | **construído (U10)** — só código, sem migration |
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
 | API QAP contínua | aguardando dev do QAP (U11) |

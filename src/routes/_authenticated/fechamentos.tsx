@@ -1,6 +1,7 @@
 // Fechamentos — lista e montagem do período. Etapa U5 da unificação.
 // Rota filha (/fechamentos/$id) entra pelo Outlet.
 
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, Outlet, useRouterState, redirect } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,13 +19,8 @@ import {
 
 export const Route = createFileRoute("/_authenticated/fechamentos")({
   beforeLoad: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (perfil?.cargo !== "admin" && perfil?.cargo !== "comercial") {
-      throw redirect({ to: "/dashboard" });
-    }
+    const { ok } = await guardaDeTela("fechamentos");
+    if (!ok) throw redirect({ to: destinoNegado("fechamentos") as any });
   },
   component: FechamentosPage,
 });

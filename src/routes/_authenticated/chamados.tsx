@@ -6,6 +6,7 @@
 // técnica de proposta continua vindo de visitas_tecnicas — ela ainda não é
 // um chamado, é o funil comercial.
 
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect, useLocation, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,15 +30,14 @@ export const Route = createFileRoute("/_authenticated/chamados")({
   // A trava é só da LISTA: o técnico não coordena a fila de todo mundo, mas
   // abre os chamados dele em /chamados/$id vindo da Home (R7/R11). Guardar o
   // pai inteiro derrubaria o técnico para o dashboard ao tocar num card.
+  // A trava é só da LISTA: as rotas filhas passam, senão o técnico seria
+  // derrubado para o dashboard ao tocar num card da Início.
   beforeLoad: async ({ location }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
     if (location.pathname.replace(/\/$/, "") !== "/chamados") return;
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (!["admin", "comercial", "sac"].includes(perfil?.cargo ?? "")) {
-      throw redirect({ to: "/dashboard" });
-    }
+    const { ok } = await guardaDeTela("chamados");
+    if (!ok) throw redirect({ to: destinoNegado("chamados") as any });
   },
   component: ChamadosPage,
 });

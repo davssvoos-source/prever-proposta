@@ -4,7 +4,8 @@
 // Paleta de dataviz conforme DESIGN_SYSTEM.md §9 (validada para daltonismo,
 // ordem fixa, máx. 8 séries + "Outros" neutro).
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, type CSSProperties } from "react";
 import { PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, Timer } from "lucide-react";
@@ -16,14 +17,8 @@ import { chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, STATUS_ORDEM } from 
 
 export const Route = createFileRoute("/_authenticated/chamados/indicadores")({
   beforeLoad: async () => {
-    const { redirect } = await import("@tanstack/react-router");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles").select("cargo").eq("id", user.id).maybeSingle();
-    if (!["admin", "comercial", "sac"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/chamados" });
-    }
+    const { ok } = await guardaDeTela("chamados.indicadores");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.indicadores") as any });
   },
   component: PainelOsPage,
 });

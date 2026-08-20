@@ -1,9 +1,10 @@
-import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation } from "@tanstack/react-router";
+import { guardaDeTela, usePermissoes } from "@/features/gerencial/permissoes";
+import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation , redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench, CircleDollarSign, ChevronRight } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench, CircleDollarSign, ChevronRight, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -19,23 +20,17 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
+  // Cada rota filha tem a permissão dela: o SAC entra no formulário de nova
+  // visita (trilho "pedido de proposta" da triagem, R9) sem entrar no painel,
+  // e /gerencial/permissoes e /gerencial/usuarios têm guarda própria de admin.
   beforeLoad: async ({ location }) => {
-    const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles")
-      .select("cargo")
-      .eq("id", user.id)
-      .maybeSingle();
-    // SAC entra SÓ no formulário de nova visita (trilho "pedido de proposta"
-    // da triagem, R9); o painel gerencial e o resto seguem admin/comercial.
-    if (perfil?.cargo === "sac" && location.pathname.startsWith("/gerencial/nova")) {
-      return;
-    }
-    if (!["admin", "comercial"].includes(perfil?.cargo ?? "")) {
-      throw redirect({ to: "/dashboard" });
-    }
+    const p = location.pathname;
+    if (p.startsWith("/gerencial/permissoes") || p.startsWith("/gerencial/usuarios")) return;
+    const chave = p.startsWith("/gerencial/nova") ? "gerencial.nova" : "gerencial";
+    const { ok } = await guardaDeTela(chave);
+    if (!ok) throw redirect({ to: "/dashboard" });
   },
   component: GerencialPage,
 });
@@ -109,6 +104,7 @@ function GerencialPage() {
 
   // Admin = linha em user_roles OU profiles.cargo === 'admin' (padrão do app).
   // Checar só user_roles escondia o botão de excluir de admins cadastrados via cargo.
+  const { podeVer } = usePermissoes();
   const { data: isAdmin = false } = useQuery({
     queryKey: ["is-admin-gerencial"],
     queryFn: async () => {
@@ -213,13 +209,17 @@ function GerencialPage() {
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {[
-            { label: "Chamados", Icon: Wrench, to: "/chamados" as const },
-            { label: "Clientes", Icon: Building2, to: "/clientes" as const },
+            { label: "Chamados", Icon: Wrench, to: "/chamados" as const, tela: "chamados" },
+            { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
             // financeiro (U2/U5): fora da barra de navegação, que já está cheia
-            { label: "Contratos", Icon: FileText, to: "/contratos" as const },
-            { label: "Fechamentos", Icon: CircleDollarSign, to: "/fechamentos" as const },
-            { label: "Usuários", Icon: Users, to: "/gerencial/usuarios" as const },
-          ].map(({ label, Icon, to }) => (
+            { label: "Contratos", Icon: FileText, to: "/contratos" as const, tela: "contratos" },
+            { label: "Fechamentos", Icon: CircleDollarSign, to: "/fechamentos" as const, tela: "fechamentos" },
+            { label: "Usuários", Icon: Users, to: "/gerencial/usuarios" as const, tela: null, soAdmin: true },
+            { label: "Permissões", Icon: ShieldCheck, to: "/gerencial/permissoes" as const, tela: null, soAdmin: true },
+          ]
+            // atalho que leva a uma tela bloqueada é armadilha: some junto
+            .filter((a) => (a.soAdmin ? isAdmin : podeVer(a.tela as string) !== false))
+            .map(({ label, Icon, to }) => (
             <button
               key={label}
               onClick={() => navigate({ to })}

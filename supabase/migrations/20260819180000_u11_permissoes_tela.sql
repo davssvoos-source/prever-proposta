@@ -193,10 +193,10 @@ SELECT 'tabela permissoes_tela',
                          WHERE table_schema='public' AND table_name='permissoes_tela')
        THEN 'sim' ELSE 'NAO' END, 'sim'
 UNION ALL
-SELECT 'telas no catalogo', count(DISTINCT tela)::text, '22'
+SELECT 'telas no catalogo', count(DISTINCT tela)::text, '21'
 FROM public.permissoes_tela
 UNION ALL
-SELECT 'linhas semeadas (telas x 3 papeis)', count(*)::text, '66'
+SELECT 'linhas semeadas (telas x 3 papeis)', count(*)::text, '63'
 FROM public.permissoes_tela
 UNION ALL
 SELECT 'o que o TECNICO abre hoje',
