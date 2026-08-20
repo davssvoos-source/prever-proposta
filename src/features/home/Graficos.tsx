@@ -7,9 +7,13 @@
 // chip de status fala de ESTADO — misturar os vocabulários faria o quadro e os
 // gráficos parecerem discordar um do outro.
 //
-// PRAZOS FUTUROS: cada pedaço arredondado é UM chamado, com o título dentro —
-// o "algo que indique qual task é". A cor é pressão de tempo, não status:
-// vermelho = atrasado · âmbar = vence nesta semana · frio = adiante.
+// DEMANDA NO TEMPO: as últimas 4 semanas (quantos foram concluídos em cada
+// uma) e as próximas 4 (quantos têm prazo em cada uma). Minimalista por ordem
+// expressa: título, o primeiro dia de cada semana e a quantidade — nada mais.
+// As cores contam a história: o passado esfria do azul para o verde (feito),
+// o futuro esquenta do vermelho (semana atual) para o amarelo (adiante).
+// Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
+// 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
 // META DO MÊS: rosca com o % das prioridades do sprint `este_mes` concluídas.
 // Consulta o banco à parte de propósito — a Home poda encerrados com mais de
@@ -47,113 +51,120 @@ function useCoresBase() {
   };
 }
 
-// ── Prazos futuros ──────────────────────────────────────────────────────────
+// ── Demanda no tempo ────────────────────────────────────────────────────────
 
-interface PropsSemanas {
+interface PropsDemanda {
   atividades: Atividade[];
-  onAbrir: (a: Atividade) => void;
 }
 
-export function GraficoSemanas({ atividades, onAbrir }: PropsSemanas) {
-  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
-
-  const semanas = useMemo(() => {
+/** Concluídos por semana nas últimas 4 — consulta própria (ver cabeçalho). */
+function useConcluidosPorSemana() {
+  const inicioJanela = useMemo(() => {
     const base = inicioSemana(new Date());
-    const chaves: { chave: string; inicio: Date }[] = [];
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i * 7);
-      chaves.push({ chave: dataIso(d), inicio: d });
-    }
-    const porSemana = new Map<string, Atividade[]>(chaves.map((c) => [c.chave, []]));
+    base.setDate(base.getDate() - 28);
+    return dataIso(base);
+  }, []);
+  return useQuery({
+    queryKey: ["home-concluidos-semana", inicioJanela],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await supabase
+        .from("chamados" as any)
+        .select("concluida_em")
+        .eq("status", "concluido")
+        .gte("concluida_em", inicioJanela);
+      const m: Record<string, number> = {};
+      if (error) return m;
+      for (const r of ((data as any[]) ?? [])) {
+        if (!r.concluida_em) continue;
+        const k = dataIso(inicioSemana(new Date(r.concluida_em)));
+        m[k] = (m[k] ?? 0) + 1;
+      }
+      return m;
+    },
+  });
+}
+
+// o passado esfria (azul → verde: feito); o futuro esquenta a partir de agora
+// (vermelho na semana atual → amarelo adiante). Cartelas do Davi.
+const CORES_PASSADO = {
+  dark: ["#547792", "#457B9D", "#6EE7C2", "#2DD2A5"],
+  light: ["#1A3263", "#457B9D", "#059676", "#047862"],
+};
+const CORES_FUTURO = {
+  dark: ["#E63946", "#EA9A35", "#FAB95B", "#F4D35E"],
+  light: ["#8B1E2D", "#A63E17", "#C85917", "#E4B028"],
+};
+
+export function GraficoDemanda({ atividades }: PropsDemanda) {
+  const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
+  const { data: concluidos } = useConcluidosPorSemana();
+
+  const barras = useMemo(() => {
+    const base = inicioSemana(new Date());
+    const lista: { chave: string; rotulo: string; valor: number; cor: string; atual: boolean }[] = [];
+
+    // futuro por prazo, contado das atividades em aberto
+    const futuros: Record<string, number> = {};
     for (const a of atividades) {
       if (!a.emAberto || !a.prazoLimite) continue;
       const k = dataIso(inicioSemana(new Date(a.prazoLimite)));
-      porSemana.get(k)?.push(a);
+      futuros[k] = (futuros[k] ?? 0) + 1;
     }
-    for (const lista of porSemana.values()) {
-      lista.sort((x, y) => (x.prazoLimite! < y.prazoLimite! ? -1 : 1));
+
+    for (let i = -4; i <= 3; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i * 7);
+      const chave = dataIso(d);
+      const passado = i < 0;
+      const cores = passado ? CORES_PASSADO : CORES_FUTURO;
+      const idx = passado ? i + 4 : i;
+      lista.push({
+        chave,
+        rotulo: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        valor: passado ? (concluidos?.[chave] ?? 0) : (futuros[chave] ?? 0),
+        cor: isLight ? cores.light[idx] : cores.dark[idx],
+        atual: i === 0,
+      });
     }
-    return chaves.map((c, i) => ({
-      ...c,
-      itens: porSemana.get(c.chave) ?? [],
-      rotulo: i === 0
-        ? "Esta sem."
-        : c.inicio.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-    }));
-  }, [atividades]);
+    return lista;
+  }, [atividades, concluidos, isLight]);
 
-  // a cor é pressão de tempo, não status
-  const corDe = (a: Atividade, idxSemana: number): string => {
-    if (a.prazoEstourado) return isLight ? DATAVIZ.alerta.light : DATAVIZ.alerta.dark;
-    if (idxSemana === 0) return isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark;
-    return isLight ? DATAVIZ.frio.light : DATAVIZ.frio.dark;
-  };
-
-  const legenda = [
-    { rotulo: "atrasada", cor: isLight ? DATAVIZ.alerta.light : DATAVIZ.alerta.dark },
-    { rotulo: "esta semana", cor: isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark },
-    { rotulo: "adiante", cor: isLight ? DATAVIZ.frio.light : DATAVIZ.frio.dark },
-  ];
+  const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
   return (
-    <div style={{ ...card(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 10px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ ...MICRO, color: gold }}>Prazos futuros</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>
-          cada pedaço é um chamado
-        </span>
-        <span style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          {legenda.map((l) => (
-            <span key={l.rotulo} style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 300, fontSize: 9.5, color: textSecondary }}>
-              <span style={{ width: 7, height: 7, borderRadius: 4, background: l.cor }} />
-              {l.rotulo}
-            </span>
-          ))}
-        </span>
-      </div>
+    <div style={{ ...card(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 12, paddingTop: 8 }}>
-        {semanas.map((s, i) => {
-          const visiveis = s.itens.slice(0, MAX_PECAS);
-          const excedente = s.itens.length - visiveis.length;
-          return (
-            <div key={s.chave} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4, height: "100%", justifyContent: "flex-end" }}>
-              {excedente > 0 && (
-                <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 9.5, color: textSecondary, textAlign: "center" }}>
-                  +{excedente}
-                </span>
-              )}
-              <div style={{ display: "flex", flexDirection: "column-reverse", gap: 4 }}>
-                {visiveis.map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => onAbrir(a)}
-                    title={`${a.numero ?? ""} ${a.titulo}${a.prazoTexto ? ` · ${a.prazoTexto}` : ""}`}
-                    style={{
-                      height: 21, width: "100%", borderRadius: 7,
-                      border: "none", cursor: "pointer", padding: "0 8px",
-                      background: tile,
-                      borderLeft: `3px solid ${corDe(a, i)}`,
-                      display: "flex", alignItems: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <span style={{
-                      fontFamily: FONT, fontWeight: 500, fontSize: 10, color: textPrimary,
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {a.titulo}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 10, color: textSecondary, textAlign: "center", whiteSpace: "nowrap" }}>
-                {s.rotulo} <b style={{ fontWeight: 600, color: textPrimary }}>{s.itens.length || "—"}</b>
-              </span>
-            </div>
-          );
-        })}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 10, paddingTop: 12 }}>
+        {barras.map((b) => (
+          <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
+            <span style={{
+              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.cor,
+              fontVariantNumeric: "tabular-nums", lineHeight: 1,
+            }}>
+              {b.valor}
+            </span>
+            <div style={{
+              width: "100%",
+              maxWidth: 40,
+              height: b.valor === 0 ? 3 : Math.max(8, Math.round((b.valor / maximo) * 128)),
+              borderRadius: 8,
+              background: b.cor,
+              opacity: b.valor === 0 ? 0.28 : 1,
+              transition: "height .4s ease",
+            }} />
+            <span style={{
+              fontFamily: FONT,
+              fontWeight: b.atual ? 700 : 300,
+              fontSize: 10,
+              color: b.atual ? textPrimary : textSecondary,
+              whiteSpace: "nowrap",
+            }}>
+              {b.rotulo}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -237,9 +248,6 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
               {feitas} de {total}
             </text>
           </svg>
-          <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 10.5, color: textSecondary, marginTop: "auto" }}>
-            prioridades do alinhamento mensal
-          </span>
         </>
       )}
     </div>
@@ -249,7 +257,7 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
 // ── Os quatro indicadores ───────────────────────────────────────────────────
 
 export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; userId: string | null }) {
-  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
+  const { isLight, textSecondary } = useCoresBase();
   const { data: meta } = useMetaDoMes(userId);
 
   const urgentes = atividades.filter(
@@ -272,18 +280,17 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
       {kpis.map((k) => (
         <div key={k.rotulo} style={{
           ...card(isLight),
-          padding: "12px 13px",
-          display: "flex", flexDirection: "column", justifyContent: "space-between",
+          padding: "10px 12px",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          gap: 6,
           boxSizing: "border-box",
         }}>
-          <span style={{ width: 8, height: 8, borderRadius: 4, background: k.cor }} />
-          <div>
-            <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 26, color: textPrimary, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-              {k.valor}
-            </div>
-            <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 9.5, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, marginTop: 5, lineHeight: 1.3 }}>
-              {k.rotulo}
-            </div>
+          {/* a cor mora no NÚMERO — a bolinha saiu */}
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+            {k.valor}
+          </div>
+          <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>
+            {k.rotulo}
           </div>
         </div>
       ))}

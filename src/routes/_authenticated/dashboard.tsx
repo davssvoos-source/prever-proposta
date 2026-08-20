@@ -31,10 +31,12 @@ import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
+import { toast } from "sonner";
+import { statusDaNatureza } from "@/lib/chamado-status";
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
-import { usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime } from "@/features/chamados/data";
-import { atividadesDeHoje, type Atividade } from "@/features/atividades/modelo";
+import { usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime, atualizarChamado } from "@/features/chamados/data";
+import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
@@ -42,7 +44,7 @@ import {
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { CampoBusca } from "@/features/home/CampoBusca";
-import { GraficoSemanas, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
+import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
 import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
@@ -202,6 +204,32 @@ function Home() {
     }
   }
 
+  /**
+   * Soltar um card noutra coluna muda o STATUS. A tela valida o que consegue
+   * (vocabulário da natureza); o resto é do banco — o trigger carimba as
+   * datas da transição e a RLS pode recusar (técnico não conclui chamado de
+   * campo). A recusa vira toast e o refetch devolve o card.
+   */
+  async function moverAtividade(a: Atividade, para: ColunaQuadro) {
+    if (para === "sem_status") return;
+    const natureza = a.natureza ?? "campo";
+    if (!statusDaNatureza(natureza).includes(para as any)) {
+      toast.error(`"${a.natureza === "interno" ? "Interno" : "De campo"}" não tem o status desta coluna.`);
+      return;
+    }
+    try {
+      await atualizarChamado(a.registroId, { status: para as any });
+      qc.invalidateQueries({ queryKey: ["home-chamados"] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(para === "concluido"
+        ? "Concluir este chamado é ato do gestor."
+        : msg || "Não consegui mover o chamado.");
+      qc.invalidateQueries({ queryKey: ["home-chamados"] });
+    }
+  }
+
   function trocarVinculo(v: Vinculo) {
     setFiltros((f) => ({
       ...f,
@@ -293,7 +321,7 @@ function Home() {
             prazos futuros · meta do mês · 4 indicadores · notificações.
             Em telas entre 1024 e ~1400px o flexWrap quebra em duas linhas. */}
         <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap", paddingTop: 6 }}>
-          <GraficoSemanas atividades={atividades} onAbrir={abrir} />
+          <GraficoDemanda atividades={atividades} />
           <GraficoMeta userId={s.userId} />
           <PainelKpis atividades={atividades} userId={s.userId} />
           <CriarRapido />
@@ -500,6 +528,7 @@ function Home() {
             foco={focoDoPreset(filtros.preset)}
             pessoas={pessoasPorId}
             onAbrir={abrir}
+            onMover={moverAtividade}
           />
         ) : (
           <div className="lista-atividades">

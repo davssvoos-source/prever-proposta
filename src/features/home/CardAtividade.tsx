@@ -47,11 +47,21 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const vermelho = isLight ? "#B1242E" : "#F17881";
   const ambar = isLight ? "#A63E17" : "#E2791D";
 
+  // atrasada em aberto = o card INTEIRO avisa: fundo vermelho (pedido do
+  // Davi). Translúcido para seguir sendo vidro sobre o glow.
+  const atrasada = a.emAberto && a.prazoEstourado;
+
   const CARD: CSSProperties = {
     // vidro sobre o glow (v3) — no celular o blur sai via --vidro-blur
-    background: isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK,
-    border: isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.09)",
-    borderLeft: `3px solid ${isLight ? a.statusCor.light : a.statusCor.dark}`,
+    background: atrasada
+      ? (isLight ? "rgba(230,57,70,0.14)" : "rgba(139,30,45,0.45)")
+      : (isLight ? VIDRO_BG_LIGHT : VIDRO_BG_DARK),
+    border: atrasada
+      ? (isLight ? "1px solid rgba(139,30,45,0.30)" : "1px solid rgba(230,57,70,0.40)")
+      : (isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.09)"),
+    borderLeft: `3px solid ${atrasada
+      ? (isLight ? "#8B1E2D" : "#E63946")
+      : (isLight ? a.statusCor.light : a.statusCor.dark)}`,
     borderRadius: 14,
     padding: "12px 13px",
     boxShadow: isLight ? "0 4px 18px rgba(26,50,99,0.08)" : "0 4px 18px rgba(0,0,0,0.30)",
@@ -74,12 +84,6 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
             color: textPrimary, textWrap: "pretty" as any,
           }}>
             {a.titulo}
-          </div>
-          <div style={{
-            fontFamily: FONT, fontWeight: 300, fontSize: PISO_TIPO + 0.5,
-            color: textSecondary, marginTop: 3,
-          }}>
-            {a.numero ?? (a.fonte === "visita" ? "Visita técnica" : "Chamado")}
           </div>
         </div>
         {mostrarStatus && (

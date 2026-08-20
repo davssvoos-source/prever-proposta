@@ -1812,3 +1812,33 @@ cadastro é decisão humana. Anexos sobem como fotos do chamado criado, e a
 navegação leva ao chamado para a pessoa conferir a interpretação.
 
 Nenhuma migration.
+
+### U21 — Demanda no tempo, KPIs limpos, cards vermelhos e kanban arrastável (2026-08-20)
+
+**Números CH- fora dos cards.** O subtítulo saiu do card da Início e da lista
+/chamados; o número segue indexado na busca — só saiu da vista.
+
+**O gráfico virou "Demanda no tempo".** Últimas 4 semanas (concluídos por
+semana) + próximas 4 (com prazo na semana). Minimalista por ordem expressa:
+título, primeiro dia de cada semana e a quantidade — os textos por task, a
+legenda e o subtítulo morreram. As cores contam a história com as cartelas:
+o passado esfria do azul ao verde (feito), o futuro esquenta do vermelho
+(semana atual) ao amarelo (adiante). Os concluídos vêm de consulta própria —
+a Home poda encerrados com mais de 7 dias e as barras precisam de 4 semanas.
+
+**Meta sem legenda; KPIs sem bolinha** — número grande, centralizado, e a cor
+mora NELE.
+
+**Card atrasado = fundo vermelho inteiro** (translúcido, para seguir vidro).
+
+**Kanban arrastável.** Soltar um card noutra coluna muda o status. A divisão de
+responsabilidade: a tela valida o vocabulário da natureza (interno não vira
+"agendado" etc.); o BANCO faz o resto — o trigger `chamado_preencher` carimba
+iniciada_em/concluida_em na transição, e a RLS pode recusar (técnico não
+conclui chamado de campo), recusa que vira toast e refetch. Quem não arrasta,
+e por quê: **visita** (o status dela é outro vocabulário — arrastar mentiria) e
+**pedido de compra** (a coluna dele deriva da situação da compra, que anda pela
+ficha e pela RPC de decisão). HTML5 DnD não dispara em toque: no celular o
+quadro segue de leitura e mover é pela página do chamado.
+
+Nenhuma migration.

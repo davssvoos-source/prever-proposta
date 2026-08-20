@@ -14,6 +14,15 @@
 //   colunas que não cabem, e a posição lateral segue voltando ao reabrir.
 //
 // O teto de renderização por coluna continua: 25 + "ver mais" — nada some.
+//
+// ARRASTAR E SOLTAR (U21): card solto em outra coluna muda o STATUS do
+// chamado. O banco continua mandando — o trigger chamado_preencher carimba
+// iniciada_em/concluida_em na transição, e a RLS pode recusar (técnico não
+// conclui chamado de campo); a recusa vira toast e o card volta. Quem NÃO
+// arrasta: visita (o status dela é outro vocabulário) e pedido de compra
+// (a coluna dele vem da situação da compra, que anda pela ficha). HTML5 DnD
+// não dispara em toque — no celular o quadro segue só de leitura, e mover é
+// pela página do chamado.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -36,14 +45,23 @@ interface Props {
   foco: ColunaQuadro[];
   pessoas: Record<string, PessoaAvatar>;
   onAbrir: (a: Atividade) => void;
+  /** Solta um card noutra coluna → muda o status. Ausente = quadro só leitura. */
+  onMover?: (a: Atividade, para: ColunaQuadro) => void;
 }
 
-export function Quadro({ atividades, foco, pessoas, onAbrir }: Props) {
+function podeArrastar(a: Atividade): boolean {
+  return a.fonte === "chamado" && !a.compra && a.coluna !== "sem_status";
+}
+
+export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
   const { isLight } = useTheme();
   const trilhoRef = useRef<HTMLDivElement>(null);
   // teto por coluna: sem isto o "+ N nesta coluna" era um texto morto e os
   // itens além do 25º ficavam sem nenhuma forma de serem alcançados no quadro
   const [tetos, setTetos] = useState<Record<string, number>>({});
+  // coluna sob o card arrastado — realce do alvo
+  const [alvoArrasto, setAlvoArrasto] = useState<ColunaQuadro | null>(null);
+  const arrastadaRef = useRef<Atividade | null>(null);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -109,7 +127,33 @@ export function Quadro({ atividades, foco, pessoas, onAbrir }: Props) {
           const comVoce = itens.filter((a) => a.souResponsavel || a.souApoio).length;
 
           return (
-            <div key={c} data-coluna className="coluna-quadro" style={{ ...COLUNA, opacity: apagada ? 0.5 : 1 }}>
+            <div
+              key={c}
+              data-coluna
+              className="coluna-quadro"
+              onDragOver={(e) => {
+                if (!onMover || !arrastadaRef.current) return;
+                e.preventDefault();               // sem isto o drop nunca dispara
+                if (alvoArrasto !== c) setAlvoArrasto(c);
+              }}
+              onDragLeave={(e) => {
+                if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+                setAlvoArrasto((v) => (v === c ? null : v));
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const a = arrastadaRef.current;
+                arrastadaRef.current = null;
+                setAlvoArrasto(null);
+                if (a && onMover && a.coluna !== c) onMover(a, c);
+              }}
+              style={{
+                ...COLUNA,
+                opacity: apagada ? 0.5 : 1,
+                outline: alvoArrasto === c ? `2px solid ${isLight ? "#A06108" : "#F8C811"}` : "none",
+                outlineOffset: -2,
+              }}
+            >
               <div style={{
                 flexShrink: 0,
                 background: fundoCabecalho,
@@ -159,13 +203,24 @@ export function Quadro({ atividades, foco, pessoas, onAbrir }: Props) {
                 ) : (
                   <>
                     {itens.slice(0, tetos[c] ?? TETO).map((a) => (
-                      <CardAtividade
+                      <div
                         key={a.id}
-                        a={a}
-                        mostrarStatus={false}
-                        pessoas={pessoas}
-                        onClick={() => onAbrir(a)}
-                      />
+                        draggable={!!onMover && podeArrastar(a)}
+                        onDragStart={(e) => {
+                          arrastadaRef.current = a;
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", a.id);
+                        }}
+                        onDragEnd={() => { arrastadaRef.current = null; setAlvoArrasto(null); }}
+                        style={{ cursor: !!onMover && podeArrastar(a) ? "grab" : undefined }}
+                      >
+                        <CardAtividade
+                          a={a}
+                          mostrarStatus={false}
+                          pessoas={pessoas}
+                          onClick={() => onAbrir(a)}
+                        />
+                      </div>
                     ))}
                     {itens.length > (tetos[c] ?? TETO) && (
                       <button

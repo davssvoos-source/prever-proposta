@@ -434,7 +434,6 @@ function ChamadosPage() {
                       {c.titulo}
                     </div>
                     <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, marginTop: 3 }}>
-                      {c.numero ? `${c.numero} · ` : ""}
                       {trilhoDe(c) === "campo" ? "Campo" : trilhoDe(c) === "proposta" ? "Proposta" : (EQUIPE_LABEL[c.equipe as Equipe] ?? "Interno")}
                       {resp ? ` · ${resp}` : " · sem responsável"}
                     </div>
