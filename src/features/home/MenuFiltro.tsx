@@ -244,7 +244,7 @@ export function MenuFiltro({
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{
-                    display: "block", fontFamily: FONT, fontWeight: marcada ? 600 : 500,
+                    display: "block", fontFamily: FONT, fontWeight: marcada ? 600 : 400,
                     fontSize: 13, color: textPrimary,
                   }}>
                     {o.label}

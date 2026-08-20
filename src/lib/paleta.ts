@@ -60,27 +60,6 @@ export const GRAD_PRIMARIA = `linear-gradient(135deg, ${SUPERNOVA[300]}, ${SUPER
 /** Texto sobre o degradê primário: sempre o quase-preto da marca. */
 export const SOBRE_PRIMARIA = "#08090E";
 
-// ── Dataviz ─────────────────────────────────────────────────────────────────
-// As três cartelas que o Davi escolheu para gráficos e indicadores
-// (2026-08-20). São para DADOS, não para ação nem status — ação é Supernova,
-// status são as quatro escalas acima. A regra de tema é a mesma do resto:
-// tom claro da cartela no escuro, tom fundo no claro.
-//
-// Reserva ainda sem uso: #F4D35E, #124D1C, #0B1849, #E8E2DB, #EBEDE3.
-
-export const DATAVIZ = {
-  /** série neutra/fria — o "sem pressão" dos gráficos */
-  frio:   { dark: "#547792", light: "#1A3263" },
-  /** atenção — prazo chegando, meta em curso */
-  ambar:  { dark: "#FAB95B", light: "#E4B028" },
-  /** alarme — atrasado, urgente */
-  alerta: { dark: "#E63946", light: "#8B1E2D" },
-  /** apoio azul — contagens calmas (concluídos etc.) */
-  azul:   { dark: "#457B9D", light: "#457B9D" },
-  /** vinho — segundo alarme, quando o vermelho já está em uso ao lado */
-  vinho:  { dark: "#8B1E2D", light: "#8B1E2D" },
-} as const;
-
 // ── PRISMA — a paleta do degradê (v6 — 2026-08-20) ─────────────────────────
 // O degradê da casa tem composição fixa, definida pelo Davi:
 //
@@ -109,7 +88,10 @@ const cor = (dark: string, light: string, rgb: string, a = 0.14, b = 0.30): CorP
 
 export const PRISMA = {
   /** o amarelo do degradê — 40% dele, e o principal do sistema */
-  amarelo:    cor("#E7B925", "#8F6B00", "231,185,37"),
+  // É o amarelo do botão (SUPERNOVA 400 / GRAD_PRIMARIA) e o coração do
+  // degradê, em 42%. `light` continua fundo porque ele é TEXTO sobre branco:
+  // #F8C811 sobre branco dá 1.58:1.
+  amarelo:    cor("#F8C811", "#A06108", "248,200,17"),
   pessego:    cor("#EE9E09", "#9D5C00", "238,158,9"),
   laranja:    cor("#FA842D", "#AD4700", "250,132,45"),
   /** a ponta quente do degradê É o vermelho dos botões */
@@ -117,7 +99,8 @@ export const PRISMA = {
   rosa:       cor("#F1A0B4", "#A83A63", "241,160,180"),
   azulClaro:  cor("#5CB7E5", "#005F87", "92,183,229"),
   /** a ponta fria do degradê */
-  azul:       cor("#4885DF", "#084491", "72,133,223"),
+  /** a ponta fria do degradê — igual a ESPECTRO[0], por asserção */
+  azul:       cor("#4F94E9", "#236FC7", "79,148,233"),
   // o `dark` é mais claro que o azul de véu de propósito: ele é TEXTO de chip
   // sobre preto. O véu continua no azul profundo, que é o que pinta o card.
   azulEscuro: cor("#7FA8E8", "#0A3573", "20,70,145"),
@@ -127,53 +110,112 @@ export const PRISMA = {
 /**
  * A RAMPA — o degradê amostrado em 9 passos, que é o que os gráficos usam.
  *
- * Nove e não oito porque cada barra vai da sua cor à da seguinte: a última
- * barra precisa de um passo além do fim. Com oito, o laço de `espectro()`
- * levava a última barra da ponta vermelha de volta ao azul.
+ * v7 (2026-08-20): a faixa de 40% é ANCORADA nos amarelos do botão da marca —
+ * `#FCDE48`, `#F8C811`, `#E8B00A` (SUPERNOVA 300/400/500), os mesmos do
+ * GRAD_PRIMARIA. Era a última divergência de cor do sistema: o degradê tinha
+ * um amarelo e o botão tinha outro. Agora é um só.
  *
- * Derivada de ESPECTRO_STOPS por interpolação em oklch (o script de
- * derivação está no diário; os valores abaixo são o resultado congelado).
- * Três coisas foram conferidas em todas as amostras e estão travadas por
- * asserção:
- *   · nenhuma amostra cai no VERDE — azul→amarelo cruza o verde em matiz, e
- *     a costura precisou ficar estreita (18–23%) e quase acromática;
+ * O tema claro subiu MUITO (L .40–.56 → .54–.72): estava escuro a ponto de o
+ * degradê virar barro sobre branco. Ele usa os mesmos matizes com a
+ * luminosidade rebaixada — o padrão da paleta.
+ *
+ * Nove e não oito porque cada barra vai da sua cor à da seguinte: a última
+ * precisa de um passo além do fim.
+ *
+ * Três invariantes travados por asserção, um por tema:
+ *   · nenhuma amostra cai no VERDE — azul→amarelo cruza o verde em matiz, e a
+ *     costura precisou ficar estreita (18–23%) e quase acromática;
  *   · nenhuma EMENDA entre barras vizinhas passa pelo cinza;
- *   · todas passam de 4.5:1 sobre a superfície do tema — a rampa serve de
- *     texto sem precisar de uma segunda rampa clareada.
+ *   · a rampa de TEXTO passa de 4.5:1 sobre a superfície do tema.
  */
 export const ESPECTRO = {
-  dark:  ["#4885DF", "#5CB7E5", "#E2DA97", "#EBCE58", "#E7B925", "#EE9E09", "#FA842D", "#F1775C", "#F17881"],
-  light: ["#084491", "#005F87", "#766F34", "#887100", "#8F6B00", "#9D5C00", "#AD4700", "#AE371E", "#B1242E"],
+  dark:  ["#4F94E9", "#6CC2ED", "#F6E057", "#FAD029", "#EBB509", "#F49E00", "#FF872E", "#F87A5E", "#F17881"],
+  // miolo amarelo rebaixado a ≥3:1 sobre branco (mínimo WCAG de não-texto):
+  // no primeiro corte da v7 ele estava em 2.45:1 e as barras sumiam no card.
+  light: ["#236FC7", "#2E97C5", "#A99300", "#B78E00", "#BF8A00", "#CC7900", "#D96200", "#D65539", "#CF515E"],
 } as const;
 
 /**
- * O degradê como paradas CSS, com as porcentagens da composição. É a fonte:
- * a rampa de 9 acima nasce daqui. A costura azul→amarelo (18–23%) é estreita e
- * quase sem croma de propósito — com croma baixo o matiz não aparece, e é isso
- * que impede o verde de surgir no meio do degradê.
+ * A rampa que serve de TEXTO. O rótulo da barra é 13px pintado com a cor da
+ * barra, e no tema claro a rampa v7 ficou clara demais para isso (2.5:1 no
+ * miolo amarelo). Aqui os mesmos matizes descem até passar de 4.5:1 sobre
+ * branco.
  *
- * No escuro a costura é CLARA: cinza é baixo croma em luminosidade média, mas
- * em luminosidade alta o mesmo baixo croma lê como brilho. É de onde vem a
- * "sensação de brilho" que faltava na versão anterior.
+ * No escuro a rampa já é clara e passa de sobra: as duas são a mesma. É o
+ * espelho exato do problema da v5.1, onde quem precisava de socorro era o
+ * escuro — a assimetria é do fundo, não da paleta.
  */
-export const ESPECTRO_STOPS = {
-  dark: ["#4885DF 0%", "#46A7E9 10%", "#9AD2DF 18%", "#D0E5E3 20.5%", "#E0DCA7 23%",
-         "#E9D574 29%", "#ECCA45 42%", "#E6B519 52%", "#E9A40A 60%", "#F98D23 70%",
-         "#FB7A39 80%", "#ED7665 90%", "#F17881 100%"],
-  light: ["#084491 0%", "#00588E 10%", "#276B79 18%", "#576E6C 20.5%", "#726E3C 23%",
-          "#80701F 29%", "#8D7200 42%", "#8F6A00 52%", "#986000 60%", "#AA4F00 70%",
-          "#B04000 80%", "#AD3527 90%", "#B1242E 100%"],
+export const ESPECTRO_TEXTO = {
+  dark: ESPECTRO.dark,
+  light: ["#236FC7", "#0078B6", "#867000", "#906B00", "#986600", "#A75A00", "#B54C00", "#BB4329", "#BB3E4D"],
 } as const;
 
-/** Cor n da rampa, com laço. Serve de preenchimento E de texto. */
+/**
+ * O degradê como paradas CSS, com as porcentagens da composição
+ * (20% azul · 40% amarelo · 20% laranja · 20% vermelho). É a fonte: a rampa de
+ * 9 acima nasce daqui.
+ *
+ * Os três amarelos da marca estão aqui LITERAIS, em 29/42/52% — não são
+ * aproximações reconstruídas em oklch. O coração do degradê é `#F8C811`, em
+ * 42%, que é o centro exato da faixa amarela.
+ *
+ * A costura azul→amarelo (18–23%) é estreita e quase sem croma de propósito:
+ * com croma baixo o matiz não aparece, e é isso que impede o verde de surgir.
+ * No escuro ela é CLARA — cinza é baixo croma em luminosidade média, mas em
+ * luminosidade alta o mesmo baixo croma lê como brilho.
+ */
+export const ESPECTRO_STOPS = {
+  dark: ["#4F94E9 0%", "#57B5F1 10%", "#A7D9E5 18%", "#D7EBE9 20.5%", "#F4E15E 23%",
+         "#FCDE48 29%", "#F8C811 42%", "#E8B00A 52%", "#F0A300 60%", "#FE8F20 70%",
+         "#FF7E3B 80%", "#F47967 90%", "#F17881 100%"],
+  light: ["#236FC7 0%", "#138CCB 10%", "#69AAB9 18%", "#98B3B0 20.5%", "#A79400 23%",
+          "#AE9100 29%", "#BB8C00 42%", "#C08900 52%", "#C87D00 60%", "#D76A00 70%",
+          "#DB5A00 80%", "#D45443 90%", "#CF515E 100%"],
+} as const;
+
+/** Cor n da rampa (preenchimento), com laço. */
 export function espectro(i: number, isLight: boolean): string {
   const c = isLight ? ESPECTRO.light : ESPECTRO.dark;
+  return c[((i % c.length) + c.length) % c.length];
+}
+
+/** Cor n da rampa para TEXTO — garantidamente legível sobre a superfície. */
+export function espectroTexto(i: number, isLight: boolean): string {
+  const c = isLight ? ESPECTRO_TEXTO.light : ESPECTRO_TEXTO.dark;
   return c[((i % c.length) + c.length) % c.length];
 }
 
 /** O degradê inteiro como CSS, com a composição 20/40/20/20 preservada. */
 export function degradePrisma(isLight: boolean, angulo = "90deg"): string {
   return `linear-gradient(${angulo}, ${(isLight ? ESPECTRO_STOPS.light : ESPECTRO_STOPS.dark).join(", ")})`;
+}
+
+/**
+ * A costura da rampa como COR: a parada quase acromática de 20.5%. As 9
+ * amostras de ESPECTRO pulam essa parada — e interpolar as duas amostras
+ * vizinhas da emenda (azul claro ↔ amarelo claro) em sRGB passa pelo VERDE.
+ * Quem desenha um gradiente entre amostras vizinhas precisa passar por aqui.
+ */
+export const COSTURA: ParTema = { dark: "#D7EBE9", light: "#98B3B0" };
+
+/** Par de amostras que ladeia a costura (nos dois sentidos). */
+const PAR_EMENDA: Record<"dark" | "light", [string, string]> = {
+  dark: [ESPECTRO.dark[1], ESPECTRO.dark[2]],
+  light: [ESPECTRO.light[1], ESPECTRO.light[2]],
+};
+
+/**
+ * O gradiente de uma barra que vai da cor A à cor B. Se o par cruza a emenda
+ * da rampa, a costura entra como parada do meio — senão o miolo da barra fica
+ * verde (achado da auditoria v7, travado por asserção).
+ */
+export function gradienteBarra(a: string, b: string, isLight: boolean): string {
+  const tema = isLight ? "light" : "dark";
+  const [x, y] = PAR_EMENDA[tema];
+  const cruza = (a === x && b === y) || (a === y && b === x);
+  return cruza
+    ? `linear-gradient(90deg, ${a}, ${COSTURA[tema]} 50%, ${b})`
+    : `linear-gradient(90deg, ${a}, ${b})`;
 }
 
 // ── Avatares sem foto ───────────────────────────────────────────────────────
@@ -188,11 +230,13 @@ export interface DegradeAvatar {
   sobre: string;
 }
 
+// Os quatro pares saem da rampa v7 — e o amarelo é o DA MARCA (SUPERNOVA
+// 300→400), o mesmo do botão: a regra "um amarelo só" valendo aqui também.
 const AVATARES: DegradeAvatar[] = [
-  { grad: "linear-gradient(140deg, #5CB7E5, #4885DF)", glow: "rgba(72,133,223,0.42)",  sobre: "#08111F" },
-  { grad: "linear-gradient(140deg, #EBCE58, #E9A40A)", glow: "rgba(233,164,10,0.42)",  sobre: "#1A1300" },
-  { grad: "linear-gradient(140deg, #FB7A39, #F98D23)", glow: "rgba(250,132,45,0.42)",  sobre: "#1F0D00" },
-  { grad: "linear-gradient(140deg, #F17881, #ED7665)", glow: "rgba(241,120,129,0.42)", sobre: "#1F0708" },
+  { grad: "linear-gradient(140deg, #6CC2ED, #4F94E9)", glow: "rgba(79,148,233,0.42)",  sobre: "#08111F" },
+  { grad: "linear-gradient(140deg, #FCDE48, #F8C811)", glow: "rgba(248,200,17,0.42)",  sobre: "#1A1300" },
+  { grad: "linear-gradient(140deg, #FF872E, #F49E00)", glow: "rgba(244,158,0,0.42)",   sobre: "#1F0D00" },
+  { grad: "linear-gradient(140deg, #F87A5E, #F17881)", glow: "rgba(241,120,129,0.42)", sobre: "#1F0708" },
 ];
 
 /** O degradê de quem não tem foto — estável para a mesma pessoa. */

@@ -164,15 +164,15 @@
 
 @layer base {
   :root {
-    /* Tipografia v4 (apple-like): a fonte da PLATAFORMA — SF no Apple, Segoe
-       no Windows, Roboto no Android. Uma família só, hierarquia por peso e
-       tamanho, nunca por troca de fonte. */
+    /* Tipografia v7: Montserrat (webfont, 4 pesos — ver __root.tsx), com o
+       stack do sistema como fallback do display=swap. Uma família só,
+       hierarquia por peso e tamanho, nunca por troca de fonte. */
     --fonte: "Montserrat", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
              Roboto, "Helvetica Neue", Arial, sans-serif;
     /* granulado reaproveitado por .textura e .ruido */
     --ruido: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
     /* PRISMA.amarelo — o principal. Espelha src/lib/paleta.ts. */
-    --amarelo-principal: #E7B925;
+    --amarelo-principal: #F8C811;
     --rail: 0px;
     /* altura reservada ao header fixo. No desktop o header não existe (a
        identidade mora na sidebar e as notificações no painel da Início),
@@ -638,37 +638,54 @@ input::placeholder, textarea::placeholder {
    Só aqui. Nos gráficos o degradê disputava com os dados; neste painel não há
    dado — é um convite a escrever, e a cor faz o convite.
 
-   RAIO: 20px, declarado UMA vez aqui e herdado por todas as camadas. O canto
-   parecia reto antes por um motivo que não era geometria: a 150° o degradê
-   começa pelo azul, e em opacidade baixa aquele canto ficava quase preto,
-   igual ao fundo da página. O arredondamento estava lá — invisível.
+   RAIO: 20px, declarado UMA vez aqui e herdado por todas as camadas — mas o
+   que faz o canto existir é o clip-path abaixo, não o border-radius.
 
    BRILHO: 0.80 fixo (0.42 no claro). Era o valor que só aparecia no hover, e
    é o certo. O hover NÃO mexe mais no brilho.
 
    HOVER: o campo se movimenta, não acende. O degradê expande (scale) e o card
    sobe (.elevavel). Nada de opacidade. */
+/* O canto era reto MESMO — não era ilusão de cor, como diagnostiquei antes.
+   O degradê tem `filter: blur()`, o que promove a camada para a GPU, e camada
+   promovida escapa do arredondamento de `overflow: hidden`: o Chrome pintava
+   o degradê em retângulo por cima dos cantos.
+
+   A correção é `clip-path`, que clipa no compositor e por isso vale para
+   camada promovida. Mas clip-path clipa TAMBÉM a sombra do próprio elemento —
+   posto no painel, ele apagaria o realce do .elevavel no hover. Daí a camada
+   intermediária .campo-degrade-clip: ela clipa, e o painel guarda a sombra. */
 .campo-degrade {
   position: relative;
-  overflow: hidden;
   isolation: isolate;
   border-radius: 20px !important;
 }
-.campo-degrade > .campo-degrade-fundo {
-  border-radius: inherit;
+.campo-degrade > .campo-degrade-clip {
   position: absolute;
-  inset: -35%;
+  inset: 0;
   z-index: 0;
-  filter: blur(46px) saturate(1.15);
+  border-radius: inherit;
+  clip-path: inset(0 round 20px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.campo-degrade .campo-degrade-fundo {
+  position: absolute;
+  /* -20%, não -35%: com o estouro grande demais as pontas do degradê (o azul
+     em 0%, o vermelho em 100%) caíam fora do quadro e só o miolo amarelo
+     aparecia. O blur ainda tem folga de sobra para não puxar transparência
+     das bordas. */
+  inset: -20%;
+  z-index: 0;
+  filter: blur(42px) saturate(1.12);
   /* o brilho é constante: o hover move, não acende */
   opacity: 0.80;
   pointer-events: none;
   transform: scale(1);
   transform-origin: center;
   transition: transform .45s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
 }
-html[data-theme="light"] .campo-degrade > .campo-degrade-fundo { opacity: 0.42; }
+html[data-theme="light"] .campo-degrade .campo-degrade-fundo { opacity: 0.42; }
 .campo-degrade::after {
   content: "";
   position: absolute;
@@ -700,7 +717,7 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 
 @media (hover: hover) and (pointer: fine) {
   /* expande, não acende */
-  .campo-degrade:hover > .campo-degrade-fundo { transform: scale(1.14); }
+  .campo-degrade:hover .campo-degrade-fundo { transform: scale(1.14); }
 
   /* O clipe de anexo acende no amarelo principal da Prever. !important porque
      o fundo do botão é inline, e inline ganha de classe. */
@@ -708,12 +725,12 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .clip-anexo:hover {
     background: var(--amarelo-principal) !important;
     color: #08090E !important;
-    box-shadow: 0 0 14px rgba(231,185,37,0.45);
+    box-shadow: 0 0 14px rgba(248,200,17,0.45);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .campo-degrade > .campo-degrade-fundo { transition: none; }
-  .campo-degrade:hover > .campo-degrade-fundo { transform: none; }
+  .campo-degrade .campo-degrade-fundo { transition: none; }
+  .campo-degrade:hover .campo-degrade-fundo { transform: none; }
 }
 
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */

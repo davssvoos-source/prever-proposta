@@ -359,7 +359,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      A.faixaPrazo({ ...base, prazoLimite: new Date(2026, 7, 23, 20, 0).toISOString() }, seg), 'esta_semana');
 }
 
-// ── A rampa de cor (v6: 20% azul · 40% amarelo · 20% laranja · 20% vermelho) ─
+// ── A rampa de cor (v7: 20% azul · 40% amarelo · 20% laranja · 20% vermelho) ─
 {
   const P = carregar('src/lib/paleta.ts');
   const fi = (x) => (x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4));
@@ -389,11 +389,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('rampa clara tem 9 passos', P.ESPECTRO.light.length, 9);
 
   // as pontas: o degradê PERCORRE a paleta, não corre por fora dela
-  eq('a ponta quente é o vermelho dos botões (escuro)', P.ESPECTRO.dark[8], '#F17881');
-  eq('a ponta quente é o vermelho dos botões (claro)', P.ESPECTRO.light[8], '#B1242E');
-  eq('vermelho do PRISMA é a ponta quente', P.PRISMA.vermelho.dark, P.ESPECTRO.dark[8]);
-  eq('azul do PRISMA é a ponta fria', P.PRISMA.azul.dark, P.ESPECTRO.dark[0]);
-  eq('amarelo do PRISMA está no miolo amarelo', P.PRISMA.amarelo.dark, P.ESPECTRO.dark[4]);
+  eq('a ponta quente é o vermelho dos botões', P.ESPECTRO.dark[8], '#F17881');
+
+  // v7: os TRÊS amarelos do botão da marca estão LITERAIS nas paradas. Era a
+  // última divergência de cor do sistema — degradê com um amarelo, botão com
+  // outro. Se alguém reconstruir a rampa e perder os hexes exatos, isto acusa.
+  const paradasEscuras = P.ESPECTRO_STOPS.dark.map((s2) => s2.split(' ')[0]);
+  for (const [nome, hex] of [['300', '#FCDE48'], ['400', '#F8C811'], ['500', '#E8B00A']]) {
+    eq(`SUPERNOVA ${nome} (${hex}) está literal nas paradas do degradê`,
+       paradasEscuras.includes(hex), true);
+  }
+  eq('o coração do degradê (42%) é o amarelo do botão',
+     P.ESPECTRO_STOPS.dark.find((s2) => s2.endsWith(' 42%')), '#F8C811 42%');
+  eq('amarelo do PRISMA é o amarelo do botão', P.PRISMA.amarelo.dark, '#F8C811');
+  eq('azul do PRISMA é a ponta fria da rampa', P.PRISMA.azul.dark, P.ESPECTRO.dark[0]);
+  eq('vermelho do PRISMA é a ponta quente da rampa', P.PRISMA.vermelho.dark, P.ESPECTRO.dark[8]);
 
   for (const [tema, chave, fundo] of [['escuro', 'dark', '#141416'], ['claro', 'light', '#ffffff']]) {
     const r = P.ESPECTRO[chave];
@@ -401,9 +411,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // quase acromática, senão sobra uma barra verde no meio do gráfico.
     const verdes = r.filter((h) => { const o = oklch(h); return o.H > 120 && o.H < 190 && o.C > 0.05; });
     eq(`${tema}: nenhuma amostra caiu no verde`, verdes, []);
-    // a rampa serve de TEXTO — é ela que pinta o número de 13px da barra
-    const fracos = r.filter((h) => contraste(h, fundo) < 4.5);
-    eq(`${tema}: todas as amostras passam de 4.5:1`, fracos, []);
+    // quem pinta o número de 13px da barra é a rampa de TEXTO, não a de
+    // preenchimento: na v7 o tema claro subiu tanto que o miolo amarelo dá
+    // 2.5:1 sobre branco. É o espelho do problema que o escuro tinha na v5.1.
+    const fracos = P.ESPECTRO_TEXTO[chave].filter((h) => contraste(h, fundo) < 4.5);
+    eq(`${tema}: a rampa de TEXTO passa de 4.5:1`, fracos, []);
+    // preenchimento (barra, arco) precisa de 3:1 — o mínimo WCAG de não-texto.
+    // Na v7 o miolo amarelo claro caiu a 2.45:1 e as barras sumiam no card.
+    const palidos = P.ESPECTRO[chave].filter((h) => contraste(h, fundo) < 3);
+    eq(`${tema}: a rampa de PREENCHIMENTO passa de 3:1`, palidos, []);
+    const paradasPalidas = P.ESPECTRO_STOPS[chave]
+      .map((p2) => p2.split(' ')[0])
+      .filter((h, i2) => i2 >= 4 && contraste(h, fundo) < 3); // costura (0-3) é fundo, não figura
+    eq(`${tema}: paradas do miolo em diante passam de 3:1`, paradasPalidas, []);
     // emenda entre barras vizinhas não pode passar pelo cinza
     const lavadas = r.slice(0, -1)
       .map((h, i) => [i, oklch(meio(h, r[i + 1])).C])
@@ -420,6 +440,35 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq(`${tema}: a costura azul→amarelo está em 20%`, pos.includes(20.5), true);
     eq(`${tema}: a fronteira amarelo→laranja está em 60%`, pos.includes(60), true);
     eq(`${tema}: a fronteira laranja→vermelho está em 80%`, pos.includes(80), true);
+  }
+
+  // o tema claro tinha ficado escuro demais (barro sobre branco). A v7 subiu
+  // a rampa; esta asserção impede que ela volte a afundar.
+  const Lmedia = P.ESPECTRO.light
+    .map((h) => oklch(h).L).reduce((a2, b2) => a2 + b2, 0) / P.ESPECTRO.light.length;
+  eq('a rampa clara não pode voltar a afundar (L média > 0.60)', Lmedia > 0.60, true);
+  eq('a rampa clara é mais escura que a escura (é o que a faz ler no branco)',
+     Lmedia < P.ESPECTRO.dark.map((h) => oklch(h).L).reduce((a2, b2) => a2 + b2, 0) / 9, true);
+
+  // A EMENDA ENTRE AMOSTRAS: as 9 amostras pulam a costura acromática, então
+  // interpolar as duas vizinhas da emenda passa pelo VERDE — foi um achado da
+  // auditoria v7 (a barra do gráfico ficava verde no miolo). gradienteBarra()
+  // existe para isso; estas asserções impedem o defeito de voltar.
+  for (const [tema, chave] of [['escuro', 'dark'], ['claro', 'light']]) {
+    const r = P.ESPECTRO[chave];
+    const m = oklch(meio(r[1], r[2]));
+    eq(`${tema}: o par da emenda interpolado direto CAI no verde (por isso a costura existe)`,
+       m.H > 100 && m.H < 190 && m.C > 0.04, true);
+    const g = P.gradienteBarra(r[1], r[2], chave === 'light');
+    eq(`${tema}: gradienteBarra insere a costura no par da emenda`,
+       g.includes(P.COSTURA[chave]), true);
+    eq(`${tema}: gradienteBarra no sentido inverso também`,
+       P.gradienteBarra(r[2], r[1], chave === 'light').includes(P.COSTURA[chave]), true);
+    eq(`${tema}: fora da emenda o gradiente é simples`,
+       P.gradienteBarra(r[4], r[5], chave === 'light').includes(P.COSTURA[chave]), false);
+    const c1 = oklch(meio(r[1], P.COSTURA[chave])), c2 = oklch(meio(P.COSTURA[chave], r[2]));
+    const verde = (o) => o.H > 120 && o.H < 190 && o.C > 0.05;
+    eq(`${tema}: com a costura, nenhuma metade da emenda é verde`, [c1, c2].filter(verde), []);
   }
 
   // avatares: a cor tem de ser ESTÁVEL para a mesma pessoa

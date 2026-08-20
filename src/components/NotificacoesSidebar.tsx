@@ -175,7 +175,7 @@ export function NotificacoesSidebar() {
                 }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{
-                    display: "block", fontFamily: FONT, fontWeight: n.lida ? 500 : 600,
+                    display: "block", fontFamily: FONT, fontWeight: n.lida ? 400 : 600,
                     fontSize: 12, color: textPrimary,
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                   }}>

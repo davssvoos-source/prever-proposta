@@ -18,16 +18,19 @@
 // sequência, o painel virou o assunto da tela, e o assunto é o quadro embaixo.
 // O degradê vive nos DADOS — nas barras, no arco — não atrás deles.
 //
-// As cores são o ESPECTRO (paleta.ts) — v5.1, majoritariamente amarela — e o
+// As cores são o ESPECTRO (paleta.ts) — v7, ancorada nos amarelos da marca — e o
 // degradê ATRAVESSA as barras: cada uma vai da sua cor à da seguinte, então o
 // pé direito de uma emenda no pé esquerdo da próxima e as oito lêem como uma
 // rampa só. Barras quase coladas, com brilho especular e granulado
 // (.textura) — material, não plástico.
 //
-// A v6 tornou a ponte e a rampa-de-texto desnecessárias: a costura azul→amarelo
-// já vive dentro das paradas do degradê (estreita e quase acromática, 18–23%),
-// e todas as 9 amostras passam de 4.5:1 sobre a superfície do tema — então o
-// número da barra usa a cor da própria barra, como sempre deveria.
+// A rampa das barras é a do degradê INVERTIDA (pedido do Davi, 2026-08-20):
+// vermelho no passado, amarelo na semana corrente, azul no futuro. Além de ser
+// o que ele pediu, conserta uma contradição que eu tinha deixado na tela — os
+// cards dizem "adiante = azul" e as barras diziam "adiante = vermelho".
+//
+// O NÚMERO da barra usa ESPECTRO_TEXTO, não a cor da barra: a rampa clara é
+// de preenchimento (≥3:1) e texto de 13px exige 4.5:1.
 // Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
 // 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
@@ -45,7 +48,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { PRISMA, ESPECTRO_STOPS, espectro } from "@/lib/paleta";
+import { PRISMA, ESPECTRO, ESPECTRO_STOPS, ESPECTRO_TEXTO, gradienteBarra } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -107,9 +110,15 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
   const { data: concluidos } = useConcluidosPorSemana();
 
+  // invertida: o passado é quente, o futuro é frio — a mesma leitura da faixa
+  // de prazo nos cards, onde "adiante" é azul
+  const rampa = useMemo(() => [...(isLight ? ESPECTRO.light : ESPECTRO.dark)].reverse(), [isLight]);
+  const rampaTexto = useMemo(() => [...(isLight ? ESPECTRO_TEXTO.light : ESPECTRO_TEXTO.dark)].reverse(), [isLight]);
+
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
-    const lista: { chave: string; rotulo: string; valor: number; cor: string; corFim: string; atual: boolean }[] = [];
+    const lista: { chave: string; rotulo: string; valor: number; cor: string;
+                   corFim: string; corTexto: string; atual: boolean }[] = [];
 
     // futuro por prazo, contado das atividades em aberto
     const futuros: Record<string, number> = {};
@@ -130,13 +139,14 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         rotulo: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
         valor: passado ? (concluidos?.[chave] ?? 0) : (futuros[chave] ?? 0),
         // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
-        cor: espectro(idx, isLight),
-        corFim: espectro(idx + 1, isLight),
+        cor: rampa[idx],
+        corFim: rampa[idx + 1],
+        corTexto: rampaTexto[idx],
         atual: i === 0,
       });
     }
     return lista;
-  }, [atividades, concluidos, isLight]);
+  }, [atividades, concluidos, rampa, rampaTexto]);
 
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
@@ -148,7 +158,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         {barras.map((b) => (
           <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
             <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.cor,
+              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.corTexto,
               fontVariantNumeric: "tabular-nums", lineHeight: 1,
             }}>
               {b.valor}
@@ -160,12 +170,12 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
                 width: "100%",
                 height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
                 borderRadius: 7,
-                background: `linear-gradient(90deg, ${b.cor}, ${b.corFim})`,
-                opacity: b.valor === 0 ? 0.3 : 1,
+                background: gradienteBarra(b.cor, b.corFim, isLight),
+                opacity: b.valor === 0 ? (isLight ? 0.55 : 0.3) : 1,
               }} />
             <span style={{
               fontFamily: FONT,
-              fontWeight: b.atual ? 700 : 300,
+              fontWeight: b.atual ? 700 : 400,
               fontSize: 10,
               color: b.atual ? textPrimary : textSecondary,
               whiteSpace: "nowrap",
@@ -217,7 +227,8 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
   const R = 68;
   const CIRC = 2 * Math.PI * R;
   const mesNome = new Date().toLocaleDateString("pt-BR", { month: "long" });
-  // as MESMAS paradas do degradê da casa, com a composição 20/40/20/20
+  // as paradas do degradê da casa na ordem ORIGINAL (identidade) — só as
+  // barras rodam invertidas, porque lá a rampa é eixo do tempo
   const paradas = (isLight ? ESPECTRO_STOPS.light : ESPECTRO_STOPS.dark)
     .map((p) => { const [cor, pos] = p.split(" "); return { cor, pos }; });
 
@@ -321,9 +332,13 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
           boxSizing: "border-box",
         }}>
           {/* a cor mora no NÚMERO — a bolinha saiu */}
-          <div className="kpi-num" style={{ // Thin em numeral grande: no tamanho, o peso vira ruído — quem
-            // carrega a hierarquia aqui é o corpo do número, não a espessura
-            fontFamily: FONT, fontWeight: 100, fontSize: 46, color: k.cor, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <div className="kpi-num" style={{
+            // Montserrat Bold com glow levíssimo (pedido do Davi). O halo é a
+            // PRÓPRIA cor do número em alfa baixo (~35%): cada indicador
+            // brilha no seu tom em vez de todos ganharem o mesmo véu branco.
+            fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor,
+            textShadow: `0 0 14px ${k.cor}59`,
+            fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {k.valor}
           </div>
           <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>

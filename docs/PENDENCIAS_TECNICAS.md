@@ -243,3 +243,18 @@ fechar por `Esc`.
   Ver `docs/PLANO_UNIFICACAO.md` §U9.
 - **O rótulo "Aguardando início"** fica ao lado de "Aguardando aprovação". Não é
   defeito; é escolha a validar no uso.
+
+## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
+
+A auditoria da v7 varreu o sistema e achou amarelos de fora da paleta em telas
+que a reforma de design ainda não alcançou:
+
+- `visita.$id.pendente.tsx:444` — degradês avulsos terminando em `#FFA500`,
+  `#FFB300`, `#FFD84D`, `#d49a00`, `#d4a800`, `#FFA000`;
+- `gerencial.usuarios.tsx:496` — véu claro em `#fef3c7`/`#fde68a` (Tailwind
+  amber) com o escuro já em `rgba(248,200,17,…)`;
+- `chamados.indicadores.tsx:28` — cartelas categóricas com `#eda100`/`#E2791D`.
+
+Não corrigidos porque estas telas estão fora do escopo da Início e serão
+redesenhadas por inteiro na reforma v7 delas. Quando forem, os amarelos viram
+`PRISMA.amarelo`/`SUPERNOVA` — e nada além.

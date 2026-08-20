@@ -104,7 +104,7 @@ export function SideNav() {
     background: ativo ? GOLD_GRAD : "transparent",
     color: ativo ? SOBRE_PRIMARIA : textSecondary,
     fontFamily: FONT,
-    fontWeight: ativo ? 700 : 500,
+    fontWeight: ativo ? 700 : 400,
     fontSize: 13.5,
     boxShadow: ativo ? "0 4px 14px rgba(248,200,17,0.28)" : "none",
     transition: "background .15s, color .15s",

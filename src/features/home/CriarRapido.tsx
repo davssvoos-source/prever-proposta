@@ -105,7 +105,11 @@ export function CriarRapido() {
 
   return (
     <div className="elevavel campo-degrade" style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div className="campo-degrade-fundo" aria-hidden style={{ background: degradePrisma(isLight, "150deg") }} />
+      {/* a camada que clipa (ver styles.css): sem ela o degradê borrado, que
+          vira camada de GPU, pinta em retângulo por cima do canto redondo */}
+      <div className="campo-degrade-clip" aria-hidden>
+        <div className="campo-degrade-fundo" style={{ background: degradePrisma(isLight, "150deg") }} />
+      </div>
       <div className="campo-degrade-conteudo">
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={MICRO}>Abrir chamado</span>
@@ -129,7 +133,7 @@ export function CriarRapido() {
           margin: "10px 0",
           padding: "10px 12px",
           borderRadius: 16,
-          border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+          border: isLight ? "1px solid rgba(0,0,0,0.16)" : "1px solid rgba(255,255,255,0.10)",
           // sobre o degradê a caixa precisa de mais corpo, senão o texto
           // digitado disputa com a cor de trás
           background: isLight ? "rgba(255,255,255,0.72)" : "rgba(10,10,15,0.62)",
@@ -220,7 +224,7 @@ export function CriarRapido() {
             transition: CURVA,
             transform: temTexto || enviando ? "scale(1)" : "scale(0.25)",
             opacity: temTexto || enviando ? 1 : 0,
-            boxShadow: `0 4px 14px rgba(245,190,69,0.38)`,
+            boxShadow: `0 4px 14px rgba(248,200,17,0.38)`,
             flexShrink: 0,
           }}
         >

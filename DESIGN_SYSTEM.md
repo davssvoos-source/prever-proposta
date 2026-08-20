@@ -627,42 +627,75 @@ continua no azul profundo da imagem — é ele que pinta o fundo do card.
 Cada entrada carrega `dark`, `light`, `bg` (véu translúcido) e `border`. Quem
 consome nunca escolhe alfa na mão.
 
-### 11.2 O degradê (v6 — 2026-08-20)
+### 11.2 O degradê (v7 — 2026-08-20)
 
-O degradê da casa tem **composição fixa**, definida pelo Davi:
+Composição fixa, do frio ao quente:
 
 | faixa | fatia | do quê |
 |---|---|---|
-| azul | **20%** | `#4885DF` → `#9AD2DF` |
+| azul | **20%** | `#4F94E9` → `#A7D9E5` |
 | costura | 18–23% | quase acromática — ver abaixo |
-| amarelo | **40%** | `#E0DCA7` → `#E9A40A` |
-| laranja | **20%** | `#F98D23` → `#FB7A39` |
-| vermelho | **20%** | `#ED7665` → `#F17881` |
+| amarelo | **40%** | **`#FCDE48` → `#F8C811` → `#E8B00A`** |
+| laranja | **20%** | `#F0A300` → `#FF7E3B` |
+| vermelho | **20%** | `#F47967` → `#F17881` |
 
-Nessa ordem, do frio ao quente. O amarelo é 40% porque é o principal. E a ponta
-quente termina **exatamente no vermelho que os botões do sistema já usam** —
-`#F17881` no escuro, `#B1242E` no claro: o degradê *percorre* a paleta em vez de
-correr por fora dela. Travado por asserção.
+#### Um amarelo só no sistema inteiro
 
-`ESPECTRO_STOPS` é a fonte (paradas CSS com as porcentagens). `ESPECTRO` são 9
-amostras dela, que é o que as barras usam — nove e não oito porque cada barra
-vai da sua cor à da seguinte, e a última precisa de um passo além do fim.
+Os três amarelos da faixa de 40% **são os do botão da marca** — SUPERNOVA
+300/400/500, exatamente os de `GRAD_PRIMARIA`. Estão literais em
+`ESPECTRO_STOPS`, não reconstruídos em oklch, e três asserções garantem que
+continuem lá.
+
+Era a última divergência de cor do sistema: o degradê tinha um amarelo e o
+botão tinha outro, a poucos graus de matiz — perto o bastante para ler como
+erro, longe o bastante para incomodar. O coração do degradê, em 42%, é
+`#F8C811`. `PRISMA.amarelo.dark` é o mesmo hex.
+
+`PRISMA.amarelo.light` continua fundo (`#A06108`) porque é **texto sobre
+branco**: `#F8C811` sobre branco dá 1.58:1.
+
+#### As duas pontas
+
+A quente termina em `#F17881`, o vermelho que os botões já usam. A fria começa
+em `#4F94E9`. O degradê *percorre* a paleta em vez de correr por fora dela.
 
 #### A costura, e por que ela é clara
 
 Azul e amarelo estão em pontas opostas do matiz, e o caminho entre eles **cruza
 o verde**. Não há como evitar interpolando: ou passa pelo verde, ou pelo
-magenta. A saída é passar por lá tão rápido e com croma tão baixo que o matiz
-não chega a aparecer — daí a costura estreita (18–23%) e quase acromática.
+magenta. A saída é atravessar tão rápido e com croma tão baixo que o matiz não
+chega a aparecer — daí a costura estreita (18–23%) e quase acromática.
 
 E ela é **clara**, não média. Cinza é baixo croma em luminosidade média; em
-luminosidade alta, o mesmo baixo croma lê como **brilho**. É de onde vem a
-sensação de brilho que faltava na v5.1, onde a rampa afundava no preto.
+luminosidade alta, o mesmo baixo croma lê como **brilho**.
 
-Três invariantes estão travados em `verificar-logica.cjs`, um por tema:
-nenhuma amostra cai no verde; nenhuma emenda entre barras vizinhas passa pelo
-cinza; e **todas as 9 passam de 4.5:1** sobre a superfície do tema — por isso a
-v6 pôde apagar a rampa-de-texto separada que a v5.1 precisava ter.
+#### O tema claro subiu
+
+A v6 deixou a rampa clara em L .40–.56 — barro sobre branco. A v7 subiu para
+L .54–.72. Uma asserção impede que ela volte a afundar (L média > 0.60) e outra
+garante que ela siga mais escura que a rampa do tema escuro, que é o que a faz
+ler no branco.
+
+#### Duas rampas, e por quê
+
+`ESPECTRO` é **preenchimento**. `ESPECTRO_TEXTO` é o que pinta o número de 13px
+da barra.
+
+No tema **claro** elas divergem: depois da subida, o miolo amarelo dá 2.5:1
+sobre branco e não serve de texto. No tema **escuro** são a mesma coisa — a
+rampa já é clara e passa de sobra. É o espelho exato do problema da v5.1, onde
+quem precisava de socorro era o escuro. **A assimetria é do fundo, não da
+paleta.**
+
+#### O gráfico de barras roda invertido
+
+As barras usam a rampa ao contrário: **vermelho no passado, amarelo na semana
+corrente, azul no futuro**. Além de ser o que o Davi pediu, conserta uma
+contradição que estava na tela: os cards dizem "adiante = azul" e as barras
+diziam "adiante = vermelho".
+
+A rosca e o painel "Abrir chamado" seguem a ordem original — são a identidade
+do degradê, não uma escala de tempo.
 
 ### 11.3 Prazo → cor de fundo do card
 
@@ -672,7 +705,7 @@ responde, e o card inteiro se pinta:
 | faixa | cor | quando |
 |---|---|---|
 | `atraso` | vermelho `#F17881` | prazo já passou |
-| `esta_semana` | **amarelo `#E7B925`** | vence até domingo 23:59 da semana corrente |
+| `esta_semana` | **amarelo `#F8C811`** | vence até domingo 23:59 da semana corrente |
 | `adiante` | azul `#4885DF` | vence da segunda seguinte em diante |
 
 As três são literalmente as pontas e o miolo do degradê, não aproximações
@@ -736,10 +769,10 @@ em vez de a tela ficar em branco no 4G de obra.
 
 | peso | onde | por quê |
 |---|---|---|
-| **100 Thin** | numeral grande (% da rosca, valor do KPI) | no tamanho, o peso vira ruído: quem carrega a hierarquia é o corpo do número |
+| **100 Thin** | o `%` da rosca (52px) | no tamanho, o peso vira ruído: quem carrega a hierarquia é o corpo do número |
 | **400 Regular** | corpo, texto secundário, descrição, placeholder | leitura longa |
 | **600 SemiBold** | título de card, chip, item de menu, botão | o degrau de hierarquia mais usado |
-| **700 Bold** | micro-rótulo em caixa alta, contagem, valor de barra | texto pequeno precisa de peso para existir |
+| **700 Bold** | micro-rótulo em caixa alta, valor de barra, **número do KPI** | texto pequeno precisa de peso para existir; e o KPI é número de decisão, não de contemplação |
 
 **Não existe 500 nem 800 no sistema.** Foram varridos (48 e 72 ocorrências).
 Pedir um peso que não foi carregado faz o navegador *sintetizar* — engordar ou
@@ -780,3 +813,16 @@ card sobe (`.elevavel`). Nenhuma mudança de opacidade. Anulado sob
 O clipe de anexo acende no amarelo principal (`--amarelo-principal`, que espelha
 `PRISMA.amarelo`) com `!important` — o fundo do botão é inline, e inline ganha
 de classe.
+
+**O canto reto era reto mesmo.** `filter: blur()` promove a camada para a GPU, e
+camada promovida **escapa do arredondamento de `overflow: hidden`** — o Chrome
+pintava o degradê em retângulo por cima dos cantos. A correção é `clip-path`,
+que clipa no compositor.
+
+Mas `clip-path` clipa também a **sombra do próprio elemento**: posto no painel,
+ele apagaria o realce do `.elevavel` no hover. Daí a camada intermediária
+`.campo-degrade-clip` — ela clipa, e o painel guarda a sombra.
+
+Os KPIs ganharam um glow levíssimo na **própria cor do número**
+(`textShadow: 0 0 16px <cor>59`), não um véu branco: cada indicador brilha no
+seu tom.

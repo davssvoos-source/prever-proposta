@@ -758,7 +758,7 @@ function PerfilPage() {
                 <div
                   style={{
                     fontFamily: "var(--fonte)",
-                    fontWeight: n.lida ? 400 : 500,
+                    fontWeight: n.lida ? 400 : 600,
                     fontSize: 12,
                     color: isLight ? "#0a0b0e" : "#FFFFFF",
                   }}

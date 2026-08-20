@@ -58,9 +58,9 @@ const FAIXA: Record<Exclude<FaixaPrazo, null>, {
   // vermelho é o mesmo dos botões do sistema.
   atraso:      { rgb: "241,120,129", bgDark: 0.16, bgLight: 0.075, brDark: 0.34, brLight: 0.22 },
   // o amarelo — 40% do degradê, o principal, e a faixa que decide o dia
-  esta_semana: { rgb: "231,185,37",  bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
+  esta_semana: { rgb: "248,200,17",  bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
   // o azul da ponta fria: presente, mas sem pressa
-  adiante:     { rgb: "72,133,223",  bgDark: 0.17, bgLight: 0.10,  brDark: 0.34, brLight: 0.22 },
+  adiante:     { rgb: "79,148,233",  bgDark: 0.17, bgLight: 0.10,  brDark: 0.34, brLight: 0.22 },
 };
 
 interface Props {
