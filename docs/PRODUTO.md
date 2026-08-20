@@ -267,6 +267,19 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   e **Monitoramento / Portaria** — entraram no domínio junto com as demais.
   "T.I / Técnica" do Notion vira **T.I.** aqui; "Marketing / Comercial" vira
   **Comercial**. Célula com várias equipes usa a primeira.
+- **R19** — **"Executado" e "concluído" são a mesma coisa.** Quando o técnico
+  encerra o atendimento, o chamado **já fica concluído** — não existe estado em
+  que o trabalho está feito e o registro está aberto. A conferência que liberava
+  a cobrança não some junto: ela nunca dependeu do status, e sim de
+  `faturamento_status`, que a U0 deixou fora do ciclo justamente para isso. A
+  fila "A conferir" passa a ser *campo + concluído + a analisar*, o que é mais
+  fiel — chamado sem nada a cobrar sai dela sozinho.
+- **R20** — **O quadro é a fila de trabalho, não o espelho do vocabulário.**
+  Cinco colunas: Aguardando início · Em andamento · Stand-by · Aguardando
+  aprovação · Concluído. `agendado` cai em "Aguardando início" (com hora
+  marcada ou sem, continua esperando para começar) e `cancelado` não tem coluna
+  — trabalho cancelado não é trabalho. Nenhum dos dois some calado: a hora fica
+  no card, e o quadro diz quantos cancelados ficaram de fora.
 - **R18** — **Quem abre cada tela é configuração, não código.** O admin edita
   uma matriz de 21 telas × 3 papéis em `/gerencial/permissoes`; o rodapé e as
   guardas de rota leem dela. O **admin não entra na matriz** (tem tudo por

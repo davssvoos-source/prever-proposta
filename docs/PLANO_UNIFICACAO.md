@@ -1523,3 +1523,78 @@ BottomNav** — `#root, main, header, nav { z-index: 1 }` faz do `<main>` um
 contexto de empilhamento, então o `z-index: 60` do popover só compete lá dentro,
 e no celular tocar na última opção navega para outra tela. A correção é portal
 para o `body`; subir o z-index não resolve, porque o problema não é o valor.
+
+### U13 — "Executado" e "concluído" viram a mesma coisa (2026-08-20)
+
+Regra **R19**, ditada assim: *"EXECUTADO e CONCLUIDO é a mesma coisa!!"*.
+
+**Migration** `20260820100000_u13_executado_vira_concluido.sql`. **Vai junto com
+o deploy** — o app velho ainda escreve `executado`, que o CHECK novo recusa.
+
+**O que se perderia, e por que não se perde.** `executado` era o portão da
+conferência: o técnico entregava, o chamado ficava executado, e o gestor
+conferia antes de fechar. Fundindo os dois, a fila "A conferir" deveria sumir
+junto.
+
+Ela não some, porque o portão nunca dependeu do status. Quem manda na
+conferência é `faturamento_status`, e a U0 tomou essa decisão de propósito — o
+comentário dela ainda está lá: *"Deliberadamente FORA do CHECK de status: o
+ciclo de campo não pode depender do financeiro"*. A fila passa a ser
+`natureza='campo' AND status='concluido' AND faturamento_status='a_analisar'`,
+que é **mais fiel** que o estado era: um chamado sem nada a cobrar não deveria
+estar na fila de conferência, e antes estava.
+
+**O que muda de comportamento, dito com todas as letras:** quando o técnico
+encerra o atendimento, o chamado já fica concluído. Some o estado intermediário
+em que o trabalho está feito e o registro está aberto.
+
+Cuidados da migration: os triggers são silenciados durante a conversão (senão
+cada chamado ganharia um evento "executado → concluido" e cada responsável uma
+notificação de "Chamado concluído" sobre trabalho entregue há semanas), e
+`concluida_em` herda `finalizada_em` em vez de `now()` — carimbar hoje diria que
+tudo foi concluído hoje.
+
+O `notify_chamado` perdeu o aviso de "executado, confira" e ganhou um de
+"concluído, aguardando análise de cobrança" para quem responde pelo financeiro.
+
+### U14 — O quadro deixa de espelhar o vocabulário (2026-08-20)
+
+Regra **R20**: *"Remova o status cancelado do KanBan na Home. Remova o status
+agendado da visualização do Kanban."*
+
+Cinco colunas no lugar de oito: **Aguardando início · Em andamento · Stand-by ·
+Aguardando aprovação · Concluído**.
+
+`COLUNAS` deixou de ser `STATUS_ORDEM` — e essa separação é o ponto. O
+vocabulário é do domínio; o quadro é uma leitura dele. `colunaVisivel()` faz a
+tradução: `agendado` cai em "Aguardando início" (com hora marcada ou sem, o
+chamado continua esperando para começar — duas colunas diziam a mesma coisa, e
+a hora segue no card), e `cancelado` não tem coluna, porque trabalho cancelado
+não é fila de trabalho.
+
+Nenhum dos dois some calado: o quadro imprime *"N cancelados — veja na lista, em
+Encerrados"* no rodapé do trilho.
+
+### Pendências da U12 fechadas (2026-08-20)
+
+Nove dos doze itens de `docs/PENDENCIAS_TECNICAS.md` foram corrigidos, entre
+eles o crítico:
+
+- **P1** — o popover do filtro era pintado **atrás da BottomNav** porque
+  `#root, main, header, nav { z-index: 1 }` faz do `<main>` um contexto de
+  empilhamento; no celular, tocar na última opção navegava para outra tela.
+  Resolvido com `createPortal` para o `body` — subir o z-index não resolveria,
+  o problema nunca foi o valor. A mesma mudança fechou o **P3**: agora o menu
+  vira para cima quando não cabe embaixo e limita a altura ao espaço da janela.
+- **P2/P6** — a roda do mouse andava 3px por clique no Firefox (`deltaMode` em
+  linhas, não pixels) e fazia a coisa errada com o cursor sobre o cabeçalho da
+  coluna (`closest` não acha um irmão).
+- **P4** — `prefers-reduced-motion` congelava os spinners de carregamento. Um
+  spinner parado lê como "travou".
+- **P5, P8, P10, P11, P12** — "Em aberto" nunca aparecia marcada; a barra de
+  filtros se rearranjava a cada escolha; o aviso "Mostrando 60 de N" virava
+  célula da grade; o foco por teclado deformava botões arredondados; `Esc`
+  largava o foco no `body`.
+
+Ficaram **P7** (vínculo implícito do preset) e **P9** (inércia do trackpad),
+os dois ainda por confirmar.

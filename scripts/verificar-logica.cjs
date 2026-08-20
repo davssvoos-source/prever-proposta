@@ -135,11 +135,25 @@ const visita = (status, extra = {}) => ({
   data_hora_agendada: null, created_at: '2026-01-01T00:00:00Z', ...extra,
 });
 
-// exaustividade: os 8 status do CHECK viram os 8 da coluna, sem sobra nem falta
-for (const st of A.COLUNAS) {
+// exaustividade: cada status do CHECK vira a coluna homônima
+const CS = carregar('src/lib/chamado-status.ts');
+for (const st of CS.STATUS_ORDEM) {
   eq(`chamado "${st}" cai na coluna homonima`,
      A.colunaDoChamado(chamado(st), null, false).coluna, st);
 }
+eq('o vocabulario tem 7 status (executado saiu na U13)', CS.STATUS_ORDEM.length, 7);
+eq('executado nao existe mais', CS.STATUS_ORDEM.includes('executado'), false);
+
+// ── U13/U14: o quadro nao mostra tudo o que o vocabulario tem ───────────────
+eq('o quadro tem 5 colunas', A.COLUNAS.length, 5);
+eq('agendado nao e coluna', A.COLUNAS.includes('agendado'), false);
+eq('cancelado nao e coluna', A.COLUNAS.includes('cancelado'), false);
+eq('agendado cai em "Aguardando inicio"', A.colunaVisivel('agendado'), 'aberto');
+eq('cancelado nao tem coluna (fica na lista)', A.colunaVisivel('cancelado'), null);
+eq('os demais nao sao desviados', A.colunaVisivel('stand_by'), 'stand_by');
+eq('rotulo de aberto mudou', CS.chamadoStatusInfo('aberto').label, 'Aguardando início');
+eq('concluido encerra', CS.chamadoEmAberto('concluido'), false);
+eq('agendado segue em aberto', CS.chamadoEmAberto('agendado'), true);
 eq('status fora do CHECK nunca some — vai para sem_status',
    A.colunaDoChamado(chamado('inventado'), null, false).coluna, 'sem_status');
 eq('e é marcado como desconhecido',
@@ -154,6 +168,7 @@ eq('compra em cotação → Em andamento', compra('em_cotacao').coluna, 'em_anda
 eq('compra aprovada → Em andamento', compra('aprovado').coluna, 'em_andamento');
 eq('comprado esperando entrega → Stand-by', compra('comprado').coluna, 'stand_by');
 eq('compra recebida → Concluído', compra('recebido').coluna, 'concluido');
+eq('e o quadro a mostra na coluna Concluído', A.colunaVisivel(compra('recebido').coluna), 'concluido');
 eq('compra recusada → Cancelado', compra('recusado').coluna, 'cancelado');
 eq('chamado terminal manda mesmo com compra andando',
    compra('em_cotacao', 'cancelado').coluna, 'cancelado');
@@ -175,8 +190,10 @@ eq('visita aguardando o comercial → Aguardando aprovação',
    A.colunaDaVisita(visita('aguardando_aprovacao')).coluna, 'aguardando_aprovacao');
 eq('legado "concluida" cai no mesmo lugar',
    A.colunaDaVisita(visita('concluida')).coluna, 'aguardando_aprovacao');
-eq('aprovada sem proposta enviada → Executado (o funil parou)',
-   A.colunaDaVisita(visita('aprovada')).coluna, 'executado');
+eq('aprovada sem proposta enviada → Aguardando aprovação (o funil parou)',
+   A.colunaDaVisita(visita('aprovada')).coluna, 'aguardando_aprovacao');
+eq('e a bola é do comercial, que precisa mandar a proposta',
+   A.colunaDaVisita(visita('aprovada')).bolaCom, 'comercial');
 eq('proposta com o cliente → Aguardando aprovação',
    A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' })).coluna,
    'aguardando_aprovacao');
@@ -225,6 +242,7 @@ eq('interno não entra na fila por prioridade', interno.prioridadeRank, 4);
 const vAtiv = (status, extra = {}) =>
   A.atividadeDaVisita(visita(status, extra), { userId: null, apoios: new Set(), fichas: new Map() });
 eq('visita aprovada sem proposta continua em aberto', vAtiv('aprovada').emAberto, true);
+eq('e tem coluna no quadro', A.colunaVisivel(vAtiv('aprovada').coluna) !== null, true);
 eq('proposta com o cliente continua em aberto',
    vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' }).emAberto, true);
 eq('visita reprovada continua em aberto (tem que ser reagendada)',

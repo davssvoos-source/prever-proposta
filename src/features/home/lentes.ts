@@ -105,9 +105,12 @@ export const PRESETS: Preset[] = [
     chave: "a_conferir",
     label: "A conferir",
     papeis: ["sac", "comercial", "admin"],
-    foco: ["executado"],
+    foco: ["concluido"],
     ordem: "atualizacao",
-    aplica: (a) => a.coluna === "executado" && a.emAberto,
+    // A fila de conferência nunca dependeu do status: quem manda nela é
+    // `faturamento_status`, deixado fora do ciclo lá na U0 exatamente por isso.
+    // É mais fiel que "executado" era: chamado sem nada a cobrar sai sozinho.
+    aplica: (a) => a.natureza === "campo" && a.aConferir,
   },
   {
     chave: "sem_dono",

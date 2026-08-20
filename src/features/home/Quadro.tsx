@@ -34,7 +34,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import {
-  COLUNAS, colunaLabel, colunaCores,
+  COLUNAS, colunaLabel, colunaCores, colunaVisivel,
   type Atividade, type ColunaQuadro,
 } from "@/features/atividades/modelo";
 import { CardAtividade, PISO_TIPO } from "./CardAtividade";
@@ -86,18 +86,30 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
 
       // Se a coluna sob o cursor ainda tem para onde rolar na vertical, a roda
       // é dela. Só quando ela chega ao fim é que o movimento vira lateral.
-      const coluna = (e.target as HTMLElement)?.closest?.("[data-corpo-coluna]") as HTMLElement | null;
+      //
+      // A busca é pela COLUNA e daí para o corpo, não direto pelo corpo: o
+      // cabeçalho é irmão do corpo, não ancestral, então com o cursor sobre o
+      // título da coluna o `closest` devolvia null e a roda arrastava o quadro.
+      const raiz = (e.target as HTMLElement)?.closest?.("[data-coluna]") as HTMLElement | null;
+      const coluna = raiz?.querySelector("[data-corpo-coluna]") as HTMLElement | null;
       if (coluna) {
         const sobra = coluna.scrollHeight - coluna.clientHeight - coluna.scrollTop;
         if (e.deltaY > 0 && sobra > 1) return;
         if (e.deltaY < 0 && coluna.scrollTop > 0) return;
       }
 
+      // Firefox entrega deltaMode=1 (LINHAS, deltaY≈3); Chrome entrega pixels
+      // (≈100). Sem normalizar, o quadro andava 3px por clique no Firefox.
+      const passo =
+        e.deltaMode === 1 ? e.deltaY * 16 :
+        e.deltaMode === 2 ? e.deltaY * el.clientWidth :
+        e.deltaY;
+
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
-      const alvo = el.scrollLeft + e.deltaY;
+      const alvo = el.scrollLeft + passo;
       // no limite, devolve a roda para a página em vez de travar o gesto
-      if ((e.deltaY < 0 && el.scrollLeft <= 0) || (e.deltaY > 0 && el.scrollLeft >= max)) return;
+      if ((passo < 0 && el.scrollLeft <= 0) || (passo > 0 && el.scrollLeft >= max)) return;
       e.preventDefault();
       el.scrollLeft = alvo;
     };
@@ -108,10 +120,13 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
   const porColuna = new Map<ColunaQuadro, Atividade[]>();
   for (const c of COLUNAS) porColuna.set(c, []);
   porColuna.set("sem_status", []);
+  let semColuna = 0;
   for (const a of atividades) {
-    const lista = porColuna.get(a.coluna);
+    const destino = colunaVisivel(a.coluna);
+    if (!destino) { semColuna++; continue; }   // cancelado: fica só na lista
+    const lista = porColuna.get(destino);
     if (lista) lista.push(a);
-    else porColuna.set(a.coluna, [a]);
+    else porColuna.set(destino, [a]);
   }
 
   // "Sem status" só existe quando existe item quebrado
@@ -153,7 +168,7 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
           const comVoce = itens.filter((a) => a.souResponsavel || a.souApoio).length;
 
           return (
-            <div key={c} className="coluna-quadro" style={{ ...COLUNA, opacity: apagada ? 0.5 : 1 }}>
+            <div key={c} data-coluna className="coluna-quadro" style={{ ...COLUNA, opacity: apagada ? 0.5 : 1 }}>
               <div style={{
                 flexShrink: 0,
                 background: fundoCabecalho,
@@ -238,6 +253,17 @@ export function Quadro({ atividades, foco, nomePorId, onAbrir }: Props) {
           );
         })}
       </div>
+
+      {/* O que não tem coluna precisa aparecer em algum lugar: sumir calado
+          é pior que ocupar uma linha. */}
+      {semColuna > 0 && (
+        <div style={{
+          fontFamily: FONT, fontSize: PISO_TIPO, color: textSecondary,
+          padding: "8px 0 0", position: "sticky", left: 0,
+        }}>
+          {semColuna} cancelado{semColuna > 1 ? "s" : ""} — veja na lista, em “Encerrados”.
+        </div>
+      )}
     </div>
   );
 }

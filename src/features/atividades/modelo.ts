@@ -90,6 +90,12 @@ export interface Atividade {
   quando: string | null;
 
   emAberto: boolean;
+  /**
+   * Concluído mas ainda esperando a análise de cobrança. É a fila que o
+   * "executado" carregava antes da U13 — e é mais fiel, porque um chamado sem
+   * nada a cobrar sai dela sozinho.
+   */
+  aConferir: boolean;
   criadoEm: string;
   atualizadoEm: string;
 
@@ -105,8 +111,27 @@ const CINZA: Cores = {
 
 const PRI_RANK: Record<string, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
 
-/** As colunas do quadro, na ordem. É STATUS_ORDEM — nenhum rótulo é inventado. */
-export const COLUNAS: ColunaQuadro[] = [...STATUS_ORDEM];
+/**
+ * As colunas do quadro. NÃO é mais STATUS_ORDEM inteiro — o quadro é a fila de
+ * trabalho, e duas coisas não são fila:
+ *
+ * · `agendado` some como coluna e cai em "Aguardando início". Um chamado com
+ *   hora marcada continua esperando para começar; separá-los rendia duas
+ *   colunas dizendo a mesma coisa. A hora marcada segue no card.
+ * · `cancelado` não tem coluna: trabalho cancelado não é trabalho. Continua
+ *   alcançável pela visão de lista com a situação "Encerrados", e o quadro diz
+ *   quantos ficaram de fora em vez de escondê-los calado.
+ */
+export const COLUNAS: ColunaQuadro[] = [
+  "aberto", "em_andamento", "stand_by", "aguardando_aprovacao", "concluido",
+];
+
+/** Onde o card cai no quadro. `null` = não tem coluna (fica só na lista). */
+export function colunaVisivel(c: ColunaQuadro): ColunaQuadro | null {
+  if (c === "agendado") return "aberto";
+  if (c === "cancelado") return null;
+  return c;
+}
 
 export function colunaLabel(c: ColunaQuadro): string {
   return c === "sem_status" ? "Sem status" : chamadoStatusInfo(c).label;
@@ -136,6 +161,7 @@ export interface BrutoChamado {
   aberto_por: string | null;
   created_at: string;
   updated_at: string | null;
+  faturamento_status?: string | null;
   cliente?: { nome: string } | null;
 }
 
@@ -219,7 +245,7 @@ export function colunaDoChamado(
   if (STATUS_VALIDOS.has(st)) {
     const col = st as ChamadoStatus;
     const bola: BolaCom =
-      col === "executado" ? "gestor" : col === "aguardando_aprovacao" ? "gestor" : null;
+      col === "aguardando_aprovacao" ? "gestor" : null;
     const semDono = col === "aberto" && !c.responsavel_id;
     return { coluna: col, rotuloNativo: null, bolaCom: bola, alerta: semDono ? "sem_responsavel" : null };
   }
@@ -234,8 +260,10 @@ export function colunaDoChamado(
  * Onde esta tradução mente, sem suavizar:
  *  · "Aguardando aprovação" junta o aval interno do comercial com a espera pelo
  *    cliente. `bolaCom` devolve no card a diferença que a coluna apagou.
- *  · "Executado" para visita aprovada sem proposta enviada é metáfora — nada foi
- *    executado, o funil parou. O rótulo nativo diz isso em letras.
+ *  · Visita aprovada sem proposta enviada cai em "Aguardando aprovação" com a
+ *    bola no comercial. Não é aprovação de chamado: é o funil parado esperando
+ *    alguém mandar a proposta. O rótulo nativo diz isso em letras, porque a
+ *    coluna sozinha não distingue.
  *  · "Cancelado" para proposta recusada mistura negócio perdido com desistência
  *    nossa. Não inventei coluna "perdido": inventar quebraria a premissa.
  */
@@ -249,7 +277,7 @@ export function colunaDaVisita(v: BrutoVisita): Traduzido {
       return { coluna: "cancelado", rotuloNativo: "Proposta recusada", bolaCom: null, alerta: null };
     if (v.proposta_enviada_em)
       return { coluna: "aguardando_aprovacao", rotuloNativo: "Proposta com o cliente", bolaCom: "cliente", alerta: null };
-    return { coluna: "executado", rotuloNativo: "Aprovada — falta enviar proposta", bolaCom: "comercial", alerta: null };
+    return { coluna: "aguardando_aprovacao", rotuloNativo: "Aprovada — falta enviar proposta", bolaCom: "comercial", alerta: null };
   }
 
   if (st === "aguardando_aprovacao" || st === "concluida")
@@ -326,6 +354,8 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     // status fora do vocabulário conta como aberto: a coluna "Sem status"
     // seria inalcançável se o filtro padrão o cortasse
     emAberto: t.coluna === "sem_status" ? true : chamadoEmAberto(c.status),
+    aConferir: c.natureza === "campo" && c.status === "concluido"
+      && (c as any).faturamento_status === "a_analisar",
     criadoEm: c.created_at,
     atualizadoEm: c.updated_at ?? c.created_at,
     compra: ficha ? { situacao: ficha.situacao, situacaoLabel: SITUACAO_LABEL[ficha.situacao] } : null,
@@ -385,6 +415,7 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     // para colunas de trabalho vivo, sumiam da tela no filtro padrão.
     // `sem_status` fica em aberto de propósito: é a regra de nunca sumir calado.
     emAberto: t.coluna !== "concluido" && t.coluna !== "cancelado",
+    aConferir: false,   // visita não gera cobrança de chamado
     criadoEm: v.created_at,
     atualizadoEm: v.created_at,
     compra: null,

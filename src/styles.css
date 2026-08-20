@@ -469,17 +469,54 @@ input::placeholder, textarea::placeholder {
 @media (hover: hover) and (pointer: fine) {
   button:focus-visible, a:focus-visible, input:focus-visible,
   select:focus-visible, textarea:focus-visible, [role="option"]:focus-visible {
+    /* sem `border-radius` aqui: ele sobrescreveria o raio real do elemento e
+       um chip de 999px viraria retângulo ao receber foco. O outline já
+       acompanha o raio de quem ele contorna. */
     outline: 2px solid #FFC000;
     outline-offset: 2px;
-    border-radius: 8px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  /* `.animate-spin` fica de fora: um indicador de carregamento que dá um
+     quarto de volta e para lê como "travou", não como "carregando" — e quem
+     ligou "reduzir movimento" merece saber que o sistema está trabalhando
+     tanto quanto os outros. O que a regra mata é o decorativo: pulse-gold,
+     gold-shimmer e as transições. */
+  *:not(.animate-spin):not(.animate-spin *),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
     scroll-behavior: auto !important;
+  }
+  /* girando, mas devagar o bastante para não incomodar */
+  .animate-spin { animation-duration: 1.6s !important; }
+}
+
+/* ── Barra de filtros ───────────────────────────────────────────────────────
+   No celular ela é um trilho: os botões mudam de largura conforme a seleção
+   ("Padrão" → "Padrão: Sprint deste mês"), e com `flex-wrap` eles pulavam
+   entre fileiras a cada escolha, empurrando a lista para cima e para baixo.
+   Trilho mantém a altura estável. A partir de 1024px sobra largura e o wrap
+   volta, que é melhor por não esconder botão fora da tela. */
+.barra-filtros {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-left: -16px;
+  margin-right: -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+.barra-filtros::-webkit-scrollbar { display: none; height: 0; }
+@media (min-width: 1024px) {
+  .barra-filtros {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-left: 0; margin-right: 0;
+    padding-left: 0; padding-right: 0;
   }
 }

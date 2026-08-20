@@ -1,8 +1,11 @@
-# Pendências técnicas — defeitos conhecidos e não corrigidos
+# Pendências técnicas — registro dos defeitos da revisão
 
-Registro formal do que a revisão adversarial encontrou e **ainda não foi
-corrigido**. Decisão do Davi em 2026-08-19: *"corrigiremos depois, apenas
-registre e formalize."*
+Registro formal do que a revisão adversarial encontrou.
+
+**Situação em 2026-08-20:** dos 12 itens, **9 foram corrigidos** — todos os
+CONFIRMADOS mais dois dos A CONFIRMAR que se verificaram no caminho. Restam 3,
+marcados como PENDENTE abaixo. O histórico dos resolvidos fica aqui de
+propósito: quando um deles voltar, o caminho de quebra já está escrito.
 
 Este documento existe para que nada aqui vire descoberta futura. Cada item traz
 o arquivo, como quebra, e a correção mínima — para que consertar seja executar,
@@ -25,7 +28,7 @@ achados já produzidos e a fase de refutação incompleta.
 
 ## P1 · CRÍTICO · O menu de filtro é pintado atrás da barra inferior
 
-**Status:** CONFIRMADO
+**Status:** **RESOLVIDO** (2026-08-20) — popover em `createPortal` para o `body`, com posição calculada do retângulo do botão.
 **Arquivo:** `src/features/home/MenuFiltro.tsx` (o popover) +
 `src/styles.css:366` + `src/routes/_authenticated/route.tsx:232-240`
 
@@ -49,7 +52,7 @@ z-index não resolve, porque o problema não é o valor.
 
 ## P2 · ALTO · A roda do mouse anda 3px por clique no Firefox
 
-**Status:** CONFIRMADO
+**Status:** **RESOLVIDO** (2026-08-20) — `deltaMode` normalizado (linhas ×16, páginas × largura).
 **Arquivo:** `src/features/home/Quadro.tsx`, handler `naRoda`
 
 **Como quebra.** O handler usa `e.deltaY` cru. O Firefox entrega
@@ -70,7 +73,7 @@ const passo =
 
 ## P3 · ALTO · O menu abre sempre para baixo, sem olhar o fim da tela
 
-**Status:** CONFIRMADO por inspeção
+**Status:** **RESOLVIDO** (2026-08-20) — junto com o P1: vira para cima quando não cabe e limita a altura ao espaço da janela.
 **Arquivo:** `src/features/home/MenuFiltro.tsx`
 
 **Como quebra.** O popover é `top: calc(100% + 6px)` incondicional. O menu
@@ -88,7 +91,7 @@ abrir para cima quando não couber; limitar `maxHeight` ao espaço disponível.
 
 ## P4 · ALTO · `prefers-reduced-motion` congela os indicadores de carregamento
 
-**Status:** CONFIRMADO
+**Status:** **RESOLVIDO** (2026-08-20) — a regra passa a excluir `.animate-spin`, que gira mais devagar em vez de parar.
 **Arquivo:** `src/styles.css`, bloco `@media (prefers-reduced-motion: reduce)`
 
 **Como quebra.** A regra aplica `animation-iteration-count: 1 !important` a
@@ -114,7 +117,7 @@ decorativos.
 
 ## P5 · MÉDIO · "Em aberto" nunca aparece marcada no menu Situação
 
-**Status:** CONFIRMADO
+**Status:** **RESOLVIDO** (2026-08-20) — passa sempre `[filtros.situacao]`.
 **Arquivo:** `src/routes/_authenticated/dashboard.tsx`, `<MenuFiltro rotulo="Situação">`
 
 **Como quebra.** A prop é
@@ -130,7 +133,7 @@ texto do botão fechado quando o valor é o padrão.
 
 ## P6 · MÉDIO · Roda sobre o cabeçalho da coluna arrasta o quadro
 
-**Status:** CONFIRMADO por inspeção
+**Status:** **RESOLVIDO** (2026-08-20) — busca por `[data-coluna]` e daí para o corpo.
 **Arquivo:** `src/features/home/Quadro.tsx`, `naRoda`
 
 **Como quebra.** A delegação usa `closest("[data-corpo-coluna]")`. O cabeçalho
@@ -146,7 +149,7 @@ buscar o corpo: `closest("[data-coluna]")?.querySelector("[data-corpo-coluna]")`
 
 ## P7 · MÉDIO · O botão "Meu vínculo" não mostra o vínculo que está valendo
 
-**Status:** A CONFIRMAR
+**Status:** PENDENTE · a confirmar
 **Arquivo:** `src/features/home/lentes.ts` (`Preset.vinculo`) + `dashboard.tsx`
 
 **Como quebra (alegado).** Presets como "Meu dia" e "Tudo meu" trazem um
@@ -162,7 +165,7 @@ exatamente o que é manual, sem estado escondido.
 
 ## P8 · MÉDIO · A barra de filtros quebra em três fileiras a 375px
 
-**Status:** A CONFIRMAR
+**Status:** **RESOLVIDO** (2026-08-20) — trilho no celular, `flex-wrap` a partir de 1024px.
 **Arquivo:** `src/routes/_authenticated/dashboard.tsx`, barra de controle
 
 **Como quebra (alegado).** São cinco menus mais dois botões de ícone num
@@ -179,7 +182,7 @@ de pular.
 
 ## P9 · MÉDIO · Inércia do trackpad vaza para o quadro
 
-**Status:** A CONFIRMAR
+**Status:** PENDENTE · a confirmar
 **Arquivo:** `src/features/home/Quadro.tsx`, `naRoda`
 
 **Como quebra (alegado).** No macOS, terminar uma rolagem vertical dentro da
@@ -193,7 +196,7 @@ esgota, ou exigir que o gesto comece com o quadro já no limite.
 
 ## P10 · BAIXO · "Mostrando 60 de N" vira uma célula da grade
 
-**Status:** CONFIRMADO por inspeção
+**Status:** **RESOLVIDO** (2026-08-20) — `gridColumn: 1 / -1`.
 **Arquivo:** `src/routes/_authenticated/dashboard.tsx`, fim da visão de lista
 
 **Como quebra.** O aviso é filho direto de `.lista-atividades`, que virou grade
@@ -206,7 +209,7 @@ centralizado embaixo.
 
 ## P11 · BAIXO · A regra de foco deforma botões arredondados
 
-**Status:** CONFIRMADO por inspeção
+**Status:** **RESOLVIDO** (2026-08-20) — `border-radius` saiu da regra de foco.
 **Arquivo:** `src/styles.css`, bloco `:focus-visible`
 
 **Como quebra.** A regra inclui `border-radius: 8px`, que **sobrescreve** o raio
@@ -220,7 +223,7 @@ raio do elemento.
 
 ## P12 · BAIXO · `Esc` fecha o menu e larga o foco no `body`
 
-**Status:** CONFIRMADO por inspeção
+**Status:** **RESOLVIDO** (2026-08-20) — `Esc` devolve o foco ao botão.
 **Arquivo:** `src/features/home/MenuFiltro.tsx`
 
 **Como quebra.** Quem navega por teclado abre o menu, aperta `Esc`, e perde a

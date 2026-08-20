@@ -11,11 +11,22 @@
 // · fecha com clique fora, com Esc e ao escolher (quando é seleção única);
 // · seleção múltipla NÃO fecha ao escolher — senão marcar três coisas custa
 //   três aberturas;
-// · o menu se ancora à direita quando está na metade direita da tela, senão
-//   vaza para fora da janela;
 // · alvo de 44px por opção; o app trava o zoom e isto se usa no celular também.
+//
+// O POPOVER VAI EM PORTAL PARA O BODY, e isso não é preferência. A regra
+// `#root, main, header, nav { position: relative; z-index: 1 }` (styles.css)
+// faz do <main> um CONTEXTO DE EMPILHAMENTO: qualquer z-index aqui dentro só
+// compete com irmãos daqui, e para a página o menu inteiro vale 1. A BottomNav
+// é `fixed; z-index: 50` e irmã do <main>, então pintava por cima — no celular,
+// tocar na última opção acertava a barra e NAVEGAVA PARA OUTRA TELA. Subir o
+// z-index não resolveria: o problema nunca foi o valor.
+//
+// Estando em portal, a posição passa a ser calculada do retângulo do botão, e
+// aí dá para fazer o que faltava: virar para cima quando não há espaço embaixo,
+// e limitar a altura ao que sobra na janela.
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
@@ -44,31 +55,69 @@ export function MenuFiltro({
 }: Props) {
   const { isLight } = useTheme();
   const [aberto, setAberto] = useState(false);
-  const [aDireita, setADireita] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; maxH: number } | null>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
+
+  const MARGEM = 12;
+
+  const posicionar = useCallback(() => {
+    const r = botaoRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const jl = window.innerWidth;
+    const jt = window.innerHeight;
+
+    // horizontal: alinha pela esquerda; se estourar, encosta pela direita
+    let left = r.left;
+    if (left + larguraMenu > jl - MARGEM) left = Math.max(MARGEM, jl - MARGEM - larguraMenu);
+
+    // vertical: prefere abaixo, vira para cima quando não cabe, e a altura é
+    // sempre o que de fato sobra — antes o menu nascia com metade fora da tela
+    const abaixo = jt - r.bottom - MARGEM;
+    const acima = r.top - MARGEM;
+    const paraCima = abaixo < 180 && acima > abaixo;
+    const maxH = Math.max(140, Math.min(320, paraCima ? acima : abaixo));
+    const top = paraCima ? r.top - 6 - maxH : r.bottom + 6;
+
+    setPos({ left, top, maxH });
+  }, [larguraMenu]);
+
+  // useLayoutEffect: posiciona antes de pintar, senão o menu aparece e pula
+  useLayoutEffect(() => { if (aberto) posicionar(); }, [aberto, posicionar]);
 
   useEffect(() => {
     if (!aberto) return;
     const fora = (e: Event) => {
-      if (caixaRef.current?.contains(e.target as Node)) return;
+      const alvo = e.target as Node;
+      if (caixaRef.current?.contains(alvo) || menuRef.current?.contains(alvo)) return;
       setAberto(false);
     };
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") setAberto(false); };
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setAberto(false);
+      // devolve o foco ao botão: sem isto, quem navega por teclado perde a
+      // posição e o próximo Tab recomeça do topo da página
+      botaoRef.current?.focus();
+    };
+    // a página rolando por baixo de um menu ancorado em coordenadas fixas o
+    // deixaria "solto" longe do botão
+    const acompanhar = () => posicionar();
     // o timeout evita que o mesmo toque que abriu já feche
     const t = setTimeout(() => document.addEventListener("pointerdown", fora), 60);
     document.addEventListener("keydown", tecla);
+    window.addEventListener("resize", acompanhar);
+    window.addEventListener("scroll", acompanhar, true);
     return () => {
       clearTimeout(t);
       document.removeEventListener("pointerdown", fora);
       document.removeEventListener("keydown", tecla);
+      window.removeEventListener("resize", acompanhar);
+      window.removeEventListener("scroll", acompanhar, true);
     };
-  }, [aberto]);
+  }, [aberto, posicionar]);
 
   function abrir() {
-    // decide o lado antes de mostrar, senão o menu aparece e pula
-    const r = botaoRef.current?.getBoundingClientRect();
-    if (r) setADireita(r.left + larguraMenu > window.innerWidth - 12);
     setAberto((a) => !a);
   }
 
@@ -125,16 +174,20 @@ export function MenuFiltro({
         />
       </button>
 
-      {aberto && (
+      {aberto && pos && createPortal(
         <div
+          ref={menuRef}
           role="listbox"
+          className="rolagem-fina"
           style={{
-            position: "absolute",
-            top: "calc(100% + 6px)",
-            ...(aDireita ? { right: 0 } : { left: 0 }),
-            zIndex: 60,
+            // fixed + portal no body: fora do contexto de empilhamento do
+            // <main>, é isto que faz o menu ficar ACIMA da BottomNav
+            position: "fixed",
+            left: pos.left,
+            top: pos.top,
+            zIndex: 200,
             width: larguraMenu,
-            maxHeight: 320,
+            maxHeight: pos.maxH,
             overflowY: "auto",
             overscrollBehavior: "contain",
             borderRadius: 14,
@@ -203,7 +256,8 @@ export function MenuFiltro({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

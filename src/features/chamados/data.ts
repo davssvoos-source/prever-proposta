@@ -220,17 +220,25 @@ export async function iniciarChamado(id: string): Promise<void> {
 }
 
 /**
- * Campo: técnico encerra o atendimento e o chamado fica "executado",
- * esperando a conferência de quem fecha.
+ * Campo: o técnico encerra o atendimento e o chamado JÁ FICA CONCLUÍDO (U13 —
+ * "executado e concluído é a mesma coisa"). Não existe mais um estado em que o
+ * trabalho está feito e o registro está aberto.
+ *
+ * `finalizada_em` continua sendo o carimbo de quando o técnico entregou, que é
+ * o que o motor de cobrança e os alertas leem; `concluida_em` é o do
+ * encerramento. Aqui os dois coincidem, e é isso mesmo.
  */
 export async function executarChamado(
   id: string,
   dados: { diagnostico: string; servico_executado: string; pecas_texto?: string | null },
 ): Promise<void> {
+  const agora = new Date().toISOString();
   await atualizarChamado(id, {
     ...dados,
-    status: "executado",
-    finalizada_em: new Date().toISOString(),
+    status: "concluido",
+    finalizada_em: agora,
+    concluida_em: agora,
+    fechada_em: agora,
   });
 }
 

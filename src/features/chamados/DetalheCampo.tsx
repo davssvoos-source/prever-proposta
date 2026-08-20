@@ -616,7 +616,7 @@ export function DetalheCampo({ id }: { id: string }) {
       )}
 
       {/* Execução */}
-      {podeExecutar && ["em_andamento", "executado", "concluido"].includes(os.status) && (
+      {podeExecutar && ["em_andamento", "concluido"].includes(os.status) && (
         <div style={CARD}>
           <span style={SEC}>Execução</span>
 
@@ -874,7 +874,7 @@ export function DetalheCampo({ id }: { id: string }) {
       )}
 
       {/* Relatório de atendimento (PDF) — a partir da execução */}
-      {["executado", "concluido"].includes(os.status) && (
+      {os.status === "concluido" && (
         <button
           style={{ ...btnSec, height: 50, borderRadius: 25 }}
           onClick={() => baixarRelatorio.mutate()}
@@ -888,7 +888,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {/* Cobrança — Etapa U4. Só quem responde pelo financeiro enxerga; o
           técnico registra a peça e não participa da decisão de cobrar, e o
           SAC (gestor sem valores, R13) também não vê este card. */}
-      {veFinanceiro && ["executado", "concluido"].includes(os.status) && pecasOs.length > 0 && (
+      {veFinanceiro && os.status === "concluido" && pecasOs.length > 0 && (
         <div style={CARD}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Receipt size={15} color={gold} />
@@ -963,7 +963,7 @@ export function DetalheCampo({ id }: { id: string }) {
                       </div>
                     </div>
 
-                    {os.status === "executado" && (
+                    {os.faturamento_status === "a_analisar" && (
                       editando ? (
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                           {(Object.keys(RESULTADO_LABEL) as ResultadoItem[]).map((r) => (
@@ -1093,7 +1093,7 @@ export function DetalheCampo({ id }: { id: string }) {
               <Sparkles size={15} color={gold} />
               {analisar.isPending ? "Analisando…" : analise.length === 0 ? "Analisar cobrança" : "Reanalisar"}
             </button>
-            {analise.length > 0 && os.status === "executado" && (
+            {analise.length > 0 && os.faturamento_status === "a_analisar" && (
               <button
                 style={{ ...btnSec, flex: 1, borderColor: gold, color: gold }}
                 onClick={() => aprovar.mutate()}
@@ -1115,12 +1115,14 @@ export function DetalheCampo({ id }: { id: string }) {
         </div>
       )}
 
-      {/* Conferência do gestor */}
-      {isGerente && os.status === "executado" && (
+      {/* Conferência do gestor. Depois da U13 ela não é mais um ESTADO do
+          chamado — é a fila do faturamento, que é onde ela sempre morou de
+          verdade. Um chamado sem nada a cobrar sai dela sozinho. */}
+      {isGerente && os.status === "concluido" && os.faturamento_status === "a_analisar" && (
         <div style={{ ...CARD, border: `1px solid ${isLight ? "rgba(4,120,87,0.35)" : "rgba(52,211,153,0.30)"}` }}>
           <span style={SEC}>Conferência</span>
           <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 12, color: textSecondary }}>
-            Revise o diagnóstico, as fotos e a assinatura. Fechar encerra o chamado e avisa o técnico.
+            Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
           </span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>

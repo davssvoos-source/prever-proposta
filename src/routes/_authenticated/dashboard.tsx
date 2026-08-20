@@ -312,7 +312,7 @@ function Home() {
             o que está escolhido sem precisar ser aberto. Antes eram duas
             fileiras de chips disputando a largura — quinze alvos sem hierarquia. */}
         {!semPerfil && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div className="barra-filtros" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <MenuFiltro
               rotulo="Padrão"
               vazio="Padrão"
@@ -349,8 +349,9 @@ function Home() {
                 { valor: "encerrados", label: "Encerrados", nota: "últimos 7 dias" },
                 { valor: "todos", label: "Todos" },
               ]}
-              selecionados={filtros.situacao === "abertos" ? [] : [filtros.situacao]}
+              selecionados={[filtros.situacao]}
               onMudar={(v) => setFiltros((f) => {
+                // sempre há uma situação vigente; limpar volta ao padrão
                 const sit = (v[0] ?? "abertos") as Filtros["situacao"];
                 return {
                   ...f,
@@ -482,7 +483,10 @@ function Home() {
               />
             ))}
             {filtradas.length > 60 && (
-              <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
+              <span style={{
+                gridColumn: "1 / -1",
+                fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center",
+              }}>
                 Mostrando 60 de {filtradas.length} — use a busca ou os filtros.
               </span>
             )}

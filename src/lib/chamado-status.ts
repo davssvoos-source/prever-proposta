@@ -3,13 +3,15 @@
  * Substitui os-status.ts (campo) e demanda-status.ts (interno): depois da
  * fusão existe um conceito só, com dois modos de execução.
  *
- * Ciclo do campo:   aguardando início → agendado → em andamento → executado → concluído
+ * Ciclo do campo:   aguardando início → agendado → em andamento → concluído
  * Ciclo do interno: aguardando início → em andamento → (stand-by | aguardando aprovação) → concluído
  * Cancelado sai de qualquer ponto, com motivo.
  *
- * "Executado" é o portão da conferência que libera a cobrança — por isso
- * existe só no campo. "Stand-by" agora vale para os dois: chamado de campo
- * parado esperando material é exatamente esse estado.
+ * "Executado" NÃO existe mais (U13): era um concluído que esperava conferência,
+ * e conferência nunca dependeu do status — quem manda nela é
+ * `faturamento_status`, que a U0 deixou de fora do ciclo justamente para isso.
+ * "Stand-by" vale para os dois lados: chamado de campo parado esperando
+ * material é exatamente esse estado.
  */
 
 export type ChamadoStatus =
@@ -18,7 +20,6 @@ export type ChamadoStatus =
   | "em_andamento"
   | "stand_by"
   | "aguardando_aprovacao"
-  | "executado"
   | "concluido"
   | "cancelado";
 
@@ -73,15 +74,10 @@ const STATUS: Record<ChamadoStatus, StatusInfo> = {
     color: "#2DD4BF", colorLight: "#0f766e",
     bg: "rgba(45,212,191,0.12)", border: "rgba(45,212,191,0.30)",
   },
-  executado: {
-    label: "Executado", labelUpper: "EXECUTADO",
-    color: "#34D399", colorLight: "#047857",
-    bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.30)",
-  },
   concluido: {
     label: "Concluído", labelUpper: "CONCLUÍDO",
-    color: "#9ca3af", colorLight: "#6b7280",
-    bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)",
+    color: "#34D399", colorLight: "#047857",
+    bg: "rgba(52,211,153,0.12)", border: "rgba(52,211,153,0.30)",
   },
   cancelado: {
     label: "Cancelado", labelUpper: "CANCELADO",
@@ -102,22 +98,22 @@ export function chamadoStatusInfo(status: string | null | undefined): StatusInfo
 
 export const STATUS_ORDEM: ChamadoStatus[] = [
   "aberto", "agendado", "em_andamento", "stand_by",
-  "aguardando_aprovacao", "executado", "concluido", "cancelado",
+  "aguardando_aprovacao", "concluido", "cancelado",
 ];
 
 /** Status que ainda pedem ação de alguém. */
 export function chamadoEmAberto(status: string | null | undefined): boolean {
-  return ["aberto", "agendado", "em_andamento", "stand_by", "aguardando_aprovacao", "executado"]
+  return ["aberto", "agendado", "em_andamento", "stand_by", "aguardando_aprovacao"]
     .includes(status ?? "");
 }
 
 /**
- * Quais status fazem sentido em cada natureza. "Agendado" e "executado"
- * pressupõem deslocamento e conferência — não cabem no chamado interno.
+ * Quais status fazem sentido em cada natureza. "Agendado" pressupõe
+ * deslocamento com hora marcada — não cabe no chamado interno.
  */
 export function statusDaNatureza(natureza: Natureza): ChamadoStatus[] {
   return natureza === "campo"
-    ? ["aberto", "agendado", "em_andamento", "stand_by", "executado", "concluido", "cancelado"]
+    ? ["aberto", "agendado", "em_andamento", "stand_by", "concluido", "cancelado"]
     : ["aberto", "em_andamento", "stand_by", "aguardando_aprovacao", "concluido", "cancelado"];
 }
 
