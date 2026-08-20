@@ -1781,3 +1781,34 @@ mais barato que um `.in()` com centenas de ids na URL.
 
 `participantes` entrou no modelo de Atividade; a prop `responsavelNome` do
 card morreu em favor do mapa completo de pessoas (nome + avatar).
+
+### U20 — Header cumprido de verdade, sino na sidebar e criação rápida por IA (2026-08-20)
+
+**O pedido descumprido tinha causa técnica, não esquecimento.** Na U19 o header
+ganhou `.so-celular`, mas ele tem `display: flex` INLINE — e estilo inline
+vence classe. O header continuou aparecendo no desktop. As classes de
+visibilidade (`.so-desktop`/`.so-celular`) agora carregam `!important`, com o
+porquê comentado no CSS: elas têm que ganhar de qualquer inline. Perfil e sino
+agora existem SÓ no menu lateral, como pedido.
+
+**Sino na sidebar** (`NotificacoesSidebar.tsx`): linha com badge de não lidas
+acima do alternador de tema; o painel abre em portal AO LADO do rail (dentro,
+os 232px cortariam a lista — mesma lição do P1). Lista completa, "marcar todas
+lidas", clique abre o chamado/visita. Realtime herdado do hook do sino.
+
+**A caixa de notificações do painel superior morreu** — o Davi não gostou — e
+no lugar entrou a **criação rápida por IA** (`CriarRapido.tsx`), adaptada do
+Uiverse (Cobp): pílula de texto + anexos + botão de envio que cresce do nada
+quando há texto. O modo de voz do original ficou de fora (o pedido foi texto e
+arquivo); o degradê roxo virou o da marca.
+
+**A IA interpreta, não cria** (`chamado-rapido.functions.ts`, espelho do padrão
+de contrato.functions): devolve natureza, tipo, título, descrição, prioridade,
+equipe e cliente citado via json_schema (claude-sonnet-5 — triagem de um
+parágrafo não precisa do modelo grande). Quem cria é o `abrirChamado()` de
+sempre, no cliente — mesmos triggers, mesmas policies, nenhum segundo caminho
+de escrita. O cliente citado vai para a descrição: casar nome livre com
+cadastro é decisão humana. Anexos sobem como fotos do chamado criado, e a
+navegação leva ao chamado para a pessoa conferir a interpretação.
+
+Nenhuma migration.

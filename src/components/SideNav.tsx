@@ -28,6 +28,7 @@ import { usePermissoes } from "@/features/gerencial/permissoes";
 import { itensDoCargo } from "@/components/nav-itens";
 import { LogoPrever } from "@/components/LogoPrever";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificacoesSidebar } from "@/components/NotificacoesSidebar";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 import { SUPERNOVA, SOBRE_PRIMARIA } from "@/lib/paleta";
 
@@ -171,7 +172,10 @@ export function SideNav() {
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ display: "flex", justifyContent: "center", paddingBottom: 12 }}>
+      {/* o sino mora aqui desde que o header saiu do desktop (U20) */}
+      <NotificacoesSidebar />
+
+      <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 12px" }}>
         <ThemeToggle />
       </div>
 

@@ -16,19 +16,16 @@
 // 7 dias, e uma meta mensal que esquece o começo do mês estaria sempre errada
 // na última semana.
 //
-// NOTIFICAÇÕES: o mesmo hook do sino (useNotificacoes), que já é realtime —
-// a tabela está na publicação desde junho. Clicar marca como lida e abre o
-// registro.
+// (A caixa de notificações que morava aqui virou o sino da sidebar na U20;
+// o quarto painel é a criação rápida por IA — CriarRapido.tsx.)
 
 import { useMemo, type CSSProperties } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
 import { DATAVIZ, SUPERNOVA } from "@/lib/paleta";
-import { useNotificacoes, tempoRelativo } from "@/hooks/useNotificacoes";
 import type { Atividade } from "@/features/atividades/modelo";
 
 const ALTURA = 252;
@@ -290,83 +287,6 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ── Notificações recentes ───────────────────────────────────────────────────
-
-export function CaixaNotificacoes() {
-  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
-  const navigate = useNavigate();
-  const { notificacoes, naoLidas, marcarLida } = useNotificacoes();
-  const recentes = notificacoes.slice(0, 4);
-
-  function abrirNotificacao(n: (typeof recentes)[number]) {
-    if (!n.lida) marcarLida(n.id);
-    if (n.chamado_id) navigate({ to: "/chamados/$id", params: { id: n.chamado_id } });
-    else if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
-  }
-
-  return (
-    <div style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 14px 10px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
-        <span style={{ ...MICRO, color: gold }}>Notificações</span>
-        {naoLidas > 0 && (
-          <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 10.5, color: isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark }}>
-            {naoLidas} nova{naoLidas > 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
-
-      {recentes.length === 0 ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
-          Nada por enquanto.
-        </div>
-      ) : (
-        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 8 }}>
-          {recentes.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => abrirNotificacao(n)}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "7px 9px", borderRadius: 10, border: "none",
-                background: tile, cursor: "pointer", textAlign: "left",
-                minHeight: 40,
-              }}
-            >
-              <span style={{
-                width: 7, height: 7, borderRadius: 4, flexShrink: 0,
-                background: n.lida
-                  ? (isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.20)")
-                  : (isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark),
-              }} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{
-                  display: "block", fontFamily: FONT, fontWeight: n.lida ? 500 : 600,
-                  fontSize: 11.5, color: textPrimary,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>
-                  {n.titulo}
-                </span>
-                {n.corpo && (
-                  <span style={{
-                    display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 10,
-                    color: textSecondary,
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                  }}>
-                    {n.corpo}
-                  </span>
-                )}
-              </span>
-              <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 9.5, color: textSecondary, flexShrink: 0 }}>
-                {tempoRelativo(n.created_at)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

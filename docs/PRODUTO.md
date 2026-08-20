@@ -478,6 +478,7 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | **Aceite do cliente** (U8 — R4): pós-aprovação na visita, promoção do cliente só no aceite, correção do backfill "aprovada ⇒ ativo", funil comercial | **construído (U8)** |
 | **Pedido de compra completo** (U9 — Q6): ficha `chamado_compra`, caminho solicitado→recebido, alçada de aprovação no financeiro, alerta de pedido parado | **construído (U9)** |
 | **Permissões por tela** (U11 — R18): matriz tela × papel editável pelo admin em `/gerencial/permissoes`, rodapé e guardas de rota obedecendo | **construído (U11)** |
+| **Criação rápida por IA** (U20): campo na Início onde o usuário descreve o chamado em linguagem corrente; a IA interpreta (natureza, tipo, título, prioridade, equipe) e o chamado nasce pelo fluxo normal, com anexos | **construído (U20)** |
 | **Home de atividades** (U10 — R17): todas as atividades do usuário numa fila só, seletor lista ↔ quadro, quadro por status, padrões de kanban e filtro por vínculo | **construído (U10)** — só código, sem migration |
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
 | API QAP contínua | aguardando dev do QAP (U11) |

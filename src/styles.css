@@ -403,11 +403,16 @@ input::placeholder, textarea::placeholder {
 
 /* ── Sidebar (desktop) × barra inferior (celular) ───────────────────────────
    A troca é por CSS, não por JS: media query não pisca no primeiro render nem
-   depende de listener de resize. */
-.so-desktop { display: none; }
+   depende de listener de resize.
+
+   O !important não é capricho: vários elementos (o header, os botões de
+   ícone) têm `display: flex` INLINE, e estilo inline vence classe — foi por
+   isso que o header sobreviveu no desktop depois do primeiro pedido de
+   remoção. A classe de visibilidade tem que ganhar de qualquer inline. */
+.so-desktop { display: none !important; }
 @media (min-width: 1024px) {
-  .so-desktop { display: flex; }
-  .so-celular { display: none; }
+  .so-desktop { display: flex !important; }
+  .so-celular { display: none !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -554,10 +559,7 @@ input::placeholder, textarea::placeholder {
 /* A faixa superior do desktop e a barra de filtros compartilham a sangria,
    então o título, os filtros e o campo de busca ficam na mesma coluna visual
    da primeira e da última coluna do quadro. */
-.so-desktop.sangra-x { display: none; }
-@media (min-width: 1024px) {
-  .so-desktop.sangra-x { display: flex; }
-}
+
 
 /* ── Fundo "Yellow Glow" (claude.design, projeto 5e4850a6) ──────────────────
    A deriva das manchas de luz vem do arquivo importado: 34s, escala até 1.08.

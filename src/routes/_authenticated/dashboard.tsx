@@ -42,7 +42,8 @@ import {
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { CampoBusca } from "@/features/home/CampoBusca";
-import { GraficoSemanas, GraficoMeta, PainelKpis, CaixaNotificacoes } from "@/features/home/Graficos";
+import { GraficoSemanas, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
+import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
@@ -295,7 +296,7 @@ function Home() {
           <GraficoSemanas atividades={atividades} onAbrir={abrir} />
           <GraficoMeta userId={s.userId} />
           <PainelKpis atividades={atividades} userId={s.userId} />
-          <CaixaNotificacoes />
+          <CriarRapido />
         </div>
 
         {/* O título desceu para cá — o quadrado azul do desenho: vira o
