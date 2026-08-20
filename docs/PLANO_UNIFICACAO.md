@@ -1709,3 +1709,40 @@ teto de 25 + "ver mais" por coluna continua: nada some.
    estaria sempre errada na última semana. Verde quando bate 100%.
 
 Nenhuma migration.
+
+### U18 — Painel superior completo da Início (2026-08-20)
+
+Sobre o segundo desenho anotado do Davi (rosa, azul-claro, vermelho, verdes e
+amarelo), com as três cartelas de dataviz anexadas.
+
+**Cartelas** viraram `DATAVIZ` em `paleta.ts` — separadas das escalas de status
+de propósito: gráfico fala de DADOS, chip fala de ESTADO. Misturar os
+vocabulários faria o quadro e os gráficos parecerem discordar. Papéis: frio
+(#547792/#1A3263), âmbar (#FAB95B/#E4B028), alerta (#E63946/#8B1E2D), azul
+(#457B9D), vinho (#8B1E2D). Reserva registrada no comentário.
+
+**Rosa — Prazos futuros.** Cada pedaço arredondado é UM chamado com o título
+DENTRO (o "algo que indique qual task é"): pílula neutra com borda esquerda
+colorida e texto truncado. A cor é pressão de tempo, não status — vermelho
+atrasada, âmbar vence nesta semana, frio adiante — com legenda de três pontos
+no cabeçalho. Clicar abre o chamado.
+
+**Vermelho — Meta do mês** mudou para o meio, rosca minimalista em âmbar
+(azul ao bater 100%), sem o parágrafo explicativo da versão anterior.
+
+**Verdes — 4 indicadores** em tiles 2×2: Concluídas no mês e Faltam no mês
+(numerador e resto da mesma consulta da meta — % na rosca, absolutos nos
+tiles), Corretivas urgentes em aberto, e o quarto ficou por minha conta:
+**Atrasadas em aberto** — é o número que decide o começo do dia de quem
+coordena. Número neutro grande + ponto colorido da cartela; minimalista.
+
+**Amarelo — Notificações recentes.** As 4 últimas, compactas, com ponto âmbar
+nas não lidas e tempo relativo. Clicar marca como lida e abre o chamado ou a
+visita. Realtime de graça: o `useNotificacoes` do sino já assina
+`postgres_changes` e a tabela está na publicação desde junho — nenhum canal
+novo foi criado.
+
+**Azul-claro — o título desceu.** "Suas atividades" saiu do topo e virou o
+cabeçalho da área de trabalho, logo acima dos filtros, como no desenho.
+
+Nenhuma migration.

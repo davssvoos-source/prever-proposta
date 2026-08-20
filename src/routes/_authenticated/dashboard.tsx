@@ -42,7 +42,7 @@ import {
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { CampoBusca } from "@/features/home/CampoBusca";
-import { GraficoSemanas, GraficoMeta } from "@/features/home/Graficos";
+import { GraficoSemanas, GraficoMeta, PainelKpis, CaixaNotificacoes } from "@/features/home/Graficos";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
 import { ProximaVisita, proximaVisitaDe } from "@/features/home/ProximaVisita";
@@ -293,20 +293,25 @@ function Home() {
             então a dobra abre com o trabalho. A busca encosta na margem
             direita do quadro; o meio fica livre de propósito — o Davi vai
             definir o que entra. */}
-        <div className="so-desktop sangra-x" style={{ alignItems: "center", gap: 16, paddingTop: 8, paddingBottom: 2 }}>
+        {/* Painel superior (U18) — o desenho anotado do Davi:
+            prazos futuros · meta do mês · 4 indicadores · notificações.
+            Em telas entre 1024 e ~1400px o flexWrap quebra em duas linhas. */}
+        <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap", paddingTop: 6 }}>
+          <GraficoSemanas atividades={atividades} onAbrir={abrir} />
+          <GraficoMeta userId={s.userId} />
+          <PainelKpis atividades={atividades} userId={s.userId} />
+          <CaixaNotificacoes />
+        </div>
+
+        {/* O título desceu para cá — o quadrado azul do desenho: vira o
+            cabeçalho da área de trabalho, logo acima dos filtros. */}
+        <div className="so-desktop sangra-x" style={{ alignItems: "center", paddingTop: 4 }}>
           <h1 style={{
-            fontFamily: FONT, fontWeight: 600, fontSize: 24, margin: 0,
+            fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0,
             color: textPrimary, letterSpacing: "-0.01em",
           }}>
             Suas atividades
           </h1>
-        </div>
-
-        {/* Os dois gráficos da faixa superior (U17): entregas por semana, com
-            cada pedaço sendo um chamado clicável, e a rosca da meta do mês. */}
-        <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch" }}>
-          <GraficoSemanas atividades={atividades} onAbrir={abrir} />
-          <GraficoMeta userId={s.userId} />
         </div>
 
         <ProximaVisita

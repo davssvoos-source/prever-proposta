@@ -59,3 +59,24 @@ export const GRAD_PRIMARIA = `linear-gradient(135deg, ${SUPERNOVA[300]}, ${SUPER
 
 /** Texto sobre o degradê primário: sempre o quase-preto da marca. */
 export const SOBRE_PRIMARIA = "#08090E";
+
+// ── Dataviz ─────────────────────────────────────────────────────────────────
+// As três cartelas que o Davi escolheu para gráficos e indicadores
+// (2026-08-20). São para DADOS, não para ação nem status — ação é Supernova,
+// status são as quatro escalas acima. A regra de tema é a mesma do resto:
+// tom claro da cartela no escuro, tom fundo no claro.
+//
+// Reserva ainda sem uso: #F4D35E, #124D1C, #0B1849, #E8E2DB, #EBEDE3.
+
+export const DATAVIZ = {
+  /** série neutra/fria — o "sem pressão" dos gráficos */
+  frio:   { dark: "#547792", light: "#1A3263" },
+  /** atenção — prazo chegando, meta em curso */
+  ambar:  { dark: "#FAB95B", light: "#E4B028" },
+  /** alarme — atrasado, urgente */
+  alerta: { dark: "#E63946", light: "#8B1E2D" },
+  /** apoio azul — contagens calmas (concluídos etc.) */
+  azul:   { dark: "#457B9D", light: "#457B9D" },
+  /** vinho — segundo alarme, quando o vermelho já está em uso ao lado */
+  vinho:  { dark: "#8B1E2D", light: "#8B1E2D" },
+} as const;

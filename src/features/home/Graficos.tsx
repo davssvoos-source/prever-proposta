@@ -1,38 +1,56 @@
-// Os dois gráficos da faixa superior da Início (desktop). Etapa U17.
+// O painel superior da Início (desktop) — U18, sobre o desenho anotado do Davi.
 //
-// 1. ENTREGAS POR SEMANA — barras onde cada "pedaço" arredondado É um chamado
-//    (a referência é o dashboard Nixtio que o Davi escolheu: segmentos soltos
-//    empilhados, não uma barra contínua). Semana atual + 4 seguintes, semanas
-//    começando na segunda (mesma régua de lib/periodos, a do financeiro).
-//    Entram as atividades EM ABERTO que têm prazo; o pedaço usa a cor do
-//    status, e vermelho quando o prazo já estourou. Clicar abre o chamado.
+//   [ Prazos futuros ][ Meta do mês ][ 4 indicadores ][ Notificações ]
 //
-// 2. META DO MÊS — rosca com o % das prioridades do mês já concluídas. O
-//    "mapeamento da reunião de alinhamento" já existe no sistema: é o sprint
-//    `este_mes` dos chamados internos (o quadro que veio do Notion). A rosca é
-//    PESSOAL — conta o que é do usuário logado — e consulta o banco à parte,
-//    de propósito: a Home poda encerrados com mais de 7 dias, e uma meta
-//    mensal que esquece o que foi concluído no início do mês estaria sempre
-//    errada na última semana.
+// Todos minimalistas, todos nas cartelas de dataviz (paleta.ts → DATAVIZ), que
+// existem separadas das escalas de status de propósito: gráfico fala de DADOS,
+// chip de status fala de ESTADO — misturar os vocabulários faria o quadro e os
+// gráficos parecerem discordar um do outro.
+//
+// PRAZOS FUTUROS: cada pedaço arredondado é UM chamado, com o título dentro —
+// o "algo que indique qual task é". A cor é pressão de tempo, não status:
+// vermelho = atrasado · âmbar = vence nesta semana · frio = adiante.
+//
+// META DO MÊS: rosca com o % das prioridades do sprint `este_mes` concluídas.
+// Consulta o banco à parte de propósito — a Home poda encerrados com mais de
+// 7 dias, e uma meta mensal que esquece o começo do mês estaria sempre errada
+// na última semana.
+//
+// NOTIFICAÇÕES: o mesmo hook do sino (useNotificacoes), que já é realtime —
+// a tabela está na publicação desde junho. Clicar marca como lida e abre o
+// registro.
 
 import { useMemo, type CSSProperties } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
-import { SUPERNOVA, SHAMROCK, MAHOGANY } from "@/lib/paleta";
+import { DATAVIZ, SUPERNOVA } from "@/lib/paleta";
+import { useNotificacoes, tempoRelativo } from "@/hooks/useNotificacoes";
 import type { Atividade } from "@/features/atividades/modelo";
 
-const ALTURA_CARD = 216;
-const MAX_PECAS = 10;
+const ALTURA = 252;
+const MAX_PECAS = 7;
 
 const MICRO: CSSProperties = {
   fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
   letterSpacing: "0.10em", textTransform: "uppercase",
 };
 
-// ── 1. Entregas por semana ──────────────────────────────────────────────────
+function useCoresBase() {
+  const { isLight } = useTheme();
+  return {
+    isLight,
+    textPrimary: isLight ? "#0a0b0e" : "#ffffff",
+    textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+    gold: isLight ? SUPERNOVA[700] : SUPERNOVA[400],
+    tile: isLight ? "#f7f7f5" : "rgba(255,255,255,0.03)",
+  };
+}
+
+// ── Prazos futuros ──────────────────────────────────────────────────────────
 
 interface PropsSemanas {
   atividades: Atividade[];
@@ -40,10 +58,7 @@ interface PropsSemanas {
 }
 
 export function GraficoSemanas({ atividades, onAbrir }: PropsSemanas) {
-  const { isLight } = useTheme();
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? SUPERNOVA[700] : SUPERNOVA[400];
+  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
 
   const semanas = useMemo(() => {
     const base = inicioSemana(new Date());
@@ -71,57 +86,73 @@ export function GraficoSemanas({ atividades, onAbrir }: PropsSemanas) {
     }));
   }, [atividades]);
 
+  // a cor é pressão de tempo, não status
+  const corDe = (a: Atividade, idxSemana: number): string => {
+    if (a.prazoEstourado) return isLight ? DATAVIZ.alerta.light : DATAVIZ.alerta.dark;
+    if (idxSemana === 0) return isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark;
+    return isLight ? DATAVIZ.frio.light : DATAVIZ.frio.dark;
+  };
+
+  const legenda = [
+    { rotulo: "atrasada", cor: isLight ? DATAVIZ.alerta.light : DATAVIZ.alerta.dark },
+    { rotulo: "esta semana", cor: isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark },
+    { rotulo: "adiante", cor: isLight ? DATAVIZ.frio.light : DATAVIZ.frio.dark },
+  ];
+
   return (
-    <div style={{ ...card(isLight), flex: 1, minWidth: 0, height: ALTURA_CARD, padding: "14px 18px 12px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <div style={{ ...card(isLight), flex: 2, minWidth: 430, height: ALTURA, padding: "14px 18px 10px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ ...MICRO, color: gold }}>Entregas por semana</span>
+        <span style={{ ...MICRO, color: gold }}>Prazos futuros</span>
         <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>
-          chamados com prazo · próximas 5 semanas
+          cada pedaço é um chamado
+        </span>
+        <span style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+          {legenda.map((l) => (
+            <span key={l.rotulo} style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 300, fontSize: 9.5, color: textSecondary }}>
+              <span style={{ width: 7, height: 7, borderRadius: 4, background: l.cor }} />
+              {l.rotulo}
+            </span>
+          ))}
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 18, paddingTop: 10 }}>
-        {semanas.map((s) => {
+      <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 12, paddingTop: 8 }}>
+        {semanas.map((s, i) => {
           const visiveis = s.itens.slice(0, MAX_PECAS);
           const excedente = s.itens.length - visiveis.length;
           return (
-            <div key={s.chave} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%", justifyContent: "flex-end" }}>
-              <span style={{
-                fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: textPrimary,
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                {s.itens.length === 0 ? "—" : s.itens.length}
-              </span>
-              <div style={{ display: "flex", flexDirection: "column-reverse", gap: 3, width: "100%", maxWidth: 46 }}>
-                {excedente > 0 && (
-                  <span style={{
-                    fontFamily: FONT, fontWeight: 600, fontSize: 9.5, color: textSecondary,
-                    textAlign: "center", order: 1,
-                  }}>
-                    +{excedente}
-                  </span>
-                )}
-                {visiveis.map((a) => {
-                  const cor = a.prazoEstourado
-                    ? (isLight ? MAHOGANY[600] : MAHOGANY[400])
-                    : (isLight ? a.statusCor.light : a.statusCor.dark);
-                  return (
-                    // cada pedaço é UM chamado — clicável, com o resumo no hover
-                    <button
-                      key={a.id}
-                      onClick={() => onAbrir(a)}
-                      title={`${a.numero ?? ""} ${a.titulo}${a.prazoTexto ? ` · ${a.prazoTexto}` : ""}`}
-                      style={{
-                        height: 11, width: "100%", borderRadius: 6, border: "none",
-                        background: cor, cursor: "pointer", padding: 0,
-                        opacity: 0.92,
-                      }}
-                    />
-                  );
-                })}
+            <div key={s.chave} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+              {excedente > 0 && (
+                <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 9.5, color: textSecondary, textAlign: "center" }}>
+                  +{excedente}
+                </span>
+              )}
+              <div style={{ display: "flex", flexDirection: "column-reverse", gap: 4 }}>
+                {visiveis.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => onAbrir(a)}
+                    title={`${a.numero ?? ""} ${a.titulo}${a.prazoTexto ? ` · ${a.prazoTexto}` : ""}`}
+                    style={{
+                      height: 21, width: "100%", borderRadius: 7,
+                      border: "none", cursor: "pointer", padding: "0 8px",
+                      background: tile,
+                      borderLeft: `3px solid ${corDe(a, i)}`,
+                      display: "flex", alignItems: "center",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <span style={{
+                      fontFamily: FONT, fontWeight: 500, fontSize: 10, color: textPrimary,
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
+                      {a.titulo}
+                    </span>
+                  </button>
+                ))}
               </div>
-              <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 10.5, color: textSecondary, whiteSpace: "nowrap" }}>
-                {s.rotulo}
+              <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 10, color: textSecondary, textAlign: "center", whiteSpace: "nowrap" }}>
+                {s.rotulo} <b style={{ fontWeight: 600, color: textPrimary }}>{s.itens.length || "—"}</b>
               </span>
             </div>
           );
@@ -131,9 +162,9 @@ export function GraficoSemanas({ atividades, onAbrir }: PropsSemanas) {
   );
 }
 
-// ── 2. Meta do mês ──────────────────────────────────────────────────────────
+// ── Meta do mês ─────────────────────────────────────────────────────────────
 
-function useMetaDoMes(userId: string | null) {
+export function useMetaDoMes(userId: string | null) {
   // mês corrente na chave: na virada, a consulta renova sozinha
   const mes = new Date().toISOString().slice(0, 7);
   return useQuery({
@@ -158,72 +189,182 @@ function useMetaDoMes(userId: string | null) {
 }
 
 export function GraficoMeta({ userId }: { userId: string | null }) {
-  const { isLight } = useTheme();
+  const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
   const { data } = useMetaDoMes(userId);
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? SUPERNOVA[700] : SUPERNOVA[400];
-  const verde = isLight ? SHAMROCK[600] : SHAMROCK[400];
 
   const total = data?.total ?? 0;
   const feitas = data?.feitas ?? 0;
   const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
 
-  // rosca em SVG puro: círculo de trilho + arco de progresso com ponta redonda
-  const R = 56;
+  const R = 52;
   const CIRC = 2 * Math.PI * R;
   const mesNome = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  const arco = isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark;
+  const cheio = isLight ? DATAVIZ.azul.light : DATAVIZ.azul.dark;
 
   return (
-    <div style={{ ...card(isLight), width: 300, flexShrink: 0, height: ALTURA_CARD, padding: "14px 18px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+    <div style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", alignItems: "center", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7, alignSelf: "stretch" }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
-        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>
-          {mesNome}
-        </span>
+        <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11, color: textSecondary }}>{mesNome}</span>
       </div>
 
       {total === 0 ? (
         <div style={{
-          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: FONT, fontWeight: 300, fontSize: 12, color: textSecondary,
-          textAlign: "center", padding: "0 12px", lineHeight: 1.5,
+          flex: 1, display: "flex", alignItems: "center",
+          fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary,
+          textAlign: "center", lineHeight: 1.5,
         }}>
-          Sem prioridades mapeadas no sprint deste mês.
+          Sem prioridades no sprint deste mês.
         </div>
       ) : (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 16 }}>
-          <svg width={132} height={132} viewBox="0 0 132 132" style={{ flexShrink: 0 }}>
+        <>
+          <svg width={140} height={140} viewBox="0 0 140 140" style={{ marginTop: 8 }}>
             <circle
-              cx="66" cy="66" r={R} fill="none" strokeWidth="12"
-              stroke={isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)"}
+              cx="70" cy="70" r={R} fill="none" strokeWidth="11"
+              stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.07)"}
             />
             <circle
-              cx="66" cy="66" r={R} fill="none" strokeWidth="12"
-              stroke={pct >= 100 ? verde : gold}
+              cx="70" cy="70" r={R} fill="none" strokeWidth="11"
+              stroke={pct >= 100 ? cheio : arco}
               strokeLinecap="round"
               strokeDasharray={`${(pct / 100) * CIRC} ${CIRC}`}
-              transform="rotate(-90 66 66)"
+              transform="rotate(-90 70 70)"
               style={{ transition: "stroke-dasharray .6s ease" }}
             />
-            <text
-              x="66" y="63" textAnchor="middle"
-              fontFamily={FONT} fontWeight="700" fontSize="26"
-              fill={textPrimary} style={{ fontVariantNumeric: "tabular-nums" } as any}
-            >
+            <text x="70" y="68" textAnchor="middle" fontFamily={FONT} fontWeight="700" fontSize="27" fill={textPrimary}>
               {pct}%
             </text>
-            <text
-              x="66" y="82" textAnchor="middle"
-              fontFamily={FONT} fontWeight="300" fontSize="11"
-              fill={isLight ? "#4a5060" : "rgba(255,255,255,0.55)"}
-            >
+            <text x="70" y="87" textAnchor="middle" fontFamily={FONT} fontWeight="300" fontSize="11"
+              fill={isLight ? "#4a5060" : "rgba(255,255,255,0.55)"}>
               {feitas} de {total}
             </text>
           </svg>
-          <div style={{ fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary, lineHeight: 1.55 }}>
-            Prioridades do alinhamento mensal (sprint <b style={{ color: textPrimary, fontWeight: 600 }}>Este mês</b>) que você já concluiu.
+          <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 10.5, color: textSecondary, marginTop: "auto" }}>
+            prioridades do alinhamento mensal
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Os quatro indicadores ───────────────────────────────────────────────────
+
+export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; userId: string | null }) {
+  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
+  const { data: meta } = useMetaDoMes(userId);
+
+  const urgentes = atividades.filter(
+    (a) => a.emAberto && a.tipo === "corretiva" && a.prioridade === "urgente",
+  ).length;
+  const atrasadas = atividades.filter((a) => a.emAberto && a.prazoEstourado).length;
+
+  const tema = (p: { dark: string; light: string }) => (isLight ? p.light : p.dark);
+  const kpis = [
+    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: tema(DATAVIZ.azul) },
+    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: tema(DATAVIZ.ambar) },
+    { rotulo: "Corretivas urgentes", valor: urgentes, cor: tema(DATAVIZ.alerta) },
+    // a quarta ficou por minha conta: atrasado em aberto é o que pega fogo —
+    // é o número que decide o começo do dia de quem coordena
+    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: tema(DATAVIZ.vinho) },
+  ];
+
+  return (
+    <div style={{ width: 268, flexShrink: 0, height: ALTURA, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box" }}>
+      {kpis.map((k) => (
+        <div key={k.rotulo} style={{
+          ...card(isLight),
+          padding: "12px 13px",
+          display: "flex", flexDirection: "column", justifyContent: "space-between",
+          boxSizing: "border-box",
+        }}>
+          <span style={{ width: 8, height: 8, borderRadius: 4, background: k.cor }} />
+          <div>
+            <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 26, color: textPrimary, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              {k.valor}
+            </div>
+            <div style={{ fontFamily: FONT, fontWeight: 500, fontSize: 9.5, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, marginTop: 5, lineHeight: 1.3 }}>
+              {k.rotulo}
+            </div>
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Notificações recentes ───────────────────────────────────────────────────
+
+export function CaixaNotificacoes() {
+  const { isLight, textPrimary, textSecondary, gold, tile } = useCoresBase();
+  const navigate = useNavigate();
+  const { notificacoes, naoLidas, marcarLida } = useNotificacoes();
+  const recentes = notificacoes.slice(0, 4);
+
+  function abrirNotificacao(n: (typeof recentes)[number]) {
+    if (!n.lida) marcarLida(n.id);
+    if (n.chamado_id) navigate({ to: "/chamados/$id", params: { id: n.chamado_id } });
+    else if (n.visita_id) navigate({ to: "/visita/$id", params: { id: n.visita_id } });
+  }
+
+  return (
+    <div style={{ ...card(isLight), flex: 1, minWidth: 264, height: ALTURA, padding: "14px 14px 10px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+        <span style={{ ...MICRO, color: gold }}>Notificações</span>
+        {naoLidas > 0 && (
+          <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 10.5, color: isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark }}>
+            {naoLidas} nova{naoLidas > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {recentes.length === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT, fontWeight: 300, fontSize: 11.5, color: textSecondary }}>
+          Nada por enquanto.
+        </div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 6, paddingTop: 8 }}>
+          {recentes.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => abrirNotificacao(n)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "7px 9px", borderRadius: 10, border: "none",
+                background: tile, cursor: "pointer", textAlign: "left",
+                minHeight: 40,
+              }}
+            >
+              <span style={{
+                width: 7, height: 7, borderRadius: 4, flexShrink: 0,
+                background: n.lida
+                  ? (isLight ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.20)")
+                  : (isLight ? DATAVIZ.ambar.light : DATAVIZ.ambar.dark),
+              }} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{
+                  display: "block", fontFamily: FONT, fontWeight: n.lida ? 500 : 600,
+                  fontSize: 11.5, color: textPrimary,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {n.titulo}
+                </span>
+                {n.corpo && (
+                  <span style={{
+                    display: "block", fontFamily: FONT, fontWeight: 300, fontSize: 10,
+                    color: textSecondary,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
+                    {n.corpo}
+                  </span>
+                )}
+              </span>
+              <span style={{ fontFamily: FONT, fontWeight: 300, fontSize: 9.5, color: textSecondary, flexShrink: 0 }}>
+                {tempoRelativo(n.created_at)}
+              </span>
+            </button>
+          ))}
         </div>
       )}
     </div>
