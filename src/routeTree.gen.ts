@@ -13,6 +13,7 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedProspeccaoRouteImport } from './routes/_authenticated/prospeccao'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/novo'
 import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/mapa'
@@ -73,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedProspeccaoRoute = AuthenticatedProspeccaoRouteImport.update({
+  id: '/prospeccao',
+  path: '/prospeccao',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   id: '/perfil',
@@ -322,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/mapa': typeof AuthenticatedMapaRoute
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
+  '/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
@@ -415,6 +423,7 @@ export interface FileRoutesById {
   '/_authenticated/mapa': typeof AuthenticatedMapaRoute
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
+  '/_authenticated/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/_authenticated/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/_authenticated/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/_authenticated/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
@@ -463,6 +472,7 @@ export interface FileRouteTypes {
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/prospeccao'
     | '/chamados/$id'
     | '/chamados/importar'
     | '/chamados/indicadores'
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/mapa'
     | '/novo'
     | '/perfil'
+    | '/prospeccao'
     | '/chamados/$id'
     | '/chamados/importar'
     | '/chamados/indicadores'
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/_authenticated/mapa'
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
+    | '/_authenticated/prospeccao'
     | '/_authenticated/chamados/$id'
     | '/_authenticated/chamados/importar'
     | '/_authenticated/chamados/indicadores'
@@ -622,6 +634,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/prospeccao': {
+      id: '/_authenticated/prospeccao'
+      path: '/prospeccao'
+      fullPath: '/prospeccao'
+      preLoaderRoute: typeof AuthenticatedProspeccaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/perfil': {
       id: '/_authenticated/perfil'
@@ -1069,6 +1088,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMapaRoute: typeof AuthenticatedMapaRoute
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
+  AuthenticatedProspeccaoRoute: typeof AuthenticatedProspeccaoRoute
   AuthenticatedProjetoIdRoute: typeof AuthenticatedProjetoIdRoute
   AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRouteWithChildren
 }
@@ -1086,6 +1106,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMapaRoute: AuthenticatedMapaRoute,
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
+  AuthenticatedProspeccaoRoute: AuthenticatedProspeccaoRoute,
   AuthenticatedProjetoIdRoute: AuthenticatedProjetoIdRoute,
   AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRouteWithChildren,
 }
@@ -1102,3 +1123,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -303,6 +303,47 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   dentro da lista, não menu separado. Visita técnica de proposta continua
   fora da tabela: ela é o funil comercial, não o trabalho.
 
+- **R21** — **O cliente é do QAP, não nosso.** Todo cliente registrado no
+  sistema vem do QAP, e o único jeito de atualizar clientes e equipamentos é o
+  botão **Sincronizar** na página de Clientes. O app **não cria cliente**: nem
+  por formulário, nem ao montar visita, nem por proposta aceita. Cliente é
+  leitura; o ERP é quem manda. *(Davi, 2026-08-21.)*
+
+- **R22** — **Prospecto não é cliente.** Prédios e locais que orçamos e cuja
+  proposta não foi aprovada não entram na base de clientes. Eles vivem numa
+  tela própria, **Prospecção**, com a lista dos prospectos e o registro das
+  propostas geradas — para guardarmos a informação, que hoje se perderia.
+
+- **R23** — **Proposta também se faz para cliente existente.** Um cliente com
+  portaria remota que quer controlar mais uma porta recebe proposta comercial
+  normalmente. Se aprovada, vira **aditivo contratual — e isso NÃO entra no
+  app**: aprovação e aditivo ficam no ERP. No app, o chamado de proposta é
+  apenas **vinculado ao cliente**. Ou seja, a proposta aponta para um cliente
+  (ampliação) **ou** para uma prospecção (prédio novo) — nunca para os dois.
+
+- **R24** — **O chamado tem quatro fluxos, e os tipos existentes continuam.**
+  Os quatro que estruturam a operação: **proposta comercial** (visita →
+  aprovação interna → proposta → envio), **corretiva** (mapear, fotografar,
+  registrar peça), **preventiva** (checklist com fotos) e **implantação**
+  (upload da proposta aprovada → a IA lê o escopo e gera tasks com
+  responsáveis → o gestor confirma ou edita cada uma antes de enviar).
+  **Operacional** e **pedido de compra** seguem existindo (R5, R6).
+
+- **R25** — **O chamado entra por três portas.** WhatsApp do SAC, WhatsApp da
+  Portaria Remota (6 pessoas dividindo um Business) e o campo **Abrir chamado**,
+  que qualquer usuário pode usar quando quiser. Os remetentes de fora são
+  moradores, zeladores, síndicos e os próprios funcionários; os motivos vão de
+  interfone e portão a PC de guarita, compra de controle/TAG e reclamação.
+  Cada item vira um chamado, e alguém competente resolve ou escala.
+
+- **R26** — **O calendário do SAC e dos gestores mostra tudo de todos**, porque
+  são eles que administram cronograma e agendamento. O rumo declarado: tempo
+  padrão por tipo de problema → carga por pessoa → considerando o deslocamento
+  até o cliente.
+
+- **R27** — **"Gerencial" vira três painéis:** Operacional, Comercial e
+  Administrativo.
+
 ## 8. Questões em aberto — para responder de uma vez
 
 **Respondidas em 2026-08-18** (viraram a R13): ~~papel do Vinicius~~ → admin;

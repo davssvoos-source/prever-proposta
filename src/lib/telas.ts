@@ -77,6 +77,9 @@ export const TELAS: Tela[] = [
   T("gerencial.nova", "Nova visita", "/gerencial/nova", "Comercial", [false, true, true], {
     nota: "o SAC chega aqui pelo trilho de proposta da triagem",
   }),
+  T("prospeccao", "Prospecção", "/prospeccao", "Comercial", [false, true, true], {
+    nota: "prédios orçados que ainda não são clientes (R22)",
+  }),
   T("historico", "Histórico", "/historico", "Comercial", [true, true, true]),
   T("mapa", "Mapa", "/mapa", "Comercial", [true, true, true]),
 
@@ -84,9 +87,14 @@ export const TELAS: Tela[] = [
   // U24: o Davi definiu quem vê a base — admin, comercial e SAC. O técnico
   // chega no cliente pelo chamado dele (detalhe não é gateado), não pela base.
   T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true]),
-  T("clientes.novo", "Novo cliente", "/clientes/novo", "Clientes", [false, true, true]),
-  T("clientes.migrar", "Consolidar cadastros", "/clientes/migrar", "Clientes", [false, true, true], {
-    nota: "funde clientes duplicados — operação pesada e difícil de desfazer",
+  // R21: o app não cria nem consolida cliente. As chaves ficam no catálogo
+  // (a semente do banco as tem, e o verificador compara os dois) mas negadas
+  // para todos; as rotas redirecionam para /clientes.
+  T("clientes.novo", "Novo cliente (desativado)", "/clientes/novo", "Clientes", [false, false, false], {
+    nota: "R21 — cliente vem do QAP; criar à mão saiu do app",
+  }),
+  T("clientes.migrar", "Consolidar cadastros (desativado)", "/clientes/migrar", "Clientes", [false, false, false], {
+    nota: "R21 — consolidar criava e apagava cliente; duplicata resolve-se no QAP",
   }),
 
   // ── Financeiro ────────────────────────────────────────────────────────────

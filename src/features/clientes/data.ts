@@ -9,10 +9,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { somenteDigitos } from "@/lib/normalizar";
 import { PRISMA } from "@/lib/paleta";
 
-export type SituacaoCliente = "prospecto" | "ativo" | "inativo";
+// R21/R22 (2026-08-21): 'prospecto' saiu. Prédio orçado que não fechou não é
+// cliente — vive em `prospeccoes` (migration U27). Cliente vem do QAP, e o QAP
+// só tem cliente de verdade.
+export type SituacaoCliente = "ativo" | "inativo";
 
 export const SITUACAO_LABEL: Record<SituacaoCliente, string> = {
-  prospecto: "Prospecto",
   ativo: "Ativo",
   inativo: "Inativo",
 };
@@ -23,9 +25,8 @@ export const SITUACAO_LABEL: Record<SituacaoCliente, string> = {
  * neutro. O verde-menta antigo era de fora da paleta.
  */
 export const SITUACAO_CORES: Record<SituacaoCliente, { dark: string; light: string; bg: string; border: string }> = {
-  prospecto: PRISMA.azulClaro,
-  ativo:     PRISMA.amarelo,
-  inativo:   PRISMA.neutro,
+  ativo:   PRISMA.amarelo,
+  inativo: PRISMA.neutro,
 };
 
 export interface Cliente {

@@ -318,6 +318,7 @@ const fs2 = require('fs');
 const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260819180000_u11_permissoes_tela.sql',
   'supabase/migrations/20260820150000_u24_base_clientes.sql',
+  'supabase/migrations/20260821120000_u27_prospeccao.sql',
 ];
 const semente = {};
 for (const arq of ARQUIVOS_SEMENTE) {
@@ -748,6 +749,76 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('LARGURA_RAIL (expandida) é maior que a recolhida', S.LARGURA_RAIL > S.LARGURA_RAIL_RECOLHIDA, true);
   eq('a recolhida é estreita o bastante para não virar uma sidebar média',
      S.LARGURA_RAIL_RECOLHIDA >= 56 && S.LARGURA_RAIL_RECOLHIDA <= 88, true);
+}
+
+// ── U27: Prospecção — cliente vira leitura do QAP (R21/R22/R23) ────────────
+{
+  const fs6 = require('fs');
+  const u27 = fs6.readFileSync('supabase/migrations/20260821120000_u27_prospeccao.sql', 'utf8');
+
+  eq('U27: cria a tabela prospeccoes', /CREATE TABLE IF NOT EXISTS public\.prospeccoes/.test(u27), true);
+  eq('U27: a visita ganha prospeccao_id', /ADD COLUMN IF NOT EXISTS prospeccao_id/.test(u27), true);
+  // R23: a proposta é para um cliente OU para uma prospecção, nunca os dois
+  eq('U27: trava o alvo duplo da visita (R23)',
+     /CHECK \(cliente_id IS NULL OR prospeccao_id IS NULL\)/.test(u27), true);
+  // R21: o app não cria cliente — a policy é o que fecha de verdade, porque a
+  // tela some no deploy mas o console do navegador não
+  eq('U27: derruba a policy de INSERT em clientes (R21)',
+     /DROP POLICY IF EXISTS "clientes_insert_gestor" ON public\.clientes/.test(u27), true);
+  eq('U27: NÃO recria policy de INSERT em clientes',
+     /CREATE POLICY[^;]*ON public\.clientes[^;]*FOR INSERT/.test(u27), false);
+  // o aceite deixa de mexer no cadastro do cliente: aquela coluna passa a ser
+  // do QAP, e dois donos para o mesmo dado é o defeito que se quer evitar
+  // Só o CORPO da função (do CREATE até o $$ que fecha). Sem recortar, a
+  // regex casava com a própria verificação SQL do fim do arquivo, que cita
+  // a string 'UPDATE public.clientes' para checar exatamente isto.
+  const corpoRPC = (() => {
+    const i = u27.indexOf('CREATE OR REPLACE FUNCTION public.registrar_resultado_proposta');
+    return i < 0 ? '' : u27.slice(i, u27.indexOf('$$;', i));
+  })();
+  eq('U27: o corpo do aceite não escreve mais em clientes',
+     /UPDATE public\.clientes/.test(corpoRPC), false);
+  eq('U27: e o corpo do aceite foi mesmo encontrado (a asserção acima não é vácua)',
+     corpoRPC.length > 400, true);
+  eq('U27: o aceite marca a PROSPECÇÃO (ganha/perdida)',
+     /UPDATE public\.prospeccoes[\s\S]{0,200}'ganha'/.test(u27), true);
+  // migração não-destrutiva: prospecto com histórico duro não é apagado
+  eq('U27: não apaga prospecto que tenha chamado/contrato/cobrança',
+     /NOT EXISTS \(SELECT 1 FROM public\.chamados[\s\S]{0,400}cliente_contratos[\s\S]{0,400}cobrancas/.test(u27), true);
+  eq('U27: guarda o de-para para reapontar e poder desfazer',
+     /prospeccoes_migradas_u27/.test(u27), true);
+  eq('U27: termina com verificação por SELECT',
+     /SELECT 'prospecções criadas' AS item/.test(u27), true);
+
+  // o app: 'prospecto' deixou de ser situação de cliente
+  const cd = fs6.readFileSync('src/features/clientes/data.ts', 'utf8');
+  eq("app: SituacaoCliente perdeu 'prospecto'",
+     /export type SituacaoCliente = "ativo" \| "inativo";/.test(cd), true);
+  const ct = fs6.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  eq('app: a lista de clientes não filtra mais por prospecto',
+     /Prospectos ·/.test(ct), false);
+  eq('app: sumiu o botão de criar cliente (R21)',
+     /to: "\/clientes\/novo"/.test(ct), false);
+
+  // as rotas de criar/consolidar redirecionam
+  for (const arq of ['clientes.novo.tsx', 'clientes.migrar.tsx']) {
+    const r = fs6.readFileSync(`src/routes/_authenticated/${arq}`, 'utf8');
+    eq(`app: ${arq} redireciona em vez de renderizar`,
+       /throw redirect\(\{ to: "\/clientes" \}\)/.test(r), true);
+  }
+
+  // a tela nova existe e está no catálogo
+  const TL3 = carregar('src/lib/telas.ts');
+  const pros = TL3.TELAS.find((t) => t.chave === 'prospeccao');
+  eq('catálogo tem a tela Prospecção', !!pros, true);
+  eq('Prospecção é do comercial e do SAC, não do técnico',
+     pros && pros.padrao.comercial === true && pros.padrao.sac === true
+         && pros.padrao.tecnico === false, true);
+  for (const chave of ['clientes.novo', 'clientes.migrar']) {
+    const t = TL3.TELAS.find((x) => x.chave === chave);
+    eq(`${chave} está negada para todos os papéis`,
+       t && !t.padrao.tecnico && !t.padrao.comercial && !t.padrao.sac, true);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

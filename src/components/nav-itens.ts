@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, ClipboardList, Home, User, Wrench, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, ClipboardList, Home, Target, User, Wrench, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -33,6 +33,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
       { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
+      { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
       { to: "/gerencial", label: "Gerencial", icon: ClipboardList, tela: "gerencial" },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
@@ -44,6 +45,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
       // no SAC o item cabe também no celular: a barra dele tem 4 itens, não 5
       { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
+      { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

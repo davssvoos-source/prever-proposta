@@ -9,8 +9,11 @@
 // Quem vê: admin, comercial e SAC (decisão do Davi, U24). O técnico chega no
 // cliente pelo chamado dele — detalhe não é gateado — mas não na base.
 //
-// Layout das rotas filhas: /clientes/novo, /clientes/$id e /clientes/migrar
-// renderizam pelo Outlet (mesmo padrão de gerencial.tsx).
+// R21 (2026-08-21): esta lista virou LEITURA. Cliente vem do QAP e só o botão
+// Sincronizar atualiza — criar, consolidar e apagar saíram daqui. Prédio
+// orçado que não é cliente foi para /prospeccao (R22).
+//
+// Layout das rotas filhas: /clientes/$id renderiza pelo Outlet.
 
 import { createFileRoute, useNavigate, Outlet, useRouterState, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,7 +86,6 @@ function ClientesPage() {
     () => ({
       todos: clientes.length,
       ativo: clientes.filter((c) => c.situacao === "ativo").length,
-      prospecto: clientes.filter((c) => c.situacao === "prospecto").length,
       inativo: clientes.filter((c) => c.situacao === "inativo").length,
     }),
     [clientes],
@@ -138,47 +140,14 @@ function ClientesPage() {
             {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"} · {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"}
           </div>
         </div>
-        {isGerente && (
-          <button
-            className="elevavel"
-            onClick={() => navigate({ to: "/clientes/novo" })}
-            style={{
-              height: 40, padding: "0 16px", borderRadius: 12, border: "none",
-              background: GRAD_PRIMARIA, color: SOBRE_PRIMARIA,
-              display: "flex", alignItems: "center", gap: 6,
-              fontFamily: FONT, fontWeight: 700, fontSize: 12,
-              cursor: "pointer", flexShrink: 0,
-              boxShadow: "0 4px 14px rgba(248,200,17,0.30)",
-            }}
-          >
-            <Plus size={16} />
-            Novo
-          </button>
-        )}
+        {/* O botão "Novo" saiu (R21): o app não cria cliente — quem cria é o
+            QAP, e o caminho é o Sincronizar. Aqui entra o botão de sincronizar
+            quando a integração existir (S9/U28). */}
       </div>
 
-      {/* Consolidação pendente — herdada da Etapa 1, continua valendo */}
-      {isGerente && semEndereco > 0 && (
-        <button
-          className="elevavel"
-          onClick={() => navigate({ to: "/clientes/migrar" })}
-          style={{
-            ...card(isLight),
-            border: `1px solid ${PRISMA.azulClaro.border}`,
-            background: PRISMA.azulClaro.bg,
-            borderRadius: 16, padding: "14px 16px",
-            display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer",
-            color: textPrimary,
-          }}
-        >
-          <Wand2 size={18} color={isLight ? PRISMA.azulClaro.light : PRISMA.azulClaro.dark} />
-          <span style={{ flex: 1, fontFamily: FONT, fontWeight: 400, fontSize: 13 }}>
-            {semEndereco} cadastro{semEndereco === 1 ? "" : "s"} sem endereço, vindo{semEndereco === 1 ? "" : "s"} das visitas antigas.
-            <br />
-            <span style={{ color: textSecondary, fontSize: 12 }}>Toque para revisar e consolidar por prédio.</span>
-          </span>
-        </button>
-      )}
+      {/* A consolidação assistida saiu (R21): ela criava, reescrevia e apagava
+          cliente — exatamente o que deixou de ser nosso. Cadastro duplicado
+          passa a ser resolvido no QAP, que é a fonte. */}
 
       {/* Busca + filtros na mesma linha (desktop); empilha sozinho no celular */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -186,7 +155,6 @@ function ClientesPage() {
           {([
             ["todos", `Todos · ${contagem.todos}`],
             ["ativo", `Ativos · ${contagem.ativo}`],
-            ["prospecto", `Prospectos · ${contagem.prospecto}`],
             ["inativo", `Inativos · ${contagem.inativo}`],
           ] as [Filtro, string][]).map(([valor, rotulo]) => (
             <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
@@ -231,7 +199,7 @@ function ClientesPage() {
               </span>
               <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, textAlign: "center" }}>
                 {clientes.length === 0
-                  ? "Cadastre os condomínios e empresas atendidos pela Prever."
+                  ? "Os clientes vêm do QAP — use Sincronizar para trazê-los."
                   : "Ajuste a busca ou o filtro de situação."}
               </span>
             </div>
