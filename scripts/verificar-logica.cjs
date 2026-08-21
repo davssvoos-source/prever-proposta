@@ -556,6 +556,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('S1: funil_comercial mantém a assinatura (o app chama sem mudar)',
      /RETURNS TABLE \(etapa text, quantidade bigint, ordem int\)/.test(s1), true);
   eq('S1: buckets de foto viram privados', /SET public = false/.test(s1), true);
+  // O inventário tem TRÊS níveis e só o primeiro tem cliente_id — foi o que
+  // fez a migration falhar na primeira execução do Davi.
+  eq('S1: cliente_equipamentos chega ao cliente pelo SISTEMA, não por cliente_id',
+     /cliente_equipamentos[\s\S]{0,300}cliente_sistema_id/.test(s1), true);
+  // só as linhas de CÓDIGO: o comentário da seção 2 cita `e.cliente_id` de
+  // propósito, explicando por que a coluna não existe
+  const s1cod = s1.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  eq('S1: nenhuma referência a e.cliente_id no código (a coluna não existe)',
+     /\be\.cliente_id\b/.test(s1cod), false);
+  eq('S1: o inventário não é fechado por laço com IF EXISTS (pularia calado)',
+     /FOREACH t IN ARRAY ARRAY\['cliente_sistemas', 'cliente_equipamentos'\]/.test(s1), false);
+  // papel por função de DUPLA fonte: has_role só lê user_roles e travaria o
+  // comercial cujo cargo esteja apenas em profiles
+  eq('S1: escrita em clientes não usa has_role (fonte única)',
+     /clientes_update_gestor[\s\S]{0,300}has_role/.test(s1), false);
+  eq('S1: pode_gerir_clientes lê as duas fontes de papel',
+     /pode_gerir_clientes[\s\S]{0,400}user_roles[\s\S]{0,200}profiles/.test(s1), true);
   eq('S1: apagar foto é só do dono ou de gestor',
      /FOR DELETE TO authenticated[\s\S]{0,120}is_gestor/.test(s1), true);
   eq('S1: termina com verificação por SELECT (RAISE NOTICE é invisível no editor)',

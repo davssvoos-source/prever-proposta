@@ -283,3 +283,11 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
   o apagar (só dono ou gestor) e tornou os buckets privados, mas qualquer
   autenticado ainda LÊ qualquer foto. Amarrar por dono exigiria convenção de
   caminho que hoje não existe nos uploads antigos.
+
+- **S9 — a sincronização com o QAP precisa rodar como `service_role`**: o Davi
+  informou (2026-08-20) que clientes e equipamentos virão do QAP por um botão
+  de sincronizar; a planilha importada na U24 é provisória. As policies da S1
+  amarram escrita de inventário ao acesso ao cliente — se o importador rodar
+  com a sessão de um usuário comum, o sync falha **parcialmente e em silêncio**,
+  cliente a cliente. Está anotado dentro da própria migration (§8), onde quem
+  for escrever o importador vai ler.

@@ -88,36 +88,53 @@ CREATE INDEX IF NOT EXISTS visitas_cliente_tecnico_idx ON public.visitas_tecnica
 -- ════════════════════════════════════════════════════════════════════════════
 -- 2. INVENTÁRIO POR CLIENTE
 -- ════════════════════════════════════════════════════════════════════════════
--- Mesma lógica: o que está instalado na casa do cliente é informação de
--- segurança física (quantas câmeras, onde, de que modelo). Segue o cliente.
-DO $$
-DECLARE t text;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['cliente_sistemas', 'cliente_equipamentos'] LOOP
-    IF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public' AND table_name = t
-                  AND column_name = 'cliente_id') THEN
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_select', t);
-      EXECUTE format(
-        'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated
-           USING (public.pode_ver_cliente(cliente_id))', t || '_select', t);
-    END IF;
-  END LOOP;
-END $$;
+-- O que está instalado na casa do cliente é informação de segurança física
+-- (quantas câmeras, onde, de que modelo). Segue o mesmo gate do cliente.
+--
+-- A CADEIA NÃO É PLANA — e a primeira versão desta migration errou nisso:
+--   cliente_sistemas            .cliente_id            → clientes
+--   cliente_equipamentos        .cliente_sistema_id    → cliente_sistemas
+--   cliente_equipamento_unidades.cliente_equipamento_id → cliente_equipamentos
+-- Só a primeira tem `cliente_id`. Escrevi as três como se todas tivessem, e o
+-- Postgres recusou: `column e.cliente_id does not exist`.
+--
+-- Escrito tabela a tabela, sem laço genérico, de propósito: a versão anterior
+-- usava FOREACH com `IF EXISTS (coluna cliente_id)` e teria PULADO
+-- cliente_equipamentos EM SILÊNCIO — deixando a tabela em USING(true) sem que
+-- nada acusasse. Numa migration de segurança, pular calado é pior que falhar.
 
--- cliente_equipamento_unidades chega ao cliente pelo equipamento
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables
-              WHERE table_schema = 'public' AND table_name = 'cliente_equipamento_unidades') THEN
-    DROP POLICY IF EXISTS "cliente_equipamento_unidades_select" ON public.cliente_equipamento_unidades;
-    CREATE POLICY "cliente_equipamento_unidades_select"
-      ON public.cliente_equipamento_unidades FOR SELECT TO authenticated
-      USING (EXISTS (SELECT 1 FROM public.cliente_equipamentos e
-                     WHERE e.id = cliente_equipamento_id
-                       AND public.pode_ver_cliente(e.cliente_id)));
-  END IF;
-END $$;
+-- 2.1 cliente_sistemas — o único elo com cliente_id direto
+DROP POLICY IF EXISTS "cliente_sistemas_select" ON public.cliente_sistemas;
+CREATE POLICY "cliente_sistemas_select" ON public.cliente_sistemas
+  FOR SELECT TO authenticated
+  USING (public.pode_ver_cliente(cliente_id));
+
+-- 2.2 cliente_equipamentos — chega ao cliente pelo SISTEMA
+DROP POLICY IF EXISTS "cliente_equipamentos_select" ON public.cliente_equipamentos;
+CREATE POLICY "cliente_equipamentos_select" ON public.cliente_equipamentos
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.cliente_sistemas s
+    WHERE s.id = cliente_equipamentos.cliente_sistema_id
+      AND public.pode_ver_cliente(s.cliente_id)
+  ));
+
+-- 2.3 cliente_equipamento_unidades — dois saltos até o cliente
+DROP POLICY IF EXISTS "cliente_equipamento_unidades_select" ON public.cliente_equipamento_unidades;
+CREATE POLICY "cliente_equipamento_unidades_select"
+  ON public.cliente_equipamento_unidades FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1
+    FROM public.cliente_equipamentos e
+    JOIN public.cliente_sistemas s ON s.id = e.cliente_sistema_id
+    WHERE e.id = cliente_equipamento_unidades.cliente_equipamento_id
+      AND public.pode_ver_cliente(s.cliente_id)
+  ));
+
+CREATE INDEX IF NOT EXISTS cliente_sistemas_cliente_idx
+  ON public.cliente_sistemas (cliente_id);
+CREATE INDEX IF NOT EXISTS cliente_equipamentos_sistema_idx
+  ON public.cliente_equipamentos (cliente_sistema_id);
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 3. FICHA DE COMPRA — fechando a brecha do responsável nulo
@@ -267,53 +284,108 @@ GRANT  EXECUTE ON FUNCTION public.funil_comercial(date) TO authenticated, servic
 -- apagar os que ainda não têm contrato ou chamado (os com vínculo são
 -- protegidos por FK RESTRICT — o que limita o estrago, não a falha).
 --
--- Agora as duas policies dizem explicitamente admin+comercial, sem depender de
--- uma função cujo significado pode mudar de novo.
+-- Agora vale uma função PRÓPRIA, com o papel dito por extenso no nome — não
+-- `is_gestor`, cujo significado já mudou uma vez e pode mudar de novo.
+--
+-- Ela lê as DUAS fontes de papel (user_roles e profiles.cargo), como
+-- is_gestor e pode_ver_financeiro fazem. Usar `has_role` aqui seria errado:
+-- has_role consulta só user_roles, e um comercial cujo papel esteja apenas em
+-- profiles.cargo perderia o acesso — a migration de segurança viraria uma
+-- migration de bloqueio. O trigger trg_sync_user_role mantém as duas em dia,
+-- mas segurança não deve depender de um trigger estar sempre correto.
+CREATE OR REPLACE FUNCTION public.pode_gerir_clientes(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT COALESCE(
+    EXISTS (SELECT 1 FROM public.user_roles
+             WHERE user_id = _user_id AND role::text IN ('admin', 'comercial'))
+    OR EXISTS (SELECT 1 FROM public.profiles
+               WHERE id = _user_id AND cargo IN ('admin', 'comercial')),
+    false);
+$$;
+COMMENT ON FUNCTION public.pode_gerir_clientes(uuid) IS
+  'Quem cria e edita cliente: admin e comercial. O SAC NÃO — ele atende, não '
+  'mantém o cadastro. Deliberadamente separada de is_gestor(), que inclui sac.';
+REVOKE EXECUTE ON FUNCTION public.pode_gerir_clientes(uuid) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.pode_gerir_clientes(uuid) TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.e_admin(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT COALESCE(
+    EXISTS (SELECT 1 FROM public.user_roles
+             WHERE user_id = _user_id AND role::text = 'admin')
+    OR EXISTS (SELECT 1 FROM public.profiles
+               WHERE id = _user_id AND cargo = 'admin'),
+    false);
+$$;
+REVOKE EXECUTE ON FUNCTION public.e_admin(uuid) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.e_admin(uuid) TO authenticated, service_role;
+
 DROP POLICY IF EXISTS "clientes_update_gestor" ON public.clientes;
 CREATE POLICY "clientes_update_gestor" ON public.clientes
   FOR UPDATE TO authenticated
-  USING      (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'comercial'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'comercial'));
+  USING      (public.pode_gerir_clientes(auth.uid()))
+  WITH CHECK (public.pode_gerir_clientes(auth.uid()));
 
--- Apagar cliente é operação destrutiva sobre dado pessoal e sem desfazer:
--- fica só com admin. A consolidação (/clientes/migrar) é de admin também.
+-- Apagar cliente é destrutivo, sobre dado pessoal e sem desfazer: só admin.
+-- A consolidação (/clientes/migrar) também é de admin.
 DROP POLICY IF EXISTS "clientes_delete_gestor" ON public.clientes;
 DROP POLICY IF EXISTS "clientes_delete_admin"  ON public.clientes;
 CREATE POLICY "clientes_delete_admin" ON public.clientes
   FOR DELETE TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
+  USING (public.e_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "clientes_insert_gestor" ON public.clientes;
 CREATE POLICY "clientes_insert_gestor" ON public.clientes
   FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'admin') OR public.has_role(auth.uid(), 'comercial'));
+  WITH CHECK (public.pode_gerir_clientes(auth.uid()));
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 8. INVENTÁRIO — escrita aberta
 -- ════════════════════════════════════════════════════════════════════════════
 -- cliente_sistemas e cliente_equipamentos tinham INSERT/UPDATE com
 -- USING(true)/WITH CHECK(true): qualquer autenticado alterava o inventário de
--- qualquer cliente. O técnico PRECISA registrar equipamento em campo — então
--- a escrita segue permitida, mas só onde ele já tem acesso ao cliente.
-DO $$
-DECLARE t text;
-BEGIN
-  FOREACH t IN ARRAY ARRAY['cliente_sistemas', 'cliente_equipamentos'] LOOP
-    IF EXISTS (SELECT 1 FROM information_schema.columns
-                WHERE table_schema='public' AND table_name=t AND column_name='cliente_id') THEN
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_insert', t);
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_update', t);
-      EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_write', t);
-      EXECUTE format(
-        'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated
-           WITH CHECK (public.pode_ver_cliente(cliente_id))', t || '_insert', t);
-      EXECUTE format(
-        'CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated
-           USING (public.pode_ver_cliente(cliente_id))
-           WITH CHECK (public.pode_ver_cliente(cliente_id))', t || '_update', t);
-    END IF;
-  END LOOP;
-END $$;
+-- qualquer cliente. O técnico PRECISA registrar equipamento em campo — a
+-- escrita continua, mas só onde ele já tem acesso ao cliente.
+--
+-- IMPORTANTE PARA A SINCRONIZAÇÃO COM O QAP (quando existir): o importador
+-- deve rodar com `service_role`, que ignora a RLS por definição. Se ele rodar
+-- com a sessão de um usuário comum, estas policies vão barrar a escrita em
+-- cliente que aquele usuário não atende — e o sync falharia parcialmente, em
+-- silêncio, cliente a cliente.
+DROP POLICY IF EXISTS "cliente_sistemas_insert" ON public.cliente_sistemas;
+DROP POLICY IF EXISTS "cliente_sistemas_update" ON public.cliente_sistemas;
+DROP POLICY IF EXISTS "cliente_sistemas_write"  ON public.cliente_sistemas;
+CREATE POLICY "cliente_sistemas_insert" ON public.cliente_sistemas
+  FOR INSERT TO authenticated
+  WITH CHECK (public.pode_ver_cliente(cliente_id));
+CREATE POLICY "cliente_sistemas_update" ON public.cliente_sistemas
+  FOR UPDATE TO authenticated
+  USING      (public.pode_ver_cliente(cliente_id))
+  WITH CHECK (public.pode_ver_cliente(cliente_id));
+
+DROP POLICY IF EXISTS "cliente_equipamentos_insert" ON public.cliente_equipamentos;
+DROP POLICY IF EXISTS "cliente_equipamentos_update" ON public.cliente_equipamentos;
+DROP POLICY IF EXISTS "cliente_equipamentos_write"  ON public.cliente_equipamentos;
+CREATE POLICY "cliente_equipamentos_insert" ON public.cliente_equipamentos
+  FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.cliente_sistemas s
+    WHERE s.id = cliente_equipamentos.cliente_sistema_id
+      AND public.pode_ver_cliente(s.cliente_id)));
+CREATE POLICY "cliente_equipamentos_update" ON public.cliente_equipamentos
+  FOR UPDATE TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.cliente_sistemas s
+    WHERE s.id = cliente_equipamentos.cliente_sistema_id
+      AND public.pode_ver_cliente(s.cliente_id)))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.cliente_sistemas s
+    WHERE s.id = cliente_equipamentos.cliente_sistema_id
+      AND public.pode_ver_cliente(s.cliente_id)));
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 9. ESCRITA EM CHAMADO SEM DONO
@@ -399,22 +471,35 @@ SELECT 'policies de storage sem clausula de role (esperado 0)',
        (SELECT count(*) FROM pg_policies
          WHERE schemaname='storage' AND tablename='objects' AND roles = '{public}')::text
 UNION ALL
-SELECT 'escrita em clientes fora do SAC',
+SELECT 'escrita em clientes: nenhuma policy usa is_gestor (esperado 0)',
        (SELECT count(*) FROM pg_policies
          WHERE schemaname='public' AND tablename='clientes'
            AND cmd IN ('UPDATE','DELETE','INSERT')
-           AND qual IS DISTINCT FROM NULL AND qual LIKE '%is_gestor%')::text
+           AND (COALESCE(qual,'') LIKE '%is_gestor%'
+             OR COALESCE(with_check,'') LIKE '%is_gestor%'))::text
 UNION ALL
 SELECT 'delete de cliente é só admin',
        (SELECT count(*) FROM pg_policies
          WHERE schemaname='public' AND tablename='clientes'
-           AND cmd='DELETE' AND qual LIKE '%admin%')::text
+           AND cmd='DELETE' AND qual LIKE '%e_admin%')::text
 UNION ALL
 SELECT 'cargo fora do UPDATE de authenticated (esperado 0)',
        (SELECT count(*) FROM information_schema.column_privileges
          WHERE table_schema='public' AND table_name='profiles'
            AND column_name='cargo' AND privilege_type='UPDATE'
            AND grantee='authenticated')::text
+UNION ALL
+SELECT 'inventário: 3 tabelas com policy restritiva (esperado 3)',
+       (SELECT count(*) FROM pg_policies
+         WHERE schemaname='public'
+           AND tablename IN ('cliente_sistemas','cliente_equipamentos','cliente_equipamento_unidades')
+           AND cmd='SELECT' AND qual LIKE '%pode_ver_cliente%')::text
+UNION ALL
+SELECT 'inventário: nenhuma policy aberta sobrou (esperado 0)',
+       (SELECT count(*) FROM pg_policies
+         WHERE schemaname='public'
+           AND tablename IN ('cliente_sistemas','cliente_equipamentos','cliente_equipamento_unidades')
+           AND (qual = 'true' OR with_check = 'true'))::text
 UNION ALL
 SELECT 'tabelas public SEM RLS (esperado 0)',
        (SELECT count(*) FROM pg_tables t
