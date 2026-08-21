@@ -111,7 +111,11 @@ function ClientesPage() {
 
   // o mapa mostra o que a lista mostra — filtrar a lista filtra o mapa
   return (
-    <div className="pagina-clientes" style={{ padding: "12px 0 40px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    // .sangra-x, não um padding próprio: é a MESMA classe que a Início usa no
+    // quadro e nos filtros, para as duas páginas terem a régua exata — colado
+    // na sidebar à esquerda, na borda da janela à direita. paddingTop 18
+    // replica o espaçamento que a Início usa acima do próprio conteúdo.
+    <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* Cabeçalho — a volta é gesto de celular; no desktop a sidebar já situa */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button

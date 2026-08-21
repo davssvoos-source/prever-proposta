@@ -15,10 +15,16 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNotificacoes";
-import { LARGURA_RAIL } from "@/components/SideNav";
+import { LARGURA_RAIL, LARGURA_RAIL_RECOLHIDA } from "@/lib/sidebar-recolhida";
 
-export function NotificacoesSidebar() {
+interface Props {
+  /** Rail em 72px: o rótulo some, vira ícone centralizado com badge no canto. */
+  recolhida?: boolean;
+}
+
+export function NotificacoesSidebar({ recolhida = false }: Props) {
   const { isLight } = useTheme();
+  const largura = recolhida ? LARGURA_RAIL_RECOLHIDA : LARGURA_RAIL;
   const navigate = useNavigate();
   const { notificacoes, naoLidas, marcarLida, marcarTodasLidas } = useNotificacoes();
   const [aberto, setAberto] = useState(false);
@@ -109,7 +115,7 @@ export function NotificacoesSidebar() {
           className="rolagem-fina"
           style={{
             position: "fixed",
-            left: LARGURA_RAIL + 10,
+            left: largura + 10,
             bottom: 16,
             zIndex: 200,
             width: 340,

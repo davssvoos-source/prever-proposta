@@ -679,5 +679,51 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /service_role|ANTHROPIC|sk-ant-/i.test(env), false);
 }
 
+// ── Sidebar recolhível + margens da página Clientes ────────────────────────
+{
+  const fs5 = require('fs');
+
+  const css = fs5.readFileSync('src/styles.css', 'utf8');
+  eq('CSS: --rail recolhida existe e é menor que a expandida',
+     /\[data-sidebar="recolhida"\]\s*\{\s*--rail:\s*72px/.test(css), true);
+  eq('CSS: a variante recolhida está DENTRO do media query de desktop (não vale no celular)',
+     (() => {
+       // acha o "@media (min-width: 1024px)" que contém "--rail: 232px" e
+       // casa as chaves a partir dele até fechar — [data-sidebar] precisa
+       // cair ANTES desse fechamento
+       const marca = css.indexOf('--rail: 232px;');
+       let ini = css.lastIndexOf('@media (min-width: 1024px)', marca);
+       let i = css.indexOf('{', ini), prof = 0, fimBloco = -1;
+       for (let k = i; k < css.length; k++) {
+         if (css[k] === '{') prof++;
+         else if (css[k] === '}') { prof--; if (prof === 0) { fimBloco = k; break; } }
+       }
+       const j = css.indexOf('[data-sidebar="recolhida"]');
+       return ini > 0 && fimBloco > 0 && j > ini && j < fimBloco;
+     })(), true);
+  eq('CSS: clientes-duas-colunas não depende mais de .pagina-clientes (removida)',
+     css.includes('.pagina-clientes'), false);
+
+  const rota = fs5.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  eq('clientes.tsx usa .sangra-x — a MESMA classe da Início, não um padding próprio',
+     /className="sangra-x"/.test(rota), true);
+  eq('clientes.tsx não inventa padding horizontal (sangra-x já resolve)',
+     /padding:\s*"12px 0/.test(rota), false);
+
+  const layout = fs5.readFileSync('src/routes/_authenticated/route.tsx', 'utf8');
+  eq('route.tsx aplica data-sidebar no MESMO elemento que lê padding-left: var(--rail)',
+     /data-sidebar=\{recolhida[\s\S]{0,120}paddingLeft: "var\(--rail\)"/.test(layout), true);
+
+  const nav = fs5.readFileSync('src/components/SideNav.tsx', 'utf8');
+  eq('SideNav tem o botão de alternar (PanelLeftClose/Open)', /alternarSidebar/.test(nav), true);
+  eq('SideNav usa a largura recolhida quando recolhida', /LARGURA_RAIL_RECOLHIDA/.test(nav), true);
+  eq('o rótulo do item some quando recolhida (ícone só)', /\{!recolhida && label\}/.test(nav), true);
+
+  const S = carregar('src/lib/sidebar-recolhida.ts');
+  eq('LARGURA_RAIL (expandida) é maior que a recolhida', S.LARGURA_RAIL > S.LARGURA_RAIL_RECOLHIDA, true);
+  eq('a recolhida é estreita o bastante para não virar uma sidebar média',
+     S.LARGURA_RAIL_RECOLHIDA >= 56 && S.LARGURA_RAIL_RECOLHIDA <= 88, true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

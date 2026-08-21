@@ -190,11 +190,23 @@
       --topo: 24px;
       --vidro-blur: blur(22px) saturate(150%);
     }
+    /* sidebar recolhida (lib/sidebar-recolhida.ts — LARGURA_RAIL_RECOLHIDA):
+       o atributo vai no MESMO elemento que lê `padding-left: var(--rail)`
+       (route.tsx), então a redeclaração aqui vale só para aquele elemento e
+       seus filhos — não para o resto do :root. */
+    [data-sidebar="recolhida"] { --rail: 72px; }
   }
 
   * {
     border-color: var(--color-border);
   }
+  /* Recolher a sidebar muda --rail, e todo mundo que depende dele (o padding
+     do conteúdo, a largura do <aside>, a posição de popovers fixos) deve
+     seguir junto, suavemente. `width`/`left`/`padding-left` são propriedades
+     comuns, então a transição anima o valor computado normalmente mesmo vindo
+     de var(--rail) — não precisa de @property. */
+  [data-sidebar] { transition: padding-left .22s cubic-bezier(0.4, 0, 0.2, 1); }
+  .rail-largura { transition: width .22s cubic-bezier(0.4, 0, 0.2, 1); }
   html, body {
     background-color: var(--bg-base);
     color: var(--color-foreground);
@@ -739,7 +751,16 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
    — pedido do Davi. O card de cliente não precisa de largura: é nome, endereço
    e dois chips. O mapa precisa, porque é onde se lê a distribuição.
    O mapa gruda no topo enquanto a lista rola: índice que sai da tela não
-   indexa nada. */
+   indexa nada.
+
+   A PÁGINA INTEIRA usa `.sangra-x` (a mesma classe do kanban da Início) — não
+   só este grid. A primeira versão só reduzia o padding do <main> de 16 para
+   4px, e a página continuava presa ao teto de max-w-7xl (1280px) do <main>:
+   num monitor largo sobrava moldura enorme dos dois lados, e a margem em
+   relação à sidebar não tinha nada a ver com a da Início. `.sangra-x` é o
+   contrato certo — o mesmo que a Início já usa para o quadro e os filtros —
+   então as duas páginas passam a respirar exatamente igual: coladas na régua
+   da sidebar à esquerda, na borda da janela à direita. */
 .clientes-duas-colunas {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -761,15 +782,6 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 /* telas largas: a lista não precisa crescer, o mapa sim */
 @media (min-width: 1600px) {
   .clientes-duas-colunas { grid-template-columns: 420px minmax(0, 1fr); }
-}
-
-/* A página de clientes respira até a borda: com o mapa grande, a margem
-   padrão do conteúdo desperdiçava largura que o desenho aproveita. */
-@media (min-width: 1024px) {
-  .pagina-clientes {
-    padding-left: 4px;
-    padding-right: 4px;
-  }
 }
 
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */

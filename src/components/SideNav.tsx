@@ -13,6 +13,13 @@
 // tratamento dos botões de ação do app, para "onde estou" e "o que posso
 // fazer" falarem a mesma língua visual.
 //
+// RECOLHER (2026-08-20, pedido do Davi): 232px → 72px, ícones sem rótulo. O
+// estado mora em lib/sidebar-recolhida.ts (não aqui) porque o wrapper do
+// layout (route.tsx) e o popover de notificações também precisam dele — um
+// singleton com useSyncExternalStore evitou Context só para isto. Recolher
+// muda literalmente uma coisa nesta árvore toda: o --rail que o CSS lê. O
+// <main> reage sozinho porque seu padding-left já é var(--rail).
+//
 // No celular nada disto existe: lá a navegação segue sendo a barra inferior,
 // que é onde o polegar alcança. As duas leem a mesma lista de itens
 // (nav-itens.ts) e a mesma matriz de permissões.
@@ -20,6 +27,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import type { CSSProperties } from "react";
+import { PanelLeftClose, PanelLeftOpen, Moon, Sun } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -31,8 +39,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificacoesSidebar } from "@/components/NotificacoesSidebar";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 import { SUPERNOVA, SOBRE_PRIMARIA } from "@/lib/paleta";
-
-export const LARGURA_RAIL = 232;
+import {
+  useSidebarRecolhida, alternarSidebar,
+  LARGURA_RAIL, LARGURA_RAIL_RECOLHIDA,
+} from "@/lib/sidebar-recolhida";
 
 function usePerfilRail() {
   return useQuery({
@@ -54,10 +64,11 @@ function usePerfilRail() {
 export function SideNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { isLight } = useTheme();
+  const { isLight, toggleTheme } = useTheme();
   const { data: cargo } = useUserCargo();
   const { podeVer } = usePermissoes();
   const { data: perfil } = usePerfilRail();
+  const recolhida = useSidebarRecolhida();
 
   const itens = itensDoCargo(cargo).filter(
     (i) => !i.tela || podeVer(i.tela) !== false,
@@ -66,17 +77,19 @@ export function SideNav() {
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
 
+  const largura = recolhida ? LARGURA_RAIL_RECOLHIDA : LARGURA_RAIL;
+
   const ASIDE: CSSProperties = {
     position: "fixed",
     top: 0,
     left: 0,
     bottom: 0,
-    width: LARGURA_RAIL,
+    width: largura,
     zIndex: 55,
     flexDirection: "column",
     gap: 6,
     // sem padding no topo: o banner sangra até a borda da sidebar
-    padding: "0 14px 18px",
+    padding: recolhida ? "0 10px 18px" : "0 14px 18px",
     boxSizing: "border-box",
     overflow: "hidden",
     // vidro sobre o glow: a sidebar desfoca as manchas de luz que passam
@@ -92,9 +105,10 @@ export function SideNav() {
   const item = (ativo: boolean): CSSProperties => ({
     display: "flex",
     alignItems: "center",
+    justifyContent: recolhida ? "center" : "flex-start",
     gap: 11,
     minHeight: 44,
-    padding: "0 14px",
+    padding: recolhida ? "0" : "0 14px",
     borderRadius: 12,
     border: "none",
     width: "100%",
@@ -116,44 +130,81 @@ export function SideNav() {
 
   return (
     // .so-desktop: display none no celular, flex no desktop (styles.css)
-    <aside className="so-desktop" style={ASIDE} aria-label="Navegação principal">
+    // .rail-largura: anima o width quando recolhida muda (styles.css)
+    <aside className="so-desktop rail-largura" style={ASIDE} aria-label="Navegação principal">
+      {/* O botão de recolher — meia-lua encostada na borda direita da
+          sidebar, entre ela e o conteúdo. Mesmo lugar nos dois estados, só o
+          ícone e a direção do gesto invertem. */}
+      <button
+        onClick={alternarSidebar}
+        aria-label={recolhida ? "Expandir menu" : "Recolher menu"}
+        title={recolhida ? "Expandir menu" : "Recolher menu"}
+        className="hover-suave"
+        style={{
+          position: "absolute",
+          top: 22,
+          right: -13,
+          width: 26,
+          height: 26,
+          borderRadius: "50%",
+          border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+          background: isLight ? "#ffffff" : "#1a1a22",
+          color: textSecondary,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer",
+          zIndex: 1,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
+        }}
+      >
+        {recolhida ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
+      </button>
+
       {/* Banner da fachada — sangra até as bordas da sidebar (os -14px anulam
-          o padding lateral) e escurece embaixo para o logotipo pousar em cima. */}
-      <div style={{
-        position: "relative",
-        margin: "0 -14px 0",
-        height: 132,
-        flexShrink: 0,
-        overflow: "hidden",
-      }}>
-        <img
-          src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
-          alt=""
-          style={{
-            position: "absolute", inset: 0,
-            width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center 60%",
-          }}
-        />
+          o padding lateral) e escurece embaixo para o logotipo pousar em cima.
+          Some quando recolhida: 72px de largura o deixaria irreconhecível, e a
+          altura de 132px sobraria como espaço morto acima do logotipo. */}
+      {!recolhida && (
         <div style={{
-          position: "absolute", inset: 0,
-          background: isLight
-            ? "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(255,255,255,0.55) 62%, rgba(255,255,255,0.92) 100%)"
-            : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(10,10,14,0.78) 62%, rgba(14,14,19,0.92) 100%)",
-          pointerEvents: "none",
-        }} />
-      </div>
+          position: "relative",
+          margin: "0 -14px 0",
+          height: 132,
+          flexShrink: 0,
+          overflow: "hidden",
+        }}>
+          <img
+            src={isLight ? "/banner-home-light.jpg" : bannerAsset.url}
+            alt=""
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "cover", objectPosition: "center 60%",
+            }}
+          />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: isLight
+              ? "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(255,255,255,0.55) 62%, rgba(255,255,255,0.92) 100%)"
+              : "linear-gradient(to bottom, rgba(8,8,12,0.30) 0%, rgba(10,10,14,0.78) 62%, rgba(14,14,19,0.92) 100%)",
+            pointerEvents: "none",
+          }} />
+        </div>
+      )}
 
       <Link
         to="/dashboard"
         aria-label="Início"
         style={{
           display: "flex", justifyContent: "center",
-          // sobe sobre o degradê do banner: o logotipo fecha a composição
-          marginTop: -46, marginBottom: 14, position: "relative", zIndex: 1,
+          // sobe sobre o degradê do banner: o logotipo fecha a composição.
+          // Recolhida não tem banner para subir sobre — vira só um respiro no topo.
+          marginTop: recolhida ? 18 : -46,
+          marginBottom: 14, position: "relative", zIndex: 1,
         }}
       >
-        <LogoPrever altura={74} />
+        {/* O arquivo não muda ("sem modificá-lo") — só a altura renderizada,
+            que é a prop que o próprio componente expõe para isso. Em 34px a
+            largura fica ~53px, dentro dos 52px que sobram do rail recolhido. */}
+        <LogoPrever altura={recolhida ? 34 : 74} />
       </Link>
 
       <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -162,9 +213,14 @@ export function SideNav() {
             ? pathname === "/dashboard" || pathname === "/"
             : pathname.startsWith(to);
           return (
-            <Link key={to} to={to} className={ativo ? "ruido" : "hover-suave"} style={item(ativo)}>
+            <Link
+              key={to} to={to}
+              className={ativo ? "ruido" : "hover-suave"}
+              style={item(ativo)}
+              title={recolhida ? label : undefined}
+            >
               <Icon size={17} style={{ flexShrink: 0 }} />
-              {label}
+              {!recolhida && label}
             </Link>
           );
         })}
@@ -173,20 +229,42 @@ export function SideNav() {
       <div style={{ flex: 1 }} />
 
       {/* o sino mora aqui desde que o header saiu do desktop (U20) */}
-      <NotificacoesSidebar />
+      <NotificacoesSidebar recolhida={recolhida} />
 
       <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 12px" }}>
-        <ThemeToggle />
+        {recolhida ? (
+          // A pílula Light/Dark tem 128px fixos — não cabe em 72px de rail.
+          // Um botão icônico com o MESMO toggleTheme, ícone conforme o tema
+          // atual (o que a pessoa vê é o que vai acontecer ao tocar).
+          <button
+            onClick={toggleTheme}
+            className="hover-suave"
+            aria-label={isLight ? "Mudar para tema escuro" : "Mudar para tema claro"}
+            title={isLight ? "Tema escuro" : "Tema claro"}
+            style={{
+              width: 34, height: 34, borderRadius: 10, border: "none",
+              background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
+              color: textSecondary, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {isLight ? <Moon size={16} /> : <Sun size={16} />}
+          </button>
+        ) : (
+          <ThemeToggle />
+        )}
       </div>
 
       <button
         onClick={() => navigate({ to: "/perfil" })}
         className="hover-suave"
+        title={recolhida ? (perfil?.nome ?? "Perfil") : undefined}
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: recolhida ? "center" : "flex-start",
           gap: 10,
-          padding: "10px 10px",
+          padding: recolhida ? "8px" : "10px 10px",
           borderRadius: 14,
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
           background: isLight ? "#f7f7f5" : "rgba(255,255,255,0.03)",
@@ -214,23 +292,25 @@ export function SideNav() {
             {iniciais}
           </span>
         )}
-        <span style={{ minWidth: 0 }}>
-          <span style={{
-            display: "block", fontFamily: FONT, fontWeight: 600, fontSize: 12.5,
-            color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {perfil?.nome ?? "Carregando…"}
-          </span>
-          {perfil?.cargo && (
+        {!recolhida && (
+          <span style={{ minWidth: 0 }}>
             <span style={{
-              display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 10,
-              letterSpacing: "0.10em", textTransform: "uppercase",
-              color: isLight ? SUPERNOVA[800] : SUPERNOVA[400],
+              display: "block", fontFamily: FONT, fontWeight: 600, fontSize: 12.5,
+              color: textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
-              {perfil.cargo}
+              {perfil?.nome ?? "Carregando…"}
             </span>
-          )}
-        </span>
+            {perfil?.cargo && (
+              <span style={{
+                display: "block", fontFamily: FONT, fontWeight: 400, fontSize: 10,
+                letterSpacing: "0.10em", textTransform: "uppercase",
+                color: isLight ? SUPERNOVA[800] : SUPERNOVA[400],
+              }}>
+                {perfil.cargo}
+              </span>
+            )}
+          </span>
+        )}
       </button>
     </aside>
   );

@@ -7,6 +7,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { SideNav } from "@/components/SideNav";
 import { NotificationPanel } from "@/components/NotificationPanel";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useSidebarRecolhida } from "@/lib/sidebar-recolhida";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -38,6 +39,10 @@ function usePerfil() {
 
 function AuthenticatedLayout() {
   const navigate = useNavigate();
+  // Só muda o QUE o CSS lê (--rail, via [data-sidebar]) — o próprio recolher
+  // vive em SideNav.tsx. Precisa estar aqui também porque é este elemento
+  // que empurra o <main> com padding-left: var(--rail).
+  const recolhida = useSidebarRecolhida();
   const { isLight } = useTheme();
   const { data: perfil } = usePerfil();
 
@@ -119,7 +124,10 @@ function AuthenticatedLayout() {
       <GlowBackground />
       <SideNav />
       {/* --rail: 0 no celular, largura da sidebar no desktop (styles.css) */}
-      <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, paddingLeft: "var(--rail)" }}>
+      <div
+        data-sidebar={recolhida ? "recolhida" : undefined}
+        style={{ minHeight: "100vh", position: "relative", zIndex: 1, paddingLeft: "var(--rail)" }}
+      >
         {/* HEADER — só no celular. No desktop os dois itens dele foram
             removidos a pedido: o perfil mora na sidebar e as notificações no
             painel da Início. O conteúdo sobe junto (--topo). */}
