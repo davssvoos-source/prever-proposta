@@ -101,6 +101,16 @@ export interface Atividade {
   aConferir: boolean;
   criadoEm: string;
   atualizadoEm: string;
+  /**
+   * Quando a atividade SAIU da fila — null enquanto está em aberto.
+   *
+   * Não é `finalizada_em`: essa é o carimbo do motor de cobrança (quando o
+   * técnico entregou), não o do encerramento. A Home já calculava isto solto
+   * para podar encerrados velhos, e o gráfico precisa do mesmo número para
+   * contar "quantos foram concluídos naquela semana" — duas contas do mesmo
+   * fato em lugares diferentes acabam discordando, então mora aqui.
+   */
+  encerradoEm: string | null;
 
   compra: { situacao: SituacaoCompra; situacaoLabel: string } | null;
   /** Marcador âmbar: o que está esquisito neste registro, se algo estiver. */
@@ -192,6 +202,8 @@ export interface BrutoChamado {
   aberto_por: string | null;
   created_at: string;
   updated_at: string | null;
+  concluida_em?: string | null;
+  fechada_em?: string | null;
   faturamento_status?: string | null;
   cliente?: { nome: string } | null;
   /** U31: o nome como veio do Notion, quando não casou com cliente do QAP */
@@ -359,6 +371,9 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
   const pri = (c.prioridade ?? null) as ChamadoPrioridade | null;
   const tipo = (c.tipo ?? null) as ChamadoTipo | null;
   const ficha = ctx.fichas.get(c.id);
+  // status fora do vocabulário conta como aberto: a coluna "Sem status" seria
+  // inalcançável se o filtro padrão o cortasse
+  const emAberto = t.coluna === "sem_status" ? true : chamadoEmAberto(c.status);
 
   return {
     id: `ch-${c.id}`,
@@ -401,13 +416,14 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
     agendadaEm: c.data_hora_agendada,
     quando: c.data_hora_agendada ?? c.prazo_limite ?? null,
-    // status fora do vocabulário conta como aberto: a coluna "Sem status"
-    // seria inalcançável se o filtro padrão o cortasse
-    emAberto: t.coluna === "sem_status" ? true : chamadoEmAberto(c.status),
+    emAberto,
     aConferir: c.natureza === "campo" && c.status === "concluido"
       && (c as any).faturamento_status === "a_analisar",
     criadoEm: c.created_at,
     atualizadoEm: c.updated_at ?? c.created_at,
+    encerradoEm: emAberto
+      ? null
+      : (c.concluida_em ?? c.fechada_em ?? c.updated_at ?? c.created_at),
     compra: ficha ? { situacao: ficha.situacao, situacaoLabel: SITUACAO_LABEL[ficha.situacao] } : null,
     alerta: t.alerta,
   };
@@ -477,6 +493,11 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     aConferir: false,   // visita não gera cobrança de chamado
     criadoEm: v.created_at,
     atualizadoEm: v.created_at,
+    // pela data do DESFECHO, não pela de criação: uma proposta aceita hoje
+    // numa visita de três meses atrás sairia contada no mês errado
+    encerradoEm: (t.coluna !== "concluido" && t.coluna !== "cancelado")
+      ? null
+      : ((v as any).proposta_resultado_em ?? v.created_at),
     compra: null,
     alerta: t.alerta,
   };

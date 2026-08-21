@@ -26,6 +26,7 @@ import {
   type Atividade, type BrutoChamado, type BrutoVisita, type FichaCompra,
 } from "@/features/atividades/modelo";
 import type { SituacaoCompra } from "@/features/chamados/compra";
+import { inicioSemana } from "@/lib/periodos";
 
 /** Encerrados mais velhos que isto não entram na Home. */
 export const DIAS_ENCERRADO = 7;
@@ -169,6 +170,8 @@ export function useVisitasDaHome(s: Sessao, tecnicoFiltro: string) {
 
 export interface AtividadesDaHome {
   atividades: Atividade[];
+  /** encerrados de até ~5 semanas — só os painéis do topo usam (U33) */
+  historico: Atividade[];
   visitas: BrutoVisita[];
   carregando: boolean;
   erro: boolean;
@@ -184,6 +187,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
   const apoios = useMeusApoios(s);
   const apoiosDeTodos = useApoiosDeTodos();
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
+  const historicoBruto = useHistoricoAmplo(s);
 
   const idsCompra = useMemo(
     () => (chamados.data ?? []).filter((c) => c.tipo === "pedido_compra").map((c) => c.id),
@@ -210,24 +214,15 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       // recorte, não decoração: sem ele a Home dele mostra os 537 chamados
       // internos que a policy entrega a qualquer autenticado
       if (soMeus && !(a.souResponsavel || a.souApoio || a.souAutor)) continue;
-      if (!a.emAberto) {
-        // refino do corte: quando o chamado saiu da fila de verdade.
-        // `finalizada_em` NÃO é usada aqui de propósito — ela é o carimbo do
-        // motor de cobrança (quando o técnico entregou), não o de encerramento.
-        const bruto = c as any;
-        const fim = bruto.concluida_em ?? bruto.fechada_em ?? c.updated_at ?? c.created_at;
-        if (new Date(fim).getTime() < corte) continue;
-      }
+      // refino do corte: quando o chamado saiu da fila de verdade. A conta
+      // mora no modelo (`encerradoEm`) porque o gráfico precisa do mesmo
+      // número — duas contas do mesmo fato acabam discordando.
+      if (a.encerradoEm && new Date(a.encerradoEm).getTime() < corte) continue;
       lista.push(a);
     }
     for (const v of visitas.data ?? []) {
       const a = atividadeDaVisita(v, ctx);
-      if (!a.emAberto) {
-        // pela data do DESFECHO, não pela de criação: uma proposta aceita hoje
-        // numa visita de três meses atrás sumia no instante do registro
-        const fim = (v as any).proposta_resultado_em ?? v.created_at;
-        if (new Date(fim).getTime() < corte) continue;
-      }
+      if (a.encerradoEm && new Date(a.encerradoEm).getTime() < corte) continue;
       lista.push(a);
     }
     return lista;
@@ -235,10 +230,100 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     // calculado na montagem nunca mais muda enquanto a tela fica aberta
   }, [chamados.data, visitas.data, apoios.data, apoiosDeTodos.data, fichas.data, s.userId, s.cargo, agora]);
 
+  /**
+   * O histórico, montado com o MESMO contexto — só para os painéis do topo.
+   *
+   * Passa pelo mesmo `atividadeDoChamado` de propósito: se tivesse um caminho
+   * próprio, um status novo ou uma cor nova precisaria ser ensinada duas
+   * vezes, e a segunda seria esquecida.
+   *
+   * O recorte do técnico é repetido aqui porque a policy entrega a ele todos
+   * os chamados internos sem responsável — sem o filtro, o gráfico dele
+   * contaria o trabalho da casa inteira.
+   */
+  const historico = useMemo<Atividade[]>(() => {
+    const ctx = {
+      userId: s.userId,
+      apoios: new Set(apoios.data ?? []),
+      fichas: new Map<string, FichaCompra>(),
+      apoiosDoChamado: apoiosDeTodos.data,
+    };
+    const soMeus = s.cargo === "tecnico";
+    const lista: Atividade[] = [];
+    for (const c of historicoBruto.data ?? []) {
+      const a = atividadeDoChamado(c, ctx);
+      if (soMeus && !(a.souResponsavel || a.souApoio || a.souAutor)) continue;
+      lista.push(a);
+    }
+    return lista;
+  }, [historicoBruto.data, apoios.data, apoiosDeTodos.data, s.userId, s.cargo]);
+
   return {
     atividades,
+    historico,
     visitas: visitas.data ?? [],
     carregando: chamados.isLoading || visitas.isLoading,
     erro: chamados.isError || visitas.isError,
   };
+}
+
+// ── Histórico amplo, só para os painéis do topo ─────────────────────────────
+
+/**
+ * As atividades ENCERRADAS numa janela larga — quatro semanas para trás, ou o
+ * começo do mês, o que for mais antigo.
+ *
+ * POR QUE EXISTE: a Home poda encerrados com mais de 7 dias (DIAS_ENCERRADO),
+ * e faz bem — o quadro é fila de trabalho, não arquivo. Mas os painéis do topo
+ * falam de PERÍODO: "concluídos por semana" precisa de quatro semanas
+ * inteiras, e "concluídas no mês" precisa do mês inteiro. Sem esta consulta,
+ * as barras do passado e a meta seriam sempre menores que a verdade na última
+ * semana do mês.
+ *
+ * POR QUE DEVOLVE ATIVIDADE, E NÃO CONTAGEM: antes eram duas consultas que
+ * traziam só `concluida_em` e `status` — números prontos, que os filtros do
+ * quadro não tinham como recortar. Trazendo as MESMAS colunas da Home e
+ * passando pelo mesmo montador, o painel do topo responde aos filtros
+ * exatamente como o quadro embaixo. É o que o Davi pediu: gráfico e quadro
+ * contando a mesma história.
+ */
+export function useHistoricoAmplo(s: Sessao) {
+  const desde = useMemo(() => {
+    const agora = new Date();
+    const quatroSemanas = inicioSemana(agora);
+    quatroSemanas.setDate(quatroSemanas.getDate() - 28);
+    const inicioDoMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    return (quatroSemanas < inicioDoMes ? quatroSemanas : inicioDoMes).toISOString();
+  }, []);
+
+  return useQuery({
+    queryKey: ["home-historico", s.userId, s.cargo, desde.slice(0, 10)],
+    enabled: !!s.userId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<BrutoChamado[]> => {
+      // Filtra pela DATA DE ENCERRAMENTO, não por `updated_at`.
+      //
+      // Medido no export do Notion antes de escrever isto: a importação grava
+      // 2000 atividades concluídas de uma vez, e todas nascem com `updated_at`
+      // = hoje. Um corte por `updated_at` traria as 2000 — passando do teto de
+      // linhas do PostgREST, que TRUNCA em silêncio. Os gráficos ficariam
+      // errados sem nenhum sinal de erro, que é o pior jeito de estarem
+      // errados.
+      //
+      // `or` porque PostgREST não tem coalesce: vale a data de conclusão ou a
+      // de fechamento. Encerrado sem nenhuma das duas fica de fora — não dá
+      // para colocar numa semana o que não tem data, e a Home já o mostra
+      // enquanto for recente.
+      const { data, error } = await supabase
+        .from("chamados" as any)
+        .select(CAMPOS_CHAMADO)
+        .in("status", ["concluido", "cancelado"])
+        .or(`concluida_em.gte.${desde},fechada_em.gte.${desde}`)
+        // rede de segurança: se algum dia a janela crescer, é melhor faltar
+        // barra do que a resposta ser cortada sem avisar
+        .limit(2000);
+      if (error) throw error;
+      return ((data as any[]) ?? []) as BrutoChamado[];
+    },
+  });
 }

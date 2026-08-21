@@ -19,7 +19,7 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useState, useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -238,15 +238,19 @@ function CalendarioPage() {
 
   return (
     <>
-      {/* TELA CHEIA: a grade ocupa o que sobra da altura e rola por dentro.
+      {/* TELA CHEIA — mas por PISO, não por teto: `minHeight` e não `height`.
+          Com a linha crescendo conforme o dia mais cheio (sem rolagem por
+          célula), uma altura fixa faria a grade transbordar do contêiner e as
+          últimas semanas ficariam cortadas. Assim o mês vazio ainda preenche a
+          tela e o mês cheio empurra a página, que rola uma vez só.
           `100dvh` e não `100vh` — no celular a barra do navegador entra e sai,
           e com `vh` a última semana ficaria escondida atrás dela. */}
       <div
         className="sangra-x"
         style={{
           display: "flex", flexDirection: "column",
-          height: "calc(100dvh - 96px)", minHeight: 420,
-          paddingTop: 14, paddingBottom: 12, color: textPrimary,
+          minHeight: "calc(100dvh - 96px)",
+          paddingTop: 14, paddingBottom: 20, color: textPrimary,
         }}
       >
         {/* Cabeçalho */}
@@ -311,13 +315,22 @@ function CalendarioPage() {
           ))}
         </div>
 
-        {/* A GRADE — ocupa toda a altura restante; cada célula rola sozinha
-            quando o dia tem mais itens do que cabe. */}
+        {/* A GRADE — a linha CRESCE com o dia mais cheio dela (pedido do Davi:
+            sem rolagem por dia).
+            `minmax(120px, auto)`: 120px é o piso, para um mês vazio ainda
+            parecer um calendário; daí para cima a linha acompanha o conteúdo.
+            Quem rola é a PÁGINA, uma vez só — antes eram 42 áreas de rolagem
+            independentes, e um item escondido dentro de uma delas era um item
+            que ninguém via. */}
         <div style={{
-          flex: 1, minHeight: 0,
+          // "1 0 auto": CRESCE para preencher a tela quando o mês é vazio, e
+          // NÃO ENCOLHE quando é cheio. Um `flex: 1` puro (base 0) espremeria
+          // a grade de volta à altura do contêiner e traria a rolagem cortada
+          // de volta pela porta dos fundos.
+          flex: "1 0 auto",
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gridAutoRows: "1fr",
+          gridAutoRows: "minmax(120px, auto)",
           gap: 1,
           background: linha,
           border: `1px solid ${linha}`,
@@ -333,9 +346,8 @@ function CalendarioPage() {
                 key={d.toISOString()}
                 style={{
                   background: doMes ? superficie : (isLight ? "#fafafa" : "rgba(255,255,255,0.012)"),
-                  padding: "5px 5px 6px",
+                  padding: "5px 5px 7px",
                   display: "flex", flexDirection: "column", gap: 3,
-                  minHeight: 0, overflow: "hidden",
                   opacity: doMes ? 1 : 0.45,
                 }}
               >
@@ -357,10 +369,7 @@ function CalendarioPage() {
                   )}
                 </div>
 
-                <div style={{
-                  flex: 1, minHeight: 0, overflowY: "auto",
-                  display: "flex", flexDirection: "column", gap: 3,
-                }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {itens.map((e) => {
                     const info = chamadoStatusInfo(e.status);
                     const cor = e.porPrazo && new Date(e.quando) < hoje && !["concluido", "cancelado"].includes(e.status)
@@ -370,45 +379,35 @@ function CalendarioPage() {
                       <button
                         key={`${e.kind}-${e.id}`}
                         onClick={() => abrir(e)}
-                        title={e.titulo}
+                        // a hora e o "vence" saíram da célula (pedido do Davi):
+                        // varrendo o mês, o que se procura é O QUE é, não a que
+                        // horas. O detalhe fica no título do navegador e no
+                        // painel, a um clique.
+                        title={`${e.titulo}${e.porPrazo
+                          ? " · vence neste dia"
+                          : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
                         style={{
                           textAlign: "left", cursor: "pointer", width: "100%",
                           border: "none", borderLeft: `2.5px solid ${cor}`,
-                          borderRadius: 5, padding: "3px 5px",
+                          borderRadius: 5, padding: "4px 6px",
                           background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
-                          display: "flex", flexDirection: "column", gap: 2, minWidth: 0,
+                          display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
                         }}
                       >
                         <span style={{
+                          flex: 1, minWidth: 0,
                           fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                          color: textPrimary, lineHeight: 1.25,
+                          color: textPrimary, lineHeight: 1.3,
                           display: "-webkit-box", WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical", overflow: "hidden",
                         }}>
                           {e.titulo}
                         </span>
-                        <span style={{
-                          display: "flex", alignItems: "center", gap: 4,
-                          justifyContent: "space-between",
-                        }}>
-                          <span style={{
-                            display: "flex", alignItems: "center", gap: 2,
-                            fontFamily: FONT, fontSize: 9, color: textSecondary,
-                            whiteSpace: "nowrap",
-                          }}>
-                            {e.porPrazo
-                              ? <><Flag size={8} /> vence</>
-                              : <><Clock size={8} />
-                                  {new Date(e.quando).toLocaleTimeString("pt-BR", {
-                                    hour: "2-digit", minute: "2-digit",
-                                  })}
-                                </>}
-                          </span>
-                          {/* o(s) responsável(eis) — o rosto de quem toca */}
-                          {e.pessoas.length > 0 && (
-                            <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
-                          )}
-                        </span>
+                        {/* o(s) responsável(eis) — o rosto de quem toca, agora
+                            ao lado do título em vez de numa segunda linha */}
+                        {e.pessoas.length > 0 && (
+                          <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
+                        )}
                       </button>
                     );
                   })}

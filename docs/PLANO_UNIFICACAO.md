@@ -2248,3 +2248,57 @@ esconderia a última semana), título e pilha de avatares em cada item, e o
 clique abre o mesmo painel da Início.
 
 475 asserções, build ok.
+
+### U33 — Painéis que respondem ao filtro, tabela e o painel redesenhado (2026-08-21)
+
+**O problema real (R35).** Os painéis do topo da Início não respondiam aos
+filtros do quadro — e não era só questão de passar outro array: metade deles
+**consultava o banco por conta própria** (`useConcluidosPorSemana`,
+`useMetaDoMes`), trazendo números prontos que filtro nenhum tem como recortar.
+O resultado era um painel dizendo "42" enquanto o quadro logo abaixo, filtrado,
+mostrava 6.
+
+A saída foi inverter a direção: as contas passaram a sair das ATIVIDADES, e
+quem monta o recorte é a Início. Para isso o modelo ganhou `encerradoEm` (a
+data em que a atividade saiu da fila) — conta que já existia solta na Home para
+podar encerrados velhos, duplicada, e que o gráfico precisava idêntica.
+
+Duas decisões dentro disso:
+- **O histórico entra** (`useHistoricoAmplo`): o quadro poda encerrados com
+  mais de 7 dias, mas quatro semanas de barras e a meta do mês precisam de mais.
+- **O filtro de PERÍODO não se aplica** ao painel. O gráfico já é um eixo de
+  tempo; "hoje" deixaria uma barra em pé e sete zeradas.
+
+**Dois defeitos meus, medidos antes de publicar:**
+
+1. `useHistoricoAmplo` filtrava por `updated_at`. Mas a importação do Notion
+   grava 2000 concluídas de uma vez, todas com `updated_at` = hoje — a consulta
+   traria as 2000, passando do teto de linhas do PostgREST, que **trunca em
+   silêncio**. Gráficos errados sem nenhum sinal de erro. Passou a filtrar pela
+   data de encerramento, com `.limit()` explícito como rede.
+2. `metaDoMes` contava pela etiqueta de sprint. Medido no export: **7
+   atividades marcadas "este mês" tinham sido concluídas em junho e julho** —
+   a meta comemoraria trabalho de dois meses atrás. Agora a etiqueta diz a
+   intenção e a data diz o fato.
+
+**A tabela (R36).** A visão de lista virou tabela de nove colunas, com
+cabeçalho grudado, ordenação por coluna e rolagem contida no próprio envelope
+(a página nunca rola de lado). "Apoio" é participantes menos o responsável;
+"Equipe" fica vazia em campo, por invariante do modelo — e o traço diz isso
+sem mentir.
+
+**O painel redesenhado.** O Davi mandou um print: dez caixas cinzas idênticas,
+rótulos de 9,5px. Um formulário trata todo campo como igualmente importante, e
+eles não são. O título virou o cabeçalho (grande, editável no lugar); status,
+tipo e prioridade viraram **etiquetas nas mesmas cores dos cards do quadro** —
+cor como vocabulário compartilhado, não enfeite; rótulos foram para 11px e
+valores para 14px com 44px de altura; e os campos foram agrupados em quatro
+seções. Largura de 880px, ainda sob o teto de 60% da tela.
+
+**O calendário (R37).** Saíram a hora e o "vence" de baixo do título (ficaram
+no title do navegador), e a célula deixou de rolar: a linha cresce com o dia
+mais cheio dela. Antes eram 42 áreas de rolagem independentes — item no fim de
+uma delas era item que ninguém via.
+
+533 asserções (58 novas, incluindo teste de unidade de `metaDoMes`,
+`concluidosPorSemana` e `encerradoEm`), build ok.

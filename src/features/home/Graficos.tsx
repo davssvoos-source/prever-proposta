@@ -31,25 +31,32 @@
 //
 // O NÚMERO da barra usa ESPECTRO_TEXTO, não a cor da barra: a rampa clara é
 // de preenchimento (≥3:1) e texto de 13px exige 4.5:1.
-// Os concluídos vêm de consulta própria: a Home poda encerrados com mais de
-// 7 dias, e as barras do passado precisam de 4 semanas inteiras.
 //
 // META DO MÊS: rosca com o % das prioridades do sprint `este_mes` concluídas.
-// Consulta o banco à parte de propósito — a Home poda encerrados com mais de
-// 7 dias, e uma meta mensal que esquece o começo do mês estaria sempre errada
-// na última semana.
+//
+// TUDO AQUI CONTA DAS ATIVIDADES QUE CHEGAM POR PROPRIEDADE (U33). Antes, as
+// barras do passado e a meta vinham de consultas próprias que traziam números
+// prontos — e número pronto não tem como ser recortado pelos filtros do
+// quadro. O resultado era um painel que dizia "42" enquanto o quadro embaixo,
+// filtrado, mostrava 6: duas telas contando histórias diferentes sobre a mesma
+// operação. Agora quem monta o recorte é a Início, e estes componentes só
+// pintam o que recebem.
+//
+// Quem chama precisa passar um conjunto AMPLO o bastante: a Home poda
+// encerrados com mais de 7 dias, e quatro semanas de barras — mais a meta do
+// mês — precisam do histórico. É o que `useHistoricoAmplo` traz.
 //
 // (A caixa de notificações que morava aqui virou o sino da sidebar na U20;
 // o quarto painel é a criação rápida por IA — CriarRapido.tsx.)
 
 import { useMemo, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { inicioSemana, dataIso } from "@/lib/periodos";
 import { PRISMA, ESPECTRO, ESPECTRO_STOPS, ESPECTRO_TEXTO, gradienteBarra } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
+// as contas moram em metricas.ts: puras, testáveis, longe da pintura
+import { concluidosPorSemana, metaDoMes } from "@/features/home/metricas";
 
 const ALTURA = 252;
 const MAX_PECAS = 7;
@@ -78,37 +85,9 @@ interface PropsDemanda {
   atividades: Atividade[];
 }
 
-/** Concluídos por semana nas últimas 4 — consulta própria (ver cabeçalho). */
-function useConcluidosPorSemana() {
-  const inicioJanela = useMemo(() => {
-    const base = inicioSemana(new Date());
-    base.setDate(base.getDate() - 28);
-    return dataIso(base);
-  }, []);
-  return useQuery({
-    queryKey: ["home-concluidos-semana", inicioJanela],
-    staleTime: 60_000,
-    queryFn: async (): Promise<Record<string, number>> => {
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("concluida_em")
-        .eq("status", "concluido")
-        .gte("concluida_em", inicioJanela);
-      const m: Record<string, number> = {};
-      if (error) return m;
-      for (const r of ((data as any[]) ?? [])) {
-        if (!r.concluida_em) continue;
-        const k = dataIso(inicioSemana(new Date(r.concluida_em)));
-        m[k] = (m[k] ?? 0) + 1;
-      }
-      return m;
-    },
-  });
-}
-
 export function GraficoDemanda({ atividades }: PropsDemanda) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
-  const { data: concluidos } = useConcluidosPorSemana();
+  const concluidos = useMemo(() => concluidosPorSemana(atividades), [atividades]);
 
   // invertida: o passado é quente, o futuro é frio — a mesma leitura da faixa
   // de prazo nos cards, onde "adiante" é azul
@@ -137,7 +116,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
       lista.push({
         chave,
         rotulo: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-        valor: passado ? (concluidos?.[chave] ?? 0) : (futuros[chave] ?? 0),
+        valor: passado ? (concluidos[chave] ?? 0) : (futuros[chave] ?? 0),
         // a barra vai da SUA cor à da próxima: o degradê não quebra na emenda
         cor: rampa[idx],
         corFim: rampa[idx + 1],
@@ -191,36 +170,10 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
 
 // ── Meta do mês ─────────────────────────────────────────────────────────────
 
-export function useMetaDoMes(userId: string | null) {
-  // mês corrente na chave: na virada, a consulta renova sozinha
-  const mes = new Date().toISOString().slice(0, 7);
-  return useQuery({
-    queryKey: ["home-meta-mes", userId, mes],
-    enabled: !!userId,
-    staleTime: 60_000,
-    queryFn: async (): Promise<{ total: number; feitas: number }> => {
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("status")
-        .eq("natureza", "interno")
-        .eq("sprint", "este_mes")
-        .eq("responsavel_id", userId as string);
-      if (error) return { total: 0, feitas: 0 };
-      const linhas = ((data as any[]) ?? []).filter((r) => r.status !== "cancelado");
-      return {
-        total: linhas.length,
-        feitas: linhas.filter((r) => r.status === "concluido").length,
-      };
-    },
-  });
-}
-
-export function GraficoMeta({ userId }: { userId: string | null }) {
+export function GraficoMeta({ atividades }: { atividades: Atividade[] }) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
-  const { data } = useMetaDoMes(userId);
+  const { total, feitas } = useMemo(() => metaDoMes(atividades), [atividades]);
 
-  const total = data?.total ?? 0;
-  const feitas = data?.feitas ?? 0;
   const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
 
   // rosca maior, centrada e sem texto auxiliar: só a porcentagem
@@ -299,9 +252,9 @@ export function GraficoMeta({ userId }: { userId: string | null }) {
 
 // ── Os quatro indicadores ───────────────────────────────────────────────────
 
-export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; userId: string | null }) {
+export function PainelKpis({ atividades }: { atividades: Atividade[] }) {
   const { isLight, textSecondary } = useCoresBase();
-  const { data: meta } = useMetaDoMes(userId);
+  const meta = useMemo(() => metaDoMes(atividades), [atividades]);
 
   const urgentes = atividades.filter(
     (a) => a.emAberto && a.tipo === "corretiva" && a.prioridade === "urgente",
@@ -313,8 +266,8 @@ export function PainelKpis({ atividades, userId }: { atividades: Atividade[]; us
   // acha. Azul = feito, amarelo = a fazer, laranja/vermelho = o que arde.
   const cor = (c: { dark: string; light: string }) => (isLight ? c.light : c.dark);
   const kpis = [
-    { rotulo: "Concluídas no mês", valor: meta?.feitas ?? 0, cor: cor(PRISMA.azul) },
-    { rotulo: "Faltam no mês", valor: (meta?.total ?? 0) - (meta?.feitas ?? 0), cor: cor(PRISMA.amarelo) },
+    { rotulo: "Concluídas no mês", valor: meta.feitas, cor: cor(PRISMA.azul) },
+    { rotulo: "Faltam no mês", valor: meta.total - meta.feitas, cor: cor(PRISMA.amarelo) },
     { rotulo: "Corretivas urgentes", valor: urgentes, cor: cor(PRISMA.laranja) },
     // a quarta ficou por minha conta: atrasado em aberto é o que pega fogo —
     // é o número que decide o começo do dia de quem coordena

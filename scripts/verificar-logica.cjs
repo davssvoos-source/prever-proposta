@@ -1346,7 +1346,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // backlog e a reincidência usam para contar
   eq('a data de criação não é editável',
      /patch: \{ created_at/.test(painel) || /name="created_at"/.test(painel), false);
-  eq('a data de criação aparece como informação', /Criado em/.test(painel), true);
+  // "Recebido em" (U33) — o mesmo vocabulário da coluna da tabela
+  eq('a data de criação aparece como informação',
+     /Recebido em[\s\S]{0,120}chamado\.created_at/.test(painel), true);
   // as propriedades que o Davi listou
   for (const campo of ['cliente_id', 'responsavel_id', 'tipo', 'status', 'prioridade',
                        'equipe', 'sprint', 'prazo_limite', 'titulo', 'descricao_problema']) {
@@ -1381,6 +1383,169 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq(`salvar no painel refresca "${chave}"`,
        new RegExp(`queryKey: \\["${chave}"`).test(painel), true);
   }
+}
+
+// ── U33: painéis que respondem aos filtros + tabela na Início (2026-08-21) ──
+{
+  const fs13 = require('fs');
+  const G = carregar('src/features/home/metricas.ts');
+  const P = carregar('src/lib/periodos.ts');
+
+  const dia = (s) => new Date(s).toISOString();
+  const at = (extra) => ({
+    id: 'ch-' + Math.random(), natureza: 'interno', sprint: 'este_mes',
+    coluna: 'concluido', emAberto: false, encerradoEm: dia('2026-08-10T10:00:00'),
+    ...extra,
+  });
+
+  // ── metaDoMes: a etiqueta diz a intenção, a data diz o fato ──────────────
+  const agora = new Date(2026, 7, 21); // agosto de 2026
+  const meta = (lista) => G.metaDoMes(lista, agora);
+
+  eq('meta: conta o que foi encerrado no mês corrente',
+     meta([at({})]), { total: 1, feitas: 1 });
+  eq('meta: conta o que ainda está em aberto (é o que falta fazer)',
+     meta([at({ emAberto: true, coluna: 'aberto', encerradoEm: null })]), { total: 1, feitas: 0 });
+  // o defeito real medido no export: 7 atividades marcadas "este mês" tinham
+  // sido concluídas em junho/julho — contadas pela etiqueta, virariam entrega
+  // de agosto
+  eq('meta: etiqueta VELHA não vira entrega do mês (concluída em julho)',
+     meta([at({ encerradoEm: dia('2026-07-15T10:00:00') })]), { total: 0, feitas: 0 });
+  eq('meta: cancelado não entra (cancelar não é entregar)',
+     meta([at({ coluna: 'cancelado' })]), { total: 0, feitas: 0 });
+  eq('meta: chamado de campo não entra (a meta é do quadro interno)',
+     meta([at({ natureza: 'campo' })]), { total: 0, feitas: 0 });
+  eq('meta: sprint diferente não entra',
+     meta([at({ sprint: 'backlog' })]), { total: 0, feitas: 0 });
+
+  // ── concluidosPorSemana ─────────────────────────────────────────────────
+  const semanaDe = (s) => {
+    const d = P.inicioSemana(new Date(s));
+    return P.dataIso(d);
+  };
+  {
+    const r = G.concluidosPorSemana([
+      at({ encerradoEm: dia('2026-08-10T09:00:00') }),
+      at({ encerradoEm: dia('2026-08-11T09:00:00') }),   // mesma semana
+      at({ encerradoEm: dia('2026-08-03T09:00:00') }),   // semana anterior
+    ]);
+    eq('barras: duas da mesma semana somam', r[semanaDe('2026-08-10T09:00:00')], 2);
+    eq('barras: a de outra semana vai para o balde dela', r[semanaDe('2026-08-03T09:00:00')], 1);
+  }
+  eq('barras: em aberto não conta (encerradoEm é null)',
+     Object.keys(G.concluidosPorSemana([at({ emAberto: true, encerradoEm: null })])).length, 0);
+  eq('barras: cancelado não é entrega',
+     Object.keys(G.concluidosPorSemana([at({ coluna: 'cancelado' })])).length, 0);
+
+  // ── encerradoEm: o modelo, não a tela ───────────────────────────────────
+  const M = carregar('src/features/atividades/modelo.ts');
+  const ctxVazio = { userId: 'u1', apoios: new Set(), fichas: new Map(), apoiosDoChamado: undefined };
+  const ch = (extra) => M.atividadeDoChamado({
+    id: 'x', numero: 'CH-1', titulo: 'T', status: 'concluido', natureza: 'interno',
+    tipo: null, prioridade: null, equipe: 'ti', sprint: 'backlog',
+    prazo_limite: null, data_hora_agendada: null, responsavel_id: 'u1', aberto_por: 'u1',
+    created_at: dia('2026-01-01T10:00:00'), updated_at: dia('2026-08-20T10:00:00'),
+    ...extra,
+  }, ctxVazio);
+
+  eq('encerradoEm prefere concluida_em',
+     ch({ concluida_em: dia('2026-08-05T10:00:00'), fechada_em: dia('2026-08-09T10:00:00') }).encerradoEm,
+     dia('2026-08-05T10:00:00'));
+  eq('sem concluida_em, cai em fechada_em',
+     ch({ fechada_em: dia('2026-08-09T10:00:00') }).encerradoEm, dia('2026-08-09T10:00:00'));
+  eq('sem nenhuma das duas, cai em updated_at',
+     ch({}).encerradoEm, dia('2026-08-20T10:00:00'));
+  eq('em aberto NÃO tem data de encerramento',
+     ch({ status: 'aberto' }).encerradoEm, null);
+  // a extração da variável `emAberto` não podia mudar o comportamento
+  eq('status desconhecido continua contando como aberto',
+     [ch({ status: 'coisa_nova' }).emAberto, ch({ status: 'coisa_nova' }).encerradoEm], [true, null]);
+
+  // ── a fiação na tela ────────────────────────────────────────────────────
+  const dash = fs13.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+  for (const c of ['GraficoDemanda', 'GraficoMeta', 'PainelKpis']) {
+    eq(`${c} recebe o recorte filtrado, não o array cru`,
+       new RegExp(`<${c} atividades=\\{paraPaineis\\}`).test(dash), true);
+  }
+  // o gráfico JÁ É um eixo de tempo — aplicar "hoje" deixaria uma barra em pé
+  eq('o painel ignora o filtro de PERÍODO (mas só ele)',
+     /aplicarLentes\(uniao, \{ \.\.\.filtros, periodo: null \}/.test(dash), true);
+  eq('o painel soma o histórico ao que está no quadro',
+     /\[\.\.\.atividades, \.\.\.historico\]/.test(dash), true);
+  eq('a união é deduplicada por id', /vistos\.has\(a\.id\)/.test(dash), true);
+
+  // a janela do histórico NÃO pode se apoiar em updated_at: a importação grava
+  // 2000 concluídas de uma vez, todas com updated_at = hoje
+  const hd = fs13.readFileSync('src/features/home/data.ts', 'utf8');
+  const bloco = hd.split('useHistoricoAmplo')[2] ?? hd.split('useHistoricoAmplo')[1] ?? '';
+  eq('o histórico filtra pela data de ENCERRAMENTO',
+     /concluida_em\.gte\.\$\{desde\},fechada_em\.gte\.\$\{desde\}/.test(bloco), true);
+  eq('o histórico não usa updated_at como corte (traria as 2000 importadas)',
+     /gte\("updated_at", desde\)/.test(bloco), false);
+  eq('o histórico tem teto explícito (resposta truncada mente sem avisar)',
+     /\.limit\(2000\)/.test(bloco), true);
+
+  // ── a tabela ────────────────────────────────────────────────────────────
+  const tab = fs13.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
+  for (const [chave, titulo] of [
+    ['cliente', 'Cliente'], ['titulo', 'Título'], ['responsavel', 'Responsável'],
+    ['apoio', 'Apoio'], ['equipe', 'Equipe'], ['tipo', 'Tipo'],
+    ['status', 'Status'], ['recebido', 'Recebido em'], ['prazo', 'Prazo'],
+  ]) {
+    eq(`a tabela tem a coluna ${titulo}`,
+       new RegExp(`chave: "${chave}",\\s*titulo: "${titulo}"`).test(tab), true);
+  }
+  eq('"recebido" é a data de criação, como o Davi pediu',
+     /case "recebido": return a\.criadoEm/.test(tab), true);
+  eq('apoio = participantes MENOS o responsável',
+     /participantes\.filter\(\(p\) => p !== a\.responsavelId\)/.test(tab), true);
+  // o DESIGN_SYSTEM proíbe a página rolar de lado: a tabela rola dentro dela
+  eq('a tabela rola dentro do próprio envelope', /overflowX: "auto"/.test(tab), true);
+  eq('o cabeçalho gruda ao rolar', /position: "sticky", top: 0/.test(tab), true);
+  eq('a ordenação anuncia o estado para leitor de tela', /aria-sort/.test(tab), true);
+  eq('a Início usa a tabela na visão de lista', /<TabelaAtividades/.test(dash), true);
+
+  // ── o painel redesenhado (sobre o print do Davi, 2026-08-21) ────────────
+  const pn = fs13.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  const soCodigoPn = pn.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  eq('o painel ficou mais largo, sem furar o teto de 60%',
+     /width: "min\(60vw, 880px\)"/.test(pn) && /maxWidth: "60vw"/.test(pn), true);
+  // o print mostrava rótulo de 9,5px em cinza: obriga a aproximar do monitor
+  eq('rótulo de campo tem 11px (era 9,5)', /fontSize: 11,\s*\n\s*letterSpacing/.test(pn), true);
+  eq('valor de campo tem 14px (era 13)', /fontSize: 14, fontWeight: 500/.test(pn), true);
+  eq('campo tem altura de toque (44px)', /minHeight: 44/.test(pn), true);
+  // coloração estratégica: o MESMO vocabulário dos cards do quadro
+  eq('o painel usa as cores de status/tipo/prioridade do sistema',
+     /TIPO_CORES/.test(pn) && /PRIORIDADE_CORES/.test(pn) && /chamadoStatusInfo/.test(pn), true);
+  eq('estado e urgência viram etiqueta colorida no cabeçalho',
+     /<Etiqueta[\s\S]{0,400}info\.label/.test(pn), true);
+  eq('o título é o cabeçalho, não um campo rotulado',
+     /fontSize: 19, fontWeight: 600/.test(pn), true);
+  // dez campos soltos são uma lista; quatro grupos são um mapa
+  for (const s of ['De quem é', 'Classificação', 'Quando', 'Detalhe']) {
+    eq(`o painel agrupa em seção "${s}"`, new RegExp(`<Secao titulo="${s}"`).test(pn), true);
+  }
+  eq('atrasado se anuncia no campo de prazo',
+     /atrasado \? est\.vermelho/.test(soCodigoPn), true);
+
+  // ── o calendário: sem rolagem por dia, só os títulos ────────────────────
+  const cal = fs13.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  eq('a célula do dia NÃO rola por dentro',
+     /overflowY: "auto"/.test(cal), false);
+  eq('a linha do calendário cresce com o dia mais cheio',
+     /gridAutoRows: "minmax\(120px, auto\)"/.test(cal), true);
+  eq('a grade cresce mas não encolhe (flex 1 0 auto)',
+     /flex: "1 0 auto"/.test(cal), true);
+  // altura fixa faria a grade transbordar agora que a linha cresce
+  eq('o contêiner do calendário usa PISO de altura, não teto',
+     /minHeight: "calc\(100dvh - 96px\)"/.test(cal) && !/height: "calc\(100dvh/.test(cal), true);
+  // o Davi pediu só os títulos na célula
+  eq('a célula não mostra hora nem "vence" como texto',
+     /vence<\/|Flag size|Clock size/.test(cal), false);
+  eq('mas a hora continua no title do navegador (a informação não sumiu)',
+     /title=\{`\$\{e\.titulo\}\$\{e\.porPrazo/.test(cal), true);
+  eq('o rosto do responsável continua na célula', /AvatarPilha/.test(cal), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

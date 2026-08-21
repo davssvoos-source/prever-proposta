@@ -578,3 +578,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   agendada.** Visita e chamado de campo entram pela hora marcada; chamado
   interno entra pelo **prazo** — que é a data que ele realmente tem. Cada dia
   mostra o **título** e o **rosto de quem toca**. A grade ocupa a tela inteira.
+
+- **R35** — **O painel do topo da Início responde aos MESMOS filtros do
+  quadro.** Gráfico de demanda, meta do mês e os quatro indicadores contam do
+  recorte que está na tela — filtrar por Erik mostra os números do Erik. A
+  única exceção é o filtro de **período**: o gráfico já é um eixo de tempo (oito
+  semanas), e aplicar "hoje" nele deixaria uma barra em pé respondendo a
+  pergunta errada. *(Davi, 2026-08-21.)*
+
+- **R36** — **A visão de lista da Início é uma TABELA**, com as colunas
+  Cliente · Título · Responsável · Apoio · Equipe · Tipo · Status · Recebido em
+  · Prazo. Cards empilhados serviam para ler um item; comparar vinte pede
+  colunas alinhadas. Clicar na linha abre o painel (R33).
+
+- **R37** — **No calendário, a célula do dia mostra só o TÍTULO e o rosto de
+  quem toca**, e **cresce com a quantidade de atividades** — sem rolagem por
+  dia. Rolagem por célula esconde item dentro de item: 42 áreas de rolagem
+  independentes, e o que está no fim de uma delas ninguém vê.

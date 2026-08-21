@@ -43,6 +43,7 @@ import {
   semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
+import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
@@ -57,6 +58,13 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 const CHAVE_VISAO = "prever-home-visao";
 const CHAVE_FILTROS = "prever-home-filtros";
+/**
+ * Teto de linhas da tabela. Mais alto que o dos cards (60) porque uma linha
+ * custa muito menos que um card — e o ganho da tabela é justamente poder
+ * varrer muita coisa de uma vez. Acima disto o navegador começa a engasgar na
+ * rolagem, e o caminho certo passa a ser filtrar.
+ */
+const TETO_TABELA = 200;
 const VINCULOS: { chave: Vinculo; label: string }[] = [
   { chave: "responsavel", label: "Responsável" },
   { chave: "apoio", label: "Apoio" },
@@ -124,7 +132,7 @@ function Home() {
     return () => clearInterval(t);
   }, []);
 
-  const { atividades, visitas, carregando, erro } = useAtividades(s, filtros.pessoa, agora);
+  const { atividades, historico, visitas, carregando, erro } = useAtividades(s, filtros.pessoa, agora);
   useChamadosRealtime();
   useEffect(() => {
     // o canal compartilhado cobre `chamados`; a visita é fonte da Início
@@ -146,6 +154,34 @@ function Home() {
     () => ordenar(aplicarLentes(atividades, filtros, ctx, normalizarTexto), ordemDoPreset(filtros.preset)),
     [atividades, filtros, ctx],
   );
+
+  /**
+   * O conjunto que alimenta os painéis do topo (U33).
+   *
+   * Duas diferenças em relação a `filtradas`, e as duas são deliberadas:
+   *
+   * 1. INCLUI O HISTÓRICO. O quadro poda encerrados com mais de 7 dias — é
+   *    fila de trabalho, não arquivo. Mas "concluídos por semana" precisa de
+   *    quatro semanas e "concluídas no mês" precisa do mês; com só 7 dias, as
+   *    barras do passado seriam sempre menores que a verdade.
+   *
+   * 2. IGNORA O FILTRO DE PERÍODO. O gráfico JÁ É um eixo de tempo — oito
+   *    semanas. Aplicar "hoje" nele deixaria uma barra em pé e sete zeradas,
+   *    respondendo a pergunta errada. Os outros filtros (pessoa, vínculo,
+   *    situação, busca, preset) valem todos: filtrar por Erik mostra as barras
+   *    do Erik, que é exatamente o que o Davi pediu.
+   */
+  const paraPaineis = useMemo(() => {
+    const vistos = new Set<string>();
+    const uniao: Atividade[] = [];
+    // a Home primeiro: a versão dela é a mais fresca das duas
+    for (const a of [...atividades, ...historico]) {
+      if (vistos.has(a.id)) continue;
+      vistos.add(a.id);
+      uniao.push(a);
+    }
+    return aplicarLentes(uniao, { ...filtros, periodo: null }, ctx, normalizarTexto);
+  }, [atividades, historico, filtros, ctx]);
   // O banner precisa contar a MESMA população que o toque nele abre. Contando
   // o array cru, o técnico lia "41 atividades hoje", tocava, e caía numa lista
   // de 1 — porque o preset "Meu dia" recorta por responsável e apoio.
@@ -343,9 +379,12 @@ function Home() {
             prazos futuros · meta do mês · 4 indicadores · notificações.
             Em telas entre 1024 e ~1400px o flexWrap quebra em duas linhas. */}
         <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap", paddingTop: 6 }}>
-          <GraficoDemanda atividades={atividades} />
-          <GraficoMeta userId={s.userId} />
-          <PainelKpis atividades={atividades} userId={s.userId} />
+          {/* U33: os três leem o MESMO recorte que o quadro embaixo. Antes
+              recebiam o array cru — e duas nem isso, consultavam o banco por
+              conta própria —, então filtrar o quadro não mexia em nada aqui. */}
+          <GraficoDemanda atividades={paraPaineis} />
+          <GraficoMeta atividades={paraPaineis} />
+          <PainelKpis atividades={paraPaineis} />
           <CriarRapido />
         </div>
 
@@ -553,24 +592,23 @@ function Home() {
             onMover={moverAtividade}
           />
         ) : (
-          <div className="lista-atividades">
-            {filtradas.slice(0, 60).map((a) => (
-              <CardAtividade
-                key={a.id}
-                a={a}
-                pessoas={pessoasPorId}
-                onClick={() => abrir(a)}
-              />
-            ))}
-            {filtradas.length > 60 && (
+          <>
+            {/* U33: a lista virou TABELA. Cards empilhados serviam para ler um
+                item; comparar vinte pede colunas alinhadas. */}
+            <TabelaAtividades
+              atividades={filtradas.slice(0, TETO_TABELA)}
+              pessoas={pessoasPorId}
+              aoAbrir={abrir}
+            />
+            {filtradas.length > TETO_TABELA && (
               <span style={{
-                gridColumn: "1 / -1",
+                display: "block", marginTop: 10,
                 fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center",
               }}>
-                Mostrando 60 de {filtradas.length} — use a busca ou os filtros.
+                Mostrando {TETO_TABELA} de {filtradas.length} — use a busca ou os filtros.
               </span>
             )}
-          </div>
+          </>
             )}
           </>
         )}
