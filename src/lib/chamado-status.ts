@@ -64,25 +64,40 @@ export interface StatusInfo {
 // amarrações foram pedidas de nome: EM ANDAMENTO é o azul, MELHORIA é o rosa.
 // O resto segue a lógica da rampa, do quente ao frio: o que espera você é
 // amarelo (a principal), o que trava é laranja, o que já rodou é azul.
+// ═══════════════════════════════════════════════════════════════════════════
+// A PALETA DE STATUS (retificada em 2026-08-22, Davi):
+//   AGUARDANDO INÍCIO → azul · EM ANDAMENTO → amarelo · STAND-BY → laranja ·
+//   AGUARDANDO APROVAÇÃO → azul claro · CONCLUÍDO → verde.
+//
+// Antes disto, três dos cinco estavam nos tons TROCADOS: "aguardando início"
+// pintava de amarelo (a cor de EM ANDAMENTO), "em andamento" pintava de azul
+// (a cor de AGUARDANDO INÍCIO), e "aguardando aprovação" usava pêssego — uma
+// cor que não corresponde a nenhum dos cinco nomes que o Davi definiu.
+// "Concluído" usava um azul escuro, quando a casa inteira (cobrança, compra,
+// contratos, inventário, checklist de campo) já tratava #2DD2A5/#047862 como
+// O verde de sucesso — só esta tabela não usava.
 const STATUS: Record<ChamadoStatus, StatusInfo> = {
   aberto: {
     // O valor gravado continua 'aberto' (está no CHECK chamados_status_check,
     // em triggers e em policies). Só o que a pessoa lê mudou.
-    // Amarelo porque é o principal: a fila que espera alguém é o que a tela
-    // existe para mostrar.
     label: "Aguardando início", labelUpper: "AGUARDANDO INÍCIO",
-    color: PRISMA.amarelo.dark, colorLight: PRISMA.amarelo.light,
-    bg: PRISMA.amarelo.bg, border: PRISMA.amarelo.border,
-  },
-  agendado: {
-    label: "Agendado", labelUpper: "AGENDADO",
-    color: PRISMA.azulClaro.dark, colorLight: PRISMA.azulClaro.light,
-    bg: PRISMA.azulClaro.bg, border: PRISMA.azulClaro.border,
-  },
-  em_andamento: {
-    label: "Em andamento", labelUpper: "EM ANDAMENTO",
     color: PRISMA.azul.dark, colorLight: PRISMA.azul.light,
     bg: PRISMA.azul.bg, border: PRISMA.azul.border,
+  },
+  agendado: {
+    // Mesma família de "Aguardando início" — agendado também não começou
+    // ainda, só já tem hora marcada. O azul claro ficou exclusivo de
+    // "Aguardando aprovação", senão as duas ficariam com a mesma cor.
+    label: "Agendado", labelUpper: "AGENDADO",
+    color: PRISMA.azul.dark, colorLight: PRISMA.azul.light,
+    bg: PRISMA.azul.bg, border: PRISMA.azul.border,
+  },
+  em_andamento: {
+    // Amarelo porque é o principal: o que está sendo tocado agora é o que a
+    // tela existe para destacar.
+    label: "Em andamento", labelUpper: "EM ANDAMENTO",
+    color: PRISMA.amarelo.dark, colorLight: PRISMA.amarelo.light,
+    bg: PRISMA.amarelo.bg, border: PRISMA.amarelo.border,
   },
   stand_by: {
     label: "Stand-by", labelUpper: "STAND-BY",
@@ -91,17 +106,19 @@ const STATUS: Record<ChamadoStatus, StatusInfo> = {
   },
   aguardando_aprovacao: {
     label: "Aguardando aprovação", labelUpper: "AGUARDANDO APROVAÇÃO",
-    color: PRISMA.pessego.dark, colorLight: PRISMA.pessego.light,
-    bg: PRISMA.pessego.bg, border: PRISMA.pessego.border,
+    color: PRISMA.azulClaro.dark, colorLight: PRISMA.azulClaro.light,
+    bg: PRISMA.azulClaro.bg, border: PRISMA.azulClaro.border,
   },
   concluido: {
     label: "Concluído", labelUpper: "CONCLUÍDO",
-    color: PRISMA.azulEscuro.dark, colorLight: PRISMA.azulEscuro.light,
-    bg: PRISMA.azulEscuro.bg, border: PRISMA.azulEscuro.border,
+    color: PRISMA.verde.dark, colorLight: PRISMA.verde.light,
+    bg: PRISMA.verde.bg, border: PRISMA.verde.border,
   },
   cancelado: {
     // cinza, não vermelho: o vermelho do prisma agora é ATRASO, e um chip
     // vermelho num quadro onde vermelho já quer dizer outra coisa mente.
+    // Cancelado fica fora dos cinco nomeados de propósito — não é um estágio
+    // do fluxo, é a saída dele.
     label: "Cancelado", labelUpper: "CANCELADO",
     color: PRISMA.neutro.dark, colorLight: PRISMA.neutro.light,
     bg: PRISMA.neutro.bg, border: PRISMA.neutro.border,

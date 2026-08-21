@@ -2054,5 +2054,68 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U38 termina com SELECT de verificação', /SELECT '.*esperado 0/.test(u38), true);
 }
 
+// ── Paleta de status retificada + calendário redesenhado (2026-08-22) ──────
+{
+  const fs22 = require('fs');
+  const PAL = carregar('src/lib/paleta.ts');
+  const CS2 = carregar('src/lib/chamado-status.ts');
+
+  // PRISMA.verde: formaliza o tom que 17+ arquivos já usavam à mão
+  eq('PRISMA.verde existe e é o tom que o resto do app já usava (#2DD2A5/#047862)',
+     [PAL.PRISMA.verde.dark, PAL.PRISMA.verde.light], ['#2DD2A5', '#047862']);
+
+  // os 5 status nomeados pelo Davi, na cor que ele pediu — cada um checado
+  // contra o hex de origem do PRISMA, não contra um valor solto: se alguém
+  // mudar PRISMA.azul amanhã, o status tem que acompanhar sozinho
+  const cor = (s) => CS2.chamadoStatusInfo(s).color;
+  eq('AGUARDANDO INÍCIO (aberto) é AZUL', cor('aberto'), PAL.PRISMA.azul.dark);
+  eq('agendado é da MESMA família de "aguardando início" (evita colidir com aguardando aprovação)',
+     cor('agendado'), PAL.PRISMA.azul.dark);
+  eq('EM ANDAMENTO é AMARELO (estava trocado com "aguardando início")',
+     cor('em_andamento'), PAL.PRISMA.amarelo.dark);
+  eq('STAND-BY é LARANJA', cor('stand_by'), PAL.PRISMA.laranja.dark);
+  eq('AGUARDANDO APROVAÇÃO é AZUL CLARO (estava pêssego, uma 6ª cor sem nome)',
+     cor('aguardando_aprovacao'), PAL.PRISMA.azulClaro.dark);
+  eq('CONCLUÍDO é VERDE (estava um azul escuro)', cor('concluido'), PAL.PRISMA.verde.dark);
+  eq('cancelado continua neutro — não é um dos 5 nomeados, é a saída do fluxo',
+     cor('cancelado'), PAL.PRISMA.neutro.dark);
+  // os 5 nomeados não podem colidir em cor entre si (cada um tem que ser
+  // reconhecível sozinho, que é o motivo de existir uma paleta de status)
+  const cincoNomeados = ['aberto', 'em_andamento', 'stand_by', 'aguardando_aprovacao', 'concluido'];
+  eq('os 5 status nomeados têm 5 cores DISTINTAS entre si',
+     new Set(cincoNomeados.map(cor)).size, 5);
+
+  // ── o calendário ──────────────────────────────────────────────────────
+  const cal3 = fs22.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+
+  // O BUG: tiposPresentes nascia do array JÁ filtrado por pessoa, e a opção
+  // "Tipo" desaparecia da tela quando a pessoa escolhida só tinha 1 tipo.
+  eq('tiposPresentes vem de TODOS os eventos, não do conjunto filtrado por pessoa',
+     /tiposPresentes = useMemo\(\s*\(\) => Array\.from\(new Set\(todosEventos\.map/.test(cal3), true);
+  eq('e não mais do array `eventos` (o que causava o bug)',
+     /tiposPresentes = useMemo\(\s*\(\) => Array\.from\(new Set\(eventos\.map/.test(cal3), false);
+  eq('o filtro de pessoa/tipo aplica sobre a base COMPLETA (todosEventos)',
+     /todosEventos\s*\.filter\(\(e\) => pessoaFiltro/.test(cal3), true);
+
+  // visita usa o vocabulário DELA — chamadoStatusInfo(status de visita)
+  // caía sempre no cinza de fallback (nenhuma chave bate)
+  eq('eventos de visita usam getStatusInfo (o vocabulário da visita), não chamadoStatusInfo',
+     /const info = getStatusInfoVisita\(v\.status\)/.test(cal3), true);
+
+  // atrasado: regra geral (não só os "por prazo"), mas nunca sobre item final
+  eq('atrasado considera tanto hora agendada quanto prazo, não só um dos dois',
+     /const atrasado = !final && !!v\.data_hora_agendada/.test(cal3)
+     && /const atrasado = !final && !!quando/.test(cal3), true);
+  eq('mas nunca marca vermelho um item já concluído/cancelado só por estar no passado',
+     /const final = c\.status === "concluido" \|\| c\.status === "cancelado"/.test(cal3), true);
+
+  // fundo sólido, não véu translúcido (o "cinza muito claro" que o Davi viu)
+  eq('a superfície do calendário é cor SÓLIDA no escuro, não rgba(255,255,255,...)',
+     /const superficie = isLight \? "#ffffff" : "#101016"/.test(cal3), true);
+  eq('nenhum véu translúcido de branco sobrou como fundo de célula',
+     /background: doMes \? superficie : \(isLight \? "#fafafa" : "rgba\(255,255,255,0\.012\)"\)/.test(cal3),
+     false);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

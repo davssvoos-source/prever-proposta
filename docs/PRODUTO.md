@@ -655,3 +655,18 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   "Visita técnica" saiu (redundante com o chip de tipo). **Prioridade não
   aparece no card da proposta** — "por enquanto não aplicamos, vamos discutir
   mais pra frente". *(Davi, 2026-08-22.)*
+
+- **R45** — **Os cinco status do chamado têm cor fixa, do nosso degradê:**
+  Aguardando início = **azul** · Em andamento = **amarelo** · Stand-by =
+  **laranja** · Aguardando aprovação = **azul claro** · Concluído =
+  **verde**. Três deles estavam nos tons trocados (aguardando início pintava
+  de amarelo, em andamento pintava de azul, aguardando aprovação usava
+  pêssego — uma sexta cor sem nome). Cancelado fica fora dos cinco de
+  propósito: não é um estágio do fluxo, é a saída dele — continua neutro.
+  *(Davi, 2026-08-22.)*
+
+- **R46** — O calendário pinta cada atividade pela regra de cor do R45, com
+  duas exceções que vencem o status: **atrasado é sempre vermelho**
+  (considerando tanto hora agendada quanto prazo — não só um dos dois), e
+  item concluído/cancelado nunca vira vermelho só por estar no passado. O
+  fundo do calendário é uma cor **sólida** escura, não um véu translúcido.

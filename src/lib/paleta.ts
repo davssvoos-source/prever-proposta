@@ -104,6 +104,17 @@ export const PRISMA = {
   // o `dark` é mais claro que o azul de véu de propósito: ele é TEXTO de chip
   // sobre preto. O véu continua no azul profundo, que é o que pinta o card.
   azulEscuro: cor("#7FA8E8", "#0A3573", "20,70,145"),
+  /**
+   * O verde de "concluído/ativo" — não é uma amostra da rampa (o degradê
+   * principal é azul→amarelo→laranja→vermelho, sem parada verde de
+   * propósito: a costura entre azul e amarelo já é o trecho mais delicado
+   * dele, e ESPECTRO trava por asserção que nenhuma amostra cai no verde).
+   * Este É, ainda assim, o tom oficial da casa para "terminado com sucesso":
+   * o mesmo #2DD2A5/#047862 que cobrança, compra, contratos, inventário e o
+   * checklist de campo já usavam, cada um declarando o par à mão. Formalizado
+   * aqui para não seguir reescrito igual dezessete vezes.
+   */
+  verde:      cor("#2DD2A5", "#047862", "45,210,165"),
   neutro:     cor("#9AA6B2", "#657585", "154,166,178", 0.10, 0.22),
 } as const;
 

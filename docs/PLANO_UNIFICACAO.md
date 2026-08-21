@@ -2491,3 +2491,54 @@ estão presos no estado antigo — aprovada, enviada, sem recusa — são virado
 para concluído e o título corrigido na hora. É a visita exata do print.
 
 670 asserções (33 novas), build ok.
+
+### U39 — Paleta de status retificada + calendário: cor, fundo e um bug de filtro (2026-08-22)
+
+**A paleta de status estava errada em três dos sete valores.** O Davi listou
+os cinco nomes e cores que valem: Aguardando início=azul, Em andamento=
+amarelo, Stand-by=laranja, Aguardando aprovação=azul claro, Concluído=verde.
+Comparando com o código: "aberto" pintava de AMARELO (a cor de em andamento),
+"em_andamento" pintava de AZUL (a cor de aguardando início) — as duas
+literalmente trocadas —, "aguardando_aprovacao" usava PÊSSEGO (uma cor fora
+da lista de cinco), e "concluido" usava um azul escuro. `PRISMA` não tinha
+verde: formalizei o `#2DD2A5`/`#047862` que 17 arquivos diferentes já
+declaravam à mão (cobrança, compra, contratos, inventário, checklist de
+campo) em `PRISMA.verde` — era o verde de fato oficial da casa, só nunca
+tinha sido posto no lugar central.
+
+**O calendário: três problemas por trás de "achei um cinza muito claro".**
+
+1. **O fundo era um véu translúcido de branco** (`rgba(255,255,255,0.03)`)
+   sobre um fundo escuro — frágil por natureza, o resultado depende de
+   exatamente o que está atrás. Virou cor sólida (`#101016`, o mesmo tom que
+   `TabelaAtividades` já usa).
+
+2. **Toda visita no calendário caía no cinza de fallback.** O código lia
+   `chamadoStatusInfo(v.status)` para eventos de visita — mas a visita tem
+   VOCABULÁRIO PRÓPRIO de status (pendente/aguardando_aprovação/aprovada/
+   reprovada, de `visita-status.ts`), diferente do vocabulário do chamado.
+   Nenhuma chave batia, então `chamadoStatusInfo` sempre devolvia o
+   FALLBACK (`#9ca3af`, cinza) — e como boa parte do calendário é feita de
+   visitas (propostas), isso sozinho já lavava a cor da tela inteira.
+   Trocado para `getStatusInfo` de `visita-status.ts`.
+
+3. **"Atrasado" só cobria metade dos casos.** A regra antiga só pintava
+   vermelho quem tinha entrado pelo PRAZO (chamado interno sem hora
+   marcada); uma visita ou chamado de campo com hora agendada já vencida
+   continuava com a cor do status normal, mesmo estando igualmente atrasado
+   no sentido comum da palavra. Generalizei: atrasado = data no passado E
+   não chegou a um estado final (concluído/cancelado para chamado;
+   aprovada/reprovada para visita).
+
+**O bug do filtro — "seleciono pessoa + tipo e um deles some".** Confirmado
+e reproduzido na leitura do código: `tiposPresentes` (as opções do filtro de
+Tipo) nascia do array `eventos`, que JÁ estava filtrado por pessoa. Escolher
+uma pessoa cujas atividades são todas do MESMO tipo reduz `tiposPresentes` a
+1 item — e a condição que decidia se o BOTÃO aparecia
+(`tiposPresentes.length > 1`) ficava falsa. O filtro de Pessoa literalmente
+apagava o controle de Tipo da tela. Corrigido: as opções do seletor de Tipo
+agora vêm de TODOS os eventos do mês (`todosEventos`), nunca do conjunto já
+filtrado — o filtro de um eixo não pode fazer o CONTROLE do outro eixo
+desaparecer.
+
+687 asserções (17 novas), build ok.

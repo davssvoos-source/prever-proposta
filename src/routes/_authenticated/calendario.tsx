@@ -25,6 +25,8 @@ import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
+import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
+import { PRISMA } from "@/lib/paleta";
 import { usePessoas } from "@/features/chamados/data";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
@@ -54,6 +56,9 @@ interface Evento {
   quando: string;
   /** true = entrou pelo PRAZO, não por hora marcada */
   porPrazo: boolean;
+  /** true = já passou da data e não chegou a um estado final — pinta vermelho */
+  atrasado: boolean;
+  cor: string;
 }
 
 const chaveDia = (d: Date) =>
@@ -67,7 +72,15 @@ function CalendarioPage() {
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
   const gold = isLight ? "#A06108" : "#F8C811";
-  const superficie = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
+  // SÓLIDA, não um véu translúcido de branco (era `rgba(255,255,255,0.03)`,
+  // 2026-08-22: o Davi achou "um cinza muito claro"). Um véu de branco sobre
+  // fundo escuro é frágil — o resultado depende de exatamente que cor está
+  // por trás, e em qualquer camada/composição intermediária ele clareia mais
+  // do que parece no código. `#101016` é o mesmo tom sólido que a tabela da
+  // Início já usa para superfície escura (TabelaAtividades) — consistente
+  // com o resto do app, e sempre este tom, não importa o que esteja atrás.
+  const superficie = isLight ? "#ffffff" : "#101016";
+  const foraDoMes = isLight ? "#fafafa" : "#0a0a0e";
   const linha = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
 
   const hoje = new Date();
@@ -150,39 +163,76 @@ function CalendarioPage() {
     },
   });
 
-  const eventos = useMemo<Evento[]>(() => {
-    const deVisitas: Evento[] = (visitas as any[]).map((v) => ({
-      kind: "visita",
-      id: v.id,
-      titulo: v.nome_predio ?? v.titulo ?? "Visita técnica",
-      status: v.status,
-      tipo: "visita",
-      natureza: "comercial",
-      pessoas: v.tecnico_id ? [v.tecnico_id] : [],
-      quando: v.data_hora_agendada,
-      porPrazo: false,
-    }));
-    const deChamados: Evento[] = (chamados as any[]).map((c) => ({
-      kind: "chamado",
-      id: c.id,
-      // o TÍTULO na frente: é o que responde "o que é isto?" varrendo o mês.
-      // O cliente vira o complemento, quando existe.
-      titulo: c.titulo ?? c.cliente?.nome ?? "Chamado",
-      status: c.status,
-      tipo: c.tipo ?? "—",
-      natureza: c.natureza ?? null,
-      pessoas: Array.from(new Set([
-        ...(c.responsavel_id ? [c.responsavel_id] : []),
-        ...((apoios as Record<string, string[]>)[c.id] ?? []),
-      ])),
-      quando: c.data_hora_agendada ?? c.prazo_limite,
-      porPrazo: !c.data_hora_agendada,
-    }));
+  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
+
+  // TODOS os eventos do mês, SEM filtro nenhum — é desta lista que os
+  // seletores de Pessoa/Tipo tiram suas opções (ver `tiposPresentes` abaixo).
+  // A cor de cada caixa também nasce aqui, calculada uma vez só: cada evento
+  // já sai do useMemo sabendo sua própria cor, em vez de recalculá-la a cada
+  // render dentro do JSX.
+  const todosEventos = useMemo<Evento[]>(() => {
+    const deVisitas: Evento[] = (visitas as any[]).map((v) => {
+      // A VISITA tem vocabulário PRÓPRIO de status (pendente/aguardando_
+      // aprovação/aprovada/reprovada) — é diferente do vocabulário do
+      // chamado (aberto/em_andamento/concluído...). Usar chamadoStatusInfo
+      // aqui SEMPRE caía no cinza de fallback (nenhum status de visita bate
+      // com uma chave do chamado), e é por isso que toda visita no
+      // calendário nascia igual: cinza, disfarçando a cor de verdade.
+      const info = getStatusInfoVisita(v.status);
+      // "aprovada"/"reprovada" são finais para a visita — pendente e
+      // aguardando aprovação ainda podem estar atrasadas (a hora marcada já
+      // passou e ninguém foi, ou a proposta não foi decidida a tempo).
+      const final = info.bucket === "aprovada" || info.bucket === "reprovada";
+      const atrasado = !final && !!v.data_hora_agendada
+        && new Date(v.data_hora_agendada).getTime() < hoje.getTime();
+      return {
+        kind: "visita" as const,
+        id: v.id,
+        titulo: v.nome_predio ?? v.titulo ?? "Visita técnica",
+        status: v.status,
+        tipo: "visita",
+        natureza: "comercial",
+        pessoas: v.tecnico_id ? [v.tecnico_id] : [],
+        quando: v.data_hora_agendada,
+        porPrazo: false,
+        atrasado,
+        cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
+      };
+    });
+    const deChamados: Evento[] = (chamados as any[]).map((c) => {
+      const info = chamadoStatusInfo(c.status);
+      const final = c.status === "concluido" || c.status === "cancelado";
+      const quando = c.data_hora_agendada ?? c.prazo_limite;
+      const atrasado = !final && !!quando && new Date(quando).getTime() < hoje.getTime();
+      return {
+        kind: "chamado" as const,
+        id: c.id,
+        // o TÍTULO na frente: é o que responde "o que é isto?" varrendo o mês.
+        // O cliente vira o complemento, quando existe.
+        titulo: c.titulo ?? c.cliente?.nome ?? "Chamado",
+        status: c.status,
+        tipo: c.tipo ?? "—",
+        natureza: c.natureza ?? null,
+        pessoas: Array.from(new Set([
+          ...(c.responsavel_id ? [c.responsavel_id] : []),
+          ...((apoios as Record<string, string[]>)[c.id] ?? []),
+        ])),
+        quando,
+        porPrazo: !c.data_hora_agendada,
+        atrasado,
+        cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
+      };
+    });
     return [...deVisitas, ...deChamados]
-      .filter((e) => pessoaFiltro === "todos" || e.pessoas.includes(pessoaFiltro))
-      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
       .sort((a, b) => new Date(a.quando).getTime() - new Date(b.quando).getTime());
-  }, [visitas, chamados, apoios, pessoaFiltro, tipoFiltro]);
+  }, [visitas, chamados, apoios, isLight, vermelho, hoje]);
+
+  const eventos = useMemo(
+    () => todosEventos
+      .filter((e) => pessoaFiltro === "todos" || e.pessoas.includes(pessoaFiltro))
+      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro),
+    [todosEventos, pessoaFiltro, tipoFiltro],
+  );
 
   const porDia = useMemo(() => {
     const m: Record<string, Evento[]> = {};
@@ -190,9 +240,23 @@ function CalendarioPage() {
     return m;
   }, [eventos]);
 
+  /**
+   * As opções do filtro de Tipo vêm de TODOS os eventos do mês — NUNCA do
+   * conjunto já filtrado por pessoa.
+   *
+   * O BUG QUE ISSO CORRIGE: antes, `tiposPresentes` nascia de `eventos` (o
+   * array JÁ filtrado por pessoa). Escolher uma pessoa cujas atividades são
+   * todas do MESMO tipo reduzia `tiposPresentes` a 1 item, e a condição
+   * `tiposPresentes.length > 1` (mais abaixo) fazia o próprio BOTÃO "Tipo"
+   * desaparecer da tela — não travava escondido, sumia de vez, e quem
+   * tivesse acabado de escolher um tipo específico via esse botão perdia a
+   * escolha (o valor ficava só na variável de estado, sem controle visível
+   * para trocar ou limpar). "Um dos filtros some e dá bug" era exatamente
+   * isto: o filtro de Pessoa apagando o de Tipo por baixo dos panos.
+   */
   const tiposPresentes = useMemo(
-    () => Array.from(new Set(eventos.map((e) => e.tipo))).sort(),
-    [eventos],
+    () => Array.from(new Set(todosEventos.map((e) => e.tipo))).sort(),
+    [todosEventos],
   );
 
   // A grade sempre começa no domingo e fecha a última semana: sem isso a
@@ -363,7 +427,7 @@ function CalendarioPage() {
               <div
                 key={d.toISOString()}
                 style={{
-                  background: doMes ? superficie : (isLight ? "#fafafa" : "rgba(255,255,255,0.012)"),
+                  background: doMes ? superficie : foraDoMes,
                   padding: "5px 5px 7px",
                   display: "flex", flexDirection: "column", gap: 3,
                   opacity: doMes ? 1 : 0.45,
@@ -389,10 +453,6 @@ function CalendarioPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {itens.map((e) => {
-                    const info = chamadoStatusInfo(e.status);
-                    const cor = e.porPrazo && new Date(e.quando) < hoje && !["concluido", "cancelado"].includes(e.status)
-                      ? (isLight ? "#B1242E" : "#F17881")
-                      : info.color;
                     return (
                       <button
                         key={`${e.kind}-${e.id}`}
@@ -406,7 +466,7 @@ function CalendarioPage() {
                           : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
                         style={{
                           textAlign: "left", cursor: "pointer", width: "100%",
-                          border: "none", borderLeft: `2.5px solid ${cor}`,
+                          border: "none", borderLeft: `2.5px solid ${e.cor}`,
                           borderRadius: 5, padding: "4px 6px",
                           background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
                           display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
