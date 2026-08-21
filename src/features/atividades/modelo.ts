@@ -452,9 +452,9 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     // U29: a proposta é um chamado como os outros (R24) — natureza e tipo
     // próprios, não mais nulos por ser "outra coisa".
     natureza: "comercial",
-    tipo: "proposta_comercial",
-    tipoLabel: TIPO_LABEL.proposta_comercial,
-    tipoCor: TIPO_CORES.proposta_comercial,
+    tipo: "prospeccao",
+    tipoLabel: TIPO_LABEL.prospeccao,
+    tipoCor: TIPO_CORES.prospeccao,
     statusCru: v.status,
     statusLabel: info.label,
     // colorLight existe desde a U10; sem ele o chip some no tema claro

@@ -29,9 +29,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
-import { DISTRITOS, MAPA_SP, projetar, dentroDaCidade } from "@/features/clientes/mapa-sp";
+import { DISTRITOS, MAPA_SP, projetar, dentroDaCidade, centroide } from "@/features/clientes/mapa-sp";
 import { corDoCliente } from "@/features/clientes/cores";
 import type { Cliente } from "@/features/clientes/data";
+
+// Um rótulo por distrito, no centro geométrico do polígono — calculado uma
+// vez (DISTRITOS é constante, não depende de props/state, então não precisa
+// de useMemo por render).
+const ROTULOS_DISTRITOS = DISTRITOS.map(([nome, d]) => ({ nome, ...centroide(d) }));
 
 interface Props {
   clientes: Cliente[];
@@ -141,6 +146,35 @@ export function MapaClientes({ clientes }: Props) {
                   {/* o nome do bairro no hover: dá referência sem poluir */}
                   <title>{nome}</title>
                 </path>
+              ))}
+            </g>
+
+            {/* nome do bairro dentro do próprio bairro (2026-08-21, Davi) —
+                branco fixo (não segue o tema): é rótulo do MAPA, não texto da
+                interface, e continua legível sobre qualquer distrito, claro
+                ou escuro. O contorno escuro por baixo (paintOrder=stroke) é
+                o halo que dá contraste no tema claro, onde o preenchimento
+                do distrito é quase branco — sem ele o nome sumiria ali. */}
+            <g style={{ pointerEvents: "none" }}>
+              {ROTULOS_DISTRITOS.map(({ nome, x, y }) => (
+                <text
+                  key={nome}
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#ffffff"
+                  stroke="rgba(0,0,0,0.55)"
+                  strokeWidth={2.4}
+                  paintOrder="stroke"
+                  style={{
+                    fontFamily: "Montserrat, var(--fonte)",
+                    fontWeight: 400,
+                    fontSize: 8.2,
+                  }}
+                >
+                  {nome}
+                </text>
               ))}
             </g>
 

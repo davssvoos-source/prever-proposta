@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { AssinaturaCanvas } from "@/features/chamados/AssinaturaCanvas";
 import {
@@ -527,13 +528,12 @@ export function DetalheCampo({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Problema relatado */}
+      {/* Problema relatado — itens de checklist viram caixa de marcar (só
+          leitura aqui: quem edita a descrição é o painel de propriedades). */}
       {os.descricao_problema && (
         <div style={CARD}>
           <span style={SEC}>Problema relatado</span>
-          <div style={{ fontFamily: "var(--fonte)", fontSize: 13, fontWeight: 400, whiteSpace: "pre-wrap" }}>
-            {os.descricao_problema}
-          </div>
+          <TextoComChecklist texto={os.descricao_problema} estilo={{ fontSize: 13 }} />
         </div>
       )}
 

@@ -107,8 +107,13 @@ export function CampoComBusca({
   const listaBg = isLight ? "#ffffff" : "#16161d";
 
   // com ícone, o texto começa depois dele — senão o avatar cobriria as
-  // primeiras letras do nome
-  const padEsquerda = iconeEsquerda ? (compacto ? 34 : 38) : (compacto ? 14 : 13);
+  // primeiras letras do nome. `temIcone` olha se HÁ ESCOLHA, não só se a prop
+  // foi passada: sem cliente/responsável, `iconeEsquerda(null)` devolve null
+  // e nada é desenhado — reservar o espaço mesmo assim deixava o placeholder
+  // ("— sem cliente —") deslocado ~25px à toa (achado da revisão adversarial
+  // de U40, 2026-08-21).
+  const temIcone = !!iconeEsquerda && !!escolhida;
+  const padEsquerda = temIcone ? (compacto ? 34 : 38) : (compacto ? 14 : 13);
   const estiloCampo: CSSProperties = {
     width: "100%", boxSizing: "border-box",
     minHeight: compacto ? 38 : 44,
@@ -148,13 +153,13 @@ export function CampoComBusca({
 
   return (
     <div ref={caixa} style={{ position: "relative", minWidth: 0 }}>
-      {iconeEsquerda && !aberto && (
+      {temIcone && !aberto && (
         <span style={{
           position: "absolute", left: compacto ? 10 : 12, top: "50%",
           transform: "translateY(-50%)", pointerEvents: "none",
           display: "flex", alignItems: "center", zIndex: 1,
         }}>
-          {iconeEsquerda(escolhida)}
+          {iconeEsquerda!(escolhida)}
         </span>
       )}
       <input

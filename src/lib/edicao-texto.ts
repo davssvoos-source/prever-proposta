@@ -51,13 +51,23 @@ export function envolverSelecao(
   };
 }
 
+// os dois marcadores que a barra de ferramentas usa — checklist TEM que vir
+// antes de "- " na busca abaixo, porque "- [ ] " também começa com "- " e a
+// busca precisa achar o mais específico primeiro, não o mais curto.
+const MARCADORES_DE_LISTA = ["- [ ] ", "- [x] ", "- [X] ", "- "];
+
 /**
  * Prefixa cada linha tocada pela seleção (`- [ ] ` para checklist, `- ` para
  * lista). Sem seleção, vale a linha onde o cursor está.
  *
  * IDEMPOTENTE por linha: clicar duas vezes na mesma linha não duplica o
  * prefixo — clicar "checklist" numa linha que já é item de lista não devia
- * produzir `- - [ ] texto`.
+ * produzir `- - [ ] texto`. TROCA DE MARCADOR, não empilhamento: uma linha
+ * que já é item de lista (ou checklist) e recebe o OUTRO botão troca o
+ * marcador em vez de somar os dois — sem isto, "- item" + Checklist virava
+ * "- [ ] - item" em vez de "- [ ] item" (achado da revisão adversarial de
+ * U40, 2026-08-21 — o guard antigo só comparava com o prefixo EXATO que
+ * estava sendo aplicado, não com o marcador que já estava lá).
  */
 export function prefixarLinhas(
   valor: string, selecaoInicio: number, selecaoFim: number, prefixo: string,
@@ -73,16 +83,26 @@ export function prefixarLinhas(
   let acrescidaAntesDoInicio = 0;
 
   const novasLinhas = linhas.map((linha, i) => {
-    if (linha.startsWith(prefixo)) return linha;
-    somaAcrescida += prefixo.length;
+    // qual marcador a linha JÁ tem (se algum) — precisa achar o marcador de
+    // verdade, não só testar `startsWith(prefixo)`: "- [x] item" começa com
+    // "- " tanto quanto com "- [x] ", e comparar só contra o prefixo alvo
+    // classificaria checklist marcado como "já é isto" ao clicar Lista,
+    // quando na verdade são marcadores DIFERENTES.
+    const marcadorAtual = MARCADORES_DE_LISTA.find((m) => linha.startsWith(m));
+    if (marcadorAtual === prefixo) return linha; // idempotente: já é exatamente isto
+
+    const semMarcador = marcadorAtual ? linha.slice(marcadorAtual.length) : linha;
+    const delta = prefixo.length - (marcadorAtual?.length ?? 0);
+
+    somaAcrescida += delta;
     // linhas inteiramente ANTES do ponto onde a seleção começava (dentro do
     // bloco) empurram o início da seleção adiante também
     const offsetDaLinha = linhas.slice(0, i).join("\n").length + (i > 0 ? 1 : 0);
     // `<=`, não `<`: cursor exatamente no início da linha (nada digitado
     // ainda) deve terminar DEPOIS do prefixo novo, pronto para escrever —
     // não preso antes do "- ", que seria o lugar errado para continuar.
-    if (inicioBloco + offsetDaLinha <= selecaoInicio) acrescidaAntesDoInicio += prefixo.length;
-    return prefixo + linha;
+    if (inicioBloco + offsetDaLinha <= selecaoInicio) acrescidaAntesDoInicio += delta;
+    return prefixo + semMarcador;
   });
 
   const novoBloco = novasLinhas.join("\n");
@@ -93,4 +113,32 @@ export function prefixarLinhas(
     selecaoInicio: selecaoInicio + acrescidaAntesDoInicio,
     selecaoFim: selecaoFim + somaAcrescida,
   };
+}
+
+// ── Checklist — leitura de uma linha ────────────────────────────────────────
+//
+// A barra de ferramentas (acima) ESCREVE `- [ ] item`. Estas funções LEEM
+// essa mesma sintaxe para trocar a linha por uma caixa de marcar de verdade
+// onde a descrição é exibida (não editada) — ver TextoComChecklist.tsx.
+
+const RE_CHECKLIST = /^- \[([ xX])\] /;
+
+export function ehLinhaChecklist(linha: string): boolean {
+  return RE_CHECKLIST.test(linha);
+}
+
+export function checklistMarcado(linha: string): boolean {
+  const m = linha.match(RE_CHECKLIST);
+  return !!m && m[1].toLowerCase() === "x";
+}
+
+export function checklistTexto(linha: string): string {
+  return linha.replace(RE_CHECKLIST, "");
+}
+
+/** Troca `[ ]` por `[x]` (ou o inverso) — o resto da linha não muda. */
+export function alternarLinhaChecklist(linha: string): string {
+  return checklistMarcado(linha)
+    ? linha.replace(RE_CHECKLIST, "- [ ] ")
+    : linha.replace(RE_CHECKLIST, "- [x] ");
 }

@@ -2598,3 +2598,91 @@ comentário que eu tinha acabado de escrever no código. Pego relendo o próprio
 diff antes do build.
 
 715 asserções (44 novas), build ok.
+
+**Revisão adversarial em segundo plano (2026-08-21).** 6 lentes independentes
+(matemática do cursor, ícone do CampoComBusca, dados/RLS dos comentários,
+regressão de layout, acessibilidade/celular, coerência com PRODUTO.md) sobre
+o diff desta etapa, cada achado julgado por 3 céticos tentando refutar — 9
+achados sobreviveram (1 alto, 6 médios, 2 baixos), todos corrigidos:
+
+- **[alto]** `aplicar()` armava a seleção pendente mesmo quando o clique era
+  idempotente (Checklist/Lista numa linha que já tinha o marcador). Como o
+  valor não mudava, o React pulava o re-render (`Object.is` bail-out), o
+  `useEffect` ligado a `[v]` nunca rodava, e a seleção ficava presa — puxando
+  o cursor de volta pra um ponto velho na PRÓXIMA tecla digitada, embaralhando
+  o texto em silêncio. Fix: só armar a seleção quando `r.valor !== v`.
+- `prefixarLinhas` empilhava marcador em vez de trocar: "- item" + Checklist
+  virava "- [ ] - item". O guard antigo comparava só com o prefixo EXATO que
+  estava sendo aplicado; agora acha o marcador que a linha JÁ tem (checklist
+  OU lista) e troca.
+- Enter no campo de comentário não checava `enviar.isPending` (o botão já
+  checava) — Enter duas vezes rápido gravava o mesmo comentário duas vezes.
+- Os dois grids "na mesma linha" (De quem é, Classificação) usavam
+  `auto-fit`/`minmax`, que reflow: numa faixa comum de largura de painel
+  (~600–900px de janela) quebravam em 2+1 e 3+1 com um item órfão e espaço
+  vazio ao lado — pior que a quebra balanceada de antes. Trocados por colunas
+  FIXAS (3 e 4): nunca quebram, o que "mesma linha" pedia de verdade.
+  `minmax(0, 1fr)`, não só `1fr` — sem o 0 um nome comprido estufaria a coluna.
+- Botões da barra de ferramentas eram 30x30 — abaixo do alvo de toque mínimo
+  de 44px que o resto do painel já documentava. Viraram 44x44.
+- `Campo` envolve `children` num `<label>` implícito, associado ao PRIMEIRO
+  elemento "labelable". Com 4 botões antes do textarea na Descrição, clicar
+  no rótulo focava o botão "Negrito", não o campo de texto. Fix: `Campo`
+  ganhou um `idAlvo?` opcional que, quando passado, vira `htmlFor` explícito
+  (explícito sempre vence o implícito) — os outros ~15 usos de `Campo` no
+  arquivo não passam `idAlvo` e continuam com a associação implícita de
+  sempre, comportamento inalterado.
+- `padEsquerda` do `CampoComBusca` reservava espaço do ícone olhando só se a
+  PROP `iconeEsquerda` foi passada, não se ela de fato desenha algo para a
+  escolha atual — sem cliente/responsável (`escolhida === null`), o
+  placeholder ficava deslocado ~25px à toa. Agora olha `iconeEsquerda &&
+  escolhida`.
+- O aviso "No Notion estava como..." virou irmão solto de largura cheia
+  depois que Cliente virou 1 de 3 colunas do grid — descolado da coluna que
+  ele descreve. Mudou para dentro do próprio `<Campo titulo="Cliente">`.
+
+766 asserções (11 novas cobrindo os achados), build ok.
+
+### U41 — Vocabulário de tipos de chamado (R48, 2026-08-21)
+
+Davi ditou a lista definitiva: Manutenção Corretiva, Manutenção Preventiva,
+Operacional, Prospecção, Implantação, Melhoria. Duas mudanças reais por trás
+de rótulos que pareciam só cosméticos:
+
+**"Proposta comercial" → "Prospecção"** é uma renomeação de VALOR, não só de
+rótulo — `chamado-status.ts` trocou `ChamadoTipo`, `TIPO_LABEL`, `TIPO_CORES`,
+`tiposDaNatureza('comercial')` e o literal usado em
+`atividades/modelo.ts:atividadeDoChamado`. No banco, a migration U41
+(`20260822020000_u41_tipos_de_chamado.sql`) reescreve
+`sincronizar_chamado_da_visita()` (o trigger que a U29/U38 já tinham editado)
+para gravar `'prospeccao'` em vez de `'proposta_comercial'` nas visitas
+NOVAS, e faz **backfill** de toda linha `natureza='comercial'` existente —
+Davi foi explícito ("aplicado... para todas as demandas que são de propostas
+comerciais"), não só as futuras. O CHECK continua aceitando o valor antigo
+(`'proposta_comercial'`) por segurança histórica, mesmo que o backfill não
+deva deixar nenhuma linha com ele.
+
+**"Pedido de compra" sai só da SELEÇÃO.** `tiposDaNatureza('interno')` não
+oferece mais `pedido_compra` na lista — mas o tipo continua no union, em
+`TIPO_LABEL`/`TIPO_CORES`/`TIPOS`, no CHECK do banco (inalterado) e em TODO
+lugar que já lia chamados de compra existentes: `chamado_compra` (ficha),
+`ehCompra` em `DetalheInterno.tsx`/`atividades/modelo.ts`/`home/data.ts`, o
+filtro do Painel de Chamados. A regra que guiou o que tocar e o que não: "não
+apagar caminho de leitura que funciona só porque o caminho de escrita saiu" —
+a mesma que a R38 já tinha estabelecido para `registrar_resultado_proposta`.
+Dois lugares que CRIAM chamado novo precisavam mudar para não continuarem
+oferecendo o tipo aposentado: o atalho de triagem em `chamados.novo.tsx`
+("Pedido de compra" agora abre com `tipo: "operacional"`) e o classificador
+de texto livre em `sugerirTipoChamado()`/`chamado-rapido.functions.ts` (a
+função de criação rápida por IA — Etapa U20) — sem os dois, alguém ainda
+criaria um chamado novo com o tipo que o seletor visual já não mostra mais.
+
+"Manutenção Corretiva"/"Manutenção Preventiva" são só `TIPO_LABEL` — os
+valores gravados continuam `corretiva`/`preventiva`.
+
+**Documentado, não construído (R49):** Corretiva com diagnóstico+fotos, e
+Preventiva associada ao condomínio (mapeamento de equipamento via QAP + um
+cadastro de BLOCOS dentro do próprio sistema, reaproveitando o esquema de
+categoria de blocos que o fluxo de orçamento já usa). Davi pediu para
+registrar agora e construir depois — só foram assertion cabeçalhos aqui e em
+PRODUTO.md, nenhum código novo.

@@ -813,3 +813,59 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   opacity: 0.42;
   pointer-events: none;
 }
+
+/* ── Checkbox da checklist da Descrição (2026-08-21, Davi: "a função de
+   checklist do campo de descrição deve seguir o design") ────────────────
+   Design de mrhyddenn (Uiverse.io), portado de #id para classe: o original
+   usava `#cbx:checked + .check`, mas a descrição pode ter várias linhas de
+   checklist na mesma tela — um id só serviria para a primeira. `+` continua
+   funcionando igual com classe, porque é seletor de IRMÃO adjacente, não de
+   ancestral: o input e o .checklist-check precisam ser o par [input, span]
+   dentro do mesmo elemento pai (ver TextoComChecklist.tsx). Cores exatas do
+   design original — não são token da paleta Prever de propósito. */
+.checklist-check {
+  cursor: pointer;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  -webkit-tap-highlight-color: transparent;
+  transform: translate3d(0, 0, 0);
+  flex-shrink: 0;
+}
+.checklist-check:before {
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(34, 50, 84, 0.03);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.checklist-check svg {
+  position: relative;
+  z-index: 1;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: #c8ccd4;
+  stroke-width: 1.5;
+  transform: translate3d(0, 0, 0);
+  transition: all 0.2s ease;
+}
+.checklist-check svg path { stroke-dasharray: 60; stroke-dashoffset: 0; }
+.checklist-check svg polyline { stroke-dasharray: 22; stroke-dashoffset: 66; }
+.checklist-check:hover:before { opacity: 1; }
+.checklist-check:hover svg { stroke: #4285f4; }
+.checklist-input:checked + .checklist-check svg { stroke: #4285f4; }
+.checklist-input:checked + .checklist-check svg path {
+  stroke-dashoffset: 60;
+  transition: all 0.3s linear;
+}
+.checklist-input:checked + .checklist-check svg polyline {
+  stroke-dashoffset: 42;
+  transition: all 0.2s linear;
+  transition-delay: 0.15s;
+}

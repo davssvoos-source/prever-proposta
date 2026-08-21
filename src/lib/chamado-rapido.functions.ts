@@ -23,7 +23,9 @@ const inputSchema = z.object({
 
 export interface ChamadoInterpretado {
   natureza: "campo" | "interno";
-  tipo: "corretiva" | "preventiva" | "operacional" | "implantacao" | "melhoria" | "pedido_compra";
+  // R48/U41 (2026-08-21): "pedido_compra" saiu das opções — compra/cotação
+  // agora é "operacional", igual ao seletor do painel.
+  tipo: "corretiva" | "preventiva" | "operacional" | "implantacao" | "melhoria";
   titulo: string;
   descricao: string;
   prioridade: "baixa" | "normal" | "alta" | "urgente";
@@ -38,7 +40,7 @@ const SCHEMA = {
   required: ["natureza", "tipo", "titulo", "descricao", "prioridade", "equipe", "cliente_citado"],
   properties: {
     natureza: { type: "string", enum: ["campo", "interno"] },
-    tipo: { type: "string", enum: ["corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra"] },
+    tipo: { type: "string", enum: ["corretiva", "preventiva", "operacional", "implantacao", "melhoria"] },
     titulo: { type: "string", maxLength: 120 },
     descricao: { type: "string", maxLength: 2000 },
     prioridade: { type: "string", enum: ["baixa", "normal", "alta", "urgente"] },
@@ -62,10 +64,9 @@ TIPO:
 - corretiva: algo quebrou/parou/está travando e precisa de conserto.
 - preventiva: revisão/manutenção programada, sem defeito relatado.
 - operacional: rotina que não é conserto nem melhoria (entrega de controle,
-  conferência, cadastro).
+  conferência, cadastro, comprar/cotar material ou equipamento).
 - implantacao: instalação de sistema novo ou ampliação.
 - melhoria: melhorar algo que já funciona (processo, material, software).
-- pedido_compra: comprar/cotar material ou equipamento.
 
 PRIORIDADE (só faz diferença no campo):
 - urgente: risco, cliente sem segurança, palavra "urgente"/"agora"/"parado".

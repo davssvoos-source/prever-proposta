@@ -565,6 +565,39 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a Sé cai dentro do quadro',
      se.x > 0 && se.x < M.MAPA_SP.largura && se.y > 0 && se.y < M.MAPA_SP.altura, true);
 
+  // centroide (2026-08-21, Davi: "adicione o nome do bairro em cada bairro")
+  // — quadrado simples: o centro geométrico tem que cair exatamente no meio,
+  // não numa média de vértice que um polígono côncavo já desmentiria.
+  {
+    const quadrado = 'M0,0L10,0L10,10L0,10Z';
+    const c = M.centroide(quadrado);
+    eq('centroide de um quadrado 10x10 cai no meio (5,5)', [c.x, c.y], [5, 5]);
+
+    // um "L" (côncavo): a média simples dos 6 vértices cairia FORA da forma;
+    // o centroide por área tem que continuar DENTRO dela
+    const emL = 'M0,0L10,0L10,4L4,4L4,10L0,10Z';
+    const cL = M.centroide(emL);
+    eq('centroide de um polígono em L cai DENTRO da forma (não na média ingênua dos vértices)',
+       cL.x < 4 || cL.y < 4, true);
+
+    // todo distrito de verdade também tem que centrar DENTRO do próprio
+    // desenho — usa o mesmo ray casting que decide quem está "na cidade"
+    const dentroDoProprioPoligono = (d) => {
+      const pontos = [...d.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)]
+        .map(([, x, y]) => [Number(x), Number(y)]);
+      const { x: px, y: py } = M.centroide(d);
+      let dentro = false;
+      for (let i = 0, j = pontos.length - 1; i < pontos.length; j = i++) {
+        const [xi, yi] = pontos[i], [xj, yj] = pontos[j];
+        if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) dentro = !dentro;
+      }
+      return dentro;
+    };
+    const forano = M.DISTRITOS.filter(([, d]) => !dentroDoProprioPoligono(d));
+    eq('o centroide de TODOS os 47 distritos cai dentro do próprio polígono (esperado: nenhum fora)',
+       forano.map(([n]) => n), []);
+  }
+
   // Regra do Davi (3ª rodada de corte, 2026-08-20): cliente que more num
   // distrito removido NÃO trava o corte — vira +1 na contagem "fora de São
   // Paulo" do rodapé. Esta asserção não exige mais ZERO perdidos; ela trava o
@@ -595,6 +628,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        /c\.cidade && c\.cidade !== "São Paulo"/.test(comp), true);
     eq('o rótulo "fora de São Paulo" usa o contador de outra cidade',
        /fora de São Paulo:[\s\S]{0,220}\{foraDaCidade\}/.test(comp), true);
+
+    // nome do bairro no mapa (2026-08-21, Davi: "adicione o nome do bairro em
+    // cada bairro... fonte na cor branca, Montserrat regular")
+    eq('um rótulo por distrito, no centro geométrico (não a média ingênua)',
+       /ROTULOS_DISTRITOS = DISTRITOS\.map\(\(\[nome, d\]\) => \(\{ nome, \.\.\.centroide\(d\) \}\)\)/.test(comp),
+       true);
+    eq('o texto do bairro é branco fixo (não segue o tema — é rótulo do mapa)',
+       /<text[\s\S]{0,220}fill="#ffffff"/.test(comp), true);
+    eq('fonte Montserrat, peso 400 (regular)',
+       /fontFamily: "Montserrat,[\s\S]{0,60}fontWeight: 400/.test(comp), true);
+    eq('o grupo dos rótulos não intercepta clique/hover (pointerEvents none)',
+       /<g style=\{\{ pointerEvents: "none" \}\}>\s*\n\s*\{ROTULOS_DISTRITOS\.map/.test(comp), true);
   }
 
   // a migration U24: 192 clientes, todos com coordenada, verificação no fim
@@ -918,16 +963,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const u29 = fs8.readFileSync('supabase/migrations/20260821160000_u29_proposta_e_chamado.sql', 'utf8');
   const CS = carregar('src/lib/chamado-status.ts');
 
-  eq('o tipo proposta_comercial existe', CS.TIPOS.includes('proposta_comercial'), true);
-  eq('proposta_comercial tem rótulo', !!CS.TIPO_LABEL.proposta_comercial, true);
-  eq('proposta_comercial tem cor da paleta', !!CS.TIPO_CORES.proposta_comercial, true);
+  // R48/U41 (2026-08-21) renomeou "proposta_comercial" → "prospeccao" no
+  // vocabulário VIVO (chamado-status.ts) — o texto da migration U29 abaixo
+  // continua com o nome antigo de propósito: é o que o arquivo gravava
+  // NAQUELE momento, e migration já publicada não se edita.
+  eq('o tipo prospeccao existe', CS.TIPOS.includes('prospeccao'), true);
+  eq('prospeccao tem rótulo "Prospecção"', CS.TIPO_LABEL.prospeccao, 'Prospecção');
+  eq('prospeccao tem cor da paleta', !!CS.TIPO_CORES.prospeccao, true);
   eq('a natureza comercial existe', !!CS.NATUREZA_LABEL.comercial, true);
-  // um seletor de chamado de campo não pode oferecer "proposta comercial"
-  eq('proposta_comercial só aparece na natureza comercial',
-     CS.tiposDaNatureza('campo').includes('proposta_comercial')
-     || CS.tiposDaNatureza('interno').includes('proposta_comercial'), false);
-  eq('a natureza comercial oferece o tipo proposta_comercial',
-     CS.tiposDaNatureza('comercial'), ['proposta_comercial']);
+  // um seletor de chamado de campo não pode oferecer "prospecção"
+  eq('prospeccao só aparece na natureza comercial',
+     CS.tiposDaNatureza('campo').includes('prospeccao')
+     || CS.tiposDaNatureza('interno').includes('prospeccao'), false);
+  eq('a natureza comercial oferece o tipo prospeccao',
+     CS.tiposDaNatureza('comercial'), ['prospeccao']);
 
   // banco: os CHECKs precisam aceitar o vocabulário novo, senão o INSERT falha
   eq('U29: o CHECK de natureza aceita comercial',
@@ -957,8 +1006,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // app: a visita deixou de ser cidadã de segunda classe no quadro
   const mod = fs8.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  // R48/U41: o literal aqui é vivo (código atual), não migration — segue
+  // "prospeccao", o nome novo.
   eq('a proposta entra no quadro com natureza e tipo (não mais nulos)',
-     /natureza: "comercial",\s*\n\s*tipo: "proposta_comercial",/.test(mod), true);
+     /natureza: "comercial",\s*\n\s*tipo: "prospeccao",/.test(mod), true);
   eq('a proposta entra com número vindo da capa',
      /numero: v\.chamado\?\.numero/.test(mod), true);
   // a Início precisa trazer a capa no join, senão o número volta a ser null
@@ -2191,6 +2242,80 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        r.selecaoInicio - (novoInicioDaLinha2 + '- '.length), cursorEmLinha2 - 7);
   }
 
+  // ── troca de marcador, não empilhamento (achado da revisão adversarial
+  //    de U40, 2026-08-21) ─────────────────────────────────────────────────
+  {
+    // o bug real: Lista, depois Checklist na MESMA linha, produzia
+    // "- [ ] - item" em vez de converter para "- [ ] item"
+    const r = ET.prefixarLinhas('- comprar cabo', 0, 0, '- [ ] ');
+    eq('Lista → Checklist na mesma linha TROCA o marcador, não empilha',
+       r.valor, '- [ ] comprar cabo');
+  }
+  {
+    // a direção inversa já era protegida (checklist já começa com "- "), mas
+    // agora também precisa ficar limpa (sem sobrar "[ ] " solto)
+    const r = ET.prefixarLinhas('- [x] comprar cabo', 0, 0, '- ');
+    eq('Checklist → Lista na mesma linha troca para "- ", sem sobrar "[x] "',
+       r.valor, '- comprar cabo');
+  }
+  {
+    // idempotência de sempre continua intacta: mesmo botão, mesma linha
+    const r1 = ET.prefixarLinhas('- [ ] item', 0, 0, '- [ ] ');
+    eq('Checklist duas vezes na mesma linha continua idempotente', r1.valor, '- [ ] item');
+    const r2 = ET.prefixarLinhas('- item', 0, 0, '- ');
+    eq('Lista duas vezes na mesma linha continua idempotente', r2.valor, '- item');
+  }
+
+  // ── checklist: leitura de linha (2026-08-21, checkbox de verdade na
+  //    exibição — TextoComChecklist.tsx) ──────────────────────────────────
+  eq('reconhece linha de checklist desmarcada', ET.ehLinhaChecklist('- [ ] comprar cabo'), true);
+  eq('reconhece linha de checklist MARCADA', ET.ehLinhaChecklist('- [x] comprar cabo'), true);
+  eq('maiúsculo também conta como marcado', ET.ehLinhaChecklist('- [X] comprar cabo'), true);
+  eq('linha comum não é checklist', ET.ehLinhaChecklist('comprar cabo'), false);
+  eq('item de lista simples ("- ") não é checklist', ET.ehLinhaChecklist('- comprar cabo'), false);
+
+  eq('checklistMarcado lê [ ] como falso', ET.checklistMarcado('- [ ] item'), false);
+  eq('checklistMarcado lê [x] como verdadeiro', ET.checklistMarcado('- [x] item'), true);
+
+  eq('checklistTexto tira só o prefixo, preserva o resto',
+     ET.checklistTexto('- [x] comprar 10 controles'), 'comprar 10 controles');
+
+  eq('alternarLinhaChecklist: desmarcada vira marcada',
+     ET.alternarLinhaChecklist('- [ ] item'), '- [x] item');
+  eq('alternarLinhaChecklist: marcada vira desmarcada',
+     ET.alternarLinhaChecklist('- [x] item'), '- [ ] item');
+  eq('alternarLinhaChecklist não mexe no texto da linha, só no [ ]/[x]',
+     ET.alternarLinhaChecklist('- [ ] comprar 10 controles remotos'),
+     '- [x] comprar 10 controles remotos');
+
+  // ── TextoComChecklist.tsx: o componente que usa as funções acima ────────
+  const tcc = fs23.readFileSync('src/components/TextoComChecklist.tsx', 'utf8');
+  eq('usa a classe checklist-check (o design do Uiverse em styles.css)',
+     /className="checklist-check"/.test(tcc), true);
+  eq('sem aoMudar, o checkbox fica disabled (só leitura)',
+     /disabled=\{!aoMudar\}/.test(tcc), true);
+  eq('clicar chama aoMudar com o TEXTO INTEIRO (não só a linha)',
+     /aoMudar\(novasLinhas\.join\("\\n"\)\)/.test(tcc), true);
+
+  const cssChecklist = fs23.readFileSync('src/styles.css', 'utf8');
+  eq('o CSS do checkbox está em styles.css, com seletor de CLASSE (não #id — várias linhas na mesma tela)',
+     /\.checklist-input:checked \+ \.checklist-check svg/.test(cssChecklist), true);
+
+  // wired nas duas telas de detalhe: painel interno (editável) e campo (leitura)
+  const di2 = fs23.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
+  eq('DetalheInterno usa TextoComChecklist na Descrição, com aoMudar (editável)',
+     /<TextoComChecklist[\s\S]{0,120}aoMudar=\{podeEditar/.test(di2), true);
+  const dc2 = fs23.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  eq('DetalheCampo usa TextoComChecklist no Problema relatado',
+     /<TextoComChecklist texto=\{os\.descricao_problema\}/.test(dc2), true);
+
+  // ── comentários do painel: avatar de quem comentou (2026-08-21) ─────────
+  // (lido aqui via arquivo próprio: `pc4` só é declarado mais abaixo, no
+  // bloco que trava os pedidos do painel)
+  const pcAvatar = fs23.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  eq('o comentário mostra o AvatarCirculo de quem comentou (não um ícone genérico)',
+     /c\.user_id \? \(\s*<AvatarCirculo\s*\n\s*id=\{c\.user_id\}/.test(pcAvatar), true);
+
   // ── a tela: os pedidos do Davi, cada um travado por asserção ────────────
   const pc4 = fs23.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
   const soCodigoPc4 = pc4.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
@@ -2202,8 +2327,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<div title=\{chamado\.numero \?\? undefined\}>/.test(pc4), true);
 
   // 2. De quem é: Cliente + Responsável + Apoio na MESMA grade
-  eq('Cliente, Responsável e Apoio estão no MESMO grid de 3 colunas',
-     /gridTemplateColumns: "repeat\(auto-fit, minmax\(180px, 1fr\)\)"[\s\S]{0,80}<Campo titulo="Cliente"[\s\S]{0,600}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
+  // 3 colunas FIXAS (não auto-fit): a revisão adversarial de U40 achou que
+  // auto-fit(180px) quebrava em 2+1 (Apoio órfão) numa faixa comum de
+  // largura — fixo nunca quebra, o que "mesma linha" pedia de verdade.
+  eq('Cliente, Responsável e Apoio estão no MESMO grid de 3 colunas FIXAS',
+     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,80}<Campo titulo="Cliente"[\s\S]{0,1600}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
      true);
   eq('Cliente mostra um ícone (Building2) ao lado do nome',
      /iconeEsquerda=\{\(esc\) => esc \? <Building2/.test(pc4), true);
@@ -2238,11 +2366,31 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('os botões usam mousedown (o click chegaria depois do blur, tarde demais)',
      /onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); aplicar\(f\); \}\}/.test(pc4), true);
 
-  // 5. Classificação: 4 itens numa grade com piso menor (garante 1 linha só
-  //    nos 880px do painel — 210px de piso quebraria em duas linhas)
+  // ── achados da revisão adversarial de U40 (2026-08-21) ──────────────────
+  eq('aplicar() não arma seleção pendente quando o valor NÃO mudou (idempotente) — senão a seleção fica presa e desloca o cursor na próxima tecla real',
+     /if \(r\.valor === v\) return;/.test(pc4), true);
+  eq('os botões da barra têm 44x44 (alvo mínimo de toque), não 30x30',
+     /width: 44, height: 44, borderRadius: 8/.test(pc4), true);
+  eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra',
+     /id="painel-descricao-texto"/.test(pc4), true
+       && /<Campo titulo="Descrição" estado=\{estado\} idAlvo="painel-descricao-texto">/.test(pc4));
+  eq('Campo usa htmlFor=idAlvo no <label> (explícito vence a associação implícita ao primeiro labelable)',
+     /<label htmlFor=\{idAlvo\}/.test(pc4), true);
+  eq('Enter no campo de comentário respeita enviar.isPending (senão Enter duplo grava o comentário duas vezes)',
+     /e\.key === "Enter" && !e\.shiftKey && texto\.trim\(\) && !enviar\.isPending/.test(pc4), true);
+  eq('o aviso "No Notion" mora DENTRO do Campo Cliente (alinhado com a coluna que ele descreve, não a largura toda)',
+     /<Campo titulo="Cliente"[\s\S]{0,1400}No Notion:/.test(pc4), true);
+
+  const ccb2 = fs23.readFileSync('src/components/CampoComBusca.tsx', 'utf8');
+  eq('temIcone olha se HÁ ESCOLHA (não só se a prop iconeEsquerda foi passada) — senão o padding reserva espaço de um ícone que não é desenhado',
+     /const temIcone = !!iconeEsquerda && !!escolhida;/.test(ccb2), true);
+
+  // 5. Classificação: 4 itens numa grade de 4 colunas FIXAS — a revisão
+  //    adversarial de U40 achou que auto-fit(150px) quebrava em 3+1 (Equipe
+  //    órfão) numa faixa comum de largura, pior que a quebra 2+2 de antes.
   const blocoClassificacao = pc4.split('<Secao titulo="Classificação"')[1]?.split('<Secao titulo="Quando"')[0] ?? '';
-  eq('a grade de Classificação usa piso de 150px, não 210 (senão quebra em 2 linhas)',
-     /gridTemplateColumns: "repeat\(auto-fit, minmax\(150px, 1fr\)\)"/.test(blocoClassificacao), true);
+  eq('a grade de Classificação usa 4 colunas FIXAS (não auto-fit — nunca quebra)',
+     /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/.test(blocoClassificacao), true);
   eq('e tem os 4 campos: Tipo, Status, Prioridade, Equipe',
      /titulo="Tipo de demanda"/.test(blocoClassificacao) && /titulo="Status"/.test(blocoClassificacao)
      && /titulo="Prioridade"/.test(blocoClassificacao) && /titulo="Equipe"/.test(blocoClassificacao),
@@ -2267,6 +2415,61 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('TabelaAtividades importa do local compartilhado (não tem cópia própria)',
      /from "@\/components\/PessoaComFoto"/.test(tab4) && !/^function PessoaComFoto\(/m.test(tab4),
      true);
+}
+
+// ── U41: vocabulário de tipos de chamado (R48, 2026-08-21) ─────────────────
+{
+  const fs24 = require('fs');
+  const CS3 = carregar('src/lib/chamado-status.ts');
+
+  // rótulos mais explícitos (R48) — o VALOR gravado não muda
+  eq('corretiva ganhou o rótulo "Manutenção Corretiva"',
+     CS3.TIPO_LABEL.corretiva, 'Manutenção Corretiva');
+  eq('preventiva ganhou o rótulo "Manutenção Preventiva"',
+     CS3.TIPO_LABEL.preventiva, 'Manutenção Preventiva');
+
+  // pedido_compra sai só da SELEÇÃO — continua em todo o resto do vocabulário
+  eq('pedido_compra NÃO é mais oferecido para abrir chamado interno novo',
+     CS3.tiposDaNatureza('interno').includes('pedido_compra'), false);
+  eq('mas pedido_compra continua no union/TIPOS (histórico legível)',
+     CS3.TIPOS.includes('pedido_compra'), true);
+  eq('e continua com rótulo e cor (quem já tem um pedido de compra aberto precisa ver)',
+     !!CS3.TIPO_LABEL.pedido_compra && !!CS3.TIPO_CORES.pedido_compra, true);
+
+  // o classificador de texto livre (Notion, criação rápida por IA) não pode
+  // sugerir um tipo que o seletor visual já não oferece mais
+  eq('sugerirTipoChamado("preciso comprar 10 controles") não sugere mais pedido_compra',
+     CS3.sugerirTipoChamado('preciso comprar 10 controles novos'), 'operacional');
+  eq('sugerirTipoChamado(cotação de fornecedor) vira operacional',
+     CS3.sugerirTipoChamado('cotar fornecedor de nobreak'), 'operacional');
+
+  // o atalho de triagem (chamados.novo.tsx) não pode continuar oferecendo o
+  // tipo aposentado — vira operacional, equipe patrimonio, como Davi descreveu
+  const triagem = fs24.readFileSync('src/routes/_authenticated/chamados.novo.tsx', 'utf8');
+  eq('a triagem "Pedido de compra" abre como tipo operacional (não mais pedido_compra)',
+     /equipe: "patrimonio", tipo: "operacional"/.test(triagem), true);
+
+  // a IA de criação rápida (chamado-rapido.functions.ts) segue o mesmo corte
+  const rapido = fs24.readFileSync('src/lib/chamado-rapido.functions.ts', 'utf8');
+  eq('o schema da criação rápida por IA não tem mais "pedido_compra" no enum',
+     /enum: \["corretiva", "preventiva", "operacional", "implantacao", "melhoria"\]/.test(rapido), true);
+
+  // a migration U41 — CHECK aberto, trigger reescrito, backfill
+  const u41 = fs24.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8');
+  eq('U41: o CHECK de tipo aceita prospeccao (mantendo os valores antigos)',
+     /'prospeccao'/.test(u41) && /'proposta_comercial'/.test(u41) && /'pedido_compra'/.test(u41), true);
+  eq('U41: o trigger da visita passa a gravar tipo=prospeccao',
+     /NEW\.id, 'comercial', 'prospeccao', 'Proposta Comercial'/.test(u41), true);
+  eq('U41: faz o BACKFILL de toda demanda comercial existente (não só as novas)',
+     /UPDATE public\.chamados\s*\n\s*SET tipo = 'prospeccao'.*\n.*natureza = 'comercial' AND tipo = 'proposta_comercial'/.test(u41),
+     true);
+  eq('U41 termina com SELECT de verificação', /SELECT '.*esperado 0/.test(u41), true);
+
+  // PRODUTO.md: as regras novas (R48 vocabulário, R49 planejado) ficam registradas
+  const produto = fs24.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R48 (vocabulário de tipos) está documentado', /\*\*R48\*\*/.test(produto), true);
+  eq('R49 (Corretiva/Preventiva com fluxo próprio) está documentado como planejado',
+     /\*\*R49\*\* \(planejado, ainda não construído\)/.test(produto), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

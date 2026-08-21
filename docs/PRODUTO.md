@@ -679,3 +679,51 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   (histórico + campo de escrever, reaproveitando `chamado_eventos`, a mesma
   base que a página de detalhe interna já usava). A sigla CH- saiu da vista
   do título — continua no tooltip. *(Davi, 2026-08-22.)*
+
+- **R48** — **O vocabulário definitivo de tipos de chamado**: Manutenção
+  Corretiva, Manutenção Preventiva, Operacional, Prospecção, Implantação,
+  Melhoria. Duas mudanças de fato:
+  - **"Proposta comercial" virou "Prospecção"** — mesmo tipo (o fluxo
+    continua sendo o de `visitas_tecnicas`), nome novo: nomeia o fluxo
+    ("elaborar orçamento"), não o resultado dele. Vale para **toda** demanda
+    que já é proposta comercial, não só as novas — as existentes foram
+    migradas junto (U41).
+  - **"Pedido de compra" sai da SELEÇÃO** de um chamado novo — "na prática,
+    vou usar o Operacional no lugar". Não é uma retirada retroativa: os
+    pedidos de compra já abertos continuam com a ficha própria
+    (`chamado_compra`), o filtro no Painel de Chamados e toda a leitura
+    funcionando normalmente — só não é mais oferecida como opção para abrir
+    um chamado NOVO (o atalho "Pedido de compra" na triagem agora abre como
+    Operacional, equipe Patrimônio).
+  - "Manutenção Corretiva"/"Manutenção Preventiva" são só **rótulo** mais
+    explícito — os valores gravados continuam `corretiva`/`preventiva`, sem
+    mudança de fluxo.
+  - Só **Melhoria** tem o mesmo fluxo de **Operacional** (o chamado comum,
+    formato de hoje). *(Davi, 2026-08-21.)*
+
+- **R49** (planejado, ainda não construído) — **Manutenção Corretiva e
+  Manutenção Preventiva vão ganhar fluxo próprio** — registrado aqui para não
+  perder o combinado, mas nenhuma das duas partes abaixo está implementada:
+  - **Manutenção Corretiva**: fluxo com **diagnóstico** e **fotos** anexadas
+    ao chamado — o que quebrou, o que se viu, o que foi feito.
+  - **Manutenção Preventiva**: fluxo associado ao **condomínio** — mapear os
+    equipamentos de cada cliente a partir do QAP, e além disso um trabalho
+    **dentro do próprio sistema**: registrar os **blocos** de cada condomínio
+    e a que bloco pertence cada equipamento, reaproveitando o **mesmo esquema
+    de categoria de blocos** já usado no fluxo de orçamentos (visita técnica).
+  *(Davi, 2026-08-21: "faremos isso mais pra frente... você pode documentar
+  que faremos isso".)*
+
+- **R50** — Na Descrição do chamado, os itens de **checklist** (`- [ ] item`,
+  escritos pela barra de ferramentas do R47) aparecem como uma **caixa de
+  marcar de verdade**, não como texto `- [ ]` literal — clicar marca/desmarca
+  e grava. Design da caixa é o pedido especificamente por Davi (Uiverse.io,
+  por mrhyddenn). No histórico de **comentários** do painel, cada comentário
+  mostra a **foto de quem comentou** (mesma regra de sempre: cor por ID, não
+  por nome). *(Davi, 2026-08-21.)*
+
+- **R51** — No mapa da página Clientes, cada bairro mostra o **próprio nome**
+  escrito dentro do polígono (no centro geométrico da forma, não numa média
+  simples de vértice — importa para os bairros de formato em L). Fonte
+  **branca**, **Montserrat regular** — fixa, não segue o tema claro/escuro:
+  é rótulo do mapa, não texto de interface. *(Davi, 2026-08-21.)*

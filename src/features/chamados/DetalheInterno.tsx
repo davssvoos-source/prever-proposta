@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
 import {
   useChamado, useChamadoEventos, useChamadoApoios, useChamadoEquipamentos,
@@ -445,16 +446,19 @@ export function DetalheInterno({ id }: { id: string }) {
         </span>
       </div>
 
-      {/* Descrição */}
+      {/* Descrição — itens de checklist (`- [ ] item`, escritos pela barra de
+          ferramentas do painel de propriedades) viram caixa de marcar de
+          verdade aqui; o resto do texto continua em pre-wrap normal. */}
       {chamado.descricao_problema && (
         <div style={CARD}>
           <span style={SEC}>Descrição</span>
-          <div style={{
-            fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13.5,
-            color: textPrimary, lineHeight: 1.6, whiteSpace: "pre-wrap",
-          }}>
-            {chamado.descricao_problema}
-          </div>
+          <TextoComChecklist
+            texto={chamado.descricao_problema}
+            estilo={{ color: textPrimary }}
+            aoMudar={podeEditar
+              ? (v) => salvar.mutate({ descricao_problema: v })
+              : undefined}
+          />
         </div>
       )}
 

@@ -94,6 +94,37 @@ export function projetar(lat: number, lng: number): { x: number; y: number } {
   return { x: (lng - LON_MIN) * K * ESCALA, y: (LAT_MAX - lat) * ESCALA };
 }
 
+/**
+ * Centro geométrico de um polígono de `DISTRITOS`, para posicionar o rótulo
+ * do nome do bairro (2026-08-21, Davi: "adicione o nome do bairro em cada
+ * bairro"). Fórmula do centroide por área (shoelace) — não a média simples
+ * dos vértices, que joga o rótulo para fora em bairro de formato em L ou em
+ * ferradura (a cidade tem vários). Os 47 distritos são um anel só, sem curva
+ * (`M x,y L x,y … Z`), então basta ler os pares `x,y` na ordem em que vêm.
+ */
+export function centroide(d: string): { x: number; y: number } {
+  const pontos = [...d.matchAll(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g)]
+    .map(([, x, y]) => [Number(x), Number(y)] as const);
+
+  let area = 0, cx = 0, cy = 0;
+  for (let i = 0; i < pontos.length; i++) {
+    const [x0, y0] = pontos[i];
+    const [x1, y1] = pontos[(i + 1) % pontos.length];
+    const cruzado = x0 * y1 - x1 * y0;
+    area += cruzado;
+    cx += (x0 + x1) * cruzado;
+    cy += (y0 + y1) * cruzado;
+  }
+  area /= 2;
+  // polígono degenerado (área ~0): cai para a média simples dos vértices
+  if (Math.abs(area) < 1e-6) {
+    const mx = pontos.reduce((s, [x]) => s + x, 0) / pontos.length;
+    const my = pontos.reduce((s, [, y]) => s + y, 0) / pontos.length;
+    return { x: mx, y: my };
+  }
+  return { x: cx / (6 * area), y: cy / (6 * area) };
+}
+
 // Anéis em lat/lng + caixa de cada um. A caixa evita varrer 47 polígonos por
 // cliente: quase todos morrem numa comparação de números.
 const ANEIS: number[][][] = [

@@ -138,12 +138,21 @@ function Secao({ titulo }: { titulo: string }) {
   );
 }
 
-function Campo({ titulo, estado, children }: {
-  titulo: string; estado?: EstadoCampo; children: ReactNode;
+/**
+ * `idAlvo` é só para quando `children` tem MAIS de um elemento "labelable"
+ * (a barra de ferramentas da Descrição tem 4 botões antes do textarea) — sem
+ * ele, o HTML associa o `<label>` implícito ao PRIMEIRO labelable da lista, e
+ * clicar no rótulo focaria o botão "Negrito" em vez do campo de texto
+ * (achado da revisão adversarial de U40, 2026-08-21). Com um só controle
+ * (o caso comum — select, input), a associação implícita já funciona e
+ * `idAlvo` fica de fora.
+ */
+function Campo({ titulo, estado, children, idAlvo }: {
+  titulo: string; estado?: EstadoCampo; children: ReactNode; idAlvo?: string;
 }) {
   const { rotulo } = useEstiloCampo();
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+    <label htmlFor={idAlvo} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
       <span style={{ display: "flex", alignItems: "center", gap: 7, minHeight: 15 }}>
         <span style={rotulo}>{titulo}</span>
         <Selo estado={estado} />
@@ -285,12 +294,20 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
     const el = ref.current;
     if (!el) return;
     const r = f.aplicar(v, el.selectionStart ?? v.length, el.selectionEnd ?? v.length);
+    // idempotente (clicar Checklist numa linha que já é checklist, por
+    // exemplo) devolve o MESMO valor — se armasse a seleção pendente mesmo
+    // assim, o valor idêntico faria o React pular o re-render (bail-out), o
+    // useEffect ligado a [v] nunca rodaria, e a seleção ficaria PRESA aqui
+    // até a próxima tecla real — que então teria o cursor puxado de volta
+    // pra este ponto velho, digitando fora de ordem sem aviso nenhum
+    // (achado da revisão adversarial de U40, 2026-08-21).
+    if (r.valor === v) return;
     selecaoPendente.current = { inicio: r.selecaoInicio, fim: r.selecaoFim };
     setV(r.valor);
   }
 
   return (
-    <Campo titulo="Descrição" estado={estado}>
+    <Campo titulo="Descrição" estado={estado} idAlvo="painel-descricao-texto">
       <div style={{
         border: est.borda, borderRadius: 12, overflow: "hidden", background: est.campoBg,
       }}>
@@ -310,16 +327,20 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
               // textarea, que já teria apagado selectionStart/End
               onMouseDown={(e) => { e.preventDefault(); aplicar(f); }}
               style={{
-                width: 30, height: 30, borderRadius: 8, border: "none",
+                // 44px, não 30: o alvo de toque mínimo que o resto do painel
+                // já segue (useEstiloCampo, linha ~87) — o painel abre no
+                // celular também (achado da revisão adversarial de U40).
+                width: 44, height: 44, borderRadius: 8, border: "none",
                 background: "transparent", color: est.textSecondary,
                 display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
               }}
             >
-              <f.Icon size={15} />
+              <f.Icon size={16} />
             </button>
           ))}
         </div>
         <textarea
+          id="painel-descricao-texto"
           ref={ref}
           value={v}
           rows={5}
@@ -384,7 +405,26 @@ function Comentarios({ chamadoId, pessoasPorId }: {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {comentarios.map((c) => (
               <div key={c.id} style={{ display: "flex", gap: 9 }}>
-                <MessageSquare size={14} color={est.gold} style={{ marginTop: 3, flexShrink: 0 }} />
+                {/* a foto de quem comentou — a mesma regra de sempre (hash
+                    pelo ID, não pelo nome), 2026-08-21 */}
+                <span style={{ marginTop: 1, flexShrink: 0 }}>
+                  {c.user_id ? (
+                    <AvatarCirculo
+                      id={c.user_id}
+                      nome={pessoasPorId[c.user_id]?.nome ?? "Alguém"}
+                      pessoa={pessoasPorId[c.user_id]}
+                      tamanho={24}
+                    />
+                  ) : (
+                    <span style={{
+                      width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: est.campoBg, border: est.borda,
+                    }}>
+                      <MessageSquare size={12} color={est.textSecondary} />
+                    </span>
+                  )}
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: est.textPrimary }}>
                     {c.user_id ? pessoasPorId[c.user_id]?.nome ?? "Alguém" : "Alguém"}
@@ -412,7 +452,12 @@ function Comentarios({ chamadoId, pessoasPorId }: {
               onKeyDown={(e) => {
                 // Enter envia, Shift+Enter quebra linha — o padrão de
                 // qualquer campo de comentário/chat
-                if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
+                // !enviar.isPending espelha o disabled do botão (linha
+                // abaixo) — sem ele, Enter duas vezes rápido (ou o repeat de
+                // tecla do SO) envia o mesmo comentário duas vezes, porque
+                // `texto` só é limpo no onSuccess, depois de a rede responder
+                // (achado da revisão adversarial de U40, 2026-08-21).
+                if (e.key === "Enter" && !e.shiftKey && texto.trim() && !enviar.isPending) {
                   e.preventDefault();
                   enviar.mutate();
                 }
@@ -659,8 +704,19 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   lado é como se lê uma resposta composta. Os três usam campo
                   COM BUSCA — são as listas longas (192 clientes) onde rolar
                   custa mais que digitar — e os três mostram um ícone/foto ao
-                  lado do nome escolhido. */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+                  lado do nome escolhido.
+
+                  3 COLUNAS FIXAS, não auto-fit/minmax: a 1ª versão usava
+                  auto-fit(180px), e numa faixa comum de largura de painel
+                  (~522–612px, ex. janela de ~900px) ele resolvia para 2
+                  colunas — Apoio sobrava sozinho numa 2ª linha, ocupando só
+                  1/3 do espaço ao lado de metade da linha vazia. Fixo nunca
+                  quebra: "mesma linha" foi pedido explícito do Davi, não uma
+                  sugestão que vale só em painel largo (achado da revisão
+                  adversarial de U40, 2026-08-21). minmax(0,1fr), não só 1fr:
+                  sem o 0, um nome de cliente comprido poderia empurrar a
+                  coluna além da largura justa dela. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
                 <Campo titulo="Cliente" estado={estados.cliente_id}>
                   <CampoComBusca
                     id="painel-cliente"
@@ -670,6 +726,20 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
                     iconeEsquerda={(esc) => esc ? <Building2 size={15} color={est.textSecondary} /> : null}
                   />
+                  {/* o nome que veio do Notion, quando não há vínculo (U31):
+                      sem isto o campo pareceria vazio numa atividade que TEM
+                      cliente. Mora DENTRO do Campo "Cliente" (não mais como
+                      irmão solto depois do grid) — desde que Cliente virou 1
+                      de 3 colunas (R47), um aviso de largura cheia ficava
+                      descolado da coluna que ele descreve (achado da revisão
+                      adversarial de U40, 2026-08-21). */}
+                  {!chamado.cliente_id && chamado.cliente_origem_nome && (
+                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary, lineHeight: 1.5 }}>
+                      No Notion:{" "}
+                      <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
+                      {" "}— escolha acima para vincular ao QAP.
+                    </div>
+                  )}
                 </Campo>
 
                 <Campo titulo="Responsável" estado={estados.responsavel_id}>
@@ -726,15 +796,6 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   </div>
                 </Campo>
               </div>
-              {/* o nome que veio do Notion, quando não há vínculo (U31): sem
-                  isto o campo pareceria vazio numa atividade que TEM cliente */}
-              {!chamado.cliente_id && chamado.cliente_origem_nome && (
-                <div style={{ fontFamily: FONT, fontSize: 12.5, color: est.textSecondary, marginTop: -8, lineHeight: 1.5 }}>
-                  No Notion estava como{" "}
-                  <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
-                  {" "}— escolha Cliente acima para vincular ao cadastro do QAP.
-                </div>
-              )}
 
               <DescricaoComFerramentas
                 estado={estados.descricao_problema}
@@ -747,11 +808,17 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
 
               <Secao titulo="Classificação" />
 
-              {/* Os 4 itens NA MESMA LINHA (2026-08-22, Davi) — 150px de piso
-                  por coluna, não 210: com 4 colunas em vez de 2, o piso maior
-                  faria a grade quebrar em duas linhas no próprio painel de
-                  880px, e é exatamente essa quebra que ela pediu para acabar. */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
+              {/* Os 4 itens NA MESMA LINHA (2026-08-22, Davi).
+                  4 COLUNAS FIXAS, não auto-fit/minmax(150px): o piso de
+                  150px só garantia 4-numa-linha no TETO de 880px do painel —
+                  numa faixa comum abaixo disso (~522–686px de painel, ex.
+                  janela de ~900px) o auto-fit resolvia 3 colunas, e Equipe
+                  sobrava sozinho numa 2ª linha com 2/3 do espaço vazio ao
+                  lado — pior que a quebra 2+2 balanceada de antes da
+                  mudança (achado da revisão adversarial de U40, 2026-08-21).
+                  Fixo nunca quebra — fica estreito em painel pequeno, mas
+                  continua "mesma linha", que foi o pedido. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
                 <Escolha
                   titulo="Tipo de demanda" estado={estados.tipo} valor={chamado.tipo ?? null}
                   vazio="— sem tipo —"

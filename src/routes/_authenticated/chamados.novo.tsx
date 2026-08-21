@@ -53,7 +53,9 @@ function NovoChamadoPage() {
       titulo: "Pedido de compra",
       descricao: "Material ou equipamento para o Controle Patrimonial cotar e comprar.",
       exemplos: "Ex.: 10 controles remotos · nobreak novo para a guarita · licença de software",
-      ir: (n) => n({ to: "/chamados/novo-interno", search: { equipe: "patrimonio", tipo: "pedido_compra" } as any }),
+      // R48/U41 (2026-08-21, Davi): "pedido_compra" saiu da seleção — o pedido
+      // novo abre como "Operacional" no Controle Patrimonial, no lugar dele.
+      ir: (n) => n({ to: "/chamados/novo-interno", search: { equipe: "patrimonio", tipo: "operacional" } as any }),
     },
     {
       icone: FileText,

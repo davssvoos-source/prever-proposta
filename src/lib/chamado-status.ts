@@ -38,11 +38,16 @@ export type ChamadoTipo =
   | "operacional"
   | "implantacao"
   | "melhoria"
-  | "pedido_compra"
-  // R24/U29: a proposta é um chamado como os outros. O fluxo dela continua em
-  // visitas_tecnicas, que virou satélite — mas na fila, no quadro e nos
-  // indicadores ela entra igual, com número CH- e tudo.
-  | "proposta_comercial";
+  // R48/U41 (2026-08-21, Davi): renomeado de "proposta_comercial" — o mesmo
+  // tipo, agora com o nome do fluxo em vez do resultado dele. Continua sendo
+  // um chamado como os outros: o fluxo dela continua em visitas_tecnicas, que
+  // virou satélite, mas na fila, no quadro e nos indicadores ela entra igual,
+  // com número CH- e tudo.
+  | "prospeccao"
+  // R48/U41: aposentado da SELEÇÃO (não do vocabulário) — ver o comentário
+  // de `tiposDaNatureza`. Fica no union e em todo o resto do arquivo para os
+  // chamados antigos continuarem legíveis.
+  | "pedido_compra";
 
 export type ChamadoPrioridade = "baixa" | "normal" | "alta" | "urgente";
 export type ChamadoSprint =
@@ -170,9 +175,11 @@ export const NATUREZA_LABEL: Record<Natureza, string> = {
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
 export const TIPO_LABEL: Record<ChamadoTipo, string> = {
-  proposta_comercial: "Proposta comercial",
-  corretiva: "Corretiva",
-  preventiva: "Preventiva",
+  prospeccao: "Prospecção",
+  // R48: rótulo só, o valor gravado continua "corretiva"/"preventiva" — Davi
+  // só quis mais explícito no texto, não um tipo novo.
+  corretiva: "Manutenção Corretiva",
+  preventiva: "Manutenção Preventiva",
   operacional: "Operacional",
   implantacao: "Implantação",
   melhoria: "Melhoria",
@@ -181,28 +188,33 @@ export const TIPO_LABEL: Record<ChamadoTipo, string> = {
 
 /** Tipos que fazem sentido em cada natureza (o seletor usa isto). */
 export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
-  // a proposta tem um tipo só, e ele não aparece nas outras naturezas: quem
-  // abre chamado de campo não escolhe "proposta comercial" num seletor
-  if (natureza === "comercial") return ["proposta_comercial"];
+  // a prospecção tem um tipo só, e ele não aparece nas outras naturezas: quem
+  // abre chamado de campo não escolhe "prospecção" num seletor
+  if (natureza === "comercial") return ["prospeccao"];
+  // R48/U41 (2026-08-21, Davi): "pedido_compra" SAI da lista oferecida — na
+  // prática ela vai usar "Operacional" no lugar daqui pra frente. Não sai do
+  // union nem de TIPO_LABEL/TIPO_CORES/TIPOS/CHECK: os pedidos de compra já
+  // abertos continuam com ficha própria (chamado_compra), filtro no painel e
+  // tudo mais funcionando — só não é mais uma opção para um chamado NOVO.
   return natureza === "campo"
     ? ["corretiva", "preventiva", "operacional", "implantacao"]
-    : ["melhoria", "corretiva", "preventiva", "operacional", "implantacao", "pedido_compra"];
+    : ["melhoria", "corretiva", "preventiva", "operacional", "implantacao"];
 }
 
 export const TIPOS: ChamadoTipo[] = [
-  "proposta_comercial",
+  "prospeccao",
   "corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra",
 ];
 
 export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
   // o azul claro do degradê: negócio em formação, ainda sem serviço no chão
-  proposta_comercial: PRISMA.azulClaro,
+  prospeccao:    PRISMA.azulClaro,
   corretiva:     PRISMA.vermelho,   // o que quebrou
   preventiva:    PRISMA.amarelo,    // o que se antecipa
   operacional:   PRISMA.neutro,     // o dia a dia, sem tensão
   implantacao:   PRISMA.azulEscuro, // obra nova, de fôlego longo
   melhoria:      PRISMA.rosa,       // amarração pedida pelo Davi
-  pedido_compra: PRISMA.pessego,    // dinheiro, mas sem urgência própria
+  pedido_compra: PRISMA.pessego,    // dinheiro, mas sem urgência própria — legado
 };
 
 // ── Prioridade ──────────────────────────────────────────────────────────────
@@ -382,8 +394,11 @@ export function sugerirTipoChamado(titulo: string, descricao?: string | null): C
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  // R48/U41: compra vira "operacional" — "pedido_compra" saiu da seleção,
+  // então o classificador do Notion/IA precisa acompanhar, ou continuaria
+  // sugerindo um tipo que o seletor nem oferece mais.
   if (/(compra|comprar|cotacao|cotar|aquisicao|adquirir|fornecedor|pedido de material)/.test(t))
-    return "pedido_compra";
+    return "operacional";
   if (/(nao funciona|nao esta funcionando|parou|caiu|travand|travou|quebrad|defeito|falha|falhou|erro|bug|corrig|conserto|reparo|urgente|sem sinal|sem acesso|offline)/.test(t))
     return "corretiva";
   if (/(preventiv|revisao|inspec|limpeza|checagem|vistoria|rotina de manutencao|manutencao programada)/.test(t))
