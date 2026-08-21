@@ -9,10 +9,18 @@
 // lado, que é como o olho liga as duas metades da tela.
 //
 // Coordenada vem do banco (latitude/longitude, preenchidas pela migration U24
-// no nível do CEP). Cliente sem coordenada não aparece no mapa — aparece na
-// lista, e o rodapé diz quantos ficaram de fora. Clientes fora do município
-// (Osasco, Cotia, Campinas…) não têm como aparecer num contorno da capital:
-// viram os chips de "fora da capital" no rodapé, com a contagem por cidade.
+// no nível do CEP).
+//
+// O mapa é da CIDADE de São Paulo, e o rodapé resolve os dois casos que não
+// cabem nele, com uma linha cada:
+//   · fora do município (Osasco, Cotia, Campinas…) → só a CONTAGEM. A lista de
+//     cidades que existia aqui saiu a pedido do Davi: num painel que existe
+//     para mostrar a capital, enumerar municípios era ruído.
+//   · sem endereço cadastrado → contagem à parte, porque é outra coisa. Não é
+//     estar fora: é não sabermos onde é. Sem essa linha, a soma do mapa não
+//     bateria com a da lista e a diferença ficaria sem explicação.
+// Os dois continuam na LISTA ao lado — deixar de aparecer no mapa não os tira
+// da base.
 //
 // O tooltip é HTML posicionado por estado (não <title> SVG): o nativo demora
 // um segundo para abrir e não segue o tema.
@@ -46,26 +54,20 @@ export function MapaClientes({ clientes }: Props) {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
-  const { pontos, foraDaCapital, semCoordenada } = useMemo(() => {
+  const { pontos, foraDeSaoPaulo, semCoordenada } = useMemo(() => {
     const pts: Ponto[] = [];
-    const fora: Record<string, number> = {};
+    let fora = 0;
     let sem = 0;
     for (const c of clientes) {
       if (c.latitude == null || c.longitude == null) { sem++; continue; }
-      if (!dentroDoMapa(c.latitude, c.longitude)) {
-        // fora do contorno da capital — cidade do cadastro, ou "Outra"
-        const cidade = c.cidade || "Outra cidade";
-        fora[cidade] = (fora[cidade] ?? 0) + 1;
-        continue;
-      }
+      // fora do contorno do município: só conta. A cidade de cada um saiu do
+      // rodapé a pedido do Davi — a lista de cidades era ruído num painel que
+      // existe para mostrar a capital.
+      if (!dentroDoMapa(c.latitude, c.longitude)) { fora++; continue; }
       const { x, y } = projetar(c.latitude, c.longitude);
       pts.push({ id: c.id, nome: c.nome, x, y, cor: corDoCliente(c.id, isLight) });
     }
-    return {
-      pontos: pts,
-      foraDaCapital: Object.entries(fora).sort((a, b) => b[1] - a[1]),
-      semCoordenada: sem,
-    };
+    return { pontos: pts, foraDeSaoPaulo: fora, semCoordenada: sem };
   }, [clientes, isLight]);
 
   return (
@@ -179,25 +181,28 @@ export function MapaClientes({ clientes }: Props) {
         </div>
       </div>
 
-      {(foraDaCapital.length > 0 || semCoordenada > 0) && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", paddingTop: 10 }}>
-          {foraDaCapital.map(([cidade, n]) => (
-            <span key={cidade} style={{
-              padding: "3px 9px", borderRadius: 999,
-              background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
-              fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-              color: textSecondary, whiteSpace: "nowrap",
-            }}>
-              {cidade} · {n}
+      {/* Uma linha, não uma lista de cidades: o mapa é da capital, e quem está
+          fora dela interessa como NÚMERO — não como enumeração de municípios.
+          "sem coordenada" fica porque é outra coisa: não é estar fora, é não
+          termos o endereço. Sem ele, a soma do mapa não bateria com a lista e
+          a diferença ficaria sem explicação. */}
+      {(foraDeSaoPaulo > 0 || semCoordenada > 0) && (
+        <div style={{
+          display: "flex", flexDirection: "column", gap: 3,
+          paddingTop: 12, marginTop: "auto",
+          borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.07)",
+        }}>
+          {foraDeSaoPaulo > 0 && (
+            <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
+              Quantidade de clientes fora de São Paulo:{" "}
+              <strong style={{ fontWeight: 700, color: isLight ? "#0a0b0e" : "#ffffff" }}>
+                {foraDeSaoPaulo}
+              </strong>
             </span>
-          ))}
+          )}
           {semCoordenada > 0 && (
-            <span style={{
-              padding: "3px 9px", borderRadius: 999,
-              background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
-              fontFamily: FONT, fontWeight: 400, fontSize: 10.5, color: textSecondary,
-            }}>
-              {semCoordenada} sem coordenada
+            <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
+              {semCoordenada} sem endereço cadastrado — não entram no mapa
             </span>
           )}
         </div>
