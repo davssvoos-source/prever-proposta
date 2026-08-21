@@ -593,21 +593,37 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('S1: nenhuma interpolação crua sobrou no popup',
      /\$\{v\.(cliente\?\.nome|titulo)\}/.test(mapa), false);
 
-  // cabeçalhos de segurança em toda resposta
+  // Cabeçalhos de segurança em toda resposta.
+  //
+  // A CSP está em modo RELATÓRIO porque a versão bloqueante derrubou o app:
+  // o SSR do TanStack injeta o estado de hidratação num <script> inline, e
+  // `script-src 'self'` sem nonce mata exatamente isso — tela preta. Estas
+  // asserções travam o estado ATUAL e, principalmente, impedem que alguém
+  // religue o bloqueio sem antes resolver o nonce.
   const srv = fs4.readFileSync('src/server.ts', 'utf8');
-  for (const h of ['content-security-policy', 'x-content-type-options',
-                   'referrer-policy', 'strict-transport-security']) {
+  for (const h of ['content-security-policy-report-only', 'x-content-type-options',
+                   'referrer-policy', 'strict-transport-security', 'permissions-policy']) {
     eq(`S1: cabeçalho ${h} aplicado`, srv.includes(h), true);
   }
-  // Só as linhas de CÓDIGO: o comentário acima da CSP explica justamente por
-  // que unsafe-inline ficou de fora, e a asserção batia nele.
-  const csp = srv.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//'));
-  eq('S1: a CSP declara script-src próprio',
-     csp.some((l) => l.includes(`"script-src 'self'"`)), true);
-  eq('S1: a CSP NÃO permite script inline (é o que trava um XSS refletido)',
-     csp.some((l) => /script-src/.test(l) && /unsafe-inline/.test(l)), false);
-  eq('S1: style-src aceita inline (o app é todo estilo inline — inevitável)',
-     csp.some((l) => /style-src/.test(l) && /unsafe-inline/.test(l)), true);
+  const cod = srv.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//'));
+  eq('S1: a CSP NÃO está em modo bloqueante (derrubaria o SSR sem nonce)',
+     cod.some((l) => /"content-security-policy":/.test(l)), false);
+  eq('S1: o preview do Lovable cabe em frame-ancestors',
+     cod.some((l) => /frame-ancestors/.test(l) && /lovable/.test(l)), true);
+  eq('S1: x-frame-options é SAMEORIGIN, não DENY (o preview roda em iframe)',
+     cod.some((l) => /x-frame-options/.test(l) && /SAMEORIGIN/.test(l)), true);
+
+  // REVOKE de coluna é ferramenta errada no Supabase: todo logado é o mesmo
+  // role `authenticated`, então o REVOKE atinge o admin junto — e quebra
+  // qualquer `select *`. A S1b desfez; a S1 não pode reintroduzir.
+  const s1cod2 = s1.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  eq('S1: nenhum REVOKE de coluna sobrou (quebra select * e não separa papel)',
+     /REVOKE (SELECT|UPDATE) \(/.test(s1cod2), false);
+  const s1b = fs4.readFileSync('supabase/migrations/20260820180000_s1b_desfaz_revoke_coluna.sql', 'utf8');
+  eq('S1b: devolve o SELECT de telefone', /GRANT SELECT \(telefone\)/.test(s1b), true);
+  eq('S1b: devolve o UPDATE de cargo', /GRANT UPDATE \(cargo\)/.test(s1b), true);
+  eq('S1b: confirma que o trigger anti-promoção segue de pé',
+     /trg_guard_profiles_privilegios/.test(s1b), true);
 
   // .env não pode voltar a ser versionado
   eq('S1: .gitignore cobre .env', fs4.readFileSync('.gitignore', 'utf8').includes('\n.env\n'), true);

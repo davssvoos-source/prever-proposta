@@ -264,11 +264,14 @@ redesenhadas por inteiro na reforma v7 delas. Quando forem, os amarelos viram
 Da auditoria de cibersegurança (5 frentes, 23 achados confirmados). Estes
 ficaram de fora da migration S1 por decisão, não por esquecimento:
 
-- **S4 — `profiles` SELECT é `USING(true)`**: e-mail de todos os funcionários
-  legível por qualquer autenticado. O app depende disso (pilha de avatares,
-  seletor de responsável, menções). O telefone saiu por REVOKE de coluna na S1;
-  o e-mail fica. Exploração exige conta válida e expõe dado de colega, não de
-  cliente. Reavaliar se o time crescer para além de conhecidos.
+- **S4 — `profiles` SELECT é `USING(true)`**: e-mail E TELEFONE de todos os
+  funcionários legíveis por qualquer autenticado. O app depende da linha (pilha
+  de avatares, seletor de responsável). Tentei fechar o telefone com REVOKE de
+  coluna na S1 e **revertí na S1b**: no Supabase todo logado é o mesmo role
+  `authenticated`, então o REVOKE tira do admin junto — e derruba qualquer
+  `select *` (o app faz um em `fetchProfile`, no início da sessão). O caminho
+  certo é uma **view** com as colunas públicas + RLS, trocando os consumidores
+  para ela. Risco: dado de colega, não de cliente, e exige conta válida.
 - **S5 — `permissoes_tela` usa `profiles.cargo` e não `user_roles`**: duas
   fontes de verdade para papel. Hoje o trigger `trg_sync_user_role` mantém as
   duas em sincronia, então não é explorável; vira dívida no dia em que alguém
@@ -276,9 +279,9 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
 - **S6 — `SET search_path = public` (e não `= ''`) nas 77 funções DEFINER**:
   defesa em profundidade incompleta. Não explorável hoje — exigiria que um
   usuário pudesse criar objeto em `public`, o que ele não pode.
-- **S7 — sessão no `localStorage`**: um XSS vira roubo de sessão. Mitigado pela
-  CSP sem `script-src unsafe-inline` (S1) e pelo escape do popup do mapa. A
-  correção real (cookie httpOnly) exige trocar o fluxo de auth do Supabase.
+- **S7 — sessão no `localStorage`**: um XSS vira roubo de sessão. Mitigado pelo
+  escape do popup do mapa (S1). A CSP **não** mitiga hoje — ver S10. A correção
+  real (cookie httpOnly) exige trocar o fluxo de auth do Supabase.
 - **S8 — `blocos-fotos`/`fotos-visitas` sem amarração por caminho**: a S1 fechou
   o apagar (só dono ou gestor) e tornou os buckets privados, mas qualquer
   autenticado ainda LÊ qualquer foto. Amarrar por dono exigiria convenção de
@@ -291,3 +294,18 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
   com a sessão de um usuário comum, o sync falha **parcialmente e em silêncio**,
   cliente a cliente. Está anotado dentro da própria migration (§8), onde quem
   for escrever o importador vai ler.
+
+- **S10 — a CSP está em modo RELATÓRIO, não bloqueia** (2026-08-20): a versão
+  bloqueante (`script-src 'self'`) **derrubou o app** — tela preta. O SSR do
+  TanStack Start injeta o estado de hidratação num `<script>` inline
+  (`<Scripts />` em `__root.tsx`), e sem nonce a política mata exatamente ele.
+  Hoje o cabeçalho é `Content-Security-Policy-Report-Only`: o navegador avalia
+  e reporta no console, sem bloquear.
+
+  Para valer de verdade, o caminho é **nonce por request** — o SSR gera um
+  valor, carimba no cabeçalho e na tag `<script nonce=...>`, e a política troca
+  `'unsafe-inline'` por `'nonce-...'`. Enquanto isso não existir, a CSP não
+  protege contra XSS; quem protege é o escape na origem (o do mapa, na S1).
+
+  **Lição, e é a que importa:** CSP se introduz em Report-Only e só depois vira
+  bloqueio, olhando o que ela quebraria. Eu inverti a ordem e o app caiu.

@@ -219,20 +219,22 @@ BEGIN
 END $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 5. PROFILES — contato dos funcionários
+-- 5. PROFILES — contato dos funcionários  (NADA A FAZER — ver por quê)
 -- ════════════════════════════════════════════════════════════════════════════
--- Era USING(true): e-mail e telefone de todo o time legíveis por qualquer um.
--- O app precisa de nome/avatar/cargo de todos (pilha de avatares, seletor de
--- responsável), então a LINHA continua legível — mas as colunas de contato
--- saem do alcance de quem não é gestor, por REVOKE de coluna.
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema='public' AND table_name='profiles' AND column_name='telefone') THEN
-    REVOKE SELECT (telefone) ON public.profiles FROM authenticated;
-  END IF;
-END $$;
--- (o e-mail fica: o app usa para identificar quem é quem em várias telas)
+-- `profiles` tem SELECT USING(true): e-mail e telefone de todo o time legíveis
+-- por qualquer autenticado. Tentei fechar o telefone com REVOKE de COLUNA e
+-- REVERTI (migration S1b), por dois motivos:
+--
+-- 1. Não separa ninguém. GRANT/REVOKE são por ROLE DE BANCO e, no Supabase,
+--    todo usuário logado é o MESMO role (`authenticated`). O REVOKE tira de
+--    todos — admin inclusive. "Gestor vê, técnico não" só se expressa por RLS
+--    (linha) ou por view, nunca por privilégio de coluna.
+-- 2. Quebra `select *`. O Postgres recusa a consulta INTEIRA quando uma coluna
+--    está revogada, e o app faz `select("*")` em profiles no início da sessão
+--    (visitas/data.ts → fetchProfile). Fechou o telefone e derrubou o login.
+--
+-- Fica como pendência S4, com o caminho certo anotado. O risco é dado de
+-- COLEGA (e-mail, telefone), não de cliente, e exige conta válida.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 6. funil_comercial() — SECURITY DEFINER sem checagem de papel
@@ -422,22 +424,16 @@ BEGIN
 END $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 10. PROFILES — escrita restrita a colunas próprias
+-- 10. PROFILES — escrita de cargo  (NADA A FAZER — ver por quê)
 -- ════════════════════════════════════════════════════════════════════════════
--- A auto-promoção a admin já é barrada pelo trigger guard_profiles_privilegios
--- (etapa0), mas depender de UM trigger para conter escalonamento é fino demais.
--- Aqui vai a segunda camada: REVOKE de coluna, para que `cargo` e `equipe` nem
--- cheguem ao UPDATE de quem não é admin.
-REVOKE UPDATE (cargo) ON public.profiles FROM authenticated;
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-              WHERE table_schema='public' AND table_name='profiles' AND column_name='equipe') THEN
-    REVOKE UPDATE (equipe) ON public.profiles FROM authenticated;
-  END IF;
-END $$;
--- o admin altera cargo pela função dedicada (SECURITY DEFINER), não por UPDATE
--- direto — então tirar a coluna de `authenticated` não quebra o painel.
+-- Tentei uma segunda camada contra auto-promoção a admin, com
+-- REVOKE UPDATE (cargo). Mesmo problema da seção 5: o REVOKE atinge o role
+-- `authenticated` inteiro, admin junto, e quebra qualquer UPDATE que toque a
+-- coluna. Revertido pela S1b.
+--
+-- E não faz falta: quem barra a auto-promoção é o trigger
+-- `trg_guard_profiles_privilegios` (etapa0, linha 205) — a auditoria testou e
+-- confirmou fechado. Uma segunda camada que derruba o app não é camada.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- VERIFICAÇÃO
@@ -483,11 +479,11 @@ SELECT 'delete de cliente é só admin',
          WHERE schemaname='public' AND tablename='clientes'
            AND cmd='DELETE' AND qual LIKE '%e_admin%')::text
 UNION ALL
-SELECT 'cargo fora do UPDATE de authenticated (esperado 0)',
-       (SELECT count(*) FROM information_schema.column_privileges
-         WHERE table_schema='public' AND table_name='profiles'
-           AND column_name='cargo' AND privilege_type='UPDATE'
-           AND grantee='authenticated')::text
+SELECT 'auto-promoção barrada pelo trigger (esperado true)',
+       (EXISTS (SELECT 1 FROM pg_trigger
+                 WHERE tgrelid='public.profiles'::regclass
+                   AND tgname='trg_guard_profiles_privilegios'
+                   AND NOT tgisinternal))::text
 UNION ALL
 SELECT 'inventário: 3 tabelas com policy restritiva (esperado 3)',
        (SELECT count(*) FROM pg_policies
