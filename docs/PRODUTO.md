@@ -344,6 +344,26 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 - **R27** — **"Gerencial" vira três painéis:** Operacional, Comercial e
   Administrativo.
 
+- **R28** — **Cada perfil tem o seu aparelho.** O **técnico de campo usa o app
+  no CELULAR**; TI, SAC, Controle Patrimonial e Gestor usam no **DESKTOP**.
+  Isso não é preferência, é o desenho: o que o técnico faz é em pé, na rua, com
+  luva — e o que os outros fazem é coordenar, olhando muita informação junto.
+  Toda decisão de layout deve perguntar antes "quem usa isto, e em quê".
+  *(Davi, 2026-08-21. A ser elaborado; gravado agora para não se perder.)*
+
+- **R29** — **A proposta comercial é um TIPO DE CHAMADO.** Ela tem o fluxo
+  próprio (visita → aprovação interna → proposta → resposta do cliente), mas é
+  um chamado como todos os outros: entra na mesma fila, aparece no Kanban, tem
+  número CH- e é contada junto. O fluxo continua em `visitas_tecnicas`, que
+  virou **satélite** do chamado — mesmo id, mesma técnica que a U7 usou para
+  absorver as demandas e a U9 para o pedido de compra.
+
+- **R30** — **O WhatsApp identifica o remetente pelo NOME DO CONTATO.** Os
+  números são salvos como `"Condomínio Apartamento Nome"`, e é daí que sai de
+  qual prédio e de qual unidade veio a mensagem. Isso resolve a questão que
+  estava em aberto (morador não é usuário do app). **A integração fica para
+  depois** — a decisão do Davi é trabalhar primeiro no sistema.
+
 ## 8. Questões em aberto — para responder de uma vez
 
 **Respondidas em 2026-08-18** (viraram a R13): ~~papel do Vinicius~~ → admin;

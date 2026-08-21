@@ -23,8 +23,14 @@ export type ChamadoStatus =
   | "concluido"
   | "cancelado";
 
-/** Como o chamado é executado — define ciclo, telas e regras. */
-export type Natureza = "campo" | "interno";
+/**
+ * Como o chamado é executado — define ciclo, telas e regras.
+ *
+ * `comercial` entrou na U29: o ciclo da proposta não é campo nem interno.
+ * Campo tem deslocamento e assinatura; interno tem sprint. A proposta tem
+ * aprovação interna e resposta do cliente — um terceiro modo de execução.
+ */
+export type Natureza = "campo" | "interno" | "comercial";
 
 export type ChamadoTipo =
   | "corretiva"
@@ -32,7 +38,11 @@ export type ChamadoTipo =
   | "operacional"
   | "implantacao"
   | "melhoria"
-  | "pedido_compra";
+  | "pedido_compra"
+  // R24/U29: a proposta é um chamado como os outros. O fluxo dela continua em
+  // visitas_tecnicas, que virou satélite — mas na fila, no quadro e nos
+  // indicadores ela entra igual, com número CH- e tudo.
+  | "proposta_comercial";
 
 export type ChamadoPrioridade = "baixa" | "normal" | "alta" | "urgente";
 export type ChamadoSprint = "este_mes" | "mes_que_vem" | "mes_passado" | "backlog";
@@ -122,6 +132,11 @@ export function chamadoEmAberto(status: string | null | undefined): boolean {
  * deslocamento com hora marcada — não cabe no chamado interno.
  */
 export function statusDaNatureza(natureza: Natureza): ChamadoStatus[] {
+  // O ciclo da proposta é o do funil: marca-se a visita, ela acontece, o
+  // comercial aprova, a proposta vai ao cliente e ele responde. Quem move
+  // esses estados é o fluxo comercial (/visita/$id), não um seletor de status.
+  if (natureza === "comercial")
+    return ["aberto", "agendado", "em_andamento", "aguardando_aprovacao", "concluido", "cancelado"];
   return natureza === "campo"
     ? ["aberto", "agendado", "em_andamento", "stand_by", "concluido", "cancelado"]
     : ["aberto", "em_andamento", "stand_by", "aguardando_aprovacao", "concluido", "cancelado"];
@@ -130,11 +145,13 @@ export function statusDaNatureza(natureza: Natureza): ChamadoStatus[] {
 export const NATUREZA_LABEL: Record<Natureza, string> = {
   campo: "Campo",
   interno: "Interno",
+  comercial: "Comercial",
 };
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
 export const TIPO_LABEL: Record<ChamadoTipo, string> = {
+  proposta_comercial: "Proposta comercial",
   corretiva: "Corretiva",
   preventiva: "Preventiva",
   operacional: "Operacional",
@@ -145,16 +162,22 @@ export const TIPO_LABEL: Record<ChamadoTipo, string> = {
 
 /** Tipos que fazem sentido em cada natureza (o seletor usa isto). */
 export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
+  // a proposta tem um tipo só, e ele não aparece nas outras naturezas: quem
+  // abre chamado de campo não escolhe "proposta comercial" num seletor
+  if (natureza === "comercial") return ["proposta_comercial"];
   return natureza === "campo"
     ? ["corretiva", "preventiva", "operacional", "implantacao"]
     : ["melhoria", "corretiva", "preventiva", "operacional", "implantacao", "pedido_compra"];
 }
 
 export const TIPOS: ChamadoTipo[] = [
+  "proposta_comercial",
   "corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra",
 ];
 
 export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
+  // o azul claro do degradê: negócio em formação, ainda sem serviço no chão
+  proposta_comercial: PRISMA.azulClaro,
   corretiva:     PRISMA.vermelho,   // o que quebrou
   preventiva:    PRISMA.amarelo,    // o que se antecipa
   operacional:   PRISMA.neutro,     // o dia a dia, sem tensão

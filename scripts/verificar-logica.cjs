@@ -887,5 +887,64 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /valor_total|faturamento|receita|R\$/.test(adminCod), false);
 }
 
+// ── U29: a proposta é um tipo de chamado (R29) ─────────────────────────────
+{
+  const fs8 = require('fs');
+  const u29 = fs8.readFileSync('supabase/migrations/20260821160000_u29_proposta_e_chamado.sql', 'utf8');
+  const CS = carregar('src/lib/chamado-status.ts');
+
+  eq('o tipo proposta_comercial existe', CS.TIPOS.includes('proposta_comercial'), true);
+  eq('proposta_comercial tem rótulo', !!CS.TIPO_LABEL.proposta_comercial, true);
+  eq('proposta_comercial tem cor da paleta', !!CS.TIPO_CORES.proposta_comercial, true);
+  eq('a natureza comercial existe', !!CS.NATUREZA_LABEL.comercial, true);
+  // um seletor de chamado de campo não pode oferecer "proposta comercial"
+  eq('proposta_comercial só aparece na natureza comercial',
+     CS.tiposDaNatureza('campo').includes('proposta_comercial')
+     || CS.tiposDaNatureza('interno').includes('proposta_comercial'), false);
+  eq('a natureza comercial oferece o tipo proposta_comercial',
+     CS.tiposDaNatureza('comercial'), ['proposta_comercial']);
+
+  // banco: os CHECKs precisam aceitar o vocabulário novo, senão o INSERT falha
+  eq('U29: o CHECK de natureza aceita comercial',
+     /natureza IN \('campo', 'interno', 'comercial'\)/.test(u29), true);
+  eq('U29: o CHECK de tipo aceita proposta_comercial',
+     /'proposta_comercial'/.test(u29), true);
+
+  // A técnica da U7: MESMO id, para os satélites da visita não precisarem de
+  // reescrita de FK. Se o INSERT gerasse id novo, visita_blocos e companhia
+  // apontariam para o nada.
+  eq('U29: o chamado nasce com o MESMO id da visita',
+     /INSERT INTO public\.chamados[\s\S]{0,600}SELECT\s+v\.id,/.test(u29), true);
+  eq('U29: a visita vira satélite por FK no próprio id',
+     /FOREIGN KEY \(id\) REFERENCES public\.chamados\(id\)/.test(u29), true);
+  // sem o trigger a capa congela no estado da migração
+  eq('U29: trigger mantém a capa em dia com o funil',
+     /CREATE TRIGGER trg_sincronizar_chamado_da_visita/.test(u29), true);
+  eq('U29: numera as linhas novas no formato CH-AAAA-NNNN',
+     /'CH-' \|\| r\.ano::text/.test(u29), true);
+
+  // A capa não pode ser mais frouxa que o corpo: a lista de chamados viraria a
+  // porta dos fundos do funil comercial.
+  eq('U29: a policy trata a natureza comercial à parte',
+     /WHEN natureza = 'comercial' THEN[\s\S]{0,160}is_gestor/.test(u29), true);
+  eq('U29: proposta NÃO herda a regra de "responsável nulo é de todos"',
+     /WHEN natureza = 'comercial' THEN\s*\n\s*public\.is_gestor\(auth\.uid\(\)\) OR responsavel_id = auth\.uid\(\)/.test(u29), true);
+
+  // app: a visita deixou de ser cidadã de segunda classe no quadro
+  const mod = fs8.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  eq('a proposta entra no quadro com natureza e tipo (não mais nulos)',
+     /natureza: "comercial",\s*\n\s*tipo: "proposta_comercial",/.test(mod), true);
+  eq('a proposta entra com número vindo da capa',
+     /numero: v\.chamado\?\.numero/.test(mod), true);
+  // as duas telas precisam trazer a capa no join, senão o número volta a ser null
+  for (const [arq, alvo] of [
+    ['src/features/home/data.ts', 'Início'],
+    ['src/routes/_authenticated/chamados.tsx', 'lista de chamados'],
+  ]) {
+    eq(`${alvo}: o join traz o chamado-capa`,
+       /chamado:chamados!visitas_e_chamado\(numero, prioridade\)/.test(fs8.readFileSync(arq, 'utf8')), true);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -207,6 +207,14 @@ export interface BrutoVisita {
   proposta_enviada_em?: string | null;
   proposta_resultado?: string | null;
   clientes?: { nome: string } | null;
+  /**
+   * U29: a visita passou a ter um chamado-capa com o MESMO id. Estes campos
+   * vêm dele por join, e são o que tira a proposta da condição de cidadã de
+   * segunda classe no quadro — antes ela entrava sem número e sem prioridade,
+   * aparecendo junto sem ser igual.
+   */
+  chamado?: { numero: string | null; prioridade: string | null } | null;
+  prioridade?: string | null;
 }
 
 export interface FichaCompra {
@@ -402,6 +410,9 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
 
 export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Atividade {
   const t = colunaDaVisita(v);
+  // a capa manda; a coluna da própria visita é o fallback de quem ainda não
+  // passou pelo trigger da U29
+  const priVisita = ((v.chamado?.prioridade ?? v.prioridade) || null) as ChamadoPrioridade | null;
   const info = getStatusInfo(v.status as any);
   const bucket = statusBucket(v.status as any);
 
@@ -412,26 +423,31 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     coluna: t.coluna,
     rotuloNativo: t.rotuloNativo,
     bolaCom: t.bolaCom,
-    natureza: null,
-    tipo: null,
-    tipoLabel: "Visita técnica",
-    tipoCor: null,
+    // U29: a proposta é um chamado como os outros (R24) — natureza e tipo
+    // próprios, não mais nulos por ser "outra coisa".
+    natureza: "comercial",
+    tipo: "proposta_comercial",
+    tipoLabel: TIPO_LABEL.proposta_comercial,
+    tipoCor: TIPO_CORES.proposta_comercial,
     statusCru: v.status,
     statusLabel: info.label,
     // colorLight existe desde a U10; sem ele o chip some no tema claro
     statusCor: { dark: info.color, light: info.colorLight, bg: info.bg, border: info.border },
     titulo: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? "Visita técnica",
-    numero: null,
+    // o número vem do chamado-capa (U29); null enquanto o join não trouxer
+    numero: v.chamado?.numero ?? null,
     cliente: v.clientes?.nome ?? v.nome_predio ?? null,
     responsavelId: v.tecnico_id,
     participantes: v.tecnico_id ? [v.tecnico_id] : [],
     souResponsavel: !!ctx.userId && v.tecnico_id === ctx.userId,
     souApoio: false,
     souAutor: false,
-    prioridade: null,
-    prioridadeRank: 4,
-    prioridadeLabel: null,
-    prioridadeCor: null,
+    // mesmo padrão do chamado (acima): a prioridade vem da capa, e o rank
+    // cai para 4 quando não há — a fila da proposta é pela data da visita
+    prioridade: priVisita,
+    prioridadeRank: PRI_RANK[priVisita ?? ""] ?? 4,
+    prioridadeLabel: priVisita ? PRIORIDADE_LABEL[priVisita] ?? null : null,
+    prioridadeCor: priVisita ? PRIORIDADE_CORES[priVisita] ?? null : null,
     equipe: null,
     sprint: null,
     prazoLimite: null,

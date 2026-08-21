@@ -2070,3 +2070,42 @@ Decisões que valem registro:
 
 Pendente: o Sincronizar com o QAP (S9) segue sendo o que destrava clientes e
 equipamentos de verdade; enquanto não existir, a base fica no que a U24 trouxe.
+
+### U29 — A proposta comercial vira um tipo de chamado (R29, 2026-08-21)
+
+**O que já funcionava, e por que ainda faltava.** A visita já aparecia no
+Kanban e na lista de chamados — `atividades/modelo.ts` a traduzia. Mas era
+cidadã de segunda classe: `numero: null`, `tipo: null`, sem prioridade e sem
+equipe. Aparecia junto sem ser igual.
+
+**A técnica é a da U7:** o chamado nasce com o MESMO id da visita. Os nove
+satélites de visita (visita_blocos, visita_orcamentos, fotos_visita…)
+continuam apontando para o mesmo uuid e nenhuma FK precisou ser reescrita.
+
+**`visitas_tecnicas` não foi desmontada** — virou satélite 1:1 do chamado,
+como `chamado_compra` (U9). O fluxo comercial inteiro (/visita/$id, wizards de
+orçamento, geração da proposta) continua lendo dela e não mudou uma linha.
+Mover as colunas seria a versão arriscada da mesma ideia, sem ganho.
+
+**Vocabulário novo:** natureza `comercial` (o ciclo da proposta não é campo nem
+interno — campo tem deslocamento e assinatura, interno tem sprint) e tipo
+`proposta_comercial`.
+
+**Trigger de sincronia:** sem ele a capa congelaria no estado da migração — a
+visita andaria no funil e o Kanban mostraria a coluna de ontem. A tradução
+status-do-funil → coluna é a MESMA de `colunaDaVisita()`; se discordassem, o
+card mudaria de lugar ao recarregar a página.
+
+**Segurança:** a capa não pode ser mais frouxa que o corpo. A visita sempre
+teve policy estreita (técnico dono ou gestor); se o chamado herdasse a regra
+geral — inclusive "responsável nulo é de todos" — a lista de chamados viraria
+a porta dos fundos do funil comercial. A policy trata `natureza = 'comercial'`
+à parte.
+
+### Regras gravadas na mesma conversa
+
+- **R28** — técnico de campo usa CELULAR; TI, SAC, Controle Patrimonial e
+  Gestor usam DESKTOP. A elaborar, gravado para não se perder.
+- **R30** — o WhatsApp identifica o remetente pelo nome do contato
+  (`"Condomínio Apartamento Nome"`). Resolve a questão que estava em aberto;
+  a integração fica para depois, por decisão do Davi.

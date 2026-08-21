@@ -2,9 +2,13 @@
 // Ver docs/PRODUTO.md §3 e §4.1.
 //
 // Depois da fusão (U7) chamado é um registro só: a natureza separa campo de
-// interno, e o filtro de trilho é uma leitura da natureza + equipe. A visita
-// técnica de proposta continua vindo de visitas_tecnicas — ela ainda não é
-// um chamado, é o funil comercial.
+// interno, e o filtro de trilho é uma leitura da natureza + equipe.
+//
+// U29: a proposta comercial VIROU um tipo de chamado (R24). `visitas_tecnicas`
+// continua sendo lida aqui porque ela virou o SATÉLITE do fluxo comercial — o
+// chamado-capa tem o mesmo id, e é dele que vêm número e prioridade. A leitura
+// continua vindo da visita porque é ela que tem o estado do funil
+// (proposta_enviada_em, proposta_resultado), que é o que decide a coluna.
 
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect, useLocation, Outlet, useRouterState } from "@tanstack/react-router";
@@ -101,7 +105,9 @@ function ChamadosPage() {
       const { data, error } = await supabase
         .from("visitas_tecnicas")
         .select("id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +
-                "proposta_enviada_em, proposta_resultado, clientes(nome)")
+                "proposta_enviada_em, proposta_resultado, prioridade, clientes(nome), " +
+                // U29: número e prioridade vêm do chamado-capa (mesmo id)
+                "chamado:chamados!visitas_e_chamado(numero, prioridade)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as any[]) ?? [];
