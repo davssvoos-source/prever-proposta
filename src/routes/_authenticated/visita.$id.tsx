@@ -12,7 +12,7 @@ import { SERVICOS_PROPOSTOS, SERVICO_PROPOSTO_LABEL } from "@/features/visitas/s
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getStatusInfo } from "@/lib/visita-status";
-import { Layers, Banknote, Wrench, Send, CheckCircle2 } from "lucide-react";
+import { Layers, Banknote, Wrench, Send } from "lucide-react";
 import { abrirChamado } from "@/features/chamados/data";
 import { montarChecklistImplantacao } from "@/features/chamados/checklist";
 import { BlocoItensEditor } from "@/features/orcamento/BlocoItensEditor";
@@ -493,8 +493,15 @@ function VisitaDetail() {
   });
 
 
-  // ── R4: depois da aprovação INTERNA vem a proposta, e quem decide é o
-  // cliente. Aprovar a visita não faz dele cliente; o aceite faz.
+  // ── R38: o fluxo da proposta ACABA no envio (2026-08-22, Davi) ─────────────
+  // Antes disto existia uma segunda etapa — "o cliente aceitou / recusou" —
+  // com dois botões nesta tela. Ela saiu: o que o cliente decide depois de
+  // receber a proposta acontece por telefone, WhatsApp, reunião — nunca
+  // dentro do app — e não tem por que o app fingir que está acompanhando.
+  // Enviar a proposta agora é o ÚLTIMO passo: a atividade fecha sozinha
+  // (colunaDaVisita, em atividades/modelo.ts, manda a capa para "concluído"
+  // assim que `proposta_enviada_em` é gravado — mesma tradução que o trigger
+  // `sincronizar_chamado_da_visita` aplica no banco, U38).
   const enviarProposta = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.rpc("registrar_envio_proposta" as any, {
@@ -505,37 +512,17 @@ function VisitaDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["visita", id] });
       qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
-      toast.success("Proposta marcada como enviada. Agora é aguardar o cliente.");
+      toast.success("Proposta enviada — o fluxo termina aqui. O resto acontece fora do app.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const [showRecusaForm, setShowRecusaForm] = useState(false);
-  const [motivoRecusa, setMotivoRecusa] = useState("");
-
-  const responderCliente = useMutation({
-    mutationFn: async ({ resultado, motivo }: { resultado: "aceita" | "recusada"; motivo?: string }) => {
-      const { error } = await supabase.rpc("registrar_resultado_proposta" as any, {
-        _visita_id: id,
-        _resultado: resultado,
-        _motivo: motivo ?? null,
-      } as any);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["visita", id] });
-      qc.invalidateQueries({ queryKey: ["gerencial-visitas"] });
-      qc.invalidateQueries({ queryKey: ["clientes"] });
-      setShowRecusaForm(false);
-      setMotivoRecusa("");
-      toast.success(
-        vars.resultado === "aceita"
-          ? "Proposta aceita! O cliente foi ativado."
-          : "Recusa registrada. O cliente segue como prospecto.",
-      );
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  // A RPC `registrar_resultado_proposta` continua existindo no banco — não
+  // por indecisão, mas porque visitas de ANTES desta mudança já têm resultado
+  // registrado (proposta_resultado/_em), e apagar a LEITURA apagaria história
+  // real (por isso os blocos "recusada"/"aceita" mais abaixo continuam
+  // exibindo esses casos). O que não existe mais é a chamada: nada nesta tela
+  // invoca a RPC de novo — o botão saiu junto com o estado que ele mexia.
 
   const [geoLat, setGeoLat] = useState<number | null>(null);
   const [geoLng, setGeoLng] = useState<number | null>(null);
@@ -1487,7 +1474,11 @@ function VisitaDetail() {
                 Configurar Forma de Pagamento
               </button>
 
-              {/* ── R4: a partir daqui quem decide é o CLIENTE ────────────── */}
+              {/* ── R38: o fluxo acaba no ENVIO (2026-08-22) ─────────────────
+                  Não existe mais "aguardando a resposta do cliente" como
+                  estado do app: enviar já fecha a atividade (vira "concluído"
+                  sozinho — colunaDaVisita, em atividades/modelo.ts). O que o
+                  cliente decide depois é acompanhado fora do app. */}
               {!propostaEnviada && (
                 <>
                   <div style={{
@@ -1497,8 +1488,8 @@ function VisitaDetail() {
                     fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                     color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", lineHeight: 1.5,
                   }}>
-                    A visita está aprovada internamente. Isso ainda não faz do
-                    prospecto um cliente — só o aceite da proposta faz.
+                    A visita está aprovada internamente. Enviar a proposta encerra
+                    esta atividade — o que o cliente decide é combinado fora do app.
                   </div>
                   <button
                     onClick={() => enviarProposta.mutate()}
@@ -1511,67 +1502,24 @@ function VisitaDetail() {
                 </>
               )}
 
-              {propostaEnviada && resultadoProposta === "aguardando" && !showRecusaForm && (
-                <>
-                  <div style={{
-                    marginTop: 12, fontFamily: "var(--fonte)", fontWeight: 400,
-                    fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
-                  }}>
-                    Proposta enviada em{" "}
-                    {new Date(visita.proposta_enviada_em as string).toLocaleDateString("pt-BR")}
-                    {" "}— aguardando a resposta do cliente.
-                  </div>
-                  <button
-                    onClick={() => responderCliente.mutate({ resultado: "aceita" })}
-                    disabled={responderCliente.isPending}
-                    style={{ ...ACAO_SECUNDARIA, cursor: responderCliente.isPending ? "wait" : "pointer" }}
-                  >
-                    <CheckCircle2 size={17} color="#2DD2A5" />
-                    O cliente ACEITOU a proposta
-                  </button>
-                  <button
-                    onClick={() => setShowRecusaForm(true)}
-                    style={ACAO_SECUNDARIA}
-                  >
-                    <XCircle size={17} color="#F17881" />
-                    O cliente RECUSOU
-                  </button>
-                </>
-              )}
-
-              {showRecusaForm && (
-                <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <textarea
-                    value={motivoRecusa}
-                    onChange={(e) => setMotivoRecusa(e.target.value)}
-                    placeholder="Por que o cliente recusou? (preço, prazo, escolheu concorrente…)"
-                    rows={3}
-                    style={{
-                      width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "10px 12px",
-                      background: isLight ? "#ffffff" : "#16161d",
-                      border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                      color: isLight ? "#0a0b0e" : "#fff",
-                      fontFamily: "var(--fonte)", fontSize: 13, outline: "none", resize: "vertical",
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      onClick={() => responderCliente.mutate({ resultado: "recusada", motivo: motivoRecusa.trim() || undefined })}
-                      disabled={responderCliente.isPending}
-                      style={{ ...ACAO_SECUNDARIA, marginTop: 0, flex: 1 }}
-                    >
-                      Registrar recusa
-                    </button>
-                    <button
-                      onClick={() => { setShowRecusaForm(false); setMotivoRecusa(""); }}
-                      style={{ ...ACAO_SECUNDARIA, marginTop: 0, flex: 1 }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+              {/* `registrar_envio_proposta` grava resultado='aguardando' por
+                  padrão — é o estado normal de TODA proposta nova agora, já
+                  que nada mais o tira dali. `!resultadoProposta` cobre visitas
+                  antigas, de antes desta coluna existir. */}
+              {propostaEnviada && (!resultadoProposta || resultadoProposta === "aguardando") && (
+                <div style={{
+                  marginTop: 12, fontFamily: "var(--fonte)", fontWeight: 400,
+                  fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                }}>
+                  Proposta enviada em{" "}
+                  {new Date(visita.proposta_enviada_em as string).toLocaleDateString("pt-BR")}
+                  . Fluxo encerrado neste app.
                 </div>
               )}
 
+              {/* Histórico de visitas anteriores a esta mudança — a RPC que
+                  gravava isto não é mais chamada por nenhum botão, mas o
+                  registro que já existe continua legível. */}
               {resultadoProposta === "recusada" && (
                 <div style={{
                   marginTop: 12, padding: "10px 12px", borderRadius: 12,
@@ -1586,32 +1534,35 @@ function VisitaDetail() {
                   {visita.proposta_motivo_recusa ? ` Motivo: ${visita.proposta_motivo_recusa}` : ""}
                 </div>
               )}
-
-              {/* O elo com o chamado de implantação nasce do ACEITE, não da
-                  aprovação interna (R4) — antes ele aparecia cedo demais. */}
               {resultadoProposta === "aceita" && (
-                <>
-                  <div style={{
-                    marginTop: 12, padding: "10px 12px", borderRadius: 12,
-                    background: "rgba(45,210,165,0.10)", border: "1px solid rgba(45,210,165,0.28)",
-                    fontFamily: "var(--fonte)", fontSize: 12.5,
-                    color: isLight ? "#047862" : "#2DD2A5", lineHeight: 1.5,
-                  }}>
-                    Proposta aceita
-                    {visita.proposta_resultado_em
-                      ? ` em ${new Date(visita.proposta_resultado_em as string).toLocaleDateString("pt-BR")}`
-                      : ""}
-                    {" "}— este agora é um cliente ativo.
-                  </div>
-                  <button
-                    onClick={() => gerarImplantacao.mutate()}
-                    disabled={gerarImplantacao.isPending}
-                    style={{ ...ACAO_SECUNDARIA, cursor: gerarImplantacao.isPending ? "wait" : "pointer" }}
-                  >
-                    <Wrench size={17} color={isLight ? "#A06108" : "#F8C811"} />
-                    {gerarImplantacao.isPending ? "Gerando chamado…" : "Gerar chamado de implantação"}
-                  </button>
-                </>
+                <div style={{
+                  marginTop: 12, padding: "10px 12px", borderRadius: 12,
+                  background: "rgba(45,210,165,0.10)", border: "1px solid rgba(45,210,165,0.28)",
+                  fontFamily: "var(--fonte)", fontSize: 12.5,
+                  color: isLight ? "#047862" : "#2DD2A5", lineHeight: 1.5,
+                }}>
+                  Proposta aceita
+                  {visita.proposta_resultado_em
+                    ? ` em ${new Date(visita.proposta_resultado_em as string).toLocaleDateString("pt-BR")}`
+                    : ""}
+                  {" "}— este agora é um cliente ativo.
+                </div>
+              )}
+
+              {/* Gerar o chamado de implantação é ação MANUAL, disponível
+                  assim que a proposta sai — não depende mais de um "aceite"
+                  registrado no app (esse rastro não existe mais para
+                  propostas novas). Quando souber que o cliente disse sim
+                  (por telefone, WhatsApp…), o gestor aciona aqui. */}
+              {propostaEnviada && (
+                <button
+                  onClick={() => gerarImplantacao.mutate()}
+                  disabled={gerarImplantacao.isPending}
+                  style={{ ...ACAO_SECUNDARIA, cursor: gerarImplantacao.isPending ? "wait" : "pointer" }}
+                >
+                  <Wrench size={17} color={isLight ? "#A06108" : "#F8C811"} />
+                  {gerarImplantacao.isPending ? "Gerando chamado…" : "Gerar chamado de implantação"}
+                </button>
               )}
             </>
           )}

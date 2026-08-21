@@ -146,10 +146,13 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         {a.tipoLabel && a.tipoCor && (
           <span style={chipStyle(a.tipoCor, isLight, emFaixa)}>{a.tipoLabel}</span>
         )}
-        {a.fonte === "visita" && (
-          <span style={chipStyle(PRISMA.azulClaro, isLight, emFaixa)}>Visita técnica</span>
-        )}
-        {/* ETIQUETA DE CLIENTE — chip, não texto solto.
+        {/* A etiqueta "Visita técnica" que existia aqui saiu (2026-08-22,
+            Davi): era redundante com o chip de tipo logo acima — toda visita
+            tem natureza comercial e tipoLabel "Proposta comercial" (R29), e
+            dois chips dizendo a mesma coisa com palavras diferentes só
+            ocupava espaço sem acrescentar informação. */}
+        {/* ETIQUETA DE LOCAL — chip, não texto solto (2026-08-22: era
+            "cliente"; virou local, ver o comentário em atividadeDaVisita).
             Era texto secundário e sumia no meio dos chips coloridos ao lado.
             No quadro, "de qual prédio é isto?" é a segunda pergunta depois de
             "o que é isto?" — e a resposta precisa ter o mesmo peso visual das

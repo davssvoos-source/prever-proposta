@@ -2435,3 +2435,59 @@ mostrar `"corretiva"` cru — com fallback capitalizado para `"visita"`, que
 não é um `ChamadoTipo` e não tem entrada no vocabulário central.
 
 643 asserções (19 novas), build ok.
+
+### U38 — O fluxo da proposta acaba no envio (R38, 2026-08-22)
+
+O Davi mandou um print: um card de proposta com título repetindo o nome do
+condomínio, uma etiqueta "Cliente" mostrando o MESMO nome do condomínio (que
+não é cliente nenhum), "Normal" como prioridade e um subtítulo esquisito —
+"Proposta com o cliente · com o cliente", repetido. Rastreei os quatro até a
+raiz e todos vinham do MESMO lugar: o estado intermediário "aguardando a
+resposta do cliente", que ele decidiu cortar de vez — "o restante acontece
+somente fora do app".
+
+**O que saiu:** os dois botões (ACEITOU/RECUSOU) e o formulário de motivo de
+recusa na tela da visita. **O que mudou de sentido:** `colunaDaVisita()`
+(atividades/modelo.ts) — proposta enviada, com ou sem resultado, já é
+"concluído" na hora. Não sobrevive nenhum estado "com o cliente, aguardando".
+
+**O que ficou, deliberadamente:** a RPC `registrar_resultado_proposta` e as
+colunas `proposta_resultado`/`_em` continuam no banco — visitas de ANTES desta
+mudança já têm resultado gravado, e apagar a leitura apagaria história real.
+Os blocos que mostram "Proposta aceita"/"Proposta recusada" com data e motivo
+continuam na tela, só não há mais botão que grave um resultado novo. O botão
+"Gerar chamado de implantação" também ficou — só parou de depender do aceite
+(que não existe mais como mecanismo ativo) e passou a ficar disponível assim
+que a proposta é enviada, para o gestor acionar quando souber o desfecho por
+fora.
+
+**Dois defeitos que a raiz explicava sozinha, sem o Davi precisar apontar:**
+
+1. **O título duplicava o nome do prédio** porque o trigger `sincronizar_
+   chamado_da_visita` (U29) usava `COALESCE(titulo, nome_predio, 'Proposta
+   comercial')` — quase toda visita tem um dos dois preenchido, então a capa
+   quase sempre nascia com o nome do condomínio. Virou constante:
+   **"Proposta Comercial"**, sempre, sem condição.
+2. **A etiqueta "cliente" preferia `clientes.nome`** mesmo quando havia
+   `nome_predio` — e para a maioria das visitas (prospecto, sem cliente
+   vinculado) isso já caía em `nome_predio` mesmo, só que por acaso, não por
+   regra. Agora `nome_predio` vem SEMPRE primeiro, mesmo para visita de
+   cliente existente (R23) — o texto descreve o LOCAL, o vínculo comercial
+   continua existindo em `cliente_id`, só não é o que aparece no card.
+
+**Um bug que eu mesmo quase deixei passar:** `encerradoEm` (a data que
+`concluidosPorSemana`/`metaDoMes` usam para contar) caía em
+`proposta_resultado_em ?? created_at` — e `resultado_em` nunca é gravado para
+uma proposta simplesmente enviada (só para aceite/recusa, que não existem
+mais). Sem o remendo, TODA proposta enviada contaria na semana em que a
+VISITA foi criada, não na semana em que foi enviada — plausível o bastante
+para passar batido. Corrigido para `proposta_resultado_em ?? proposta_enviada_em
+?? created_at`: o histórico (mais preciso, quando existe) vence; senão o
+envio, que agora é o desfecho de verdade.
+
+**A migration `U38`** reescreve o trigger (mesma lógica, título fixo, escuta
+`proposta_enviada_em` também) e faz um **backfill**: chamados-capa que já
+estão presos no estado antigo — aprovada, enviada, sem recusa — são virados
+para concluído e o título corrigido na hora. É a visita exata do print.
+
+670 asserções (33 novas), build ok.

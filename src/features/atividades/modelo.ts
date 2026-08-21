@@ -324,12 +324,19 @@ export function colunaDaVisita(v: BrutoVisita): Traduzido {
   const st = (v.status ?? "").toLowerCase();
 
   if (st === "aprovada") {
-    if (v.proposta_resultado === "aceita")
-      return { coluna: "concluido", rotuloNativo: "Proposta aceita", bolaCom: null, alerta: null };
+    // R38 (2026-08-22): o fluxo da proposta ACABA no envio — o resto
+    // (o cliente aceita ou recusa) é combinado fora do app, e o app não
+    // finge mais que está acompanhando. Por isso "enviada" já vale
+    // "concluído": não existe mais um estado intermediário de "com o
+    // cliente, aguardando". A distinção aceita/recusada só sobrevive para
+    // visitas de ANTES desta mudança, que já tinham resultado gravado —
+    // apagar essa leitura apagaria história real sem motivo.
     if (v.proposta_resultado === "recusada")
       return { coluna: "cancelado", rotuloNativo: "Proposta recusada", bolaCom: null, alerta: null };
+    if (v.proposta_resultado === "aceita")
+      return { coluna: "concluido", rotuloNativo: "Proposta aceita", bolaCom: null, alerta: null };
     if (v.proposta_enviada_em)
-      return { coluna: "aguardando_aprovacao", rotuloNativo: "Proposta com o cliente", bolaCom: "cliente", alerta: null };
+      return { coluna: "concluido", rotuloNativo: "Proposta enviada", bolaCom: null, alerta: null };
     return { coluna: "aguardando_aprovacao", rotuloNativo: "Aprovada — falta enviar proposta", bolaCom: "comercial", alerta: null };
   }
 
@@ -432,8 +439,6 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
 export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Atividade {
   const t = colunaDaVisita(v);
   // a capa manda; a coluna da própria visita é o fallback de quem ainda não
-  // passou pelo trigger da U29
-  const priVisita = ((v.chamado?.prioridade ?? v.prioridade) || null) as ChamadoPrioridade | null;
   const info = getStatusInfo(v.status as any);
   const bucket = statusBucket(v.status as any);
 
@@ -454,21 +459,37 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     statusLabel: info.label,
     // colorLight existe desde a U10; sem ele o chip some no tema claro
     statusCor: { dark: info.color, light: info.colorLight, bg: info.bg, border: info.border },
-    titulo: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? "Visita técnica",
+    // Título FIXO — nunca o nome do prédio (2026-08-22, Davi). O card antigo
+    // repetia o condomínio no título E na etiqueta de local, uma redundância
+    // que também escondia o que a atividade realmente É: uma proposta.
+    titulo: "Proposta Comercial",
     // o número vem do chamado-capa (U29); null enquanto o join não trouxer
     numero: v.chamado?.numero ?? null,
-    cliente: v.clientes?.nome ?? v.nome_predio ?? null,
+    // LOCAL, não "cliente" (2026-08-22, Davi): o prédio da visita raramente é
+    // cliente de verdade — é o prospecto que estamos tentando fechar (R22), e
+    // rotular como "cliente" um prédio que ainda não fechou nada é a exata
+    // confusão que a R21/R22 existem para evitar. `nome_predio` vem primeiro
+    // SEMPRE, mesmo quando a visita já está vinculada a um cliente (R23,
+    // ampliação): o texto descreve O LOCAL, não a relação comercial — o
+    // vínculo com o cliente continua existindo em `cliente_id`, só não é o
+    // que aparece aqui. `clientes?.nome` só entra como ÚLTIMO recurso, se a
+    // visita não tiver nem prédio nem título próprio.
+    cliente: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? null,
     responsavelId: v.tecnico_id,
     participantes: v.tecnico_id ? [v.tecnico_id] : [],
     souResponsavel: !!ctx.userId && v.tecnico_id === ctx.userId,
     souApoio: false,
     souAutor: false,
-    // mesmo padrão do chamado (acima): a prioridade vem da capa, e o rank
-    // cai para 4 quando não há — a fila da proposta é pela data da visita
-    prioridade: priVisita,
-    prioridadeRank: PRI_RANK[priVisita ?? ""] ?? 4,
-    prioridadeLabel: priVisita ? PRIORIDADE_LABEL[priVisita] ?? null : null,
-    prioridadeCor: priVisita ? PRIORIDADE_CORES[priVisita] ?? null : null,
+    // SEM prioridade, de propósito (2026-08-22, Davi: "por enquanto não
+    // aplicamos ao sistema"). A capa (U29) grava 'normal' por padrão só para
+    // satisfazer a coluna NOT NULL do banco — nunca foi uma escolha real de
+    // ninguém, e mostrar "Normal" como se fosse dava a entender o contrário.
+    // O rank cai para 4 (o mais frio): a fila da proposta é pela data da
+    // visita, não por urgência.
+    prioridade: null,
+    prioridadeRank: 4,
+    prioridadeLabel: null,
+    prioridadeCor: null,
     equipe: null,
     sprint: null,
     prazoLimite: null,
@@ -493,11 +514,15 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     aConferir: false,   // visita não gera cobrança de chamado
     criadoEm: v.created_at,
     atualizadoEm: v.created_at,
-    // pela data do DESFECHO, não pela de criação: uma proposta aceita hoje
-    // numa visita de três meses atrás sairia contada no mês errado
+    // pela data do DESFECHO, não pela de criação: uma proposta enviada hoje
+    // numa visita de três meses atrás sairia contada no mês errado.
+    // `proposta_resultado_em` só existe em visitas antigas com aceite/recusa
+    // registrado (R38 tirou o botão que o gravava); `proposta_enviada_em` é o
+    // desfecho de VERDADE agora, já que o envio É o fim do fluxo — por isso
+    // vem antes do `created_at` de último recurso.
     encerradoEm: (t.coluna !== "concluido" && t.coluna !== "cancelado")
       ? null
-      : ((v as any).proposta_resultado_em ?? v.created_at),
+      : ((v as any).proposta_resultado_em ?? v.proposta_enviada_em ?? v.created_at),
     compra: null,
     alerta: t.alerta,
   };

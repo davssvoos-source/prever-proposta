@@ -641,3 +641,17 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 - **R44** — Os filtros do Calendário usam o **mesmo componente** de filtro do
   resto do app (`MenuFiltro`), não `<select>` nativo — um só vocabulário de
   filtro, não dois.
+
+- **R38** (retificação, 2026-08-22) — **O fluxo da proposta ACABA quando ela é
+  ENVIADA.** Não existe mais "aguardando a resposta do cliente" como estado do
+  app: enviar já fecha a atividade (**status concluído**, automaticamente). O
+  que o cliente decide depois é combinado **fora do app** — os dois botões
+  "O cliente aceitou/recusou" saíram da tela da visita. O histórico de
+  visitas que já tinham aceite/recusa registrado antes desta mudança continua
+  legível, só não existe mais o botão que grava um novo. Título do card:
+  sempre **"Proposta Comercial"**, nunca o nome do prédio. A etiqueta que
+  mostrava o cliente virou **Local** (o nome do condomínio) — o prospecto não
+  é nosso cliente, e um card não pode insinuar o contrário. A etiqueta
+  "Visita técnica" saiu (redundante com o chip de tipo). **Prioridade não
+  aparece no card da proposta** — "por enquanto não aplicamos, vamos discutir
+  mais pra frente". *(Davi, 2026-08-22.)*

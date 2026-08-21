@@ -194,15 +194,17 @@ eq('aprovada sem proposta enviada → Aguardando aprovação (o funil parou)',
    A.colunaDaVisita(visita('aprovada')).coluna, 'aguardando_aprovacao');
 eq('e a bola é do comercial, que precisa mandar a proposta',
    A.colunaDaVisita(visita('aprovada')).bolaCom, 'comercial');
-eq('proposta com o cliente → Aguardando aprovação',
+// R38 (2026-08-22): o fluxo acaba no ENVIO — não existe mais um estado
+// "com o cliente, aguardando" entre enviar e concluir.
+eq('proposta enviada, sem resultado ainda → Concluído (o fluxo já acabou)',
    A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' })).coluna,
-   'aguardando_aprovacao');
-eq('e a bola é do cliente, não nossa',
+   'concluido');
+eq('e sem bola nenhuma — não há mais nada para o app acompanhar',
    A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' })).bolaCom,
-   'cliente');
-eq('enviada com resultado nulo não fica sem destino',
+   null);
+eq('enviada com resultado nulo (não só "aguardando") também vira concluído',
    A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z' })).coluna,
-   'aguardando_aprovacao');
+   'concluido');
 eq('proposta aceita → Concluído',
    A.colunaDaVisita(visita('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aceita' })).coluna, 'concluido');
 eq('proposta recusada → Cancelado',
@@ -243,8 +245,8 @@ const vAtiv = (status, extra = {}) =>
   A.atividadeDaVisita(visita(status, extra), { userId: null, apoios: new Set(), fichas: new Map() });
 eq('visita aprovada sem proposta continua em aberto', vAtiv('aprovada').emAberto, true);
 eq('e tem coluna no quadro', A.colunaVisivel(vAtiv('aprovada').coluna) !== null, true);
-eq('proposta com o cliente continua em aberto',
-   vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' }).emAberto, true);
+eq('R38: proposta enviada encerra na hora — não fica "em aberto" esperando resposta',
+   vAtiv('aprovada', { proposta_enviada_em: '2026-02-01T00:00:00Z', proposta_resultado: 'aguardando' }).emAberto, false);
 eq('visita reprovada continua em aberto (tem que ser reagendada)',
    vAtiv('reprovada').emAberto, true);
 eq('proposta aceita encerra',
@@ -1953,6 +1955,103 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // string crua em vez de rótulo nenhum
   eq('tipo sem rótulo central ganha um fallback legível, não a string crua sem tratamento',
      /TIPO_LABEL\[t as keyof typeof TIPO_LABEL\] \?\?/.test(cal2), true);
+}
+
+// ── R38: o fluxo da proposta acaba no envio (2026-08-22) ────────────────────
+{
+  const fs21 = require('fs');
+  const M3 = carregar('src/features/atividades/modelo.ts');
+
+  const visita = (extra) => ({
+    id: 'v1', status: 'aprovada', titulo: null, nome_predio: 'Condomínio Merit',
+    tecnico_id: 't1', data_hora_agendada: null, created_at: '2026-06-01T10:00:00',
+    proposta_enviada_em: null, proposta_resultado: null,
+    clientes: null, chamado: null, prioridade: null,
+    ...extra,
+  });
+  const ctxV = { userId: 't1', apoios: new Set(), fichas: new Map(), apoiosDoChamado: undefined };
+
+  // ── colunaDaVisita: enviada JÁ é concluído — não existe mais "com o cliente" ─
+  eq('aprovada + enviada, sem resultado: concluído (era o defeito do print)',
+     M3.colunaDaVisita(visita({ proposta_enviada_em: '2026-08-20T10:00:00' })).coluna, 'concluido');
+  eq('e sem bola de "com o cliente" (essa ideia não existe mais)',
+     M3.colunaDaVisita(visita({ proposta_enviada_em: '2026-08-20T10:00:00' })).bolaCom, null);
+  eq('aprovada, ainda não enviada: continua "falta enviar"',
+     M3.colunaDaVisita(visita({})).rotuloNativo, 'Aprovada — falta enviar proposta');
+  eq('histórico: recusada registrada ANTES da mudança ainda vira cancelado',
+     M3.colunaDaVisita(visita({ proposta_enviada_em: '2026-08-01T10:00:00', proposta_resultado: 'recusada' })).coluna,
+     'cancelado');
+  eq('histórico: aceita registrada antes também é concluído (mesmo destino)',
+     M3.colunaDaVisita(visita({ proposta_enviada_em: '2026-08-01T10:00:00', proposta_resultado: 'aceita' })).coluna,
+     'concluido');
+
+  // ── atividadeDaVisita: título fixo, local no lugar de cliente, sem prioridade ─
+  const a1 = M3.atividadeDaVisita(visita({
+    proposta_enviada_em: '2026-08-20T10:00:00',
+    clientes: { nome: 'Um Cliente Real Ltda' },
+  }), ctxV);
+  eq('título é SEMPRE "Proposta Comercial", nunca o nome do prédio', a1.titulo, 'Proposta Comercial');
+  eq('a etiqueta de local usa nome_predio MESMO quando há cliente vinculado (R23)',
+     a1.cliente, 'Condomínio Merit');
+  eq('sem prédio nem título, cai no cliente como último recurso',
+     M3.atividadeDaVisita(visita({ nome_predio: null, titulo: null, clientes: { nome: 'X' } }), ctxV).cliente,
+     'X');
+  eq('prioridade não aparece mais no card da proposta (Davi: "por enquanto não aplicamos")',
+     [a1.prioridade, a1.prioridadeLabel, a1.prioridadeCor], [null, null, null]);
+  eq('mas o rank cai pro mais frio, não pro mais quente (a fila é por data, não por urgência)',
+     a1.prioridadeRank, 4);
+  eq('emAberto vira false assim que enviada (some da tela "abertos" na hora)',
+     a1.emAberto, false);
+
+  // encerradoEm: o desfecho de verdade agora é o ENVIO, não a criação da visita
+  eq('encerradoEm usa a data do ENVIO (não a de criação, que pode ser de meses atrás)',
+     a1.encerradoEm, '2026-08-20T10:00:00');
+  const aHistorica = M3.atividadeDaVisita(visita({
+    proposta_enviada_em: '2026-08-01T10:00:00', proposta_resultado: 'aceita',
+  }), ctxV);
+  eq('sem data própria de resultado, cai para a data do envio',
+     aHistorica.encerradoEm, '2026-08-01T10:00:00');
+  const aHistoricaComData = M3.atividadeDaVisita({
+    ...visita({ proposta_enviada_em: '2026-08-01T10:00:00', proposta_resultado: 'aceita' }),
+    proposta_resultado_em: '2026-08-05T10:00:00',
+  }, ctxV);
+  eq('mas quando proposta_resultado_em EXISTE (histórico), ela vence — é a data mais precisa',
+     aHistoricaComData.encerradoEm, '2026-08-05T10:00:00');
+
+  // ── a tela da visita: sem os dois botões, sem o formulário de recusa ────
+  const vt = fs21.readFileSync('src/routes/_authenticated/visita.$id.tsx', 'utf8');
+  eq('sem o botão "O cliente ACEITOU"', /O cliente ACEITOU/.test(vt), false);
+  eq('sem o botão "O cliente RECUSOU"', /O cliente RECUSOU/.test(vt), false);
+  eq('sem o formulário de motivo de recusa', /showRecusaForm|motivoRecusa/.test(vt), false);
+  // só linhas de código: o comentário que expliquei acima MENCIONA a RPC de
+  // propósito (para dizer por que ela continua no banco) — filtrar por isso,
+  // senão o próprio comentário derruba a asserção
+  const vtCodigo = vt.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  eq('a RPC de resultado não é mais CHAMADA por nenhum botão (só citada em comentário)',
+     /responderCliente\.mutate|\.rpc\("registrar_resultado_proposta"/.test(vtCodigo), false);
+  eq('CheckCircle2 saiu dos imports (só era usado no botão removido)',
+     /CheckCircle2/.test(vt), false);
+  eq('gerar implantação fica disponível ao ENVIAR, não mais preso ao aceite',
+     /\{propostaEnviada && \(\s*<button\s*\n\s*onClick=\{\(\) => gerarImplantacao\.mutate\(\)\}/.test(vt), true);
+  eq('o histórico de aceita/recusada de visitas antigas continua exibido (não apagamos leitura)',
+     /resultadoProposta === "recusada"/.test(vt) && /resultadoProposta === "aceita"/.test(vt), true);
+
+  // ── o card: sem a etiqueta "Visita técnica" ──────────────────────────────
+  const ca = fs21.readFileSync('src/features/home/CardAtividade.tsx', 'utf8');
+  eq('a etiqueta "Visita técnica" saiu do card (redundante com o chip de tipo)',
+     /a\.fonte === "visita" &&[\s\S]{0,80}Visita técnica/.test(ca), false);
+
+  // ── a migration U38 ──────────────────────────────────────────────────────
+  const u38 = fs21.readFileSync('supabase/migrations/20260822010000_u38_fim_do_fluxo_pos_envio.sql', 'utf8');
+  eq('U38 não tem o typo que eu quase deixei passar (EEXCLUDED)',
+     /EEXCLUDED/.test(u38), false);
+  eq('U38: o título da capa é constante, não COALESCE com nome_predio',
+     /'Proposta Comercial',\s*\n\s*NEW\.descricao_pedido/.test(u38), true);
+  eq('U38: o trigger passa a escutar proposta_enviada_em (não só proposta_resultado)',
+     /UPDATE OF status, proposta_resultado, proposta_enviada_em/.test(u38), true);
+  eq('U38 faz o backfill de quem já estava preso no estado antigo',
+     /UPDATE public\.chamados c\s*\n\s*SET status = 'concluido'/.test(u38), true);
+  eq('U38 termina com SELECT de verificação', /SELECT '.*esperado 0/.test(u38), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
