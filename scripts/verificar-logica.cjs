@@ -505,12 +505,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // 94 distritos: os 96 da cidade MENOS Marsilac e Parelheiros, que são a área
   // rural do extremo sul. Cortá-los foi decisão do Davi e muda o desenho E a
   // contagem do rodapé — se voltarem sem querer, o mapa se deforma de novo.
-  eq('o mapa tem 94 distritos (96 menos a área rural do sul)', M.DISTRITOS.length, 94);
+  // 67 distritos: a área que o Davi contornou. O recorte muda o desenho E a
+  // contagem do rodapé — e foi validado com o dado que importa: nenhum dos
+  // removidos tem cliente.
+  eq('o mapa tem 67 distritos (a área atendida)', M.DISTRITOS.length, 67);
   const nomes = M.DISTRITOS.map(([n]) => n);
-  eq('Marsilac está fora', nomes.includes('Marsilac'), false);
-  eq('Parelheiros está fora', nomes.includes('Parelheiros'), false);
-  for (const b of ['Moema', 'Itaim Bibi', 'Santana', 'Morumbi', 'Mooca', 'Grajaú']) {
-    eq(`${b} está no mapa (o Davi citou como referência)`, nomes.includes(b), true);
+  for (const b of ['Marsilac', 'Parelheiros', 'Grajaú',
+                   'Perus', 'Anhanguera', 'Tremembé', 'Jaçanã',
+                   'Itaquera', 'Cidade Tiradentes', 'São Miguel Paulista']) {
+    eq(`${b} está FORA do recorte`, nomes.includes(b), false);
+  }
+  for (const b of ['Moema', 'Itaim Bibi', 'Santana', 'Morumbi', 'Mooca',
+                   'Cidade Dutra', 'Pinheiros', 'Vila Mariana']) {
+    eq(`${b} está no mapa`, nomes.includes(b), true);
   }
   eq('todo distrito tem path fechado',
      M.DISTRITOS.every(([, d]) => d.startsWith('M') && d.endsWith('Z')), true);
@@ -520,11 +527,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a Sé está na cidade', M.dentroDaCidade(-23.5505, -46.6333), true);
   eq('Moema está na cidade', M.dentroDaCidade(-23.6017, -46.6653), true);
   eq('Santana está na cidade', M.dentroDaCidade(-23.5010, -46.6250), true);
-  eq('Itaquera está na cidade', M.dentroDaCidade(-23.5405, -46.4568), true);
+  eq('Itaquera ficou fora do recorte', M.dentroDaCidade(-23.5405, -46.4568), false);
+  eq('Cidade Dutra (cliente mais ao sul) está na área', M.dentroDaCidade(-23.7333, -46.7021), true);
   eq('Osasco NÃO está na cidade', M.dentroDaCidade(-23.5325, -46.7917), false);
   eq('Guarulhos NÃO está na cidade', M.dentroDaCidade(-23.4538, -46.5333), false);
   eq('Campinas NÃO está na cidade', M.dentroDaCidade(-22.9099, -47.0626), false);
   eq('Marsilac (área cortada) conta como fora', M.dentroDaCidade(-23.9200, -46.7100), false);
+  eq('Grajaú (cortado) conta como fora', M.dentroDaCidade(-23.7885, -46.6900), false);
+  eq('Perus (cortado) conta como fora', M.dentroDaCidade(-23.4103, -46.7500), false);
 
   // a projeção precisa pôr o norte em cima
   const se = M.projetar(-23.5505, -46.6333);
@@ -532,6 +542,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('Santana projeta ACIMA da Sé (norte é para cima)', santana.y < se.y, true);
   eq('a Sé cai dentro do quadro',
      se.x > 0 && se.x < M.MAPA_SP.largura && se.y > 0 && se.y < M.MAPA_SP.altura, true);
+
+  // O TESTE QUE MAIS IMPORTA no recorte do mapa: nenhum cliente da capital
+  // pode ter ficado de fora. O recorte foi validado assim antes de aplicar, e
+  // fica travado aqui — mexer nos distritos sem refazer esta conta é o jeito
+  // de sumir com cliente do mapa sem ninguém perceber.
+  {
+    const sqlU24 = fs3.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
+    const re = /\('([^']+)', '[^']+', '[^']*', '([^']+)', '[A-Z]{2}', '[\d-]+', '[^']*', (-?[\d.]+), (-?[\d.]+)\)/g;
+    const capital = [...sqlU24.matchAll(re)]
+      .filter((m) => m[2] === 'São Paulo')
+      .map((m) => ({ nome: m[1], lat: +m[3], lng: +m[4] }));
+    eq('a planilha tem clientes na capital para conferir', capital.length > 100, true);
+    const perdidos = capital.filter((c) => !M.dentroDaCidade(c.lat, c.lng)).map((c) => c.nome);
+    eq('NENHUM cliente da capital ficou fora do recorte do mapa', perdidos, []);
+  }
 
   // a migration U24: 192 clientes, todos com coordenada, verificação no fim
   const sql = fs3.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');

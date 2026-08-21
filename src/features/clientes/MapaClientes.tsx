@@ -1,19 +1,22 @@
-// O mapa da CIDADE de São Paulo, por DISTRITOS — U24.
+// O mapa da ÁREA ATENDIDA em São Paulo, por distritos — U24.
 //
-// COMO CHEGOU AQUI (2026-08-20). Três versões:
+// COMO CHEGOU AQUI (2026-08-20). Quatro versões:
 //   1. silhueta vazia do município — não era um mapa: sem nada dentro, os
 //      pontos flutuavam sem referência e ninguém reconhecia onde era o quê;
 //   2. Leaflet com tiles — virava mapa de verdade, mas trazia o desenho de
 //      outra casa para dentro do painel;
-//   3. esta: os 94 distritos desenhados com o traço do sistema. O Davi mandou
-//      o exemplo (mapa eleitoral por distrito) dizendo "os bairros de São
-//      Paulo" — é o que dá referência SEM importar design de fora.
+//   3. os 94 distritos com o traço do sistema — deu a referência que faltava;
+//   4. esta: 67 distritos, a área que o Davi contornou na tela.
 //
-// PARELHEIROS E MARSILAC FICARAM DE FORA. São a área rural do extremo sul:
-// quase metade do território do município, nenhum cliente, e tão altos que
-// espremiam a cidade real num terço do quadro. Sem eles o mapa tem a forma que
-// as pessoas reconhecem — do Grajaú a Santana, de Perus a Itaquera. Quem
-// estiver lá conta como "fora de São Paulo" no rodapé; é consequência aceita.
+// O RECORTE saiu de um contorno que ele desenhou por cima do print, e foi
+// conferido contra os dados antes de aplicar: nenhum dos 29 distritos
+// removidos tem um único cliente — os 151 da capital continuam todos no mapa.
+// Saíram a ponta norte, a "asa" leste (um terço da largura, vazia) e o extremo
+// sul rural. O quadro foi reenquadrado nos distritos que ficaram, senão o
+// vazio deles continuaria ocupando espaço e o recorte não teria adiantado.
+//
+// Consequência aceita: cliente que venha a existir numa área removida conta
+// como "fora de São Paulo" no rodapé.
 //
 // Cada cliente é um ponto na cor que o degradê dá a ele (corDoCliente) — a
 // MESMA cor do ponto dele no card da lista ao lado, que é como o olho liga as
@@ -91,7 +94,7 @@ export function MapaClientes({ clientes }: Props) {
           `align-items: start`), então pedir altura por `flex: 1` colapsa para
           zero. Foi o que deixou o mapa invisível numa versão anterior. */}
       <div style={{
-        height: "min(58vh, 560px)",
+        height: "min(78vh, 900px)",
         marginTop: 10,
         display: "flex", justifyContent: "center",
         position: "relative",
