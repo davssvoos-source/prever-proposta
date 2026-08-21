@@ -2407,3 +2407,31 @@ contêiner de rolagem que nunca rola); a linha não era operável por teclado
 traço nas visitas, que não têm `prazoLimite` mas têm `prazoEstourado`.
 
 624 asserções, build ok.
+
+### U37 — Ordenar, tabela mais legível, calendário no design system (2026-08-22)
+
+**R42.** Botão "Ordenar" na Início: Prazo, Cliente (novo) e Prioridade (a
+sugestão — já existia pronta dentro de `ordenar()`, só faltava expor). A
+escolha mora em `Filtros.ordenacao` (`null` = segue a ordem do padrão) e
+**vence** `ordemDoPreset()`, mas se apaga ao trocar de padrão — cada padrão
+já embute a ordem que faz sentido para ele, e deixar a escolha antiga vazar
+faria a troca parecer quebrada (o padrão muda, a lista continua na ordem de
+antes, sem motivo aparente).
+
+**R43.** Três ajustes na tabela, pedidos depois de ver a tela no ar:
+margens iguais às do quadro (`sangra-x`, a mesma classe que o Kanban já
+usava — a tabela vivia presa na largura de leitura do `<main>`); a sigla
+CH- saiu da vista do título mas não do tooltip; Responsável e Apoio ganharam
+foto ao lado do nome. A foto usa `degradeAvatar(id)`, não `(nome)` — é o que
+`AvatarPilha` já usa no resto do app, e hashear por nome faria a MESMA
+pessoa ter cor diferente em cada tela.
+
+**R44.** Os dois filtros do Calendário (Pessoa, Tipo) eram `<select>`
+nativos — a caixa cinza padrão do navegador, que muda de aparência conforme
+o sistema operacional e não segue o tema do app. Viraram `MenuFiltro`, o
+mesmo componente que a Início usa em cinco filtros e agora em seis. De
+brinde, o filtro de Tipo ganhou rótulo central (`TIPO_LABEL`) em vez de
+mostrar `"corretiva"` cru — com fallback capitalizado para `"visita"`, que
+não é um `ChamadoTipo` e não tem entrada no vocabulário central.
+
+643 asserções (19 novas), build ok.

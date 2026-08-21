@@ -24,11 +24,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
-import { chamadoStatusInfo } from "@/lib/chamado-status";
+import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
 import { usePessoas } from "@/features/chamados/data";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { visitaRouteFor } from "@/lib/visita-route";
+import { MenuFiltro } from "@/features/home/MenuFiltro";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
@@ -282,17 +283,34 @@ function CalendarioPage() {
 
           <div style={{ flex: 1 }} />
 
+          {/* Design system: o mesmo MenuFiltro da Início, não um <select>
+              nativo à parte. Eram dois vocabulários de filtro no mesmo app —
+              um com botão-que-mostra-a-escolha e popover em portal, outro
+              com a caixa cinza padrão do navegador, que muda de aparência
+              conforme o sistema operacional e não segue tema nenhum. */}
           {isGestor && (
-            <select style={seletor} value={pessoaFiltro} onChange={(e) => setPessoaFiltro(e.target.value)}>
-              <option value="todos">Todas as pessoas</option>
-              {(pessoas as any[]).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            <MenuFiltro
+              rotulo="Pessoa"
+              vazio="Todas as pessoas"
+              opcoes={(pessoas as any[]).map((p) => ({ valor: p.id, label: p.nome }))}
+              selecionados={pessoaFiltro === "todos" ? [] : [pessoaFiltro]}
+              onMudar={(v) => setPessoaFiltro(v[0] ?? "todos")}
+            />
           )}
           {tiposPresentes.length > 1 && (
-            <select style={seletor} value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}>
-              <option value="todos">Todos os tipos</option>
-              {tiposPresentes.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <MenuFiltro
+              rotulo="Tipo"
+              vazio="Todos os tipos"
+              opcoes={tiposPresentes.map((t) => ({
+                valor: t,
+                // "visita" não é um ChamadoTipo — só os de chamado têm rótulo
+                // no vocabulário central; o próprio valor, com a primeira
+                // maiúscula, é o fallback mais honesto que inventar um label
+                label: TIPO_LABEL[t as keyof typeof TIPO_LABEL] ?? (t.charAt(0).toUpperCase() + t.slice(1)),
+              }))}
+              selecionados={tipoFiltro === "todos" ? [] : [tipoFiltro]}
+              onMudar={(v) => setTipoFiltro(v[0] ?? "todos")}
+            />
           )}
           <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
             {eventos.length} no mês

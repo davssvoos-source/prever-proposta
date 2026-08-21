@@ -40,7 +40,7 @@ import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
-  semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
+  semData, FILTROS_INICIAIS, ORDENACOES, type Filtros, type Vinculo, type Periodo, type Ordenacao,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
@@ -151,7 +151,12 @@ function Home() {
   const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
 
   const filtradas = useMemo(
-    () => ordenar(aplicarLentes(atividades, filtros, ctx, normalizarTexto), ordemDoPreset(filtros.preset)),
+    () => ordenar(
+      aplicarLentes(atividades, filtros, ctx, normalizarTexto),
+      // a ordenação escolhida à mão vence a do padrão; sem escolha, cada
+      // padrão continua trazendo a ordem que já fazia sentido para ele
+      filtros.ordenacao ?? ordemDoPreset(filtros.preset),
+    ),
     [atividades, filtros, ctx],
   );
 
@@ -433,6 +438,12 @@ function Home() {
                 // trocar de padrão zera o período: a interseção vazia entre
                 // preset e período custa três toques cegos para descobrir
                 periodo: null,
+                // e zera a ordenação escolhida à mão: cada padrão já embute a
+                // ordem que faz sentido para ele ("Sem dono" quer prioridade,
+                // "Atrasados" quer prazo). Sem isto, escolher "Cliente" uma
+                // vez e depois trocar de padrão faria a nova ordem parecer
+                // quebrada — o padrão mudou mas a lista continuaria por nome.
+                ordenacao: null,
               }))}
             />
             <MenuFiltro
@@ -481,6 +492,13 @@ function Home() {
                 onMudar={(v) => setFiltros((f) => ({ ...f, pessoa: v[0] ?? "todos" }))}
               />
             )}
+            <MenuFiltro
+              rotulo="Ordenar"
+              vazio="Padrão"
+              opcoes={ORDENACOES.map((o) => ({ valor: o.chave, label: o.label }))}
+              selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
+              onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: (v[0] ?? null) as Ordenacao | null }))}
+            />
 
             <div style={{ flex: 1, minWidth: 8 }} />
 
@@ -588,7 +606,13 @@ function Home() {
             onMover={moverAtividade}
           />
         ) : (
-          <>
+          // A MESMA sangria do quadro (Quadro.tsx usa "trilho-x sangra-x"):
+          // sem ela a tabela ficava presa na largura de leitura do <main>
+          // (max-w-7xl centrado), com uma faixa vazia dos dois lados no
+          // monitor — nove colunas TÊM espaço de sobra para respirar, e
+          // deixá-lo era desperdiçar a única vantagem de uma tabela sobre
+          // cards: comparar muita coisa lado a lado.
+          <div className="sangra-x">
             {/* U33: a lista virou TABELA. Cards empilhados serviam para ler um
                 item; comparar vinte pede colunas alinhadas. */}
             <TabelaAtividades
@@ -604,7 +628,7 @@ function Home() {
                 Mostrando {TETO_TABELA} de {filtradas.length} — use a busca ou os filtros.
               </span>
             )}
-          </>
+          </div>
             )}
           </>
         )}

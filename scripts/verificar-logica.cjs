@@ -1879,5 +1879,81 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /dataCurta\(a\.prazoLimite \?\? a\.agendadaEm\)/.test(tab2), true);
 }
 
+// ── R42: ordenar as atividades na Início (2026-08-22) ──────────────────────
+{
+  const fs18 = require('fs');
+  const LN2 = carregar('src/features/home/lentes.ts');
+  const dash2 = fs18.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+
+  eq('as 3 ordenações que o Davi pode escolher, nesta ordem',
+     LN2.ORDENACOES.map((o) => o.chave), ['prazo', 'cliente', 'prioridade']);
+  eq('"recentes" e "atualização" ficam de fora do seletor (são só dos presets)',
+     LN2.ORDENACOES.some((o) => o.chave === 'recentes' || o.chave === 'atualizacao'), false);
+
+  const at2 = (extra) => ({
+    id: 'x' + Math.random(), titulo: 'a', numero: null, cliente: null,
+    criadoEm: '2026-08-01T10:00:00', ...extra,
+  });
+  eq('cliente ordena por nome, alfabético',
+     LN2.ordenar([at2({ cliente: 'Zebra' }), at2({ cliente: 'Amarilis' })], 'cliente')
+       .map((a) => a.cliente), ['Amarilis', 'Zebra']);
+  eq('sem cliente vai para o fim (não para o topo do alfabeto)',
+     LN2.ordenar([at2({ cliente: null }), at2({ cliente: 'Amarilis' })], 'cliente')
+       .map((a) => a.cliente), ['Amarilis', null]);
+  eq('"recentes" continua funcionando (era o comportamento implícito de sempre)',
+     LN2.ordenar([at2({ criadoEm: '2026-08-01T10:00:00' }), at2({ criadoEm: '2026-08-10T10:00:00' })], 'recentes')
+       .map((a) => a.criadoEm), ['2026-08-10T10:00:00', '2026-08-01T10:00:00']);
+
+  eq('Filtros tem o campo ordenacao, começando null (segue o padrão)',
+     LN2.FILTROS_INICIAIS.ordenacao, null);
+  eq('a escolha manual VENCE a ordem do preset',
+     /filtros\.ordenacao \?\? ordemDoPreset\(filtros\.preset\)/.test(dash2), true);
+  eq('trocar de padrão zera a ordenação escolhida (senão ela vazaria para o próximo)',
+     /preset: v\[0\] \?\? null,[\s\S]{0,600}ordenacao: null,/.test(dash2), true);
+  eq('o seletor de ordenação está na barra de filtros', /rotulo="Ordenar"/.test(dash2), true);
+}
+
+// ── R43: tabela — margens, sem sigla no título, foto+nome (2026-08-22) ─────
+{
+  const fs19 = require('fs');
+  const tab3 = fs19.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
+  const dash3 = fs19.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+
+  // a tabela ocupa a tela inteira, como o quadro já ocupava
+  eq('a visão de tabela usa a MESMA sangria do quadro (sangra-x)',
+     /<div className="sangra-x">[\s\S]{0,300}<TabelaAtividades/.test(dash3), true);
+
+  // sigla fora da vista, mas não perdida
+  eq('o número CH- não aparece mais como texto visível na célula',
+     /\{a\.numero &&/.test(tab3), false);
+  eq('mas continua acessível pelo tooltip (hover)',
+     /title=\{a\.numero \? `\$\{a\.numero\} — \$\{a\.titulo\}` : a\.titulo\}/.test(tab3), true);
+
+  // foto ao lado do nome, nas duas colunas — e pela mesma cor de sempre
+  eq('existe um componente de módulo para foto+nome (não função interna)',
+     /^function PessoaComFoto\(/m.test(tab3), true);
+  eq('Responsável usa foto+nome', /<PessoaComFoto id=\{a\.responsavelId\}/.test(tab3), true);
+  eq('Apoio usa foto+nome para cada pessoa (não só a pilha de círculos)',
+     /apoios\.map\(\(id\) => \(\s*<PessoaComFoto key=\{id\}/.test(tab3), true);
+  eq('a cor do avatar usa o ID (hash estável), não o nome',
+     /degradeAvatar\(id\)/.test(tab3) && !/degradeAvatar\(nome\)/.test(tab3), true);
+}
+
+// ── R44: calendário — filtros no design system (2026-08-22) ────────────────
+{
+  const fs20 = require('fs');
+  const cal2 = fs20.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+
+  eq('o calendário usa o MenuFiltro do resto do app, não <select> nativo',
+     /<MenuFiltro[\s\S]{0,120}rotulo="Pessoa"/.test(cal2)
+     && /<MenuFiltro[\s\S]{0,200}rotulo="Tipo"/.test(cal2), true);
+  eq('nenhum <select> sobrou nos filtros de pessoa/tipo',
+     /<select style=\{seletor\}/.test(cal2), false);
+  // "visita" não é um ChamadoTipo — sem o fallback, o filtro mostraria a
+  // string crua em vez de rótulo nenhum
+  eq('tipo sem rótulo central ganha um fallback legível, não a string crua sem tratamento',
+     /TIPO_LABEL\[t as keyof typeof TIPO_LABEL\] \?\?/.test(cal2), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

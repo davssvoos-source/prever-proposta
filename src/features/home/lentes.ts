@@ -16,7 +16,23 @@ import { SPRINTS_DO_MES } from "@/lib/chamado-status";
 export type Cargo = "tecnico" | "sac" | "comercial" | "admin";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
 export type Periodo = "hoje" | "semana" | "mes" | null;
-export type Ordenacao = "prazo" | "recentes" | "prioridade" | "atualizacao";
+export type Ordenacao = "prazo" | "recentes" | "prioridade" | "atualizacao" | "cliente";
+
+/**
+ * As ordenações que a pessoa pode escolher À MÃO, na Início.
+ *
+ * O Davi pediu prazo e cliente; prioridade entra como a sugestão — é a mais
+ * natural para quem está triando o que atacar primeiro, e já existia pronta
+ * dentro de `ordenar()` (os presets a usavam, só faltava expor). "Recentes" e
+ * "atualização" continuam existindo só para os presets: são ordens de
+ * propósito estreito ("Sem dono" quer o mais antigo primeiro na fila), não o
+ * tipo de coisa que se escolhe olhando o quadro inteiro.
+ */
+export const ORDENACOES: { chave: Ordenacao; label: string }[] = [
+  { chave: "prazo", label: "Prazo" },
+  { chave: "cliente", label: "Cliente" },
+  { chave: "prioridade", label: "Prioridade" },
+];
 
 export interface ContextoLente {
   agora: Date;
@@ -166,6 +182,15 @@ export interface Filtros {
   pessoa: string;           // "todos" | uid
   situacao: "abertos" | "encerrados" | "todos";
   busca: string;
+  /**
+   * A ordenação escolhida À MÃO — `null` significa "segue a do padrão
+   * selecionado" (o comportamento de sempre: cada preset já embute uma ordem
+   * que faz sentido para ele, "Atrasados" já vem por prazo, "Sem dono" já vem
+   * por prioridade). Escolher aqui é o usuário sobrepondo essa escolha, e por
+   * isso troca de PRESET some com a marca (ver dashboard.tsx) — senão a
+   * ordenação de um padrão vazaria, sem querer, para o próximo escolhido.
+   */
+  ordenacao: Ordenacao | null;
 }
 
 export const FILTROS_INICIAIS: Filtros = {
@@ -175,6 +200,7 @@ export const FILTROS_INICIAIS: Filtros = {
   pessoa: "todos",
   situacao: "abertos",
   busca: "",
+  ordenacao: null,
 };
 
 export function semData(a: Atividade): boolean {
@@ -294,6 +320,16 @@ export function ordenar(lista: Atividade[], modo: Ordenacao): Atividade[] {
       return l.sort((a, b) => a.prioridadeRank - b.prioridadeRank || (a.criadoEm < b.criadoEm ? 1 : -1));
     case "atualizacao":
       return l.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? -1 : 1)); // mais parado primeiro
+    case "cliente":
+      return l.sort((a, b) => {
+        // sem cliente vai para o fim, nos dois sentidos: alfabético que
+        // começa com dez traços não ajuda a achar "quem é do Pateo Klabin"
+        if (!a.cliente && !b.cliente) return a.criadoEm < b.criadoEm ? 1 : -1;
+        if (!a.cliente) return 1;
+        if (!b.cliente) return -1;
+        return a.cliente.localeCompare(b.cliente, "pt-BR", { numeric: true });
+      });
+    case "recentes":
     default:
       return l.sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1));
   }

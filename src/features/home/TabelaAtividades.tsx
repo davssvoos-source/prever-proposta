@@ -25,9 +25,57 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, Building2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
-import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
+import { type PessoaAvatar } from "@/components/AvatarPilha";
+import { degradeAvatar } from "@/lib/paleta";
 import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import type { Atividade } from "@/features/atividades/modelo";
+
+/**
+ * Foto + nome, o par que o Davi pediu para Responsável e Apoio.
+ *
+ * De MÓDULO, não função interna a `TabelaAtividades` — declarada dentro do
+ * pai, ganharia identidade nova a cada render e o React remontaria a cada
+ * tecla de busca (o mesmo defeito que o painel de propriedades teve e
+ * corrigiu). Aqui não guarda estado, então o efeito seria só performance, mas
+ * a convenção do arquivo é uma só.
+ */
+function PessoaComFoto({ id, nome, pessoa, tamanho = 20 }: {
+  id: string; nome: string; pessoa: PessoaAvatar | undefined; tamanho?: number;
+}) {
+  const { isLight } = useTheme();
+  const iniciais = nome.split(" ").map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+  // hash pelo ID, não pelo nome: é o que AvatarPilha usa no resto do app
+  // (kanban, pilha de participantes). Hashear por nome faria a MESMA pessoa
+  // ter cor diferente em cada tela — e a cor é justamente como se reconhece
+  // alguém de relance.
+  const d = degradeAvatar(id);
+  const circulo: CSSProperties = {
+    width: tamanho, height: tamanho, borderRadius: "50%", flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    objectFit: "cover",
+  };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+      {pessoa?.avatar_url ? (
+        <img src={pessoa.avatar_url} alt="" style={circulo} />
+      ) : (
+        <span style={{
+          ...circulo, background: d.grad, color: d.sobre,
+          boxShadow: `0 0 8px ${d.glow}`,
+          fontFamily: FONT, fontWeight: 700, fontSize: Math.round(tamanho * 0.4),
+        }}>
+          {iniciais}
+        </span>
+      )}
+      <span style={{
+        minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        color: isLight ? "#0a0b0e" : "#ffffff",
+      }}>
+        {nome}
+      </span>
+    </span>
+  );
+}
 
 export type ColunaTabela =
   | "cliente" | "titulo" | "responsavel" | "apoio" | "equipe"
@@ -42,8 +90,10 @@ interface Props {
 const COLUNAS: { chave: ColunaTabela; titulo: string; largura: number; ordenavel: boolean }[] = [
   { chave: "cliente",     titulo: "Cliente",     largura: 150, ordenavel: true },
   { chave: "titulo",      titulo: "Título",      largura: 300, ordenavel: true },
-  { chave: "responsavel", titulo: "Responsável", largura: 130, ordenavel: true },
-  { chave: "apoio",       titulo: "Apoio",       largura: 90,  ordenavel: false },
+  // 170/210: foto + nome precisa de mais espaço que só o texto ou só a pilha
+  // de círculos que havia antes
+  { chave: "responsavel", titulo: "Responsável", largura: 170, ordenavel: true },
+  { chave: "apoio",       titulo: "Apoio",       largura: 210, ordenavel: false },
   { chave: "equipe",      titulo: "Equipe",      largura: 130, ordenavel: true },
   { chave: "tipo",        titulo: "Tipo",        largura: 120, ordenavel: true },
   { chave: "status",      titulo: "Status",      largura: 130, ordenavel: true },
@@ -195,30 +245,31 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                   ) : <span style={{ color: textSecondary }}>—</span>}
                 </td>
 
-                <td style={{ ...td, ...corte, maxWidth: 300, fontWeight: 600 }} title={a.titulo}>
-                  {/* o número CH- antes do título: é como as pessoas se
-                      referem ao chamado por telefone */}
-                  {a.numero && (
-                    <span style={{
-                      fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10,
-                      color: gold, marginRight: 6,
-                    }}>
-                      {a.numero}
-                    </span>
-                  )}
+                {/* Sem a sigla CH- à mostra (pedido do Davi) — mas ela não
+                    desaparece: continua no tooltip do hover, porque é assim
+                    que o telefone pede o chamado, e perder isso de vez
+                    obrigaria abrir o card só para descobrir o número. */}
+                <td
+                  style={{ ...td, ...corte, maxWidth: 300, fontWeight: 600 }}
+                  title={a.numero ? `${a.numero} — ${a.titulo}` : a.titulo}
+                >
                   {a.titulo}
                 </td>
 
-                <td style={{ ...td, ...corte, maxWidth: 130 }} title={nomeDe(a.responsavelId)}>
+                <td style={{ ...td, maxWidth: 170 }}>
                   {a.responsavelId
-                    ? nomeDe(a.responsavelId)
+                    ? <PessoaComFoto id={a.responsavelId} nome={nomeDe(a.responsavelId)} pessoa={pessoas[a.responsavelId]} />
                     : <span style={{ color: gold }}>sem responsável</span>}
                 </td>
 
-                <td style={td}>
-                  {apoios.length > 0
-                    ? <AvatarPilha ids={apoios} pessoas={pessoas} max={3} tamanho={20} />
-                    : <span style={{ color: textSecondary }}>—</span>}
+                <td style={{ ...td, maxWidth: 210 }}>
+                  {apoios.length > 0 ? (
+                    <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {apoios.map((id) => (
+                        <PessoaComFoto key={id} id={id} nome={nomeDe(id)} pessoa={pessoas[id]} tamanho={18} />
+                      ))}
+                    </span>
+                  ) : <span style={{ color: textSecondary }}>—</span>}
                 </td>
 
                 <td style={{ ...td, ...corte, maxWidth: 130 }}>

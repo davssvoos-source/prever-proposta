@@ -624,3 +624,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   situação: um cliente é ativo *e* tem portaria. As contagens de cada eixo
   respeitam o filtro do outro. O serviço se liga e desliga na página do
   cliente. *(Davi, 2026-08-22.)*
+
+- **R42** — **Botão "Ordenar" na Início**: Prazo · Cliente · Prioridade. A
+  escolha manual **vence** a ordem embutida no padrão selecionado, mas
+  **some ao trocar de padrão** — cada padrão já tem a ordem que faz sentido
+  para ele ("Sem dono" por prioridade, "Atrasados" por prazo), e deixar a
+  escolha manual vazar faria a troca de padrão parecer quebrada.
+  *(Davi, 2026-08-22.)*
+
+- **R43** — A tabela da Início **ocupa a tela inteira** (mesma sangria do
+  quadro). O **título não mostra mais a sigla** CH- (continua no tooltip, ao
+  passar o mouse). **Responsável e Apoio mostram foto ao lado do nome** — a
+  cor do avatar é a mesma de sempre (hash pelo ID, não pelo nome), para a
+  pessoa continuar reconhecível pela cor em qualquer tela do sistema.
+
+- **R44** — Os filtros do Calendário usam o **mesmo componente** de filtro do
+  resto do app (`MenuFiltro`), não `<select>` nativo — um só vocabulário de
+  filtro, não dois.
