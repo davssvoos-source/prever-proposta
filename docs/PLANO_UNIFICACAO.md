@@ -1931,3 +1931,106 @@ cliente, nas cores do degradê.
 Pendente de design (não bloqueia): `/clientes/$id`, `/clientes/novo` e
 `/clientes/migrar` continuam no visual antigo — reforma na fila com as demais
 telas legadas (P13).
+
+### S1 — Blindagem de segurança (2026-08-20)
+
+O sistema passou a guardar dado pessoal real (192 clientes, CNPJ e 9 CPF de
+pessoa física), e a RLS deixou de ser detalhe. Auditoria em leque de 5 frentes,
+23 achados confirmados por verificação adversarial.
+
+**Modelo de ameaça que orienta tudo:** todo usuário fala DIRETO com o Postgres
+usando a mesma chave pública. A RLS é o perímetro — "a tela não mostra" nunca
+foi proteção.
+
+- **Crítico:** `clientes` tinha `SELECT USING (true)`. Qualquer autenticado lia
+  a base inteira. Agora gestor vê tudo; técnico vê só o cliente do chamado ou
+  da visita dele (`pode_ver_cliente`).
+- **Alto:** o SAC podia editar e apagar qualquer cliente — a etapa1 escreveu
+  `is_gestor` pensando em admin+comercial e a U6a ampliou a função três dias
+  depois, sem ninguém revisitar. Agora `pode_gerir_clientes`/`e_admin`, com o
+  papel dito por extenso e lendo as DUAS fontes (user_roles + profiles.cargo).
+- **Alto:** XSS armazenado no popup do mapa de visitas (nome de cliente cru em
+  `innerHTML` do Leaflet, com a sessão no localStorage). Escapado.
+- Buckets de foto viraram privados; apagar foto exige dono ou gestor. Escrita
+  em chamado sem responsável passou a exigir vínculo (`pode_editar_chamado`).
+  `funil_comercial` passou a exigir gestor, com a assinatura preservada.
+
+**Migrations:** `20260820170000_s1_blindagem_rls.sql` + `..180000_s1b`.
+
+**Três erros meus nesta etapa, e o que cada um ensinou:**
+1. **Cadeia do inventário** — supus que as três tabelas tivessem `cliente_id`;
+   só a primeira tem. O pior não foi o erro de SQL: era um `FOREACH` com
+   `IF EXISTS (coluna)` que PULARIA `cliente_equipamentos` em silêncio,
+   deixando-a aberta. Numa migration de segurança, pular calado é pior que
+   falhar. Reescrito tabela a tabela, sem laço.
+2. **REVOKE de coluna** — ferramenta errada no Supabase: todo logado é o mesmo
+   role `authenticated`, então o REVOKE atinge o admin junto E quebra qualquer
+   `select *`. Desfeito pela S1b.
+3. **Cabeçalhos HTTP (CSP)** — derrubaram o app. Ver S10 nas pendências.
+
+### S2 — App fora do ar: três causas, uma raiz (2026-08-20)
+
+O app caiu depois da S1 e eu persegui dois suspeitos errados antes de achar o
+certo. Vale registrar porque a raiz é de método.
+
+- **Suspeito 1 (errado):** a CSP. Era real que `script-src 'self'` derrubava o
+  SSR — o TanStack injeta o estado de hidratação num `<script>` inline —, mas
+  não era a causa daquele momento. Revertida (S10).
+- **Suspeito 2 (errado):** os REVOKE de coluna. Também reais, também não era.
+- **Causa real:** eu tinha removido o `.env` do repositório "por higiene". O
+  Lovable **builda a partir do repo**; sem ele, o Vite não acha
+  `VITE_SUPABASE_*` e `client.ts` LANÇA ao criar o cliente. Explicava os dois
+  sintomas que não fechavam: erro no desktop (throw dentro de rota) e tela
+  preta no celular (throw antes de pintar).
+
+**Por que demorei:** o `.env` local continuava no disco, então dev e build
+passavam aqui. Eu testava um ambiente que tinha a variável e diagnosticava um
+que não tinha. As três mudanças viajaram no mesmo commit; o que elas tinham em
+comum era só a data.
+
+**Regra que fica:** `.env` versionado é DE PROPÓSITO neste projeto (S11), com o
+motivo escrito no `.gitignore` e travado por asserção nos dois sentidos — não
+pode ser ignorado, e segredo de verdade não pode entrar nele.
+
+### U25 — O mapa de clientes, em quatro versões (2026-08-20)
+
+Cada versão foi rejeitada por um motivo diferente, e o caminho importa:
+
+1. **Silhueta do município** — não era um mapa. Sem nada dentro, os pontos
+   flutuavam sem referência.
+2. **Leaflet com tiles** — virava mapa de verdade, mas trazia o desenho de
+   outra casa para dentro do painel.
+3. **94 distritos desenhados** — o meio-termo, a partir de um exemplo que o
+   Davi mandou. Dá referência sem importar design de fora.
+4. **47 distritos** — três rodadas de recorte pedidas por ele (sul rural, o
+   contorno que desenhou na tela, e dois blocos por nome).
+
+**Fonte:** OpenStreetMap via Overpass (`admin_level=9`). O IBGE não serve — a
+API de malhas recusa `intrarregiao` para município e a de distrito dá 404.
+
+**Regra de segurança do recorte:** cada rodada foi conferida contra os dados
+ANTES de aplicar. Nas duas primeiras, só saiu distrito com zero clientes. Na
+terceira o Davi destravou ("some um na contagem abaixo do mapa"), e dois
+clientes passaram a contar no rodapé — BSGA (Penha) e Maria Domitila (Casa
+Verde). A asserção foi REESCRITA para exigir esse conjunto exato, não relaxada.
+
+**Correções de grafia conferidas, não adivinhadas:** "Pemba" → Penha;
+"Jaguará" → Jaguara (sem acento na base; não é Jaguaré, que é outro distrito).
+
+**Bug que valeu a lição:** o mapa não aparecia porque a cadeia de altura não
+fechava em lugar nenhum — grid com `align-items: start`, card sem altura,
+faixa pedindo `flex: 1`, svg pedindo `height: 100%`. Três camadas passando a
+conta para cima. Resolvido com altura explícita.
+
+### U26 — Margens de Clientes e sidebar recolhível (2026-08-20)
+
+**Margens:** a causa não era padding. Clientes vivia presa ao teto de 1280px do
+`<main>`, enquanto a Início usa `.sangra-x` nas linhas largas para escapar dele
+e alcançar a régua da sidebar e a borda da janela. Clientes passou a usar a
+MESMA classe — não uma imitação.
+
+**Sidebar recolhível:** 232px → 72px. O estado mora em
+`lib/sidebar-recolhida.ts`, fora do React (`useSyncExternalStore` +
+localStorage), porque três consumidores independentes precisam do mesmo valor
+sem prop-drilling. Recolher muda **uma** coisa: o `--rail` que o CSS lê. Todo o
+layout reage sozinho porque já dependia dessa variável.

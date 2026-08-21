@@ -570,6 +570,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // sem uma decisão explícita do Davi por trás, a asserção falha.
     eq('os clientes fora do recorte são exatamente os esperados (contam no rodapé)',
        perdidos, ['BSGA', 'Maria Domitila']);
+
+    // E o RÓTULO desses dois não pode dizer "fora de São Paulo": eles moram na
+    // cidade, só num bairro que o recorte tirou. O componente separa em três
+    // buckets justamente por isso — a asserção trava a separação.
+    const comp = fs3.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+    eq('o mapa separa "outra cidade" de "bairro fora do recorte"',
+       /foraDaCidade/.test(comp) && /foraDoRecorte/.test(comp), true);
+    eq('quem decide "fora de São Paulo" é a CIDADE do cadastro, não a geometria',
+       /c\.cidade && c\.cidade !== "São Paulo"/.test(comp), true);
+    eq('o rótulo "fora de São Paulo" usa o contador de outra cidade',
+       /fora de São Paulo:[\s\S]{0,220}\{foraDaCidade\}/.test(comp), true);
   }
 
   // a migration U24: 192 clientes, todos com coordenada, verificação no fim

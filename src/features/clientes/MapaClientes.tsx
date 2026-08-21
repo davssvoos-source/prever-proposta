@@ -16,7 +16,8 @@
 // vazio deles continuaria ocupando espaço e o recorte não teria adiantado.
 //
 // Consequência aceita: cliente que venha a existir numa área removida conta
-// como "fora de São Paulo" no rodapé.
+// numa linha própria do rodapé — "em bairro fora da área do mapa", não
+// "fora de São Paulo", que seria falso para quem mora na cidade.
 //
 // Cada cliente é um ponto na cor que o degradê dá a ele (corDoCliente) — a
 // MESMA cor do ponto dele no card da lista ao lado, que é como o olho liga as
@@ -52,17 +53,32 @@ export function MapaClientes({ clientes }: Props) {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
-  const { pontos, foraDeSaoPaulo, semCoordenada } = useMemo(() => {
+  // Três buckets, não dois. O contador antigo somava num só tudo que não
+  // entra no mapa, e o rótulo dizia "fora de São Paulo" — o que era MENTIRA
+  // para quem mora num bairro que o recorte tirou: BSGA (Penha) e Maria
+  // Domitila (Casa Verde) estão em São Paulo, só não estão no desenho.
+  // A cidade do cadastro é quem decide o rótulo, não a geometria do mapa.
+  const { pontos, foraDaCidade, foraDoRecorte, semCoordenada } = useMemo(() => {
     const pts: Ponto[] = [];
-    let fora = 0;
+    let outraCidade = 0;
+    let recortados = 0;
     let sem = 0;
     for (const c of clientes) {
       if (c.latitude == null || c.longitude == null) { sem++; continue; }
-      if (!dentroDaCidade(c.latitude, c.longitude)) { fora++; continue; }
+      if (!dentroDaCidade(c.latitude, c.longitude)) {
+        if (c.cidade && c.cidade !== "São Paulo") outraCidade++;
+        else recortados++;
+        continue;
+      }
       const { x, y } = projetar(c.latitude, c.longitude);
       pts.push({ id: c.id, nome: c.nome, x, y, cor: corDoCliente(c.id, isLight) });
     }
-    return { pontos: pts, foraDeSaoPaulo: fora, semCoordenada: sem };
+    return {
+      pontos: pts,
+      foraDaCidade: outraCidade,
+      foraDoRecorte: recortados,
+      semCoordenada: sem,
+    };
   }, [clientes, isLight]);
 
   // o mapa é o fundo: cinza que não briga com o ponto colorido por cima
@@ -86,7 +102,7 @@ export function MapaClientes({ clientes }: Props) {
           Mapa · Cidade de São Paulo
         </span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
-          {pontos.length} na cidade
+          {pontos.length} na área do mapa
         </span>
       </div>
 
@@ -171,14 +187,21 @@ export function MapaClientes({ clientes }: Props) {
         </div>
       </div>
 
-      {(foraDeSaoPaulo > 0 || semCoordenada > 0) && (
+      {(foraDaCidade > 0 || foraDoRecorte > 0 || semCoordenada > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingTop: 11 }}>
-          {foraDeSaoPaulo > 0 && (
+          {foraDaCidade > 0 && (
             <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
               Quantidade de clientes fora de São Paulo:{" "}
               <strong style={{ fontWeight: 700, color: isLight ? "#0a0b0e" : "#ffffff" }}>
-                {foraDeSaoPaulo}
+                {foraDaCidade}
               </strong>
+            </span>
+          )}
+          {/* Linha própria: estes ESTÃO em São Paulo. Somá-los à linha de cima
+              faria o painel afirmar algo falso sobre onde o cliente fica. */}
+          {foraDoRecorte > 0 && (
+            <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
+              {foraDoRecorte} em bairro fora da área do mapa
             </span>
           )}
           {semCoordenada > 0 && (
