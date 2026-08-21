@@ -1,36 +1,49 @@
-// Importação do quadro do Notion — Etapa U1 da unificação.
-// Ver docs/PLANO_UNIFICACAO.md §7. Lê o CSV exportado do Notion, casa as
-// colunas com o modelo daqui e mostra tudo antes de gravar: pessoa que não for
-// reconhecida vira "sem responsável" em vez de travar a importação inteira.
+// Importação do quadro do Notion — U1, revista no export de 2026-08-21 (U31).
+//
+// A tela é só a casca: ler o arquivo, MOSTRAR o que vai acontecer e gravar.
+// As regras de leitura (datas em português, status novos, células com vários
+// valores, apelidos de cliente) moram em features/chamados/importar-notion.ts,
+// que é testado contra o arquivo real no verificador.
+//
+// A prévia é o coração desta tela. Importação é operação que mexe em muita
+// linha de uma vez e é chata de desfazer; mostrar antes o que casou, o que
+// não casou e o que vai ser PULADO é o que transforma "confia em mim" em uma
+// decisão informada do Davi.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Building2, CheckCircle2, Upload, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useClientes } from "@/features/clientes/data";
 import { usePessoas } from "@/features/chamados/data";
 import { normalizarTexto } from "@/lib/normalizar";
+import { SPRINT_LABEL, TIPO_LABEL, dataParaPrazo } from "@/lib/chamado-status";
+import { EQUIPE_LABEL } from "@/lib/equipes";
 import {
-  SPRINT_LABEL, TIPO_LABEL, sugerirTipoChamado, dataParaPrazo, prazoParaData,
-  type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
-} from "@/lib/chamado-status";
-import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
+  lerLinhas, indicePessoas,
+  type LinhaImport, type ResultadoLeitura,
+} from "@/features/chamados/importar-notion";
 
 export const Route = createFileRoute("/_authenticated/chamados/importar")({
+  // guarda própria: o pai /chamados virou tronco (R31) e não gateia ninguém
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("chamados.importar");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.importar") as any });
+  },
   component: ImportarChamadosPage,
 });
 
-// ── CSV ─────────────────────────────────────────────────────────────────────
 /** Parser mínimo com suporte a aspas e quebra de linha dentro do campo. */
 function lerCsv(texto: string): string[][] {
   const linhas: string[][] = [];
   let campo = "";
   let linha: string[] = [];
   let aspas = false;
-  const t = texto.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const t = texto.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   for (let i = 0; i < t.length; i++) {
     const c = t[i];
     if (aspas) {
@@ -48,100 +61,33 @@ function lerCsv(texto: string): string[][] {
   return linhas.filter((l) => l.some((c) => c.trim() !== ""));
 }
 
+/** Sinônimos de cabeçalho — o Notion renomeia coluna e o export muda de nome. */
 const SINONIMOS: Record<string, string[]> = {
-  titulo: ["titulo", "title", "name", "nome", "tarefa"],
+  titulo: ["resumo da demanda", "titulo", "title", "name", "nome", "tarefa", "demanda"],
   descricao: ["descricao", "description", "detalhes", "observacoes"],
-  responsavel: ["responsavel", "assignee", "owner", "dono"],
-  apoio: ["apoio", "support", "colaborador"],
+  responsavel: ["responsavel principal", "responsavel", "assignee", "owner", "dono"],
   cliente: ["cliente", "client", "condominio", "empresa"],
-  sprint: ["sprint", "ciclo", "mes"],
-  prazo_limite: ["prazo", "prazo limite", "due", "data limite", "deadline", "vencimento"],
+  sprint: ["sprint", "ciclo"],
+  prazo: ["prazo", "prazo limite", "due", "data limite", "deadline", "vencimento"],
   equipe: ["equipe", "team", "time", "area"],
   status: ["status", "situacao", "estado"],
+  conclusao: ["conclusao", "atividade concluida", "concluido em"],
+  criacao: ["criacao", "created", "criado em"],
 };
 
-function acharColuna(cabecalho: string[], chave: string): number {
+function acharColuna(cabecalho: string[], chave: string): string {
   const alvos = SINONIMOS[chave] ?? [chave];
-  return cabecalho.findIndex((h) => {
-    const n = normalizarTexto(h);
-    return alvos.some((a) => n === a || n.startsWith(a));
-  });
-}
-
-const STATUS_NOTION: Record<string, ChamadoStatus> = {
-  "nao iniciada": "aberto",
-  "nao iniciado": "aberto",
-  "a fazer": "aberto",
-  "em andamento": "em_andamento",
-  "fazendo": "em_andamento",
-  "stand by": "stand_by",
-  "standby": "stand_by",
-  "pausada": "stand_by",
-  "aguardando aprovacao": "aguardando_aprovacao",
-  "aguardando": "aguardando_aprovacao",
-  "concluido": "concluido",
-  "concluido": "concluido",
-  "feito": "concluido",
-  "cancelado": "cancelado",
-  "cancelado": "cancelado",
-};
-
-const SPRINT_NOTION: Record<string, ChamadoSprint> = {
-  "este mes": "este_mes",
-  "esse mes": "este_mes",
-  "mes que vem": "mes_que_vem",
-  "proximo mes": "mes_que_vem",
-  "mes passado": "mes_passado",
-  "backlog": "backlog",
-};
-
-// nomes REAIS do quadro do Notion (confirmados no export de 2026-08-18)
-const EQUIPE_NOTION: Record<string, Equipe> = {
-  "t.i / tecnica": "ti",
-  "t.i": "ti",
-  "ti": "ti",
-  "tecnologia": "ti",
-  "controle patrimonial": "patrimonio",
-  "patrimonio": "patrimonio",
-  "marketing / comercial": "comercial",
-  "comercial": "comercial",
-  "sac": "sac",
-  "monitoramento / portaria": "monitoramento",
-  "monitoramento": "monitoramento",
-  "audiovisual": "audiovisual",
-  "business ops": "business_ops",
-  "businessops": "business_ops",
-  "tecnica": "tecnica",
-};
-
-interface LinhaImport {
-  titulo: string;
-  descricao: string | null;
-  responsavelNome: string;
-  responsavelId: string | null;
-  clienteNome: string;
-  clienteId: string | null;
-  equipe: Equipe;
-  sprint: ChamadoSprint;
-  status: ChamadoStatus;
-  tipo: ChamadoTipo;
-  prazo_limite: string | null;
-  origemId: string;
-}
-
-/** "12/03/2026", "2026-03-12" e "March 12, 2026" viram AAAA-MM-DD. */
-function lerData(v: string): string | null {
-  const s = (v ?? "").trim();
-  if (!s) return null;
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (br) return `${br[3]}-${br[2].padStart(2, "0")}-${br[1].padStart(2, "0")}`;
-  const d = new Date(s);
-  if (!Number.isNaN(d.getTime())) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // do sinônimo mais específico para o mais genérico: "demanda" também casaria
+  // com "Resumo da demanda", e a coluna certa é a primeira da lista
+  for (const alvo of alvos) {
+    const achou = cabecalho.find((h) => normalizarTexto(h) === alvo);
+    if (achou) return achou;
   }
-  return null;
+  for (const alvo of alvos) {
+    const achou = cabecalho.find((h) => normalizarTexto(h).startsWith(alvo));
+    if (achou) return achou;
+  }
+  return "";
 }
 
 function ImportarChamadosPage() {
@@ -150,12 +96,13 @@ function ImportarChamadosPage() {
   const { isLight } = useTheme();
   const { data: pessoas = [] } = usePessoas();
   const { data: clientes = [] } = useClientes();
-  const [linhas, setLinhas] = useState<LinhaImport[] | null>(null);
+  const [res, setRes] = useState<ResultadoLeitura | null>(null);
   const [arquivo, setArquivo] = useState("");
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
+  const verde = isLight ? "#047862" : "#2DD2A5";
 
   const CARD: CSSProperties = {
     background: isLight
@@ -167,109 +114,64 @@ function ImportarChamadosPage() {
     display: "flex", flexDirection: "column", gap: 12,
   };
 
-  const pessoaPorNome = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const p of pessoas) {
-      m[normalizarTexto(p.nome)] = p.id;
-      // "Erik" casa com "Erik Souza": o Notion costuma guardar só o primeiro nome
-      const primeiro = normalizarTexto(p.nome).split(" ")[0];
-      if (primeiro && !m[primeiro]) m[primeiro] = p.id;
-    }
-    return m;
-  }, [pessoas]);
+  const pessoasPorNome = useMemo(() => indicePessoas(pessoas as any[]), [pessoas]);
 
-  const clientePorNome = useMemo(() => {
-    const m: Record<string, string> = {};
+  const clientesPorNome = useMemo(() => {
+    const m = new Map<string, string>();
     for (const c of clientes) {
-      m[normalizarTexto(c.nome)] = c.id;
-      if (c.nome_predio) m[normalizarTexto(c.nome_predio)] = c.id;
+      m.set(normalizarTexto(c.nome), c.id);
+      if ((c as any).nome_predio) m.set(normalizarTexto((c as any).nome_predio), c.id);
     }
     return m;
   }, [clientes]);
 
   function processar(texto: string) {
     const grade = lerCsv(texto);
-    if (grade.length < 2) {
-      toast.error("O arquivo não tem linhas de dados.");
-      return;
-    }
-    const cab = grade[0];
-    const iTitulo = acharColuna(cab, "titulo");
-    if (iTitulo < 0) {
-      toast.error('Não encontrei a coluna de título ("Título" ou "Name").');
-      return;
-    }
-    const idx = {
-      titulo: iTitulo,
+    if (grade.length < 2) { toast.error("O arquivo não tem linhas de dados."); return; }
+    const cab = grade[0].map((s) => s.trim());
+    const col = {
+      titulo: acharColuna(cab, "titulo"),
       descricao: acharColuna(cab, "descricao"),
       responsavel: acharColuna(cab, "responsavel"),
       cliente: acharColuna(cab, "cliente"),
-      sprint: acharColuna(cab, "sprint"),
-      prazo_limite: acharColuna(cab, "prazo_limite"),
       equipe: acharColuna(cab, "equipe"),
+      sprint: acharColuna(cab, "sprint"),
       status: acharColuna(cab, "status"),
+      prazo: acharColuna(cab, "prazo"),
+      conclusao: acharColuna(cab, "conclusao"),
+      criacao: acharColuna(cab, "criacao"),
     };
-    const pega = (l: string[], i: number) => (i >= 0 ? (l[i] ?? "").trim() : "");
+    if (!col.titulo) { toast.error('Não achei a coluna de título ("Resumo da demanda" ou "Name").'); return; }
+    if (!col.criacao) { toast.error('Não achei a coluna "Criação" — ela é a chave que evita duplicar na reimportação.'); return; }
 
-    const out: LinhaImport[] = [];
-    for (const l of grade.slice(1)) {
-      const titulo = pega(l, idx.titulo);
-      if (!titulo) continue;
-      const descricao = pega(l, idx.descricao) || null;
-      const respNome = pega(l, idx.responsavel);
-      const cliNome = pega(l, idx.cliente);
-      const prazo_limite = lerData(pega(l, idx.prazo_limite));
-      out.push({
-        titulo,
-        descricao,
-        responsavelNome: respNome,
-        responsavelId: pessoaPorNome[normalizarTexto(respNome)] ?? null,
-        clienteNome: cliNome,
-        clienteId: clientePorNome[normalizarTexto(cliNome)] ?? null,
-        // célula multi-equipe ("Controle Patrimonial, T.I / Técnica") usa a primeira
-        equipe: EQUIPE_NOTION[normalizarTexto(pega(l, idx.equipe).split(",")[0])] ?? "ti",
-        sprint: SPRINT_NOTION[normalizarTexto(pega(l, idx.sprint))] ?? "backlog",
-        status: STATUS_NOTION[normalizarTexto(pega(l, idx.status))] ?? "aberto",
-        tipo: sugerirTipoChamado(titulo, descricao),
-        prazo_limite,
-        // chave de reimportação: mesmo título + mesmo prazo_limite não entra duas vezes
-        origemId: `${normalizarTexto(titulo)}|${prazo_limite ?? ""}`,
-      });
-    }
-    if (out.length === 0) {
-      toast.error("Nenhuma linha com título preenchido.");
+    const registros = grade.slice(1).map((l) =>
+      Object.fromEntries(cab.map((c, i) => [c, (l[i] ?? "").trim()])),
+    );
+    const r = lerLinhas(registros, col, pessoasPorNome, clientesPorNome);
+    if (!r.linhas.length) {
+      toast.error("Nenhuma linha importável — confira se as pessoas do quadro têm conta no app.");
       return;
     }
-    setLinhas(out);
+    setRes(r);
   }
+
+  const linhas: LinhaImport[] = res?.linhas ?? [];
 
   const importar = useMutation({
     mutationFn: async () => {
-      if (!linhas?.length) throw new Error("Nada para importar.");
+      if (!linhas.length) throw new Error("Nada para importar.");
       const { data: u } = await supabase.auth.getUser();
-      // o lote de 537 já entrou pela migration com outra chave de origem;
-      // conferimos por título + prazo para não duplicar o que já está lá
-      const { data: jaImportados } = await supabase
-        .from("chamados" as any)
-        .select("titulo, prazo_limite")
-        .eq("origem", "notion");
-      const existentes = new Set(
-        ((jaImportados as any[]) ?? []).map(
-          (c) => `${normalizarTexto(c.titulo ?? "")}|${prazoParaData(c.prazo_limite) ?? ""}`,
-        ),
-      );
-      const novas = linhas.filter(
-        (l) => !existentes.has(`${normalizarTexto(l.titulo)}|${l.prazo_limite ?? ""}`),
-      );
-      if (!novas.length) throw new Error("Todas as linhas já estão no app.");
-      const registros = novas.map((l) => ({
+      const registros = linhas.map((l) => ({
         natureza: "interno",
         titulo: l.titulo,
         descricao_problema: l.descricao,
         cliente_id: l.clienteId,
+        // U31: o nome como veio, para a etiqueta existir mesmo sem vínculo
+        cliente_origem_nome: l.clienteNome,
         equipe: l.equipe,
         responsavel_id: l.responsavelId,
         prazo_limite: dataParaPrazo(l.prazo_limite),
+        concluida_em: l.concluida_em,
         sprint: l.sprint,
         tipo: l.tipo,
         status: l.status,
@@ -277,23 +179,39 @@ function ImportarChamadosPage() {
         origem: "notion",
         origem_id: l.origemId,
       }));
-      // o índice único (origem, origem_id) garante que rodar de novo não duplica
-      const { error, count } = await supabase
-        .from("chamados" as any)
-        .upsert(registros as any, { onConflict: "origem,origem_id", ignoreDuplicates: true, count: "exact" });
-      if (error) throw error;
-      return count ?? registros.length;
+      // Grava em lotes: 2 mil linhas numa requisição só estoura o limite de
+      // corpo do PostgREST, e o erro que volta ("payload too large") não diz
+      // que o problema é o tamanho do lote.
+      let total = 0;
+      for (let i = 0; i < registros.length; i += 400) {
+        const { error, count } = await supabase
+          .from("chamados" as any)
+          .upsert(registros.slice(i, i + 400) as any, {
+            // o índice único (origem, origem_id) é o que segura a reimportação
+            onConflict: "origem,origem_id", ignoreDuplicates: true, count: "exact",
+          });
+        if (error) throw error;
+        total += count ?? 0;
+      }
+      return total;
     },
     onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["chamados"] });
-      toast.success(`${n} chamado(s) importado(s).`);
+      qc.invalidateQueries({ queryKey: ["home"] });
+      toast.success(n > 0 ? `${n} chamado(s) importado(s).` : "Tudo já estava no app — nada duplicado.");
       navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Falha na importação."),
   });
 
-  const semResponsavel = linhas?.filter((l) => l.responsavelNome && !l.responsavelId).length ?? 0;
-  const semCliente = linhas?.filter((l) => l.clienteNome && !l.clienteId).length ?? 0;
+  const emAberto = linhas.filter((l) => !["concluido", "cancelado"].includes(l.status)).length;
+  const comCliente = linhas.filter((l) => l.clienteId).length;
+  const soNome = linhas.filter((l) => !l.clienteId && l.clienteNome).length;
+  const puladosPorPessoa = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of res?.semConta ?? []) m.set(s.nome, (m.get(s.nome) ?? 0) + 1);
+    return [...m].sort((a, b) => b[1] - a[1]);
+  }, [res]);
 
   return (
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
@@ -333,7 +251,8 @@ function ImportarChamadosPage() {
             {arquivo || "Escolher arquivo CSV"}
           </span>
           <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, textAlign: "center" }}>
-            No Notion: ··· → Export → Markdown &amp; CSV, sem subpáginas.
+            No Notion: ··· → Export → Markdown &amp; CSV. Use o arquivo terminado em
+            {" "}<strong>_all.csv</strong> — é o que traz todas as colunas.
           </span>
           <input
             type="file"
@@ -349,32 +268,42 @@ function ImportarChamadosPage() {
         </label>
       </div>
 
-      {linhas && (
+      {res && (
         <>
           <div style={CARD}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <CheckCircle2 size={17} color="#2DD2A5" />
+              <CheckCircle2 size={17} color={verde} />
               <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>
-                {linhas.length} chamado(s) prontos para importar
+                {linhas.length} atividade(s) prontas — {emAberto} em aberto
               </span>
             </div>
-            {(semResponsavel > 0 || semCliente > 0) && (
+
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <Building2 size={16} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+                <strong style={{ color: textPrimary }}>{comCliente}</strong> vinculadas a um cliente do QAP
+                {soNome > 0 && <> · <strong style={{ color: textPrimary }}>{soNome}</strong> guardam só o nome escrito no Notion (a etiqueta aparece igual, sem vínculo)</>}
+              </span>
+            </div>
+
+            {/* Quem foi PULADO. É a informação mais importante da prévia: o
+                que não entra é invisível depois, então tem que ser visível
+                agora — com nome e quantidade, não só um número. */}
+            {puladosPorPessoa.length > 0 && (
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <AlertTriangle size={16} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
-                <span style={{
-                  fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
-                  color: textSecondary, lineHeight: 1.5,
-                }}>
-                  {semResponsavel > 0 && `${semResponsavel} sem responsável reconhecido (entram sem dono, dá para atribuir depois). `}
-                  {semCliente > 0 && `${semCliente} com cliente que não existe no cadastro (entram sem cliente vinculado).`}
+                <UserX size={16} color={gold} style={{ marginTop: 2, flexShrink: 0 }} />
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+                  <strong style={{ color: textPrimary }}>{res.semConta.length}</strong> puladas — o responsável não tem conta no app:{" "}
+                  {puladosPorPessoa.map(([n, c]) => `${n} (${c})`).join(", ")}.
+                  <br />
+                  Entram quando a pessoa tiver conta. Importá-las sem responsável
+                  as jogaria na fila de todo mundo.
                 </span>
               </div>
             )}
-            <span style={{
-              fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11.5,
-              color: textSecondary, lineHeight: 1.5,
-            }}>
-              Reimportar o mesmo arquivo não duplica: conferimos título + prazo antes de gravar.
+
+            <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, lineHeight: 1.5 }}>
+              Reimportar o mesmo arquivo não duplica: a chave é a data de criação + o título.
             </span>
           </div>
 
@@ -395,14 +324,14 @@ function ImportarChamadosPage() {
                   fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11,
                   color: textSecondary, marginTop: 3,
                 }}>
+                  {l.clienteNome && (
+                    <span style={{ color: l.clienteId ? verde : gold }}>
+                      {l.clienteNome}{l.clienteId ? "" : " (sem vínculo)"} ·{" "}
+                    </span>
+                  )}
                   {EQUIPE_LABEL[l.equipe]} · {SPRINT_LABEL[l.sprint]} · {TIPO_LABEL[l.tipo]}
                   {l.prazo_limite ? ` · prazo ${l.prazo_limite.split("-").reverse().join("/")}` : ""}
-                  {" · "}
-                  {l.responsavelId
-                    ? l.responsavelNome
-                    : l.responsavelNome
-                      ? `${l.responsavelNome} (não reconhecido)`
-                      : "sem responsável"}
+                  {" · "}{l.responsavelNome}
                 </div>
               </div>
             ))}
@@ -427,9 +356,18 @@ function ImportarChamadosPage() {
               boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
             }}
           >
-            {importar.isPending ? "Importando…" : `Importar ${linhas.length} chamado(s)`}
+            {importar.isPending ? "Importando…" : `Importar ${linhas.length} atividade(s)`}
           </button>
         </>
+      )}
+
+      {res && res.semTitulo > 0 && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <AlertTriangle size={14} color={gold} />
+          <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
+            {res.semTitulo} linha(s) sem título foram ignoradas.
+          </span>
+        </div>
       )}
     </div>
   );

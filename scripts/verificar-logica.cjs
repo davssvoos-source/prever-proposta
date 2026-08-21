@@ -1188,5 +1188,121 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<a href="\/dashboard"/.test(tela), true);
 }
 
+// ── U31: importação do Notion + etiqueta de cliente (2026-08-21) ───────────
+{
+  const fs11 = require('fs');
+  const IMP = carregar('src/features/chamados/importar-notion.ts');
+
+  // DATAS — o export mistura quatro formatos e um deles é armadilha
+  eq('data ISO', IMP.lerData('2026-03-12'), '2026-03-12');
+  eq('data BR', IMP.lerData('12/03/2026'), '2026-03-12');
+  eq('data em português (o formato da coluna Criação)',
+     IMP.lerData('28 de abril de 2025 10:05'), '2025-04-28');
+  eq('português com mês acentuado', IMP.lerData('3 de março de 2026'), '2026-03-03');
+  // a armadilha: new Date('12/03/2026') devolve 3 de DEZEMBRO (padrão dos EUA).
+  // Se o formato BR não vier antes, dia e mês trocam em silêncio.
+  eq('BR ganha do parser americano (senão 12/03 vira dezembro)',
+     IMP.lerData('12/03/2026').slice(5, 7), '03');
+  eq('data vazia é nula', IMP.lerData(''), null);
+  eq('data-hora guarda o minuto (é o que dá identidade à linha)',
+     IMP.lerDataHora('28 de abril de 2025 10:05'), '2025-04-28 10:05');
+
+  // STATUS — os três que o export novo trouxe
+  const st = (s) => IMP.STATUS_NOTION[s];
+  eq('"aguardando terceiros" é parada, não fila', st('aguardando terceiros'), 'stand_by');
+  eq('"aguardando material" idem', st('aguardando material'), 'stand_by');
+  eq('"planejado" é trabalho a fazer', st('planejado'), 'aberto');
+  eq('"concluido" fecha', st('concluido'), 'concluido');
+
+  // CLIENTE — as três vias de casamento, e a recusa de adivinhar
+  const qap = new Map([
+    ['especializados', 'c-esp'],
+    ['gaspar dutra', 'c-gd'],
+    ['mirant vila madalena residencial', 'c-m1'],
+    ['mirant vila madalena studios', 'c-m2'],
+    ['pateo klabin', 'c-pk'],
+    ['california', 'c-ca'],
+  ]);
+  const casa = (n) => IMP.casarCliente(n, qap);
+  eq('cliente exato', casa('Pateo Klabin').clienteId, 'c-pk');
+  eq('"Prever" é a própria casa = Especializados no QAP (1143 atividades)',
+     casa('Prever').clienteId, 'c-esp');
+  eq('"Prever 2" também', casa('Prever 2').clienteId, 'c-esp');
+  eq('contenção sem ambiguidade casa ("Eurico Gaspar Dutra" → "Gaspar Dutra")',
+     casa('Eurico Gaspar Dutra').clienteId, 'c-gd');
+  // a regra que impede pendurar trabalho no prédio errado
+  eq('contenção AMBÍGUA não casa ("Mirant" serve a dois prédios)',
+     casa('Mirant').clienteId, null);
+  eq('mas o nome escrito é preservado (a etiqueta continua existindo)',
+     casa('Mirant').nomeOrigem, 'Mirant');
+  eq('célula multivalorada usa o primeiro',
+     casa('Califórnia, Pateo Klabin').clienteId, 'c-ca');
+  eq('cliente vazio não inventa vínculo',
+     [casa('').clienteId, casa('').nomeOrigem], [null, null]);
+
+  // PESSOA — o primeiro COM CONTA, não o primeiro da lista
+  const pessoas = IMP.indicePessoas([
+    { id: 'p-erik', nome: 'Erik Freitas', email: 'erik.freitas@grupoprever.com.br' },
+    { id: 'p-nick', nome: 'Nicholas Matos', email: 'nicholas.matos@grupoprever.com.br' },
+  ]);
+  eq('pessoa por nome completo', IMP.casarPessoa('Erik Freitas', pessoas).id, 'p-erik');
+  eq('sobrenome diferente reconcilia pelo primeiro nome (Kafka × Matos)',
+     IMP.casarPessoa('Nicholas Kafka', pessoas).id, 'p-nick');
+  eq('em "Maria Souza, Erik Freitas" fica com quem TEM conta',
+     IMP.casarPessoa('Maria Souza, Erik Freitas', pessoas).id, 'p-erik');
+  eq('ninguém com conta → sem id, mas registra que havia nome',
+     [IMP.casarPessoa('Maria Souza', pessoas).id, IMP.casarPessoa('Maria Souza', pessoas).havia],
+     [null, true]);
+
+  // A LINHA PRONTA — inclusive a chave de reimportação
+  const col = { titulo: 'T', responsavel: 'R', cliente: 'C', equipe: 'E',
+                sprint: 'S', status: 'St', prazo: 'P', conclusao: 'Cc', criacao: 'Cr' };
+  const reg = (extra) => ({ T: 'Verificar zonas', R: 'Erik Freitas', C: 'Prever',
+    E: 'T.I / Técnica', S: 'Backlog', St: 'Não iniciado', P: '', Cc: '',
+    Cr: '28 de abril de 2025 10:05', ...extra });
+  const r1 = IMP.lerLinhas([reg({})], col, pessoas, qap);
+  eq('linha completa entra', r1.linhas.length, 1);
+  eq('equipe "T.I / Técnica" vira ti', r1.linhas[0].equipe, 'ti');
+  eq('a chave de origem usa criação + título',
+     r1.linhas[0].origemId, '2025-04-28 10:05|verificar zonas');
+  // o defeito real medido no arquivo: título repetido sem prazo colapsava a
+  // chave e 216 das 2099 linhas eram descartadas como falsas duplicatas
+  const r2 = IMP.lerLinhas(
+    [reg({}), reg({ Cr: '28 de abril de 2025 10:06' })], col, pessoas, qap);
+  eq('mesmo título e sem prazo NÃO colidem (a criação separa)',
+     new Set(r2.linhas.map((l) => l.origemId)).size, 2);
+  // pular quem não tem conta é decisão de produto, não economia
+  const r3 = IMP.lerLinhas([reg({ R: 'Maria Souza' })], col, pessoas, qap);
+  eq('sem conta: pula em vez de virar "sem responsável"',
+     [r3.linhas.length, r3.semConta.length], [0, 1]);
+  eq('linha sem título é contada, não importada',
+     IMP.lerLinhas([reg({ T: '' })], col, pessoas, qap).semTitulo, 1);
+  eq('conclusão só é lida quando o status é concluído',
+     [IMP.lerLinhas([reg({ St: 'Concluído', Cc: '07/05/2025' })], col, pessoas, qap).linhas[0].concluida_em,
+      IMP.lerLinhas([reg({ St: 'Em andamento', Cc: '07/05/2025' })], col, pessoas, qap).linhas[0].concluida_em],
+     ['2025-05-07', null]);
+
+  // A ETIQUETA no quadro: dado e pintura
+  const home = fs11.readFileSync('src/features/home/data.ts', 'utf8');
+  eq('a Home busca o nome de origem do cliente', /cliente_origem_nome/.test(home), true);
+  const mod = fs11.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  eq('o vínculo do QAP vence o texto do Notion',
+     /cliente: c\.cliente\?\.nome \?\? c\.cliente_origem_nome/.test(mod), true);
+  const cardA = fs11.readFileSync('src/features/home/CardAtividade.tsx', 'utf8');
+  eq('a etiqueta de cliente é um chip (borderRadius 999), não texto solto',
+     /a\.cliente && \([\s\S]{0,400}borderRadius: 999/.test(cardA), true);
+  const u31 = fs11.readFileSync('supabase/migrations/20260821200000_u31_cliente_de_origem.sql', 'utf8');
+  eq('U31 cria a coluna de forma idempotente',
+     /ADD COLUMN IF NOT EXISTS cliente_origem_nome/.test(u31), true);
+  eq('U31 termina com SELECT de verificação', /SELECT '.*esperado/.test(u31), true);
+
+  // a tela de importar ganhou guarda própria (o pai virou tronco na R31)
+  const imp = fs11.readFileSync('src/routes/_authenticated/chamados.importar.tsx', 'utf8');
+  eq('chamados.importar tem guarda de rota',
+     /guardaDeTela\("chamados\.importar"\)/.test(imp), true);
+  eq('a gravação é em lotes (2 mil linhas de uma vez estouram o PostgREST)',
+     /i \+= 400/.test(imp), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

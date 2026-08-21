@@ -2156,3 +2156,51 @@ O verificador aprendeu que a semente efetiva também tem DELETE — sem isso a
 paridade catálogo↔semente nunca mais fecharia.
 
 367 asserções (30 novas), build ok.
+
+### U31 — Export novo do Notion + etiqueta de cliente (2026-08-21)
+
+O Davi exportou o quadro Administrativo de novo (2347 linhas, 14 colunas,
+agora com **Cliente**) e pediu: importar as atividades de cinco pessoas e ver
+a etiqueta de cliente no kanban.
+
+**Ensaio antes de gravar.** Rodei o módulo de leitura contra o arquivo real e
+achei três coisas que a versão anterior lia errado **em silêncio**:
+
+1. **Datas em português** — "28 de abril de 2025 10:05". O `new Date()` do JS
+   devolve Invalid Date; o importador gravava prazo nulo e a atividade entrava
+   sem cor de faixa, sem urgência, no fim de qualquer ordenação. (E o parser
+   americano tem de ficar por último: `new Date('12/03/2026')` é 3 de
+   dezembro — dia e mês trocariam de lugar sem ninguém ver.)
+2. **Três status novos** — "Aguardando terceiros", "Aguardando material",
+   "Planejado". Sem mapa, os 15 primeiros caíam em "aberto": tarefas PARADAS
+   esperando gente de fora apareceriam como trabalho disponível para hoje.
+3. **A chave de reimportação colapsava.** `título+prazo` produzia 1883 chaves
+   para 2099 linhas — **216 atividades seriam descartadas como falsas
+   duplicatas**. O quadro repete títulos de propósito ("Verificar zonas"
+   existe para vários prédios) e a maioria não tem prazo. Troquei por
+   **criação + título**: 2097 chaves para 2099 linhas, e a data de criação não
+   muda entre exports, que é a outra metade do requisito.
+
+**Cliente: casar sem adivinhar.** Três vias — nome igual (893), apelido (967)
+e contenção sem ambiguidade (88). O apelido decisivo veio do Davi: **"Prever"
+no Notion é o cliente "Especializados" no QAP** — sozinho, 1143 atividades.
+A contenção só vale com **um** candidato: "Mirant" está contido em dois
+prédios diferentes, e escolher um seria pendurar trabalho no endereço errado.
+Resultado: 1948 com vínculo real, 149 guardando só o nome.
+
+**A coluna `cliente_origem_nome` (U31)** existe por causa desses 149: sem ela
+a etiqueta sumiria justamente nas atividades cujo nome o Davi escreveu à mão.
+O vínculo do QAP vence o texto quando existe — ele é o cliente de verdade.
+
+**Pular quem não tem conta é decisão de produto.** 247 linhas de Maria Souza e
+Rubia Cristina ficaram de fora. Importá-las sem responsável as jogaria na fila
+de todo mundo — "chamado sem responsável é de todos" é regra viva aqui. Elas
+entram no dia em que as duas tiverem conta, e a prévia diz isso com nome e
+quantidade.
+
+**A etiqueta virou chip.** Era texto secundário e sumia entre os chips
+coloridos ao lado; no quadro, "de qual prédio é isto?" é a segunda pergunta
+depois de "o que é isto?".
+
+Resultado do ensaio: **2099 atividades importáveis, 100 em aberto** (Erik 37,
+Davi 26, Gilleno 14, Nicholas 13, Vinicius 10). 441 asserções, build ok.

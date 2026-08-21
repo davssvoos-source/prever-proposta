@@ -34,7 +34,7 @@ const CAMPOS_CHAMADO =
   "id, numero, titulo, status, natureza, tipo, prioridade, equipe, sprint, " +
   "prazo_limite, data_hora_agendada, responsavel_id, aberto_por, " +
   "concluida_em, fechada_em, faturamento_status, created_at, updated_at, " +
-  "cliente:clientes(nome)";
+  "cliente_origem_nome, cliente:clientes(nome)";
 
 const CAMPOS_VISITA =
   "id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +

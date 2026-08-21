@@ -149,13 +149,27 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         {a.fonte === "visita" && (
           <span style={chipStyle(PRISMA.azulClaro, isLight, emFaixa)}>Visita técnica</span>
         )}
+        {/* ETIQUETA DE CLIENTE — chip, não texto solto.
+            Era texto secundário e sumia no meio dos chips coloridos ao lado.
+            No quadro, "de qual prédio é isto?" é a segunda pergunta depois de
+            "o que é isto?" — e a resposta precisa ter o mesmo peso visual das
+            outras etiquetas para ser encontrada varrendo a coluna. O chip usa
+            o cinza translúcido do `sobreFaixa` sempre: a cor aqui identifica
+            categoria e prioridade, e um terceiro tom colorido brigaria com as
+            duas sem acrescentar significado. */}
         {a.cliente && (
-          <span style={{
-            display: "flex", alignItems: "center", gap: 4,
-            fontFamily: FONT, fontSize: PISO_TIPO, color: textSecondary,
-            minWidth: 0, maxWidth: "100%",
-          }}>
-            <Building2 size={12} style={{ flexShrink: 0 }} />
+          <span
+            title={a.cliente}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "3px 9px", borderRadius: 999,
+              fontFamily: FONT, fontWeight: 600, fontSize: PISO_TIPO,
+              letterSpacing: "0.04em", color: textPrimary,
+              background: isLight ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.09)",
+              minWidth: 0, maxWidth: "100%",
+            }}
+          >
+            <Building2 size={11} style={{ flexShrink: 0, opacity: 0.75 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {a.cliente}
             </span>

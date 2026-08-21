@@ -194,6 +194,8 @@ export interface BrutoChamado {
   updated_at: string | null;
   faturamento_status?: string | null;
   cliente?: { nome: string } | null;
+  /** U31: o nome como veio do Notion, quando não casou com cliente do QAP */
+  cliente_origem_nome?: string | null;
 }
 
 export interface BrutoVisita {
@@ -374,7 +376,10 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     statusCor: { dark: info.color, light: info.colorLight, bg: info.bg, border: info.border },
     titulo: c.titulo,
     numero: c.numero,
-    cliente: c.cliente?.nome ?? null,
+    // o vínculo real vence o texto: o nome do QAP é o canônico (é o que tem
+    // endereço e contrato atrás). O texto do Notion é a rede de segurança das
+    // atividades cujo nome não casou — sem ela a etiqueta sumiria (U31).
+    cliente: c.cliente?.nome ?? c.cliente_origem_nome ?? null,
     responsavelId: c.responsavel_id,
     participantes: Array.from(new Set([
       ...(c.responsavel_id ? [c.responsavel_id] : []),
