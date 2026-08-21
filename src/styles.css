@@ -756,6 +756,36 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   }
 }
 
+/* ── Mapa de clientes (Leaflet) ────────────────────────────────────────────
+   O Leaflet empilha os próprios painéis em z-index 400–700, o que passaria por
+   cima da sidebar e dos popovers do app. Como o mapa vive dentro de um card
+   que já é contexto de empilhamento, basta rebaixar os controles para eles não
+   disputarem com a interface. */
+.mapa-clientes .leaflet-pane        { z-index: 1; }
+.mapa-clientes .leaflet-top,
+.mapa-clientes .leaflet-bottom      { z-index: 2; }
+/* controles e crédito no tom do tema, senão entram brancos no modo escuro */
+.mapa-clientes .leaflet-control-zoom a {
+  background: rgba(20,20,26,0.86);
+  color: rgba(255,255,255,0.85);
+  border-color: rgba(255,255,255,0.10);
+}
+.mapa-clientes .leaflet-control-attribution {
+  background: rgba(20,20,26,0.7);
+  color: rgba(255,255,255,0.45);
+  font-size: 9px;
+}
+.mapa-clientes .leaflet-control-attribution a { color: rgba(255,255,255,0.6); }
+html[data-theme="light"] .mapa-clientes .leaflet-control-zoom a {
+  background: rgba(255,255,255,0.92);
+  color: #21252c;
+  border-color: rgba(0,0,0,0.10);
+}
+html[data-theme="light"] .mapa-clientes .leaflet-control-attribution {
+  background: rgba(255,255,255,0.75);
+  color: #5a616e;
+}
+
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
 .ruido { position: relative; isolation: isolate; }
 .ruido::after {

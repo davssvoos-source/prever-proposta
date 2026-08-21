@@ -502,17 +502,36 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('corDoCliente muda com o tema',
      C.corDoCliente('abc-123', false) !== C.corDoCliente('abc-123', true), true);
 
-  // projeção: os cantos geográficos caem nos cantos do viewBox
-  const c1 = M.projetar(-23.35, -46.83);   // ~norte-oeste do município
-  eq('noroeste projeta perto da origem', c1.x > -60 && c1.x < 200 && c1.y > -60 && c1.y < 200, true);
-  const se = M.projetar(-23.5505, -46.6333); // Praça da Sé
-  eq('a Sé cai dentro do mapa', M.dentroDoMapa(-23.5505, -46.6333), true);
-  eq('a Sé cai no terço norte (a capital é comprida para o sul)',
-     se.y > 0 && se.y < M.MAPA_SP.altura / 3, true);
-  eq('Campinas NÃO cai no mapa', M.dentroDoMapa(-22.9099, -47.0626), false);
-  eq('Osasco NÃO cai no mapa (a caixa do município é justa)',
-     M.dentroDoMapa(-23.5325, -46.7917), false);
-  eq('o path é um anel fechado', M.MAPA_SP.d.startsWith('M') && M.MAPA_SP.d.endsWith('Z'), true);
+  // 94 distritos: os 96 da cidade MENOS Marsilac e Parelheiros, que são a área
+  // rural do extremo sul. Cortá-los foi decisão do Davi e muda o desenho E a
+  // contagem do rodapé — se voltarem sem querer, o mapa se deforma de novo.
+  eq('o mapa tem 94 distritos (96 menos a área rural do sul)', M.DISTRITOS.length, 94);
+  const nomes = M.DISTRITOS.map(([n]) => n);
+  eq('Marsilac está fora', nomes.includes('Marsilac'), false);
+  eq('Parelheiros está fora', nomes.includes('Parelheiros'), false);
+  for (const b of ['Moema', 'Itaim Bibi', 'Santana', 'Morumbi', 'Mooca', 'Grajaú']) {
+    eq(`${b} está no mapa (o Davi citou como referência)`, nomes.includes(b), true);
+  }
+  eq('todo distrito tem path fechado',
+     M.DISTRITOS.every(([, d]) => d.startsWith('M') && d.endsWith('Z')), true);
+
+  // o teste de pertencimento decide quem aparece no mapa e quem vira "fora de
+  // São Paulo" no rodapé — errar aqui erra o número que a pessoa lê
+  eq('a Sé está na cidade', M.dentroDaCidade(-23.5505, -46.6333), true);
+  eq('Moema está na cidade', M.dentroDaCidade(-23.6017, -46.6653), true);
+  eq('Santana está na cidade', M.dentroDaCidade(-23.5010, -46.6250), true);
+  eq('Itaquera está na cidade', M.dentroDaCidade(-23.5405, -46.4568), true);
+  eq('Osasco NÃO está na cidade', M.dentroDaCidade(-23.5325, -46.7917), false);
+  eq('Guarulhos NÃO está na cidade', M.dentroDaCidade(-23.4538, -46.5333), false);
+  eq('Campinas NÃO está na cidade', M.dentroDaCidade(-22.9099, -47.0626), false);
+  eq('Marsilac (área cortada) conta como fora', M.dentroDaCidade(-23.9200, -46.7100), false);
+
+  // a projeção precisa pôr o norte em cima
+  const se = M.projetar(-23.5505, -46.6333);
+  const santana = M.projetar(-23.5010, -46.6250);
+  eq('Santana projeta ACIMA da Sé (norte é para cima)', santana.y < se.y, true);
+  eq('a Sé cai dentro do quadro',
+     se.x > 0 && se.x < M.MAPA_SP.largura && se.y > 0 && se.y < M.MAPA_SP.altura, true);
 
   // a migration U24: 192 clientes, todos com coordenada, verificação no fim
   const sql = fs3.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
