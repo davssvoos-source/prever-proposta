@@ -593,25 +593,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('S1: nenhuma interpolação crua sobrou no popup',
      /\$\{v\.(cliente\?\.nome|titulo)\}/.test(mapa), false);
 
-  // Cabeçalhos de segurança em toda resposta.
+  // CABEÇALHOS DE SEGURANÇA: REVERTIDOS (2026-08-20).
   //
-  // A CSP está em modo RELATÓRIO porque a versão bloqueante derrubou o app:
-  // o SSR do TanStack injeta o estado de hidratação num <script> inline, e
-  // `script-src 'self'` sem nonce mata exatamente isso — tela preta. Estas
-  // asserções travam o estado ATUAL e, principalmente, impedem que alguém
-  // religue o bloqueio sem antes resolver o nonce.
+  // Introduzi CSP + HSTS + nosniff em src/server.ts e o app caiu. Duas vezes.
+  // A causa da primeira foi a CSP bloqueante contra o <script> inline do SSR;
+  // da segunda não cheguei a provar. O que sei é que src/server.ts é o ÚNICO
+  // arquivo que roda só em produção — `vite dev` não o carrega — então eu não
+  // tinha como testar antes de o Davi publicar. Reverti para o estado
+  // conhecido-bom e registrei como S10.
+  //
+  // Esta asserção existe para impedir que os cabeçalhos voltem sem que exista
+  // uma forma de exercitá-los antes do deploy.
   const srv = fs4.readFileSync('src/server.ts', 'utf8');
-  for (const h of ['content-security-policy-report-only', 'x-content-type-options',
-                   'referrer-policy', 'strict-transport-security', 'permissions-policy']) {
-    eq(`S1: cabeçalho ${h} aplicado`, srv.includes(h), true);
-  }
-  const cod = srv.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//'));
-  eq('S1: a CSP NÃO está em modo bloqueante (derrubaria o SSR sem nonce)',
-     cod.some((l) => /"content-security-policy":/.test(l)), false);
-  eq('S1: o preview do Lovable cabe em frame-ancestors',
-     cod.some((l) => /frame-ancestors/.test(l) && /lovable/.test(l)), true);
-  eq('S1: x-frame-options é SAMEORIGIN, não DENY (o preview roda em iframe)',
-     cod.some((l) => /x-frame-options/.test(l) && /SAMEORIGIN/.test(l)), true);
+  eq('S1: src/server.ts está no estado conhecido-bom (sem cabeçalhos)',
+     /content-security-policy|strict-transport-security|comSeguranca/.test(srv), false);
 
   // REVOKE de coluna é ferramenta errada no Supabase: todo logado é o mesmo
   // role `authenticated`, então o REVOKE atinge o admin junto — e quebra

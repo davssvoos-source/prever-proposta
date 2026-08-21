@@ -295,17 +295,32 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
   cliente a cliente. Está anotado dentro da própria migration (§8), onde quem
   for escrever o importador vai ler.
 
-- **S10 — a CSP está em modo RELATÓRIO, não bloqueia** (2026-08-20): a versão
-  bloqueante (`script-src 'self'`) **derrubou o app** — tela preta. O SSR do
-  TanStack Start injeta o estado de hidratação num `<script>` inline
-  (`<Scripts />` em `__root.tsx`), e sem nonce a política mata exatamente ele.
-  Hoje o cabeçalho é `Content-Security-Policy-Report-Only`: o navegador avalia
-  e reporta no console, sem bloquear.
+- **S10 — os cabeçalhos de segurança HTTP foram REVERTIDOS** (2026-08-20):
+  não há CSP, HSTS, `nosniff` nem `Referrer-Policy` no app hoje.
 
-  Para valer de verdade, o caminho é **nonce por request** — o SSR gera um
-  valor, carimba no cabeçalho e na tag `<script nonce=...>`, e a política troca
-  `'unsafe-inline'` por `'nonce-...'`. Enquanto isso não existir, a CSP não
-  protege contra XSS; quem protege é o escape na origem (o do mapa, na S1).
+  Tentei duas vezes e derrubei o app duas vezes. A primeira versão usava
+  `script-src 'self'`, que bloqueia o `<script>` inline com o estado de
+  hidratação do TanStack Start (`<Scripts />` no `__root.tsx`) — tela preta. A
+  segunda, em `Report-Only`, também coincidiu com o app fora do ar, e eu não
+  cheguei a provar a causa antes de reverter.
 
-  **Lição, e é a que importa:** CSP se introduz em Report-Only e só depois vira
+  **A raiz do problema é de método, não de política:** `src/server.ts` é o
+  entry do worker e só executa em produção — `vite dev` não o carrega e
+  `vite preview` não roda neste projeto (procura `dist/server/server.js`,
+  enquanto o build gera `.output/`). Ou seja, não existe forma de exercitar
+  esse arquivo antes de publicar, e cada tentativa vira um teste em produção.
+
+  **Pré-requisito para tentar de novo** — nesta ordem:
+  1. arrumar um jeito de rodar o build localmente (`npx nitro dev` sobre
+     `.output/`, ou um teste que importe `src/server.ts` e chame `fetch()` com
+     uma Request sintética, cobrindo 200, 304 e 500);
+  2. só então introduzir os cabeçalhos, começando pelos que não dependem do
+     conteúdo (`nosniff`, `Referrer-Policy`, `Permissions-Policy`), que são
+     baratos e quase não têm como quebrar;
+  3. a CSP por último, em `Report-Only`, e com nonce por request antes de
+     virar bloqueio.
+
+  Enquanto isso, o que protege contra XSS é o escape na origem — o do popup do
+  mapa, feito na S1 e que continua valendo.
+
   bloqueio, olhando o que ela quebraria. Eu inverti a ordem e o app caiu.
