@@ -2542,3 +2542,59 @@ filtrado — o filtro de um eixo não pode fazer o CONTROLE do outro eixo
 desaparecer.
 
 687 asserções (17 novas), build ok.
+
+### U40 — O painel de propriedades, 2ª revisão (R47, 2026-08-22)
+
+Cinco pedidos, num painel só:
+
+**Sigla fora do título.** Repete a R43 (a tabela da Início): o CH-... some da
+vista, mas mora no `title=` do bloco do título — continua ali para quando
+alguém precisa pedir o chamado por telefone.
+
+**"De quem é" virou uma linha só.** Cliente, Responsável e Apoio são três
+respostas para a mesma pergunta — separadas em três linhas empilhadas
+pareciam três perguntas diferentes. Os três ganharam ícone/avatar ao lado do
+nome: Cliente com `Building2` (o mesmo símbolo do resto do app), Responsável
+e cada chip de Apoio com o AVATAR de verdade da pessoa. Isso pediu duas
+extensões:
+
+- `CampoComBusca` ganhou `iconeEsquerda` — um ícone/avatar que representa a
+  escolha ATUAL, dentro do campo. O ícone some enquanto o campo está aberto
+  (buscando), porque nesse momento o texto mostrado é o termo digitado, não
+  a escolha.
+- `PessoaComFoto` (o par foto+nome que a U33 tinha construído só para
+  `TabelaAtividades`) foi extraído para `src/components/PessoaComFoto.tsx` —
+  o painel precisava do mesmo par, e duas cópias divergiriam na primeira
+  mudança de estilo (pior: cada cópia poderia hashear a cor por um campo
+  diferente, quebrando "mesma pessoa, mesma cor em toda tela").
+
+**Descrição virou o 2º campo, com ferramentas básicas.** Não é editor rico:
+`src/lib/edicao-texto.ts` é Markdown em texto puro (`**negrito**`,
+`- [ ] item`) — a descrição continua sendo lida como texto simples em toda
+tela que já lê `descricao_problema` hoje, e nenhuma dependência nova entrou
+no projeto. As duas funções puras (`envolverSelecao`, `prefixarLinhas`) saem
+testadas por asserção, inclusive o caso mais fácil de errar: o cursor tem que
+manter a MESMA posição relativa ao texto depois de o prefixo ser inserido —
+sem isso, cada clique no botão jogaria o cursor para um lugar errado.
+
+**Classificação: os 4 itens numa linha só.** Bastou baixar o piso da grade de
+210px para 150px — com o piso antigo, 4 colunas não cabiam nos 880px do
+painel e quebravam em duas linhas.
+
+**Comentários — não era uma feature nova.** `chamado_eventos` já existia (a
+tabela nasceu como `demanda_eventos` na U1, virou `chamado_eventos` na fusão
+U7) com policy própria (`tipo='comentario'` e autor não pode ser forjado) e
+gatilho de notificação. `useChamadoEventos`/`comentarChamado`
+(`features/chamados/data.ts`) já existiam e já alimentavam a página de
+detalhe interna. Faltava só o painel expor o que já estava construído — zero
+migration nova. Mesma ordem (mais antigo → mais novo, campo de escrever no
+fim) e mesmo filtro (`tipo === "comentario"`, escondendo o resto da linha do
+tempo de eventos) que `DetalheInterno.tsx` já usava.
+
+**Um erro que eu mesmo cometi e corrigi antes de publicar:** a primeira
+versão escondia a sigla do título mas deixava, logo abaixo, uma segunda linha
+mostrando o MESMO número — visível, não só no tooltip. Contradizia o próprio
+comentário que eu tinha acabado de escrever no código. Pego relendo o próprio
+diff antes do build.
+
+715 asserções (44 novas), build ok.

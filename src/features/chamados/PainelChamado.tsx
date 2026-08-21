@@ -12,55 +12,58 @@
 // caiu no sétimo. Cada campo carrega o próprio estado — salvando, salvo, ou o
 // erro com o código (PRV-...) para o defeito ser rastreável.
 //
-// ── O DESENHO (revisto em 2026-08-21, sobre um print do Davi) ──────────────
+// ── O DESENHO (2ª revisão, 2026-08-22) ──────────────────────────────────────
 //
-// A primeira versão era um formulário: dez caixas cinzas idênticas, rótulos de
-// 9,5px em caixa alta, tudo do mesmo tamanho. Um formulário trata todo campo
-// como igualmente importante, e eles não são — quem abre o painel quer saber,
-// nesta ordem: o que é isto, em que pé está, de quem é. Três coisas, não dez.
+// A ORDEM DAS SEÇÕES é a ordem em que se lê um chamado, não a ordem em que o
+// banco guarda as colunas: De quem é (quem toca isto) → Descrição (o que é)
+// → Classificação (como se organiza) → Quando (o relógio) → Comentários (a
+// conversa). "De quem é" primeiro porque é a primeira coisa que se procura
+// varrendo uma fila; comentários por último porque é discussão SOBRE o
+// chamado, não uma propriedade dele.
 //
-// O que mudou:
+// DE QUEM É — Cliente, Responsável e Apoio na MESMA LINHA, cada um com
+// ícone/foto ao lado do nome: são três respostas para a mesma pergunta
+// ("de quem é isto?"), e lado a lado é como se lê uma resposta composta —
+// separadas em três linhas empilhadas, pareciam três perguntas diferentes.
 //
-// · O TÍTULO virou o cabeçalho, grande e editável no lugar. Ele é a identidade
-//   do chamado; ter um rótulo "TÍTULO" acima de um campo pequeno era gastar
-//   duas linhas para dizer o óbvio.
+// DESCRIÇÃO ganhou uma barra de ferramentas (negrito, itálico, checklist,
+// lista) — ver o cabeçalho de src/lib/edicao-texto.ts para por que é
+// Markdown em texto puro, e não um editor rico de verdade.
 //
-// · STATUS, TIPO e PRIORIDADE viram ETIQUETAS COLORIDAS logo abaixo, nas
-//   MESMAS cores dos cards do quadro. É a coloração estratégica: quem vê um
-//   card vermelho no quadro e abre o painel reencontra o mesmo vermelho. Cor
-//   aqui é vocabulário compartilhado, não enfeite — e por isso ela fica onde
-//   diz alguma coisa (estado, urgência) e some do resto.
-//
-// · Os campos ganharam corpo: rótulo de 11px em peso 600 e valor de 14px, com
-//   44px de altura. O piso de 11px é o do design system, e o print mostrava
-//   por quê — 9,5px em cinza sobre fundo escuro obriga a aproximar do monitor.
-//
-// · Os campos foram AGRUPADOS em seções com título. Dez campos soltos são uma
-//   lista para ler inteira; quatro grupos são um mapa para pular direto ao que
-//   interessa.
+// COMENTÁRIOS reaproveita a MESMA tabela (`chamado_eventos`) e as MESMAS
+// funções (`useChamadoEventos`, `comentarChamado`) que a página de detalhe
+// interna já usa — a infraestrutura já existia; faltava expor no painel.
 //
 // A DATA DE CRIAÇÃO não é editável, por pedido do Davi e por bom senso: ela é
 // o registro de quando a demanda chegou. Reescrevê-la apagaria a única âncora
 // temporal confiável do chamado — a que a idade do backlog e a reincidência
-// usam para contar.
+// usam para contar. O NÚMERO (CH-...) saiu da vista do cabeçalho — mesma
+// lógica da R43 na tabela da Início: continua acessível pelo tooltip do
+// título, porque é assim que se pede o chamado por telefone.
 //
 // OS SUBCOMPONENTES SÃO DE MÓDULO, não funções internas. Declarados dentro do
 // pai, ganhariam identidade nova a cada render: o React trataria como outro
 // componente, desmontaria e remontaria — e o texto sendo digitado sumiria no
 // meio da frase quando qualquer consulta de fundo voltasse.
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ExternalLink, Loader2, X } from "lucide-react";
+import {
+  Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare,
+  Bold, Italic, ListChecks, List,
+} from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { CampoComBusca } from "@/components/CampoComBusca";
+import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
+import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import { codigoDeErro } from "@/lib/erros";
+import { envolverSelecao, prefixarLinhas } from "@/lib/edicao-texto";
+import { tempoRelativo } from "@/hooks/useNotificacoes";
 import {
-  useChamado, usePessoas, useChamadoApoios,
-  atualizarChamado, adicionarApoio, removerApoio,
+  useChamado, usePessoas, useChamadoApoios, useChamadoEventos,
+  atualizarChamado, adicionarApoio, removerApoio, comentarChamado, mapaDePessoas,
   type ChamadoPatch,
 } from "@/features/chamados/data";
 import { useClientes } from "@/features/clientes/data";
@@ -121,7 +124,7 @@ function Selo({ estado }: { estado?: EstadoCampo }) {
   return null;
 }
 
-/** Título de seção — o que transforma dez campos soltos em quatro grupos. */
+/** Título de seção — o que transforma dez campos soltos em grupos legíveis. */
 function Secao({ titulo }: { titulo: string }) {
   const { gold } = useEstiloCampo();
   return (
@@ -154,9 +157,9 @@ function Campo({ titulo, estado, children }: {
  * Select que grava ao mudar.
  *
  * `cor` pinta o TEXTO do valor escolhido quando a propriedade tem cor no
- * sistema (tipo, prioridade). O fundo continua neutro de propósito: três
- * caixas coloridas lado a lado brigariam entre si e com as etiquetas do
- * cabeçalho, que são as que devem ser vistas primeiro.
+ * sistema (tipo, prioridade). O fundo continua neutro de propósito: caixas
+ * coloridas lado a lado brigariam entre si e com as etiquetas do cabeçalho,
+ * que são as que devem ser vistas primeiro.
  */
 function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio, cor }: {
   titulo: string; estado?: EstadoCampo; valor: string | null;
@@ -191,24 +194,24 @@ function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio, cor }: {
  * `chaveReset` (o id do chamado) sincroniza o rascunho quando o painel troca
  * de registro — sem isso, abrir outro cartão mostraria o texto do anterior.
  */
-function Texto({ titulo, estado, valor, aoSalvar, linhas, chaveReset, estiloProprio, placeholder }: {
+function Texto({ titulo, estado, valor, aoSalvar, chaveReset, estiloProprio, placeholder }: {
   titulo?: string; estado?: EstadoCampo; valor: string;
-  aoSalvar: (v: string) => void; linhas?: number; chaveReset?: string | null;
+  aoSalvar: (v: string) => void; chaveReset?: string | null;
   estiloProprio?: CSSProperties; placeholder?: string;
 }) {
   const { entrada } = useEstiloCampo();
   const [v, setV] = useState(valor);
   useEffect(() => { setV(valor); }, [valor, chaveReset]);
   const estilo = { ...entrada, ...estiloProprio };
-  const comum = {
-    value: v,
-    placeholder,
-    onChange: (e: any) => setV(e.target.value),
-    onBlur: () => { if (v !== valor) aoSalvar(v); },
-  };
-  const campo = linhas
-    ? <textarea {...comum} rows={linhas} style={{ ...estilo, resize: "vertical", lineHeight: 1.5 }} />
-    : <input {...comum} style={estilo} />;
+  const campo = (
+    <input
+      value={v}
+      placeholder={placeholder}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => { if (v !== valor) aoSalvar(v); }}
+      style={estilo}
+    />
+  );
   // sem rótulo = é o título no cabeçalho, que se explica sozinho
   return titulo ? <Campo titulo={titulo} estado={estado}>{campo}</Campo> : campo;
 }
@@ -225,6 +228,222 @@ function Etiqueta({ texto, cor, forte }: { texto: string; cor: { dark: string; l
     }}>
       {texto}
     </span>
+  );
+}
+
+// ── Descrição, com ferramentas básicas de texto ─────────────────────────────
+
+interface BotaoFerramenta {
+  Icon: typeof Bold;
+  titulo: string;
+  aplicar: (valor: string, ini: number, fim: number) => { valor: string; selecaoInicio: number; selecaoFim: number };
+}
+
+const FERRAMENTAS: BotaoFerramenta[] = [
+  { Icon: Bold, titulo: "Negrito",
+    aplicar: (v, i, f) => envolverSelecao(v, i, f, "**", "negrito") },
+  { Icon: Italic, titulo: "Itálico",
+    aplicar: (v, i, f) => envolverSelecao(v, i, f, "*", "itálico") },
+  { Icon: ListChecks, titulo: "Checklist",
+    aplicar: (v, i, f) => prefixarLinhas(v, i, f, "- [ ] ") },
+  { Icon: List, titulo: "Lista",
+    aplicar: (v, i, f) => prefixarLinhas(v, i, f, "- ") },
+];
+
+/**
+ * A descrição com barra de ferramentas — negrito, itálico, checklist, lista
+ * (2026-08-22, Davi: "edições básicas de texto").
+ *
+ * MARKDOWN EM TEXTO PURO, não um editor rico: ver o cabeçalho de
+ * lib/edicao-texto.ts. Os botões escrevem `**assim**`/`- [ ] assim` dentro do
+ * `<textarea>` de sempre — é sintaxe que qualquer pessoa já reconhece
+ * (GitHub, WhatsApp, Notion), e continua sendo texto puro em toda tela que já
+ * lê `descricao_problema` hoje.
+ */
+function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
+  estado?: EstadoCampo; valor: string; aoSalvar: (v: string) => void; chaveReset?: string | null;
+}) {
+  const est = useEstiloCampo();
+  const [v, setV] = useState(valor);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // seleção a restaurar DEPOIS do próximo render — o clique no botão muda o
+  // valor controlado, e só depois de o React repintar dá para reposicionar
+  // o cursor no DOM novo
+  const selecaoPendente = useRef<{ inicio: number; fim: number } | null>(null);
+
+  useEffect(() => { setV(valor); }, [valor, chaveReset]);
+
+  useEffect(() => {
+    if (!selecaoPendente.current || !ref.current) return;
+    const { inicio, fim } = selecaoPendente.current;
+    ref.current.focus();
+    ref.current.setSelectionRange(inicio, fim);
+    selecaoPendente.current = null;
+  }, [v]);
+
+  function aplicar(f: BotaoFerramenta) {
+    const el = ref.current;
+    if (!el) return;
+    const r = f.aplicar(v, el.selectionStart ?? v.length, el.selectionEnd ?? v.length);
+    selecaoPendente.current = { inicio: r.selecaoInicio, fim: r.selecaoFim };
+    setV(r.valor);
+  }
+
+  return (
+    <Campo titulo="Descrição" estado={estado}>
+      <div style={{
+        border: est.borda, borderRadius: 12, overflow: "hidden", background: est.campoBg,
+      }}>
+        {/* a barra fica DENTRO da borda do campo — lê como parte dele, não
+            como uma fileira de botões soltos acima */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 2, padding: "6px 7px",
+          borderBottom: est.borda,
+        }}>
+          {FERRAMENTAS.map((f) => (
+            <button
+              key={f.titulo}
+              type="button"
+              title={f.titulo}
+              aria-label={f.titulo}
+              // mousedown, não click: click chega DEPOIS do blur do
+              // textarea, que já teria apagado selectionStart/End
+              onMouseDown={(e) => { e.preventDefault(); aplicar(f); }}
+              style={{
+                width: 30, height: 30, borderRadius: 8, border: "none",
+                background: "transparent", color: est.textSecondary,
+                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              }}
+            >
+              <f.Icon size={15} />
+            </button>
+          ))}
+        </div>
+        <textarea
+          ref={ref}
+          value={v}
+          rows={5}
+          placeholder="O que precisa ser feito, o que já se sabe…"
+          onChange={(e) => setV(e.target.value)}
+          onBlur={() => { if (v !== valor) aoSalvar(v); }}
+          style={{
+            width: "100%", boxSizing: "border-box", display: "block",
+            fontFamily: FONT, fontSize: 14, fontWeight: 500, color: est.textPrimary,
+            background: "transparent", border: "none", outline: "none",
+            padding: "11px 13px", resize: "vertical", lineHeight: 1.55,
+          }}
+        />
+      </div>
+    </Campo>
+  );
+}
+
+// ── Comentários ──────────────────────────────────────────────────────────────
+
+/**
+ * O feed de comentários — reaproveita `chamado_eventos` (a MESMA tabela e as
+ * MESMAS funções que DetalheInterno.tsx já usa). Não é uma feature nova do
+ * zero: faltava só o painel expor o que já existia.
+ *
+ * Ordem ANTIGO → NOVO, com o campo de escrever no FIM — é como se lê uma
+ * conversa, e é o padrão que a própria tela de detalhe já usava.
+ */
+function Comentarios({ chamadoId, pessoasPorId }: {
+  chamadoId: string; pessoasPorId: Record<string, { nome: string; avatar_url: string | null }>;
+}) {
+  const est = useEstiloCampo();
+  const qc = useQueryClient();
+  const { data: eventos = [] } = useChamadoEventos(chamadoId, "asc");
+  const comentarios = useMemo(() => eventos.filter((e) => e.tipo === "comentario"), [eventos]);
+  const [texto, setTexto] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+
+  const enviar = useMutation({
+    mutationFn: async () => {
+      const t = texto.trim();
+      if (!t) throw new Error("Escreva alguma coisa antes de enviar.");
+      await comentarChamado(chamadoId, t);
+    },
+    onSuccess: () => {
+      setTexto("");
+      setErro(null);
+      qc.invalidateQueries({ queryKey: ["chamado-eventos", chamadoId] });
+    },
+    onError: (e: Error) => setErro(codigoDeErro(e, "/dashboard")),
+  });
+
+  return (
+    <>
+      <Secao titulo="Comentários" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {comentarios.length === 0 ? (
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: est.textSecondary }}>
+            Ninguém comentou ainda.
+          </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {comentarios.map((c) => (
+              <div key={c.id} style={{ display: "flex", gap: 9 }}>
+                <MessageSquare size={14} color={est.gold} style={{ marginTop: 3, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: est.textPrimary }}>
+                    {c.user_id ? pessoasPorId[c.user_id]?.nome ?? "Alguém" : "Alguém"}
+                    <span style={{ fontWeight: 400, color: est.textSecondary }}>
+                      {" · "}{tempoRelativo(c.created_at)}
+                    </span>
+                  </div>
+                  <div style={{
+                    fontFamily: FONT, fontWeight: 400, fontSize: 13.5, color: est.textPrimary,
+                    lineHeight: 1.55, whiteSpace: "pre-wrap", marginTop: 2,
+                  }}>
+                    {c.descricao}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 44px", gap: 8, alignItems: "start" }}>
+          <div>
+            <textarea
+              value={texto}
+              onChange={(e) => { setTexto(e.target.value); setErro(null); }}
+              onKeyDown={(e) => {
+                // Enter envia, Shift+Enter quebra linha — o padrão de
+                // qualquer campo de comentário/chat
+                if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
+                  e.preventDefault();
+                  enviar.mutate();
+                }
+              }}
+              placeholder="Escrever um comentário… (Enter envia)"
+              rows={2}
+              style={{ ...est.entrada, resize: "vertical", lineHeight: 1.5, minHeight: 44 }}
+            />
+            {erro && (
+              <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: est.vermelho }}>
+                {erro}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => enviar.mutate()}
+            disabled={!texto.trim() || enviar.isPending}
+            aria-label="Enviar comentário"
+            style={{
+              height: 44, borderRadius: 12, border: "none",
+              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
+              color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: texto.trim() ? "pointer" : "default", opacity: texto.trim() ? 1 : 0.5,
+              flexShrink: 0,
+            }}
+          >
+            {enviar.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -304,11 +523,12 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     () => [...(pessoas as any[])].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
     [pessoas],
   );
+  const pessoasPorId = useMemo(() => mapaDePessoas(pessoas as any[]), [pessoas]);
   const clientesOrdenados = useMemo(
     () => [...clientes].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
     [clientes],
   );
-  const nomeDe = (id: string) => (pessoas as any[]).find((p) => p.id === id)?.nome ?? "Alguém";
+  const nomeDe = (id: string) => pessoasPorId[id]?.nome ?? "Alguém";
 
   const info = chamado ? chamadoStatusInfo(chamado.status) : null;
   const tipo = (chamado?.tipo ?? null) as ChamadoTipo | null;
@@ -316,6 +536,20 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const atrasado = chamado
     ? situacaoPrazo(chamado.prazo_limite, chamado.status) === "estourado"
     : false;
+
+  // opções de cliente/pessoa no formato que CampoComBusca espera
+  const opcoesClientes: OpcaoBusca[] = useMemo(
+    () => clientesOrdenados.map((c) => ({
+      valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined,
+    })),
+    [clientesOrdenados],
+  );
+  const opcoesPessoas: OpcaoBusca[] = useMemo(
+    () => pessoasOrdenadas.map((p) => ({
+      valor: p.id, rotulo: p.nome, secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
+    })),
+    [pessoasOrdenadas],
+  );
 
   return (
     <Sheet open={!!chamadoId} onOpenChange={(aberto) => { if (!aberto) aoFechar(); }}>
@@ -326,7 +560,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
           // Mais largo a pedido do Davi, mantendo o teto de 60% da tela: o
           // painel informa sobre um item do quadro que continua atrás — cobrir
           // tudo transformaria a consulta rápida em troca de página. O piso de
-          // 380px é o mínimo em que dois campos lado a lado ainda cabem.
+          // 380px é o mínimo em que os campos ainda cabem no celular.
           width: "min(60vw, 880px)",
           maxWidth: "60vw",
           minWidth: "min(380px, 100vw)",
@@ -346,17 +580,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
               padding: "20px 22px 16px", borderBottom: est.borda,
               background: cabecalhoBg, flexShrink: 0,
             }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  {chamado.numero && (
-                    <span style={{
-                      fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12,
-                      fontWeight: 600, color: est.gold, letterSpacing: "0.04em",
-                    }}>
-                      {chamado.numero}
-                    </span>
-                  )}
-                </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button
                   onClick={() => aoAbrirPagina(chamado.id)}
                   title="Abrir a página completa"
@@ -365,25 +589,33 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     border: est.borda, background: est.campoBg, color: est.textSecondary,
                     display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
                     marginRight: 28, // o X de fechar do Sheet mora no canto
+                    marginTop: -6,
                   }}
                 >
                   <ExternalLink size={16} />
                 </button>
               </div>
 
-              {/* O TÍTULO É O CABEÇALHO — grande, editável no lugar. */}
-              <Texto
-                valor={chamado.titulo ?? ""}
-                chaveReset={chamadoId}
-                placeholder="Sem título"
-                aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
-                estiloProprio={{
-                  fontSize: 19, fontWeight: 600, minHeight: 0,
-                  padding: "6px 8px", marginLeft: -8, marginTop: 2,
-                  background: "transparent", border: "1px solid transparent",
-                  borderRadius: 10, letterSpacing: "-0.01em",
-                }}
-              />
+              {/* O TÍTULO É O CABEÇALHO — grande, editável no lugar. A sigla
+                  CH-... SAIU DA VISTA de vez (2026-08-22, Davi: "remova a
+                  sigla do título") — não sobra em linha nenhuma perto dele.
+                  Continua acessível só pelo TOOLTIP ao passar o mouse, porque
+                  é assim que o chamado se pede por telefone — o mesmo padrão
+                  da R43 na tabela da Início. */}
+              <div title={chamado.numero ?? undefined}>
+                <Texto
+                  valor={chamado.titulo ?? ""}
+                  chaveReset={chamadoId}
+                  placeholder="Sem título"
+                  aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
+                  estiloProprio={{
+                    fontSize: 19, fontWeight: 600, minHeight: 0,
+                    padding: "6px 8px", marginLeft: -8, marginTop: -4,
+                    background: "transparent", border: "1px solid transparent",
+                    borderRadius: 10, letterSpacing: "-0.01em",
+                  }}
+                />
+              </div>
 
               {/* ETIQUETAS — a leitura de estado, nas cores dos cards */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center", marginTop: 10 }}>
@@ -415,104 +647,111 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
               </div>
             </div>
 
-            {/* ── CAMPOS, em quatro grupos ─────────────────────────────── */}
+            {/* ── CAMPOS ───────────────────────────────────────────────── */}
             <div style={{
               flex: 1, minHeight: 0, overflowY: "auto",
               padding: "6px 22px 32px", display: "flex", flexDirection: "column", gap: 14,
             }}>
               <Secao titulo="De quem é" />
 
-              {/* CLIENTE, RESPONSÁVEL e APOIO usam campo COM BUSCA: são as
-                  listas longas (192 clientes) onde rolar custa mais que
-                  digitar. Os campos de lista curta logo abaixo continuam
-                  select — para escolher entre quatro prioridades, digitar
-                  seria trabalho a mais, não a menos. */}
-              <Campo titulo="Cliente" estado={estados.cliente_id}>
-                <CampoComBusca
-                  id="painel-cliente"
-                  opcoes={clientesOrdenados.map((c) => ({
-                    valor: c.id, rotulo: c.nome,
-                    secundario: (c as any).posto_servico ?? undefined,
-                  }))}
-                  valor={chamado.cliente_id ?? null}
-                  vazio="— sem cliente —"
-                  aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
-                />
-              </Campo>
+              {/* Cliente, Responsável e Apoio NA MESMA LINHA (2026-08-22,
+                  Davi): são três respostas para "de quem é isto?", e lado a
+                  lado é como se lê uma resposta composta. Os três usam campo
+                  COM BUSCA — são as listas longas (192 clientes) onde rolar
+                  custa mais que digitar — e os três mostram um ícone/foto ao
+                  lado do nome escolhido. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+                <Campo titulo="Cliente" estado={estados.cliente_id}>
+                  <CampoComBusca
+                    id="painel-cliente"
+                    opcoes={opcoesClientes}
+                    valor={chamado.cliente_id ?? null}
+                    vazio="— sem cliente —"
+                    aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
+                    iconeEsquerda={(esc) => esc ? <Building2 size={15} color={est.textSecondary} /> : null}
+                  />
+                </Campo>
+
+                <Campo titulo="Responsável" estado={estados.responsavel_id}>
+                  <CampoComBusca
+                    id="painel-responsavel"
+                    opcoes={opcoesPessoas}
+                    valor={chamado.responsavel_id ?? null}
+                    vazio="— sem responsável —"
+                    aoMudar={(v) => salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v } })}
+                    iconeEsquerda={(esc) => esc
+                      ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
+                      : null}
+                  />
+                </Campo>
+
+                <Campo titulo="Apoio" estado={estados.apoio}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                    {apoios.map((id) => (
+                      <span key={id} style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "4px 6px 4px 6px", borderRadius: 999,
+                        background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
+                        fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                      }}>
+                        <AvatarCirculo id={id} nome={nomeDe(id)} pessoa={pessoasPorId[id]} tamanho={17} />
+                        {nomeDe(id)}
+                        <button
+                          onClick={() => mexerApoio.mutate({ id, remover: true })}
+                          aria-label={`Remover ${nomeDe(id)} do apoio`}
+                          style={{
+                            border: "none", background: "transparent", cursor: "pointer",
+                            color: est.textSecondary, display: "flex", padding: 2,
+                          }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </span>
+                    ))}
+                    <div style={{ minWidth: 150, flex: 1 }}>
+                      <CampoComBusca
+                        id="painel-apoio"
+                        compacto
+                        limpavel={false}
+                        placeholder="+ adicionar"
+                        // quem já está na atividade sai da lista: oferecer de
+                        // novo quem já é apoio só produz chave repetida
+                        opcoes={opcoesPessoas.filter(
+                          (o) => o.valor !== chamado.responsavel_id && !apoios.includes(o.valor),
+                        )}
+                        valor={null}
+                        aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
+                      />
+                    </div>
+                  </div>
+                </Campo>
+              </div>
               {/* o nome que veio do Notion, quando não há vínculo (U31): sem
                   isto o campo pareceria vazio numa atividade que TEM cliente */}
               {!chamado.cliente_id && chamado.cliente_origem_nome && (
-                <div style={{
-                  fontFamily: FONT, fontSize: 12.5, color: est.textSecondary,
-                  marginTop: -8, lineHeight: 1.5,
-                }}>
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: est.textSecondary, marginTop: -8, lineHeight: 1.5 }}>
                   No Notion estava como{" "}
                   <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
-                  {" "}— escolha acima para vincular ao cadastro do QAP.
+                  {" "}— escolha Cliente acima para vincular ao cadastro do QAP.
                 </div>
               )}
 
-              <Campo titulo="Responsável" estado={estados.responsavel_id}>
-                <CampoComBusca
-                  id="painel-responsavel"
-                  opcoes={pessoasOrdenadas.map((p) => ({
-                    valor: p.id, rotulo: p.nome,
-                    secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
-                  }))}
-                  valor={chamado.responsavel_id ?? null}
-                  vazio="— sem responsável —"
-                  aoMudar={(v) => salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v } })}
-                />
-              </Campo>
-
-              {/* APOIO — vários. Logo abaixo do responsável porque a pergunta
-                  é a mesma ("quem toca isto?") com resposta plural. */}
-              <Campo titulo="Apoio" estado={estados.apoio}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center" }}>
-                  {apoios.map((id) => (
-                    <span key={id} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "7px 8px 7px 13px", borderRadius: 999,
-                      background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
-                      fontFamily: FONT, fontSize: 13, fontWeight: 600, color: est.textPrimary,
-                    }}>
-                      {nomeDe(id)}
-                      <button
-                        onClick={() => mexerApoio.mutate({ id, remover: true })}
-                        aria-label={`Remover ${nomeDe(id)} do apoio`}
-                        style={{
-                          border: "none", background: "transparent", cursor: "pointer",
-                          color: est.textSecondary, display: "flex", padding: 2,
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </span>
-                  ))}
-                  <div style={{ minWidth: 208 }}>
-                    <CampoComBusca
-                      id="painel-apoio"
-                      compacto
-                      limpavel={false}
-                      placeholder="+ adicionar apoio"
-                      // quem já está na atividade sai da lista: oferecer de
-                      // novo quem já é apoio só produz um erro de chave repetida
-                      opcoes={pessoasOrdenadas
-                        .filter((p) => p.id !== chamado.responsavel_id && !apoios.includes(p.id))
-                        .map((p) => ({
-                          valor: p.id, rotulo: p.nome,
-                          secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
-                        }))}
-                      valor={null}
-                      aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
-                    />
-                  </div>
-                </div>
-              </Campo>
+              <DescricaoComFerramentas
+                estado={estados.descricao_problema}
+                chaveReset={chamadoId}
+                valor={chamado.descricao_problema ?? ""}
+                aoSalvar={(v) => salvar.mutate({
+                  campo: "descricao_problema", patch: { descricao_problema: v || null },
+                })}
+              />
 
               <Secao titulo="Classificação" />
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
+              {/* Os 4 itens NA MESMA LINHA (2026-08-22, Davi) — 150px de piso
+                  por coluna, não 210: com 4 colunas em vez de 2, o piso maior
+                  faria a grade quebrar em duas linhas no próprio painel de
+                  880px, e é exatamente essa quebra que ela pediu para acabar. */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
                 <Escolha
                   titulo="Tipo de demanda" estado={estados.tipo} valor={chamado.tipo ?? null}
                   vazio="— sem tipo —"
@@ -604,17 +843,6 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                 )}
               </div>
 
-              <Secao titulo="Detalhe" />
-
-              <Texto
-                titulo="Descrição" linhas={5} estado={estados.descricao_problema}
-                chaveReset={chamadoId} valor={chamado.descricao_problema ?? ""}
-                placeholder="O que precisa ser feito, o que já se sabe…"
-                aoSalvar={(v) => salvar.mutate({
-                  campo: "descricao_problema", patch: { descricao_problema: v || null },
-                })}
-              />
-
               {/* A proposta tem fluxo próprio (visita → orçamento → envio) e
                   este painel não o substitui: mexer no funil pelo atalho das
                   propriedades deixaria a visita e a capa contando histórias
@@ -633,6 +861,10 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   <ExternalLink size={15} /> Abrir o fluxo da proposta
                 </button>
               )}
+
+              {/* COMENTÁRIOS — depois do último campo (2026-08-22, Davi):
+                  discussão SOBRE o chamado, não uma propriedade dele. */}
+              <Comentarios chamadoId={chamado.id} pessoasPorId={pessoasPorId} />
             </div>
           </div>
         )}

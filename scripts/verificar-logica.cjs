@@ -1588,8 +1588,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<Etiqueta[\s\S]{0,400}info\.label/.test(pn), true);
   eq('o título é o cabeçalho, não um campo rotulado',
      /fontSize: 19, fontWeight: 600/.test(pn), true);
-  // dez campos soltos são uma lista; quatro grupos são um mapa
-  for (const s of ['De quem é', 'Classificação', 'Quando', 'Detalhe']) {
+  // dez campos soltos são uma lista; grupos são um mapa. "Detalhe" (a seção
+  // só da descrição) saiu na 2ª revisão (2026-08-22): a descrição virou o
+  // 2º CAMPO dentro do fluxo De quem é → Descrição → Classificação, sem
+  // título de seção próprio — é o que o Davi pediu ("segundo campo deve ser
+  // a descrição", não "crie uma seção Detalhe").
+  for (const s of ['De quem é', 'Classificação', 'Quando']) {
     eq(`o painel agrupa em seção "${s}"`, new RegExp(`<Secao titulo="${s}"`).test(pn), true);
   }
   eq('atrasado se anuncia no campo de prazo',
@@ -1931,14 +1935,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('mas continua acessível pelo tooltip (hover)',
      /title=\{a\.numero \? `\$\{a\.numero\} — \$\{a\.titulo\}` : a\.titulo\}/.test(tab3), true);
 
-  // foto ao lado do nome, nas duas colunas — e pela mesma cor de sempre
-  eq('existe um componente de módulo para foto+nome (não função interna)',
-     /^function PessoaComFoto\(/m.test(tab3), true);
+  // foto ao lado do nome, nas duas colunas — e pela mesma cor de sempre.
+  // PessoaComFoto foi para um arquivo COMPARTILHADO na U40 (o painel de
+  // propriedades passou a precisar do mesmo par) — a checagem de definição
+  // migrou para lá, e aqui só confere que a tabela IMPORTA de lá, não que
+  // define a própria cópia.
+  eq('TabelaAtividades importa PessoaComFoto do local compartilhado',
+     /import \{ PessoaComFoto \} from "@\/components\/PessoaComFoto"/.test(tab3), true);
   eq('Responsável usa foto+nome', /<PessoaComFoto id=\{a\.responsavelId\}/.test(tab3), true);
   eq('Apoio usa foto+nome para cada pessoa (não só a pilha de círculos)',
      /apoios\.map\(\(id\) => \(\s*<PessoaComFoto key=\{id\}/.test(tab3), true);
+  const pessoaComFotoSrc = fs19.readFileSync('src/components/PessoaComFoto.tsx', 'utf8');
   eq('a cor do avatar usa o ID (hash estável), não o nome',
-     /degradeAvatar\(id\)/.test(tab3) && !/degradeAvatar\(nome\)/.test(tab3), true);
+     /degradeAvatar\(id\)/.test(pessoaComFotoSrc) && !/degradeAvatar\(nome\)/.test(pessoaComFotoSrc), true);
 }
 
 // ── R44: calendário — filtros no design system (2026-08-22) ────────────────
@@ -2115,6 +2124,149 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('nenhum véu translúcido de branco sobrou como fundo de célula',
      /background: doMes \? superficie : \(isLight \? "#fafafa" : "rgba\(255,255,255,0\.012\)"\)/.test(cal3),
      false);
+}
+
+// ── Painel de propriedades, 2ª revisão: De quem é / Descrição com
+//    ferramentas / Classificação em linha única / Comentários (2026-08-22) ──
+{
+  const fs23 = require('fs');
+  const ET = carregar('src/lib/edicao-texto.ts');
+
+  // ── envolverSelecao (negrito/itálico) ────────────────────────────────────
+  {
+    const r = ET.envolverSelecao('o rato roeu a roupa', 2, 6, '**', 'negrito');
+    eq('negrito envolve a seleção exata', r.valor, 'o **rato** roeu a roupa');
+    eq('e a seleção cobre só o texto (sem os marcadores)',
+       r.valor.slice(r.selecaoInicio, r.selecaoFim), 'rato');
+  }
+  {
+    // sem seleção: insere com um exemplo JÁ selecionado, pronto pra sobrescrever
+    const r = ET.envolverSelecao('', 0, 0, '**', 'negrito');
+    eq('sem seleção, insere com o exemplo pré-selecionado', r.valor, '**negrito**');
+    eq('e a seleção cobre exatamente o exemplo (não os marcadores)',
+       r.valor.slice(r.selecaoInicio, r.selecaoFim), 'negrito');
+  }
+  {
+    const r = ET.envolverSelecao('café', 0, 4, '*', 'itálico');
+    eq('itálico usa um marcador só', r.valor, '*café*');
+  }
+
+  // ── prefixarLinhas (checklist/lista) ─────────────────────────────────────
+  {
+    // cursor no MEIO da única linha (nenhuma seleção) — prefixa essa linha
+    const r = ET.prefixarLinhas('comprar cabo', 5, 5, '- [ ] ');
+    eq('checklist com cursor no meio prefixa a linha inteira',
+       r.valor, '- [ ] comprar cabo');
+  }
+  {
+    // seleção cobrindo 2 das 3 linhas — só essas duas ganham prefixo
+    const texto = 'linha1\nlinha2\nlinha3';
+    const r = ET.prefixarLinhas(texto, 0, 13, '- '); // cobre linha1 e linha2
+    eq('lista prefixa só as linhas TOCADAS pela seleção',
+       r.valor, '- linha1\n- linha2\nlinha3');
+  }
+  {
+    // idempotente: linha já prefixada não ganha o prefixo de novo
+    const r = ET.prefixarLinhas('- [ ] já é item', 0, 0, '- [ ] ');
+    eq('checklist não duplica o prefixo numa linha que já é item',
+       r.valor, '- [ ] já é item');
+  }
+  {
+    // cursor bem no INÍCIO da linha (nada digitado): depois de prefixar, o
+    // cursor tem que ficar DEPOIS do prefixo novo, pronto pra escrever — não
+    // preso antes do marcador
+    const r = ET.prefixarLinhas('linha2', 0, 0, '- ');
+    eq('cursor no início da linha fica DEPOIS do prefixo novo, não antes',
+       r.selecaoInicio, 2);
+    eq('e o valor ficou correto', r.valor, '- linha2');
+  }
+  {
+    // a posição do cursor RELATIVA ao texto de verdade não pode mudar —
+    // só a posição absoluta (deslocada pelo prefixo inserido)
+    const antes = 'linha1\nlinha2\nlinha3';
+    const cursorEmLinha2 = 10; // 3 caracteres dentro de "linha2" (após "lin")
+    const r = ET.prefixarLinhas(antes, cursorEmLinha2, cursorEmLinha2, '- ');
+    const novoInicioDaLinha2 = r.valor.indexOf('- linha2');
+    eq('o cursor mantém a MESMA posição relativa dentro do texto original',
+       r.selecaoInicio - (novoInicioDaLinha2 + '- '.length), cursorEmLinha2 - 7);
+  }
+
+  // ── a tela: os pedidos do Davi, cada um travado por asserção ────────────
+  const pc4 = fs23.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  const soCodigoPc4 = pc4.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  // 1. sigla fora do título
+  eq('o número do chamado não aparece mais como texto visível perto do título',
+     /\{chamado\.numero\}/.test(soCodigoPc4), false);
+  eq('mas continua no tooltip (title=) do bloco do título',
+     /<div title=\{chamado\.numero \?\? undefined\}>/.test(pc4), true);
+
+  // 2. De quem é: Cliente + Responsável + Apoio na MESMA grade
+  eq('Cliente, Responsável e Apoio estão no MESMO grid de 3 colunas',
+     /gridTemplateColumns: "repeat\(auto-fit, minmax\(180px, 1fr\)\)"[\s\S]{0,80}<Campo titulo="Cliente"[\s\S]{0,600}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
+     true);
+  eq('Cliente mostra um ícone (Building2) ao lado do nome',
+     /iconeEsquerda=\{\(esc\) => esc \? <Building2/.test(pc4), true);
+  eq('Responsável mostra o AVATAR da pessoa (não um ícone genérico)',
+     /iconeEsquerda=\{\(esc\) => esc[\s\S]{0,40}<AvatarCirculo id=\{esc\.valor\}/.test(pc4), true);
+  eq('Apoio mostra avatar + nome em cada chip',
+     /<AvatarCirculo id=\{id\} nome=\{nomeDe\(id\)\}/.test(pc4), true);
+
+  // 3. Descrição é a 2ª seção (logo após "De quem é", antes de "Classificação")
+  //
+  // O regex casa `<Secao titulo="...">` de todo o arquivo — mas "Comentários"
+  // é chamado DENTRO do componente `Comentarios`, declarado ANTES do
+  // `PainelChamado` no TEXTO do arquivo (é módulo, por convenção) embora
+  // RENDERIZE por último. Por isso a checagem de ORDEM usa só o corpo de
+  // `PainelChamado` (que não inclui a definição de `Comentarios`, só o
+  // ponto onde ele é CHAMADO) — aqui aparecem só as 3 seções que o próprio
+  // PainelChamado declara direto; "Comentários" é conferido à parte, abaixo,
+  // pela posição da CHAMADA <Comentarios/>, não da declaração da seção.
+  const corpoDoPainel = pc4.slice(pc4.indexOf('export function PainelChamado'));
+  const ordemSecoes = [...corpoDoPainel.matchAll(/<Secao titulo="([^"]+)"/g)].map((m) => m[1]);
+  eq('a ordem das seções é De quem é → Classificação → Quando (Descrição no meio, sem seção própria)',
+     ordemSecoes, ['De quem é', 'Classificação', 'Quando']);
+  eq('Descrição vem DEPOIS de "De quem é" e ANTES de "Classificação"',
+     pc4.indexOf('<Secao titulo="De quem é"') < pc4.indexOf('<DescricaoComFerramentas')
+     && pc4.indexOf('<DescricaoComFerramentas') < pc4.indexOf('<Secao titulo="Classificação"'),
+     true);
+
+  // 4. a barra de ferramentas: negrito, itálico, checklist, lista
+  eq('a descrição tem barra de ferramentas com os 4 botões básicos',
+     /Icon: Bold/.test(pc4) && /Icon: Italic/.test(pc4)
+     && /Icon: ListChecks/.test(pc4) && /Icon: List\b/.test(pc4), true);
+  eq('os botões usam mousedown (o click chegaria depois do blur, tarde demais)',
+     /onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); aplicar\(f\); \}\}/.test(pc4), true);
+
+  // 5. Classificação: 4 itens numa grade com piso menor (garante 1 linha só
+  //    nos 880px do painel — 210px de piso quebraria em duas linhas)
+  const blocoClassificacao = pc4.split('<Secao titulo="Classificação"')[1]?.split('<Secao titulo="Quando"')[0] ?? '';
+  eq('a grade de Classificação usa piso de 150px, não 210 (senão quebra em 2 linhas)',
+     /gridTemplateColumns: "repeat\(auto-fit, minmax\(150px, 1fr\)\)"/.test(blocoClassificacao), true);
+  eq('e tem os 4 campos: Tipo, Status, Prioridade, Equipe',
+     /titulo="Tipo de demanda"/.test(blocoClassificacao) && /titulo="Status"/.test(blocoClassificacao)
+     && /titulo="Prioridade"/.test(blocoClassificacao) && /titulo="Equipe"/.test(blocoClassificacao),
+     true);
+
+  // 6. Comentários: depois do ÚLTIMO campo, reaproveitando a infra existente
+  eq('Comentários é a ÚLTIMA coisa renderizada no painel',
+     pc4.lastIndexOf('<Comentarios') > pc4.lastIndexOf('<Secao titulo="Quando"'), true);
+  eq('reaproveita useChamadoEventos/comentarChamado — não inventa tabela nova',
+     /useChamadoEventos\(chamadoId, "asc"\)/.test(pc4) && /await comentarChamado\(chamadoId, t\)/.test(pc4),
+     true);
+  eq('mostra só tipo="comentario" (não o resto da linha do tempo de eventos)',
+     /eventos\.filter\(\(e\) => e\.tipo === "comentario"\)/.test(pc4), true);
+  eq('Enter envia, Shift+Enter quebra linha (padrão de chat)',
+     /e\.key === "Enter" && !e\.shiftKey && texto\.trim\(\)/.test(pc4), true);
+
+  // 7. o componente de avatar é COMPARTILHADO com a tabela da Início, não
+  //    duplicado (a mesma regra de "hash pelo ID" tem que valer nos dois)
+  eq('PessoaComFoto foi extraído para um arquivo compartilhado',
+     fs23.existsSync('src/components/PessoaComFoto.tsx'), true);
+  const tab4 = fs23.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
+  eq('TabelaAtividades importa do local compartilhado (não tem cópia própria)',
+     /from "@\/components\/PessoaComFoto"/.test(tab4) && !/^function PessoaComFoto\(/m.test(tab4),
+     true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

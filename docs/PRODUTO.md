@@ -670,3 +670,12 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   (considerando tanto hora agendada quanto prazo — não só um dos dois), e
   item concluído/cancelado nunca vira vermelho só por estar no passado. O
   fundo do calendário é uma cor **sólida** escura, não um véu translúcido.
+
+- **R47** — O painel de propriedades do chamado (R33) foi reorganizado: **De
+  quem é** (Cliente, Responsável e Apoio na mesma linha, cada um com
+  ícone/foto ao lado do nome) → **Descrição** (com barra de ferramentas:
+  negrito, itálico, checklist, lista — Markdown em texto puro) →
+  **Classificação** (os 4 itens numa linha só) → **Quando** → **Comentários**
+  (histórico + campo de escrever, reaproveitando `chamado_eventos`, a mesma
+  base que a página de detalhe interna já usava). A sigla CH- saiu da vista
+  do título — continua no tooltip. *(Davi, 2026-08-22.)*
