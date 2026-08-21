@@ -508,15 +508,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // 67 distritos: a área que o Davi contornou. O recorte muda o desenho E a
   // contagem do rodapé — e foi validado com o dado que importa: nenhum dos
   // removidos tem cliente.
-  eq('o mapa tem 67 distritos (a área atendida)', M.DISTRITOS.length, 67);
+  eq('o mapa tem 47 distritos (a área atendida, 3 rodadas de corte)', M.DISTRITOS.length, 47);
   const nomes = M.DISTRITOS.map(([n]) => n);
   for (const b of ['Marsilac', 'Parelheiros', 'Grajaú',
                    'Perus', 'Anhanguera', 'Tremembé', 'Jaçanã',
-                   'Itaquera', 'Cidade Tiradentes', 'São Miguel Paulista']) {
+                   'Itaquera', 'Cidade Tiradentes', 'São Miguel Paulista',
+                   // 3ª rodada — Zona Norte/Leste
+                   'Aricanduva', 'Sapopemba', 'Vila Matilde', 'Penha', 'Cangaíba',
+                   'Vila Maria', 'Vila Medeiros', 'Tucuruvi', 'Vila Guilherme',
+                   'Santana', 'Casa Verde', 'Limão', 'Freguesia do Ó', 'Pirituba',
+                   'São Domingos', 'Jaguara',
+                   // 3ª rodada — Zona Sul
+                   'Jardim Ângela', 'Jardim São Luís', 'Capão Redondo', 'Campo Limpo']) {
     eq(`${b} está FORA do recorte`, nomes.includes(b), false);
   }
-  for (const b of ['Moema', 'Itaim Bibi', 'Santana', 'Morumbi', 'Mooca',
-                   'Cidade Dutra', 'Pinheiros', 'Vila Mariana']) {
+  for (const b of ['Moema', 'Itaim Bibi', 'Morumbi', 'Mooca', 'Pinheiros', 'Vila Mariana']) {
     eq(`${b} está no mapa`, nomes.includes(b), true);
   }
   eq('todo distrito tem path fechado',
@@ -526,9 +532,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // São Paulo" no rodapé — errar aqui erra o número que a pessoa lê
   eq('a Sé está na cidade', M.dentroDaCidade(-23.5505, -46.6333), true);
   eq('Moema está na cidade', M.dentroDaCidade(-23.6017, -46.6653), true);
-  eq('Santana está na cidade', M.dentroDaCidade(-23.5010, -46.6250), true);
+  eq('Santana ficou fora do recorte (3ª rodada)', M.dentroDaCidade(-23.5010, -46.6250), false);
   eq('Itaquera ficou fora do recorte', M.dentroDaCidade(-23.5405, -46.4568), false);
   eq('Cidade Dutra (cliente mais ao sul) está na área', M.dentroDaCidade(-23.7333, -46.7021), true);
+  eq('Penha (cortada, tinha 1 cliente) conta como fora', M.dentroDaCidade(-23.5226, -46.5267), false);
+  eq('Casa Verde (cortada, tinha 1 cliente) conta como fora', M.dentroDaCidade(-23.4979, -46.6555), false);
   eq('Osasco NÃO está na cidade', M.dentroDaCidade(-23.5325, -46.7917), false);
   eq('Guarulhos NÃO está na cidade', M.dentroDaCidade(-23.4538, -46.5333), false);
   eq('Campinas NÃO está na cidade', M.dentroDaCidade(-22.9099, -47.0626), false);
@@ -538,15 +546,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // a projeção precisa pôr o norte em cima
   const se = M.projetar(-23.5505, -46.6333);
-  const santana = M.projetar(-23.5010, -46.6250);
-  eq('Santana projeta ACIMA da Sé (norte é para cima)', santana.y < se.y, true);
+  const moema = M.projetar(-23.6017, -46.6653);
+  eq('Moema projeta ABAIXO da Sé (norte é para cima, Moema é ao sul)', moema.y > se.y, true);
   eq('a Sé cai dentro do quadro',
      se.x > 0 && se.x < M.MAPA_SP.largura && se.y > 0 && se.y < M.MAPA_SP.altura, true);
 
-  // O TESTE QUE MAIS IMPORTA no recorte do mapa: nenhum cliente da capital
-  // pode ter ficado de fora. O recorte foi validado assim antes de aplicar, e
-  // fica travado aqui — mexer nos distritos sem refazer esta conta é o jeito
-  // de sumir com cliente do mapa sem ninguém perceber.
+  // Regra do Davi (3ª rodada de corte, 2026-08-20): cliente que more num
+  // distrito removido NÃO trava o corte — vira +1 na contagem "fora de São
+  // Paulo" do rodapé. Esta asserção não exige mais ZERO perdidos; ela trava o
+  // conjunto EXATO esperado, para que um corte futuro não perca cliente sem
+  // ninguém notar (a lista muda, a asserção precisa mudar junto — se não
+  // mudar, ela acusa).
   {
     const sqlU24 = fs3.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
     const re = /\('([^']+)', '[^']+', '[^']*', '([^']+)', '[A-Z]{2}', '[\d-]+', '[^']*', (-?[\d.]+), (-?[\d.]+)\)/g;
@@ -554,8 +564,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       .filter((m) => m[2] === 'São Paulo')
       .map((m) => ({ nome: m[1], lat: +m[3], lng: +m[4] }));
     eq('a planilha tem clientes na capital para conferir', capital.length > 100, true);
-    const perdidos = capital.filter((c) => !M.dentroDaCidade(c.lat, c.lng)).map((c) => c.nome);
-    eq('NENHUM cliente da capital ficou fora do recorte do mapa', perdidos, []);
+    const perdidos = capital.filter((c) => !M.dentroDaCidade(c.lat, c.lng)).map((c) => c.nome).sort();
+    // BSGA (Penha) e Maria Domitila (Casa Verde) — os únicos dois clientes
+    // que caem em distritos cortados na 3ª rodada. Se este conjunto crescer
+    // sem uma decisão explícita do Davi por trás, a asserção falha.
+    eq('os clientes fora do recorte são exatamente os esperados (contam no rodapé)',
+       perdidos, ['BSGA', 'Maria Domitila']);
   }
 
   // a migration U24: 192 clientes, todos com coordenada, verificação no fim
