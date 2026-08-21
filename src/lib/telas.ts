@@ -81,9 +81,11 @@ export const TELAS: Tela[] = [
   T("mapa", "Mapa", "/mapa", "Comercial", [true, true, true]),
 
   // ── Clientes ──────────────────────────────────────────────────────────────
-  T("clientes", "Clientes", "/clientes", "Clientes", [true, true, true]),
-  T("clientes.novo", "Novo cliente", "/clientes/novo", "Clientes", [true, true, true]),
-  T("clientes.migrar", "Consolidar cadastros", "/clientes/migrar", "Clientes", [true, true, true], {
+  // U24: o Davi definiu quem vê a base — admin, comercial e SAC. O técnico
+  // chega no cliente pelo chamado dele (detalhe não é gateado), não pela base.
+  T("clientes", "Clientes", "/clientes", "Clientes", [false, true, true]),
+  T("clientes.novo", "Novo cliente", "/clientes/novo", "Clientes", [false, true, true]),
+  T("clientes.migrar", "Consolidar cadastros", "/clientes/migrar", "Clientes", [false, true, true], {
     nota: "funde clientes duplicados — operação pesada e difícil de desfazer",
   }),
 

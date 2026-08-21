@@ -16,7 +16,7 @@ export function BottomNav() {
   // some. `undefined` enquanto carrega — mantemos o item, senão a barra pisca
   // com abas aparecendo e sumindo a cada carga.
   const visiveis = itensDoCargo(cargo).filter(
-    (i) => !i.tela || podeVer(i.tela) !== false,
+    (i) => !i.soDesktop && (!i.tela || podeVer(i.tela) !== false),
   );
 
   // com 6 itens a pílula precisa apertar para caber na largura do celular

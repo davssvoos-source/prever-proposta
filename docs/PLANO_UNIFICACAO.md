@@ -1871,3 +1871,63 @@ revisando — progrida e suba").
   gráfico crescem e clareiam com tooltip nativo, número do KPI escala, rosca
   escala, itens de menu/notificação/opção ganham fundo — tudo atrás de
   `(hover:hover) and (pointer:fine)`, porque no toque hover é fantasma.
+
+### U23 — Design v5→v7: o degradê da casa (2026-08-20)
+
+Três iterações de cor guiadas pelo Davi, encerradas na v7:
+
+- **v5/v5.1**: PRISMA (paleta nomeada) + faixa de prazo pintando o fundo dos
+  cards (amarelo esta semana, azul adiante, vermelho atraso; corte no FIM da
+  semana corrente, não "7 dias") + rampa majoritariamente amarela.
+- **v6**: composição fixa do degradê — 20% azul · 40% amarelo · 20% laranja ·
+  20% vermelho, terminando no vermelho dos botões. Montserrat em 4 pesos.
+  Avatares sem foto em 4 degradês da rampa, por hash (estável por pessoa).
+- **v7**: a faixa amarela ancorada nos TRÊS amarelos do botão da marca
+  (SUPERNOVA 300/400/500, literais nas paradas). Tema claro muito mais claro,
+  com o miolo amarelo travado em ≥3:1. Barras do gráfico invertidas (vermelho
+  no passado, azul no futuro — a leitura dos cards). KPIs Bold 700 com glow na
+  própria cor. Campo "Abrir chamado": único painel com o degradê no fundo,
+  brilho fixo, hover que expande (não acende), canto por clip-path — camada
+  com blur é promovida a GPU e escapa do overflow:hidden.
+- **Auditoria (workflow, 19 agentes)**: 23 achados confirmados aplicados —
+  inclusive uma edição minha que falhou em silêncio (KPI) e a barra da emenda
+  renderizando verde (ganhou a COSTURA como parada do meio). Telas legadas com
+  amarelos avulsos viraram P13.
+
+### U24 — Clientes: base oficial, página nova e o mapa do município (2026-08-20)
+
+O Davi entregou a planilha definitiva (192 clientes, CNPJ/CPF + endereço +
+posto) e pediu: Clientes no menu lateral (admin, comercial e SAC), lista no
+padrão de design e um mapa do município de São Paulo com um mini ícone por
+cliente, nas cores do degradê.
+
+**Banco (migration `20260820150000_u24_base_clientes.sql` — RODAR NO EDITOR):**
+- Colunas novas: `cep`, `cidade`, `uf`, `posto_servico`.
+- Os 192 casados por nome normalizado OU documento; casados atualizados e
+  marcados ativos; ausentes inseridos; ativos fora da planilha rebaixados a
+  inativo com auditoria em `clientes_rebaixados_u24` (padrão U8, reversível).
+- Latitude/longitude no nível do CEP para TODOS os 192 (AwesomeAPI → Nominatim
+  → ViaCEP+bairro; 171/171 CEPs resolvidos; o CEP 04802-000 veio do vizinho
+  04802-120 porque "Socorro, São Paulo" no Nominatim é a CIDADE de Socorro).
+  `COALESCE` preserva coordenada já apurada em campo.
+- Permissões: `clientes*` sai do técnico (semente efetiva = U11 + U24; o
+  verificador compõe as duas).
+
+**App:**
+- `mapa-sp.ts`: malha IBGE do município (1157→603 pontos, Douglas-Peucker) em
+  SVG próprio — sem tile de terceiro; o traço do contorno percorre o degradê.
+  `dentroDoMapa` é ponto-no-polígono de verdade: Osasco cai dentro da CAIXA e
+  fora do contorno, e a primeira versão (caixa) deixaria pontos flutuando fora
+  do desenho — asserção pegou antes do commit.
+- `MapaClientes.tsx`: pontos na cor do degradê por hash do id (`corDoCliente`)
+  — a MESMA cor do ponto do card na lista; tooltip próprio; clique navega;
+  rodapé com "fora da capital" por cidade e contagem de sem-coordenada.
+- `clientes.tsx` reescrita no v7: lista + mapa lado a lado no desktop (mapa
+  sticky — é o índice visual da lista), filtro filtra os dois, busca inclui
+  cidade e posto. Celular: mapa primeiro, volta por Gerencial.
+- Menu lateral: item Clientes (admin/comercial/sac), `soDesktop` — a barra
+  inferior do celular segue com 5 itens e o caminho móvel continua Gerencial.
+
+Pendente de design (não bloqueia): `/clientes/$id`, `/clientes/novo` e
+`/clientes/migrar` continuam no visual antigo — reforma na fila com as demais
+telas legadas (P13).

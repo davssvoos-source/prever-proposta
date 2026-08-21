@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Calendar, ClipboardList, Home, User, Wrench, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, ClipboardList, Home, User, Wrench, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -10,6 +10,11 @@ export interface ItemNav {
   icon: LucideIcon;
   /** Chave em `permissoes_tela` (src/lib/telas.ts). Sem chave = sempre visível. */
   tela: string | null;
+  /**
+   * Só no menu lateral (desktop). A barra inferior do celular tem 5 vagas e o
+   * caminho móvel continua sendo Gerencial → Clientes — que já existia.
+   */
+  soDesktop?: boolean;
 }
 
 /**
@@ -27,6 +32,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
       { to: "/gerencial", label: "Gerencial", icon: ClipboardList, tela: "gerencial" },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
@@ -36,6 +42,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

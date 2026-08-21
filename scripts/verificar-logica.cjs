@@ -311,22 +311,31 @@ eq('início é sempre acessível',
 // tela fora do catálogo não é bloqueada por omissão
 eq('chave desconhecida não tranca ninguém', TL.podeAbrir('tela_nova', 'tecnico', {}), true);
 
-// o catálogo e a semente da migration têm que falar das mesmas telas
+// o catálogo e a semente das migrations têm que falar das mesmas telas.
+// A semente EFETIVA é a U11 com as migrations posteriores aplicadas por cima,
+// na ordem dos arquivos — a U24, por exemplo, tira o técnico de Clientes.
 const fs2 = require('fs');
-const sql = fs2.readFileSync('supabase/migrations/20260819180000_u11_permissoes_tela.sql', 'utf8');
-const bloco = sql.slice(sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES'),
-                        sql.indexOf('ON CONFLICT (tela, cargo) DO NOTHING;'));
-const naSemente = new Set([...bloco.matchAll(/\('([a-z._]+)',\s*'(?:tecnico|comercial|sac)'/g)].map((m) => m[1]));
+const ARQUIVOS_SEMENTE = [
+  'supabase/migrations/20260819180000_u11_permissoes_tela.sql',
+  'supabase/migrations/20260820150000_u24_base_clientes.sql',
+];
+const semente = {};
+for (const arq of ARQUIVOS_SEMENTE) {
+  const sql = fs2.readFileSync(arq, 'utf8');
+  const ini = sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES');
+  const fim = sql.indexOf('ON CONFLICT (tela, cargo)', ini);
+  const bloco = sql.slice(ini, fim);
+  for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac)',\s*(true|false)\)/g)) {
+    (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
+  }
+}
+const naSemente = new Set(Object.keys(semente));
 const noCatalogo = new Set(TL.TELAS.map((t) => t.chave));
 eq('catálogo e semente têm as mesmas telas',
    [...noCatalogo].filter((c) => !naSemente.has(c)).concat([...naSemente].filter((c) => !noCatalogo.has(c))), []);
 
-// e o padrão do catálogo tem que bater com a semente, senão o app se comporta
-// de um jeito antes da migration e de outro depois
-const semente = {};
-for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac)',\s*(true|false)\)/g)) {
-  (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
-}
+// e o padrão do catálogo tem que bater com a semente efetiva, senão o app se
+// comporta de um jeito antes da migration e de outro depois
 const divergem = TL.TELAS.filter((t) =>
   ['tecnico', 'comercial', 'sac'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));
 eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
@@ -478,6 +487,48 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('ids diferentes espalham pelas quatro famílias',
      new Set(['x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8'].map((k) => P.degradeAvatar(k).grad)).size > 1, true);
   eq('todo degradê de avatar tem glow', ['x1', 'x2', 'x3', 'x4'].every((k) => !!P.degradeAvatar(k).glow), true);
+}
+
+// ── U24: a base de clientes e o mapa ───────────────────────────────────────
+{
+  const fs3 = require('fs');
+  const M = carregar('src/features/clientes/mapa-sp.ts');
+  const C = carregar('src/features/clientes/cores.ts');
+
+  // a cor do cliente é ESTÁVEL — é como se reconhece o mesmo cliente no mapa
+  // e na lista (mesma decisão dos avatares)
+  eq('corDoCliente é estável para o mesmo id',
+     C.corDoCliente('abc-123', false), C.corDoCliente('abc-123', false));
+  eq('corDoCliente muda com o tema',
+     C.corDoCliente('abc-123', false) !== C.corDoCliente('abc-123', true), true);
+
+  // projeção: os cantos geográficos caem nos cantos do viewBox
+  const c1 = M.projetar(-23.35, -46.83);   // ~norte-oeste do município
+  eq('noroeste projeta perto da origem', c1.x > -60 && c1.x < 200 && c1.y > -60 && c1.y < 200, true);
+  const se = M.projetar(-23.5505, -46.6333); // Praça da Sé
+  eq('a Sé cai dentro do mapa', M.dentroDoMapa(-23.5505, -46.6333), true);
+  eq('a Sé cai no terço norte (a capital é comprida para o sul)',
+     se.y > 0 && se.y < M.MAPA_SP.altura / 3, true);
+  eq('Campinas NÃO cai no mapa', M.dentroDoMapa(-22.9099, -47.0626), false);
+  eq('Osasco NÃO cai no mapa (a caixa do município é justa)',
+     M.dentroDoMapa(-23.5325, -46.7917), false);
+  eq('o path é um anel fechado', M.MAPA_SP.d.startsWith('M') && M.MAPA_SP.d.endsWith('Z'), true);
+
+  // a migration U24: 192 clientes, todos com coordenada, verificação no fim
+  const sql = fs3.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
+  const linhas = [...sql.matchAll(/\n    \('/g)].length;
+  const linhasPlanilha = [...sql.matchAll(/\('[^']+', '[\d.\/​-]+', '[^']*', '[^']+', '[A-Z]{2}', '\d{5}-\d{3}', '[^']*', (-?[\d.]+|NULL), (-?[\d.]+|NULL)\)/g)];
+  eq('a planilha da U24 tem 192 clientes', linhasPlanilha.length, 192);
+  eq('TODOS os 192 têm coordenada (geocodificação fechou em 171/171 CEPs)',
+     linhasPlanilha.filter((m) => m[1] === 'NULL' || m[2] === 'NULL').length, 0);
+  eq('latitude nunca vira longitude (lat -24..-13, lng -48..-38)',
+     linhasPlanilha.every((m) => +m[1] < -13 && +m[1] > -24 && +m[2] < -38 && +m[2] > -48), true);
+  eq('a U24 termina com a verificação (RAISE NOTICE é invisível no editor)',
+     sql.includes("SELECT 'planilha' AS etapa"), true);
+  eq('coordenada apurada em campo vale mais que CEP (COALESCE preserva)',
+     sql.includes('latitude       = COALESCE(c.latitude,  p.lat)'), true);
+  eq('o rebaixamento é auditável (padrão U8)',
+     sql.includes('clientes_rebaixados_u24'), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

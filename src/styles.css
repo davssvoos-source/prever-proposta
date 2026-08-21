@@ -733,6 +733,29 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .campo-degrade:hover .campo-degrade-fundo { transform: none; }
 }
 
+/* ── Clientes: lista + mapa ────────────────────────────────────────────────
+   Celular: uma coluna, mapa primeiro (order). Desktop: lista à esquerda e o
+   mapa à direita, PRESO ao topo enquanto a lista rola — o mapa é o índice
+   visual da lista, e índice que sai da tela não indexa nada. */
+.clientes-duas-colunas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.clientes-duas-colunas > :last-child { order: -1; }
+@media (min-width: 1024px) {
+  .clientes-duas-colunas {
+    grid-template-columns: minmax(0, 7fr) minmax(340px, 5fr);
+  }
+  .clientes-duas-colunas > :last-child {
+    order: 0;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 32px);
+  }
+}
+
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
 .ruido { position: relative; isolation: isolate; }
 .ruido::after {

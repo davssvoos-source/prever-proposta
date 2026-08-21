@@ -1,13 +1,27 @@
-// Lista de clientes (registro mestre) — Etapa 1 do sistema de OS.
+// Clientes — a base oficial, redesenhada na U24 (design v7).
+//
+// Desktop: lista à esquerda, o mapa do município à direita, lado a lado — o
+// ponto colorido do card e o ponto do mapa são A MESMA COR (corDoCliente),
+// que é como o olho liga as duas metades. Celular: mapa em cima, lista
+// embaixo, e a navegação chega por Gerencial → Clientes (a barra inferior
+// não ganhou item novo — 5 vagas, todas ocupadas).
+//
+// Quem vê: admin, comercial e SAC (decisão do Davi, U24). O técnico chega no
+// cliente pelo chamado dele — detalhe não é gateado — mas não na base.
+//
 // Layout das rotas filhas: /clientes/novo, /clientes/$id e /clientes/migrar
 // renderizam pelo Outlet (mesmo padrão de gerencial.tsx).
 
 import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
-import { ArrowLeft, Building2, Plus, Search, MapPin, Users, Wand2 } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Plus, Search, Users, Wand2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { FONT, card } from "@/lib/ui";
+import { GRAD_PRIMARIA, PRISMA, SOBRE_PRIMARIA } from "@/lib/paleta";
 import { useIsGerente } from "@/features/gerencial/data";
 import { TIPO_LABEL } from "@/features/gerencial/constants";
+import { MapaClientes } from "@/features/clientes/MapaClientes";
+import { corDoCliente } from "@/features/clientes/cores";
 import {
   useClientes,
   SITUACAO_LABEL,
@@ -32,39 +46,19 @@ function ClientesPage() {
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#A06108" : "#F8C811";
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
-  const CARD: CSSProperties = {
-    background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
-    borderRadius: 16,
-    padding: "14px 16px",
-    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
-  };
-  const LABEL: CSSProperties = {
-    fontFamily: "var(--fonte)",
-    fontWeight: 700,
-    fontSize: 10,
-    letterSpacing: "0.16em",
-    textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-  };
+  const norm = (t: string) =>
+    t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
   const lista = useMemo(() => {
-    const termo = busca
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const termo = norm(busca.trim());
     return clientes.filter((c) => {
       if (filtro !== "todos" && c.situacao !== filtro) return false;
       if (!termo) return true;
-      const alvo = `${c.nome} ${c.endereco ?? ""} ${c.nome_sindico ?? ""}`
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+      const alvo = norm(
+        `${c.nome} ${c.endereco ?? ""} ${c.cidade ?? ""} ${c.posto_servico ?? ""} ${c.nome_sindico ?? ""}`,
+      );
       return alvo.includes(termo);
     });
   }, [clientes, busca, filtro]);
@@ -88,10 +82,10 @@ function ClientesPage() {
     borderRadius: 999,
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativo
-      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
+      ? GRAD_PRIMARIA
       : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "var(--fonte)",
+    color: ativo ? SOBRE_PRIMARIA : textPrimary,
+    fontFamily: FONT,
     fontWeight: 600,
     fontSize: 12,
     cursor: "pointer",
@@ -99,12 +93,15 @@ function ClientesPage() {
     flexShrink: 0,
   });
 
+  // o mapa mostra o que a lista mostra — filtrar a lista filtra o mapa
   return (
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
-      {/* Header */}
+      {/* Cabeçalho — a volta é gesto de celular; no desktop a sidebar já situa */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
+          className="so-celular"
           onClick={() => navigate({ to: "/gerencial" })}
+          aria-label="Voltar"
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -116,20 +113,22 @@ function ClientesPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>Clientes</div>
-          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-            {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"} · {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"}
+          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em" }}>Clientes</div>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
+            {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"} · {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"}
           </div>
         </div>
         {isGerente && (
           <button
+            className="elevavel"
             onClick={() => navigate({ to: "/clientes/novo" })}
             style={{
               height: 40, padding: "0 16px", borderRadius: 12, border: "none",
-              background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-              color: "#08090E", display: "flex", alignItems: "center", gap: 6,
-              fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
+              background: GRAD_PRIMARIA, color: SOBRE_PRIMARIA,
+              display: "flex", alignItems: "center", gap: 6,
+              fontFamily: FONT, fontWeight: 700, fontSize: 12,
               cursor: "pointer", flexShrink: 0,
+              boxShadow: "0 4px 14px rgba(248,200,17,0.30)",
             }}
           >
             <Plus size={16} />
@@ -138,20 +137,22 @@ function ClientesPage() {
         )}
       </div>
 
-      {/* Aviso de consolidação pendente */}
+      {/* Consolidação pendente — herdada da Etapa 1, continua valendo */}
       {isGerente && semEndereco > 0 && (
         <button
+          className="elevavel"
           onClick={() => navigate({ to: "/clientes/migrar" })}
           style={{
-            ...CARD,
-            border: isLight ? "1px solid rgba(96,165,250,0.45)" : "1px solid rgba(96,165,250,0.35)",
-            background: isLight ? "rgba(96,165,250,0.08)" : "rgba(96,165,250,0.10)",
+            ...card(isLight),
+            border: `1px solid ${PRISMA.azulClaro.border}`,
+            background: PRISMA.azulClaro.bg,
+            borderRadius: 16, padding: "14px 16px",
             display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer",
             color: textPrimary,
           }}
         >
-          <Wand2 size={18} color={isLight ? "#1d4ed8" : "#60A5FA"} />
-          <span style={{ flex: 1, fontFamily: "var(--fonte)", fontSize: 13 }}>
+          <Wand2 size={18} color={isLight ? PRISMA.azulClaro.light : PRISMA.azulClaro.dark} />
+          <span style={{ flex: 1, fontFamily: FONT, fontWeight: 400, fontSize: 13 }}>
             {semEndereco} cadastro{semEndereco === 1 ? "" : "s"} sem endereço, vindo{semEndereco === 1 ? "" : "s"} das visitas antigas.
             <br />
             <span style={{ color: textSecondary, fontSize: 12 }}>Toque para revisar e consolidar por prédio.</span>
@@ -159,121 +160,148 @@ function ClientesPage() {
         </button>
       )}
 
-      {/* Busca */}
-      <div style={{ position: "relative" }}>
-        <Search
-          size={16}
-          color={textSecondary}
-          style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}
-        />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por nome, endereço ou síndico"
-          style={{
-            width: "100%", boxSizing: "border-box", height: 46, borderRadius: 14,
-            padding: "0 14px 0 38px",
-            background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-            border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-            color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
-            outline: "none", colorScheme: isLight ? "light" : "dark",
-          }}
-        />
+      {/* Busca + filtros na mesma linha (desktop); empilha sozinho no celular */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="trilho-x" style={{ display: "flex", gap: 8, flex: 1, minWidth: 240 }}>
+          {([
+            ["todos", `Todos · ${contagem.todos}`],
+            ["ativo", `Ativos · ${contagem.ativo}`],
+            ["prospecto", `Prospectos · ${contagem.prospecto}`],
+            ["inativo", `Inativos · ${contagem.inativo}`],
+          ] as [Filtro, string][]).map(([valor, rotulo]) => (
+            <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: "relative", width: "min(320px, 100%)" }}>
+          <Search
+            size={15}
+            color={textSecondary}
+            style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }}
+          />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar cliente, endereço, posto…"
+            style={{
+              width: "100%", boxSizing: "border-box", height: 42, borderRadius: 999,
+              padding: "0 14px 0 36px",
+              background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+              color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 13,
+              outline: "none", colorScheme: isLight ? "light" : "dark",
+            }}
+          />
+        </div>
       </div>
 
-      {/* Filtros */}
-      <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
-        {([
-          ["todos", `Todos (${contagem.todos})`],
-          ["ativo", `Ativos (${contagem.ativo})`],
-          ["prospecto", `Prospectos (${contagem.prospecto})`],
-          ["inativo", `Inativos (${contagem.inativo})`],
-        ] as [Filtro, string][]).map(([valor, rotulo]) => (
-          <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
-            {rotulo}
-          </button>
-        ))}
-      </div>
-
-      {/* Lista */}
-      {isLoading ? (
-        <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
-          Carregando clientes…
-        </div>
-      ) : lista.length === 0 ? (
-        <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 16px" }}>
-          <Building2 size={28} color={gold} />
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 14, fontWeight: 600 }}>
-            {clientes.length === 0 ? "Nenhum cliente cadastrado" : "Nenhum cliente encontrado"}
-          </span>
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, textAlign: "center" }}>
-            {clientes.length === 0
-              ? "Cadastre os condomínios e empresas atendidos pela Prever para abrir chamados e registrar os equipamentos."
-              : "Ajuste a busca ou o filtro de situação."}
-          </span>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {lista.map((c) => {
-            const cor = SITUACAO_CORES[c.situacao] ?? SITUACAO_CORES.ativo;
-            return (
-              <button
-                key={c.id}
-                onClick={() => navigate({ to: "/clientes/$id", params: { id: c.id } })}
-                style={{ ...CARD, textAlign: "left", cursor: "pointer", color: textPrimary, display: "flex", gap: 12, alignItems: "flex-start" }}
-              >
-                <div
+      {/* Lista + mapa. minmax(0,…) evita que o mapa estoure a coluna. */}
+      <div className="clientes-duas-colunas">
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+          {isLoading ? (
+            <div style={{ ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
+              Carregando clientes…
+            </div>
+          ) : lista.length === 0 ? (
+            <div style={{ ...card(isLight), borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 16px" }}>
+              <Building2 size={28} color={gold} />
+              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>
+                {clientes.length === 0 ? "Nenhum cliente cadastrado" : "Nenhum cliente encontrado"}
+              </span>
+              <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, textAlign: "center" }}>
+                {clientes.length === 0
+                  ? "Cadastre os condomínios e empresas atendidos pela Prever."
+                  : "Ajuste a busca ou o filtro de situação."}
+              </span>
+            </div>
+          ) : (
+            lista.map((c) => {
+              const corSit = SITUACAO_CORES[c.situacao] ?? SITUACAO_CORES.ativo;
+              const cor = corDoCliente(c.id, isLight);
+              return (
+                <button
+                  key={c.id}
+                  className="elevavel"
+                  onClick={() => navigate({ to: "/clientes/$id", params: { id: c.id } })}
                   style={{
-                    width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-                    background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.12)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
+                    ...card(isLight), borderRadius: 16, padding: "12px 14px",
+                    textAlign: "left", cursor: "pointer", color: textPrimary,
+                    display: "flex", gap: 11, alignItems: "flex-start", width: "100%",
                   }}
                 >
-                  <Building2 size={18} color={gold} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14 }}>{c.nome}</span>
-                    <span
-                      style={{
-                        padding: "3px 8px", borderRadius: 12,
-                        background: cor.bg, border: `1px solid ${cor.border}`,
-                        color: isLight ? cor.light : cor.dark,
-                        fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
-                        letterSpacing: "0.06em", textTransform: "uppercase",
-                      }}
-                    >
-                      {SITUACAO_LABEL[c.situacao] ?? c.situacao}
-                    </span>
-                  </div>
-                  {c.endereco ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-                      <MapPin size={12} color={textSecondary} style={{ flexShrink: 0 }} />
-                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-                        {c.endereco}
+                  {/* o ponto do cliente — a MESMA cor dele no mapa */}
+                  <span aria-hidden style={{
+                    width: 10, height: 10, borderRadius: 6, flexShrink: 0,
+                    marginTop: 5,
+                    background: cor,
+                    boxShadow: `0 0 8px ${cor}66`,
+                  }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14 }}>{c.nome}</span>
+                      <span style={{
+                        padding: "2px 8px", borderRadius: 999,
+                        background: corSit.bg,
+                        color: isLight ? corSit.light : corSit.dark,
+                        fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                        letterSpacing: "0.07em", textTransform: "uppercase",
+                      }}>
+                        {SITUACAO_LABEL[c.situacao] ?? c.situacao}
                       </span>
+                      {c.cidade && c.cidade !== "São Paulo" && (
+                        <span style={{
+                          padding: "2px 8px", borderRadius: 999,
+                          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+                          fontFamily: FONT, fontWeight: 600, fontSize: 9,
+                          letterSpacing: "0.07em", textTransform: "uppercase",
+                          color: textSecondary,
+                        }}>
+                          {c.cidade}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#A63E17" : "#F8C811", marginTop: 4 }}>
-                      sem endereço — precisa de revisão
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                    {c.tipo_local && (
-                      <span style={{ ...LABEL, color: textSecondary }}>{TIPO_LABEL[c.tipo_local] ?? c.tipo_local}</span>
+                    {c.endereco ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+                        <MapPin size={12} color={textSecondary} style={{ flexShrink: 0 }} />
+                        <span style={{
+                          fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {c.endereco}
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: isLight ? PRISMA.laranja.light : PRISMA.laranja.dark, marginTop: 4 }}>
+                        sem endereço — precisa de revisão
+                      </div>
                     )}
-                    {c.nome_sindico && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
-                        <Users size={11} /> {c.nome_sindico}
-                      </span>
+                    {(c.tipo_local || c.nome_sindico) && (
+                      <div style={{ display: "flex", gap: 12, marginTop: 5, flexWrap: "wrap" }}>
+                        {c.tipo_local && (
+                          <span style={{
+                            fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
+                            letterSpacing: "0.09em", textTransform: "uppercase", color: textSecondary,
+                          }}>
+                            {TIPO_LABEL[c.tipo_local] ?? c.tipo_local}
+                          </span>
+                        )}
+                        {c.nome_sindico && (
+                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
+                            <Users size={11} /> {c.nome_sindico}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })
+          )}
         </div>
-      )}
+
+        <MapaClientes clientes={lista} />
+      </div>
     </div>
   );
 }

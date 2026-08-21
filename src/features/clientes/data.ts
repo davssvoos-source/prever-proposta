@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { somenteDigitos } from "@/lib/normalizar";
+import { PRISMA } from "@/lib/paleta";
 
 export type SituacaoCliente = "prospecto" | "ativo" | "inativo";
 
@@ -16,11 +17,15 @@ export const SITUACAO_LABEL: Record<SituacaoCliente, string> = {
   inativo: "Inativo",
 };
 
-/** Cores por situação — claro/escuro, no padrão de status do design system. */
+/**
+ * Cores por situação — do PRISMA (v7): ativo é o amarelo principal (cliente é
+ * o que a casa mais valoriza), prospecto é o azul de "ainda vem", inativo é
+ * neutro. O verde-menta antigo era de fora da paleta.
+ */
 export const SITUACAO_CORES: Record<SituacaoCliente, { dark: string; light: string; bg: string; border: string }> = {
-  prospecto: { dark: "#60A5FA", light: "#1d4ed8", bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.30)" },
-  ativo:     { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)", border: "rgba(45,210,165,0.30)" },
-  inativo:   { dark: "#9ca3af", light: "#6b7280", bg: "rgba(156,163,175,0.10)", border: "rgba(156,163,175,0.25)" },
+  prospecto: PRISMA.azulClaro,
+  ativo:     PRISMA.amarelo,
+  inativo:   PRISMA.neutro,
 };
 
 export interface Cliente {
@@ -37,6 +42,11 @@ export interface Cliente {
   qap_cliente_id: string | null;
   endereco: string | null;
   complemento: string | null;
+  /** U24 — vindos da planilha oficial de clientes. */
+  cep: string | null;
+  cidade: string | null;
+  uf: string | null;
+  posto_servico: string | null;
   latitude: number | null;
   longitude: number | null;
   email: string | null;
@@ -56,7 +66,7 @@ export interface Cliente {
 }
 
 const CAMPOS =
-  "id, nome, nome_predio, tipo_local, tipo_empreendimento, endereco, complemento, latitude, longitude, " +
+  "id, nome, nome_predio, tipo_local, tipo_empreendimento, endereco, complemento, cep, cidade, uf, posto_servico, latitude, longitude, " +
   "email, telefone, nome_sindico, telefone_sindico, email_sindico, nome_zelador, telefone_zelador, " +
   "email_zelador, foto_fachada_url, qtd_apartamentos, qtd_acessos, observacoes, situacao, created_at, " +
   "documento, responsavel_financeiro, email_financeiro, qap_cliente_id";
@@ -158,6 +168,11 @@ export interface GrupoConsolidacao {
   nome: string;
   endereco: string | null;
   complemento: string | null;
+  /** U24 — vindos da planilha oficial de clientes. */
+  cep: string | null;
+  cidade: string | null;
+  uf: string | null;
+  posto_servico: string | null;
   tipoLocal: string | null;
   latitude: number | null;
   longitude: number | null;
