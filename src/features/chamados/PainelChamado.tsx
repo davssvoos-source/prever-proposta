@@ -53,6 +53,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, X } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { CampoComBusca } from "@/components/CampoComBusca";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
@@ -64,10 +65,10 @@ import {
 } from "@/features/chamados/data";
 import { useClientes } from "@/features/clientes/data";
 import {
-  PRIORIDADE_LABEL, PRIORIDADE_CORES, SPRINT_LABEL, TIPO_LABEL, TIPO_CORES,
+  PRIORIDADE_LABEL, PRIORIDADE_CORES, SPRINT_LABEL, SPRINT_ORDEM, TIPO_LABEL, TIPO_CORES,
   chamadoStatusInfo, statusDaNatureza, tiposDaNatureza,
-  prazoParaData, dataParaPrazo, situacaoPrazo,
-  type ChamadoPrioridade, type ChamadoSprint, type ChamadoTipo, type Natureza,
+  prazoParaData, dataParaPrazo, situacaoPrazo, sprintDoPrazo,
+  type ChamadoPrioridade, type ChamadoTipo, type Natureza,
 } from "@/lib/chamado-status";
 import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 
@@ -421,12 +422,23 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
             }}>
               <Secao titulo="De quem é" />
 
-              <Escolha
-                titulo="Cliente" estado={estados.cliente_id} valor={chamado.cliente_id ?? null}
-                vazio="— sem cliente —"
-                opcoes={clientesOrdenados.map((c) => ({ v: c.id, t: c.nome }))}
-                aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
-              />
+              {/* CLIENTE, RESPONSÁVEL e APOIO usam campo COM BUSCA: são as
+                  listas longas (192 clientes) onde rolar custa mais que
+                  digitar. Os campos de lista curta logo abaixo continuam
+                  select — para escolher entre quatro prioridades, digitar
+                  seria trabalho a mais, não a menos. */}
+              <Campo titulo="Cliente" estado={estados.cliente_id}>
+                <CampoComBusca
+                  id="painel-cliente"
+                  opcoes={clientesOrdenados.map((c) => ({
+                    valor: c.id, rotulo: c.nome,
+                    secundario: (c as any).posto_servico ?? undefined,
+                  }))}
+                  valor={chamado.cliente_id ?? null}
+                  vazio="— sem cliente —"
+                  aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
+                />
+              </Campo>
               {/* o nome que veio do Notion, quando não há vínculo (U31): sem
                   isto o campo pareceria vazio numa atividade que TEM cliente */}
               {!chamado.cliente_id && chamado.cliente_origem_nome && (
@@ -440,12 +452,18 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                 </div>
               )}
 
-              <Escolha
-                titulo="Responsável" estado={estados.responsavel_id}
-                valor={chamado.responsavel_id ?? null} vazio="— sem responsável —"
-                opcoes={pessoasOrdenadas.map((p) => ({ v: p.id, t: p.nome }))}
-                aoMudar={(v) => salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v } })}
-              />
+              <Campo titulo="Responsável" estado={estados.responsavel_id}>
+                <CampoComBusca
+                  id="painel-responsavel"
+                  opcoes={pessoasOrdenadas.map((p) => ({
+                    valor: p.id, rotulo: p.nome,
+                    secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
+                  }))}
+                  valor={chamado.responsavel_id ?? null}
+                  vazio="— sem responsável —"
+                  aoMudar={(v) => salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v } })}
+                />
+              </Campo>
 
               {/* APOIO — vários. Logo abaixo do responsável porque a pergunta
                   é a mesma ("quem toca isto?") com resposta plural. */}
@@ -471,20 +489,24 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                       </button>
                     </span>
                   ))}
-                  <select
-                    value=""
-                    onChange={(e) => { if (e.target.value) mexerApoio.mutate({ id: e.target.value, remover: false }); }}
-                    style={{
-                      ...est.entrada, width: "auto", minHeight: 38,
-                      padding: "8px 12px", fontSize: 13, borderRadius: 999, cursor: "pointer",
-                      color: est.textSecondary,
-                    }}
-                  >
-                    <option value="">+ adicionar apoio</option>
-                    {pessoasOrdenadas
-                      .filter((p) => p.id !== chamado.responsavel_id && !apoios.includes(p.id))
-                      .map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
+                  <div style={{ minWidth: 208 }}>
+                    <CampoComBusca
+                      id="painel-apoio"
+                      compacto
+                      limpavel={false}
+                      placeholder="+ adicionar apoio"
+                      // quem já está na atividade sai da lista: oferecer de
+                      // novo quem já é apoio só produz um erro de chave repetida
+                      opcoes={pessoasOrdenadas
+                        .filter((p) => p.id !== chamado.responsavel_id && !apoios.includes(p.id))
+                        .map((p) => ({
+                          valor: p.id, rotulo: p.nome,
+                          secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
+                        }))}
+                      valor={null}
+                      aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
+                    />
+                  </div>
                 </div>
               </Campo>
 
@@ -530,10 +552,18 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   <input
                     type="date"
                     value={prazoParaData(chamado.prazo_limite)}
-                    onChange={(e) => salvar.mutate({
-                      campo: "prazo_limite",
-                      patch: { prazo_limite: dataParaPrazo(e.target.value || null) },
-                    })}
+                    onChange={(e) => {
+                      const prazo = dataParaPrazo(e.target.value || null);
+                      // R40: o sprint SAI do prazo. Vai no MESMO patch, não em
+                      // dois — duas gravações poderiam deixar o prazo novo com
+                      // o sprint velho se a segunda falhasse, que é justamente
+                      // a divergência que esta regra existe para acabar.
+                      const sprint = sprintDoPrazo(prazo);
+                      salvar.mutate({
+                        campo: "prazo_limite",
+                        patch: sprint ? { prazo_limite: prazo, sprint } : { prazo_limite: prazo },
+                      });
+                    }}
                     style={{
                       ...est.entrada,
                       // atrasado se anuncia no próprio campo: é a informação que
@@ -544,11 +574,13 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     }}
                   />
                 </Campo>
+                {/* O sprint continua editável à mão: a derivação cobre o caso
+                    comum, e ainda existe o planejamento que não sai da data
+                    (algo sem prazo que se quer puxar para esta semana). */}
                 <Escolha
                   titulo="Sprint" estado={estados.sprint} valor={chamado.sprint ?? null}
                   vazio="— sem sprint —"
-                  opcoes={(Object.keys(SPRINT_LABEL) as ChamadoSprint[])
-                    .map((s) => ({ v: s, t: SPRINT_LABEL[s] }))}
+                  opcoes={SPRINT_ORDEM.map((s) => ({ v: s, t: SPRINT_LABEL[s] }))}
                   aoMudar={(v) => salvar.mutate({ campo: "sprint", patch: { sprint: v as any } })}
                 />
                 {/* Agendamento só faz sentido em campo: é a hora de a dupla

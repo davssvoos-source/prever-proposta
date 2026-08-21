@@ -11,6 +11,7 @@
 
 import type { Atividade, ColunaQuadro } from "@/features/atividades/modelo";
 import { mesmoDia } from "@/features/atividades/modelo";
+import { SPRINTS_DO_MES } from "@/lib/chamado-status";
 
 export type Cargo = "tecnico" | "sac" | "comercial" | "admin";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
@@ -72,7 +73,9 @@ export const PRESETS: Preset[] = [
     // não têm sprint, e quebraria a promessa de "todas as atividades".
     aplica: (a, { agora }) => {
       if (!a.emAberto) return false;
-      if (a.sprint === "este_mes") return true;
+      // os três baldes do mês (R40): "essa semana" também é deste mês, e
+      // testar só `este_mes` esconderia justamente o que vence antes
+      if (a.sprint && (SPRINTS_DO_MES as string[]).includes(a.sprint)) return true;
       const q = a.quando ? new Date(a.quando) : null;
       if (q) return q.getFullYear() === agora.getFullYear() && q.getMonth() === agora.getMonth();
       // pedido de compra não tem sprint nem data: enquanto vivo, é do mês

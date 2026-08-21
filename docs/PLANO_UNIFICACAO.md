@@ -2302,3 +2302,47 @@ uma delas era item que ninguém via.
 
 533 asserções (58 novas, incluindo teste de unidade de `metaDoMes`,
 `concluidosPorSemana` e `encerradoEm`), build ok.
+
+### U34/U35 — Prospecção vira aba, campo com busca e sprint derivado (2026-08-21)
+
+**Prospecção virou aba (R38).** A lista saiu de `/prospeccao` e virou
+componente (`features/prospeccao/ListaProspeccao.tsx`), renderizado como a
+segunda aba do Painel Comercial. A aba mora na URL — é o que mantém o link
+antigo funcionando depois de a página deixar de existir. Mesmo padrão da R31 e
+da R32: `/prospeccao` redireciona, a chave sai do catálogo e a U34 apaga as
+linhas órfãs. **Nenhum acesso muda**: `prospeccao` e `gerencial` tinham
+exatamente a mesma permissão ([tecnico=false, comercial=true, sac=true]), e há
+asserção provando isso.
+
+**Campo com busca (R39).** Um combobox de verdade — ARIA, setas, Enter, Esc,
+fecha ao clicar fora — com dois cuidados que só aparecem quando quebram:
+"começa-com" vem antes de "contém" (quem digita "vila" quer *Vila* Lagos no
+topo, não *Alto da Vila*), e a escolha usa `mousedown`, porque o `blur` do
+input dispara antes do `click` e levaria a seleção embora.
+
+**O sprint sai do prazo (R40).** Sprint e prazo eram duas respostas para
+"quando?", mantidas à mão — e por isso divergentes: tarefa com prazo para
+amanhã marcada "mês que vem" não é planejamento, é esquecimento, e o quadro
+por sprint passa a mentir sobre a semana.
+
+O vocabulário precisou crescer: "Essa semana" e "Semana que vem" não existiam
+nem no código nem no `CHECK` do banco. **A U35 tem que rodar antes do deploy**
+— sem ela, toda troca de data voltaria com erro de constraint na cara do
+usuário.
+
+Três decisões dentro da regra:
+- **O balde mais estreito ganha.** Uma data desta semana também é deste mês; a
+  resposta útil é a que muda o que se faz hoje.
+- **Vencido vai para "essa semana"**, não para "mês passado". O retrospectivo
+  é para o que já foi; o que venceu e segue aberto é trabalho para agora.
+- **Encerrado não deriva.** No importador, derivar num chamado concluído em
+  2025 o jogaria em "essa semana" — verdadeiro para trabalho vivo, absurdo
+  para arquivo.
+
+E a partição cobrou um preço que eu quase deixei passar: `metaDoMes` e o preset
+"Este mês" filtravam por `sprint === 'este_mes'`. Com a tarefa de quarta-feira
+virando `essa_semana`, ela sairia da meta — o número despencaria sem nada ter
+mudado no trabalho. Daí `SPRINTS_DO_MES`, com asserção nos quatro casos.
+
+586 asserções (32 novas, incluindo teste de unidade de `sprintDoPrazo` em nove
+datas), build ok.

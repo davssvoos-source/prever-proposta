@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, CalendarDays, MapPin, User, Trash2, Building2, ChevronRight, Target, MapPinned, History } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, CalendarDays, MapPin, User, Trash2, Building2, ChevronRight, MapPinned, History } from "lucide-react";
+import { ListaProspeccao } from "@/features/prospeccao/ListaProspeccao";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -19,7 +20,20 @@ import {
 } from "@/components/ui/alert-dialog";
 
 
+export type AbaComercial = "propostas" | "prospeccao";
+
 export const Route = createFileRoute("/_authenticated/gerencial")({
+  /**
+   * A aba mora na URL (`?aba=prospeccao`), não em estado local (R38).
+   *
+   * É o que mantém a Prospecção linkável depois de ela ter deixado de ser
+   * página: o endereço antigo /prospeccao redireciona para cá com a aba certa,
+   * e quem tinha o link no WhatsApp continua caindo no lugar certo. Estado
+   * local perderia isso e ainda esqueceria a aba a cada volta do navegador.
+   */
+  validateSearch: (busca: Record<string, unknown>): { aba?: AbaComercial } => ({
+    aba: busca.aba === "prospeccao" ? "prospeccao" : undefined,
+  }),
   // Esta página É o Painel Comercial (R32): a lista de visitas e propostas com
   // o funil em cima. O SAC entra — ele agenda a visita de proposta (R24) — e o
   // acesso que ele tinha ao antigo /painel/comercial seguiu para cá (U30).
@@ -50,6 +64,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
+  const { aba = "propostas" } = Route.useSearch();
   const location = useLocation();
   const { isLight } = useTheme();
   const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
@@ -206,7 +221,9 @@ function GerencialPage() {
               marginTop: 4,
             }}
           >
-            {stats.total} proposta{stats.total !== 1 ? "s" : ""} cadastrada{stats.total !== 1 ? "s" : ""}
+            {aba === "prospeccao"
+              ? "Prédios orçados que ainda não são clientes"
+              : `${stats.total} proposta${stats.total !== 1 ? "s" : ""} cadastrada${stats.total !== 1 ? "s" : ""}`}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -215,7 +232,8 @@ function GerencialPage() {
               só — hoje são a casa do Painel Administrativo, e botão que leva
               para outro domínio confunde a porta. */}
           {[
-            { label: "Prospecção", Icon: Target, to: "/prospeccao" as const, tela: "prospeccao" },
+            // Prospecção saiu daqui: virou ABA desta mesma página (R38), e
+            // botão que leva para onde já se está é ruído.
             { label: "Mapa", Icon: MapPinned, to: "/mapa" as const, tela: "mapa" },
             { label: "Histórico", Icon: History, to: "/historico" as const, tela: "historico" },
             { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
@@ -251,6 +269,40 @@ function GerencialPage() {
         </div>
       </div>
 
+      {/* ABAS (R38) — Prospecção deixou de ser página e virou o começo do
+          funil, aqui dentro. A ordem é a do funil: prospecto vira proposta. */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+        {([
+          { chave: "propostas" as const, label: "Visitas e propostas" },
+          { chave: "prospeccao" as const, label: "Prospecção" },
+        ]).map(({ chave, label }) => {
+          const ativa = aba === chave;
+          return (
+            <button
+              key={chave}
+              onClick={() => navigate({
+                to: "/gerencial",
+                search: chave === "propostas" ? {} : { aba: chave },
+              })}
+              style={{
+                padding: "9px 18px", borderRadius: 999,
+                border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                background: ativa
+                  ? "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)"
+                  : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                color: ativa ? "#08090E" : textPrimary,
+                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {aba === "prospeccao" ? <ListaProspeccao /> : (
+      <>
       {/* Cards de estatística */}
       <div
         style={{
@@ -540,6 +592,8 @@ function GerencialPage() {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </div>
 

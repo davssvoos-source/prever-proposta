@@ -23,7 +23,10 @@
 // não tem conta faz a linha ser pulada, não virar "sem responsável".
 
 import { normalizarTexto } from "@/lib/normalizar";
-import { sugerirTipoChamado, type ChamadoSprint, type ChamadoStatus, type ChamadoTipo } from "@/lib/chamado-status";
+import {
+  sugerirTipoChamado, sprintDoPrazo,
+  type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
+} from "@/lib/chamado-status";
 import type { Equipe } from "@/lib/equipes";
 
 // ── Datas ───────────────────────────────────────────────────────────────────
@@ -107,7 +110,11 @@ export const STATUS_NOTION: Record<string, ChamadoStatus> = {
 export const SPRINT_NOTION: Record<string, ChamadoSprint> = {
   "este mes": "este_mes",
   "esse mes": "este_mes",
-  "essa semana": "este_mes",
+  // R40 deu balde próprio à semana; antes isto virava "este mês" por falta
+  // de opção, e a única linha do export com "Essa Semana" perdia a urgência
+  "essa semana": "essa_semana",
+  "semana que vem": "semana_que_vem",
+  "proxima semana": "semana_que_vem",
   "mes que vem": "mes_que_vem",
   "proximo mes": "mes_que_vem",
   "mes passado": "mes_passado",
@@ -147,6 +154,29 @@ export const APELIDOS_CLIENTE: Record<string, string> = {
   "prever": "Especializados",
   "prever 2": "Especializados",
 };
+
+/**
+ * O sprint da linha importada.
+ *
+ * 1. O que o Notion diz vale primeiro: foi uma escolha humana de planejamento.
+ * 2. Sem etiqueta, DERIVA do prazo (R40) — 1827 das 2347 linhas do export vêm
+ *    com sprint vazio, e todas cairiam em "backlog" só por falta de rótulo.
+ * 3. Mas só para o que está EM ABERTO. Derivar num chamado concluído em 2025
+ *    o jogaria em "essa semana", porque a regra manda o prazo vencido para
+ *    agora — verdadeiro para trabalho vivo, absurdo para arquivo.
+ */
+export function sprintDaLinha(
+  bruto: string,
+  status: ChamadoStatus,
+  prazo: string | null,
+  agora: Date = new Date(),
+): ChamadoSprint {
+  const doNotion = SPRINT_NOTION[normalizarTexto(bruto)];
+  if (doNotion) return doNotion;
+  const encerrado = status === "concluido" || status === "cancelado";
+  if (encerrado) return "backlog";
+  return sprintDoPrazo(prazo, agora) ?? "backlog";
+}
 
 // ── Casamento de cliente ────────────────────────────────────────────────────
 
@@ -323,7 +353,7 @@ export function lerLinhas(
       clienteId: cliente.clienteId,
       clienteVia: cliente.via,
       equipe: EQUIPE_NOTION[normalizarTexto((r[colunas.equipe] ?? "").split(",")[0])] ?? "ti",
-      sprint: SPRINT_NOTION[normalizarTexto(r[colunas.sprint] ?? "")] ?? "backlog",
+      sprint: sprintDaLinha(r[colunas.sprint] ?? "", status, prazo_limite),
       status,
       tipo: sugerirTipoChamado(titulo, descricao),
       prazo_limite,

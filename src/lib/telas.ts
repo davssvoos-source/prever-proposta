@@ -90,9 +90,9 @@ export const TELAS: Tela[] = [
   T("gerencial.nova", "Nova visita", "/gerencial/nova", "Comercial", [false, true, true], {
     nota: "o SAC chega aqui pelo trilho de proposta da triagem",
   }),
-  T("prospeccao", "Prospecção", "/prospeccao", "Comercial", [false, true, true], {
-    nota: "prédios orçados que ainda não são clientes (R22)",
-  }),
+  // R38: "prospeccao" não é mais uma tela — virou ABA de /gerencial, que já
+  // tem exatamente a mesma permissão ([false, true, true]). /prospeccao só
+  // redireciona; a U34 apaga a linha órfã no banco.
   T("historico", "Histórico", "/historico", "Comercial", [true, true, true]),
   T("mapa", "Mapa", "/mapa", "Comercial", [true, true, true]),
 

@@ -45,7 +45,9 @@ export type ChamadoTipo =
   | "proposta_comercial";
 
 export type ChamadoPrioridade = "baixa" | "normal" | "alta" | "urgente";
-export type ChamadoSprint = "este_mes" | "mes_que_vem" | "mes_passado" | "backlog";
+export type ChamadoSprint =
+  | "essa_semana" | "semana_que_vem"
+  | "este_mes" | "mes_que_vem" | "mes_passado" | "backlog";
 
 import { PRISMA, type CorPrisma } from "@/lib/paleta";
 
@@ -207,14 +209,93 @@ export const PRIORIDADE_CORES: Record<ChamadoPrioridade, CorPrisma> = {
 
 // ── Sprint (organiza a fila do trabalho interno) ────────────────────────────
 
-export const SPRINT_ORDEM: ChamadoSprint[] = ["este_mes", "mes_que_vem", "mes_passado", "backlog"];
+// do mais perto ao mais longe, e o retrospectivo por último: é a ordem em que
+// se lê um planejamento, e a ordem em que os menus devem oferecer
+export const SPRINT_ORDEM: ChamadoSprint[] = [
+  "essa_semana", "semana_que_vem", "este_mes", "mes_que_vem", "mes_passado", "backlog",
+];
 
 export const SPRINT_LABEL: Record<ChamadoSprint, string> = {
+  essa_semana: "Essa semana",
+  semana_que_vem: "Semana que vem",
   este_mes: "Este mês",
   mes_que_vem: "Mês que vem",
   mes_passado: "Mês passado",
   backlog: "Backlog",
 };
+
+/**
+ * Os baldes que significam "é trabalho deste mês".
+ *
+ * Existe porque a R40 partiu "este mês" em três: uma tarefa para depois de
+ * amanhã agora é `essa_semana`, e quem contasse só `este_mes` a perderia da
+ * meta mensal — o número cairia sem nada ter mudado no trabalho.
+ *
+ * "Semana que vem" pode atravessar a virada do mês. Fica aqui mesmo assim:
+ * uma semana não vale partir um mês ao meio, e o alternativo (checar a data de
+ * cada uma) daria à meta uma precisão que o planejamento não tem.
+ */
+export const SPRINTS_DO_MES: ChamadoSprint[] = ["essa_semana", "semana_que_vem", "este_mes"];
+
+/**
+ * O SPRINT SAI DO PRAZO (R40).
+ *
+ * O Davi pediu que o sistema interprete a data e escolha o balde sozinho — e
+ * é a decisão certa: sprint e prazo são duas respostas para "quando?", e
+ * mantidos à mão eles divergem. Uma tarefa com prazo para amanhã marcada
+ * "mês que vem" não é uma escolha de planejamento, é um esquecimento; e o
+ * quadro por sprint passa a mentir sobre a semana.
+ *
+ * O BALDE MAIS ESTREITO GANHA. Uma data desta semana também está neste mês —
+ * e a resposta útil é "essa semana", porque é a que muda o que se faz hoje.
+ * Por isso a ordem dos testes é semana → semana seguinte → mês → mês seguinte.
+ *
+ * PRAZO VENCIDO cai em "essa semana", não em "mês passado". O balde
+ * retrospectivo serve para o que já foi; o que venceu e continua aberto é
+ * trabalho para agora, e mandá-lo para o passado o esconderia justamente de
+ * quem precisa vê-lo.
+ *
+ * Devolve `null` quando não há prazo — sem data não há o que interpretar, e
+ * chutar um balde apagaria a escolha que a pessoa fez à mão.
+ */
+export function sprintDoPrazo(
+  prazoLimite: string | null | undefined,
+  agora: Date = new Date(),
+): ChamadoSprint | null {
+  if (!prazoLimite) return null;
+  const prazo = new Date(prazoLimite);
+  if (Number.isNaN(prazo.getTime())) return null;
+
+  // comparação por DIA: o prazo é gravado às 23:59 e a hora atual varia; sem
+  // normalizar, o mesmo dia daria respostas diferentes de manhã e à noite
+  const dia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const hoje = dia(agora);
+  const alvo = dia(prazo);
+
+  const seg = (d: Date) => {                    // segunda-feira da semana de d
+    const r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const s = r.getDay();                       // 0 = domingo
+    r.setDate(r.getDate() + (s === 0 ? -6 : 1 - s));
+    return r;
+  };
+  const estaSemana = seg(agora);
+  const proximaSemana = new Date(estaSemana); proximaSemana.setDate(estaSemana.getDate() + 7);
+  const daiAduas = new Date(estaSemana); daiAduas.setDate(estaSemana.getDate() + 14);
+
+  if (alvo < hoje) return "essa_semana";                       // vencido: é para agora
+  if (alvo < dia(proximaSemana)) return "essa_semana";
+  if (alvo < dia(daiAduas)) return "semana_que_vem";
+
+  const mesmoMes = prazo.getFullYear() === agora.getFullYear()
+    && prazo.getMonth() === agora.getMonth();
+  if (mesmoMes) return "este_mes";
+
+  const proximoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
+  if (prazo.getFullYear() === proximoMes.getFullYear()
+      && prazo.getMonth() === proximoMes.getMonth()) return "mes_que_vem";
+
+  return "backlog";
+}
 
 // ── Prazo ───────────────────────────────────────────────────────────────────
 // Depois da fusão existe um campo só: prazo_limite (timestamptz). No campo ele

@@ -323,6 +323,7 @@ const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260821120000_u27_prospeccao.sql',
   'supabase/migrations/20260821140000_u28_tres_paineis.sql',
   'supabase/migrations/20260821180000_u30_fusao_de_telas.sql',
+  'supabase/migrations/20260821220000_u34_prospeccao_vira_aba.sql',
 ];
 const semente = {};
 for (const arq of ARQUIVOS_SEMENTE) {
@@ -335,9 +336,9 @@ for (const arq of ARQUIVOS_SEMENTE) {
   }
   // a U30 APAGA telas da matriz — o DELETE participa da semente efetiva,
   // senão o catálogo (que perdeu as chaves) nunca mais bateria com ela
-  const del = sql.match(/DELETE FROM public\.permissoes_tela\s+WHERE tela IN \(([^)]+)\)/);
-  if (del) {
-    for (const m of del[1].matchAll(/'([a-z._]+)'/g)) delete semente[m[1]];
+  // a U30 apaga com `IN (...)`, a U34 com `= '...'` — as duas formas contam
+  for (const del of sql.matchAll(/DELETE FROM public\.permissoes_tela\s+WHERE tela (?:IN \(([^)]+)\)|= ('[a-z._]+'))/g)) {
+    for (const m of (del[1] ?? del[2] ?? '').matchAll(/'([a-z._]+)'/g)) delete semente[m[1]];
   }
 }
 const naSemente = new Set(Object.keys(semente));
@@ -817,13 +818,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        /throw redirect\(\{ to: "\/clientes" \}\)/.test(r), true);
   }
 
-  // a tela nova existe e está no catálogo
+  // R38: Prospecção deixou de ser tela e virou ABA de /gerencial. Quem herda
+  // o acesso é a 'gerencial' — e ela tem que ter EXATAMENTE a permissão que a
+  // prospecção tinha, senão a mudança de lugar vira mudança de acesso.
   const TL3 = carregar('src/lib/telas.ts');
-  const pros = TL3.TELAS.find((t) => t.chave === 'prospeccao');
-  eq('catálogo tem a tela Prospecção', !!pros, true);
-  eq('Prospecção é do comercial e do SAC, não do técnico',
-     pros && pros.padrao.comercial === true && pros.padrao.sac === true
-         && pros.padrao.tecnico === false, true);
+  eq('prospeccao saiu do catálogo (virou aba do Comercial)',
+     TL3.TELAS.some((t) => t.chave === 'prospeccao'), false);
+  const ger = TL3.TELAS.find((t) => t.chave === 'gerencial');
+  eq('quem absorveu a Prospecção mantém o mesmo acesso (comercial e SAC, não técnico)',
+     ger && ger.padrao.comercial === true && ger.padrao.sac === true
+         && ger.padrao.tecnico === false, true);
   for (const chave of ['clientes.novo', 'clientes.migrar']) {
     const t = TL3.TELAS.find((x) => x.chave === chave);
     eq(`${chave} está negada para todos os papéis`,
@@ -1351,9 +1355,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /Recebido em[\s\S]{0,120}chamado\.created_at/.test(painel), true);
   // as propriedades que o Davi listou
   for (const campo of ['cliente_id', 'responsavel_id', 'tipo', 'status', 'prioridade',
-                       'equipe', 'sprint', 'prazo_limite', 'titulo', 'descricao_problema']) {
+                       'equipe', 'sprint', 'titulo', 'descricao_problema']) {
     eq(`o painel edita ${campo}`, new RegExp(`patch: \\{ ${campo}`).test(painel), true);
   }
+  // o prazo entra num patch que pode levar o sprint junto (R40), então o
+  // formato não é o literal simples dos outros
+  eq('o painel edita prazo_limite', /prazo_limite: prazo/.test(painel), true);
   eq('o painel edita apoio (vários)', /adicionarApoio[\s\S]*removerApoio/.test(painel), true);
 
   // React: subcomponente declarado DENTRO do pai ganha identidade nova a cada
@@ -1546,6 +1553,143 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('mas a hora continua no title do navegador (a informação não sumiu)',
      /title=\{`\$\{e\.titulo\}\$\{e\.porPrazo/.test(cal), true);
   eq('o rosto do responsável continua na célula', /AvatarPilha/.test(cal), true);
+}
+
+// ── U34: Prospecção vira aba + campo com busca (R38/R39, 2026-08-21) ───────
+{
+  const fs14 = require('fs');
+  const ger = fs14.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+  const pros = fs14.readFileSync('src/routes/_authenticated/prospeccao.tsx', 'utf8');
+  const nav = fs14.readFileSync('src/components/nav-itens.ts', 'utf8');
+
+  // R38: a Prospecção mudou de LUGAR, não de dono
+  eq('Prospecção saiu do menu lateral', /prospeccao/.test(nav), false);
+  eq('/prospeccao virou redirect para a aba',
+     /redirect\(\{ to: "\/gerencial", search: \{ aba: "prospeccao" \} \}\)/.test(pros), true);
+  eq('o redirect não renderiza conteúdo próprio',
+     /useProspeccoes|ListaProspeccao/.test(pros), false);
+  eq('o Comercial tem a aba de Prospecção',
+     /chave: "prospeccao" as const, label: "Prospecção"/.test(ger), true);
+  eq('a aba renderiza a lista extraída', /<ListaProspeccao \/>/.test(ger), true);
+  // a aba mora na URL: é o que mantém o link antigo funcionando
+  eq('a aba está na URL, não em estado local',
+     /validateSearch/.test(ger) && /Route\.useSearch\(\)/.test(ger), true);
+  eq('a lista virou componente reaproveitável',
+     fs14.existsSync('src/features/prospeccao/ListaProspeccao.tsx'), true);
+  eq('o botão "Prospecção" saiu da barra do Comercial (leva para onde já se está)',
+     /label: "Prospecção", Icon: Target/.test(ger), false);
+
+  // a U34 apaga a linha órfã, e o acesso não muda de valor
+  const u34 = fs14.readFileSync('supabase/migrations/20260821220000_u34_prospeccao_vira_aba.sql', 'utf8');
+  eq('U34 apaga as linhas de prospeccao',
+     /DELETE FROM public\.permissoes_tela WHERE tela = 'prospeccao'/.test(u34), true);
+  eq('U34 termina com SELECT de verificação', /SELECT '.*esperado/.test(u34), true);
+
+  // ── R39: campo com busca nas listas LONGAS ──────────────────────────────
+  const cb = fs14.readFileSync('src/components/CampoComBusca.tsx', 'utf8');
+  const pn2 = fs14.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+
+  eq('o campo com busca é um combobox de verdade (ARIA)',
+     /role="combobox"/.test(cb) && /role="listbox"/.test(cb) && /role="option"/.test(cb), true);
+  eq('navega por teclado (setas, Enter, Esc)',
+     /ArrowDown/.test(cb) && /"Enter"/.test(cb) && /"Escape"/.test(cb), true);
+  // quem digita "vila" quer "Vila Lagos" no topo, não "Alto da Vila"
+  eq('começa-com vem antes de contém na ordenação',
+     /startsWith\(t\)\) comeca\.push/.test(cb), true);
+  // o blur do input dispara ANTES do click e levaria a escolha embora
+  eq('a escolha usa mousedown, não click (o blur mataria o click)',
+     /onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); escolher\(o\); \}\}/.test(cb), true);
+  eq('fecha ao clicar fora', /addEventListener\("mousedown", fora\)/.test(cb), true);
+  eq('a busca ignora acento (usa a normalização da casa)',
+     /normalizarTexto/.test(cb), true);
+
+  // onde ele entra e onde NÃO entra
+  for (const campo of ['painel-cliente', 'painel-responsavel', 'painel-apoio']) {
+    eq(`${campo} usa o campo com busca`, new RegExp(`id="${campo}"`).test(pn2), true);
+  }
+  // lista de 4 opções não ganha busca: digitar para escolher entre "Baixa,
+  // Normal, Alta, Urgente" é trocar um clique por clique mais digitação
+  eq('prioridade continua select (lista curta não precisa de busca)',
+     /titulo="Prioridade"[\s\S]{0,300}PRIORIDADE_LABEL\[p\]/.test(pn2), true);
+  eq('status continua select', /<Escolha\s+titulo="Status"/.test(pn2), true);
+}
+
+// ── U35: o sprint sai do prazo (R40, 2026-08-21) ───────────────────────────
+{
+  const fs15 = require('fs');
+  const CS = carregar('src/lib/chamado-status.ts');
+  const IMP2 = carregar('src/features/chamados/importar-notion.ts');
+
+  // quarta-feira, 19 de agosto de 2026 (a semana começa na segunda, dia 17)
+  const qua = new Date(2026, 7, 19);
+  const sp = (aaaa, mm, dd) => CS.sprintDoPrazo(new Date(aaaa, mm - 1, dd, 23, 59).toISOString(), qua);
+
+  eq('o vocabulário ganhou os dois baldes semanais',
+     CS.SPRINT_ORDEM.slice(0, 2), ['essa_semana', 'semana_que_vem']);
+  eq('todo balde tem rótulo',
+     CS.SPRINT_ORDEM.every((s) => !!CS.SPRINT_LABEL[s]), true);
+
+  eq('hoje é essa semana', sp(2026, 8, 19), 'essa_semana');
+  eq('sexta desta semana é essa semana', sp(2026, 8, 21), 'essa_semana');
+  eq('domingo fecha a semana (a semana começa na segunda)', sp(2026, 8, 23), 'essa_semana');
+  eq('segunda seguinte já é semana que vem', sp(2026, 8, 24), 'semana_que_vem');
+  eq('domingo da outra semana ainda é semana que vem', sp(2026, 8, 30), 'semana_que_vem');
+  // o balde mais ESTREITO ganha: dia 31 é deste mês, mas nem esta nem a
+  // próxima semana — então "este mês"
+  eq('fim do mês, além de duas semanas, é este mês', sp(2026, 8, 31), 'este_mes');
+  eq('setembro é mês que vem', sp(2026, 9, 15), 'mes_que_vem');
+  eq('outubro em diante é backlog', sp(2026, 10, 2), 'backlog');
+  // vencido é trabalho para AGORA — mandá-lo para "mês passado" o esconderia
+  eq('prazo vencido cai em essa semana, não no passado', sp(2026, 7, 10), 'essa_semana');
+  eq('sem prazo não inventa balde', CS.sprintDoPrazo(null, qua), null);
+  eq('data inválida não inventa balde', CS.sprintDoPrazo('nao-e-data', qua), null);
+
+  // a meta do mês tem que seguir a partição, senão despenca sem nada mudar
+  eq('os três baldes do mês', CS.SPRINTS_DO_MES, ['essa_semana', 'semana_que_vem', 'este_mes']);
+  const MET = carregar('src/features/home/metricas.ts');
+  const agosto = new Date(2026, 7, 21);
+  const tarefa = (sprint) => ({
+    natureza: 'interno', sprint, coluna: 'aberto', emAberto: true, encerradoEm: null,
+  });
+  eq('meta do mês inclui "essa semana" (era o defeito da partição)',
+     MET.metaDoMes([tarefa('essa_semana')], agosto).total, 1);
+  eq('meta do mês inclui "semana que vem"',
+     MET.metaDoMes([tarefa('semana_que_vem')], agosto).total, 1);
+  eq('meta do mês NÃO inclui "mês que vem"',
+     MET.metaDoMes([tarefa('mes_que_vem')], agosto).total, 0);
+  eq('meta do mês NÃO inclui backlog',
+     MET.metaDoMes([tarefa('backlog')], agosto).total, 0);
+
+  // o importador: etiqueta do Notion primeiro, derivação depois, e NUNCA
+  // derivar em coisa encerrada (jogaria arquivo de 2025 em "essa semana")
+  eq('importador: a etiqueta do Notion vence',
+     IMP2.sprintDaLinha('Mês que vem', 'aberto', new Date(2026, 7, 19).toISOString(), qua),
+     'mes_que_vem');
+  eq('importador: sem etiqueta, deriva do prazo',
+     IMP2.sprintDaLinha('', 'aberto', new Date(2026, 7, 19, 23, 59).toISOString(), qua),
+     'essa_semana');
+  eq('importador: concluído NÃO deriva (arquivo não é "essa semana")',
+     IMP2.sprintDaLinha('', 'concluido', new Date(2025, 4, 10).toISOString(), qua), 'backlog');
+  eq('importador: sem etiqueta e sem prazo vai para backlog',
+     IMP2.sprintDaLinha('', 'aberto', null, qua), 'backlog');
+  eq('importador: "Essa Semana" do Notion tem balde próprio agora',
+     IMP2.SPRINT_NOTION['essa semana'], 'essa_semana');
+
+  // a tela grava prazo e sprint no MESMO patch: dois patches poderiam deixar
+  // o prazo novo com o sprint velho se o segundo falhasse
+  const pn3 = fs15.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  eq('o painel deriva o sprint ao mudar o prazo', /sprintDoPrazo\(prazo\)/.test(pn3), true);
+  eq('prazo e sprint vão no mesmo patch',
+     /patch: sprint \? \{ prazo_limite: prazo, sprint \}/.test(pn3), true);
+
+  // o banco precisa aceitar os valores novos, senão toda troca de data volta
+  // com erro de constraint na cara do usuário
+  const u35 = fs15.readFileSync('supabase/migrations/20260821230000_u35_sprint_semanal.sql', 'utf8');
+  for (const v of ['essa_semana', 'semana_que_vem', 'este_mes', 'mes_que_vem', 'mes_passado', 'backlog']) {
+    eq(`U35: o CHECK aceita '${v}'`,
+       new RegExp(`'${v}'`).test(u35.split('ADD CONSTRAINT')[1] ?? ''), true);
+  }
+  eq('U35 termina com SELECT de verificação', /SELECT '.*esperado/.test(u35), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

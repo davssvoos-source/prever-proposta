@@ -7,6 +7,7 @@
 
 import type { Atividade } from "@/features/atividades/modelo";
 import { inicioSemana, dataIso } from "@/lib/periodos";
+import { SPRINTS_DO_MES } from "@/lib/chamado-status";
 
 /**
  * Quantos foram concluídos em cada semana, das PRÓPRIAS atividades.
@@ -54,10 +55,13 @@ export function metaDoMes(
     return d.getMonth() === mes && d.getFullYear() === ano;
   };
 
+  // R40 partiu "este mês" em três baldes (essa semana, semana que vem, este
+  // mês). Contar só `este_mes` faria a meta despencar sem nada ter mudado no
+  // trabalho — a tarefa de quarta-feira simplesmente sairia da conta.
   const doMes = atividades.filter(
     (a) =>
       a.natureza === "interno" &&
-      a.sprint === "este_mes" &&
+      a.sprint !== null && (SPRINTS_DO_MES as string[]).includes(a.sprint) &&
       a.coluna !== "cancelado" &&
       (a.emAberto || nesteMes(a.encerradoEm)),
   );

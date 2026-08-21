@@ -595,3 +595,24 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   quem toca**, e **cresce com a quantidade de atividades** — sem rolagem por
   dia. Rolagem por célula esconde item dentro de item: 42 áreas de rolagem
   independentes, e o que está no fim de uma delas ninguém vê.
+
+- **R38** — **Prospecção é ABA do Painel Comercial**, não página. Prospecção é
+  o começo do funil (prospecto → proposta → cliente); ter porta separada
+  obrigava a escolher entre duas telas antes de começar, sendo que o trabalho
+  atravessa as duas. A aba mora na URL (`/gerencial?aba=prospeccao`), então
+  continua linkável; `/prospeccao` redireciona. Saiu do menu lateral.
+  *(Davi, 2026-08-21.)*
+
+- **R39** — **Campo de escolha com BUSCA nas listas longas.** Digitar "Vila"
+  mostra "Vila Lagos", "Vila Maria"… Vale para Cliente, Responsável e Apoio —
+  as listas onde rolar custa mais que digitar (192 clientes). Listas curtas
+  (prioridade, status, tipo, equipe, sprint) continuam seleção direta: para
+  escolher entre quatro opções, digitar é trabalho a mais.
+
+- **R40** — **O SPRINT SAI DO PRAZO.** Ao definir a data, o sistema escolhe o
+  balde: **Essa semana · Semana que vem · Este mês · Mês que vem · Backlog**
+  (mais *Mês passado*, retrospectivo). O balde mais **estreito** ganha — uma
+  data desta semana também é deste mês, e a resposta útil é a semana. **Prazo
+  vencido cai em "essa semana"**, não no passado: o que venceu e segue aberto
+  é trabalho para agora, e mandá-lo ao retrospectivo o esconderia. O sprint
+  continua editável à mão, para o que não tem data.

@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, Gauge, Home, LayoutGrid, Target, User, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, Gauge, Home, LayoutGrid, User, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -34,7 +34,6 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // R31: "Chamados" saiu do menu — a lista morreu, a Início entrega a fila.
       // A vaga que sobrou no celular devolveu Clientes à barra.
       { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
-      { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
       // R27: os painéis. No celular só o Operacional — o painel do dia a dia.
       // R32: o Comercial É a lista de visitas e propostas — o item aponta
       // direto para ela, sem painel-índice no meio.
@@ -51,7 +50,6 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // R31: sem "Chamados" — e a vaga do celular voltou para Clientes, que
       // só tinha saído da barra porque ela estava cheia.
       { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
-      { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
       // o SAC coordena: o Operacional é o painel dele. O Comercial (R32: a
       // própria lista de visitas) entra no desktop porque ele agenda a visita
       // de proposta (R24 tipo 1).
