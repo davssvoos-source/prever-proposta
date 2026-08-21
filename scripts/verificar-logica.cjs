@@ -2472,5 +2472,147 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /\*\*R49\*\* \(planejado, ainda não construído\)/.test(produto), true);
 }
 
+// ── Zoom/pan do mapa de Clientes (2026-08-21, Davi: "mecanismo de zoom...
+//    movimentar o mapa com zoom, algo sistemicamente completo") ───────────
+{
+  const fs25 = require('fs');
+  const Z = carregar('src/features/clientes/mapa-zoom.ts');
+
+  eq('identidade é k=1, sem deslocamento', Z.IDENTIDADE, { x: 0, y: 0, k: 1 });
+
+  eq('clamp mantém dentro da faixa', Z.clamp(5, 0, 10), 5);
+  eq('clamp trava no mínimo', Z.clamp(-5, 0, 10), 0);
+  eq('clamp trava no máximo', Z.clamp(50, 0, 10), 10);
+
+  // zoomEm — o ponto sob o cursor tem que ficar PARADO na tela: é a
+  // diferença entre "zoom no cursor" (bom) e "zoom sempre no canto" (ruim)
+  {
+    const t = Z.zoomEm(Z.IDENTIDADE, 2, 100, 100);
+    eq('zoomEm dobra o k', t.k, 2);
+    eq('o ponto sob o cursor continua no mesmo lugar da tela',
+       [t.k * 100 + t.x, t.k * 100 + t.y], [100, 100]);
+  }
+  {
+    // zoom repetido, sempre no MESMO ponto de tela — o conteúdo sob o
+    // cursor não pode "escapar" a cada passo do gesto
+    let t = Z.IDENTIDADE;
+    for (let i = 0; i < 5; i++) t = Z.zoomEm(t, 1.3, 250, 300);
+    eq('zoom repetido no mesmo ponto de tela mantém esse ponto fixo',
+       [Math.round(t.k * 250 + t.x), Math.round(t.k * 300 + t.y)], [250, 300]);
+  }
+  eq('zoomEm nunca passa de ZOOM_MAX', Z.zoomEm(Z.IDENTIDADE, 999, 0, 0).k, Z.ZOOM_MAX);
+  eq('zoomEm nunca fica abaixo de ZOOM_MIN', Z.zoomEm({ x: 0, y: 0, k: 2 }, 0.001, 0, 0).k, Z.ZOOM_MIN);
+  eq('zoomEm já no limite (fator=1, ZOOM_MIN) devolve a MESMA referência — sem trabalho à toa',
+     Z.zoomEm(Z.IDENTIDADE, 1, 10, 10) === Z.IDENTIDADE, true);
+
+  // deslocar — preserva k, só soma ao x/y (mesma ordem de chave do literal
+  // de entrada, por isso o literal esperado usa x,y,k igual à entrada)
+  eq('deslocar soma ao x/y, preserva k', Z.deslocar({ x: 1, y: 2, k: 3 }, 10, -5), { x: 11, y: -3, k: 3 });
+
+  // limitarTransform — em k=1 (zoom mínimo) não há folga: x e y são
+  // forçados a 0, porque o conteúdo já enche a janela exatamente
+  eq('em k=1, limitarTransform força x=0,y=0 (sem folga pra arrastar)',
+     Z.limitarTransform({ x: 500, y: -300, k: 1 }, -6, 1006, -6, 980), { k: 1, x: 0, y: 0 });
+  {
+    // k=2: o conteúdo é 2x maior que a janela — dá pra arrastar até a
+    // borda oposta aparecer, nunca além dela (não pode sobrar vazio)
+    const L = 1000;
+    const lim = Z.limitarTransform({ x: 99999, y: 0, k: 2 }, 0, L, 0, L);
+    eq('arrastar ao extremo não deixa vazio aparecer de um lado', lim.x <= 0, true);
+    const limNeg = Z.limitarTransform({ x: -99999, y: 0, k: 2 }, 0, L, 0, L);
+    eq('nem do lado oposto', limNeg.x + 2 * L >= L, true);
+  }
+
+  // distancia / pontoMedio — a base do pinça de dois dedos
+  eq('distancia de (0,0) a (3,4) é 5 (3-4-5)', Z.distancia(0, 0, 3, 4), 5);
+  eq('pontoMedio de (0,0) e (10,20) é (5,10)', Z.pontoMedio(0, 0, 10, 20), { x: 5, y: 10 });
+
+  // fatorDaRoda
+  eq('deltaY negativo (roda pra cima) amplia (fator > 1)', Z.fatorDaRoda(-100) > 1, true);
+  eq('deltaY positivo (roda pra baixo) reduz (fator < 1)', Z.fatorDaRoda(100) < 1, true);
+  eq('deltaY=0 não muda nada (fator=1)', Z.fatorDaRoda(0), 1);
+
+  // paraPercentual — a base do posicionamento do balão de dica; existe
+  // porque o balão (HTML fora do SVG) precisa saber onde o ponto está NA
+  // TELA, e isso muda com zoom/pan mesmo que a coordenada de CONTEÚDO
+  // (alvo.x/alvo.y) não mude nunca
+  eq('em identidade, o centro do conteúdo cai em 50%/50%',
+     Z.paraPercentual(Z.IDENTIDADE, 500, 487, 1000, 974, 6), { left: 50, top: 50 });
+  {
+    // o bug real que motivou esta função: o balão ficava grudado na
+    // posição de k=1 mesmo depois de dar zoom, porque a fórmula antiga
+    // não sabia nada sobre a transformação ativa
+    const t = Z.zoomEm(Z.IDENTIDADE, 2, 500, 487);
+    const pos = Z.paraPercentual(t, 500, 487, 1000, 974, 6);
+    eq('o centro do zoom continua em 50%/50% depois do zoom (é o ponto que ficou fixo)',
+       [Math.round(pos.left), Math.round(pos.top)], [50, 50]);
+    const posOutro = Z.paraPercentual(t, 0, 0, 1000, 974, 6);
+    eq('um ponto DIFERENTE do centro do zoom muda de % — o mapa "cresceu" ao redor do centro',
+       posOutro.left !== 50 || posOutro.top !== 50, true);
+  }
+
+  // ── o componente: mecanismos ligados de verdade ──────────────────────
+  const mc = fs25.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+  eq('o viewBox do svg é FIXO — quem se move é o <g> interno, não o viewBox',
+     /viewBox=\{`-\$\{MARGEM\} -\$\{MARGEM\} \$\{VB_LARGURA\} \$\{VB_ALTURA\}`\}/.test(mc), true);
+  eq('a roda do mouse usa listener NATIVO com passive:false (preventDefault de verdade)',
+     /addEventListener\("wheel", aoRolar, \{ passive: false \}\)/.test(mc), true);
+  eq('o listener da roda é removido no cleanup do efeito (sem vazamento)',
+     /removeEventListener\("wheel", aoRolar\)/.test(mc), true);
+  eq('touchAction fica "none" só a partir do zoom mínimo — em k=1 é "pan-y" (deixa rolar a página no celular)',
+     /touchAction: noZoomMinimo \? "pan-y" : "none"/.test(mc), true);
+  eq('atualizações de transform passam por requestAnimationFrame (não repinta mais que o navegador aguenta)',
+     /rafRef\.current = requestAnimationFrame/.test(mc), true);
+  eq('cancela o rAF pendente ao desmontar (sem setState depois do componente sair da árvore)',
+     /cancelAnimationFrame\(rafRef\.current\)/.test(mc), true);
+  eq('um clique que terminou arrasto NÃO navega (arrastouRef gate no onClick do ponto)',
+     /if \(arrastouRef\.current\) \{ arrastouRef\.current = false; return; \}/.test(mc), true);
+  eq('hover no ponto também respeita o arrasto (não reabre o balão durante o pan)',
+     /onMouseEnter=\{\(\) => \{ if \(!arrastouRef\.current\) setAlvo\(p\); \}\}/.test(mc), true);
+  eq('o balão de dica usa paraPercentual (acompanha o zoom/pan, não fica preso na posição de k=1)',
+     /paraPercentual\(transform, alvo\.x, alvo\.y, MAPA_SP\.largura, MAPA_SP\.altura, MARGEM\)/.test(mc), true);
+  eq('traço do distrito e halo do rótulo usam vector-effect non-scaling-stroke (mesma espessura em qualquer zoom)',
+     (mc.match(/vectorEffect="non-scaling-stroke"/g) || []).length >= 2, true);
+  eq('há botões de + / − / restaurar, todos com aria-label',
+     /rotulo="Aumentar zoom"/.test(mc) && /rotulo="Diminuir zoom"/.test(mc)
+       && /rotulo="Restaurar a visão inteira"/.test(mc), true);
+  eq('o botão de restaurar fica desabilitado quando já está sem alteração (identidade)',
+     /desabilitado=\{semAlteracao\}/.test(mc), true);
+
+  // ── achados da revisão adversarial do zoom/pan (2026-08-21) ──────────
+  eq('a roda do mouse EXIGE Ctrl/Cmd (senão sequestraria o scroll da lista ao lado, que é a maior parte da tela)',
+     /if \(!e\.ctrlKey && !e\.metaKey\) return;/.test(mc), true);
+  eq('a dica embaixo do mapa menciona Ctrl (não "role" sozinho, que enganaria sobre o gesto exigido)',
+     /Ctrl \+ role para dar zoom/.test(mc), true);
+
+  eq('CRÍTICO: pointerdown de 1 dedo/mouse NÃO captura o ponteiro na hora — clique parado tem que continuar navegando',
+     /function aoPressionarPonteiro[\s\S]{0,700}NÃO captura o ponteiro aqui/.test(mc), true);
+  eq('a captura só acontece quando o gesto CRUZA o limiar de arrasto, dentro de aoMoverPonteiro',
+     /arrastouRef\.current = true;\s*\n\s*setEmArrasto\(true\);\s*\n\s*setAlvo\(null\);[\s\S]{0,300}setPointerCapture\(e\.pointerId\)/.test(mc), true);
+  eq('2 dedos (pinça) capturam TODOS os ponteiros ativos de imediato — nunca é ambíguo com um clique',
+     /if \(ponteirosRef\.current\.size >= 2\) \{\s*\n\s*for \(const id of ponteirosRef\.current\.keys\(\)\) e\.currentTarget\.setPointerCapture\(id\);/.test(mc), true);
+
+  eq('recalcularPinch existe e é chamado tanto ao formar a pinça quanto ao voltar a 2 ponteiros depois de soltar um',
+     /function recalcularPinch\(\)/.test(mc)
+       && /recalcularPinch\(\);\s*\n\s*\}\s*\n\s*\}\s*\n\s*\n\s*function aoMoverPonteiro/.test(mc)
+       && /if \(ponteirosRef\.current\.size === 2\) recalcularPinch\(\);/.test(mc),
+     true);
+
+  eq('o reset de arrastouRef no pointerup é ADIADO (setTimeout) — senão o clique no marcador perderia a supressão, ou o hover ficaria preso se o arrasto terminar fora de um ponto',
+     /setTimeout\(\(\) => \{ arrastouRef\.current = false; \}, 0\)/.test(mc), true);
+  eq('ctmRef é cacheada no início do gesto e limpa no fim (evita getScreenCTM a cada pointermove)',
+     /ctmRef\.current = svgRef\.current\?\.getScreenCTM\(\) \?\? null;/.test(mc) && /ctmRef\.current = null;/.test(mc),
+     true);
+  eq('paraOuter usa a CTM cacheada quando existe (gesto em curso), senão pega uma nova (roda/botões)',
+     /const ctm = ctmRef\.current \?\? svg\.getScreenCTM\(\);/.test(mc), true);
+
+  eq('pan por teclado (setas) existe — svg é focável (tabIndex) e trata ArrowUp\\/Down\\/Left\\/Right',
+     /tabIndex=\{0\}/.test(mc) && /function aoTeclar/.test(mc)
+       && /ArrowUp: \[0, PASSO\], ArrowDown: \[0, -PASSO\]/.test(mc), true);
+
+  const produto2 = fs25.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R52 (zoom/pan do mapa) está documentado', /\*\*R52\*\*/.test(produto2), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

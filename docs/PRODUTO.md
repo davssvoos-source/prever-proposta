@@ -727,3 +727,14 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   simples de vértice — importa para os bairros de formato em L). Fonte
   **branca**, **Montserrat regular** — fixa, não segue o tema claro/escuro:
   é rótulo do mapa, não texto de interface. *(Davi, 2026-08-21.)*
+
+- **R52** — O mapa de Clientes ganhou **zoom e pan completos** ("mecanismo
+  de zoom... movimentar o mapa com zoom, algo sistemicamente completo"):
+  **roda do mouse** (com Ctrl/Cmd — sem o modificador, a roda continua
+  rolando a página/lista normalmente, já que o mapa ocupa boa parte da
+  tela), **pinça de dois dedos** no toque, **arrastar** (mouse ou um dedo),
+  **botões** de +/−/restaurar visão inteira, e **setas do teclado** para
+  deslocar. Zoom sempre centrado no ponto sob o cursor/dedos — o que se está
+  olhando não "foge" a cada passo. Arrastar não deixa o mapa sair
+  inteiramente de vista. Um clique parado continua navegando para a ficha do
+  cliente; um arrasto não navega. *(Davi, 2026-08-21.)*

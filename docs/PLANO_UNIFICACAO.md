@@ -2686,3 +2686,96 @@ cadastro de BLOCOS dentro do próprio sistema, reaproveitando o esquema de
 categoria de blocos que o fluxo de orçamento já usa). Davi pediu para
 registrar agora e construir depois — só foram assertion cabeçalhos aqui e em
 PRODUTO.md, nenhum código novo.
+
+### U42 — Zoom e pan no mapa de Clientes (R52, 2026-08-21)
+
+"Adicione mecanismo de zoom no mapa, mecanismo de movimentar o mapa com
+zoom, algo sistemicamente completo." A palavra que pesou foi "sistemicamente
+completo": não bastava um scroll-to-zoom solto — o pedido pedia o conjunto
+(zoom, pan, limite, atalho de teclado, botão) coerente entre si.
+
+**A matemática é um módulo puro novo**, `src/features/clientes/mapa-zoom.ts`
+— `Transform {x,y,k}`, `zoomEm` (zoom centrado num ponto, guarda ZOOM_MIN=1/
+ZOOM_MAX=8), `deslocar` (pan), `limitarTransform` (não deixa arrastar o
+conteúdo pra fora de vista — em k=1 não há folga nenhuma, x/y ficam travados
+em 0), `distancia`/`pontoMedio` (pinça de dois dedos), `fatorDaRoda`
+(exponencial, não degrau — o pinça de trackpad chega ao navegador como
+`wheel` com `ctrlKey`, e um fator suave é o que faz isso parecer contínuo),
+`paraPercentual` (converte um ponto de conteúdo em % pro balão de dica HTML,
+que fica FORA do SVG e por isso não herda o `transform` do `<g>` interno).
+
+**O viewBox do `<svg>` nunca muda** — quem se move é um `<g
+transform="translate(x,y) scale(k)">` por dentro. Isso mantém
+`svg.getScreenCTM()` como referência ESTÁVEL pra converter coordenadas de
+tela em espaço de conteúdo, em vez de recalcular a relação a cada zoom.
+
+**Ligação com o ponteiro**: Pointer Events (mouse+toque+caneta no mesmo
+código) — 1 ponteiro arrasta, 2 dão pinça. Um clique vira "arrastou o mapa"
+(não navega) quando a distância acumulada em pixels de TELA desde o
+pointerdown passa de um limiar pequeno; abaixo disso, continua navegando
+pra `/clientes/$id` como sempre. `requestAnimationFrame` coalesce as
+atualizações de transform — o React não repinta mais vezes do que o
+navegador consegue mostrar.
+
+**Revisão adversarial em segundo plano** (6 lentes — matemática de
+coordenadas, ciclo de vida de eventos, SSR/React, regressão, UX/mobile,
+performance — cada achado julgado por 3 céticos). 9 achados sobreviveram,
+todos corrigidos antes de publicar:
+
+- **[crítico]** `setPointerCapture` chamado incondicionalmente em TODO
+  pointerdown quebrava o clique-pra-navegar em qualquer Chrome/Edge/Chrome
+  Android atual (desde a v135): com o ponteiro capturado, o Chromium passa a
+  despachar o `click` no elemento que capturou (o `<svg>`), não no `<g>` do
+  marcador — Firefox/Safari ainda ignoram isso pro cálculo do alvo, o que
+  tornava fácil não perceber testando num desses dois. Fix: a captura só
+  acontece quando o gesto de fato CRUZA o limiar de arrasto (dentro de
+  `aoMoverPonteiro`), ou de imediato quando um 2º dedo confirma pinça (dois
+  dedos simultâneos nunca são ambíguos com um clique). Um clique parado
+  nunca captura, e o `click` nativo continua acertando o marcador certo.
+- **[alto]** No celular, `touchAction:"none"` incondicional impedia rolar a
+  PÁGINA tocando em qualquer parte do mapa — mesmo em k=1, onde arrastar não
+  move nada (`limitarTransform` trava x=y=0 sem folga). Fix: `"pan-y"`
+  enquanto o zoom está no mínimo (deixa o navegador rolar verticalmente com
+  1 dedo, e a própria especificação de `touch-action` já desliga o
+  pinça-zoom nativo quando algum `pan-*` é dado sozinho — o gesto de 2 dedos
+  continua chegando inteiro nos handlers), trocando pra `"none"` só depois
+  que a pessoa já deu zoom.
+- **[médio]** Roda do mouse sem exigir Ctrl/Cmd sequestrava o scroll da
+  LISTA de clientes ao lado — o mapa ocupa a coluna larga e (a partir de
+  1024px) fixa (`position:sticky`), a maior parte da tela em qualquer
+  desktop. Fix: exige `ctrlKey`/`metaKey` (o padrão de qualquer mapa/editor
+  sério, e o que o navegador já sintetiza sozinho pro pinça de trackpad).
+- **[médio]** `pinchRef` (a referência do gesto de pinça) ficava com o PAR
+  de dedos errado quando um 3º dedo entrava no meio de uma pinça e um dos
+  dois originais soltava — o próximo movimento calculava a variação de
+  distância/centro contra um par obsoleto, produzindo um salto brusco de
+  zoom/pan gravado de verdade no estado (não só um frame descartável). Fix:
+  `recalcularPinch()` roda tanto ao formar a pinça quanto sempre que o Map
+  de ponteiros volta a ter exatamente 2 depois de alguém soltar.
+- **[médio]** O balão de dica (hover) ficava preso invisível depois de um
+  arrasto que terminasse em ÁREA VAZIA (o caso comum — raro um arrasto
+  terminar bem em cima de um marcador de 5,5px): a flag que suprime cliques
+  pós-arrasto só zerava dentro do `onClick` do próprio marcador, então sem
+  esse clique ela ficava `true` pra sempre, e nenhum hover seguinte reabria
+  o balão. Fix: zera também no `pointerup`, mas ADIADA (`setTimeout(...,
+  0)`) pra não correr antes do `click` síncrono que ainda precisa lê-la.
+- **[médio]** `getScreenCTM()` era chamado a cada `pointermove` (até ~120Hz)
+  pra converter coordenadas — mas a CTM do `<svg>` só depende da posição do
+  PRÓPRIO elemento na página, que não muda durante um arrasto. Fix: cacheada
+  uma vez no início do gesto, reusada até o fim dele.
+- **[baixo, aceito como está]** Zoom por teclado (botões) existe; pan por
+  teclado não existia. Fix: setas do teclado deslocam o mapa quando ele está
+  focado (`tabIndex`), fechando a lacuna de acessibilidade.
+- **[baixo/médio, performance]** O traço dos distritos e o halo dos rótulos
+  recalculavam `1/k`/`2.4/k` a cada frame de zoom — escrita de atributo real
+  em ~94 elementos à toa. Fix: `vector-effect="non-scaling-stroke"` (mantém
+  a espessura constante NA TELA sem depender do zoom), mais simples e mais
+  barato que o cálculo manual.
+
+Não confirmado (achado descartado pelos céticos): o balão de dica não é
+byte-idêntico à fórmula antiga em k=1/x=0/y=0 — a fórmula antiga já ignorava
+a margem do viewBox (um desvio pré-existente de ~0,6%); a nova (`paraPercentual`)
+corrige isso como efeito colateral, não é regressão.
+
+811 asserções (45 novas — mapa-zoom.ts ganhou testes unitários próprios, e
+cada achado corrigido virou uma trava estrutural no componente), build ok.
