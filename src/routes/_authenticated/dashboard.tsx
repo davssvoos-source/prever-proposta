@@ -43,6 +43,7 @@ import {
   semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
+import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
 import { CriarRapido } from "@/features/home/CriarRapido";
@@ -69,6 +70,8 @@ const PERIODOS: { chave: Exclude<Periodo, null>; label: string }[] = [
 
 function Home() {
   const navigate = useNavigate();
+  /** chamado aberto no painel lateral (null = fechado) */
+  const [painelId, setPainelId] = useState<string | null>(null);
   const location = useLocation();
   const { isLight } = useTheme();
   const qc = useQueryClient();
@@ -195,13 +198,32 @@ function Home() {
 
 
 
+  /**
+   * Clicar num cartão abre o PAINEL de propriedades, não outra página.
+   *
+   * Quem varre a fila está comparando cartões: sair da Início e voltar perde
+   * filtro, rolagem e a coluna onde a pessoa estava. O painel deixa o quadro
+   * atrás vivo — e a página completa (execução, fotos, assinatura) continua a
+   * um botão de distância, no cabeçalho do painel.
+   *
+   * A VISITA é a exceção: o cartão dela abre o fluxo da proposta direto. O
+   * estado da visita decide qual tela é a certa (`visitaRouteFor`), e cair nas
+   * propriedades da capa quando se quer orçar seria um desvio no meio do
+   * trabalho. O painel dela existe pelo botão, dentro do fluxo.
+   */
   function abrir(a: Atividade) {
     if (a.fonte === "visita") {
       const v = visitas.find((x) => x.id === a.registroId);
       navigate({ ...visitaRouteFor((v?.status ?? "pendente") as any, a.registroId), state: { from: location.pathname } } as any);
     } else {
-      navigate({ to: "/chamados/$id", params: { id: a.registroId } });
+      setPainelId(a.registroId);
     }
+  }
+
+  /** Do painel para a página completa — leva o id e fecha o painel. */
+  function abrirPagina(id: string) {
+    setPainelId(null);
+    navigate({ to: "/chamados/$id", params: { id } });
   }
 
   /**
@@ -553,6 +575,12 @@ function Home() {
           </>
         )}
       </div>
+
+      <PainelChamado
+        chamadoId={painelId}
+        aoFechar={() => setPainelId(null)}
+        aoAbrirPagina={abrirPagina}
+      />
     </>
   );
 }

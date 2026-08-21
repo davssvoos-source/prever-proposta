@@ -562,3 +562,19 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | Import QAP (clientes/estoque/equipamentos) | aguardando export (U10) |
 | API QAP contínua | aguardando dev do QAP (U11) |
 | IA no WhatsApp do SAC | futuro (U12) |
+
+- **R33** — **O chamado abre num PAINEL, não em outra página.** Clicar num
+  cartão na Início ou num item do calendário desliza um painel pela direita
+  com as propriedades editáveis. O painel ocupa **no máximo 60% da tela** — o
+  que está atrás continua vivo, e é esse o ponto: quem varre a fila está
+  comparando cartões, e trocar de página perde filtro, rolagem e lugar.
+  Salva **campo a campo**, sem botão de salvar. **A data de criação não é
+  editável** — é a âncora temporal que a idade do backlog e a reincidência
+  usam para contar. A página completa (execução, fotos, assinatura) continua
+  a um botão de distância; a **visita** vai direto para o fluxo dela.
+  *(Davi, 2026-08-21.)*
+
+- **R34** — **O calendário mostra TODA atividade com data, não só a
+  agendada.** Visita e chamado de campo entram pela hora marcada; chamado
+  interno entra pelo **prazo** — que é a data que ele realmente tem. Cada dia
+  mostra o **título** e o **rosto de quem toca**. A grade ocupa a tela inteira.

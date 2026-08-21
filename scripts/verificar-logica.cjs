@@ -1304,5 +1304,84 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /i \+= 400/.test(imp), true);
 }
 
+// ── U32: painel de propriedades + calendário consertado (2026-08-21) ───────
+{
+  const fs12 = require('fs');
+  const painel = fs12.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  const cal = fs12.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  const dash = fs12.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+  // só linhas de código: os cabeçalhos explicam justamente os termos vigiados
+  const codigo = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  // A COLUNA QUE NÃO EXISTE — a causa real de o calendário viver vazio.
+  // `chamados.tecnico_id` sumiu na U7 (virou responsavel_id); pedi-la fazia o
+  // PostgREST responder 42703 e a consulta inteira voltava vazia.
+  eq('o calendário não pede chamados.tecnico_id (foi o que o deixou vazio)',
+     /chamados[\s\S]{0,400}?tecnico_id/.test(codigo(cal).split('from("chamados')[1] ?? ''), false);
+  eq('o calendário usa responsavel_id', /responsavel_id/.test(cal), true);
+  // a visita AINDA usa tecnico_id — a coluna existe lá; trocar as duas seria
+  // consertar um lado e quebrar o outro
+  eq('a visita continua com tecnico_id (a coluna é dela)',
+     /visitas_tecnicas[\s\S]{0,300}?tecnico_id/.test(cal), true);
+
+  // a segunda causa: só entrava quem tinha hora marcada, e as 2100 do Notion
+  // não têm — o que elas têm é prazo
+  eq('o calendário também coloca atividade pelo PRAZO',
+     /prazo_limite\.gte/.test(cal) && /prazo_limite\.lte/.test(cal), true);
+  eq('e distingue as duas origens de data na célula',
+     /porPrazo/.test(cal), true);
+
+  // o que o Davi pediu ver em cada dia
+  eq('a célula do dia mostra o título', /\{e\.titulo\}/.test(cal), true);
+  eq('a célula do dia mostra o(s) responsável(eis)', /AvatarPilha/.test(cal), true);
+  eq('a grade ocupa a tela (dvh, não vh — a barra do celular entra e sai)',
+     /100dvh/.test(cal), true);
+
+  // O PAINEL
+  eq('o painel entra pela direita', /side="right"/.test(painel), true);
+  eq('o painel ocupa no máximo 60% da tela (pedido do Davi)',
+     /maxWidth: "60vw"/.test(painel), true);
+  eq('o painel NÃO é de tela inteira', /w-full|width: "100vw"/.test(codigo(painel)), false);
+  // a data de criação é informação, não campo — é a âncora que a idade do
+  // backlog e a reincidência usam para contar
+  eq('a data de criação não é editável',
+     /patch: \{ created_at/.test(painel) || /name="created_at"/.test(painel), false);
+  eq('a data de criação aparece como informação', /Criado em/.test(painel), true);
+  // as propriedades que o Davi listou
+  for (const campo of ['cliente_id', 'responsavel_id', 'tipo', 'status', 'prioridade',
+                       'equipe', 'sprint', 'prazo_limite', 'titulo', 'descricao_problema']) {
+    eq(`o painel edita ${campo}`, new RegExp(`patch: \\{ ${campo}`).test(painel), true);
+  }
+  eq('o painel edita apoio (vários)', /adicionarApoio[\s\S]*removerApoio/.test(painel), true);
+
+  // React: subcomponente declarado DENTRO do pai ganha identidade nova a cada
+  // render — o React remonta e o texto sendo digitado some no meio da frase
+  eq('as peças de formulário são de módulo, não funções internas',
+     /^function (Campo|Escolha|Texto|Selo)\(/m.test(painel), true);
+  eq('nenhuma peça é declarada dentro do componente do painel',
+     /export function PainelChamado[\s\S]*?\n  function (Campo|Escolha|Texto|Selo)\(/.test(painel), false);
+
+  // hora local no input de agendamento: toISOString() mostraria UTC e a visita
+  // das 9h apareceria como 12h
+  eq('o campo de agendamento usa hora local, não UTC',
+     /paraEntradaLocal/.test(painel) && !/data_hora_agendada[\s\S]{0,120}toISOString\(\)\.slice/.test(painel), true);
+
+  // as duas telas abrem o mesmo painel
+  eq('a Início abre o painel ao clicar no cartão',
+     /setPainelId\(a\.registroId\)/.test(dash), true);
+  eq('o calendário abre o MESMO painel', /PainelChamado/.test(cal), true);
+  // a visita tem fluxo próprio nas duas
+  eq('a visita continua indo para o fluxo dela (Início)',
+     /fonte === "visita"[\s\S]{0,200}visitaRouteFor/.test(dash), true);
+  eq('a visita continua indo para o fluxo dela (calendário)',
+     /kind === "visita"[\s\S]{0,200}visitaRouteFor/.test(cal), true);
+
+  // salvar precisa refrescar o que está atrás, senão o cartão fica no lugar velho
+  for (const chave of ['chamados', 'home', 'calendario']) {
+    eq(`salvar no painel refresca "${chave}"`,
+       new RegExp(`queryKey: \\["${chave}"`).test(painel), true);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

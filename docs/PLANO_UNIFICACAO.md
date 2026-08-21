@@ -2204,3 +2204,47 @@ depois de "o que é isto?".
 
 Resultado do ensaio: **2099 atividades importáveis, 100 em aberto** (Erik 37,
 Davi 26, Gilleno 14, Nicholas 13, Vinicius 10). 441 asserções, build ok.
+
+### U32 — Painel de propriedades e o calendário que estava vazio (2026-08-21)
+
+**O painel (R33).** Clicar num cartão passou a deslizar um painel pela direita
+com as propriedades editáveis: cliente, responsável, apoio, tipo, status,
+prioridade, equipe, sprint, prazo, agendamento, título e descrição. Salva campo
+a campo — cada um com o próprio selo de salvando/salvo/erro, e o erro traz o
+código PRV-… do sistema de erros (U31), então RLS negando aparece como
+`PRV-INI-PERM-42501` em vez de "não deu certo". Teto de 60% da tela por pedido
+do Davi; piso de 340px porque 60% de um celular são 230px e nenhum campo seria
+legível.
+
+**Dois defeitos meus, pegos antes de publicar:**
+
+1. Os subcomponentes de formulário estavam declarados **dentro** do componente
+   pai. A cada render eles ganham identidade nova, o React desmonta e remonta —
+   e o texto sendo digitado sumiria no meio da frase assim que qualquer consulta
+   de fundo voltasse. Hoistados para o módulo, com asserção nos dois sentidos.
+2. O campo de agendamento usava `toISOString().slice(0,16)`, que devolve **UTC**:
+   a visita das 9h apareceria como 12h. Três horas de diferença que ninguém
+   repara até alguém perder a hora.
+
+**O calendário estava vazio por um motivo concreto (R34).** A consulta pedia
+`chamados.tecnico_id` — coluna que deixou de existir na fusão U7, quando virou
+`responsavel_id`. O PostgREST respondia **42703**, a consulta inteira falhava e
+a lista voltava vazia: nenhum chamado jamais apareceu ali, só visitas. O erro
+morria dentro do react-query. Confirmei contra o banco antes de afirmar — e com
+o sistema de erros da U31 isso hoje apareceria como `PRV-CAL-ESQM-42703`.
+
+**A segunda causa:** só entrava quem tinha `data_hora_agendada`. As 2100
+atividades que vieram do Notion não têm hora marcada — o que elas têm é
+**prazo**. Um calendário que ignora prazo mostra a agenda de campo e finge que
+o resto do trabalho não tem data. Agora cada item entra pela data que de fato o
+coloca num dia, e a célula distingue as duas (hora × "vence").
+
+O filtro `or(...)` que junta os dois caminhos foi **testado contra o banco**,
+com controle negativo para provar que o teste tinha dentes (coluna inventada →
+400/42703; a consulta real → 200).
+
+Grade em tela cheia (`100dvh`, não `vh` — a barra do navegador do celular
+esconderia a última semana), título e pilha de avatares em cada item, e o
+clique abre o mesmo painel da Início.
+
+475 asserções, build ok.

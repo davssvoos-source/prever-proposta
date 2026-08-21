@@ -1,488 +1,438 @@
+// Calendário — a agenda do mês, tela cheia.
+//
+// O DEFEITO QUE ELE TINHA: a consulta de chamados pedia a coluna `tecnico_id`,
+// que deixou de existir na fusão U7 (virou `responsavel_id`). O PostgREST
+// respondia 42703, a consulta inteira falhava e a lista voltava vazia — então
+// NENHUM chamado aparecia no calendário, só visitas. Silencioso porque o erro
+// morria dentro do react-query. (Hoje isso apareceria como PRV-CAL-ESQM-42703.)
+//
+// A SEGUNDA CAUSA: só entrava quem tinha `data_hora_agendada`. As atividades
+// internas — as 2100 que vieram do Notion — não têm hora marcada; o que elas
+// têm é PRAZO. Um calendário que ignora prazo mostra a agenda de campo e finge
+// que o resto do trabalho não tem data.
+//
+// Por isso cada item entra pela data que REALMENTE o coloca num dia:
+//   · visita e chamado de campo → a hora agendada (é quando a dupla sai)
+//   · chamado interno           → o prazo (é quando tem que estar pronto)
+// A célula distingue os dois: hora para o que é agendado, "vence" para prazo.
+
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useState, useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Clock, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
+import { FONT } from "@/lib/ui";
 import { chamadoStatusInfo } from "@/lib/chamado-status";
+import { usePessoas } from "@/features/chamados/data";
+import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
+import { PainelChamado } from "@/features/chamados/PainelChamado";
+import { visitaRouteFor } from "@/lib/visita-route";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
   component: CalendarioPage,
 });
 
-const STATUS_CORES: Record<string, string> = {
-  pendente: "#F8C811",
-  em_andamento: "#3B82F6",
-  concluida: "#059676",
-  aprovada: "#8B5CF6",
-  cancelada: "#E64D58",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Pendente",
-  aguardando_aprovacao: "Aguardando aprovação",
-  concluida: "Aguardando aprovação",
-  aprovada: "Aprovada",
-  reprovada: "Reprovada",
-  cancelada: "Cancelada",
-};
-
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+/** Um item do calendário, já normalizado. */
+interface Evento {
+  kind: "visita" | "chamado";
+  id: string;
+  titulo: string;
+  status: string;
+  tipo: string;
+  natureza: string | null;
+  /** quem toca — responsável primeiro, apoios depois */
+  pessoas: string[];
+  quando: string;
+  /** true = entrou pelo PRAZO, não por hora marcada */
+  porPrazo: boolean;
+}
+
+const chaveDia = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 function CalendarioPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLight } = useTheme();
+
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
-  const goldDark = isLight ? "#A06108" : "#F8C811";
-  const CARD_T: CSSProperties = {
-    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
-    backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
-    WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
-    borderRadius: 18,
-    padding: "20px 16px",
-    marginBottom: 20,
-    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
-  };
-  const NAV_BTN_T: CSSProperties = {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
-    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-    color: textPrimary,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  };
+  const gold = isLight ? "#A06108" : "#F8C811";
+  const superficie = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
+  const linha = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
+
   const hoje = new Date();
   const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-  const [diaSelecionado, setDiaSelecionado] = useState<number | null>(hoje.getDate());
+  const [painelId, setPainelId] = useState<string | null>(null);
 
   const { data: cargo } = useUserCargo();
-  // SAC é gestor de chamados: vê o calendário de TODOS os técnicos (R8, aba 2)
-  const isAdmin = cargo === "admin" || cargo === "sac";
+  // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26)
+  const isGestor = cargo === "admin" || cargo === "sac" || cargo === "comercial";
 
-  // Filtros da aba 2 (R8): por técnico e por tipo de chamado
-  const [tecnicoFiltro, setTecnicoFiltro] = useState<string>("todos");
-  const [tipoFiltro, setTipoFiltro] = useState<string>("todos");
+  const [pessoaFiltro, setPessoaFiltro] = useState("todos");
+  const [tipoFiltro, setTipoFiltro] = useState("todos");
 
-  const { data: tecnicosLista = [] } = useQuery({
-    queryKey: ["calendario-tecnicos"],
-    enabled: isAdmin,
+  const { data: pessoas = [] } = usePessoas();
+  const mapaPessoas = useMemo(() => {
+    const m: Record<string, PessoaAvatar> = {};
+    for (const p of pessoas as any[]) m[p.id] = { nome: p.nome, avatar_url: p.avatar_url ?? null };
+    return m;
+  }, [pessoas]);
+
+  const inicioMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth(), 1), [mes]);
+  const fimMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59), [mes]);
+
+  const { data: visitas = [], isLoading: carregandoVisitas } = useQuery({
+    queryKey: ["calendario", "visitas", mes.getFullYear(), mes.getMonth(), isGestor],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, nome")
-        .eq("cargo", "tecnico")
-        .eq("ativo", true)
-        .order("nome");
-      return data ?? [];
-    },
-  });
-
-  const { data: visitas = [], isLoading } = useQuery({
-    queryKey: ["calendario", mes.getFullYear(), mes.getMonth(), isAdmin],
-    enabled: cargo !== undefined,
-    queryFn: async () => {
-      const inicio = new Date(mes.getFullYear(), mes.getMonth(), 1).toISOString();
-      const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-      if (isAdmin) {
-        const { data, error } = await supabase
-          .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
-          .gte("data_hora_agendada", inicio)
-          .lte("data_hora_agendada", fim)
-          .order("data_hora_agendada");
-        if (error) throw error;
-        return data ?? [];
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
-        const { data, error } = await supabase
-          .from("visitas_tecnicas")
-          .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
-          .eq("tecnico_id", user.id)
-          .gte("data_hora_agendada", inicio)
-          .lte("data_hora_agendada", fim)
-          .order("data_hora_agendada");
-        if (error) throw error;
-        return data ?? [];
-      }
-    },
-  });
-
-  // Chamados agendados no mês entram no mesmo calendário (a RLS já limita o
-  // técnico aos dele). Etapa 3 do sistema de OS.
-  const { data: ordens = [] } = useQuery({
-    queryKey: ["calendario-os", mes.getFullYear(), mes.getMonth()],
-    queryFn: async () => {
-      const inicio = new Date(mes.getFullYear(), mes.getMonth(), 1).toISOString();
-      const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59).toISOString();
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("id, numero, status, tipo, titulo, data_hora_agendada, tecnico_id, cliente:clientes(nome)")
+      let q = supabase
+        .from("visitas_tecnicas")
+        .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
         .not("data_hora_agendada", "is", null)
-        .gte("data_hora_agendada", inicio)
-        .lte("data_hora_agendada", fim)
-        .order("data_hora_agendada");
+        .gte("data_hora_agendada", inicioMes.toISOString())
+        .lte("data_hora_agendada", fimMes.toISOString());
+      if (!isGestor) {
+        const { data: u } = await supabase.auth.getUser();
+        if (u.user) q = q.eq("tecnico_id", u.user.id);
+      }
+      const { data, error } = await q.order("data_hora_agendada");
       if (error) throw error;
       return (data as any[]) ?? [];
     },
   });
 
-  // Visitas e chamados normalizados no mesmo formato para grade e lista.
-  // Os filtros (R8) entram AQUI: grade, contagem por dia e lista respeitam.
-  const eventos = useMemo(() => {
-    const deVisitas = (visitas as any[]).map((v) => ({
-      kind: "visita" as const,
-      id: v.id as string,
-      status: v.status as string,
-      tipo: "visita" as string,
-      tecnico_id: (v.tecnico_id ?? null) as string | null,
-      data_hora_agendada: v.data_hora_agendada as string,
-      nome: (v.nome_predio ?? v.titulo ?? "Visita") as string,
-      detalhe: null as string | null,
-    }));
-    const deOs = (ordens as any[]).map((o) => ({
-      kind: "os" as const,
-      id: o.id as string,
-      status: o.status as string,
-      tipo: (o.tipo ?? "corretiva") as string,
-      tecnico_id: (o.tecnico_id ?? null) as string | null,
-      data_hora_agendada: o.data_hora_agendada as string,
-      nome: (o.cliente?.nome ?? "Chamado") as string,
-      detalhe: `${o.numero ?? ""} ${o.titulo}`.trim() as string | null,
-    }));
-    return [...deVisitas, ...deOs]
-      .filter((e) => tecnicoFiltro === "todos" || e.tecnico_id === tecnicoFiltro)
-      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
-      .sort(
-        (a, b) => new Date(a.data_hora_agendada).getTime() - new Date(b.data_hora_agendada).getTime(),
-      );
-  }, [visitas, ordens, tecnicoFiltro, tipoFiltro]);
+  /**
+   * Chamados do mês por DOIS caminhos: hora agendada ou prazo. O PostgREST
+   * junta os dois com `or(...)`, senão seriam duas consultas para depois
+   * misturar na mão — e a segunda esqueceria um filtro em algum refactor.
+   */
+  const { data: chamados = [], isLoading: carregandoChamados } = useQuery({
+    queryKey: ["calendario", "chamados", mes.getFullYear(), mes.getMonth()],
+    queryFn: async () => {
+      const de = inicioMes.toISOString();
+      const ate = fimMes.toISOString();
+      const { data, error } = await supabase
+        .from("chamados" as any)
+        // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
+        // nome velho derrubava a consulta inteira (42703)
+        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente:clientes(nome)")
+        .or(`and(data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),and(data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`);
+      if (error) throw error;
+      return (data as any[]) ?? [];
+    },
+  });
 
-  const corDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
-    e.kind === "os"
-      ? (isLight ? chamadoStatusInfo(e.status).colorLight : chamadoStatusInfo(e.status).color)
-      : (STATUS_CORES[e.status] ?? goldDark);
-
-  const rotuloDoEvento = (e: { kind: "visita" | "os"; status: string }) =>
-    e.kind === "os" ? chamadoStatusInfo(e.status).label : (STATUS_LABELS[e.status] ?? e.status);
-
-  const { diasGrid, visitasPorDia } = useMemo(() => {
-    const primeiroDia = new Date(mes.getFullYear(), mes.getMonth(), 1).getDay();
-    const totalDias = new Date(mes.getFullYear(), mes.getMonth() + 1, 0).getDate();
-
-    const map = new Map<number, any[]>();
-    eventos.forEach((v: any) => {
-      const d = new Date(v.data_hora_agendada);
-      if (d.getMonth() === mes.getMonth() && d.getFullYear() === mes.getFullYear()) {
-        const dia = d.getDate();
-        if (!map.has(dia)) map.set(dia, []);
-        map.get(dia)!.push(v);
+  /** Apoios de todos os chamados do mês — para a pilha de avatares. */
+  const { data: apoios = {} } = useQuery({
+    queryKey: ["calendario", "apoios", mes.getFullYear(), mes.getMonth()],
+    enabled: chamados.length > 0,
+    queryFn: async () => {
+      const ids = (chamados as any[]).map((c) => c.id);
+      const { data, error } = await supabase
+        .from("chamado_apoios" as any)
+        .select("chamado_id, profile_id")
+        .in("chamado_id", ids);
+      if (error) return {};
+      const m: Record<string, string[]> = {};
+      for (const r of (data as any[]) ?? []) {
+        (m[r.chamado_id] ??= []).push(r.profile_id);
       }
-    });
+      return m;
+    },
+  });
 
-    const grid: (number | null)[] = [];
-    for (let i = 0; i < primeiroDia; i++) grid.push(null);
-    for (let i = 1; i <= totalDias; i++) grid.push(i);
-    while (grid.length % 7 !== 0) grid.push(null);
+  const eventos = useMemo<Evento[]>(() => {
+    const deVisitas: Evento[] = (visitas as any[]).map((v) => ({
+      kind: "visita",
+      id: v.id,
+      titulo: v.nome_predio ?? v.titulo ?? "Visita técnica",
+      status: v.status,
+      tipo: "visita",
+      natureza: "comercial",
+      pessoas: v.tecnico_id ? [v.tecnico_id] : [],
+      quando: v.data_hora_agendada,
+      porPrazo: false,
+    }));
+    const deChamados: Evento[] = (chamados as any[]).map((c) => ({
+      kind: "chamado",
+      id: c.id,
+      // o TÍTULO na frente: é o que responde "o que é isto?" varrendo o mês.
+      // O cliente vira o complemento, quando existe.
+      titulo: c.titulo ?? c.cliente?.nome ?? "Chamado",
+      status: c.status,
+      tipo: c.tipo ?? "—",
+      natureza: c.natureza ?? null,
+      pessoas: Array.from(new Set([
+        ...(c.responsavel_id ? [c.responsavel_id] : []),
+        ...((apoios as Record<string, string[]>)[c.id] ?? []),
+      ])),
+      quando: c.data_hora_agendada ?? c.prazo_limite,
+      porPrazo: !c.data_hora_agendada,
+    }));
+    return [...deVisitas, ...deChamados]
+      .filter((e) => pessoaFiltro === "todos" || e.pessoas.includes(pessoaFiltro))
+      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
+      .sort((a, b) => new Date(a.quando).getTime() - new Date(b.quando).getTime());
+  }, [visitas, chamados, apoios, pessoaFiltro, tipoFiltro]);
 
-    return { diasGrid: grid, visitasPorDia: map };
-  }, [mes, eventos]);
+  const porDia = useMemo(() => {
+    const m: Record<string, Evento[]> = {};
+    for (const e of eventos) (m[chaveDia(new Date(e.quando))] ??= []).push(e);
+    return m;
+  }, [eventos]);
 
-  const visitasDoDia = useMemo(() => {
-    if (diaSelecionado === null) return eventos;
-    return visitasPorDia.get(diaSelecionado) ?? [];
-  }, [diaSelecionado, visitasPorDia, eventos]);
+  const tiposPresentes = useMemo(
+    () => Array.from(new Set(eventos.map((e) => e.tipo))).sort(),
+    [eventos],
+  );
 
-  function isHoje(dia: number) {
-    return (
-      dia === hoje.getDate() &&
-      mes.getMonth() === hoje.getMonth() &&
-      mes.getFullYear() === hoje.getFullYear()
-    );
+  // A grade sempre começa no domingo e fecha a última semana: sem isso a
+  // última linha teria menos colunas e as células mudariam de largura.
+  const celulas = useMemo(() => {
+    const primeiro = new Date(mes.getFullYear(), mes.getMonth(), 1);
+    const inicio = new Date(primeiro);
+    inicio.setDate(1 - primeiro.getDay());
+    const dias: Date[] = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(inicio);
+      d.setDate(inicio.getDate() + i);
+      dias.push(d);
+      // para em 35 se a sexta linha for toda do mês seguinte
+      if (i === 34 && new Date(inicio.getTime() + 35 * 86400000).getMonth() !== mes.getMonth()) break;
+    }
+    return dias;
+  }, [mes]);
+
+  const carregando = carregandoVisitas || carregandoChamados;
+
+  function abrir(e: Evento) {
+    // a visita tem fluxo próprio; o chamado abre no painel de propriedades
+    if (e.kind === "visita") {
+      navigate({ ...visitaRouteFor(e.status as any, e.id), state: { from: location.pathname } } as any);
+    } else {
+      setPainelId(e.id);
+    }
   }
 
+  const navBtn: CSSProperties = {
+    width: 34, height: 34, borderRadius: 10,
+    background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+    color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", flexShrink: 0,
+  };
+  const seletor: CSSProperties = {
+    fontFamily: FONT, fontSize: 12, color: textPrimary,
+    background: isLight ? "#ffffff" : "#191921",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 10, padding: "7px 10px", cursor: "pointer",
+  };
+
   return (
-    <div>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{
-          fontFamily: "var(--fonte)",
-          fontWeight: 600,
-          fontSize: 22,
-          color: textPrimary,
-          margin: 0,
-        }}>Calendário</h1>
-        <p style={{
-          fontFamily: "var(--fonte)",
-          fontWeight: 400,
-          fontSize: 12,
-          color: textSecondary,
-          margin: "4px 0 0",
-          letterSpacing: "0.06em",
+    <>
+      {/* TELA CHEIA: a grade ocupa o que sobra da altura e rola por dentro.
+          `100dvh` e não `100vh` — no celular a barra do navegador entra e sai,
+          e com `vh` a última semana ficaria escondida atrás dela. */}
+      <div
+        className="sangra-x"
+        style={{
+          display: "flex", flexDirection: "column",
+          height: "calc(100dvh - 96px)", minHeight: 420,
+          paddingTop: 14, paddingBottom: 12, color: textPrimary,
+        }}
+      >
+        {/* Cabeçalho */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          flexWrap: "wrap", marginBottom: 12, flexShrink: 0,
         }}>
-          {isAdmin ? "Tudo o que está previsto — visitas e chamados de todos os técnicos" : "Sua agenda"}
-        </p>
-      </div>
-
-      {/* Filtros da aba 2 (R8): por técnico e por tipo de chamado */}
-      {isAdmin && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          <select
-            value={tecnicoFiltro}
-            onChange={(e) => setTecnicoFiltro(e.target.value)}
-            style={{
-              width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 12px",
-              background: isLight ? "#ffffff" : "#16161d",
-              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-              color: textPrimary, fontFamily: "var(--fonte)", fontSize: 13,
-              outline: "none", colorScheme: isLight ? "light" : "dark",
-            }}
-          >
-            <option value="todos">Todos os técnicos</option>
-            {(tecnicosLista as any[]).map((t) => (
-              <option key={t.id} value={t.id}>{t.nome}</option>
-            ))}
-          </select>
-          <div className="trilho-x" style={{ display: "flex", gap: 8, paddingBottom: 2 }}>
-            {([
-              ["todos", "Tudo"],
-              ["visita", "Visitas"],
-              ["corretiva", "Corretiva"],
-              ["preventiva", "Preventiva"],
-              ["operacional", "Operacional"],
-              ["implantacao", "Implantação"],
-            ] as const).map(([valor, rotulo]) => (
-              <button
-                key={valor}
-                onClick={() => setTipoFiltro(valor)}
-                style={{
-                  padding: "7px 13px", borderRadius: 999, flexShrink: 0, cursor: "pointer",
-                  border: tipoFiltro === valor
-                    ? "none"
-                    : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                  background: tipoFiltro === valor
-                    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                    : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                  color: tipoFiltro === valor ? "#08090E" : textPrimary,
-                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {rotulo}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={CARD_T}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <button
-            onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1)); setDiaSelecionado(null); }}
-            style={NAV_BTN_T}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div style={{
-            fontFamily: "var(--fonte)",
-            fontWeight: 600,
-            fontSize: 15,
-            color: textPrimary,
+          <CalendarDays size={20} color={gold} />
+          <h1 style={{
+            fontFamily: FONT, fontWeight: 600, fontSize: 19, margin: 0,
+            minWidth: 190,
           }}>
-            {MESES[mes.getMonth()]} {mes.getFullYear()}
-          </div>
-          <button
-            onClick={() => { setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1)); setDiaSelecionado(null); }}
-            style={NAV_BTN_T}
-          >
-            <ChevronRight size={18} />
+            {MESES[mes.getMonth()]} de {mes.getFullYear()}
+          </h1>
+          <button style={navBtn} aria-label="Mês anterior"
+            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}>
+            <ChevronLeft size={17} />
           </button>
+          <button style={navBtn} aria-label="Próximo mês"
+            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}>
+            <ChevronRight size={17} />
+          </button>
+          <button
+            style={{ ...seletor, fontWeight: 600 }}
+            onClick={() => setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1))}
+          >
+            Hoje
+          </button>
+
+          <div style={{ flex: 1 }} />
+
+          {isGestor && (
+            <select style={seletor} value={pessoaFiltro} onChange={(e) => setPessoaFiltro(e.target.value)}>
+              <option value="todos">Todas as pessoas</option>
+              {(pessoas as any[]).map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          )}
+          {tiposPresentes.length > 1 && (
+            <select style={seletor} value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}>
+              <option value="todos">Todos os tipos</option>
+              {tiposPresentes.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+          <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
+            {eventos.length} no mês
+          </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+        {/* Cabeçalho dos dias da semana */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 1, flexShrink: 0,
+        }}>
           {DIAS_SEMANA.map((d) => (
             <div key={d} style={{
-              textAlign: "center",
-              fontFamily: "var(--fonte)",
-              fontWeight: 400,
-              fontSize: 10,
-              color: textSecondary,
-              letterSpacing: "0.08em",
-              padding: "4px 0",
-            }}>{d}</div>
+              fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              color: textSecondary, textAlign: "center", padding: "6px 0",
+            }}>
+              {d}
+            </div>
           ))}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-          {diasGrid.map((dia, idx) => {
-            if (dia === null) return <div key={idx} />;
-
-            const selecionado = dia === diaSelecionado;
-            const hoje_ = isHoje(dia);
-            const visitasDia = visitasPorDia.get(dia) ?? [];
-            const temVisitas = visitasDia.length > 0;
-
+        {/* A GRADE — ocupa toda a altura restante; cada célula rola sozinha
+            quando o dia tem mais itens do que cabe. */}
+        <div style={{
+          flex: 1, minHeight: 0,
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gridAutoRows: "1fr",
+          gap: 1,
+          background: linha,
+          border: `1px solid ${linha}`,
+          borderRadius: 12,
+          overflow: "hidden",
+        }}>
+          {celulas.map((d) => {
+            const doMes = d.getMonth() === mes.getMonth();
+            const eDeHoje = chaveDia(d) === chaveDia(hoje);
+            const itens = porDia[chaveDia(d)] ?? [];
             return (
-              <button
-                key={idx}
-                onClick={() => setDiaSelecionado(selecionado ? null : dia)}
+              <div
+                key={d.toISOString()}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 4,
-                  padding: "6px 2px",
-                  borderRadius: 10,
-                  border: hoje_ && !selecionado
-                    ? `1.5px solid ${isLight ? "rgba(160,97,8,0.55)" : "rgba(248,200,17,0.55)"}`
-                    : "1.5px solid transparent",
-                  background: selecionado ? goldDark : "transparent",
-                  cursor: "pointer",
-                  minHeight: 44,
-                  transition: "background 0.15s",
+                  background: doMes ? superficie : (isLight ? "#fafafa" : "rgba(255,255,255,0.012)"),
+                  padding: "5px 5px 6px",
+                  display: "flex", flexDirection: "column", gap: 3,
+                  minHeight: 0, overflow: "hidden",
+                  opacity: doMes ? 1 : 0.45,
                 }}
               >
-                <span style={{
-                  fontFamily: "var(--fonte)",
-                  fontWeight: selecionado || hoje_ ? 600 : 400,
-                  fontSize: 13,
-                  color: selecionado ? "#fff" : textPrimary,
-                  lineHeight: 1,
-                }}>{dia}</span>
-                {temVisitas && (
-                  <div style={{ display: "flex", gap: 2 }}>
-                    {visitasDia.slice(0, 3).map((v: any, i: number) => (
-                      <span key={i} style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: "50%",
-                        background: selecionado ? "#fff" : corDoEvento(v),
-                      }} />
-                    ))}
-                  </div>
-                )}
-              </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                  <span style={{
+                    fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
+                    color: eDeHoje ? "#08090E" : textPrimary,
+                    background: eDeHoje ? gold : "transparent",
+                    borderRadius: 999, minWidth: 19, height: 19,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: eDeHoje ? "0 5px" : 0,
+                  }}>
+                    {d.getDate()}
+                  </span>
+                  {itens.length > 2 && (
+                    <span style={{ fontFamily: FONT, fontSize: 9, color: textSecondary }}>
+                      {itens.length}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{
+                  flex: 1, minHeight: 0, overflowY: "auto",
+                  display: "flex", flexDirection: "column", gap: 3,
+                }}>
+                  {itens.map((e) => {
+                    const info = chamadoStatusInfo(e.status);
+                    const cor = e.porPrazo && new Date(e.quando) < hoje && !["concluido", "cancelado"].includes(e.status)
+                      ? (isLight ? "#B1242E" : "#F17881")
+                      : info.color;
+                    return (
+                      <button
+                        key={`${e.kind}-${e.id}`}
+                        onClick={() => abrir(e)}
+                        title={e.titulo}
+                        style={{
+                          textAlign: "left", cursor: "pointer", width: "100%",
+                          border: "none", borderLeft: `2.5px solid ${cor}`,
+                          borderRadius: 5, padding: "3px 5px",
+                          background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
+                          display: "flex", flexDirection: "column", gap: 2, minWidth: 0,
+                        }}
+                      >
+                        <span style={{
+                          fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                          color: textPrimary, lineHeight: 1.25,
+                          display: "-webkit-box", WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical", overflow: "hidden",
+                        }}>
+                          {e.titulo}
+                        </span>
+                        <span style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          justifyContent: "space-between",
+                        }}>
+                          <span style={{
+                            display: "flex", alignItems: "center", gap: 2,
+                            fontFamily: FONT, fontSize: 9, color: textSecondary,
+                            whiteSpace: "nowrap",
+                          }}>
+                            {e.porPrazo
+                              ? <><Flag size={8} /> vence</>
+                              : <><Clock size={8} />
+                                  {new Date(e.quando).toLocaleTimeString("pt-BR", {
+                                    hour: "2-digit", minute: "2-digit",
+                                  })}
+                                </>}
+                          </span>
+                          {/* o(s) responsável(eis) — o rosto de quem toca */}
+                          {e.pessoas.length > 0 && (
+                            <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </div>
-      </div>
 
-      <div>
-        <div style={{
-          fontFamily: "var(--fonte)",
-          fontWeight: 400,
-          fontSize: 12,
-          color: goldDark,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          marginBottom: 12,
-        }}>
-          {diaSelecionado
-            ? `${diaSelecionado} de ${MESES[mes.getMonth()]} · ${visitasDoDia.length} compromisso${visitasDoDia.length !== 1 ? "s" : ""}`
-            : `${MESES[mes.getMonth()]} · ${eventos.length} compromisso${eventos.length !== 1 ? "s" : ""}`}
-        </div>
-
-        {isLoading ? (
-          <div style={{ padding: 24, textAlign: "center", color: textSecondary, fontFamily: "var(--fonte)", fontSize: 13 }}>
-            Carregando...
-          </div>
-        ) : visitasDoDia.length === 0 ? (
-          <div style={{ padding: 28, textAlign: "center", color: textSecondary }}>
-            <CalendarDays size={36} style={{ opacity: 0.4, marginBottom: 8 }} />
-            <div style={{ fontFamily: "var(--fonte)", fontSize: 13 }}>
-              {diaSelecionado ? "Nada agendado neste dia" : "Nada agendado neste mês"}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {visitasDoDia.map((v: any) => {
-              const cor = corDoEvento(v);
-              const label = rotuloDoEvento(v);
-              const hora = new Date(v.data_hora_agendada).toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-              const clienteNome = v.nome;
-
-              return (
-                <button
-                  key={v.id}
-                  onClick={() =>
-                    v.kind === "os"
-                      ? navigate({ to: "/chamados/$id", params: { id: v.id } })
-                      : navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })
-                  }
-                  style={{
-                    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
-                    borderLeft: `3px solid ${cor}`,
-                    borderRadius: 12,
-                    padding: "14px 16px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    textAlign: "left",
-                    width: "100%",
-                    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-                  }}
-                >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      fontFamily: "var(--fonte)",
-                      fontWeight: 600,
-                      fontSize: 14,
-                      color: textPrimary,
-                      marginBottom: 2,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}>{clienteNome}</div>
-                    <div style={{
-                      fontFamily: "var(--fonte)",
-                      fontWeight: 400,
-                      fontSize: 11,
-                      color: textSecondary,
-                      display: "inline-flex",
-                      alignItems: "center",
-                    }}><Clock size={11} style={{ marginRight: 3, flexShrink: 0, opacity: 0.7 }} />{hora}
-                      {v.detalhe ? ` · ${v.detalhe}` : ""}</div>
-
-                  </div>
-                  <span style={{
-                    flexShrink: 0,
-                    padding: "4px 10px",
-                    borderRadius: 12,
-                    background: `${cor}22`,
-                    color: cor,
-                    fontFamily: "var(--fonte)",
-                    fontWeight: 600,
-                    fontSize: 10,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}>{label}</span>
-                </button>
-              );
-            })}
+        {carregando && (
+          <div style={{
+            fontFamily: FONT, fontSize: 11.5, color: textSecondary,
+            paddingTop: 8, flexShrink: 0,
+          }}>
+            Carregando a agenda…
           </div>
         )}
       </div>
-    </div>
+
+      <PainelChamado
+        chamadoId={painelId}
+        aoFechar={() => setPainelId(null)}
+        aoAbrirPagina={(id) => { setPainelId(null); navigate({ to: "/chamados/$id", params: { id } }); }}
+      />
+    </>
   );
 }

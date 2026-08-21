@@ -36,6 +36,8 @@ export interface Chamado {
   titulo: string;
   descricao_problema: string | null;
   cliente_id: string | null;
+  /** U31: nome do cliente como veio do Notion, quando não casou com o QAP */
+  cliente_origem_nome?: string | null;
   cliente_sistema_id: string | null;
   visita_id: string | null;
 
@@ -77,7 +79,7 @@ const CAMPOS =
   "responsavel_id, prazo_limite, data_hora_agendada, iniciada_em, finalizada_em, concluida_em, " +
   "diagnostico, servico_executado, pecas_texto, assinatura_nome, assinatura_url, " +
   "aberto_por, fechado_por, fechada_em, motivo_cancelamento, " +
-  "origem, origem_id, contrato_id, numero_externo, tipo_servico, faturamento_status, " +
+  "origem, origem_id, contrato_id, numero_externo, tipo_servico, faturamento_status, cliente_origem_nome, " +
   "created_at, updated_at, " +
   "cliente:clientes(id, nome, endereco, telefone_sindico), " +
   "sistema:cliente_sistemas(nome, tipo)";
