@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
-  Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -11,65 +11,45 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { TelaDeErro } from "@/components/TelaDeErro";
+import { codigoDeErro } from "@/lib/erros";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * 404. Fabrica um erro com `status` para a taxonomia classificar como ROTA —
+ * assim o endereço inexistente também sai com código (PRV-<área>-ROTA-HTTP404),
+ * e "a página X não abre" vira uma informação em vez de um relato.
+ */
 function NotFoundComponent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-primary">404</h1>
-        <h2 className="mt-4 text-xl font-semibold">Página não encontrada</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A página que você procura não existe ou foi movida.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Voltar ao início
-          </Link>
-        </div>
-      </div>
-    </div>
+    <TelaDeErro
+      erro={Object.assign(new Error(`Rota não encontrada: ${pathname}`), { status: 404 })}
+      pathname={pathname}
+    />
   );
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
   const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+    // o código vai junto para o relatório e para o console: quando o Davi
+    // mandar o print, o mesmo código está dos dois lados
+    const codigo = codigoDeErro(error, pathname);
+    console.error(`[${codigo}]`, error);
+    reportLovableError(error, { boundary: "tanstack_root_error_component", codigo, pathname });
+  }, [error, pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Esta página não carregou</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Ocorreu um erro. Você pode tentar recarregar ou voltar ao início.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-          >
-            Tentar novamente
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Início
-          </a>
-        </div>
-      </div>
-    </div>
+    <TelaDeErro
+      erro={error}
+      pathname={pathname}
+      aoTentarDeNovo={() => { router.invalidate(); reset(); }}
+    />
   );
 }
 

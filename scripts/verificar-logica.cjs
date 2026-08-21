@@ -1109,5 +1109,84 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /guardaDeTela\("chamados\.painel"\)/.test(pc), true);
 }
 
+// ── U31: códigos de erro (2026-08-21) ──────────────────────────────────────
+// Um código de erro que muda entre ocorrências, ou que classifica errado, é
+// pior que não ter código: manda a investigação para o lado errado com ar de
+// certeza. Por isso a taxonomia inteira é testada com erros REAIS.
+{
+  const fs10 = require('fs');
+  const E = carregar('src/lib/erros.ts');
+
+  // formato: PRV-<ÁREA>-<CLASSE>-<ORIGEM>
+  const rls = { message: 'new row violates row-level security policy', code: '42501' };
+  eq('código tem as quatro partes',
+     /^PRV-[A-Z]{3}-[A-Z]{4}-[A-Z0-9]+$/.test(E.codigoDeErro(rls, '/clientes')), true);
+  eq('código carrega o SQLSTATE de origem (não inventa o nosso)',
+     E.codigoDeErro(rls, '/clientes'), 'PRV-CLI-PERM-42501');
+
+  // área: o prefixo mais específico ganha, senão /painel/operacional viraria PNL
+  eq('área: painel operacional tem sigla própria', E.areaDaRota('/painel/operacional'), 'POP');
+  eq('área: painel administrativo idem', E.areaDaRota('/painel/administrativo'), 'PAD');
+  eq('área: permissões não vira gerencial', E.areaDaRota('/gerencial/permissoes'), 'PER');
+  eq('área: gerencial puro é GER', E.areaDaRota('/gerencial'), 'GER');
+  eq('área: rota filha herda a área do pai', E.areaDaRota('/chamados/abc-123'), 'CHM');
+  eq('área: raiz é a Início', E.areaDaRota('/'), 'INI');
+  eq('área: desconhecida não quebra', E.areaDaRota('/coisa-nova'), 'APP');
+
+  // classificação — os erros reais que o Supabase/Postgres devolvem
+  const classe = (e) => E.classificarErro(e).classe;
+  eq('offline vira REDE (e não culpa o banco)',
+     classe(Object.assign(new TypeError('Failed to fetch'), {})), 'REDE');
+  eq('migration pendente vira ESQM (tabela fora do cache)',
+     classe({ code: 'PGRST205', message: "Could not find the table 'public.prospeccoes'" }), 'ESQM');
+  eq('coluna inexistente também é ESQM', classe({ code: '42703', message: 'column x does not exist' }), 'ESQM');
+  eq('FK que o embed pede e não existe é ESQM', classe({ code: 'PGRST200', message: 'Could not find a relationship' }), 'ESQM');
+  eq('RLS vira PERM', classe(rls), 'PERM');
+  eq('sessão expirada vira AUTH', classe({ status: 401, message: 'JWT expired' }), 'AUTH');
+  eq('401 e 403 não se confundem (entrar ≠ pedir acesso)',
+     [classe({ status: 401, message: 'x' }), classe({ status: 403, message: 'x' })], ['AUTH', 'PERM']);
+  eq('violação de unicidade vira DADO', classe({ code: '23505', message: 'duplicate key' }), 'DADO');
+  eq('FK violada vira DADO', classe({ code: '23503', message: 'violates foreign key' }), 'DADO');
+  eq('404 vira ROTA', classe({ status: 404, message: 'Not Found' }), 'ROTA');
+  eq('bug de render vira APP', classe(new TypeError("Cannot read properties of undefined (reading 'x')")), 'APP');
+
+  // determinismo e estabilidade — a razão de existir do código
+  const semCodigo = new Error('Cannot read properties of undefined (reading nome)');
+  eq('mesmo erro dá sempre o mesmo código',
+     E.codigoDeErro(semCodigo, '/clientes'), E.codigoDeErro(semCodigo, '/clientes'));
+  // a mensagem varia no id/hora, a falha é a mesma → o código não pode variar
+  eq('id e data na mensagem não mudam o código',
+     E.codigoDeErro(new Error('falhou para 3f2b1a4c-1111-2222-3333-444455556666 em 2026-08-21T10:00:00'), '/chamados'),
+     E.codigoDeErro(new Error('falhou para 9a9a9a9a-9999-8888-7777-666655554444 em 2026-01-02T23:59:59'), '/chamados'));
+  eq('áreas diferentes dão códigos diferentes',
+     E.codigoDeErro(semCodigo, '/clientes') !== E.codigoDeErro(semCodigo, '/contratos'), true);
+
+  // toda classe tem texto — classe sem explicação renderiza tela vazia
+  for (const c of ['REDE', 'AUTH', 'PERM', 'DADO', 'ESQM', 'ROTA', 'APP']) {
+    const t = E.EXPLICACAO[c];
+    eq(`classe ${c} tem título, o que houve e o que fazer`,
+       !!(t && t.titulo && t.oQueHouve && t.oQueFazer), true);
+  }
+
+  // as portas: rota, 404 e consultas passam pela taxonomia
+  const raiz = fs10.readFileSync('src/routes/__root.tsx', 'utf8');
+  eq('a tela de erro da rota mostra o código', /TelaDeErro/.test(raiz) && /codigoDeErro/.test(raiz), true);
+  eq('o 404 também sai com código (status 404 na fabricação)',
+     /status: 404/.test(raiz), true);
+  const rt = fs10.readFileSync('src/router.tsx', 'utf8');
+  eq('erro de consulta passa pelo funil único (QueryCache)',
+     /new QueryCache\(/.test(rt) && /mensagemDeErro/.test(rt), true);
+  // ancorar em `new MutationCache(` e não em 'MutationCache': o nome aparece
+  // antes, na linha de import, e o split pegaria o bloco do QueryCache junto
+  eq('gravação registra código sem duplicar o toast da ação',
+     /new MutationCache\(/.test(rt) && !/toast\.error/.test(rt.split('new MutationCache(')[1] ?? ''), true);
+  const tela = fs10.readFileSync('src/components/TelaDeErro.tsx', 'utf8');
+  eq('a tela de erro tem botão de copiar (o caminho real é o WhatsApp)',
+     /clipboard/.test(tela), true);
+  eq('o detalhe técnico existe mas fica fechado', /<details/.test(tela), true);
+  eq('o escape usa <a>, não <Link> (o roteador pode ser o que quebrou)',
+     /<a href="\/dashboard"/.test(tela), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

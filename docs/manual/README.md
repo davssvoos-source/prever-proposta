@@ -20,6 +20,7 @@ na mesma leva.
 | [banco-e-migrations.md](banco-e-migrations.md) | Migrations manuais e idempotentes, satélite mesmo-id, cicatrizes de SQL |
 | [desenvolvimento-e-verificacao.md](desenvolvimento-e-verificacao.md) | O toolchain real (sem tsc), asserções, routeTree, .env/Lovable |
 | [seguranca.md](seguranca.md) | Blindagem RLS, riscos aceitos S4–S11, lições pagas, checklists |
+| [codigos-de-erro.md](codigos-de-erro.md) | Como ler o código (`PRV-ÁREA-CLASSE-ORIGEM`), as 7 classes e o que fazer com cada uma |
 
 Leitura recomendada para alguém novo: **visao-geral** →
 **desenvolvimento-e-verificacao** → o segmento onde vai trabalhar.
