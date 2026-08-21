@@ -89,14 +89,29 @@ export function MapaClientes({ clientes }: Props) {
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", paddingTop: 8 }}>
+      {/* ALTURA EXPLÍCITA — e não `flex: 1`.
+          O card do mapa não tem altura própria e o grid o alinha com
+          `align-items: start`, então ele encolhe até o conteúdo. Com
+          `flex: 1; min-height: 0` esta faixa colapsava para ZERO, e o
+          `height: 100%` do svg virava 100% de nada: o mapa existia no DOM,
+          com os pontos certos, e não ocupava um pixel.
+          A altura vem do viewport porque o mapa é o índice visual da lista e
+          precisa caber junto dela na tela; o teto de 620px evita que ele
+          estique demais num monitor alto. */}
+      <div style={{
+        height: "min(62vh, 620px)",
+        display: "flex", justifyContent: "center", paddingTop: 8,
+      }}>
         {/* wrapper do TAMANHO EXATO do svg: o tooltip é posicionado em % e,
             ancorado no card, descolava do ponto quando o svg era mais estreito
             que a coluna (medido em até 99px). Aqui os dois falam a mesma caixa. */}
         <div style={{ position: "relative", height: "100%", display: "flex" }}>
+        {/* height manda e a largura sai da proporção do viewBox: o contorno
+            de São Paulo é bem mais alto que largo (1000×1544), então caber
+            pela ALTURA é o que o mantém inteiro na tela. */}
         <svg
           viewBox={`-8 -8 ${MAPA_SP.largura + 16} ${MAPA_SP.altura + 16}`}
-          style={{ height: "100%", maxHeight: 520, maxWidth: "100%" }}
+          style={{ height: "100%", width: "auto", maxWidth: "100%" }}
           onMouseLeave={() => setAlvo(null)}
           role="img"
           aria-label={`Mapa do município de São Paulo com ${pontos.length} clientes`}
