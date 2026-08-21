@@ -70,9 +70,22 @@ export const TELAS: Tela[] = [
   T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true]),
   T("chamados.importar", "Importar do Notion", "/chamados/importar", "Chamados", [false, true, true]),
 
+  // ── Painéis (R27) ─────────────────────────────────────────────────────────
+  // "Gerencial" virou três. Os painéis são a PORTA de cada domínio: números do
+  // estado + atalhos. As telas de trabalho continuam onde estavam.
+  T("painel.operacional", "Painel Operacional", "/painel/operacional", "Painéis", [false, true, true], {
+    nota: "fila de campo — quem coordena entra por aqui (R26)",
+  }),
+  T("painel.comercial", "Painel Comercial", "/painel/comercial", "Painéis", [false, true, true], {
+    nota: "o funil da proposta; o SAC agenda a visita, por isso entra",
+  }),
+  T("painel.administrativo", "Painel Administrativo", "/painel/administrativo", "Painéis", [false, false, false], {
+    nota: "gente, permissão e financeiro — na prática, só o admin",
+  }),
+
   // ── Comercial ─────────────────────────────────────────────────────────────
-  T("gerencial", "Painel comercial", "/gerencial", "Comercial", [false, true, false], {
-    nota: "visitas, propostas e o funil",
+  T("gerencial", "Visitas e propostas", "/gerencial", "Comercial", [false, true, false], {
+    nota: "a LISTA de visitas; a porta do domínio agora é /painel/comercial",
   }),
   T("gerencial.nova", "Nova visita", "/gerencial/nova", "Comercial", [false, true, true], {
     nota: "o SAC chega aqui pelo trilho de proposta da triagem",

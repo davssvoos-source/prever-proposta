@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, ClipboardList, Home, Target, User, Wrench, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, Gauge, Home, LayoutGrid, Target, User, Wrench, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -34,7 +34,12 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
       { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
       { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
-      { to: "/gerencial", label: "Gerencial", icon: ClipboardList, tela: "gerencial" },
+      // R27: "Gerencial" virou três painéis. No desktop cada um é um item; no
+      // celular a barra tem 5 vagas e já estão tomadas, então lá vale só o
+      // Operacional, que é o painel do dia a dia de quem coordena.
+      { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
+      { to: "/painel/comercial", label: "Comercial", icon: LayoutGrid, tela: "painel.comercial", soDesktop: true },
+      { to: "/painel/administrativo", label: "Administrativo", icon: Building2, tela: "painel.administrativo", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }
@@ -43,9 +48,15 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
-      // no SAC o item cabe também no celular: a barra dele tem 4 itens, não 5
-      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
+      // Clientes volta a ser só desktop no SAC: com o Painel Operacional na
+      // barra, a vaga acabou — e o painel TEM atalho para Clientes, então o
+      // caminho no celular continua existindo, com um toque a mais.
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
       { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
+      // o SAC coordena: o Operacional é o painel dele. O Comercial entra no
+      // desktop porque ele agenda a visita de proposta (R24 tipo 1).
+      { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
+      { to: "/painel/comercial", label: "Comercial", icon: LayoutGrid, tela: "painel.comercial", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

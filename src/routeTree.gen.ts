@@ -28,6 +28,9 @@ import { Route as AuthenticatedCalendarioRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVisitaIdRouteImport } from './routes/_authenticated/visita.$id'
 import { Route as AuthenticatedProjetoIdRouteImport } from './routes/_authenticated/projeto.$id'
+import { Route as AuthenticatedPainelOperacionalRouteImport } from './routes/_authenticated/painel.operacional'
+import { Route as AuthenticatedPainelComercialRouteImport } from './routes/_authenticated/painel.comercial'
+import { Route as AuthenticatedPainelAdministrativoRouteImport } from './routes/_authenticated/painel.administrativo'
 import { Route as AuthenticatedGerencialUsuariosRouteImport } from './routes/_authenticated/gerencial.usuarios'
 import { Route as AuthenticatedGerencialPermissoesRouteImport } from './routes/_authenticated/gerencial.permissoes'
 import { Route as AuthenticatedGerencialNovaRouteImport } from './routes/_authenticated/gerencial.nova'
@@ -151,6 +154,24 @@ const AuthenticatedProjetoIdRoute = AuthenticatedProjetoIdRouteImport.update({
   path: '/projeto/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPainelOperacionalRoute =
+  AuthenticatedPainelOperacionalRouteImport.update({
+    id: '/painel/operacional',
+    path: '/painel/operacional',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelComercialRoute =
+  AuthenticatedPainelComercialRouteImport.update({
+    id: '/painel/comercial',
+    path: '/painel/comercial',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPainelAdministrativoRoute =
+  AuthenticatedPainelAdministrativoRouteImport.update({
+    id: '/painel/administrativo',
+    path: '/painel/administrativo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedGerencialUsuariosRoute =
   AuthenticatedGerencialUsuariosRouteImport.update({
     id: '/usuarios',
@@ -346,6 +367,9 @@ export interface FileRoutesByFullPath {
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
+  '/painel/administrativo': typeof AuthenticatedPainelAdministrativoRoute
+  '/painel/comercial': typeof AuthenticatedPainelComercialRoute
+  '/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -393,6 +417,9 @@ export interface FileRoutesByTo {
   '/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
+  '/painel/administrativo': typeof AuthenticatedPainelAdministrativoRoute
+  '/painel/comercial': typeof AuthenticatedPainelComercialRoute
+  '/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/visita/$id/pagamento': typeof AuthenticatedVisitaIdPagamentoRoute
@@ -441,6 +468,9 @@ export interface FileRoutesById {
   '/_authenticated/gerencial/nova': typeof AuthenticatedGerencialNovaRoute
   '/_authenticated/gerencial/permissoes': typeof AuthenticatedGerencialPermissoesRoute
   '/_authenticated/gerencial/usuarios': typeof AuthenticatedGerencialUsuariosRoute
+  '/_authenticated/painel/administrativo': typeof AuthenticatedPainelAdministrativoRoute
+  '/_authenticated/painel/comercial': typeof AuthenticatedPainelComercialRoute
+  '/_authenticated/painel/operacional': typeof AuthenticatedPainelOperacionalRoute
   '/_authenticated/projeto/$id': typeof AuthenticatedProjetoIdRoute
   '/_authenticated/visita/$id': typeof AuthenticatedVisitaIdRouteWithChildren
   '/_authenticated/visita/$id/orcamento': typeof AuthenticatedVisitaIdOrcamentoRouteWithChildren
@@ -490,6 +520,9 @@ export interface FileRouteTypes {
     | '/gerencial/nova'
     | '/gerencial/permissoes'
     | '/gerencial/usuarios'
+    | '/painel/administrativo'
+    | '/painel/comercial'
+    | '/painel/operacional'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/orcamento'
@@ -537,6 +570,9 @@ export interface FileRouteTypes {
     | '/gerencial/nova'
     | '/gerencial/permissoes'
     | '/gerencial/usuarios'
+    | '/painel/administrativo'
+    | '/painel/comercial'
+    | '/painel/operacional'
     | '/projeto/$id'
     | '/visita/$id'
     | '/visita/$id/pagamento'
@@ -584,6 +620,9 @@ export interface FileRouteTypes {
     | '/_authenticated/gerencial/nova'
     | '/_authenticated/gerencial/permissoes'
     | '/_authenticated/gerencial/usuarios'
+    | '/_authenticated/painel/administrativo'
+    | '/_authenticated/painel/comercial'
+    | '/_authenticated/painel/operacional'
     | '/_authenticated/projeto/$id'
     | '/_authenticated/visita/$id'
     | '/_authenticated/visita/$id/orcamento'
@@ -738,6 +777,27 @@ declare module '@tanstack/react-router' {
       path: '/projeto/$id'
       fullPath: '/projeto/$id'
       preLoaderRoute: typeof AuthenticatedProjetoIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/operacional': {
+      id: '/_authenticated/painel/operacional'
+      path: '/painel/operacional'
+      fullPath: '/painel/operacional'
+      preLoaderRoute: typeof AuthenticatedPainelOperacionalRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/comercial': {
+      id: '/_authenticated/painel/comercial'
+      path: '/painel/comercial'
+      fullPath: '/painel/comercial'
+      preLoaderRoute: typeof AuthenticatedPainelComercialRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel/administrativo': {
+      id: '/_authenticated/painel/administrativo'
+      path: '/painel/administrativo'
+      fullPath: '/painel/administrativo'
+      preLoaderRoute: typeof AuthenticatedPainelAdministrativoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/gerencial/usuarios': {
@@ -1089,6 +1149,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProspeccaoRoute: typeof AuthenticatedProspeccaoRoute
+  AuthenticatedPainelAdministrativoRoute: typeof AuthenticatedPainelAdministrativoRoute
+  AuthenticatedPainelComercialRoute: typeof AuthenticatedPainelComercialRoute
+  AuthenticatedPainelOperacionalRoute: typeof AuthenticatedPainelOperacionalRoute
   AuthenticatedProjetoIdRoute: typeof AuthenticatedProjetoIdRoute
   AuthenticatedVisitaIdRoute: typeof AuthenticatedVisitaIdRouteWithChildren
 }
@@ -1107,6 +1170,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProspeccaoRoute: AuthenticatedProspeccaoRoute,
+  AuthenticatedPainelAdministrativoRoute:
+    AuthenticatedPainelAdministrativoRoute,
+  AuthenticatedPainelComercialRoute: AuthenticatedPainelComercialRoute,
+  AuthenticatedPainelOperacionalRoute: AuthenticatedPainelOperacionalRoute,
   AuthenticatedProjetoIdRoute: AuthenticatedProjetoIdRoute,
   AuthenticatedVisitaIdRoute: AuthenticatedVisitaIdRouteWithChildren,
 }

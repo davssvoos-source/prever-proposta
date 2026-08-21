@@ -784,6 +784,22 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .clientes-duas-colunas { grid-template-columns: 420px minmax(0, 1fr); }
 }
 
+/* ── Painéis (Operacional · Comercial · Administrativo) ───────────────────
+   Números numa faixa que quebra sozinha, atalhos em cartões que crescem até
+   caber. auto-fit + minmax em vez de número fixo de colunas: os três painéis
+   têm quantidades diferentes de item, e fixar coluna deixaria buraco num e
+   aperto no outro. */
+.painel-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.painel-atalhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
 /* Noise sozinho — para ícones e pastilhas, onde o especular seria demais. */
 .ruido { position: relative; isolation: isolate; }
 .ruido::after {

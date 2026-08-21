@@ -2034,3 +2034,39 @@ MESMA classe — não uma imitação.
 localStorage), porque três consumidores independentes precisam do mesmo valor
 sem prop-drilling. Recolher muda **uma** coisa: o `--rail` que o CSS lê. Todo o
 layout reage sozinho porque já dependia dessa variável.
+
+### U27/U28 — Prospecção e os três painéis (2026-08-21)
+
+**U27 — Prospecção (R21–R23).** Prospecto saiu de `clientes`: tabela própria
+(`prospeccoes`), porque o Sincronizar vai fazer upsert em `clientes` e
+apagaria a prospecção junto. As PROPOSTAS não viraram tabela nova — já viviam
+na visita desde a U8 (`proposta_*`). A visita já era autossuficiente (guarda
+prédio, endereço, coordenada, contatos), então desfazer o vínculo não perdeu
+nada. CHECK impede a visita apontar para cliente E prospecção (R23). O aceite
+parou de escrever em `clientes` e passou a marcar a prospecção — a coluna
+`situacao` passaria a ter dois donos, e o sync desfaria o que o app escrevesse.
+Criar/consolidar cliente saíram, com a policy de INSERT derrubada (a trava real
+não é a tela).
+
+**U28 — Três painéis (R27).** Operacional, Comercial e Administrativo.
+
+Decisões que valem registro:
+
+- **Painel é PORTA, não substituto.** Números do estado + atalhos; nenhuma tela
+  mudou de rota. Isso manteve o custo baixo e o risco perto de zero.
+- **Chaves NOVAS, `gerencial` preservada.** `permissoes_tela.tela` é gravada no
+  banco; renomear apagaria em silêncio toda permissão que o admin já
+  configurou. `gerencial` passou a ser a *lista* de visitas — o que sempre foi
+  de fato — e a porta virou `/painel/comercial`.
+- **Base compartilhada** (`features/paineis/PainelBase.tsx`): três painéis com
+  anatomia própria viram irmãos desiguais na primeira mudança de design.
+- **Sem dinheiro na porta do Administrativo.** R13 barra o SAC de ver valores;
+  um número grande na entrada vazaria por cima do que as telas de dentro
+  respeitam. Os números de lá são de estrutura (gente, aprovação pendente).
+- **A barra do celular tem 5 vagas, e isso passou a ser asserção.** Ao entrar o
+  Operacional, a do SAC foi para 6. Clientes voltou a ser só-desktop nele —
+  possível porque o Painel Operacional tem atalho para Clientes, então o
+  caminho no celular continua existindo, com um toque a mais.
+
+Pendente: o Sincronizar com o QAP (S9) segue sendo o que destrava clientes e
+equipamentos de verdade; enquanto não existir, a base fica no que a U24 trouxe.

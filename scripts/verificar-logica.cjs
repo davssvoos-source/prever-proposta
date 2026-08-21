@@ -319,6 +319,7 @@ const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260819180000_u11_permissoes_tela.sql',
   'supabase/migrations/20260820150000_u24_base_clientes.sql',
   'supabase/migrations/20260821120000_u27_prospeccao.sql',
+  'supabase/migrations/20260821140000_u28_tres_paineis.sql',
 ];
 const semente = {};
 for (const arq of ARQUIVOS_SEMENTE) {
@@ -819,6 +820,71 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq(`${chave} está negada para todos os papéis`,
        t && !t.padrao.tecnico && !t.padrao.comercial && !t.padrao.sac, true);
   }
+}
+
+// ── U28: os três painéis (R27) ─────────────────────────────────────────────
+{
+  const fs7 = require('fs');
+  const TL4 = carregar('src/lib/telas.ts');
+  const chaves = TL4.TELAS.map((t) => t.chave);
+
+  for (const k of ['painel.operacional', 'painel.comercial', 'painel.administrativo']) {
+    eq(`catálogo tem ${k}`, chaves.includes(k), true);
+  }
+  // A chave 'gerencial' NÃO pode ser renomeada: é gravada no banco e o próprio
+  // telas.ts avisa que renomear invalida a linha — toda permissão já
+  // configurada pelo admin sumiria em silêncio.
+  eq("a chave 'gerencial' sobreviveu (renomear apagaria permissões do admin)",
+     chaves.includes('gerencial'), true);
+
+  const op = TL4.TELAS.find((t) => t.chave === 'painel.operacional');
+  const co = TL4.TELAS.find((t) => t.chave === 'painel.comercial');
+  const ad = TL4.TELAS.find((t) => t.chave === 'painel.administrativo');
+  eq('Operacional abre para comercial e SAC (quem coordena, R26)',
+     op.padrao.comercial && op.padrao.sac, true);
+  eq('Comercial abre para comercial e SAC (o SAC agenda a visita)',
+     co.padrao.comercial && co.padrao.sac, true);
+  eq('Administrativo não abre para ninguém na matriz (só admin, por sistema)',
+     ad.padrao.comercial || ad.padrao.sac || ad.padrao.tecnico, false);
+  eq('nenhum painel abre para o técnico (ele não coordena — R1/R7)',
+     [op, co, ad].some((t) => t.padrao.tecnico), false);
+
+  // menu: o celular tem 5 vagas e elas já estavam tomadas — só um painel lá
+  const nav = fs7.readFileSync('src/components/nav-itens.ts', 'utf8');
+  eq('os três painéis estão no menu', /painel\/operacional[\s\S]*painel\/comercial[\s\S]*painel\/administrativo/.test(nav), true);
+  eq('o Comercial é só desktop (a barra do celular tem 5 vagas)',
+     /painel\/comercial"[^}]*soDesktop: true/.test(nav), true);
+  eq('o Administrativo é só desktop',
+     /painel\/administrativo"[^}]*soDesktop: true/.test(nav), true);
+  eq('o Operacional entra também no celular (é o painel do dia a dia)',
+     /painel\/operacional", label: "Operacional"[^}]*soDesktop/.test(nav), false);
+
+  // a barra do celular não pode estourar as 5 vagas em nenhum cargo
+  const NAV = carregar('src/components/nav-itens.ts');
+  for (const cargo of ['admin', 'comercial', 'sac', 'tecnico']) {
+    const noCelular = NAV.itensDoCargo(cargo).filter((i) => !i.soDesktop);
+    eq(`barra do celular de ${cargo} cabe em 5 itens (tem ${noCelular.length})`,
+       noCelular.length <= 5, true);
+  }
+
+  // a base compartilhada existe — três painéis com anatomia própria viram
+  // irmãos desiguais na primeira mudança de design
+  eq('os painéis dividem uma base', fs7.existsSync('src/features/paineis/PainelBase.tsx'), true);
+
+  // cada painel tem guarda de rota própria (o menu esconder não é proteção)
+  for (const arq of ['painel.operacional.tsx', 'painel.comercial.tsx', 'painel.administrativo.tsx']) {
+    const r = fs7.readFileSync(`src/routes/_authenticated/${arq}`, 'utf8');
+    eq(`${arq} tem guarda de rota`, /guardaDeTela\("painel\./.test(r), true);
+  }
+
+  // o Administrativo não põe dinheiro na porta: R13 barra o SAC de ver valores,
+  // e um número grande na entrada vazaria por cima das telas de dentro
+  // Só as linhas de CÓDIGO: o cabeçalho do arquivo explica justamente por que
+  // não há dinheiro ali, e citava os termos que a asserção procura.
+  const adminCod = fs7.readFileSync('src/routes/_authenticated/painel.administrativo.tsx', 'utf8')
+    .split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
+  eq('o Painel Administrativo não mostra valor em reais na entrada (R13)',
+     /valor_total|faturamento|receita|R\$/.test(adminCod), false);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
