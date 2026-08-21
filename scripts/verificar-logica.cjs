@@ -620,8 +620,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('S1b: confirma que o trigger anti-promoção segue de pé',
      /trg_guard_profiles_privilegios/.test(s1b), true);
 
-  // .env não pode voltar a ser versionado
-  eq('S1: .gitignore cobre .env', fs4.readFileSync('.gitignore', 'utf8').includes('\n.env\n'), true);
+  // O .env PRECISA estar versionado: o Lovable builda a partir do repo e, sem
+  // ele, o Vite não acha VITE_SUPABASE_* e o client.ts lança na criação —
+  // app inteiro fora do ar. Tirei por higiene em 2026-08-20 e derrubei tudo.
+  const gi = fs4.readFileSync('.gitignore', 'utf8');
+  eq('.env NÃO pode ser ignorado (o build do Lovable depende dele)',
+     /^\.env\s*$/m.test(gi), false);
+  eq('.env existe no disco', fs4.existsSync('.env'), true);
+  const env = fs4.readFileSync('.env', 'utf8');
+  eq('.env tem as duas variáveis que o client exige',
+     /VITE_SUPABASE_URL=/.test(env) && /VITE_SUPABASE_PUBLISHABLE_KEY=/.test(env), true);
+  // e o contrapeso: segredo de verdade JAMAIS pode entrar nesse arquivo
+  eq('.env NÃO contém segredo (service_role / anthropic)',
+     /service_role|ANTHROPIC|sk-ant-/i.test(env), false);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

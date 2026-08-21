@@ -46,10 +46,18 @@ android/app/src/main/assets/capacitor.config.json
 # migration 20260819000000_import_notion_davi_erik.sql
 /notion/
 
-# Variáveis de ambiente — nunca versionar.
-# As de hoje são públicas (URL + publishable key, que vão no bundle mesmo),
-# mas o dia em que alguém puser ANTHROPIC_API_KEY ou SERVICE_ROLE aqui não
-# pode ser o dia em que se descobre que o arquivo estava rastreado.
-.env
-.env.*
-!.env.example
+# ATENÇÃO: o .env DEVE ficar versionado neste projeto.
+#
+# O Lovable clona o repositório para buildar. Sem o .env no repo, o Vite não
+# encontra VITE_SUPABASE_URL nem VITE_SUPABASE_PUBLISHABLE_KEY, e
+# integrations/supabase/client.ts LANÇA na criação do cliente — o app quebra
+# inteiro (tela preta no celular, boundary de erro no desktop). Foi o que
+# aconteceu em 2026-08-20, quando o tirei do versionamento por higiene.
+#
+# É seguro: o que está lá são a URL e a PUBLISHABLE key, ambas públicas por
+# design — elas vão para o bundle do navegador de qualquer forma. Os SEGREDOS
+# de verdade (SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY) NUNCA entram aqui;
+# eles moram no painel de variáveis da hospedagem e jamais levam prefixo
+# VITE_, que publicaria o valor no bundle.
+.env.local
+.env.*.local

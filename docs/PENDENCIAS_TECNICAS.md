@@ -282,6 +282,20 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
 - **S7 — sessão no `localStorage`**: um XSS vira roubo de sessão. Mitigado pelo
   escape do popup do mapa (S1). A CSP **não** mitiga hoje — ver S10. A correção
   real (cookie httpOnly) exige trocar o fluxo de auth do Supabase.
+- **S11 — o `.env` é versionado DE PROPÓSITO** (2026-08-20): o Lovable builda a
+  partir do repositório, então sem o `.env` no repo o Vite não encontra
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` e
+  `integrations/supabase/client.ts` **lança** ao criar o cliente — o app inteiro
+  cai. Tirei do versionamento por higiene e derrubei tudo; está de volta, com
+  o motivo escrito no próprio `.gitignore`.
+
+  É seguro porque só há ali a URL e a *publishable* key, ambas públicas por
+  design (vão para o bundle do navegador de qualquer forma). O contrapeso está
+  travado por asserção: **segredo de verdade nunca entra nesse arquivo** —
+  `SUPABASE_SERVICE_ROLE_KEY` e `ANTHROPIC_API_KEY` moram no painel de
+  variáveis da hospedagem e jamais levam prefixo `VITE_`, que publicaria o
+  valor no bundle.
+
 - **S8 — `blocos-fotos`/`fotos-visitas` sem amarração por caminho**: a S1 fechou
   o apagar (só dono ou gestor) e tornou os buckets privados, mas qualquer
   autenticado ainda LÊ qualquer foto. Amarrar por dono exigiria convenção de
