@@ -204,7 +204,7 @@ function ProgramacaoPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/chamados" })}
+          onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

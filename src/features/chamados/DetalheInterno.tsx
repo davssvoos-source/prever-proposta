@@ -171,7 +171,7 @@ export function DetalheInterno({ id }: { id: string }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chamados"] });
       toast.success("Chamado excluída.");
-      navigate({ to: "/chamados" });
+      navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir."),
   });
@@ -219,7 +219,7 @@ export function DetalheInterno({ id }: { id: string }) {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/chamados" })}
+          onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

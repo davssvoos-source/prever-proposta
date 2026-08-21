@@ -64,7 +64,8 @@ export function BottomNav() {
             (item.to === "/dashboard" && pathname === "/") ||
             (item.to === "/gerencial" && pathname.startsWith("/gerencial")) ||
             (item.to === "/demandas" && pathname.startsWith("/demandas")) ||
-            (item.to === "/chamados" && pathname.startsWith("/chamados")) ||
+            // R31: a fila mora na Início — o detalhe do chamado acende ela
+            (item.to === "/dashboard" && pathname.startsWith("/chamados")) ||
             (item.to === "/os" && pathname.startsWith("/os"));
           const Icon = item.icon;
           const color = active ? activeColor : inactiveColor;

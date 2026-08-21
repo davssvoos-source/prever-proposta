@@ -2,12 +2,13 @@
 // trilhos, com filtros por técnico, tipo, cliente e trilho aplicados a TUDO
 // (números, gráfico e lista). Ver docs/PRODUTO.md §4.1.
 //
-// Herda o acesso do pai /chamados (admin, comercial e SAC).
-// /chamados/indicadores continua existindo como mergulho da operação de campo
-// (SLA, carga por técnico); este aqui é a visão gerencial do TODO.
+// Tem chave própria na matriz ("chamados.painel") — o pai /chamados é só
+// tronco desde a R31. Os indicadores de campo (SLA, carga por técnico) moram
+// no Painel Operacional; este aqui é a visão gerencial do TODO.
 // Paleta de dataviz conforme DESIGN_SYSTEM.md §9.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -24,6 +25,13 @@ import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { useChamados, usePessoas } from "@/features/chamados/data";
 
 export const Route = createFileRoute("/_authenticated/chamados/painel")({
+  // A guarda é própria: o pai /chamados virou só tronco (R31) e nunca gateou
+  // as filhas — sem esta linha, a chave "chamados.painel" da matriz seria
+  // decorativa e o técnico entraria pela URL.
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("chamados.painel");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.painel") as any });
+  },
   component: PainelChamadosPage,
 });
 
@@ -229,7 +237,7 @@ function PainelChamadosPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/chamados" })}
+          onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -363,7 +371,7 @@ function PainelChamadosPage() {
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span style={SEC}>Em aberto ({numeros.abertos})</span>
               <button
-                onClick={() => navigate({ to: "/chamados" })}
+                onClick={() => navigate({ to: "/dashboard" })}
                 style={{
                   marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
                   color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,

@@ -119,7 +119,8 @@ export async function guardaDeTela(chave: string): Promise<{ ok: boolean; cargo:
 
 /** Para onde mandar quem não pode entrar. */
 export function destinoNegado(chave: string): string {
-  return chave.startsWith("chamados.") ? "/chamados" : "/dashboard";
+  // R31: a lista /chamados morreu — negado cai na Início, onde a fila mora.
+  return "/dashboard";
 }
 
 /** Usado pela tela de permissões para montar o estado inicial. */

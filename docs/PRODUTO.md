@@ -364,6 +364,22 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
   estava em aberto (morador não é usuário do app). **A integração fica para
   depois** — a decisão do Davi é trabalhar primeiro no sistema.
 
+- **R31** — **A lista `/chamados` MORREU.** A Início entrega a mesma fila —
+  kanban e lista, pelo mesmo modelo de atividades — e melhor. Duas telas para
+  a mesma pergunta é uma tela sempre atrasada. A rota continua como **tronco**
+  (as filhas `/chamados/$id`, `novo*`, `painel`, `programacao`, `importar`
+  vivem); o endereço exato redireciona para a Início.
+  *(Davi, 2026-08-21: "a tela Inicio entrega as mesmas coisas, e bem melhor.
+  APAGUE A PAGINA CHAMADOS.")*
+
+- **R32** — **"Visitas e propostas" É o Painel Comercial.** Não existe porta
+  (painel-índice) e sala (lista) separadas: `/gerencial` é a página do domínio
+  comercial — funil em cima, lista embaixo, botões só do próprio domínio
+  (Prospecção, Mapa, Histórico, Clientes). Contratos, Fechamentos, Usuários e
+  Permissões pertencem ao Painel Administrativo. `/painel/comercial` só
+  redireciona. Os indicadores de campo, pela mesma lógica, moram NA ENTRADA
+  do Painel Operacional — não numa página à parte.
+
 ## 8. Questões em aberto — para responder de uma vez
 
 **Respondidas em 2026-08-18** (viraram a R13): ~~papel do Vinicius~~ → admin;
@@ -437,16 +453,18 @@ item abaixo pode ser ajustado.
 São **4 perfis** e **3 barras** — Admin e Comercial compartilham a mesma
 (`useUserCargo` devolve "admin" para os dois).
 
-| Perfil | Itens do rodapé |
+| Perfil | Itens do rodapé (revisto na R31, 2026-08-21) |
 |---|---|
-| **Admin** (Davi, Vinicius) | Início · Calendário · **Chamados** · Gerencial · Perfil |
+| **Admin** (Davi, Vinicius) | Início · Calendário · **Clientes** · Operacional · Perfil |
 | **Comercial** | *idêntica à do Admin* |
-| **SAC** | Início · Calendário · **Chamados** · Perfil |
+| **SAC** | Início · Calendário · **Clientes** · Operacional · Perfil |
 | **Técnico** (Gilleno, Nicholas, Erik, Breno, líderes de dupla) | Início · **Agenda** · Perfil |
 
-Agora "Chamados" leva **todo mundo para o mesmo lugar** (`/chamados`), e a
-antiga aba "Demandas" saiu: o quadro por sprint virou um modo de visualização
-dentro da própria lista (botão de alternar lista ↔ quadro).
+~~Agora "Chamados" leva todo mundo para o mesmo lugar (`/chamados`)~~ —
+**R31**: a aba "Chamados" saiu junto com a lista. A fila mora na **Início**
+(kanban e lista); a vaga que sobrou no celular devolveu **Clientes** à barra.
+No desktop, o menu lateral soma Prospecção e os painéis (Operacional ·
+Comercial · Administrativo — o Comercial aponta direto para `/gerencial`, R32).
 
 ### 9.2 Admin e Comercial — 5 abas
 
@@ -454,17 +472,17 @@ dentro da própria lista (botão de alternar lista ↔ quadro).
 |---|---|---|
 | **Início** | `/dashboard` | Banner "X visitas hoje", card da próxima visita (contagem regressiva + foto da fachada), card do próximo chamado, 4 métricas de visitas, filtros hoje/semana/mês, filtro por técnico e por status, lista de visitas |
 | **Calendário** | `/calendario` | Grade mensal com visitas **+** chamados de todos os técnicos; filtros por técnico e por tipo |
-| **Chamados** | `/chamados` | A fila inteira: campo, interno e visitas de proposta. Filtros de situação, trilho (campo / proposta / por equipe), responsável, busca, 5 ordenações e alternância **lista ↔ quadro por sprint**. Botões: painel, abrir chamado |
-| **Gerencial** | `/gerencial` | Painel de visitas/propostas + atalhos para Chamados, Clientes, **Contratos**, **Fechamentos**, Usuários |
+| ~~**Chamados**~~ | ~~`/chamados`~~ | **R31: a lista morreu** — a Início entrega a fila (kanban + lista). A rota é só tronco das filhas; o endereço exato redireciona |
+| **Painel Comercial** | `/gerencial` | **R32**: a página do domínio comercial — funil + lista de visitas/propostas. Botões só do domínio: Prospecção, Mapa, Histórico, Clientes |
 | **Perfil** | `/perfil` | Dados, tema, sair |
 
 **Telas internas alcançáveis** (sem entrada própria no rodapé):
 `/chamados/$id` (a página do chamado — corpo de campo ou interno conforme a
 natureza) · `/chamados/novo` (triagem) · `/chamados/novo-campo` ·
 `/chamados/novo-interno` · `/chamados/painel` (gerencial dos trilhos) ·
-`/chamados/indicadores` (mergulho da operação de campo: SLA, carga por técnico,
-clientes que mais chamam) · `/chamados/programacao` (agenda das duplas) ·
-`/chamados/importar` (CSV do Notion) ·
+`/chamados/programacao` (agenda das duplas) — os indicadores de campo (SLA,
+carga por técnico, reincidência) moram na entrada do **Painel Operacional**
+(R32) · `/chamados/importar` (CSV do Notion) ·
 `/clientes` · `/clientes/$id` (inventário e contratos) · `/clientes/novo` ·
 `/clientes/migrar` · `/contratos` · `/contratos/novo` · `/contratos/$id` ·
 `/fechamentos` · `/fechamentos/$id` · `/gerencial/nova` ·
@@ -478,7 +496,7 @@ clientes que mais chamam) · `/chamados/programacao` (agenda das duplas) ·
 |---|---|---|
 | **Início** | `/dashboard` | Mesma tela do Admin |
 | **Calendário** | `/calendario` | Tudo de todos os técnicos, com filtros por técnico e tipo |
-| **Chamados** | `/chamados` | A mesma lista do Admin — é a aba 3 do R8 |
+| ~~**Chamados**~~ | ~~`/chamados`~~ | **R31: morreu** — a fila do SAC também é a Início |
 | **Perfil** | `/perfil` | — |
 
 Alcança também: `/chamados/painel`, `/chamados/novo` e os dois formulários,
@@ -532,7 +550,7 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 | Propostas/orçamento, OS de campo (etapas 0–6), demandas, contratos, cobrança, fechamentos | construídos (U0–U5) |
 | Papel SAC (banco + gestão de usuários), técnico com 3 abas e "Você tem X chamados hoje" | **construído (U6a)** |
 | Import das tasks 2026 do Notion (Davi 251 + Erik 286) e equipes reais (SAC, Monitoramento) | **construído** |
-| **Lista unificada de chamados** (`/chamados` — aba 3 do SAC): quatro trilhos, filtros por situação/trilho/responsável, busca e 5 ordenações | **construído (U6b)** |
+| ~~**Lista unificada de chamados**~~ (`/chamados`): construída na U6b, **apagada na R31/U30** — a Início absorveu o papel (kanban + lista, mesmo modelo) | ~~construído~~ → **removido** |
 | **Abertura unificada** (`/chamados/novo` — R9), tipo `operacional` na OS (R5) e `pedido_compra` na demanda (R6) | **construído (U6c)** |
 | **Painel de chamados** (`/chamados/painel` — aba 1) e **calendário geral com filtros** (aba 2) | **construído (U6d)** — as 3 abas do SAC estão completas |
 | **Fusão chamado × demanda** (U7): tabela `chamados` única com `natureza`, endereço único `/chamados/*`, rodapé com uma aba só, quadro por sprint como modo de visualização | **construído (U7)** |

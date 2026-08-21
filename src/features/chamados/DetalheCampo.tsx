@@ -366,8 +366,8 @@ export function DetalheCampo({ id }: { id: string }) {
     return (
       <div style={{ padding: "24px 0", display: "flex", flexDirection: "column", gap: 12, color: textPrimary }}>
         <span style={{ fontFamily: "var(--fonte)", fontSize: 14 }}>Chamado não encontrado.</span>
-        <button onClick={() => navigate({ to: "/chamados" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
-          Voltar para chamados
+        <button onClick={() => navigate({ to: "/dashboard" })} style={{ ...btnSec, alignSelf: "flex-start" }}>
+          Voltar para a Início
         </button>
       </div>
     );
@@ -388,7 +388,7 @@ export function DetalheCampo({ id }: { id: string }) {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={() => navigate({ to: "/chamados" })}
+          onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

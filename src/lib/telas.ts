@@ -59,14 +59,11 @@ export const TELAS: Tela[] = [
   }),
 
   // ── Chamados ──────────────────────────────────────────────────────────────
-  T("chamados", "Chamados (lista)", "/chamados", "Chamados", [false, true, true], {
-    nota: "o técnico chega nos dele pelos cards da Início",
-  }),
+  // R31: a LISTA /chamados morreu — a Início entrega a fila. E os indicadores
+  // de campo foram absorvidos pelo Painel Operacional. As duas chaves saíram
+  // do catálogo; a U30 apaga as linhas delas no banco.
   T("chamados.novo", "Abrir chamado", "/chamados/novo", "Chamados", [false, true, true]),
   T("chamados.painel", "Painel de chamados", "/chamados/painel", "Chamados", [false, true, true]),
-  T("chamados.indicadores", "Indicadores de campo", "/chamados/indicadores", "Chamados", [false, true, true], {
-    nota: "SLA, carga por técnico, tempo médio",
-  }),
   T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true]),
   T("chamados.importar", "Importar do Notion", "/chamados/importar", "Chamados", [false, true, true]),
 
@@ -76,16 +73,19 @@ export const TELAS: Tela[] = [
   T("painel.operacional", "Painel Operacional", "/painel/operacional", "Painéis", [false, true, true], {
     nota: "fila de campo — quem coordena entra por aqui (R26)",
   }),
-  T("painel.comercial", "Painel Comercial", "/painel/comercial", "Painéis", [false, true, true], {
-    nota: "o funil da proposta; o SAC agenda a visita, por isso entra",
-  }),
+  // "painel.comercial" não é mais uma tela: o Painel Comercial FUNDIU com a
+  // lista de visitas e propostas (R32) — a chave viva é "gerencial", abaixo.
+  // /painel/comercial só redireciona; a U30 apaga a linha órfã no banco.
   T("painel.administrativo", "Painel Administrativo", "/painel/administrativo", "Painéis", [false, false, false], {
     nota: "gente, permissão e financeiro — na prática, só o admin",
   }),
 
   // ── Comercial ─────────────────────────────────────────────────────────────
-  T("gerencial", "Visitas e propostas", "/gerencial", "Comercial", [false, true, false], {
-    nota: "a LISTA de visitas; a porta do domínio agora é /painel/comercial",
+  // R32: a lista de visitas É o Painel Comercial — não há porta e sala
+  // separadas. O SAC entra porque agenda a visita de proposta (R24 tipo 1);
+  // o acesso que ele tinha ao painel seguiu o painel para cá (U30).
+  T("gerencial", "Painel Comercial", "/gerencial", "Comercial", [false, true, true], {
+    nota: "visitas e propostas + funil — a página do domínio comercial",
   }),
   T("gerencial.nova", "Nova visita", "/gerencial/nova", "Comercial", [false, true, true], {
     nota: "o SAC chega aqui pelo trilho de proposta da triagem",

@@ -2109,3 +2109,50 @@ a porta dos fundos do funil comercial. A policy trata `natureza = 'comercial'`
 - **R30** — o WhatsApp identifica o remetente pelo nome do contato
   (`"Condomínio Apartamento Nome"`). Resolve a questão que estava em aberto;
   a integração fica para depois, por decisão do Davi.
+
+### U30 — Três telas a menos: R31 e R32 (2026-08-21)
+
+O Davi olhou o sistema depois da U29 e cortou redundância em três golpes:
+
+**1. "APAGUE A PAGINA CHAMADOS" (R31).** Com a proposta dentro do quadro, a
+Início e a lista `/chamados` respondiam a mesma pergunta com o mesmo modelo
+(`features/atividades`) — e a Início melhor. A lista morreu; `/chamados` virou
+**tronco**: o endereço exato redireciona para a Início, as oito filhas
+continuam vivas. Os 12 botões "voltar" que apontavam para a lista foram
+reapontados (o redirect os seguraria, mas botão que mente o destino é defeito).
+A vaga que sobrou na barra do celular devolveu **Clientes** — que só tinha
+saído porque a barra estava cheia.
+
+**2. Indicadores de campo NA ENTRADA do Painel Operacional.** "Na tela
+principal já deve mostrar todos os indicadores" — e melhores. O cálculo saiu
+da tela para `features/paineis/indicadores.ts`, puro e com teste de unidade
+real no verificador (o `carregar()` transpila TS — dados de laboratório, não
+grep). Indicadores novos, cada um respondendo uma pergunta de gestão:
+- **Saldo do mês** (entradas − saídas): a fila cresceu?
+- **Dois relógios separados**: mediana até COMEÇAR ≠ mediana EXECUTANDO —
+  distingue problema de agenda de problema de execução.
+- **Backlog**: idade mediana (resiste a outlier), o mais antigo, encalhados
+  há +30 dias.
+- **Reincidência**: corretivas do mesmo cliente com <30 dias entre elas —
+  conta PARES próximos, não clientes grandes. É o mais perto de "serviço mal
+  feito" que dá para medir sem inspeção.
+- % no prazo continua só entre quem TINHA prazo — número que se elogia
+  sozinho é o pior indicador.
+A proposta comercial fica FORA (é funil, não campo — dois relógios diferentes
+no mesmo número). De brinde: `chamados.painel` ganhou a guarda de rota que a
+chave da matriz prometia e nunca teve.
+
+**3. "Visitas e propostas" É o Painel Comercial (R32).** O painel-índice
+duplicava os números da lista e cobrava um clique a mais. `/gerencial` virou a
+página do domínio (título novo, funil em cima) e `/painel/comercial` só
+redireciona. Os botões que levavam ao domínio administrativo — Contratos,
+Fechamentos, Usuários, Permissões, herança do Gerencial-monolito — saíram;
+ficaram Prospecção, Mapa, Histórico e Clientes.
+
+**Migração `20260821180000_u30_fusao_de_telas.sql`:** o acesso do SAC ao
+painel comercial (U28) segue o painel para `gerencial`, e as linhas órfãs
+(`chamados`, `chamados.indicadores`, `painel.comercial`) somem da matriz.
+O verificador aprendeu que a semente efetiva também tem DELETE — sem isso a
+paridade catálogo↔semente nunca mais fecharia.
+
+367 asserções (30 novas), build ok.

@@ -45,7 +45,6 @@ import { Route as AuthenticatedChamadosPainelRouteImport } from './routes/_authe
 import { Route as AuthenticatedChamadosNovoInternoRouteImport } from './routes/_authenticated/chamados.novo-interno'
 import { Route as AuthenticatedChamadosNovoCampoRouteImport } from './routes/_authenticated/chamados.novo-campo'
 import { Route as AuthenticatedChamadosNovoRouteImport } from './routes/_authenticated/chamados.novo'
-import { Route as AuthenticatedChamadosIndicadoresRouteImport } from './routes/_authenticated/chamados.indicadores'
 import { Route as AuthenticatedChamadosImportarRouteImport } from './routes/_authenticated/chamados.importar'
 import { Route as AuthenticatedChamadosIdRouteImport } from './routes/_authenticated/chamados.$id'
 import { Route as AuthenticatedVisitaIdReagendarRouteImport } from './routes/_authenticated/visita.$id.reagendar'
@@ -255,12 +254,6 @@ const AuthenticatedChamadosNovoRoute =
     path: '/novo',
     getParentRoute: () => AuthenticatedChamadosRoute,
   } as any)
-const AuthenticatedChamadosIndicadoresRoute =
-  AuthenticatedChamadosIndicadoresRouteImport.update({
-    id: '/indicadores',
-    path: '/indicadores',
-    getParentRoute: () => AuthenticatedChamadosRoute,
-  } as any)
 const AuthenticatedChamadosImportarRoute =
   AuthenticatedChamadosImportarRouteImport.update({
     id: '/importar',
@@ -352,7 +345,6 @@ export interface FileRoutesByFullPath {
   '/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
-  '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
   '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
   '/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
   '/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
@@ -402,7 +394,6 @@ export interface FileRoutesByTo {
   '/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
-  '/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
   '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
   '/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
   '/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
@@ -453,7 +444,6 @@ export interface FileRoutesById {
   '/_authenticated/prospeccao': typeof AuthenticatedProspeccaoRoute
   '/_authenticated/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/_authenticated/chamados/importar': typeof AuthenticatedChamadosImportarRoute
-  '/_authenticated/chamados/indicadores': typeof AuthenticatedChamadosIndicadoresRoute
   '/_authenticated/chamados/novo': typeof AuthenticatedChamadosNovoRoute
   '/_authenticated/chamados/novo-campo': typeof AuthenticatedChamadosNovoCampoRoute
   '/_authenticated/chamados/novo-interno': typeof AuthenticatedChamadosNovoInternoRoute
@@ -505,7 +495,6 @@ export interface FileRouteTypes {
     | '/prospeccao'
     | '/chamados/$id'
     | '/chamados/importar'
-    | '/chamados/indicadores'
     | '/chamados/novo'
     | '/chamados/novo-campo'
     | '/chamados/novo-interno'
@@ -555,7 +544,6 @@ export interface FileRouteTypes {
     | '/prospeccao'
     | '/chamados/$id'
     | '/chamados/importar'
-    | '/chamados/indicadores'
     | '/chamados/novo'
     | '/chamados/novo-campo'
     | '/chamados/novo-interno'
@@ -605,7 +593,6 @@ export interface FileRouteTypes {
     | '/_authenticated/prospeccao'
     | '/_authenticated/chamados/$id'
     | '/_authenticated/chamados/importar'
-    | '/_authenticated/chamados/indicadores'
     | '/_authenticated/chamados/novo'
     | '/_authenticated/chamados/novo-campo'
     | '/_authenticated/chamados/novo-interno'
@@ -898,13 +885,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChamadosNovoRouteImport
       parentRoute: typeof AuthenticatedChamadosRoute
     }
-    '/_authenticated/chamados/indicadores': {
-      id: '/_authenticated/chamados/indicadores'
-      path: '/indicadores'
-      fullPath: '/chamados/indicadores'
-      preLoaderRoute: typeof AuthenticatedChamadosIndicadoresRouteImport
-      parentRoute: typeof AuthenticatedChamadosRoute
-    }
     '/_authenticated/chamados/importar': {
       id: '/_authenticated/chamados/importar'
       path: '/importar'
@@ -995,7 +975,6 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedChamadosRouteChildren {
   AuthenticatedChamadosIdRoute: typeof AuthenticatedChamadosIdRoute
   AuthenticatedChamadosImportarRoute: typeof AuthenticatedChamadosImportarRoute
-  AuthenticatedChamadosIndicadoresRoute: typeof AuthenticatedChamadosIndicadoresRoute
   AuthenticatedChamadosNovoRoute: typeof AuthenticatedChamadosNovoRoute
   AuthenticatedChamadosNovoCampoRoute: typeof AuthenticatedChamadosNovoCampoRoute
   AuthenticatedChamadosNovoInternoRoute: typeof AuthenticatedChamadosNovoInternoRoute
@@ -1006,7 +985,6 @@ interface AuthenticatedChamadosRouteChildren {
 const AuthenticatedChamadosRouteChildren: AuthenticatedChamadosRouteChildren = {
   AuthenticatedChamadosIdRoute: AuthenticatedChamadosIdRoute,
   AuthenticatedChamadosImportarRoute: AuthenticatedChamadosImportarRoute,
-  AuthenticatedChamadosIndicadoresRoute: AuthenticatedChamadosIndicadoresRoute,
   AuthenticatedChamadosNovoRoute: AuthenticatedChamadosNovoRoute,
   AuthenticatedChamadosNovoCampoRoute: AuthenticatedChamadosNovoCampoRoute,
   AuthenticatedChamadosNovoInternoRoute: AuthenticatedChamadosNovoInternoRoute,

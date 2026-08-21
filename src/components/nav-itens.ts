@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, Gauge, Home, LayoutGrid, Target, User, Wrench, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, Gauge, Home, LayoutGrid, Target, User, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -20,7 +20,7 @@ export interface ItemNav {
 /**
  * Barras por perfil (PRODUTO.md §4):
  *  admin/comercial → gestão completa
- *  sac             → gestor de chamados, sem gerencial e sem financeiro
+ *  sac             → coordena chamados e agenda visita; sem financeiro
  *  técnico (R7)    → 3 itens; os chamados dele vivem na Início
  *
  * A matriz de permissões (U11) filtra por cima disto: item cuja tela está
@@ -31,14 +31,15 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
     return [
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
-      { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
-      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
+      // R31: "Chamados" saiu do menu — a lista morreu, a Início entrega a fila.
+      // A vaga que sobrou no celular devolveu Clientes à barra.
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
       { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
-      // R27: "Gerencial" virou três painéis. No desktop cada um é um item; no
-      // celular a barra tem 5 vagas e já estão tomadas, então lá vale só o
-      // Operacional, que é o painel do dia a dia de quem coordena.
+      // R27: os painéis. No celular só o Operacional — o painel do dia a dia.
+      // R32: o Comercial É a lista de visitas e propostas — o item aponta
+      // direto para ela, sem painel-índice no meio.
       { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
-      { to: "/painel/comercial", label: "Comercial", icon: LayoutGrid, tela: "painel.comercial", soDesktop: true },
+      { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
       { to: "/painel/administrativo", label: "Administrativo", icon: Building2, tela: "painel.administrativo", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
@@ -47,16 +48,15 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
     return [
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
-      { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
-      // Clientes volta a ser só desktop no SAC: com o Painel Operacional na
-      // barra, a vaga acabou — e o painel TEM atalho para Clientes, então o
-      // caminho no celular continua existindo, com um toque a mais.
-      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
+      // R31: sem "Chamados" — e a vaga do celular voltou para Clientes, que
+      // só tinha saído da barra porque ela estava cheia.
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
       { to: "/prospeccao", label: "Prospecção", icon: Target, tela: "prospeccao", soDesktop: true },
-      // o SAC coordena: o Operacional é o painel dele. O Comercial entra no
-      // desktop porque ele agenda a visita de proposta (R24 tipo 1).
+      // o SAC coordena: o Operacional é o painel dele. O Comercial (R32: a
+      // própria lista de visitas) entra no desktop porque ele agenda a visita
+      // de proposta (R24 tipo 1).
       { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
-      { to: "/painel/comercial", label: "Comercial", icon: LayoutGrid, tela: "painel.comercial", soDesktop: true },
+      { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

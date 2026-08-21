@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, Users, CalendarDays, MapPin, User, Trash2, Building2, Wrench, CircleDollarSign, ChevronRight, ShieldCheck } from "lucide-react";
+import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, CalendarDays, MapPin, User, Trash2, Building2, ChevronRight, Target, MapPinned, History } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
@@ -20,9 +20,11 @@ import {
 
 
 export const Route = createFileRoute("/_authenticated/gerencial")({
-  // Cada rota filha tem a permissão dela: o SAC entra no formulário de nova
-  // visita (trilho "pedido de proposta" da triagem, R9) sem entrar no painel,
-  // e /gerencial/permissoes e /gerencial/usuarios têm guarda própria de admin.
+  // Esta página É o Painel Comercial (R32): a lista de visitas e propostas com
+  // o funil em cima. O SAC entra — ele agenda a visita de proposta (R24) — e o
+  // acesso que ele tinha ao antigo /painel/comercial seguiu para cá (U30).
+  // Cada rota filha tem a permissão dela: /gerencial/permissoes e
+  // /gerencial/usuarios têm guarda própria de admin.
   beforeLoad: async ({ location }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
@@ -191,7 +193,7 @@ function GerencialPage() {
               margin: 0,
             }}
           >
-            Painel Gerencial
+            Painel Comercial
           </h1>
           <p
             style={{
@@ -208,17 +210,18 @@ function GerencialPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {/* Só o DOMÍNIO COMERCIAL (R32). Contratos, Fechamentos, Usuários e
+              Permissões moravam aqui do tempo em que o Gerencial era um painel
+              só — hoje são a casa do Painel Administrativo, e botão que leva
+              para outro domínio confunde a porta. */}
           {[
-            { label: "Chamados", Icon: Wrench, to: "/chamados" as const, tela: "chamados" },
+            { label: "Prospecção", Icon: Target, to: "/prospeccao" as const, tela: "prospeccao" },
+            { label: "Mapa", Icon: MapPinned, to: "/mapa" as const, tela: "mapa" },
+            { label: "Histórico", Icon: History, to: "/historico" as const, tela: "historico" },
             { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
-            // financeiro (U2/U5): fora da barra de navegação, que já está cheia
-            { label: "Contratos", Icon: FileText, to: "/contratos" as const, tela: "contratos" },
-            { label: "Fechamentos", Icon: CircleDollarSign, to: "/fechamentos" as const, tela: "fechamentos" },
-            { label: "Usuários", Icon: Users, to: "/gerencial/usuarios" as const, tela: null, soAdmin: true },
-            { label: "Permissões", Icon: ShieldCheck, to: "/gerencial/permissoes" as const, tela: null, soAdmin: true },
           ]
             // atalho que leva a uma tela bloqueada é armadilha: some junto
-            .filter((a) => (a.soAdmin ? isAdmin : podeVer(a.tela as string) !== false))
+            .filter((a) => podeVer(a.tela) !== false)
             .map(({ label, Icon, to }) => (
             <button
               key={label}

@@ -297,10 +297,12 @@ eq('sem matriz, o padrão do catálogo vale (comercial vê contratos)',
    TL.podeAbrir('contratos', 'comercial', undefined), true);
 eq('sem matriz, o padrão do catálogo vale (SAC não vê contratos — R13)',
    TL.podeAbrir('contratos', 'sac', undefined), false);
-eq('sem matriz, técnico não abre a lista de chamados',
-   TL.podeAbrir('chamados', 'tecnico', undefined), false);
+// (a tela-exemplo era 'chamados'; a lista morreu na R31 — o painel de
+// chamados herda o papel de exemplo por ter o mesmo padrão: técnico não)
+eq('sem matriz, técnico não abre o painel de chamados',
+   TL.podeAbrir('chamados.painel', 'tecnico', undefined), false);
 eq('matriz vazia é o mesmo que sem matriz',
-   TL.podeAbrir('chamados', 'tecnico', {}), false);
+   TL.podeAbrir('chamados.painel', 'tecnico', {}), false);
 
 // telas obrigatórias não podem ser bloqueadas nem por engano nem de propósito
 eq('perfil é sempre acessível — é por onde se sai do app',
@@ -320,6 +322,7 @@ const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260820150000_u24_base_clientes.sql',
   'supabase/migrations/20260821120000_u27_prospeccao.sql',
   'supabase/migrations/20260821140000_u28_tres_paineis.sql',
+  'supabase/migrations/20260821180000_u30_fusao_de_telas.sql',
 ];
 const semente = {};
 for (const arq of ARQUIVOS_SEMENTE) {
@@ -329,6 +332,12 @@ for (const arq of ARQUIVOS_SEMENTE) {
   const bloco = sql.slice(ini, fim);
   for (const m of bloco.matchAll(/\('([a-z._]+)',\s*'(tecnico|comercial|sac)',\s*(true|false)\)/g)) {
     (semente[m[1]] ??= {})[m[2]] = m[3] === 'true';
+  }
+  // a U30 APAGA telas da matriz — o DELETE participa da semente efetiva,
+  // senão o catálogo (que perdeu as chaves) nunca mais bateria com ela
+  const del = sql.match(/DELETE FROM public\.permissoes_tela\s+WHERE tela IN \(([^)]+)\)/);
+  if (del) {
+    for (const m of del[1].matchAll(/'([a-z._]+)'/g)) delete semente[m[1]];
   }
 }
 const naSemente = new Set(Object.keys(semente));
@@ -828,9 +837,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const TL4 = carregar('src/lib/telas.ts');
   const chaves = TL4.TELAS.map((t) => t.chave);
 
-  for (const k of ['painel.operacional', 'painel.comercial', 'painel.administrativo']) {
+  for (const k of ['painel.operacional', 'painel.administrativo']) {
     eq(`catálogo tem ${k}`, chaves.includes(k), true);
   }
+  // R32: o Painel Comercial fundiu com a lista de visitas — a chave viva é
+  // 'gerencial'; ressuscitar 'painel.comercial' recriaria porta e sala separadas
+  eq('painel.comercial saiu do catálogo (R32: fundiu com a lista)',
+     chaves.includes('painel.comercial'), false);
   // A chave 'gerencial' NÃO pode ser renomeada: é gravada no banco e o próprio
   // telas.ts avisa que renomear invalida a linha — toda permissão já
   // configurada pelo admin sumiria em silêncio.
@@ -838,11 +851,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      chaves.includes('gerencial'), true);
 
   const op = TL4.TELAS.find((t) => t.chave === 'painel.operacional');
-  const co = TL4.TELAS.find((t) => t.chave === 'painel.comercial');
+  const co = TL4.TELAS.find((t) => t.chave === 'gerencial'); // R32: a página fundida
   const ad = TL4.TELAS.find((t) => t.chave === 'painel.administrativo');
   eq('Operacional abre para comercial e SAC (quem coordena, R26)',
      op.padrao.comercial && op.padrao.sac, true);
-  eq('Comercial abre para comercial e SAC (o SAC agenda a visita)',
+  eq('a página comercial abre para comercial e SAC (o SAC agenda a visita)',
      co.padrao.comercial && co.padrao.sac, true);
   eq('Administrativo não abre para ninguém na matriz (só admin, por sistema)',
      ad.padrao.comercial || ad.padrao.sac || ad.padrao.tecnico, false);
@@ -851,9 +864,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // menu: o celular tem 5 vagas e elas já estavam tomadas — só um painel lá
   const nav = fs7.readFileSync('src/components/nav-itens.ts', 'utf8');
-  eq('os três painéis estão no menu', /painel\/operacional[\s\S]*painel\/comercial[\s\S]*painel\/administrativo/.test(nav), true);
+  eq('as três portas estão no menu (Comercial aponta direto para /gerencial — R32)',
+     /painel\/operacional[\s\S]*"\/gerencial", label: "Comercial"[\s\S]*painel\/administrativo/.test(nav), true);
   eq('o Comercial é só desktop (a barra do celular tem 5 vagas)',
-     /painel\/comercial"[^}]*soDesktop: true/.test(nav), true);
+     /"\/gerencial", label: "Comercial"[^}]*soDesktop: true/.test(nav), true);
   eq('o Administrativo é só desktop',
      /painel\/administrativo"[^}]*soDesktop: true/.test(nav), true);
   eq('o Operacional entra também no celular (é o painel do dia a dia)',
@@ -872,10 +886,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('os painéis dividem uma base', fs7.existsSync('src/features/paineis/PainelBase.tsx'), true);
 
   // cada painel tem guarda de rota própria (o menu esconder não é proteção)
-  for (const arq of ['painel.operacional.tsx', 'painel.comercial.tsx', 'painel.administrativo.tsx']) {
+  for (const arq of ['painel.operacional.tsx', 'painel.administrativo.tsx']) {
     const r = fs7.readFileSync(`src/routes/_authenticated/${arq}`, 'utf8');
     eq(`${arq} tem guarda de rota`, /guardaDeTela\("painel\./.test(r), true);
   }
+  // /painel/comercial é só redirect (R32) — guarda ali seria guardar parede;
+  // o porteiro é o do destino, e o redirect não pode ter conteúdo próprio
+  const redir = fs7.readFileSync('src/routes/_authenticated/painel.comercial.tsx', 'utf8');
+  eq('painel.comercial.tsx só redireciona para /gerencial',
+     /redirect\(\{ to: "\/gerencial" \}\)/.test(redir) && !/PainelBase|useQuery/.test(redir), true);
 
   // o Administrativo não põe dinheiro na porta: R13 barra o SAC de ver valores,
   // e um número grande na entrada vazaria por cima das telas de dentro
@@ -936,14 +955,158 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /natureza: "comercial",\s*\n\s*tipo: "proposta_comercial",/.test(mod), true);
   eq('a proposta entra com número vindo da capa',
      /numero: v\.chamado\?\.numero/.test(mod), true);
-  // as duas telas precisam trazer a capa no join, senão o número volta a ser null
+  // a Início precisa trazer a capa no join, senão o número volta a ser null
+  // (a lista /chamados, que também trazia, morreu na R31 — sobrou uma tela)
   for (const [arq, alvo] of [
     ['src/features/home/data.ts', 'Início'],
-    ['src/routes/_authenticated/chamados.tsx', 'lista de chamados'],
   ]) {
     eq(`${alvo}: o join traz o chamado-capa`,
        /chamado:chamados!visitas_e_chamado\(numero, prioridade\)/.test(fs8.readFileSync(arq, 'utf8')), true);
   }
+}
+
+// ── U30: a lista /chamados morreu (R31); Comercial fundiu (R32);
+//         indicadores de campo no Painel Operacional ──────────────────────
+{
+  const fs9 = require('fs');
+  const path9 = require('path');
+  const TL5 = carregar('src/lib/telas.ts');
+  const chaves5 = TL5.TELAS.map((t) => t.chave);
+
+  eq("'chamados' (a lista) saiu do catálogo (R31)", chaves5.includes('chamados'), false);
+  eq("'chamados.indicadores' saiu do catálogo (absorvida pelo Painel Operacional)",
+     chaves5.includes('chamados.indicadores'), false);
+  eq('a página antiga dos indicadores foi apagada',
+     fs9.existsSync('src/routes/_authenticated/chamados.indicadores.tsx'), false);
+
+  // /chamados virou tronco: o endereço exato redireciona, as filhas passam
+  const tronco = fs9.readFileSync('src/routes/_authenticated/chamados.tsx', 'utf8');
+  eq('/chamados exato redireciona para a Início',
+     /=== "\/chamados"/.test(tronco) && /redirect\(\{ to: "\/dashboard" \}\)/.test(tronco), true);
+  eq('/chamados não tem mais lista própria (a fila mora na Início)',
+     /useQuery|useChamados|Atividade/.test(tronco), false);
+  eq('/chamados continua deixando as filhas passarem (Outlet)',
+     /component: Outlet/.test(tronco), true);
+
+  // ninguém mais navega para a lista morta — nem menu, nem botão de voltar.
+  // Varre o src inteiro: um botão esquecido quicaria no redirect (pulo duplo)
+  // e o rótulo dele mentiria o destino.
+  const apontam = [];
+  (function varrer(dir) {
+    for (const e of fs9.readdirSync(dir, { withFileTypes: true })) {
+      const p = path9.join(dir, e.name);
+      if (e.isDirectory()) { varrer(p); continue; }
+      if (!/\.(ts|tsx)$/.test(e.name) || e.name === 'routeTree.gen.ts') continue;
+      if (/to: "\/chamados"/.test(fs9.readFileSync(p, 'utf8'))) apontam.push(p);
+    }
+  })('src');
+  eq('nenhum botão ou item de menu aponta para a lista morta', apontam, []);
+
+  // o Painel Operacional pinta o que o módulo calcula — não calcula nada
+  const po = fs9.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  eq('o Painel Operacional usa o módulo de indicadores', /calcularIndicadores\(/.test(po), true);
+  eq('o Painel Operacional olha só chamados de campo',
+     /useChamadosPorNatureza\("campo"\)/.test(po), true);
+
+  // ── o cálculo em si, com dados de laboratório ────────────────────────────
+  const IND = carregar('src/features/paineis/indicadores.ts');
+  const agora = new Date('2026-08-21T12:00:00');
+  const d = (dias) => new Date(agora.getTime() - dias * 86_400_000).toISOString();
+  const ch = (extra) => ({
+    id: String(Math.random()), status: 'aberto', natureza: 'campo',
+    created_at: d(1), ...extra,
+  });
+
+  // a proposta comercial NÃO contamina os números de campo (relógios distintos)
+  {
+    const r = IND.calcularIndicadores([
+      ch({}), ch({ natureza: 'comercial', status: 'aberta' }),
+    ], agora);
+    eq('indicadores: proposta comercial fica de fora', r.abertos, 1);
+  }
+  // saldo do mês = entradas − saídas; positivo quando a fila cresce
+  {
+    const r = IND.calcularIndicadores([
+      ch({}), ch({}),
+      ch({ status: 'concluida', finalizada_em: d(0.5), iniciada_em: d(0.8) }),
+    ], agora);
+    eq('indicadores: entradas do mês', r.entradasMes, 3);
+    eq('indicadores: saídas do mês', r.saidasMes, 1);
+    eq('indicadores: saldo positivo = fila cresceu', r.saldoMes, 2);
+  }
+  // % no prazo só entre os que TINHAM prazo — sem prazo não vira elogio
+  {
+    const r = IND.calcularIndicadores([
+      ch({ status: 'concluida', finalizada_em: d(1), prazo_limite: d(2) }),   // estourou
+      ch({ status: 'concluida', finalizada_em: d(2), prazo_limite: d(1) }),   // no prazo
+      ch({ status: 'concluida', finalizada_em: d(1) }),                        // SEM prazo
+    ], agora);
+    eq('indicadores: % no prazo ignora quem não tinha prazo', r.pctNoPrazo, 50);
+  }
+  // mediana resiste ao outlier (a média não resistiria)
+  {
+    const r = IND.calcularIndicadores([
+      ch({ created_at: d(2) }), ch({ created_at: d(4) }), ch({ created_at: d(90) }),
+    ], agora);
+    eq('indicadores: idade mediana ignora o outlier', r.idadeMediana, 4);
+    eq('indicadores: mas o mais antigo aparece', r.idadeMaisVelho, 90);
+    eq('indicadores: encalhados conta o de 90 dias', r.encalhados, 1);
+  }
+  // reincidência conta PARES próximos, não clientes grandes
+  {
+    const r = IND.calcularIndicadores([
+      ch({ tipo: 'corretiva', cliente_id: 'volta', created_at: d(10) }),
+      ch({ tipo: 'corretiva', cliente_id: 'volta', created_at: d(5) }),        // par: 5 dias
+      ch({ tipo: 'corretiva', cliente_id: 'grande', created_at: d(300) }),
+      ch({ tipo: 'corretiva', cliente_id: 'grande', created_at: d(200) }),     // 100 dias: não é par
+      ch({ tipo: 'preventiva', cliente_id: 'volta', created_at: d(6) }),       // preventiva não conta
+    ], agora);
+    eq('indicadores: reincidência pega quem voltou em 30 dias',
+       r.reincidencia.map((x) => x.clienteId), ['volta']);
+  }
+  // os dois relógios separados: até começar ≠ executando
+  {
+    const r = IND.calcularIndicadores([
+      ch({ status: 'concluida', created_at: d(3), iniciada_em: d(2), finalizada_em: d(1) }),
+    ], agora);
+    eq('indicadores: até começar (h)', r.horasAteComecar, 24);
+    eq('indicadores: executando (h)', r.horasDeExecucao, 24);
+  }
+  // urgentes: só os em aberto
+  {
+    const r = IND.calcularIndicadores([
+      ch({ prioridade: 'urgente' }),
+      ch({ prioridade: 'urgente', status: 'concluida', finalizada_em: d(1) }),
+    ], agora);
+    eq('indicadores: urgente concluído não é mais urgência', r.urgentes, 1);
+  }
+  // horasTexto: o painel não tem espaço para frase
+  eq('horasTexto: horas', IND.horasTexto(6), '6h');
+  eq('horasTexto: dias redondos', IND.horasTexto(48), '2d');
+  eq('horasTexto: dias e horas', IND.horasTexto(76), '3d 4h');
+  eq('horasTexto: sem dado é travessão', IND.horasTexto(null), '—');
+
+  // o Painel Comercial de verdade: /gerencial com o título novo e sem os
+  // botões do domínio administrativo (a reclamação que originou a R32)
+  const ger = fs9.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+  eq('/gerencial se apresenta como Painel Comercial', /Painel Comercial/.test(ger), true);
+  const soCodigoGer = ger.split('\n')
+    .filter((l) => !/^\s*(\/\/|\/?\*)/.test(l)).join('\n');
+  eq('/gerencial não tem botão para o domínio administrativo',
+     /label: "(Contratos|Fechamentos|Usuários|Permissões)"/.test(soCodigoGer), false);
+
+  // a U30 existe e faz as duas coisas que promete
+  const u30 = fs9.readFileSync('supabase/migrations/20260821180000_u30_fusao_de_telas.sql', 'utf8');
+  eq('U30 transfere o acesso do SAC para a página fundida',
+     /\('gerencial', 'sac', true\)/.test(u30), true);
+  eq('U30 apaga as linhas das três telas mortas',
+     /DELETE FROM public\.permissoes_tela\s+WHERE tela IN \('chamados', 'chamados\.indicadores', 'painel\.comercial'\)/.test(u30), true);
+  eq('U30 termina com SELECT de verificação', /SELECT '.*esperado/.test(u30), true);
+
+  // o painel de chamados ganhou a guarda que a chave da matriz prometia
+  const pc = fs9.readFileSync('src/routes/_authenticated/chamados.painel.tsx', 'utf8');
+  eq('chamados.painel tem guarda de rota própria',
+     /guardaDeTela\("chamados\.painel"\)/.test(pc), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
