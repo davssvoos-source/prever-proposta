@@ -12,7 +12,9 @@
 // Layout das rotas filhas: /clientes/novo, /clientes/$id e /clientes/migrar
 // renderizam pelo Outlet (mesmo padrão de gerencial.tsx).
 
-import { createFileRoute, useNavigate, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useRouterState, redirect } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useMemo, useState, type CSSProperties } from "react";
 import { ArrowLeft, Building2, MapPin, Plus, Search, Users, Wand2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -30,6 +32,20 @@ import {
 } from "@/features/clientes/data";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
+  // A trava é só da LISTA (mesmo padrão de chamados.tsx): o técnico não vê a
+  // BASE de clientes, mas abre /clientes/$id vindo do chamado dele. Guardar o
+  // pai inteiro derrubaria o técnico ao tocar no cliente do próprio chamado.
+  //
+  // Sem isto, a U24 tirava o item do menu e mais nada: bastava digitar
+  // /clientes na barra de endereço para a base inteira carregar — a RLS de
+  // SELECT em clientes é USING(true) e não segura ninguém.
+  beforeLoad: async ({ location }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw redirect({ to: "/auth" });
+    if (location.pathname.replace(/\/$/, "") !== "/clientes") return;
+    const { ok } = await guardaDeTela("clientes");
+    if (!ok) throw redirect({ to: destinoNegado("clientes") as any });
+  },
   component: ClientesPage,
 });
 

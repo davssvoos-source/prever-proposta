@@ -258,3 +258,28 @@ que a reforma de design ainda não alcançou:
 Não corrigidos porque estas telas estão fora do escopo da Início e serão
 redesenhadas por inteiro na reforma v7 delas. Quando forem, os amarelos viram
 `PRISMA.amarelo`/`SUPERNOVA` — e nada além.
+
+## S — Segurança: achados aceitos, não corrigidos (2026-08-20)
+
+Da auditoria de cibersegurança (5 frentes, 23 achados confirmados). Estes
+ficaram de fora da migration S1 por decisão, não por esquecimento:
+
+- **S4 — `profiles` SELECT é `USING(true)`**: e-mail de todos os funcionários
+  legível por qualquer autenticado. O app depende disso (pilha de avatares,
+  seletor de responsável, menções). O telefone saiu por REVOKE de coluna na S1;
+  o e-mail fica. Exploração exige conta válida e expõe dado de colega, não de
+  cliente. Reavaliar se o time crescer para além de conhecidos.
+- **S5 — `permissoes_tela` usa `profiles.cargo` e não `user_roles`**: duas
+  fontes de verdade para papel. Hoje o trigger `trg_sync_user_role` mantém as
+  duas em sincronia, então não é explorável; vira dívida no dia em que alguém
+  escrever numa sem a outra.
+- **S6 — `SET search_path = public` (e não `= ''`) nas 77 funções DEFINER**:
+  defesa em profundidade incompleta. Não explorável hoje — exigiria que um
+  usuário pudesse criar objeto em `public`, o que ele não pode.
+- **S7 — sessão no `localStorage`**: um XSS vira roubo de sessão. Mitigado pela
+  CSP sem `script-src unsafe-inline` (S1) e pelo escape do popup do mapa. A
+  correção real (cookie httpOnly) exige trocar o fluxo de auth do Supabase.
+- **S8 — `blocos-fotos`/`fotos-visitas` sem amarração por caminho**: a S1 fechou
+  o apagar (só dono ou gestor) e tornou os buckets privados, mas qualquer
+  autenticado ainda LÊ qualquer foto. Amarrar por dono exigiria convenção de
+  caminho que hoje não existe nos uploads antigos.

@@ -67,7 +67,7 @@ INSERT INTO _planilha_u24 (nome, documento, logradouro, cidade, uf, cep, posto, 
     ('Concorde', '54.364.799/0001-24', 'Rua Funchal, 203', 'São Paulo', 'SP', '04551-904', 'Concorde', -23.5931588, -46.6885468),
     ('Copacabana', '14.355.109/0001-56', 'Alameda Jurua, 115', 'Bertioga', 'SP', '11262-144', 'Copacabana', -23.7932600, -46.0255400),
     ('Córdoba', '11.910.831/0001-17', 'Avenida Dom Pedro I, 335', 'Osasco', 'SP', '06083-010', 'Córdoba', -23.5407297, -46.7814963),
-    ('CST Nacional', '13.527.858/0001-50', 'Estrada de Santo André, 128', 'Santana de Parnaíba', 'SP', '06517-510', 'CST Fazenda São José', -23.7046855, -46.5031492),
+    ('CST Nacional', '13.527.858/0001-50', 'Estrada de Santo André, 128', 'Santana de Parnaíba', 'SP', '06517-510', 'CST Fazenda São José', -23.4640067, -46.9095937),
     ('Cullinan', '08.598.453/0001-73', 'Rua Iara, 123', 'São Paulo', 'SP', '04542-030', 'Cullinan', -23.5853516, -46.6741213),
     ('Cyrela Living', '07.960.892/0001-11', 'Rua Doutor Ribeiro de Almeida, 88', 'São Paulo', 'SP', '01137-020', 'Cyrela Living', -23.5247973, -46.6531904),
     ('Diferencial Service', '03.203.261/0001-05', 'Avenida Etiópia, 539', 'Barueri', 'SP', '06408-030', 'Diferencial Service', -23.4960841, -46.8850954),
@@ -184,10 +184,10 @@ INSERT INTO _planilha_u24 (nome, documento, logradouro, cidade, uf, cep, posto, 
     ('Soma Perdizes Residencial', '56.911.617/0001-13', 'Avenida Sumaré, 169', 'São Paulo', 'SP', '05016-090', 'Soma Perdizes Residencial', -23.5319431, -46.6761655),
     ('SPE Bandeirantes', '33.092.919/0001-01', 'Avenida Nova Independência, 87 - Cjto 41', 'São Paulo', 'SP', '04570-000', 'SPE Bandeirantes', -23.6031100, -46.6908339),
     ('Sun Gate', '01.525.630/0001-42', 'Avenida Engenheiro Luiz Gomes Cardim Sangirardi, 531', 'São Paulo', 'SP', '04112-080', 'Sun Gate', -23.5837000, -46.6327408),
-    ('Sunnyvale', '49.467.293/0001-00', 'Rua Quatá, 521', 'São Paulo', 'SP', '04546-043', 'Sunnyvale', -23.6518843, -46.5627201),
+    ('Sunnyvale', '49.467.293/0001-00', 'Rua Quatá, 521', 'São Paulo', 'SP', '04546-043', 'Sunnyvale', -23.5956098, -46.6835652),
     ('Sunnyvale Itaqua', '49.467.293/0002-91', 'Rua Radium, 100', 'Itaquaquecetuba', 'SP', '08586-430', 'Sunnyvale Itaqua', -23.4358191, -46.3286279),
     ('Sunset', '53.827.903/0001-07', 'Rua Bergamota, 86', 'São Paulo', 'SP', '05468-000', 'Sunset', -23.5387752, -46.7167986),
-    ('Sweet Park', '04.936.694/0001-24', 'Rua Machado de Assis, 822', 'São Paulo', 'SP', '04106-001', 'Sweet Park', -23.4320024, -46.7770347),
+    ('Sweet Park', '04.936.694/0001-24', 'Rua Machado de Assis, 822', 'São Paulo', 'SP', '04106-001', 'Sweet Park', -23.5822325, -46.6371444),
     ('Taman', '18.669.284/0001-79', 'Rua Nicola Rollo, 151', 'São Paulo', 'SP', '05726-140', 'Taman', -23.6277955, -46.7420082),
     ('Tarumã', '71.735.278/0001-55', 'Rua Aimorés, 208', 'Santana de Parnaíba', 'SP', '06515-380', 'Tarumã', -23.4774590, -46.8902543),
     ('Telerisco', '27.782.559/0001-77', 'Rua Doutor Rafael de Barros, 209', 'São Paulo', 'SP', '04003-041', 'Telerisco', -23.5730372, -46.6474607),
@@ -214,7 +214,7 @@ INSERT INTO _planilha_u24 (nome, documento, logradouro, cidade, uf, cep, posto, 
     ('Window Moema Mall', '54.883.436/0002-86', 'Avenida Ibirapuera, 1835', 'São Paulo', 'SP', '04029-100', 'Window Moema Mall', -23.5955036, -46.6546668),
     ('Window Moema Residencial', '54.883.436/0001-03', 'Avenida Açocê, 50', 'São Paulo', 'SP', '04075-020', 'Window Moema Residencial', -23.6033587, -46.6566278),
     ('Alexandre Gama de Medeiros', '010.130.168-58', 'Rua Lélis Vieira, 135', 'São Paulo', 'SP', '05419-010', 'Resid. Gama', -23.5571813, -46.6993779),
-    ('Caio Augusto Cardoso', '268.952.378-79', 'Rua Atibaia, 104', 'São Paulo', 'SP', '01235-010', 'Resid. Caio Cardoso', -23.6684765, -46.5478715),
+    ('Caio Augusto Cardoso', '268.952.378-79', 'Rua Atibaia, 104', 'São Paulo', 'SP', '01235-010', 'Resid. Caio Cardoso', -23.5509581, -46.6629677),
     ('Clovis Residencia', '125.605.988-92', 'Rua Fradique Coutinho, 1845', 'São Paulo', 'SP', '05416-010', 'Residencia Clovis', -23.5638974, -46.6859616),
     ('Eduardo Carballido', '825.739.217-00', 'Rua Lélis Vieira, 185', 'São Paulo', 'SP', '05419-010', 'Resid. Carballido', -23.5571813, -46.6993779),
     ('Francisco Goeye', '303.129.968-02', 'Rua Lélis Vieira, 201', 'São Paulo', 'SP', '05419-010', 'Resid. Francisco', -23.5571813, -46.6993779),
@@ -232,6 +232,20 @@ LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- ── 3. Casamento e atualização ──────────────────────────────────────────────
+-- PRÉ-VOO (não altera nada; leia o resultado antes de seguir).
+-- Se voltar alguma linha, existe cadastro com o NOME de um cliente e outro
+-- com o DOCUMENTO dele. Consolide em /clientes/migrar ANTES de rodar o resto:
+-- a etapa 3 tentaria mover o documento e bateria no índice único da U0.
+SELECT p.nome AS linha_da_planilha,
+       a.id   AS casado_por_nome,
+       b.id   AS dono_do_documento
+FROM _planilha_u24 p
+JOIN public.clientes a ON pg_temp.norm_u24(a.nome) = pg_temp.norm_u24(p.nome)
+JOIN public.clientes b ON b.documento IS NOT NULL AND b.documento <> ''
+                      AND regexp_replace(b.documento, '\D', '', 'g')
+                        = regexp_replace(p.documento, '\D', '', 'g')
+WHERE a.id <> b.id;
+
 DROP TABLE IF EXISTS _casados_u24;
 CREATE TEMP TABLE _casados_u24 AS
 SELECT DISTINCT ON (p.nome)
@@ -241,7 +255,30 @@ JOIN public.clientes c
   ON pg_temp.norm_u24(c.nome) = pg_temp.norm_u24(p.nome)
   OR (c.documento IS NOT NULL AND c.documento <> ''
       AND regexp_replace(c.documento, '\D', '', 'g') = regexp_replace(p.documento, '\D', '', 'g'))
-ORDER BY p.nome, c.created_at;
+-- O desempate PREFERE quem já é dono do documento. É o que impede o script de
+-- morrer: a U0 criou índice único em somente_digitos(documento), e se o
+-- casamento escolhesse o cadastro mais antigo (tipicamente o de visita, sem
+-- documento) o UPDATE gravaria um CNPJ que outro registro ainda segura →
+-- unique_violation → rollback de tudo. NULLS LAST é obrigatório: DESC no
+-- Postgres é NULLS FIRST, e sem documento a expressão é NULL.
+ORDER BY p.nome,
+         (c.documento IS NOT NULL AND c.documento <> ''
+          AND regexp_replace(c.documento, '\D', '', 'g')
+            = regexp_replace(p.documento, '\D', '', 'g')) DESC NULLS LAST,
+         c.created_at;
+
+-- Um MESMO cadastro casado por duas linhas da planilha (nome de um, documento
+-- de outro) daria UPDATE não-determinístico, em silêncio. Aqui ele grita.
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM (
+    SELECT cliente_id FROM _casados_u24 GROUP BY cliente_id HAVING count(*) > 1
+  ) x;
+  IF n > 0 THEN
+    RAISE EXCEPTION 'U24: % cadastro(s) casaram com mais de uma linha da planilha. Consolide em /clientes/migrar antes de rodar.', n;
+  END IF;
+END $$;
 
 UPDATE public.clientes c
 SET documento      = p.documento,
@@ -250,7 +287,9 @@ SET documento      = p.documento,
     uf             = p.uf,
     cep            = p.cep,
     posto_servico  = p.posto,
-    situacao       = 'ativo',
+    -- só promove quem ainda não é cliente. 'ativo' incondicional faria a
+    -- reexecução ressuscitar quem um gestor inativou na mão depois da 1ª vez.
+    situacao       = CASE WHEN c.situacao = 'prospecto' THEN 'ativo' ELSE c.situacao END,
     updated_at     = now(),
     latitude       = COALESCE(c.latitude,  p.lat),
     longitude      = COALESCE(c.longitude, p.lng)
@@ -333,7 +372,13 @@ UNION ALL
 SELECT 'com documento', count(*) FROM public.clientes
  WHERE situacao = 'ativo' AND documento IS NOT NULL AND documento <> ''
 UNION ALL
-SELECT 'rebaixados (auditoria)', count(*) FROM public.clientes_rebaixados_u24
+SELECT 'rebaixados nesta rodada', count(*) FROM public.clientes_rebaixados_u24
+ WHERE rebaixado_em > now() - interval '5 minutes'
+UNION ALL
+SELECT 'rebaixados (total acumulado)', count(*) FROM public.clientes_rebaixados_u24
+UNION ALL
+SELECT 'inseridos agora (sem visita anterior)', count(*) FROM public.clientes
+ WHERE posto_servico IS NOT NULL AND created_at > now() - interval '5 minutes' 
 UNION ALL
 SELECT 'permissao clientes/tecnico = false', count(*) FROM public.permissoes_tela
  WHERE tela LIKE 'clientes%' AND cargo = 'tecnico' AND permitido = false;

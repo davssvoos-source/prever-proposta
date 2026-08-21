@@ -21,7 +21,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA } from "@/lib/paleta";
+import { PRISMA, espectro } from "@/lib/paleta";
 import { MAPA_SP, projetar, dentroDoMapa } from "@/features/clientes/mapa-sp";
 import { corDoCliente } from "@/features/clientes/cores";
 import type { Cliente } from "@/features/clientes/data";
@@ -54,7 +54,7 @@ export function MapaClientes({ clientes }: Props) {
       if (c.latitude == null || c.longitude == null) { sem++; continue; }
       if (!dentroDoMapa(c.latitude, c.longitude)) {
         // fora do contorno da capital — cidade do cadastro, ou "Outra"
-        const cidade = (c as any).cidade || "Outra cidade";
+        const cidade = c.cidade || "Outra cidade";
         fora[cidade] = (fora[cidade] ?? 0) + 1;
         continue;
       }
@@ -90,6 +90,10 @@ export function MapaClientes({ clientes }: Props) {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", justifyContent: "center", paddingTop: 8 }}>
+        {/* wrapper do TAMANHO EXATO do svg: o tooltip é posicionado em % e,
+            ancorado no card, descolava do ponto quando o svg era mais estreito
+            que a coluna (medido em até 99px). Aqui os dois falam a mesma caixa. */}
+        <div style={{ position: "relative", height: "100%", display: "flex" }}>
         <svg
           viewBox={`-8 -8 ${MAPA_SP.largura + 16} ${MAPA_SP.altura + 16}`}
           style={{ height: "100%", maxHeight: 520, maxWidth: "100%" }}
@@ -100,9 +104,9 @@ export function MapaClientes({ clientes }: Props) {
           <defs>
             {/* o traço do contorno percorre o degradê da casa, de leve */}
             <linearGradient id="borda-sp" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor={isLight ? "#236FC7" : "#4F94E9"} />
-              <stop offset="50%" stopColor={isLight ? "#BB8C00" : "#F8C811"} />
-              <stop offset="100%" stopColor={isLight ? "#CF515E" : "#F17881"} />
+              <stop offset="0%" stopColor={espectro(0, isLight)} />
+              <stop offset="50%" stopColor={espectro(4, isLight)} />
+              <stop offset="100%" stopColor={espectro(8, isLight)} />
             </linearGradient>
           </defs>
 
@@ -140,8 +144,8 @@ export function MapaClientes({ clientes }: Props) {
           <div style={{
             position: "absolute",
             // o tooltip acompanha o ponto em % do viewBox — simples e estável
-            left: `calc(${(alvo.x / MAPA_SP.largura) * 100}% )`,
-            top: `calc(${(alvo.y / MAPA_SP.altura) * 88}% )`,
+            left: `${(alvo.x / MAPA_SP.largura) * 100}%`,
+            top: `${(alvo.y / MAPA_SP.altura) * 100}%`,
             transform: "translate(-50%, -135%)",
             padding: "5px 10px",
             borderRadius: 10,
@@ -157,6 +161,7 @@ export function MapaClientes({ clientes }: Props) {
             {alvo.nome}
           </div>
         )}
+        </div>
       </div>
 
       {(foraDaCapital.length > 0 || semCoordenada > 0) && (

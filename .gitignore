@@ -45,3 +45,11 @@ android/app/src/main/assets/capacitor.config.json
 # Export do Notion (dados privados + 181MB de anexos) — a importação vive na
 # migration 20260819000000_import_notion_davi_erik.sql
 /notion/
+
+# Variáveis de ambiente — nunca versionar.
+# As de hoje são públicas (URL + publishable key, que vão no bundle mesmo),
+# mas o dia em que alguém puser ANTHROPIC_API_KEY ou SERVICE_ROLE aqui não
+# pode ser o dia em que se descobre que o arquivo estava rastreado.
+.env
+.env.*
+!.env.example

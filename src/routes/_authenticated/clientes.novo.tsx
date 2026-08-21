@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { guardaDeTela } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ClienteForm } from "@/features/clientes/ClienteForm";
 import { criarCliente, type ClientePatch } from "@/features/clientes/data";
@@ -14,14 +15,10 @@ export const Route = createFileRoute("/_authenticated/clientes/novo")({
     const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles")
-      .select("cargo")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (!["admin", "comercial"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/clientes" });
-    }
+    // a matriz manda, não uma lista de cargos escrita na mão: a U24 liberou
+    // Clientes para o SAC e a lista hardcoded o barrava em silêncio
+    const { ok } = await guardaDeTela("clientes.novo");
+    if (!ok) throw redirect({ to: "/clientes" });
   },
   component: NovoClientePage,
 });

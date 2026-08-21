@@ -531,5 +531,70 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      sql.includes('clientes_rebaixados_u24'), true);
 }
 
+// ── S1: a blindagem de segurança ───────────────────────────────────────────
+// A RLS é o perímetro do sistema: todo usuário fala direto com o Postgres com
+// a mesma chave pública. Um SELECT aberto numa tabela com CPF não é detalhe.
+{
+  const fs4 = require('fs');
+  const s1 = fs4.readFileSync('supabase/migrations/20260820170000_s1_blindagem_rls.sql', 'utf8');
+
+  eq('S1: clientes deixa de ser USING(true)',
+     /DROP POLICY IF EXISTS "clientes_select_autenticados"/.test(s1), true);
+  eq('S1: a policy nova de clientes passa por pode_ver_cliente',
+     /CREATE POLICY "clientes_select"[\s\S]{0,200}pode_ver_cliente/.test(s1), true);
+  eq('S1: pode_ver_cliente é SECURITY DEFINER com search_path fixo',
+     /FUNCTION public\.pode_ver_cliente[\s\S]{0,160}SECURITY DEFINER SET search_path = public/.test(s1), true);
+  eq('S1: pode_ver_cliente não é executável por anon',
+     /REVOKE EXECUTE ON FUNCTION public\.pode_ver_cliente\(uuid\) FROM PUBLIC, anon/.test(s1), true);
+  eq('S1: a fila sem dono continua mostrando o cliente (senão o card fica sem nome)',
+     /responsavel_id IS NULL[\s\S]{0,120}status IN/.test(s1), true);
+  eq('S1: a ficha de compra larga pode_acessar_chamado (brecha do responsável nulo)',
+     /CREATE POLICY "chamado_compra_select"[\s\S]{0,400}is_gestor/.test(s1)
+     && !/CREATE POLICY "chamado_compra_select"[\s\S]{0,400}pode_acessar_chamado/.test(s1), true);
+  eq('S1: funil_comercial passa a exigir gestor',
+     /FUNCTION public\.funil_comercial\(_desde date[\s\S]{0,600}is_gestor/.test(s1), true);
+  eq('S1: funil_comercial mantém a assinatura (o app chama sem mudar)',
+     /RETURNS TABLE \(etapa text, quantidade bigint, ordem int\)/.test(s1), true);
+  eq('S1: buckets de foto viram privados', /SET public = false/.test(s1), true);
+  eq('S1: apagar foto é só do dono ou de gestor',
+     /FOR DELETE TO authenticated[\s\S]{0,120}is_gestor/.test(s1), true);
+  eq('S1: termina com verificação por SELECT (RAISE NOTICE é invisível no editor)',
+     /SELECT 'clientes: policy restritiva' AS item/.test(s1), true);
+
+  // as telas que LISTAM todos os clientes precisam ser de gestor, senão a
+  // policy nova esvazia a tela em vez de proteger
+  const TL2 = carregar('src/lib/telas.ts');
+  for (const chave of ['clientes', 'contratos', 'fechamentos', 'chamados.novo', 'gerencial.nova']) {
+    const t = TL2.TELAS.find((x) => x.chave === chave);
+    if (t) eq(`S1: ${chave} não é do técnico (lista clientes)`, t.padrao.tecnico, false);
+  }
+
+  // XSS: o popup do Leaflet monta HTML na mão
+  const mapa = fs4.readFileSync('src/routes/_authenticated/mapa.tsx', 'utf8');
+  eq('S1: o popup do mapa escapa o nome do cliente',
+     /escapar\(v\.cliente\?\.nome \?\? v\.titulo\)/.test(mapa), true);
+  eq('S1: nenhuma interpolação crua sobrou no popup',
+     /\$\{v\.(cliente\?\.nome|titulo)\}/.test(mapa), false);
+
+  // cabeçalhos de segurança em toda resposta
+  const srv = fs4.readFileSync('src/server.ts', 'utf8');
+  for (const h of ['content-security-policy', 'x-content-type-options',
+                   'referrer-policy', 'strict-transport-security']) {
+    eq(`S1: cabeçalho ${h} aplicado`, srv.includes(h), true);
+  }
+  // Só as linhas de CÓDIGO: o comentário acima da CSP explica justamente por
+  // que unsafe-inline ficou de fora, e a asserção batia nele.
+  const csp = srv.split('\n').filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//'));
+  eq('S1: a CSP declara script-src próprio',
+     csp.some((l) => l.includes(`"script-src 'self'"`)), true);
+  eq('S1: a CSP NÃO permite script inline (é o que trava um XSS refletido)',
+     csp.some((l) => /script-src/.test(l) && /unsafe-inline/.test(l)), false);
+  eq('S1: style-src aceita inline (o app é todo estilo inline — inevitável)',
+     csp.some((l) => /style-src/.test(l) && /unsafe-inline/.test(l)), true);
+
+  // .env não pode voltar a ser versionado
+  eq('S1: .gitignore cobre .env', fs4.readFileSync('.gitignore', 'utf8').includes('\n.env\n'), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

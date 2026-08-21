@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Building2, CheckCircle2, MapPin, Users, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { guardaDeTela } from "@/features/gerencial/permissoes";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TIPO_LABEL } from "@/features/gerencial/constants";
 import {
@@ -25,14 +26,10 @@ export const Route = createFileRoute("/_authenticated/clientes/migrar")({
     const { redirect } = await import("@tanstack/react-router");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase
-      .from("profiles")
-      .select("cargo")
-      .eq("id", user.id)
-      .maybeSingle();
-    if (!["admin", "comercial"].includes((perfil as any)?.cargo ?? "")) {
-      throw redirect({ to: "/clientes" });
-    }
+    // a matriz manda, não uma lista de cargos escrita na mão: a U24 liberou
+    // Clientes para o SAC e a lista hardcoded o barrava em silêncio
+    const { ok } = await guardaDeTela("clientes.migrar");
+    if (!ok) throw redirect({ to: "/clientes" });
   },
   component: MigrarClientesPage,
 });

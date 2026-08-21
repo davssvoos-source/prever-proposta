@@ -42,7 +42,8 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       { to: "/dashboard", label: "Início", icon: Home, tela: "dashboard" },
       { to: "/calendario", label: "Calendário", icon: Calendar, tela: "calendario" },
       { to: "/chamados", label: "Chamados", icon: Wrench, tela: "chamados" },
-      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes", soDesktop: true },
+      // no SAC o item cabe também no celular: a barra dele tem 4 itens, não 5
+      { to: "/clientes", label: "Clientes", icon: Building2, tela: "clientes" },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }
