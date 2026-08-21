@@ -78,6 +78,16 @@ export function useChamadosDaHome(s: Sessao) {
       const { data, error } = await supabase
         .from("chamados" as any)
         .select(CAMPOS_CHAMADO)
+        // A CAPA DA PROPOSTA FICA DE FORA — a visita já a representa.
+        //
+        // Desde a U29 toda visita tem um chamado com o MESMO id do lado. Os
+        // dois viram Atividade, com ids diferentes (`vis-x` e `ch-x`), então
+        // nenhuma deduplicação por id os junta: a proposta aparecia DUAS VEZES
+        // no quadro e contava dobrado nos painéis. A R29 pede a proposta no
+        // Kanban, e ela está lá — pela visita, que é a versão rica (traduz o
+        // funil, tem a foto, sabe para qual tela do fluxo levar) e que desde a
+        // U29 já carrega o número CH- vindo da capa pelo join.
+        .neq("natureza", "comercial")
         .or(`status.not.in.(concluido,cancelado),updated_at.gte.${corte}`)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -317,6 +327,9 @@ export function useHistoricoAmplo(s: Sessao) {
       const { data, error } = await supabase
         .from("chamados" as any)
         .select(CAMPOS_CHAMADO)
+        // mesma razão da consulta da Home: a capa da proposta duplicaria a
+        // visita, e aqui o efeito é uma barra do gráfico contando dobrado
+        .neq("natureza", "comercial")
         .in("status", ["concluido", "cancelado"])
         .or(`concluida_em.gte.${desde},fechada_em.gte.${desde}`)
         // rede de segurança: se algum dia a janela crescer, é melhor faltar

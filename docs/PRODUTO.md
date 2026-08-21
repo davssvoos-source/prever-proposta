@@ -616,3 +616,11 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   vencido cai em "essa semana"**, não no passado: o que venceu e segue aberto
   é trabalho para agora, e mandá-lo ao retrospectivo o esconderia. O sprint
   continua editável à mão, para o que não tem data.
+
+- **R41** — **Cliente tem "Serviço prestado"**: Portaria Remota e Monitoramento
+  de Alarmes. É um **conjunto**, não uma escolha — o mesmo condomínio pode ter
+  os dois, e guardar um só o esconderia do filtro do outro. A página de
+  Clientes filtra por serviço, e esse filtro é um **eixo independente** da
+  situação: um cliente é ativo *e* tem portaria. As contagens de cada eixo
+  respeitam o filtro do outro. O serviço se liga e desliga na página do
+  cliente. *(Davi, 2026-08-22.)*

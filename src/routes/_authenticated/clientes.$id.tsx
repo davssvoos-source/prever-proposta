@@ -26,6 +26,10 @@ import {
   atualizarCliente,
   SITUACAO_LABEL,
   SITUACAO_CORES,
+  SERVICO_ORDEM,
+  SERVICO_LABEL,
+  SERVICO_CORES,
+  temServico,
   type ClientePatch,
 } from "@/features/clientes/data";
 
@@ -209,6 +213,54 @@ function ClienteDetalhePage() {
                       {TIPO_LABEL[cliente.tipo_local] ?? cliente.tipo_local}
                     </span>
                   )}
+                </div>
+
+                {/* SERVIÇO PRESTADO (R41) — etiquetas que também são o
+                    controle. Um botão por serviço: aceso = presta, apagado =
+                    não presta. Sem modo de edição à parte, porque a pergunta
+                    "este prédio tem portaria?" costuma vir junto com a
+                    resposta, e um formulário no meio atrapalharia.
+                    A gravação manda o ARRAY inteiro, não um "adicione isto":
+                    é o estado completo, e assim dois cliques rápidos não
+                    disputam a mesma coluna. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
+                  <span style={{
+                    fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
+                    letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary,
+                  }}>
+                    Serviço prestado
+                  </span>
+                  {SERVICO_ORDEM.map((s) => {
+                    const tem = temServico(cliente, s);
+                    const cs = SERVICO_CORES[s];
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          const atuais = (cliente.servicos_prestados ?? []) as string[];
+                          const novos = tem
+                            ? atuais.filter((x) => x !== s)
+                            : [...atuais, s];
+                          salvar.mutate({ servicos_prestados: novos });
+                        }}
+                        disabled={salvar.isPending}
+                        aria-pressed={tem}
+                        title={tem ? `Remover ${SERVICO_LABEL[s]}` : `Marcar ${SERVICO_LABEL[s]}`}
+                        style={{
+                          padding: "4px 11px", borderRadius: 999, cursor: "pointer",
+                          background: tem ? cs.bg : "transparent",
+                          border: tem
+                            ? `1px solid ${cs.border}`
+                            : isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.20)",
+                          color: tem ? (isLight ? cs.light : cs.dark) : textSecondary,
+                          fontFamily: "var(--fonte)", fontWeight: tem ? 700 : 500, fontSize: 10,
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {SERVICO_LABEL[s]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

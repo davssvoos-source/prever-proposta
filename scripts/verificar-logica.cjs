@@ -1474,9 +1474,66 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq(`${c} recebe o recorte filtrado, não o array cru`,
        new RegExp(`<${c} atividades=\\{paraPaineis\\}`).test(dash), true);
   }
-  // o gráfico JÁ É um eixo de tempo — aplicar "hoje" deixaria uma barra em pé
-  eq('o painel ignora o filtro de PERÍODO (mas só ele)',
-     /aplicarLentes\(uniao, \{ \.\.\.filtros, periodo: null \}/.test(dash), true);
+  // ── O CAMINHO COMPLETO, do filtro que abre a tela até o número pintado ──
+  //
+  // Esta é A asserção que faltava, e a falta dela quase mandou ao ar um
+  // defeito crítico: os painéis usavam `aplicarLentes` com `periodo: null`, e
+  // o filtro inicial (`situacao: "abertos"`) descartava TODO encerrado antes
+  // de chegar na conta. Barras do passado em zero, meta travada em 0% — para
+  // todo mundo, no primeiro acesso, sem tocar em nada.
+  //
+  // Testar as peças isoladas não pegava: `metaDoMes` e `concluidosPorSemana`
+  // estavam certos, e `aplicarLentes` também. O erro morava na JUNÇÃO, e por
+  // isso o teste percorre a junção inteira.
+  {
+    const LN = carregar('src/features/home/lentes.ts');
+    const MT = carregar('src/features/home/metricas.ts');
+    const agoraT = new Date(2026, 7, 21);       // sexta, 21 de agosto de 2026
+    const feito = {
+      id: 'ch-1', natureza: 'interno', sprint: 'este_mes', coluna: 'concluido',
+      emAberto: false, encerradoEm: new Date(2026, 7, 12, 10).toISOString(),
+      responsavelId: 'u1', souResponsavel: true, souApoio: false, souAutor: true,
+      titulo: 'feito', numero: 'CH-1', cliente: null, prazoLimite: null, quando: null,
+    };
+    const aberto = { ...feito, id: 'ch-2', coluna: 'aberto', emAberto: true,
+                     encerradoEm: null, titulo: 'aberto' };
+
+    const recorte = LN.recorteDosPaineis([feito, aberto], LN.FILTROS_INICIAIS, (s) => s.toLowerCase());
+    eq('recorte dos painéis NÃO descarta o encerrado (era o defeito crítico)',
+       recorte.length, 2);
+    eq('e por isso a meta enxerga a entrega',
+       MT.metaDoMes(recorte, agoraT), { total: 2, feitas: 1 });
+    eq('e a barra do passado deixa de ser zero',
+       Object.values(MT.concluidosPorSemana(recorte))[0], 1);
+
+    // o espelho: o recorte NORMAL do quadro continua escondendo encerrado, que
+    // é o certo lá — quadro é fila de trabalho
+    const doQuadro = LN.aplicarLentes([feito, aberto], LN.FILTROS_INICIAIS,
+      { agora: agoraT, minhaEquipe: null }, (s) => s.toLowerCase());
+    eq('o quadro continua mostrando só o que está em aberto', doQuadro.length, 1);
+
+    // preset do técnico: sete dos oito exigem emAberto, e meu_dia ainda
+    // recorta por dia — se o preset valesse no painel, zeraria tudo de novo
+    const comPreset = LN.recorteDosPaineis([feito, aberto],
+      { ...LN.FILTROS_INICIAIS, preset: 'meu_dia' }, (s) => s.toLowerCase());
+    eq('nem o preset apaga o histórico do painel', comPreset.length, 2);
+
+    // mas o que o Davi PEDIU continua valendo: filtrar por pessoa recorta
+    const deOutro = LN.recorteDosPaineis([feito, aberto],
+      { ...LN.FILTROS_INICIAIS, pessoa: 'outro-uid' }, (s) => s.toLowerCase());
+    eq('filtrar por pessoa continua recortando o painel', deOutro.length, 0);
+    const porBusca = LN.recorteDosPaineis([feito, aberto],
+      { ...LN.FILTROS_INICIAIS, busca: 'feito' }, (s) => s.toLowerCase());
+    eq('a busca continua recortando o painel', porBusca.map((a) => a.id), ['ch-1']);
+  }
+  eq('o painel usa o recorte próprio, não o do quadro',
+     /recorteDosPaineis\(uniao, filtros, normalizarTexto\)/.test(dash), true);
+  // nenhum recorte por estado pode voltar: apaga metade do gráfico
+  eq('o recorte dos painéis não olha situação nem período',
+     /situacao|periodo|dentroDoPeriodo/.test(
+       (fs13.readFileSync('src/features/home/lentes.ts', 'utf8')
+         .split('export function recorteDosPaineis')[1] ?? '').split('export function ordenar')[0]),
+     false);
   eq('o painel soma o histórico ao que está no quadro',
      /\[\.\.\.atividades, \.\.\.historico\]/.test(dash), true);
   eq('a união é deduplicada por id', /vistos\.has\(a\.id\)/.test(dash), true);
@@ -1690,6 +1747,136 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        new RegExp(`'${v}'`).test(u35.split('ADD CONSTRAINT')[1] ?? ''), true);
   }
   eq('U35 termina com SELECT de verificação', /SELECT '.*esperado/.test(u35), true);
+}
+
+// ── U36: serviço prestado por cliente (R41, 2026-08-22) ────────────────────
+{
+  const fs16 = require('fs');
+  const CD = carregar('src/features/clientes/data.ts');
+  const u36 = fs16.readFileSync('supabase/migrations/20260822000000_u36_servicos_prestados.sql', 'utf8');
+  const pag = fs16.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  const det = fs16.readFileSync('src/routes/_authenticated/clientes.$id.tsx', 'utf8');
+
+  eq('os dois serviços, na ordem', CD.SERVICO_ORDEM, ['portaria_remota', 'monitoramento_alarmes']);
+  eq('todo serviço tem rótulo e cor',
+     CD.SERVICO_ORDEM.every((s) => !!CD.SERVICO_LABEL[s] && !!CD.SERVICO_CORES[s]), true);
+  eq('o rótulo é o que o Davi escreveu', CD.SERVICO_LABEL.portaria_remota, 'Portaria Remota');
+
+  // é CONJUNTO: o mesmo prédio pode ter os dois
+  eq('temServico acha o serviço na lista',
+     CD.temServico({ servicos_prestados: ['portaria_remota'] }, 'portaria_remota'), true);
+  eq('temServico com os DOIS serviços',
+     [CD.temServico({ servicos_prestados: ['portaria_remota', 'monitoramento_alarmes'] }, 'portaria_remota'),
+      CD.temServico({ servicos_prestados: ['portaria_remota', 'monitoramento_alarmes'] }, 'monitoramento_alarmes')],
+     [true, true]);
+  // cliente antigo (antes da migration) não pode explodir a tela
+  eq('temServico tolera coluna ausente', CD.temServico({}, 'portaria_remota'), false);
+  eq('temServico tolera null', CD.temServico({ servicos_prestados: null }, 'portaria_remota'), false);
+  eq('a consulta traz a coluna nova',
+     /servicos_prestados/.test(fs16.readFileSync('src/features/clientes/data.ts', 'utf8')
+       .split('const CAMPOS')[1] ?? ''), true);
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('U36 cria a coluna como conjunto (array), não valor único',
+     /ADD COLUMN IF NOT EXISTS servicos_prestados text\[\]/.test(u36), true);
+  eq('U36 tranca o vocabulário com <@ (contido em)',
+     /servicos_prestados <@ ARRAY\['portaria_remota', 'monitoramento_alarmes'\]/.test(u36), true);
+  eq('U36 indexa para o filtro não varrer a tabela', /USING GIN \(servicos_prestados\)/.test(u36), true);
+  // rodar duas vezes não pode duplicar o serviço dentro do array
+  eq('U36 só acrescenta se ainda não estiver lá',
+     /NOT \('portaria_remota' = ANY \(c\.servicos_prestados\)\)/.test(u36), true);
+  eq('U36 tem pré-voo dos que não casam', /PRÉ-VOO/.test(u36), true);
+  eq('U36 termina com SELECT de verificação', /esperado 29/.test(u36), true);
+
+  // OS 29 — conferidos contra a base real do QAP (a da U24), pelo CNPJ.
+  // Quatro deles têm nome diferente lá ("Villa Lagos" é "Vila Lagos"), e é
+  // por isso que o de-para é por documento: casar por nome perderia os quatro
+  // em silêncio.
+  {
+    const norm = (t) => (t || '').toLowerCase()
+      .replace(/[áàâãä]/g, 'a').replace(/[éèêë]/g, 'e').replace(/[íìîï]/g, 'i')
+      .replace(/[óòôõö]/g, 'o').replace(/[úùûü]/g, 'u').replace(/ç/g, 'c')
+      .replace(/\s+/g, ' ').trim();
+    const dig = (t) => (t || '').replace(/\D/g, '');
+    const u24 = fs16.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
+    const ini = u24.indexOf('INSERT INTO _planilha_u24');
+    const base = [...u24.slice(ini, u24.indexOf(';', ini))
+      .matchAll(/\(\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)]
+      .map((m) => ({ nome: m[1].replace(/''/g, "'"), doc: m[2] }));
+    const porDoc = new Set(base.map((b) => dig(b.doc)).filter((d) => d.length >= 11));
+    const porNome = new Set(base.map((b) => norm(b.nome)));
+
+    const bloco = u36.slice(u36.indexOf('INSERT INTO _portaria_u36'), u36.indexOf('CREATE OR REPLACE FUNCTION pg_temp.norm_u36'));
+    const lista = [...bloco.matchAll(/\(\s*'((?:[^']|'')*)'\s*,\s*(NULL|'[^']*')\)/g)]
+      .map((m) => ({ nome: m[1].replace(/''/g, "'"), cnpj: m[2] === 'NULL' ? '' : m[2].slice(1, -1) }));
+
+    eq('U36 lista os 29 da portaria remota', lista.length, 29);
+    const orfaos = lista.filter((p) => !(p.cnpj && porDoc.has(dig(p.cnpj))) && !porNome.has(norm(p.nome)));
+    eq('todos os 29 têm correspondente na base do QAP', orfaos.map((o) => o.nome), []);
+    // o valor real do CNPJ: quatro casam SÓ por documento
+    const soPorDoc = lista.filter((p) => p.cnpj && porDoc.has(dig(p.cnpj)) && !porNome.has(norm(p.nome)));
+    eq('quatro só casam por CNPJ (nome divergente na base)', soPorDoc.length, 4);
+  }
+
+  // ── a tela ──────────────────────────────────────────────────────────────
+  // serviço e situação são EIXOS que se combinam: um cliente é ativo E tem
+  // portaria. Um seletor só obrigaria a escolher entre as duas perguntas.
+  eq('o filtro de serviço é independente do de situação',
+     /servico !== "todos" && !temServico\(c, servico\)/.test(pag)
+     && /filtro !== "todos" && c\.situacao !== filtro/.test(pag), true);
+  eq('a página tem o filtro Portaria Remota', /SERVICO_LABEL\[s\]/.test(pag), true);
+  // chip que promete 192 e entrega 29 é chip que mente
+  eq('as contagens de um eixo respeitam o filtro do outro',
+     /porServico\.filter\(\(c\) => c\.situacao === "ativo"\)/.test(pag)
+     && /porSituacao\.filter\(\(c\) => temServico/.test(pag), true);
+  eq('a linha do cliente mostra os serviços dele',
+     /SERVICO_ORDEM\.filter\(\(s\) => temServico\(c, s\)\)/.test(pag), true);
+  // sem edição, a propriedade ficaria congelada nos 29 da migration
+  eq('o detalhe do cliente permite ligar e desligar o serviço',
+     /salvar\.mutate\(\{ servicos_prestados: novos \}\)/.test(det), true);
+  eq('a gravação manda o array inteiro (estado completo, não incremento)',
+     /const novos = tem[\s\S]{0,120}\[\.\.\.atuais, s\]/.test(det), true);
+}
+
+// ── Achados da revisão adversarial da U33 (2026-08-22) ─────────────────────
+// Cinco agentes independentes acharam a mesma raiz crítica e mais quatro
+// defeitos médios. Cada um vira asserção aqui — achado corrigido sem trava é
+// achado que volta.
+{
+  const fs17 = require('fs');
+  const hd2 = fs17.readFileSync('src/features/home/data.ts', 'utf8');
+  const tab2 = fs17.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
+
+  // 1. A PROPOSTA CONTAVA DOBRADO. Desde a U29 a visita tem um chamado-capa
+  //    com o MESMO id do banco — mas as Atividades saem com ids diferentes
+  //    (`vis-x` e `ch-x`), então nenhuma dedup por id os junta. A proposta
+  //    aparecia duas vezes no quadro e contava duas vezes na barra.
+  //    (Defeito ANTERIOR à U33; a revisão o encontrou no rastro dela.)
+  eq('a Home não traz a capa da proposta (a visita já a representa)',
+     /\.neq\("natureza", "comercial"\)/.test(hd2.split('useChamadosDaHome')[1] ?? ''), true);
+  eq('o histórico também não traz a capa (barra contaria dobrado)',
+     (hd2.match(/\.neq\("natureza", "comercial"\)/g) ?? []).length, 2);
+  // e a proposta CONTINUA no quadro pela visita, como a R29 exige
+  const mod2 = fs17.readFileSync('src/features/atividades/modelo.ts', 'utf8');
+  eq('a proposta segue no quadro pela visita, com número da capa (R29)',
+     /numero: v\.chamado\?\.numero/.test(mod2), true);
+
+  // 2. O CABEÇALHO STICKY NÃO GRUDAVA. `overflow-x: auto` + `overflow-y:
+  //    visible` resolve para `auto` e cria um contêiner de rolagem de altura
+  //    automática; o sticky gruda NELE, que nunca rola.
+  eq('o envelope da tabela não cria contêiner de rolagem vertical',
+     /overflowY: "clip"/.test(tab2) && !/overflowY: "visible"/.test(tab2), true);
+
+  // 3. A LINHA NÃO ERA OPERÁVEL POR TECLADO — ela substituiu um <button>.
+  eq('a linha da tabela é focável e aciona por teclado',
+     /tabIndex=\{0\}/.test(tab2) && /e\.key === "Enter" \|\| e\.key === " "/.test(tab2), true);
+
+  // 4. PRAZO EM VERMELHO SOBRE UM TRAÇO. A visita não tem `prazoLimite` mas
+  //    tem `prazoEstourado` — pintava alarme sobre nada.
+  eq('a coluna Prazo só colore quando existe data',
+     /a\.prazoEstourado && \(a\.prazoLimite \|\| a\.agendadaEm\)/.test(tab2), true);
+  eq('e a visita mostra a data agendada, que é o prazo dela',
+     /dataCurta\(a\.prazoLimite \?\? a\.agendadaEm\)/.test(tab2), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

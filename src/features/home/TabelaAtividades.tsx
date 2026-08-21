@@ -83,7 +83,8 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
         // datas comparam como ISO — texto, mas ordena certo, e sem construir
         // um Date por linha a cada clique de ordenação
         case "recebido": return a.criadoEm;
-        case "prazo": return a.prazoLimite ?? "";
+        // mesma fonte da célula: a visita ordena pela data agendada
+        case "prazo": return a.prazoLimite ?? a.agendadaEm ?? "";
         default: return "";
       }
     };
@@ -118,9 +119,16 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
   if (atividades.length === 0) return null;
 
   return (
-    // o envelope que rola de lado — a página nunca rola junto
+    // O envelope que rola de lado — a página nunca rola junto.
+    //
+    // `overflowY: "clip"` e NÃO `"visible"`: com `overflow-x: auto`, o CSS
+    // resolve um `overflow-y: visible` para `auto`, e isso cria um contêiner
+    // de rolagem de altura automática. O cabeçalho `sticky` passa a grudar
+    // NESSE contêiner — que nunca rola verticalmente —, então ele não gruda
+    // em nada quando a página desce. `clip` não cria contêiner de rolagem e
+    // deixa o sticky se prender à página, que é o que se quer.
     <div style={{
-      overflowX: "auto", overflowY: "visible",
+      overflowX: "auto", overflowY: "clip",
       border: `1px solid ${linhaCor}`, borderRadius: 14,
       background: superficie,
     }}>
@@ -159,9 +167,22 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
           {linhas.map((a) => {
             const apoios = apoiosDe(a);
             return (
+              // A linha é operável por TECLADO. Ela substituiu um
+              // `CardAtividade`, que era um `<button>` e portanto focável;
+              // um `<tr onClick>` não entra na ordem de tabulação, e quem
+              // navega sem mouse perderia o acesso a todas as atividades.
               <tr
                 key={a.id}
                 onClick={() => aoAbrir(a)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    aoAbrir(a);
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`Abrir ${a.titulo}`}
                 className="linha-tabela"
                 style={{ cursor: "pointer" }}
               >
@@ -236,14 +257,19 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                   {dataCurta(a.criadoEm)}
                 </td>
 
+                {/* PRAZO. A visita não tem `prazoLimite` — o relógio dela é a
+                    data agendada —, mas TEM `prazoEstourado` (visita marcada
+                    que passou da hora). Colorir pelo atraso sem olhar se há
+                    data pintava um traço de vermelho-negrito: alarme sobre
+                    nada. Aqui a data manda no que é exibido, e o atraso só
+                    colore o que existe; a visita mostra a data agendada, que
+                    é o prazo dela de verdade. */}
                 <td style={{
                   ...td, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums",
-                  // atrasado em vermelho: a coluna de prazo é a que se varre
-                  // procurando problema, e a cor economiza a leitura
-                  color: a.prazoEstourado ? vermelho : textSecondary,
-                  fontWeight: a.prazoEstourado ? 600 : 400,
+                  color: a.prazoEstourado && (a.prazoLimite || a.agendadaEm) ? vermelho : textSecondary,
+                  fontWeight: a.prazoEstourado && (a.prazoLimite || a.agendadaEm) ? 600 : 400,
                 }}>
-                  {dataCurta(a.prazoLimite)}
+                  {dataCurta(a.prazoLimite ?? a.agendadaEm)}
                 </td>
               </tr>
             );

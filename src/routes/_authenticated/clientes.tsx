@@ -31,7 +31,12 @@ import {
   useClientes,
   SITUACAO_LABEL,
   SITUACAO_CORES,
+  SERVICO_ORDEM,
+  SERVICO_LABEL,
+  SERVICO_CORES,
+  temServico,
   type SituacaoCliente,
+  type ServicoCliente,
 } from "@/features/clientes/data";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
@@ -62,6 +67,10 @@ function ClientesPage() {
   const { data: clientes = [], isLoading } = useClientes();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Serviço é outra DIMENSÃO, não outro valor do mesmo filtro: um cliente é
+  // ativo E tem portaria remota. Juntar tudo num seletor só obrigaria a
+  // escolher entre "ver os ativos" e "ver os de portaria" (R41).
+  const [servico, setServico] = useState<"todos" | ServicoCliente>("todos");
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -74,22 +83,37 @@ function ClientesPage() {
     const termo = norm(busca.trim());
     return clientes.filter((c) => {
       if (filtro !== "todos" && c.situacao !== filtro) return false;
+      if (servico !== "todos" && !temServico(c, servico)) return false;
       if (!termo) return true;
       const alvo = norm(
         `${c.nome} ${c.endereco ?? ""} ${c.cidade ?? ""} ${c.posto_servico ?? ""} ${c.nome_sindico ?? ""}`,
       );
       return alvo.includes(termo);
     });
-  }, [clientes, busca, filtro]);
+  }, [clientes, busca, filtro, servico]);
 
-  const contagem = useMemo(
-    () => ({
-      todos: clientes.length,
-      ativo: clientes.filter((c) => c.situacao === "ativo").length,
-      inativo: clientes.filter((c) => c.situacao === "inativo").length,
-    }),
-    [clientes],
-  );
+  /**
+   * As contagens dos chips de SITUAÇÃO respeitam o filtro de serviço, e
+   * vice-versa. Sem isso o chip diria "Ativos · 192" enquanto a lista
+   * filtrada por portaria mostra 29 — e o número viraria uma promessa que a
+   * tela não cumpre.
+   */
+  const contagem = useMemo(() => {
+    const porServico = servico === "todos"
+      ? clientes
+      : clientes.filter((c) => temServico(c, servico));
+    const porSituacao = filtro === "todos"
+      ? clientes
+      : clientes.filter((c) => c.situacao === filtro);
+    return {
+      todos: porServico.length,
+      ativo: porServico.filter((c) => c.situacao === "ativo").length,
+      inativo: porServico.filter((c) => c.situacao === "inativo").length,
+      servicoTodos: porSituacao.length,
+      portaria_remota: porSituacao.filter((c) => temServico(c, "portaria_remota")).length,
+      monitoramento_alarmes: porSituacao.filter((c) => temServico(c, "monitoramento_alarmes")).length,
+    };
+  }, [clientes, filtro, servico]);
 
   const semEndereco = clientes.filter((c) => !c.endereco).length;
 
@@ -159,6 +183,26 @@ function ClientesPage() {
           ] as [Filtro, string][]).map(([valor, rotulo]) => (
             <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
               {rotulo}
+            </button>
+          ))}
+        </div>
+        {/* SERVIÇO PRESTADO (R41) — segunda linha de chips, com separador
+            visual: são dois eixos que se combinam, e emendá-los na mesma
+            fileira faria parecer que só um pode estar ativo. */}
+        <div className="trilho-x" style={{ display: "flex", gap: 8, flexBasis: "100%", minWidth: 0 }}>
+          <span style={{
+            fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: textSecondary,
+            alignSelf: "center", flexShrink: 0, paddingRight: 2,
+          }}>
+            Serviço
+          </span>
+          <button style={chipFiltro(servico === "todos")} onClick={() => setServico("todos")}>
+            {`Todos · ${contagem.servicoTodos}`}
+          </button>
+          {SERVICO_ORDEM.map((s) => (
+            <button key={s} style={chipFiltro(servico === s)} onClick={() => setServico(s)}>
+              {`${SERVICO_LABEL[s]} · ${contagem[s]}`}
             </button>
           ))}
         </div>
@@ -237,6 +281,21 @@ function ClientesPage() {
                       }}>
                         {SITUACAO_LABEL[c.situacao] ?? c.situacao}
                       </span>
+                      {/* SERVIÇOS (R41) — na linha, não só no filtro: filtro
+                          responde "quem tem?", a etiqueta responde "o que tem
+                          este?", e é a segunda que se pergunta olhando um
+                          cliente específico. */}
+                      {SERVICO_ORDEM.filter((s) => temServico(c, s)).map((s) => (
+                        <span key={s} style={{
+                          padding: "2px 8px", borderRadius: 999,
+                          background: SERVICO_CORES[s].bg,
+                          color: isLight ? SERVICO_CORES[s].light : SERVICO_CORES[s].dark,
+                          fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                          letterSpacing: "0.07em", textTransform: "uppercase",
+                        }}>
+                          {SERVICO_LABEL[s]}
+                        </span>
+                      ))}
                       {c.cidade && c.cidade !== "São Paulo" && (
                         <span style={{
                           padding: "2px 8px", borderRadius: 999,

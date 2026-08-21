@@ -29,10 +29,39 @@ export const SITUACAO_CORES: Record<SituacaoCliente, { dark: string; light: stri
   inativo: PRISMA.neutro,
 };
 
+/**
+ * O que a Prever presta em cada cliente (R41, U36).
+ *
+ * É um CONJUNTO, não uma escolha: o mesmo condomínio pode ter portaria remota
+ * e monitoramento de alarmes. Guardar um só forçaria uma escolha falsa no
+ * cadastro e faria o cliente sumir do filtro do outro serviço.
+ */
+export type ServicoCliente = "portaria_remota" | "monitoramento_alarmes";
+
+export const SERVICO_ORDEM: ServicoCliente[] = ["portaria_remota", "monitoramento_alarmes"];
+
+export const SERVICO_LABEL: Record<ServicoCliente, string> = {
+  portaria_remota: "Portaria Remota",
+  monitoramento_alarmes: "Monitoramento de Alarmes",
+};
+
+/** Cores do PRISMA — dois serviços, dois tons distinguíveis no claro e no escuro. */
+export const SERVICO_CORES: Record<ServicoCliente, { dark: string; light: string; bg: string; border: string }> = {
+  portaria_remota: PRISMA.azulClaro,
+  monitoramento_alarmes: PRISMA.laranja,
+};
+
+/** true quando o cliente presta aquele serviço. Tolera a coluna ausente. */
+export function temServico(c: { servicos_prestados?: string[] | null }, s: ServicoCliente): boolean {
+  return (c.servicos_prestados ?? []).includes(s);
+}
+
 export interface Cliente {
   id: string;
   nome: string;
   nome_predio: string | null;
+  /** U36: conjunto de serviços prestados. Vazio = nenhum registrado ainda. */
+  servicos_prestados: string[] | null;
   tipo_local: string | null;
   tipo_empreendimento: string | null;
   /** CNPJ/CPF — chave do financeiro e do de-para com o QAP (Etapa U0). */
@@ -70,7 +99,7 @@ const CAMPOS =
   "id, nome, nome_predio, tipo_local, tipo_empreendimento, endereco, complemento, cep, cidade, uf, posto_servico, latitude, longitude, " +
   "email, telefone, nome_sindico, telefone_sindico, email_sindico, nome_zelador, telefone_zelador, " +
   "email_zelador, foto_fachada_url, qtd_apartamentos, qtd_acessos, observacoes, situacao, created_at, " +
-  "documento, responsavel_financeiro, email_financeiro, qap_cliente_id";
+  "documento, responsavel_financeiro, email_financeiro, qap_cliente_id, servicos_prestados";
 
 export async function fetchClientes(): Promise<Cliente[]> {
   const { data, error } = await supabase

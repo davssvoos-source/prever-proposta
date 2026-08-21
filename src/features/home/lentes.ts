@@ -235,6 +235,50 @@ export function aplicarLentes(
   });
 }
 
+/**
+ * O recorte dos PAINÉIS DO TOPO — só as dimensões de QUEM e O QUÊ, nunca as
+ * de QUANDO ou de ESTADO.
+ *
+ * ── POR QUE ELE EXISTE (defeito real, pego em revisão antes de rodar) ──
+ *
+ * A primeira versão dos painéis dinâmicos usava `aplicarLentes` com
+ * `periodo: null` e mais nada trocado. Parecia certo e estava errado: o
+ * filtro que abre a tela é `situacao: "abertos"`, e `aplicarLentes` corta
+ * `!a.emAberto` na primeira linha. Como `encerradoEm` só é preenchido em
+ * atividade encerrada, o conjunto que chegava aos painéis **nunca continha um
+ * encerrado**. As quatro barras do passado ficavam em zero, a rosca da meta
+ * travava em 0% e o indicador "Concluídas no mês" mostrava 0 — para todo
+ * mundo, no primeiro acesso, sem ninguém tocar em filtro. Antes da mudança
+ * esses três números vinham de consulta própria e mostravam a verdade.
+ *
+ * E não adianta trocar `situacao` por outro valor: o gráfico é um eixo de
+ * tempo com metade passado e metade futuro. O passado precisa dos ENCERRADOS
+ * (`encerradoEm`), o futuro precisa dos ABERTOS com prazo. Qualquer recorte
+ * por estado apaga uma das duas metades. Cada barra já se recorta sozinha.
+ *
+ * O PRESET cai pela mesma razão: sete dos oito começam com `a.emAberto &&`, e
+ * `meu_dia` — o padrão do técnico, aplicado sozinho na primeira carga — ainda
+ * recorta por dia. Mas o VÍNCULO dele fica: é o que mantém "Tudo meu"
+ * significando "meu" também no painel.
+ */
+export function recorteDosPaineis(
+  lista: Atividade[],
+  f: Filtros,
+  normalizar: (s: string) => string,
+): Atividade[] {
+  const preset = f.preset ? PRESETS.find((p) => p.chave === f.preset) ?? null : null;
+  const termo = normalizar(f.busca.trim());
+  // mesma precedência de `aplicarLentes`: a escolha da pessoa vence a do preset
+  const vinculos = f.vinculos.length ? f.vinculos : (preset?.vinculo ?? []);
+
+  return lista.filter((a) => {
+    if (!casaVinculo(a, vinculos)) return false;
+    if (f.pessoa !== "todos" && a.responsavelId !== f.pessoa) return false;
+    if (!termo) return true;
+    return normalizar(`${a.numero ?? ""} ${a.titulo} ${a.cliente ?? ""}`).includes(termo);
+  });
+}
+
 export function ordenar(lista: Atividade[], modo: Ordenacao): Atividade[] {
   const l = [...lista];
   switch (modo) {

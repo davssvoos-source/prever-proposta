@@ -2346,3 +2346,64 @@ mudado no trabalho. Daí `SPRINTS_DO_MES`, com asserção nos quatro casos.
 
 586 asserções (32 novas, incluindo teste de unidade de `sprintDoPrazo` em nove
 datas), build ok.
+
+### U36 — Serviço prestado por cliente (R41, 2026-08-22)
+
+Propriedade nova em `clientes`, conjunto de dois valores: portaria remota e
+monitoramento de alarmes. **Array e não coluna única** porque um condomínio
+pode ter os dois — guardar um só forçaria escolha falsa no cadastro e sumiria
+o cliente do filtro do outro serviço.
+
+**Os 29 da lista foram casados por CNPJ**, e isso não é preciosismo: medido
+antes de escrever, **quatro deles têm nome diferente na base do QAP** — "Villa
+Lagos" é *Vila Lagos*, "Estoril" é *Estoril Sol*, "Manhattans Home" é
+*Manhattans*, "Eurico Gaspar Dutra" é *Gaspar Dutra*. Casar por nome perderia
+os quatro em silêncio. 28 casam por documento, 1 por nome (Las Vegas, que veio
+sem CNPJ). A migration tem pré-voo listando quem não casar.
+
+Na tela, **serviço é eixo independente da situação**: os dois filtros se
+compõem, e a contagem de cada um respeita o outro — chip que promete 192 e
+entrega 29 é chip que mente. O serviço aparece como etiqueta na linha e se
+liga/desliga na página do cliente (sem isso a propriedade ficaria congelada
+nos 29 da migration).
+
+### Revisão adversarial da U33 — o que ela pegou (2026-08-22)
+
+Rodei uma revisão de seis lentes com julgamento por três céticos cada. Ela
+encontrou **um defeito crítico que eu tinha acabado de introduzir** e três
+médios, além de um bug anterior.
+
+**O crítico: os painéis do topo zeravam para todo mundo.** `paraPaineis`
+chamava `aplicarLentes` trocando só `periodo: null` — mas o filtro que abre a
+tela é `situacao: "abertos"`, e `aplicarLentes` corta `!emAberto` na primeira
+linha. Como `encerradoEm` só existe em atividade encerrada, o conjunto que
+chegava aos painéis **nunca continha um encerrado**: quatro barras do passado
+em zero, rosca da meta em 0%, "Concluídas no mês" em 0 — no primeiro acesso,
+sem ninguém tocar em nada. Antes da U33 esses números vinham de consulta
+própria e mostravam a verdade; eu tinha trocado dado certo por dado zerado.
+
+E o achado é mais afiado do que eu teria chegado sozinho: **nenhum valor de
+`situacao` conserta**, porque o gráfico tem passado e futuro na mesma imagem —
+o passado precisa dos encerrados, o futuro dos abertos. O mesmo vale para os
+presets: sete dos oito exigem `emAberto`, e `meu_dia` é o padrão do técnico.
+
+A saída foi `recorteDosPaineis`, que aplica só as dimensões de QUEM e O QUÊ
+(pessoa, vínculo, busca) e nenhuma de QUANDO ou ESTADO. E a asserção que
+faltava passou a existir: o teste percorre o **caminho completo**, de
+`FILTROS_INICIAIS` até o número pintado — testar as peças isoladas não pegava
+nada, porque cada peça estava certa e o erro morava na junção.
+
+**O bug anterior: a proposta contava dobrado.** Desde a U29 toda visita tem um
+chamado-capa com o mesmo id no banco, mas as Atividades saem com ids
+diferentes (`vis-x` e `ch-x`) — nenhuma dedup os junta. A proposta aparecia
+**duas vezes no quadro** e contava duas vezes na barra. A Home e o histórico
+passaram a excluir `natureza = 'comercial'`: a proposta continua no Kanban
+pela visita, que é a versão rica e que desde a U29 já traz o número CH-.
+
+Os outros três, todos na tabela nova: o cabeçalho `sticky` não grudava
+(`overflow-x: auto` com `overflow-y: visible` resolve para `auto` e cria um
+contêiner de rolagem que nunca rola); a linha não era operável por teclado
+(substituiu um `<button>`); e a coluna Prazo pintava vermelho-negrito sobre um
+traço nas visitas, que não têm `prazoLimite` mas têm `prazoEstourado`.
+
+624 asserções, build ok.

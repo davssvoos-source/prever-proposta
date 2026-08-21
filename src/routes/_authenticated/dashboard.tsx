@@ -39,7 +39,7 @@ import { usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime, atualiz
 import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
-  aplicarLentes, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
+  aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
   semData, FILTROS_INICIAIS, type Filtros, type Vinculo, type Periodo,
 } from "@/features/home/lentes";
 import { CardAtividade } from "@/features/home/CardAtividade";
@@ -158,18 +158,14 @@ function Home() {
   /**
    * O conjunto que alimenta os painéis do topo (U33).
    *
-   * Duas diferenças em relação a `filtradas`, e as duas são deliberadas:
+   * INCLUI O HISTÓRICO: o quadro poda encerrados com mais de 7 dias — é fila
+   * de trabalho, não arquivo. Mas "concluídos por semana" precisa de quatro
+   * semanas e "concluídas no mês" precisa do mês inteiro.
    *
-   * 1. INCLUI O HISTÓRICO. O quadro poda encerrados com mais de 7 dias — é
-   *    fila de trabalho, não arquivo. Mas "concluídos por semana" precisa de
-   *    quatro semanas e "concluídas no mês" precisa do mês; com só 7 dias, as
-   *    barras do passado seriam sempre menores que a verdade.
-   *
-   * 2. IGNORA O FILTRO DE PERÍODO. O gráfico JÁ É um eixo de tempo — oito
-   *    semanas. Aplicar "hoje" nele deixaria uma barra em pé e sete zeradas,
-   *    respondendo a pergunta errada. Os outros filtros (pessoa, vínculo,
-   *    situação, busca, preset) valem todos: filtrar por Erik mostra as barras
-   *    do Erik, que é exatamente o que o Davi pediu.
+   * E usa `recorteDosPaineis`, não `aplicarLentes` — o porquê está lá, e é um
+   * defeito que quase foi ao ar: qualquer recorte por ESTADO ou por PERÍODO
+   * apaga uma das duas metades do gráfico, que fala de passado e futuro ao
+   * mesmo tempo. Valem só pessoa, vínculo e busca.
    */
   const paraPaineis = useMemo(() => {
     const vistos = new Set<string>();
@@ -180,8 +176,8 @@ function Home() {
       vistos.add(a.id);
       uniao.push(a);
     }
-    return aplicarLentes(uniao, { ...filtros, periodo: null }, ctx, normalizarTexto);
-  }, [atividades, historico, filtros, ctx]);
+    return recorteDosPaineis(uniao, filtros, normalizarTexto);
+  }, [atividades, historico, filtros]);
   // O banner precisa contar a MESMA população que o toque nele abre. Contando
   // o array cru, o técnico lia "41 atividades hoje", tocava, e caía numa lista
   // de 1 — porque o preset "Meu dia" recorta por responsável e apoio.
