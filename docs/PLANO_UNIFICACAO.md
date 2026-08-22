@@ -3373,3 +3373,97 @@ compor), movimento, os dados (recorteDosPaineis: QUEM, nunca QUANDO) e o
 checklist de 10 passos para o próximo dashboard.
 
 1087 asserções (22 novas), build ok.
+
+### U55 — Painel Operacional vira dashboard (R66, 2026-08-22)
+
+"A partir do documento gerado [DASHBOARD.md], vamos alterar a página do
+painel operacional. Os 4 KPIs devem ficar em 2 colunas de 2. E aí eu quero
+que você una todos os indicadores de campo, o atual gráfico de linhas, forme
+gráficos de bons insights e monte esse dashboard na parte superior da tela.
+A tela deve listar os chamados técnicos, abaixo do dashboard."
+
+**A prova de que a receita generaliza.** O `DASHBOARD.md` da U54 tinha uma
+promessa embutida: "para que o PRÓXIMO dashboard nasça com exatamente a
+mesma estrutura, sem arqueologia no código". Esta é a primeira vez que a
+promessa é testada — e ela se sustentou sem precisar reabrir o documento:
+`card(isLight)` + `.elevavel`, PRISMA nos KPIs, `<button aria-pressed>` com
+anel na própria cor quando ativo, "Mostrando: … · limpar" acima da lista.
+Nada disso é específico da Início.
+
+**Os 4 KPIs saíram do `PainelBase`.** Antes, `numeros: NumeroPainel[]` ia
+para o componente compartilhado (Operacional/Comercial/Administrativo) e
+virava a fileira `.painel-numeros` (auto-fit, sem clique). Trocar ISSO por
+um grid 2×2 clicável só para o Operacional exigiria uma prop nova no
+componente dos três painéis, ou o Operacional passar a montar seu próprio
+grid por fora. Escolhi a segunda: `numeros={[]}` (o `PainelBase` já esconde
+a seção inteira quando a lista está vazia — não precisou tocar no
+componente) e um grid bespoke dentro do próprio `painel.operacional.tsx`,
+no mesmo espírito do `PainelKpis` da Início mas para `Chamado[]`, não
+`Atividade[]`. Os dois domínios são tipos diferentes; extrair um componente
+genérico agora seria abstração para um caso só — se o Administrativo pedir
+o mesmo grid um dia, aí sim vale generalizar.
+
+**A ordem do 2×2 não é a ordem antiga.** A fileira de 4-em-linha lia
+"Abertos, Sem responsável, Prazo estourado, Urgentes". No grid 2×2 isso
+deixaria vermelho (mais grave) ANTES de laranja (menos grave) na leitura de
+cima para baixo — quebra a rampa de severidade que o `DASHBOARD.md` §5
+documenta (azul→amarelo→laranja→vermelho). A ordem virou "Abertos, Sem
+responsável, Urgentes, Prazo estourado": top-left é o mais frio, bottom-
+right é o que arde — a MESMA leitura da Início, célula por célula.
+
+**`chamadosDoKpi()` — a invariante chega no Painel Operacional.** Até aqui,
+`calcularIndicadores()` calculava `abertos`/`atrasados`/`semResponsavel`/
+`urgentes` com filtros escritos ali mesmo, sem nenhuma outra peça da tela
+lendo o mesmo predicado — não havia o que discordar, porque não havia uma
+segunda leitura. Agora existe: o clique no KPI precisa abrir exatamente a
+mesma lista que o número anuncia. Em vez de escrever esse filtro de novo,
+`chamadosDoKpi(chave, chamados, agora)` virou a ÚNICA implementação, e
+`calcularIndicadores()` foi reescrita para CHAMÁ-LA — não para duplicá-la.
+As asserções CRÍTICO comparam os 4 pares diretamente.
+
+**Por que a lista abaixo tem um padrão, não "tudo".** `chamados` (natureza
+campo) tem TODO histórico, aberto e fechado. Uma lista de "todos os
+chamados de campo desde sempre" embaixo do dashboard seria uma segunda
+central de histórico competindo com o Painel de chamados — e a pergunta que
+esta tela responde é operacional ("o que precisa de mim agora"), não
+arquivística. O padrão é `chamadosDoKpi("abertos", …)`, e como os outros 3
+KPIs são subconjuntos de "abertos" por construção, clicar neles ESTREITA a
+lista em vez de trocar de universo — nunca há um KPI cujo clique amplie a
+lista para fora do que a tela já mostra. Um link "Ver todos os chamados →"
+leva ao Painel de chamados para quem quer o histórico completo.
+
+**Os gráficos que valeram a pena, e os que não.** Fluxo do mês (Entraram ×
+Concluídos) e Reincidência (cliente × retornos) já eram pares
+categoria→número — virar barra horizontal foi direto, mesmo vocabulário de
+"Em aberto por técnico". Backlog ganhou uma conta NOVA
+(`idadePorFaixa()`): em vez de só "idade típica" (mediana) e "mais antigo"
+(máximo), um histograma de 4 faixas (0–7/8–15/16–30/31+ dias) mostra ONDE a
+fila está concentrada — dois backlogs com a mesma mediana podem ter formas
+opostas (uma cauda longa de 3 chamados muito velhos, ou 20 chamados
+igualmente de 20 dias), e só o histograma distingue os dois casos.
+
+Ritmo (até começar/executando) e Cumprimento de prazo **ficaram como
+estavam** — o segundo já tinha barra de progresso, o primeiro é literalmente
+2 números medianos sem uma distribuição barata para desenhar. "Forme
+gráficos de bons insights" não é "troque todo número por um gráfico": um
+gráfico de uma barra só não é mais insight que o número, é o número com
+mais peso visual e menos densidade de informação por pixel.
+
+**A ordem da lista** (`ordenarChamados`) não é a ordem de chegada
+(`created_at DESC`, como a consulta devolve) — é atrasado primeiro (o mais
+velho atraso na frente, por ser o que mais precisa de ação), depois próximo
+do prazo, depois no prazo, e sem prazo por ÚLTIMO (não tem urgência para
+anunciar, então não empurra quem tem).
+
+**Um `agora` só por render.** `calcularIndicadores`, os 4 KPIs,
+`idadePorFaixa` e `ordenarChamados` são chamados várias vezes no mesmo
+componente; sem um `agora` compartilhado (`useMemo(() => new Date(),
+[chamados])`), cada chamada pegaria seu próprio `new Date()` — e um chamado
+no limite exato do prazo poderia, em teoria, contar de um jeito num quadrado
+e de outro na lista. Baixíssima chance na prática, mas a garantia "quem
+conta é quem filtra" perde força se ela só vale a maior parte do tempo.
+
+1113 asserções (26 novas), build ok. TypeScript sem erro novo (os 85 erros
+pré-existentes de `types.ts` desatualizado, em outros arquivos, seguem os
+mesmos). Não verificado em navegador nesta rodada — sem ferramenta de
+browser disponível na sessão; Davi, dá uma olhada na tela quando puder.

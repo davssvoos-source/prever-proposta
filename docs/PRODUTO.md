@@ -972,3 +972,34 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(Davi, 2026-08-22: "tudo do dashboard deve ser dinâmico... crie este
   documento estrutural para no futuro facilmente criarmos outros
   dashboards".)*
+
+- **R66** — O **Painel Operacional virou um dashboard de verdade**, seguindo
+  a receita do `docs/DASHBOARD.md` (R65). Os 4 KPIs saíram da fileira de 4
+  em linha (herdada do `PainelBase`) para um **grid 2×2**, agora clicáveis:
+  cada quadrado é um `<button aria-pressed>` na rampa PRISMA
+  (azul→amarelo→laranja→vermelho, a ordem de severidade), e clicar nele
+  **filtra a lista de chamados abaixo** — a mesma garantia "quem conta é
+  quem filtra" da Início (R60/R65), aqui em `chamadosDoKpi()`.
+
+  Os indicadores que eram números soltos **viraram gráficos**: Fluxo do mês
+  (Entraram × Concluídos) é barra horizontal; Backlog é **histograma por
+  faixa de idade** (0–7 / 8–15 / 16–30 / 31+ dias) em vez de só "idade
+  típica" e "mais antigo"; Reincidência é barra horizontal por cliente em
+  vez de lista. Fila por status (rosca), Em aberto por técnico (barra) e
+  Atividades por dupla (linha) continuam como estavam. Ritmo (até
+  começar/executando) e Cumprimento de prazo continuam como cards — forçar
+  gráfico onde o dado é só 1–2 números não cria leitura nova, só ruído.
+
+  **Abaixo do dashboard, uma tela nova**: a lista dos chamados técnicos em
+  si — não só os números deles. Padrão é "em aberto" (o foco operacional
+  desta tela; histórico fechado é o Painel de chamados); a faixa
+  "Mostrando: … · limpar" sempre anuncia o recorte, e um KPI ativo estreita
+  dentro do conjunto em aberto (os 4 são subconjuntos dele, por construção).
+  Cada linha mostra status, número, título, cliente, responsável e prazo, e
+  abre o chamado ao clicar — ordenada por urgência (atrasado mais velho
+  primeiro, sem prazo por último), até 50 linhas, com atalho para o Painel
+  de chamados quando o histórico completo é o que se quer.
+  *(Davi, 2026-08-22: "Os 4 KPIs devem ficar em 2 colunas de 2... una todos
+  os indicadores de campo, o atual gráfico de linhas, forme gráficos de bons
+  insights e monte esse dashboard na parte superior da tela. A tela deve
+  listar os chamados técnicos, abaixo do dashboard.")*

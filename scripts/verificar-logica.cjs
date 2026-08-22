@@ -3693,5 +3693,122 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R65 está documentado', /\*\*R65\*\*/.test(produto11), true);
 }
 
+// ── R66: Painel Operacional vira dashboard (2×2, gráficos, lista) ──────────
+{
+  const fs37 = require('fs');
+  const IND2 = carregar('src/features/paineis/indicadores.ts');
+  const op2 = fs37.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+
+  const ch = (overrides) => ({
+    id: 'c-' + Math.random(),
+    status: 'aberto', tipo: 'corretiva', prioridade: 'normal',
+    cliente_id: null, responsavel_id: 'tec-1', prazo_limite: null,
+    created_at: '2026-08-20T10:00:00Z', natureza: 'campo',
+    ...overrides,
+  });
+
+  // ── naturezaCampo / abertosDeCampo: a base que tudo compartilha ─────────
+  eq('naturezaCampo tira só a comercial',
+     IND2.naturezaCampo([ch({ natureza: 'campo' }), ch({ natureza: 'comercial' }), ch({ natureza: 'interno' })]).length,
+     2);
+  eq('abertosDeCampo: só campo E em aberto',
+     IND2.abertosDeCampo([
+       ch({ status: 'aberto' }), ch({ status: 'concluido' }), ch({ natureza: 'comercial', status: 'aberto' }),
+     ]).length, 1);
+
+  // ── chamadosDoKpi: o que cada quadrado conta ─────────────────────────────
+  {
+    const agoraK = new Date('2026-08-22T12:00:00Z');
+    const lote = [
+      ch({ id: 'a', responsavel_id: null, prioridade: 'normal', prazo_limite: null }),
+      ch({ id: 'b', responsavel_id: 'tec-1', prioridade: 'urgente', prazo_limite: null }),
+      ch({ id: 'c', responsavel_id: 'tec-1', prioridade: 'normal', prazo_limite: '2026-08-01T10:00:00Z' }),
+      ch({ id: 'd', status: 'concluido' }),
+    ];
+    eq('chamadosDoKpi abertos: os 3 em aberto — o concluído fica de fora',
+       IND2.chamadosDoKpi('abertos', lote, agoraK).map((x) => x.id).sort(), ['a', 'b', 'c']);
+    eq('chamadosDoKpi sem_responsavel: só quem não tem responsável',
+       IND2.chamadosDoKpi('sem_responsavel', lote, agoraK).map((x) => x.id), ['a']);
+    eq('chamadosDoKpi urgentes: só a prioridade urgente',
+       IND2.chamadosDoKpi('urgentes', lote, agoraK).map((x) => x.id), ['b']);
+    eq('chamadosDoKpi atrasados: só o prazo no passado',
+       IND2.chamadosDoKpi('atrasados', lote, agoraK).map((x) => x.id), ['c']);
+
+    // ── CRÍTICO: os 4 quadrados de KPI e a lista que abrem contam da MESMA função ──
+    const indK = IND2.calcularIndicadores(lote, agoraK);
+    eq('CRÍTICO: ind.abertos === chamadosDoKpi("abertos").length',
+       indK.abertos, IND2.chamadosDoKpi('abertos', lote, agoraK).length);
+    eq('CRÍTICO: ind.semResponsavel === chamadosDoKpi("sem_responsavel").length',
+       indK.semResponsavel, IND2.chamadosDoKpi('sem_responsavel', lote, agoraK).length);
+    eq('CRÍTICO: ind.urgentes === chamadosDoKpi("urgentes").length',
+       indK.urgentes, IND2.chamadosDoKpi('urgentes', lote, agoraK).length);
+    eq('CRÍTICO: ind.atrasados === chamadosDoKpi("atrasados").length',
+       indK.atrasados, IND2.chamadosDoKpi('atrasados', lote, agoraK).length);
+  }
+
+  eq('a ordem de leitura do 2×2 é azul→amarelo→laranja→vermelho (a rampa de severidade do PRISMA)',
+     IND2.KPI_OPERACIONAL_ORDEM, ['abertos', 'sem_responsavel', 'urgentes', 'atrasados']);
+
+  // ── idadePorFaixa: o histograma do backlog ───────────────────────────────
+  {
+    const agoraI = new Date('2026-08-22T00:00:00Z');
+    const dias = (n) => new Date(agoraI.getTime() - n * 86400000).toISOString();
+    const lote = [
+      ch({ id: '1', created_at: dias(2) }), ch({ id: '2', created_at: dias(7) }),
+      ch({ id: '3', created_at: dias(8) }), ch({ id: '4', created_at: dias(15) }),
+      ch({ id: '5', created_at: dias(16) }), ch({ id: '6', created_at: dias(30) }),
+      ch({ id: '7', created_at: dias(31) }),
+      ch({ id: '8', status: 'concluido', created_at: dias(90) }),   // fechado: fora do histograma
+    ];
+    eq('idadePorFaixa: as 4 faixas na ordem, cobrindo só os 7 em aberto (o fechado não entra)',
+       IND2.idadePorFaixa(lote, agoraI),
+       [{ faixa: '0-7', total: 2 }, { faixa: '8-15', total: 2 }, { faixa: '16-30', total: 2 }, { faixa: '31+', total: 1 }]);
+  }
+
+  // ── ordenarChamados: atrasado (mais velho primeiro) → próximo → no prazo → sem prazo ──
+  {
+    const agoraO = new Date('2026-08-22T12:00:00Z');
+    const lote = [
+      ch({ id: 'sem-prazo', prazo_limite: null }),
+      ch({ id: 'atrasado-2d', prazo_limite: '2026-08-20T12:00:00Z' }),
+      ch({ id: 'no-prazo-longe', prazo_limite: '2026-09-15T12:00:00Z' }),
+      ch({ id: 'atrasado-5d', prazo_limite: '2026-08-17T12:00:00Z' }),
+      ch({ id: 'proximo', prazo_limite: '2026-08-23T06:00:00Z' }),
+    ];
+    eq('ordenarChamados: atrasado mais velho primeiro, sem prazo por último',
+       IND2.ordenarChamados(lote, agoraO).map((c) => c.id),
+       ['atrasado-5d', 'atrasado-2d', 'proximo', 'no-prazo-longe', 'sem-prazo']);
+  }
+
+  // ── a página: 2×2, gráficos no lugar de números soltos, lista nova ──────
+  eq('os 4 KPIs viraram grid 2×2 (não mais o painel-numeros de 4-em-linha herdado do PainelBase)',
+     /gridTemplateColumns: "1fr 1fr", gap: 12 \}\}>\s*\n\s*\{kpis\.map/.test(op2), true);
+  eq('o painel não usa mais o `numeros` genérico do PainelBase — os KPIs agora são bespoke, clicáveis',
+     /numeros=\{\[\]\}/.test(op2), true);
+  eq('cada quadrado de KPI é <button aria-pressed> — a mesma linguagem de clique da Início',
+     /aria-pressed=\{selecionado\}/.test(op2) && /className="elevavel kpi-tile ruido"/.test(op2), true);
+  eq('clicar no quadrado ativo desliga (toggle), como os KPIs da Início',
+     /onClick=\{\(\) => setKpiAtivo\(selecionado \? null : k\.chave\)\}/.test(op2), true);
+  eq('Fluxo do mês virou gráfico de barras (Entraram/Concluídos), não só 3 números soltos',
+     /Fluxo do mês[\s\S]{0,700}<BarChart data=\{fluxoDados\}/.test(op2), true);
+  eq('Backlog virou histograma por faixa de idade',
+     /Backlog por idade[\s\S]{0,700}<BarChart data=\{backlogDados\}/.test(op2), true);
+  eq('Reincidência virou barra horizontal quando há dado (lista só no vazio)',
+     /Reincidência[\s\S]{0,600}<BarChart data=\{reincidenciaComNome\.slice\(0, 8\)\}/.test(op2), true);
+  eq('a lista de chamados técnicos é NOVA (R66) — não existia nesta tela antes',
+     /Chamados técnicos/.test(op2) && /Ver todos os chamados →/.test(op2), true);
+  eq('a lista tem a faixa "Mostrando: …" sempre visível, como a Início pede',
+     /Mostrando: <strong/.test(op2), true);
+  eq('clicar num KPI estreita a lista dentro dela (chamadosDoKpi(kpiAtivo ?? "abertos", …))',
+     /chamadosDoKpi\(kpiAtivo \?\? "abertos", chamados, agora\)/.test(op2), true);
+  eq('a linha da lista abre o chamado (mesma rota que o resto do sistema usa)',
+     /to: "\/chamados\/\$id", params: \{ id: c\.id \}/.test(op2), true);
+  eq('um `agora` só por render — KPIs, indicadores, histograma e ordenação da lista concordam sobre o momento',
+     /const agora = useMemo\(\(\) => new Date\(\), \[chamados\]\);/.test(op2), true);
+
+  const produto12 = fs37.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R66 está documentado', /\*\*R66\*\*/.test(produto12), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

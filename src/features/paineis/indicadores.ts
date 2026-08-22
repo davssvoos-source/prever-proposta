@@ -90,17 +90,63 @@ const HORA = 3_600_000;
 /** Janela da reincidência: dois chamados do mesmo cliente dentro dela contam. */
 export const JANELA_REINCIDENCIA_DIAS = 30;
 
+// a proposta comercial (U29) NÃO entra: ela é funil, não trabalho de campo.
+// Misturar as duas faria "tempo médio de atendimento" somar negociação com
+// conserto — dois relógios diferentes no mesmo número.
+export function naturezaCampo<T extends ChamadoParaIndicador>(chamados: T[]): T[] {
+  return chamados.filter((c) => c.natureza !== "comercial");
+}
+
+/** Em aberto, só campo — a base que os indicadores E os quadrados de KPI compartilham. */
+export function abertosDeCampo<T extends ChamadoParaIndicador>(chamados: T[]): T[] {
+  return naturezaCampo(chamados).filter((c) => chamadoEmAberto(c.status));
+}
+
+export type ChaveKpiOperacional = "abertos" | "sem_responsavel" | "urgentes" | "atrasados";
+
+// A ordem de leitura do 2×2 (R66): azul → amarelo → laranja → vermelho, a
+// MESMA rampa de severidade do PRISMA (DASHBOARD.md §5) — top-left é o mais
+// frio, bottom-right é o que arde.
+export const KPI_OPERACIONAL_ORDEM: ChaveKpiOperacional[] =
+  ["abertos", "sem_responsavel", "urgentes", "atrasados"];
+
+export const KPI_OPERACIONAL_LABEL: Record<ChaveKpiOperacional, string> = {
+  abertos: "Chamados em aberto",
+  sem_responsavel: "Sem responsável",
+  urgentes: "Urgentes",
+  atrasados: "Prazo estourado",
+};
+
+/**
+ * O que cada quadrado de KPI conta — e a MESMA função que a lista de
+ * chamados usa quando um quadrado está filtrando (R66, o mesmo gesto da
+ * Início/R60: "quem conta é quem filtra"). `calcularIndicadores` chama esta
+ * função para os 4 números; não existe uma segunda cópia do predicado
+ * escondida ali — foi assim que um painel já disse um número com a lista
+ * mostrando outro.
+ */
+export function chamadosDoKpi<T extends ChamadoParaIndicador>(
+  chave: ChaveKpiOperacional,
+  chamados: T[],
+  agora: Date = new Date(),
+): T[] {
+  const abertos = abertosDeCampo(chamados);
+  switch (chave) {
+    case "abertos": return abertos;
+    case "sem_responsavel": return abertos.filter((c) => !c.responsavel_id);
+    case "urgentes": return abertos.filter((c) => c.prioridade === "urgente");
+    case "atrasados": return abertos.filter((c) => situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado");
+  }
+}
+
 export function calcularIndicadores(
   chamados: ChamadoParaIndicador[],
   agora: Date = new Date(),
 ): Indicadores {
-  // a proposta comercial (U29) NÃO entra: ela é funil, não trabalho de campo.
-  // Misturar as duas faria "tempo médio de atendimento" somar negociação com
-  // conserto — dois relógios diferentes no mesmo número.
-  const campo = chamados.filter((c) => c.natureza !== "comercial");
+  const campo = naturezaCampo(chamados);
 
   const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-  const abertos = campo.filter((c) => chamadoEmAberto(c.status));
+  const abertos = chamadosDoKpi("abertos", chamados, agora);
 
   const entradasMes = campo.filter((c) => new Date(c.created_at) >= inicioMes).length;
   const saidasMes = campo.filter(
@@ -161,11 +207,9 @@ export function calcularIndicadores(
 
   return {
     abertos: abertos.length,
-    atrasados: abertos.filter(
-      (c) => situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado",
-    ).length,
-    semResponsavel: abertos.filter((c) => !c.responsavel_id).length,
-    urgentes: abertos.filter((c) => c.prioridade === "urgente").length,
+    atrasados: chamadosDoKpi("atrasados", chamados, agora).length,
+    semResponsavel: chamadosDoKpi("sem_responsavel", chamados, agora).length,
+    urgentes: chamadosDoKpi("urgentes", chamados, agora).length,
     entradasMes,
     saidasMes,
     saldoMes: entradasMes - saidasMes,
@@ -183,6 +227,64 @@ export function calcularIndicadores(
     porStatus: Array.from(statusVistos, ([status, total]) => ({ status: status as ChamadoStatus, total }))
       .sort((a, b) => b.total - a.total),
   };
+}
+
+export type FaixaIdade = "0-7" | "8-15" | "16-30" | "31+";
+
+export const FAIXA_IDADE_ORDEM: FaixaIdade[] = ["0-7", "8-15", "16-30", "31+"];
+
+export const FAIXA_IDADE_LABEL: Record<FaixaIdade, string> = {
+  "0-7": "0–7 dias", "8-15": "8–15 dias", "16-30": "16–30 dias", "31+": "31+ dias",
+};
+
+function faixaDeIdade(dias: number): FaixaIdade {
+  if (dias <= 7) return "0-7";
+  if (dias <= 15) return "8-15";
+  if (dias <= 30) return "16-30";
+  return "31+";
+}
+
+/**
+ * O backlog em aberto, em 4 faixas de idade — o histograma que troca o card
+ * de 3 números (Backlog) por um gráfico de verdade (R66): a pergunta não é
+ * só "quantos passaram de 30 dias", é ONDE a fila está concentrada. Mesma
+ * base (`abertosDeCampo`) e mesma conta de idade que `idadeMediana`.
+ */
+export function idadePorFaixa(
+  chamados: ChamadoParaIndicador[],
+  agora: Date = new Date(),
+): { faixa: FaixaIdade; total: number }[] {
+  const contagem: Record<FaixaIdade, number> = { "0-7": 0, "8-15": 0, "16-30": 0, "31+": 0 };
+  for (const c of abertosDeCampo(chamados)) {
+    const dias = (agora.getTime() - new Date(c.created_at).getTime()) / DIA;
+    contagem[faixaDeIdade(dias)]++;
+  }
+  return FAIXA_IDADE_ORDEM.map((faixa) => ({ faixa, total: contagem[faixa] }));
+}
+
+/**
+ * A ordem da lista de chamados (R66): atrasado primeiro — é o que pede ação
+ * agora —, depois por prazo mais próximo. Sem prazo vai para o FIM, não
+ * para o início: não tem urgência para anunciar, então não empurra quem tem.
+ */
+export function ordenarChamados<T extends ChamadoParaIndicador>(
+  chamados: T[],
+  agora: Date = new Date(),
+): T[] {
+  const peso = (c: T) => {
+    const sit = situacaoPrazo(c.prazo_limite, c.status, agora);
+    if (sit === "estourado") return 0;
+    if (sit === "proximo") return 1;
+    if (sit === "no_prazo") return 2;
+    return 3; // sem_prazo / encerrado
+  };
+  return [...chamados].sort((a, b) => {
+    const diferenca = peso(a) - peso(b);
+    if (diferenca !== 0) return diferenca;
+    const da = a.prazo_limite ? new Date(a.prazo_limite).getTime() : Infinity;
+    const db = b.prazo_limite ? new Date(b.prazo_limite).getTime() : Infinity;
+    return da - db;
+  });
 }
 
 /** Horas em texto curto: 6h, 2d, 3d 4h — o painel não tem espaço para frase. */
