@@ -229,6 +229,39 @@ export function gradienteBarra(a: string, b: string, isLight: boolean): string {
     : `linear-gradient(90deg, ${a}, ${b})`;
 }
 
+/** Quantas peças a rampa pinta: 9 amostras servem 8 peças (i → i+1). */
+export const PECAS_ESPECTRO = 8;
+
+/**
+ * As paradas do degradê de UMA peça da rampa, para SVG (`<stop>`).
+ *
+ * É a irmã de `gradienteBarra` para quem pinta em SVG em vez de CSS: barra,
+ * fatia de rosca e linha do recharts recebem `fill`/`stroke: url(#id)`, e um
+ * `linear-gradient()` de CSS não vale ali. Sem esta função, um gráfico em
+ * SVG teria de reconstruir a rampa à mão — e a primeira coisa que se esquece
+ * de reconstruir é a COSTURA.
+ *
+ * Mesma regra da emenda: o par que cruza a costura ganha a parada quase
+ * acromática no meio, senão o miolo da peça fica VERDE (achado da auditoria
+ * v7, o mesmo que `gradienteBarra` conserta).
+ *
+ * `i` é o passo da rampa: a peça i vai de ESPECTRO[i] a ESPECTRO[i+1] — é
+ * por isso que ESPECTRO tem NOVE amostras para oito peças. O pé direito de
+ * uma emenda no pé esquerdo da próxima, e a série inteira lê como um
+ * degradê contínuo.
+ */
+export function paradasBarra(i: number, isLight: boolean): { cor: string; pos: string }[] {
+  const tema = isLight ? "light" : "dark";
+  const rampa = ESPECTRO[tema];
+  const idx = ((i % PECAS_ESPECTRO) + PECAS_ESPECTRO) % PECAS_ESPECTRO;
+  const a = rampa[idx];
+  const b = rampa[idx + 1];
+  // a emenda da rampa é exatamente entre as amostras 1 e 2 (ver PAR_EMENDA)
+  return idx === 1
+    ? [{ cor: a, pos: "0%" }, { cor: COSTURA[tema], pos: "50%" }, { cor: b, pos: "100%" }]
+    : [{ cor: a, pos: "0%" }, { cor: b, pos: "100%" }];
+}
+
 // ── Avatares sem foto ───────────────────────────────────────────────────────
 // Quatro degradês, um por família do prisma. A escolha é por HASH do id da
 // pessoa, não por sorteio: sorteio de verdade trocaria a cor a cada render, e

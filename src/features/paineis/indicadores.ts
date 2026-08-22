@@ -12,7 +12,14 @@
 //   · estamos cumprindo prazo?       → % no prazo, entre as que tinham prazo
 //   · quanto demoramos a COMEÇAR?    → tempo até o primeiro toque
 //   · quem está sobrecarregado?      → carga por pessoa e o desvio entre elas
+//   · quem está pedindo mais?        → chamados em aberto por cliente
 //   · onde o problema volta?         → reincidência por cliente
+//
+// O MÓDULO CALCULA MAIS DO QUE UMA TELA MOSTRA, e isso é intencional: ele é
+// a biblioteca de indicadores de campo, não o espelho do layout da vez.
+// Hoje `idadeMediana`, `encalhados` e `reincidencia` não têm painel — saíram
+// da tela em revisões de layout (R67/R68), não por deixarem de valer. Ficam
+// aqui, puros e cobertos por asserção, prontos para o próximo painel.
 //
 // Duas escolhas que mudam o que o número significa:
 //
@@ -229,37 +236,33 @@ export function calcularIndicadores(
   };
 }
 
-export type FaixaIdade = "0-7" | "8-15" | "16-30" | "31+";
-
-export const FAIXA_IDADE_ORDEM: FaixaIdade[] = ["0-7", "8-15", "16-30", "31+"];
-
-export const FAIXA_IDADE_LABEL: Record<FaixaIdade, string> = {
-  "0-7": "0–7 dias", "8-15": "8–15 dias", "16-30": "16–30 dias", "31+": "31+ dias",
-};
-
-function faixaDeIdade(dias: number): FaixaIdade {
-  if (dias <= 7) return "0-7";
-  if (dias <= 15) return "8-15";
-  if (dias <= 30) return "16-30";
-  return "31+";
-}
-
 /**
- * O backlog em aberto, em 4 faixas de idade — o histograma que troca o card
- * de 3 números (Backlog) por um gráfico de verdade (R66): a pergunta não é
- * só "quantos passaram de 30 dias", é ONDE a fila está concentrada. Mesma
- * base (`abertosDeCampo`) e mesma conta de idade que `idadeMediana`.
+ * Chamados EM ABERTO por cliente — só quem TEM (R68).
+ *
+ * O Map só ganha chave de cliente que apareceu, então cliente sem chamado
+ * aberto simplesmente não existe no resultado: é o "aparecendo dinamicamente
+ * somente os clientes que têm chamado aberto" do pedido, sem precisar de uma
+ * lista de clientes para cruzar.
+ *
+ * `clienteId: null` é o balde de quem não tem cliente amarrado, e ele FICA.
+ * Descartá-lo faria as barras somarem menos que "chamados em aberto" — o
+ * gráfico sumindo com trabalho em silêncio, que é o defeito que a régua
+ * deste módulo proíbe. A tela pinta esse balde em neutro, como faz com "Sem
+ * técnico".
+ *
+ * Mesma base dos quatro KPIs (`abertosDeCampo`), de propósito: a soma das
+ * barras é exatamente `indicadores.abertos`, e isso é travado por asserção.
  */
-export function idadePorFaixa(
-  chamados: ChamadoParaIndicador[],
-  agora: Date = new Date(),
-): { faixa: FaixaIdade; total: number }[] {
-  const contagem: Record<FaixaIdade, number> = { "0-7": 0, "8-15": 0, "16-30": 0, "31+": 0 };
+export function abertosPorCliente<T extends ChamadoParaIndicador>(
+  chamados: T[],
+): { clienteId: string | null; total: number }[] {
+  const porCliente = new Map<string | null, number>();
   for (const c of abertosDeCampo(chamados)) {
-    const dias = (agora.getTime() - new Date(c.created_at).getTime()) / DIA;
-    contagem[faixaDeIdade(dias)]++;
+    const k = c.cliente_id ?? null;
+    porCliente.set(k, (porCliente.get(k) ?? 0) + 1);
   }
-  return FAIXA_IDADE_ORDEM.map((faixa) => ({ faixa, total: contagem[faixa] }));
+  return Array.from(porCliente, ([clienteId, total]) => ({ clienteId, total }))
+    .sort((a, b) => b.total - a.total);
 }
 
 /**

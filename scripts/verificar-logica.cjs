@@ -3012,7 +3012,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /setDuplasAberto\(true\)/.test(pop) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(pop), true);
   eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por dupla ativa',
      /<LineChart data=\{serieDuplas\}/.test(pop)
-     && /duplasAtivas\.map\(\(d, i\) => \(\s*\n\s*<Line/.test(pop), true);
+     && /duplasAtivas\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(pop), true);
   eq('cada item do eixo X é uma SEMANA',
      /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
   eq('a legenda mostra o nome da dupla, não o uuid que é o dataKey',
@@ -3030,8 +3030,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      && /Nenhuma dupla cadastrada — cadastre em/.test(pop), true);
   eq('o gráfico de linhas só é montado quando HÁ dupla (o ramo else do vazio)',
      /Nenhuma dupla cadastrada[\s\S]{0,600}<LineChart data=\{serieDuplas\}/.test(pop), true);
-  eq('o gráfico usa a paleta categórica do design system (§9), sem inventar cor',
-     /stroke=\{cores\[i % 8\]\}/.test(pop), true);
+  // R68 trocou a paleta categórica local pelo ESPECTRO — a rampa oficial da
+  // casa, a mesma da Início. A regra que a asserção guarda é a de sempre:
+  // a cor sai de paleta.ts, não de um hex digitado na tela.
+  eq('o gráfico usa a rampa oficial (ESPECTRO), sem inventar cor',
+     /stroke=\{`url\(#op-dupla-\$\{passo\}\)`\}/.test(pop)
+     && /const passo = i % PECAS_ESPECTRO;/.test(pop), true);
 
   // ── o pop-up de duplas (R56) ────────────────────────────────────────────
   eq('as opções vêm dos USUÁRIOS do sistema (useTecnicos), como o Davi pediu',
@@ -3758,20 +3762,26 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a ordem de leitura do 2×2 é azul→amarelo→laranja→vermelho (a rampa de severidade do PRISMA)',
      IND2.KPI_OPERACIONAL_ORDEM, ['abertos', 'sem_responsavel', 'urgentes', 'atrasados']);
 
-  // ── idadePorFaixa: o histograma do backlog ───────────────────────────────
+  // ── abertosPorCliente: quem está pedindo mais (R68) ──────────────────────
   {
-    const agoraI = new Date('2026-08-22T00:00:00Z');
-    const dias = (n) => new Date(agoraI.getTime() - n * 86400000).toISOString();
+    const agoraC = new Date('2026-08-22T12:00:00Z');
     const lote = [
-      ch({ id: '1', created_at: dias(2) }), ch({ id: '2', created_at: dias(7) }),
-      ch({ id: '3', created_at: dias(8) }), ch({ id: '4', created_at: dias(15) }),
-      ch({ id: '5', created_at: dias(16) }), ch({ id: '6', created_at: dias(30) }),
-      ch({ id: '7', created_at: dias(31) }),
-      ch({ id: '8', status: 'concluido', created_at: dias(90) }),   // fechado: fora do histograma
+      ch({ id: '1', cliente_id: 'cli-a' }), ch({ id: '2', cliente_id: 'cli-a' }),
+      ch({ id: '3', cliente_id: 'cli-a' }),
+      ch({ id: '4', cliente_id: 'cli-b' }),
+      ch({ id: '5', cliente_id: null }),
+      // fechado e comercial não são "chamado aberto de campo"
+      ch({ id: '6', cliente_id: 'cli-c', status: 'concluido' }),
+      ch({ id: '7', cliente_id: 'cli-d', natureza: 'comercial' }),
     ];
-    eq('idadePorFaixa: as 4 faixas na ordem, cobrindo só os 7 em aberto (o fechado não entra)',
-       IND2.idadePorFaixa(lote, agoraI),
-       [{ faixa: '0-7', total: 2 }, { faixa: '8-15', total: 2 }, { faixa: '16-30', total: 2 }, { faixa: '31+', total: 1 }]);
+    eq('abertosPorCliente: do maior para o menor, e o balde sem cliente FICA (barra que some é trabalho sumindo em silêncio)',
+       IND2.abertosPorCliente(lote),
+       [{ clienteId: 'cli-a', total: 3 }, { clienteId: 'cli-b', total: 1 }, { clienteId: null, total: 1 }]);
+    eq('CRÍTICO: cliente SEM chamado aberto não aparece — é o "somente os que têm" do pedido, sem cruzar lista de clientes',
+       IND2.abertosPorCliente(lote).some((c) => c.clienteId === 'cli-c' || c.clienteId === 'cli-d'), false);
+    eq('CRÍTICO: as barras SOMAM exatamente os chamados em aberto — mesma base dos 4 KPIs',
+       IND2.abertosPorCliente(lote).reduce((s, c) => s + c.total, 0),
+       IND2.chamadosDoKpi('abertos', lote, agoraC).length);
   }
 
   // ── ordenarChamados: atrasado (mais velho primeiro) → próximo → no prazo → sem prazo ──
@@ -3798,11 +3808,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /aria-pressed=\{selecionado\}/.test(op2) && /className="elevavel kpi-tile ruido"/.test(op2), true);
   eq('clicar no quadrado ativo desliga (toggle), como os KPIs da Início',
      /onClick=\{\(\) => setKpiAtivo\(selecionado \? null : k\.chave\)\}/.test(op2), true);
-  eq('Backlog virou histograma por faixa de idade',
-     /Backlog por idade[\s\S]{0,900}<BarChart data=\{backlogDados\}/.test(op2), true);
+  // (o painel "Backlog por idade" da R66 foi removido pela R68 — a asserção
+  // que o travava saiu junto; o que entrou no lugar está no bloco da R68)
   eq('a lista de chamados técnicos é NOVA (R66) — não existia nesta tela antes',
      /Chamados técnicos/.test(op2) && /Ver todos os chamados →/.test(op2), true);
-  eq('a lista tem a faixa "Mostrando: …" sempre visível, como a Início pede',
+  eq('a lista anuncia o recorte com "Mostrando:", como a Início pede (DASHBOARD.md §7.3)',
      /Mostrando: <strong/.test(op2), true);
   eq('clicar num KPI estreita a lista dentro dela (chamadosDoKpi(kpiAtivo ?? "abertos", …))',
      /chamadosDoKpi\(kpiAtivo \?\? "abertos", chamados, agora\)/.test(op2), true);
@@ -3861,6 +3871,92 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto13 = fs38.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R67 está documentado', /\*\*R67\*\*/.test(produto13), true);
+}
+
+// ── R68: o degradê da Início nos gráficos, cliente no lugar de dois painéis ──
+{
+  const fs39 = require('fs');
+  const PAL = carregar('src/lib/paleta.ts');
+  const op4 = fs39.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const pb2 = fs39.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8');
+
+  // ── paradasBarra: a irmã SVG de gradienteBarra ───────────────────────────
+  for (const tema of [true, false]) {
+    const nome = tema ? 'claro' : 'escuro';
+    const rampa = tema ? PAL.ESPECTRO.light : PAL.ESPECTRO.dark;
+
+    eq(`paradasBarra (${nome}): a peça i vai de ESPECTRO[i] a ESPECTRO[i+1] — o pé de uma emenda no pé da próxima`,
+       [0, 3, 6].every((i) => {
+         const p = PAL.paradasBarra(i, tema);
+         return p[0].cor === rampa[i] && p[p.length - 1].cor === rampa[i + 1];
+       }), true);
+    eq(`paradasBarra (${nome}): a peça que cruza a emenda ganha a COSTURA no meio (senão o miolo fica VERDE)`,
+       PAL.paradasBarra(1, tema),
+       [{ cor: rampa[1], pos: '0%' },
+        { cor: tema ? PAL.COSTURA.light : PAL.COSTURA.dark, pos: '50%' },
+        { cor: rampa[2], pos: '100%' }]);
+    eq(`paradasBarra (${nome}): só a emenda tem 3 paradas; as outras 7 têm 2`,
+       Array.from({ length: 8 }, (_, i) => PAL.paradasBarra(i, tema).length),
+       [2, 3, 2, 2, 2, 2, 2, 2]);
+    eq(`paradasBarra (${nome}) e gradienteBarra concordam sobre QUEM cruza a emenda — SVG e CSS não podem discordar`,
+       Array.from({ length: 8 }, (_, i) => PAL.paradasBarra(i, tema).length === 3),
+       Array.from({ length: 8 }, (_, i) =>
+         PAL.gradienteBarra(rampa[i], rampa[i + 1], tema).includes(tema ? PAL.COSTURA.light : PAL.COSTURA.dark)));
+  }
+  eq('paradasBarra dá a volta na rampa em vez de estourar (peça 8 = peça 0)',
+     PAL.paradasBarra(8, false), PAL.paradasBarra(0, false));
+  eq('a rampa serve 8 peças — 9 amostras, i → i+1',
+     [PAL.PECAS_ESPECTRO, PAL.ESPECTRO.dark.length, PAL.ESPECTRO.light.length], [8, 9, 9]);
+
+  // ── o degradê chegou aos TRÊS tipos de gráfico ───────────────────────────
+  eq('o <defs> da rampa existe e é reusado pelos gráficos (id único por gráfico — dois <defs> com o mesmo id fariam o 2º herdar as cores do 1º)',
+     /function DegradeEspectro\(/.test(op4)
+     && ['op-fila', 'op-tec', 'op-cli', 'op-dupla'].every((p) => op4.includes(`prefixo="${p}"`)), true);
+  eq('ROSCA na rampa: cada fatia puxa o degradê do seu passo',
+     /<Cell key=\{f\.nome\} fill=\{`url\(#op-fila-\$\{i % PECAS_ESPECTRO\}\)`\} \/>/.test(op4), true);
+  eq('BARRA na rampa: cada barra puxa o degradê do seu passo (e o "sem dono" fica neutro, §9)',
+     /fill=\{d\.semDono \? neutro : `url\(#\$\{prefixo\}-\$\{i\}\)`\}/.test(op4), true);
+  eq('LINHA na rampa: o traço de cada dupla puxa o degradê do seu passo',
+     /stroke=\{`url\(#op-dupla-\$\{passo\}\)`\}/.test(op4), true);
+  eq('a legenda da rosca carrega o MESMO degradê da fatia, em CSS — legenda apontando para cor que não existe no gráfico é pior que legenda nenhuma',
+     /background: gradienteBarra\(espectro\(passo, isLight\), espectro\(passo \+ 1, isLight\), isLight\)/.test(op4),
+     true);
+  eq('o número da legenda usa a rampa de TEXTO (o miolo amarelo de preenchimento não passa de 4.5:1 sobre branco)',
+     /color: espectroTexto\(passo, isLight\)/.test(op4), true);
+  eq('os 4 KPIs continuam no PRISMA, não na rampa — ali a cor é severidade, não série de dados',
+     /abertos: PRISMA\.azul, sem_responsavel: PRISMA\.amarelo,/.test(op4), true);
+  eq('a paleta categórica local (os 8 hex digitados na tela) saiu junto com o degradê',
+     /const CORES_DARK = \[/.test(op4), false);
+
+  // ── os dois painéis que saíram, e o que entrou ───────────────────────────
+  const op4cod = op4.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
+  eq('R68: "Backlog por idade" e "Reincidência 30d" saíram da tela',
+     /Backlog por idade|Reincidência/.test(op4cod), false);
+  eq('…e no lugar dos dois entrou UM painel de abertos por cliente, com barras deitadas',
+     /titulo="Abertos por cliente"/.test(op4) && /dados=\{clientesComAberto\}/.test(op4), true);
+  eq('o painel novo é barra HORIZONTAL (layout="vertical" no recharts é a barra deitada)',
+     /<BarChart data=\{visiveis\} layout="vertical"/.test(op4), true);
+  eq('a faixa 2 tem os dois rankings do MESMO componente (técnico e cliente)',
+     (op4.match(/<Ranking\s/g) ?? []).length, 2);
+
+  // ── o dashboard subiu e encolheu ─────────────────────────────────────────
+  eq('o título e o subtítulo saíram da tela',
+     /titulo="Painel Operacional"|subtitulo=/.test(op4), false);
+  eq('PainelBase aceita ficar sem cabeçalho (os outros dois painéis seguem com o deles)',
+     /titulo\?: string;/.test(pb2) && /\{titulo && \(/.test(pb2), true);
+  eq('sem cabeçalho o respiro de cima encolhe — senão o padding empurraria o dashboard para baixo à toa',
+     /paddingTop: titulo \? 18 : 6/.test(pb2), true);
+  eq('CRÍTICO: a lista começa acima da metade da tela — 2 faixas + gap + respiro + topo cabem em 388px, o meio de um notebook de 768',
+     (() => {
+       const altura = Number(op4.match(/const ALTURA = (\d+);/)[1]);
+       const gap = 14, respiro = 6, topo = 24;      // PainelBase sem título + --topo do layout
+       return 2 * altura + gap + respiro + topo <= 384;
+     })(), true);
+  eq('a ALTURA encolheu em relação à R67 (216, quando a tela ainda tinha título e subtítulo)',
+     Number(op4.match(/const ALTURA = (\d+);/)[1]) < 216, true);
+
+  const produto14 = fs39.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R68 está documentado', /\*\*R68\*\*/.test(produto14), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

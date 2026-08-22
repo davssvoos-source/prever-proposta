@@ -1033,3 +1033,43 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   na parte superior da tela, ou seja os campos precisam ser menores, otimize
   o layout... a parte restante deve ser visualização dos itens em lista das
   atividades. Inspire-se no layout da página início.")*
+
+- **R68** — Três acertos no Painel Operacional:
+
+  **1. O degradê da casa nos gráficos.** Rosca, barras e linhas passaram a
+  ser pintadas com o **ESPECTRO** — a mesma rampa das barras e da rosca da
+  Início. A regra é a de lá: a peça *i* vai de `ESPECTRO[i]` a
+  `ESPECTRO[i+1]`, então o pé de uma emenda no pé da próxima e a série
+  inteira lê como um degradê só. A paleta categórica de oito hex digitados
+  na tela saiu. Como o recharts pinta em SVG (e `linear-gradient()` de CSS
+  não vale em `fill`), nasceu `paradasBarra()` em `paleta.ts`: a irmã SVG de
+  `gradienteBarra`, com a **mesma regra da costura** — o par que cruza a
+  emenda da rampa ganha a parada acromática no meio, senão o miolo da peça
+  fica verde. Os 4 KPIs **continuam no PRISMA**: ali a cor é escala de
+  severidade, não série de dados. "Sem técnico" e "Sem cliente" continuam
+  neutros, fora da rampa.
+
+  **2. Abertos por cliente no lugar de dois painéis.** "Backlog por idade" e
+  "Reincidência 30d" saíram; no lugar dos dois entrou **um** gráfico de
+  barras deitadas com os **chamados em aberto por cliente**, e só aparecem
+  os clientes que **têm** chamado aberto — quem não tem simplesmente não
+  entra na lista. A soma das barras é exatamente o total em aberto (mesma
+  base dos KPIs, travado por asserção), e chamado sem cliente amarrado vira
+  um balde "Sem cliente" em neutro em vez de sumir do gráfico.
+
+  **3. Sem título, dashboard mais alto e mais compacto.** O título "Painel
+  Operacional" e o subtítulo saíram — o nome da tela já está aceso no menu à
+  esquerda, e repeti-lo custava a faixa vertical que o dashboard precisava.
+  As faixas encolheram (216 → **168px** de altura única), e o contrato da
+  tela virou número: **a lista começa acima da metade da tela** — 2×168 + 14
+  de gap + 6 de respiro + 24 de `--topo` = 380px, contra os 384 do meio de
+  um notebook de 768px. Uma asserção CRÍTICO refaz essa conta a cada
+  verificação, então subir a altura dos painéis quebra o teste em vez de
+  quebrar a tela em silêncio.
+  *(Davi, 2026-08-22: "aplique o mesmo gradiente que tem no gráfico de rosca
+  e no gráfico de barras da página INÍCIO... nos gráficos de linha, barra e
+  rosca do painel operacional. Remova o campo de backlog por idade e o campo
+  de reincidência 30D... adicione um gráfico de barras... sobre chamados
+  abertos por cliente... Remova o título Painel Operacional, remova o
+  subtítulo, suba o dashboard... a lista deve começar no máximo na metade da
+  tela.")*

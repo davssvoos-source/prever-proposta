@@ -42,8 +42,14 @@ export interface AtalhoPainel {
 }
 
 interface Props {
-  titulo: string;
-  subtitulo: string;
+  /**
+   * Título da tela. OPCIONAL desde a R68: o Painel Operacional abre direto no
+   * dashboard, sem cabeçalho — a tela precisava do espaço vertical, e um
+   * título que só repete o nome do item de menu selecionado à esquerda paga
+   * caro por pouco. Os outros dois painéis seguem com o deles.
+   */
+  titulo?: string;
+  subtitulo?: string;
   numeros: NumeroPainel[];
   atalhos: AtalhoPainel[];
   /** o admin vê o que é dele; vem de fora para o painel não repetir a consulta. */
@@ -71,15 +77,22 @@ export function PainelBase({ titulo, subtitulo, numeros, atalhos, isAdmin, child
   };
 
   return (
-    <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
-      <div>
-        <h1 style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
-          {titulo}
-        </h1>
-        <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
-          {subtitulo}
+    // sem cabeçalho o respiro de cima encolhe: a razão de existir do padding
+    // era separar o título da barra do topo, e sem título ele só empurraria
+    // o conteúdo para baixo à toa
+    <div className="sangra-x" style={{ paddingTop: titulo ? 18 : 6, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
+      {titulo && (
+        <div>
+          <h1 style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
+            {titulo}
+          </h1>
+          {subtitulo && (
+            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
+              {subtitulo}
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {numeros.length > 0 && (
         <div className="painel-numeros">

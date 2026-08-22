@@ -1,41 +1,34 @@
-// Painel Operacional — R27, refeito na anatomia da Início (R67).
+// Painel Operacional — R27, na anatomia da Início (R67) e no degradê dela (R68).
 //
-// A TELA TEM DUAS PARTES, e só duas: em cima o dashboard inteiro, embaixo a
-// lista. Foi o pedido do Davi (2026-08-22): "o dashboard todo na parte
-// superior da tela, ou seja os campos precisam ser menores... a parte
-// restante deve ser visualização dos itens em lista das atividades.
-// Inspire-se no layout da página início."
+// A TELA TEM DUAS PARTES, e só duas: o dashboard em cima, a lista no resto.
+// Não há título nem subtítulo (R68) — o nome da tela já está aceso no menu à
+// esquerda, e repeti-lo custava a faixa vertical que faz a lista começar
+// dentro da primeira metade da tela, que é o contrato desta página.
 //
-// A ESTRUTURA VEM DE docs/DASHBOARD.md — não é releitura livre da Início:
-//   · FAIXAS de painéis com ALTURA ÚNICA (§4). É a constante que faz a
-//     fileira ler como uma peça só; painel com altura própria transforma a
-//     faixa numa colagem. Aqui são duas faixas de 216 (a Início usa 252 —
-//     esta tela tem mais painéis e precisa terminar mais cedo, para a lista
-//     começar dentro da primeira tela).
+// A ESTRUTURA VEM DE docs/DASHBOARD.md:
+//   · FAIXAS de painéis com ALTURA ÚNICA (§4) — a constante que faz a
+//     fileira ler como uma peça só. Duas faixas de 168: 350px de dashboard,
+//     e a lista abre acima da metade da tela.
 //   · Painel = card(isLight) + .elevavel, micro-rótulo no amarelo (§3, §6).
-//   · KPIs no PRISMA, gráficos na paleta categórica do §9 do DESIGN_SYSTEM.
+//   · KPIs no PRISMA; TODO O RESTO no ESPECTRO (§5).
 //   · Peça clicável = <button aria-pressed> com anel na própria cor (§7.1).
 //   · A INVARIANTE (§7.2): o número de um KPI e a lista que ele abre saem da
 //     MESMA função pura — `chamadosDoKpi`, em indicadores.ts.
 //
-// O QUE ENCOLHEU, e por quê. A versão anterior empilhava dez cards de altura
-// livre: o dashboard ocupava três telas e a lista nascia fora de qualquer
-// dobra — exatamente o que o Davi mandou consertar. Três movimentos deram o
-// espaço de volta sem perder indicador:
-//   1. Fluxo do mês + Ritmo + Cumprimento de prazo (3 cards) viraram UM
-//      painel de seis micro-números com a barra de prazo no pé.
-//   2. O card largo "Duplas de campo" sumiu: o botão que cadastra dupla
-//      passou a morar no cabeçalho do gráfico que mostra duplas. Botão de
-//      manutenção pertence à peça que ele mantém.
-//   3. Fila por status perdeu a legenda embaixo do arco e ganhou legenda AO
-//      LADO — mesma informação, metade da altura.
+// O DEGRADÊ É O MESMO DA INÍCIO, agora também aqui (R68, pedido do Davi:
+// "quero ver o degradê igualzinho o do início em tudo"). Lá as barras são
+// <div> com `gradienteBarra()` em CSS e a rosca é SVG à mão; aqui tudo passa
+// pelo recharts, que pinta em SVG — `linear-gradient()` de CSS não vale em
+// `fill`. Daí `paradasBarra()` (paleta.ts): a irmã SVG de `gradienteBarra`,
+// com a MESMA regra da costura — o par que cruza a emenda da rampa ganha a
+// parada acromática no meio, senão o miolo da peça fica verde.
 //
-// A LISTA É A MESMA TABELA DA INÍCIO (features/home/TabelaAtividades), não
-// uma parecida. Reescrever aqui uma lista de chamados criaria a segunda
-// implementação da mesma tabela — e a segunda fica um passo atrás da
-// primeira desde a primeira alteração de coluna. Como ela fala `Atividade`,
-// os chamados passam por `atividadeDoChamado()`, o mesmo montador da Início:
-// status, cores e rótulos saem de um lugar só.
+// A REGRA DA RAMPA, igual à da Início: a peça i vai de ESPECTRO[i] a
+// ESPECTRO[i+1]. O pé direito de uma emenda no pé esquerdo da próxima, e a
+// série inteira — barras, fatias da rosca, linhas — lê como um degradê só.
+// Máximo de 8 peças (§9 do DESIGN_SYSTEM); "Sem técnico"/"Sem cliente"
+// continuam NEUTROS, fora da rampa: são ausência de identidade, não mais uma
+// identidade.
 //
 // Só natureza "campo": a proposta comercial (U29) é funil, e as demandas
 // internas têm sprint, não SLA — misturá-las faria o tempo de atendimento
@@ -66,11 +59,13 @@ import { chamadoStatusInfo } from "@/lib/chamado-status";
 import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA } from "@/lib/paleta";
 import {
-  calcularIndicadores, horasTexto, JANELA_REINCIDENCIA_DIAS,
+  PRISMA, paradasBarra, gradienteBarra, espectro, espectroTexto, PECAS_ESPECTRO,
+} from "@/lib/paleta";
+import {
+  calcularIndicadores, horasTexto,
   chamadosDoKpi, KPI_OPERACIONAL_ORDEM, KPI_OPERACIONAL_LABEL, type ChaveKpiOperacional,
-  idadePorFaixa, FAIXA_IDADE_LABEL, ordenarChamados,
+  abertosPorCliente, ordenarChamados,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
 
@@ -91,11 +86,14 @@ const ATALHOS: AtalhoPainel[] = [];
 /**
  * A altura única de TODO painel das duas faixas (DASHBOARD.md §4).
  *
- * 216 e não os 252 da Início: lá são quatro painéis numa faixa só; aqui são
- * sete em duas. 2×216 + gap = 446px de dashboard — cabe na primeira tela de
- * um notebook com a lista já começando, que é o ponto do pedido.
+ * 168 e não os 252 da Início: lá são quatro painéis numa faixa só. Aqui são
+ * seis em duas, e o contrato desta tela (R68) é a LISTA COMEÇAR NO MÁXIMO NA
+ * METADE DA TELA. A conta que fixou o número, e que o verificador refaz:
+ * 2×168 + 14 de gap + 6 de respiro + os 24 de `--topo` = 380px — o cabeçalho
+ * da lista abre aí, acima da metade (384) mesmo num notebook de 768px de
+ * viewport. Mexer nesta constante para cima quebra a asserção CRÍTICO.
  */
-const ALTURA = 216;
+const ALTURA = 168;
 
 /** Quantas semanas o gráfico de atividades por dupla mostra. */
 const SEMANAS_NO_GRAFICO = 12;
@@ -106,11 +104,32 @@ const TETO_BARRAS = 5;
 /** Teto da tabela — o mesmo da Início. */
 const TETO_TABELA = 200;
 
-// Paleta categórica validada (DESIGN_SYSTEM.md §9) — ordem fixa, nunca ciclada
-const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#E2791D", "#199e70", "#d95926", "#9085e9", "#e66767"];
-const CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"];
-const OUTROS_DARK = "#6b7280";
-const OUTROS_LIGHT = "#9ca3af";
+/**
+ * O `<defs>` de uma série pintada na rampa: um degradê por peça, i → i+1.
+ *
+ * Recharts aceita `<defs>` como filho do gráfico, e a peça referencia por
+ * `fill`/`stroke: url(#id)`. O `id` precisa ser único NA PÁGINA — daí o
+ * prefixo por gráfico: dois `<defs>` com o mesmo id fariam o segundo gráfico
+ * herdar silenciosamente as cores do primeiro.
+ */
+function DegradeEspectro({ prefixo, quantas, isLight }: {
+  prefixo: string; quantas: number; isLight: boolean;
+}) {
+  return (
+    <defs>
+      {Array.from({ length: Math.min(quantas, PECAS_ESPECTRO) }, (_, i) => (
+        // x1→x2 na horizontal: barra deitada cresce no X, e a linha corre no
+        // X. Na fatia da rosca a caixa é o arco, e a horizontal é o que
+        // mantém a leitura contínua de uma fatia para a vizinha.
+        <linearGradient key={i} id={`${prefixo}-${i}`} x1="0" y1="0" x2="1" y2="0">
+          {paradasBarra(i, isLight).map((p) => (
+            <stop key={p.pos} offset={p.pos} stopColor={p.cor} />
+          ))}
+        </linearGradient>
+      ))}
+    </defs>
+  );
+}
 
 function PainelOperacional() {
   const navigate = useNavigate();
@@ -127,7 +146,7 @@ function PainelOperacional() {
   // lista mostra o padrão operacional (tudo em aberto)
   const [kpiAtivo, setKpiAtivo] = useState<ChaveKpiOperacional | null>(null);
 
-  // nomes para a reincidência — só id/nome, a base tem ~200 linhas
+  // nomes dos clientes para o gráfico por cliente — só id/nome
   const { data: clientes = [] } = useQuery({
     queryKey: ["clientes-nomes"],
     staleTime: 300_000,
@@ -137,10 +156,9 @@ function PainelOperacional() {
     },
   });
 
-  // um momento só para todas as contas do render — KPIs, indicadores,
-  // histograma e ordenação da lista precisam concordar sobre "agora", ou um
-  // chamado no limite do prazo poderia contar diferente em duas peças da
-  // mesma tela
+  // um momento só para todas as contas do render — KPIs, indicadores e
+  // ordenação da lista precisam concordar sobre "agora", ou um chamado no
+  // limite do prazo poderia contar diferente em duas peças da mesma tela
   const agora = useMemo(() => new Date(), [chamados]);
   const ind = useMemo(() => calcularIndicadores(chamados as any[], agora), [chamados, agora]);
 
@@ -150,16 +168,14 @@ function PainelOperacional() {
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   const azul = isLight ? PRISMA.azul.light : PRISMA.azul.dark;
-  const laranja = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
   const superficie = isLight ? "#ffffff" : "#101016";
-  const cores = isLight ? CORES_LIGHT : CORES_DARK;
-  const neutro = isLight ? OUTROS_LIGHT : OUTROS_DARK;
+  const neutro = isLight ? PRISMA.neutro.light : PRISMA.neutro.dark;
 
   // O PAINEL da faixa: card + altura única + padding compacto. Todo painel
   // das duas fileiras passa por aqui — é o que garante o §4.
   const PAINEL: CSSProperties = {
     ...card(isLight), borderRadius: 16, height: ALTURA,
-    padding: "12px 14px 10px", boxSizing: "border-box",
+    padding: "10px 13px 8px", boxSizing: "border-box",
     display: "flex", flexDirection: "column", minWidth: 0,
   };
   const MICRO: CSSProperties = {
@@ -188,7 +204,8 @@ function PainelOperacional() {
   // ── Os 4 KPIs, em 2×2 ─────────────────────────────────────────────────────
   // O NÚMERO de cada quadrado e a LISTA que o clique nele abre saem da mesma
   // função (chamadosDoKpi) — não há como um quadrado dizer "5" e a tabela
-  // abaixo mostrar 4.
+  // abaixo mostrar 4. Os KPIs ficam no PRISMA, não na rampa: azul/amarelo/
+  // laranja/vermelho aqui é escala de SEVERIDADE, não série de dados.
   const kpis = useMemo(() => {
     const corDe = (par: { dark: string; light: string }) => (isLight ? par.light : par.dark);
     const CORES_KPI: Record<ChaveKpiOperacional, { dark: string; light: string }> = {
@@ -207,25 +224,26 @@ function PainelOperacional() {
     () => ind.cargaPorPessoa.map((c) => ({
       nome: c.pessoaId ? nomeTecnico.get(c.pessoaId) ?? "Técnico" : "Sem técnico",
       valor: c.total,
+      semDono: !c.pessoaId,
     })),
     [ind, nomeTecnico],
+  );
+
+  // R68 — no lugar de "Backlog por idade" e "Reincidência 30d". O Map de
+  // `abertosPorCliente` só tem chave de cliente que apareceu: quem não tem
+  // chamado aberto simplesmente não entra na lista.
+  const clientesComAberto = useMemo(
+    () => abertosPorCliente(chamados).map((c) => ({
+      nome: c.clienteId ? nomeCliente.get(c.clienteId) ?? "Cliente" : "Sem cliente",
+      valor: c.total,
+      semDono: !c.clienteId,
+    })),
+    [chamados, nomeCliente],
   );
 
   const filaComRotulo = useMemo(
     () => ind.porStatus.map((f) => ({ nome: chamadoStatusInfo(f.status).label, valor: f.total })),
     [ind],
-  );
-
-  const backlogDados = useMemo(
-    () => idadePorFaixa(chamados as any[], agora)
-      .map((f) => ({ nome: FAIXA_IDADE_LABEL[f.faixa], valor: f.total })),
-    [chamados, agora],
-  );
-  const CORES_BACKLOG = [verde, gold, laranja, vermelho];
-
-  const reincidenciaComNome = useMemo(
-    () => ind.reincidencia.map((r) => ({ nome: nomeCliente.get(r.clienteId) ?? "Cliente", valor: r.vezes })),
-    [ind, nomeCliente],
   );
 
   // ── Atividades por dupla ao longo do tempo (R58) ─────────────────────────
@@ -258,17 +276,16 @@ function PainelOperacional() {
   // ── A lista ───────────────────────────────────────────────────────────────
   // Padrão: tudo em aberto (o foco operacional desta tela — histórico fechado
   // é o Painel de chamados). Um KPI ativo ESTREITA dentro desse conjunto, já
-  // que os quatro são subconjuntos de "abertos" por construção: nunca há um
-  // clique que AMPLIE a lista para fora do que a tela já mostra.
+  // que os quatro são subconjuntos de "abertos" por construção.
   const listaChamados = useMemo(
     () => ordenarChamados(chamadosDoKpi(kpiAtivo ?? "abertos", chamados, agora), agora),
     [kpiAtivo, chamados, agora],
   );
 
   // A tabela da Início fala `Atividade` — os chamados passam pelo MESMO
-  // montador dela (atividadeDoChamado). `apoios`/`fichas` vazios: esta tela
-  // não tem noção de "eu" (souResponsavel/souApoio não são usados aqui) e
-  // chamado de campo nunca é pedido de compra, que é o que a ficha decide.
+  // montador dela. `apoios`/`fichas` vazios: esta tela não tem noção de "eu"
+  // (souResponsavel/souApoio não são lidos aqui) e chamado de campo nunca é
+  // pedido de compra, que é o que a ficha decide.
   const atividades = useMemo<Atividade[]>(() => {
     const ctx = { userId: null, apoios: new Set<string>(), fichas: new Map(), apoiosDoChamado };
     return listaChamados.map((c) => atividadeDoChamado(c as any, ctx));
@@ -280,7 +297,7 @@ function PainelOperacional() {
 
   /** Cabeçalho de painel: micro-rótulo à esquerda, nota/ação à direita. */
   const Cabeca = ({ titulo, direita }: { titulo: string; direita?: ReactNode }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, minHeight: 16 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, minHeight: 15 }}>
       <span style={MICRO}>{titulo}</span>
       {direita && <span style={{ marginLeft: "auto", minWidth: 0 }}>{direita}</span>}
     </div>
@@ -290,77 +307,83 @@ function PainelOperacional() {
   const Micro = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor: string }) => (
     <div style={{ minWidth: 0 }}>
       <div style={{
-        fontFamily: FONT, fontWeight: 700, fontSize: 19, color: cor,
+        fontFamily: FONT, fontWeight: 700, fontSize: 17, color: cor,
         fontVariantNumeric: "tabular-nums", lineHeight: 1.1,
       }}>
         {valor}
       </div>
       <div style={{
-        fontFamily: FONT, fontWeight: 500, fontSize: 8.5, letterSpacing: "0.05em",
-        textTransform: "uppercase", color: textSecondary, marginTop: 3, lineHeight: 1.25,
+        fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+        textTransform: "uppercase", color: textSecondary, marginTop: 2, lineHeight: 1.2,
       }}>
         {rotulo}
       </div>
     </div>
   );
 
-  /** Painel de ranking (barra horizontal) — carga por técnico e reincidência. */
-  const Ranking = ({ titulo, dados, corDe, sufixo, vazio }: {
+  /**
+   * Painel de ranking: barras DEITADAS na rampa — carga por técnico e
+   * chamados abertos por cliente.
+   *
+   * `semDono` (sem técnico / sem cliente) pinta NEUTRO e fica fora da rampa:
+   * é ausência de identidade, não mais uma identidade. É a mesma regra do
+   * "Outros" no §9 do DESIGN_SYSTEM.
+   */
+  const Ranking = ({ titulo, prefixo, dados, sufixo, vazio }: {
     titulo: string;
-    dados: { nome: string; valor: number }[];
-    corDe: (nome: string, i: number) => string;
+    prefixo: string;
+    dados: { nome: string; valor: number; semDono?: boolean }[];
     sufixo: string;
     vazio: ReactNode;
-  }) => (
-    <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 244 }}>
-      <Cabeca
-        titulo={titulo}
-        direita={dados.length > TETO_BARRAS ? (
-          <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}>
-            top {TETO_BARRAS} de {dados.length}
-          </span>
-        ) : undefined}
-      />
-      {dados.length === 0 ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, lineHeight: 1.45 }}>
-          {vazio}
-        </div>
-      ) : (
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dados.slice(0, TETO_BARRAS)} layout="vertical" margin={{ left: 0, right: 14, top: 2, bottom: 2 }}>
-              <CartesianGrid horizontal={false} stroke={grade} />
-              <XAxis type="number" allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="nome" width={96} tick={{ ...eixo, fill: textPrimary }} axisLine={false} tickLine={false} />
-              <RTooltip
-                formatter={(v: number) => [`${v} ${sufixo}${v === 1 ? "" : "s"}`, ""]}
-                contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }}
-              />
-              <Bar dataKey="valor" radius={[0, 5, 5, 0]} isAnimationActive={false}>
-                {dados.slice(0, TETO_BARRAS).map((d, i) => (
-                  <Cell key={d.nome} fill={corDe(d.nome, i)} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
-  );
+  }) => {
+    const visiveis = dados.slice(0, TETO_BARRAS);
+    return (
+      <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 244 }}>
+        <Cabeca
+          titulo={titulo}
+          direita={dados.length > TETO_BARRAS ? (
+            <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
+              top {TETO_BARRAS} de {dados.length}
+            </span>
+          ) : undefined}
+        />
+        {visiveis.length === 0 ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, lineHeight: 1.45 }}>
+            {vazio}
+          </div>
+        ) : (
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={visiveis} layout="vertical" margin={{ left: 0, right: 14, top: 2, bottom: 2 }}>
+                <DegradeEspectro prefixo={prefixo} quantas={visiveis.length} isLight={isLight} />
+                <CartesianGrid horizontal={false} stroke={grade} />
+                <XAxis type="number" allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="nome" width={96} tick={{ ...eixo, fill: textPrimary }} axisLine={false} tickLine={false} />
+                <RTooltip
+                  cursor={{ fill: grade }}
+                  formatter={(v: number) => [`${v} ${sufixo}${v === 1 ? "" : "s"}`, ""]}
+                  contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }}
+                />
+                <Bar dataKey="valor" radius={[0, 5, 5, 0]} isAnimationActive={false}>
+                  {visiveis.map((d, i) => (
+                    <Cell key={d.nome} fill={d.semDono ? neutro : `url(#${prefixo}-${i})`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <PainelBase
-      titulo="Painel Operacional"
-      subtitulo="A operação de campo inteira, de relance: fila, ritmo, carga e o que volta"
-      numeros={[]}
-      atalhos={ATALHOS}
-      isAdmin={cargo === "admin"}
-    >
+    <PainelBase numeros={[]} atalhos={ATALHOS} isAdmin={cargo === "admin"}>
       {/* ══ FAIXA 1 — os números de cabeça e o estado da fila ══════════════ */}
       <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
         {/* os 4 KPIs em 2 colunas de 2, clicáveis */}
         <div style={{
-          width: 252, flexShrink: 0, height: ALTURA, display: "grid",
+          width: 244, flexShrink: 0, height: ALTURA, display: "grid",
           gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
         }}>
           {kpis.map((k) => {
@@ -374,9 +397,9 @@ function PainelOperacional() {
                 title={`${k.valor} — clique para filtrar a lista abaixo`}
                 className="elevavel kpi-tile ruido"
                 style={{
-                  ...base, borderRadius: 16, padding: "8px 10px",
+                  ...base, borderRadius: 14, padding: "6px 8px",
                   display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: 4,
+                  alignItems: "center", justifyContent: "center", gap: 3,
                   boxSizing: "border-box",
                   border: selecionado ? `1.5px solid ${k.cor}` : base.border,
                   boxShadow: selecionado ? `0 0 0 3px ${k.cor}2E` : base.boxShadow,
@@ -384,15 +407,15 @@ function PainelOperacional() {
                 }}
               >
                 <div className="kpi-num" style={{
-                  fontFamily: FONT, fontWeight: 700, fontSize: 30, color: k.cor,
+                  fontFamily: FONT, fontWeight: 700, fontSize: 26, color: k.cor,
                   textShadow: `0 0 14px ${k.cor}59`,
                   fontVariantNumeric: "tabular-nums", lineHeight: 1,
                 }}>
                   {k.valor}
                 </div>
                 <div style={{
-                  fontFamily: FONT, fontWeight: 500, fontSize: 8.5, letterSpacing: "0.05em",
-                  textTransform: "uppercase", color: textSecondary, lineHeight: 1.25,
+                  fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+                  textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
                 }}>
                   {k.rotulo}
                 </div>
@@ -401,8 +424,12 @@ function PainelOperacional() {
           })}
         </div>
 
-        {/* Fila por status — rosca com a legenda AO LADO (metade da altura da
-            legenda embaixo, mesma informação). Identidade nunca só pela cor. */}
+        {/* Fila por status — a rosca na RAMPA: cada fatia vai da sua cor à da
+            seguinte, então o anel inteiro lê como o degradê da casa, igual às
+            barras da Início. Legenda ao lado (metade da altura da legenda
+            embaixo) — e o quadradinho dela carrega o MESMO degradê da fatia,
+            em CSS, senão a legenda apontaria para uma cor que não existe no
+            gráfico. Identidade nunca só pela cor. */}
         <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 252 }}>
           <Cabeca titulo="Fila por status" />
           {filaComRotulo.length === 0 ? (
@@ -411,16 +438,17 @@ function PainelOperacional() {
             </div>
           ) : (
             <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ position: "relative", width: 132, height: "100%", flexShrink: 0 }}>
+              <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
+                    <DegradeEspectro prefixo="op-fila" quantas={filaComRotulo.length} isLight={isLight} />
                     <Pie
                       data={filaComRotulo} dataKey="valor" nameKey="nome"
-                      innerRadius={40} outerRadius={60}
+                      innerRadius={33} outerRadius={51}
                       stroke={superficie} strokeWidth={2} isAnimationActive={false}
                     >
                       {filaComRotulo.map((f, i) => (
-                        <Cell key={f.nome} fill={cores[i % 8]} />
+                        <Cell key={f.nome} fill={`url(#op-fila-${i % PECAS_ESPECTRO})`} />
                       ))}
                     </Pie>
                     <RTooltip
@@ -437,32 +465,40 @@ function PainelOperacional() {
                   alignItems: "center", justifyContent: "center", pointerEvents: "none",
                 }}>
                   <span style={{
-                    fontFamily: FONT, fontWeight: 700, fontSize: 20,
+                    fontFamily: FONT, fontWeight: 700, fontSize: 18,
                     fontVariantNumeric: "tabular-nums", color: textPrimary, lineHeight: 1,
                   }}>
                     {ind.abertos}
                   </span>
-                  <span style={{ ...MICRO, fontSize: 8, color: textSecondary, marginTop: 2 }}>em aberto</span>
+                  <span style={{ ...MICRO, fontSize: 7.5, color: textSecondary, marginTop: 2 }}>em aberto</span>
                 </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                {filaComRotulo.map((f, i) => (
-                  <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2.5, flexShrink: 0, background: cores[i % 8] }} />
-                    <span style={{
-                      flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 11, color: textPrimary,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {f.nome}
-                    </span>
-                    <span style={{
-                      fontFamily: FONT, fontSize: 11, fontWeight: 700, color: gold,
-                      fontVariantNumeric: "tabular-nums",
-                    }}>
-                      {f.valor}
-                    </span>
-                  </div>
-                ))}
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                {filaComRotulo.map((f, i) => {
+                  const passo = i % PECAS_ESPECTRO;
+                  return (
+                    <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{
+                        width: 9, height: 9, borderRadius: 2.5, flexShrink: 0,
+                        background: gradienteBarra(espectro(passo, isLight), espectro(passo + 1, isLight), isLight),
+                      }} />
+                      <span style={{
+                        flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 10.5, color: textPrimary,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {f.nome}
+                      </span>
+                      {/* o número na rampa de TEXTO, não na de preenchimento:
+                          o miolo amarelo claro não passa de 4.5:1 sobre branco */}
+                      <span style={{
+                        fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
+                        color: espectroTexto(passo, isLight), fontVariantNumeric: "tabular-nums",
+                      }}>
+                        {f.valor}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -480,7 +516,7 @@ function PainelOperacional() {
               </span>
             }
           />
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, alignContent: "center" }}>
+          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, alignContent: "center" }}>
             <Micro rotulo="Entraram" valor={String(ind.entradasMes)} cor={azul} />
             <Micro rotulo="Concluídos" valor={String(ind.saidasMes)} cor={verde} />
             {/* saldo positivo = a fila cresceu: é o número quente do painel */}
@@ -504,7 +540,7 @@ function PainelOperacional() {
             <div
               title={`${ind.pctNoPrazo}% dos chamados concluídos que tinham prazo terminaram dentro dele`}
               style={{
-                height: 6, borderRadius: 3, marginTop: 8, overflow: "hidden", flexShrink: 0,
+                height: 5, borderRadius: 3, marginTop: 6, overflow: "hidden", flexShrink: 0,
                 background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
               }}
             >
@@ -519,49 +555,17 @@ function PainelOperacional() {
             </div>
           )}
         </div>
-
-        {/* Backlog por idade — o histograma. Duas filas com a mesma mediana
-            podem ter formas opostas (uma cauda de 3 muito velhos, ou 20
-            parados há 20 dias); só a distribuição distingue os dois casos. */}
-        <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 236 }}>
-          <Cabeca
-            titulo="Backlog por idade"
-            direita={ind.idadeMaisVelho !== null ? (
-              <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
-                mais antigo{" "}
-                <strong style={{ color: ind.idadeMaisVelho > 30 ? vermelho : textPrimary, fontWeight: 700 }}>
-                  {ind.idadeMaisVelho}d
-                </strong>
-              </span>
-            ) : undefined}
-          />
-          <div style={{ flex: 1, minHeight: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={backlogDados} layout="vertical" margin={{ left: 0, right: 14, top: 2, bottom: 2 }}>
-                <CartesianGrid horizontal={false} stroke={grade} />
-                <XAxis type="number" allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="nome" width={68} tick={{ ...eixo, fill: textPrimary }} axisLine={false} tickLine={false} />
-                <RTooltip
-                  formatter={(v: number) => [`${v} em aberto`, ""]}
-                  contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }}
-                />
-                <Bar dataKey="valor" radius={[0, 5, 5, 0]} isAnimationActive={false}>
-                  {backlogDados.map((f, i) => <Cell key={f.nome} fill={CORES_BACKLOG[i]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* ══ FAIXA 2 — quem faz, quem carrega, o que volta ══════════════════ */}
+      {/* ══ FAIXA 2 — quem faz, quem carrega, quem pede ════════════════════ */}
       <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
         {/* Atividades por dupla ao longo do tempo — Davi, 2026-08-22: "cada
             item vertical é uma semana. Deve ser um gráfico de linhas".
 
-            O botão que CADASTRA dupla mora aqui, no cabeçalho do gráfico que
-            mostra duplas: era um card largo próprio, e botão de manutenção
-            pertence à peça que ele mantém. */}
+            As linhas correm na RAMPA (R68): cada dupla ganha um passo do
+            degradê, e o traço dela vai da sua cor à da seguinte. O botão que
+            CADASTRA dupla mora aqui, no cabeçalho do gráfico que mostra
+            duplas — botão de manutenção pertence à peça que ele mantém. */}
         <div className="elevavel" style={{ ...PAINEL, flex: 2, minWidth: 396 }}>
           <Cabeca
             titulo={`Atividades por dupla · ${SEMANAS_NO_GRAFICO} semanas`}
@@ -577,13 +581,13 @@ function PainelOperacional() {
                   className="hover-suave"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
-                    height: 26, padding: "0 10px", borderRadius: 13, flexShrink: 0,
+                    height: 24, padding: "0 9px", borderRadius: 12, flexShrink: 0,
                     background: "transparent", cursor: "pointer", color: gold,
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                    fontFamily: FONT, fontWeight: 600, fontSize: 11,
+                    fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
                   }}
                 >
-                  <Users size={12} />
+                  <Users size={11} />
                   Duplas
                 </button>
               </span>
@@ -602,30 +606,38 @@ function PainelOperacional() {
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={serieDuplas} margin={{ left: 0, right: 10, top: 2, bottom: 0 }}>
+                  <DegradeEspectro prefixo="op-dupla" quantas={duplasAtivas.length} isLight={isLight} />
                   <CartesianGrid stroke={grade} />
                   <XAxis dataKey="semana" tick={eixo} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={24} />
+                  <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={22} />
                   <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
                   <Legend
-                    wrapperStyle={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary }}
+                    wrapperStyle={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}
                     iconSize={8}
                     formatter={(v: string) => {
                       const d = duplasAtivas.find((x) => x.id === v);
                       return d ? rotuloDaDupla(d, nomeDeTecnico) : v;
                     }}
                   />
-                  {duplasAtivas.map((d, i) => (
-                    <Line
-                      key={d.id}
-                      type="monotone"
-                      dataKey={d.id}
-                      stroke={cores[i % 8]}
-                      strokeWidth={2}
-                      dot={{ r: 2.5, strokeWidth: 0, fill: cores[i % 8] }}
-                      activeDot={{ r: 4.5 }}
-                      isAnimationActive={false}
-                    />
-                  ))}
+                  {duplasAtivas.map((d, i) => {
+                    const passo = i % PECAS_ESPECTRO;
+                    return (
+                      <Line
+                        key={d.id}
+                        type="monotone"
+                        dataKey={d.id}
+                        stroke={`url(#op-dupla-${passo})`}
+                        strokeWidth={2}
+                        // ponto e legenda não aceitam url(#…) de forma
+                        // confiável — levam a cor SÓLIDA do passo, que é o
+                        // início do degradê daquela linha
+                        dot={{ r: 2.5, strokeWidth: 0, fill: espectro(passo, isLight) }}
+                        activeDot={{ r: 4.5, fill: espectro(passo, isLight) }}
+                        legendType="circle"
+                        isAnimationActive={false}
+                      />
+                    );
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -634,31 +646,28 @@ function PainelOperacional() {
 
         <Ranking
           titulo="Em aberto por técnico"
+          prefixo="op-tec"
           dados={cargaComNome}
-          corDe={(nome, i) => (nome === "Sem técnico" ? neutro : cores[i % 8])}
           sufixo="em aberto"
           vazio={<span style={{ color: textSecondary }}>Nada em aberto atribuído.</span>}
         />
 
-        {/* Reincidência — o mais próximo de "serviço mal feito" que dá para
-            medir sem inspeção: o mesmo cliente voltando com corretiva em
-            menos de 30 dias */}
+        {/* R68 — no lugar de "Backlog por idade" e "Reincidência 30d":
+            quem está pedindo mais. Só clientes COM chamado aberto entram —
+            é o Map de `abertosPorCliente` que garante isso, sem precisar
+            cruzar com a lista de clientes. */}
         <Ranking
-          titulo={`Reincidência · ${JANELA_REINCIDENCIA_DIAS}d`}
-          dados={reincidenciaComNome}
-          corDe={() => vermelho}
-          sufixo="retorno"
-          vazio={
-            <span style={{ color: verde }}>
-              Nenhum cliente voltou com corretiva em menos de {JANELA_REINCIDENCIA_DIAS} dias.
-            </span>
-          }
+          titulo="Abertos por cliente"
+          prefixo="op-cli"
+          dados={clientesComAberto}
+          sufixo="em aberto"
+          vazio={<span style={{ color: verde }}>Nenhum chamado em aberto.</span>}
         />
       </div>
 
       {semDados && (
         <div style={{
-          ...card(isLight), borderRadius: 16, padding: "14px 16px", textAlign: "center",
+          ...card(isLight), borderRadius: 16, padding: "12px 16px", textAlign: "center",
           fontFamily: FONT, fontSize: 12.5, color: textSecondary,
         }}>
           Nenhum chamado de campo ainda — os indicadores se preenchem conforme a operação andar.
@@ -666,34 +675,24 @@ function PainelOperacional() {
       )}
 
       {/* ══ A LISTA — o resto da tela ══════════════════════════════════════ */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <h2 style={{
-            fontFamily: FONT, fontWeight: 600, fontSize: 18, margin: 0,
+            fontFamily: FONT, fontWeight: 600, fontSize: 17, margin: 0,
             color: textPrimary, letterSpacing: "-0.01em",
           }}>
             Chamados técnicos
           </h2>
-          <button
-            onClick={() => navigate({ to: "/chamados/painel" })}
-            style={{
-              marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer",
-              color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5, padding: 0,
-            }}
-          >
-            Ver todos os chamados →
-          </button>
-        </div>
-
-        {/* A faixa que anuncia o recorte — o mesmo contrato da Início: a
-            lista nunca fica filtrada sem dizer por quê. */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8, minHeight: 26,
-          fontFamily: FONT, fontSize: 12, color: textSecondary,
-        }}>
-          Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>
-            {kpiAtivo ? KPI_OPERACIONAL_LABEL[kpiAtivo] : "Chamados em aberto"}
-          </strong>
+          {/* O anúncio do recorte (DASHBOARD.md §7.3) — o mesmo contrato da
+              Início: a lista nunca fica filtrada sem dizer por quê. Mudou de
+              linha própria para a linha do título, que é onde ele deixa de
+              custar altura; o texto continua o mesmo. */}
+          <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
+            · Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>
+              {kpiAtivo ? KPI_OPERACIONAL_LABEL[kpiAtivo] : "Chamados em aberto"}
+            </strong>{" "}
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>({atividades.length})</span>
+          </span>
           {kpiAtivo && (
             <button
               onClick={() => setKpiAtivo(null)}
@@ -705,14 +704,20 @@ function PainelOperacional() {
               limpar
             </button>
           )}
-          <span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
-            {atividades.length}
-          </span>
+          <button
+            onClick={() => navigate({ to: "/chamados/painel" })}
+            style={{
+              marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer",
+              color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5, padding: 0,
+            }}
+          >
+            Ver todos os chamados →
+          </button>
         </div>
 
         {atividades.length === 0 ? (
           <div style={{
-            ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center",
+            ...card(isLight), borderRadius: 16, padding: "24px 16px", textAlign: "center",
             fontFamily: FONT, fontSize: 13, color: textSecondary,
           }}>
             Nenhum chamado {kpiAtivo ? "nesta seleção" : "em aberto"} agora.

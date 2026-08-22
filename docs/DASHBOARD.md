@@ -62,6 +62,16 @@ Margem inventada por painel é o que desalinha telas irmãs.
   `flexWrap: wrap` (entre 1024 e ~1400px quebra em duas linhas), `paddingTop: 6`.
 - **`ALTURA = 252`** — todos os painéis da faixa têm a MESMA altura fixa.
   É a constante que mantém a fileira lendo como uma peça só.
+- **O valor de `ALTURA` sai de um ORÇAMENTO, não do gosto**: some as faixas,
+  os gaps, o respiro do topo e o `--topo` do layout, e o resultado tem de
+  caber na parte da tela que o dashboard pode ocupar. O Painel Operacional
+  (R68) fixa esse contrato em número — a lista começa acima da metade — e o
+  verificador **refaz a conta**, então subir a altura quebra a asserção em
+  vez de quebrar a tela em silêncio. Duas faixas de 168 lá; uma de 252 aqui.
+- **Título é opcional.** O Painel Operacional abre direto no dashboard: o
+  nome da tela já está aceso no menu à esquerda, e repeti-lo custa a faixa
+  vertical do orçamento acima. `PainelBase` omite o cabeçalho — e encolhe o
+  respiro de cima junto — quando não recebe `titulo`.
 - A faixa é desktop-only (`.so-desktop`): no celular o espaço é do quadro.
 - O quarto painel (Criar rápido) é AÇÃO, não indicador — ele não participa
   do drill-down (§7).
@@ -79,6 +89,18 @@ Margem inventada por painel é o que desalinha telas irmãs.
   esquerdo da próxima e as oito leem como um degradê contínuo.
 - **Rosca: rampa na ordem ORIGINAL** (identidade do degradê, não eixo de
   tempo), percorrendo o arco via `linearGradient` com `ESPECTRO_STOPS`.
+- **Gráfico em SVG (recharts): `paradasBarra(i, isLight)`.** `fill`/`stroke`
+  de SVG não aceitam `linear-gradient()` de CSS, então a peça referencia um
+  `<linearGradient>` por `url(#id)` e `paradasBarra` devolve as paradas dele
+  — com a MESMA regra da costura de `gradienteBarra`. Um `<defs>` por
+  gráfico, com **prefixo de id próprio**: dois `<defs>` com o mesmo id fazem
+  o segundo gráfico herdar as cores do primeiro, em silêncio. Máx. 8 peças
+  (`PECAS_ESPECTRO`); "Outros"/"Sem técnico"/"Sem cliente" ficam NEUTROS,
+  fora da rampa — são ausência de identidade, não mais uma identidade.
+  Legenda de fatia leva o MESMO degradê (via `gradienteBarra`, em CSS):
+  legenda apontando para uma cor que não existe no gráfico é pior que
+  legenda nenhuma. Número de legenda vai em `espectroTexto`, não na rampa de
+  preenchimento.
 - **KPIs: PRISMA** — azul (feito), amarelo (a fazer), laranja e vermelho (o
   que arde). As mesmas cores dos fundos de card do quadro: quem vê "3" em
   vermelho aqui procura os três cards vermelhos embaixo e os acha.
@@ -175,7 +197,8 @@ Os painéis leem `paraPaineis` = `recorteDosPaineis(atividades ∪ histórico)`:
    `.so-desktop` se houver versão de celular própria.
 4. Painel = `card(isLight)` + `.elevavel`; micro-rótulo `MICRO` em amarelo.
 5. Cores de DADO pelo `ESPECTRO`/`PRISMA` — nunca hex novo; texto de número
-   por `ESPECTRO_TEXTO`; um amarelo só.
+   por `ESPECTRO_TEXTO`; um amarelo só. Em SVG, `paradasBarra` + um `<defs>`
+   com prefixo de id por gráfico.
 6. **Cada conta em função pura** num `metricas.ts` do domínio — a tela só
    pinta.
 7. **Cada peça clicável**: `<button aria-pressed>`, alvo generoso, hover de

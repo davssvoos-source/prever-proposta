@@ -3540,3 +3540,83 @@ recorte; `idadePorFaixa` e `ordenarChamados` seguem como estavam.
 
 1126 asserções (13 novas, 3 reescritas), build ok, TypeScript sem erro novo.
 Não verificado em navegador — sem ferramenta de browser na sessão.
+
+### U57 — O degradê da casa nos gráficos SVG (R68, 2026-08-22)
+
+"Aplique o mesmo gradiente que tem no gráfico de rosca e no gráfico de
+barras da página INÍCIO... nos gráficos de linha, barra e rosca do painel
+operacional. Remova o campo de backlog por idade e o campo de reincidência
+30D... adicione um gráfico de barras... sobre chamados abertos por cliente...
+Remova o título Painel Operacional, remova o subtítulo, suba o dashboard...
+a lista deve começar no máximo na metade da tela. Quero ver o degradê
+igualzinho o do início em tudo!"
+
+**Por que o degradê não "atravessava" sozinho.** A Início pinta as barras
+com `<div>` + `gradienteBarra()` (CSS) e a rosca com SVG escrito à mão. O
+Painel Operacional é todo recharts, e recharts pinta em SVG: `fill` e
+`stroke` de SVG **não aceitam `linear-gradient()`** — a peça tem de
+referenciar um `<linearGradient>` por `url(#id)`. Ou seja, "o mesmo
+gradiente" não era copiar uma string de CSS; era ter a rampa nos dois
+idiomas.
+
+Daí **`paradasBarra(i, isLight)`** em `paleta.ts`, ao lado de
+`gradienteBarra`: devolve as paradas (`<stop>`) da peça *i*, com a MESMA
+regra da emenda. Isso importa mais do que parece — a rampa tem uma costura
+entre as amostras 1 e 2 onde interpolar em sRGB **passa pelo verde**, e
+`gradienteBarra` já conserta isso inserindo a parada acromática `COSTURA` no
+meio. Uma implementação SVG escrita à parte teria reintroduzido o bug em
+silêncio, porque o verde só aparece no miolo de UMA peça em oito. Há
+asserção travando que as duas funções concordam sobre quem cruza a emenda,
+nos dois temas: SVG e CSS não podem discordar.
+
+**Onde a rampa entrou, e onde NÃO entrou.** Entrou nos três tipos de
+gráfico: fatia da rosca, barra deitada e traço de linha — cada peça no seu
+passo, `ESPECTRO[i] → ESPECTRO[i+1]`, então a série lê como um degradê
+contínuo, igual às barras da Início. Não entrou nos 4 KPIs, que ficam no
+PRISMA: ali azul→amarelo→laranja→vermelho é escala de SEVERIDADE, não série
+de dados, e trocar por rampa apagaria a amarração "vermelho aqui = os cards
+vermelhos ali". Também não entrou em "Sem técnico"/"Sem cliente", que
+seguem neutros — ausência de identidade não é mais uma identidade (§9).
+
+Dois detalhes que o SVG cobra: o `<defs>` precisa de **prefixo de id por
+gráfico** (dois `<defs>` com o mesmo id fazem o segundo gráfico herdar as
+cores do primeiro, sem erro nenhum), e ponto/legenda de linha não levam
+`url(#…)` de forma confiável — levam a cor sólida do passo, que é o início
+do degradê daquela linha. A legenda da rosca leva o degradê de verdade, em
+CSS, via `gradienteBarra`: legenda apontando para uma cor que não existe no
+gráfico é pior que legenda nenhuma.
+
+**Os dois painéis que saíram.** "Backlog por idade" e "Reincidência 30d"
+deram lugar a **um** gráfico: chamados em aberto por cliente. `idadePorFaixa`
+foi removida junto — ela tinha nascido na U55 para aquele painel e não tinha
+outro consumidor. `reincidencia` FICOU no módulo puro, e a diferença é
+proposital: ela é anterior, tem rationale próprio documentado e o módulo já
+expõe indicadores que nenhuma tela desenha hoje (`idadeMediana`,
+`encalhados`). Registrei isso no cabeçalho de `indicadores.ts` — o módulo é
+a biblioteca de indicadores de campo, não o espelho do layout da vez.
+
+`abertosPorCliente()` resolve o "somente os clientes que têm" **pela
+estrutura**, não por filtro: o `Map` só ganha chave de cliente que apareceu,
+então quem não tem chamado aberto não existe no resultado — sem precisar
+cruzar com a lista de clientes. O balde `clienteId: null` fica, em neutro:
+descartá-lo faria as barras somarem menos que "chamados em aberto", que é o
+gráfico sumindo com trabalho em silêncio. Asserção CRÍTICO trava a soma
+contra `chamadosDoKpi('abertos')`.
+
+**O orçamento vertical virou número, e o teste refaz a conta.** Título e
+subtítulo saíram (`PainelBase` ganhou `titulo` opcional, e encolhe o respiro
+de cima junto — os outros dois painéis seguem com o deles). A altura das
+faixas caiu de 216 para **168**. E o contrato "a lista começa no máximo na
+metade da tela" deixou de ser prosa: a asserção soma `2×ALTURA + gap +
+respiro + --topo` e exige ≤ 384 (metade de um notebook de 768). Foi ela que
+pegou meu primeiro chute — 172 dava 388, quatro pixels acima. Uma regra de
+layout que o verificador refaz é a única que não apodrece: subir a altura
+dos painéis agora quebra o teste, em vez de quebrar a tela em silêncio.
+
+**O `DASHBOARD.md` cresceu junto**, como manda a regra da U54 (nada entra no
+documento sem estar implementado e travado): a seção de cor ganhou o caso
+SVG, a da faixa ganhou "a ALTURA sai de um orçamento" e "título é opcional",
+e o checklist ganhou o `paradasBarra` no passo 5.
+
+1155 asserções (29 novas, 5 reescritas), build ok, TypeScript sem erro novo.
+Não verificado em navegador — sem ferramenta de browser na sessão.
