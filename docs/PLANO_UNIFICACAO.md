@@ -2816,3 +2816,50 @@ v2. Quatro ajustes, todos em `PainelChamado.tsx`/`styles.css`/
    nativa aparece por 1 frame antes do JS medir).
 
 823 asserções (12 novas), build ok.
+
+### U44 — Marcação de Monitoramento de Alarmes (R41, 2026-08-22)
+
+Continuação da U36: o Davi mandou a planilha "clientes-monitoramento" (42
+contas) pedindo a propriedade `monitoramento_alarmes` nesses clientes — o
+mesmo `servicos_prestados` que a U36 já tinha criado e povoado com os 29 de
+portaria remota.
+
+**Por que só por documento, diferente da U36**: a planilha de portaria tinha
+fantasia limpa; esta tem fantasia solta ("Residencia Francisco (Rua Lelis
+Vieira, 201)", "RESIDENCIA PARASMO (Residencia Ricardo Parasmo)") — um
+de-para por nome normalizado erraria fácil. Cada uma das 42 linhas foi
+conferida à mão contra a planilha completa da base oficial (U24: nome,
+documento e endereço de cada cliente) antes de entrar na migration:
+
+- **30 casaram**, sempre pelo documento (CNPJ/CPF) já existente em
+  `clientes.documento` — inclusive quando a planilha não trazia CNPJ
+  nenhum na linha (nesse caso o endereço exato, rua + número, foi o que
+  confirmou qual cliente da base era) ou trazia um placeholder óbvio ("0",
+  "123123", 15 zeros).
+- **2 pares de contas apontam pro MESMO cliente**: Páteo Klabin (contas
+  0040 e 4051) e Ricardo Parasmo (9003 "Residencia Parasmo" e 8057 "Obra
+  Ricardo Parasmo", mesmo CPF nas duas linhas da planilha — a pessoa tem
+  duas propriedades monitoradas, mas o cadastro só tem UM registro de
+  cliente). A lista de 30 tem cada documento uma vez só; o UPDATE por
+  documento cobre as duas contas de qualquer forma.
+- **9 ficaram de fora**, sem correspondente confiável (nem documento nem
+  endereço exato bateram com nada na base): Residencia Beto, ALFALUX
+  ALARME, Mãe Iliana, Ara Escritorio (Campo Verde), as 3 contas Ara
+  Vartanian da Rua Lelis Vieira 222, Romma Serras, Residencia Adriana e
+  Residencia Valmir. Documentados na própria migration para quem for
+  investigar depois — podem ser clientes novos (fora da base da U24) ou
+  cadastrados sob outro nome; decidir isso é conferência humana, não algo
+  que este script deveria adivinhar.
+
+**A asserção reproduz a conferência**: em vez de só travar a estrutura do
+SQL, o verificador extrai os 30 documentos da migration E os documentos da
+planilha oficial da U24 (mesmo parser regex que a U36 já usa) e confirma que
+todo documento da U44 aparece na base — do jeito que a própria migration
+confirmaria em produção, mas sem precisar rodar contra o banco de verdade.
+Também confere que não há documento duplicado dentro da lista.
+
+Nenhuma mudança de UI/tela: `SERVICO_ORDEM`, filtro, contagem, badges e o
+toggle na ficha do cliente já foram construídos genericamente pela U36 —
+esta migration só povoa dados.
+
+831 asserções (8 novas), build ok.

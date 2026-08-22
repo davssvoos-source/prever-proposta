@@ -2646,5 +2646,52 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R52 (zoom/pan do mapa) está documentado', /\*\*R52\*\*/.test(produto2), true);
 }
 
+// ── U44: marcação de monitoramento de alarmes (R41, continuação da U36,
+//    2026-08-22) ────────────────────────────────────────────────────────────
+{
+  const fs26 = require('fs');
+  const u44 = fs26.readFileSync('supabase/migrations/20260822030000_u44_monitoramento_alarmes.sql', 'utf8');
+
+  eq('U44 só acrescenta o serviço se ainda não estiver lá (idempotente)',
+     /NOT \('monitoramento_alarmes' = ANY \(c\.servicos_prestados\)\)/.test(u44), true);
+  eq('U44 tem pré-voo dos que não casam', /PRÉ-VOO/.test(u44), true);
+  eq('U44 termina com SELECT de verificação', /esperado 30/.test(u44), true);
+  eq('U44 casa só por documento (a planilha tem nome solto demais para casar por nome)',
+     /regexp_replace\(c\.documento, '\\D', '', 'g'\) = regexp_replace\(m\.documento, '\\D', '', 'g'\)/.test(u44),
+     true);
+
+  // OS 30 — cada um foi conferido à mão contra a base real do QAP (a da
+  // U24), pelo documento (CNPJ/CPF) já existente em `clientes.documento`.
+  // Esta asserção reproduz essa conferência: todo documento listado em U44
+  // precisa aparecer em algum documento da planilha da U24 — senão a
+  // migration marcaria um cliente que não existe (ou existe sob outro
+  // documento), em silêncio.
+  {
+    const dig = (t) => (t || '').replace(/\D/g, '');
+    const u24b = fs26.readFileSync('supabase/migrations/20260820150000_u24_base_clientes.sql', 'utf8');
+    const ini2 = u24b.indexOf('INSERT INTO _planilha_u24');
+    const base2 = [...u24b.slice(ini2, u24b.indexOf(';', ini2))
+      .matchAll(/\(\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'/g)]
+      .map((m) => ({ nome: m[1].replace(/''/g, "'"), doc: m[2] }));
+    const porDoc2 = new Set(base2.map((b) => dig(b.doc)).filter((d) => d.length >= 11));
+
+    const bloco2 = u44.slice(u44.indexOf('INSERT INTO _monitoramento_u44'), u44.indexOf('-- PRÉ-VOO'));
+    const lista2 = [...bloco2.matchAll(/\(\s*'((?:[^']|'')*)'\s*,\s*'([^']*)'\)/g)]
+      .map((m) => ({ nome: m[1].replace(/''/g, "'"), doc: m[2] }));
+
+    eq('U44 lista os 30 clientes de monitoramento de alarmes', lista2.length, 30);
+    const orfaos2 = lista2.filter((p) => !porDoc2.has(dig(p.doc)));
+    eq('todos os 30 documentos batem com algum cliente da base do QAP (U24)', orfaos2.map((o) => o.nome), []);
+    // nenhum documento repetido na lista — cada linha marca um cliente distinto
+    const docsDigits = lista2.map((p) => dig(p.doc));
+    eq('nenhum documento duplicado dentro da própria lista da U44',
+       new Set(docsDigits).size, docsDigits.length);
+  }
+
+  const produto3 = fs26.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R41 continua documentado (monitoramento de alarmes agora também marcado)',
+     /\*\*R41\*\*/.test(produto3) || /R41/.test(produto3), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
