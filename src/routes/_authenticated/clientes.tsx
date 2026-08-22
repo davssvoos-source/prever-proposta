@@ -158,11 +158,25 @@ function ClientesPage() {
   return (
     // .sangra-x, não um padding próprio: é a MESMA classe que a Início usa no
     // quadro e nos filtros, para as duas páginas terem a régua exata — colado
-    // na sidebar à esquerda, na borda da janela à direita. paddingTop 18
-    // replica o espaçamento que a Início usa acima do próprio conteúdo.
-    <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    // na sidebar à esquerda, na borda da janela à direita.
+    //
+    // .clientes-tela-fixa: TETO, não piso (2026-08-22, Davi: "esta tela não
+    // deve ser scrollável... adapte a tela para uma tela fixa") — mas só a
+    // PARTIR de 1024px (a régua em styles.css). No celular, mapa empilhado
+    // sobre lista sobre paginação não cabe inteiro sem rolar de jeito
+    // nenhum — travar altura lá só cortaria conteúdo. Diferente do
+    // Calendário (calendario.tsx), que usa `minHeight` de propósito porque a
+    // grade dele cresce com o mês mais cheio — aqui a lista já vem paginada
+    // em 10 (R55), então um teto com rolagem PRÓPRIA (na coluna da lista,
+    // não na página) é o encaixe certo no desktop. paddingTop/paddingBottom
+    // encolheram de 18/40 para 8/8: numa tela com teto, sobra desperdiçada
+    // em cima é sobra que falta embaixo, no mapa.
+    <div className="sangra-x clientes-tela-fixa" style={{
+      paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column", gap: 10,
+      color: textPrimary, minHeight: 0,
+    }}>
       {/* Cabeçalho — a volta é gesto de celular; no desktop a sidebar já situa */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <button
           className="so-celular"
           onClick={() => navigate({ to: "/gerencial" })}
@@ -192,40 +206,51 @@ function ClientesPage() {
           cliente — exatamente o que deixou de ser nosso. Cadastro duplicado
           passa a ser resolvido no QAP, que é a fonte. */}
 
-      {/* Busca + filtros na mesma linha (desktop); empilha sozinho no celular */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <div className="trilho-x" style={{ display: "flex", gap: 8, flex: 1, minWidth: 240 }}>
-          {([
-            ["todos", `Todos · ${contagem.todos}`],
-            ["ativo", `Ativos · ${contagem.ativo}`],
-            ["inativo", `Inativos · ${contagem.inativo}`],
-          ] as [Filtro, string][]).map(([valor, rotulo]) => (
-            <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
-              {rotulo}
+      {/* Busca + filtros na mesma linha (desktop); empilha sozinho no celular.
+          Situação e Serviço viraram UM painel só (2026-08-22, Davi: "agrupe
+          os grupos de filtro") — antes eram duas fileiras soltas that liam
+          como filtros desencontrados; agora leem como uma única pergunta
+          composta, "quais clientes", com dois eixos dentro do mesmo cartão. */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch", flexShrink: 0 }}>
+        <div style={{
+          ...card(isLight), borderRadius: 14, padding: "10px 12px",
+          display: "flex", flexDirection: "column", gap: 7,
+          flex: 1, minWidth: 280,
+        }}>
+          <div className="trilho-x" style={{ display: "flex", gap: 8 }}>
+            {([
+              ["todos", `Todos · ${contagem.todos}`],
+              ["ativo", `Ativos · ${contagem.ativo}`],
+              ["inativo", `Inativos · ${contagem.inativo}`],
+            ] as [Filtro, string][]).map(([valor, rotulo]) => (
+              <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
+                {rotulo}
+              </button>
+            ))}
+          </div>
+          {/* SERVIÇO PRESTADO (R41) — segunda linha dentro do MESMO painel,
+              com rótulo próprio: são dois eixos que se combinam, e
+              emendá-los numa fileira só faria parecer que só um pode estar
+              ativo por vez. */}
+          <div className="trilho-x" style={{ display: "flex", gap: 8 }}>
+            <span style={{
+              fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: textSecondary,
+              alignSelf: "center", flexShrink: 0, paddingRight: 2,
+            }}>
+              Serviço
+            </span>
+            <button style={chipFiltro(servico === "todos")} onClick={() => setServico("todos")}>
+              {`Todos · ${contagem.servicoTodos}`}
             </button>
-          ))}
+            {SERVICO_ORDEM.map((s) => (
+              <button key={s} style={chipFiltro(servico === s)} onClick={() => setServico(s)}>
+                {`${SERVICO_LABEL[s]} · ${contagem[s]}`}
+              </button>
+            ))}
+          </div>
         </div>
-        {/* SERVIÇO PRESTADO (R41) — segunda linha de chips, com separador
-            visual: são dois eixos que se combinam, e emendá-los na mesma
-            fileira faria parecer que só um pode estar ativo. */}
-        <div className="trilho-x" style={{ display: "flex", gap: 8, flexBasis: "100%", minWidth: 0 }}>
-          <span style={{
-            fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: textSecondary,
-            alignSelf: "center", flexShrink: 0, paddingRight: 2,
-          }}>
-            Serviço
-          </span>
-          <button style={chipFiltro(servico === "todos")} onClick={() => setServico("todos")}>
-            {`Todos · ${contagem.servicoTodos}`}
-          </button>
-          {SERVICO_ORDEM.map((s) => (
-            <button key={s} style={chipFiltro(servico === s)} onClick={() => setServico(s)}>
-              {`${SERVICO_LABEL[s]} · ${contagem[s]}`}
-            </button>
-          ))}
-        </div>
-        <div style={{ position: "relative", width: "min(320px, 100%)" }}>
+        <div style={{ position: "relative", width: "min(320px, 100%)", flexShrink: 0 }}>
           <Search
             size={15}
             color={textSecondary}
@@ -236,7 +261,7 @@ function ClientesPage() {
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar cliente, endereço, posto…"
             style={{
-              width: "100%", boxSizing: "border-box", height: 42, borderRadius: 999,
+              width: "100%", boxSizing: "border-box", height: "100%", minHeight: 42, borderRadius: 14,
               padding: "0 14px 0 36px",
               background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
               border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
@@ -247,9 +272,22 @@ function ClientesPage() {
         </div>
       </div>
 
-      {/* Lista + mapa. minmax(0,…) evita que o mapa estoure a coluna. */}
-      <div className="clientes-duas-colunas">
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+      {/* Lista + mapa. minmax(0,…) evita que o mapa estoure a coluna.
+          flex:1 + minHeight:0 (inline, junto da classe): esta é a linha que
+          consome o resto da tela fixa — sem o minHeight:0 um filho flex não
+          encolhe abaixo do próprio conteúdo, e a rolagem vazaria pra página
+          inteira em vez de ficar presa na coluna da lista, que é o pedido. */}
+      <div className="clientes-duas-colunas" style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, minHeight: 0 }}>
+          {/* A rolagem mora AQUI, não na coluna inteira — a paginação (fora
+              deste bloco) fica sempre visível embaixo, sem precisar rolar
+              até ela. Com 10 cartões por página (R55) raramente enche o
+              espaço, mas numa janela baixa isto é o que evita a página
+              (em vez da lista) rolar. */}
+          <div className="rolagem-fina" style={{
+            display: "flex", flexDirection: "column", gap: 10,
+            flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 2,
+          }}>
           {isLoading ? (
             <div style={{ ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
               Carregando clientes…
@@ -364,18 +402,23 @@ function ClientesPage() {
               );
             })
           )}
+          </div>
 
-          {/* Paginação (R55) — só aparece quando há mais de uma página; uma
-              lista de 3 resultados não precisa de numerador nenhum. */}
+          {/* Paginação (R55) — FORA da região que rola, de propósito: fica
+              sempre visível embaixo da lista, sem precisar rolar até ela.
+              Só aparece quando há mais de uma página; uma lista de 3
+              resultados não precisa de numerador nenhum. */}
           {lista.length > 0 && totalPaginas > 1 && (
-            <Paginacao
-              pagina={pagina}
-              totalPaginas={totalPaginas}
-              totalItens={lista.length}
-              itensPorPagina={ITENS_POR_PAGINA}
-              isLight={isLight}
-              aoIrPara={setPaginaAtual}
-            />
+            <div style={{ flexShrink: 0 }}>
+              <Paginacao
+                pagina={pagina}
+                totalPaginas={totalPaginas}
+                totalItens={lista.length}
+                itensPorPagina={ITENS_POR_PAGINA}
+                isLight={isLight}
+                aoIrPara={setPaginaAtual}
+              />
+            </div>
           )}
         </div>
 

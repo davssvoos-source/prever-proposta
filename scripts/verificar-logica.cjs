@@ -790,8 +790,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      css.includes('.pagina-clientes'), false);
 
   const rota = fs5.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  // className="sangra-x" OU "sangra-x clientes-tela-fixa" (R60) — o que
+  // importa é sangra-x estar lá, como token próprio (não miolo de outro nome)
   eq('clientes.tsx usa .sangra-x — a MESMA classe da Início, não um padding próprio',
-     /className="sangra-x"/.test(rota), true);
+     /className="sangra-x(?: [\w-]+)*"/.test(rota), true);
   eq('clientes.tsx não inventa padding horizontal (sangra-x já resolve)',
      /padding:\s*"12px 0/.test(rota), false);
 
@@ -3297,6 +3299,43 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto6 = fs31.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R60 está documentado', /\*\*R60\*\*/.test(produto6), true);
+}
+
+// ── R61: Clientes vira tela fixa a partir de 1024px (2026-08-22) ───────────
+{
+  const fs32 = require('fs');
+  const cl3 = fs32.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  const css3 = fs32.readFileSync('src/styles.css', 'utf8');
+
+  eq('a página usa a classe .clientes-tela-fixa, além de .sangra-x',
+     /className="sangra-x clientes-tela-fixa"/.test(cl3), true);
+  eq('.clientes-tela-fixa só trava altura a partir de 1024px — no celular a página continua crescendo/rolando',
+     /@media \(min-width: 1024px\) \{\s*\n\s*\.clientes-tela-fixa \{\s*\n\s*height: calc\(100dvh - var\(--topo\) - 110px\);\s*\n\s*overflow: hidden;/.test(css3),
+     true);
+  eq('a margem superior encolheu (era 18/40, R55) — agora 8/8',
+     /paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column", gap: 10,/.test(cl3),
+     true);
+
+  // ── Situação + Serviço viram um painel só ────────────────────────────────
+  eq('Situação e Serviço moram no MESMO cartão (card(isLight)), não em duas fileiras soltas',
+     /flexDirection: "column", gap: 7,\s*\n\s*flex: 1, minWidth: 280,/.test(cl3), true);
+  eq('as duas fileiras de chip (situação, serviço) estão DENTRO desse cartão único',
+     /flex: 1, minWidth: 280,\s*\n\s*\}\}>[\s\S]{0,250}\["todos", `Todos · \$\{contagem\.todos\}`\][\s\S]{0,1100}Serviço/.test(cl3),
+     true);
+
+  // ── A coluna da lista rola por dentro; a página, não ─────────────────────
+  eq('CRÍTICO: .clientes-duas-colunas ganha flex:1 + minHeight:0 — sem isso a rolagem vazaria pra página inteira',
+     /className="clientes-duas-colunas" style=\{\{ flex: 1, minHeight: 0 \}\}/.test(cl3), true);
+  eq('a região que rola de verdade é a lista de cartões (.rolagem-fina, overflowY auto), não a coluna inteira',
+     /className="rolagem-fina" style=\{\{\s*\n\s*display: "flex", flexDirection: "column", gap: 10,\s*\n\s*flex: 1, minHeight: 0, overflowY: "auto",/.test(cl3),
+     true);
+  eq('CRÍTICO: a paginação fica FORA da região que rola — sempre visível, sem precisar rolar até ela',
+     /\)\}\s*\n\s*<\/div>\s*\n\s*\n\s*\{\/\* Paginação/.test(cl3), true);
+  eq('align-content:stretch explícito no grid — a linha única ocupa o teto inteiro que .clientes-tela-fixa dá',
+     /align-content: stretch;/.test(css3), true);
+
+  const produto7 = fs32.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R61 está documentado', /\*\*R61\*\*/.test(produto7), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

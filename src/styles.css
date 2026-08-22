@@ -786,12 +786,32 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
        deixou de ter o que fazer — as duas colunas SEMPRE começam e terminam
        juntas — e por isso saiu. */
     align-items: stretch;
+    /* R60: com .clientes-tela-fixa dando um TETO à página (abaixo), a
+       própria LINHA do grid passa a ter altura definida, sobrando espaço
+       além do conteúdo — `stretch` aqui é o que faz essa única linha
+       ocupar o teto inteiro (o padrão, "normal", já se comporta assim na
+       prática, mas explícito não depende de ninguém lembrar disso). */
+    align-content: stretch;
   }
   .clientes-duas-colunas > :last-child { order: 0; }
 }
 /* telas largas: a lista não precisa crescer, o mapa sim */
 @media (min-width: 1600px) {
   .clientes-duas-colunas { grid-template-columns: 420px minmax(0, 1fr); }
+}
+
+/* .clientes-tela-fixa (R60, Davi: "esta tela não deve ser scrollável...
+   adapte a tela para uma tela fixa") — TETO de altura, só a partir de
+   1024px. No celular, mapa + lista + paginação empilhados não cabem juntos
+   numa tela sem rolar de jeito nenhum; travar a altura lá só cortaria
+   conteúdo, então o celular continua com a página crescendo e rolando como
+   sempre. `<main>` (route.tsx) reserva `var(--topo)` em cima e 110px
+   embaixo — o resto é o teto desta página. */
+@media (min-width: 1024px) {
+  .clientes-tela-fixa {
+    height: calc(100dvh - var(--topo) - 110px);
+    overflow: hidden;
+  }
 }
 
 /* A caixa do mapa em si (dentro de MapaClientes.tsx). No celular, altura

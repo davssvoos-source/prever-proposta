@@ -874,3 +874,17 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
     R40).
   - Entrou o filtro **Equipe** (o mesmo departamento do cadastro de
     usuário — Técnica, Comercial, SAC...). *(Davi, 2026-08-22.)*
+
+- **R61** — A página de Clientes virou **tela fixa** a partir de 1024px: a
+  página em si não rola mais — quem rola, se precisar, é só a **coluna da
+  lista**, por dentro, com a **paginação sempre visível** embaixo dela (não
+  é preciso rolar até o numerador). O mapa continua casado com a altura da
+  lista (R55). Os filtros **Situação** e **Serviço**, antes duas fileiras
+  soltas, viraram **um painel só**, lendo como uma pergunta composta em vez
+  de dois filtros desencontrados. A margem superior encolheu — numa tela com
+  teto, espaço sobrando em cima é espaço faltando embaixo, no mapa. No
+  celular a tela continua crescendo e rolando normalmente: mapa + lista +
+  paginação empilhados não cabem juntos numa tela sem rolar de jeito nenhum,
+  e travar a altura lá só cortaria conteúdo. *(Davi, 2026-08-22: "esta tela
+  não deve ser scrollável, ajuste a margem superior, agrupe os grupos de
+  filtro e adapte a tela para uma tela fixa".)*

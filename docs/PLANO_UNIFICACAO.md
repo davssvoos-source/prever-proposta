@@ -3111,3 +3111,42 @@ equipe naturalmente esconde campo/comercial — não é bug, é a própria
 definição do campo.
 
 984 asserções (44 novas), build ok.
+
+### U50 — Clientes vira tela fixa a partir de 1024px (R61, 2026-08-22)
+
+"Esta tela não deve ser 'scrollável', ajuste a margem superior, agrupe os
+grupos de filtro e adapte a tela para uma tela fixa."
+
+**Só desktop, de propósito.** `.clientes-tela-fixa` trava `height: calc(100dvh
+- var(--topo) - 110px); overflow: hidden` a partir de 1024px — abaixo disso a
+página continua crescendo e rolando como sempre. No celular, mapa + lista +
+paginação empilhados (a ordem de sempre, mapa primeiro) não cabem juntos numa
+tela sem rolar de jeito nenhum; travar altura lá só cortaria conteúdo sem
+ganhar nada. Padrão diferente do Calendário (que usa `minHeight`, não
+`height`, porque a grade dele CRESCE com o mês mais cheio) — aqui a lista já
+vem paginada em 10 (R55), uma altura previsível, então um teto com rolagem
+própria é o encaixe certo.
+
+**Onde a rolagem realmente mora**: não na coluna da lista inteira — só na
+região dos cartões (`.rolagem-fina`, `overflowY: auto`). A paginação fica
+FORA dessa região, como irmã depois dela: sempre visível embaixo da lista,
+sem precisar rolar até o numerador para trocar de página. `.clientes-duas-
+colunas` ganhou `flex: 1; minHeight: 0` inline — o `minHeight: 0` é o que
+importa: sem ele, um filho flex não encolhe abaixo do próprio conteúdo, e a
+"rolagem própria" vazaria pra página inteira, exatamente o que o pedido
+queria evitar. `align-content: stretch` entrou explícito no grid (R55) — o
+padrão ("normal") já se comporta assim na prática quando a linha do grid tem
+espaço sobrando, mas explícito não depende de ninguém lembrar do detalhe.
+
+**Situação + Serviço viram um painel só.** Antes eram duas fileiras de chip
+soltas, uma embaixo da outra, sem nada que dissesse que pertenciam juntas.
+Agora moram dentro do MESMO cartão (`card(isLight)`), lendo como uma
+pergunta composta ("quais clientes") com dois eixos, não dois filtros
+desencontrados. Efeito colateral bom: o campo de busca, ao lado, virou
+`alignItems: "stretch"` com o painel — as bordas dos dois casam na mesma
+altura sem cálculo nenhum.
+
+**A margem.** paddingTop/paddingBottom de 18/40 caíram para 8/8 — numa tela
+com teto, sobra em cima é sobra que falta embaixo, no mapa.
+
+994 asserções (10 novas), build ok.
