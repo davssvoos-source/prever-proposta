@@ -1073,3 +1073,15 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   abertos por cliente... Remova o título Painel Operacional, remova o
   subtítulo, suba o dashboard... a lista deve começar no máximo na metade da
   tela.")*
+
+- **R69** — **"Abertos por cliente" ocupa as duas linhas do dashboard.** Ele
+  saiu da segunda faixa e virou uma **coluna própria à direita**, da altura
+  das duas faixas somadas: as faixas ficam empilhadas à esquerda, o painel
+  alto ao lado delas. É o painel que mais ganha com altura — cada cliente é
+  uma barra —, e com o dobro do espaço ele passa a mostrar **12 clientes em
+  vez de 5**, sem espremer nome. "Fila por status" e "Fluxo e ritmo"
+  estreitaram para abrir essa coluna. O dashboard continua com a MESMA altura
+  total, então a lista segue começando acima da metade da tela (R68).
+  *(Davi, 2026-08-22: "o campo de abertos por cliente deve ocupar as duas
+  linhas do dashboard, reduza a largura do fila por status e fluxo e
+  ritmo".)*

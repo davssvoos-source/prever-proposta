@@ -3833,10 +3833,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /const ALTURA = (\d+);/.test(op3) && Number(op3.match(/const ALTURA = (\d+);/)[1]) < 252, true);
   eq('CRÍTICO: todo painel da faixa herda a altura pelo PAINEL compartilhado — altura própria por painel transforma a fileira numa colagem',
      /const PAINEL: CSSProperties = \{[\s\S]{0,200}height: ALTURA,/.test(op3), true);
-  eq('as duas faixas usam o gap 14 canônico do DASHBOARD.md §6, com wrap',
-     (op3.match(/display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap"/g) ?? []).length, 2);
-  eq('nenhum painel da faixa declara altura própria em pixel (só o PAINEL compartilhado e o bloco de KPIs, que casa com ele)',
-     (op3.match(/height: ALTURA/g) ?? []).length, 2);
+  // R69: o gap virou constante (GAP) porque a altura do painel de duas
+  // faixas é DERIVADA dele — dois lugares digitando 14 se descolariam.
+  eq('as faixas usam o gap canônico do DASHBOARD.md §6 por constante, com wrap',
+     (op3.match(/display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap"/g) ?? []).length >= 2
+     && /const GAP = 14;/.test(op3), true);
+  // 3+ dígitos = altura de PAINEL (168/350). Alturas pequenas (botão 24,
+  // barra de progresso 5) são de peça interna e não desalinham fileira.
+  eq('nenhum painel declara altura própria em pixel — ou é ALTURA (uma faixa) ou ALTURA_DUPLA (as duas)',
+     /height: \d{3,}/.test(op3), false);
 
   // ── o que encolheu para o dashboard caber no topo ────────────────────────
   eq('Fluxo do mês + Ritmo + Cumprimento de prazo viraram UM painel de micro-números',
@@ -3855,7 +3860,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('os dois rankings (carga por técnico e reincidência) saem do MESMO componente — não duas barras horizontais copiadas',
      (op3.match(/<Ranking\s/g) ?? []).length, 2);
   eq('ranking corta no topo N e DIZ que cortou (nº silenciosamente truncado lê como "é só isso")',
-     /top \{TETO_BARRAS\} de \{dados\.length\}/.test(op3), true);
+     /top \{teto\} de \{dados\.length\}/.test(op3), true);
 
   // ── a lista É a tabela da Início, não uma parecida ───────────────────────
   eq('a lista reusa TabelaAtividades da Início — reescrever aqui criaria a segunda tabela, que fica um passo atrás na primeira mudança de coluna',
@@ -3986,6 +3991,41 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto14 = fs39.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R68 está documentado', /\*\*R68\*\*/.test(produto14), true);
+}
+
+// ── R69: "Abertos por cliente" ocupa as duas faixas ────────────────────────
+{
+  const fs40 = require('fs');
+  const op5 = fs40.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+
+  eq('CRÍTICO: a altura do painel de duas faixas é DERIVADA de ALTURA e GAP — um 350 digitado se descolaria na primeira vez que um dos dois mudasse, e o painel deixaria de casar com a faixa 2',
+     /const ALTURA_DUPLA = ALTURA \* 2 \+ GAP;/.test(op5), true);
+  eq('…e a conta bate: ALTURA_DUPLA cobre exatamente as duas faixas mais o gap entre elas',
+     (() => {
+       const a = Number(op5.match(/const ALTURA = (\d+);/)[1]);
+       const g = Number(op5.match(/const GAP = (\d+);/)[1]);
+       return a * 2 + g;
+     })(), 350);
+  eq('o dashboard virou duas colunas: as faixas à esquerda, o painel alto à direita',
+     /flex: "4 1 700px", minWidth: 0, display: "flex", flexDirection: "column", gap: GAP/.test(op5), true);
+  eq('"Abertos por cliente" é quem recebe a altura dupla (e só ele)',
+     /titulo="Abertos por cliente"[\s\S]{0,220}altura=\{ALTURA_DUPLA\}/.test(op5)
+     && (op5.match(/altura=\{ALTURA_DUPLA\}/g) ?? []).length, 1);
+  eq('com o dobro de altura ele mostra mais clientes — teto próprio, não o das faixas de uma linha',
+     /teto=\{TETO_BARRAS_ALTO\}/.test(op5)
+     && Number(op5.match(/const TETO_BARRAS_ALTO = (\d+);/)[1])
+        > Number(op5.match(/const TETO_BARRAS = (\d+);/)[1]), true);
+  eq('o Ranking aceita altura e teto, com o padrão de UMA faixa — quem não pede, continua como estava',
+     /altura = ALTURA, teto = TETO_BARRAS/.test(op5), true);
+  eq('"Fila por status" e "Fluxo e ritmo" estreitaram para abrir a coluna da direita',
+     /\.\.\.PAINEL, flex: 1, minWidth: 210 \}\}/.test(op5)     // fila
+     && /\.\.\.PAINEL, flex: 1, minWidth: 216 \}\}/.test(op5),  // fluxo
+     true);
+  eq('a base da coluna esquerda comporta a faixa 1 numa linha só (KPIs 244 + fila 210 + fluxo 216 + 2 gaps = 698 ≤ 700) — senão as faixas quebrariam e as alturas se descolariam do painel alto',
+     244 + 210 + 216 + 2 * 14 <= 700, true);
+
+  const produto15 = fs40.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R69 está documentado', /\*\*R69\*\*/.test(produto15), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

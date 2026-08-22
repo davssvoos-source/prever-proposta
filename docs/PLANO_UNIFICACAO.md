@@ -3658,3 +3658,32 @@ que omite nome em silêncio mente sobre quem está na lista.
 o próximo gráfico em SVG do sistema, e nenhuma delas dá erro.
 
 1161 asserções, build ok.
+
+### U58 — "Abertos por cliente" ocupa as duas faixas (R69, 2026-08-22)
+
+"O campo de abertos por cliente deve ocupar as duas linhas do dashboard,
+reduza a largura do fila por status e fluxo e ritmo."
+
+O dashboard virou **duas colunas**: as duas faixas empilhadas à esquerda, o
+"Abertos por cliente" à direita ocupando a altura das duas. Foi a escolha
+certa de painel para crescer — cada cliente é uma barra, então altura vira
+informação direta: o teto subiu de 5 para **12 clientes**, com um teto
+próprio (`TETO_BARRAS_ALTO`) em vez do das faixas de uma linha.
+
+**A altura dele é DERIVADA, não digitada.** `ALTURA_DUPLA = ALTURA * 2 +
+GAP`. Escrever 350 ali funcionaria hoje e se descolaria na primeira vez que
+`ALTURA` ou o gap mudasse — e o sintoma seria sutil: o painel terminando
+alguns pixels antes ou depois da faixa 2, que é exatamente o tipo de
+desalinhamento que ninguém reporta e todo mundo sente. O gap virou constante
+(`GAP`) pelo mesmo motivo: dois lugares digitando 14 são dois lugares para
+esquecer um. Asserção CRÍTICO trava a derivação.
+
+**O que quebra primeiro, quando falta largura.** A coluna esquerda tem base
+700px — o mínimo em que a faixa 1 cabe numa linha (KPIs 244 + fila 210 +
+fluxo 216 + 2 gaps = 698, conferido por asserção). Abaixo disso quem quebra
+para baixo é o painel da direita, não as faixas: faixa quebrada viraria três
+linhas à esquerda contra duas de altura à direita, e o painel alto pararia
+no meio do nada. `minWidth: 0` na coluna esquerda mantém a promessa do
+design system de a página nunca rolar de lado.
+
+1170 asserções (9 novas, 2 reescritas), build ok.

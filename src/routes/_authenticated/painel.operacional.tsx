@@ -95,11 +95,26 @@ const ATALHOS: AtalhoPainel[] = [];
  */
 const ALTURA = 168;
 
+/** O gap entre painéis e entre as faixas (DASHBOARD.md §6). */
+const GAP = 14;
+
+/**
+ * A altura de um painel que ocupa AS DUAS FAIXAS — o "Abertos por cliente".
+ *
+ * Derivada, nunca digitada: ele precisa terminar exatamente onde a segunda
+ * faixa termina, e um 350 solto aqui se descolaria de `ALTURA`/`GAP` na
+ * primeira vez que um dos dois mudasse. Travado por asserção.
+ */
+const ALTURA_DUPLA = ALTURA * 2 + GAP;
+
 /** Quantas semanas o gráfico de atividades por dupla mostra. */
 const SEMANAS_NO_GRAFICO = 12;
 
-/** Quantas barras cabem nos painéis de ranking sem espremer o rótulo. */
+/** Quantas barras cabem num ranking de uma faixa sem espremer o rótulo. */
 const TETO_BARRAS = 5;
+
+/** …e num de duas faixas, que tem o dobro de altura para gastar. */
+const TETO_BARRAS_ALTO = 12;
 
 /** Teto da tabela — o mesmo da Início. */
 const TETO_TABELA = 200;
@@ -346,21 +361,25 @@ function PainelOperacional() {
    * é ausência de identidade, não mais uma identidade. É a mesma regra do
    * "Outros" no §9 do DESIGN_SYSTEM.
    */
-  const Ranking = ({ titulo, prefixo, dados, sufixo, vazio }: {
+  const Ranking = ({ titulo, prefixo, dados, sufixo, vazio, altura = ALTURA, teto = TETO_BARRAS, estilo }: {
     titulo: string;
     prefixo: string;
     dados: { nome: string; valor: number; semDono?: boolean }[];
     sufixo: string;
     vazio: ReactNode;
+    /** ALTURA (uma faixa) ou ALTURA_DUPLA (as duas). */
+    altura?: number;
+    teto?: number;
+    estilo?: CSSProperties;
   }) => {
-    const visiveis = dados.slice(0, TETO_BARRAS);
+    const visiveis = dados.slice(0, teto);
     return (
-      <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 244 }}>
+      <div className="elevavel" style={{ ...PAINEL, height: altura, flex: 1, minWidth: 244, ...estilo }}>
         <Cabeca
           titulo={titulo}
-          direita={dados.length > TETO_BARRAS ? (
+          direita={dados.length > teto ? (
             <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
-              top {TETO_BARRAS} de {dados.length}
+              top {teto} de {dados.length}
             </span>
           ) : undefined}
         />
@@ -402,291 +421,312 @@ function PainelOperacional() {
 
   return (
     <PainelBase numeros={[]} atalhos={ATALHOS} isAdmin={cargo === "admin"}>
-      {/* ══ FAIXA 1 — os números de cabeça e o estado da fila ══════════════ */}
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
-        {/* os 4 KPIs em 2 colunas de 2, clicáveis */}
-        <div style={{
-          width: 244, flexShrink: 0, height: ALTURA, display: "grid",
-          gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
-        }}>
-          {kpis.map((k) => {
-            const selecionado = kpiAtivo === k.chave;
-            const base = card(isLight);
-            return (
-              <button
-                key={k.chave}
-                onClick={() => setKpiAtivo(selecionado ? null : k.chave)}
-                aria-pressed={selecionado}
-                title={`${k.valor} — clique para filtrar a lista abaixo`}
-                className="elevavel kpi-tile ruido"
-                style={{
-                  ...base, borderRadius: 14, padding: "6px 8px",
-                  display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", gap: 3,
-                  boxSizing: "border-box",
-                  border: selecionado ? `1.5px solid ${k.cor}` : base.border,
-                  boxShadow: selecionado ? `0 0 0 3px ${k.cor}2E` : base.boxShadow,
-                  cursor: "pointer", font: "inherit", textAlign: "center",
-                }}
-              >
-                <div className="kpi-num" style={{
-                  fontFamily: FONT, fontWeight: 700, fontSize: 26, color: k.cor,
-                  textShadow: `0 0 14px ${k.cor}59`,
-                  fontVariantNumeric: "tabular-nums", lineHeight: 1,
-                }}>
-                  {k.valor}
-                </div>
-                <div style={{
-                  fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
-                  textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
-                }}>
-                  {k.rotulo}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+      {/* ══ O DASHBOARD ═══════════════════════════════════════════════════
+          Duas colunas: à esquerda as duas faixas empilhadas, à direita o
+          "Abertos por cliente" ocupando AS DUAS (R69). O painel alto é o que
+          mais ganha com altura — cada cliente é uma barra, e com o dobro do
+          espaço ele passa de 5 para 12 sem espremer nome.
 
-        {/* Fila por status — a rosca na RAMPA: cada fatia vai da sua cor à da
-            seguinte, então o anel inteiro lê como o degradê da casa, igual às
-            barras da Início. Legenda ao lado (metade da altura da legenda
-            embaixo) — e o quadradinho dela carrega o MESMO degradê da fatia,
-            em CSS, senão a legenda apontaria para uma cor que não existe no
-            gráfico. Identidade nunca só pela cor. */}
-        <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 252 }}>
-          <Cabeca titulo="Fila por status" />
-          {filaComRotulo.length === 0 ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, color: verde }}>
-              Nenhum chamado em aberto.
-            </div>
-          ) : (
-            <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <defs>{gradientesEspectro("op-fila", filaComRotulo.length, isLight)}</defs>
-                    <Pie
-                      data={filaComRotulo} dataKey="valor" nameKey="nome"
-                      innerRadius={33} outerRadius={51}
-                      stroke={superficie} strokeWidth={2} isAnimationActive={false}
-                    >
-                      {filaComRotulo.map((f, i) => (
-                        <Cell key={f.nome} fill={`url(#op-fila-${i % PECAS_ESPECTRO})`} />
-                      ))}
-                    </Pie>
-                    <RTooltip
-                      formatter={(v: number, nome: string) => [
-                        `${v} · ${ind.abertos > 0 ? Math.round((v / ind.abertos) * 100) : 0}%`,
-                        nome,
-                      ]}
-                      contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{
-                  position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", pointerEvents: "none",
-                }}>
-                  <span style={{
-                    fontFamily: FONT, fontWeight: 700, fontSize: 18,
-                    fontVariantNumeric: "tabular-nums", color: textPrimary, lineHeight: 1,
-                  }}>
-                    {ind.abertos}
-                  </span>
-                  <span style={{ ...MICRO, fontSize: 7.5, color: textSecondary, marginTop: 2 }}>em aberto</span>
-                </div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                {filaComRotulo.map((f, i) => {
-                  const passo = i % PECAS_ESPECTRO;
-                  return (
-                    <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{
-                        width: 9, height: 9, borderRadius: 2.5, flexShrink: 0,
-                        background: gradienteBarra(espectro(passo, isLight), espectro(passo + 1, isLight), isLight),
-                      }} />
-                      <span style={{
-                        flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 10.5, color: textPrimary,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {f.nome}
-                      </span>
-                      {/* o número na rampa de TEXTO, não na de preenchimento:
-                          o miolo amarelo claro não passa de 4.5:1 sobre branco */}
-                      <span style={{
-                        fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
-                        color: espectroTexto(passo, isLight), fontVariantNumeric: "tabular-nums",
-                      }}>
-                        {f.valor}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+          A coluna esquerda tem base 700px: é o mínimo em que a faixa 1
+          (KPIs 244 + fila 210 + fluxo 216 + gaps) cabe numa linha só. Abaixo
+          disso o painel da direita quebra para baixo — e é ele que quebra,
+          não as faixas, porque quebrar as faixas descolaria as alturas. */}
+      <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
+        <div style={{ flex: "4 1 700px", minWidth: 0, display: "flex", flexDirection: "column", gap: GAP }}>
 
-        {/* Fluxo e ritmo — os TRÊS cards antigos (fluxo do mês, ritmo,
-            cumprimento de prazo) num painel só: seis micro-números e a barra
-            de prazo no pé. */}
-        <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 258 }}>
-          <Cabeca
-            titulo="Fluxo e ritmo"
-            direita={
-              <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}>
-                mês · medianas
-              </span>
-            }
-          />
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, alignContent: "center" }}>
-            <Micro rotulo="Entraram" valor={String(ind.entradasMes)} cor={azul} />
-            <Micro rotulo="Concluídos" valor={String(ind.saidasMes)} cor={verde} />
-            {/* saldo positivo = a fila cresceu: é o número quente do painel */}
-            <Micro
-              rotulo="Saldo da fila"
-              valor={ind.saldoMes > 0 ? `+${ind.saldoMes}` : String(ind.saldoMes)}
-              cor={ind.saldoMes > 0 ? vermelho : verde}
-            />
-            <Micro rotulo="Até começar" valor={horasTexto(ind.horasAteComecar)} cor={gold} />
-            <Micro rotulo="Executando" valor={horasTexto(ind.horasDeExecucao)} cor={azul} />
-            {/* só entre os que TINHAM prazo — o módulo não deixa o número se
-                elogiar sozinho */}
-            <Micro
-              rotulo="No prazo"
-              valor={ind.pctNoPrazo === null ? "—" : `${ind.pctNoPrazo}%`}
-              cor={ind.pctNoPrazo === null ? textSecondary
-                : ind.pctNoPrazo >= 80 ? verde : ind.pctNoPrazo >= 50 ? gold : vermelho}
-            />
-          </div>
-          {ind.pctNoPrazo !== null && (
-            <div
-              title={`${ind.pctNoPrazo}% dos chamados concluídos que tinham prazo terminaram dentro dele`}
-              style={{
-                height: 5, borderRadius: 3, marginTop: 6, overflow: "hidden", flexShrink: 0,
-                background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
-              }}
-            >
-              <div style={{
-                width: `${ind.pctNoPrazo}%`, height: "100%",
-                background: ind.pctNoPrazo >= 80
-                  ? "linear-gradient(90deg,#2DD2A5,#047862)"
-                  : ind.pctNoPrazo >= 50
-                    ? "linear-gradient(90deg,#FCDE48,#E8B00A)"
-                    : "linear-gradient(90deg,#F17881,#B1242E)",
-              }} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ══ FAIXA 2 — quem faz, quem carrega, quem pede ════════════════════ */}
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
-        {/* Atividades por dupla ao longo do tempo — Davi, 2026-08-22: "cada
-            item vertical é uma semana. Deve ser um gráfico de linhas".
-
-            As linhas correm na RAMPA (R68): cada dupla ganha um passo do
-            degradê, e o traço dela vai da sua cor à da seguinte. O botão que
-            CADASTRA dupla mora aqui, no cabeçalho do gráfico que mostra
-            duplas — botão de manutenção pertence à peça que ele mantém. */}
-        <div className="elevavel" style={{ ...PAINEL, flex: 2, minWidth: 396 }}>
-          <Cabeca
-            titulo={`Atividades por dupla · ${SEMANAS_NO_GRAFICO} semanas`}
-            direita={
-              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {semDuplaNaJanela > 0 && (
-                  <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
-                    {semDuplaNaJanela} fora de dupla
-                  </span>
-                )}
+        {/* ══ FAIXA 1 — os números de cabeça e o estado da fila ══════════════ */}
+        <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
+          {/* os 4 KPIs em 2 colunas de 2, clicáveis */}
+          <div style={{
+            width: 244, flexShrink: 0, height: ALTURA, display: "grid",
+            gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
+          }}>
+            {kpis.map((k) => {
+              const selecionado = kpiAtivo === k.chave;
+              const base = card(isLight);
+              return (
                 <button
-                  onClick={() => setDuplasAberto(true)}
-                  className="hover-suave"
+                  key={k.chave}
+                  onClick={() => setKpiAtivo(selecionado ? null : k.chave)}
+                  aria-pressed={selecionado}
+                  title={`${k.valor} — clique para filtrar a lista abaixo`}
+                  className="elevavel kpi-tile ruido"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                    height: 24, padding: "0 9px", borderRadius: 12, flexShrink: 0,
-                    background: "transparent", cursor: "pointer", color: gold,
-                    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                    fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                    ...base, borderRadius: 14, padding: "6px 8px",
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", gap: 3,
+                    boxSizing: "border-box",
+                    border: selecionado ? `1.5px solid ${k.cor}` : base.border,
+                    boxShadow: selecionado ? `0 0 0 3px ${k.cor}2E` : base.boxShadow,
+                    cursor: "pointer", font: "inherit", textAlign: "center",
                   }}
                 >
-                  <Users size={11} />
-                  Duplas
+                  <div className="kpi-num" style={{
+                    fontFamily: FONT, fontWeight: 700, fontSize: 26, color: k.cor,
+                    textShadow: `0 0 14px ${k.cor}59`,
+                    fontVariantNumeric: "tabular-nums", lineHeight: 1,
+                  }}>
+                    {k.valor}
+                  </div>
+                  <div style={{
+                    fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+                    textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
+                  }}>
+                    {k.rotulo}
+                  </div>
                 </button>
-              </span>
-            }
-          />
-          {duplasAtivas.length === 0 ? (
-            <div style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-              textAlign: "center", fontFamily: FONT, fontSize: 11.5, color: textSecondary,
-              lineHeight: 1.5, padding: "0 20px",
-            }}>
-              Nenhuma dupla cadastrada — cadastre em <strong style={{ color: gold, fontWeight: 600 }}>Duplas</strong>{" "}
-              para ver quem sai com quem ao longo das semanas.
-            </div>
-          ) : (
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={serieDuplas} margin={{ left: 0, right: 10, top: 2, bottom: 0 }}>
-                  {/* userSpace: linha toda no zero tem caixa de altura zero,
-                      e degradê em objectBoundingBox não desenha sobre caixa
-                      de área nula — a linha sumiria na semana sem trabalho */}
-                  <defs>{gradientesEspectro("op-dupla", duplasAtivas.length, isLight, true)}</defs>
-                  <CartesianGrid stroke={grade} />
-                  <XAxis dataKey="semana" tick={eixo} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={22} />
-                  <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
-                  <Legend
-                    wrapperStyle={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}
-                    iconSize={8}
-                    formatter={(v: string) => {
-                      const d = duplasAtivas.find((x) => x.id === v);
-                      return d ? rotuloDaDupla(d, nomeDeTecnico) : v;
-                    }}
-                  />
-                  {duplasAtivas.map((d, i) => {
+              );
+            })}
+          </div>
+
+          {/* Fila por status — a rosca na RAMPA: cada fatia vai da sua cor à da
+              seguinte, então o anel inteiro lê como o degradê da casa, igual às
+              barras da Início. Legenda ao lado (metade da altura da legenda
+              embaixo) — e o quadradinho dela carrega o MESMO degradê da fatia,
+              em CSS, senão a legenda apontaria para uma cor que não existe no
+              gráfico. Identidade nunca só pela cor. */}
+          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 210 }}>
+            <Cabeca titulo="Fila por status" />
+            {filaComRotulo.length === 0 ? (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, color: verde }}>
+                Nenhum chamado em aberto.
+              </div>
+            ) : (
+              <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <defs>{gradientesEspectro("op-fila", filaComRotulo.length, isLight)}</defs>
+                      <Pie
+                        data={filaComRotulo} dataKey="valor" nameKey="nome"
+                        innerRadius={33} outerRadius={51}
+                        stroke={superficie} strokeWidth={2} isAnimationActive={false}
+                      >
+                        {filaComRotulo.map((f, i) => (
+                          <Cell key={f.nome} fill={`url(#op-fila-${i % PECAS_ESPECTRO})`} />
+                        ))}
+                      </Pie>
+                      <RTooltip
+                        formatter={(v: number, nome: string) => [
+                          `${v} · ${ind.abertos > 0 ? Math.round((v / ind.abertos) * 100) : 0}%`,
+                          nome,
+                        ]}
+                        contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{
+                    position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center", pointerEvents: "none",
+                  }}>
+                    <span style={{
+                      fontFamily: FONT, fontWeight: 700, fontSize: 18,
+                      fontVariantNumeric: "tabular-nums", color: textPrimary, lineHeight: 1,
+                    }}>
+                      {ind.abertos}
+                    </span>
+                    <span style={{ ...MICRO, fontSize: 7.5, color: textSecondary, marginTop: 2 }}>em aberto</span>
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                  {filaComRotulo.map((f, i) => {
                     const passo = i % PECAS_ESPECTRO;
                     return (
-                      <Line
-                        key={d.id}
-                        type="monotone"
-                        dataKey={d.id}
-                        stroke={`url(#op-dupla-${passo})`}
-                        strokeWidth={2}
-                        // ponto e legenda não aceitam url(#…) de forma
-                        // confiável — levam a cor SÓLIDA do passo, que é o
-                        // início do degradê daquela linha
-                        dot={{ r: 2.5, strokeWidth: 0, fill: espectro(passo, isLight) }}
-                        activeDot={{ r: 4.5, fill: espectro(passo, isLight) }}
-                        legendType="circle"
-                        isAnimationActive={false}
-                      />
+                      <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{
+                          width: 9, height: 9, borderRadius: 2.5, flexShrink: 0,
+                          background: gradienteBarra(espectro(passo, isLight), espectro(passo + 1, isLight), isLight),
+                        }} />
+                        <span style={{
+                          flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 10.5, color: textPrimary,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {f.nome}
+                        </span>
+                        {/* o número na rampa de TEXTO, não na de preenchimento:
+                            o miolo amarelo claro não passa de 4.5:1 sobre branco */}
+                        <span style={{
+                          fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
+                          color: espectroTexto(passo, isLight), fontVariantNumeric: "tabular-nums",
+                        }}>
+                          {f.valor}
+                        </span>
+                      </div>
                     );
                   })}
-                </LineChart>
-              </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Fluxo e ritmo — os TRÊS cards antigos (fluxo do mês, ritmo,
+              cumprimento de prazo) num painel só: seis micro-números e a barra
+              de prazo no pé. */}
+          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 216 }}>
+            <Cabeca
+              titulo="Fluxo e ritmo"
+              direita={
+                <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}>
+                  mês · medianas
+                </span>
+              }
+            />
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, alignContent: "center" }}>
+              <Micro rotulo="Entraram" valor={String(ind.entradasMes)} cor={azul} />
+              <Micro rotulo="Concluídos" valor={String(ind.saidasMes)} cor={verde} />
+              {/* saldo positivo = a fila cresceu: é o número quente do painel */}
+              <Micro
+                rotulo="Saldo da fila"
+                valor={ind.saldoMes > 0 ? `+${ind.saldoMes}` : String(ind.saldoMes)}
+                cor={ind.saldoMes > 0 ? vermelho : verde}
+              />
+              <Micro rotulo="Até começar" valor={horasTexto(ind.horasAteComecar)} cor={gold} />
+              <Micro rotulo="Executando" valor={horasTexto(ind.horasDeExecucao)} cor={azul} />
+              {/* só entre os que TINHAM prazo — o módulo não deixa o número se
+                  elogiar sozinho */}
+              <Micro
+                rotulo="No prazo"
+                valor={ind.pctNoPrazo === null ? "—" : `${ind.pctNoPrazo}%`}
+                cor={ind.pctNoPrazo === null ? textSecondary
+                  : ind.pctNoPrazo >= 80 ? verde : ind.pctNoPrazo >= 50 ? gold : vermelho}
+              />
             </div>
-          )}
+            {ind.pctNoPrazo !== null && (
+              <div
+                title={`${ind.pctNoPrazo}% dos chamados concluídos que tinham prazo terminaram dentro dele`}
+                style={{
+                  height: 5, borderRadius: 3, marginTop: 6, overflow: "hidden", flexShrink: 0,
+                  background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
+                }}
+              >
+                <div style={{
+                  width: `${ind.pctNoPrazo}%`, height: "100%",
+                  background: ind.pctNoPrazo >= 80
+                    ? "linear-gradient(90deg,#2DD2A5,#047862)"
+                    : ind.pctNoPrazo >= 50
+                      ? "linear-gradient(90deg,#FCDE48,#E8B00A)"
+                      : "linear-gradient(90deg,#F17881,#B1242E)",
+                }} />
+              </div>
+            )}
+          </div>
         </div>
 
-        <Ranking
-          titulo="Em aberto por técnico"
-          prefixo="op-tec"
-          dados={cargaComNome}
-          sufixo="em aberto"
-          vazio={<span style={{ color: textSecondary }}>Nada em aberto atribuído.</span>}
-        />
+        {/* ══ FAIXA 2 — quem faz e quem carrega ══════════════════════════════ */}
+        <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
+          {/* Atividades por dupla ao longo do tempo — Davi, 2026-08-22: "cada
+              item vertical é uma semana. Deve ser um gráfico de linhas".
 
-        {/* R68 — no lugar de "Backlog por idade" e "Reincidência 30d":
-            quem está pedindo mais. Só clientes COM chamado aberto entram —
-            é o Map de `abertosPorCliente` que garante isso, sem precisar
-            cruzar com a lista de clientes. */}
+              As linhas correm na RAMPA (R68): cada dupla ganha um passo do
+              degradê, e o traço dela vai da sua cor à da seguinte. O botão que
+              CADASTRA dupla mora aqui, no cabeçalho do gráfico que mostra
+              duplas — botão de manutenção pertence à peça que ele mantém. */}
+          <div className="elevavel" style={{ ...PAINEL, flex: 2, minWidth: 396 }}>
+            <Cabeca
+              titulo={`Atividades por dupla · ${SEMANAS_NO_GRAFICO} semanas`}
+              direita={
+                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {semDuplaNaJanela > 0 && (
+                    <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
+                      {semDuplaNaJanela} fora de dupla
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setDuplasAberto(true)}
+                    className="hover-suave"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      height: 24, padding: "0 9px", borderRadius: 12, flexShrink: 0,
+                      background: "transparent", cursor: "pointer", color: gold,
+                      border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+                      fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                    }}
+                  >
+                    <Users size={11} />
+                    Duplas
+                  </button>
+                </span>
+              }
+            />
+            {duplasAtivas.length === 0 ? (
+              <div style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                textAlign: "center", fontFamily: FONT, fontSize: 11.5, color: textSecondary,
+                lineHeight: 1.5, padding: "0 20px",
+              }}>
+                Nenhuma dupla cadastrada — cadastre em <strong style={{ color: gold, fontWeight: 600 }}>Duplas</strong>{" "}
+                para ver quem sai com quem ao longo das semanas.
+              </div>
+            ) : (
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={serieDuplas} margin={{ left: 0, right: 10, top: 2, bottom: 0 }}>
+                    {/* userSpace: linha toda no zero tem caixa de altura zero,
+                        e degradê em objectBoundingBox não desenha sobre caixa
+                        de área nula — a linha sumiria na semana sem trabalho */}
+                    <defs>{gradientesEspectro("op-dupla", duplasAtivas.length, isLight, true)}</defs>
+                    <CartesianGrid stroke={grade} />
+                    <XAxis dataKey="semana" tick={eixo} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={22} />
+                    <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
+                    <Legend
+                      wrapperStyle={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}
+                      iconSize={8}
+                      formatter={(v: string) => {
+                        const d = duplasAtivas.find((x) => x.id === v);
+                        return d ? rotuloDaDupla(d, nomeDeTecnico) : v;
+                      }}
+                    />
+                    {duplasAtivas.map((d, i) => {
+                      const passo = i % PECAS_ESPECTRO;
+                      return (
+                        <Line
+                          key={d.id}
+                          type="monotone"
+                          dataKey={d.id}
+                          stroke={`url(#op-dupla-${passo})`}
+                          strokeWidth={2}
+                          // ponto e legenda não aceitam url(#…) de forma
+                          // confiável — levam a cor SÓLIDA do passo, que é o
+                          // início do degradê daquela linha
+                          dot={{ r: 2.5, strokeWidth: 0, fill: espectro(passo, isLight) }}
+                          activeDot={{ r: 4.5, fill: espectro(passo, isLight) }}
+                          legendType="circle"
+                          isAnimationActive={false}
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <Ranking
+            titulo="Em aberto por técnico"
+            prefixo="op-tec"
+            dados={cargaComNome}
+            sufixo="em aberto"
+            vazio={<span style={{ color: textSecondary }}>Nada em aberto atribuído.</span>}
+          />
+        </div>
+        </div>
+
+        {/* R68 — no lugar de "Backlog por idade" e "Reincidência 30d": quem
+            está pedindo mais. Só clientes COM chamado aberto entram — é o Map
+            de `abertosPorCliente` que garante isso, sem precisar cruzar com a
+            lista de clientes.
+
+            R69: ocupa AS DUAS FAIXAS. Altura derivada de ALTURA/GAP, nunca
+            digitada — ele tem de terminar exatamente onde a faixa 2 termina. */}
         <Ranking
           titulo="Abertos por cliente"
           prefixo="op-cli"
           dados={clientesComAberto}
           sufixo="em aberto"
+          altura={ALTURA_DUPLA}
+          teto={TETO_BARRAS_ALTO}
+          estilo={{ flex: "1 1 280px", minWidth: 264 }}
           vazio={<span style={{ color: verde }}>Nenhum chamado em aberto.</span>}
         />
       </div>
