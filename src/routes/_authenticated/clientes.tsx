@@ -18,8 +18,11 @@
 import { createFileRoute, useNavigate, Outlet, useRouterState, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
-import { useMemo, useState, type CSSProperties } from "react";
-import { ArrowLeft, Building2, MapPin, Plus, Search, Users, Wand2 } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  ArrowLeft, Building2, MapPin, Plus, Search, Users, Wand2,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+} from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { GRAD_PRIMARIA, PRISMA, SOBRE_PRIMARIA } from "@/lib/paleta";
@@ -91,6 +94,22 @@ function ClientesPage() {
       return alvo.includes(termo);
     });
   }, [clientes, busca, filtro, servico]);
+
+  // Paginação (R55): 10 por vez. O MAPA continua mostrando a `lista`
+  // INTEIRA (filtrada, não paginada) — paginar é sobre quantos CARTÕES
+  // aparecem de uma vez, não sobre "esconder" cliente do mapa; ver
+  // `<MapaClientes clientes={lista}>` mais abaixo, não `listaPaginada`.
+  const ITENS_POR_PAGINA = 10;
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA));
+  // busca/filtro/serviço mudou → a página 4 pode não existir mais na lista
+  // nova; sem isto a tela ficaria em branco até alguém clicar em "1" à mão
+  useEffect(() => { setPaginaAtual(1); }, [busca, filtro, servico]);
+  const pagina = Math.min(paginaAtual, totalPaginas);
+  const listaPaginada = useMemo(
+    () => lista.slice((pagina - 1) * ITENS_POR_PAGINA, pagina * ITENS_POR_PAGINA),
+    [lista, pagina],
+  );
 
   /**
    * As contagens dos chips de SITUAÇÃO respeitam o filtro de serviço, e
@@ -248,7 +267,7 @@ function ClientesPage() {
               </span>
             </div>
           ) : (
-            lista.map((c) => {
+            listaPaginada.map((c) => {
               const corSit = SITUACAO_CORES[c.situacao] ?? SITUACAO_CORES.ativo;
               const cor = corDoCliente(c.id, isLight);
               return (
@@ -345,9 +364,143 @@ function ClientesPage() {
               );
             })
           )}
+
+          {/* Paginação (R55) — só aparece quando há mais de uma página; uma
+              lista de 3 resultados não precisa de numerador nenhum. */}
+          {lista.length > 0 && totalPaginas > 1 && (
+            <Paginacao
+              pagina={pagina}
+              totalPaginas={totalPaginas}
+              totalItens={lista.length}
+              itensPorPagina={ITENS_POR_PAGINA}
+              isLight={isLight}
+              aoIrPara={setPaginaAtual}
+            />
+          )}
         </div>
 
         <MapaClientes clientes={lista} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 1, 2, 3, "…", N — trunca o meio quando há muita página, mas nunca esconde
+ * a primeira, a última, nem a vizinhança da atual. Até 7 páginas, mostra
+ * todas (a lista de clientes raramente passa disso; truncar cedo demais
+ * seria complexidade sem público).
+ */
+function numerosDePagina(atual: number, total: number): (number | "…")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const alvo = new Set([1, 2, total - 1, total, atual - 1, atual, atual + 1]);
+  const validos = [...alvo].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+  const resultado: (number | "…")[] = [];
+  let anterior = 0;
+  for (const n of validos) {
+    if (anterior && n - anterior > 1) resultado.push("…");
+    resultado.push(n);
+    anterior = n;
+  }
+  return resultado;
+}
+
+/**
+ * Numerador de página (R55, Davi: "adicione o numerador de páginas no final
+ * com opção de passar para próxima, para última, e o número da página
+ * específico"). Botões no vocabulário do resto da tela — pílula dourada na
+ * página atual, o MESMO gradiente que `chipFiltro(true)` já usa lá em cima,
+ * não uma paleta nova só para paginação.
+ */
+function Paginacao({ pagina, totalPaginas, totalItens, itensPorPagina, isLight, aoIrPara }: {
+  pagina: number; totalPaginas: number; totalItens: number; itensPorPagina: number;
+  isLight: boolean; aoIrPara: (p: number) => void;
+}) {
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const borda = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
+  const fundo = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+
+  const botaoSeta = (desabilitado: boolean): CSSProperties => ({
+    width: 32, height: 32, borderRadius: 9, border: borda,
+    background: fundo, color: desabilitado ? textSecondary : textPrimary,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    cursor: desabilitado ? "default" : "pointer", opacity: desabilitado ? 0.45 : 1,
+    flexShrink: 0,
+  });
+  const botaoNumero = (ativo: boolean): CSSProperties => ({
+    minWidth: 32, height: 32, padding: "0 4px", borderRadius: 9,
+    border: ativo ? "none" : borda,
+    background: ativo ? GRAD_PRIMARIA : fundo,
+    color: ativo ? SOBRE_PRIMARIA : textPrimary,
+    fontFamily: FONT, fontWeight: 700, fontSize: 12.5,
+    cursor: ativo ? "default" : "pointer", flexShrink: 0,
+  });
+
+  const primeiroItem = (pagina - 1) * itensPorPagina + 1;
+  const ultimoItem = Math.min(pagina * itensPorPagina, totalItens);
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      flexWrap: "wrap", gap: 10, paddingTop: 12, marginTop: 2,
+      borderTop: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+    }}>
+      <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
+        {primeiroItem}–{ultimoItem} de {totalItens}
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+        <button
+          aria-label="Primeira página" title="Primeira página"
+          disabled={pagina === 1}
+          onClick={() => aoIrPara(1)}
+          style={botaoSeta(pagina === 1)}
+        >
+          <ChevronsLeft size={15} />
+        </button>
+        <button
+          aria-label="Página anterior" title="Página anterior"
+          disabled={pagina === 1}
+          onClick={() => aoIrPara(pagina - 1)}
+          style={botaoSeta(pagina === 1)}
+        >
+          <ChevronLeft size={15} />
+        </button>
+        {numerosDePagina(pagina, totalPaginas).map((n, i) => (
+          n === "…" ? (
+            <span key={`reticencias-${i}`} style={{
+              width: 20, textAlign: "center", fontFamily: FONT, fontSize: 12.5, color: textSecondary,
+            }}>
+              …
+            </span>
+          ) : (
+            <button
+              key={n}
+              aria-label={`Página ${n}`}
+              aria-current={n === pagina ? "page" : undefined}
+              onClick={() => aoIrPara(n)}
+              style={botaoNumero(n === pagina)}
+            >
+              {n}
+            </button>
+          )
+        ))}
+        <button
+          aria-label="Próxima página" title="Próxima página"
+          disabled={pagina === totalPaginas}
+          onClick={() => aoIrPara(pagina + 1)}
+          style={botaoSeta(pagina === totalPaginas)}
+        >
+          <ChevronRight size={15} />
+        </button>
+        <button
+          aria-label="Última página" title="Última página"
+          disabled={pagina === totalPaginas}
+          onClick={() => aoIrPara(totalPaginas)}
+          style={botaoSeta(pagina === totalPaginas)}
+        >
+          <ChevronsRight size={15} />
+        </button>
       </div>
     </div>
   );

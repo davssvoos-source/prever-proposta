@@ -774,3 +774,18 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   grupos" — o vocabulário de grupo cresce quando `servicos_prestados`
   crescer, sem precisar de tabela própria até que o critério de agrupar deixe
   de ser "que serviço a Prever presta ali".)*
+
+- **R55** — A lista de Clientes é **paginada, 10 por vez**, com numerador no
+  final: primeira página, anterior, os números (com reticências acima de 7
+  páginas), próxima, última — e o resumo "X–Y de Z". Trocar busca ou filtro
+  volta para a página 1. **O mapa continua mostrando todo o resultado
+  filtrado, não só a página aberta** — paginar é sobre quantos cartões
+  aparecem na lista, não sobre esconder ponto do mapa.
+
+  **Layout**: a partir de 1024px, a coluna do mapa estica até a altura da
+  coluna da lista (antes tinha altura própria, solta — `min(78vh,900px)` —
+  e por isso era `position: sticky`; com a paginação prendendo a lista em
+  ~10 cartões, uma altura previsível, faz mais sentido o mapa simplesmente
+  **casar** com o fim da lista). *(Davi, 2026-08-22: "a lista de clientes
+  deve conter 10 itens por vez... o mapa esteja alinhado com o fim da
+  lista, e a página esteja por completa alinhada e margeada".)*

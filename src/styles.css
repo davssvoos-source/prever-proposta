@@ -765,6 +765,9 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  /* "start" no celular é só documentação — com 1 coluna cada item já ocupa
+     a própria linha, então "esticar" não teria o que esticar. O valor que
+     importa de verdade é o do breakpoint de 1024px logo abaixo. */
   align-items: start;
 }
 .clientes-duas-colunas > :last-child { order: -1; }
@@ -772,16 +775,41 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .clientes-duas-colunas {
     grid-template-columns: 380px minmax(0, 1fr);
     gap: 18px;
+    /* R55, Davi: "o mapa esteja alinhado com o fim da lista" — as DUAS
+       colunas dividem a mesma linha do grid, e "stretch" faz cada uma
+       esticar até a altura da mais alta (normalmente a lista, agora que a
+       paginação prende a lista em ~10 cartões por vez, uma altura
+       previsível). Sem isto o mapa tinha altura própria (min(78vh,900px)),
+       solta da lista — as duas colunas terminavam em pontos diferentes da
+       tela, e por isso o mapa era `position: sticky` (para não sobrar vazio
+       embaixo dele numa lista comprida). Com as alturas casadas, sticky
+       deixou de ter o que fazer — as duas colunas SEMPRE começam e terminam
+       juntas — e por isso saiu. */
+    align-items: stretch;
   }
-  .clientes-duas-colunas > :last-child {
-    order: 0;
-    position: sticky;
-    top: 12px;
-  }
+  .clientes-duas-colunas > :last-child { order: 0; }
 }
 /* telas largas: a lista não precisa crescer, o mapa sim */
 @media (min-width: 1600px) {
   .clientes-duas-colunas { grid-template-columns: 420px minmax(0, 1fr); }
+}
+
+/* A caixa do mapa em si (dentro de MapaClientes.tsx). No celular, altura
+   própria em vh — não há uma lista na mesma linha do grid para casar altura
+   com (ver .clientes-duas-colunas acima). A partir de 1024px, `flex: 1`
+   preenche o que sobrar do card depois do cabeçalho "Mapa · Cidade de São
+   Paulo" — o card INTEIRO (MapaClientes.tsx) é esticado pelo grid pai até a
+   altura da lista, e esta caixa completa o resto. min-height é o piso: uma
+   lista de 1-2 resultados não pode espremer o mapa a ponto de ficar inútil. */
+.mapa-clientes-caixa {
+  height: min(78vh, 900px);
+}
+@media (min-width: 1024px) {
+  .mapa-clientes-caixa {
+    height: auto;
+    flex: 1;
+    min-height: 480px;
+  }
 }
 
 /* ── Painéis (Operacional · Comercial · Administrativo) ───────────────────

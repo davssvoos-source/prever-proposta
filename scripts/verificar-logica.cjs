@@ -2771,5 +2771,72 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R54 (múltiplos clientes + grupo) está documentado', /\*\*R54\*\*/.test(produto4), true);
 }
 
+// ── R55: paginação de 10 na lista de Clientes + mapa alinhado com o fim da
+//    lista (2026-08-22) ─────────────────────────────────────────────────────
+{
+  const fs28 = require('fs');
+  const cl2 = fs28.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  const css2 = fs28.readFileSync('src/styles.css', 'utf8');
+  const mc2 = fs28.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+
+  // ── paginação ────────────────────────────────────────────────────────────
+  eq('10 itens por página', /const ITENS_POR_PAGINA = 10;/.test(cl2), true);
+  eq('mudar busca/filtro/serviço volta pra página 1 (senão a tela fica em branco numa página que não existe mais)',
+     /useEffect\(\(\) => \{ setPaginaAtual\(1\); \}, \[busca, filtro, servico\]\);/.test(cl2), true);
+  eq('a página é fatiada (slice) da lista FILTRADA, com clamp contra o total (defesa se o total encolher)',
+     /const pagina = Math\.min\(paginaAtual, totalPaginas\);/.test(cl2)
+     && /lista\.slice\(\(pagina - 1\) \* ITENS_POR_PAGINA, pagina \* ITENS_POR_PAGINA\)/.test(cl2),
+     true);
+  eq('os CARTÕES renderizam a página (listaPaginada), não a lista inteira',
+     /listaPaginada\.map\(\(c\) => \{/.test(cl2), true);
+  // achado que travaria em silêncio: se alguém "simplificasse" pra
+  // listaPaginada aqui, o mapa passaria a mostrar só os 10 da página em vez
+  // de todo o resultado filtrado — mudança de comportamento sem aviso nenhum
+  eq('CRÍTICO: o MAPA continua recebendo a lista INTEIRA filtrada (lista), não a paginada — paginar é sobre cartões, não sobre esconder ponto do mapa',
+     /<MapaClientes clientes=\{lista\} \/>/.test(cl2), true);
+  eq('a paginação só aparece com mais de 1 página (lista curta não precisa de numerador)',
+     /\{lista\.length > 0 && totalPaginas > 1 && \(/.test(cl2), true);
+
+  // ── numerosDePagina (1,2,…,N com reticências) ───────────────────────────
+  eq('até 7 páginas, mostra todas (sem truncar cedo demais)',
+     /function numerosDePagina[\s\S]{0,100}if \(total <= 7\) return Array\.from/.test(cl2), true);
+  eq('acima de 7, sempre mantém primeira, última e vizinhança da atual',
+     /const alvo = new Set\(\[1, 2, total - 1, total, atual - 1, atual, atual \+ 1\]\);/.test(cl2),
+     true);
+
+  // ── o pager em si: primeira/anterior/…/próxima/última, todos com aria-label ──
+  eq('os 4 botões de navegação existem, todos com aria-label (First/Prev/Next/Last)',
+     /aria-label="Primeira página"/.test(cl2) && /aria-label="Página anterior"/.test(cl2)
+     && /aria-label="Próxima página"/.test(cl2) && /aria-label="Última página"/.test(cl2),
+     true);
+  eq('os botões de extremo desabilitam na primeira/última página (não é possível "ir além")',
+     /disabled=\{pagina === 1\}/.test(cl2) && /disabled=\{pagina === totalPaginas\}/.test(cl2),
+     true);
+  eq('a página atual usa o MESMO gradiente dourado que os chips de filtro (chipFiltro) — um vocabulário só de "selecionado" na tela',
+     /botaoNumero = \(ativo: boolean\)[\s\S]{0,200}background: ativo \? GRAD_PRIMARIA : fundo,/.test(cl2),
+     true);
+  eq('o resumo "X–Y de Z" usa o total da lista FILTRADA (totalItens), não o total geral de clientes',
+     /\{primeiroItem\}–\{ultimoItem\} de \{totalItens\}/.test(cl2), true);
+
+  // ── layout: mapa alinhado com o fim da lista ────────────────────────────
+  eq('a partir de 1024px as duas colunas esticam para a mesma altura (align-items: stretch)',
+     /@media \(min-width: 1024px\) \{\s*\n\s*\.clientes-duas-colunas \{[\s\S]{0,900}align-items: stretch;/.test(css2),
+     true);
+  eq('o sticky do mapa saiu — alturas casadas tornam sticky sem efeito (não sobra sibling mais alto pra "passar por baixo")',
+     /\.clientes-duas-colunas > :last-child \{\s*\n\s*order: 0;\s*\n\s*position: sticky;/.test(css2),
+     false);
+  eq('o :last-child do breakpoint de 1024px agora é só order:0, uma linha só',
+     /\.clientes-duas-colunas > :last-child \{ order: 0; \}\s*\n\}/.test(css2), true);
+  eq('.mapa-clientes-caixa: vh fixo no celular, flex:1 com piso de 480px a partir de 1024px',
+     /\.mapa-clientes-caixa \{\s*\n\s*height: min\(78vh, 900px\);\s*\n\s*\}\s*\n\s*@media \(min-width: 1024px\) \{\s*\n\s*\.mapa-clientes-caixa \{\s*\n\s*height: auto;\s*\n\s*flex: 1;\s*\n\s*min-height: 480px;/.test(css2),
+     true);
+  eq('MapaClientes usa a classe .mapa-clientes-caixa (não mais a altura fixa inline)',
+     /className="mapa-clientes-caixa"/.test(mc2), true);
+  eq('a altura fixa antiga (min(78vh, 900px) inline) saiu do componente — só resta na classe CSS, condicional por breakpoint',
+     /height: "min\(78vh, 900px\)"/.test(mc2), false);
+  eq('o card do MapaClientes pede height:100% — precisa de altura DEFINIDA própria pra repassar aos filhos com flex:1',
+     /className="elevavel" style=\{\{[\s\S]{0,200}height: "100%",/.test(mc2), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

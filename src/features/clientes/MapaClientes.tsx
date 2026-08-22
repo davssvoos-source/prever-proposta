@@ -377,6 +377,13 @@ export function MapaClientes({ clientes }: Props) {
   const divisa = isLight ? "rgba(0,0,0,0.16)" : "rgba(255,255,255,0.17)";
 
   return (
+    // height:"100%" — a partir de 1024px o grid pai estica este card até a
+    // altura da LISTA (R55, .clientes-duas-colunas em styles.css:
+    // align-items:stretch); sem o 100% explícito aqui, o stretch do grid dá
+    // ao card uma altura de LAYOUT correta mas a caixa do mapa logo abaixo
+    // (.mapa-clientes-caixa, flex:1) não teria um container com altura
+    // DEFINIDA pra distribuir — é a mesma armadilha que o comentário antigo
+    // descrevia ("flex:1 colapsa pra zero"), só que um nível acima.
     <div className="elevavel" style={{
       ...card(isLight),
       padding: "14px 16px 12px",
@@ -384,6 +391,7 @@ export function MapaClientes({ clientes }: Props) {
       boxSizing: "border-box",
       position: "relative",
       minWidth: 0,
+      height: "100%",
     }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{
@@ -397,11 +405,11 @@ export function MapaClientes({ clientes }: Props) {
         </span>
       </div>
 
-      {/* Altura EXPLÍCITA — o card não tem altura própria (o grid o alinha com
-          `align-items: start`), então pedir altura por `flex: 1` colapsa para
-          zero. Foi o que deixou o mapa invisível numa versão anterior. */}
-      <div style={{
-        height: "min(78vh, 900px)",
+      {/* Altura vem de fora agora — ver o comentário de .mapa-clientes-caixa
+          em styles.css. No celular é vh fixo (não há lista na mesma linha do
+          grid pra casar altura); a partir de 1024px é flex:1 dentro deste
+          card já esticado pelo grid. */}
+      <div className="mapa-clientes-caixa" style={{
         marginTop: 10,
         display: "flex", justifyContent: "center",
         position: "relative",

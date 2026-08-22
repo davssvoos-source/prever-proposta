@@ -2922,3 +2922,51 @@ tornando mais difícil raciocinar sobre o que uma gravação do painel
 realmente fez.
 
 851 asserções (20 novas), build ok.
+
+### U46 — Paginação da lista de Clientes + mapa alinhado com a lista (R55, 2026-08-22)
+
+"A lista de clientes deve conter 10 itens por vez, adicione o numerador de
+páginas no final com opção de passar para próxima, para última, e o número
+da página específico... o mapa esteja alinhado com o fim da lista, e a
+página esteja por completa alinhada e margeada."
+
+**A paginação**: 10 por página, estado local (`paginaAtual`), fatiando a
+lista JÁ FILTRADA. Três detalhes que valeram trava por asserção:
+
+- **Trocar busca/filtro/serviço volta pra página 1** (`useEffect` nas três
+  dependências). Sem isso, estar na página 4 e digitar uma busca que devolve
+  8 resultados deixaria a tela EM BRANCO — a página 4 de uma lista de 8 não
+  tem item nenhum, e nada na tela explicaria por quê.
+- **`pagina` é `min(paginaAtual, totalPaginas)`**, não `paginaAtual` cru: se
+  o total encolher entre um render e outro (um cliente inativado por outra
+  aba, por exemplo), a fatia continua válida sem esperar o efeito rodar.
+- **O MAPA continua recebendo `lista`, não `listaPaginada`.** Uma asserção
+  marcada como CRÍTICO guarda isso: "simplificar" pra `listaPaginada` faria
+  o mapa mostrar só 10 pontos em vez de todo o resultado filtrado — uma
+  mudança de comportamento invisível numa revisão de diff, porque as duas
+  variáveis têm nome parecido e o mapa continuaria "funcionando".
+
+O numerador (`<Paginacao>`, no próprio arquivo da rota) segue o vocabulário
+que a tela já tinha: a página atual usa `GRAD_PRIMARIA`, o MESMO gradiente
+dourado de `chipFiltro(true)` logo acima na página — não uma paleta nova só
+pra paginação. `numerosDePagina()` mostra todas até 7 páginas e, acima
+disso, mantém primeira, última e a vizinhança da atual, com reticências no
+meio. Os 4 botões de navegação têm `aria-label` e desabilitam nos extremos.
+
+**O alinhamento**: `.clientes-duas-colunas` trocou `align-items: start` por
+`stretch` no breakpoint de 1024px — as duas colunas dividem a mesma linha do
+grid, então "stretch" faz as duas terminarem juntas. Isso tornou o
+`position: sticky` do mapa **sem efeito** (ele existia justamente porque as
+alturas divergiam: numa lista comprida, sobrava vazio ao lado do mapa) e ele
+saiu. A altura da caixa do mapa virou a classe `.mapa-clientes-caixa`: `vh`
+fixo no celular (lá não há lista na mesma linha do grid pra casar altura) e
+`flex: 1` com piso de 480px a partir de 1024px.
+
+Um detalhe que quase virou bug: o card do `MapaClientes` precisou ganhar
+`height: "100%"` explícito. O `stretch` do grid dá ao card a altura de
+LAYOUT certa, mas sem `height` própria definida ele não tem o que
+distribuir para um filho com `flex: 1` — é exatamente a armadilha que o
+comentário antigo do componente já descrevia ("flex:1 colapsa pra zero"),
+só que um nível acima na árvore.
+
+870 asserções (19 novas), build ok.
