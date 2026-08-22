@@ -3184,3 +3184,82 @@ check "isto ainda é sobre MIM?" faz o `leave` só valer quando é ele quem
 está de fato ativo.
 
 999 asserções (5 novas), build ok.
+
+### U52 — Estrutura de blocos permanente do cliente (R63, 2026-08-22)
+
+"Na página de cada cliente, nós vamos montar a estrutura de cada cliente de
+acordo com os blocos de cada cliente... por enquanto eu quero que você
+registre de maneira ordenada, lógica e estruturada essas informações, crie a
+base para isso funcionar, crie os campos na página de cada cliente."
+
+**A pesquisa decidiu o desenho antes de qualquer linha de código.** A
+pergunta central era: existe uma estrutura permanente por-cliente já, ou é
+tudo novo? Resposta: **já existe, e se chama `cliente_sistemas`** (Etapa 2,
+o "inventário do cliente" — `docs/SISTEMA_OS.md` §4.2 já a descreve,
+literalmente, como "um bloco do mundo real no cliente", com a MESMA
+taxonomia de tipo do orçamento). O que faltava não era a tabela — era a
+CONFIGURAÇÃO: hoje ela só guarda nome e descrição em texto livre, nunca o
+código estruturado (`PED-2B-PORP-FAC-FAC-MOT-...-PR`) nem os campos que o
+geram. Construir uma tabela paralela teria duplicado um conceito que já
+existia e já estava conectado a chamados (`chamados.cliente_sistema_id`) e
+ao checklist de preventiva (`montarChecklistPreventiva`, que já agrupa por
+sistema/bloco desde a Etapa 6).
+
+**Duas colunas, não vinte.** `codigo_bloco text` + `config_bloco jsonb` —
+JSONB, não o padrão de `visita_blocos` (que tem `b1_tipo`, `b1_entrada`...
+~20 colunas, porque nasceu de um wizard passo-a-passo). O precedente já
+existe na própria `visita_blocos.alarme_config jsonb`. A vantagem aqui é
+maior que lá: `config_bloco` segue o formato EXATO de `BlocoConfig` (a
+interface TypeScript que `gerarCodigoBloco`/`gerarDescricaoBloco`, em
+`src/lib/blocos.ts`, já esperam) — zero tradutor entre banco e código, ao
+contrário do `codigoFromDbRow()` que `visita_blocos` precisa pra reconstruir
+um `BlocoConfig` a partir de 20 colunas separadas.
+
+**Sem backfill, de propósito.** Sistema cadastrado antes desta migration
+fica com `config_bloco NULL` — "ainda não estruturado", nunca "estruturado
+errado". A tela continua funcionando pra ele exatamente como antes; a
+estrutura é uma camada opcional por cima do que já existia.
+
+**Escopo explícito: só os 6 tipos que `gerarCodigoBloco` sabe montar sem
+sub-wizard próprio** — PED, VEI, CFTV, AL, CER, CENT. ELV e TOT (kits de
+elevador, totens) geram código por um caminho DIFERENTE no orçamento —
+calculado direto nas mutações de `blocos.$cat.tsx` via regex
+(`ELV-{n}KIT`/`TOT-{n}x{m}CAM`), nunca passando por `gerarCodigoBloco`.
+Replicar `ElevadoresWizard`/`TotemWizard` na ficha do cliente é passo
+futuro — ficam no modo simples (nome/descrição) por enquanto, e uma
+asserção (`TIPOS_COM_ESTRUTURA`) trava esse limite explicitamente, pra não
+virar esquecimento silencioso.
+
+**O formulário é ÚNICO, não um wizard passo-a-passo.** O wizard do orçamento
+(`blocos.$cat.tsx`) faz uma pergunta por tela porque constrói do zero, sem
+nada ainda escolhido. Aqui é edição de um registro que já existe (ou nasce
+com um padrão razoável de `configPadrao()`) — os campos relevantes aparecem
+e desaparecem no MESMO formulário conforme a escolha (trocar "Porta" por
+"Elevador" troca os campos abaixo na hora), seguindo EXATAMENTE a mesma
+régua condicional de `barreiraSteps()` do wizard, só que sem trocar de
+tela a cada resposta.
+
+**A lógica pura foi para fora do componente** — `blocoCliente.ts`
+(`configPadrao`, `barreiraCompleta`, `configValida`) — pelo motivo de
+sempre neste projeto: testável sem montar React. A asserção mais importante
+do lote não testa uma regra isolada, testa a PROMESSA do editor: toda
+config que `configValida` aprova PRECISA gerar um `codigo_bloco` de
+verdade — se um dia "válido" mentisse, o botão Salvar ficaria habilitado
+pra gravar um bloco com buraco (`"PED-1B-PORP-undefined-FAC-PR"`), do jeito
+que a validação existe pra impedir.
+
+**A prévia ao vivo.** Código e descrição são recalculados a cada mudança de
+campo (`useMemo` sobre `gerarCodigoBloco`/`gerarDescricaoBloco`), antes de
+salvar — "bati tudo certo?" fica auditável na hora, não só depois de gravar.
+`salvarConfigBloco` grava `codigo_bloco` E `descricao`, os DOIS derivados da
+config — a `descricao` em texto livre é sobrescrita a partir do momento em
+que o bloco vira estruturado, porque manter as duas (a estruturada e a
+digitada à mão) divergindo é exatamente a ambiguidade que a estrutura existe
+pra eliminar.
+
+**O que fica para depois, fora do escopo desta rodada** (Davi foi explícito:
+"por enquanto"): o técnico escolher o bloco ao abrir uma corretiva, e o
+checklist de preventiva GERADO a partir desta estrutura (hoje o checklist já
+agrupa por sistema, mas não lê `config_bloco` — só o nome).
+
+1042 asserções (43 novas), build ok.

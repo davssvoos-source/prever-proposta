@@ -3361,5 +3361,133 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R62 está documentado', /\*\*R62\*\*/.test(produto8), true);
 }
 
+// ── R63/U52: estrutura de blocos permanente do cliente ──────────────────────
+{
+  const fs34 = require('fs');
+  const BC = carregar('src/features/clientes/blocoCliente.ts');
+  const u52 = fs34.readFileSync('supabase/migrations/20260822060000_u52_estrutura_de_blocos_do_cliente.sql', 'utf8');
+  const inv = fs34.readFileSync('src/features/clientes/inventario.ts', 'utf8');
+  const ed = fs34.readFileSync('src/features/clientes/EditorBlocoCliente.tsx', 'utf8');
+  const ic = fs34.readFileSync('src/features/clientes/InventarioCliente.tsx', 'utf8');
+
+  // ── configPadrao: nunca abre vazio, e nunca abre já INVÁLIDO ────────────
+  const BC_TIPOS = carregar('src/lib/blocos.ts');
+  for (const tipo of ['PED', 'VEI', 'CFTV', 'AL', 'CER', 'CENT']) {
+    eq(`configPadrao(${tipo}) já nasce válida (o formulário nunca abre "incompleto" de saída)`,
+       BC.configValida(BC.configPadrao(tipo)), true);
+    eq(`configPadrao(${tipo}) mantém tipoBloco correto`,
+       BC.configPadrao(tipo).tipoBloco, tipo);
+  }
+  eq('configPadrao(PED) já gera um código de verdade, sem precisar preencher nada',
+     typeof BC_TIPOS.gerarCodigoBloco(BC.configPadrao('PED')), 'string');
+  eq('configPadrao(PED) tem porta como barreira 1 padrão (o caso mais comum de acesso de pedestre)',
+     BC.configPadrao('PED').b1.tipo, 'PORP');
+
+  // ── barreiraCompleta / configValida — a régua que decide "pode salvar" ──
+  eq('barreira sem tipo NÃO está completa', BC.barreiraCompleta({ tipo: '', entrada: '', saida: '' }), false);
+  eq('barreira ELEV completa exige tamanho E abertura (corta-fogo), não entrada/saída',
+     [
+       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '' }),
+       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL' }),
+       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL', abertura: 'PCF' }),
+     ],
+     [false, false, true]);
+  eq('barreira PORP completa exige entrada E saída (abertura é opcional pra "completa")',
+     BC.barreiraCompleta({ tipo: 'PORP', entrada: 'FAC', saida: 'FAC' }), true);
+  eq('barreira PORP com entrada mas sem saída NÃO está completa',
+     BC.barreiraCompleta({ tipo: 'PORP', entrada: 'FAC', saida: '' }), false);
+
+  eq('CRÍTICO: configValida(PED sem eclusa) só olha b1 — b2 indefinido não pode reprovar quem não é eclusa',
+     BC.configValida({ tipoBloco: 'PED', eclusa: false, b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' } }),
+     true);
+  eq('configValida(PED COM eclusa) exige b1 E b2 completos',
+     [
+       BC.configValida({ tipoBloco: 'PED', eclusa: true, b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' } }),
+       BC.configValida({
+         tipoBloco: 'PED', eclusa: true,
+         b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' },
+         b2: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' },
+       }),
+     ],
+     [false, true]);
+  eq('configValida(CFTV) exige tecnologia',
+     [BC.configValida({ tipoBloco: 'CFTV', eclusa: false }),
+      BC.configValida({ tipoBloco: 'CFTV', eclusa: false, tecnologia: 'IP' })],
+     [false, true]);
+  eq('configValida(CER) aceita perímetro/esquinas zerados — "ainda não medido" é um estado válido, não um erro',
+     BC.configValida({ tipoBloco: 'CER', eclusa: false, perimetro: 0, esquinas: 0 }), true);
+  eq('configValida(CENT) exige portaria escolhida',
+     [BC.configValida({ tipoBloco: 'CENT', eclusa: false }),
+      BC.configValida({ tipoBloco: 'CENT', eclusa: false, portaria: 'PR' })],
+     [false, true]);
+
+  // A garantia central do editor: toda config que configValida aprova
+  // PRECISA gerar um código de verdade — senão "válido" mentiria
+  {
+    const validas = [
+      BC.configPadrao('PED'), BC.configPadrao('VEI'), BC.configPadrao('CFTV'),
+      BC.configPadrao('AL'), BC.configPadrao('CER'), BC.configPadrao('CENT'),
+      { tipoBloco: 'PED', eclusa: true,
+        b1: { tipo: 'CAT', entrada: 'FAC', saida: 'FAC' },
+        b2: { tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL', abertura: 'PCF' }, portaria: 'PP' },
+      { tipoBloco: 'VEI', eclusa: false, b1: { tipo: 'PORV', entrada: 'TAG', saida: 'TAG', abertura: 'PIVO', tamanho: '350CM', folhas: '2F' }, portaria: 'PR' },
+    ];
+    const todasGeramCodigo = validas.every((c) => typeof BC_TIPOS.gerarCodigoBloco(c) === 'string' && BC_TIPOS.gerarCodigoBloco(c).length > 0);
+    eq('CRÍTICO: TODA config aprovada por configValida gera um codigo_bloco de verdade (não undefined/buraco)',
+       todasGeramCodigo, true);
+  }
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('U52 adiciona codigo_bloco e config_bloco em cliente_sistemas (não cria tabela nova)',
+     /ALTER TABLE public\.cliente_sistemas\s*\n\s*ADD COLUMN IF NOT EXISTS codigo_bloco text,\s*\n\s*ADD COLUMN IF NOT EXISTS config_bloco jsonb;/.test(u52),
+     true);
+  eq('U52 NÃO cria tabela nova (é extensão de cliente_sistemas, a mesma "bloco no mundo real" da Etapa 2)',
+     /CREATE TABLE/.test(u52), false);
+  eq('U52 não faz backfill — sistema antigo fica com config_bloco NULL, não "estruturado errado"',
+     /esperado 0 — sem backfill/.test(u52), true);
+  eq('U52 termina com SELECT de verificação', /Verificação/.test(u52), true);
+
+  // ── inventario.ts ────────────────────────────────────────────────────────
+  eq('SistemaInstalado carrega codigo_bloco/config_bloco',
+     /codigo_bloco: string \| null;\s*\n\s*config_bloco: BlocoConfig \| null;/.test(inv), true);
+  eq('useInventario busca as duas colunas novas',
+     /codigo_bloco, config_bloco/.test(inv), true);
+  eq('TIPOS_COM_ESTRUTURA é EXATAMENTE os 6 tipos que gerarCodigoBloco sabe montar (ELV/TOT ficam de fora, de propósito)',
+     inv.match(/export const TIPOS_COM_ESTRUTURA: TipoBloco\[\] = \[([^\]]+)\];/)?.[1].replace(/[\s"]/g, ''),
+     'PED,VEI,CFTV,AL,CER,CENT');
+  eq('salvarConfigBloco grava codigo_bloco E descricao, os dois DERIVADOS da config (não digitados à parte)',
+     /const codigo_bloco = gerarCodigoBloco\(config\);\s*\n\s*const descricao = gerarDescricaoBloco\(config\);/.test(inv),
+     true);
+
+  // ── EditorBlocoCliente.tsx ───────────────────────────────────────────────
+  eq('o editor usa a MESMA useModalEstilos/BotaoFechar da ficha do cliente — não inventa uma segunda casca de modal',
+     /import \{ useModalEstilos, BotaoFechar \} from "\.\/InventarioCliente";/.test(ed), true);
+  eq('a prévia do código roda ao vivo (useMemo sobre gerarCodigoBloco), antes de salvar',
+     /const codigo = useMemo\(\(\) => \(configValida\(config\) \? gerarCodigoBloco\(config\) : null\), \[config\]\);/.test(ed),
+     true);
+  eq('o botão Salvar fica desabilitado enquanto a config não é válida — não dá pra gravar um bloco pela metade',
+     /disabled=\{salvar\.isPending \|\| !valido\}/.test(ed), true);
+  eq('trocar o TIPO da barreira reseta entrada/saída — não herda opção de uma lista que já não se aplica',
+     /aoMudar=\{\(tipo\) => aoMudar\(\{ tipo, entrada: "", saida: "" \}\)\}/.test(ed), true);
+  eq('trocar a ABERTURA reseta peso/folhas/tamanho — MOL tinha peso, PIVO/BASC têm tamanho, não é o mesmo campo',
+     /peso: undefined, folhas: undefined, tamanho: undefined,/.test(ed), true);
+  eq('DESL não pergunta peso — mesma regra fixa do wizard original (só um motor em uso)',
+     /DESL: sem pergunta de peso/.test(ed), true);
+
+  // ── wiring na ficha do cliente ───────────────────────────────────────────
+  eq('InventarioCliente só oferece "Configurar bloco" para quem tem estrutura (temEstrutura)',
+     /\{temEstrutura\(s\.tipo\) && \(/.test(ic), true);
+  eq('o botão troca de rótulo depois de configurado — "Configurar bloco" vira "Editar estrutura"',
+     /\{s\.codigo_bloco \? "Editar estrutura" : "Configurar bloco"\}/.test(ic), true);
+  eq('o código do bloco aparece no card, quando existe — sem precisar abrir o editor pra ver se já está estruturado',
+     /\{s\.codigo_bloco && \(/.test(ic), true);
+  eq('o modal "bloco" está fiado (setModal + render do EditorBlocoCliente)',
+     /setModal\(\{ tipo: "bloco", sistema: s \}\)/.test(ic) && /modal\?\.tipo === "bloco" &&/.test(ic),
+     true);
+
+  const produto9 = fs34.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R63 está documentado', /\*\*R63\*\*/.test(produto9), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

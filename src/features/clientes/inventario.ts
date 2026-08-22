@@ -6,6 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { isServicoCode } from "@/features/orcamento/blockAutoItems";
+import { gerarCodigoBloco, gerarDescricaoBloco, type BlocoConfig, type TipoBloco } from "@/lib/blocos";
 
 export type TipoSistema = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV" | "TOT" | "OUTRO";
 export type EstadoEquipamento = "ativo" | "substituido" | "removido";
@@ -68,6 +69,10 @@ export interface SistemaInstalado {
   origem_visita_bloco_id: string | null;
   ativo: boolean;
   ordem: number | null;
+  /** R63 — a estrutura permanente do bloco. Null = ainda não configurado
+   *  (o sistema continua existindo só com nome/descrição em texto livre). */
+  codigo_bloco: string | null;
+  config_bloco: BlocoConfig | null;
   equipamentos: EquipamentoInstalado[];
 }
 
@@ -79,7 +84,7 @@ export function useInventario(clienteId: string | undefined) {
     queryFn: async (): Promise<SistemaInstalado[]> => {
       const { data: sistemas, error: errS } = await supabase
         .from("cliente_sistemas" as any)
-        .select("id, cliente_id, tipo, nome, descricao, origem_visita_bloco_id, ativo, ordem")
+        .select("id, cliente_id, tipo, nome, descricao, origem_visita_bloco_id, ativo, ordem, codigo_bloco, config_bloco")
         .eq("cliente_id", clienteId as string)
         .order("ordem", { ascending: true, nullsFirst: false })
         .order("nome");
@@ -145,6 +150,45 @@ export async function atualizarSistema(
 
 export async function excluirSistema(id: string): Promise<void> {
   const { error } = await supabase.from("cliente_sistemas" as any).delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ── Estrutura do bloco (R63/U52) ─────────────────────────────────────────────
+
+/**
+ * Os tipos que `gerarCodigoBloco` (src/lib/blocos.ts) sabe montar. ELV e TOT
+ * geram código por um caminho diferente no orçamento (calculado direto nas
+ * mutações do wizard, não por `gerarCodigoBloco`) — replicar os dois
+ * sub-wizards na ficha do cliente é passo futuro, não desta rodada (R63).
+ * OUTRO fica de fora por não ter `TipoBloco` correspondente (é extensão só
+ * de `inventario.ts`, não existe no vocabulário do orçamento).
+ */
+export const TIPOS_COM_ESTRUTURA: TipoBloco[] = ["PED", "VEI", "CFTV", "AL", "CER", "CENT"];
+
+export function temEstrutura(tipo: TipoSistema): tipo is TipoBloco {
+  return (TIPOS_COM_ESTRUTURA as string[]).includes(tipo);
+}
+
+/**
+ * Grava a configuração estruturada de um bloco — a AÇÃO central do R63.
+ * `codigo_bloco` e `descricao` são DERIVADOS de `config`, não digitados à
+ * parte: gravá-los junto (em vez de deixar a tela calcular na hora de
+ * exibir) é o mesmo padrão de `visita_blocos.codigo_bloco` — o que a
+ * busca/exibição/o motor de checklist por bloco vão ler é texto pronto, sem
+ * recalcular em todo lugar que precisar mostrar o bloco.
+ *
+ * `descricao` é SOBRESCRITA pela gerada — uma vez que o bloco está
+ * estruturado, a descrição em texto livre voltaria a divergir da
+ * configuração de verdade a cada edição manual, e "qual das duas é a
+ * correta" é exatamente a pergunta que a estrutura existe para eliminar.
+ */
+export async function salvarConfigBloco(sistemaId: string, config: BlocoConfig): Promise<void> {
+  const codigo_bloco = gerarCodigoBloco(config);
+  const descricao = gerarDescricaoBloco(config);
+  const { error } = await supabase
+    .from("cliente_sistemas" as any)
+    .update({ config_bloco: config, codigo_bloco, descricao } as any)
+    .eq("id", sistemaId);
   if (error) throw error;
 }
 

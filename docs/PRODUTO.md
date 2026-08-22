@@ -903,3 +903,30 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
     do ponto para uma área vazia (sem sair do mapa) deixava o nome errado
     preso na tela. *(Davi, 2026-08-22: "quando tiro o mouse de cima do
     cliente, o nome do cliente deve sumir".)*
+
+- **R63** — A ficha do cliente ganhou a **estrutura permanente de blocos**:
+  registrar, uma vez, como cada acesso do condomínio é montado (eclusa ou
+  não, tipo de barreira, leitora/motor de cada porta...) — no MESMO
+  vocabulário e código do orçamento (`PED-2B-PORP-FAC-FAC-MOT-...-PR`), sem
+  precisar refazer a cada chamado.
+
+  **Não é cadastro novo** — é o "Sistemas instalados" que a ficha já tinha
+  (`cliente_sistemas`, a mesma tabela que hoje só guarda nome/descrição em
+  texto livre) ganhando a CONFIGURAÇÃO por trás. Cada sistema que aceita
+  estrutura (Acesso de Pedestres, Acesso de Veículos, CFTV, Alarme, Cerca
+  Elétrica, Central) ganha um botão **"Configurar bloco"**, com uma prévia
+  ao vivo do código e da descrição gerados — a mesma conta que o orçamento
+  já faz. Elevadores e Totem continuam por enquanto só com nome/descrição
+  (o código deles nasce de um sub-fluxo próprio no orçamento, ainda não
+  replicado aqui).
+
+  Sistema já cadastrado antes desta rodada não perde nada — fica
+  "ainda não estruturado" até alguém abrir e preencher; nada é obrigado a
+  migrar.
+
+  **Isto é a BASE**, não o fluxo inteiro — o que o Davi pediu para "por
+  enquanto". Ainda faltam (fora do escopo desta rodada): o técnico
+  escolher o bloco ao abrir uma corretiva, e o checklist de preventiva
+  gerado por bloco a partir desta estrutura. *(Davi, 2026-08-22: "crie a
+  base para isso funcionar, crie os campos na página de cada cliente para
+  imputarmos informações dos blocos... por enquanto".)*

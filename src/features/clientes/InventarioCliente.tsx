@@ -6,7 +6,7 @@
 import { useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Boxes, ChevronDown, ChevronRight, Download, Minus, Plus, Search, Trash2, X,
+  Boxes, ChevronDown, ChevronRight, Download, Minus, Plus, Search, Settings2, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -21,6 +21,7 @@ import {
   atualizarEquipamentoInstalado,
   excluirEquipamentoInstalado,
   nomeEquipamento,
+  temEstrutura,
   TIPO_SISTEMA_LABEL,
   TIPOS_SISTEMA,
   ESTADO_LABEL,
@@ -31,6 +32,7 @@ import {
   type SistemaInstalado,
   type TipoSistema,
 } from "./inventario";
+import { EditorBlocoCliente } from "./EditorBlocoCliente";
 
 export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string; podeEditar: boolean }) {
   const { isLight } = useTheme();
@@ -39,7 +41,10 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   const { data: visitasEscopo = [] } = useVisitasComEscopo(clienteId);
 
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState<null | { tipo: "importar" } | { tipo: "sistema" } | { tipo: "equipamento"; sistema: SistemaInstalado }>(null);
+  const [modal, setModal] = useState<
+    null | { tipo: "importar" } | { tipo: "sistema" }
+    | { tipo: "equipamento"; sistema: SistemaInstalado } | { tipo: "bloco"; sistema: SistemaInstalado }
+  >(null);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -190,6 +195,17 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                       {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo} · {ativos} item{ativos === 1 ? "" : "ns"}
                       {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
                     </div>
+                    {/* R63: o código já é a prova de que o bloco está
+                        estruturado — sem ele, "configurado ou não" só se
+                        sabia abrindo o editor pra conferir */}
+                    {s.codigo_bloco && (
+                      <div style={{
+                        fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: gold,
+                        marginTop: 2, wordBreak: "break-all",
+                      }}>
+                        {s.codigo_bloco}
+                      </div>
+                    )}
                   </div>
                 </button>
 
@@ -294,6 +310,16 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
                     {podeEditar && (
                       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                        {/* R63: só os tipos que gerarCodigoBloco sabe montar
+                            (PED/VEI/CFTV/AL/CER/CENT) — ELV/TOT continuam só
+                            com nome/descrição por enquanto (ver
+                            TIPOS_COM_ESTRUTURA em inventario.ts) */}
+                        {temEstrutura(s.tipo) && (
+                          <button style={btnSec} onClick={() => setModal({ tipo: "bloco", sistema: s })}>
+                            <Settings2 size={14} color={gold} />
+                            {s.codigo_bloco ? "Editar estrutura" : "Configurar bloco"}
+                          </button>
+                        )}
                         <button style={btnSec} onClick={() => setModal({ tipo: "equipamento", sistema: s })}>
                           <Plus size={14} color={gold} />
                           Equipamento
@@ -337,13 +363,22 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
           onCriado={() => { invalidar(); setModal(null); }}
         />
       )}
+      {modal?.tipo === "bloco" && (
+        <EditorBlocoCliente
+          sistema={modal.sistema}
+          onFechar={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ── Modais ──────────────────────────────────────────────────────────────────
 
-function useModalEstilos() {
+// exportados para EditorBlocoCliente.tsx reaproveitar a MESMA casca de modal
+// (R63) — um popover próprio ficaria com bordas/vidro levemente diferentes
+// do resto da ficha do cliente, e ninguém pediu uma segunda linguagem visual
+export function useModalEstilos() {
   const { isLight } = useTheme();
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   return {
@@ -383,7 +418,7 @@ function useModalEstilos() {
   };
 }
 
-function BotaoFechar({ onClick }: { onClick: () => void }) {
+export function BotaoFechar({ onClick }: { onClick: () => void }) {
   const { isLight } = useTheme();
   return (
     <button
