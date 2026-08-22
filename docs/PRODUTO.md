@@ -789,3 +789,63 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   **casar** com o fim da lista). *(Davi, 2026-08-22: "a lista de clientes
   deve conter 10 itens por vez... o mapa esteja alinhado com o fim da
   lista, e a página esteja por completa alinhada e margeada".)*
+
+- **R56** — **Duplas de campo**, cadastradas no sistema. Uma dupla tem nome e
+  um ou dois técnicos (o parceiro é opcional: técnico sem par continua
+  aparecendo no filtro e no gráfico). Cadastro por um **pop-up no Painel
+  Operacional**, com as opções vindas dos **usuários do sistema** — quem não
+  tem usuário não pode entrar numa dupla.
+
+  **Uma pessoa está em no máximo uma dupla ativa.** Desfazer uma dupla a
+  **desativa**, não apaga: o histórico do gráfico depende dela.
+
+  **A dupla de uma atividade vem do técnico responsável** — não existe um
+  campo "dupla" no chamado. Assim vale retroativamente (todo chamado que já
+  tem responsável já tem dupla), e trocar o responsável nunca deixa a dupla
+  desatualizada.
+
+  > **Isto supera a R14**, que dizia que só o líder da dupla tinha conta no
+  > app e que tudo era registrado no nome dele. Agora **todo técnico tem
+  > usuário**. *(Davi, 2026-08-22: "vou criar um usuário para cada técnico:
+  > Breno (já tem), André, Luan, Lucas, Paulo, Denner. E depois quero
+  > cadastrar as duplas... de acordo com os usuários do sistema".)*
+
+- **R57** — A tela de agendamento técnico agora se chama **"Programação da
+  equipe técnica de campo"** e ganhou:
+  - um **"+"** que abre atividade nova já como chamado **de campo**;
+  - **visão mensal**, com um **switch mensal/semanal** — os dois escolhem o
+    mesmo dia; trocar de modo troca a lente, não a tela;
+  - **filtro por dupla** (incluindo "Sem dupla", que é a fatia que o gestor
+    precisa achar para distribuir);
+  - **filtro por tipo de demanda**: Manutenção Corretiva, Manutenção
+    Preventiva e Implantação — *"são as únicas possibilidades que um técnico
+    de campo pode ter com tipo de demanda"*. (É mais estrito que os tipos
+    oferecidos ao ABRIR um chamado de campo, que ainda incluem "Operacional"
+    para o trabalho que não se programa para uma dupla.)
+
+  Os filtros valem para tudo na tela — agenda do dia, fila sem data e o
+  número de carga embaixo de cada dia. A agenda passou a agrupar **por
+  dupla**: duas linhas separadas ("Breno 3", "André 2") diriam 3 e 2 sobre um
+  trabalho que as duas pessoas fizeram juntas. *(Davi, 2026-08-22.)*
+
+- **R58** — No **Painel Operacional**:
+  - os **4 atalhos "Ir para"** (Calendário, Programação, Painel de chamados,
+    Clientes) **saíram** — todos são itens do menu lateral, sempre visível;
+  - entrou o **botão de cadastrar duplas** (o pop-up da R56);
+  - entrou um **gráfico de linhas** de **quantidade de atividades por dupla ao
+    longo do tempo**, com **cada item do eixo X sendo uma semana** (12
+    semanas). Uma linha por dupla ativa. O gráfico conta pela **data
+    programada** (é a semana em que o trabalho caiu para a dupla) e informa,
+    ao lado do título, quantos atendimentos ficaram **fora de dupla** — um
+    gráfico que some com parte do trabalho sem dizer nada mente por omissão.
+  *(Davi, 2026-08-22.)*
+
+- **R59** — **Cadastrar um usuário não depende do e-mail sair.** Quando o
+  admin registra nome + e-mail no painel de usuários, a conta passa a existir
+  **mesmo que o convite por e-mail falhe** (SMTP não configurado, cota
+  estourada, domínio recusado) e **mesmo que a pessoa nunca acesse o
+  sistema** — ela já aparece como responsável, como apoio, na programação e
+  nas duplas. Se o e-mail não sair, a tela **diz isso** em vez de anunciar um
+  convite enviado que nunca chegou; a pessoa entra depois por "esqueci minha
+  senha". *(Davi, 2026-08-22: "mesmo que o usuário nunca tenha acessado o
+  sistema, o nosso sistema já deve tratar como um novo usuário".)*

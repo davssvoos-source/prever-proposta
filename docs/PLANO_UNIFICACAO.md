@@ -2970,3 +2970,71 @@ comentário antigo do componente já descrevia ("flex:1 colapsa pra zero"),
 só que um nível acima na árvore.
 
 870 asserções (19 novas), build ok.
+
+### U47 — Duplas de campo, programação e painel operacional (R56–R59, 2026-08-22)
+
+Um lote grande, com uma peça nova no meio (duplas) que as outras três usam.
+
+**A decisão de modelagem que definiu tudo**: `duplas` é uma tabela nova, mas
+**não existe `chamados.dupla_id`**. A dupla de um chamado é DERIVADA do
+responsável — se o responsável está numa dupla ativa, o chamado é dela. Três
+razões: funciona retroativamente (todo chamado que já tem responsável já tem
+dupla, sem reprocessar nada); não cria segunda fonte de verdade (com coluna
+própria, trocar o responsável e esquecer da dupla deixaria o chamado mentindo
+sobre quem foi); e é como a operação já funciona — a programação atribui o
+TÉCNICO, e a dupla vem junto. A conta mora em `features/duplas/modelo.ts`,
+pura e coberta por asserção.
+
+**Uma pessoa em uma dupla ativa só.** Sem isso, "a dupla do responsável" teria
+mais de uma resposta e o gráfico atribuiria a atividade a uma dupla escolhida
+por sorte. Dois índices parciais cobrem "duas vezes na mesma coluna"; o
+**trigger** cobre o caso cruzado (membro_a numa dupla e membro_b em outra),
+que **índice nenhum pega** — é a única razão de ele existir. Desfazer uma
+dupla a DESATIVA: o histórico do gráfico depende dela.
+
+**Isto supera a R14** ("só o líder tem conta no app"). Agora todo técnico tem
+usuário, e é dos usuários que as duplas são montadas.
+
+**Programação (R57)** — título novo, "+" que abre chamado já de campo, switch
+semanal/mensal e os dois filtros. Detalhes que valeram trava:
+- **Os filtros valem para TUDO** — agenda, fila sem data e o número de carga
+  embaixo de cada dia do seletor. São todos derivados de `abertas`, então
+  filtrar na raiz cobre os três. Se a carga ignorasse o filtro, o número
+  embaixo do dia prometeria atendimentos que a agenda daquele dia não mostra.
+- **A grade do mês tem 42 células fixas** (6 linhas), não "as que couberem":
+  um mês de 5 linhas e outro de 6 fariam a página inteira pular de altura ao
+  trocar de mês, e a agenda embaixo andaria junto.
+- **A agenda agrupa por DUPLA**, não por técnico. Duas linhas separadas
+  ("Breno 3", "André 2") diriam 3 e 2 sobre um trabalho que as duas pessoas
+  fizeram juntas — são 5 da dupla. Técnico fora de dupla continua com grupo
+  próprio; ninguém some da agenda.
+- `TIPOS_DEMANDA_CAMPO` (3 tipos) é **mais estrito** que
+  `tiposDaNatureza('campo')` (4, com 'operacional') — proposital, e a asserção
+  registra a diferença em vez de deixá-la parecer esquecimento.
+
+**Painel operacional (R58)** — os 4 atalhos saíram (todos são item do menu
+lateral; o painel repetia embaixo o que está sempre à esquerda).
+`PainelBase` já escondia a seção com lista vazia, então não sobrou um "Ir
+para" órfão — nenhuma mudança lá. Entrou o gráfico de linhas por dupla, 12
+semanas no eixo X, contado pela **data programada** (é a semana em que o
+trabalho caiu para a dupla; `created_at` mediria a entrada da demanda, que já
+é o "fluxo do mês", e `concluida_em` deixaria de fora tudo por fazer). O
+painel informa quantos atendimentos ficaram **fora de dupla** na janela — sem
+isso o gráfico sumiria com parte do trabalho em silêncio. Sem dupla
+cadastrada o gráfico nem aparece: moldura vazia não explica o próprio vazio,
+e o card de cadastro logo acima é que diz o que fazer.
+
+**R59 — o bug que o pedido do Davi revelou.** `inviteUserByEmail` faz DUAS
+coisas (cria a conta E dispara o e-mail) e falha inteira se o envio falhar —
+SMTP não configurado, cota estourada, domínio recusado. O cadastro ficava em
+NADA: sem `auth.users`, sem `profiles`, sem linha em `convites`. O admin
+preenchia o formulário, via um erro, e o técnico continuava inexistente para
+o sistema — não dava para pô-lo numa dupla nem numa programação, que é
+exatamente o que o Davi ia fazer em seguida. Agora o envio é a parte
+OPCIONAL: se falhar, `createUser` cria a conta assim mesmo (o profile nasce
+igual, pelo mesmo trigger `on_auth_user_created`, lendo os mesmos metadados),
+a tela avisa que o convite não saiu em vez de anunciar um e-mail que nunca
+chegou, e a pessoa entra depois por "esqueci minha senha". E-mail já
+cadastrado virou mensagem própria, não uma segunda conta.
+
+933 asserções (63 novas), build ok.

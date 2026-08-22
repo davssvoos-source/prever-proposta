@@ -2838,5 +2838,218 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /className="elevavel" style=\{\{[\s\S]{0,200}height: "100%",/.test(mc2), true);
 }
 
+// ── U47: duplas de campo, programação e painel operacional
+//    (R56/R57/R58/R59, 2026-08-22) ──────────────────────────────────────────
+{
+  const fs29 = require('fs');
+  const DUP = carregar('src/features/duplas/modelo.ts');
+  const u47 = fs29.readFileSync('supabase/migrations/20260822050000_u47_duplas_de_campo.sql', 'utf8');
+  const prog = fs29.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+  const pop = fs29.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const dlg = fs29.readFileSync('src/features/duplas/DialogoDuplas.tsx', 'utf8');
+  const conv = fs29.readFileSync('src/lib/convites.functions.ts', 'utf8');
+  const CS2 = carregar('src/lib/chamado-status.ts');
+
+  const dupla = (o) => ({ id: 'd1', nome: 'Dupla 1', membro_a: 'a', membro_b: 'b', ativa: true, ...o });
+
+  // ── membrosDaDupla ──────────────────────────────────────────────────────
+  eq('membrosDaDupla devolve os dois quando há par', DUP.membrosDaDupla(dupla({})), ['a', 'b']);
+  eq('membrosDaDupla devolve um só quando não há parceiro — sem null no meio',
+     DUP.membrosDaDupla(dupla({ membro_b: null })), ['a']);
+
+  // ── duplaDaPessoa ───────────────────────────────────────────────────────
+  eq('duplaDaPessoa acha por membro_a', DUP.duplaDaPessoa('a', [dupla({})])?.id, 'd1');
+  eq('duplaDaPessoa acha por membro_b', DUP.duplaDaPessoa('b', [dupla({})])?.id, 'd1');
+  eq('duplaDaPessoa ignora dupla DESFEITA — trabalho novo não pode cair numa dupla que não existe mais',
+     DUP.duplaDaPessoa('a', [dupla({ ativa: false })]), null);
+  eq('duplaDaPessoa com pessoa fora de qualquer dupla', DUP.duplaDaPessoa('z', [dupla({})]), null);
+  // chamado sem responsável é o caso mais comum da fila — não pode explodir
+  eq('duplaDaPessoa tolera responsável nulo', DUP.duplaDaPessoa(null, [dupla({})]), null);
+
+  // ── rotuloDaDupla ───────────────────────────────────────────────────────
+  const nomeDe = (id) => ({ a: 'Breno', b: 'André' }[id] ?? id);
+  eq('rotuloDaDupla usa o nome cadastrado', DUP.rotuloDaDupla(dupla({}), nomeDe), 'Dupla 1');
+  eq('rotuloDaDupla sem nome monta a partir de quem está nela (legenda do gráfico precisa de rótulo)',
+     DUP.rotuloDaDupla(dupla({ nome: '   ' }), nomeDe), 'Breno & André');
+
+  // ── erroDaDupla (as 3 regras que o banco também garante) ────────────────
+  eq('erroDaDupla exige nome',
+     DUP.erroDaDupla({ nome: ' ', membroA: 'a', membroB: null }, [], nomeDe), 'Dê um nome à dupla.');
+  eq('erroDaDupla exige ao menos um técnico',
+     DUP.erroDaDupla({ nome: 'X', membroA: null, membroB: null }, [], nomeDe), 'Escolha ao menos um técnico.');
+  eq('erroDaDupla recusa a mesma pessoa duas vezes',
+     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: 'a' }, [], nomeDe),
+     'A dupla precisa de duas pessoas diferentes.');
+  eq('erroDaDupla recusa quem já está em outra dupla ativa (a mesma regra do trigger da U47)',
+     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: null }, [dupla({})], nomeDe),
+     'Breno já está na dupla "Dupla 1".');
+  // sem isto, editar a própria dupla acusaria conflito consigo mesma
+  eq('erroDaDupla NÃO acusa conflito com a dupla em edição',
+     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: 'b' }, [dupla({})], nomeDe, 'd1'), null);
+  eq('erroDaDupla aceita dupla válida',
+     DUP.erroDaDupla({ nome: 'Dupla 2', membroA: 'c', membroB: 'd' }, [dupla({})], nomeDe), null);
+  eq('erroDaDupla aceita técnico sem parceiro (dupla de um continua aparecendo no filtro/gráfico)',
+     DUP.erroDaDupla({ nome: 'Solo', membroA: 'c', membroB: null }, [dupla({})], nomeDe), null);
+
+  // ── série do gráfico ────────────────────────────────────────────────────
+  {
+    const semanas = [{ chave: 'S1', rotulo: '04/08' }, { chave: 'S2', rotulo: '11/08' }];
+    // a chave da semana vem de fora (referenciaSemanal, no app); aqui um
+    // marcador simples torna o teste independente do calendário real
+    const chaveDe = (d) => (d.getUTCDate() <= 10 ? 'S1' : 'S2');
+    const cham = (responsavel_id, dia) => ({
+      responsavel_id,
+      data_hora_agendada: `2026-08-${String(dia).padStart(2, '0')}T12:00:00.000Z`,
+    });
+    const duplas2 = [dupla({}), dupla({ id: 'd2', nome: 'Dupla 2', membro_a: 'c', membro_b: null })];
+
+    eq('série: conta por dupla e por semana, e o parceiro soma na MESMA dupla (não em duas linhas)',
+       DUP.serieAtividadesPorDupla(
+         [cham('a', 4), cham('b', 5), cham('c', 4), cham('a', 20)],
+         duplas2, semanas, chaveDe,
+       ),
+       [{ semana: '04/08', d1: 2, d2: 1 }, { semana: '11/08', d1: 1, d2: 0 }]);
+
+    eq('série: semana sem nada vira ZERO, não buraco — a linha não pode saltar por cima da semana vazia',
+       DUP.serieAtividadesPorDupla([cham('a', 4)], duplas2, semanas, chaveDe),
+       [{ semana: '04/08', d1: 1, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
+
+    eq('série: chamado SEM data programada não entra (o gráfico é do que foi programado)',
+       DUP.serieAtividadesPorDupla(
+         [{ responsavel_id: 'a', data_hora_agendada: null }], duplas2, semanas, chaveDe,
+       ),
+       [{ semana: '04/08', d1: 0, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
+
+    eq('série: responsável fora de dupla não entra em linha nenhuma',
+       DUP.serieAtividadesPorDupla([cham('z', 4)], duplas2, semanas, chaveDe),
+       [{ semana: '04/08', d1: 0, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
+
+    eq('série: dupla DESFEITA não vira linha do gráfico',
+       Object.keys(DUP.serieAtividadesPorDupla([], [dupla({ ativa: false })], semanas, chaveDe)[0]),
+       ['semana']);
+
+    // o gráfico que some com trabalho sem avisar é um gráfico que mente
+    eq('foraDeDupla conta o que o gráfico NÃO mostrou (sem responsável ou fora de dupla)',
+       DUP.foraDeDupla([cham('z', 4), cham(null, 5), cham('a', 4)], duplas2, semanas, chaveDe), 2);
+    eq('foraDeDupla ignora o que está fora da janela de semanas mostrada',
+       DUP.foraDeDupla([{ responsavel_id: 'z', data_hora_agendada: null }], duplas2, semanas, chaveDe), 0);
+  }
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('U47 cria duplas com membro_b OPCIONAL (técnico sem par continua aparecendo)',
+     /membro_b\s+uuid REFERENCES public\.profiles\(id\)/.test(u47), true);
+  eq('U47 impede a mesma pessoa duas vezes na MESMA dupla',
+     /CHECK \(membro_b IS NULL OR membro_a <> membro_b\)/.test(u47), true);
+  eq('U47 tem os dois índices parciais de membro único (só entre duplas ATIVAS)',
+     /CREATE UNIQUE INDEX IF NOT EXISTS duplas_membro_a_unico[\s\S]{0,120}WHERE ativa/.test(u47)
+     && /CREATE UNIQUE INDEX IF NOT EXISTS duplas_membro_b_unico[\s\S]{0,140}WHERE ativa AND membro_b IS NOT NULL/.test(u47),
+     true);
+  eq('CRÍTICO: U47 tem o TRIGGER do caso cruzado (membro_a numa dupla e membro_b em outra) — índice nenhum pega isso',
+     /CREATE TRIGGER trg_duplas_valida_membros/.test(u47)
+     && /d\.membro_b = NEW\.membro_a/.test(u47), true);
+  eq('U47: leitura aberta ao time, escrita só de gestor',
+     /"duplas_select" ON public\.duplas\s*\n\s*FOR SELECT TO authenticated USING \(true\)/.test(u47)
+     && /"duplas_write"[\s\S]{0,140}public\.is_gestor\(auth\.uid\(\)\)/.test(u47), true);
+  // O nome `chamados.dupla_id` aparece de propósito no cabeçalho e no COMMENT
+  // da tabela, explicando por que ele NÃO existe — então a checagem é sobre a
+  // operação de schema, não sobre a string aparecer no arquivo.
+  eq('U47 NÃO cria chamados.dupla_id — a dupla é derivada do responsável (uma fonte de verdade só)',
+     /ALTER TABLE[\s\S]{0,120}dupla_id/i.test(u47), false);
+  eq('e nenhuma outra migration criou a coluna pelas costas',
+     fs29.readdirSync('supabase/migrations').some((f) =>
+       /ADD COLUMN[^;]{0,80}dupla_id/i.test(fs29.readFileSync(`supabase/migrations/${f}`, 'utf8'))),
+     false);
+  eq('U47 termina com SELECT de verificação', /Verificação/.test(u47), true);
+
+  // ── tipos de demanda de campo (R57) ─────────────────────────────────────
+  eq('TIPOS_DEMANDA_CAMPO são exatamente os 3 que o Davi listou',
+     CS2.TIPOS_DEMANDA_CAMPO, ['corretiva', 'preventiva', 'implantacao']);
+  eq('e os 3 têm rótulo — são o que aparece no filtro',
+     CS2.TIPOS_DEMANDA_CAMPO.map((t) => CS2.TIPO_LABEL[t]),
+     ['Manutenção Corretiva', 'Manutenção Preventiva', 'Implantação']);
+  // é mais estrito que tiposDaNatureza('campo'), que ainda oferece operacional
+  // no formulário de abertura — a diferença é proposital
+  eq('TIPOS_DEMANDA_CAMPO é mais estrito que tiposDaNatureza("campo") (que inclui operacional)',
+     CS2.tiposDaNatureza('campo').filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), ['operacional']);
+
+  // ── a tela de programação (R57) ─────────────────────────────────────────
+  eq('o título é o que o Davi pediu',
+     /Programação da equipe técnica de campo/.test(prog), true);
+  eq('tem o "+" que abre atividade nova JÁ como chamado de campo',
+     /navigate\(\{ to: "\/chamados\/novo-campo" \}\)/.test(prog)
+     && /aria-label="Nova atividade para técnico de campo"/.test(prog), true);
+  eq('tem o switch semanal/mensal',
+     /\(\["semanal", "mensal"\] as ModoDeVisao\[\]\)\.map/.test(prog), true);
+  eq('a grade do mês tem 42 células FIXAS (6 linhas) — senão a página pularia de altura ao trocar de mês',
+     /Array\.from\(\{ length: 42 \}/.test(prog), true);
+  eq('tem filtro por dupla, com a opção "Sem dupla" (a fatia que o gestor precisa achar)',
+     /aria-label="Filtrar por dupla"/.test(prog) && /<option value="sem_dupla">Sem dupla<\/option>/.test(prog),
+     true);
+  eq('tem filtro por tipo de demanda, alimentado por TIPOS_DEMANDA_CAMPO',
+     /aria-label="Filtrar por tipo de demanda"/.test(prog)
+     && /TIPOS_DEMANDA_CAMPO\.map\(\(t\) => \(/.test(prog), true);
+  eq('CRÍTICO: os filtros valem para TUDO na tela (agenda, fila e carga do seletor) — filtram `abertas`, a raiz de todas as três',
+     /const abertas = useMemo\(\(\) => emAberto\.filter\(\(o\) => \{[\s\S]{0,400}duplaDaPessoa\(o\.responsavel_id, duplasAtivas\)/.test(prog),
+     true);
+  eq('a agenda do dia agrupa por DUPLA (não uma linha por técnico, que separaria em dois o trabalho feito junto)',
+     /const porGrupo = useMemo/.test(prog) && /for \(const d of duplasAtivas\)/.test(prog), true);
+  eq('técnico fora de dupla continua tendo grupo próprio (ninguém some da agenda)',
+     /sub: "Sem dupla"/.test(prog), true);
+  eq('o vazio explica que é o FILTRO quando há filtro (não deixa parecer que o dia está vazio)',
+     /filtrando \? "Nada programado neste dia com esse filtro"/.test(prog), true);
+
+  // ── o painel operacional (R58) ──────────────────────────────────────────
+  eq('os 4 atalhos "Ir para" saíram do painel operacional',
+     /const ATALHOS: AtalhoPainel\[\] = \[\];/.test(pop), true);
+  eq('PainelBase esconde a seção inteira quando não há atalho — não sobra um "Ir para" órfão',
+     /\{visiveis\.length > 0 && \(/.test(fs29.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8')),
+     true);
+  eq('o painel tem o botão que abre o pop-up de cadastro de duplas',
+     /setDuplasAberto\(true\)/.test(pop) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(pop), true);
+  eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por dupla ativa',
+     /<LineChart data=\{serieDuplas\}/.test(pop)
+     && /duplasAtivas\.map\(\(d, i\) => \(\s*\n\s*<Line/.test(pop), true);
+  eq('cada item do eixo X é uma SEMANA',
+     /<XAxis\s*\n\s*dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
+  eq('a legenda mostra o nome da dupla, não o uuid que é o dataKey',
+     /return d \? rotuloDaDupla\(d, nomeDeTecnico\) : v;/.test(pop), true);
+  eq('o painel avisa quantos atendimentos ficaram FORA de dupla (gráfico não pode sumir com trabalho em silêncio)',
+     /semDuplaNaJanela > 0 && \(/.test(pop), true);
+  eq('sem dupla cadastrada o gráfico não aparece (moldura vazia não explica o próprio vazio; o card acima explica)',
+     /\{duplasAtivas\.length > 0 && \(/.test(pop), true);
+  eq('o gráfico usa a paleta categórica do design system (§9), sem inventar cor',
+     /stroke=\{cores\[i % 8\]\}/.test(pop), true);
+
+  // ── o pop-up de duplas (R56) ────────────────────────────────────────────
+  eq('as opções vêm dos USUÁRIOS do sistema (useTecnicos), como o Davi pediu',
+     /useTecnicos\(\)/.test(dlg), true);
+  eq('quem já está em outra dupla ativa não é oferecido (o banco recusaria; oferecer seria convidar ao erro)',
+     /const disponiveis = \(excetoEsteCampo: string\)/.test(dlg), true);
+  eq('desfazer uma dupla DESATIVA, não apaga — o histórico do gráfico depende dela',
+     /tipo: "desativar"/.test(dlg) && /tipo: "reativar"/.test(dlg), true);
+  eq('valida no cliente antes de gravar, com a mesma função pura testada acima',
+     /const erro = erroDaDupla\(/.test(dlg), true);
+
+  // ── R59: cadastrar usuário não depende do e-mail sair ───────────────────
+  eq('CRÍTICO: se o convite por e-mail falhar, createUser cria a conta assim mesmo — o cadastro não pode ficar em NADA',
+     /if \(inviteErr\) \{[\s\S]{0,600}supabaseAdmin\.auth\.admin\.createUser\(\{/.test(conv), true);
+  eq('e-mail já cadastrado é tratado à parte (não vira uma segunda conta com o mesmo e-mail)',
+     /Já existe um usuário com este e-mail\./.test(conv), true);
+  eq('a função devolve emailEnviado para a tela poder avisar que o convite não saiu',
+     /return \{ success: true, user_id: userId, emailEnviado \};/.test(conv), true);
+  {
+    const usr = fs29.readFileSync('src/routes/_authenticated/gerencial.usuarios.tsx', 'utf8');
+    eq('a tela avisa quando a conta foi criada mas o e-mail não saiu (não deixa o admin esperando um e-mail que não vem)',
+       /if \(r\?\.emailEnviado === false\)/.test(usr), true);
+    eq('cadastrar um usuário invalida as listas que montam dupla/programação/responsável — ele aparece na hora',
+       /queryKey: \["pessoas-ativas"\]/.test(usr) && /queryKey: \["tecnicos-ativos"\]/.test(usr), true);
+  }
+
+  const produto5 = fs29.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R56 (duplas), R57 (programação), R58 (painel) e R59 (usuário sem e-mail) estão documentados',
+     /\*\*R56\*\*/.test(produto5) && /\*\*R57\*\*/.test(produto5)
+     && /\*\*R58\*\*/.test(produto5) && /\*\*R59\*\*/.test(produto5), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

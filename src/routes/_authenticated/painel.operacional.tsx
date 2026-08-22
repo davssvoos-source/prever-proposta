@@ -18,17 +18,26 @@
 // "Outros"/"Sem técnico" neutro — identidade nunca só pela cor).
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { CalendarDays, ClipboardList, Users, Building2 } from "lucide-react";
+import {
+  PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend,
+} from "recharts";
+import { Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useUserCargo, useTecnicos } from "@/features/gerencial/data";
 import { useChamadosPorNatureza } from "@/features/chamados/data";
+import { useDuplas } from "@/features/duplas/data";
+import { DialogoDuplas } from "@/features/duplas/DialogoDuplas";
+import {
+  serieAtividadesPorDupla, foraDeDupla, rotuloDaDupla, type SemanaDoGrafico,
+} from "@/features/duplas/modelo";
 import { chamadoStatusInfo } from "@/lib/chamado-status";
+import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
+import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import { calcularIndicadores, horasTexto, JANELA_REINCIDENCIA_DIAS } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel, type NumeroPainel } from "@/features/paineis/PainelBase";
 
@@ -42,18 +51,15 @@ export const Route = createFileRoute("/_authenticated/painel/operacional")({
   component: PainelOperacional,
 });
 
-// A lista /chamados morreu (R31 — a Início entrega a fila em kanban e lista),
-// e os indicadores agora moram aqui — por isso nenhum atalho aponta para os dois.
-const ATALHOS: AtalhoPainel[] = [
-  { label: "Calendário", descricao: "Agenda de todos — visitas e chamados com data",
-    icon: CalendarDays, para: "/calendario", tela: "calendario" },
-  { label: "Programação das duplas", descricao: "Quem sai com quem, e para onde",
-    icon: Users, para: "/chamados/programacao", tela: "chamados.programacao" },
-  { label: "Painel de chamados", descricao: "Dashboards e a série de manutenções",
-    icon: ClipboardList, para: "/chamados/painel", tela: "chamados.painel" },
-  { label: "Clientes", descricao: "A base vinda do QAP, com equipamentos por posto",
-    icon: Building2, para: "/clientes", tela: "clientes" },
-];
+// Os 4 atalhos ("Ir para": Calendário, Programação, Painel de chamados,
+// Clientes) SAÍRAM a pedido do Davi (2026-08-22, R58). Todos os quatro são
+// itens do menu lateral — o atalho repetia, na parte de baixo do painel, o
+// que já está sempre visível à esquerda. `PainelBase` esconde a seção
+// inteira quando a lista está vazia, então não sobra um título "Ir para" solto.
+const ATALHOS: AtalhoPainel[] = [];
+
+/** Quantas semanas o gráfico de atividades por dupla mostra. */
+const SEMANAS_NO_GRAFICO = 12;
 
 // Paleta categórica validada (DESIGN_SYSTEM.md §9) — ordem fixa, nunca ciclada
 const CORES_DARK = ["#3987e5", "#008300", "#d55181", "#E2791D", "#199e70", "#d95926", "#9085e9", "#e66767"];
@@ -65,7 +71,9 @@ function PainelOperacional() {
   const { data: cargo } = useUserCargo();
   const { data: chamados = [] } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
+  const { data: duplas = [] } = useDuplas();
   const { isLight } = useTheme();
+  const [duplasAberto, setDuplasAberto] = useState(false);
 
   // nomes para a reincidência — só id/nome, a base tem ~200 linhas
   const { data: clientes = [] } = useQuery({
@@ -131,6 +139,36 @@ function PainelOperacional() {
     [ind],
   );
 
+  // ── Atividades por dupla ao longo do tempo (R58) ─────────────────────────
+  // "cada item vertical é uma semana": as 12 últimas semanas no eixo X, uma
+  // LINHA por dupla ativa. A conta é pura (features/duplas/modelo.ts); aqui
+  // só se decide a janela e se pinta.
+  const duplasAtivas = useMemo(() => duplas.filter((d) => d.ativa), [duplas]);
+
+  const semanas = useMemo<SemanaDoGrafico[]>(() => {
+    const segundaDestaSemana = inicioSemana(new Date());
+    return Array.from({ length: SEMANAS_NO_GRAFICO }, (_, i) => {
+      const d = new Date(segundaDestaSemana);
+      d.setDate(d.getDate() - (SEMANAS_NO_GRAFICO - 1 - i) * 7);
+      return {
+        chave: referenciaSemanal(d),
+        // o rótulo é a segunda-feira da semana: "11/08" lê como "a semana do
+        // dia 11", que é como quem programa fala do período
+        rotulo: `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`,
+      };
+    });
+  }, []);
+
+  const serieDuplas = useMemo(
+    () => serieAtividadesPorDupla(chamados as any[], duplasAtivas, semanas, referenciaSemanal),
+    [chamados, duplasAtivas, semanas],
+  );
+  const semDuplaNaJanela = useMemo(
+    () => foraDeDupla(chamados as any[], duplasAtivas, semanas, referenciaSemanal),
+    [chamados, duplasAtivas, semanas],
+  );
+  const nomeDeTecnico = (id: string) => nomeTecnico.get(id) ?? "Técnico";
+
   // um par rótulo+valor dentro dos cards de trio
   const Metrica = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor: string }) => (
     <div style={{ minWidth: 0 }}>
@@ -153,6 +191,97 @@ function PainelOperacional() {
       atalhos={ATALHOS}
       isAdmin={cargo === "admin"}
     >
+      {/* ── DUPLAS DE CAMPO (R56/R58) ──────────────────────────────────── */}
+      <div style={{ ...CARD, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <span style={{
+          width: 36, height: 36, borderRadius: 11, flexShrink: 0,
+          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
+          display: "flex", alignItems: "center", justifyContent: "center", color: gold,
+        }}>
+          <Users size={17} />
+        </span>
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5, color: textPrimary }}>
+            Duplas de campo
+          </div>
+          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
+            {duplasAtivas.length === 0
+              ? "Nenhuma dupla cadastrada — cadastre para ver o gráfico por dupla."
+              : `${duplasAtivas.length} dupla${duplasAtivas.length === 1 ? "" : "s"} ativa${duplasAtivas.length === 1 ? "" : "s"} · quem sai com quem`}
+          </div>
+        </div>
+        <button
+          onClick={() => setDuplasAberto(true)}
+          style={{
+            height: 40, padding: "0 18px", borderRadius: 20, border: "none", background: GOLD_GRAD,
+            color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 12,
+            letterSpacing: "0.04em", cursor: "pointer", flexShrink: 0,
+            boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
+          }}
+        >
+          Cadastrar duplas
+        </button>
+      </div>
+
+      <DialogoDuplas aberto={duplasAberto} aoFechar={() => setDuplasAberto(false)} />
+
+      {/* Atividades por dupla ao longo do tempo — Davi, 2026-08-22: "gráfico
+          de qntd de atividades por dupla ao longo do tempo (cada item
+          vertical é uma semana). Deve ser um gráfico de linhas."
+
+          Só aparece com dupla cadastrada: um gráfico de linhas sem nenhuma
+          linha é uma moldura vazia que não explica por que está vazia — o
+          card acima é que diz o que fazer. */}
+      {duplasAtivas.length > 0 && (
+        <div style={CARD}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <span style={SEC}>Atividades por dupla · {SEMANAS_NO_GRAFICO} semanas</span>
+            {semDuplaNaJanela > 0 && (
+              <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
+                {semDuplaNaJanela} atendimento(s) fora de dupla, não somados
+              </span>
+            )}
+          </div>
+          <div style={{ width: "100%", height: 260, marginTop: 12 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={serieDuplas} margin={{ left: 0, right: 12, top: 4, bottom: 4 }}>
+                <CartesianGrid stroke={isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"} />
+                <XAxis
+                  dataKey="semana"
+                  tick={{ fill: textSecondary, fontSize: 11, fontFamily: FONT }}
+                  axisLine={false} tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fill: textSecondary, fontSize: 11, fontFamily: FONT }}
+                  axisLine={false} tickLine={false} width={28}
+                />
+                <RTooltip contentStyle={tooltipStyle} itemStyle={{ color: textPrimary }} />
+                <Legend
+                  wrapperStyle={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}
+                  formatter={(v: string) => {
+                    const d = duplasAtivas.find((x) => x.id === v);
+                    return d ? rotuloDaDupla(d, nomeDeTecnico) : v;
+                  }}
+                />
+                {duplasAtivas.map((d, i) => (
+                  <Line
+                    key={d.id}
+                    type="monotone"
+                    dataKey={d.id}
+                    stroke={cores[i % 8]}
+                    strokeWidth={2}
+                    dot={{ r: 3, strokeWidth: 0, fill: cores[i % 8] }}
+                    activeDot={{ r: 5 }}
+                    isAnimationActive={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span style={{ ...SEC, letterSpacing: "0.10em", fontSize: 10.5, color: gold }}>
           Indicadores de campo

@@ -232,15 +232,31 @@ function UsuariosPage() {
       if (!inviteEmail.trim() || !inviteNome.trim()) {
         throw new Error("Preencha nome e e-mail");
       }
-      await enviarConviteFn({
+      return await enviarConviteFn({
         data: { email: inviteEmail.trim(), nome: inviteNome.trim(), cargo: inviteCargo },
       });
     },
-    onSuccess: () => {
-      toast.success(`Convite enviado para ${inviteEmail}`);
+    onSuccess: (r: any) => {
+      // R59: a conta existe nos dois casos — o que muda é se o convite saiu
+      // por e-mail. Dizer "convite enviado" quando o envio falhou faria o
+      // admin esperar por um e-mail que nunca vai chegar.
+      if (r?.emailEnviado === false) {
+        toast.success(
+          `${inviteNome} já está cadastrado e pode ser usado no sistema. O e-mail de convite não saiu — peça para entrar por "esqueci minha senha".`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(`Convite enviado para ${inviteEmail}`);
+      }
       setInviteNome(""); setInviteEmail(""); setInviteCargo("tecnico");
       setShowInvite(false);
       qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
+      // o novo usuário precisa aparecer JÁ nas listas que montam duplas,
+      // programação e responsável — sem isto ele só surgiria no próximo
+      // refetch natural, e o admin acharia que o cadastro não pegou
+      qc.invalidateQueries({ queryKey: ["staff-profiles"] });
+      qc.invalidateQueries({ queryKey: ["pessoas-ativas"] });
+      qc.invalidateQueries({ queryKey: ["tecnicos-ativos"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

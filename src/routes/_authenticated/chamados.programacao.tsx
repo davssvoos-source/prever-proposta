@@ -10,16 +10,21 @@ import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, UserX } from "lucide-react";
+import {
+  AlertTriangle, ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, Plus, UserX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
 import { useChamadosPorNatureza, atualizarChamado, type Chamado } from "@/features/chamados/data";
+import { useDuplas } from "@/features/duplas/data";
+import { duplaDaPessoa, rotuloDaDupla, membrosDaDupla } from "@/features/duplas/modelo";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
-  PRIORIDADE_LABEL, PRIORIDADE_CORES, type ChamadoPrioridade,
+  PRIORIDADE_LABEL, PRIORIDADE_CORES, TIPO_LABEL, TIPOS_DEMANDA_CAMPO,
+  type ChamadoPrioridade, type ChamadoTipo,
 } from "@/lib/chamado-status";
 
 export const Route = createFileRoute("/_authenticated/chamados/programacao")({
@@ -31,11 +36,26 @@ export const Route = createFileRoute("/_authenticated/chamados/programacao")({
 });
 
 const DIA_CURTO = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const MES_NOME = [
+  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+];
 
 /** AAAA-MM-DD no fuso local — comparar Date direto erra na virada do dia. */
 function chaveDia(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+type ModoDeVisao = "semanal" | "mensal";
+
+/** Os dois seletores de filtro (dupla, tipo) falam a mesma língua visual. */
+const SELETOR_FILTRO = (isLight: boolean, textPrimary: string): CSSProperties => ({
+  height: 38, borderRadius: 999, padding: "0 13px", cursor: "pointer",
+  background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+  border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+  color: textPrimary, fontFamily: FONT, fontWeight: 600, fontSize: 12,
+  outline: "none", colorScheme: isLight ? "light" : "dark",
+});
 
 function ProgramacaoPage() {
   const navigate = useNavigate();
@@ -44,8 +64,12 @@ function ProgramacaoPage() {
   // programação é sobre deslocamento: só chamado de campo entra aqui
   const { data: ordens = [], isLoading } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
+  const { data: duplas = [] } = useDuplas();
 
   const [dia, setDia] = useState(() => new Date());
+  const [modo, setModo] = useState<ModoDeVisao>("semanal");
+  const [duplaFiltro, setDuplaFiltro] = useState<string>("todas");
+  const [tipoFiltro, setTipoFiltro] = useState<"todos" | ChamadoTipo>("todos");
   const [agendando, setAgendando] = useState<Chamado | null>(null);
   const [novaData, setNovaData] = useState("");
   const [novoTecnico, setNovoTecnico] = useState("");
@@ -54,6 +78,13 @@ function ProgramacaoPage() {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
+
+  const nomePorTecnico = useMemo(
+    () => Object.fromEntries((tecnicos as any[]).map((t) => [t.id, t.nome ?? "—"])) as Record<string, string>,
+    [tecnicos],
+  );
+  const nomeDeTecnico = (id: string) => nomePorTecnico[id] ?? "Técnico";
+  const duplasAtivas = useMemo(() => duplas.filter((d) => d.ativa), [duplas]);
 
   // a semana começa no domingo do dia escolhido
   const semana = useMemo(() => {
@@ -66,7 +97,44 @@ function ProgramacaoPage() {
     });
   }, [dia]);
 
-  const abertas = useMemo(() => ordens.filter((o) => chamadoEmAberto(o.status)), [ordens]);
+  /**
+   * A grade do mês (R57): sempre 6 linhas de 7 dias, começando no domingo da
+   * semana em que o dia 1º cai. Seis linhas FIXAS, não "as que couberem" — um
+   * mês que ocupa 5 linhas e outro que ocupa 6 fariam a página inteira pular
+   * de altura ao trocar de mês, e o que está embaixo (a agenda) andaria junto.
+   * Os dias de fora do mês aparecem apagados, como em qualquer calendário.
+   */
+  const gradeDoMes = useMemo(() => {
+    const primeiro = new Date(dia.getFullYear(), dia.getMonth(), 1);
+    const base = new Date(primeiro);
+    base.setDate(1 - primeiro.getDay());
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d;
+    });
+  }, [dia]);
+
+  const emAberto = useMemo(() => ordens.filter((o) => chamadoEmAberto(o.status)), [ordens]);
+
+  /**
+   * Os dois filtros novos (R57), aplicados JUNTOS a tudo que a tela mostra —
+   * agenda do dia, fila sem data e a carga de cada dia do seletor. Se a carga
+   * ignorasse o filtro, o número embaixo do dia prometeria atendimentos que a
+   * agenda daquele dia não mostraria.
+   *
+   * A DUPLA VEM DO RESPONSÁVEL (ver features/duplas/modelo.ts): filtrar por
+   * dupla é ficar com os chamados de quem está nela. "Sem dupla" é opção
+   * própria — é justamente a fatia que o gestor precisa achar para distribuir.
+   */
+  const abertas = useMemo(() => emAberto.filter((o) => {
+    if (tipoFiltro !== "todos" && o.tipo !== tipoFiltro) return false;
+    if (duplaFiltro === "todas") return true;
+    const d = duplaDaPessoa(o.responsavel_id, duplasAtivas);
+    return duplaFiltro === "sem_dupla" ? !d : d?.id === duplaFiltro;
+  }), [emAberto, tipoFiltro, duplaFiltro, duplasAtivas]);
+
+  const filtrando = tipoFiltro !== "todos" || duplaFiltro !== "todas";
 
   const doDia = useMemo(() => {
     const k = chaveDia(dia);
@@ -97,16 +165,44 @@ function ProgramacaoPage() {
     return m;
   }, [abertas]);
 
-  const porTecnico = useMemo(() => {
-    const grupos: { id: string | null; nome: string; ordens: Chamado[] }[] = [];
-    for (const t of tecnicos as any[]) {
-      const lista = doDia.filter((o) => o.responsavel_id === t.id);
-      if (lista.length > 0) grupos.push({ id: t.id, nome: t.nome ?? "—", ordens: lista });
+  /**
+   * A agenda do dia agrupada por DUPLA, caindo para o técnico quando ele não
+   * está em nenhuma (R57). Agrupar por dupla é o que a tela passou a
+   * prometer no título — e evita a leitura errada de duas linhas separadas
+   * ("Breno 3", "André 2") para um trabalho que as duas pessoas fizeram
+   * JUNTAS: são 5 atendimentos da dupla, não 3 de um e 2 do outro.
+   */
+  const porGrupo = useMemo(() => {
+    const grupos: { id: string; nome: string; sub: string | null; ordens: Chamado[] }[] = [];
+    const jaListados = new Set<string>();
+
+    for (const d of duplasAtivas) {
+      const membros = membrosDaDupla(d);
+      const lista = doDia.filter((o) => o.responsavel_id && membros.includes(o.responsavel_id));
+      if (lista.length === 0) continue;
+      lista.forEach((o) => jaListados.add(o.id));
+      grupos.push({
+        id: d.id,
+        nome: rotuloDaDupla(d, nomeDeTecnico),
+        sub: membros.map(nomeDeTecnico).join(" · "),
+        ordens: lista,
+      });
     }
+
+    // técnico com atendimento no dia mas fora de qualquer dupla ativa
+    for (const t of tecnicos as any[]) {
+      const lista = doDia.filter((o) => o.responsavel_id === t.id && !jaListados.has(o.id));
+      if (lista.length === 0) continue;
+      lista.forEach((o) => jaListados.add(o.id));
+      grupos.push({ id: t.id, nome: t.nome ?? "—", sub: "Sem dupla", ordens: lista });
+    }
+
     const semDono = doDia.filter((o) => !o.responsavel_id);
-    if (semDono.length > 0) grupos.push({ id: null, nome: "Sem técnico definido", ordens: semDono });
+    if (semDono.length > 0) {
+      grupos.push({ id: "sem-dono", nome: "Sem técnico definido", sub: null, ordens: semDono });
+    }
     return grupos;
-  }, [doDia, tecnicos]);
+  }, [doDia, tecnicos, duplasAtivas, nomePorTecnico]);
 
   const programar = useMutation({
     mutationFn: async () => {
@@ -216,85 +312,257 @@ function ProgramacaoPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 20 }}>Programação</div>
+          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 20 }}>
+            Programação da equipe técnica de campo
+          </div>
           <div style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
             {doDia.length} atendimento(s) no dia · {semData.length} sem data
+            {filtrando && " · filtrado"}
           </div>
         </div>
+        {/* "+" para abrir atividade nova já como chamado de CAMPO (R57) — o
+            /chamados/novo genérico obrigaria a escolher a natureza de novo,
+            e quem está nesta tela já está programando campo. */}
+        <button
+          onClick={() => navigate({ to: "/chamados/novo-campo" })}
+          aria-label="Nova atividade para técnico de campo"
+          title="Nova atividade para técnico de campo"
+          style={{
+            width: 40, height: 40, borderRadius: 12, border: "none", background: GOLD_GRAD,
+            color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", flexShrink: 0, boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
+          }}
+        >
+          <Plus size={20} />
+        </button>
       </div>
 
-      {/* Semana */}
-      <div style={{ ...CARD, display: "flex", alignItems: "center", gap: 4 }}>
-        <button
-          onClick={() => { const d = new Date(dia); d.setDate(d.getDate() - 7); setDia(d); }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        {semana.map((d) => {
-          const k = chaveDia(d);
-          const ativo = k === chaveDia(dia);
-          const carga = cargaPorDia[k] ?? 0;
-          const hoje = k === chaveDia(new Date());
-          return (
+      {/* ── Modo de visão + filtros (R57) ───────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {/* switch mensal/semanal: dois botões num trilho, o ativo em dourado —
+            o mesmo vocabulário de "selecionado" dos chips do resto do app */}
+        <div style={{
+          display: "flex", padding: 3, borderRadius: 999, gap: 3, flexShrink: 0,
+          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
+        }}>
+          {(["semanal", "mensal"] as ModoDeVisao[]).map((m) => (
             <button
-              key={k}
-              onClick={() => setDia(d)}
+              key={m}
+              onClick={() => setModo(m)}
+              aria-pressed={modo === m}
               style={{
-                flex: 1, padding: "7px 2px", borderRadius: 10, cursor: "pointer",
-                border: ativo ? "none" : hoje
-                  ? `1px solid ${gold}`
-                  : isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                background: ativo ? GOLD_GRAD : "transparent",
-                color: ativo ? "#08090E" : textPrimary,
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                padding: "7px 15px", borderRadius: 999, border: "none", cursor: "pointer",
+                background: modo === m ? GOLD_GRAD : "transparent",
+                color: modo === m ? "#08090E" : textSecondary,
+                fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
+                letterSpacing: "0.04em", textTransform: "capitalize",
               }}
             >
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 400, opacity: 0.75 }}>
-                {DIA_CURTO[d.getDay()]}
-              </span>
-              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>{d.getDate()}</span>
-              <span style={{
-                fontFamily: FONT, fontSize: 9, fontWeight: 600,
-                color: ativo ? "#08090E" : carga > 0 ? gold : "transparent",
-              }}>
-                {carga > 0 ? carga : "·"}
-              </span>
+              {m}
             </button>
-          );
-        })}
-        <button
-          onClick={() => { const d = new Date(dia); d.setDate(d.getDate() + 7); setDia(d); }}
-          style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+          ))}
+        </div>
+
+        <select
+          value={duplaFiltro}
+          onChange={(e) => setDuplaFiltro(e.target.value)}
+          aria-label="Filtrar por dupla"
+          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 150 }}
         >
-          <ChevronRight size={18} />
-        </button>
+          <option value="todas">Todas as duplas</option>
+          {duplasAtivas.map((d) => (
+            <option key={d.id} value={d.id}>{rotuloDaDupla(d, nomeDeTecnico)}</option>
+          ))}
+          <option value="sem_dupla">Sem dupla</option>
+        </select>
+
+        <select
+          value={tipoFiltro}
+          onChange={(e) => setTipoFiltro(e.target.value as "todos" | ChamadoTipo)}
+          aria-label="Filtrar por tipo de demanda"
+          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 175 }}
+        >
+          <option value="todos">Todos os tipos</option>
+          {TIPOS_DEMANDA_CAMPO.map((t) => (
+            <option key={t} value={t}>{TIPO_LABEL[t]}</option>
+          ))}
+        </select>
+
+        {filtrando && (
+          <button
+            onClick={() => { setDuplaFiltro("todas"); setTipoFiltro("todos"); }}
+            style={{
+              padding: "8px 13px", borderRadius: 999, cursor: "pointer",
+              background: "transparent", color: textSecondary,
+              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+              fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+            }}
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
-      {/* Agenda do dia, por técnico */}
+      {/* Seletor de dia — tira semanal, tira mensal (R57). Os dois escolhem o
+          MESMO `dia`: trocar de modo é trocar a lente, não a tela. A agenda
+          abaixo continua sendo a do dia escolhido nos dois casos. */}
+      {modo === "semanal" ? (
+        <div style={{ ...CARD, display: "flex", alignItems: "center", gap: 4 }}>
+          <button
+            onClick={() => { const d = new Date(dia); d.setDate(d.getDate() - 7); setDia(d); }}
+            aria-label="Semana anterior"
+            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          {semana.map((d) => {
+            const k = chaveDia(d);
+            const ativo = k === chaveDia(dia);
+            const carga = cargaPorDia[k] ?? 0;
+            const hoje = k === chaveDia(new Date());
+            return (
+              <button
+                key={k}
+                onClick={() => setDia(d)}
+                style={{
+                  flex: 1, padding: "7px 2px", borderRadius: 10, cursor: "pointer",
+                  border: ativo ? "none" : hoje
+                    ? `1px solid ${gold}`
+                    : isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                  background: ativo ? GOLD_GRAD : "transparent",
+                  color: ativo ? "#08090E" : textPrimary,
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                }}
+              >
+                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 400, opacity: 0.75 }}>
+                  {DIA_CURTO[d.getDay()]}
+                </span>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>{d.getDate()}</span>
+                <span style={{
+                  fontFamily: FONT, fontSize: 9, fontWeight: 600,
+                  color: ativo ? "#08090E" : carga > 0 ? gold : "transparent",
+                }}>
+                  {carga > 0 ? carga : "·"}
+                </span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => { const d = new Date(dia); d.setDate(d.getDate() + 7); setDia(d); }}
+            aria-label="Próxima semana"
+            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      ) : (
+        <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={() => setDia(new Date(dia.getFullYear(), dia.getMonth() - 1, 1))}
+              aria-label="Mês anterior"
+              style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span style={{
+              flex: 1, textAlign: "center", fontFamily: FONT, fontWeight: 600, fontSize: 13.5,
+              color: textPrimary, textTransform: "capitalize",
+            }}>
+              {MES_NOME[dia.getMonth()]} de {dia.getFullYear()}
+            </span>
+            <button
+              onClick={() => setDia(new Date(dia.getFullYear(), dia.getMonth() + 1, 1))}
+              aria-label="Próximo mês"
+              style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4 }}>
+            {DIA_CURTO.map((d) => (
+              <span key={d} style={{
+                textAlign: "center", fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                letterSpacing: "0.08em", textTransform: "uppercase", color: textSecondary,
+                paddingBottom: 2,
+              }}>
+                {d}
+              </span>
+            ))}
+            {gradeDoMes.map((d) => {
+              const k = chaveDia(d);
+              const ativo = k === chaveDia(dia);
+              const carga = cargaPorDia[k] ?? 0;
+              const hoje = k === chaveDia(new Date());
+              const doMes = d.getMonth() === dia.getMonth();
+              return (
+                <button
+                  key={k}
+                  onClick={() => setDia(d)}
+                  aria-current={ativo ? "date" : undefined}
+                  style={{
+                    minHeight: 46, padding: "5px 2px", borderRadius: 10, cursor: "pointer",
+                    border: ativo ? "none" : hoje
+                      ? `1px solid ${gold}`
+                      : isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                    background: ativo ? GOLD_GRAD : "transparent",
+                    color: ativo ? "#08090E" : textPrimary,
+                    // dia de outro mês fica apagado, mas continua clicável —
+                    // é como se navega para o fim/começo do mês vizinho
+                    opacity: doMes || ativo ? 1 : 0.35,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                  }}
+                >
+                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: doMes ? 700 : 400 }}>
+                    {d.getDate()}
+                  </span>
+                  <span style={{
+                    fontFamily: FONT, fontSize: 9, fontWeight: 700,
+                    color: ativo ? "#08090E" : carga > 0 ? gold : "transparent",
+                  }}>
+                    {carga > 0 ? carga : "·"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Agenda do dia, por dupla (R57) — técnico fora de dupla vira grupo
+          próprio, e o que não tem responsável fica na cesta "sem técnico" */}
       {isLoading ? (
         <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
           Carregando…
         </div>
-      ) : porTecnico.length === 0 ? (
+      ) : porGrupo.length === 0 ? (
         <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "26px 16px" }}>
           <CalendarClock size={26} color={gold} />
-          <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600 }}>Nada programado neste dia</span>
+          <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600 }}>
+            {filtrando ? "Nada programado neste dia com esse filtro" : "Nada programado neste dia"}
+          </span>
           <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
-            Use a fila abaixo para distribuir os chamados que ainda não têm data.
+            {filtrando
+              ? "Limpe os filtros acima para ver o dia inteiro."
+              : "Use a fila abaixo para distribuir os chamados que ainda não têm data."}
           </span>
         </div>
       ) : (
-        porTecnico.map((g) => (
-          <div key={g.id ?? "sem"} style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
+        porGrupo.map((g) => (
+          <div key={g.id} style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {g.id === null && <UserX size={15} color={gold} />}
+              {g.id === "sem-dono" && <UserX size={15} color={gold} />}
               <span style={{
                 fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
                 textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
               }}>
                 {g.nome}
               </span>
+              {g.sub && (
+                <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
+                  {g.sub}
+                </span>
+              )}
               <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 11, color: textSecondary }}>
                 {g.ordens.length} atendimento(s)
               </span>

@@ -201,6 +201,20 @@ export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
     : ["melhoria", "corretiva", "preventiva", "operacional", "implantacao"];
 }
 
+/**
+ * O que um TÉCNICO DE CAMPO pode ter como tipo de demanda (R57, Davi
+ * 2026-08-22: "são as únicas possibilidades que um técnico de campo pode ter
+ * com tipo de demanda").
+ *
+ * É mais estrito que `tiposDaNatureza('campo')`, que inclui 'operacional' — e
+ * a diferença é proposital: 'operacional' existe na natureza campo para o
+ * trabalho que não é manutenção nem instalação (levar equipamento, buscar
+ * peça), mas não é uma demanda que se PROGRAMA para uma dupla. O filtro da
+ * programação usa esta lista; o seletor de "novo chamado de campo" continua
+ * usando `tiposDaNatureza`.
+ */
+export const TIPOS_DEMANDA_CAMPO: ChamadoTipo[] = ["corretiva", "preventiva", "implantacao"];
+
 export const TIPOS: ChamadoTipo[] = [
   "prospeccao",
   "corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra",
