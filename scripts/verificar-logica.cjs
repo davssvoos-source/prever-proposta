@@ -4196,5 +4196,70 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R71 está documentado', /\*\*R71\*\*/.test(produto17), true);
 }
 
+// ── R72/U61: reimportação com os marcos de campo (chegada/saída) ───────────
+{
+  const fs43 = require('fs');
+  const CAMINHO = 'supabase/migrations/20260822080000_u61_reimportacao_os_marcos.sql';
+  eq('a migration da reimportação existe', fs43.existsSync(CAMINHO), true);
+
+  const sql = fs43.readFileSync(CAMINHO, 'utf8');
+  const semComentario = sql.replace(/--[^\n]*/g, '');
+  const dados = semComentario.split('\n').filter((l) => /^ {2}\('OS\d{4}'/.test(l));
+
+  eq('as 227 OS continuam lá', dados.length, 227);
+  eq('cada linha agora tem 13 campos — os dois marcos novos entraram',
+     new Set(dados.map((l) => (l.trim().replace(/,$/, '').slice(1, -1)
+       .match(/(?:'(?:''|[^'])*'|NULL)/g) ?? []).length)), new Set([13]));
+
+  // ── a regra do título continua, agora COM GUARDA ────────────────────────
+  {
+    const errados = dados.filter((l) => {
+      const tipo = (l.match(/'(corretiva|preventiva|implantacao)'/) ?? [])[1];
+      const titulo = (l.match(/'(Manutenção Corretiva|Manutenção Preventiva|Implantação)'/) ?? [])[1];
+      return ({ corretiva: 'Manutenção Corretiva', preventiva: 'Manutenção Preventiva',
+                implantacao: 'Implantação' })[tipo] !== titulo;
+    });
+    eq('CRÍTICO: título continua sendo o rótulo do tipo em todas as linhas', errados.length, 0);
+  }
+  eq('CRÍTICO: o UPDATE do título tem GUARDA — o Davi vai renomear um por um, e rodar de novo não pode desfazer isso',
+     /titulo = CASE WHEN c\.titulo IN \('Manutenção Corretiva','Manutenção Preventiva','Implantação'\)\s*\n\s*THEN r\.titulo ELSE c\.titulo END,/.test(sql),
+     true);
+  eq('a descrição tem a mesma guarda (se deixou de ser a linha de procedência, o texto é de alguém)',
+     /WHEN c\.descricao_problema LIKE 'Importação retroativa %'/.test(sql), true);
+  eq('"Instalação" segue sem aparecer em linha de dado', dados.some((l) => l.includes('Instalação')), false);
+
+  // ── os marcos ────────────────────────────────────────────────────────────
+  eq('CRÍTICO: chegada→iniciada_em e saída→finalizada_em — é o que faz "Até começar" e "Executando" pararem de ignorar as 227',
+     /SET iniciada_em   = r\.chegada,\s*\n\s*finalizada_em = r\.saida,/.test(sql), true);
+  eq('a conclusão administrativa continua em concluida_em/fechada_em, separada dos marcos de campo',
+     /concluida_em  = r\.data_conclusao,\s*\n\s*fechada_em    = r\.data_conclusao,/.test(sql), true);
+  eq('CRÍTICO: a migration ABORTA se algum marco vier fora de ordem — par invertido viraria duração negativa, que o indicador descarta em silêncio',
+     /NOT \(data_abertura <= chegada AND chegada <= saida AND saida <= data_conclusao\)/.test(sql)
+     && /RAISE EXCEPTION '% linha\(s\) com marcos fora de ordem/.test(sql), true);
+
+  // ── atualiza em lugar, sem apagar ────────────────────────────────────────
+  eq('CRÍTICO: ATUALIZA por origem_id em vez de apagar e reinserir — apagar daria números novos, trocaria os ids e perderia o histórico',
+     /UPDATE public\.chamados c/.test(sql)
+     && /WHERE c\.origem = 'importacao_retroativa' AND c\.origem_id = r\.os_id;/.test(sql), true);
+  eq('…e ainda insere o que faltar, caso a U59 não tenha rodado inteira',
+     /INSERT INTO public\.chamados \(/.test(sql)
+     && /WHERE NOT EXISTS \(\s*\n\s*SELECT 1 FROM public\.chamados c/.test(sql), true);
+  eq('cliente e responsável só são SOBRESCRITOS quando o de→para achou alguém (COALESCE) — casamento novo não pode apagar vínculo bom',
+     /cliente_id           = COALESCE\(cd\.cliente_id, c\.cliente_id\),/.test(sql)
+     && /responsavel_id       = COALESCE\(pd\.profile_id, c\.responsavel_id\),/.test(sql), true);
+  eq('CRÍTICO: os triggers de UPDATE também são desligados — religar responsável em 227 chamados dispararia 227 notificações e 227 eventos de histórico',
+     /DISABLE TRIGGER trg_notify_chamado_upd/.test(sql)
+     && /DISABLE TRIGGER trg_chamado_evento_upd/.test(sql), true);
+  eq('todo trigger desligado é religado',
+     (sql.match(/DISABLE TRIGGER/g) ?? []).length, (sql.match(/ENABLE TRIGGER/g) ?? []).length);
+  eq('prazo segue não sendo inventado',
+     /prazo_limite IS NULL/.test(sql) && /prazo_limite =/.test(semComentario) === false, true);
+  eq('a conferência mostra as MEDIANAS que o painel vai exibir, para bater com o README do dataset',
+     /mediana até começar \(h\)/.test(sql) && /mediana executando \(h\)/.test(sql), true);
+
+  const produto18 = fs43.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R72 está documentado', /\*\*R72\*\*/.test(produto18), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

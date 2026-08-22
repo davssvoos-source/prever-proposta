@@ -3822,3 +3822,58 @@ os dois eixos de filtro, e a lista cabendo em vez de rolando.
 
 1216 asserções (30 novas, 4 reescritas), build ok, TypeScript sem erro novo.
 Não verificado em navegador — sem ferramenta de browser na sessão.
+
+### U61 — Reimportação: os marcos de campo chegaram (R72, 2026-08-22)
+
+"Rodei a U59 no SQL Editor, porém quero fazer uma alteração na importação:
+adicionei a coluna de chegada e saída, além disso, os nomes dos clientes
+estão mais consistentes agora. Refaça a importação."
+
+O arquivo novo traz exatamente os dois campos que a U59 teve de deixar em
+branco por não existirem: **chegada** e **saída** do técnico. Aquela decisão
+("não invento hora de início a partir da abertura, senão 'tempo até começar'
+vira 0h nas 227 e apaga um indicador verdadeiro") acabou de se pagar — o dado
+real chegou e entra sem precisar desfazer nada.
+
+O mapeamento respeita os três relógios que o modelo já separava:
+`chegada → iniciada_em`, `saida → finalizada_em`, `data_conclusao →
+concluida_em/fechada_em`. Colapsar isso num campo só teria misturado tempo
+de campo com tempo administrativo, que é a distinção que o módulo de
+indicadores existe para manter.
+
+**ATUALIZA EM LUGAR, não apaga e reimporta.** Antes de decidir, conferi que
+`os_id` continua estável entre as duas versões do arquivo: mesma abertura,
+mesma conclusão, mesma conta e mesmo tipo nas 227 — só 42 nomes de cliente
+mudaram (a padronização que o README documenta). Com isso, casar por
+`origem_id` é seguro, e apagar seria destrutivo à toa: daria números CH-
+novos com buraco na sequência, trocaria os ids (quebrando qualquer link que
+já aponte para eles) e perderia o histórico de eventos.
+
+**A guarda do título.** O Davi avisou que vai renomear os chamados um por um.
+Uma migration idempotente que reescrevesse `titulo` incondicionalmente
+apagaria esse trabalho na próxima vez que rodasse. Então o UPDATE só reescreve
+enquanto o título ainda for um dos três rótulos automáticos — mesma guarda na
+descrição, que só é regravada se ainda começar com "Importação retroativa ".
+
+**Os triggers de UPDATE, que a U59 não precisava desligar.** Aqui o UPDATE
+toca `responsavel_id`, e `trg_notify_chamado_upd` dispara em
+`UPDATE OF responsavel_id`: seriam 227 notificações "novo chamado para você"
+mais 227 linhas de histórico, por uma correção de importação. Desligados
+junto com os de INSERT.
+
+**Validação que aborta.** Se algum marco vier fora de ordem (chegada antes da
+abertura, saída antes da chegada), a migration levanta exceção e não altera
+nada. Sem isso a duração ficaria negativa e `indicadores.ts` descartaria a
+linha em silêncio (ele filtra `h >= 0`) — o painel mostraria uma mediana
+calculada sobre menos linhas do que se pensa, sem nenhum aviso.
+
+A conferência final imprime as duas **medianas** que o painel vai passar a
+mostrar, para bater contra o README do dataset (resposta ~1,83h, execução
+~0,48h): se baterem, os marcos entraram certos.
+
+Uma ressalva que o próprio README levanta e que repassei ao Davi: em parte
+das linhas `saida - chegada` dá poucos minutos, o que sugere apontamento em
+lote e não visita real. O dado entra como está — é o da operação —, mas
+"Executando" precisa ser lido com essa ressalva.
+
+1234 asserções (18 novas). Não executada — é o Davi quem roda.

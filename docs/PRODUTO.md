@@ -1149,3 +1149,29 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   **degradê** do passo dela na rampa — a mesma que a lista usa, e o mesmo
   caminho SVG (com a costura tratada) dos gráficos do sistema.
   *(Davi, 2026-08-22.)*
+
+- **R72** — A importação retroativa (R70) ganhou os **marcos de campo**. O
+  arquivo passou a trazer **chegada** e **saída** do técnico, que era
+  justamente o que faltava: agora `chegada` vira o início e `saída` vira a
+  conclusão da execução, então os indicadores **"Até começar"** e
+  **"Executando"** do Painel Operacional passam a contar os três meses de
+  histórico em vez de ignorá-los. A conclusão administrativa continua num
+  campo separado — são relógios diferentes, e misturá-los foi o que a R70 se
+  recusou a fazer. Os **nomes de cliente** vieram padronizados (42 registros),
+  o que religa clientes que antes não casavam.
+
+  **Atualiza em lugar, não reimporta**: os 227 chamados já existem e já têm
+  número; apagar e refazer daria números novos, trocaria os ids e perderia o
+  histórico. **O título continua sendo o tipo de demanda** — mas agora com
+  guarda: a atualização só reescreve o título enquanto ele ainda for um dos
+  três rótulos automáticos, então renomear os chamados um por um não é
+  desfeito se a importação rodar de novo.
+
+  Uma ressalva do próprio arquivo: em parte das linhas o tempo entre chegada
+  e saída é de poucos minutos, o que sugere apontamento em lote e não visita
+  real. O número entra como está — é o dado da operação —, mas "Executando"
+  deve ser lido com essa ressalva.
+  *(Davi, 2026-08-22: "adicionei a coluna de chegada e saída, além disso, os
+  nomes dos clientes estão mais consistentes agora. Refaça a importação...
+  como as atividades não têm título, você deve criar um título, e ele deve
+  ser o tipo de demanda — depois eu vou alterar os títulos um por um".)*
