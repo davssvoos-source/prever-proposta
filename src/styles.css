@@ -834,8 +834,49 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
    embaixo — o resto é o teto desta página. */
 @media (min-width: 1024px) {
   .clientes-tela-fixa {
-    height: calc(100dvh - var(--topo) - 110px);
+    /* R71, Davi: "a margem inferior da página está muito grande".
+       O `<main>` (route.tsx) reserva 110px embaixo por causa da barra de
+       navegação do CELULAR — e essa barra é `.so-celular`, que não existe a
+       partir de 1024px. No desktop, portanto, os 110px eram margem morta:
+       tela fixa que termina 110px antes do fim da janela.
+
+       A margem negativa devolve quase tudo, deixando `--rodape-fixo` de
+       respiro. É contido a esta página de propósito: mexer no padding do
+       `<main>` mudaria todas as outras telas de uma vez. */
+    --rodape-fixo: 16px;
+    margin-bottom: calc(-110px + var(--rodape-fixo));
+    height: calc(100dvh - var(--topo) - var(--rodape-fixo));
     overflow: hidden;
+  }
+}
+
+/* ── A lista de clientes: 10 por página, SEM rolagem (R71) ─────────────────
+   Davi: "a lista de clientes não deve ter scroll, adapte a altura de cada
+   item para caber 10 itens por página da lista."
+
+   `repeat(10, minmax(0,1fr))` divide a altura disponível em dez faixas
+   iguais, e cada cartão preenche a sua. O `minmax(0, …)` é o que permite a
+   faixa ficar MENOR que o conteúdo natural do cartão — sem ele, `1fr` tem
+   piso `auto` e a lista voltaria a estourar a coluna (e a rolar).
+
+   As dez linhas existem mesmo quando a página traz menos de dez resultados:
+   é o que mantém o cartão com a MESMA altura em todas as páginas, em vez de
+   engordar na última. Os estados de "carregando"/"vazio" usam
+   `grid-row: 1/-1` para ocupar a grade inteira em vez de uma faixa só.
+
+   No celular não se aplica: lá a página rola (ver .clientes-tela-fixa, que
+   também é só de 1024px pra cima), e espremer dez cartões numa tela de
+   telefone deixaria cada um com uns 30px. */
+.clientes-lista {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-height: 0;
+}
+@media (min-width: 1024px) {
+  .clientes-lista {
+    grid-template-rows: repeat(10, minmax(0, 1fr));
+    align-content: stretch;
   }
 }
 

@@ -3757,3 +3757,68 @@ SELECT não estaria agrupada). Virou `CASE WHEN count(...) = 1 THEN
 (array_agg(...))[1] END`.
 
 1190 asserções (20 novas). Não executada — é o Davi quem roda.
+
+### U60 — Clientes: lista que cabe, filtro no botão, bolinha no degradê (R71, 2026-08-22)
+
+Cinco pedidos numa tanda só. Os três primeiros são o MESMO problema visto de
+ângulos diferentes: **falta de altura**.
+
+**De onde a altura veio.** O `<main>` (route.tsx) reserva `paddingBottom:
+110` para a barra de navegação do celular — e essa barra é `.so-celular`,
+que some a partir de 1024px. No desktop, portanto, toda página termina 110px
+antes do fim da janela sem nada ocupando aquilo. `.clientes-tela-fixa` devolve
+quase tudo com uma margem negativa e deixa 16px de respiro.
+
+Cancelar isso no `<main>` seria mais limpo e eu não fiz de propósito: mexer
+lá muda TODAS as telas de uma vez, e algumas podem depender daquele espaço.
+A margem negativa fica contida nesta página, que é a que o Davi está olhando.
+
+**A lista deixou de rolar.** `grid-template-rows: repeat(10, minmax(0, 1fr))`
+divide a altura em dez faixas e cada cartão preenche a sua. O detalhe que faz
+funcionar é o **`minmax(0, …)`**: `1fr` sozinho tem piso `auto`, então a
+faixa nunca ficaria menor que o conteúdo natural do cartão e a lista voltaria
+a estourar a coluna — a rolagem sumiria da lista e reapareceria na página.
+As dez faixas existem mesmo com menos de dez resultados, e é isso que mantém
+o cartão com a mesma altura em todas as páginas.
+
+O cartão teve de encolher para caber: virou duas linhas. A terceira linha
+(tipo do local e síndico) não foi descartada — foi **emendada no texto do
+endereço**, que trunca com reticências. Jogar fora seria mais fácil e
+apagaria dado que a ficha tem.
+
+**Os filtros foram para trás de um botão redondo**, ao lado da busca (que
+subiu para a linha do título). A faixa de chips ocupava altura permanente
+para responder uma pergunta que quase sempre está em "Todos". O que esse
+tipo de mudança sempre arrisca é esconder um recorte ativo — então o botão
+**acende um ponto dourado** quando há filtro, e o painel aberto oferece
+"Limpar filtros". Sem isso, "sumiu cliente da lista" viraria mistério.
+
+**O mapa abre com zoom.** `vistaInicial()` entrou em `mapa-zoom.ts`, junto do
+resto da matemática pura: ela compõe `zoomEm` (que centraliza) com
+`limitarTransform` (que prende na moldura) — reimplementar a conta no
+componente é como um mapa abre torto, ancorado no canto em vez do meio. O
+"resetar" passou a mirar essa vista, e o `semAlteracao` (que desabilita o
+botão) a comparar com ela: voltar para `IDENTIDADE` levaria a um zoom que a
+tela nunca mostra sozinha.
+
+**A bolinha.** Saíram o halo (círculo de r=13 em 22%) e o contorno
+branco/escuro do ponto no mapa, e o `boxShadow` da bolinha da lista. O que
+ficou é a bolinha no DEGRADÊ — e para isso `cores.ts` mudou de devolver a cor
+pronta para devolver o **passo** da rampa: a peça i vai de `ESPECTRO[i]` a
+`ESPECTRO[i+1]`, e sem o índice não dá para desenhar o par. O hash passou de
+`% 9` para `% PECAS_ESPECTRO` (8) pelo mesmo motivo — a nona amostra é o fim
+da última peça, não o começo de uma nona. Isso muda a cor de alguns clientes,
+o que é esperado.
+
+No mapa, os oito `<linearGradient>` saem de `paradasBarra` (o mesmo caminho
+SVG dos gráficos, costura inclusa) e ficam **fora do `<g>` que recebe o
+zoom** — `<defs>` não desenha nada, e o degradê de cada bolinha é medido na
+caixa dela, então não escala junto com o mapa.
+
+Quatro asserções da R55/R60 descreviam o comportamento antigo (rolagem da
+lista, painel de filtro sempre visível, os 110px) e foram **reescritas para a
+regra nova**, não afrouxadas: travar altura só no desktop, cartão único para
+os dois eixos de filtro, e a lista cabendo em vez de rolando.
+
+1216 asserções (30 novas, 4 reescritas), build ok, TypeScript sem erro novo.
+Não verificado em navegador — sem ferramenta de browser na sessão.

@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
-  ArrowLeft, Building2, MapPin, Plus, Search, Users, Wand2,
+  ArrowLeft, Building2, MapPin, Search, SlidersHorizontal, X,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -29,7 +29,7 @@ import { GRAD_PRIMARIA, PRISMA, SOBRE_PRIMARIA } from "@/lib/paleta";
 import { useIsGerente } from "@/features/gerencial/data";
 import { TIPO_LABEL } from "@/features/gerencial/constants";
 import { MapaClientes } from "@/features/clientes/MapaClientes";
-import { corDoCliente } from "@/features/clientes/cores";
+import { gradienteDoCliente } from "@/features/clientes/cores";
 import {
   useClientes,
   SITUACAO_LABEL,
@@ -74,6 +74,12 @@ function ClientesPage() {
   // ativo E tem portaria remota. Juntar tudo num seletor só obrigaria a
   // escolher entre "ver os ativos" e "ver os de portaria" (R41).
   const [servico, setServico] = useState<"todos" | ServicoCliente>("todos");
+  // R71: os filtros viraram um painel que abre — o botão redondo ao lado da
+  // busca é quem manda. Estado LOCAL e não persistido: é pergunta do
+  // momento, não preferência (a mesma regra do drill-down do dashboard).
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  /** Há recorte escondido? É o que acende o ponto no botão. */
+  const temFiltro = filtro !== "todos" || servico !== "todos";
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -175,8 +181,14 @@ function ClientesPage() {
       paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column", gap: 10,
       color: textPrimary, minHeight: 0,
     }}>
-      {/* Cabeçalho — a volta é gesto de celular; no desktop a sidebar já situa */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      {/* Cabeçalho — título à esquerda, busca e filtro à DIREITA, na MESMA
+          linha (R71, Davi: "o campo de buscar deve estar alinhado com o
+          título Clientes"). O painel de filtros que ocupava uma faixa
+          inteira virou um botão redondo ao lado da busca: com dois eixos de
+          filtro que na maior parte do tempo ficam em "Todos", a faixa
+          gastava permanentemente a altura que a lista precisa para caber 10.
+          A volta é gesto de celular; no desktop a sidebar já situa. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", flexShrink: 0 }}>
         <button
           className="so-celular"
           onClick={() => navigate({ to: "/gerencial" })}
@@ -191,33 +203,84 @@ function ClientesPage() {
         >
           <ArrowLeft size={18} />
         </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: "1 1 180px", minWidth: 0 }}>
           <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em" }}>Clientes</div>
           <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
             {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"} · {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"}
           </div>
         </div>
-        {/* O botão "Novo" saiu (R21): o app não cria cliente — quem cria é o
-            QAP, e o caminho é o Sincronizar. Aqui entra o botão de sincronizar
-            quando a integração existir (S9/U28). */}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <div style={{ position: "relative", width: "min(320px, 60vw)" }}>
+            <Search
+              size={15}
+              color={textSecondary}
+              style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }}
+            />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente, endereço, posto…"
+              style={{
+                width: "100%", boxSizing: "border-box", height: 42, borderRadius: 14,
+                padding: "0 14px 0 36px",
+                background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+                border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+                color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 13,
+                outline: "none", colorScheme: isLight ? "light" : "dark",
+              }}
+            />
+          </div>
+          {/* O botão redondo dos filtros. `aria-expanded` porque ele revela
+              um painel, e o PONTO dourado porque filtro escondido que está
+              ativo é armadilha: sem o aviso, "sumiu cliente da lista" vira
+              um mistério em vez de um clique. */}
+          <button
+            onClick={() => setFiltrosAbertos((v) => !v)}
+            aria-expanded={filtrosAbertos}
+            aria-label={filtrosAbertos ? "Fechar filtros" : "Abrir filtros"}
+            title={temFiltro ? "Filtros (ativos)" : "Filtros"}
+            className="elevavel"
+            style={{
+              position: "relative", width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+              background: filtrosAbertos
+                ? GRAD_PRIMARIA
+                : isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
+              border: filtrosAbertos
+                ? "none"
+                : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+              color: filtrosAbertos ? SOBRE_PRIMARIA : textPrimary,
+            }}
+          >
+            {filtrosAbertos ? <X size={17} /> : <SlidersHorizontal size={17} />}
+            {temFiltro && !filtrosAbertos && (
+              <span aria-hidden style={{
+                position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: 4,
+                background: gold, boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`,
+              }} />
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* A consolidação assistida saiu (R21): ela criava, reescrevia e apagava
-          cliente — exatamente o que deixou de ser nosso. Cadastro duplicado
-          passa a ser resolvido no QAP, que é a fonte. */}
-
-      {/* Busca + filtros na mesma linha (desktop); empilha sozinho no celular.
-          Situação e Serviço viraram UM painel só (2026-08-22, Davi: "agrupe
-          os grupos de filtro") — antes eram duas fileiras soltas that liam
-          como filtros desencontrados; agora leem como uma única pergunta
-          composta, "quais clientes", com dois eixos dentro do mesmo cartão. */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch", flexShrink: 0 }}>
+      {/* O painel de filtros — só ocupa altura quando está aberto. Situação e
+          Serviço são dois EIXOS que se combinam (um cliente é ativo E tem
+          portaria), por isso continuam em duas fileiras rotuladas dentro do
+          mesmo cartão, e não num seletor só. */}
+      {filtrosAbertos && (
         <div style={{
           ...card(isLight), borderRadius: 14, padding: "10px 12px",
-          display: "flex", flexDirection: "column", gap: 7,
-          flex: 1, minWidth: 280,
+          display: "flex", flexDirection: "column", gap: 7, flexShrink: 0,
         }}>
-          <div className="trilho-x" style={{ display: "flex", gap: 8 }}>
+          <div className="trilho-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{
+              fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: textSecondary, flexShrink: 0, paddingRight: 2,
+              width: 52,
+            }}>
+              Situação
+            </span>
             {([
               ["todos", `Todos · ${contagem.todos}`],
               ["ativo", `Ativos · ${contagem.ativo}`],
@@ -228,15 +291,11 @@ function ClientesPage() {
               </button>
             ))}
           </div>
-          {/* SERVIÇO PRESTADO (R41) — segunda linha dentro do MESMO painel,
-              com rótulo próprio: são dois eixos que se combinam, e
-              emendá-los numa fileira só faria parecer que só um pode estar
-              ativo por vez. */}
-          <div className="trilho-x" style={{ display: "flex", gap: 8 }}>
+          <div className="trilho-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{
               fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: textSecondary,
-              alignSelf: "center", flexShrink: 0, paddingRight: 2,
+              textTransform: "uppercase", color: textSecondary, flexShrink: 0, paddingRight: 2,
+              width: 52,
             }}>
               Serviço
             </span>
@@ -249,28 +308,19 @@ function ClientesPage() {
               </button>
             ))}
           </div>
+          {temFiltro && (
+            <button
+              onClick={() => { setFiltro("todos"); setServico("todos"); }}
+              style={{
+                alignSelf: "flex-start", background: "transparent", border: "none", padding: 0,
+                cursor: "pointer", color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+              }}
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
-        <div style={{ position: "relative", width: "min(320px, 100%)", flexShrink: 0 }}>
-          <Search
-            size={15}
-            color={textSecondary}
-            style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }}
-          />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar cliente, endereço, posto…"
-            style={{
-              width: "100%", boxSizing: "border-box", height: "100%", minHeight: 42, borderRadius: 14,
-              padding: "0 14px 0 36px",
-              background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
-              border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-              color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 13,
-              outline: "none", colorScheme: isLight ? "light" : "dark",
-            }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Lista + mapa. minmax(0,…) evita que o mapa estoure a coluna.
           flex:1 + minHeight:0 (inline, junto da classe): esta é a linha que
@@ -279,21 +329,24 @@ function ClientesPage() {
           inteira em vez de ficar presa na coluna da lista, que é o pedido. */}
       <div className="clientes-duas-colunas" style={{ flex: 1, minHeight: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, minHeight: 0 }}>
-          {/* A rolagem mora AQUI, não na coluna inteira — a paginação (fora
-              deste bloco) fica sempre visível embaixo, sem precisar rolar
-              até ela. Com 10 cartões por página (R55) raramente enche o
-              espaço, mas numa janela baixa isto é o que evita a página
-              (em vez da lista) rolar. */}
-          <div className="rolagem-fina" style={{
-            display: "flex", flexDirection: "column", gap: 10,
-            flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 2,
-          }}>
+          {/* A LISTA NÃO ROLA (R71, Davi: "a lista de clientes não deve ter
+              scroll, adapte a altura de cada item para caber 10 itens por
+              página"). A régua é o grid de `.clientes-lista`: dez linhas de
+              `1fr` dividem a altura disponível, e cada cartão preenche a
+              linha dele. Como as linhas existem mesmo com menos de dez
+              resultados, o cartão tem SEMPRE a mesma altura — a última
+              página não fica com cartões gordos.
+
+              A altura de cada cartão passa a ser o que sobrar, então o
+              conteúdo dele é de duas linhas e trunca com reticências em vez
+              de empurrar (ver o cartão abaixo). */}
+          <div className="clientes-lista" style={{ flex: 1, minHeight: 0 }}>
           {isLoading ? (
-            <div style={{ ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
+            <div style={{ ...card(isLight), gridRow: "1 / -1", borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
               Carregando clientes…
             </div>
           ) : lista.length === 0 ? (
-            <div style={{ ...card(isLight), borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "28px 16px" }}>
+            <div style={{ ...card(isLight), gridRow: "1 / -1", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, padding: "28px 16px" }}>
               <Building2 size={28} color={gold} />
               <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>
                 {clientes.length === 0 ? "Nenhum cliente cadastrado" : "Nenhum cliente encontrado"}
@@ -307,33 +360,51 @@ function ClientesPage() {
           ) : (
             listaPaginada.map((c) => {
               const corSit = SITUACAO_CORES[c.situacao] ?? SITUACAO_CORES.ativo;
-              const cor = corDoCliente(c.id, isLight);
+              // a segunda linha do cartão junta endereço, tipo e síndico num
+              // texto só: com a altura fixa em 1/10 da coluna, três linhas
+              // empilhadas não cabem — e jogar fora tipo/síndico apagaria
+              // dado que a ficha tem. Um texto só trunca com reticências e
+              // continua legível de relance.
+              const detalhe = [
+                c.endereco,
+                c.tipo_local ? (TIPO_LABEL[c.tipo_local] ?? c.tipo_local) : null,
+                c.nome_sindico,
+              ].filter(Boolean).join(" · ");
               return (
                 <button
                   key={c.id}
                   className="elevavel"
                   onClick={() => navigate({ to: "/clientes/$id", params: { id: c.id } })}
                   style={{
-                    ...card(isLight), borderRadius: 16, padding: "12px 14px",
+                    ...card(isLight), borderRadius: 14, padding: "0 12px",
                     textAlign: "left", cursor: "pointer", color: textPrimary,
-                    display: "flex", gap: 11, alignItems: "flex-start", width: "100%",
+                    display: "flex", gap: 10, alignItems: "center", width: "100%",
+                    // o cartão preenche a linha do grid; o miolo se vira
+                    minWidth: 0, minHeight: 0, overflow: "hidden",
                   }}
                 >
-                  {/* o ponto do cliente — a MESMA cor dele no mapa */}
+                  {/* a bolinha do cliente — o MESMO degradê do ponto dele no
+                      mapa. R71: sem contorno e sem glow, "somente a bolinha". */}
                   <span aria-hidden style={{
-                    width: 10, height: 10, borderRadius: 6, flexShrink: 0,
-                    marginTop: 5,
-                    background: cor,
-                    boxShadow: `0 0 8px ${cor}66`,
+                    width: 10, height: 10, borderRadius: 5, flexShrink: 0,
+                    background: gradienteDoCliente(c.id, isLight),
                   }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14 }}>{c.nome}</span>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                    {/* nowrap: a linha das etiquetas não pode quebrar e
+                        empurrar a altura — o nome encolhe com reticências e
+                        as etiquetas seguem à direita dele */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                       <span style={{
-                        padding: "2px 8px", borderRadius: 999,
+                        fontFamily: FONT, fontWeight: 600, fontSize: 13.5, minWidth: 0,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {c.nome}
+                      </span>
+                      <span style={{
+                        padding: "1px 7px", borderRadius: 999, flexShrink: 0,
                         background: corSit.bg,
                         color: isLight ? corSit.light : corSit.dark,
-                        fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                        fontFamily: FONT, fontWeight: 700, fontSize: 8.5,
                         letterSpacing: "0.07em", textTransform: "uppercase",
                       }}>
                         {SITUACAO_LABEL[c.situacao] ?? c.situacao}
@@ -344,57 +415,45 @@ function ClientesPage() {
                           cliente específico. */}
                       {SERVICO_ORDEM.filter((s) => temServico(c, s)).map((s) => (
                         <span key={s} style={{
-                          padding: "2px 8px", borderRadius: 999,
+                          padding: "1px 7px", borderRadius: 999, flexShrink: 0,
                           background: SERVICO_CORES[s].bg,
                           color: isLight ? SERVICO_CORES[s].light : SERVICO_CORES[s].dark,
-                          fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                          fontFamily: FONT, fontWeight: 700, fontSize: 8.5,
                           letterSpacing: "0.07em", textTransform: "uppercase",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {SERVICO_LABEL[s]}
                         </span>
                       ))}
                       {c.cidade && c.cidade !== "São Paulo" && (
                         <span style={{
-                          padding: "2px 8px", borderRadius: 999,
+                          padding: "1px 7px", borderRadius: 999, flexShrink: 0,
                           background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)",
-                          fontFamily: FONT, fontWeight: 600, fontSize: 9,
+                          fontFamily: FONT, fontWeight: 600, fontSize: 8.5,
                           letterSpacing: "0.07em", textTransform: "uppercase",
-                          color: textSecondary,
+                          color: textSecondary, whiteSpace: "nowrap",
                         }}>
                           {c.cidade}
                         </span>
                       )}
                     </div>
                     {c.endereco ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-                        <MapPin size={12} color={textSecondary} style={{ flexShrink: 0 }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                        <MapPin size={11} color={textSecondary} style={{ flexShrink: 0 }} />
                         <span style={{
-                          fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary,
+                          fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
-                          {c.endereco}
+                          {detalhe}
                         </span>
                       </div>
                     ) : (
-                      <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: isLight ? PRISMA.laranja.light : PRISMA.laranja.dark, marginTop: 4 }}>
+                      <div style={{
+                        fontFamily: FONT, fontWeight: 400, fontSize: 11.5,
+                        color: isLight ? PRISMA.laranja.light : PRISMA.laranja.dark,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
                         sem endereço — precisa de revisão
-                      </div>
-                    )}
-                    {(c.tipo_local || c.nome_sindico) && (
-                      <div style={{ display: "flex", gap: 12, marginTop: 5, flexWrap: "wrap" }}>
-                        {c.tipo_local && (
-                          <span style={{
-                            fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
-                            letterSpacing: "0.09em", textTransform: "uppercase", color: textSecondary,
-                          }}>
-                            {TIPO_LABEL[c.tipo_local] ?? c.tipo_local}
-                          </span>
-                        )}
-                        {c.nome_sindico && (
-                          <span style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
-                            <Users size={11} /> {c.nome_sindico}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>

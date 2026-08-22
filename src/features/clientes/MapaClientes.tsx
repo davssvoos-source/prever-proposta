@@ -32,11 +32,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { Minus, Plus, Maximize2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA } from "@/lib/paleta";
+import { PRISMA, paradasBarra, PECAS_ESPECTRO } from "@/lib/paleta";
 import { DISTRITOS, MAPA_SP, projetar, dentroDaCidade, centroide } from "@/features/clientes/mapa-sp";
-import { corDoCliente } from "@/features/clientes/cores";
+import { corDoCliente, passoDoCliente } from "@/features/clientes/cores";
 import {
-  IDENTIDADE, ZOOM_MIN, ZOOM_MAX, zoomEm, deslocar, limitarTransform,
+  IDENTIDADE, ZOOM_MIN, ZOOM_MAX, zoomEm, deslocar, limitarTransform, vistaInicial,
   distancia, pontoMedio, fatorDaRoda, paraPercentual, type Transform,
 } from "@/features/clientes/mapa-zoom";
 import type { Cliente } from "@/features/clientes/data";
@@ -46,6 +46,8 @@ import type { Cliente } from "@/features/clientes/data";
 const MARGEM = 6;
 const VB_LARGURA = MAPA_SP.largura + 2 * MARGEM;
 const VB_ALTURA = MAPA_SP.altura + 2 * MARGEM;
+// R71: o mapa ABRE com um pouco de zoom — a conta é pura (mapa-zoom.ts)
+const VISTA_INICIAL = vistaInicial(MAPA_SP.largura, MAPA_SP.altura, MARGEM);
 
 // além de qual distância (em px de TELA) um pointerdown->pointerup vira
 // "arrastou o mapa" em vez de "clicou num cliente" — pequeno o bastante pra
@@ -68,6 +70,8 @@ interface Ponto {
   x: number;
   y: number;
   cor: string;
+  /** passo do cliente na rampa — escolhe qual <linearGradient> a bolinha usa */
+  passo: number;
 }
 
 /** Botão dos controles de zoom — de módulo (não função interna) pela mesma
@@ -126,8 +130,8 @@ export function MapaClientes({ clientes }: Props) {
   // matemática de zoom-no-cursor errar por um frame a cada gesto. As
   // atualizações de estado são agendadas por `requestAnimationFrame`, então
   // o React não repinta mais vezes do que o navegador consegue mostrar.
-  const [transform, setTransform] = useState<Transform>(IDENTIDADE);
-  const transformRef = useRef<Transform>(IDENTIDADE);
+  const [transform, setTransform] = useState<Transform>(VISTA_INICIAL);
+  const transformRef = useRef<Transform>(VISTA_INICIAL);
   const rafRef = useRef<number | null>(null);
   const [emArrasto, setEmArrasto] = useState(false);
 
@@ -333,13 +337,18 @@ export function MapaClientes({ clientes }: Props) {
   }
 
   function resetarView() {
-    transformRef.current = IDENTIDADE;
-    setTransform(IDENTIDADE);
+    // volta para a vista de ABERTURA, não para IDENTIDADE: o zoom 1 é um
+    // estado que a tela nunca mostra por conta própria (R71)
+    transformRef.current = VISTA_INICIAL;
+    setTransform(VISTA_INICIAL);
   }
 
   const noZoomMinimo = transform.k <= ZOOM_MIN + 1e-6;
   const noZoomMaximo = transform.k >= ZOOM_MAX - 1e-6;
-  const semAlteracao = noZoomMinimo && transform.x === 0 && transform.y === 0;
+  // "nada a resetar" agora é estar NA VISTA DE ABERTURA, não no zoom 1
+  const semAlteracao = Math.abs(transform.k - VISTA_INICIAL.k) < 1e-6
+    && Math.abs(transform.x - VISTA_INICIAL.x) < 1e-6
+    && Math.abs(transform.y - VISTA_INICIAL.y) < 1e-6;
 
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
@@ -362,7 +371,7 @@ export function MapaClientes({ clientes }: Props) {
         continue;
       }
       const { x, y } = projetar(c.latitude, c.longitude);
-      pts.push({ id: c.id, nome: c.nome, x, y, cor: corDoCliente(c.id, isLight) });
+      pts.push({ id: c.id, nome: c.nome, x, y, cor: corDoCliente(c.id, isLight), passo: passoDoCliente(c.id) });
     }
     return {
       pontos: pts,
@@ -471,6 +480,22 @@ export function MapaClientes({ clientes }: Props) {
             role="img"
             aria-label={`Mapa da cidade de São Paulo com ${pontos.length} clientes — arraste para mover, use as setas do teclado para navegar, Ctrl e role o mouse para dar zoom`}
           >
+            {/* Os oito degradês da rampa — um por passo. Ficam FORA do <g>
+                que recebe o zoom de propósito: `<defs>` não desenha nada, e
+                o degradê de cada bolinha é medido na caixa dela própria
+                (objectBoundingBox), então não escala junto. Os `stop` vêm de
+                `paradasBarra`, o mesmo caminho SVG dos gráficos — inclusive
+                a costura, que é o que impede o miolo de uma peça ficar
+                verde. */}
+            <defs>
+              {Array.from({ length: PECAS_ESPECTRO }, (_, passo) => (
+                <linearGradient key={passo} id={`cli-grad-${passo}`} x1="0" y1="0" x2="1" y2="1">
+                  {paradasBarra(passo, isLight).map((p) => (
+                    <stop key={p.pos} offset={p.pos} stopColor={p.cor} />
+                  ))}
+                </linearGradient>
+              ))}
+            </defs>
             <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
               <g>
                 {DISTRITOS.map(([nome, d]) => (
@@ -555,13 +580,10 @@ export function MapaClientes({ clientes }: Props) {
                   }}
                   style={{ cursor: "pointer" }}
                 >
-                  <circle cx={p.x} cy={p.y} r={13} fill={p.cor} opacity={0.22} />
-                  <circle
-                    cx={p.x} cy={p.y} r={5.5}
-                    fill={p.cor}
-                    stroke={isLight ? "#ffffff" : "#141416"}
-                    strokeWidth={2}
-                  />
+                  {/* R71 — "deixe somente a bolinha": saíram o halo (o
+                      círculo de r=13 em 22%) e o contorno branco/escuro. O
+                      que ficou é a bolinha, no DEGRADÊ do passo dela. */}
+                  <circle cx={p.x} cy={p.y} r={5.5} fill={`url(#cli-grad-${p.passo})`} />
                   {/* alvo de clique generoso e invisível */}
                   <circle cx={p.x} cy={p.y} r={18} fill="transparent" />
                 </g>

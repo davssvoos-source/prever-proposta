@@ -3324,25 +3324,35 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   eq('a página usa a classe .clientes-tela-fixa, além de .sangra-x',
      /className="sangra-x clientes-tela-fixa"/.test(cl3), true);
+  // R71 encolheu a reserva de baixo: os 110px do <main> existem por causa da
+  // barra do CELULAR, que não existe a partir de 1024px. A regra que a
+  // asserção guarda continua a mesma — travar altura só no desktop.
   eq('.clientes-tela-fixa só trava altura a partir de 1024px — no celular a página continua crescendo/rolando',
-     /@media \(min-width: 1024px\) \{\s*\n\s*\.clientes-tela-fixa \{\s*\n\s*height: calc\(100dvh - var\(--topo\) - 110px\);\s*\n\s*overflow: hidden;/.test(css3),
+     /@media \(min-width: 1024px\) \{[\s\S]{0,900}\.clientes-tela-fixa \{[\s\S]{0,900}height: calc\(100dvh - var\(--topo\) - var\(--rodape-fixo\)\);\s*\n\s*overflow: hidden;/.test(css3),
      true);
+  eq('R71: a margem morta de baixo é devolvida — o <main> reserva 110px para a barra do celular, que no desktop não existe',
+     /margin-bottom: calc\(-110px \+ var\(--rodape-fixo\)\);/.test(css3), true);
   eq('a margem superior encolheu (era 18/40, R55) — agora 8/8',
      /paddingTop: 8, paddingBottom: 8, display: "flex", flexDirection: "column", gap: 10,/.test(cl3),
      true);
 
-  // ── Situação + Serviço viram um painel só ────────────────────────────────
+  // ── Situação + Serviço: um painel só, agora atrás do botão redondo (R71) ─
+  // O cartão único continua sendo a regra (são dois EIXOS que se combinam);
+  // o que mudou é que ele só ocupa altura quando está aberto.
   eq('Situação e Serviço moram no MESMO cartão (card(isLight)), não em duas fileiras soltas',
-     /flexDirection: "column", gap: 7,\s*\n\s*flex: 1, minWidth: 280,/.test(cl3), true);
+     /\{filtrosAbertos && \(\s*\n\s*<div style=\{\{\s*\n\s*\.\.\.card\(isLight\), borderRadius: 14/.test(cl3), true);
   eq('as duas fileiras de chip (situação, serviço) estão DENTRO desse cartão único',
-     /flex: 1, minWidth: 280,\s*\n\s*\}\}>[\s\S]{0,250}\["todos", `Todos · \$\{contagem\.todos\}`\][\s\S]{0,1100}Serviço/.test(cl3),
+     /\{filtrosAbertos && \([\s\S]{0,900}\["todos", `Todos · \$\{contagem\.todos\}`\][\s\S]{0,1200}Serviço/.test(cl3),
      true);
 
   // ── A coluna da lista rola por dentro; a página, não ─────────────────────
   eq('CRÍTICO: .clientes-duas-colunas ganha flex:1 + minHeight:0 — sem isso a rolagem vazaria pra página inteira',
      /className="clientes-duas-colunas" style=\{\{ flex: 1, minHeight: 0 \}\}/.test(cl3), true);
-  eq('a região que rola de verdade é a lista de cartões (.rolagem-fina, overflowY auto), não a coluna inteira',
-     /className="rolagem-fina" style=\{\{\s*\n\s*display: "flex", flexDirection: "column", gap: 10,\s*\n\s*flex: 1, minHeight: 0, overflowY: "auto",/.test(cl3),
+  // R71 aposentou a rolagem da lista: ela agora CABE, em vez de rolar (as
+  // asserções do novo comportamento estão no bloco da R71, mais abaixo).
+  eq('a lista não rola mais — quem dá a altura de cada cartão é a grade de 10 linhas',
+     /className="clientes-lista" style=\{\{ flex: 1, minHeight: 0 \}\}/.test(cl3)
+     && /rolagem-fina/.test(cl3) === false,
      true);
   eq('CRÍTICO: a paginação fica FORA da região que rola — sempre visível, sem precisar rolar até ela',
      /\)\}\s*\n\s*<\/div>\s*\n\s*\n\s*\{\/\* Paginação/.test(cl3), true);
@@ -4101,6 +4111,89 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto16 = fs41.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R70 está documentado', /\*\*R70\*\*/.test(produto16), true);
+}
+
+// ── R71: Clientes — lista sem rolagem, filtro no botão, bolinha no degradê ──
+{
+  const fs42 = require('fs');
+  const COR = carregar('src/features/clientes/cores.ts');
+  const MZ = carregar('src/features/clientes/mapa-zoom.ts');
+  const PAL2 = carregar('src/lib/paleta.ts');
+  const cl4 = fs42.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+  const map2 = fs42.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+  const css5 = fs42.readFileSync('src/styles.css', 'utf8');
+
+  // ── a lista cabe em 10, sem rolar ────────────────────────────────────────
+  eq('CRÍTICO: a grade tem 10 linhas de minmax(0,1fr) — o minmax(0,…) é o que deixa a faixa ficar MENOR que o cartão; com 1fr puro (piso auto) a lista voltaria a estourar e rolar',
+     /grid-template-rows: repeat\(10, minmax\(0, 1fr\)\);/.test(css5), true);
+  eq('as 10 linhas valem só no desktop — no celular dez cartões numa tela de telefone dariam ~30px cada',
+     /@media \(min-width: 1024px\) \{\s*\n\s*\.clientes-lista \{/.test(css5), true);
+  eq('a página continua paginando de 10 em 10 — o número da grade e o da paginação são o mesmo',
+     /const ITENS_POR_PAGINA = 10;/.test(cl4), true);
+  eq('os estados de carregando/vazio ocupam a GRADE INTEIRA, não a 1ª de 10 faixas',
+     (cl4.match(/gridRow: "1 \/ -1"/g) ?? []).length, 2);
+
+  // ── busca alinhada ao título, filtros atrás do botão redondo ─────────────
+  eq('a busca está na MESMA linha do título "Clientes"',
+     /<div style=\{\{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0\.01em" \}\}>Clientes<\/div>[\s\S]{0,900}placeholder="Buscar cliente, endereço, posto…"/.test(cl4),
+     true);
+  eq('o botão de filtro é um CÍRCULO ao lado da busca',
+     /width: 42, height: 42, borderRadius: "50%"/.test(cl4), true);
+  eq('ele anuncia que revela um painel (aria-expanded) — botão que esconde conteúdo sem dizer é armadilha',
+     /aria-expanded=\{filtrosAbertos\}/.test(cl4), true);
+  eq('CRÍTICO: filtro ATIVO e escondido acende um ponto no botão — sem isso "sumiu cliente da lista" vira mistério em vez de um clique',
+     /const temFiltro = filtro !== "todos" \|\| servico !== "todos";/.test(cl4)
+     && /\{temFiltro && !filtrosAbertos && \(/.test(cl4), true);
+  eq('o painel aberto oferece limpar os filtros',
+     /Limpar filtros/.test(cl4), true);
+
+  // ── a bolinha: degradê, sem contorno, sem glow ───────────────────────────
+  eq('o passo do cliente cai sempre em 0…7 — a rampa tem 9 amostras para servir 8 peças, e um passo 8 não teria par seguinte',
+     Array.from({ length: 400 }, (_, i) => COR.passoDoCliente(`cliente-${i}`))
+       .every((p) => Number.isInteger(p) && p >= 0 && p < PAL2.PECAS_ESPECTRO), true);
+  eq('o passo é ESTÁVEL para o mesmo id (a cor é como se reconhece o cliente no mapa E na lista)',
+     COR.passoDoCliente('abc-123'), COR.passoDoCliente('abc-123'));
+  eq('corDoCliente é o INÍCIO do degradê do passo — lista e mapa continuam falando a mesma cor',
+     COR.corDoCliente('abc-123', false), PAL2.espectro(COR.passoDoCliente('abc-123'), false));
+  eq('gradienteDoCliente devolve o degradê da casa (gradienteBarra), não um linear-gradient inventado',
+     COR.gradienteDoCliente('abc-123', false),
+     PAL2.gradienteBarra(PAL2.espectro(COR.passoDoCliente('abc-123'), false),
+                         PAL2.espectro(COR.passoDoCliente('abc-123') + 1, false), false));
+  eq('a bolinha da LISTA usa o degradê e não tem mais glow (boxShadow saiu)',
+     /background: gradienteDoCliente\(c\.id, isLight\),/.test(cl4)
+     && /boxShadow: `0 0 8px \$\{cor\}66`/.test(cl4) === false, true);
+  eq('CRÍTICO: o ponto do MAPA perdeu o halo (r=13 em 22%) e o contorno — sobrou só a bolinha',
+     /r=\{13\}/.test(map2) === false
+     && /stroke=\{isLight \? "#ffffff" : "#141416"\}/.test(map2) === false, true);
+  eq('…e ela é pintada pelo degradê do passo dela',
+     /<circle cx=\{p\.x\} cy=\{p\.y\} r=\{5\.5\} fill=\{`url\(#cli-grad-\$\{p\.passo\}\)`\} \/>/.test(map2), true);
+  eq('os degradês do mapa saem de paradasBarra (o mesmo caminho SVG dos gráficos, com a costura tratada)',
+     /paradasBarra\(passo, isLight\)\.map/.test(map2), true);
+  eq('o <defs> fica FORA do <g> que recebe o zoom — degradê não escala junto com o mapa',
+     /<\/defs>\s*\n\s*<g transform=\{`translate\(/.test(map2), true);
+
+  // ── o mapa abre com um pouco de zoom ─────────────────────────────────────
+  eq('o mapa ABRE com zoom acima do mínimo (o pedido: "um pouquinho de zoom")',
+     MZ.ZOOM_INICIAL > MZ.ZOOM_MIN, true);
+  eq('…e sem exagero: acima de ~1.5 a tela abriria já pedindo para arrastar',
+     MZ.ZOOM_INICIAL <= 1.5, true);
+  {
+    const L = 1000, A = 800, M = 6;
+    const v = MZ.vistaInicial(L, A, M);
+    eq('CRÍTICO: a vista inicial fica CENTRADA — o ponto do meio do mapa continua no meio depois do zoom',
+       [Math.round(v.k * (L / 2) + v.x), Math.round(v.k * (A / 2) + v.y)],
+       [L / 2, A / 2]);
+    eq('a vista inicial já nasce dentro dos limites de arrasto (passou por limitarTransform)',
+       JSON.stringify(MZ.limitarTransform(v, -M, L + M, -M, A + M)), JSON.stringify(v));
+    eq('o zoom da vista inicial é o ZOOM_INICIAL', v.k, MZ.ZOOM_INICIAL);
+  }
+  eq('resetar volta para a vista de ABERTURA, não para o zoom 1 que a tela nunca mostra sozinha',
+     /transformRef\.current = VISTA_INICIAL;\s*\n\s*setTransform\(VISTA_INICIAL\);/.test(map2), true);
+  eq('"nada a resetar" passou a ser comparado com a vista de abertura',
+     /const semAlteracao = Math\.abs\(transform\.k - VISTA_INICIAL\.k\)/.test(map2), true);
+
+  const produto17 = fs42.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R71 está documentado', /\*\*R71\*\*/.test(produto17), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

@@ -22,6 +22,16 @@ export const ZOOM_MAX = 8;
 
 export const IDENTIDADE: Transform = { x: 0, y: 0, k: 1 };
 
+/**
+ * O zoom com que o mapa ABRE (R71, Davi: "o mapa deve vir por padrão com um
+ * pouquinho de zoom, para o usuário conseguir ler melhor").
+ *
+ * 1.35 e não mais: acima disso o contorno do município começa a sair da
+ * caixa e a tela abre já pedindo para arrastar — o pedido é "um pouquinho",
+ * e o que se ganha é a legibilidade dos nomes de distrito.
+ */
+export const ZOOM_INICIAL = 1.35;
+
 export function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
@@ -64,6 +74,23 @@ function limitarEixo(pos: number, k: number, a: number, b: number): number {
  */
 export function limitarTransform(t: Transform, a0: number, b0: number, a1: number, b1: number): Transform {
   return { k: t.k, x: limitarEixo(t.x, t.k, a0, b0), y: limitarEixo(t.y, t.k, a1, b1) };
+}
+
+/**
+ * A vista de ABERTURA do mapa: `ZOOM_INICIAL` centrado no meio do conteúdo,
+ * já dentro dos limites de arrasto.
+ *
+ * Puro e aqui (não um objeto solto no componente) porque é a mesma regra dos
+ * outros gestos: quem centraliza é `zoomEm`, quem prende na moldura é
+ * `limitarTransform`. Reimplementar a conta no componente é como um mapa
+ * abre torto — centrado no canto superior esquerdo em vez de no meio.
+ *
+ * É também o alvo do botão "resetar": voltar para `IDENTIDADE` levaria a um
+ * zoom que a tela nunca mostrou por conta própria.
+ */
+export function vistaInicial(largura: number, altura: number, margem: number): Transform {
+  const t = zoomEm(IDENTIDADE, ZOOM_INICIAL, largura / 2, altura / 2);
+  return limitarTransform(t, -margem, largura + margem, -margem, altura + margem);
 }
 
 /** Distância euclidiana — usada pra medir o "pinça" de dois dedos. */

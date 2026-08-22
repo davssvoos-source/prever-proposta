@@ -1116,3 +1116,36 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   lista-OS-retroativo... como os chamados não têm título, coloque todos os
   títulos sendo o tipo de demanda. Além disso, considere todos os itens
   Instalação como Implantação".)*
+
+- **R71** — Cinco acertos na página de **Clientes**:
+
+  **1. A margem de baixo encolheu.** O `<main>` reserva 110px embaixo por
+  causa da barra de navegação do **celular** — e essa barra não existe a
+  partir de 1024px. No desktop aquilo era margem morta: a tela fixa acabava
+  110px antes do fim da janela. Agora sobra só um respiro, e a altura
+  devolvida vai para a lista e o mapa.
+
+  **2. A lista não rola mais** — os 10 clientes da página **cabem**. As dez
+  faixas dividem a altura disponível e cada cartão preenche a sua; como as
+  faixas existem mesmo quando a página traz menos de dez, o cartão tem
+  sempre a mesma altura (a última página não engorda). O cartão ficou de
+  duas linhas: nome e etiquetas em cima, e embaixo endereço · tipo · síndico
+  num texto só que trunca com reticências — nada do que a ficha tinha foi
+  jogado fora.
+
+  **3. A busca subiu para a linha do título**, e o painel de filtros virou um
+  **botão redondo** ao lado dela. Com dois eixos de filtro que quase sempre
+  ficam em "Todos", a faixa de chips gastava permanentemente a altura que a
+  lista precisa. **Quando há filtro ativo, o botão acende um ponto dourado** —
+  filtro escondido sem aviso faz "sumiu cliente da lista" virar mistério em
+  vez de um clique.
+
+  **4. O mapa abre com um pouco de zoom**, centrado, para os nomes de
+  distrito ficarem legíveis. "Resetar" volta para essa vista de abertura, não
+  para o zoom 1 — que a tela nunca mostra por conta própria.
+
+  **5. A bolinha do cliente é só a bolinha, no degradê da casa.** Saíram o
+  contorno e o glow do ponto no mapa; o que ficou é a bolinha pintada com o
+  **degradê** do passo dela na rampa — a mesma que a lista usa, e o mesmo
+  caminho SVG (com a costura tratada) dos gráficos do sistema.
+  *(Davi, 2026-08-22.)*
