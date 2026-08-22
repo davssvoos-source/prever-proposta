@@ -3817,15 +3817,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('cada quadrado de KPI é <button aria-pressed> — a mesma linguagem de clique da Início',
      /aria-pressed=\{selecionado\}/.test(op2) && /className="elevavel kpi-tile ruido"/.test(op2), true);
   eq('clicar no quadrado ativo desliga (toggle), como os KPIs da Início',
-     /onClick=\{\(\) => setKpiAtivo\(selecionado \? null : k\.chave\)\}/.test(op2), true);
+     /setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op2), true);
   // (o painel "Backlog por idade" da R66 foi removido pela R68 — a asserção
   // que o travava saiu junto; o que entrou no lugar está no bloco da R68)
   eq('a lista de chamados técnicos é NOVA (R66) — não existia nesta tela antes',
      /Chamados técnicos/.test(op2) && /Ver todos os chamados →/.test(op2), true);
   eq('a lista anuncia o recorte com "Mostrando:", como a Início pede (DASHBOARD.md §7.3)',
      /Mostrando: <strong/.test(op2), true);
-  eq('clicar num KPI estreita a lista dentro dela (chamadosDoKpi(kpiAtivo ?? "abertos", …))',
-     /chamadosDoKpi\(kpiAtivo \?\? "abertos", chamados, agora\)/.test(op2), true);
+  // R73 trocou o `kpiAtivo ?? "abertos"` pela LENTE: a lista tem três
+  // recortes agora. A garantia é a mesma — o KPI abre exatamente o que conta.
+  eq('clicar num KPI abre a lista daquele KPI, pela mesma função que o conta',
+     /if \(kpiAtivo\) return ordenarChamados\(chamadosDoKpi\(kpiAtivo, chamados, agora\), agora\);/.test(op2),
+     true);
   eq('um `agora` só por render — KPIs, indicadores, histograma e ordenação da lista concordam sobre o momento',
      /const agora = useMemo\(\(\) => new Date\(\), \[chamados\]\);/.test(op2), true);
 
@@ -4259,6 +4262,67 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto18 = fs43.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R72 está documentado', /\*\*R72\*\*/.test(produto18), true);
+}
+
+// ── R73: as lentes da lista — o histórico ganhou onde ser visto ────────────
+// O defeito que originou isto: as 227 OS retroativas entraram CONCLUÍDAS, e
+// nenhuma tela do sistema listava chamado encerrado. O dado estava no banco e
+// não existia na interface.
+{
+  const fs44 = require('fs');
+  const IND3 = carregar('src/features/paineis/indicadores.ts');
+  const op6 = fs44.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+
+  const ch2 = (o) => ({
+    id: 'x-' + Math.random(), status: 'aberto', tipo: 'corretiva', prioridade: 'normal',
+    cliente_id: null, responsavel_id: 'tec', prazo_limite: null,
+    created_at: '2026-08-20T10:00:00Z', natureza: 'campo', ...o,
+  });
+
+  {
+    const agoraL = new Date('2026-08-22T12:00:00Z');
+    const lote = [
+      ch2({ id: 'a', status: 'aberto' }),
+      ch2({ id: 'b', status: 'em_andamento' }),
+      ch2({ id: 'c', status: 'concluido', finalizada_em: '2026-08-10T10:00:00Z' }),
+      ch2({ id: 'd', status: 'concluido', finalizada_em: '2026-08-15T10:00:00Z' }),
+      ch2({ id: 'e', status: 'cancelado' }),
+      ch2({ id: 'f', status: 'concluido', natureza: 'comercial' }),   // funil, não campo
+    ];
+    eq('lente "abertos" mostra o que pede ação',
+       IND3.chamadosDaLente('abertos', lote, agoraL).map((c) => c.id).sort(), ['a', 'b']);
+    eq('CRÍTICO: lente "concluidos" mostra os ENCERRADOS — sem ela as 227 OS importadas não apareciam em tela nenhuma',
+       IND3.chamadosDaLente('concluidos', lote, agoraL).map((c) => c.id).sort(), ['c', 'd']);
+    eq('lente "todos" mostra o campo inteiro, e só o campo (a proposta comercial fica de fora)',
+       IND3.chamadosDaLente('todos', lote, agoraL).map((c) => c.id).sort(), ['a', 'b', 'c', 'd', 'e']);
+    eq('CRÍTICO: "abertos" e "concluidos" são subconjuntos de "todos" — chip que soma mais que o total mente',
+       ['abertos', 'concluidos'].every((l) =>
+         IND3.chamadosDaLente(l, lote, agoraL).length <= IND3.chamadosDaLente('todos', lote, agoraL).length),
+       true);
+    eq('o histórico sai do mais RECENTE para o mais antigo — encerrado não tem urgência de prazo para ordenar',
+       IND3.ordenarHistorico(IND3.chamadosDaLente('concluidos', lote, agoraL)).map((c) => c.id),
+       ['d', 'c']);
+    eq('ordenarHistorico cai para fechada_em/created_at quando não há finalizada_em',
+       IND3.ordenarHistorico([
+         ch2({ id: 'velho', created_at: '2026-01-01T00:00:00Z' }),
+         ch2({ id: 'novo', created_at: '2026-07-01T00:00:00Z' }),
+       ]).map((c) => c.id), ['novo', 'velho']);
+  }
+
+  eq('as três lentes estão na ordem de uso: o dia primeiro, o arquivo depois',
+     IND3.LENTE_ORDEM, ['abertos', 'concluidos', 'todos']);
+  eq('a tela oferece as três como chip, e o número de cada uma sai da MESMA função que monta a lista',
+     /LENTE_ORDEM\.map\(\(l\) => \{/.test(op6)
+     && /chamadosDaLente\(l, chamados, agora\)\.length/.test(op6), true);
+  eq('CRÍTICO: clicar num KPI devolve a lente para "abertos" — os 4 contam só o que está em aberto, e abrir um deles sobre o histórico mostraria uma lista que não bate com o número tocado',
+     /setLente\("abertos"\);\s*\n\s*setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op6), true);
+  eq('e escolher uma lente limpa o KPI — só uma peça filtra por vez',
+     /onClick=\{\(\) => \{ setKpiAtivo\(null\); setLente\(l\); \}\}/.test(op6), true);
+  eq('o estado vazio nomeia a LENTE, em vez de dizer "em aberto" mesmo olhando o histórico',
+     /LENTE_LABEL\[lente\]/.test(op6), true);
+
+  const produto19 = fs44.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R73 está documentado', /\*\*R73\*\*/.test(produto19), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

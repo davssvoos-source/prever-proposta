@@ -3877,3 +3877,44 @@ lote e não visita real. O dado entra como está — é o da operação —, mas
 "Executando" precisa ser lido com essa ressalva.
 
 1234 asserções (18 novas). Não executada — é o Davi quem roda.
+
+### U62 — As lentes da lista: o histórico ganhou onde ser visto (R73, 2026-08-22)
+
+"Rodei, mas não vejo nenhum chamado no painel operacional."
+
+**A importação estava certa; a tela é que não tinha como mostrá-la.** As 227
+OS são todas `Fechada` na origem e entraram como `concluido`. A lista do
+Painel Operacional monta a partir de `chamadosDoKpi("abertos", …)` — por
+decisão explícita da R66, "o foco operacional desta tela; histórico fechado é
+o Painel de chamados". Só que fui conferir o Painel de chamados e ele também
+lista só `emAberto`; e a Início poda encerrado com mais de 7 dias
+(`DIAS_ENCERRADO`). Ou seja: **o sistema inteiro não tinha uma tela que
+mostrasse chamado encerrado.** A R66 apontou para uma porta que não existe.
+
+Isso é o tipo de buraco que só aparece quando entra dado de um tipo que a
+interface nunca teve. Antes da importação, todo chamado encerrado era recente
+e ficava visível na Início pelos 7 dias; ninguém sentiu falta.
+
+**A correção**: a lista ganhou três lentes — Em aberto (padrão), Concluídos,
+Todos —, cada uma com contagem no chip, e as contagens saem da MESMA função
+que monta a lista (`chamadosDaLente`), como manda a invariante do
+`DASHBOARD.md`. Duas amarrações que evitam o número mentir:
+
+- **Clicar num KPI devolve a lente para "Em aberto".** Os quatro contam só o
+  que está aberto; deixar um KPI ativo sobre a lente "Concluídos" abriria uma
+  lista que não corresponde ao número que a pessoa tocou.
+- **Escolher uma lente limpa o KPI** — só uma peça filtra por vez, a mesma
+  regra do drill-down da Início.
+
+**A ordem do histórico é outra.** `ordenarChamados` ordena por urgência de
+prazo, e encerrado não tem urgência — pior, os 227 importados não têm prazo
+nenhum, então empatariam todos e a lista sairia na ordem em que o banco
+devolveu. `ordenarHistorico` ordena pelo mais recente
+(`finalizada_em ?? fechada_em ?? created_at`), que é a única pergunta que se
+faz de um arquivo.
+
+Duas asserções da R66 descreviam o `kpiAtivo ?? "abertos"` que deixou de
+existir e foram reescritas para a garantia nova — o KPI continua abrindo
+exatamente o que conta.
+
+1246 asserções (13 novas, 2 reescritas), build ok, TypeScript sem erro novo.

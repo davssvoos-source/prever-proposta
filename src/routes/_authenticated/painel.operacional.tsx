@@ -61,11 +61,13 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import {
   PRISMA, paradasBarra, gradienteBarra, espectro, espectroTexto, PECAS_ESPECTRO,
+  GRAD_PRIMARIA, SOBRE_PRIMARIA,
 } from "@/lib/paleta";
 import {
   calcularIndicadores, horasTexto,
   chamadosDoKpi, KPI_OPERACIONAL_ORDEM, KPI_OPERACIONAL_LABEL, type ChaveKpiOperacional,
-  abertosPorCliente, ordenarChamados,
+  abertosPorCliente, ordenarChamados, ordenarHistorico,
+  chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
 
@@ -175,8 +177,12 @@ function PainelOperacional() {
   const [duplasAberto, setDuplasAberto] = useState(false);
   const [painelId, setPainelId] = useState<string | null>(null);
   // qual quadrado de KPI está filtrando a lista agora — null = nenhum, e a
-  // lista mostra o padrão operacional (tudo em aberto)
+  // lista mostra a lente inteira
   const [kpiAtivo, setKpiAtivo] = useState<ChaveKpiOperacional | null>(null);
+  // R73: a lente da lista. "Em aberto" é o padrão (esta é a tela de quem
+  // coordena o dia); "Concluídos" e "Todos" existem porque o histórico —
+  // as 227 OS retroativas, por exemplo — não tinha onde ser visto.
+  const [lente, setLente] = useState<LenteLista>("abertos");
 
   // nomes dos clientes para o gráfico por cliente — só id/nome
   const { data: clientes = [] } = useQuery({
@@ -306,12 +312,22 @@ function PainelOperacional() {
   const nomeDeTecnico = (id: string) => nomeTecnico.get(id) ?? "Técnico";
 
   // ── A lista ───────────────────────────────────────────────────────────────
-  // Padrão: tudo em aberto (o foco operacional desta tela — histórico fechado
-  // é o Painel de chamados). Um KPI ativo ESTREITA dentro desse conjunto, já
-  // que os quatro são subconjuntos de "abertos" por construção.
-  const listaChamados = useMemo(
-    () => ordenarChamados(chamadosDoKpi(kpiAtivo ?? "abertos", chamados, agora), agora),
-    [kpiAtivo, chamados, agora],
+  // A LENTE manda; um KPI ativo estreita dentro de "em aberto" (os quatro são
+  // subconjuntos dele por construção). Ordem: em aberto por urgência de
+  // prazo; histórico pelo mais recente — encerrado não tem urgência, e os
+  // importados nem prazo têm, então empatariam todos.
+  const listaChamados = useMemo(() => {
+    if (kpiAtivo) return ordenarChamados(chamadosDoKpi(kpiAtivo, chamados, agora), agora);
+    const daLente = chamadosDaLente(lente, chamados, agora);
+    return lente === "abertos" ? ordenarChamados(daLente, agora) : ordenarHistorico(daLente);
+  }, [kpiAtivo, lente, chamados, agora]);
+
+  /** As contagens dos chips saem da MESMA função que a lista usa. */
+  const contagemLente = useMemo(
+    () => Object.fromEntries(
+      LENTE_ORDEM.map((l) => [l, chamadosDaLente(l, chamados, agora).length]),
+    ) as Record<LenteLista, number>,
+    [chamados, agora],
   );
 
   // A tabela da Início fala `Atividade` — os chamados passam pelo MESMO
@@ -447,7 +463,13 @@ function PainelOperacional() {
               return (
                 <button
                   key={k.chave}
-                  onClick={() => setKpiAtivo(selecionado ? null : k.chave)}
+                  onClick={() => {
+                    // os 4 KPIs contam só o que está EM ABERTO: clicar num
+                    // deles com a lente no histórico abriria uma lista que
+                    // não corresponde ao número tocado. A lente volta junto.
+                    setLente("abertos");
+                    setKpiAtivo(selecionado ? null : k.chave);
+                  }}
                   aria-pressed={selecionado}
                   title={`${k.valor} — clique para filtrar a lista abaixo`}
                   className="elevavel kpi-tile ruido"
@@ -749,26 +771,54 @@ function PainelOperacional() {
           }}>
             Chamados técnicos
           </h2>
+          {/* R73 — as três lentes. Sem elas, chamado ENCERRADO não tinha onde
+              ser visto no sistema inteiro: esta tela listava só o que está em
+              aberto, o Painel de chamados idem, e a Início poda encerrado com
+              mais de 7 dias. As 227 OS retroativas entraram concluídas e
+              ficaram invisíveis por isso. O número de cada chip sai da MESMA
+              função que monta a lista (chamadosDaLente). */}
+          <div className="trilho-x" style={{ display: "flex", gap: 6 }}>
+            {LENTE_ORDEM.map((l) => {
+              const ativa = !kpiAtivo && lente === l;
+              return (
+                <button
+                  key={l}
+                  onClick={() => { setKpiAtivo(null); setLente(l); }}
+                  aria-pressed={ativa}
+                  style={{
+                    padding: "5px 11px", borderRadius: 999, flexShrink: 0, cursor: "pointer",
+                    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                    background: ativa ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                    color: ativa ? SOBRE_PRIMARIA : textPrimary,
+                    fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {LENTE_LABEL[l]} · {contagemLente[l]}
+                </button>
+              );
+            })}
+          </div>
+
           {/* O anúncio do recorte (DASHBOARD.md §7.3) — o mesmo contrato da
-              Início: a lista nunca fica filtrada sem dizer por quê. Mudou de
-              linha própria para a linha do título, que é onde ele deixa de
-              custar altura; o texto continua o mesmo. */}
-          <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
-            · Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>
-              {kpiAtivo ? KPI_OPERACIONAL_LABEL[kpiAtivo] : "Chamados em aberto"}
-            </strong>{" "}
-            <span style={{ fontVariantNumeric: "tabular-nums" }}>({atividades.length})</span>
-          </span>
+              Início: a lista nunca fica filtrada sem dizer por quê. */}
           {kpiAtivo && (
-            <button
-              onClick={() => setKpiAtivo(null)}
-              style={{
-                fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
-                background: "transparent", border: "none", cursor: "pointer", padding: 0,
-              }}
-            >
-              limpar
-            </button>
+            <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
+              · Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>
+                {KPI_OPERACIONAL_LABEL[kpiAtivo]}
+              </strong>{" "}
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>({atividades.length})</span>
+              <button
+                onClick={() => setKpiAtivo(null)}
+                style={{
+                  marginLeft: 8,
+                  fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
+                  background: "transparent", border: "none", cursor: "pointer", padding: 0,
+                }}
+              >
+                limpar
+              </button>
+            </span>
           )}
           <button
             onClick={() => navigate({ to: "/chamados/painel" })}
@@ -786,7 +836,7 @@ function PainelOperacional() {
             ...card(isLight), borderRadius: 16, padding: "24px 16px", textAlign: "center",
             fontFamily: FONT, fontSize: 13, color: textSecondary,
           }}>
-            Nenhum chamado {kpiAtivo ? "nesta seleção" : "em aberto"} agora.
+            Nenhum chamado {kpiAtivo ? "nesta seleção" : `em "${LENTE_LABEL[lente]}"`}.
           </div>
         ) : (
           <>

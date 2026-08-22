@@ -266,6 +266,55 @@ export function abertosPorCliente<T extends ChamadoParaIndicador>(
 }
 
 /**
+ * A LENTE da lista de chamados (R73).
+ *
+ * Nasceu de um defeito real: as 227 OS retroativas entraram concluídas, e a
+ * tela — que listava só o que está EM ABERTO — não tinha como mostrá-las.
+ * Nenhuma outra tinha: o Painel de chamados também só lista aberto, e a
+ * Início poda encerrado com mais de 7 dias. O histórico existia no banco e
+ * não existia em lugar nenhum da interface.
+ *
+ * "Em aberto" continua sendo o padrão — esta é a tela de quem coordena o
+ * dia. As outras duas lentes existem para conferir e para consultar.
+ */
+export type LenteLista = "abertos" | "concluidos" | "todos";
+
+export const LENTE_ORDEM: LenteLista[] = ["abertos", "concluidos", "todos"];
+
+export const LENTE_LABEL: Record<LenteLista, string> = {
+  abertos: "Em aberto",
+  concluidos: "Concluídos",
+  todos: "Todos",
+};
+
+/** O que cada lente mostra — e o que conta o número do chip dela. */
+export function chamadosDaLente<T extends ChamadoParaIndicador>(
+  lente: LenteLista,
+  chamados: T[],
+  agora: Date = new Date(),
+): T[] {
+  switch (lente) {
+    case "abertos": return chamadosDoKpi("abertos", chamados, agora);
+    case "concluidos": return naturezaCampo(chamados).filter((c) => c.status === "concluido");
+    case "todos": return naturezaCampo(chamados);
+  }
+}
+
+/**
+ * A ordem do HISTÓRICO: o mais recente primeiro.
+ *
+ * `ordenarChamados` não serve aqui — ela ordena por urgência de prazo, e
+ * chamado encerrado não tem urgência: os 227 importados nem prazo têm, então
+ * todos empatariam e a lista sairia na ordem em que o banco devolveu.
+ * "Quando foi" é a única pergunta que se faz de um histórico.
+ */
+export function ordenarHistorico<T extends ChamadoParaIndicador>(chamados: T[]): T[] {
+  const quando = (c: T) =>
+    new Date(c.finalizada_em ?? c.fechada_em ?? c.created_at).getTime();
+  return [...chamados].sort((a, b) => quando(b) - quando(a));
+}
+
+/**
  * A ordem da lista de chamados (R66): atrasado primeiro — é o que pede ação
  * agora —, depois por prazo mais próximo. Sem prazo vai para o FIM, não
  * para o início: não tem urgência para anunciar, então não empurra quem tem.

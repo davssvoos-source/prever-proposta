@@ -1175,3 +1175,21 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   nomes dos clientes estão mais consistentes agora. Refaça a importação...
   como as atividades não têm título, você deve criar um título, e ele deve
   ser o tipo de demanda — depois eu vou alterar os títulos um por um".)*
+
+- **R73** — A lista do Painel Operacional ganhou **três lentes**: **Em aberto**
+  (o padrão), **Concluídos** e **Todos**, cada uma com a contagem no chip.
+
+  Nasceu de um defeito real: as 227 OS retroativas entraram **concluídas** e
+  ficaram invisíveis. E não era só nesta tela — **nenhuma tela do sistema
+  listava chamado encerrado**: o Painel Operacional mostrava só o que está em
+  aberto, o Painel de chamados idem, e a Início poda encerrado com mais de 7
+  dias. O histórico existia no banco e não existia na interface.
+
+  O padrão continua sendo "Em aberto" — esta é a tela de quem coordena o dia.
+  As outras duas existem para conferir e consultar. **Clicar num KPI devolve a
+  lente para "Em aberto"**, porque os quatro contam só o que está aberto:
+  abrir um deles sobre o histórico mostraria uma lista que não corresponde ao
+  número tocado. No histórico a ordem é a do **mais recente primeiro** — chamado
+  encerrado não tem urgência de prazo para ordenar.
+  *(Davi, 2026-08-22: "rodei, mas não vejo nenhum chamado no painel
+  operacional".)*
