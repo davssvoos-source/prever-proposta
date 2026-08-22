@@ -930,3 +930,28 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   gerado por bloco a partir desta estrutura. *(Davi, 2026-08-22: "crie a
   base para isso funcionar, crie os campos na página de cada cliente para
   imputarmos informações dos blocos... por enquanto".)*
+
+- **R64** — O **Painel Comercial é uma lista única**. O ciclo inteiro numa
+  tabela só: **visita técnica pendente → visita feita (aguardando aprovação
+  interna → aprovada, falta enviar) → proposta enviada — e no envio o ciclo
+  ENCERRA**. Este sistema **não mapeia** se o cliente aceitou ou recusou a
+  proposta: "enviar a proposta ao responsável por solicitá-la significa
+  encerrar o ciclo" (Davi). O funil termina em **Enviadas** — os estágios
+  "Aceitas/Recusadas", que sempre mostravam zero porque nenhum fluxo os
+  preenche desde a R38, saíram.
+
+  **Os 3 botões redundantes saíram**: a aba "Visitas e propostas" (aba única
+  é botão para lugar nenhum), a aba "Prospecção" (a lista saiu da
+  interface — a tabela `prospeccoes` continua no banco, e o trabalho de
+  prospecção vive nos chamados de natureza comercial, na Início) e o botão
+  "Histórico" (levava a outra página com a mesma lista; /historico continua
+  acessível por URL). `/prospeccao` segue redirecionando, agora para o
+  painel direto.
+
+  A lista ganhou **filtro por etapa** (chips com contagem, o padrão de
+  Clientes — padrão "Todas"), cada linha mostra a etapa com véu/borda/ícone
+  no vocabulário do design system, e a linha enviada mostra **quando** foi
+  enviada. A página entrou na régua de margem (.sangra-x), título e
+  superfícies no padrão da casa. A regra de sempre continua valendo:
+  **aprovação é interna** — nunca sinônimo de negócio fechado (R4).
+  *(Davi, 2026-08-22.)*

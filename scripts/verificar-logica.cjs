@@ -1689,22 +1689,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const pros = fs14.readFileSync('src/routes/_authenticated/prospeccao.tsx', 'utf8');
   const nav = fs14.readFileSync('src/components/nav-itens.ts', 'utf8');
 
-  // R38: a Prospecção mudou de LUGAR, não de dono
+  // R38 pôs a Prospecção como ABA do Comercial; a R64 tirou a aba (o Davi
+  // pediu o painel como lista ÚNICA do ciclo). O que sobrevive da R38 é o
+  // princípio: prospeccao fora do menu, /prospeccao só redirect.
   eq('Prospecção saiu do menu lateral', /prospeccao/.test(nav), false);
-  eq('/prospeccao virou redirect para a aba',
-     /redirect\(\{ to: "\/gerencial", search: \{ aba: "prospeccao" \} \}\)/.test(pros), true);
+  eq('/prospeccao redireciona para o Painel Comercial (sem aba — R64)',
+     /redirect\(\{ to: "\/gerencial" \}\)/.test(pros), true);
   eq('o redirect não renderiza conteúdo próprio',
      /useProspeccoes|ListaProspeccao/.test(pros), false);
-  eq('o Comercial tem a aba de Prospecção',
-     /chave: "prospeccao" as const, label: "Prospecção"/.test(ger), true);
-  eq('a aba renderiza a lista extraída', /<ListaProspeccao \/>/.test(ger), true);
-  // a aba mora na URL: é o que mantém o link antigo funcionando
-  eq('a aba está na URL, não em estado local',
-     /validateSearch/.test(ger) && /Route\.useSearch\(\)/.test(ger), true);
-  eq('a lista virou componente reaproveitável',
-     fs14.existsSync('src/features/prospeccao/ListaProspeccao.tsx'), true);
-  eq('o botão "Prospecção" saiu da barra do Comercial (leva para onde já se está)',
-     /label: "Prospecção", Icon: Target/.test(ger), false);
+  // R64: o Comercial não tem MAIS abas — nem prospeccao, nem "visitas e
+  // propostas". Aba única é botão para lugar nenhum, e a lista é uma só.
+  eq('R64: o Comercial não tem mais abas (nem validateSearch de aba)',
+     /aba: "prospeccao"|AbaComercial|validateSearch/.test(ger), false);
+  eq('R64: a lista de prospecção saiu da interface (componente apagado; a tabela continua no banco)',
+     fs14.existsSync('src/features/prospeccao/ListaProspeccao.tsx'), false);
 
   // a U34 apaga a linha órfã, e o acesso não muda de valor
   const u34 = fs14.readFileSync('supabase/migrations/20260821220000_u34_prospeccao_vira_aba.sql', 'utf8');
@@ -3487,6 +3485,89 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto9 = fs34.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R63 está documentado', /\*\*R63\*\*/.test(produto9), true);
+}
+
+// ── R64: Painel Comercial vira lista única — etapas do ciclo (2026-08-22) ──
+{
+  const fs35 = require('fs');
+  const ET2 = carregar('src/features/comercial/etapas.ts');
+  const ger2 = fs35.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+
+  const v = (status, enviada) => ({ status, proposta_enviada_em: enviada ?? null });
+
+  // ── etapaDaVisita: o mapa do ciclo ──────────────────────────────────────
+  eq('pendente → visita pendente', ET2.etapaDaVisita(v('pendente')), 'visita_pendente');
+  eq('em_andamento → visita pendente (o técnico ainda não terminou de ir)',
+     ET2.etapaDaVisita(v('em_andamento')), 'visita_pendente');
+  eq('concluida → aguardando aprovação (visita feita, orçamento em análise interna)',
+     ET2.etapaDaVisita(v('concluida')), 'aguardando_aprovacao');
+  eq('aguardando_aprovacao → aguardando aprovação',
+     ET2.etapaDaVisita(v('aguardando_aprovacao')), 'aguardando_aprovacao');
+  eq('aprovada SEM envio → falta enviar proposta',
+     ET2.etapaDaVisita(v('aprovada')), 'falta_proposta');
+  eq('cancelada e reprovada caem na mesma cesta terminal',
+     [ET2.etapaDaVisita(v('cancelada')), ET2.etapaDaVisita(v('reprovada'))],
+     ['cancelada', 'cancelada']);
+  eq('CRÍTICO: proposta_enviada_em VENCE o status — depois do envio o status continua "aprovada" no banco, e sem a precedência toda enviada leria "falta enviar" para sempre',
+     ET2.etapaDaVisita(v('aprovada', '2026-08-20T10:00:00Z')), 'enviada');
+  eq('status desconhecido não some da lista — cai em visita pendente',
+     ET2.etapaDaVisita(v('status_inventado')), 'visita_pendente');
+  eq('status null tolerado', ET2.etapaDaVisita(v(null)), 'visita_pendente');
+
+  // ── contagem e funil contam da MESMA função ─────────────────────────────
+  {
+    const lote = [
+      v('pendente'), v('em_andamento'), v('concluida'),
+      v('aprovada'), v('aprovada', '2026-08-01T10:00:00Z'), v('cancelada'),
+    ];
+    eq('contagemPorEtapa fecha com o lote',
+       ET2.contagemPorEtapa(lote),
+       { visita_pendente: 2, aguardando_aprovacao: 1, falta_proposta: 1, enviada: 1, cancelada: 1 });
+    eq('o funil tem TRÊS estágios e termina no envio (aceite do cliente não é mapeado — R64)',
+       ET2.funilComercial(lote), { visitas: 6, aprovadas: 2, enviadas: 1 });
+  }
+  eq('CRÍTICO: o funil é CUMULATIVO — a enviada conta como aprovada, senão o estágio 2 fica menor que o 3 e lê como erro de conta',
+     ET2.funilComercial([v('aprovada', '2026-08-01T10:00:00Z')]),
+     { visitas: 1, aprovadas: 1, enviadas: 1 });
+
+  // ── cores: pares claro/escuro de verdade (anti-padrão §8 nº 3) ──────────
+  eq('nenhuma etapa usa #F8C811 como texto no tema claro (2:1 sobre branco — o bug do STATUS_CONFIG antigo)',
+     Object.values(ET2.ETAPA_CORES).some((c) => c.light.toUpperCase() === '#F8C811'), false);
+  eq('toda etapa tem o quarteto dark/light/bg/border (véu 12% + borda 30%, §2.4)',
+     ET2.ETAPA_ORDEM.every((e) => {
+       const c = ET2.ETAPA_CORES[e];
+       return !!c.dark && !!c.light && /rgba\(/.test(c.bg) && /rgba\(/.test(c.border);
+     }), true);
+  eq('a etapa terminal se chama "Proposta enviada" — o rótulo do fim do ciclo',
+     ET2.ETAPA_LABEL.enviada, 'Proposta enviada');
+
+  // ── a página ────────────────────────────────────────────────────────────
+  eq('R64: o botão Histórico saiu do Painel Comercial (terceira porta para a mesma lista)',
+     /label: "Histórico"/.test(ger2), false);
+  // só as linhas de CÓDIGO: o comentário do funil cita "Aceitas/Recusadas"
+  // de propósito, explicando por que elas NÃO estão mais ali
+  const ger2cod = ger2.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
+  eq('R64: "Aceitas" e "Recusadas" saíram do funil — nenhum fluxo preenche proposta_resultado desde a R38',
+     /Aceitas|Recusadas|proposta_resultado/.test(ger2cod), false);
+  eq('a página usa .sangra-x — era a única tela do domínio fora da régua de margem',
+     /className="sangra-x"/.test(ger2), true);
+  eq('título no padrão da casa: 22/600 com letterSpacing -0.01em (§3), não 24 espaçado',
+     /fontSize: 22,\s*\n\s*letterSpacing: "-0\.01em"/.test(ger2), true);
+  eq('o filtro por etapa é chip com contagem (padrão de Clientes), com "Todas" na frente',
+     /\{`Todas · \$\{funil\.visitas\}`\}/.test(ger2) && /ETAPA_ORDEM\.map\(\(e\) => \(/.test(ger2), true);
+  eq('o chip de cada linha vem de ETAPA_CORES/ETAPA_LABEL — a mesma função do filtro e do funil',
+     /const et = etapaDaVisita\(v\);/.test(ger2) && /\{ETAPA_LABEL\[et\]\}/.test(ger2), true);
+  eq('o chip da linha leva ícone junto da cor (status nunca é só cor, §2.4)',
+     /<Icone size=\{13\} \/>/.test(ger2), true);
+  eq('a linha enviada mostra QUANDO foi enviada (o carimbo que encerrou o ciclo)',
+     /Enviada em \{enviadaEm\}/.test(ger2), true);
+  eq('a nota do funil diz a verdade nova: o ciclo encerra no envio, aceite não é mapeado',
+     /o aceite do cliente não é mapeado aqui/.test(ger2), true);
+  eq('os cards usam card(isLight) de lib/ui — a superfície padrão, não um gradiente próprio da página',
+     /card\(isLight\), borderRadius: 16/.test(ger2), true);
+
+  const produto10 = fs35.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R64 está documentado', /\*\*R64\*\*/.test(produto10), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

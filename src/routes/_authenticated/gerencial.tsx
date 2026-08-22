@@ -1,13 +1,40 @@
+// Painel Comercial (/gerencial) — R32, revisado de ponta a ponta na R64.
+//
+// UMA LISTA SÓ. O ciclo comercial inteiro mora aqui: visita técnica pendente
+// → visita feita (aguardando aprovação interna → aprovada) → PROPOSTA
+// ENVIADA a quem a solicitou — e no envio o ciclo ENCERRA. Este sistema não
+// mapeia aceite/recusa do cliente (decisão explícita, R38/R64): o funil
+// termina em "Enviadas".
+//
+// O QUE SAIU NA R64 (2026-08-22, Davi: "3 botões redundantes... remova"):
+// · a aba "Visitas e propostas" — aba única é botão para lugar nenhum;
+// · a aba "Prospecção" — a lista de prospecção saiu da interface (a tabela
+//   `prospeccoes` continua no banco; o trabalho de prospecção vive nos
+//   chamados de natureza comercial, na Início);
+// · o botão "Histórico" — levava a outra página com a mesma lista de
+//   visitas; /historico continua existindo por URL, sem porta daqui.
+//
+// A leitura por etapa é derivada em features/comercial/etapas.ts (pura,
+// coberta por asserção): o filtro por chip, o chip de cada linha e o funil
+// contam todos da MESMA função — não têm como discordar entre si.
+
 import { guardaDeTela, usePermissoes } from "@/features/gerencial/permissoes";
-import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation , redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Eye, Clock, CheckCircle, XCircle, FileText, CalendarDays, MapPin, User, Trash2, Building2, ChevronRight, MapPinned, History } from "lucide-react";
-import { ListaProspeccao } from "@/features/prospeccao/ListaProspeccao";
+import {
+  Plus, Clock, XCircle, FileText, FileClock, Send, CalendarDays, MapPin, User,
+  Trash2, Building2, ChevronRight, MapPinned,
+} from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
+import { FONT, GOLD_GRAD, card } from "@/lib/ui";
+import {
+  etapaDaVisita, contagemPorEtapa, funilComercial,
+  ETAPA_ORDEM, ETAPA_LABEL, ETAPA_CORES, type EtapaComercial,
+} from "@/features/comercial/etapas";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,26 +46,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-export type AbaComercial = "propostas" | "prospeccao";
-
 export const Route = createFileRoute("/_authenticated/gerencial")({
-  /**
-   * A aba mora na URL (`?aba=prospeccao`), não em estado local (R38).
-   *
-   * É o que mantém a Prospecção linkável depois de ela ter deixado de ser
-   * página: o endereço antigo /prospeccao redireciona para cá com a aba certa,
-   * e quem tinha o link no WhatsApp continua caindo no lugar certo. Estado
-   * local perderia isso e ainda esqueceria a aba a cada volta do navegador.
-   */
-  validateSearch: (busca: Record<string, unknown>): { aba?: AbaComercial } => ({
-    aba: busca.aba === "prospeccao" ? "prospeccao" : undefined,
-  }),
-  // Esta página É o Painel Comercial (R32): a lista de visitas e propostas com
-  // o funil em cima. O SAC entra — ele agenda a visita de proposta (R24) — e o
-  // acesso que ele tinha ao antigo /painel/comercial seguiu para cá (U30).
-  // Cada rota filha tem a permissão dela: /gerencial/permissoes e
-  // /gerencial/usuarios têm guarda própria de admin.
+  // Esta página É o Painel Comercial (R32). O SAC entra — ele agenda a visita
+  // de proposta (R24). Cada rota filha tem a permissão dela: /gerencial/
+  // permissoes e /gerencial/usuarios têm guarda própria de admin.
   beforeLoad: async ({ location }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
@@ -51,29 +62,28 @@ export const Route = createFileRoute("/_authenticated/gerencial")({
   component: GerencialPage,
 });
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  pendente:              { label: "Pendente",              color: "#F8C811", icon: Clock },
-  em_andamento:          { label: "Pendente",              color: "#F8C811", icon: Clock },
-  aguardando_aprovacao:  { label: "Aguardando aprovação",  color: "#60A5FA", icon: Clock },
-  concluida:             { label: "Aguardando aprovação",  color: "#60A5FA", icon: CheckCircle },
-  cancelada:             { label: "Cancelada",             color: "#E64D58", icon: XCircle },
-  aprovada:              { label: "Aprovada",              color: "#8B5CF6", icon: CheckCircle },
-  reprovada:             { label: "Reprovada",             color: "#E64D58", icon: XCircle },
+/** Ícone por etapa — status nunca é só cor (design system §2.4). */
+const ETAPA_ICONE: Record<EtapaComercial, React.ElementType> = {
+  visita_pendente: Clock,
+  aguardando_aprovacao: FileClock,
+  falta_proposta: FileText,
+  enviada: Send,
+  cancelada: XCircle,
 };
 
 function GerencialPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { aba = "propostas" } = Route.useSearch();
   const location = useLocation();
   const { isLight } = useTheme();
-  const cardLight = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
-  const textPrimary = isLight ? "#0a0b0e" : "#F5F5F5";
-  const textSecondary = isLight ? "#4a5060" : "#9ca3af";
-  const cardBg = isLight ? cardLight : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
-  const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
-  const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none";
-  const numberGold = isLight ? "#A06108" : "#F8C811";
+
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const gold = isLight ? "#A06108" : "#F8C811";
+
+  // filtro por etapa — chips com contagem, o mesmo padrão de Clientes (R41).
+  // "todas" é o padrão: a promessa da tela é a lista INTEIRA numa tabela só.
+  const [etapa, setEtapa] = useState<"todas" | EtapaComercial>("todas");
 
   const { data: visitasRaw = [], isLoading } = useQuery({
     queryKey: ["gerencial-visitas"],
@@ -93,7 +103,6 @@ function GerencialPage() {
             nome_sindico,
             nome_predio,
             proposta_enviada_em,
-            proposta_resultado,
             clientes (nome, email)
           `)
         .order("created_at", { ascending: false });
@@ -149,37 +158,39 @@ function GerencialPage() {
       await supabase.from("visita_orcamentos").delete().eq("visita_id", visitaId);
       const { error } = await supabase.from("visitas_tecnicas").delete().eq("id", visitaId);
       if (error) throw error;
-      toast.success("Visita excluída com sucesso");
+      toast.success("Proposta excluída com sucesso");
       setDeletingId(null);
       await queryClient.invalidateQueries({ queryKey: ["gerencial-visitas"] });
     } catch (e: any) {
-      toast.error("Erro ao excluir visita", { description: e?.message });
+      toast.error("Erro ao excluir proposta", { description: e?.message });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const tecMap = new Map(tecnicos.map((t) => [t.id, t.nome]));
-
-  const stats = {
-    total:        visitasRaw.length,
-    pendentes:    visitasRaw.filter((v: any) => v.status === "pendente").length,
-    em_andamento: visitasRaw.filter((v: any) => v.status === "em_andamento").length,
-    concluidas:   visitasRaw.filter((v: any) => v.status === "concluida").length,
-    aprovadas:    visitasRaw.filter((v: any) => v.status === "aprovada").length,
-  };
-
-  // Funil comercial real (R4): a aprovação é interna, o aceite é do cliente.
-  // "Aprovadas" nunca foi sinônimo de negócio fechado — aqui isso fica visível.
-  const funil = [
-    { label: "Visitas",   value: visitasRaw.length,                                                                 color: numberGold },
-    { label: "Aprovadas", value: visitasRaw.filter((v: any) => v.status === "aprovada").length,                     color: "#3B82F6" },
-    { label: "Enviadas",  value: visitasRaw.filter((v: any) => v.proposta_enviada_em).length,                       color: "#2DD4BF" },
-    { label: "Aceitas",   value: visitasRaw.filter((v: any) => v.proposta_resultado === "aceita").length,           color: "#059676" },
-    { label: "Recusadas", value: visitasRaw.filter((v: any) => v.proposta_resultado === "recusada").length,         color: "#F17881" },
-  ];
+  const tecMap = useMemo(() => new Map(tecnicos.map((t) => [t.id, t.nome])), [tecnicos]);
 
   const visitas = visitasRaw as any[];
+  const contagem = useMemo(() => contagemPorEtapa(visitas), [visitas]);
+  const funil = useMemo(() => funilComercial(visitas), [visitas]);
+  const exibidas = useMemo(
+    () => (etapa === "todas" ? visitas : visitas.filter((v) => etapaDaVisita(v) === etapa)),
+    [visitas, etapa],
+  );
+
+  const chipFiltro = (ativo: boolean): CSSProperties => ({
+    padding: "8px 14px",
+    borderRadius: 999,
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#08090E" : textPrimary,
+    fontFamily: FONT,
+    fontWeight: 600,
+    fontSize: 12,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  });
 
   if (pathname !== "/gerencial") {
     return <Outlet />;
@@ -187,472 +198,283 @@ function GerencialPage() {
 
   return (
     <>
-      <div style={{ paddingTop: 16, paddingBottom: 24, paddingLeft: 0, paddingRight: 0 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: 24,
-          gap: 12,
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <h1
-            style={{
-              fontFamily: "var(--fonte)",
-              fontWeight: 600,
-              fontSize: 24,
-              color: textPrimary,
-              letterSpacing: "0.05em",
-              margin: 0,
-            }}
-          >
-            Painel Comercial
-          </h1>
-          <p
-            style={{
-              fontFamily: "var(--fonte)",
-              fontWeight: 400,
-              fontSize: 13,
-              color: textSecondary,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              marginTop: 4,
-            }}
-          >
-            {aba === "prospeccao"
-              ? "Prédios orçados que ainda não são clientes"
-              : `${stats.total} proposta${stats.total !== 1 ? "s" : ""} cadastrada${stats.total !== 1 ? "s" : ""}`}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          {/* Só o DOMÍNIO COMERCIAL (R32). Contratos, Fechamentos, Usuários e
-              Permissões moravam aqui do tempo em que o Gerencial era um painel
-              só — hoje são a casa do Painel Administrativo, e botão que leva
-              para outro domínio confunde a porta. */}
-          {[
-            // Prospecção saiu daqui: virou ABA desta mesma página (R38), e
-            // botão que leva para onde já se está é ruído.
-            { label: "Mapa", Icon: MapPinned, to: "/mapa" as const, tela: "mapa" },
-            { label: "Histórico", Icon: History, to: "/historico" as const, tela: "historico" },
-            { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
-          ]
-            // atalho que leva a uma tela bloqueada é armadilha: some junto
-            .filter((a) => podeVer(a.tela) !== false)
-            .map(({ label, Icon, to }) => (
-            <button
-              key={label}
-              onClick={() => navigate({ to })}
-              style={{
-                background: isLight ? "#ffffff" : "#191921",
-                border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 12,
-                padding: "10px 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: textPrimary,
-                boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
-                fontFamily: "var(--fonte)",
-                fontWeight: 400,
-                fontSize: 13,
-                cursor: "pointer",
-                letterSpacing: "0.06em",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Icon size={16} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* .sangra-x — a MESMA régua de margem da Início e de Clientes: colada
+          na sidebar à esquerda, na borda da janela à direita. Era a única
+          tela do domínio sem ela. */}
+      <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
 
-      {/* ABAS (R38) — Prospecção deixou de ser página e virou o começo do
-          funil, aqui dentro. A ordem é a do funil: prospecto vira proposta. */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-        {([
-          { chave: "propostas" as const, label: "Visitas e propostas" },
-          { chave: "prospeccao" as const, label: "Prospecção" },
-        ]).map(({ chave, label }) => {
-          const ativa = aba === chave;
-          return (
-            <button
-              key={chave}
-              onClick={() => navigate({
-                to: "/gerencial",
-                search: chave === "propostas" ? {} : { aba: chave },
-              })}
-              style={{
-                padding: "9px 18px", borderRadius: 999,
-                border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-                background: ativa
-                  ? "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)"
-                  : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                color: ativa ? "#08090E" : textPrimary,
-                fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
-                cursor: "pointer", whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {aba === "prospeccao" ? <ListaProspeccao /> : (
-      <>
-      {/* Cards de estatística */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        {[
-          { label: "Pendentes",    value: stats.pendentes,    color: numberGold },
-          { label: "Em Andamento", value: stats.em_andamento, color: "#3B82F6" },
-          { label: "Concluídas",   value: stats.concluidas,   color: "#059676" },
-        ].map((s) => (
-          <div
-            key={s.label}
-            style={{
-              background: cardBg,
-              backdropFilter: isLight ? "none" : "blur(16px)",
-              border: cardBorder,
-              borderRadius: 16,
-              padding: "18px 22px",
-              boxShadow: cardShadow,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--fonte)",
-                fontSize: 28,
-                fontWeight: 700,
-                color: s.color,
-                letterSpacing: "0.02em",
-              }}
-            >
-              {s.value}
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--fonte)",
-                fontSize: 11,
-                fontWeight: 400,
-                color: textSecondary,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                marginTop: 4,
-              }}
-            >
-              {s.label}
+        {/* Cabeçalho — título 22/600 (§3 "Título de página"), subtítulo 12 */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{
+              fontFamily: FONT, fontWeight: 600, fontSize: 22,
+              letterSpacing: "-0.01em", margin: 0,
+            }}>
+              Painel Comercial
+            </h1>
+            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
+              {funil.visitas} proposta{funil.visitas !== 1 ? "s" : ""} · o ciclo encerra no envio
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Funil comercial (R4) — a leitura honesta: aprovar a visita é decisão
-          nossa; o que fecha negócio é o aceite do cliente. */}
-      <div
-        style={{
-          background: cardBg,
-          backdropFilter: isLight ? "none" : "blur(16px)",
-          border: cardBorder,
-          borderRadius: 16,
-          padding: "18px 20px",
-          boxShadow: cardShadow,
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
-            letterSpacing: "0.10em", textTransform: "uppercase",
-            color: textSecondary, marginBottom: 14,
-          }}
-        >
-          Funil comercial
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-          {funil.map((f, i) => (
-            <div key={f.label} style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-              {i > 0 && i < 4 && (
-                <ChevronRight size={16} color={textSecondary} style={{ marginBottom: 6, flexShrink: 0 }} />
-              )}
-              <div style={{ minWidth: 74 }}>
-                <div
+          <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {/* Só o DOMÍNIO COMERCIAL (R32). "Histórico" saiu (R64): levava a
+                outra página com a mesma lista de visitas — era a terceira
+                porta para o que esta tela já mostra. */}
+            {[
+              { label: "Mapa", Icon: MapPinned, to: "/mapa" as const, tela: "mapa" },
+              { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
+            ]
+              // atalho que leva a uma tela bloqueada é armadilha: some junto
+              .filter((a) => podeVer(a.tela) !== false)
+              .map(({ label, Icon, to }) => (
+                <button
+                  key={label}
+                  onClick={() => navigate({ to })}
                   style={{
-                    fontFamily: "var(--fonte)", fontSize: 24, fontWeight: 700,
-                    color: f.color, letterSpacing: "0.02em",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {f.value}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400,
-                    color: textSecondary, letterSpacing: "0.08em",
-                    textTransform: "uppercase", marginTop: 2,
-                  }}
-                >
-                  {f.label}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400,
-            color: textSecondary, marginTop: 12, lineHeight: 1.5,
-          }}
-        >
-          Visita aprovada é aprovação interna. Cliente de verdade é o que aceitou a proposta.
-        </div>
-      </div>
-
-      {/* Lista de visitas */}
-      {isLoading ? (
-        <p style={{ color: "#9ca3af", textAlign: "center", padding: 40 }}>Carregando...</p>
-      ) : visitas.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            color: "#9ca3af",
-          }}
-        >
-          <FileText size={40} style={{ marginBottom: 16, opacity: 0.3 }} />
-          <p style={{ fontFamily: "var(--fonte)", fontSize: 14 }}>
-            Nenhuma proposta cadastrada ainda.
-          </p>
-          <button
-            onClick={() => navigate({ to: "/gerencial/nova" })}
-            style={{
-              marginTop: 16,
-              background: "linear-gradient(135deg, #FCDE48, #F8C811)",
-              border: "none",
-              borderRadius: 10,
-              padding: "10px 24px",
-              color: "#08090E",
-              fontFamily: "var(--fonte)",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
-            + Criar primeira proposta
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {visitas.map((v) => {
-            const cfg = STATUS_CONFIG[v.status] ?? STATUS_CONFIG.pendente;
-            const Icon = cfg.icon;
-            const dataVisita = v.data_hora_agendada
-              ? new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "Sem data";
-            const clienteNome =
-              v.clientes?.nome ??
-              v.nome_sindico ??
-              v.nome_predio ??
-              v.titulo ??
-              "Sem nome";
-            const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
-
-            return (
-              <div
-                key={v.id}
-                onClick={() => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)}
-                style={{
-                  background: cardBg,
-                  backdropFilter: isLight ? "none" : "blur(16px)",
-                  border: cardBorder,
-                  borderRadius: 16,
-                  padding: "18px 22px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                  boxShadow: cardShadow,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.3)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)";
-                }}
-              >
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--fonte)",
-                      fontWeight: 600,
-                      fontSize: 14,
-                      color: textPrimary,
-                      marginBottom: 6,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {clienteNome}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--fonte)",
-                      fontSize: 12,
-                      fontWeight: 400,
-                      color: textSecondary,
-                      lineHeight: 1.5,
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 6,
-                    }}
-                  >
-                    <CalendarDays size={12} style={{ opacity: 0.7 }} />
-                    <span>{dataVisita}</span>
-                    {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={12} style={{ opacity: 0.7 }} /><span>{v.endereco}</span></>) : null}
-                    {tecnicoNome ? (<><span style={{ opacity: 0.4 }}>·</span><User size={12} style={{ opacity: 0.7 }} /><span>{tecnicoNome}</span></>) : null}
-                  </div>
-
-                </div>
-
-                <div
-                  style={{
+                    minHeight: 40,
+                    background: isLight ? "#ffffff" : "#191921",
+                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 12,
+                    padding: "0 16px",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
-                    flexShrink: 0,
+                    gap: 8,
+                    color: textPrimary,
+                    boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
+                    fontFamily: FONT,
+                    fontWeight: 600,
+                    fontSize: 12.5,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  <Icon size={14} color={cfg.color} />
-                  <span
-                    style={{
-                      fontFamily: "var(--fonte)",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: cfg.color,
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {cfg.label}
-                  </span>
-                </div>
-
-                <Eye
-                  size={16}
-                  color="#9ca3af"
-                  style={{ flexShrink: 0, opacity: 0.6 }}
-                />
-                {isAdmin && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingId(v.id);
-                    }}
-                    aria-label="Excluir visita"
-                    style={{
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 6,
-                      borderRadius: 8,
-                      border: "none",
-                      background: "rgba(239, 68, 68, 0.1)",
-                      cursor: "pointer",
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)";
-                    }}
-                  >
-                    <Trash2 size={16} color="#E64D58" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+                  <Icon size={16} color={gold} />
+                  {label}
+                </button>
+              ))}
+          </div>
         </div>
-      )}
-      </>
-      )}
-    </div>
 
-    <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && !isDeleting && setDeletingId(null)}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Excluir visita técnica?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Esta ação é permanente e não pode ser desfeita. Todos os dados desta visita serão removidos.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={isDeleting}
-            onClick={(e) => {
-              e.preventDefault();
-              if (deletingId) handleDelete(deletingId);
-            }}
-            className="rounded-full bg-[#E64D58] font-bold text-white hover:bg-[#DC2626]"
-          >
-            {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        {/* Funil — TRÊS estágios, e acaba no envio (R64). "Aceitas/Recusadas"
+            saíram: este sistema não mapeia o resultado no cliente, e mostrar
+            estágio que nenhum fluxo preenche é fingir um dado que não existe. */}
+        <div style={{ ...card(isLight), borderRadius: 16, padding: "16px 18px" }}>
+          <div style={{
+            fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: gold, marginBottom: 12,
+          }}>
+            Funil comercial
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            {[
+              { label: "Visitas", value: funil.visitas, cor: gold },
+              { label: "Aprovadas", value: funil.aprovadas, cor: isLight ? "#1d4ed8" : "#60A5FA" },
+              { label: "Enviadas", value: funil.enviadas, cor: isLight ? "#047862" : "#2DD2A5" },
+            ].map((f, i) => (
+              <div key={f.label} style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+                {i > 0 && <ChevronRight size={16} color={textSecondary} style={{ marginBottom: 6, flexShrink: 0 }} />}
+                <div style={{ minWidth: 74 }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: 24, fontWeight: 700,
+                    color: f.cor, fontVariantNumeric: "tabular-nums",
+                  }}>
+                    {f.value}
+                  </div>
+                  <div style={{
+                    fontFamily: FONT, fontSize: 10, fontWeight: 400,
+                    color: textSecondary, letterSpacing: "0.08em",
+                    textTransform: "uppercase", marginTop: 2,
+                  }}>
+                    {f.label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 12, lineHeight: 1.5 }}>
+            Aprovação é interna. O ciclo encerra no envio da proposta a quem a solicitou — o aceite do cliente não é mapeado aqui.
+          </div>
+        </div>
 
-    {/* FAB — Nova Proposta */}
-    <button
-      onClick={() => navigate({ to: "/gerencial/nova" })}
-      style={{
-        position: "fixed",
-        bottom: 100,
-        right: 24,
-        width: 60,
-        height: 60,
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
-        border: "none",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        boxShadow: "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)",
-        zIndex: 50,
-        transition: "transform 0.15s, box-shadow 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "scale(1.08)";
-        e.currentTarget.style.boxShadow = "0 6px 28px rgba(248,200,17,0.7), 0 0 50px rgba(248,200,17,0.35)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)";
-      }}
-      aria-label="Nova Proposta"
-    >
-      <Plus size={28} color="#08090E" strokeWidth={2.5} />
-    </button>
+        {/* Filtro por etapa — chips com contagem (o padrão de Clientes).
+            Não é aba: o padrão é "Todas", a lista única que a tela promete. */}
+        <div className="trilho-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button style={chipFiltro(etapa === "todas")} onClick={() => setEtapa("todas")}>
+            {`Todas · ${funil.visitas}`}
+          </button>
+          {ETAPA_ORDEM.map((e) => (
+            <button key={e} style={chipFiltro(etapa === e)} onClick={() => setEtapa(e)}>
+              {`${ETAPA_LABEL[e]} · ${contagem[e]}`}
+            </button>
+          ))}
+        </div>
+
+        {/* A lista — todas as etapas juntas, cada linha dizendo a sua */}
+        {isLoading ? (
+          <div style={{ ...card(isLight), borderRadius: 16, padding: "28px 16px", textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
+            Carregando propostas…
+          </div>
+        ) : exibidas.length === 0 ? (
+          <div style={{ ...card(isLight), borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "36px 20px" }}>
+            <FileText size={28} color={gold} />
+            <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600 }}>
+              {visitas.length === 0 ? "Nenhuma proposta cadastrada ainda" : "Nada nesta etapa"}
+            </span>
+            {visitas.length === 0 ? (
+              <button
+                onClick={() => navigate({ to: "/gerencial/nova" })}
+                style={{
+                  marginTop: 8, minHeight: 44, background: GOLD_GRAD,
+                  border: "none", borderRadius: 22, padding: "0 24px",
+                  color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                + Criar primeira proposta
+              </button>
+            ) : (
+              <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
+                Escolha outra etapa acima, ou "Todas" para a lista inteira.
+              </span>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {exibidas.map((v) => {
+              const et = etapaDaVisita(v);
+              const cor = ETAPA_CORES[et];
+              const Icone = ETAPA_ICONE[et];
+              const dataVisita = v.data_hora_agendada
+                ? new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+                : "Sem data";
+              const clienteNome = v.clientes?.nome ?? v.nome_sindico ?? v.nome_predio ?? v.titulo ?? "Sem nome";
+              const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
+              const enviadaEm = v.proposta_enviada_em
+                ? new Date(v.proposta_enviada_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                : null;
+
+              return (
+                <div
+                  key={v.id}
+                  className="elevavel"
+                  onClick={() => navigate({ ...visitaRouteFor(v.status, v.id), state: { from: location.pathname } } as any)}
+                  style={{
+                    ...card(isLight), borderRadius: 16, padding: "14px 18px",
+                    cursor: "pointer",
+                    display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14,
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      fontFamily: FONT, fontWeight: 600, fontSize: 14,
+                      marginBottom: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
+                      {clienteNome}
+                    </div>
+                    <div style={{
+                      fontFamily: FONT, fontSize: 12, fontWeight: 400, color: textSecondary,
+                      lineHeight: 1.5, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
+                    }}>
+                      <CalendarDays size={12} style={{ opacity: 0.7 }} />
+                      <span>{dataVisita}</span>
+                      {v.endereco ? (<><span style={{ opacity: 0.4 }}>·</span><MapPin size={12} style={{ opacity: 0.7 }} /><span>{v.endereco}</span></>) : null}
+                      {tecnicoNome ? (<><span style={{ opacity: 0.4 }}>·</span><User size={12} style={{ opacity: 0.7 }} /><span>{tecnicoNome}</span></>) : null}
+                      {/* o carimbo que encerra o ciclo merece a linha de meta */}
+                      {enviadaEm ? (<><span style={{ opacity: 0.4 }}>·</span><Send size={12} style={{ opacity: 0.7 }} /><span>Enviada em {enviadaEm}</span></>) : null}
+                    </div>
+                  </div>
+
+                  {/* chip de etapa — véu 12% + borda 30% + ícone (§2.4) */}
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0,
+                    padding: "5px 11px", borderRadius: 999,
+                    background: cor.bg, border: `1px solid ${cor.border}`,
+                    color: isLight ? cor.light : cor.dark,
+                    fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                    letterSpacing: "0.05em", textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}>
+                    <Icone size={13} />
+                    {ETAPA_LABEL[et]}
+                  </span>
+
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeletingId(v.id); }}
+                      aria-label="Excluir proposta"
+                      style={{
+                        flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                        width: 34, height: 34, borderRadius: 10, border: "none",
+                        background: "rgba(230,77,88,0.10)", cursor: "pointer",
+                      }}
+                    >
+                      <Trash2 size={15} color={isLight ? "#B1242E" : "#F17881"} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(o) => !o && !isDeleting && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir proposta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação é permanente e não pode ser desfeita. Todos os dados desta visita técnica serão removidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deletingId) handleDelete(deletingId);
+              }}
+              className="rounded-full bg-[#E64D58] font-bold text-white hover:bg-[#DC2626]"
+            >
+              {isDeleting ? "Excluindo..." : "Excluir permanentemente"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* FAB — Nova Proposta */}
+      <button
+        onClick={() => navigate({ to: "/gerencial/nova" })}
+        style={{
+          position: "fixed",
+          bottom: 100,
+          right: 24,
+          width: 60,
+          height: 60,
+          borderRadius: "50%",
+          background: GOLD_GRAD,
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)",
+          zIndex: 50,
+          transition: "transform 0.15s, box-shadow 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.08)";
+          e.currentTarget.style.boxShadow = "0 6px 28px rgba(248,200,17,0.7), 0 0 50px rgba(248,200,17,0.35)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+          e.currentTarget.style.boxShadow = "0 4px 20px rgba(248,200,17,0.55), 0 0 40px rgba(248,200,17,0.25)";
+        }}
+        aria-label="Nova Proposta"
+      >
+        <Plus size={28} color="#08090E" strokeWidth={2.5} />
+      </button>
     </>
   );
 }

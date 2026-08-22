@@ -3263,3 +3263,57 @@ checklist de preventiva GERADO a partir desta estrutura (hoje o checklist já
 agrupa por sistema, mas não lê `config_bloco` — só o nome).
 
 1042 asserções (43 novas), build ok.
+
+### U53 — Painel Comercial vira lista única (R64, 2026-08-22)
+
+"Nessa tela tem 3 botões redundantes... Remova os 3! Deve ser uma coisa
+única... desde as que têm visita técnica pendente até as que a proposta já
+foi enviada (onde o ciclo se encerra). Tudo na mesma lista."
+
+**O modelo primeiro.** O ciclo virou vocabulário executável em
+`features/comercial/etapas.ts`: `etapaDaVisita()` deriva a etapa do que o
+banco JÁ guarda — `visita_pendente` (pendente/em_andamento) →
+`aguardando_aprovacao` (concluida/aguardando) → `falta_proposta` (aprovada
+sem envio) → `enviada` (`proposta_enviada_em` preenchido, TERMINAL) — e o
+chip de filtro, o chip de cada linha e o funil contam todos DESTA função:
+não têm como discordar entre si. Duas regras não-óbvias, ambas travadas:
+
+- **`proposta_enviada_em` vence o status.** Depois do envio o status
+  continua "aprovada" no banco (nenhum fluxo o troca) — sem a precedência,
+  toda proposta enviada leria "falta enviar" para sempre.
+- **O funil é cumulativo.** A enviada conta como aprovada — funil é régua
+  de progresso, não fotografia de estado; um estágio 2 menor que o 3 lê
+  como erro de conta.
+
+**O que saiu e por quê:**
+- As duas ABAS. "Visitas e propostas" seria aba única (botão para lugar
+  nenhum); "Prospecção" saiu da interface — `ListaProspeccao.tsx` e
+  `features/prospeccao/data.ts` apagados (só esta tela os usava), a tabela
+  `prospeccoes` intacta no banco, e o trabalho de prospecção continua nos
+  chamados de natureza comercial, na Início. `/prospeccao` redireciona para
+  o painel direto (o search `?aba=` deixou de existir).
+- O botão "Histórico" — terceira porta para a mesma lista de visitas.
+  `/historico` continua vivo por URL (a linha em telas.ts fica).
+- **"Aceitas 0 · Recusadas 0" do funil.** O Davi confirmou o que a R38 já
+  tinha decidido: o sistema NÃO mapeia o resultado no cliente. A coluna
+  `proposta_resultado` existe no banco, mas nenhum fluxo a preenche desde a
+  R38 — os dois estágios mostravam zero eternamente, fingindo um dado que
+  não existe. O funil agora termina em Enviadas, e a nota diz isso com
+  todas as letras. (A régua da memória segue: aprovação é interna, nunca
+  "negócio fechado".)
+
+**A manutenção geral** (o pedido de "respeitar tudo"):
+- `.sangra-x` — era a única tela do domínio fora da régua de margem.
+- Título 24px/letterSpacing 0.05em → 22/600/-0.01em (§3 do design system).
+- `STATUS_CONFIG` tinha UMA cor por status — `#F8C811` como texto também no
+  claro, ~2:1 de contraste (anti-padrão §8 nº 3, em produção). As etapas
+  têm pares claro/escuro + véu 12%/borda 30% (§2.4), com ícone junto da cor.
+- Os 3 cards de estatística (Pendentes/Em Andamento/Concluídas — zerados,
+  porque contavam por status cru que quase nenhuma linha tem) viraram os
+  chips de filtro com contagem por ETAPA, o padrão de Clientes: o mesmo
+  número, só que clicável e verdadeiro.
+- Cards da lista em `card(isLight)` (a superfície padrão de lib/ui) +
+  `.elevavel`, cores hardcoded (#9ca3af) trocadas por tokens de tema, linha
+  enviada mostra a DATA do envio na linha de meta.
+
+1065 asserções (26 novas), build ok.
