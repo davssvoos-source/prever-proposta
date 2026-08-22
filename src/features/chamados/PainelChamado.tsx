@@ -46,7 +46,10 @@
 // componente, desmontaria e remontaria — e o texto sendo digitado sumiria no
 // meio da frase quando qualquer consulta de fundo voltasse.
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  type CSSProperties, type ReactNode,
+} from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare,
@@ -97,9 +100,13 @@ function useEstiloCampo() {
     gold: isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
     verde: isLight ? "#047862" : "#2DD2A5",
     vermelho: isLight ? "#B1242E" : "#F17881",
+    // branca no escuro / quase-preta no claro (Davi, 2026-08-22: "altere para
+    // cor branca os títulos de cada caixa") — é `textPrimary`, não um "#fff"
+    // fixo, porque o painel abre nos dois temas (anti-padrão §8 do design
+    // system: cor fixa fora de branch de tema já foi bug de produção aqui).
     rotulo: {
       fontFamily: FONT, fontWeight: 600, fontSize: 11,
-      letterSpacing: "0.02em", color: textSecondary,
+      letterSpacing: "0.02em", color: textPrimary,
     } as CSSProperties,
     entrada: {
       width: "100%", boxSizing: "border-box", minHeight: 44,
@@ -290,6 +297,20 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
     selecaoPendente.current = null;
   }, [v]);
 
+  // caixa que CRESCE com o texto, sem scroll interno (Davi, 2026-08-22:
+  // "remova o scroll interno da caixa de texto"). `useLayoutEffect`, não
+  // `useEffect`: precisa medir e aplicar a altura ANTES da pintura, senão o
+  // usuário vê um flash com a caixa no tamanho antigo. Zera para "auto"
+  // primeiro — sem isso, `scrollHeight` de uma caixa que ENCOLHEU (por
+  // exemplo, apagou um parágrafo) ainda leria a altura antiga, porque
+  // scrollHeight nunca é menor que a altura já aplicada.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [v]);
+
   function aplicar(f: BotaoFerramenta) {
     const el = ref.current;
     if (!el) return;
@@ -312,38 +333,46 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
         border: est.borda, borderRadius: 12, overflow: "hidden", background: est.campoBg,
       }}>
         {/* a barra fica DENTRO da borda do campo — lê como parte dele, não
-            como uma fileira de botões soltos acima */}
+            como uma fileira de botões soltos acima. Cada botão tem chapa e
+            borda de verdade agora (.ferramenta-botao, styles.css) — Davi,
+            2026-08-22: "um botão de virar checklist ou lista que seja um
+            botão UI com design", não um ícone flutuando sem contorno. O
+            divisor separa formatação de texto (negrito/itálico) de
+            formatação de linha (checklist/lista) — dois grupos, não quatro
+            botões soltos. */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 2, padding: "6px 7px",
+          display: "flex", alignItems: "center", gap: 5, padding: "7px 8px",
           borderBottom: est.borda,
         }}>
-          {FERRAMENTAS.map((f) => (
-            <button
-              key={f.titulo}
-              type="button"
-              title={f.titulo}
-              aria-label={f.titulo}
-              // mousedown, não click: click chega DEPOIS do blur do
-              // textarea, que já teria apagado selectionStart/End
-              onMouseDown={(e) => { e.preventDefault(); aplicar(f); }}
-              style={{
-                // 44px, não 30: o alvo de toque mínimo que o resto do painel
-                // já segue (useEstiloCampo, linha ~87) — o painel abre no
-                // celular também (achado da revisão adversarial de U40).
-                width: 44, height: 44, borderRadius: 8, border: "none",
-                background: "transparent", color: est.textSecondary,
-                display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-              }}
-            >
-              <f.Icon size={16} />
-            </button>
+          {FERRAMENTAS.map((f, i) => (
+            <Fragment key={f.titulo}>
+              {i === 2 && (
+                <span style={{ width: 1, height: 22, background: "var(--border-color)", flexShrink: 0 }} />
+              )}
+              <button
+                type="button"
+                title={f.titulo}
+                aria-label={f.titulo}
+                className="ferramenta-botao"
+                // mousedown, não click: click chega DEPOIS do blur do
+                // textarea, que já teria apagado selectionStart/End
+                onMouseDown={(e) => { e.preventDefault(); aplicar(f); }}
+                style={{
+                  // 44px, não 30: o alvo de toque mínimo que o resto do painel
+                  // já segue (useEstiloCampo, linha ~87) — o painel abre no
+                  // celular também (achado da revisão adversarial de U40).
+                  width: 44, height: 44,
+                }}
+              >
+                <f.Icon size={16} />
+              </button>
+            </Fragment>
           ))}
         </div>
         <textarea
           id="painel-descricao-texto"
           ref={ref}
           value={v}
-          rows={5}
           placeholder="O que precisa ser feito, o que já se sabe…"
           onChange={(e) => setV(e.target.value)}
           onBlur={() => { if (v !== valor) aoSalvar(v); }}
@@ -351,7 +380,14 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
             width: "100%", boxSizing: "border-box", display: "block",
             fontFamily: FONT, fontSize: 14, fontWeight: 500, color: est.textPrimary,
             background: "transparent", border: "none", outline: "none",
-            padding: "11px 13px", resize: "vertical", lineHeight: 1.55,
+            // a caixa cresce com o texto (useLayoutEffect acima) — por isso
+            // `resize: none` (arrastar bugaria contra o auto-ajuste no
+            // próximo caractere) e `overflow: hidden` (sem isso o navegador
+            // ainda mostra a barra de rolagem interna por 1 frame antes do
+            // JS medir). minHeight seguindo o piso visual de 5 linhas que a
+            // caixa sempre teve — encolher além disso pareceria um bug.
+            padding: "11px 13px", lineHeight: 1.55, resize: "none",
+            overflow: "hidden", minHeight: 132,
           }}
         />
       </div>
@@ -654,7 +690,10 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   placeholder="Sem título"
                   aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
                   estiloProprio={{
-                    fontSize: 19, fontWeight: 600, minHeight: 0,
+                    // maior e em negrito (Davi, 2026-08-22) — 22px/700 é o
+                    // "Título de página" do design system (§3), o degrau mais
+                    // alto da hierarquia de peso que o sistema carrega
+                    fontSize: 22, fontWeight: 700, minHeight: 0,
                     padding: "6px 8px", marginLeft: -8, marginTop: -4,
                     background: "transparent", border: "1px solid transparent",
                     borderRadius: 10, letterSpacing: "-0.01em",

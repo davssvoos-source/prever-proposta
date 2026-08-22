@@ -2779,3 +2779,40 @@ corrige isso como efeito colateral, não é regressão.
 
 811 asserções (45 novas — mapa-zoom.ts ganhou testes unitários próprios, e
 cada achado corrigido virou uma trava estrutural no componente), build ok.
+
+### U43 — Painel do chamado, 3ª revisão de design (R53, 2026-08-22)
+
+"A caixa de descrição não me agradou" — o design herdado do R50 (a checklist
+azul do Uiverse) e o resto da hierarquia visual do painel (rótulos em
+cinza-secundário, título de 19px/600) não estavam à altura do Design System
+v2. Quatro ajustes, todos em `PainelChamado.tsx`/`styles.css`/
+`TextoComChecklist.tsx`:
+
+1. **Rótulos de campo** (`useEstiloCampo().rotulo`) trocaram `textSecondary`
+   por `textPrimary` — branco no escuro, quase-preto no claro. Não é
+   `color: "#fff"` fixo: o anti-padrão §8 do design system já foi bug de
+   produção aqui uma vez, então o token continua fazendo o trabalho de
+   escolher a cor certa por tema.
+2. **Título da atividade** no cabeçalho: 19px/600 → **22px/700** — o
+   "Título de página" do design system (§3), o degrau mais alto de peso que
+   o sistema carrega.
+3. **Barra de ferramentas da Descrição**: os 4 botões (negrito, itálico,
+   checklist, lista) ganharam a classe `.ferramenta-botao` — borda, fundo e
+   hover dourado de verdade, lendo os tokens de tema direto no CSS (sem
+   `isLight` em JS). Um divisor de 1px separa formatação de texto de
+   formatação de linha — dois grupos, não quatro botões soltos.
+4. **Checkbox da checklist**: a geometria SVG do Uiverse (R50) ficou, mas a
+   cor trocou do azul original (`#4285f4`) para `var(--gold-primary)` — o
+   único acento do sistema, resolvendo sozinho pros dois temas. Ganhou
+   também um "pop" de escala (`scale(1.14)`, cubic-bezier com overshoot) além
+   do traçado, anulado sob `prefers-reduced-motion`.
+5. **A caixa de Descrição cresce com o texto** em vez de rolar por dentro:
+   `useLayoutEffect` mede `scrollHeight` e aplica a altura ANTES da pintura
+   (evita o flash de "cresceu um frame depois"), zerando pra `"auto"`
+   primeiro — sem isso, uma caixa que ENCOLHEU (apagou um parágrafo) ainda
+   leria a altura antiga, porque `scrollHeight` nunca é menor que a altura já
+   aplicada no elemento. `resize: none` (arrastar brigaria com o auto-ajuste
+   no próximo caractere) e `overflow: hidden` (sem isso a barra de rolagem
+   nativa aparece por 1 frame antes do JS medir).
+
+823 asserções (12 novas), build ok.

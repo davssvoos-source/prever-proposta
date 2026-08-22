@@ -738,3 +738,22 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   olhando não "foge" a cada passo. Arrastar não deixa o mapa sair
   inteiramente de vista. Um clique parado continua navegando para a ficha do
   cliente; um arrasto não navega. *(Davi, 2026-08-21.)*
+
+- **R53** — 2ª revisão da Descrição do chamado no painel ("a caixa de
+  descrição não me agradou"), substituindo parte do R50:
+  - Os **títulos de cada campo** do painel (Cliente, Responsável, Prazo...)
+    ficaram na cor de texto **principal** (branco no escuro), não mais no
+    secundário/cinza — mais destaque, mais fácil de escanear.
+  - O **título da atividade**, no cabeçalho do painel, ficou **maior e em
+    negrito** (22px/700 — era 19px/600).
+  - Os **botões da barra de ferramentas** (negrito, itálico, checklist,
+    lista) ganharam chapa e borda de verdade — antes eram ícones soltos sem
+    contorno. Um divisor separa os dois grupos (formatação de texto vs.
+    formatação de linha).
+  - O **símbolo de marcação da checklist** trocou de azul (cor original do
+    design do Uiverse, R50) para o **dourado da marca**, com uma animação de
+    "pop" (escala) além do traçado — "com animação ao checar... símbolo de
+    OK em amarelo, tudo de acordo com o nosso Design System".
+  - A caixa de Descrição **cresce com o texto** em vez de rolar por dentro
+    ("remova o scroll interno da caixa de texto") — sem `resize` manual,
+    sem barra de rolagem própria. *(Davi, 2026-08-22.)*

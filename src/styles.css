@@ -814,20 +814,22 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   pointer-events: none;
 }
 
-/* ── Checkbox da checklist da Descrição (2026-08-21, Davi: "a função de
-   checklist do campo de descrição deve seguir o design") ────────────────
-   Design de mrhyddenn (Uiverse.io), portado de #id para classe: o original
-   usava `#cbx:checked + .check`, mas a descrição pode ter várias linhas de
-   checklist na mesma tela — um id só serviria para a primeira. `+` continua
-   funcionando igual com classe, porque é seletor de IRMÃO adjacente, não de
-   ancestral: o input e o .checklist-check precisam ser o par [input, span]
-   dentro do mesmo elemento pai (ver TextoComChecklist.tsx). Cores exatas do
-   design original — não são token da paleta Prever de propósito. */
+/* ── Checkbox da checklist da Descrição (v2, 2026-08-22, Davi: "a caixa de
+   descrição não me agradou... o símbolo de OK em amarelo, tudo de acordo
+   com o nosso Design System") ─────────────────────────────────────────────
+   Geometria de mrhyddenn (Uiverse.io) mantida (o desenho SVG com animação de
+   traçado já funcionava bem), mas a paleta trocou do azul original pelo
+   ÚNICO acento do sistema — `var(--gold-primary)`, que já resolve sozinho
+   para escuro/claro (F8C811/A06108, ver §7 do design system) — e ganhou um
+   "pop" de escala na marcação, não só o traço. `+` continua sendo seletor de
+   IRMÃO adjacente: o input e o .checklist-check formam o par [input, span]
+   dentro do mesmo <label> (ver TextoComChecklist.tsx), então uma classe (não
+   um #id) serve qualquer número de itens de checklist na mesma tela. */
 .checklist-check {
   cursor: pointer;
   position: relative;
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   -webkit-tap-highlight-color: transparent;
   transform: translate3d(0, 0, 0);
   flex-shrink: 0;
@@ -837,10 +839,10 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   position: absolute;
   top: -15px;
   left: -15px;
-  width: 48px;
-  height: 48px;
+  width: 49px;
+  height: 49px;
   border-radius: 50%;
-  background: rgba(34, 50, 84, 0.03);
+  background: var(--gold-glow);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -850,22 +852,58 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke: #c8ccd4;
-  stroke-width: 1.5;
-  transform: translate3d(0, 0, 0);
-  transition: all 0.2s ease;
+  stroke: var(--text-muted);
+  stroke-width: 1.6;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: stroke 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .checklist-check svg path { stroke-dasharray: 60; stroke-dashoffset: 0; }
 .checklist-check svg polyline { stroke-dasharray: 22; stroke-dashoffset: 66; }
 .checklist-check:hover:before { opacity: 1; }
-.checklist-check:hover svg { stroke: #4285f4; }
-.checklist-input:checked + .checklist-check svg { stroke: #4285f4; }
+.checklist-check:hover svg { stroke: var(--gold-primary); }
+.checklist-input:checked + .checklist-check svg {
+  stroke: var(--gold-primary);
+  /* o "pop": estica um pouco além de 1 e volta — é o que faz a marcação
+     parecer um gesto, não só uma troca de cor instantânea */
+  transform: translate3d(0, 0, 0) scale(1.14);
+}
 .checklist-input:checked + .checklist-check svg path {
   stroke-dashoffset: 60;
-  transition: all 0.3s linear;
+  transition: stroke-dashoffset 0.3s linear, stroke 0.2s ease,
+              transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .checklist-input:checked + .checklist-check svg polyline {
   stroke-dashoffset: 42;
-  transition: all 0.2s linear;
+  transition: stroke-dashoffset 0.2s linear, stroke 0.2s ease;
   transition-delay: 0.15s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .checklist-check svg { transition: stroke 0.2s ease; }
+  .checklist-input:checked + .checklist-check svg { transform: none; }
+}
+
+/* ── Botões da barra de ferramentas da Descrição (2026-08-22, Davi: "um
+   botão de virar checklist ou lista que seja um botão UI com design") ────
+   Chapa e borda de verdade — antes eram ícones soltos sem contorno, sem
+   affordance de botão. Os tokens (--card-bg/--border-color/--text-secondary/
+   --gold-primary) já trazem os dois temas, então não precisa de branch em
+   JS aqui. */
+.ferramenta-botao {
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ferramenta-botao:hover {
+  border-color: var(--gold-primary);
+  color: var(--gold-primary);
+  background: var(--gold-glow);
+}
+.ferramenta-botao:active {
+  transform: scale(0.94);
 }

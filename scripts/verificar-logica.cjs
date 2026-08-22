@@ -1638,7 +1638,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('estado e urgência viram etiqueta colorida no cabeçalho',
      /<Etiqueta[\s\S]{0,400}info\.label/.test(pn), true);
   eq('o título é o cabeçalho, não um campo rotulado',
-     /fontSize: 19, fontWeight: 600/.test(pn), true);
+     /fontSize: 22, fontWeight: 700/.test(pn), true);
   // dez campos soltos são uma lista; grupos são um mapa. "Detalhe" (a seção
   // só da descrição) saiu na 2ª revisão (2026-08-22): a descrição virou o
   // 2º CAMPO dentro do fluxo De quem é → Descrição → Classificação, sem
@@ -2370,7 +2370,39 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('aplicar() não arma seleção pendente quando o valor NÃO mudou (idempotente) — senão a seleção fica presa e desloca o cursor na próxima tecla real',
      /if \(r\.valor === v\) return;/.test(pc4), true);
   eq('os botões da barra têm 44x44 (alvo mínimo de toque), não 30x30',
-     /width: 44, height: 44, borderRadius: 8/.test(pc4), true);
+     /width: 44, height: 44,/.test(pc4), true);
+
+  // ── v2 do painel (2026-08-22, Davi: "a caixa de descrição não me
+  //    agradou... um botão UI com design... de acordo com o Design System") ──
+  eq('os títulos de campo (Cliente, Responsável, Prazo...) usam textPrimary — branco no escuro, sem cor fixa fora de branch de tema',
+     /rotulo: \{[\s\S]{0,150}color: textPrimary,/.test(pc4), true);
+  eq('o título da atividade no cabeçalho ficou maior e em negrito (era 19/600)',
+     /fontSize: 22, fontWeight: 700, minHeight: 0,/.test(pc4), true);
+  eq('os botões da barra de ferramentas usam a classe .ferramenta-botao (chapa e borda, não ícone flutuando)',
+     /className="ferramenta-botao"/.test(pc4), true);
+  eq('um divisor separa negrito/itálico de checklist/lista na barra (dois grupos, não 4 botões soltos)',
+     /\{i === 2 && \(/.test(pc4), true);
+  eq('a Descrição cresce com o texto: sem resize manual e sem scroll interno',
+     /resize: "none",\s*\n\s*overflow: "hidden", minHeight: 132,/.test(pc4), true);
+  eq('useLayoutEffect mede e aplica scrollHeight a cada mudança de valor — cresce ANTES da pintura, sem flash',
+     /useLayoutEffect\(\(\) => \{\s*\n\s*const el = ref\.current;\s*\n\s*if \(!el\) return;\s*\n\s*el\.style\.height = "auto";\s*\n\s*el\.style\.height = `\$\{el\.scrollHeight\}px`;/.test(pc4),
+     true);
+
+  eq('.ferramenta-botao existe com borda/fundo/hover dourado, lendo os tokens de tema (não isLight em JS)',
+     /\.ferramenta-botao \{[\s\S]{0,200}border: 1px solid var\(--border-color\);/.test(cssChecklist), true);
+  eq('.ferramenta-botao:hover acende a borda/ícone em var(--gold-primary)',
+     /\.ferramenta-botao:hover \{[\s\S]{0,120}border-color: var\(--gold-primary\);/.test(cssChecklist), true);
+  eq('o checkbox marcado usa var(--gold-primary) — não mais o azul original do Uiverse (#4285f4)',
+     /\.checklist-input:checked \+ \.checklist-check svg \{\s*\n\s*stroke: var\(--gold-primary\);/.test(cssChecklist),
+     true);
+  eq('o azul original do Uiverse (#4285f4) saiu do checkbox — só resta o dourado da marca',
+     /#4285f4/.test(cssChecklist), false);
+  eq('o checkbox marcado tem um "pop" de escala, não só troca de cor (animação de verdade ao checar)',
+     /\.checklist-input:checked \+ \.checklist-check svg \{[\s\S]{0,400}transform: translate3d\(0, 0, 0\) scale\(1\.14\);/.test(cssChecklist),
+     true);
+  eq('o pop de escala respeita prefers-reduced-motion',
+     /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,200}\.checklist-input:checked \+ \.checklist-check svg \{ transform: none; \}/.test(cssChecklist),
+     true);
   eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra',
      /id="painel-descricao-texto"/.test(pc4), true
        && /<Campo titulo="Descrição" estado=\{estado\} idAlvo="painel-descricao-texto">/.test(pc4));
