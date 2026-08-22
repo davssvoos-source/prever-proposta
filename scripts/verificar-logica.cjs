@@ -3338,5 +3338,28 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R61 está documentado', /\*\*R61\*\*/.test(produto7), true);
 }
 
+// ── R62: mapa de Clientes — texto não seleciona, balão fecha ao sair do
+//    ponto (2026-08-22) ─────────────────────────────────────────────────────
+{
+  const fs33 = require('fs');
+  const mc3 = fs33.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+
+  eq('o <svg> do mapa tem user-select:none (nos 3 prefixos) — arrastar não pode selecionar o nome de um bairro',
+     /userSelect: "none",\s*\n\s*WebkitUserSelect: "none",\s*\n\s*MozUserSelect: "none",/.test(mc3),
+     true);
+  eq('user-select:none está no <svg> em si (style do elemento), não só num filho — vale pro mapa inteiro',
+     /<svg\s*\n\s*ref=\{svgRef\}[\s\S]{0,2300}userSelect: "none",/.test(mc3), true);
+
+  eq('CRÍTICO: cada ponto de cliente tem onMouseLeave, não só o <svg> — senão sair do ponto pra uma área vazia deixava o balão preso',
+     /onMouseEnter=\{\(\) => \{ if \(!arrastouRef\.current\) setAlvo\(p\); \}\}\s*\n[\s\S]{0,1300}onMouseLeave=\{\(\) => setAlvo/.test(mc3),
+     true);
+  eq('o onMouseLeave do ponto verifica QUAL ponto está ativo antes de limpar — não um setAlvo(null) cru',
+     /onMouseLeave=\{\(\) => setAlvo\(\(atual\) => \(atual\?\.id === p\.id \? null : atual\)\)\}/.test(mc3),
+     true);
+
+  const produto8 = fs33.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R62 está documentado', /\*\*R62\*\*/.test(produto8), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

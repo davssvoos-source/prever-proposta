@@ -3150,3 +3150,37 @@ altura sem cálculo nenhum.
 com teto, sobra em cima é sobra que falta embaixo, no mapa.
 
 994 asserções (10 novas), build ok.
+
+### U51 — Mapa de Clientes: texto não seleciona, balão fecha ao sair do ponto (R62, 2026-08-22)
+
+Dois bugs pegos em uso real, ambos no mesmo componente (`MapaClientes.tsx`),
+consertados juntos.
+
+**Seleção de texto ao arrastar.** O nome do bairro é `<text>` de verdade
+(decisão da R51 — nítido em qualquer zoom, sobrevive à troca de tema). O
+problema: arrastar o mapa é clique-e-segura-e-move, e é EXATAMENTE o gesto
+que o navegador usa pra selecionar texto — então arrastar por cima de um
+rótulo destacava a palavra em vez de só mover o mapa. A saída óbvia seria
+"virar vetor" (converter a fonte em path), mas isso jogaria fora exatamente
+o que a R51 tinha pedido (texto de verdade, não desenho). `user-select:
+none` no `<svg>` inteiro resolve sem esse custo: o rótulo continua sendo
+`<text>`, só que não-selecionável — o efeito prático que "virar vetor"
+alcançaria, por um caminho mais simples e sem abrir mão de nitidez/acesso.
+
+**Balão preso.** `onMouseLeave` só existia no `<svg>` inteiro (fecha o
+balão ao sair do MAPA), não em cada ponto. Resultado: tirar o mouse de um
+cliente para uma área vazia do mapa — sem sair do mapa em si — deixava o
+nome do cliente errado preso na tela, porque nem o enter de outro ponto
+(não havia outro por perto) nem o leave do svg (o mouse continuava dentro
+dele) disparavam. Cada ponto ganhou o próprio `onMouseLeave`.
+
+**O detalhe que evita um bug NOVO**: o handler não é um `setAlvo(null)` cru
+— é `setAlvo((atual) => atual?.id === p.id ? null : atual)`. Motivo: em
+pontos vizinhos/sobrepostos, a ordem de `mouseenter`/`mouseleave` entre
+navegadores não é garantida — às vezes o `enter` do próximo ponto chega
+ANTES do `leave` do anterior. Um `setAlvo(null)` incondicional, nesse caso,
+apagaria o balão que o `enter` do vizinho *acabou* de abrir corretamente. O
+check "isto ainda é sobre MIM?" faz o `leave` só valer quando é ele quem
+está de fato ativo.
+
+999 asserções (5 novas), build ok.

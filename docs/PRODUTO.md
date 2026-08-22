@@ -888,3 +888,18 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   e travar a altura lá só cortaria conteúdo. *(Davi, 2026-08-22: "esta tela
   não deve ser scrollável, ajuste a margem superior, agrupe os grupos de
   filtro e adapte a tela para uma tela fixa".)*
+
+- **R62** — Dois ajustes no mapa de Clientes:
+  - **Arrastar o mapa não seleciona mais texto.** O nome de um bairro é
+    `<text>` de verdade (nítido em qualquer zoom, continua acessível), mas
+    arrastar por cima dele disparava a seleção de texto nativa do
+    navegador — o mesmo gesto de clique-e-arraste que move o mapa é o gesto
+    de selecionar palavra. `user-select: none` no mapa inteiro resolve sem
+    precisar transformar o texto em vetor/path. *(Davi, 2026-08-22: "o
+    texto deve se unir com a imagem de fundo em vetor svg, não deve ser
+    texto de verdade, justamente para não selecionar".)*
+  - **O balão com o nome do cliente fecha ao tirar o mouse de cima do
+    ponto** — antes só fechava ao sair do mapa inteiro, então mover o mouse
+    do ponto para uma área vazia (sem sair do mapa) deixava o nome errado
+    preso na tela. *(Davi, 2026-08-22: "quando tiro o mouse de cima do
+    cliente, o nome do cliente deve sumir".)*

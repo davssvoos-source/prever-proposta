@@ -443,6 +443,23 @@ export function MapaClientes({ clientes }: Props) {
               // gesto de 2 dedos ainda chega inteiro nos handlers abaixo.
               touchAction: noZoomMinimo ? "pan-y" : "none",
               cursor: emArrasto ? "grabbing" : "grab",
+              // Arrastar pra mover o mapa é um gesto de clique-e-arraste — e
+              // isso é EXATAMENTE o gesto que o navegador usa pra SELECIONAR
+              // TEXTO. Sem isto, arrastar sobre o nome de um bairro seleciona
+              // a palavra em vez de mover o mapa (2026-08-22, Davi: "o texto
+              // deve se unir com a imagem de fundo... não deve ser texto de
+              // verdade, justamente para não selecionar"). `user-select:none`
+              // faz o rótulo se comportar como parte do desenho — continua
+              // sendo `<text>` de verdade (nítido em qualquer zoom, acessível
+              // por `role="img"`/aria-label), só que não-selecionável, que é
+              // o efeito que "virar vetor" alcançaria por um caminho bem mais
+              // complicado (converter fonte em path). Vale pro SVG inteiro,
+              // não só nos rótulos: qualquer arrasto que passe por cima de
+              // texto (o nome de um distrito no <title>, por exemplo) tem o
+              // mesmo problema.
+              userSelect: "none",
+              WebkitUserSelect: "none",
+              MozUserSelect: "none",
             }}
             tabIndex={0}
             onMouseLeave={() => setAlvo(null)}
@@ -515,6 +532,20 @@ export function MapaClientes({ clientes }: Props) {
                   // de evento separada do pointer capture, então continua
                   // disparando durante o arrasto mesmo com o ponteiro "preso"
                   onMouseEnter={() => { if (!arrastouRef.current) setAlvo(p); }}
+                  // Sem isto, tirar o mouse de cima de um cliente para uma
+                  // área VAZIA do mapa (sem passar por cima de outro ponto e
+                  // sem sair do <svg>) deixava o balão preso mostrando o
+                  // nome antigo pra sempre — só o onMouseLeave do <svg>
+                  // (linha acima) existia, e ele só dispara ao sair do mapa
+                  // inteiro, não de UM ponto (2026-08-22, Davi: "quando tiro
+                  // o mouse de cima do cliente, o nome do cliente deve
+                  // sumir"). O check `atual?.id === p.id`, em vez de um
+                  // `setAlvo(null)` cru, existe pra sobreviver à ordem de
+                  // mouseenter/mouseleave entre pontos VIZINHOS/sobrepostos —
+                  // em alguns navegadores o enter do próximo ponto chega
+                  // antes do leave deste, e um `setAlvo(null)` incondicional
+                  // apagaria o balão que o enter do vizinho acabou de abrir.
+                  onMouseLeave={() => setAlvo((atual) => (atual?.id === p.id ? null : atual))}
                   onClick={() => {
                     // um clique que terminou um ARRASTO não navega — só
                     // "solta" a bandeira aqui: o próximo clique de verdade
