@@ -3687,3 +3687,73 @@ no meio do nada. `minWidth: 0` na coluna esquerda mantém a promessa do
 design system de a página nunca rolar de lado.
 
 1170 asserções (9 novas, 2 reescritas), build ok.
+
+### U59 — Importação retroativa das 227 OS de manutenção (R70, 2026-08-22)
+
+"Importe todos os chamados contidos na lista do arquivo lista-OS-retroativo.
+Como os chamados não têm título, coloque todos os títulos sendo o tipo de
+demanda. Além disso, considere todos os itens 'Instalação' como
+'Implantação'."
+
+Entregue como migration
+(`20260822070000_u59_importacao_os_retroativo.sql`), na convenção do
+projeto: o Davi roda no SQL Editor da Lovable e lê os SELECTs do fim. Não
+apliquei direto no banco — a chave de serviço está na pasta pai, mas gravar
+227 linhas em produção sem ele ver o de→para primeiro é o tipo de coisa que
+não se desfaz com Ctrl-Z. (A migration traz o `DELETE` de desfazer no rodapé,
+mesmo assim.)
+
+**O de→para.** Tipo: `Manutenção Corretiva`→`corretiva` (220),
+`Manutenção Preventiva`→`preventiva` (3), `Instalação`→`implantacao` (4).
+Título = o rótulo do próprio tipo, que é a regra 1 — e como a regra 2 manda
+"Instalação" virar "Implantação", o rótulo das 4 é `Implantação`: a palavra
+"Instalação" não sobrevive em nenhuma linha de dado (travado por asserção).
+
+**O QUE EU ME RECUSEI A INVENTAR** — foi a maior parte do trabalho:
+
+1. **prazo_limite fica NULO.** O trigger `chamado_preencher` calcula prazo de
+   SLA a partir do `created_at` quando ele vem nulo. Deixá-lo rodar daria às
+   227 um prazo que nunca existiu — e pior: `pctNoPrazo` conta exatamente
+   quem tem prazo E conclusão, então o "Cumprimento de prazo" do painel
+   passaria a ser dominado por 227 medições fabricadas. Por isso a migration
+   DESLIGA esse trigger durante a carga.
+2. **iniciada_em fica NULO.** O `duracao_horas` do arquivo é tempo de CICLO
+   (abertura→fechamento), não esforço — o README do dataset avisa isso. Se eu
+   usasse a abertura como início, "tempo até começar" viraria 0h nas 227 e
+   apagaria um indicador que hoje diz a verdade.
+3. **contrato_id fica NULO**: `contrato_vigente()` devolve o contrato de
+   HOJE, e amarrá-lo a serviço fechado há três meses inventaria vínculo de
+   cobrança.
+4. **Casamento ambíguo não escolhe ninguém.** É a regra do importador do
+   Notion, e vale para pessoa e cliente: dois perfis batendo com um primeiro
+   nome → nenhum. Responsável errado é pior que responsável em branco, porque
+   campo preenchido ninguém confere.
+
+**Duas coisas que quase passaram batido, e que valem registro:**
+
+- **O trigger de notificação.** `notify_chamado` dispara no INSERT sempre que
+  há responsável. Sem desligá-lo, os quatro técnicos receberiam 227 sinos de
+  "Novo chamado para você" por trabalho terminado meses atrás. Desligado
+  também o de `chamado_apoios`, pelo mesmo motivo.
+- **A numeração fora de ordem.** Minha primeira versão chamava
+  `proximo_numero_chamado()` na lista de seleção com `ORDER BY data_abertura`.
+  A função é VOLATILE, e o momento em que o Postgres avalia função volátil de
+  target list em relação ao Sort **não é garantido** — a numeração poderia
+  sair embaralhada em silêncio. Troquei por reserva em bloco: o contador
+  avança uma vez pelo total e cada linha recebe `base + row_number()` na
+  ordem de abertura. O contador é o mesmo do app, então o próximo chamado
+  aberto na tela continua de onde a importação parou.
+
+Aproveitei duas peças que já existiam em vez de reinventar: `resolver_tecnico()`
+(U0), que olha os apelidos de `tecnico_aliases` antes do nome exato, e
+`normalizar_texto()`, o gêmeo SQL do `normalizarChave` do app. Quando um nome
+só casa por primeiro nome ("Breno" → "Breno Goes"), a migration **cadastra o
+alias**, que é para isso que a tabela existe — a próxima importação acerta de
+primeira.
+
+Também tinha escrito `HAVING count(*) = 1` dentro de subconsulta escalar sem
+`GROUP BY` para exigir casamento único: isso não é SQL válido (a coluna do
+SELECT não estaria agrupada). Virou `CASE WHEN count(...) = 1 THEN
+(array_agg(...))[1] END`.
+
+1190 asserções (20 novas). Não executada — é o Davi quem roda.

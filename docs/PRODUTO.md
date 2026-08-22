@@ -1085,3 +1085,34 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(Davi, 2026-08-22: "o campo de abertos por cliente deve ocupar as duas
   linhas do dashboard, reduza a largura do fila por status e fluxo e
   ritmo".)*
+
+- **R70** — **As 227 OS de manutenção fechadas entraram no sistema**
+  (aberturas de 02/06/2026 a 21/08/2026, export "Tarefas por Técnico").
+  Entram como chamados de **campo**, equipe **técnica**, **concluídos**, com
+  a data real de abertura e de conclusão — é isso que faz o histórico
+  aparecer nos indicadores em vez de a operação parecer que começou ontem.
+
+  **Duas regras ditadas.** (1) Como as OS não têm título, **o título de cada
+  uma é o tipo de demanda**: "Manutenção Corretiva" (220), "Implantação" (4)
+  e "Manutenção Preventiva" (3). (2) **"Instalação" da origem é
+  "Implantação"** aqui — o tipo `implantacao`, com esse rótulo; a palavra
+  "Instalação" não sobrou em lugar nenhum.
+
+  **O que a importação NÃO inventa**, porque a origem não tem: *prazo* (as
+  227 ficam sem prazo — dar a elas um prazo de SLA calculado hoje mudaria o
+  indicador "Cumprimento de prazo" da operação inteira com dado falso),
+  *hora de início* (o arquivo traz tempo de ciclo, não esforço em campo, então
+  "tempo até começar" continua contando só o que é real) e *contrato* (o
+  contrato vigente hoje não vale para serviço fechado há três meses). O que
+  a origem tem e o sistema não tinha campo — solicitante e código de conta —
+  fica escrito na descrição, para não se perder.
+
+  Técnico e apoio são religados pelas pessoas do sistema (Breno→Luan,
+  André→Denner, Lucas→Paulo); cliente é religado por nome. **Quando o
+  casamento é ambíguo, nada é escolhido** — e o nome que veio na origem fica
+  guardado no chamado, então a tela continua mostrando de quem é e dá para
+  religar depois sem reimportar.
+  *(Davi, 2026-08-22: "importe todos os chamados contidos na lista do arquivo
+  lista-OS-retroativo... como os chamados não têm título, coloque todos os
+  títulos sendo o tipo de demanda. Além disso, considere todos os itens
+  Instalação como Implantação".)*

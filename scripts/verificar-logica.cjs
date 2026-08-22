@@ -4028,5 +4028,80 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R69 está documentado', /\*\*R69\*\*/.test(produto15), true);
 }
 
+// ── R70/U59: importação retroativa das 227 OS de manutenção ────────────────
+// A migration é o entregável, então o que dá para travar aqui é a FORMA dela:
+// que as 227 linhas estão lá, que o de→para de tipo/título obedece as duas
+// regras ditadas, e que as salvaguardas (idempotência, triggers, prazo não
+// inventado) não sumiram numa edição futura.
+{
+  const fs41 = require('fs');
+  const CAMINHO = 'supabase/migrations/20260822070000_u59_importacao_os_retroativo.sql';
+  eq('a migration da importação existe', fs41.existsSync(CAMINHO), true);
+
+  const sql = fs41.readFileSync(CAMINHO, 'utf8');
+  const semComentario = sql.replace(/--[^\n]*/g, '');
+  const dados = semComentario.split('\n').filter((l) => /^ {2}\('OS\d{4}'/.test(l));
+
+  eq('as 227 OS estão na migration', dados.length, 227);
+  eq('os os_id não repetem (a chave de idempotência tem de ser única)',
+     new Set(dados.map((l) => l.match(/'(OS\d{4})'/)[1])).size, 227);
+
+  // ── regra 1: título = tipo de demanda ────────────────────────────────────
+  {
+    const paresErrados = dados.filter((l) => {
+      const tipo = (l.match(/'(corretiva|preventiva|implantacao)'/) ?? [])[1];
+      const titulo = (l.match(/'(Manutenção Corretiva|Manutenção Preventiva|Implantação)'/) ?? [])[1];
+      return ({ corretiva: 'Manutenção Corretiva', preventiva: 'Manutenção Preventiva',
+                implantacao: 'Implantação' })[tipo] !== titulo;
+    });
+    eq('CRÍTICO: toda linha tem título = rótulo do próprio tipo ("os títulos sendo o tipo de demanda")',
+       paresErrados.length, 0);
+  }
+
+  // ── regra 2: Instalação virou Implantação, e não sobrou em lugar nenhum ──
+  eq('CRÍTICO: a palavra "Instalação" não aparece em NENHUMA linha de dado — as 4 viraram Implantação',
+     dados.some((l) => l.includes('Instalação')), false);
+  eq('as 4 "Instalação" da origem entraram como implantacao/Implantação',
+     dados.filter((l) => /'implantacao'/.test(l)).length, 4);
+  eq('a quebra por tipo bate com o arquivo de origem (220 / 4 / 3)',
+     ['corretiva', 'implantacao', 'preventiva']
+       .map((t) => dados.filter((l) => new RegExp(`'${t}'`).test(l)).length),
+     [220, 4, 3]);
+
+  // ── as salvaguardas ──────────────────────────────────────────────────────
+  eq('CRÍTICO: é idempotente — o INSERT pula quem já tem o mesmo origem_id',
+     /WHERE NOT EXISTS \(\s*\n\s*SELECT 1 FROM public\.chamados c\s*\n\s*WHERE c\.origem = 'importacao_retroativa' AND c\.origem_id = r\.os_id/.test(sql),
+     true);
+  eq('CRÍTICO: o trigger que INVENTARIA prazo de SLA é desligado durante a carga (prazo que nunca existiu mudaria o "Cumprimento de prazo" da operação inteira)',
+     /DISABLE TRIGGER trg_chamado_preencher_ins/.test(sql), true);
+  eq('CRÍTICO: os avisos são desligados — 227 sinos de "novo chamado" por trabalho antigo',
+     /DISABLE TRIGGER trg_notify_chamado_ins/.test(sql)
+     && /DISABLE TRIGGER trg_notify_chamado_apoio/.test(sql), true);
+  eq('todo trigger desligado é religado no fim',
+     (sql.match(/DISABLE TRIGGER/g) ?? []).length,
+     (sql.match(/ENABLE TRIGGER/g) ?? []).length);
+  eq('a numeração NÃO usa a função volátil na lista de seleção (a ordem de avaliação dela contra o ORDER BY não é garantida) — reserva em bloco + row_number',
+     /proximo_numero_chamado\(\)/.test(semComentario) === false
+     && /row_number\(\) OVER \(PARTITION BY res\.ano/.test(sql), true);
+  eq('…e a reserva avança o MESMO contador do app, para não colidir com chamado futuro',
+     /INSERT INTO public\.chamado_contadores AS k \(ano, ultimo\)/.test(sql), true);
+  eq('pessoa é resolvida pela função da casa (resolver_tecnico, U0), não por matching reinventado',
+     /public\.resolver_tecnico\(o\.nome\)/.test(sql), true);
+  eq('casamento ambíguo NÃO escolhe ninguém — responsável errado é pior que em branco',
+     (sql.match(/CASE WHEN count\((?:p|c)\.id\) = 1 THEN \(array_agg\((?:p|c)\.id\)\)\[1\] END/g) ?? []).length,
+     3);
+  eq('o nome do cliente da origem é gravado SEMPRE (casando ou não) — nada se perde',
+     /r\.cliente_nome,\s+-- o nome da origem fica SEMPRE/.test(sql), true);
+  eq('a migration abre e fecha transação',
+     /^BEGIN;$/m.test(sql) && /^COMMIT;$/m.test(sql), true);
+  eq('termina com SELECT de conferência (a regra das migrations do projeto)',
+     /conferencia/.test(sql) && /esperado/.test(sql), true);
+  eq('traz o comando de desfazer',
+     /DELETE FROM public\.chamados WHERE origem = 'importacao_retroativa';/.test(sql), true);
+
+  const produto16 = fs41.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R70 está documentado', /\*\*R70\*\*/.test(produto16), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
