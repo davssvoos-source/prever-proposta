@@ -101,6 +101,23 @@ Margem inventada por painel é o que desalinha telas irmãs.
   legenda apontando para uma cor que não existe no gráfico é pior que
   legenda nenhuma. Número de legenda vai em `espectroTexto`, não na rampa de
   preenchimento.
+
+  **DUAS ARMADILHAS QUE NÃO DÃO ERRO NENHUM — só somem com o gráfico:**
+
+  1. **O `<defs>` tem de ser elemento LITERAL, filho direto do gráfico.**
+     Recharts filtra os filhos por `isString(child.type)`
+     (`isSvgElement`, em `util/ReactUtils`): componente próprio que devolva
+     `<defs>` tem `type` de função e é **descartado em silêncio**. Aí todo
+     `url(#id)` resolve para nada e a tela fica com barra sem preenchimento,
+     rosca sem anel e linha sem traço, sem uma linha de console. Escreva
+     `<defs>{gradientes(...)}</defs>` no gráfico; a função devolve os
+     `<linearGradient>`, nunca o `<defs>`.
+  2. **Linha usa `gradientUnits="userSpaceOnUse"`.** No padrão
+     (`objectBoundingBox`) o SVG não desenha degradê sobre caixa de área
+     nula — e uma linha toda no zero tem altura zero. Ou seja: ela sumiria
+     justamente na semana sem trabalho, que é quando o gráfico mais precisa
+     mostrar a queda. Barra e fatia ficam no padrão: elas só têm caixa nula
+     quando valem zero, e aí não há mesmo o que pintar.
 - **KPIs: PRISMA** — azul (feito), amarelo (a fazer), laranja e vermelho (o
   que arde). As mesmas cores dos fundos de card do quadro: quem vê "3" em
   vermelho aqui procura os três cards vermelhos embaixo e os acha.

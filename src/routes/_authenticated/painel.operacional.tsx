@@ -105,30 +105,47 @@ const TETO_BARRAS = 5;
 const TETO_TABELA = 200;
 
 /**
- * O `<defs>` de uma série pintada na rampa: um degradê por peça, i → i+1.
+ * Os `<linearGradient>` de uma série pintada na rampa: um por peça, i → i+1.
  *
- * Recharts aceita `<defs>` como filho do gráfico, e a peça referencia por
- * `fill`/`stroke: url(#id)`. O `id` precisa ser único NA PÁGINA — daí o
- * prefixo por gráfico: dois `<defs>` com o mesmo id fariam o segundo gráfico
- * herdar silenciosamente as cores do primeiro.
+ * DEVOLVE OS GRADIENTES, NÃO O `<defs>` — e isso não é estilo, é
+ * obrigatório. Recharts filtra os filhos do gráfico por
+ * `isString(child.type)` (`isSvgElement`, em util/ReactUtils): só passa
+ * elemento SVG LITERAL. Um componente próprio que devolvesse `<defs>` tem
+ * `type` de função, é descartado em silêncio, e todo `url(#id)` da tela
+ * resolve para nada — barra sem preenchimento, rosca sem anel, linha sem
+ * traço. Foi exatamente o bug da primeira versão da R68. Por isso o `<defs>`
+ * é escrito à mão em cada gráfico e só o MIOLO dele vem daqui.
+ *
+ * O `id` precisa ser único NA PÁGINA — daí o prefixo por gráfico: dois
+ * `<defs>` com o mesmo id fariam o segundo gráfico herdar silenciosamente as
+ * cores do primeiro.
+ *
+ * `userSpace` existe por causa da LINHA. Com o padrão `objectBoundingBox`, a
+ * caixa de uma linha toda no zero tem ALTURA ZERO — e o SVG manda não
+ * desenhar quem tem caixa de área nula, então a linha some justamente na
+ * semana em que não houve atendimento. Em `userSpaceOnUse` o degradê é medido
+ * na viewport do gráfico, não na caixa da peça, e a linha aparece sempre.
+ * Barra e fatia ficam no padrão: elas só têm caixa nula quando valem zero, e
+ * aí não há mesmo o que pintar.
  */
-function DegradeEspectro({ prefixo, quantas, isLight }: {
-  prefixo: string; quantas: number; isLight: boolean;
-}) {
-  return (
-    <defs>
-      {Array.from({ length: Math.min(quantas, PECAS_ESPECTRO) }, (_, i) => (
-        // x1→x2 na horizontal: barra deitada cresce no X, e a linha corre no
-        // X. Na fatia da rosca a caixa é o arco, e a horizontal é o que
-        // mantém a leitura contínua de uma fatia para a vizinha.
-        <linearGradient key={i} id={`${prefixo}-${i}`} x1="0" y1="0" x2="1" y2="0">
-          {paradasBarra(i, isLight).map((p) => (
-            <stop key={p.pos} offset={p.pos} stopColor={p.cor} />
-          ))}
-        </linearGradient>
+function gradientesEspectro(
+  prefixo: string, quantas: number, isLight: boolean, userSpace = false,
+) {
+  return Array.from({ length: Math.min(quantas, PECAS_ESPECTRO) }, (_, i) => (
+    // x1→x2 na horizontal: barra deitada cresce no X, e a linha corre no X.
+    // Na fatia da rosca a caixa é o arco, e a horizontal é o que mantém a
+    // leitura contínua de uma fatia para a vizinha.
+    <linearGradient
+      key={i}
+      id={`${prefixo}-${i}`}
+      x1="0" y1="0" x2={userSpace ? "100%" : "1"} y2="0"
+      gradientUnits={userSpace ? "userSpaceOnUse" : undefined}
+    >
+      {paradasBarra(i, isLight).map((p) => (
+        <stop key={p.pos} offset={p.pos} stopColor={p.cor} />
       ))}
-    </defs>
-  );
+    </linearGradient>
+  ));
 }
 
 function PainelOperacional() {
@@ -355,10 +372,16 @@ function PainelOperacional() {
           <div style={{ flex: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={visiveis} layout="vertical" margin={{ left: 0, right: 14, top: 2, bottom: 2 }}>
-                <DegradeEspectro prefixo={prefixo} quantas={visiveis.length} isLight={isLight} />
+                <defs>{gradientesEspectro(prefixo, visiveis.length, isLight)}</defs>
                 <CartesianGrid horizontal={false} stroke={grade} />
                 <XAxis type="number" allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="nome" width={96} tick={{ ...eixo, fill: textPrimary }} axisLine={false} tickLine={false} />
+                {/* interval={0}: sem isso o recharts ESCONDE rótulo de
+                    categoria quando o painel é baixo — um ranking que omite
+                    nome em silêncio mente sobre quem está na lista */}
+                <YAxis
+                  type="category" dataKey="nome" width={96} interval={0}
+                  tick={{ ...eixo, fill: textPrimary }} axisLine={false} tickLine={false}
+                />
                 <RTooltip
                   cursor={{ fill: grade }}
                   formatter={(v: number) => [`${v} ${sufixo}${v === 1 ? "" : "s"}`, ""]}
@@ -441,7 +464,7 @@ function PainelOperacional() {
               <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <DegradeEspectro prefixo="op-fila" quantas={filaComRotulo.length} isLight={isLight} />
+                    <defs>{gradientesEspectro("op-fila", filaComRotulo.length, isLight)}</defs>
                     <Pie
                       data={filaComRotulo} dataKey="valor" nameKey="nome"
                       innerRadius={33} outerRadius={51}
@@ -606,7 +629,10 @@ function PainelOperacional() {
             <div style={{ flex: 1, minHeight: 0 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={serieDuplas} margin={{ left: 0, right: 10, top: 2, bottom: 0 }}>
-                  <DegradeEspectro prefixo="op-dupla" quantas={duplasAtivas.length} isLight={isLight} />
+                  {/* userSpace: linha toda no zero tem caixa de altura zero,
+                      e degradê em objectBoundingBox não desenha sobre caixa
+                      de área nula — a linha sumiria na semana sem trabalho */}
+                  <defs>{gradientesEspectro("op-dupla", duplasAtivas.length, isLight, true)}</defs>
                   <CartesianGrid stroke={grade} />
                   <XAxis dataKey="semana" tick={eixo} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={22} />

@@ -3620,3 +3620,41 @@ e o checklist ganhou o `paradasBarra` no passo 5.
 
 1155 asserções (29 novas, 5 reescritas), build ok, TypeScript sem erro novo.
 Não verificado em navegador — sem ferramenta de browser na sessão.
+
+**CORREÇÃO, no mesmo dia (o Davi abriu a tela e não havia degradê nenhum).**
+Duas armadilhas do SVG, as duas SEM erro de console — o pior tipo:
+
+1. **`<defs>` embrulhado em componente próprio é descartado.** Eu tinha
+   escrito `<DegradeEspectro/>`, um componente que devolvia o `<defs>`.
+   Recharts filtra os filhos do gráfico por `isString(child.type)`
+   (`isSvgElement`, em `util/ReactUtils`): só passa elemento SVG LITERAL. Um
+   componente tem `type` de função → os quatro `<defs>` foram descartados em
+   silêncio → todo `url(#id)` resolveu para nada → barra sem preenchimento,
+   rosca sem anel, linha sem traço. A pista estava na própria tela: os
+   PONTOS da linha apareciam e o traço não — e ponto usa cor sólida,
+   enquanto traço usava `url()`.
+
+2. **Linha toda no zero somiria mesmo depois do conserto.** Com o padrão
+   `objectBoundingBox`, o SVG não desenha degradê sobre caixa de área nula, e
+   uma linha achatada no zero tem altura zero. Como as duplas do Davi estão
+   todas em zero nas 12 semanas, o traço continuaria invisível. As linhas
+   passaram a `gradientUnits="userSpaceOnUse"`, medido na viewport do
+   gráfico em vez da caixa da peça. Barra e fatia ficaram no padrão: caixa
+   nula lá só acontece com valor zero, e aí não há o que pintar.
+
+Confirmei os dois com um render de fato (`renderToStaticMarkup` dos três
+gráficos, fora do app): `<defs>` literal → 2 `<linearGradient>` no SVG e os
+`fill="url(#…)"` apontando para eles; `<defs>` em componente → **zero**
+gradientes, reproduzindo o bug exatamente. Asserção de texto não pegaria
+isso sozinha, então as novas asserções travam a FORMA do JSX (`<defs>`
+literal, nenhum componente-embrulho, `userSpaceOnUse` na linha).
+
+**Um terceiro defeito apareceu na mesma tela**: o ranking de técnicos
+mostrava 3 nomes com 5 responsáveis na lista — recharts esconde rótulo de
+categoria quando o painel é baixo. `interval={0}` no eixo resolve. Ranking
+que omite nome em silêncio mente sobre quem está na lista.
+
+`DASHBOARD.md` §5 ganhou as duas armadilhas por escrito: elas vão morder
+o próximo gráfico em SVG do sistema, e nenhuma delas dá erro.
+
+1161 asserções, build ok.

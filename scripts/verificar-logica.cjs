@@ -3879,6 +3879,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const PAL = carregar('src/lib/paleta.ts');
   const op4 = fs39.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
   const pb2 = fs39.readFileSync('src/features/paineis/PainelBase.tsx', 'utf8');
+  // só as linhas de CÓDIGO: os comentários do arquivo citam de propósito o
+  // que NÃO está mais lá (o card "Duplas de campo", o <defs> embrulhado em
+  // componente) explicando por quê
+  const op4cod = op4.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
 
   // ── paradasBarra: a irmã SVG de gradienteBarra ───────────────────────────
   for (const tema of [true, false]) {
@@ -3909,9 +3913,35 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [PAL.PECAS_ESPECTRO, PAL.ESPECTRO.dark.length, PAL.ESPECTRO.light.length], [8, 9, 9]);
 
   // ── o degradê chegou aos TRÊS tipos de gráfico ───────────────────────────
-  eq('o <defs> da rampa existe e é reusado pelos gráficos (id único por gráfico — dois <defs> com o mesmo id fariam o 2º herdar as cores do 1º)',
-     /function DegradeEspectro\(/.test(op4)
-     && ['op-fila', 'op-tec', 'op-cli', 'op-dupla'].every((p) => op4.includes(`prefixo="${p}"`)), true);
+  // O BUG QUE ISTO TRAVA (2026-08-22, achado na tela pelo Davi): recharts
+  // filtra os filhos do gráfico por `isString(child.type)` — ver
+  // `isSvgElement` em recharts/util/ReactUtils. Só passa elemento SVG
+  // LITERAL. A primeira versão da R68 embrulhou o <defs> num componente
+  // próprio (<DegradeEspectro/>), cujo `type` é função: recharts descartou
+  // os quatro em silêncio, todo url(#id) resolveu para nada, e a tela ficou
+  // com barra sem preenchimento, rosca sem anel e linha sem traço — sem
+  // NENHUM erro de console. Daí a asserção ser sobre a FORMA do JSX.
+  eq('CRÍTICO: o <defs> é elemento SVG literal, filho direto do gráfico — componente próprio é descartado por recharts em silêncio e o degradê some da tela',
+     /<defs>\{gradientesEspectro\(/.test(op4), true);
+  eq('CRÍTICO: nenhum <defs> embrulhado em componente próprio voltou a aparecer',
+     /<DegradeEspectro/.test(op4cod), false);
+  // a função devolve os <linearGradient>, nunca o <defs>: é o que obriga
+  // quem chama a escrever o literal. Se TODO <defs> do arquivo é um
+  // `<defs>{gradientesEspectro(...)}`, nenhum ficou escondido dentro de
+  // componente.
+  eq('a função devolve os <linearGradient>, não o <defs> — todo <defs> do código é literal, no gráfico',
+     (op4cod.match(/<defs>/g) ?? []).length,
+     (op4cod.match(/<defs>\{gradientesEspectro\(/g) ?? []).length);
+  eq('os quatro gráficos têm prefixo de id próprio (dois <defs> com o mesmo id fariam o 2º herdar as cores do 1º)',
+     ['op-fila', 'op-dupla'].every((p) => op4.includes(`gradientesEspectro("${p}"`))
+     && ['op-tec', 'op-cli'].every((p) => op4.includes(`prefixo="${p}"`)), true);
+  eq('CRÍTICO: a LINHA usa userSpaceOnUse — linha toda no zero tem caixa de altura zero, e o SVG não desenha degradê sobre caixa de área nula (a linha sumiria justo na semana sem trabalho)',
+     /gradientesEspectro\("op-dupla", duplasAtivas\.length, isLight, true\)/.test(op4)
+     && /gradientUnits=\{userSpace \? "userSpaceOnUse" : undefined\}/.test(op4), true);
+  eq('barra e fatia ficam no padrão objectBoundingBox — cada peça mostra a própria rampa inteira, como as barras da Início',
+     /x2=\{userSpace \? "100%" : "1"\}/.test(op4), true);
+  eq('o ranking mostra TODOS os nomes (interval={0}) — recharts esconde rótulo quando o painel é baixo, e ranking que omite nome mente sobre quem está na lista',
+     /type="category" dataKey="nome" width=\{96\} interval=\{0\}/.test(op4), true);
   eq('ROSCA na rampa: cada fatia puxa o degradê do seu passo',
      /<Cell key=\{f\.nome\} fill=\{`url\(#op-fila-\$\{i % PECAS_ESPECTRO\}\)`\} \/>/.test(op4), true);
   eq('BARRA na rampa: cada barra puxa o degradê do seu passo (e o "sem dono" fica neutro, §9)',
@@ -3929,7 +3959,6 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /const CORES_DARK = \[/.test(op4), false);
 
   // ── os dois painéis que saíram, e o que entrou ───────────────────────────
-  const op4cod = op4.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
   eq('R68: "Backlog por idade" e "Reincidência 30d" saíram da tela',
      /Backlog por idade|Reincidência/.test(op4cod), false);
   eq('…e no lugar dos dois entrou UM painel de abertos por cliente, com barras deitadas',
