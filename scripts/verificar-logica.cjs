@@ -1407,7 +1407,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a data de criação aparece como informação',
      /Recebido em[\s\S]{0,120}chamado\.created_at/.test(painel), true);
   // as propriedades que o Davi listou
-  for (const campo of ['cliente_id', 'responsavel_id', 'tipo', 'status', 'prioridade',
+  for (const campo of ['responsavel_id', 'tipo', 'status', 'prioridade',
                        'equipe', 'sprint', 'titulo', 'descricao_problema']) {
     eq(`o painel edita ${campo}`, new RegExp(`patch: \\{ ${campo}`).test(painel), true);
   }
@@ -1415,6 +1415,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // formato não é o literal simples dos outros
   eq('o painel edita prazo_limite', /prazo_limite: prazo/.test(painel), true);
   eq('o painel edita apoio (vários)', /adicionarApoio[\s\S]*removerApoio/.test(painel), true);
+  // cliente_id saiu do patch direto (R54, U45): virou campo de VÁRIOS
+  // valores, igual a apoio — mesmo cliente_id continuando o principal por
+  // baixo dos panos (ver data.ts)
+  eq('o painel edita cliente (vários, com grupo) — não mais um patch direto de cliente_id',
+     /adicionarClienteChamado[\s\S]*removerClienteChamado[\s\S]*adicionarGrupoDeClientes/.test(painel), true);
+  eq('cliente_id não é mais escrito como patch direto no painel (virou lista)',
+     /patch: \{ cliente_id/.test(painel), false);
 
   // React: subcomponente declarado DENTRO do pai ganha identidade nova a cada
   // render — o React remonta e o texto sendo digitado some no meio da frase
@@ -2331,10 +2338,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // auto-fit(180px) quebrava em 2+1 (Apoio órfão) numa faixa comum de
   // largura — fixo nunca quebra, o que "mesma linha" pedia de verdade.
   eq('Cliente, Responsável e Apoio estão no MESMO grid de 3 colunas FIXAS',
-     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,80}<Campo titulo="Cliente"[\s\S]{0,1600}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
+     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,800}<Campo titulo="Cliente"[\s\S]{0,4400}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
      true);
-  eq('Cliente mostra um ícone (Building2) ao lado do nome',
-     /iconeEsquerda=\{\(esc\) => esc \? <Building2/.test(pc4), true);
+  // R54/U45: Cliente virou chip-list (como Apoio) — o ícone agora mora
+  // dentro de cada chip, não mais no iconeEsquerda de um CampoComBusca único
+  eq('cada chip de cliente mostra um ícone (Building2) e o nome',
+     /<Building2 size=\{10\} color=\{est\.textSecondary\} \/>[\s\S]{0,60}\{nomeClienteDe\(id\)\}/.test(pc4),
+     true);
   eq('Responsável mostra o AVATAR da pessoa (não um ícone genérico)',
      /iconeEsquerda=\{\(esc\) => esc[\s\S]{0,40}<AvatarCirculo id=\{esc\.valor\}/.test(pc4), true);
   eq('Apoio mostra avatar + nome em cada chip',
@@ -2411,7 +2421,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('Enter no campo de comentário respeita enviar.isPending (senão Enter duplo grava o comentário duas vezes)',
      /e\.key === "Enter" && !e\.shiftKey && texto\.trim\(\) && !enviar\.isPending/.test(pc4), true);
   eq('o aviso "No Notion" mora DENTRO do Campo Cliente (alinhado com a coluna que ele descreve, não a largura toda)',
-     /<Campo titulo="Cliente"[\s\S]{0,1400}No Notion:/.test(pc4), true);
+     /<Campo titulo="Cliente"[\s\S]{0,4200}No Notion:/.test(pc4), true);
+  eq('o aviso "No Notion" só aparece com ZERO clientes ainda escolhidos (some assim que o primeiro é adicionado)',
+     /clientesDoChamadoIds\.length === 0 && chamado\.cliente_origem_nome/.test(pc4), true);
 
   const ccb2 = fs23.readFileSync('src/components/CampoComBusca.tsx', 'utf8');
   eq('temIcone olha se HÁ ESCOLHA (não só se a prop iconeEsquerda foi passada) — senão o padding reserva espaço de um ícone que não é desenhado',
@@ -2691,6 +2703,72 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const produto3 = fs26.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R41 continua documentado (monitoramento de alarmes agora também marcado)',
      /\*\*R41\*\*/.test(produto3) || /R41/.test(produto3), true);
+}
+
+// ── U45: uma atividade pode ter mais de um cliente + grupo de clientes
+//    (R54, 2026-08-22) ──────────────────────────────────────────────────────
+{
+  const fs27 = require('fs');
+  const u45 = fs27.readFileSync('supabase/migrations/20260822040000_u45_chamado_clientes.sql', 'utf8');
+  const cd2 = fs27.readFileSync('src/features/chamados/data.ts', 'utf8');
+  const pc5 = fs27.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('U45 cria chamado_clientes com chave composta (chamado_id, cliente_id)',
+     /CREATE TABLE IF NOT EXISTS public\.chamado_clientes \(/.test(u45)
+     && /PRIMARY KEY \(chamado_id, cliente_id\)/.test(u45), true);
+  eq('U45 referencia chamados e clientes com ON DELETE CASCADE (linha órfã não sobrevive)',
+     /REFERENCES public\.chamados\(id\) ON DELETE CASCADE/.test(u45)
+     && /REFERENCES public\.clientes\(id\) ON DELETE CASCADE/.test(u45), true);
+  eq('U45 liga RLS e cria as 3 policies',
+     /ENABLE ROW LEVEL SECURITY/.test(u45)
+     && /"chamado_clientes_select"/.test(u45)
+     && /"chamado_clientes_insert"/.test(u45)
+     && /"chamado_clientes_delete"/.test(u45), true);
+  eq('insert/delete usam pode_editar_chamado — a MESMA função que já guarda cliente_id hoje',
+     /"chamado_clientes_insert"[\s\S]{0,120}WITH CHECK \(public\.pode_editar_chamado\(chamado_id\)\)/.test(u45)
+     && /"chamado_clientes_delete"[\s\S]{0,120}USING \(public\.pode_editar_chamado\(chamado_id\)\)/.test(u45),
+     true);
+  eq('U45 NÃO faz backfill — cliente extra não existia antes deste recurso',
+     /INSERT INTO public\.chamado_clientes/.test(u45), false);
+  eq('U45 termina com SELECT de verificação', /Verificação/.test(u45), true);
+
+  // ── a camada de dados ────────────────────────────────────────────────────
+  eq('useChamadoClientesExtra lê chamado_clientes filtrando por chamado_id',
+     /function useChamadoClientesExtra[\s\S]{0,400}from\("chamado_clientes"/.test(cd2), true);
+  eq('adicionarClienteChamado: slot principal livre vira cliente_id (1 gravação, não 2)',
+     /export async function adicionarClienteChamado[\s\S]{0,200}if \(!clienteIdAtual\) \{\s*\n\s*await atualizarChamado\(chamadoId, \{ cliente_id: clienteId \}\);/.test(cd2),
+     true);
+  eq('adicionarClienteChamado: slot principal ocupado vai para chamado_clientes',
+     /export async function adicionarClienteChamado[\s\S]{0,500}\.from\("chamado_clientes" as any\)\s*\n\s*\.insert\(\{ chamado_id: chamadoId, cliente_id: clienteId \}/.test(cd2),
+     true);
+  eq('removerClienteChamado: remover o principal só limpa o slot (sem promoção automática de extra)',
+     /export async function removerClienteChamado[\s\S]{0,200}if \(clienteId === clienteIdAtual\) \{\s*\n\s*await atualizarChamado\(chamadoId, \{ cliente_id: null \}\);/.test(cd2),
+     true);
+  eq('adicionarGrupoDeClientes: pula quem já está na atividade (principal OU extra)',
+     /const presentes = new Set\(\[clienteIdAtual, \.\.\.jaNaAtividade\]\.filter\(Boolean\)/.test(cd2),
+     true);
+  eq('adicionarGrupoDeClientes: no máximo 1 UPDATE + 1 INSERT em lote (não N idas ao banco por cliente)',
+     /\.insert\(restante\.map\(\(cliente_id\) => \(\{ chamado_id: chamadoId, cliente_id \}\)\)/.test(cd2),
+     true);
+
+  // ── o painel ─────────────────────────────────────────────────────────────
+  eq('clientesDoChamadoIds junta o principal (cliente_id) com os extras, sem duplicar',
+     /const clientesDoChamadoIds = useMemo\(\(\) => \{\s*\n\s*const principal = chamado\?\.cliente_id \?\? null;\s*\n\s*const extras = clientesExtra\.filter\(\(id\) => id !== principal\);/.test(pc5),
+     true);
+  eq('o seletor de grupo lista SERVICO_ORDEM (hoje Portaria Remota e Monitoramento de Alarmes)',
+     /<option value="">\+ grupo<\/option>[\s\S]{0,100}SERVICO_ORDEM\.map/.test(pc5), true);
+  eq('mexerGrupo usa temServico para achar todo cliente do serviço escolhido — "grupo" é a marcação, não uma tabela nova',
+     /const idsDoGrupo = clientes\.filter\(\(c\) => temServico\(c, servico\)\)\.map\(\(c\) => c\.id\);/.test(pc5),
+     true);
+  eq('a busca de "+ adicionar" cliente exclui quem já está na atividade (senão ofereceria chave repetida)',
+     /opcoes=\{opcoesClientes\.filter\(\(o\) => !clientesDoChamadoIds\.includes\(o\.valor\)\)\}/.test(pc5),
+     true);
+  eq('remover um cliente invalida chamado E chamado-clientes-extra (o principal pode ter vindo de qualquer um dos dois)',
+     /mexerCliente = useMutation\(\{[\s\S]{0,700}chamado-clientes-extra/.test(pc5), true);
+
+  const produto4 = fs27.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R54 (múltiplos clientes + grupo) está documentado', /\*\*R54\*\*/.test(produto4), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

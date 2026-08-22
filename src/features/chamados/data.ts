@@ -345,6 +345,101 @@ export async function removerApoio(chamadoId: string, profileId: string): Promis
   if (error) throw error;
 }
 
+// ── Clientes extras (R54, U45) ───────────────────────────────────────────────
+//
+// Uma atividade pode ser de mais de um cliente. `cliente_id` (em `chamados`)
+// continua sendo o cliente PRINCIPAL — cobrança, matching e relatório
+// continuam lendo só ele, sem saber que isto existe. `chamado_clientes`
+// guarda os EXTRAS: clientes além do principal. Por isso a lista "clientes
+// deste chamado", em qualquer tela, é sempre `[cliente_id, ...extras]` — ver
+// `mexerClienteChamado` abaixo, que decide pra qual das duas tabelas
+// escrever conforme o slot principal está livre ou não.
+
+export function useChamadoClientesExtra(chamadoId: string | undefined) {
+  return useQuery({
+    queryKey: ["chamado-clientes-extra", chamadoId],
+    enabled: !!chamadoId,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from("chamado_clientes" as any)
+        .select("cliente_id")
+        .eq("chamado_id", chamadoId as string);
+      if (error) throw error;
+      return ((data as any[]) ?? []).map((r) => r.cliente_id as string);
+    },
+  });
+}
+
+/**
+ * Adiciona um cliente à atividade. Se o slot principal (`cliente_id`) está
+ * livre, o cliente novo VIRA o principal — é uma gravação a menos, e mantém
+ * quem só lê `cliente_id` funcionando sem precisar saber que a lista existe.
+ * Só quando o principal já está ocupado é que o cliente novo vai para
+ * `chamado_clientes`.
+ */
+export async function adicionarClienteChamado(
+  chamadoId: string, clienteIdAtual: string | null, clienteId: string,
+): Promise<void> {
+  if (!clienteIdAtual) {
+    await atualizarChamado(chamadoId, { cliente_id: clienteId });
+    return;
+  }
+  const { error } = await supabase
+    .from("chamado_clientes" as any)
+    .insert({ chamado_id: chamadoId, cliente_id: clienteId } as any);
+  if (error) throw error;
+}
+
+/**
+ * Remove um cliente da atividade. Remover o PRINCIPAL só limpa o slot (não
+ * promove um extra a principal — ver o cabeçalho da U45 em
+ * supabase/migrations: ficar com extras e sem principal é um estado válido,
+ * e a promoção automática seria uma decisão silenciosa sobre QUAL extra vira
+ * principal, que ninguém pediu).
+ */
+export async function removerClienteChamado(
+  chamadoId: string, clienteIdAtual: string | null, clienteId: string,
+): Promise<void> {
+  if (clienteId === clienteIdAtual) {
+    await atualizarChamado(chamadoId, { cliente_id: null });
+    return;
+  }
+  const { error } = await supabase
+    .from("chamado_clientes" as any)
+    .delete()
+    .eq("chamado_id", chamadoId)
+    .eq("cliente_id", clienteId);
+  if (error) throw error;
+}
+
+/**
+ * Grupo de clientes (R54): "portaria_remota"/"monitoramento_alarmes" hoje —
+ * o mesmo vocabulário de `servicos_prestados` (U36). Adicionar um grupo é só
+ * repetir `adicionarClienteChamado` para cada cliente que ainda não está na
+ * atividade, então no máximo 1 UPDATE (o primeiro, se o slot principal
+ * estava livre) + 1 INSERT em lote (o resto) — não N idas ao banco por
+ * grupo grande.
+ */
+export async function adicionarGrupoDeClientes(
+  chamadoId: string, clienteIdAtual: string | null, jaNaAtividade: string[], idsDoGrupo: string[],
+): Promise<void> {
+  const presentes = new Set([clienteIdAtual, ...jaNaAtividade].filter(Boolean) as string[]);
+  const faltando = idsDoGrupo.filter((id) => !presentes.has(id));
+  if (faltando.length === 0) return;
+
+  let restante = faltando;
+  let principalNovo = clienteIdAtual;
+  if (!principalNovo) {
+    [principalNovo, ...restante] = faltando;
+    await atualizarChamado(chamadoId, { cliente_id: principalNovo });
+  }
+  if (restante.length === 0) return;
+  const { error } = await supabase
+    .from("chamado_clientes" as any)
+    .insert(restante.map((cliente_id) => ({ chamado_id: chamadoId, cliente_id })) as any);
+  if (error) throw error;
+}
+
 // ── Equipamentos envolvidos ─────────────────────────────────────────────────
 
 export interface ChamadoEquipamento {

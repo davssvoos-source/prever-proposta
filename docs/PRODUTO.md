@@ -757,3 +757,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   - A caixa de Descrição **cresce com o texto** em vez de rolar por dentro
     ("remova o scroll interno da caixa de texto") — sem `resize` manual,
     sem barra de rolagem própria. *(Davi, 2026-08-22.)*
+
+- **R54** — **Uma atividade pode ser de mais de um cliente.** O campo
+  Cliente, no painel, virou uma lista (chips + busca para adicionar), no
+  mesmo desenho de Apoio — não um seletor único. Por baixo dos panos o
+  primeiro cliente continua sendo `cliente_id` (o que cobrança, casamento por
+  cliente e relatório continuam lendo, sem saber que a lista existe); os
+  demais ficam numa tabela nova, `chamado_clientes`.
+
+  **Grupo de clientes**: em vez de adicionar cliente por cliente, dá para
+  adicionar um **grupo inteiro de uma vez**. Por enquanto os grupos SÃO os
+  dois serviços prestados (R41/U36) — **Portaria Remota** e **Monitoramento
+  de Alarmes** — não uma entidade nova no cadastro: "grupo" é a própria
+  marcação de serviço. *(Davi, 2026-08-22: "os grupos de clientes na
+  verdade são dois por enquanto... futuramente podemos adicionar mais
+  grupos" — o vocabulário de grupo cresce quando `servicos_prestados`
+  crescer, sem precisar de tabela própria até que o critério de agrupar deixe
+  de ser "que serviço a Prever presta ali".)*

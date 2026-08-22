@@ -65,11 +65,13 @@ import { codigoDeErro } from "@/lib/erros";
 import { envolverSelecao, prefixarLinhas } from "@/lib/edicao-texto";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 import {
-  useChamado, usePessoas, useChamadoApoios, useChamadoEventos,
-  atualizarChamado, adicionarApoio, removerApoio, comentarChamado, mapaDePessoas,
+  useChamado, usePessoas, useChamadoApoios, useChamadoClientesExtra, useChamadoEventos,
+  atualizarChamado, adicionarApoio, removerApoio,
+  adicionarClienteChamado, removerClienteChamado, adicionarGrupoDeClientes,
+  comentarChamado, mapaDePessoas,
   type ChamadoPatch,
 } from "@/features/chamados/data";
-import { useClientes } from "@/features/clientes/data";
+import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, temServico, type ServicoCliente } from "@/features/clientes/data";
 import {
   PRIORIDADE_LABEL, PRIORIDADE_CORES, SPRINT_LABEL, SPRINT_ORDEM, TIPO_LABEL, TIPO_CORES,
   chamadoStatusInfo, statusDaNatureza, tiposDaNatureza,
@@ -545,6 +547,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const { data: pessoas = [] } = usePessoas();
   const { data: clientes = [] } = useClientes();
   const { data: apoios = [] } = useChamadoApoios(chamadoId ?? undefined);
+  const { data: clientesExtra = [] } = useChamadoClientesExtra(chamadoId ?? undefined);
 
   const [estados, setEstados] = useState<Record<string, EstadoCampo>>({});
 
@@ -598,6 +601,54 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     onError: (err) => setEstados((e) => ({ ...e, apoio: { erro: codigoDeErro(err, "/dashboard") } })),
   });
 
+  // Cliente virou campo de MÚLTIPLOS valores (R54, Davi: "uma atividade pode
+  // ser para mais de um cliente"). `cliente_id` (em `chamados`) continua o
+  // principal — quem grava decide sozinho pra qual tabela escrever (ver
+  // adicionarClienteChamado/removerClienteChamado em data.ts); o painel só
+  // invalida as DUAS queries porque não sabe de antemão qual delas mudou.
+  const mexerCliente = useMutation({
+    mutationFn: async ({ id, remover }: { id: string; remover: boolean }) => {
+      if (!chamadoId) throw new Error("sem chamado");
+      if (remover) await removerClienteChamado(chamadoId, chamado?.cliente_id ?? null, id);
+      else await adicionarClienteChamado(chamadoId, chamado?.cliente_id ?? null, id);
+    },
+    onMutate: () => setEstados((e) => ({ ...e, cliente_id: "salvando" })),
+    onSuccess: () => {
+      setEstados((e) => ({ ...e, cliente_id: "salvo" }));
+      qc.invalidateQueries({ queryKey: ["chamado", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamado-clientes-extra", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["home"] });
+      qc.invalidateQueries({ queryKey: ["calendario"] });
+      setTimeout(() => setEstados((e) => (e.cliente_id === "salvo" ? { ...e, cliente_id: "parado" } : e)), 1600);
+    },
+    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: codigoDeErro(err, "/dashboard") } })),
+  });
+
+  // "Grupo de clientes" (R54): adiciona de uma vez todo cliente marcado com
+  // um serviço (`servicos_prestados`, U36) — hoje Portaria Remota ou
+  // Monitoramento de Alarmes. Não é uma entidade nova no banco: o grupo É a
+  // marcação do serviço, então "adicionar o grupo" é só adicionar cada
+  // cliente que já tem aquele serviço.
+  const mexerGrupo = useMutation({
+    mutationFn: async (servico: ServicoCliente) => {
+      if (!chamadoId) throw new Error("sem chamado");
+      const idsDoGrupo = clientes.filter((c) => temServico(c, servico)).map((c) => c.id);
+      await adicionarGrupoDeClientes(chamadoId, chamado?.cliente_id ?? null, clientesExtra, idsDoGrupo);
+    },
+    onMutate: () => setEstados((e) => ({ ...e, cliente_id: "salvando" })),
+    onSuccess: () => {
+      setEstados((e) => ({ ...e, cliente_id: "salvo" }));
+      qc.invalidateQueries({ queryKey: ["chamado", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamado-clientes-extra", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["home"] });
+      qc.invalidateQueries({ queryKey: ["calendario"] });
+      setTimeout(() => setEstados((e) => (e.cliente_id === "salvo" ? { ...e, cliente_id: "parado" } : e)), 1600);
+    },
+    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: codigoDeErro(err, "/dashboard") } })),
+  });
+
   const natureza = (chamado?.natureza ?? "campo") as Natureza;
 
   const pessoasOrdenadas = useMemo(
@@ -610,6 +661,18 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     [clientes],
   );
   const nomeDe = (id: string) => pessoasPorId[id]?.nome ?? "Alguém";
+  const clientesPorId = useMemo(
+    () => Object.fromEntries(clientes.map((c) => [c.id, c])) as Record<string, (typeof clientes)[number]>,
+    [clientes],
+  );
+  const nomeClienteDe = (id: string) => clientesPorId[id]?.nome ?? "Cliente";
+  // [principal, ...extras] — sempre nesta ordem, sem duplicar se por algum
+  // motivo o principal também aparecer em chamado_clientes
+  const clientesDoChamadoIds = useMemo(() => {
+    const principal = chamado?.cliente_id ?? null;
+    const extras = clientesExtra.filter((id) => id !== principal);
+    return principal ? [principal, ...extras] : extras;
+  }, [chamado?.cliente_id, clientesExtra]);
 
   const info = chamado ? chamadoStatusInfo(chamado.status) : null;
   const tipo = (chamado?.tipo ?? null) as ChamadoTipo | null;
@@ -756,24 +819,80 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   sem o 0, um nome de cliente comprido poderia empurrar a
                   coluna além da largura justa dela. */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+                {/* Cliente virou campo de MÚLTIPLOS valores (R54, Davi: "uma
+                    atividade pode ser para mais de um cliente"). Mesmo
+                    desenho de "Apoio" (chips + busca pra adicionar) — o
+                    primeiro cliente ocupa o slot principal (cliente_id) por
+                    baixo dos panos, mas na tela é só uma lista, igual à de
+                    Apoio. O seletor "+ grupo" adiciona de uma vez todo
+                    cliente marcado com um serviço (servicos_prestados, U36)
+                    — "grupo" não é uma entidade nova, é a marcação em si. */}
                 <Campo titulo="Cliente" estado={estados.cliente_id}>
-                  <CampoComBusca
-                    id="painel-cliente"
-                    opcoes={opcoesClientes}
-                    valor={chamado.cliente_id ?? null}
-                    vazio="— sem cliente —"
-                    aoMudar={(v) => salvar.mutate({ campo: "cliente_id", patch: { cliente_id: v } })}
-                    iconeEsquerda={(esc) => esc ? <Building2 size={15} color={est.textSecondary} /> : null}
-                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                    {clientesDoChamadoIds.map((id) => (
+                      <span key={id} style={{
+                        display: "inline-flex", alignItems: "center", gap: 5,
+                        padding: "4px 6px 4px 6px", borderRadius: 999,
+                        background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
+                        fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                      }}>
+                        <span style={{
+                          width: 17, height: 17, borderRadius: "50%", flexShrink: 0,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: est.campoBg,
+                        }}>
+                          <Building2 size={10} color={est.textSecondary} />
+                        </span>
+                        {nomeClienteDe(id)}
+                        <button
+                          onClick={() => mexerCliente.mutate({ id, remover: true })}
+                          aria-label={`Remover ${nomeClienteDe(id)} da atividade`}
+                          style={{
+                            border: "none", background: "transparent", cursor: "pointer",
+                            color: est.textSecondary, display: "flex", padding: 2,
+                          }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </span>
+                    ))}
+                    <div style={{ minWidth: 130, flex: 1 }}>
+                      <CampoComBusca
+                        id="painel-cliente"
+                        compacto
+                        limpavel={false}
+                        placeholder="+ adicionar"
+                        // quem já está na atividade sai da lista: oferecer de
+                        // novo quem já foi adicionado só produz chave repetida
+                        opcoes={opcoesClientes.filter((o) => !clientesDoChamadoIds.includes(o.valor))}
+                        valor={null}
+                        aoMudar={(v) => { if (v) mexerCliente.mutate({ id: v, remover: false }); }}
+                      />
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => { if (e.target.value) mexerGrupo.mutate(e.target.value as ServicoCliente); }}
+                      aria-label="Adicionar um grupo inteiro de clientes (por serviço prestado)"
+                      title="Adicionar todo um grupo de clientes de uma vez"
+                      style={{
+                        height: 30, borderRadius: 8, border: est.borda, background: est.campoBg,
+                        color: est.textSecondary, fontFamily: FONT, fontSize: 11, fontWeight: 600,
+                        padding: "0 5px", cursor: "pointer", flexShrink: 0, outline: "none",
+                      }}
+                    >
+                      <option value="">+ grupo</option>
+                      {SERVICO_ORDEM.map((s) => (
+                        <option key={s} value={s}>{SERVICO_LABEL[s]}</option>
+                      ))}
+                    </select>
+                  </div>
                   {/* o nome que veio do Notion, quando não há vínculo (U31):
                       sem isto o campo pareceria vazio numa atividade que TEM
-                      cliente. Mora DENTRO do Campo "Cliente" (não mais como
-                      irmão solto depois do grid) — desde que Cliente virou 1
-                      de 3 colunas (R47), um aviso de largura cheia ficava
-                      descolado da coluna que ele descreve (achado da revisão
-                      adversarial de U40, 2026-08-21). */}
-                  {!chamado.cliente_id && chamado.cliente_origem_nome && (
-                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary, lineHeight: 1.5 }}>
+                      cliente. Só aparece sem NENHUM cliente ainda escolhido —
+                      assim que o primeiro é adicionado (deste aviso ou da
+                      busca), ele some: a atividade já tem cliente de verdade. */}
+                  {clientesDoChamadoIds.length === 0 && chamado.cliente_origem_nome && (
+                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary, lineHeight: 1.5, marginTop: 6 }}>
                       No Notion:{" "}
                       <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
                       {" "}— escolha acima para vincular ao QAP.

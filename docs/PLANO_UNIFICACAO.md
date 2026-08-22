@@ -2863,3 +2863,62 @@ toggle na ficha do cliente já foram construídos genericamente pela U36 —
 esta migration só povoa dados.
 
 831 asserções (8 novas), build ok.
+
+### U45 — Uma atividade pode ter mais de um cliente + grupo de clientes (R54, 2026-08-22)
+
+"Uma atividade pode ser para mais de um cliente" + "Grupo de clientes...
+hoje temos Portaria Remota e Monitoramento de Alarmes."
+
+**A decisão que definiu o escopo**: `chamados.cliente_id` é lido por meia
+dúzia de sistemas que só conhecem UM cliente por chamado — cobrança
+(`mensalidadesProjeto.ts`, `cobranca.functions.ts`), casamento por cliente
+(`matching.ts`), filtro, cards da Início e do Calendário, relatório. Reescrever
+tudo isso para multi-cliente não foi o que foi pedido, e arriscaria quebrar
+cobrança de verdade sem necessidade. Em vez disso:
+
+- **`cliente_id` continua exatamente como era** — o cliente PRINCIPAL. Todo
+  sistema que já lê esse campo continua funcionando sem mudar uma linha.
+- **`chamado_clientes` (tabela nova) é ADITIVA** — guarda só os clientes
+  ALÉM do principal. Mesmo desenho de `chamado_apoios` (U1/U7): chave
+  composta `(chamado_id, cliente_id)`, RLS por `pode_editar_chamado` (a
+  MESMA função que já guarda `cliente_id` hoje — "quem pode adicionar um
+  cliente extra" nunca diverge de "quem pode editar o chamado"). **Sem
+  backfill**: não existia "cliente extra" antes deste recurso existir, então
+  toda atividade começa com a lista vazia (só o principal, como sempre foi).
+
+**A UI**: o campo Cliente, no painel (`PainelChamado.tsx`), trocou de
+`CampoComBusca` de valor único para chips + busca — LITERALMENTE o mesmo
+padrão que "Apoio" já usava para pessoas. A função que decide onde gravar
+(`adicionarClienteChamado`, em `data.ts`) escolhe sozinha: se o slot
+principal está livre, o cliente novo VIRA `cliente_id` (1 gravação); só
+quando o principal já está ocupado é que vai para `chamado_clientes`. Ao
+remover, o mesmo raciocínio ao contrário — remover o principal só limpa o
+slot, **sem promover automaticamente** um extra a principal (ficar com
+extras e sem principal é um estado válido; decidir QUAL extra vira principal
+seria uma escolha silenciosa que ninguém pediu). `clientesDoChamadoIds`
+(no painel) é sempre `[principal, ...extras]`, então a tela nunca precisa
+saber de qual das duas tabelas cada cliente veio.
+
+**Grupo de clientes**: não é uma entidade nova no banco. Davi foi explícito
+— "os grupos... são os dois tipos de serviço prestados atualmente... hoje
+temos Portaria Remota e Monitoramento de Alarmes... futuramente podemos
+adicionar mais grupos" — então o grupo É a marcação `servicos_prestados`
+(R41/U36). Um `<select>` no painel lista `SERVICO_ORDEM`; escolher um
+serviço chama `adicionarGrupoDeClientes`, que filtra `clientes` por
+`temServico(c, servico)` e adiciona todo mundo que ainda não está na
+atividade — no máximo 1 UPDATE (o principal, se o slot estava livre) + 1
+INSERT em lote para o resto, não N idas ao banco por cliente do grupo.
+Quando `servicos_prestados` ganhar um 3º valor um dia, o seletor de grupo
+cresce sozinho — nenhum código muda.
+
+**Por que nenhuma promoção automática, nenhum trigger de sincronia**: a
+primeira versão deste desenho cogitava um trigger em Postgres que
+mantivesse `cliente_id` sempre sincronizado com `chamado_clientes`
+(promovendo o próximo extra quando o principal fosse removido). Descartado:
+cada operação (adicionar, remover, adicionar grupo) já é no máximo 2
+gravações sequenciais e sem ambiguidade de qual tabela usar — um trigger
+adicionaria uma segunda fonte de verdade escrevendo `cliente_id` por trás,
+tornando mais difícil raciocinar sobre o que uma gravação do painel
+realmente fez.
+
+851 asserções (20 novas), build ok.
