@@ -17,15 +17,58 @@ import { SPRINTS_DO_MES } from "@/lib/chamado-status";
  * passado deixaria metade do gráfico respondendo ao filtro e metade não, que é
  * pior do que não filtrar nada: o mesmo gráfico contaria duas histórias.
  */
+/** A chave de semana usada em TODO o painel: segunda-feira, AAAA-MM-DD local. */
+export function chaveSemanaDe(iso: string): string {
+  return dataIso(inicioSemana(new Date(iso)));
+}
+
+// Os DOIS predicados das barras — o de contar e o de filtrar são o MESMO
+// (R65): a barra do passado conta entregas da semana, a do futuro conta
+// prazos em aberto da semana. `atividadesDaSemana` (o clique) filtra por
+// estes exatos predicados, então o número da barra e a lista que ela abre
+// não têm como discordar.
+function ehConcluidaDaSemana(a: Atividade, chave: string): boolean {
+  // `encerradoEm` é null enquanto está em aberto, e cancelar não é entregar
+  if (!a.encerradoEm || a.coluna === "cancelado") return false;
+  return chaveSemanaDe(a.encerradoEm) === chave;
+}
+function ehPrevistaDaSemana(a: Atividade, chave: string): boolean {
+  if (!a.emAberto || !a.prazoLimite) return false;
+  return chaveSemanaDe(a.prazoLimite) === chave;
+}
+
 export function concluidosPorSemana(atividades: Atividade[]): Record<string, number> {
   const m: Record<string, number> = {};
   for (const a of atividades) {
-    // `encerradoEm` é null enquanto está em aberto, e cancelar não é entregar
     if (!a.encerradoEm || a.coluna === "cancelado") continue;
-    const k = dataIso(inicioSemana(new Date(a.encerradoEm)));
+    const k = chaveSemanaDe(a.encerradoEm);
     m[k] = (m[k] ?? 0) + 1;
   }
   return m;
+}
+
+/**
+ * O lado FUTURO do gráfico de barras: quantos itens em aberto vencem em cada
+ * semana. Morava inline no GraficoDemanda — extraído (R65) para o clique na
+ * barra filtrar pela MESMA conta que a desenhou.
+ */
+export function prazosPorSemana(atividades: Atividade[]): Record<string, number> {
+  const m: Record<string, number> = {};
+  for (const a of atividades) {
+    if (!a.emAberto || !a.prazoLimite) continue;
+    const k = chaveSemanaDe(a.prazoLimite);
+    m[k] = (m[k] ?? 0) + 1;
+  }
+  return m;
+}
+
+/** As atividades de UMA barra — passado = entregas da semana, futuro = prazos. */
+export function atividadesDaSemana(
+  chave: string,
+  passado: boolean,
+  atividades: Atividade[],
+): Atividade[] {
+  return atividades.filter((a) => (passado ? ehConcluidaDaSemana(a, chave) : ehPrevistaDaSemana(a, chave)));
 }
 
 /**
@@ -109,5 +152,53 @@ export function atividadesDoKpi(
       return atividades.filter((a) => a.emAberto && a.tipo === "corretiva" && a.prioridade === "urgente");
     case "atrasadas_aberto":
       return atividades.filter((a) => a.emAberto && a.prazoEstourado);
+  }
+}
+
+/** A população da rosca da meta — exatamente a que `metaDoMes` conta. */
+export function atividadesDaMeta(atividades: Atividade[], agora: Date = new Date()): Atividade[] {
+  return doMesFiltro(atividades, agora);
+}
+
+// ── O drill-down unificado do painel (R65) ──────────────────────────────────
+//
+// R60 fez os 4 quadrados de KPI filtrarem a lista ao clicar. R65 estende o
+// mesmo gesto às DUAS outras peças do painel — cada barra do gráfico de
+// demanda e a rosca da meta — sob um único estado de seleção. Um tipo só
+// (em vez de três estados soltos) é o que garante que nunca há duas peças
+// "ativas" ao mesmo tempo brigando pela lista.
+
+export type SelecaoPainel =
+  | { tipo: "kpi"; chave: ChaveKpi }
+  | { tipo: "semana"; chave: string; rotulo: string; passado: boolean }
+  | { tipo: "meta" };
+
+/**
+ * A lista que a seleção abre — SEMPRE derivada das mesmas funções que
+ * desenham os números (atividadesDoKpi / atividadesDaSemana /
+ * atividadesDaMeta). É a invariante central do painel: o número tocado e o
+ * tamanho da lista aberta não podem discordar.
+ */
+export function atividadesDaSelecao(
+  sel: SelecaoPainel,
+  atividades: Atividade[],
+  agora: Date = new Date(),
+): Atividade[] {
+  switch (sel.tipo) {
+    case "kpi": return atividadesDoKpi(sel.chave, atividades, agora);
+    case "semana": return atividadesDaSemana(sel.chave, sel.passado, atividades);
+    case "meta": return atividadesDaMeta(atividades, agora);
+  }
+}
+
+/** O rótulo da faixa "Mostrando: …" — diz o que está filtrando, em português. */
+export function rotuloDaSelecao(sel: SelecaoPainel): string {
+  switch (sel.tipo) {
+    case "kpi": return KPI_LABEL[sel.chave];
+    case "semana":
+      return sel.passado
+        ? `Concluídas na semana de ${sel.rotulo}`
+        : `Com prazo na semana de ${sel.rotulo}`;
+    case "meta": return "Meta do mês";
   }
 }

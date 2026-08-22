@@ -56,7 +56,9 @@ import { inicioSemana, dataIso } from "@/lib/periodos";
 import { PRISMA, ESPECTRO, ESPECTRO_STOPS, ESPECTRO_TEXTO, gradienteBarra } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 // as contas moram em metricas.ts: puras, testáveis, longe da pintura
-import { concluidosPorSemana, metaDoMes, atividadesDoKpi, KPI_LABEL, type ChaveKpi } from "@/features/home/metricas";
+import {
+  concluidosPorSemana, prazosPorSemana, metaDoMes, atividadesDoKpi, KPI_LABEL, type ChaveKpi,
+} from "@/features/home/metricas";
 
 const ALTURA = 252;
 const MAX_PECAS = 7;
@@ -83,11 +85,18 @@ function useCoresBase() {
 
 interface PropsDemanda {
   atividades: Atividade[];
+  /** Chave da semana que está filtrando a lista agora — null = nenhuma (R65). */
+  selecionada?: string | null;
+  /** Clicar numa barra filtra a lista para as atividades DAQUELA semana. */
+  onSelecionarSemana?: (chave: string, rotulo: string, passado: boolean) => void;
 }
 
-export function GraficoDemanda({ atividades }: PropsDemanda) {
+export function GraficoDemanda({ atividades, selecionada = null, onSelecionarSemana }: PropsDemanda) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
+  // as DUAS contagens vêm de metricas.ts (R65) — o clique na barra filtra
+  // pelas mesmas funções, então número e lista aberta nunca discordam
   const concluidos = useMemo(() => concluidosPorSemana(atividades), [atividades]);
+  const futuros = useMemo(() => prazosPorSemana(atividades), [atividades]);
 
   // invertida: o passado é quente, o futuro é frio — a mesma leitura da faixa
   // de prazo nos cards, onde "adiante" é azul
@@ -97,15 +106,7 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
   const barras = useMemo(() => {
     const base = inicioSemana(new Date());
     const lista: { chave: string; rotulo: string; valor: number; cor: string;
-                   corFim: string; corTexto: string; atual: boolean }[] = [];
-
-    // futuro por prazo, contado das atividades em aberto
-    const futuros: Record<string, number> = {};
-    for (const a of atividades) {
-      if (!a.emAberto || !a.prazoLimite) continue;
-      const k = dataIso(inicioSemana(new Date(a.prazoLimite)));
-      futuros[k] = (futuros[k] ?? 0) + 1;
-    }
+                   corFim: string; corTexto: string; atual: boolean; passado: boolean }[] = [];
 
     for (let i = -4; i <= 3; i++) {
       const d = new Date(base);
@@ -122,10 +123,11 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
         corFim: rampa[idx + 1],
         corTexto: rampaTexto[idx],
         atual: i === 0,
+        passado,
       });
     }
     return lista;
-  }, [atividades, concluidos, rampa, rampaTexto]);
+  }, [concluidos, futuros, rampa, rampaTexto]);
 
   const maximo = Math.max(1, ...barras.map((b) => b.valor));
 
@@ -134,35 +136,53 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
       <span style={{ ...MICRO, color: gold }}>Demanda no tempo</span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "flex-end", gap: 3, paddingTop: 12 }}>
-        {barras.map((b) => (
-          <div key={b.chave} style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}>
-            <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.corTexto,
-              fontVariantNumeric: "tabular-nums", lineHeight: 1,
-            }}>
-              {b.valor}
-            </span>
-            <div
-              className="barra-demanda textura"
-              title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo}`}
-              style={{
-                width: "100%",
-                height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
-                borderRadius: 7,
-                background: gradienteBarra(b.cor, b.corFim, isLight),
-                opacity: b.valor === 0 ? (isLight ? 0.55 : 0.3) : 1,
-              }} />
-            <span style={{
-              fontFamily: FONT,
-              fontWeight: b.atual ? 700 : 400,
-              fontSize: 10,
-              color: b.atual ? textPrimary : textSecondary,
-              whiteSpace: "nowrap",
-            }}>
-              {b.rotulo}
-            </span>
-          </div>
-        ))}
+        {barras.map((b) => {
+          const ativa = selecionada === b.chave;
+          return (
+            // a COLUNA inteira é o botão (número + barra + rótulo): alvo
+            // generoso, e o clique numa barra de 3px de altura não exige
+            // pontaria de cirurgião (R65)
+            <button
+              key={b.chave}
+              className="barra-btn"
+              aria-pressed={ativa}
+              onClick={() => onSelecionarSemana?.(b.chave, b.rotulo, b.passado)}
+              title={`${b.valor} atividade${b.valor === 1 ? "" : "s"} · semana de ${b.rotulo} — clique para filtrar a lista`}
+              style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 5 }}
+            >
+              <span style={{
+                fontFamily: FONT, fontWeight: 700, fontSize: 13, color: b.corTexto,
+                fontVariantNumeric: "tabular-nums", lineHeight: 1,
+              }}>
+                {b.valor}
+              </span>
+              <div
+                className="barra-demanda textura"
+                style={{
+                  width: "100%",
+                  // a altura anima (styles.css): quando o recorte muda —
+                  // pessoa, equipe, busca — as barras escorrem para o novo
+                  // valor em vez de saltar
+                  height: b.valor === 0 ? 3 : Math.max(10, Math.round((b.valor / maximo) * 124)),
+                  borderRadius: 7,
+                  background: gradienteBarra(b.cor, b.corFim, isLight),
+                  opacity: b.valor === 0 ? (isLight ? 0.55 : 0.3) : 1,
+                  // barra ativa = anel na PRÓPRIA cor de texto da semana —
+                  // o mesmo vocabulário de seleção dos tiles de KPI
+                  boxShadow: ativa ? `0 0 0 2px ${b.corTexto}` : "none",
+                }} />
+              <span style={{
+                fontFamily: FONT,
+                fontWeight: b.atual || ativa ? 700 : 400,
+                fontSize: 10,
+                color: b.atual || ativa ? textPrimary : textSecondary,
+                whiteSpace: "nowrap",
+              }}>
+                {b.rotulo}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -170,7 +190,15 @@ export function GraficoDemanda({ atividades }: PropsDemanda) {
 
 // ── Meta do mês ─────────────────────────────────────────────────────────────
 
-export function GraficoMeta({ atividades }: { atividades: Atividade[] }) {
+interface PropsMeta {
+  atividades: Atividade[];
+  /** true = a rosca está filtrando a lista agora (R65). */
+  ativa?: boolean;
+  /** Clicar filtra a lista para a população da meta; de novo, desliga. */
+  onSelecionar?: () => void;
+}
+
+export function GraficoMeta({ atividades, ativa = false, onSelecionar }: PropsMeta) {
   const { isLight, textPrimary, textSecondary, gold } = useCoresBase();
   const { total, feitas } = useMemo(() => metaDoMes(atividades), [atividades]);
 
@@ -185,8 +213,26 @@ export function GraficoMeta({ atividades }: { atividades: Atividade[] }) {
   const paradas = (isLight ? ESPECTRO_STOPS.light : ESPECTRO_STOPS.dark)
     .map((p) => { const [cor, pos] = p.split(" "); return { cor, pos }; });
 
+  // o card INTEIRO é o botão, como os tiles de KPI: clicar filtra a lista
+  // para a população da meta — a mesma que metaDoMes conta (R65). Sem meta
+  // no mês não há o que abrir, e aí ele volta a ser um card parado.
+  const clicavel = total > 0 && !!onSelecionar;
   return (
-    <div className="elevavel" style={{ ...card(isLight), width: 224, flexShrink: 0, height: ALTURA, padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+    <button
+      className="elevavel"
+      disabled={!clicavel}
+      aria-pressed={ativa}
+      onClick={() => clicavel && onSelecionar()}
+      title={clicavel ? "Clique para filtrar a lista pelas prioridades do mês" : undefined}
+      style={{
+        ...card(isLight), width: 224, flexShrink: 0, height: ALTURA,
+        padding: "14px 16px", display: "flex", flexDirection: "column", boxSizing: "border-box",
+        cursor: clicavel ? "pointer" : "default", font: "inherit", textAlign: "left",
+        // ativo = anel dourado, o mesmo vocabulário dos tiles de KPI
+        border: ativa ? `1.5px solid ${gold}` : (card(isLight) as CSSProperties).border,
+        boxShadow: ativa ? `0 0 0 3px ${gold}2E` : (card(isLight) as CSSProperties).boxShadow,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
         <span style={{ ...MICRO, color: gold }}>Meta do mês</span>
         <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>{mesNome}</span>
@@ -246,7 +292,7 @@ export function GraficoMeta({ atividades }: { atividades: Atividade[] }) {
           </div>
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

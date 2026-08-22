@@ -594,6 +594,32 @@ input::placeholder, textarea::placeholder {
 /* ── Hover v4 — o investimento pedido: tudo que se toca responde ───────────
    Só onde há ponteiro fino; no toque, hover é fantasma que gruda. */
 .elevavel { transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease; }
+
+/* R65 — a coluna inteira da barra virou botão (número + barra + rótulo, alvo
+   generoso). O reset apaga a cara de <button>; o comportamento fica. */
+.barra-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+/* A ALTURA anima fora do media de hover, de propósito: quando o recorte da
+   tela muda (pessoa, equipe, busca, KPI...), as barras ESCORREM para o novo
+   valor em vez de saltar — o dinamismo vale também no toque, onde não há
+   hover. O transform/filter do hover moram no media abaixo; declarar
+   `transition` de novo lá sobrescreveria esta, então a lista completa vive
+   aqui, uma vez só. */
+.barra-demanda {
+  transform-origin: bottom;
+  transition: height .45s cubic-bezier(.22, 1, .36, 1), transform .18s ease,
+              filter .18s ease, box-shadow .18s ease, opacity .3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .barra-demanda { transition: box-shadow .18s ease; }
+}
 @media (hover: hover) and (pointer: fine) {
   .elevavel:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,0.40); }
   html[data-theme="light"] .elevavel:hover { box-shadow: 0 14px 34px rgba(0,0,0,0.11); }
@@ -602,8 +628,7 @@ input::placeholder, textarea::placeholder {
   .hover-suave { transition: background .15s ease; }
   .hover-suave:hover { background: rgba(120,120,128,0.14) !important; }
 
-  .barra-demanda { transform-origin: bottom; transition: transform .18s ease, filter .18s ease; }
-  .barra-demanda:hover { transform: scaleY(1.05); filter: brightness(1.18); }
+  .barra-btn:hover .barra-demanda { transform: scaleY(1.05); filter: brightness(1.18); }
 
   .kpi-num { transition: transform .18s ease; }
   .kpi-tile:hover .kpi-num { transform: scale(1.09); }

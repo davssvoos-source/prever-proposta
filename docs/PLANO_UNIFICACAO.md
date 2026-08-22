@@ -3317,3 +3317,59 @@ não têm como discordar entre si. Duas regras não-óbvias, ambas travadas:
   enviada mostra a DATA do envio na linha de meta.
 
 1065 asserções (26 novas), build ok.
+
+### U54 — Dashboard 100% dinâmico + o documento estrutural (R65, 2026-08-22)
+
+"Tudo do dashboard deve ser dinâmico... crie este documento estrutural para
+no futuro facilmente criarmos outros dashboards exatamente da mesma
+estrutura. O que você adicionar no documento já agregue ao atual dashboard."
+
+**O código primeiro, o documento como espelho** — regra que o próprio pedido
+impôs: nada entra no `docs/DASHBOARD.md` que não esteja implementado e
+travado por asserção. O documento é descrição, não aspiração.
+
+**A generalização do drill-down.** R60 tinha dado clique aos 4 quadrados de
+KPI com a garantia "quem conta é quem filtra". R65 estende o mesmo gesto às
+duas outras peças do painel — cada BARRA da Demanda no tempo e a ROSCA da
+meta — generalizando o estado para um tipo só:
+`SelecaoPainel = {tipo:"kpi"} | {tipo:"semana"} | {tipo:"meta"}`. Um estado
+único (não três soltos) é o que garante que nunca há duas peças ativas
+brigando pela lista. `atividadesDaSelecao()` despacha para as mesmas funções
+que desenham os números; `rotuloDaSelecao()` nomeia a faixa "Mostrando:".
+
+**O que precisou sair da tela para virar puro**: o lado FUTURO das barras
+era um acumulador inline no `GraficoDemanda` (`futuros[k]++`). Virou
+`prazosPorSemana()` em `metricas.ts`, ao lado de `concluidosPorSemana()` —
+e os dois predicados (concluída-na-semana / prazo-na-semana) são
+compartilhados com `atividadesDaSemana()`, a função do clique. As asserções
+CRÍTICO travam as três igualdades: barra do passado, barra do futuro e
+rosca (`atividadesDaMeta().length === metaDoMes().total`).
+
+**Alvo generoso**: o botão da barra é a COLUNA inteira (número + barra +
+rótulo) — clicar numa barra de 3px de altura (semana zerada) não pode exigir
+pontaria. A rosca virou o card inteiro, desabilitado quando não há meta no
+mês (não há o que abrir). Ambos `<button aria-pressed>`, anel de ativo na
+própria cor (barra: cor de texto da semana; rosca: dourado — o mesmo
+vocabulário dos tiles).
+
+**Movimento**: a ALTURA das barras anima
+(`height .45s cubic-bezier(.22,1,.36,1)`) — declarada FORA do media de
+hover, de propósito: mudar qualquer recorte (pessoa, equipe, busca, uma
+seleção do painel) faz as barras ESCORREREM para o novo valor também no
+toque, onde hover não existe. O detalhe de CSS que quase virou bug:
+declarar `transition` de novo dentro do media de hover SOBRESCREVERIA a
+lista inteira (transition não compõe) — a lista completa vive numa
+declaração só, e `prefers-reduced-motion` reduz para box-shadow.
+
+**O documento** (`docs/DASHBOARD.md`): fundo (as 4 camadas do Yellow Glow e
+a regra "nenhum painel pinta fundo de página"), a régua (--rail/--topo/
+sangra-x), superfícies (card()/vidro(), .textura só em área), a faixa de
+painéis (composição, ALTURA=252, wrap), cor (ESPECTRO invertido nas barras/
+ordem original na rosca, PRISMA nos KPIs, um-amarelo-só), tipografia e
+espaçamentos canônicos, os 4 estados de toda peça (repouso/hover/ativo/
+desabilitado), a INVARIANTE com a tabela peça→função, a semântica do
+drill-down (local, toggle, zera na troca de base, substitui em vez de
+compor), movimento, os dados (recorteDosPaineis: QUEM, nunca QUANDO) e o
+checklist de 10 passos para o próximo dashboard.
+
+1087 asserções (22 novas), build ok.

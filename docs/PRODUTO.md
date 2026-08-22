@@ -955,3 +955,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   superfícies no padrão da casa. A regra de sempre continua valendo:
   **aprovação é interna** — nunca sinônimo de negócio fechado (R4).
   *(Davi, 2026-08-22.)*
+
+- **R65** — **O dashboard da Início é 100% dinâmico, e sua estrutura virou
+  documento** (`docs/DASHBOARD.md`). Os gráficos ganharam o mesmo gesto dos
+  4 quadrados de KPI (R60): **clicar em qualquer barra** da Demanda no tempo
+  filtra a lista para as atividades daquela semana (passado = concluídas na
+  semana; futuro = com prazo na semana), e **clicar na rosca** da Meta do mês
+  filtra para as prioridades do mês. Clicar de novo desliga; a faixa
+  "Mostrando: …" anuncia; só uma peça filtra por vez. A garantia da R60 vale
+  para todas: **o número mostrado e a lista aberta saem da mesma função** —
+  não têm como discordar. As barras ganharam movimento: quando o recorte
+  muda, elas **escorrem** para o novo valor em vez de saltar (respeitando
+  `prefers-reduced-motion`). O documento formaliza fundo, régua de margens,
+  superfícies, cores/degradê, tipografia, espaçamentos, os 4 estados de cada
+  peça e o checklist para criar futuros dashboards idênticos em estrutura.
+  *(Davi, 2026-08-22: "tudo do dashboard deve ser dinâmico... crie este
+  documento estrutural para no futuro facilmente criarmos outros
+  dashboards".)*

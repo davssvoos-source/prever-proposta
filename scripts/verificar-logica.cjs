@@ -3280,20 +3280,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      true);
 
   // ── dashboard.tsx: o clique realmente troca o que a lista/quadro mostram ──
-  eq('dashboard mantém kpiSelecionado LOCAL (não entra em Filtros/sessionStorage — é drill-down, não preferência)',
-     /const \[kpiSelecionado, setKpiSelecionado\] = useState<ChaveKpi \| null>\(null\);/.test(dash2), true);
-  eq('atividadesKpi roda sobre paraPaineis — a MESMA base que os tiles contam, não `atividades` cru nem `filtradas`',
-     /atividadesDoKpi\(kpiSelecionado, paraPaineis, agora\)/.test(dash2), true);
-  eq('CRÍTICO: listaAtual (o que quadro/tabela realmente recebem) prioriza o recorte do KPI sobre o filtro normal',
-     /const listaAtual = atividadesKpi \?\? filtradas;/.test(dash2), true);
-  eq('CRÍTICO: o Quadro (kanban) usa listaAtual, não filtradas direto — senão clicar um KPI não mudaria a visão de quadro',
+  // (R65 generalizou o estado: kpiSelecionado virou selecaoPainel, cobrindo
+  // KPIs + barras + rosca sob um tipo só — as garantias são as mesmas)
+  eq('dashboard mantém a seleção do painel LOCAL (não entra em Filtros/sessionStorage — é drill-down, não preferência)',
+     /const \[selecaoPainel, setSelecaoPainel\] = useState<SelecaoPainel \| null>\(null\);/.test(dash2), true);
+  eq('atividadesSelecao roda sobre paraPaineis — a MESMA base que as peças do painel contam, não `atividades` cru nem `filtradas`',
+     /atividadesDaSelecao\(selecaoPainel, paraPaineis, agora\)/.test(dash2), true);
+  eq('CRÍTICO: listaAtual (o que quadro/tabela realmente recebem) prioriza o recorte da seleção sobre o filtro normal',
+     /const listaAtual = atividadesSelecao \?\? filtradas;/.test(dash2), true);
+  eq('CRÍTICO: o Quadro (kanban) usa listaAtual, não filtradas direto — senão clicar uma peça do painel não mudaria a visão de quadro',
      /<Quadro\s*\n\s*atividades=\{listaAtual\}/.test(dash2), true);
   eq('CRÍTICO: a TabelaAtividades (lista) usa listaAtual, não filtradas direto',
      /<TabelaAtividades\s*\n\s*atividades=\{listaAtual\.slice\(0, TETO_TABELA\)\}/.test(dash2), true);
-  eq('selecionar o mesmo KPI de novo desliga o filtro (toggle, não só liga)',
-     /setKpiSelecionado\(\(atual\) => \(atual === chave \? null : chave\)\)/.test(dash2), true);
-  eq('a tela mostra "Mostrando: <label>" com um jeito de limpar, enquanto um KPI filtra',
-     /Mostrando: <strong[\s\S]{0,80}\{KPI_LABEL\[kpiSelecionado\]\}<\/strong>/.test(dash2), true);
+  eq('selecionar a mesma peça de novo desliga o filtro (toggle, não só liga) — nos três: kpi, semana e meta',
+     /atual\?\.tipo === "kpi" && atual\.chave === chave \? null : \{ tipo: "kpi", chave \}/.test(dash2)
+     && /atual\?\.tipo === "semana" && atual\.chave === chave \? null : \{ tipo: "semana", chave, rotulo, passado \}/.test(dash2)
+     && /atual\?\.tipo === "meta" \? null : \{ tipo: "meta" \}/.test(dash2), true);
+  eq('a tela mostra "Mostrando: <label>" com um jeito de limpar, enquanto uma seleção filtra',
+     /Mostrando: <strong[\s\S]{0,80}\{rotuloDaSelecao\(selecaoPainel\)\}<\/strong>/.test(dash2), true);
 
   const produto6 = fs31.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R60 está documentado', /\*\*R60\*\*/.test(produto6), true);
@@ -3568,6 +3572,125 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto10 = fs35.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R64 está documentado', /\*\*R64\*\*/.test(produto10), true);
+}
+
+// ── R65: dashboard 100% dinâmico — barras e rosca também filtram ────────────
+{
+  const fs36 = require('fs');
+  const MET2 = carregar('src/features/home/metricas.ts');
+  const P2 = carregar('src/lib/periodos.ts');
+  const graf2 = fs36.readFileSync('src/features/home/Graficos.tsx', 'utf8');
+  const css4 = fs36.readFileSync('src/styles.css', 'utf8');
+
+  const diaR = (s) => new Date(s).toISOString();
+  const atR = (extra) => ({
+    id: 'r-' + Math.random(), natureza: 'interno', sprint: 'este_mes',
+    coluna: 'concluido', emAberto: false, encerradoEm: diaR('2026-08-10T10:00:00'),
+    prazoLimite: null, tipo: null, prioridade: null, prazoEstourado: false,
+    ...extra,
+  });
+  const semanaDeR = (s) => P2.dataIso(P2.inicioSemana(new Date(s)));
+
+  // ── prazosPorSemana: o lado FUTURO das barras, agora puro ───────────────
+  {
+    const aberta = (prazo) => atR({ emAberto: true, coluna: 'aberto', encerradoEm: null, prazoLimite: diaR(prazo) });
+    const r = MET2.prazosPorSemana([
+      aberta('2026-08-24T10:00:00'), aberta('2026-08-26T10:00:00'),   // mesma semana
+      aberta('2026-08-31T10:00:00'),                                   // semana seguinte
+      atR({}),                                                         // encerrada: não é prazo futuro
+      atR({ emAberto: true, coluna: 'aberto', encerradoEm: null }),    // sem prazo: fora
+    ]);
+    eq('prazosPorSemana: duas da mesma semana somam', r[semanaDeR('2026-08-24T10:00:00')], 2);
+    eq('prazosPorSemana: a da outra semana vai pro balde dela', r[semanaDeR('2026-08-31T10:00:00')], 1);
+    eq('prazosPorSemana: encerrada e sem-prazo ficam de fora', Object.values(r).reduce((s, n) => s + n, 0), 3);
+  }
+
+  // ── A INVARIANTE: quem conta a barra é quem a abre ──────────────────────
+  {
+    const lote = [
+      atR({ encerradoEm: diaR('2026-08-10T10:00:00') }),
+      atR({ encerradoEm: diaR('2026-08-11T10:00:00') }),
+      atR({ coluna: 'cancelado' }),                                    // cancelada não é entrega
+      atR({ emAberto: true, coluna: 'aberto', encerradoEm: null, prazoLimite: diaR('2026-08-24T10:00:00') }),
+      atR({ emAberto: true, coluna: 'aberto', encerradoEm: null, prazoLimite: diaR('2026-08-25T10:00:00') }),
+    ];
+    const kPassada = semanaDeR('2026-08-10T10:00:00');
+    const kFutura = semanaDeR('2026-08-24T10:00:00');
+    eq('CRÍTICO: barra do passado — concluidosPorSemana[k] === atividadesDaSemana(k, true).length',
+       MET2.atividadesDaSemana(kPassada, true, lote).length,
+       MET2.concluidosPorSemana(lote)[kPassada]);
+    eq('CRÍTICO: barra do futuro — prazosPorSemana[k] === atividadesDaSemana(k, false).length',
+       MET2.atividadesDaSemana(kFutura, false, lote).length,
+       MET2.prazosPorSemana(lote)[kFutura]);
+    eq('CRÍTICO: rosca — atividadesDaMeta().length === metaDoMes().total',
+       MET2.atividadesDaMeta(lote, new Date(2026, 7, 21)).length,
+       MET2.metaDoMes(lote, new Date(2026, 7, 21)).total);
+  }
+
+  // ── atividadesDaSelecao despacha para as mesmas funções ─────────────────
+  {
+    const agoraR = new Date(2026, 7, 21);
+    const lote = [
+      atR({}),
+      atR({ emAberto: true, coluna: 'aberto', encerradoEm: null, prazoLimite: diaR('2026-08-24T10:00:00') }),
+    ];
+    eq('seleção kpi = atividadesDoKpi',
+       MET2.atividadesDaSelecao({ tipo: 'kpi', chave: 'concluidas_mes' }, lote, agoraR).length,
+       MET2.atividadesDoKpi('concluidas_mes', lote, agoraR).length);
+    eq('seleção semana = atividadesDaSemana',
+       MET2.atividadesDaSelecao(
+         { tipo: 'semana', chave: semanaDeR('2026-08-24T10:00:00'), rotulo: '24/08', passado: false },
+         lote, agoraR,
+       ).length, 1);
+    eq('seleção meta = atividadesDaMeta',
+       MET2.atividadesDaSelecao({ tipo: 'meta' }, lote, agoraR).length,
+       MET2.atividadesDaMeta(lote, agoraR).length);
+  }
+  eq('rotuloDaSelecao distingue passado ("Concluídas na semana") de futuro ("Com prazo na semana")',
+     [MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '10/08', passado: true }),
+      MET2.rotuloDaSelecao({ tipo: 'semana', chave: 'x', rotulo: '24/08', passado: false }),
+      MET2.rotuloDaSelecao({ tipo: 'meta' })],
+     ['Concluídas na semana de 10/08', 'Com prazo na semana de 24/08', 'Meta do mês']);
+
+  // ── Graficos.tsx: as peças são clicáveis de verdade ─────────────────────
+  eq('a coluna inteira da barra é um <button aria-pressed> (alvo generoso, não a barra de 3px)',
+     /<button\s*\n\s*key=\{b\.chave\}\s*\n\s*className="barra-btn"\s*\n\s*aria-pressed=\{ativa\}/.test(graf2),
+     true);
+  eq('GraficoDemanda conta o futuro por prazosPorSemana (metricas.ts) — o inline `futuros` morreu',
+     /prazosPorSemana\(atividades\)/.test(graf2), true);
+  eq('a barra ativa ganha anel na própria cor de texto da semana',
+     /boxShadow: ativa \? `0 0 0 2px \$\{b\.corTexto\}` : "none",/.test(graf2), true);
+  eq('a rosca virou botão com aria-pressed e anel dourado quando ativa',
+     /<button\s*\n\s*className="elevavel"\s*\n\s*disabled=\{!clicavel\}\s*\n\s*aria-pressed=\{ativa\}/.test(graf2)
+     && /border: ativa \? `1\.5px solid \$\{gold\}`/.test(graf2), true);
+  eq('sem meta no mês a rosca NÃO é clicável (não há o que abrir)',
+     /const clicavel = total > 0 && !!onSelecionar;/.test(graf2), true);
+
+  // ── styles.css: o dinamismo de movimento ────────────────────────────────
+  eq('.barra-btn existe (reset de botão) e o hover da barra migrou pra ele',
+     /\.barra-btn \{/.test(css4) && /\.barra-btn:hover \.barra-demanda \{ transform: scaleY\(1\.05\)/.test(css4),
+     true);
+  eq('a ALTURA da barra anima FORA do media de hover — as barras escorrem quando o recorte muda, também no toque',
+     /\.barra-demanda \{\s*\n\s*transform-origin: bottom;\s*\n\s*transition: height \.45s cubic-bezier/.test(css4),
+     true);
+  eq('prefers-reduced-motion desliga o escorrer das barras',
+     /@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\.barra-demanda \{ transition: box-shadow \.18s ease; \}/.test(css4),
+     true);
+
+  // ── o documento estrutural ──────────────────────────────────────────────
+  const temDoc = fs36.existsSync('docs/DASHBOARD.md');
+  eq('docs/DASHBOARD.md existe (a receita para futuros dashboards)', temDoc, true);
+  if (temDoc) {
+    const doc = fs36.readFileSync('docs/DASHBOARD.md', 'utf8');
+    eq('o documento cobre as seções estruturais',
+       ['Fundo', 'régua', 'Superfícies', 'Cor', 'Tipografia', 'Dinamismo', 'invariante', 'checklist']
+         .every((s) => new RegExp(s, 'i').test(doc)), true);
+    eq('o documento registra A invariante central (quem conta é quem filtra)',
+       /quem conta é quem filtra/i.test(doc), true);
+  }
+
+  const produto11 = fs36.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R65 está documentado', /\*\*R65\*\*/.test(produto11), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

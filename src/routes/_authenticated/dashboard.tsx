@@ -48,7 +48,7 @@ import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
-import { atividadesDoKpi, KPI_LABEL, type ChaveKpi } from "@/features/home/metricas";
+import { atividadesDaSelecao, rotuloDaSelecao, type SelecaoPainel } from "@/features/home/metricas";
 import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
@@ -189,34 +189,37 @@ function Home() {
     return recorteDosPaineis(uniao, filtros, normalizarTexto);
   }, [atividades, historico, filtros]);
 
-  // R60: os 4 quadrados do painel viram filtro ao clicar. `kpiSelecionado` é
-  // local (não entra em `filtros`/sessionStorage) — é um drill-down
-  // temporário, não uma preferência que sobrevive a fechar a aba.
-  const [kpiSelecionado, setKpiSelecionado] = useState<ChaveKpi | null>(null);
+  // R60/R65: TODO o painel superior filtra ao clicar — os 4 quadrados de
+  // KPI, cada barra do gráfico de demanda e a rosca da meta — sob UM estado
+  // de seleção (nunca duas peças ativas brigando pela lista). É local (não
+  // entra em `filtros`/sessionStorage): drill-down temporário, não uma
+  // preferência que sobrevive a fechar a aba.
+  const [selecaoPainel, setSelecaoPainel] = useState<SelecaoPainel | null>(null);
   // zera se a base mudar de pessoa/vínculo/equipe embaixo do pé (ex.: gestor
-  // troca "Pessoa" com um KPI selecionado) — senão a lista ficaria presa a
+  // troca "Pessoa" com uma seleção ativa) — senão a lista ficaria presa a
   // um recorte que a tela já não anuncia mais em lugar nenhum
   useEffect(
-    () => setKpiSelecionado(null),
+    () => setSelecaoPainel(null),
     [filtros.pessoa, filtros.vinculos, filtros.equipe],
   );
 
   /**
-   * A lista que o clique num quadrado abre — EXATAMENTE `atividadesDoKpi`
-   * sobre `paraPaineis`, a MESMA base que os próprios tiles contam. Compor
-   * com preset/prazo aqui derrubaria essa igualdade: a lista ficaria menor
-   * que o número que a pessoa acabou de tocar — a mentira que o comentário
-   * de `paraPaineis`, logo acima, já registra ter acontecido uma vez.
+   * A lista que o clique numa peça do painel abre — EXATAMENTE
+   * `atividadesDaSelecao` sobre `paraPaineis`, a MESMA base que as próprias
+   * peças contam. Compor com preset/prazo aqui derrubaria essa igualdade: a
+   * lista ficaria menor que o número que a pessoa acabou de tocar — a
+   * mentira que o comentário de `paraPaineis`, logo acima, já registra ter
+   * acontecido uma vez.
    */
-  const atividadesKpi = useMemo(
-    () => (kpiSelecionado
-      ? ordenar(atividadesDoKpi(kpiSelecionado, paraPaineis, agora), filtros.ordenacao ?? "prazo")
+  const atividadesSelecao = useMemo(
+    () => (selecaoPainel
+      ? ordenar(atividadesDaSelecao(selecaoPainel, paraPaineis, agora), filtros.ordenacao ?? "prazo")
       : null),
-    [kpiSelecionado, paraPaineis, agora, filtros.ordenacao],
+    [selecaoPainel, paraPaineis, agora, filtros.ordenacao],
   );
-  /** O que a lista/quadro efetivamente mostram: o recorte do KPI quando há
-   *  um selecionado, senão o filtro normal da barra. */
-  const listaAtual = atividadesKpi ?? filtradas;
+  /** O que a lista/quadro efetivamente mostram: o recorte da seleção quando
+   *  há uma ativa, senão o filtro normal da barra. */
+  const listaAtual = atividadesSelecao ?? filtradas;
 
   // O banner precisa contar a MESMA população que o toque nele abre. Contando
   // o array cru, o técnico lia "41 atividades hoje", tocava, e caía numa lista
@@ -418,12 +421,23 @@ function Home() {
           {/* U33: os três leem o MESMO recorte que o quadro embaixo. Antes
               recebiam o array cru — e duas nem isso, consultavam o banco por
               conta própria —, então filtrar o quadro não mexia em nada aqui. */}
-          <GraficoDemanda atividades={paraPaineis} />
-          <GraficoMeta atividades={paraPaineis} />
+          <GraficoDemanda
+            atividades={paraPaineis}
+            selecionada={selecaoPainel?.tipo === "semana" ? selecaoPainel.chave : null}
+            onSelecionarSemana={(chave, rotulo, passado) => setSelecaoPainel((atual) =>
+              (atual?.tipo === "semana" && atual.chave === chave ? null : { tipo: "semana", chave, rotulo, passado }))}
+          />
+          <GraficoMeta
+            atividades={paraPaineis}
+            ativa={selecaoPainel?.tipo === "meta"}
+            onSelecionar={() => setSelecaoPainel((atual) =>
+              (atual?.tipo === "meta" ? null : { tipo: "meta" }))}
+          />
           <PainelKpis
             atividades={paraPaineis}
-            ativo={kpiSelecionado}
-            onSelecionar={(chave) => setKpiSelecionado((atual) => (atual === chave ? null : chave))}
+            ativo={selecaoPainel?.tipo === "kpi" ? selecaoPainel.chave : null}
+            onSelecionar={(chave) => setSelecaoPainel((atual) =>
+              (atual?.tipo === "kpi" && atual.chave === chave ? null : { tipo: "kpi", chave }))}
           />
           <CriarRapido />
         </div>
@@ -608,12 +622,12 @@ function Home() {
               Nada nesta combinação
             </span>
             {/* o vazio nomeia a combinação culpada em vez de ficar mudo. Com
-                um KPI selecionado, preset/prazo NÃO valem (ver atividadesKpi)
-                — citá-los aqui apontaria um culpado que não é o de verdade. */}
+                uma seleção do painel ativa, preset/prazo NÃO valem (ver
+                atividadesSelecao) — citá-los apontaria um culpado errado. */}
             <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
-              {kpiSelecionado
+              {selecaoPainel
                 ? [
-                    KPI_LABEL[kpiSelecionado],
+                    rotuloDaSelecao(selecaoPainel),
                     filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
                     filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,
                     filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
@@ -626,8 +640,8 @@ function Home() {
                     filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
                   ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
             </span>
-            {kpiSelecionado ? (
-              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => setKpiSelecionado(null)}>
+            {selecaoPainel ? (
+              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => setSelecaoPainel(null)}>
                 Limpar
               </button>
             ) : (filtros.preset || filtros.prazo || filtros.vinculos.length > 0
@@ -639,17 +653,17 @@ function Home() {
           </div>
         ) : (
           <>
-            {/* R60: enquanto um KPI está filtrando, é ELE que explica a
-                lista — a mesma barra que "sem data oculto pelo prazo" usava
-                não faz sentido junto (prazo não vale nesse modo). */}
-            {kpiSelecionado ? (
+            {/* R60/R65: enquanto uma peça do painel está filtrando, é ELA que
+                explica a lista — a barra "sem data oculto pelo prazo" não faz
+                sentido junto (prazo não vale nesse modo). */}
+            {selecaoPainel ? (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8, minHeight: 32,
                 fontFamily: FONT, fontSize: 12, color: textSecondary,
               }}>
-                Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>{KPI_LABEL[kpiSelecionado]}</strong>
+                Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>{rotuloDaSelecao(selecaoPainel)}</strong>
                 <button
-                  onClick={() => setKpiSelecionado(null)}
+                  onClick={() => setSelecaoPainel(null)}
                   style={{
                     fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
                     background: "transparent", border: "none", cursor: "pointer", padding: 0,
