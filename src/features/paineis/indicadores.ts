@@ -301,6 +301,75 @@ export function chamadosDaLente<T extends ChamadoParaIndicador>(
 }
 
 /**
+ * As colunas do KANBAN do Painel Operacional (R76).
+ *
+ * Davi, 2026-08-22: "Não agendados · Agendados · Atrasados · Concluídos. O
+ * status cancelado não tem necessidade de aparecer."
+ *
+ * Elas NÃO são o campo `status` — são a leitura operacional dele cruzada com
+ * agendamento e prazo. "Atrasado" não existe como status no banco (é
+ * `situacaoPrazo`), e "não agendado" é a ausência de `data_hora_agendada`.
+ * Derivar aqui, numa função só, é o que impede a tela de reimplementar essa
+ * conta e discordar do resto do painel.
+ */
+export type ColunaOperacional = "nao_agendado" | "agendado" | "atrasado" | "concluido";
+
+export const COLUNA_OP_ORDEM: ColunaOperacional[] = [
+  "nao_agendado", "agendado", "atrasado", "concluido",
+];
+
+export const COLUNA_OP_LABEL: Record<ColunaOperacional, string> = {
+  nao_agendado: "Não agendados",
+  agendado: "Agendados",
+  atrasado: "Atrasados",
+  concluido: "Concluídos",
+};
+
+/**
+ * Em que coluna o chamado cai — ou `null` quando ele não pertence ao quadro.
+ *
+ * A ORDEM DOS TESTES É A REGRA, e cada degrau tem motivo:
+ *   1. cancelado sai do quadro (pedido explícito) — e sai ANTES de tudo,
+ *      senão um cancelado sem prazo cairia em "não agendado";
+ *   2. concluído é destino final: não interessa se o prazo estourou no
+ *      caminho, ele já acabou;
+ *   3. ATRASADO vence AGENDADO. Um chamado marcado para terça que venceu
+ *      continua marcado — se "agendado" ganhasse, o atraso desapareceria
+ *      atrás de uma data, que é exatamente o que a coluna existe para
+ *      denunciar;
+ *   4. tem data marcada → agendado; não tem → não agendado.
+ */
+export function colunaOperacional(
+  c: ChamadoParaIndicador & { data_hora_agendada?: string | null },
+  agora: Date = new Date(),
+): ColunaOperacional | null {
+  if (c.status === "cancelado") return null;
+  if (c.status === "concluido") return "concluido";
+  if (situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado") return "atrasado";
+  return c.data_hora_agendada ? "agendado" : "nao_agendado";
+}
+
+/** Os chamados de campo agrupados nas quatro colunas, na ordem de leitura. */
+export function agruparPorColuna<T extends ChamadoParaIndicador & { data_hora_agendada?: string | null }>(
+  chamados: T[],
+  agora: Date = new Date(),
+): Record<ColunaOperacional, T[]> {
+  const balde: Record<ColunaOperacional, T[]> = {
+    nao_agendado: [], agendado: [], atrasado: [], concluido: [],
+  };
+  for (const c of naturezaCampo(chamados)) {
+    const col = colunaOperacional(c, agora);
+    if (col) balde[col].push(c);
+  }
+  // dentro da coluna: quem está em aberto vem por urgência de prazo; o
+  // concluído, pelo mais recente — a mesma régua das duas ordens da lista
+  for (const k of COLUNA_OP_ORDEM) {
+    balde[k] = k === "concluido" ? ordenarHistorico(balde[k]) : ordenarChamados(balde[k], agora);
+  }
+  return balde;
+}
+
+/**
  * A ordem do HISTÓRICO: o mais recente primeiro.
  *
  * `ordenarChamados` não serve aqui — ela ordena por urgência de prazo, e

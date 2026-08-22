@@ -32,6 +32,24 @@ export function duplaDaPessoa(pessoaId: string | null, duplas: Dupla[]): Dupla |
 }
 
 /**
+ * O PAR de uma pessoa na dupla ativa dela — o apoio automático (R75).
+ *
+ * Gêmeo TS de `public.parceiro_da_dupla()` (U64). Quem grava o apoio é o
+ * gatilho no banco, para valer em qualquer caminho de escrita (app, import,
+ * SQL na mão); esta versão existe para a tela poder ANTECIPAR o que vai
+ * acontecer — mostrar "apoio: Luan" antes de salvar — e para a regra poder
+ * ser travada por asserção sem subir banco.
+ *
+ * Devolve null quando não há dupla, ou quando a dupla é de uma pessoa só.
+ * Null é resposta legítima: inventar um apoio é pior que deixar em branco.
+ */
+export function parceiroDaDupla(pessoaId: string | null, duplas: Dupla[]): string | null {
+  const d = duplaDaPessoa(pessoaId, duplas);
+  if (!d) return null;
+  return membrosDaDupla(d).find((m) => m !== pessoaId) ?? null;
+}
+
+/**
  * Nome de exibição. `nome` é o que o gestor escreveu no cadastro; quando ele
  * está vazio, monta a partir de quem está nela — uma dupla sem rótulo ainda
  * precisa ser reconhecível na legenda do gráfico e no filtro.

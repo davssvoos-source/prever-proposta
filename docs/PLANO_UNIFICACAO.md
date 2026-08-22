@@ -3967,3 +3967,75 @@ comentário novo empurrou o `userSelect` para fora da janela de 2300
 caracteres da regex; era falso alarme, e a janela foi alargada.
 
 1249 asserções (2 novas, 6 reescritas), build ok, TypeScript sem erro novo.
+
+### U64/U65 — Apoio pela dupla, quadro kanban e 30 chamados de teste (R75–R77, 2026-08-22)
+
+Três pedidos numa sequência: o mecanismo de apoio automático, um lote de
+teste para o dashboard, e o modo kanban.
+
+**A decisão que definiu o mecanismo foi uma frase do pedido**: "se um dia eu
+mudar a dupla do Breno para o Denner, **desse dia em diante** o apoio
+automático vai ser o Denner". Isso decide entre gravar e derivar.
+
+A U47 estabeleceu que a DUPLA de um chamado é derivada do responsável — não
+existe `chamados.dupla_id`, de propósito, para funcionar retroativamente. O
+caminho "óbvio" era seguir a mesma regra para o apoio. Seria errado: trocar a
+dupla do Breno reescreveria o passado, e todo chamado que o Luan atendeu
+passaria a dizer "Denner". As duas regras convivem porque respondem perguntas
+diferentes — a dupla (derivada) responde "de quem é este trabalho hoje", e é
+agrupamento de gráfico; o apoio (gravado) responde "quem foi neste chamado",
+e é registro. Registro não muda quando o cadastro muda.
+
+O gatilho lê a tabela `duplas` NO MOMENTO da atribuição, e é isso que dá o
+"sempre dinâmico" sem tocar no histórico.
+
+**`chamado_apoios.origem` precisou existir** por causa da troca de
+responsável: passar de Breno para Lucas tem de tirar o Luan e pôr o Paulo.
+Sem marcar quem entrou automaticamente, remover o Luan exigiria apagar TODOS
+os apoios do chamado — levando junto quem alguém pôs à mão. A coluna separa
+as duas origens, e o gatilho só mexe no que ele mesmo criou. Pelo mesmo
+motivo, o `ON CONFLICT DO NOTHING` deixa o apoio manual vencer: se o gatilho
+tomasse posse dele, o removeria na próxima troca.
+
+**Sem backfill, de propósito.** Preencher o apoio dos chamados que já existem
+usaria a dupla de hoje para trabalho de antes — exatamente o erro que a
+decisão de gravar evita. O comando fica no rodapé da migration, comentado,
+para quem quiser correr o risco conscientemente.
+
+**O quadro.** As quatro colunas pedidas (Não agendados · Agendados ·
+Atrasados · Concluídos) não são o campo `status`: "atrasado" não existe como
+status (é `situacaoPrazo`) e "não agendado" é a ausência de
+`data_hora_agendada`. Virou `colunaOperacional()`, pura, com duas
+precedências que valem registro: **concluído é destino final** (o prazo pode
+ter estourado no caminho, acabou é acabou) e **atrasado vence agendado** — um
+chamado marcado para terça que venceu continua vencido, e deixar a data
+escondê-lo é o oposto do que a coluna existe para denunciar. Há asserção de
+PARTIÇÃO: as quatro colunas cobrem tudo, sem duplicar e sem perder ninguém
+(fora cancelado, que o pedido tirou).
+
+No quadro, lente e KPI não valem — os dois recortam subconjuntos de "em
+aberto" e esvaziariam três das quatro colunas. Clicar num KPI volta para a
+lista, que é onde drill-down faz sentido.
+
+**Os 30 de teste não são aleatórios de verdade, e isso é o ponto.** Sorteio
+daria um lote plausível e provavelmente sem nenhum prazo estourado, nenhum
+urgente e nenhum sem responsável — e o dashboard continuaria sem mostrar o
+que sabe mostrar. O lote é escolhido para CONTER os casos: 4 atrasados, 3
+urgentes, 3 sem responsável, 8 sem agendamento, 4 concluídos, os quatro
+tipos. Há asserção conferindo que as quatro colunas do quadro nascem todas
+com item — quadro com coluna vazia não demonstra que funciona.
+
+Nada de id escrito à mão: os técnicos saem de MEMBROS DE DUPLAS ATIVAS (para
+o gatilho da U64 ter par e o apoio automático aparecer sozinho, mostrando o
+mecanismo) e os clientes saem da própria tabela. A migration aborta com
+mensagem útil se não houver dupla cadastrada, em vez de criar 30 chamados
+órfãos.
+
+Um deslize que a própria verificação pegou: eu tinha escrito "24 em aberto e
+6 concluídos" no cabeçalho e no SELECT de conferência, mas as linhas dão 26 e
+4. A asserção recontou a partir das VALUES e acusou. Os números da
+conferência agora são derivados das linhas, não digitados de memória.
+
+1302 asserções (53 novas, 1 reescrita), build ok, TypeScript sem erro novo.
+As duas migrations não foram executadas — é o Davi quem roda, nesta ordem:
+U64 (o mecanismo) e depois U65 (o lote).

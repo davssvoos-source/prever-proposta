@@ -898,6 +898,42 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   }
 }
 
+/* ── Kanban do Painel Operacional (R76) ───────────────────────────────────
+   Quatro colunas: Não agendados · Agendados · Atrasados · Concluídos.
+
+   Quem rola é a COLUNA, não a página: a tela é fixa no desktop (a mesma
+   régua do resto do painel), então cada coluna recebe o que sobrar de altura
+   e rola por dentro. Sem o `min-height: 0` no filho, um item de flex/grid
+   não encolhe abaixo do próprio conteúdo e a rolagem vazaria para a página
+   inteira — o mesmo detalhe que a lista de clientes precisou (R71).
+
+   No celular vira trilho horizontal: quatro colunas de 260px lado a lado
+   não cabem numa tela de telefone, e espremer deixaria cada card ilegível. */
+.kanban-op {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 12px;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.kanban-op-coluna {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.kanban-op-itens {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 /* ── Painéis (Operacional · Comercial · Administrativo) ───────────────────
    Números numa faixa que quebra sozinha, atalhos em cartões que crescem até
    caber. auto-fit + minmax em vez de número fixo de colunas: os três painéis

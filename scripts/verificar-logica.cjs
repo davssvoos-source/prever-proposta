@@ -4335,8 +4335,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a tela oferece as três como chip, e o número de cada uma sai da MESMA função que monta a lista',
      /LENTE_ORDEM\.map\(\(l\) => \{/.test(op6)
      && /chamadosDaLente\(l, chamados, agora\)\.length/.test(op6), true);
-  eq('CRÍTICO: clicar num KPI devolve a lente para "abertos" — os 4 contam só o que está em aberto, e abrir um deles sobre o histórico mostraria uma lista que não bate com o número tocado',
-     /setLente\("abertos"\);\s*\n\s*setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op6), true);
+  // R76 acrescentou o retorno à visão de LISTA: o KPI é drill-down de lista,
+  // e no quadro ele esvaziaria as colunas que não são "em aberto".
+  eq('CRÍTICO: clicar num KPI devolve a lente para "abertos" E volta para a lista — os 4 contam só o que está em aberto, e abrir um deles sobre o histórico (ou sobre o quadro) mostraria algo que não bate com o número tocado',
+     /setLente\("abertos"\);\s*\n\s*setVisao\("lista"\);[^\n]*\n\s*setKpiAtivo\(selecionado \? null : k\.chave\);/.test(op6),
+     true);
   eq('e escolher uma lente limpa o KPI — só uma peça filtra por vez',
      /onClick=\{\(\) => \{ setKpiAtivo\(null\); setLente\(l\); \}\}/.test(op6), true);
   eq('o estado vazio nomeia a LENTE, em vez de dizer "em aberto" mesmo olhando o histórico',
@@ -4344,6 +4347,205 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   const produto19 = fs44.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R73 está documentado', /\*\*R73\*\*/.test(produto19), true);
+}
+
+// ── R75/U64: apoio automático pela dupla ───────────────────────────────────
+{
+  const fs45 = require('fs');
+  const DUP = carregar('src/features/duplas/modelo.ts');
+  const CAMINHO = 'supabase/migrations/20260822090000_u64_apoio_automatico_da_dupla.sql';
+  eq('a migration do apoio automático existe', fs45.existsSync(CAMINHO), true);
+  const sql = fs45.readFileSync(CAMINHO, 'utf8');
+
+  const duplas = [
+    { id: 'd1', nome: 'Dupla do Breno', membro_a: 'breno', membro_b: 'luan', ativa: true },
+    { id: 'd2', nome: 'Dupla do Lucas', membro_a: 'lucas', membro_b: 'paulo', ativa: true },
+    { id: 'd3', nome: 'Sozinho',        membro_a: 'vinicius', membro_b: null, ativa: true },
+    { id: 'd4', nome: 'Desfeita',       membro_a: 'antigo', membro_b: 'outro', ativa: false },
+  ];
+  eq('o par sai dos DOIS lados da dupla — tanto faz quem foi cadastrado como membro_a',
+     [DUP.parceiroDaDupla('breno', duplas), DUP.parceiroDaDupla('luan', duplas)],
+     ['luan', 'breno']);
+  eq('cada técnico puxa o par da SUA dupla', DUP.parceiroDaDupla('lucas', duplas), 'paulo');
+  eq('dupla de uma pessoa só não tem par — e inventar um seria pior que deixar em branco',
+     DUP.parceiroDaDupla('vinicius', duplas), null);
+  eq('CRÍTICO: dupla DESFEITA não puxa ninguém — senão quem já saiu continuaria sendo escalado',
+     DUP.parceiroDaDupla('antigo', duplas), null);
+  eq('quem não está em dupla nenhuma não tem par', DUP.parceiroDaDupla('ninguem', duplas), null);
+  eq('sem responsável não há par', DUP.parceiroDaDupla(null, duplas), null);
+  eq('CRÍTICO: o par é o OUTRO, nunca a própria pessoa',
+     ['breno', 'luan', 'lucas', 'paulo'].every((p) => DUP.parceiroDaDupla(p, duplas) !== p), true);
+
+  // ── o gatilho, no SQL ────────────────────────────────────────────────────
+  eq('CRÍTICO: o apoio é GRAVADO, não derivado — "desse dia em diante" quer dizer que trocar a dupla não pode reescrever quem foi ao prédio no passado',
+     /INSERT INTO public\.chamado_apoios \(chamado_id, profile_id, origem\)/.test(sql)
+     && /VALUES \(NEW\.id, v_parceiro, 'dupla'\)/.test(sql), true);
+  eq('dispara ao INSERIR e ao TROCAR o responsável — é isso que dá o "sempre dinâmico"',
+     /CREATE TRIGGER trg_chamado_apoio_dupla_ins AFTER INSERT ON public\.chamados/.test(sql)
+     && /CREATE TRIGGER trg_chamado_apoio_dupla_upd AFTER UPDATE OF responsavel_id ON public\.chamados/.test(sql),
+     true);
+  eq('CRÍTICO: existe `origem` para o gatilho só mexer no que ELE criou — sem isso, trocar o responsável teria de apagar todos os apoios do chamado, levando junto quem alguém pôs à mão',
+     /ADD COLUMN IF NOT EXISTS origem text NOT NULL DEFAULT 'manual'/.test(sql)
+     && /DELETE FROM public\.chamado_apoios[\s\S]{0,200}AND origem = 'dupla'/.test(sql), true);
+  eq('apoio posto à mão vence o automático (ON CONFLICT DO NOTHING)',
+     /ON CONFLICT \(chamado_id, profile_id\) DO NOTHING;/.test(sql), true);
+  eq('só vale para CAMPO — o chamado interno tem equipe própria e a proposta não tem par que a acompanhe',
+     /IF NEW\.natureza <> 'campo' THEN RETURN NEW; END IF;/.test(sql), true);
+  eq('a função SQL só olha dupla ATIVA, como a gêmea em TS',
+     /WHERE d\.ativa\s*\n\s*AND \(d\.membro_a = _pessoa OR d\.membro_b = _pessoa\)/.test(sql), true);
+  eq('NÃO há backfill automático — usar a dupla de hoje em chamado antigo é o erro que a decisão de gravar evita',
+     /NÃO HÁ BACKFILL, DE PROPÓSITO/.test(sql), true);
+
+  const produto20 = fs45.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R75 está documentado', /\*\*R75\*\*/.test(produto20), true);
+}
+
+// ── R76: o quadro (kanban) do Painel Operacional ───────────────────────────
+{
+  const fs46 = require('fs');
+  const IND4 = carregar('src/features/paineis/indicadores.ts');
+  const op7 = fs46.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  const css6 = fs46.readFileSync('src/styles.css', 'utf8');
+
+  const agoraK = new Date('2026-08-22T12:00:00Z');
+  const c = (o) => ({
+    id: 'k-' + Math.random(), status: 'aberto', tipo: 'corretiva', prioridade: 'normal',
+    cliente_id: null, responsavel_id: null, prazo_limite: null,
+    created_at: '2026-08-01T10:00:00Z', natureza: 'campo', data_hora_agendada: null, ...o,
+  });
+
+  eq('as quatro colunas, na ordem pedida',
+     IND4.COLUNA_OP_ORDEM.map((k) => IND4.COLUNA_OP_LABEL[k]),
+     ['Não agendados', 'Agendados', 'Atrasados', 'Concluídos']);
+  eq('CRÍTICO: cancelado fica FORA do quadro (pedido explícito) — e sai antes de tudo, senão um cancelado sem prazo cairia em "não agendado"',
+     IND4.colunaOperacional(c({ status: 'cancelado' }), agoraK), null);
+  eq('concluído é destino final — não importa se o prazo estourou no caminho',
+     IND4.colunaOperacional(c({ status: 'concluido', prazo_limite: '2026-08-01T00:00:00Z' }), agoraK),
+     'concluido');
+  eq('CRÍTICO: ATRASADO vence AGENDADO — um chamado marcado para terça que venceu continua vencido, e deixar a data escondê-lo é o oposto do que a coluna existe para denunciar',
+     IND4.colunaOperacional(
+       c({ prazo_limite: '2026-08-20T00:00:00Z', data_hora_agendada: '2026-08-25T00:00:00Z' }), agoraK),
+     'atrasado');
+  eq('com data marcada e no prazo → Agendados',
+     IND4.colunaOperacional(c({ prazo_limite: '2026-08-30T00:00:00Z', data_hora_agendada: '2026-08-25T00:00:00Z' }), agoraK),
+     'agendado');
+  eq('sem data marcada → Não agendados', IND4.colunaOperacional(c({}), agoraK), 'nao_agendado');
+  eq('sem prazo não é atraso — quem não tem prazo não pode estar atrasado',
+     IND4.colunaOperacional(c({ prazo_limite: null }), agoraK), 'nao_agendado');
+
+  {
+    const lote = [
+      c({ id: '1' }), c({ id: '2', data_hora_agendada: '2026-08-25T00:00:00Z' }),
+      c({ id: '3', prazo_limite: '2026-08-01T00:00:00Z' }),
+      c({ id: '4', status: 'concluido' }), c({ id: '5', status: 'cancelado' }),
+      c({ id: '6', natureza: 'comercial' }),
+    ];
+    const q = IND4.agruparPorColuna(lote, agoraK);
+    eq('CRÍTICO: as quatro colunas PARTICIONAM o campo — nada duplicado, nada perdido (fora cancelado e o que não é campo)',
+       IND4.COLUNA_OP_ORDEM.reduce((s, k) => s + q[k].length, 0), 4);
+    eq('nenhum chamado aparece em duas colunas',
+       new Set(IND4.COLUNA_OP_ORDEM.flatMap((k) => q[k].map((x) => x.id))).size, 4);
+    eq('a proposta comercial não entra no quadro de campo',
+       IND4.COLUNA_OP_ORDEM.flatMap((k) => q[k].map((x) => x.id)).includes('6'), false);
+  }
+
+  eq('a tela oferece o alternador lista/quadro',
+     /setVisao\(v\); if \(v === "kanban"\) setKpiAtivo\(null\);/.test(op7), true);
+  eq('as lentes só aparecem na LISTA — no quadro elas esvaziariam colunas (as três recortam subconjuntos de "em aberto")',
+     /\{visao === "lista" && \(\s*\n\s*<div className="trilho-x"/.test(op7), true);
+  eq('as colunas do quadro vêm da função pura, não de um filtro reescrito na tela',
+     /agruparPorColuna\(chamados as any\[\], agora\)/.test(op7)
+     && /COLUNA_OP_ORDEM\.map\(\(col\) => \{/.test(op7), true);
+  eq('a cor da coluna sai do vocabulário de ESTADO (PRISMA), não da rampa de dados',
+     /nao_agendado: isLight \? PRISMA\.azul\.light/.test(op7)
+     && /atrasado:     isLight \? PRISMA\.vermelho\.light/.test(op7), true);
+  eq('quem rola é a COLUNA, não a página — a tela é fixa',
+     /\.kanban-op-itens \{[\s\S]{0,200}overflow-y: auto;/.test(css6), true);
+  eq('e a coluna precisa de min-height:0 para poder encolher (senão a rolagem vaza pra página)',
+     /\.kanban-op-coluna \{[\s\S]{0,200}min-height: 0;/.test(css6), true);
+
+  const produto21 = fs46.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R76 está documentado', /\*\*R76\*\*/.test(produto21), true);
+}
+
+// ── R77/U65: os 30 chamados de teste ───────────────────────────────────────
+{
+  const fs47 = require('fs');
+  const CAMINHO = 'supabase/migrations/20260822100000_u65_chamados_de_teste.sql';
+  eq('a migration dos chamados de teste existe', fs47.existsSync(CAMINHO), true);
+  const sql = fs47.readFileSync(CAMINHO, 'utf8');
+
+  const linhas = sql.split('\n').filter((l) => /^ {2}\(\s*\d+, '/.test(l));
+  eq('são 30 chamados', linhas.length, 30);
+
+  const campos = linhas.map((l) => {
+    const m = l.match(/^ {2}\(\s*(\d+), '(?:''|[^'])*',\s*'(\w+)',\s*'(\w+)',\s*'(\w+)',\s*(\d+),\s*(-?\d+|NULL),\s*(-?\d+|NULL),\s*(true|false)\)/);
+    if (!m) throw new Error('linha de seed fora do formato: ' + l.slice(0, 60));
+    return { n: +m[1], tipo: m[2], status: m[3], pri: m[4],
+             prazo: m[6] === 'NULL' ? null : +m[6],
+             agenda: m[7] === 'NULL' ? null : +m[7], sem: m[8] === 'true' };
+  });
+  const ABERTO = ['aberto', 'agendado', 'em_andamento', 'stand_by'];
+  const abertos = campos.filter((r) => ABERTO.includes(r.status));
+
+  eq('numeração 1..30, sem repetir (é a chave de idempotência)',
+     campos.map((r) => r.n).sort((a, b) => a - b), Array.from({ length: 30 }, (_, i) => i + 1));
+  eq('todos os tipos são de CAMPO (a equipe é a Técnica)',
+     [...new Set(campos.map((r) => r.tipo))].sort(),
+     ['corretiva', 'implantacao', 'operacional', 'preventiva']);
+  eq('nenhum status fora do vocabulário do campo',
+     campos.every((r) => [...ABERTO, 'concluido'].includes(r.status)), true);
+  eq('CRÍTICO: a maioria fica EM ABERTO — as 227 importadas são todas concluídas, e quase todo painel desta tela conta o que está aberto',
+     abertos.length, 26);
+
+  // o lote precisa CONTER os casos que o dashboard sabe mostrar
+  eq('tem prazo estourado (acende "Prazo estourado" e a coluna Atrasados)',
+     abertos.filter((r) => r.prazo !== null && r.prazo < 0).length, 4);
+  eq('tem urgente em aberto (acende "Urgentes")',
+     abertos.filter((r) => r.pri === 'urgente').length, 3);
+  eq('tem sem responsável (acende "Sem responsável")',
+     campos.filter((r) => r.sem).length, 3);
+  eq('tem concluído (enche a coluna Concluídos e o fluxo do mês)',
+     campos.filter((r) => r.status === 'concluido').length, 4);
+
+  // as quatro colunas do quadro, pela MESMA precedência de colunaOperacional
+  {
+    const col = { nao_agendado: 0, agendado: 0, atrasado: 0, concluido: 0 };
+    for (const r of campos) {
+      if (r.status === 'concluido') col.concluido++;
+      else if (r.prazo !== null && r.prazo < 0) col.atrasado++;
+      else if (r.agenda !== null) col.agendado++;
+      else col.nao_agendado++;
+    }
+    eq('CRÍTICO: as quatro colunas do quadro nascem TODAS com item — um quadro com coluna vazia não mostra que funciona',
+       Object.values(col).every((v) => v > 0), true);
+    eq('e as contagens declaradas no SELECT de conferência batem com as linhas',
+       [col.nao_agendado, col.agendado, col.atrasado, col.concluido], [8, 14, 4, 4]);
+    eq('os números do SELECT de conferência estão escritos na migration',
+       [`'quadro · Não agendados', count(*)::text, '${col.nao_agendado}'`,
+        `'quadro · Agendados', count(*)::text, '${col.agendado}'`,
+        `'quadro · Atrasados', count(*)::text, '${col.atrasado}'`,
+        `'quadro · Concluídos', count(*)::text, '${col.concluido}'`]
+         .every((t) => sql.includes(t)), true);
+  }
+
+  eq('é idempotente pelo origem_id', /c\.origem = 'seed_teste' AND c\.origem_id = 'TESTE-'/.test(sql), true);
+  eq('sai inteiro com um DELETE — é dado de teste, tem de ser fácil de remover',
+     /DELETE FROM public\.chamados WHERE origem = 'seed_teste';/.test(sql), true);
+  eq('CRÍTICO: os técnicos saem de DUPLAS ATIVAS — é o que faz o gatilho da U64 ter par e o apoio automático aparecer sozinho',
+     /EXISTS \(SELECT 1 FROM public\.duplas d\s*\n\s*WHERE d\.ativa AND \(d\.membro_a = p\.id OR d\.membro_b = p\.id\)\)/.test(sql),
+     true);
+  eq('aborta com mensagem útil se não houver dupla cadastrada, em vez de criar 30 chamados órfãos',
+     /RAISE EXCEPTION 'Nenhum técnico em dupla ativa/.test(sql), true);
+  eq('o gatilho de notificação fica desligado — 30 sinos por dado de teste é ruído',
+     /DISABLE TRIGGER trg_notify_chamado_ins/.test(sql)
+     && /ENABLE TRIGGER trg_notify_chamado_ins/.test(sql), true);
+  eq('marcos de campo só em quem já começou/terminou, e sempre depois da abertura',
+     /WHEN s\.status IN \('em_andamento','concluido'\)/.test(sql)
+     && /interval '3 hours'/.test(sql) && /interval '5 hours'/.test(sql), true);
+
+  const produto22 = fs47.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R77 está documentado', /\*\*R77\*\*/.test(produto22), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

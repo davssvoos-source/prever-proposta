@@ -1209,3 +1209,45 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(Davi, 2026-08-22: "arrume o scroll do mouse no mapa da tela de clientes,
   deve dar para dar zoom com scroll ou botão. Além disso, remova o contorno
   dos nomes dos bairros do mapa".)*
+
+- **R75** — **O apoio do chamado é preenchido pela dupla do responsável.**
+  Ao atribuir um chamado de campo a alguém, o sistema põe automaticamente o
+  par dele como apoio: se a dupla do Breno é o Luan, o chamado do Breno nasce
+  com o Luan de apoio. **Trocar o responsável troca o apoio junto.** Se a
+  dupla do Breno mudar para o Denner, **daí em diante** os chamados dele saem
+  com o Denner — e os antigos continuam dizendo Luan, porque apoio é registro
+  de quem foi, não uma consulta ao cadastro de hoje.
+
+  Apoio posto **à mão sempre vence** o automático, e nunca é removido pelo
+  sistema. Sem dupla, ou dupla de uma pessoa só, o apoio fica em branco —
+  inventar um seria pior. Vale só para chamado de **campo**: o interno tem
+  equipe própria e a proposta não tem par que a acompanhe.
+  *(Davi, 2026-08-22: "se eu agendo um chamado pro Breno e a dupla dele está
+  configurada atualmente para ser o Luan, automaticamente o sistema preenche
+  o apoio como Luan... Sempre dinâmico".)*
+
+- **R76** — O Painel Operacional ganhou **modo Quadro (kanban)** para os
+  chamados da área técnica, ao lado do modo Lista. Quatro colunas: **Não
+  agendados · Agendados · Atrasados · Concluídos**. **Cancelado não aparece**,
+  a pedido.
+
+  As colunas não são o campo `status` cru — são a leitura operacional dele:
+  "atrasado" é prazo vencido (não existe como status), e "não agendado" é a
+  ausência de data marcada. Duas regras de precedência: **concluído é destino
+  final** (não importa se o prazo estourou no caminho) e **atrasado vence
+  agendado** — um chamado marcado para terça que já venceu continua vencido, e
+  deixar a data escondê-lo seria o oposto do que a coluna existe para
+  denunciar. No Quadro as lentes e o filtro por KPI não valem: os dois
+  recortam para "em aberto" e esvaziariam colunas.
+  *(Davi, 2026-08-22.)*
+
+- **R77** — Trinta **chamados fictícios** de teste para o dashboard poder ser
+  visto cheio. São de campo/equipe técnica, nos quatro tipos, e
+  majoritariamente **em aberto** — as 227 OS importadas são todas concluídas,
+  e quase todo painel desta tela conta o que está aberto. O lote inclui de
+  propósito os casos que o dashboard sabe mostrar: prazo estourado, urgentes,
+  sem responsável e sem agendamento, para as quatro colunas do Quadro e os
+  quatro KPIs nascerem todos com conteúdo. Saem inteiros com um comando
+  quando o banco for resetado.
+  *(Davi, 2026-08-22: "pode ser tudo fictício mesmo, antes de lançar o app
+  vamos resetar o banco de dados. Eu quero visualizar o dashboard".)*

@@ -41,7 +41,7 @@ import {
   PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend,
 } from "recharts";
-import { Users } from "lucide-react";
+import { Users, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useUserCargo, useTecnicos } from "@/features/gerencial/data";
@@ -55,7 +55,7 @@ import { DialogoDuplas } from "@/features/duplas/DialogoDuplas";
 import {
   serieAtividadesPorDupla, foraDeDupla, rotuloDaDupla, type SemanaDoGrafico,
 } from "@/features/duplas/modelo";
-import { chamadoStatusInfo } from "@/lib/chamado-status";
+import { chamadoStatusInfo, textoPrazo } from "@/lib/chamado-status";
 import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
@@ -68,6 +68,7 @@ import {
   chamadosDoKpi, KPI_OPERACIONAL_ORDEM, KPI_OPERACIONAL_LABEL, type ChaveKpiOperacional,
   abertosPorCliente, ordenarChamados, ordenarHistorico,
   chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
+  agruparPorColuna, COLUNA_OP_ORDEM, COLUNA_OP_LABEL, type ColunaOperacional,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
 
@@ -183,6 +184,10 @@ function PainelOperacional() {
   // coordena o dia); "Concluídos" e "Todos" existem porque o histórico —
   // as 227 OS retroativas, por exemplo — não tinha onde ser visto.
   const [lente, setLente] = useState<LenteLista>("abertos");
+  // R76: lista ou quadro. O quadro mostra as quatro colunas de uma vez —
+  // inclusive Concluídos —, então lente e KPI não valem nele: os dois
+  // recortam para subconjuntos de "em aberto" e esvaziariam colunas.
+  const [visao, setVisao] = useState<"lista" | "kanban">("lista");
 
   // nomes dos clientes para o gráfico por cliente — só id/nome
   const { data: clientes = [] } = useQuery({
@@ -208,6 +213,16 @@ function PainelOperacional() {
   const azul = isLight ? PRISMA.azul.light : PRISMA.azul.dark;
   const superficie = isLight ? "#ffffff" : "#101016";
   const neutro = isLight ? PRISMA.neutro.light : PRISMA.neutro.dark;
+  // As cores das colunas do quadro (R76) seguem o vocabulário de ESTADO do
+  // sistema (lib/chamado-status): azul = ainda não começou, amarelo = está
+  // em curso, vermelho = atraso, verde = terminado. Não é a rampa do
+  // ESPECTRO de propósito — coluna é estado, não série de dados.
+  const CORES_COLUNA: Record<ColunaOperacional, string> = {
+    nao_agendado: isLight ? PRISMA.azul.light : PRISMA.azul.dark,
+    agendado:     isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
+    atrasado:     isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark,
+    concluido:    isLight ? PRISMA.verde.light : PRISMA.verde.dark,
+  };
 
   // O PAINEL da faixa: card + altura única + padding compacto. Todo painel
   // das duas fileiras passa por aqui — é o que garante o §4.
@@ -339,6 +354,9 @@ function PainelOperacional() {
     return listaChamados.map((c) => atividadeDoChamado(c as any, ctx));
   }, [listaChamados, apoiosDoChamado]);
 
+  /** As quatro colunas do quadro (R76) — cancelado fica de fora. */
+  const quadro = useMemo(() => agruparPorColuna(chamados as any[], agora), [chamados, agora]);
+
   const semDados = ind.abertos === 0 && ind.entradasMes === 0 && ind.saidasMes === 0;
 
   // ── peças reutilizadas ────────────────────────────────────────────────────
@@ -468,6 +486,7 @@ function PainelOperacional() {
                     // deles com a lente no histórico abriria uma lista que
                     // não corresponde ao número tocado. A lente volta junto.
                     setLente("abertos");
+                    setVisao("lista");   // KPI é drill-down de LISTA
                     setKpiAtivo(selecionado ? null : k.chave);
                   }}
                   aria-pressed={selecionado}
@@ -771,12 +790,41 @@ function PainelOperacional() {
           }}>
             Chamados técnicos
           </h2>
+          {/* R76 — o alternador. O quadro é uma segunda LEITURA da mesma
+              fila, não outro conteúdo: as quatro colunas cobrem tudo o que
+              as lentes cobrem, de uma vez. */}
+          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+            {([["lista", List, "Lista"], ["kanban", LayoutGrid, "Quadro"]] as const).map(([v, Icone, rotulo]) => {
+              const ativa = visao === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => { setVisao(v); if (v === "kanban") setKpiAtivo(null); }}
+                  aria-pressed={ativa}
+                  title={rotulo}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    height: 28, padding: "0 10px", borderRadius: 14, cursor: "pointer",
+                    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                    background: ativa ? GRAD_PRIMARIA : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                    color: ativa ? SOBRE_PRIMARIA : textPrimary,
+                    fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+                  }}
+                >
+                  <Icone size={13} />
+                  {rotulo}
+                </button>
+              );
+            })}
+          </div>
+
           {/* R73 — as três lentes. Sem elas, chamado ENCERRADO não tinha onde
               ser visto no sistema inteiro: esta tela listava só o que está em
               aberto, o Painel de chamados idem, e a Início poda encerrado com
               mais de 7 dias. As 227 OS retroativas entraram concluídas e
               ficaram invisíveis por isso. O número de cada chip sai da MESMA
               função que monta a lista (chamadosDaLente). */}
+          {visao === "lista" && (
           <div className="trilho-x" style={{ display: "flex", gap: 6 }}>
             {LENTE_ORDEM.map((l) => {
               const ativa = !kpiAtivo && lente === l;
@@ -799,6 +847,7 @@ function PainelOperacional() {
               );
             })}
           </div>
+          )}
 
           {/* O anúncio do recorte (DASHBOARD.md §7.3) — o mesmo contrato da
               Início: a lista nunca fica filtrada sem dizer por quê. */}
@@ -831,7 +880,93 @@ function PainelOperacional() {
           </button>
         </div>
 
-        {atividades.length === 0 ? (
+        {visao === "kanban" ? (
+          <div className="kanban-op" style={{ flex: 1, minHeight: 0 }}>
+            {COLUNA_OP_ORDEM.map((col) => {
+              const itens = quadro[col];
+              const cor = CORES_COLUNA[col];
+              return (
+                <div key={col} className="kanban-op-coluna">
+                  {/* cabeçalho da coluna: nome, contagem e um filete na cor
+                      dela — o mesmo vocabulário de estado do resto do app */}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 7, flexShrink: 0,
+                    padding: "0 2px 8px",
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 4, background: cor, flexShrink: 0 }} />
+                    <span style={{ ...MICRO, color: cor }}>{COLUNA_OP_LABEL[col]}</span>
+                    <span style={{
+                      marginLeft: "auto", fontFamily: FONT, fontWeight: 700, fontSize: 11,
+                      color: textSecondary, fontVariantNumeric: "tabular-nums",
+                    }}>
+                      {itens.length}
+                    </span>
+                  </div>
+
+                  <div className="kanban-op-itens">
+                    {itens.length === 0 ? (
+                      <div style={{
+                        fontFamily: FONT, fontSize: 11.5, color: textSecondary,
+                        padding: "10px 2px", textAlign: "center",
+                      }}>
+                        vazio
+                      </div>
+                    ) : itens.map((c: any) => {
+                      const info = chamadoStatusInfo(c.status);
+                      return (
+                        <button
+                          key={c.id}
+                          className="elevavel"
+                          onClick={() => setPainelId(c.id)}
+                          style={{
+                            ...card(isLight), borderRadius: 12, padding: "9px 11px",
+                            textAlign: "left", cursor: "pointer", color: textPrimary,
+                            display: "flex", flexDirection: "column", gap: 4,
+                            width: "100%", flexShrink: 0,
+                            // o filete na cor da coluna: dá para saber de onde
+                            // o card é mesmo depois de rolar o cabeçalho
+                            borderLeft: `3px solid ${cor}`,
+                          }}
+                        >
+                          <div style={{
+                            fontFamily: FONT, fontWeight: 600, fontSize: 12.5, lineHeight: 1.3,
+                            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}>
+                            {c.titulo}
+                          </div>
+                          <div style={{
+                            fontFamily: FONT, fontSize: 10.5, color: textSecondary,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {c.cliente?.nome ?? c.cliente_origem_nome ?? "Sem cliente"}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{
+                              padding: "1px 6px", borderRadius: 999,
+                              background: info.bg, color: isLight ? info.colorLight : info.color,
+                              fontFamily: FONT, fontWeight: 700, fontSize: 8.5,
+                              letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap",
+                            }}>
+                              {info.label}
+                            </span>
+                            <span style={{
+                              fontFamily: FONT, fontSize: 10, whiteSpace: "nowrap",
+                              color: col === "atrasado" ? vermelho : textSecondary,
+                            }}>
+                              {c.responsavel_id ? nomeTecnico.get(c.responsavel_id) ?? "Técnico" : "Sem técnico"}
+                              {c.prazo_limite && col !== "concluido" ? ` · ${textoPrazo(c.prazo_limite, agora)}` : ""}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : atividades.length === 0 ? (
           <div style={{
             ...card(isLight), borderRadius: 16, padding: "24px 16px", textAlign: "center",
             fontFamily: FONT, fontSize: 13, color: textSecondary,
