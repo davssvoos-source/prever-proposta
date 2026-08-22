@@ -635,8 +635,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('um rótulo por distrito, no centro geométrico (não a média ingênua)',
        /ROTULOS_DISTRITOS = DISTRITOS\.map\(\(\[nome, d\]\) => \(\{ nome, \.\.\.centroide\(d\) \}\)\)/.test(comp),
        true);
-    eq('o texto do bairro é branco fixo (não segue o tema — é rótulo do mapa)',
-       /<text[\s\S]{0,220}fill="#ffffff"/.test(comp), true);
+    // R74: o rótulo perdeu o contorno, e por isso a cor teve de passar a
+    // SEGUIR O TEMA — o halo escuro era a muleta que fazia um branco fixo
+    // servir sobre o distrito quase-branco do tema claro.
+    eq('CRÍTICO: o texto do bairro segue o tema — sem o contorno, branco fixo sumiria no claro (§8, anti-padrão nº 3)',
+       /fill=\{rotuloDistrito\}/.test(comp)
+       && /const rotuloDistrito = isLight \? "rgba\(0,0,0,0\.42\)" : "rgba\(255,255,255,0\.50\)";/.test(comp),
+       true);
+    eq('CRÍTICO: o rótulo NÃO tem mais contorno nem halo',
+       /<text[\s\S]{0,320}(stroke=|paintOrder=)/.test(comp), false);
     eq('fonte Montserrat, peso 400 (regular)',
        /fontFamily: "Montserrat,[\s\S]{0,60}fontWeight: 400/.test(comp), true);
     eq('o grupo dos rótulos não intercepta clique/hover (pointerEvents none)',
@@ -2607,8 +2614,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /addEventListener\("wheel", aoRolar, \{ passive: false \}\)/.test(mc), true);
   eq('o listener da roda é removido no cleanup do efeito (sem vazamento)',
      /removeEventListener\("wheel", aoRolar\)/.test(mc), true);
-  eq('touchAction fica "none" só a partir do zoom mínimo — em k=1 é "pan-y" (deixa rolar a página no celular)',
-     /touchAction: noZoomMinimo \? "pan-y" : "none"/.test(mc), true);
+  // R74: a pergunta virou "já mexeu no mapa?" em vez de "está no zoom
+  // mínimo?" — com a R71 o mapa passou a ABRIR com zoom, e o critério antigo
+  // travava o dedo desde o primeiro segundo, prendendo quem só queria descer
+  // até a lista no celular.
+  eq('CRÍTICO: enquanto ninguém mexeu no mapa o toque é da PÁGINA (pan-y); depois de zoom/arrasto passa a ser do mapa',
+     /touchAction: semAlteracao \? "pan-y" : "none"/.test(mc), true);
   eq('atualizações de transform passam por requestAnimationFrame (não repinta mais que o navegador aguenta)',
      /rafRef\.current = requestAnimationFrame/.test(mc), true);
   eq('cancela o rAF pendente ao desmontar (sem setState depois do componente sair da árvore)',
@@ -2619,8 +2630,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /onMouseEnter=\{\(\) => \{ if \(!arrastouRef\.current\) setAlvo\(p\); \}\}/.test(mc), true);
   eq('o balão de dica usa paraPercentual (acompanha o zoom/pan, não fica preso na posição de k=1)',
      /paraPercentual\(transform, alvo\.x, alvo\.y, MAPA_SP\.largura, MAPA_SP\.altura, MARGEM\)/.test(mc), true);
-  eq('traço do distrito e halo do rótulo usam vector-effect non-scaling-stroke (mesma espessura em qualquer zoom)',
-     (mc.match(/vectorEffect="non-scaling-stroke"/g) || []).length >= 2, true);
+  eq('o traço do distrito usa vector-effect non-scaling-stroke (mesma espessura em qualquer zoom)',
+     /strokeWidth=\{1\}[\s\S]{0,400}vectorEffect="non-scaling-stroke"/.test(mc), true);
   eq('há botões de + / − / restaurar, todos com aria-label',
      /rotulo="Aumentar zoom"/.test(mc) && /rotulo="Diminuir zoom"/.test(mc)
        && /rotulo="Restaurar a visão inteira"/.test(mc), true);
@@ -2628,10 +2639,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /desabilitado=\{semAlteracao\}/.test(mc), true);
 
   // ── achados da revisão adversarial do zoom/pan (2026-08-21) ──────────
-  eq('a roda do mouse EXIGE Ctrl/Cmd (senão sequestraria o scroll da lista ao lado, que é a maior parte da tela)',
-     /if \(!e\.ctrlKey && !e\.metaKey\) return;/.test(mc), true);
-  eq('a dica embaixo do mapa menciona Ctrl (não "role" sozinho, que enganaria sobre o gesto exigido)',
-     /Ctrl \+ role para dar zoom/.test(mc), true);
+  // R74: a roda sozinha dá zoom ONDE A PÁGINA NÃO ROLA. A exigência de
+  // Ctrl/Cmd nasceu quando o mapa ficava ao lado de uma lista rolável; a R60
+  // travou a página numa tela fixa e a R71 tirou a rolagem da lista. Abaixo
+  // de 1024px a página volta a rolar, e lá a exigência continua valendo.
+  eq('CRÍTICO: a roda só vira zoom sem Ctrl onde a página NÃO rola — abaixo do breakpoint da tela fixa a roda continua sendo da página',
+     /const telaFixa = window\.matchMedia\(TELA_FIXA\)\.matches;/.test(mc)
+     && /if \(!telaFixa && !e\.ctrlKey && !e\.metaKey\) return;/.test(mc), true);
+  eq('CRÍTICO: o breakpoint da roda é o MESMO da classe .clientes-tela-fixa — se um mudar sem o outro, a roda vira zoom numa página que ainda rola',
+     /const TELA_FIXA = "\(min-width: 1024px\)";/.test(mc)
+     && /\.clientes-tela-fixa/.test(require('fs').readFileSync('src/styles.css', 'utf8'))
+     && /@media \(min-width: 1024px\) \{[\s\S]{0,900}\.clientes-tela-fixa \{/.test(require('fs').readFileSync('src/styles.css', 'utf8')),
+     true);
+  eq('a dica embaixo do mapa descreve o gesto que funciona de verdade',
+     /Arraste para mover · role o mouse ou use os botões para dar zoom/.test(mc), true);
 
   eq('CRÍTICO: pointerdown de 1 dedo/mouse NÃO captura o ponteiro na hora — clique parado tem que continuar navegando',
      /function aoPressionarPonteiro[\s\S]{0,700}NÃO captura o ponteiro aqui/.test(mc), true);
@@ -3373,7 +3394,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /userSelect: "none",\s*\n\s*WebkitUserSelect: "none",\s*\n\s*MozUserSelect: "none",/.test(mc3),
      true);
   eq('user-select:none está no <svg> em si (style do elemento), não só num filho — vale pro mapa inteiro',
-     /<svg\s*\n\s*ref=\{svgRef\}[\s\S]{0,2300}userSelect: "none",/.test(mc3), true);
+     /<svg\s*\n\s*ref=\{svgRef\}[\s\S]{0,3200}userSelect: "none",/.test(mc3), true);
 
   eq('CRÍTICO: cada ponto de cliente tem onMouseLeave, não só o <svg> — senão sair do ponto pra uma área vazia deixava o balão preso',
      /onMouseEnter=\{\(\) => \{ if \(!arrastouRef\.current\) setAlvo\(p\); \}\}\s*\n[\s\S]{0,1300}onMouseLeave=\{\(\) => setAlvo/.test(mc3),

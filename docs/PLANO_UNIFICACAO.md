@@ -3918,3 +3918,52 @@ existir e foram reescritas para a garantia nova — o KPI continua abrindo
 exatamente o que conta.
 
 1246 asserções (13 novas, 2 reescritas), build ok, TypeScript sem erro novo.
+
+### U63 — Roda do mouse no mapa e rótulos sem contorno (R74, 2026-08-22)
+
+"Arrume o scroll do mouse no mapa da tela de clientes. Deve dar para dar zoom
+com scroll ou botão. Além disso, remova o contorno dos nomes dos bairros."
+
+**A exigência de Ctrl era certa e ficou obsoleta.** Ela veio de uma revisão
+adversarial (2026-08-21) com uma razão concreta: o mapa ficava ao lado de uma
+lista que ROLAVA, e sem a exigência rolar a lista viraria zoom no mapa sempre
+que o cursor passasse por cima dele — a maior parte da tela. Duas mudanças
+posteriores derrubaram essa premissa **sem que ninguém revisitasse o
+handler**: a R60 travou a página numa tela fixa (`overflow: hidden`) e a R71
+tirou a rolagem da lista (as 10 linhas cabem). No desktop não sobrou nada
+para rolar atrás do mapa; a proteção continuava lá guardando um problema que
+já não existia.
+
+Abaixo de 1024px a exigência **continua**, e não por conservadorismo: lá a
+tela fixa não vale, a página rola de verdade e o mapa fica empilhado sobre a
+lista. Uma janela estreita de notebook tem roda e página rolando ao mesmo
+tempo. O breakpoint virou constante (`TELA_FIXA`) com um comentário amarrando
+ao da classe: se um mudar sem o outro, a roda vira zoom numa página que ainda
+rola — e há asserção conferindo que os dois existem.
+
+**O contorno do rótulo não era enfeite.** Os nomes de bairro eram
+`fill="#ffffff"` com `stroke` escuro em `paintOrder="stroke"`, e o comentário
+original explicava por quê: o halo é o que dá contraste no tema CLARO, onde o
+distrito é quase branco. Tirar só o `stroke` deixaria o nome invisível lá —
+exatamente o anti-padrão nº 3 do design system (tom claro como texto sobre
+fundo claro). Então a cor passou a seguir o tema
+(`rgba(0,0,0,0.42)` / `rgba(255,255,255,0.50)`), com alfa baixo de propósito:
+o rótulo é referência de fundo e tem de ficar atrás dos pontos de cliente na
+hierarquia de leitura.
+
+**Uma regressão minha, da R71, consertada de passagem.** O `touch-action` do
+SVG era `noZoomMinimo ? "pan-y" : "none"` — no zoom mínimo o dedo é da
+página, senão é do mapa. Quando a R71 fez o mapa ABRIR com zoom,
+`noZoomMinimo` virou `false` já na abertura: no celular, arrastar sobre o
+mapa deixou de rolar a página desde o primeiro segundo, prendendo quem só
+queria descer até a lista. A pergunta certa nunca foi "está no zoom mínimo?"
+e sim "**já mexeu no mapa?**" — que é o `semAlteracao` que a R71 mesmo já
+calculava para desabilitar o botão de restaurar.
+
+Cinco asserções descreviam o mundo antigo (Ctrl obrigatório, dica citando
+Ctrl, rótulo branco fixo, halo com non-scaling-stroke, touch por zoom mínimo)
+e foram reescritas para a regra nova. Uma sexta falhou por motivo bobo — meu
+comentário novo empurrou o `userSelect` para fora da janela de 2300
+caracteres da regex; era falso alarme, e a janela foi alargada.
+
+1249 asserções (2 novas, 6 reescritas), build ok, TypeScript sem erro novo.

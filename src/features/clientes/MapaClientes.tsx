@@ -48,6 +48,15 @@ const VB_LARGURA = MAPA_SP.largura + 2 * MARGEM;
 const VB_ALTURA = MAPA_SP.altura + 2 * MARGEM;
 // R71: o mapa ABRE com um pouco de zoom — a conta é pura (mapa-zoom.ts)
 const VISTA_INICIAL = vistaInicial(MAPA_SP.largura, MAPA_SP.altura, MARGEM);
+/**
+ * O breakpoint da TELA FIXA — o MESMO de `.clientes-tela-fixa` (styles.css).
+ *
+ * Acima dele a página de Clientes não rola (R60/R71), e por isso a roda do
+ * mouse pode ser zoom direto no mapa. Abaixo, a página rola e a roda é dela.
+ * Os dois números têm de andar juntos: se a classe mudar de breakpoint e
+ * este ficar para trás, a roda vira zoom numa página que ainda rola.
+ */
+const TELA_FIXA = "(min-width: 1024px)";
 
 // além de qual distância (em px de TELA) um pointerdown->pointerup vira
 // "arrastou o mapa" em vez de "clicou num cliente" — pequeno o bastante pra
@@ -194,19 +203,31 @@ export function MapaClientes({ clientes }: Props) {
 
   // roda do mouse / pinça de trackpad — precisa de listener NATIVO (não o
   // onWheel do React) com `{ passive: false }` pra `preventDefault()`
-  // funcionar de verdade quando FOR zoom. EXIGE Ctrl/Cmd (achado da revisão
-  // adversarial, 2026-08-21): o mapa fica numa coluna larga e (a partir de
-  // 1024px) fixa (position:sticky) ao lado da lista de clientes — sem essa
-  // exigência, rolar a LISTA com a roda do mouse vira zoom no mapa sempre
-  // que o cursor passa por cima dele, que é a maior parte da tela. Ctrl/Cmd
-  // + roda é o padrão de qualquer mapa/editor sério, e é exatamente o que o
-  // navegador já sintetiza sozinho pro pinça de trackpad — nenhum gesto de
-  // verdade se perde.
+  // funcionar de verdade quando FOR zoom.
+  //
+  // A RODA SOZINHA DÁ ZOOM (R74, pedido do Davi). Ela exigia Ctrl/Cmd, e a
+  // razão era boa NA ÉPOCA (2026-08-21): o mapa ficava ao lado de uma lista
+  // que ROLAVA, e sem a exigência rolar a lista viraria zoom sempre que o
+  // cursor passasse por cima do mapa — que é a maior parte da tela.
+  //
+  // Essa razão deixou de existir por baixo dos panos: a R60 travou a página
+  // numa TELA FIXA (`.clientes-tela-fixa`, overflow hidden) e a R71 tirou a
+  // rolagem da lista (as 10 linhas cabem). No desktop não há mais nada para
+  // rolar atrás do mapa — a roda não tem outro dono.
+  //
+  // Abaixo de 1024px a exigência CONTINUA: lá a página rola de verdade (a
+  // tela fixa é só de 1024px pra cima) e o mapa fica empilhado sobre a
+  // lista. Uma janela estreita num notebook tem roda E página rolando.
+  // O breakpoint é o MESMO da classe, de propósito.
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
     const aoRolar = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return; // deixa a página/lista rolar normalmente
+      const telaFixa = window.matchMedia(TELA_FIXA).matches;
+      // onde a página rola, a roda continua sendo dela — a menos que a
+      // pessoa peça zoom com Ctrl/Cmd (o que o trackpad já sintetiza sozinho
+      // na pinça, então nenhum gesto de verdade se perde)
+      if (!telaFixa && !e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const p = paraOuter(e.clientX, e.clientY);
       if (!p) return;
@@ -384,6 +405,10 @@ export function MapaClientes({ clientes }: Props) {
   // o mapa é o fundo: cinza que não briga com o ponto colorido por cima
   const preenchimento = isLight ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.055)";
   const divisa = isLight ? "rgba(0,0,0,0.16)" : "rgba(255,255,255,0.17)";
+  // R74: o rótulo do distrito segue o tema (antes era branco + halo escuro).
+  // Alfa baixo de propósito: é referência de fundo, não conteúdo — tem de
+  // ficar atrás dos pontos de cliente na hierarquia de leitura.
+  const rotuloDistrito = isLight ? "rgba(0,0,0,0.42)" : "rgba(255,255,255,0.50)";
 
   return (
     // height:"100%" — a partir de 1024px o grid pai estica este card até a
@@ -440,17 +465,24 @@ export function MapaClientes({ clientes }: Props) {
             viewBox={`-${MARGEM} -${MARGEM} ${VB_LARGURA} ${VB_ALTURA}`}
             style={{
               height: "100%", width: "auto", maxWidth: "100%",
-              // "none" só a partir do zoom mínimo pra cima: em k=1 (o
-              // padrão) arrastar o mapa não move NADA — limitarTransform
-              // trava x=y=0 sem folga — então travar o toque ali só
-              // atrapalharia quem quer rolar a PÁGINA no celular, onde o
-              // mapa aparece primeiro na coluna única (achado da revisão
-              // adversarial, 2026-08-21). "pan-y" deixa o navegador rolar a
-              // página verticalmente com 1 dedo E já desliga o pinça nativo
-              // de zoom (a especificação do touch-action já exclui
-              // pinch-zoom quando algum pan-* é dado sozinho), então o
-              // gesto de 2 dedos ainda chega inteiro nos handlers abaixo.
-              touchAction: noZoomMinimo ? "pan-y" : "none",
+              // Enquanto a pessoa NÃO mexeu no mapa, o toque é da PÁGINA:
+              // no celular o mapa aparece primeiro na coluna única, e travar
+              // o dedo ali prenderia quem só quer descer até a lista (achado
+              // da revisão adversarial, 2026-08-21). Depois que ela deu zoom
+              // ou arrastou, o dedo passa a ser do mapa.
+              //
+              // A pergunta era `noZoomMinimo` e virou `semAlteracao` (R74):
+              // com a R71 o mapa passou a ABRIR com zoom, então "não está no
+              // mínimo" virou verdade já na abertura e o toque deixava de
+              // rolar a página desde o primeiro segundo. "Já mexeu?" é a
+              // pergunta que a regra sempre quis fazer.
+              //
+              // "pan-y" deixa o navegador rolar a página verticalmente com 1
+              // dedo E já desliga o pinça nativo de zoom (a especificação do
+              // touch-action exclui pinch-zoom quando algum pan-* é dado
+              // sozinho), então o gesto de 2 dedos chega inteiro nos
+              // handlers abaixo.
+              touchAction: semAlteracao ? "pan-y" : "none",
               cursor: emArrasto ? "grabbing" : "grab",
               // Arrastar pra mover o mapa é um gesto de clique-e-arraste — e
               // isso é EXATAMENTE o gesto que o navegador usa pra SELECIONAR
@@ -478,7 +510,7 @@ export function MapaClientes({ clientes }: Props) {
             onPointerCancel={aoSoltarPonteiro}
             onKeyDown={aoTeclar}
             role="img"
-            aria-label={`Mapa da cidade de São Paulo com ${pontos.length} clientes — arraste para mover, use as setas do teclado para navegar, Ctrl e role o mouse para dar zoom`}
+            aria-label={`Mapa da cidade de São Paulo com ${pontos.length} clientes — arraste para mover, use as setas do teclado para navegar, role o mouse ou use os botões para dar zoom`}
           >
             {/* Os oito degradês da rampa — um por passo. Ficam FORA do <g>
                 que recebe o zoom de propósito: `<defs>` não desenha nada, e
@@ -519,12 +551,17 @@ export function MapaClientes({ clientes }: Props) {
                 ))}
               </g>
 
-              {/* nome do bairro dentro do próprio bairro (2026-08-21, Davi) —
-                  branco fixo (não segue o tema): é rótulo do MAPA, não texto da
-                  interface, e continua legível sobre qualquer distrito, claro
-                  ou escuro. O contorno escuro por baixo (paintOrder=stroke) é
-                  o halo que dá contraste no tema claro, onde o preenchimento
-                  do distrito é quase branco — sem ele o nome sumiria ali. */}
+              {/* nome do bairro dentro do próprio bairro (2026-08-21, Davi).
+                  R74: SEM CONTORNO. O halo escuro existia porque o rótulo era
+                  branco fixo, e branco sobre o distrito quase-branco do tema
+                  claro some — o contorno era a muleta que fazia UMA cor
+                  servir nos dois temas.
+
+                  Tirar o contorno sem mexer no resto deixaria o nome
+                  invisível no claro, então a cor passou a SEGUIR O TEMA, que
+                  é o que o design system manda (§8, anti-padrão nº 3: tom
+                  claro como texto sobre fundo claro). Escuro sobre o claro,
+                  claro sobre o escuro — e sem traço nenhum por baixo. */}
               <g style={{ pointerEvents: "none" }}>
                 {ROTULOS_DISTRITOS.map(({ nome, x, y }) => (
                   <text
@@ -533,11 +570,7 @@ export function MapaClientes({ clientes }: Props) {
                     y={y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fill="#ffffff"
-                    stroke="rgba(0,0,0,0.55)"
-                    strokeWidth={2.4}
-                    vectorEffect="non-scaling-stroke"
-                    paintOrder="stroke"
+                    fill={rotuloDistrito}
                     style={{
                       fontFamily: "Montserrat, var(--fonte)",
                       fontWeight: 400,
@@ -664,7 +697,7 @@ export function MapaClientes({ clientes }: Props) {
             color: isLight ? "rgba(0,0,0,0.38)" : "rgba(255,255,255,0.38)",
             pointerEvents: "none", userSelect: "none",
           }}>
-            Arraste para mover · Ctrl + role para dar zoom
+            Arraste para mover · role o mouse ou use os botões para dar zoom
           </span>
         </div>
       </div>

@@ -1193,3 +1193,19 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   encerrado não tem urgência de prazo para ordenar.
   *(Davi, 2026-08-22: "rodei, mas não vejo nenhum chamado no painel
   operacional".)*
+
+- **R74** — No mapa de Clientes, **a roda do mouse dá zoom sozinha**. Ela
+  exigia Ctrl/Cmd, e a razão era boa na época: o mapa ficava ao lado de uma
+  lista que rolava, e sem a exigência rolar a lista viraria zoom sempre que o
+  cursor passasse por cima do mapa. Essa razão deixou de existir por baixo dos
+  panos — a R60 travou a página numa tela fixa e a R71 tirou a rolagem da
+  lista. **Abaixo de 1024px a exigência continua**, porque lá a página rola de
+  verdade. Os botões de + / − / restaurar seguem funcionando.
+
+  **Os nomes dos bairros perderam o contorno.** Eram brancos com um halo
+  escuro por baixo — e o halo existia justamente para uma cor branca fixa
+  sobreviver ao distrito quase-branco do tema claro. Sem o contorno, a cor
+  passou a seguir o tema: escuro sobre o claro, claro sobre o escuro.
+  *(Davi, 2026-08-22: "arrume o scroll do mouse no mapa da tela de clientes,
+  deve dar para dar zoom com scroll ou botão. Além disso, remova o contorno
+  dos nomes dos bairros do mapa".)*
