@@ -35,7 +35,16 @@ const CAMPOS_CHAMADO =
   "id, numero, titulo, status, natureza, tipo, prioridade, equipe, sprint, " +
   "prazo_limite, data_hora_agendada, responsavel_id, aberto_por, " +
   "concluida_em, fechada_em, faturamento_status, created_at, updated_at, " +
-  "cliente_origem_nome, cliente:clientes(nome)";
+  // `!cliente_id` DESAMBIGUA o vínculo (U45/R54): desde que `chamado_clientes`
+  // existe, há DOIS caminhos de `chamados` para `clientes` — a FK direta
+  // (`chamados.cliente_id`, o cliente principal) e o caminho N:N pela tabela
+  // de junção dos clientes extras. O PostgREST recusa o embed ambíguo com
+  // PGRST201 e a consulta inteira falha — foi o que derrubou a Home assim que
+  // a U45 rodou no banco. A dica é o NOME DA COLUNA, não o da constraint:
+  // `chamados` nasceu como `ordens_servico` e o rename não renomeia
+  // constraints, então o nome real da FK é `ordens_servico_cliente_id_fkey` —
+  // um detalhe histórico que ninguém adivinharia lendo o schema de hoje.
+  "cliente_origem_nome, cliente:clientes!cliente_id(nome)";
 
 const CAMPOS_VISITA =
   "id, status, titulo, nome_predio, tecnico_id, data_hora_agendada, created_at, " +

@@ -81,7 +81,10 @@ const CAMPOS =
   "aberto_por, fechado_por, fechada_em, motivo_cancelamento, " +
   "origem, origem_id, contrato_id, numero_externo, tipo_servico, faturamento_status, cliente_origem_nome, " +
   "created_at, updated_at, " +
-  "cliente:clientes(id, nome, endereco, telefone_sindico), " +
+  // `!cliente_id`: desambigua o embed do cliente PRINCIPAL — ver o comentário
+  // longo em features/home/data.ts. Sem a dica, o PostgREST vê dois caminhos
+  // (a FK direta e o N:N por `chamado_clientes`, da U45) e devolve PGRST201.
+  "cliente:clientes!cliente_id(id, nome, endereco, telefone_sindico), " +
   "sistema:cliente_sistemas(nome, tipo)";
 
 /** Lista completa — a RLS já limita o técnico aos chamados dele. */

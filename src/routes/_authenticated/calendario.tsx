@@ -136,8 +136,9 @@ function CalendarioPage() {
       const { data, error } = await supabase
         .from("chamados" as any)
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
-        // nome velho derrubava a consulta inteira (42703)
-        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente:clientes(nome)")
+        // nome velho derrubava a consulta inteira (42703).
+        // `!cliente_id`: desambigua o embed — ver features/home/data.ts (U45).
+        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente:clientes!cliente_id(nome)")
         .or(`and(data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),and(data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`);
       if (error) throw error;
       return (data as any[]) ?? [];

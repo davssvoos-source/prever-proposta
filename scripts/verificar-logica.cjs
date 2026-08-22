@@ -3051,5 +3051,56 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      && /\*\*R58\*\*/.test(produto5) && /\*\*R59\*\*/.test(produto5), true);
 }
 
+// ── PGRST201: o embed de cliente a partir de `chamados` precisa da DICA ─────
+//
+// Quebra de produção real (2026-08-22): assim que a U45 criou
+// `chamado_clientes`, passaram a existir DOIS caminhos de `chamados` para
+// `clientes` — a FK direta (`cliente_id`, o cliente principal) e o N:N pela
+// tabela de junção. O PostgREST recusa embed ambíguo com PGRST201 e a
+// consulta INTEIRA falha: a Home parou de carregar as atividades.
+//
+// A dica é o NOME DA COLUNA (`!cliente_id`), não o da constraint: `chamados`
+// nasceu como `ordens_servico` e o rename de tabela não renomeia constraints,
+// então a FK real ainda se chama `ordens_servico_cliente_id_fkey`.
+//
+// Estas asserções seguram as TRÊS consultas que leem de `chamados`. As demais
+// (visitas_tecnicas, cobrancas, contratos, projetos) não têm segundo caminho
+// para `clientes` e continuam sem dica de propósito.
+{
+  const fs30 = require('fs');
+  // Cada alvo é a REGIÃO exata da consulta que lê de `chamados` — não o
+  // arquivo inteiro. home/data.ts, por exemplo, também declara CAMPOS_VISITA,
+  // que lê de `visitas_tecnicas` e continua sem dica com razão.
+  const recorte = (txt, de, ate) => {
+    const i = txt.indexOf(de);
+    return i < 0 ? '' : txt.slice(i, txt.indexOf(ate, i) + 1);
+  };
+  const home = fs30.readFileSync('src/features/home/data.ts', 'utf8');
+  const chdata = fs30.readFileSync('src/features/chamados/data.ts', 'utf8');
+  const cal = fs30.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+
+  const alvos = [
+    ['CAMPOS_CHAMADO (a Home — foi esta que caiu)',
+     recorte(home, 'const CAMPOS_CHAMADO =', ';')],
+    ['CAMPOS de chamados/data.ts',
+     recorte(chdata, 'const CAMPOS =', ';')],
+    ['a consulta de chamados do Calendário',
+     recorte(cal, '.select("id, numero, status, tipo, natureza', ')')],
+  ];
+  for (const [oQue, trecho] of alvos) {
+    // só as linhas de CÓDIGO: os comentários explicam o bug e citam a forma
+    // ambígua de propósito
+    const cod = trecho.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    eq(`PGRST201: ${oQue} embute cliente com a dica !cliente_id`,
+       /clientes!cliente_id\(/.test(cod), true);
+    eq(`PGRST201: ${oQue} não tem embed de cliente SEM dica (voltaria a quebrar)`,
+       /(^|[^!\w])clientes\(/.test(cod), false);
+  }
+  // e a região de CAMPOS_VISITA continua sendo de visitas_tecnicas — se um dia
+  // ela virar consulta de chamados, esta asserção lembra de pôr a dica
+  eq('CAMPOS_VISITA continua lendo de visitas_tecnicas (por isso segue sem dica)',
+     /supabase\.from\("visitas_tecnicas"\)\.select\(CAMPOS_VISITA\)/.test(home), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
