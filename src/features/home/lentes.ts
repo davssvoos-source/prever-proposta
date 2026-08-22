@@ -11,11 +11,17 @@
 
 import type { Atividade, ColunaQuadro } from "@/features/atividades/modelo";
 import { mesmoDia } from "@/features/atividades/modelo";
-import { SPRINTS_DO_MES } from "@/lib/chamado-status";
+import { SPRINTS_DO_MES, sprintDoPrazo } from "@/lib/chamado-status";
 
 export type Cargo = "tecnico" | "sac" | "comercial" | "admin";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
-export type Periodo = "hoje" | "semana" | "mes" | null;
+/**
+ * R60 (2026-08-22, Davi): o antigo "Período" (hoje/semana/mês, por data crua)
+ * virou "Prazo", com os MESMOS 3 baldes que `sprintDoPrazo` já usa no resto
+ * do app (essa_semana engole o vencido — R40, "o que venceu e segue aberto é
+ * trabalho para agora") mais "Hoje", que nenhum balde de sprint isola sozinho.
+ */
+export type Prazo = "hoje" | "essa_semana" | "semana_que_vem" | "este_mes" | null;
 export type Ordenacao = "prazo" | "recentes" | "prioridade" | "atualizacao" | "cliente";
 
 /**
@@ -178,9 +184,12 @@ export function presetPadrao(cargo: Cargo | null): string | null {
 export interface Filtros {
   preset: string | null;
   vinculos: Vinculo[];      // vazio = todos
-  periodo: Periodo;
+  prazo: Prazo;
   pessoa: string;           // "todos" | uid
-  situacao: "abertos" | "encerrados" | "todos";
+  /** R60: departamento (Equipe, lib/equipes.ts). "todas" | valor de Equipe.
+   *  Vazio fora do interno por definição — ver `Atividade.equipe`, e é por
+   *  isso que este filtro naturalmente esconde campo/comercial quando ligado. */
+  equipe: string;
   busca: string;
   /**
    * A ordenação escolhida À MÃO — `null` significa "segue a do padrão
@@ -196,9 +205,9 @@ export interface Filtros {
 export const FILTROS_INICIAIS: Filtros = {
   preset: null,
   vinculos: [],
-  periodo: null,
+  prazo: null,
   pessoa: "todos",
-  situacao: "abertos",
+  equipe: "todas",
   busca: "",
   ordenacao: null,
 };
@@ -207,21 +216,21 @@ export function semData(a: Atividade): boolean {
   return !a.quando;
 }
 
-function dentroDoPeriodo(a: Atividade, p: Periodo, agora: Date): boolean {
+/**
+ * R60: reaproveita `sprintDoPrazo` — o MESMO cálculo que já decide o sprint
+ * de um chamado interno — em vez de reimplementar limite de semana/mês aqui.
+ * Uma segunda régua de "o que é essa semana" divergindo da primeira é
+ * exatamente o tipo de coisa que rende dois números discordando sem aviso.
+ */
+function dentroDoPrazo(a: Atividade, p: Prazo, agora: Date): boolean {
   if (!p) return true;
-  // Item sem data NÃO passa quando há período escolhido — deixá-lo passar
+  // Item sem data NÃO passa quando há prazo escolhido — deixá-lo passar
   // fazia "Hoje" devolver a base inteira, porque a maioria dos chamados
   // internos não tem prazo. Mas ele também não some calado: a tela conta
   // quantos ficaram de fora e oferece tirar o filtro (ver `semData`).
   if (!a.quando) return false;
-  const d = new Date(a.quando);
   if (p === "hoje") return mesmoDia(a.quando, agora);
-  if (p === "semana") {
-    const ini = new Date(agora); ini.setHours(0, 0, 0, 0); ini.setDate(ini.getDate() - ini.getDay());
-    const fim = new Date(ini); fim.setDate(ini.getDate() + 6); fim.setHours(23, 59, 59, 999);
-    return d >= ini && d <= fim;
-  }
-  return d.getFullYear() === agora.getFullYear() && d.getMonth() === agora.getMonth();
+  return sprintDoPrazo(a.quando, agora) === p;
 }
 
 function casaVinculo(a: Atividade, v: Vinculo[]): boolean {
@@ -229,6 +238,14 @@ function casaVinculo(a: Atividade, v: Vinculo[]): boolean {
   return (v.includes("responsavel") && a.souResponsavel)
     || (v.includes("apoio") && a.souApoio)
     || (v.includes("autor") && a.souAutor);
+}
+
+/** R60: fora do natureza='interno', `a.equipe` é sempre null (invariante do
+ *  modelo — ver o comentário em atividades/modelo.ts) — então escolher uma
+ *  equipe naturalmente restringe a lista ao interno daquela equipe, sem
+ *  precisar de um caso especial para campo/comercial. */
+function casaEquipe(a: Atividade, equipe: string): boolean {
+  return equipe === "todas" || a.equipe === equipe;
 }
 
 /**
@@ -250,12 +267,15 @@ export function aplicarLentes(
   const vinculos = f.vinculos.length ? f.vinculos : (preset?.vinculo ?? []);
 
   return lista.filter((a) => {
-    if (f.situacao === "abertos" && !a.emAberto) return false;
-    if (f.situacao === "encerrados" && a.emAberto) return false;
+    // R60: o filtro de Situação saiu — a Início sempre mostra o que está em
+    // aberto, que já era o estado em que ela vivia quase todo o tempo (todo
+    // preset já exigia `a.emAberto` por conta própria).
+    if (!a.emAberto) return false;
     if (preset && !preset.aplica(a, ctx)) return false;
     if (!casaVinculo(a, vinculos)) return false;
     if (f.pessoa !== "todos" && a.responsavelId !== f.pessoa) return false;
-    if (!dentroDoPeriodo(a, f.periodo, ctx.agora)) return false;
+    if (!casaEquipe(a, f.equipe)) return false;
+    if (!dentroDoPrazo(a, f.prazo, ctx.agora)) return false;
     if (!termo) return true;
     return normalizar(`${a.numero ?? ""} ${a.titulo} ${a.cliente ?? ""}`).includes(termo);
   });
@@ -268,19 +288,20 @@ export function aplicarLentes(
  * ── POR QUE ELE EXISTE (defeito real, pego em revisão antes de rodar) ──
  *
  * A primeira versão dos painéis dinâmicos usava `aplicarLentes` com
- * `periodo: null` e mais nada trocado. Parecia certo e estava errado: o
- * filtro que abre a tela é `situacao: "abertos"`, e `aplicarLentes` corta
- * `!a.emAberto` na primeira linha. Como `encerradoEm` só é preenchido em
+ * `prazo: null` e mais nada trocado. Parecia certo e estava errado:
+ * `aplicarLentes` corta `!a.emAberto` incondicionalmente (R60 — a Início só
+ * mostra o que está em aberto). Como `encerradoEm` só é preenchido em
  * atividade encerrada, o conjunto que chegava aos painéis **nunca continha um
  * encerrado**. As quatro barras do passado ficavam em zero, a rosca da meta
  * travava em 0% e o indicador "Concluídas no mês" mostrava 0 — para todo
  * mundo, no primeiro acesso, sem ninguém tocar em filtro. Antes da mudança
  * esses três números vinham de consulta própria e mostravam a verdade.
  *
- * E não adianta trocar `situacao` por outro valor: o gráfico é um eixo de
- * tempo com metade passado e metade futuro. O passado precisa dos ENCERRADOS
- * (`encerradoEm`), o futuro precisa dos ABERTOS com prazo. Qualquer recorte
- * por estado apaga uma das duas metades. Cada barra já se recorta sozinha.
+ * E não adianta filtrar por estado aqui de jeito nenhum: o gráfico é um eixo
+ * de tempo com metade passado e metade futuro. O passado precisa dos
+ * ENCERRADOS (`encerradoEm`), o futuro precisa dos ABERTOS com prazo.
+ * Qualquer recorte por estado apaga uma das duas metades. Cada barra já se
+ * recorta sozinha.
  *
  * O PRESET cai pela mesma razão: sete dos oito começam com `a.emAberto &&`, e
  * `meu_dia` — o padrão do técnico, aplicado sozinho na primeira carga — ainda
@@ -300,6 +321,9 @@ export function recorteDosPaineis(
   return lista.filter((a) => {
     if (!casaVinculo(a, vinculos)) return false;
     if (f.pessoa !== "todos" && a.responsavelId !== f.pessoa) return false;
+    // equipe é "QUEM" (que time), não "QUANDO" — mesma classe que pessoa,
+    // então vale aqui igual, ao contrário de prazo (ver o cabeçalho acima)
+    if (!casaEquipe(a, f.equipe)) return false;
     if (!termo) return true;
     return normalizar(`${a.numero ?? ""} ${a.titulo} ${a.cliente ?? ""}`).includes(termo);
   });

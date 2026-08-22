@@ -266,15 +266,16 @@ eq('visita mostra a hora marcada no card',
    vAtiv('pendente', { data_hora_agendada: '2026-03-01T13:30:00Z' }).prazoTexto !== null, true);
 eq('visita sem data não inventa hora', vAtiv('pendente').prazoTexto, null);
 
-// o período tem que filtrar de verdade: deixar item sem data passar fazia
+// o prazo tem que filtrar de verdade: deixar item sem data passar fazia
 // "Hoje" devolver a base inteira, porque interno em geral não tem prazo
+// (R60: "Período" virou "Prazo" — mesmo mecanismo, campo renomeado)
 const L = carregar('src/features/home/lentes.ts');
 const semPrazo = A.atividadeDoChamado(chamado('aberto'), ctxVazio);
 eq('item sem data é reconhecido como tal', L.semData(semPrazo), true);
-eq('e o período o esconde (a tela avisa quantos)',
-   L.aplicarLentes([semPrazo], { ...L.FILTROS_INICIAIS, periodo: 'hoje' },
+eq('e o prazo o esconde (a tela avisa quantos)',
+   L.aplicarLentes([semPrazo], { ...L.FILTROS_INICIAIS, prazo: 'hoje' },
                    { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 0);
-eq('sem período escolhido ele aparece',
+eq('sem prazo escolhido ele aparece',
    L.aplicarLentes([semPrazo], L.FILTROS_INICIAIS,
                    { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 1);
 
@@ -1531,8 +1532,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── a fiação na tela ────────────────────────────────────────────────────
   const dash = fs13.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
   for (const c of ['GraficoDemanda', 'GraficoMeta', 'PainelKpis']) {
+    // [\s\S]{0,40}, não espaço fixo: PainelKpis (R60) ganhou props extras
+    // (ativo/onSelecionar) e passou a abrir em várias linhas — o que importa
+    // é que `atividades` continua sendo `paraPaineis`, não a posição exata.
     eq(`${c} recebe o recorte filtrado, não o array cru`,
-       new RegExp(`<${c} atividades=\\{paraPaineis\\}`).test(dash), true);
+       new RegExp(`<${c}[\\s\\S]{0,40}atividades=\\{paraPaineis\\}`).test(dash), true);
   }
   // ── O CAMINHO COMPLETO, do filtro que abre a tela até o número pintado ──
   //
@@ -3100,6 +3104,199 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ela virar consulta de chamados, esta asserção lembra de pôr a dica
   eq('CAMPOS_VISITA continua lendo de visitas_tecnicas (por isso segue sem dica)',
      /supabase\.from\("visitas_tecnicas"\)\.select\(CAMPOS_VISITA\)/.test(home), true);
+}
+
+// ── R60: Início — Ordenar vira ícone, KPIs viram filtro, barra de filtros
+//    (situação sai, período vira prazo, equipe entra) (2026-08-22) ─────────
+{
+  const fs31 = require('fs');
+  const MF = fs31.readFileSync('src/features/home/MenuFiltro.tsx', 'utf8');
+  const L2 = carregar('src/features/home/lentes.ts');
+  const MET = carregar('src/features/home/metricas.ts');
+  const dash2 = fs31.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+
+  // ── MenuFiltro: variante ícone-só ────────────────────────────────────────
+  eq('MenuFiltro aceita um ícone e vira botão quadrado sem texto',
+     /icone\?: LucideIcon;/.test(MF) && /Icone \? \(/.test(MF), true);
+  eq('o botão-ícone tem aria-label e title com o rótulo (ícone sozinho não é acessível sem isso)',
+     /aria-label=\{ativo \? `\$\{rotulo\}: \$\{resumo\}` : rotulo\}/.test(MF), true);
+
+  // ── dashboard.tsx: a lupa quebrada virou o ícone de Ordenar ──────────────
+  eq('Ordenar agora é ícone (ArrowUpDown), não mais uma pílula de texto',
+     /icone=\{ArrowUpDown\}/.test(dash2), true);
+  eq('a pílula de texto "Ordenar" (com vazio="Padrão") saiu da barra',
+     /rotulo="Ordenar"\s*\n\s*vazio="Padrão"/.test(dash2), false);
+  eq('CRÍTICO: a lupa de busca só existe no celular agora — no desktop ela não fazia nada (o campo já fica sempre visível)',
+     /className="so-celular"\s*\n\s*onClick=\{\(\) => \{\s*\n\s*if \(buscaAberta\)/.test(dash2), true);
+
+  // ── Situação saiu, incondicional em aplicarLentes ────────────────────────
+  eq('o filtro "Situação" saiu da barra (nem MenuFiltro, nem campo em Filtros)',
+     /rotulo="Situação"/.test(dash2), false);
+  eq('Filtros não tem mais o campo situacao', /situacao:/.test(dash2), false);
+  eq('aplicarLentes esconde encerrado INCONDICIONALMENTE agora (Situação não existe mais pra escolher)',
+     /if \(!a\.emAberto\) return false;/.test(fs31.readFileSync('src/features/home/lentes.ts', 'utf8')),
+     true);
+  {
+    const abertoI = { emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
+      responsavelId: null, equipe: null, sprint: null, quando: null, coluna: 'aberto' };
+    const fechadoI = { ...abertoI, emAberto: false, coluna: 'concluido' };
+    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null };
+    eq('aplicarLentes: aberto passa', L2.aplicarLentes([abertoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 1);
+    eq('aplicarLentes: encerrado NUNCA passa, mesmo sem nenhum filtro escolhido',
+       L2.aplicarLentes([fechadoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 0);
+  }
+
+  // ── Prazo (era Período) — reaproveita sprintDoPrazo ──────────────────────
+  eq('Prazo tem as 4 opções que o Davi pediu, na ordem',
+     /const PRAZOS: \{ chave: Exclude<Prazo, null>; label: string \}\[\] = \[\s*\n\s*\{ chave: "hoje", label: "Hoje" \},\s*\n\s*\{ chave: "essa_semana", label: "Essa semana" \},\s*\n\s*\{ chave: "semana_que_vem", label: "Semana que vem" \},\s*\n\s*\{ chave: "este_mes", label: "Este mês" \},\s*\n\s*\];/.test(dash2),
+     true);
+  eq('dentroDoPrazo reaproveita sprintDoPrazo — não reimplementa limite de semana/mês',
+     /return sprintDoPrazo\(a\.quando, agora\) === p;/.test(fs31.readFileSync('src/features/home/lentes.ts', 'utf8')),
+     true);
+  {
+    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null }; // 21/ago/2026, sexta
+    const comData = (iso) => ({
+      emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
+      responsavelId: null, equipe: null, sprint: null, quando: iso, coluna: 'aberto',
+    });
+    eq('Prazo "hoje" casa só com hoje',
+       L2.aplicarLentes([comData('2026-08-21T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'hoje' }, ctxR60, (x) => x).length,
+       1);
+    eq('Prazo "hoje" não casa com amanhã',
+       L2.aplicarLentes([comData('2026-08-22T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'hoje' }, ctxR60, (x) => x).length,
+       0);
+    // R40: vencido cai em "essa_semana" (sprintDoPrazo), e o filtro de Prazo
+    // herda isso automaticamente por reaproveitar a mesma função
+    eq('Prazo "essa_semana" ENGOLE o vencido (mesma regra de sprintDoPrazo/R40)',
+       L2.aplicarLentes([comData('2026-08-01T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'essa_semana' }, ctxR60, (x) => x).length,
+       1);
+    // este_mes precisa de "agora" longe o bastante do fim do mês — com
+    // agora=21/ago, o balde de 2 semanas (semana_que_vem) já engole quase
+    // agosto inteiro, e um teste com agora=21 não sobraria alvo pra "este
+    // mês" testar de verdade. Ctx própria, cedo no mês.
+    const ctxCedoNoMes = { agora: new Date(2026, 7, 1), minhaEquipe: null }; // 01/ago/2026
+    eq('Prazo "este_mes" casa com fim de agosto (fora do balde de 2 semanas, dentro do mês)',
+       L2.aplicarLentes([comData('2026-08-31T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'este_mes' }, ctxCedoNoMes, (x) => x).length,
+       1);
+    eq('Prazo "este_mes" NÃO casa com setembro',
+       L2.aplicarLentes([comData('2026-09-05T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'este_mes' }, ctxCedoNoMes, (x) => x).length,
+       0);
+  }
+
+  // ── Equipe (novo) ─────────────────────────────────────────────────────────
+  eq('o filtro Equipe está na barra, com as opções de lib/equipes.ts',
+     /rotulo="Equipe"[\s\S]{0,200}opcoes=\{EQUIPES\.map/.test(dash2), true);
+  {
+    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null };
+    const daEquipe = (eq_) => ({
+      emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
+      responsavelId: null, equipe: eq_, sprint: null, quando: null, coluna: 'aberto',
+    });
+    eq('Equipe "todas" (o padrão) não filtra nada',
+       L2.aplicarLentes([daEquipe('tecnica'), daEquipe(null)], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length,
+       2);
+    eq('escolher uma equipe fica só com quem é dela',
+       L2.aplicarLentes([daEquipe('tecnica'), daEquipe('comercial')],
+                        { ...L2.FILTROS_INICIAIS, equipe: 'tecnica' }, ctxR60, (x) => x).length,
+       1);
+    eq('CRÍTICO: quem não tem equipe (campo/comercial, invariante do modelo) some quando uma equipe é escolhida — não é bug, é a definição',
+       L2.aplicarLentes([daEquipe(null)], { ...L2.FILTROS_INICIAIS, equipe: 'tecnica' }, ctxR60, (x) => x).length,
+       0);
+  }
+
+  // ── Os 4 KPIs viram filtro ao clicar ─────────────────────────────────────
+  const agoraKpi = new Date(2026, 7, 21); // agosto de 2026
+  const diaK = (s) => new Date(s).toISOString();
+  const atK = (extra) => ({
+    id: 'k-' + Math.random(), natureza: 'interno', sprint: 'este_mes',
+    coluna: 'concluido', emAberto: false, encerradoEm: diaK('2026-08-10T10:00:00'),
+    tipo: null, prioridade: null, prazoEstourado: false,
+    ...extra,
+  });
+
+  eq('KPI_LABEL tem as 4 chaves, com os rótulos exatos dos tiles',
+     MET.KPI_LABEL,
+     {
+       concluidas_mes: 'Concluídas no mês', faltam_mes: 'Faltam no mês',
+       corretivas_urgentes: 'Corretivas urgentes', atrasadas_aberto: 'Atrasadas em aberto',
+     });
+
+  eq('concluidas_mes: encerrado este mês entra',
+     MET.atividadesDoKpi('concluidas_mes', [atK({})], agoraKpi).length, 1);
+  eq('concluidas_mes: em aberto NÃO entra (ainda não foi concluído)',
+     MET.atividadesDoKpi('concluidas_mes', [atK({ emAberto: true, coluna: 'aberto', encerradoEm: null })], agoraKpi).length,
+     0);
+  eq('faltam_mes: em aberto do mês entra',
+     MET.atividadesDoKpi('faltam_mes', [atK({ emAberto: true, coluna: 'aberto', encerradoEm: null })], agoraKpi).length,
+     1);
+  eq('faltam_mes: já concluído NÃO entra (não é mais "falta")',
+     MET.atividadesDoKpi('faltam_mes', [atK({})], agoraKpi).length, 0);
+  eq('corretivas_urgentes: aberta + corretiva + urgente entra',
+     MET.atividadesDoKpi('corretivas_urgentes',
+       [atK({ emAberto: true, tipo: 'corretiva', prioridade: 'urgente' })], agoraKpi).length,
+     1);
+  eq('corretivas_urgentes: corretiva mas NÃO urgente fica de fora',
+     MET.atividadesDoKpi('corretivas_urgentes',
+       [atK({ emAberto: true, tipo: 'corretiva', prioridade: 'alta' })], agoraKpi).length,
+     0);
+  eq('corretivas_urgentes: urgente mas encerrada fica de fora',
+     MET.atividadesDoKpi('corretivas_urgentes',
+       [atK({ emAberto: false, tipo: 'corretiva', prioridade: 'urgente' })], agoraKpi).length,
+     0);
+  eq('atrasadas_aberto: aberta + prazo estourado entra',
+     MET.atividadesDoKpi('atrasadas_aberto', [atK({ emAberto: true, prazoEstourado: true })], agoraKpi).length,
+     1);
+  eq('atrasadas_aberto: prazo estourado mas já encerrada fica de fora (não é mais um problema em aberto)',
+     MET.atividadesDoKpi('atrasadas_aberto', [atK({ emAberto: false, prazoEstourado: true })], agoraKpi).length,
+     0);
+
+  // A GARANTIA CENTRAL do recurso: o tile e a lista que ele abre NUNCA podem
+  // discordar. metaDoMes (o número do painel antigo) e atividadesDoKpi (o
+  // clique) precisam contar exatamente o mesmo tanto, em qualquer conjunto.
+  {
+    const conjunto = [
+      atK({}),                                                          // concluída este mês
+      atK({ emAberto: true, coluna: 'aberto', encerradoEm: null }),      // falta este mês
+      atK({ emAberto: true, coluna: 'aberto', encerradoEm: null }),      // falta este mês
+      atK({ encerradoEm: diaK('2026-07-15T10:00:00') }),                 // fora do mês — não conta em nenhum
+    ];
+    const m = MET.metaDoMes(conjunto, agoraKpi);
+    eq('CRÍTICO: metaDoMes.feitas === atividadesDoKpi("concluidas_mes").length — o número do tile e o tamanho da lista NUNCA discordam',
+       MET.atividadesDoKpi('concluidas_mes', conjunto, agoraKpi).length, m.feitas);
+    eq('CRÍTICO: (metaDoMes.total - .feitas) === atividadesDoKpi("faltam_mes").length — mesma garantia, para o outro tile',
+       MET.atividadesDoKpi('faltam_mes', conjunto, agoraKpi).length, m.total - m.feitas);
+  }
+
+  // ── Graficos.tsx: PainelKpis fica clicável ───────────────────────────────
+  const graf = fs31.readFileSync('src/features/home/Graficos.tsx', 'utf8');
+  eq('PainelKpis aceita ativo/onSelecionar e cada tile é um <button>, não uma <div> muda',
+     /ativo\?: ChaveKpi \| null;/.test(graf) && /onSelecionar\?: \(chave: ChaveKpi\) => void;/.test(graf)
+     && /<button\s*\n\s*key=\{k\.chave\}\s*\n\s*onClick=\{\(\) => onSelecionar\?\.\(k\.chave\)\}/.test(graf),
+     true);
+  eq('o tile ativo ganha destaque visual (borda/halo na própria cor) — senão o clique não teria feedback nenhum',
+     /border: selecionado \? `1\.5px solid \$\{k\.cor\}`/.test(graf), true);
+  eq('PainelKpis usa UMA função só (atividadesDoKpi) pra contar — não reimplementa os 4 filtros na tela',
+     /\.map\(\(k\) => \(\{ \.\.\.k, rotulo: KPI_LABEL\[k\.chave\], valor: atividadesDoKpi\(k\.chave, atividades\)\.length \}\)\)/.test(graf),
+     true);
+
+  // ── dashboard.tsx: o clique realmente troca o que a lista/quadro mostram ──
+  eq('dashboard mantém kpiSelecionado LOCAL (não entra em Filtros/sessionStorage — é drill-down, não preferência)',
+     /const \[kpiSelecionado, setKpiSelecionado\] = useState<ChaveKpi \| null>\(null\);/.test(dash2), true);
+  eq('atividadesKpi roda sobre paraPaineis — a MESMA base que os tiles contam, não `atividades` cru nem `filtradas`',
+     /atividadesDoKpi\(kpiSelecionado, paraPaineis, agora\)/.test(dash2), true);
+  eq('CRÍTICO: listaAtual (o que quadro/tabela realmente recebem) prioriza o recorte do KPI sobre o filtro normal',
+     /const listaAtual = atividadesKpi \?\? filtradas;/.test(dash2), true);
+  eq('CRÍTICO: o Quadro (kanban) usa listaAtual, não filtradas direto — senão clicar um KPI não mudaria a visão de quadro',
+     /<Quadro\s*\n\s*atividades=\{listaAtual\}/.test(dash2), true);
+  eq('CRÍTICO: a TabelaAtividades (lista) usa listaAtual, não filtradas direto',
+     /<TabelaAtividades\s*\n\s*atividades=\{listaAtual\.slice\(0, TETO_TABELA\)\}/.test(dash2), true);
+  eq('selecionar o mesmo KPI de novo desliga o filtro (toggle, não só liga)',
+     /setKpiSelecionado\(\(atual\) => \(atual === chave \? null : chave\)\)/.test(dash2), true);
+  eq('a tela mostra "Mostrando: <label>" com um jeito de limpar, enquanto um KPI filtra',
+     /Mostrando: <strong[\s\S]{0,80}\{KPI_LABEL\[kpiSelecionado\]\}<\/strong>/.test(dash2), true);
+
+  const produto6 = fs31.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R60 está documentado', /\*\*R60\*\*/.test(produto6), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

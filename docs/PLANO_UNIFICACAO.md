@@ -3038,3 +3038,76 @@ chegou, e a pessoa entra depois por "esqueci minha senha". E-mail já
 cadastrado virou mensagem própria, não uma segunda conta.
 
 933 asserções (63 novas), build ok.
+
+### U48 — PGRST201: embed de cliente ambíguo depois da U45 (2026-08-22)
+
+Quebra de produção real, pega em campo pelo Davi minutos depois de ele rodar
+a U45 no SQL Editor: a Início parou de carregar as atividades, com
+`PRV-INI-APP-PGRST201` na tela.
+
+**A causa**: `chamado_clientes` (a tabela de junção da U45) criou um SEGUNDO
+caminho de `chamados` para `clientes` — a FK direta (`cliente_id`, o
+principal) e o N:N pela junção. O PostgREST recusa embed ambíguo com
+PGRST201 e derruba a consulta INTEIRA, não só o campo do cliente.
+
+**A correção**: as três consultas que leem de `chamados` e embutem `clientes`
+(`features/home/data.ts`, `features/chamados/data.ts`,
+`routes/_authenticated/calendario.tsx`) ganharam a dica `clientes!cliente_id`.
+A dica é o nome da COLUNA, não o da constraint — `chamados` nasceu como
+`ordens_servico` e o rename de tabela não renomeia constraint, então a FK
+real ainda se chama `ordens_servico_cliente_id_fkey`. Nenhuma migration nova:
+correção só de cliente.
+
+7 asserções travam as três consultas contra a regressão — inclusive contra
+"esqueceram a dica na próxima consulta nova que ler de chamados".
+
+940 asserções (7 novas), build ok.
+
+### U49 — Início: Ordenar vira ícone, KPIs viram filtro, barra revisada (R60, 2026-08-22)
+
+Quatro pedidos do Davi, todos na mesma tela e na mesma barra de filtros —
+tratados juntos porque cada edição pisava na região de código da anterior.
+
+**1. A lupa quebrada virou Ordenar.** No desktop, o botão de busca não fazia
+NADA visível: o campo de busca já fica sempre montado logo abaixo dele (a
+`div so-desktop` no fim da barra), então tocar na lupa só alternava um
+estado que nenhuma tela lia. `MenuFiltro` ganhou uma variante ícone-só
+(`icone?: LucideIcon` — mesma casca de 42×42 dos outros botões quadrados,
+mesmo menu-portal por baixo) e a pílula de texto "Ordenar", que morava junto
+dos outros filtros, virou esse ícone. A lupa não desapareceu — ficou
+exclusiva do celular (`so-celular`), onde ela tem função de verdade.
+
+**2. Os 4 quadrados de indicador viram filtro.** A garantia central: o
+número escrito no quadrado e o tamanho da lista que o clique abre NUNCA
+podem discordar. Isso significou extrair `atividadesDoKpi(chave,
+atividades, agora)` em `metricas.ts` — a MESMA função que agora conta cada
+tile em `PainelKpis` E que filtra a lista em `dashboard.tsx`. `metaDoMes`
+ganhou um helper interno compartilhado (`doMesFiltro`) para não duplicar a
+regra de "o que está no prato deste mês" em dois lugares que pudessem
+divergir. Duas asserções marcadas CRÍTICO travam essa igualdade
+diretamente: `metaDoMes(x).feitas === atividadesDoKpi('concluidas_mes',
+x).length`, para qualquer conjunto.
+
+A lista que abre lê de `paraPaineis` (a base ampla, com histórico, que os
+próprios tiles já contam) — nunca de `filtradas` nem de `atividades` cru.
+Compor com preset/prazo por cima quebraria a igualdade: a lista ficaria
+menor que o número que a pessoa acabou de tocar, e é exatamente a mentira
+que o comentário de `paraPaineis` já registra ter quase ido ao ar uma vez
+(U33). `kpiSelecionado` é estado LOCAL, não entra em `Filtros`/
+`sessionStorage` — é um drill-down temporário, não uma preferência.
+
+**3. Situação saiu.** A Início sempre mostra o que está em aberto agora —
+que já era o estado padrão quase o tempo todo, e todo preset já exigia
+`a.emAberto` por conta própria.
+
+**4. Período virou Prazo, e ganhou Equipe do lado.** "Prazo" reaproveita
+`sprintDoPrazo` (a MESMA função que já decide o sprint de um chamado
+interno) em vez de reimplementar limite de semana/mês com outra régua —
+"essa semana" engole o vencido, herdando de graça a regra do R40 ("o que
+venceu e segue aberto é trabalho para agora"). "Equipe" é novo, mesmo
+departamento do cadastro de usuário (`lib/equipes.ts`); fora do interno
+`a.equipe` é sempre null por invariante do modelo, então escolher uma
+equipe naturalmente esconde campo/comercial — não é bug, é a própria
+definição do campo.
+
+984 asserções (44 novas), build ok.

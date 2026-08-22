@@ -27,7 +27,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, type LucideIcon } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PRISMA } from "@/lib/paleta";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
@@ -49,10 +49,17 @@ interface Props {
   /** Texto do botão quando nada está escolhido. Padrão: o próprio rótulo. */
   vazio?: string;
   larguraMenu?: number;
+  /**
+   * Botão quadrado só com ícone, sem texto (2026-08-22) — para quando o
+   * rótulo já é óbvio pelo contexto (o ícone de ordenar ao lado do de
+   * kanban/lista, por exemplo) e a pílula de texto só ocuparia espaço. O
+   * menu que abre é o MESMO — muda só a casca do botão fechado.
+   */
+  icone?: LucideIcon;
 }
 
 export function MenuFiltro({
-  rotulo, opcoes, selecionados, multi = false, onMudar, vazio, larguraMenu = 240,
+  rotulo, opcoes, selecionados, multi = false, onMudar, vazio, larguraMenu = 240, icone: Icone,
 }: Props) {
   const { isLight } = useTheme();
   const [aberto, setAberto] = useState(false);
@@ -151,6 +158,17 @@ export function MenuFiltro({
     maxWidth: 220,
   };
 
+  // mesma medida dos outros botões quadrados da barra (visão lista/quadro) —
+  // um ícone que muda de tamanho ao lado dos outros pareceria desalinhado
+  const BOTAO_ICONE: CSSProperties = {
+    width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "#191921",
+    color: ativo ? "#08090E" : textPrimary,
+    cursor: "pointer",
+  };
+
   function alternar(valor: string) {
     if (multi) {
       onMudar(selecionados.includes(valor)
@@ -164,16 +182,28 @@ export function MenuFiltro({
 
   return (
     <div ref={caixaRef} style={{ position: "relative", flexShrink: 0 }}>
-      <button ref={botaoRef} onClick={abrir} style={BOTAO}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-          {ativo && <span style={{ opacity: 0.7 }}>{rotulo}: </span>}
-          {resumo}
-        </span>
-        <ChevronDown
-          size={14}
-          style={{ flexShrink: 0, transform: aberto ? "rotate(180deg)" : "none", transition: "transform .15s" }}
-        />
-      </button>
+      {Icone ? (
+        <button
+          ref={botaoRef}
+          onClick={abrir}
+          aria-label={ativo ? `${rotulo}: ${resumo}` : rotulo}
+          title={ativo ? `${rotulo}: ${resumo}` : rotulo}
+          style={BOTAO_ICONE}
+        >
+          <Icone size={17} />
+        </button>
+      ) : (
+        <button ref={botaoRef} onClick={abrir} style={BOTAO}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+            {ativo && <span style={{ opacity: 0.7 }}>{rotulo}: </span>}
+            {resumo}
+          </span>
+          <ChevronDown
+            size={14}
+            style={{ flexShrink: 0, transform: aberto ? "rotate(180deg)" : "none", transition: "transform .15s" }}
+          />
+        </button>
+      )}
 
       {aberto && pos && createPortal(
         <div

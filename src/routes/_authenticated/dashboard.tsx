@@ -25,7 +25,7 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Inbox, KanbanSquare, List as ListIcon, Search, WifiOff } from "lucide-react";
+import { ArrowUpDown, Inbox, KanbanSquare, List as ListIcon, Search, WifiOff } from "lucide-react";
 
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,13 +40,15 @@ import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
-  semData, FILTROS_INICIAIS, ORDENACOES, type Filtros, type Vinculo, type Periodo, type Ordenacao,
+  semData, FILTROS_INICIAIS, ORDENACOES, type Filtros, type Vinculo, type Prazo, type Ordenacao,
 } from "@/features/home/lentes";
+import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { CardAtividade } from "@/features/home/CardAtividade";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { CampoBusca } from "@/features/home/CampoBusca";
 import { GraficoDemanda, GraficoMeta, PainelKpis } from "@/features/home/Graficos";
+import { atividadesDoKpi, KPI_LABEL, type ChaveKpi } from "@/features/home/metricas";
 import { CriarRapido } from "@/features/home/CriarRapido";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 import { Quadro } from "@/features/home/Quadro";
@@ -70,10 +72,13 @@ const VINCULOS: { chave: Vinculo; label: string }[] = [
   { chave: "apoio", label: "Apoio" },
   { chave: "autor", label: "Eu abri" },
 ];
-const PERIODOS: { chave: Exclude<Periodo, null>; label: string }[] = [
+// R60 (Davi, 2026-08-22): "Período" virou "Prazo", com os baldes que
+// sprintDoPrazo já usa no resto do app — ver o cabeçalho em lentes.ts.
+const PRAZOS: { chave: Exclude<Prazo, null>; label: string }[] = [
   { chave: "hoje", label: "Hoje" },
-  { chave: "semana", label: "Semana" },
-  { chave: "mes", label: "Mês" },
+  { chave: "essa_semana", label: "Essa semana" },
+  { chave: "semana_que_vem", label: "Semana que vem" },
+  { chave: "este_mes", label: "Este mês" },
 ];
 
 function Home() {
@@ -118,7 +123,7 @@ function Home() {
     if (presetInicializado || !s.cargo) return;
     const p = presetPadrao(s.cargo);
     // só aplica se a pessoa ainda não escolheu nada nesta sessão
-    if (p) setFiltros((f) => (f.preset === null && !f.busca && !f.periodo && !f.vinculos.length
+    if (p) setFiltros((f) => (f.preset === null && !f.busca && !f.prazo && !f.vinculos.length
       ? { ...f, preset: p } : f));
     setPresetInicializado(true);
   }, [s.cargo, presetInicializado]);
@@ -170,7 +175,7 @@ function Home() {
    * E usa `recorteDosPaineis`, não `aplicarLentes` — o porquê está lá, e é um
    * defeito que quase foi ao ar: qualquer recorte por ESTADO ou por PERÍODO
    * apaga uma das duas metades do gráfico, que fala de passado e futuro ao
-   * mesmo tempo. Valem só pessoa, vínculo e busca.
+   * mesmo tempo. Valem só pessoa, vínculo, equipe e busca.
    */
   const paraPaineis = useMemo(() => {
     const vistos = new Set<string>();
@@ -183,15 +188,45 @@ function Home() {
     }
     return recorteDosPaineis(uniao, filtros, normalizarTexto);
   }, [atividades, historico, filtros]);
+
+  // R60: os 4 quadrados do painel viram filtro ao clicar. `kpiSelecionado` é
+  // local (não entra em `filtros`/sessionStorage) — é um drill-down
+  // temporário, não uma preferência que sobrevive a fechar a aba.
+  const [kpiSelecionado, setKpiSelecionado] = useState<ChaveKpi | null>(null);
+  // zera se a base mudar de pessoa/vínculo/equipe embaixo do pé (ex.: gestor
+  // troca "Pessoa" com um KPI selecionado) — senão a lista ficaria presa a
+  // um recorte que a tela já não anuncia mais em lugar nenhum
+  useEffect(
+    () => setKpiSelecionado(null),
+    [filtros.pessoa, filtros.vinculos, filtros.equipe],
+  );
+
+  /**
+   * A lista que o clique num quadrado abre — EXATAMENTE `atividadesDoKpi`
+   * sobre `paraPaineis`, a MESMA base que os próprios tiles contam. Compor
+   * com preset/prazo aqui derrubaria essa igualdade: a lista ficaria menor
+   * que o número que a pessoa acabou de tocar — a mentira que o comentário
+   * de `paraPaineis`, logo acima, já registra ter acontecido uma vez.
+   */
+  const atividadesKpi = useMemo(
+    () => (kpiSelecionado
+      ? ordenar(atividadesDoKpi(kpiSelecionado, paraPaineis, agora), filtros.ordenacao ?? "prazo")
+      : null),
+    [kpiSelecionado, paraPaineis, agora, filtros.ordenacao],
+  );
+  /** O que a lista/quadro efetivamente mostram: o recorte do KPI quando há
+   *  um selecionado, senão o filtro normal da barra. */
+  const listaAtual = atividadesKpi ?? filtradas;
+
   // O banner precisa contar a MESMA população que o toque nele abre. Contando
   // o array cru, o técnico lia "41 atividades hoje", tocava, e caía numa lista
   // de 1 — porque o preset "Meu dia" recorta por responsável e apoio.
-  // quantos o período está escondendo por não terem data — some calado seria
+  // quantos o prazo está escondendo por não terem data — some calado seria
   // a pior falha desta tela, e o número é o que torna a escolha auditável
   const ocultosSemData = useMemo(() => {
-    if (!filtros.periodo) return 0;
-    const semPeriodo = aplicarLentes(atividades, { ...filtros, periodo: null }, ctx, normalizarTexto);
-    return semPeriodo.filter(semData).length;
+    if (!filtros.prazo) return 0;
+    const semPrazo = aplicarLentes(atividades, { ...filtros, prazo: null }, ctx, normalizarTexto);
+    return semPrazo.filter(semData).length;
   }, [atividades, filtros, ctx]);
 
   const hoje = useMemo(
@@ -341,7 +376,7 @@ function Home() {
             produziu o número. Antes era um enfeite não auditável. */}
         <button
           onClick={() => setFiltros((f) => ({
-            ...f, preset: "meu_dia", situacao: "abertos", pessoa: "todos",
+            ...f, preset: "meu_dia", pessoa: "todos",
           }))}
           style={{
             position: "absolute", bottom: 14, left: 0, right: 0,
@@ -385,7 +420,11 @@ function Home() {
               conta própria —, então filtrar o quadro não mexia em nada aqui. */}
           <GraficoDemanda atividades={paraPaineis} />
           <GraficoMeta atividades={paraPaineis} />
-          <PainelKpis atividades={paraPaineis} />
+          <PainelKpis
+            atividades={paraPaineis}
+            ativo={kpiSelecionado}
+            onSelecionar={(chave) => setKpiSelecionado((atual) => (atual === chave ? null : chave))}
+          />
           <CriarRapido />
         </div>
 
@@ -435,9 +474,9 @@ function Home() {
               onMudar={(v) => setFiltros((f) => ({
                 ...f,
                 preset: v[0] ?? null,
-                // trocar de padrão zera o período: a interseção vazia entre
-                // preset e período custa três toques cegos para descobrir
-                periodo: null,
+                // trocar de padrão zera o prazo: a interseção vazia entre
+                // preset e prazo custa três toques cegos para descobrir
+                prazo: null,
                 // e zera a ordenação escolhida à mão: cada padrão já embute a
                 // ordem que faz sentido para ele ("Sem dono" quer prioridade,
                 // "Atrasados" quer prazo). Sem isto, escolher "Cliente" uma
@@ -454,33 +493,26 @@ function Home() {
               selecionados={filtros.vinculos}
               onMudar={(v) => setFiltros((f) => ({ ...f, vinculos: v as Vinculo[] }))}
             />
+            {/* R60 (Davi, 2026-08-22): "Período" virou "Prazo", com os baldes
+                de sprintDoPrazo — hoje / essa semana (engole o vencido) /
+                semana que vem / este mês. */}
             <MenuFiltro
-              rotulo="Período"
-              vazio="Período"
-              opcoes={PERIODOS.map((p) => ({ valor: p.chave, label: p.label }))}
-              selecionados={filtros.periodo ? [filtros.periodo] : []}
-              onMudar={(v) => setFiltros((f) => ({ ...f, periodo: (v[0] ?? null) as Periodo }))}
+              rotulo="Prazo"
+              vazio="Prazo"
+              opcoes={PRAZOS.map((p) => ({ valor: p.chave, label: p.label }))}
+              selecionados={filtros.prazo ? [filtros.prazo] : []}
+              onMudar={(v) => setFiltros((f) => ({ ...f, prazo: (v[0] ?? null) as Prazo }))}
             />
+            {/* Equipe é NOVO (R60) — mesmo departamento que o cadastro de
+                usuário já usa (lib/equipes.ts). Fora do interno `a.equipe` é
+                sempre null, então escolher uma equipe naturalmente restringe
+                a lista ao interno daquele time (ver casaEquipe em lentes.ts). */}
             <MenuFiltro
-              rotulo="Situação"
-              vazio="Em aberto"
-              opcoes={[
-                { valor: "abertos", label: "Em aberto" },
-                { valor: "encerrados", label: "Encerrados", nota: "últimos 7 dias" },
-                { valor: "todos", label: "Todos" },
-              ]}
-              selecionados={[filtros.situacao]}
-              onMudar={(v) => setFiltros((f) => {
-                // sempre há uma situação vigente; limpar volta ao padrão
-                const sit = (v[0] ?? "abertos") as Filtros["situacao"];
-                return {
-                  ...f,
-                  situacao: sit,
-                  // todo padrão exige item em aberto: manter um ligado aqui
-                  // daria lista vazia por construção, sem o usuário saber
-                  preset: sit === "abertos" ? f.preset : null,
-                };
-              })}
+              rotulo="Equipe"
+              vazio="Equipe"
+              opcoes={EQUIPES.map((e) => ({ valor: e, label: EQUIPE_LABEL[e] }))}
+              selecionados={filtros.equipe === "todas" ? [] : [filtros.equipe]}
+              onMudar={(v) => setFiltros((f) => ({ ...f, equipe: v[0] ?? "todas" }))}
             />
             {gestor && pessoas.length > 0 && (
               <MenuFiltro
@@ -492,17 +524,27 @@ function Home() {
                 onMudar={(v) => setFiltros((f) => ({ ...f, pessoa: v[0] ?? "todos" }))}
               />
             )}
+            <div style={{ flex: 1, minWidth: 8 }} />
+
+            {/* Ordenar virou o ícone que estava aqui (2026-08-22, Davi: "este
+                botão não funciona e é redundante, substitua-o por um botão de
+                ordenar") — o botão de busca, no desktop, não fazia NADA
+                visível: o campo de busca já mora sempre montado logo abaixo
+                (a div so-desktop no fim da barra), então tocar na lupa só
+                alternava um estado que nada lia. A pílula "Ordenar" que
+                morava junto dos outros filtros saiu — vira este ícone. */}
             <MenuFiltro
               rotulo="Ordenar"
-              vazio="Padrão"
+              icone={ArrowUpDown}
               opcoes={ORDENACOES.map((o) => ({ valor: o.chave, label: o.label }))}
               selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
               onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: (v[0] ?? null) as Ordenacao | null }))}
             />
-
-            <div style={{ flex: 1, minWidth: 8 }} />
-
+            {/* a lupa continua existindo SÓ no celular — lá ela tem função de
+                verdade: abre o campo de busca colapsável abaixo da barra, que
+                no celular não tem onde morar fixo (so-celular logo adiante) */}
             <button
+              className="so-celular"
               onClick={() => {
                 if (buscaAberta) setFiltros((f) => ({ ...f, busca: "" }));
                 setBuscaAberta((b) => !b);
@@ -554,7 +596,7 @@ function Home() {
               }} />
             ))}
           </div>
-        ) : filtradas.length === 0 ? (
+        ) : listaAtual.length === 0 ? (
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "center", gap: 9,
             padding: "30px 16px", borderRadius: 16,
@@ -565,18 +607,31 @@ function Home() {
             <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, color: textPrimary }}>
               Nada nesta combinação
             </span>
-            {/* o vazio nomeia a combinação culpada em vez de ficar mudo */}
+            {/* o vazio nomeia a combinação culpada em vez de ficar mudo. Com
+                um KPI selecionado, preset/prazo NÃO valem (ver atividadesKpi)
+                — citá-los aqui apontaria um culpado que não é o de verdade. */}
             <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
-              {[
-                filtros.preset && presets.find((p) => p.chave === filtros.preset)?.label,
-                filtros.periodo && PERIODOS.find((p) => p.chave === filtros.periodo)?.label,
-                filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
-                filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
-                filtros.situacao === "encerrados" ? "Encerrados" : null,
-              ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
+              {kpiSelecionado
+                ? [
+                    KPI_LABEL[kpiSelecionado],
+                    filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
+                    filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,
+                    filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
+                  ].filter(Boolean).join(" · ")
+                : [
+                    filtros.preset && presets.find((p) => p.chave === filtros.preset)?.label,
+                    filtros.prazo && PRAZOS.find((p) => p.chave === filtros.prazo)?.label,
+                    filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
+                    filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,
+                    filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
+                  ].filter(Boolean).join(" · ") || "Sem atividades em aberto."}
             </span>
-            {(filtros.preset || filtros.periodo || filtros.vinculos.length > 0
-              || filtros.busca.trim() || filtros.situacao !== "abertos") && (
+            {kpiSelecionado ? (
+              <button style={{ ...chip(false), marginTop: 4 }} onClick={() => setKpiSelecionado(null)}>
+                Limpar
+              </button>
+            ) : (filtros.preset || filtros.prazo || filtros.vinculos.length > 0
+              || filtros.equipe !== "todas" || filtros.busca.trim()) && (
               <button style={{ ...chip(false), marginTop: 4 }} onClick={() => { setFiltros(FILTROS_INICIAIS); setBuscaAberta(false); }}>
                 Limpar filtros
               </button>
@@ -584,22 +639,41 @@ function Home() {
           </div>
         ) : (
           <>
-            {ocultosSemData > 0 && (
+            {/* R60: enquanto um KPI está filtrando, é ELE que explica a
+                lista — a mesma barra que "sem data oculto pelo prazo" usava
+                não faz sentido junto (prazo não vale nesse modo). */}
+            {kpiSelecionado ? (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, minHeight: 32,
+                fontFamily: FONT, fontSize: 12, color: textSecondary,
+              }}>
+                Mostrando: <strong style={{ color: textPrimary, fontWeight: 600 }}>{KPI_LABEL[kpiSelecionado]}</strong>
+                <button
+                  onClick={() => setKpiSelecionado(null)}
+                  style={{
+                    fontFamily: FONT, fontSize: 12, fontWeight: 600, color: gold,
+                    background: "transparent", border: "none", cursor: "pointer", padding: 0,
+                  }}
+                >
+                  limpar
+                </button>
+              </div>
+            ) : ocultosSemData > 0 && (
               <button
-                onClick={() => setFiltros((f) => ({ ...f, periodo: null }))}
+                onClick={() => setFiltros((f) => ({ ...f, prazo: null }))}
                 style={{
                   fontFamily: FONT, fontSize: 12, color: textSecondary,
                   background: "transparent", border: "none", cursor: "pointer",
                   textAlign: "left", padding: "0 0 2px", minHeight: 32,
                 }}
               >
-                {ocultosSemData} sem data {ocultosSemData === 1 ? "está oculto" : "estão ocultos"} pelo período ·{" "}
+                {ocultosSemData} sem data {ocultosSemData === 1 ? "está oculto" : "estão ocultos"} pelo prazo ·{" "}
                 <span style={{ color: gold, fontWeight: 600 }}>mostrar</span>
               </button>
             )}
             {visao === "quadro" ? (
           <Quadro
-            atividades={filtradas}
+            atividades={listaAtual}
             foco={focoDoPreset(filtros.preset)}
             pessoas={pessoasPorId}
             onAbrir={abrir}
@@ -616,16 +690,16 @@ function Home() {
             {/* U33: a lista virou TABELA. Cards empilhados serviam para ler um
                 item; comparar vinte pede colunas alinhadas. */}
             <TabelaAtividades
-              atividades={filtradas.slice(0, TETO_TABELA)}
+              atividades={listaAtual.slice(0, TETO_TABELA)}
               pessoas={pessoasPorId}
               aoAbrir={abrir}
             />
-            {filtradas.length > TETO_TABELA && (
+            {listaAtual.length > TETO_TABELA && (
               <span style={{
                 display: "block", marginTop: 10,
                 fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center",
               }}>
-                Mostrando {TETO_TABELA} de {filtradas.length} — use a busca ou os filtros.
+                Mostrando {TETO_TABELA} de {listaAtual.length} — use a busca ou os filtros.
               </span>
             )}
           </div>

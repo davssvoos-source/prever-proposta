@@ -56,7 +56,7 @@ import { inicioSemana, dataIso } from "@/lib/periodos";
 import { PRISMA, ESPECTRO, ESPECTRO_STOPS, ESPECTRO_TEXTO, gradienteBarra } from "@/lib/paleta";
 import type { Atividade } from "@/features/atividades/modelo";
 // as contas moram em metricas.ts: puras, testáveis, longe da pintura
-import { concluidosPorSemana, metaDoMes } from "@/features/home/metricas";
+import { concluidosPorSemana, metaDoMes, atividadesDoKpi, KPI_LABEL, type ChaveKpi } from "@/features/home/metricas";
 
 const ALTURA = 252;
 const MAX_PECAS = 7;
@@ -252,53 +252,76 @@ export function GraficoMeta({ atividades }: { atividades: Atividade[] }) {
 
 // ── Os quatro indicadores ───────────────────────────────────────────────────
 
-export function PainelKpis({ atividades }: { atividades: Atividade[] }) {
-  const { isLight, textSecondary } = useCoresBase();
-  const meta = useMemo(() => metaDoMes(atividades), [atividades]);
+interface PainelKpisProps {
+  atividades: Atividade[];
+  /** Qual quadrado está filtrando a lista agora — null = nenhum (R60). */
+  ativo?: ChaveKpi | null;
+  /** Clicar de novo no mesmo quadrado desliga o filtro — quem chama decide. */
+  onSelecionar?: (chave: ChaveKpi) => void;
+}
 
-  const urgentes = atividades.filter(
-    (a) => a.emAberto && a.tipo === "corretiva" && a.prioridade === "urgente",
-  ).length;
-  const atrasadas = atividades.filter((a) => a.emAberto && a.prazoEstourado).length;
+export function PainelKpis({ atividades, ativo = null, onSelecionar }: PainelKpisProps) {
+  const { isLight, textSecondary } = useCoresBase();
 
   // As quatro cores são as MESMAS do fundo dos cards, e de propósito: quem vê
   // "3" em vermelho aqui procura os três cards vermelhos no quadro abaixo e os
   // acha. Azul = feito, amarelo = a fazer, laranja/vermelho = o que arde.
   const cor = (c: { dark: string; light: string }) => (isLight ? c.light : c.dark);
-  const kpis = [
-    { rotulo: "Concluídas no mês", valor: meta.feitas, cor: cor(PRISMA.azul) },
-    { rotulo: "Faltam no mês", valor: meta.total - meta.feitas, cor: cor(PRISMA.amarelo) },
-    { rotulo: "Corretivas urgentes", valor: urgentes, cor: cor(PRISMA.laranja) },
+
+  // UMA função só decide "o que conta" — atividadesDoKpi, em metricas.ts — e
+  // tanto o número aqui quanto a lista que o clique abre (dashboard.tsx) leem
+  // dela. Não tem como o tile dizer "3" e a lista que ele abre trazer 4: as
+  // duas contam exatamente a mesma pergunta.
+  const kpis = useMemo(() => ([
+    { chave: "concluidas_mes" as ChaveKpi, cor: cor(PRISMA.azul) },
+    { chave: "faltam_mes" as ChaveKpi, cor: cor(PRISMA.amarelo) },
+    { chave: "corretivas_urgentes" as ChaveKpi, cor: cor(PRISMA.laranja) },
     // a quarta ficou por minha conta: atrasado em aberto é o que pega fogo —
     // é o número que decide o começo do dia de quem coordena
-    { rotulo: "Atrasadas em aberto", valor: atrasadas, cor: cor(PRISMA.vermelho) },
-  ];
+    { chave: "atrasadas_aberto" as ChaveKpi, cor: cor(PRISMA.vermelho) },
+  ].map((k) => ({ ...k, rotulo: KPI_LABEL[k.chave], valor: atividadesDoKpi(k.chave, atividades).length }))),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [atividades, isLight]);
 
   return (
     <div style={{ width: 268, flexShrink: 0, height: ALTURA, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box" }}>
-      {kpis.map((k) => (
-        <div key={k.rotulo} className="elevavel kpi-tile ruido" style={{
-          ...card(isLight),
-          padding: "10px 12px",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          gap: 6,
-          boxSizing: "border-box",
-        }}>
-          {/* a cor mora no NÚMERO — a bolinha saiu */}
-          <div className="kpi-num" style={{
-            // Montserrat Bold com glow levíssimo (pedido do Davi). O halo é a
-            // PRÓPRIA cor do número em alfa baixo (~35%): cada indicador
-            // brilha no seu tom em vez de todos ganharem o mesmo véu branco.
-            fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor,
-            textShadow: `0 0 14px ${k.cor}59`,
-            fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-            {k.valor}
-          </div>
-          <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>
-            {k.rotulo}
-          </div>
-        </div>
-      ))}
+      {kpis.map((k) => {
+        const selecionado = ativo === k.chave;
+        const base = card(isLight);
+        return (
+          <button
+            key={k.chave}
+            onClick={() => onSelecionar?.(k.chave)}
+            aria-pressed={selecionado}
+            className="elevavel kpi-tile ruido"
+            style={{
+              ...base,
+              padding: "10px 12px",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: 6,
+              boxSizing: "border-box",
+              border: selecionado ? `1.5px solid ${k.cor}` : base.border,
+              boxShadow: selecionado ? `0 0 0 3px ${k.cor}2E` : base.boxShadow,
+              cursor: onSelecionar ? "pointer" : "default",
+              font: "inherit", textAlign: "center",
+            }}
+          >
+            {/* a cor mora no NÚMERO — a bolinha saiu */}
+            <div className="kpi-num" style={{
+              // Montserrat Bold com glow levíssimo (pedido do Davi). O halo é a
+              // PRÓPRIA cor do número em alfa baixo (~35%): cada indicador
+              // brilha no seu tom em vez de todos ganharem o mesmo véu branco.
+              fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor,
+              textShadow: `0 0 14px ${k.cor}59`,
+              fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              {k.valor}
+            </div>
+            <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center" }}>
+              {k.rotulo}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }

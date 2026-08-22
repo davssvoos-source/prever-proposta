@@ -43,10 +43,11 @@ export function concluidosPorSemana(atividades: Atividade[]): Record<string, num
  * a etiqueta diz a INTENÇÃO e a data diz o FATO: entra o que ainda está em
  * aberto (é o que falta fazer) e o que foi encerrado DENTRO do mês corrente.
  */
-export function metaDoMes(
-  atividades: Atividade[],
-  agora: Date = new Date(),
-): { total: number; feitas: number } {
+/** A população "no prato deste mês" — extraída para ser a MESMA base que
+ *  `metaDoMes` (o número) e `atividadesDoKpi('concluidas_mes'/'faltam_mes', …)`
+ *  (o clique que filtra a lista, R60) enxergam. Duplicar o filtro em dois
+ *  lugares é como um vira "42" e o outro "41" sem ninguém notar por meses. */
+function doMesFiltro(atividades: Atividade[], agora: Date): Atividade[] {
   const mes = agora.getMonth();
   const ano = agora.getFullYear();
   const nesteMes = (iso: string | null) => {
@@ -58,12 +59,55 @@ export function metaDoMes(
   // R40 partiu "este mês" em três baldes (essa semana, semana que vem, este
   // mês). Contar só `este_mes` faria a meta despencar sem nada ter mudado no
   // trabalho — a tarefa de quarta-feira simplesmente sairia da conta.
-  const doMes = atividades.filter(
+  return atividades.filter(
     (a) =>
       a.natureza === "interno" &&
       a.sprint !== null && (SPRINTS_DO_MES as string[]).includes(a.sprint) &&
       a.coluna !== "cancelado" &&
       (a.emAberto || nesteMes(a.encerradoEm)),
   );
+}
+
+export function metaDoMes(
+  atividades: Atividade[],
+  agora: Date = new Date(),
+): { total: number; feitas: number } {
+  const doMes = doMesFiltro(atividades, agora);
   return { total: doMes.length, feitas: doMes.filter((a) => !a.emAberto).length };
+}
+
+// ── Os 4 indicadores viram filtro ao clicar (R60) ───────────────────────────
+//
+// Davi, 2026-08-22: "ao clicar em qualquer um dos quadrados, o sistema deve
+// filtrar o que está sendo exibido de acordo com o quadrado que o usuário
+// clicou." Cada chave abaixo é EXATAMENTE a população que o tile mostra —
+// PainelKpis (a contagem) e o clique (o recorte da lista) chamam a mesma
+// função, então o número do tile e o tamanho da lista que ele abre NUNCA
+// podem discordar um do outro.
+export type ChaveKpi = "concluidas_mes" | "faltam_mes" | "corretivas_urgentes" | "atrasadas_aberto";
+
+/** Rótulo de cada tile — uma fonte só, para o painel e para o "Mostrando: …"
+ *  que aparece na lista quando um deles está filtrando (dashboard.tsx). */
+export const KPI_LABEL: Record<ChaveKpi, string> = {
+  concluidas_mes: "Concluídas no mês",
+  faltam_mes: "Faltam no mês",
+  corretivas_urgentes: "Corretivas urgentes",
+  atrasadas_aberto: "Atrasadas em aberto",
+};
+
+export function atividadesDoKpi(
+  chave: ChaveKpi,
+  atividades: Atividade[],
+  agora: Date = new Date(),
+): Atividade[] {
+  switch (chave) {
+    case "concluidas_mes":
+      return doMesFiltro(atividades, agora).filter((a) => !a.emAberto);
+    case "faltam_mes":
+      return doMesFiltro(atividades, agora).filter((a) => a.emAberto);
+    case "corretivas_urgentes":
+      return atividades.filter((a) => a.emAberto && a.tipo === "corretiva" && a.prioridade === "urgente");
+    case "atrasadas_aberto":
+      return atividades.filter((a) => a.emAberto && a.prazoEstourado);
+  }
 }

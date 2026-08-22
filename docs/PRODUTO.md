@@ -849,3 +849,28 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   convite enviado que nunca chegou; a pessoa entra depois por "esqueci minha
   senha". *(Davi, 2026-08-22: "mesmo que o usuário nunca tenha acessado o
   sistema, o nosso sistema já deve tratar como um novo usuário".)*
+
+- **R60** — Revisão da barra de filtros e dos indicadores da Início:
+  - O botão de **busca**, no desktop, não fazia nada visível — o campo já
+    fica sempre montado ali do lado. Virou **exclusivo do celular** (onde
+    tem função de verdade: abre o campo colapsável). No lugar dele entrou o
+    **ícone de Ordenar**, que antes era uma pílula de texto separada, junto
+    dos outros filtros. *(Davi: "este botão não funciona e é redundante,
+    substitua-o por um botão de ordenar. Remova o botão de ordenar que está
+    junto com os filtros.")*
+  - Os **4 quadrados de indicador** (Concluídas no mês, Faltam no mês,
+    Corretivas urgentes, Atrasadas em aberto) **filtram a lista ao
+    clicar** — clicar de novo desliga. O recorte usa a MESMA função que
+    calcula o número do próprio quadrado, então a lista aberta nunca pode
+    ter uma contagem diferente da que estava escrita nele. *(Davi: "ao
+    clicar em qualquer um dos quadrados, o sistema deve filtrar o que está
+    sendo exibido de acordo com o quadrado que o usuário clicou".)*
+  - O filtro **Situação** (Em aberto / Encerrados / Todos) **saiu** — a
+    Início sempre mostra o que está em aberto, que já era o estado padrão
+    quase o tempo todo.
+  - **Período** virou **Prazo**, com as opções **Hoje**, **Essa semana**,
+    **Semana que vem** e **Este mês** — os mesmos baldes que o resto do
+    sistema já usa para sprint (vencido conta como "essa semana", regra do
+    R40).
+  - Entrou o filtro **Equipe** (o mesmo departamento do cadastro de
+    usuário — Técnica, Comercial, SAC...). *(Davi, 2026-08-22.)*
