@@ -1003,3 +1003,33 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   os indicadores de campo, o atual gráfico de linhas, forme gráficos de bons
   insights e monte esse dashboard na parte superior da tela. A tela deve
   listar os chamados técnicos, abaixo do dashboard.")*
+
+- **R67** — O Painel Operacional tem **duas partes, e só duas**: o dashboard
+  inteiro em cima, a lista no resto da tela. A R66 tinha entregue os
+  gráficos certos na estrutura errada — dez cards de altura livre empilhados,
+  o dashboard ocupando três telas e a lista nascendo fora de qualquer dobra.
+  Agora os painéis vivem em **duas faixas de altura única** (216px, a
+  anatomia do `docs/DASHBOARD.md` §4 — a Início usa 252, mas lá são quatro
+  painéis e aqui são sete): **2×216 = o dashboard acaba dentro da primeira
+  tela**, com a lista já começando.
+
+  **Três fusões deram o espaço, sem perder indicador**: (1) Fluxo do mês +
+  Ritmo + Cumprimento de prazo (3 cards) viraram **um** painel de seis
+  micro-números com a barra de prazo no pé; (2) o card largo "Duplas de
+  campo" sumiu — o botão que cadastra dupla passou a morar no **cabeçalho do
+  gráfico que mostra duplas**, porque botão de manutenção pertence à peça que
+  ele mantém; (3) a rosca de Fila por status trocou a legenda de baixo por
+  uma **legenda ao lado** — mesma informação, metade da altura.
+
+  **A lista é a MESMA tabela da Início** (`TabelaAtividades`), não uma
+  parecida: nove colunas alinhadas, cabeçalho que gruda ao rolar, ordenação
+  por coluna, e o painel deslizante do chamado abrindo no clique — sem sair
+  da tela. Os chamados passam pelo mesmo montador da Início
+  (`atividadeDoChamado`), então status, cores e rótulos saem de um lugar só;
+  reescrever uma lista própria aqui criaria a segunda implementação da mesma
+  tabela, e a segunda fica um passo atrás da primeira na primeira mudança de
+  coluna. Os KPIs continuam filtrando essa lista (R66).
+  *(Davi, 2026-08-22: "a tela de painel operacional deve ter o dashboard todo
+  na parte superior da tela, ou seja os campos precisam ser menores, otimize
+  o layout... a parte restante deve ser visualização dos itens em lista das
+  atividades. Inspire-se no layout da página início.")*

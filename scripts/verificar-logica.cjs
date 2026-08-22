@@ -3014,13 +3014,22 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<LineChart data=\{serieDuplas\}/.test(pop)
      && /duplasAtivas\.map\(\(d, i\) => \(\s*\n\s*<Line/.test(pop), true);
   eq('cada item do eixo X é uma SEMANA',
-     /<XAxis\s*\n\s*dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
+     /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
   eq('a legenda mostra o nome da dupla, não o uuid que é o dataKey',
      /return d \? rotuloDaDupla\(d, nomeDeTecnico\) : v;/.test(pop), true);
   eq('o painel avisa quantos atendimentos ficaram FORA de dupla (gráfico não pode sumir com trabalho em silêncio)',
      /semDuplaNaJanela > 0 && \(/.test(pop), true);
-  eq('sem dupla cadastrada o gráfico não aparece (moldura vazia não explica o próprio vazio; o card acima explica)',
-     /\{duplasAtivas\.length > 0 && \(/.test(pop), true);
+  // R67 mudou COMO o vazio é dito, não a regra. Antes o painel inteiro sumia
+  // e um card largo acima explicava o que fazer. Esse card largo saiu (o
+  // botão de duplas virou o cabeçalho DESTE painel), e um painel que some
+  // desequilibraria a faixa de altura única — então agora o painel fica e o
+  // vazio se explica DENTRO dele. O que segue proibido é o mesmo: moldura de
+  // gráfico vazia sem uma palavra sobre o próprio vazio.
+  eq('sem dupla cadastrada, o painel explica o vazio em vez de mostrar moldura de gráfico sem linha',
+     /duplasAtivas\.length === 0 \? \(/.test(pop)
+     && /Nenhuma dupla cadastrada — cadastre em/.test(pop), true);
+  eq('o gráfico de linhas só é montado quando HÁ dupla (o ramo else do vazio)',
+     /Nenhuma dupla cadastrada[\s\S]{0,600}<LineChart data=\{serieDuplas\}/.test(pop), true);
   eq('o gráfico usa a paleta categórica do design system (§9), sem inventar cor',
      /stroke=\{cores\[i % 8\]\}/.test(pop), true);
 
@@ -3782,32 +3791,76 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a página: 2×2, gráficos no lugar de números soltos, lista nova ──────
   eq('os 4 KPIs viraram grid 2×2 (não mais o painel-numeros de 4-em-linha herdado do PainelBase)',
-     /gridTemplateColumns: "1fr 1fr", gap: 12 \}\}>\s*\n\s*\{kpis\.map/.test(op2), true);
+     /gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr"[\s\S]{0,200}\{kpis\.map/.test(op2), true);
   eq('o painel não usa mais o `numeros` genérico do PainelBase — os KPIs agora são bespoke, clicáveis',
      /numeros=\{\[\]\}/.test(op2), true);
   eq('cada quadrado de KPI é <button aria-pressed> — a mesma linguagem de clique da Início',
      /aria-pressed=\{selecionado\}/.test(op2) && /className="elevavel kpi-tile ruido"/.test(op2), true);
   eq('clicar no quadrado ativo desliga (toggle), como os KPIs da Início',
      /onClick=\{\(\) => setKpiAtivo\(selecionado \? null : k\.chave\)\}/.test(op2), true);
-  eq('Fluxo do mês virou gráfico de barras (Entraram/Concluídos), não só 3 números soltos',
-     /Fluxo do mês[\s\S]{0,700}<BarChart data=\{fluxoDados\}/.test(op2), true);
   eq('Backlog virou histograma por faixa de idade',
-     /Backlog por idade[\s\S]{0,700}<BarChart data=\{backlogDados\}/.test(op2), true);
-  eq('Reincidência virou barra horizontal quando há dado (lista só no vazio)',
-     /Reincidência[\s\S]{0,600}<BarChart data=\{reincidenciaComNome\.slice\(0, 8\)\}/.test(op2), true);
+     /Backlog por idade[\s\S]{0,900}<BarChart data=\{backlogDados\}/.test(op2), true);
   eq('a lista de chamados técnicos é NOVA (R66) — não existia nesta tela antes',
      /Chamados técnicos/.test(op2) && /Ver todos os chamados →/.test(op2), true);
   eq('a lista tem a faixa "Mostrando: …" sempre visível, como a Início pede',
      /Mostrando: <strong/.test(op2), true);
   eq('clicar num KPI estreita a lista dentro dela (chamadosDoKpi(kpiAtivo ?? "abertos", …))',
      /chamadosDoKpi\(kpiAtivo \?\? "abertos", chamados, agora\)/.test(op2), true);
-  eq('a linha da lista abre o chamado (mesma rota que o resto do sistema usa)',
-     /to: "\/chamados\/\$id", params: \{ id: c\.id \}/.test(op2), true);
   eq('um `agora` só por render — KPIs, indicadores, histograma e ordenação da lista concordam sobre o momento',
      /const agora = useMemo\(\(\) => new Date\(\), \[chamados\]\);/.test(op2), true);
 
   const produto12 = fs37.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R66 está documentado', /\*\*R66\*\*/.test(produto12), true);
+}
+
+// ── R67: o dashboard cabe no topo, e a lista é a tabela da Início ──────────
+{
+  const fs38 = require('fs');
+  const op3 = fs38.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+
+  // ── a faixa de altura única (DASHBOARD.md §4) ────────────────────────────
+  eq('existe uma ALTURA única, e ela é MENOR que a da Início (mais painéis, tem de terminar mais cedo)',
+     /const ALTURA = (\d+);/.test(op3) && Number(op3.match(/const ALTURA = (\d+);/)[1]) < 252, true);
+  eq('CRÍTICO: todo painel da faixa herda a altura pelo PAINEL compartilhado — altura própria por painel transforma a fileira numa colagem',
+     /const PAINEL: CSSProperties = \{[\s\S]{0,200}height: ALTURA,/.test(op3), true);
+  eq('as duas faixas usam o gap 14 canônico do DASHBOARD.md §6, com wrap',
+     (op3.match(/display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap"/g) ?? []).length, 2);
+  eq('nenhum painel da faixa declara altura própria em pixel (só o PAINEL compartilhado e o bloco de KPIs, que casa com ele)',
+     (op3.match(/height: ALTURA/g) ?? []).length, 2);
+
+  // ── o que encolheu para o dashboard caber no topo ────────────────────────
+  eq('Fluxo do mês + Ritmo + Cumprimento de prazo viraram UM painel de micro-números',
+     /titulo="Fluxo e ritmo"/.test(op3)
+     && ['Entraram', 'Concluídos', 'Saldo da fila', 'Até começar', 'Executando', 'No prazo']
+          .every((r) => new RegExp(`rotulo="${r}"`).test(op3)), true);
+  // só as linhas de CÓDIGO: o comentário do topo cita o card "Duplas de
+  // campo" de propósito, explicando por que ele NÃO está mais ali
+  const op3cod = op3.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
+  eq('o card largo "Duplas de campo" saiu — o botão que cadastra dupla mora no cabeçalho do gráfico de duplas',
+     /Duplas de campo|Cadastrar duplas/.test(op3cod), false);
+  eq('…e o botão continua existindo, abrindo o mesmo diálogo',
+     /setDuplasAberto\(true\)/.test(op3) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(op3), true);
+  eq('a legenda da rosca foi para o LADO do arco (metade da altura, mesma informação)',
+     /display: "flex", alignItems: "center", gap: 6 \}\}>[\s\S]{0,400}<PieChart>/.test(op3), true);
+  eq('os dois rankings (carga por técnico e reincidência) saem do MESMO componente — não duas barras horizontais copiadas',
+     (op3.match(/<Ranking\s/g) ?? []).length, 2);
+  eq('ranking corta no topo N e DIZ que cortou (nº silenciosamente truncado lê como "é só isso")',
+     /top \{TETO_BARRAS\} de \{dados\.length\}/.test(op3), true);
+
+  // ── a lista É a tabela da Início, não uma parecida ───────────────────────
+  eq('a lista reusa TabelaAtividades da Início — reescrever aqui criaria a segunda tabela, que fica um passo atrás na primeira mudança de coluna',
+     /import \{ TabelaAtividades \} from "@\/features\/home\/TabelaAtividades";/.test(op3)
+     && /<TabelaAtividades/.test(op3), true);
+  eq('os chamados passam pelo MESMO montador da Início (atividadeDoChamado) — status, cor e rótulo saem de um lugar só',
+     /atividadeDoChamado\(c as any, ctx\)/.test(op3), true);
+  eq('a linha abre o painel deslizante do chamado (como na Início), e ele leva à página completa',
+     /aoAbrir=\{\(a\) => setPainelId\(a\.registroId\)\}/.test(op3)
+     && /aoAbrirPagina=\{\(id\) => \{ setPainelId\(null\); navigate\(\{ to: "\/chamados\/\$id"/.test(op3), true);
+  eq('a tabela tem o mesmo teto da Início e avisa quando corta',
+     /const TETO_TABELA = 200;/.test(op3) && /Mostrando \{TETO_TABELA\} de \{atividades\.length\}/.test(op3), true);
+
+  const produto13 = fs38.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R67 está documentado', /\*\*R67\*\*/.test(produto13), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

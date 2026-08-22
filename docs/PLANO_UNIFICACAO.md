@@ -3467,3 +3467,76 @@ conta é quem filtra" perde força se ela só vale a maior parte do tempo.
 pré-existentes de `types.ts` desatualizado, em outros arquivos, seguem os
 mesmos). Não verificado em navegador nesta rodada — sem ferramenta de
 browser disponível na sessão; Davi, dá uma olhada na tela quando puder.
+
+### U56 — O dashboard cabe no topo, e a lista é a tabela da Início (R67, 2026-08-22)
+
+"A tela de painel operacional deve ter o dashboard todo na parte superior da
+tela, ou seja os campos precisam ser menores, otimize o layout. A parte
+superior da tela deve ser o dashboard, e a parte restante deve ser
+visualização dos itens em lista das atividades. Inspire-se no layout da
+página início."
+
+**O que a U55 errou.** A U55 acertou o CONTEÚDO (2×2, gráficos no lugar de
+números soltos, lista embaixo) e errou a ESTRUTURA: manteve o empilhamento
+de cards de altura livre que a tela já tinha. Dez cards, cada um decidindo a
+própria altura, davam um dashboard de umas três telas — e a lista, que era a
+novidade, nascia fora de qualquer dobra. Ler o `DASHBOARD.md` e implementar
+o vocabulário dele (cores, clique, invariante) sem implementar a **régua**
+dele foi o furo: o §4 não é decoração, é o que faz um dashboard TERMINAR.
+
+**A ALTURA única é a regra que faltava.** `const ALTURA = 216`, e todo
+painel das duas faixas herda por um `PAINEL` compartilhado — não por
+repetição. Um painel que declare a própria altura transforma a fileira numa
+colagem, e foi exatamente o que a U55 tinha. 216 e não os 252 da Início
+porque lá são quatro painéis numa faixa e aqui são sete em duas: 2×216 + gap
+= 446px, o dashboard acabando dentro da primeira tela de um notebook.
+
+**As três fusões que deram o espaço.** Encolher fonte não resolveria — o
+problema era a CONTAGEM de caixas, não o tamanho delas:
+
+1. **Fluxo do mês + Ritmo + Cumprimento de prazo → um painel.** Os três eram
+   pares rótulo→número sem distribuição: seis micro-números num grid 3×2
+   dizem o mesmo que três cards, num terço da altura. A barra de %-no-prazo
+   sobreviveu, fina, no pé do painel — ela é a única das três que tinha uma
+   peça gráfica de verdade.
+2. **O card largo "Duplas de campo" morreu.** Ele existia para hospedar o
+   botão "Cadastrar duplas" e uma frase de estado. O botão foi para o
+   cabeçalho do gráfico de duplas (botão de manutenção pertence à peça que
+   ele mantém) e a frase de estado virou o estado vazio DENTRO do gráfico.
+   Uma faixa inteira de altura livre virou zero pixel.
+3. **A rosca perdeu a legenda de baixo.** Arco + legenda empilhados pediam
+   ~300px; arco + legenda LADO A LADO cabem em 216 com folga, e a legenda
+   continua nomeando cada fatia (identidade nunca só pela cor, §9).
+
+**Consequência de projeto que valeu registrar**: o gráfico de duplas não
+some mais quando não há dupla cadastrada. Antes ele sumia e o card largo
+acima explicava o que fazer; sem esse card, e numa faixa de altura única, um
+painel que some desequilibra a fileira. Então o painel fica e o vazio se
+explica dentro dele. A asserção da U47 que travava o comportamento antigo
+foi REESCRITA para a regra nova — a regra de verdade nunca foi "o painel
+some", era "moldura de gráfico vazia não pode ficar sem uma palavra sobre o
+próprio vazio", e essa continua valendo.
+
+**A lista é a tabela da Início — a MESMA, não uma irmã.** `TabelaAtividades`
+já resolve nove colunas alinhadas, cabeçalho `sticky`, ordenação por coluna
+e rolagem lateral no envelope (U33). Escrever uma lista de chamados própria
+aqui — que foi o que a U55 fez, com linhas de dois andares — criaria a
+segunda implementação da mesma tabela, e a segunda fica um passo atrás da
+primeira na primeira mudança de coluna. Como ela fala `Atividade`, os
+chamados passam por `atividadeDoChamado()`, o mesmo montador da Início:
+status, cor e rótulo saem de um lugar só. O clique abre o `PainelChamado`
+deslizante (também como na Início), que leva à página completa quando é
+preciso — triagem sem sair do painel.
+
+O `ctx` da montagem vai com `apoios`/`fichas` vazios de propósito: esta tela
+não tem noção de "eu" (`souResponsavel`/`souApoio` não são lidos aqui), e
+chamado de campo nunca é pedido de compra, que é o que a ficha decide. O
+`apoiosDoChamado` real entra, porque a coluna "Apoio" da tabela o usa.
+
+**O que NÃO mudou**: os quatro KPIs continuam clicáveis e continuam
+filtrando a lista pela mesma função que os conta (`chamadosDoKpi`, a
+invariante da R66); a faixa "Mostrando: … · limpar" continua anunciando o
+recorte; `idadePorFaixa` e `ordenarChamados` seguem como estavam.
+
+1126 asserções (13 novas, 3 reescritas), build ok, TypeScript sem erro novo.
+Não verificado em navegador — sem ferramenta de browser na sessão.
