@@ -1251,3 +1251,18 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   quando o banco for resetado.
   *(Davi, 2026-08-22: "pode ser tudo fictício mesmo, antes de lançar o app
   vamos resetar o banco de dados. Eu quero visualizar o dashboard".)*
+
+- **R78** — Dois acertos no **Painel Comercial**:
+
+  **O título de cada item é o nome do lugar.** Condomínio ou empresa: o nome
+  cadastrado. **Residência de pessoa física: "Residência" + o nome do
+  proprietário.** O prefixo não é enfeite — numa fila de prédios, "Alcino
+  Braga" sozinho parece nome de condomínio, e quem lê não sabe se vai a um
+  prédio de 80 apartamentos ou à casa de alguém. Cliente já cadastrado como
+  "Residência Silva" não vira "Residência Residência Silva".
+
+  **As propostas prontas para enviar ganharam o botão "Proposta enviada"** no
+  próprio card — sem precisar abrir a visita. Ele só aparece na etapa em que
+  faz sentido (aprovada, falta enviar): antes não há proposta para enviar, e
+  depois o ciclo já encerrou (R64). Marcar encerra o ciclo, como sempre.
+  *(Davi, 2026-08-22.)*

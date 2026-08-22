@@ -4039,3 +4039,34 @@ conferência agora são derivados das linhas, não digitados de memória.
 1302 asserções (53 novas, 1 reescrita), build ok, TypeScript sem erro novo.
 As duas migrations não foram executadas — é o Davi quem roda, nesta ordem:
 U64 (o mecanismo) e depois U65 (o lote).
+
+### U66 — Painel Comercial: nome do lugar e envio pelo card (R78, 2026-08-22)
+
+"O título de cada item deve ser o nome do condomínio/empresa, e se for
+residência de pessoa física o título deve ser 'Residência' + o nome do
+proprietário. Além disso, nas propostas que estão prontas para enviar,
+adicione um botão no card de 'Proposta enviada'."
+
+**O título era um `??` solto na tela** (`clientes?.nome ?? nome_sindico ??
+nome_predio ?? titulo`), e virou `tituloDaVisita()` em `etapas.ts` — regra de
+negócio, testável. Dois detalhes que só aparecem quando se escreve a função:
+
+1. **`tipo_local` não estava na consulta.** Sem ele a regra da residência
+   nunca dispararia, e o sintoma seria mudo: a lista continuaria mostrando os
+   mesmos nomes de antes, sem erro nenhum. Há asserção guardando a coluna.
+2. **Duplicação do prefixo.** Cliente cadastrado como "Residência Silva"
+   viraria "Residência Residência Silva". O teste é sem acento e sem caixa,
+   porque o cadastro tem "residencia", "Residência" e "RESIDÊNCIA".
+
+A ordem das fontes também mudou de sentido: na residência o síndico É o
+proprietário e vem cedo; num condomínio ele não é o nome do lugar e cai
+depois do nome do prédio.
+
+**O botão usa a RPC, não um UPDATE.** `registrar_envio_proposta` é quem
+carimba a data e dispara a sincronização da capa do chamado (U38). Um update
+direto daqui funcionaria hoje e divergiria da tela da visita na primeira
+mudança de regra — dois caminhos de escrita para o mesmo fato é como um
+deles fica para trás. O botão só aparece na etapa `falta_proposta`: antes não
+há proposta aprovada para enviar, depois o ciclo já encerrou (R64).
+
+1319 asserções (17 novas), build ok, TypeScript sem erro novo.

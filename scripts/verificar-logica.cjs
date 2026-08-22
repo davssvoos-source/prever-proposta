@@ -4548,5 +4548,59 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R77 está documentado', /\*\*R77\*\*/.test(produto22), true);
 }
 
+// ── R78: título do item comercial + marcar enviada pelo card ───────────────
+{
+  const fs48 = require('fs');
+  const ET3 = carregar('src/features/comercial/etapas.ts');
+  const ger3 = fs48.readFileSync('src/routes/_authenticated/gerencial.tsx', 'utf8');
+
+  // ── o nome do lugar ──────────────────────────────────────────────────────
+  eq('condomínio: o nome do cliente cadastrado',
+     ET3.tituloDaVisita({ tipo_local: 'condominio_vertical', cliente_nome: 'Ed. Azaleia' }),
+     'Ed. Azaleia');
+  eq('empresa: idem — o título é o nome do lugar, não o do contato',
+     ET3.tituloDaVisita({ tipo_local: 'empresa', cliente_nome: 'Alfaplast', nome_sindico: 'João' }),
+     'Alfaplast');
+  eq('CRÍTICO: residência de pessoa física ganha o prefixo — numa fila de prédios, "Alcino Braga" sozinho parece nome de condomínio',
+     ET3.tituloDaVisita({ tipo_local: 'residencia', cliente_nome: 'Alcino Braga' }),
+     'Residência Alcino Braga');
+  eq('na residência o proprietário pode vir do contato, quando não há cliente cadastrado',
+     ET3.tituloDaVisita({ tipo_local: 'residencia', nome_sindico: 'Pedro Adam' }),
+     'Residência Pedro Adam');
+  eq('CRÍTICO: não duplica o prefixo quando o cadastro já o tem',
+     [ET3.tituloDaVisita({ tipo_local: 'residencia', cliente_nome: 'Residência Silva' }),
+      ET3.tituloDaVisita({ tipo_local: 'residencia', cliente_nome: 'residencia Souza' }),
+      ET3.tituloDaVisita({ tipo_local: 'residencia', cliente_nome: 'RESIDÊNCIA Lima' })],
+     ['Residência Silva', 'residencia Souza', 'RESIDÊNCIA Lima']);
+  eq('residência sem nenhum nome ainda diz o que é',
+     ET3.tituloDaVisita({ tipo_local: 'residencia' }), 'Residência');
+  eq('nome só com espaço não conta como nome',
+     ET3.tituloDaVisita({ tipo_local: 'condominio_vertical', cliente_nome: '   ', nome_predio: 'Torre A' }),
+     'Torre A');
+  eq('no condomínio o síndico NÃO vira o nome do lugar antes do prédio',
+     ET3.tituloDaVisita({ tipo_local: 'condominio_vertical', nome_sindico: 'Maria', nome_predio: 'Ed. Sol' }),
+     'Ed. Sol');
+  eq('sem nada, não inventa', ET3.tituloDaVisita({}), 'Sem nome');
+
+  // ── a tela ───────────────────────────────────────────────────────────────
+  eq('a lista usa a função pura, não um ?? solto',
+     /const clienteNome = tituloDaVisita\(\{/.test(ger3), true);
+  eq('CRÍTICO: `tipo_local` entrou na consulta — sem ele a regra da residência nunca dispararia',
+     /nome_predio,\s*\n\s*tipo_local,/.test(ger3), true);
+  eq('o botão "Proposta enviada" só aparece em falta_proposta — antes não há o que enviar, depois o ciclo já encerrou (R64)',
+     /\{et === "falta_proposta" && \(/.test(ger3), true);
+  eq('CRÍTICO: usa a MESMA RPC da tela da visita — um segundo caminho de escrita divergiria dela na primeira mudança de regra',
+     /supabase\.rpc\("registrar_envio_proposta" as any/.test(ger3), true);
+  eq('o clique no botão não navega junto com o card',
+     /onClick=\{\(e\) => \{ e\.stopPropagation\(\); marcarEnviada\.mutate\(v\.id\); \}\}/.test(ger3), true);
+  eq('não dá para clicar duas vezes enquanto grava',
+     /disabled=\{marcarEnviada\.isPending\}/.test(ger3), true);
+  eq('a lista se atualiza sozinha depois de enviar',
+     /queryClient\.invalidateQueries\(\{ queryKey: \["gerencial-visitas"\] \}\)/.test(ger3), true);
+
+  const produto23 = fs48.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R78 está documentado', /\*\*R78\*\*/.test(produto23), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

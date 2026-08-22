@@ -20,7 +20,7 @@
 
 import { guardaDeTela, usePermissoes } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation, redirect } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +32,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
 import {
-  etapaDaVisita, contagemPorEtapa, funilComercial,
+  etapaDaVisita, contagemPorEtapa, funilComercial, tituloDaVisita,
   ETAPA_ORDEM, ETAPA_LABEL, ETAPA_CORES, type EtapaComercial,
 } from "@/features/comercial/etapas";
 import {
@@ -102,6 +102,7 @@ function GerencialPage() {
             titulo,
             nome_sindico,
             nome_predio,
+            tipo_local,
             proposta_enviada_em,
             clientes (nome, email)
           `)
@@ -126,6 +127,28 @@ function GerencialPage() {
 
   const queryClient = useQueryClient();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  /**
+   * Marcar a proposta como enviada — o passo que ENCERRA o ciclo (R64).
+   *
+   * Usa a MESMA RPC da tela da visita (`registrar_envio_proposta`), e não um
+   * update direto: ela é quem carimba a data e dispara a sincronização da
+   * capa do chamado (U38). Um segundo caminho de escrita passaria a divergir
+   * dela na primeira mudança de regra.
+   */
+  const marcarEnviada = useMutation({
+    mutationFn: async (visitaId: string) => {
+      const { error } = await supabase.rpc("registrar_envio_proposta" as any, {
+        _visita_id: visitaId,
+      } as any);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gerencial-visitas"] });
+      toast.success("Proposta enviada — o ciclo termina aqui.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Admin = linha em user_roles OU profiles.cargo === 'admin' (padrão do app).
@@ -348,7 +371,15 @@ function GerencialPage() {
               const dataVisita = v.data_hora_agendada
                 ? new Date(v.data_hora_agendada).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
                 : "Sem data";
-              const clienteNome = v.clientes?.nome ?? v.nome_sindico ?? v.nome_predio ?? v.titulo ?? "Sem nome";
+              // R78: o nome do lugar, com "Residência" na frente quando é
+              // casa de pessoa física — a regra mora em etapas.ts
+              const clienteNome = tituloDaVisita({
+                tipo_local: v.tipo_local,
+                cliente_nome: v.clientes?.nome,
+                nome_predio: v.nome_predio,
+                nome_sindico: v.nome_sindico,
+                titulo: v.titulo,
+              });
               const tecnicoNome = v.tecnico_id ? tecMap.get(v.tecnico_id) : null;
               const enviadaEm = v.proposta_enviada_em
                 ? new Date(v.proposta_enviada_em).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
@@ -398,6 +429,33 @@ function GerencialPage() {
                     <Icone size={13} />
                     {ETAPA_LABEL[et]}
                   </span>
+
+                  {/* R78 — marcar como enviada, direto do card.
+                      Só aparece na etapa "falta_proposta": antes dela não há
+                      proposta aprovada para enviar, e depois o ciclo já
+                      encerrou (R64). Chama a MESMA RPC que a tela da visita
+                      (`registrar_envio_proposta`) — um segundo caminho de
+                      escrita divergiria dela na primeira mudança de regra.
+                      `stopPropagation` porque o card inteiro navega. */}
+                  {et === "falta_proposta" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); marcarEnviada.mutate(v.id); }}
+                      disabled={marcarEnviada.isPending}
+                      title="Marcar a proposta como enviada — encerra o ciclo"
+                      style={{
+                        flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6,
+                        height: 34, padding: "0 13px", borderRadius: 17, border: "none",
+                        background: GOLD_GRAD, color: "#08090E",
+                        fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
+                        letterSpacing: "0.03em", whiteSpace: "nowrap",
+                        cursor: marcarEnviada.isPending ? "default" : "pointer",
+                        opacity: marcarEnviada.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      <Send size={13} />
+                      Proposta enviada
+                    </button>
+                  )}
 
                   {isAdmin && (
                     <button

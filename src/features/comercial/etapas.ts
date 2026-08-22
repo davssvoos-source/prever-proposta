@@ -82,6 +82,57 @@ export function etapaDaVisita(v: VisitaParaEtapa): EtapaComercial {
 }
 
 /** Contagem por etapa — alimenta os chips de filtro (mesmo padrão de Clientes). */
+/** O mínimo para nomear uma visita na lista. */
+export interface VisitaParaTitulo {
+  tipo_local?: string | null;
+  cliente_nome?: string | null;
+  nome_predio?: string | null;
+  nome_sindico?: string | null;
+  titulo?: string | null;
+}
+
+/**
+ * O TÍTULO de um item do Painel Comercial (R78).
+ *
+ * Davi, 2026-08-22: "o título de cada item deve ser o nome do
+ * condomínio/empresa, e se for residência de pessoa física o título deve ser
+ * 'Residência' + o nome do proprietário."
+ *
+ * Duas coisas que a regra resolve e que o `??` solto de antes não resolvia:
+ *
+ * 1. A LISTA PRECISA DIZER O QUE É. Numa fila de prédios, "Alcino Braga"
+ *    sozinho parece nome de condomínio — e quem lê não sabe se vai a um
+ *    prédio de 80 apartamentos ou à casa de alguém. O prefixo é a informação
+ *    que faltava, não enfeite.
+ * 2. NÃO DUPLICAR O PREFIXO. Cliente já cadastrado como "Residência Silva"
+ *    viraria "Residência Residência Silva". Por isso o teste antes de
+ *    prefixar — e ele é sem acento/caixa, porque o cadastro tem de tudo.
+ *
+ * A ordem das fontes vai do mais canônico ao mais improvisado: o cliente
+ * cadastrado, depois o nome do prédio digitado na visita, depois o contato,
+ * e só então o título livre. O nome do síndico entra ANTES do título livre
+ * na residência (lá ele É o proprietário) e DEPOIS do prédio nos demais
+ * (num condomínio, o síndico não é o nome do lugar).
+ */
+export function tituloDaVisita(v: VisitaParaTitulo): string {
+  const limpo = (s: string | null | undefined) => (s ?? "").trim() || null;
+  const ehResidencia = v.tipo_local === "residencia";
+
+  if (ehResidencia) {
+    const dono = limpo(v.cliente_nome) ?? limpo(v.nome_sindico) ?? limpo(v.nome_predio);
+    if (!dono) return "Residência";
+    const jaTemPrefixo = dono
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .startsWith("residencia");
+    return jaTemPrefixo ? dono : `Residência ${dono}`;
+  }
+
+  return limpo(v.cliente_nome) ?? limpo(v.nome_predio) ?? limpo(v.nome_sindico)
+    ?? limpo(v.titulo) ?? "Sem nome";
+}
+
 export function contagemPorEtapa(visitas: VisitaParaEtapa[]): Record<EtapaComercial, number> {
   const zero = Object.fromEntries(ETAPA_ORDEM.map((e) => [e, 0])) as Record<EtapaComercial, number>;
   for (const v of visitas) zero[etapaDaVisita(v)]++;
