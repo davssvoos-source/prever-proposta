@@ -438,7 +438,10 @@ function CalendarioPage() {
                   <span style={{
                     fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
                     color: eDeHoje ? "#08090E" : textPrimary,
-                    background: eDeHoje ? gold : "transparent",
+                    // o amarelo da marca, igual nos dois temas: `gold` é token
+                    // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
+                    // número de 11px abaixo do contraste mínimo.
+                    background: eDeHoje ? "#F8C811" : "transparent",
                     borderRadius: 999, minWidth: 19, height: 19,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     padding: eDeHoje ? "0 5px" : 0,

@@ -1266,3 +1266,30 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   faz sentido (aprovada, falta enviar): antes não há proposta para enviar, e
   depois o ciclo já encerrou (R64). Marcar encerra o ciclo, como sempre.
   *(Davi, 2026-08-22.)*
+
+- **R79** — **Revisão geral de design, com foco no modo claro**, em todas as
+  telas. 91 defeitos confirmados, corrigidos em 42 arquivos.
+
+  **A raiz estava num arquivo só.** O `styles.css` declarava ~35 tokens de
+  tema e o bloco claro redefinia **14**. Os outros ~21 seguiam com o valor do
+  ESCURO em cima da página branca — e como quase todo componente de
+  biblioteca (input, seletor, abas, etiqueta) pinta por esses tokens, o
+  estrago aparecia em telas que nunca escreveram cor nenhuma: **campo de
+  texto sem borda visível**, **lista do seletor abrindo escura sobre a página
+  clara**, barra de abas azul-marinho dentro do card branco, etiqueta de
+  status ilegível. Agora todo token de cor tem par nos dois temas, e uma
+  verificação automática recusa qualquer token novo que nasça só no escuro.
+
+  **O resto foi cor por cor.** Dourado usado como texto sobre fundo claro
+  (some: ~1,6:1), texto branco sobre fundo claro, verde/vermelho/azul do tema
+  escuro sobre branco, sombra escura pesada no claro, e o **anel de foco do
+  teclado** — que era o elemento mais invisível da tela clara, justamente o
+  que existe para ser visto. Ícones de notificação que sumiam, chips de
+  status de visita ilegíveis, o número do passo em branco sobre o dourado.
+
+  **O tema escuro não mudou.** Cada correção preservou o valor que o escuro
+  já tinha, e uma auditoria independente do que foi alterado confirmou isso
+  arquivo por arquivo.
+  *(Davi, 2026-08-23: "rode uma revisão completa do design do nosso sistema e
+  aplique as alterações necessárias. Nessa revisão, o principal tópico deverá
+  ser o white mode. Garanta que a revisão aplique em todas as páginas".)*

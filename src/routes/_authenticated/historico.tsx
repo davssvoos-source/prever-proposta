@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, XCircle, Archive, CalendarDays, MapPin, Clock, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { card } from "@/lib/ui";
 
 export const Route = createFileRoute("/_authenticated/historico")({
   component: VisitasPage,
@@ -39,11 +40,6 @@ function VisitasPage() {
   const textPrimary = isLight ? "#0a0b0e" : "#fff";
   const textSub = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
   const textMuted = isLight ? "#6b7280" : "rgba(255,255,255,0.4)";
-  const cardBg = isLight
-    ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-    : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
-  const cardBorder = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)";
-  const cardShadow = isLight ? "0 1px 6px rgba(0,0,0,0.07)" : undefined;
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const { data: visitas = [], isLoading } = useQuery({
@@ -117,9 +113,11 @@ function VisitasPage() {
                 border: ativo
                   ? `1px solid ${gold}`
                   : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                // Chip segue o vocabulário de chip da casa (lentes do Painel
+                // Operacional): superfície plana, sem a sombra de card.
                 background: ativo
                   ? isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.15)"
-                  : cardBg,
+                  : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                 fontFamily: "var(--fonte)",
                 fontWeight: ativo ? 600 : 400,
                 fontSize: 12,
@@ -127,7 +125,6 @@ function VisitasPage() {
                 cursor: "pointer",
                 letterSpacing: "0.06em",
                 transition: "all 0.15s",
-                boxShadow: ativo ? undefined : cardShadow,
               }}
             >
               {f.label}
@@ -167,8 +164,7 @@ function VisitasPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
-                  background: cardBg,
-                  border: cardBorder,
+                  ...card(isLight),
                   borderRadius: 16,
                   padding: "16px 18px",
                   cursor: "pointer",
@@ -178,7 +174,6 @@ function VisitasPage() {
                   textAlign: "left",
                   width: "100%",
                   transition: "border-color 0.2s",
-                  boxShadow: cardShadow,
                 }}
               >
                 <div style={{

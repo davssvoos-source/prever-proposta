@@ -4070,3 +4070,69 @@ deles fica para trás. O botão só aparece na etapa `falta_proposta`: antes nã
 há proposta aprovada para enviar, depois o ciclo já encerrou (R64).
 
 1319 asserções (17 novas), build ok, TypeScript sem erro novo.
+
+### U67 — Revisão de design: o modo claro em todas as telas (R79, 2026-08-23)
+
+"Rode uma revisão completa do design do nosso sistema e aplique as alterações
+necessárias. Nessa revisão, o principal tópico deverá ser o white mode.
+Garanta que a revisão aplique em todas as páginas."
+
+**Como foi feito.** 8 revisores em paralelo, um por grupo de telas, cada um
+lendo os arquivos POR INTEIRO (não trecho) com o §8 do `DESIGN_SYSTEM.md`
+como régua; cada achado passou por um **verificador adversarial** encarregado
+de REFUTAR — abrir o arquivo, olhar a superfície real atrás daquela cor
+quando `isLight` é verdadeiro, e derrubar o que fosse falso positivo (branco
+sobre banner permanentemente escuro, `#F8C811` dentro de definição de
+gradiente, par `{dark,light}` já correto). Sobraram **91 confirmados**.
+Depois de aplicar, uma **terceira** rodada auditou o próprio diff procurando
+o risco oposto: regressão no tema escuro.
+
+**A RAIZ: 21 tokens sem par.** O `[data-theme="light"]` redefinia 14 de ~35.
+`--input` seguia `rgba(255,255,255,0.06)` (borda branca sobre card branco:
+invisível), `--popover` seguia `#161926` (o `SelectContent` abria escuro
+sobre a página clara), `--muted` seguia `#11131D` (TabsList azul-marinho no
+card branco), `--accent-foreground` seguia `#F8C811` (o anti-padrão nº 3),
+`--border` seguia dourado 12% — e a regra global `* { border-color }`
+espalhava isso por tudo.
+
+Três dos oito revisores acharam essa mesma raiz sozinhos, cada um por um
+consumidor diferente. É a assinatura de um defeito estrutural: o sintoma
+aparece longe da causa, em arquivos que não têm nenhuma cor escrita.
+
+Virou o **anti-padrão nº 9** do `DESIGN_SYSTEM.md` e uma asserção CRÍTICO que
+compara os dois blocos token a token — a única exceção é `--radius`, que é
+geometria. Com isso, 9 dos 91 achados foram fechados sem tocar no arquivo
+onde apareciam, e os agentes que os pularam explicaram exatamente isso.
+
+**Um corolário que precisou ser dito por escrito**: `--primary` é FUNDO
+(o botão da marca, dourado vivo com texto quase-preto por cima) e continua
+`#F8C811` nos dois temas; quem precisa de dourado como TEXTO usa
+`--gold-primary`, que escurece para `#A06108`. Sem essa distinção, "escurecer
+o dourado no claro" apagaria o botão da marca.
+
+**O que a auditoria do diff pegou.** Seis dos oito lotes voltaram limpos —
+nenhuma regressão no escuro, nenhum tema invertido, nenhum token quebrado,
+nenhuma mudança fora de escopo. Os dois achados foram de contraste, e um
+deles era uma **piora introduzida pela própria varredura**: o `StatusBadge`
+saiu de `bg-muted/text-muted-foreground` (5,4:1 com o bloco novo) para
+`PRISMA.neutro` (4,37:1). Corrigido na paleta, não no componente:
+`PRISMA.neutro.light` escureceu de `#657585` para `#5a6172`, o mesmo valor do
+`--muted-foreground`, o que conserta de uma vez os cinco chips que usam esse
+par (cliente inativo, proposta em rascunho, chamado cancelado, tipo
+operacional, prioridade baixa).
+
+O outro: no `TotemWizard`, o dourado de texto caía sobre um véu do dourado
+ESCURO (`rgba(160,97,8,0.15)`) — discreto sobre card preto, bege carregado
+sobre branco, e o texto de 9px ficava em ~4,1:1. Em vez de inventar um quarto
+tom de dourado, o véu no claro passou a ser o da casa
+(`PRISMA.amarelo.bg`, do dourado vivo): o mesmo texto sobe para ~4,7:1.
+
+**Os greps do §8 como medida.** Dourado fixo sem branch caiu de 21 para 11
+ocorrências; branco fixo, de 5 para 4. Conferi as 15 restantes uma a uma:
+todas são falsos positivos do grep — ramo `else` do escuro, dourado sobre
+círculo permanentemente preto dentro do botão, tabela de remapeamento
+claro/escuro, par `color`/`colorDark`, e dourado como FUNDO.
+
+1332 asserções (13 novas), build ok, TypeScript nos mesmos 85 erros
+pré-existentes (nenhum novo). 42 arquivos, +451/−216. Não verificado em
+navegador — sem ferramenta de browser na sessão.

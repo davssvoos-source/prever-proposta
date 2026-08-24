@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { Locate } from "lucide-react";
 import { fetchVisitas } from "@/features/visitas/data";
 import { STATUS_VISITA, type VisitaStatus } from "@/features/visitas/types";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -35,6 +36,7 @@ function MapaPage() {
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const [active, setActive] = useState<Set<VisitaStatus>>(new Set(STATUSES));
+  const { isLight } = useTheme();
 
   const { data: visitas } = useQuery({ queryKey: ["visitas"], queryFn: fetchVisitas });
 
@@ -85,7 +87,7 @@ function MapaPage() {
         <div style="font-family:var(--fonte);min-width:180px">
           <div style="font-weight:600;font-size:13px;color:#1F3864">${escapar(v.cliente?.nome ?? v.titulo)}</div>
           <div style="font-size:11px;color:#6b7280;margin-top:2px">${v.data_hora_agendada ? escapar(new Date(v.data_hora_agendada).toLocaleString("pt-BR")) : "Sem data"}</div>
-          <div style="margin-top:4px;font-size:11px"><span style="background:${escapar(info.pin)};color:white;padding:1px 6px;border-radius:4px">${escapar(info.label)}</span></div>
+          <div style="margin-top:4px;font-size:11px"><span style="background:${escapar(info.pin)};color:#08090E;padding:1px 6px;border-radius:4px">${escapar(info.label)}</span></div>
           <a href="/visita/${encodeURIComponent(v.id)}" data-id="${escapar(v.id)}" style="margin-top:6px;display:inline-block;font-size:12px;color:#1F3864;font-weight:600">Ver detalhes →</a>
         </div>`;
       marker.bindPopup(popup);
@@ -130,6 +132,9 @@ function MapaPage() {
         {STATUSES.map((s) => {
           const info = STATUS_VISITA[s];
           const on = active.has(s);
+          // aqui a cor do status é TEXTO/BORDA sobre a faixa clara — o pin
+          // (amarelo, verde-água, azul claro) só serve sobre o mapa
+          const c = isLight ? info.pinLight : info.pin;
           return (
             <button
               key={s}
@@ -137,7 +142,7 @@ function MapaPage() {
               className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-opacity ${
                 on ? "opacity-100" : "opacity-40"
               }`}
-              style={{ borderColor: info.pin, color: info.pin }}
+              style={{ borderColor: c, color: c }}
             >
               ● {info.label}
             </button>

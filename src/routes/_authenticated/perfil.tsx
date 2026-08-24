@@ -429,7 +429,7 @@ function PerfilPage() {
             flexShrink: 0,
           }}
         >
-          {isLight ? <Sun size={20} color="#F8C811" /> : <Moon size={20} color="#F8C811" />}
+          {isLight ? <Sun size={20} color={goldDark} /> : <Moon size={20} color="#F8C811" />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -703,9 +703,11 @@ function PerfilPage() {
               background:
                 novaSenha && confirmarSenha
                   ? "linear-gradient(135deg,#FCDE48,#F8C811)"
-                  : "#191921",
+                  : (isLight ? "#e8eaee" : "#191921"),
               border: "none",
-              color: novaSenha && confirmarSenha ? "#08090E" : "rgba(255,255,255,0.3)",
+              color: novaSenha && confirmarSenha
+                ? "#08090E"
+                : (isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.3)"),
               fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 13,

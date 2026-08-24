@@ -44,6 +44,8 @@ const L = {
   text: "#0a0b0e",
   textSub: "#4a5060",
   textMuted: "#8a909e",
+  // MAHOGANY 700 — os vermelhos claros (red-300/400) somem sobre o card branco
+  erro: "#B1242E",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
   goldBorder: "1px solid rgba(160,97,8,0.22)",
@@ -457,7 +459,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
               />
             </div>
             {isPast && (
-              <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-red-400">
+              <p
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium"
+                style={{ color: isLight ? L.erro : "#f87171" }}
+              >
                 <AlertTriangle className="h-3 w-3" /> Data/hora no passado
               </p>
             )}
@@ -492,7 +497,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     <AvatarFallback
                       style={{
                         background: isLight ? L.gold : "#F8C811",
-                        color: "#08090E",
+                        // sobre o dourado ESCURO do claro quem contrasta é o branco;
+                        // sobre o dourado vivo do escuro vale o quase-preto de sempre
+                        color: isLight ? "#ffffff" : "#08090E",
                         fontSize: 10,
                       }}
                     >
@@ -525,7 +532,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                           className="flex justify-between rounded px-2 py-1 text-[11px]"
                           style={{
                             background: isConflito ? "rgba(239,68,68,0.15)" : "transparent",
-                            color: isConflito ? "#fca5a5" : isLight ? L.textSub : "#cbd5e1",
+                            color: isConflito ? (isLight ? L.erro : "#fca5a5") : isLight ? L.textSub : "#cbd5e1",
                           }}
                         >
                           <span>
@@ -540,7 +547,10 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                   </ul>
                 )}
                 {conflito && (
-                  <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-400">
+                  <p
+                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium"
+                    style={{ color: isLight ? L.erro : "#f87171" }}
+                  >
                     <AlertTriangle className="h-3 w-3" /> Possível conflito de horário
                   </p>
                 )}
@@ -566,7 +576,9 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                       border: active
                         ? `1px solid ${PRIORIDADE_BORDER[p]}`
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
-                      color: active ? "#fff" : isLight ? L.textSub : "#cbd5e1",
+                      // a tinta ativa é translúcida (0.15–0.20): no claro ela compõe
+                      // com o card branco e só texto escuro sobrevive
+                      color: active ? (isLight ? L.text : "#fff") : isLight ? L.textSub : "#cbd5e1",
                     }}
                   >
                     {PRIORIDADE_LABEL[p]}
@@ -676,7 +688,9 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
           background: active
             ? isLight ? "#A06108" : "#F8C811"
             : isLight ? "#f0f1f4" : "#191921",
-          color: active ? "#ffffff" : isLight ? "#4a5060" : "#9ca3af",
+          // texto sobre o dourado vivo do escuro é sempre quase-preto; sobre o
+          // dourado escuro do claro é o branco
+          color: active ? (isLight ? "#ffffff" : "#08090E") : isLight ? "#4a5060" : "#9ca3af",
           border: active ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "none",
         }}
       >

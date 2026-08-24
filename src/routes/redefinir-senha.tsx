@@ -111,7 +111,7 @@ function RedefinirSenhaPage() {
     letterSpacing: "0.18em",
     textTransform: "uppercase",
     cursor: "pointer",
-    boxShadow: "0 4px 24px rgba(248,200,17,0.35)",
+    boxShadow: isLight ? "0 4px 16px rgba(160,97,8,0.35)" : "0 4px 24px rgba(248,200,17,0.35)",
   };
   const LBL: CSSProperties = {
     fontFamily: "var(--fonte)",
@@ -119,7 +119,7 @@ function RedefinirSenhaPage() {
     fontSize: 11,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "rgba(248,200,17,0.65)",
+    color: isLight ? "#A06108" : "rgba(248,200,17,0.65)",
     marginBottom: 8,
     display: "block",
   };
@@ -149,10 +149,14 @@ function RedefinirSenhaPage() {
               objectFit: "contain",
               display: "block",
               margin: "0 auto 12px",
-              filter:
-                "drop-shadow(0 0 8px rgba(248,200,17,0.90)) " +
-                "drop-shadow(0 0 20px rgba(248,200,17,0.55)) " +
-                "drop-shadow(0 0 40px rgba(248,200,17,0.25))",
+              // no claro o halo forte vira borrão amarelo sobre o LightBackground:
+              // usa o glow suave da auth.tsx e guarda o forte para o Datacenter
+              filter: isLight
+                ? "drop-shadow(0 0 4px rgba(248,200,17,0.45)) " +
+                  "drop-shadow(0 0 10px rgba(248,200,17,0.20))"
+                : "drop-shadow(0 0 8px rgba(248,200,17,0.90)) " +
+                  "drop-shadow(0 0 20px rgba(248,200,17,0.55)) " +
+                  "drop-shadow(0 0 40px rgba(248,200,17,0.25))",
             }}
           />
           <div

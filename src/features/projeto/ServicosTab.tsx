@@ -72,7 +72,9 @@ export function ServicosTab({ projetoId }: { projetoId: string }) {
     <div className="space-y-4">
       <Card className="flex items-center justify-between border-primary/30 bg-primary/5 p-4">
         <div className="text-sm font-medium">Total mensal de manutenção</div>
-        <div className="text-2xl font-bold tabular-nums text-primary">{brl(total)}</div>
+        {/* text-primary é o dourado vivo (fundo de botão) e some sobre o card branco;
+            text-gold é o dourado de TEXTO, que escurece no tema claro */}
+        <div className="text-2xl font-bold tabular-nums text-gold">{brl(total)}</div>
       </Card>
 
       {Array.from(grupos.entries()).map(([catKey, items]) => (

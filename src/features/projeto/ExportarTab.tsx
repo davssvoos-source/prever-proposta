@@ -222,13 +222,16 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Total Implantação</dt>
-            <dd className="text-lg font-bold tabular-nums text-primary">
+            {/* text-gold (não text-primary): --primary é dourado-vivo nos dois
+                temas por ser fundo de botão; como texto sobre o card branco os
+                dois números da proposta ficavam ilegíveis. */}
+            <dd className="text-lg font-bold tabular-nums text-gold">
               {brl(data.subtotalEquip + data.subtotalInst)}
             </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Manutenção mensal</dt>
-            <dd className="text-lg font-bold tabular-nums text-primary">{brl(data.totalMensal)}</dd>
+            <dd className="text-lg font-bold tabular-nums text-gold">{brl(data.totalMensal)}</dd>
           </div>
         </dl>
       </Card>

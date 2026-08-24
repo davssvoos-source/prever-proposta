@@ -115,6 +115,9 @@ function useEstiloCampo() {
       fontFamily: FONT, fontSize: 14, fontWeight: 500, color: textPrimary,
       background: campoBg, border: borda, borderRadius: 12,
       padding: "11px 13px", outline: "none",
+      // sem isto o ícone de calendário dos <input type="date"/"datetime-local">
+      // rende no esquema claro do UA e some sobre o campo escuro do painel.
+      colorScheme: isLight ? "light" : "dark",
     } as CSSProperties,
   };
 }

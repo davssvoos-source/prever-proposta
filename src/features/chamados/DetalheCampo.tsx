@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { card } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { AssinaturaCanvas } from "@/features/chamados/AssinaturaCanvas";
@@ -93,13 +94,11 @@ export function DetalheCampo({ id }: { id: string }) {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
+  // card() da casa — o mesmo do painel e da programação, telas que o usuário
+  // percorre em sequência com esta
   const CARD: CSSProperties = {
-    background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
-    borderRadius: 18, padding: "16px",
-    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
+    ...card(isLight),
+    padding: "16px",
     display: "flex", flexDirection: "column", gap: 12,
   };
   const SEC: CSSProperties = {

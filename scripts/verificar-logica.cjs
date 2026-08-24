@@ -4602,5 +4602,67 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R78 está documentado', /\*\*R78\*\*/.test(produto23), true);
 }
 
+// ── R79: revisão de design — o modo claro em todas as telas ────────────────
+// A revisão de 2026-08-23 achou 91 defeitos confirmados. A RAIZ de boa parte
+// deles estava aqui: o bloco [data-theme="light"] redefinia 14 de ~35 tokens,
+// e os outros ~21 seguiam com o valor do ESCURO no claro. Como quase todo
+// componente shadcn pinta por esses tokens, o efeito aparecia em telas que
+// nunca escreveram cor nenhuma — borda de input invisível, painel de Select
+// escuro sobre página clara, TabsList azul-marinho dentro de card branco.
+{
+  const fs49 = require('fs');
+  const css7 = fs49.readFileSync('src/styles.css', 'utf8');
+
+  const bloco = (sel) => {
+    const i = css7.indexOf(sel + ' {');
+    if (i < 0) return null;
+    const j = css7.indexOf('\n}', i);
+    const corpo = css7.slice(i, j);
+    const m = {};
+    for (const par of corpo.matchAll(/(--[\w-]+):\s*([^;]+);/g)) m[par[1]] = par[2].trim();
+    return m;
+  };
+  const raiz = bloco(':root');
+  const claro = bloco('[data-theme="light"]');
+
+  eq('os dois blocos de tema existem', !!raiz && !!claro, true);
+
+  // `--radius` é geometria, não cor: não tem par de tema por natureza.
+  const SEM_TEMA = ['--radius'];
+  const semPar = Object.keys(raiz).filter((t) => !SEM_TEMA.includes(t) && !(t in claro));
+  eq('CRÍTICO: TODO token de cor do :root tem par no tema claro — foi a falta disso que deixou input sem borda, Select escuro na página clara e badge ilegível, em telas que não escreveram cor nenhuma',
+     semPar, []);
+
+  // os que mais doíam, um a um
+  eq('--input tem contraste de verdade sobre card branco (era branco 6%: borda invisível)',
+     claro['--input'], 'rgba(0,0,0,0.14)');
+  eq('--popover é claro (era #161926: o painel do Select abria escuro sobre a página clara)',
+     claro['--popover'], '#ffffff');
+  eq('--muted é claro (era #11131D: TabsList virava barra azul-marinho no card branco)',
+     claro['--muted'], '#eef0f4');
+  eq('CRÍTICO: --accent-foreground não é o dourado do escuro (o anti-padrão nº 3: #F8C811 sobre fundo claro dá ~1.6:1)',
+     claro['--accent-foreground'] === '#F8C811', false);
+  eq('--destructive/--success/--info usam os tons ESCUROS das escalas, que são os legíveis sobre branco',
+     [claro['--destructive'], claro['--success'], claro['--info']],
+     ['#B1242E', '#047862', '#236FC7']);
+  eq('--muted-foreground passa de 4.5:1 sobre branco (era #8A8FA8, ~3.2:1)',
+     claro['--muted-foreground'], '#5a6172');
+  eq('--border deixou de ser o dourado translúcido — a regra global * { border-color } espalhava aquilo por tudo',
+     /rgba\(0,0,0/.test(claro['--border']), true);
+
+  // `--primary` é FUNDO do botão da marca: dourado vivo com texto quase-preto
+  // é o botão da casa, e escurecê-lo aqui apagaria a identidade.
+  eq('--primary segue sendo o dourado da marca no claro (é fundo, não texto) com texto quase-preto',
+     [claro['--primary'], claro['--primary-foreground']], ['#F8C811', '#08090E']);
+
+  eq('CRÍTICO: o anel de foco sai do token, não de hex — #F8C811 fixo dava ~1.6:1 na página clara, e o anel de foco é justamente o que precisa ser visto',
+     /outline: 2px solid var\(--gold-primary\);/.test(css7), true);
+  eq('…e nenhum outline de foco em dourado fixo sobrou',
+     /outline: 2px solid #F8C811/.test(css7), false);
+
+  const produto24 = fs49.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R79 está documentado', /\*\*R79\*\*/.test(produto24), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

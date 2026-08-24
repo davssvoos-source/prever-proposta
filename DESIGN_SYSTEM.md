@@ -551,6 +551,24 @@ Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
    `Card` base precisa ler o tema também.
 8. **Sombra escura no tema claro.** No claro use `0 1px 6px rgba(0,0,0,0.07)`;
    sombras fortes sujam o layout.
+9. **Token declarado no `:root` sem par no `[data-theme="light"]`.** É o pior
+   da lista porque não aparece no arquivo que quebra: o `styles.css` declarava
+   ~35 tokens no escuro e redefinia 14 no claro, então `--input`, `--popover`,
+   `--muted`, `--accent-foreground`, `--destructive`, `--success`, `--info` e
+   `--border` seguiam com valor de tema escuro sobre página branca. O sintoma
+   nascia longe: borda de `Input` invisível, painel do `Select` abrindo escuro
+   sobre a página clara, `TabsList` azul-marinho dentro do card branco,
+   `StatusBadge` ilegível — tudo em telas que nunca escreveram cor nenhuma.
+   Varredura obrigatória (R79 travou isto por asserção):
+   ```bash
+   node scripts/verificar-logica.cjs   # "TODO token de cor do :root tem par"
+   ```
+   Exceção única: `--radius`, que é geometria e não tem tema.
+
+   Corolário: **`--primary` é FUNDO, `--gold-primary` é TEXTO.** O dourado
+   vivo continua sendo `--primary` nos dois temas (é o botão da marca, com
+   texto quase-preto por cima); quem precisa de dourado como texto/ícone usa
+   `--gold-primary`, que escurece para `#A06108` no claro.
 
 ---
 
@@ -588,6 +606,7 @@ Regras:
 - [ ] CTA principal = pílula dourada 56px com texto escuro maiúsculo espaçado
 - [ ] Cards com gradiente (160° escuro / 135° claro), raio 16–18px
 - [ ] Nenhuma cor fixa fora de branch de tema (rodar os `grep` da §8)
+- [ ] Todo token do `:root` com par no `[data-theme="light"]` (§8.9)
 - [ ] Dourado escurecido para `#A06108` em todo texto/ícone do tema claro
 - [ ] Inputs com `colorScheme` acompanhando o tema
 - [ ] Status sempre com ícone + rótulo, nunca só cor

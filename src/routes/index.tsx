@@ -16,7 +16,9 @@ function Index() {
   }, [navigate]);
   return (
     <div className="grid min-h-screen place-items-center bg-background">
-      <div className="text-sm text-muted-foreground">Carregando...</div>
+      {/* texto secundário pelo token do tema (par claro/escuro garantido),
+          não pelo --muted-foreground do shadcn */}
+      <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Carregando...</div>
     </div>
   );
 }

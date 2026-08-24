@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Calendar, User, Phone, Mail, Edit2, Wrench, Copy, Ma
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { statusLabel } from "@/lib/visita-route";
+import { getStatusInfo } from "@/lib/visita-status";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/pendente")({
@@ -77,7 +77,9 @@ function VisitaPendentePage() {
     ? { bg: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)", border: "1px solid rgba(0,0,0,0.07)", shadow: "0 1px 6px rgba(0,0,0,0.07)", text: "#0a0b0e", sub: "#4a5060", muted: "#8a909e", gold: "#A06108", goldBg: "rgba(160,97,8,0.10)" }
     : { bg: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", shadow: "none", text: "#FFFFFF", sub: "rgba(255,255,255,0.65)", muted: "rgba(255,255,255,0.45)", gold: "#F8C811", goldBg: "rgba(248,200,17,0.10)" };
 
-  const sLabel = statusLabel(visita?.status);
+  // getStatusInfo (e não statusLabel): só ele devolve o `colorLight` — o
+  // dourado vivo do chip sumia sobre o véu claro desta página.
+  const sLabel = getStatusInfo(visita?.status);
   const endereco = [visita?.endereco, visita?.complemento].filter(Boolean).join(" — ");
   const nomeLocal = visita?.nome_predio || visita?.titulo || visita?.cliente?.nome || "—";
   const dataFormatada = visita?.data_hora_agendada
@@ -107,7 +109,7 @@ function VisitaPendentePage() {
           <p style={{ color: c.muted, fontSize: 11, margin: 0, letterSpacing: 1 }}>VISITA TÉCNICA</p>
           <p style={{ color: c.text, fontSize: 17, fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomeLocal}</p>
         </div>
-        <span style={{ background: sLabel.bg, color: sLabel.color, padding: "5px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
+        <span style={{ background: sLabel.bg, color: isLight ? sLabel.colorLight : sLabel.color, padding: "5px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, letterSpacing: 0.3 }}>
           {sLabel.label}
         </span>
       </div>

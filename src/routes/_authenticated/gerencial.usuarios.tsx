@@ -717,7 +717,7 @@ function UsuariosPage() {
                         width: 36, height: 36, borderRadius: 10,
                         background: isLight ? "#f3f4f6" : "rgba(96,165,250,0.10)",
                         border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(96,165,250,0.25)",
-                        color: "#60A5FA",
+                        color: isLight ? "#1d4ed8" : "#60A5FA",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
                       }}
@@ -731,7 +731,7 @@ function UsuariosPage() {
                         width: 36, height: 36, borderRadius: 10,
                         background: isLight ? "#f3f4f6" : "rgba(239,68,68,0.10)",
                         border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(239,68,68,0.25)",
-                        color: "#E64D58",
+                        color: isLight ? "#dc2626" : "#E64D58",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
                       }}
@@ -791,7 +791,7 @@ function UsuariosPage() {
                       width: 34, height: 34, borderRadius: 10, marginLeft: 8,
                       background: isLight ? "#dcfce7" : "rgba(34,197,94,0.12)",
                       border: isLight ? "1px solid #bbf7d0" : "1px solid rgba(34,197,94,0.30)",
-                      color: "#22C55E",
+                      color: isLight ? "#15803d" : "#22C55E",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       cursor: reativarMutation.isPending ? "not-allowed" : "pointer",
                       opacity: reativarMutation.isPending ? 0.6 : 1,

@@ -5,8 +5,12 @@ import { useNotificacoes, tempoRelativo, type Notificacao } from "@/hooks/useNot
 import { useTheme } from "@/contexts/ThemeContext";
 
 
-function NotifIcon({ tipo }: { tipo: string }) {
+function NotifIcon({ tipo, isLight }: { tipo: string; isLight: boolean }) {
   const s = { size: 18, strokeWidth: 1.8 };
+  // o item da lista é BRANCO no tema claro: o dourado e o azul do escuro
+  // ficam abaixo de 3:1 ali e o ícone simplesmente some
+  const gold = isLight ? "#A06108" : "#F8C811";   // PRISMA.amarelo
+  const azul = isLight ? "#1d4ed8" : "#60A5FA";
   switch (tipo) {
     case 'visita_aprovada':
     case 'aprovacao':
@@ -14,21 +18,21 @@ function NotifIcon({ tipo }: { tipo: string }) {
     case 'visita_reprovada':
       return <XCircle {...s} color="#E64D58" />;
     case 'visita_aguardando_aprovacao':
-      return <Clock {...s} color="#60A5FA" />;
+      return <Clock {...s} color={azul} />;
     case 'os_atribuida':
-      return <Wrench {...s} color="#F8C811" />;
+      return <Wrench {...s} color={gold} />;
     case 'os_executada':
-      return <CheckCircle2 {...s} color="#60A5FA" />;
+      return <CheckCircle2 {...s} color={azul} />;
     case 'os_fechada':
       return <CheckCircle2 {...s} color="#059676" />;
     case 'lembrete_visita':
-      return <Clock {...s} color="#F8C811" />;
+      return <Clock {...s} color={gold} />;
     case 'demanda_atribuida':
     case 'sprint_virada':
     case 'resumo_semana':
-      return <KanbanSquare {...s} color="#F8C811" />;
+      return <KanbanSquare {...s} color={gold} />;
     case 'demanda_comentario':
-      return <MessageSquare {...s} color="#60A5FA" />;
+      return <MessageSquare {...s} color={azul} />;
     case 'demanda_apoio':
       return <UserPlus {...s} color="#9085e9" />;
     case 'demanda_prazo':
@@ -37,17 +41,17 @@ function NotifIcon({ tipo }: { tipo: string }) {
     case 'demanda_atrasada':
       return <CalendarClock {...s} color="#E64D58" />;
     case 'demanda_aprovacao':
-      return <Clock {...s} color="#60A5FA" />;
+      return <Clock {...s} color={azul} />;
     case 'demanda_concluida':
       return <CheckCircle2 {...s} color="#059676" />;
     case 'visita':
     case 'visita_atribuida':
-      return <CalendarCheck {...s} color="#F8C811" />;
+      return <CalendarCheck {...s} color={gold} />;
     case 'sistema':
-      return <Settings {...s} color="#60A5FA" />;
+      return <Settings {...s} color={azul} />;
     case 'info':
     default:
-      return <Info {...s} color="rgba(255,255,255,0.5)" />;
+      return <Info {...s} color={isLight ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.5)"} />;
   }
 }
 
@@ -328,7 +332,7 @@ function NotifItem({
       >
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <span style={{ minWidth: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <NotifIcon tipo={n.tipo} />
+            <NotifIcon tipo={n.tipo} isLight={isLight} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div

@@ -228,7 +228,7 @@ function ComplementosPage() {
       {perguntaSimNao("Fornecer o aplicativo Grupo Prever Acessos?", Smartphone, appAcessos, setAppAcessos)}
 
       {erroVisible && (
-        <p style={{ color: "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+        <p style={{ color: isLight ? "#B1242E" : "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
           {erroVisible}
         </p>
       )}

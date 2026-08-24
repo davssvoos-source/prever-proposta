@@ -387,9 +387,14 @@ function Home() {
             padding: "0 20px", textAlign: "center",
           }}
         >
+          {/* No claro o véu do banner termina quase branco (rgba(244,245,247,0.9)),
+              justamente onde a frase cai — texto branco ali some. */}
           <div style={{
-            fontFamily: FONT, fontWeight: 600, fontSize: 24, lineHeight: 1.2, color: "#FFFFFF",
-            textShadow: "0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)",
+            fontFamily: FONT, fontWeight: 600, fontSize: 24, lineHeight: 1.2,
+            color: isLight ? "#0a0b0e" : "#FFFFFF",
+            textShadow: isLight
+              ? "0 1px 8px rgba(255,255,255,0.65)"
+              : "0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)",
           }}>
             {semPerfil
               ? "Carregando seu dia"
@@ -399,8 +404,10 @@ function Home() {
           </div>
           {composicao && (
             <div style={{
-              fontFamily: FONT, fontWeight: 400, fontSize: 12.5, color: "rgba(255,255,255,0.85)",
-              marginTop: 4, textShadow: "0 1px 6px rgba(0,0,0,0.6)",
+              fontFamily: FONT, fontWeight: 400, fontSize: 12.5,
+              color: isLight ? "#4a5060" : "rgba(255,255,255,0.85)",
+              marginTop: 4,
+              textShadow: isLight ? "0 1px 6px rgba(255,255,255,0.6)" : "0 1px 6px rgba(0,0,0,0.6)",
             }}>
               {composicao}
             </div>

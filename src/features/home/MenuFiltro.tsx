@@ -228,7 +228,9 @@ export function MenuFiltro({
             backdropFilter: "var(--vidro-blur)" as any,
             WebkitBackdropFilter: "var(--vidro-blur)" as any,
             border: isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.32)",
+            // sombra do popover: no claro ela é leve (a do escuro pinta uma
+            // mancha cinza em volta do menu), mas ainda mais alta que a de card
+            boxShadow: isLight ? "0 12px 32px rgba(0,0,0,0.12)" : "0 12px 32px rgba(0,0,0,0.32)",
           }}
         >
           {ativo && (

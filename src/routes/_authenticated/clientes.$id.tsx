@@ -486,6 +486,9 @@ function ClienteDetalhePage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
                 {visitas.map((v: any) => {
                   const info = getStatusInfo(v.status);
+                  // mesmo par por tema do bloco de chamados acima: no claro o
+                  // #F8C811 do bucket PENDENTE some sobre o branco da linha
+                  const corVisita = isLight ? info.colorLight : info.color;
                   const quando = v.data_hora_agendada ?? v.created_at;
                   return (
                     <button
@@ -496,7 +499,7 @@ function ClienteDetalhePage() {
                         padding: "10px 12px", borderRadius: 12, cursor: "pointer", textAlign: "left",
                         background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
                         border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                        borderLeft: `3px solid ${info.color}`,
+                        borderLeft: `3px solid ${corVisita}`,
                         color: textPrimary,
                       }}
                     >
@@ -510,7 +513,7 @@ function ClienteDetalhePage() {
                         style={{
                           padding: "3px 8px", borderRadius: 12, flexShrink: 0,
                           background: info.bg, border: `1px solid ${info.border}`,
-                          color: info.color,
+                          color: corVisita,
                           fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
                         }}

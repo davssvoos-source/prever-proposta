@@ -412,7 +412,7 @@ function OrcamentoPasso1() {
         </div>
 
         {erroVisible && (
-          <p style={{ color: "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
+          <p style={{ color: isLight ? "#B1242E" : "#ff4d4f", fontFamily: "var(--fonte)", fontSize: 12, textAlign: "center", marginBottom: 8 }}>
             {erroVisible}
           </p>
         )}
@@ -668,7 +668,7 @@ function OrcamentoPasso1() {
 
       {/* Botão próxima etapa */}
       {erroVisible && (
-        <p style={{ color: '#ff4d4f', fontFamily: "var(--fonte)", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
+        <p style={{ color: isLight ? '#B1242E' : '#ff4d4f', fontFamily: "var(--fonte)", fontSize: 12, textAlign: 'center', marginBottom: 8 }}>
           {erroVisible}
         </p>
       )}

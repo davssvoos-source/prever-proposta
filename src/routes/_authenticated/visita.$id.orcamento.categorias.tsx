@@ -22,18 +22,9 @@ const SLUG_TO_TIPO: Record<string, string> = {
 };
 
 
-const ICON_COLOR = "#F8C811";
-
-const CATEGORIAS = [
-  { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={ICON_COLOR} />, desc: "Portas, cancelas e leitores de pedestre" },
-  { id: "veiculos", label: "Acesso de Veículos", icon: <Car size={32} color={ICON_COLOR} />, desc: "Cancelas, barreiras e controles veiculares" },
-  { id: "cftv", label: "CFTV", icon: <Camera size={32} color={ICON_COLOR} />, desc: "Câmeras, DVRs e NVRs" },
-  { id: "alarme", label: "Alarme", icon: <ShieldAlert size={32} color={ICON_COLOR} />, desc: "Sensores, centrais e sirenes" },
-  { id: "cerca", label: "Cerca Elétrica", icon: <Zap size={32} color={ICON_COLOR} />, desc: "Centrais e eletrificadores" },
-  { id: "elevadores", label: "Elevadores", icon: <Building2 size={32} color={ICON_COLOR} />, desc: "Kit Antena p/ elevador (rede, câmera e telefone IP)" },
-  { id: "totem", label: "Totem Inteligente", icon: <Cctv size={32} color={ICON_COLOR} />, desc: "Postes de monitoramento com switch, fonte e câmeras IP" },
-];
-
+// A lista de categorias vive dentro do componente (CATEGORIAS_T), porque o
+// ícone depende do tema. A versão de módulo era código morto com o dourado do
+// escuro embutido — remover evita que volte a ser importada.
 
 function CategoriasPage() {
   const { id } = Route.useParams();

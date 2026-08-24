@@ -133,8 +133,10 @@ export function ResumoTab({ projeto }: { projeto: Projeto }) {
           dim={isManut}
         />
         <div className="my-2 border-t border-border" />
+        {/* text-primary é o dourado vivo (fundo de botão) e some sobre card
+            branco; text-gold escurece para #A06108 no claro */}
         <SummaryRow
-          icon={<Calculator className="h-4 w-4 text-primary" />}
+          icon={<Calculator className="h-4 w-4 text-gold" />}
           label={isManut ? "Total implantação" : "Total implantação"}
           value={totalImplant}
           big

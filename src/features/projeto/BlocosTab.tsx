@@ -149,11 +149,14 @@ export function BlocosTab({
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-1 text-sm">
-            <Layers className="h-4 w-4 text-primary" />
+            {/* text-gold (não text-primary): --primary é cor de FUNDO de botão e
+                fica dourado-vivo nos dois temas — como ícone sobre a barra clara
+                sumiria. --gold-primary escurece no claro. */}
+            <Layers className="h-4 w-4 text-gold" />
             <strong>{ativos.length}</strong> blocos
           </div>
           <div className="flex items-center gap-1 text-sm">
-            <Clock className="h-4 w-4 text-primary" />
+            <Clock className="h-4 w-4 text-gold" />
             <strong>{totalHH.toFixed(1)}</strong> HH
           </div>
           <Button className="ml-auto" onClick={onGoToResumo}>

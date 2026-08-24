@@ -128,7 +128,7 @@ export function NotificacoesSidebar({ recolhida = false }: Props) {
             backdropFilter: "var(--vidro-blur)" as any,
             WebkitBackdropFilter: "var(--vidro-blur)" as any,
             border: isLight ? "1px solid rgba(255,255,255,0.72)" : "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 16px 44px rgba(0,0,0,0.35)",
+            boxShadow: isLight ? "0 8px 28px rgba(0,0,0,0.10)" : "0 16px 44px rgba(0,0,0,0.35)",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", padding: "4px 6px 10px" }}>

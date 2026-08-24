@@ -136,21 +136,99 @@
   --card-bg:        rgba(8,8,12,0.22);
 }
 
+/* ── O TEMA CLARO, TOKEN POR TOKEN ────────────────────────────────────────
+   R79: este bloco redefinia 14 dos ~35 tokens. Os outros 21 continuavam com
+   o valor do ESCURO no modo claro — e como quase todo componente shadcn
+   (Input, Select, Tabs, Badge, Button ghost/outline) pinta por esses tokens,
+   o efeito aparecia longe daqui, em telas que nunca escreveram cor nenhuma:
+
+     · --input rgba(255,255,255,0.06)  → borda de Input/SelectTrigger branca
+       sobre card branco: INVISÍVEL;
+     · --popover #161926               → o painel do Select abria ESCURO
+       sobre a página clara;
+     · --muted #11131D                 → TabsList virava uma barra
+       azul-marinho dentro do card branco;
+     · --accent-foreground #F8C811     → dourado do escuro como texto sobre
+       fundo claro (~1.6:1, o anti-padrão nº 3);
+     · --destructive/--success/--info  → tons do escuro sobre branco, todos
+       abaixo de 3:1;
+     · --border dourado 12%            → a regra global `* { border-color }`
+       espalhava isso por tudo.
+
+   Era o anti-padrão §8.7 na raiz: "componente de biblioteca com estilo
+   escuro embutido". A regra daqui em diante: TODO token declarado no
+   `:root` tem par aqui. */
 [data-theme="light"] {
   --bg-base:        #f4f5f7;
   --bg-elevated:    #ffffff;
   --bg-overlay:     #e8eaee;
+
+  --gold-primary:   #A06108;
+  --gold-bright:    #C88806;
+  --gold-dim:       #844C0F;
+  --gold-glow:      rgba(160,97,8, 0.14);
+  --gold-glow-hv:   rgba(160,97,8, 0.24);
+
   --background:     #f4f5f7;
   --foreground:     #0a0b0e;
   --card:           #ffffff;
   --card-foreground:#0a0b0e;
+  --popover:        #ffffff;
+  --popover-foreground: #0a0b0e;
+
+  /* `--primary` é FUNDO (o botão da marca), e o dourado vivo sobre o
+     quase-preto do `--primary-foreground` é justamente o botão da casa —
+     por isso ele NÃO escurece aqui. Quem precisa de dourado como TEXTO usa
+     `--gold-primary`, que escurece. */
+  --primary:        #F8C811;
+  --primary-foreground: #08090E;
+
+  --secondary:      #eef0f4;
+  --secondary-foreground: #0a0b0e;
+
+  --muted:          #eef0f4;
+  --muted-foreground: #5a6172;   /* 5.6:1 sobre branco (era 3.2:1) */
+
+  --accent:         #eef0f4;
+  --accent-foreground: #A06108;
+
+  --destructive:    #B1242E;     /* MAHOGANY 700 */
+  --destructive-foreground: #ffffff;
+
+  --success:        #047862;     /* SHAMROCK 700 */
+  --success-foreground: #ffffff;
+
+  --warning:        #A06108;     /* SUPERNOVA 700 */
+  --warning-foreground: #ffffff;
+
+  --info:           #236FC7;     /* PRISMA.azul.light */
+  --info-foreground: #ffffff;
+
+  --border:         rgba(0,0,0,0.10);
+  --input:          rgba(0,0,0,0.14);
+  --ring:           #A06108;
+
+  --chart-1: #A06108;
+  --chart-2: #C88806;
+  --chart-3: #2a78d6;
+  --chart-4: #047862;
+  --chart-5: #B1242E;
+
+  --sidebar:        #ffffff;
+  --sidebar-foreground: #0a0b0e;
+  --sidebar-primary: #A06108;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef0f4;
+  --sidebar-accent-foreground: #A06108;
+  --sidebar-border: rgba(0,0,0,0.10);
+  --sidebar-ring:   #A06108;
+
   --text-primary:   #0a0b0e;
   --text-secondary: #4a5060;
   --text-muted:     #8a909e;
   --icon-color:     #0a0b0e;
   --border-color:   rgba(0,0,0,0.10);
   --card-bg:        rgba(255,255,255,0.70);
-  --gold-primary:   #A06108;
 }
 
 [data-theme="light"] input::placeholder,
@@ -527,7 +605,11 @@ input::placeholder, textarea::placeholder {
     /* sem `border-radius` aqui: ele sobrescreveria o raio real do elemento e
        um chip de 999px viraria retângulo ao receber foco. O outline já
        acompanha o raio de quem ele contorna. */
-    outline: 2px solid #F8C811;
+    /* R79: pelo token, não pelo hex. O #F8C811 fixo dava ~1.6:1 sobre a
+       página clara — o anel de foco existe exatamente para ser visto, e no
+       modo claro ele era o mais invisível da tela. `--gold-primary` resolve
+       #A06108 no claro (4.5:1) e #F8C811 no escuro. */
+    outline: 2px solid var(--gold-primary);
     outline-offset: 2px;
   }
 }

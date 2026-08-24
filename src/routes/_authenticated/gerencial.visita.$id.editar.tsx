@@ -26,9 +26,10 @@ function EditarVisitaPage() {
 
   return (
     <div className="space-y-4">
+      {/* text-gold escurece para #A06108 no claro; o #F8C811 fixo sumia no hover sobre a página clara */}
       <Link
         to="/gerencial"
-        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-[#F8C811]"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-gold"
       >
         <ArrowLeft className="h-3 w-3" /> Voltar
       </Link>

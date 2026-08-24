@@ -229,13 +229,15 @@ const CTA_GOLD = (pending: boolean): React.CSSProperties => ({
   opacity: pending ? 0.7 : 1,
 });
 
-const CTA_GOLD_OUTLINE = (pending: boolean): React.CSSProperties => ({
+// Diferente do CTA_GOLD (sólido, texto escuro sobre o degradê), aqui o dourado
+// É o texto e a borda — logo precisa do tom escuro da paleta no tema claro.
+const CTA_GOLD_OUTLINE = (pending: boolean, isLight: boolean): React.CSSProperties => ({
   width: "100%",
   height: 56,
   borderRadius: 28,
   background: "transparent",
-  color: "#F59E0B",
-  border: "1.5px solid #F59E0B",
+  color: isLight ? "#A06108" : "#F59E0B",
+  border: `1.5px solid ${isLight ? "#A06108" : "#F59E0B"}`,
   cursor: "pointer",
   fontFamily: "var(--fonte)",
   fontWeight: 700,
@@ -617,6 +619,10 @@ function VisitaDetail() {
   const showAprovarBtn  = canApprove && status === "aguardando_aprovacao";
   const showReprovarBtn = canApprove && (status === "em_andamento" || status === "aprovada" || status === "aguardando_aprovacao");
   const sInfo = status ? STATUS_LABELS[status] : null;
+  // O proxy legado descarta o `colorLight`, que existe exatamente para este
+  // caso: o chip não tem fundo próprio, então no claro o tom de tema escuro
+  // (ex.: #F8C811 de "Pendente") ficaria em 1.58:1 sobre a página.
+  const chipColor = sInfo && status ? (isLight ? getStatusInfo(status).colorLight : sInfo.color) : undefined;
 
 
   const GLASS: React.CSSProperties = {
@@ -667,7 +673,7 @@ function VisitaDetail() {
 
     return (
       <div style={{ padding: 24 }}>
-        <div style={{ ...GLASS, textAlign: "center", color: "rgba(200,200,200,0.5)" }}>
+        <div style={{ ...GLASS, textAlign: "center", color: isLight ? "#4a5060" : "rgba(200,200,200,0.5)" }}>
           Carregando visita…
         </div>
       </div>
@@ -740,8 +746,8 @@ function VisitaDetail() {
             style={{
               padding: "5px 12px",
               borderRadius: 999,
-              border: `1px solid ${sInfo.color}`,
-              color: sInfo.color,
+              border: `1px solid ${chipColor}`,
+              color: chipColor,
               fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 11,
@@ -972,21 +978,21 @@ function VisitaDetail() {
         <div style={GLASS}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div style={{ ...SECTION_LABEL, display: "flex", alignItems: "center", gap: 8, marginBottom: 0 }}>
-              <HardHat size={16} color="#F59E0B" />
+              <HardHat size={16} color={isLight ? "#A06108" : "#F59E0B"} />
               Técnico responsável
             </div>
             {isAdmin && !editandoTecnico && (
               <button
                 onClick={() => { setEditandoTecnico(true); setNovoTecnicoId(visita.tecnico_id ?? ""); }}
                 style={{
-                  background: "rgba(248,200,17,0.10)",
-                  border: "1px solid rgba(248,200,17,0.28)",
+                  background: isLight ? "rgba(160,97,8,0.10)" : "rgba(248,200,17,0.10)",
+                  border: isLight ? "1px solid rgba(160,97,8,0.28)" : "1px solid rgba(248,200,17,0.28)",
                   borderRadius: 10,
                   padding: "4px 12px",
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 11,
-                  color: "#F8C811",
+                  color: isLight ? "#A06108" : "#F8C811",
                   cursor: "pointer",
                   letterSpacing: "0.08em",
                 }}
@@ -1040,21 +1046,24 @@ function VisitaDetail() {
                     appearance: "none", outline: "none", cursor: "pointer",
                   }}
                 >
-                  <option value="">Selecione o técnico…</option>
+                  {/* o popup nativo não herda a cor do <select>: sem estas duas
+                      propriedades o Chrome abre texto quase-preto sobre #0d0e14 */}
+                  <option value="" style={{ background: isLight ? "#ffffff" : "#0d0e14", color: isLight ? "#0a0b0e" : "#ffffff" }}>Selecione o técnico…</option>
                   {todosProfiles.map((p: any) => (
-                    <option key={p.id} value={p.id} style={{ background: "#0d0e14" }}>
+                    <option key={p.id} value={p.id} style={{ background: isLight ? "#ffffff" : "#0d0e14", color: isLight ? "#0a0b0e" : "#ffffff" }}>
                       {p.nome} ({p.cargo ?? "sem cargo"})
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={16} color="rgba(248,200,17,0.6)" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                <ChevronDown size={16} color={isLight ? "#A06108" : "rgba(248,200,17,0.6)"} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => { setEditandoTecnico(false); setNovoTecnicoId(""); }}
                   style={{
                     flex: 1, height: 40, borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.10)", background: "transparent",
+                    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
+                    background: "transparent",
                     color: TXT_SECONDARY, cursor: "pointer",
                     fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                   }}
@@ -1066,8 +1075,9 @@ function VisitaDetail() {
                   disabled={!novoTecnicoId || atribuirMutation.isPending}
                   style={{
                     flex: 2, height: 40, borderRadius: 12,
-                    border: "1px solid rgba(248,200,17,0.35)", background: "rgba(248,200,17,0.12)",
-                    color: "#F8C811", cursor: "pointer",
+                    border: isLight ? "1px solid rgba(160,97,8,0.35)" : "1px solid rgba(248,200,17,0.35)",
+                    background: isLight ? "rgba(160,97,8,0.12)" : "rgba(248,200,17,0.12)",
+                    color: isLight ? "#A06108" : "#F8C811", cursor: "pointer",
                     fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
                     letterSpacing: "0.08em", opacity: novoTecnicoId ? 1 : 0.4,
                   }}
@@ -1079,7 +1089,7 @@ function VisitaDetail() {
           )}
 
           {isTecnico && !editandoTecnico && (
-            <div style={{ marginTop: 10, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: "#F8C811" }}>
+            <div style={{ marginTop: 10, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#A06108" : "#F8C811" }}>
               Você é o responsável por esta visita
             </div>
           )}
@@ -1099,9 +1109,9 @@ function VisitaDetail() {
                 }}
                 style={{
                   background: "transparent",
-                  border: "1px solid rgba(248,200,17,0.30)",
+                  border: isLight ? "1px solid rgba(160,97,8,0.35)" : "1px solid rgba(248,200,17,0.30)",
                   borderRadius: 8,
-                  color: "#F8C811",
+                  color: isLight ? "#A06108" : "#F8C811",
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 11,
@@ -1123,7 +1133,7 @@ function VisitaDetail() {
                 <button
                   onClick={() => propostosMutation.mutate(propostosDraft)}
                   disabled={propostosMutation.isPending || propostosDraft.length === 0}
-                  style={{ background: "rgba(248,200,17,0.12)", border: "1px solid rgba(248,200,17,0.45)", borderRadius: 8, color: "#F8C811", fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
+                  style={{ background: isLight ? "rgba(160,97,8,0.12)" : "rgba(248,200,17,0.12)", border: isLight ? "1px solid rgba(160,97,8,0.35)" : "1px solid rgba(248,200,17,0.45)", borderRadius: 8, color: isLight ? "#A06108" : "#F8C811", fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 11, padding: "4px 10px", cursor: "pointer", opacity: propostosDraft.length === 0 ? 0.4 : 1 }}
                 >
                   Salvar
                 </button>
@@ -1142,7 +1152,7 @@ function VisitaDetail() {
                     key={k}
                     style={{
                       background: "transparent",
-                      border: "1px solid #FFFFFF",
+                      border: isLight ? "1px solid rgba(0,0,0,0.20)" : "1px solid #FFFFFF",
                       color: TXT_PRIMARY,
                       borderRadius: 999,
                       padding: "5px 10px",
@@ -1170,13 +1180,17 @@ function VisitaDetail() {
                     }
                     style={{
                       background: ativo ? (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)") : (isLight ? "#ffffff" : "rgba(8,8,12,0.20)"),
-                      border: ativo ? "1.5px solid #FFFFFF" : "1px solid rgba(255,255,255,0.18)",
+                      border: ativo
+                        ? (isLight ? "1.5px solid #0a0b0e" : "1.5px solid #FFFFFF")
+                        : (isLight ? "1px solid rgba(0,0,0,0.18)" : "1px solid rgba(255,255,255,0.18)"),
                       borderRadius: 999,
                       padding: "6px 11px",
                       fontFamily: "var(--fonte)",
                       fontSize: 11,
                       fontWeight: 400,
-                      color: ativo ? "#FFFFFF" : "rgba(200,200,200,0.65)",
+                      color: ativo
+                        ? (isLight ? "#0a0b0e" : "#FFFFFF")
+                        : (isLight ? "#4a5060" : "rgba(200,200,200,0.65)"),
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
@@ -1238,7 +1252,7 @@ function VisitaDetail() {
                     )}
                     <div
                       style={{
-                        color: "#F8C811",
+                        color: isLight ? "#A06108" : "#F8C811",
                         fontSize: 11,
                         fontWeight: 700,
                         letterSpacing: 0.6,
@@ -1283,7 +1297,7 @@ function VisitaDetail() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 13,
-                color: "#2DD2A5",
+                color: isLight ? "#047862" : "#2DD2A5",
               }}
             >
               <CheckCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Aprovada{aprovPerf?.nome ? ` por ${aprovPerf.nome}` : ""}
@@ -1303,7 +1317,7 @@ function VisitaDetail() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 13,
-                color: "#F17881",
+                color: isLight ? "#B1242E" : "#F17881",
               }}
             >
               <XCircle size={14} style={{ display: "inline", verticalAlign: "-2px", marginRight: 5 }} />Reprovada
@@ -1315,13 +1329,13 @@ function VisitaDetail() {
             <div
               style={{
                 background: "rgba(251,191,36,0.09)",
-                border: "1px solid rgba(251,191,36,0.28)",
+                border: isLight ? "1px solid rgba(160,97,8,0.30)" : "1px solid rgba(251,191,36,0.28)",
                 borderRadius: 12,
                 padding: "12px 14px",
                 fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 13,
-                color: "#FBBF24",
+                color: isLight ? "#A06108" : "#FBBF24",
               }}
             >
               Aguardando aprovação do administrador.
@@ -1368,7 +1382,7 @@ function VisitaDetail() {
                 borderRadius: 12,
                 border: "1px solid rgba(241,120,129,0.35)",
                 background: "rgba(241,120,129,0.08)",
-                color: "#F17881",
+                color: isLight ? "#B1242E" : "#F17881",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -1392,7 +1406,7 @@ function VisitaDetail() {
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 12,
-                  color: "rgba(241,120,129,0.80)",
+                  color: isLight ? "rgba(177,36,46,0.85)" : "rgba(241,120,129,0.80)",
                   marginBottom: 10,
                   letterSpacing: "0.08em",
                 }}
@@ -1430,7 +1444,7 @@ function VisitaDetail() {
                     flex: 1,
                     height: 40,
                     borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.10)",
+                    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
                     background: "transparent",
                     color: TXT_SECONDARY,
                     cursor: "pointer",
@@ -1450,7 +1464,7 @@ function VisitaDetail() {
                     borderRadius: 12,
                     border: "1px solid rgba(241,120,129,0.35)",
                     background: "rgba(241,120,129,0.10)",
-                    color: "#F17881",
+                    color: isLight ? "#B1242E" : "#F17881",
                     cursor: "pointer",
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
@@ -1606,7 +1620,7 @@ function VisitaDetail() {
               <button
                 onClick={() => iniciarMutation.mutate()}
                 disabled={iniciarMutation.isPending}
-                style={CTA_GOLD_OUTLINE(iniciarMutation.isPending)}
+                style={CTA_GOLD_OUTLINE(iniciarMutation.isPending, isLight)}
               >
                 <Play size={18} />
                 {iniciarMutation.isPending ? "Iniciando…" : "Iniciar Visita Técnica"}

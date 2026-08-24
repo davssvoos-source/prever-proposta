@@ -247,7 +247,7 @@ function PermissoesPage() {
           padding: "12px 14px", borderRadius: 16,
           background: isLight ? "#ffffff" : "#16161d",
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.14)",
-          boxShadow: "0 8px 28px rgba(0,0,0,0.28)",
+          boxShadow: isLight ? "0 8px 28px rgba(0,0,0,0.12)" : "0 8px 28px rgba(0,0,0,0.28)",
         }}>
           <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12.5, color: textPrimary }}>
             {mudancas.length} {mudancas.length === 1 ? "mudança" : "mudanças"} sem salvar

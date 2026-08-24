@@ -64,6 +64,9 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
 
   const gold = "#F59E0B";
   const goldDark = "#A06108";
+  // `gold` só serve como FUNDO (botões, círculo do stepper). Como TEXTO/ícone
+  // ele fica ~2:1 sobre o card branco do tema claro — aí vale o dourado escuro.
+  const goldText = isLight ? goldDark : gold;
   const steps: StepId[] = ["kits", "revisao"];
   const idx = steps.indexOf(step);
 
@@ -100,20 +103,20 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
     <div style={{ ...cardStyle, position: "sticky", top: 12 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <ShieldCheck size={18} color={gold} />
+          <ShieldCheck size={18} color={goldText} />
           <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: isLight ? "#0a0b0e" : "#fff" }}>
             RESUMO
           </span>
         </div>
         <span style={{
-          fontSize: 11, fontWeight: 700, color: gold,
+          fontSize: 11, fontWeight: 700, color: goldText,
           padding: "3px 8px", borderRadius: 999, background: "rgba(245,158,11,0.12)",
         }}>{qtdKits} Kit{qtdKits === 1 ? "" : "s"}</span>
       </div>
 
       <div style={{
         fontSize: 9, fontWeight: 700, letterSpacing: "0.14em",
-        color: gold, marginBottom: 6, textTransform: "uppercase",
+        color: goldText, marginBottom: 6, textTransform: "uppercase",
       }}>
         Elevadores — {qtdKits} Kit{qtdKits === 1 ? "" : "s"} Antena
       </div>
@@ -133,11 +136,11 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 {meta.marca} · {meta.modelo}
                 <span style={{
                   marginLeft: 6, padding: "1px 5px", borderRadius: 4,
-                  background: "rgba(160,97,8,0.15)", color: gold, fontWeight: 700, fontSize: 9,
+                  background: "rgba(160,97,8,0.15)", color: goldText, fontWeight: 700, fontSize: 9,
                 }}>AUTO</span>
               </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: gold }}>{it.qtd}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: goldText }}>{it.qtd}</div>
           </div>
         );
       })}
@@ -146,7 +149,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
         background: "rgba(160,97,8,0.10)",
         display: "flex", justifyContent: "space-between",
       }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: gold }}>ITENS</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldText }}>ITENS</span>
         <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{totalUnid} un.</span>
       </div>
     </div>
@@ -162,7 +165,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
               1 kit corresponde a 1 elevador. Todos os equipamentos abaixo são incluídos automaticamente.
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "12px 0" }}>
-              <Building2 size={56} color={gold} strokeWidth={1.5} />
+              <Building2 size={56} color={goldText} strokeWidth={1.5} />
               <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <button style={circle()} onClick={() => setQtdKits((n) => Math.max(1, n - 1))} aria-label="-">
                   <Minus size={20} />
@@ -213,7 +216,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                         {k.marca} · {k.modelo}
                       </div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: gold, whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: goldText, whiteSpace: "nowrap" }}>
                       ×{k.qtdPorKit}
                     </div>
                   </div>
@@ -301,7 +304,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
           background: "rgba(160,97,8,0.10)",
           display: "flex", justifyContent: "space-between",
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldDark }}>TOTAL DE ITENS</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldText }}>TOTAL DE ITENS</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>{subTotal} un.</span>
         </div>
       </div>
@@ -345,7 +348,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             display: "flex", alignItems: "center", gap: 6,
             padding: "8px 12px", borderRadius: 999,
             background: "rgba(160,97,8,0.10)", border: "1px solid rgba(160,97,8,0.28)",
-            color: gold, fontWeight: 700, fontSize: 11, cursor: "pointer",
+            color: goldText, fontWeight: 700, fontSize: 11, cursor: "pointer",
           }}>
           <PanelRightOpen size={14} /> RESUMO
         </button>
@@ -368,7 +371,9 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",
                   background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
-                  color: cur || done ? "#fff" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
+                  // sobre o círculo dourado o texto é o quase-preto da marca —
+                  // branco sobre #F59E0B dá ~2:1 nos dois temas
+                  color: cur || done ? "#08090E" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 700,
                 }}>{done ? <Check size={10} /> : i + 1}</div>

@@ -58,17 +58,20 @@ const CARD = (isLight: boolean): React.CSSProperties => ({
   gap: 10,
 });
 
-const CIRCLE_BTN: React.CSSProperties = {
+// Função (e não constante) porque a borda preta e o ícone herdado do UA
+// desapareciam nos cards escuros — o botão precisa enxergar o tema.
+const CIRCLE_BTN = (isLight: boolean): React.CSSProperties => ({
   width: 28,
   height: 28,
   borderRadius: "50%",
-  border: "1px solid rgba(0,0,0,0.15)",
+  border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.2)",
   background: "transparent",
+  color: isLight ? "#0a0b0e" : "#fff",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
-};
+});
 
 export function BlocoItensEditor({
   visitaBlocoId,
@@ -397,7 +400,7 @@ export function BlocoItensEditor({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <button
-                style={CIRCLE_BTN}
+                style={CIRCLE_BTN(isLight)}
                 onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: Math.max(1, it.qtd - 1) } })}
                 aria-label="Diminuir"
               >
@@ -405,14 +408,14 @@ export function BlocoItensEditor({
               </button>
               <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, fontSize: 14 }}>{it.qtd}</span>
               <button
-                style={CIRCLE_BTN}
+                style={CIRCLE_BTN(isLight)}
                 onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: it.qtd + 1 } })}
                 aria-label="Aumentar"
               >
                 <Plus size={14} />
               </button>
               <button
-                style={{ ...CIRCLE_BTN, borderColor: "rgba(220,38,38,0.35)", color: "#dc2626", marginLeft: 4 }}
+                style={{ ...CIRCLE_BTN(isLight), borderColor: "rgba(220,38,38,0.35)", color: "#dc2626", marginLeft: 4 }}
                 onClick={() => atualizarMut.mutate({ id: it.id, patch: { removido: true } })}
                 aria-label="Remover"
               >
@@ -451,7 +454,7 @@ export function BlocoItensEditor({
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <button
-                    style={CIRCLE_BTN}
+                    style={CIRCLE_BTN(isLight)}
                     onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: Math.max(1, it.qtd - 1) } })}
                     aria-label="Diminuir"
                   >
@@ -459,14 +462,14 @@ export function BlocoItensEditor({
                   </button>
                   <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, fontSize: 14 }}>{it.qtd}</span>
                   <button
-                    style={CIRCLE_BTN}
+                    style={CIRCLE_BTN(isLight)}
                     onClick={() => atualizarMut.mutate({ id: it.id, patch: { qtd: it.qtd + 1 } })}
                     aria-label="Aumentar"
                   >
                     <Plus size={14} />
                   </button>
                   <button
-                    style={{ ...CIRCLE_BTN, borderColor: "rgba(220,38,38,0.35)", color: "#dc2626", marginLeft: 4 }}
+                    style={{ ...CIRCLE_BTN(isLight), borderColor: "rgba(220,38,38,0.35)", color: "#dc2626", marginLeft: 4 }}
                     onClick={() => atualizarMut.mutate({ id: it.id, patch: { removido: true } })}
                     aria-label="Remover"
                   >
@@ -537,9 +540,9 @@ export function BlocoItensEditor({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)" }}>Quantidade</span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button style={CIRCLE_BTN} onClick={() => setNovoQtd((q) => Math.max(1, q - 1))}><Minus size={14} /></button>
+            <button style={CIRCLE_BTN(isLight)} onClick={() => setNovoQtd((q) => Math.max(1, q - 1))}><Minus size={14} /></button>
             <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700 }}>{novoQtd}</span>
-            <button style={CIRCLE_BTN} onClick={() => setNovoQtd((q) => q + 1)}><Plus size={14} /></button>
+            <button style={CIRCLE_BTN(isLight)} onClick={() => setNovoQtd((q) => q + 1)}><Plus size={14} /></button>
           </div>
         </div>
 
@@ -577,7 +580,7 @@ export function BlocoItensEditor({
                       </div>
                     )}
                   </div>
-                  <PlusCircle size={18} color="#F59E0B" style={{ flexShrink: 0 }} />
+                  <PlusCircle size={18} color={isLight ? "#A06108" : "#F59E0B"} style={{ flexShrink: 0 }} />
                 </button>
               ))
             )}

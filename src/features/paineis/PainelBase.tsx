@@ -18,7 +18,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { LucideIcon } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA, espectro } from "@/lib/paleta";
+import { PRISMA, espectroTexto } from "@/lib/paleta";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 
 export interface NumeroPainel {
@@ -97,7 +97,10 @@ export function PainelBase({ titulo, subtitulo, numeros, atalhos, isAdmin, child
       {numeros.length > 0 && (
         <div className="painel-numeros">
           {numeros.map((n) => {
-            const cor = espectro(n.tom, isLight);
+            // o número é TEXTO pintado com a rampa: ESPECTRO é preenchimento e
+            // no claro não chega a 4.5:1 — ESPECTRO_TEXTO garante (no escuro as
+            // duas rampas são a mesma)
+            const cor = espectroTexto(n.tom, isLight);
             const conteudo = (
               <>
                 <div style={{

@@ -640,13 +640,13 @@ function PainelOperacional() {
                   background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
                 }}
               >
+                {/* mesma cor e mesmos limiares do Micro "No prazo" logo acima:
+                    barra e número falam do mesmo número, então não podem
+                    discordar. Sólido do PRISMA por tema — o degradê fixo
+                    abria no tom do tema escuro e sumia no trilho claro. */}
                 <div style={{
                   width: `${ind.pctNoPrazo}%`, height: "100%",
-                  background: ind.pctNoPrazo >= 80
-                    ? "linear-gradient(90deg,#2DD2A5,#047862)"
-                    : ind.pctNoPrazo >= 50
-                      ? "linear-gradient(90deg,#FCDE48,#E8B00A)"
-                      : "linear-gradient(90deg,#F17881,#B1242E)",
+                  background: ind.pctNoPrazo >= 80 ? verde : ind.pctNoPrazo >= 50 ? gold : vermelho,
                 }} />
               </div>
             )}

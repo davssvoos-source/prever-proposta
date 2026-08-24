@@ -764,7 +764,7 @@ function NovaVisitaPage() {
               </p>
             )}
             {geoStatus === "err" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: "#F17881", fontFamily: "var(--fonte)", fontWeight: 400 }}>
+              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? "#B1242E" : "#F17881", fontFamily: "var(--fonte)", fontWeight: 400 }}>
                 Endereço não encontrado.
               </p>
             )}
@@ -954,7 +954,7 @@ function NovaVisitaPage() {
               </div>
             )}
             {tecnicoId && visitasTecnico.length === 0 && (
-              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: "rgba(45,210,165,0.7)", margin: "8px 0 0" }}>
+              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? "#047862" : "rgba(45,210,165,0.7)", margin: "8px 0 0" }}>
                 Técnico livre nos próximos 7 dias
               </p>
             )}
@@ -976,7 +976,7 @@ function NovaVisitaPage() {
             borderColor: isLight ? "rgba(45,210,165,0.20)" : "rgba(45,210,165,0.25)",
             background: isLight ? "rgba(45,210,165,0.05)" : "rgba(45,210,165,0.04)",
           }}>
-            <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: "rgba(45,210,165,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
+            <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: isLight ? "#047862" : "rgba(45,210,165,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
               Resumo da visita
             </p>
             {[
@@ -1027,7 +1027,7 @@ function NovaVisitaPage() {
               alignItems: "center",
               justifyContent: "center",
               color: isLight ? L.gold : "#F8C811",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+              boxShadow: isLight ? L.shadow : "0 4px 16px rgba(0,0,0,0.25)",
             }}
           >
             <ChevronLeft size={20} />

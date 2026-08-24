@@ -64,7 +64,7 @@ export const vidro = (isLight: boolean): React.CSSProperties => ({
 export const goldButton = (): React.CSSProperties => ({
   background: GOLD_GRAD,
   boxShadow: GOLD_GLOW,
-  color: "#0A0A0A",
+  color: "#08090E", // = SOBRE_PRIMARIA (paleta.ts) — texto sobre o degradê dourado
   border: "none",
   fontFamily: FONT,
   fontWeight: 600,

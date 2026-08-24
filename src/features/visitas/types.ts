@@ -2,13 +2,18 @@ export type VisitaStatus = "pendente" | "aguardando_aprovacao" | "aprovado";
 
 export const STATUS_VISITA: Record<
   VisitaStatus,
-  { label: string; color: string; bg: string; pin: string; icon: string }
+  { label: string; color: string; bg: string; pin: string; pinLight: string; icon: string }
 > = {
+  // `pin` pinta o marcador (que senta no tile do mapa, com borda branca própria).
+  // `pinLight` é o par para quando a cor vira TEXTO/BORDA sobre fundo claro —
+  // os mesmos tons de lib/visita-status.ts (colorLight), fonte única das cores
+  // de status. Sem ele os chips de filtro repetem o dourado invisível no claro.
   pendente: {
     label: "Pendente",
     color: "#F8C811",
     bg: "rgba(248,200,17,0.12)",
     pin: "#F8C811",
+    pinLight: "#A06108",
     icon: "🕓",
   },
   aguardando_aprovacao: {
@@ -16,6 +21,7 @@ export const STATUS_VISITA: Record<
     color: "#60A5FA",
     bg: "rgba(96,165,250,0.12)",
     pin: "#60A5FA",
+    pinLight: "#1d4ed8",
     icon: "🕐",
   },
   aprovado: {
@@ -23,6 +29,7 @@ export const STATUS_VISITA: Record<
     color: "#2DD2A5",
     bg: "rgba(45,210,165,0.12)",
     pin: "#2DD2A5",
+    pinLight: "#047862",
     icon: "✅",
   },
 };

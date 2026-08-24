@@ -61,9 +61,9 @@ const OPT_ICON: Record<string, LucideIcon> = {
   MOL85: Weight,
 };
 
-function OptionIcon({ valor }: { valor: string }) {
+function OptionIcon({ valor, isLight }: { valor: string; isLight: boolean }) {
   const Ico = OPT_ICON[valor] ?? Circle;
-  return <Ico size={16} color="#F59E0B" />;
+  return <Ico size={16} color={isLight ? "#A06108" : "#F59E0B"} />;
 }
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -174,10 +174,10 @@ function BarreiraHeader({
     >
       <span style={{
         display: "flex", alignItems: "center", gap: 10,
-        color: done ? "#22C55E" : isLight ? L.gold : "#FCDE48",
+        color: done ? (isLight ? "#15803d" : "#22C55E") : isLight ? L.gold : "#FCDE48",
         fontSize: 13, fontWeight: 700, letterSpacing: 1,
       }}>
-        <DoorOpen size={20} color={done ? "#22C55E" : "#F59E0B"} />
+        <DoorOpen size={20} color={done ? (isLight ? "#15803d" : "#22C55E") : (isLight ? "#A06108" : "#F59E0B")} />
         {label} {done ? "✓" : ""}
       </span>
       {collapsible && (
@@ -305,7 +305,9 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
                     justifyContent: "center",
                     fontSize: 11,
                     fontWeight: 700,
-                    color: isCurrent || isCompleted ? "#fff" : futureText,
+                    // quase-preto sobre o dourado sólido, nos dois temas — é a
+                    // regra da casa para texto em cima da cor da marca.
+                    color: isCurrent || isCompleted ? "#08090E" : futureText,
                     flexShrink: 0,
                     transition: "all 0.2s ease",
                   }}
@@ -417,7 +419,9 @@ function MacroStepIndicator({
                   border,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 11, fontWeight: 700,
-                  color: active || m.denied ? "#fff" : futureText,
+                  // branco só sobre o círculo vermelho; sobre o dourado, o
+                  // quase-preto do sistema.
+                  color: m.denied ? "#fff" : active ? "#08090E" : futureText,
                   flexShrink: 0, transition: "all 0.2s ease",
                 }}>
                   {m.denied ? <X size={12} /> : m.completed ? <Check size={12} /> : (i + 1)}
@@ -1783,7 +1787,7 @@ function BlocosWizardPage() {
               max={500}
               value={Math.min(P, 500)}
               onChange={(e) => setWizard({ ...wizard, perimetro: parseInt(e.target.value) })}
-              style={{ width: "100%", accentColor: "#F59E0B" }}
+              style={{ width: "100%", accentColor: isLight ? "#A06108" : "#F59E0B" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%", fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
               <span>0 m</span>
@@ -1884,7 +1888,7 @@ function BlocosWizardPage() {
               <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16, color: isLight ? L.text : undefined }}>{catNome}</div>
               <div style={{ fontSize: 11, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>Configuração concluída</div>
             </div>
-            <CheckCircle2 size={22} color="#22C55E" />
+            <CheckCircle2 size={22} color={isLight ? "#15803d" : "#22C55E"} />
           </div>
 
           {(tipoBloco === "PED" || tipoBloco === "VEI") ? (<MacroStepIndicator step={wizard.step} tipo={tipoBloco} eclusa={wizard.eclusa} b1Tipo={wizard.b1.tipo} b2Tipo={wizard.b2.tipo} isLight={isLight} />) : (<WizardStepIndicator steps={getStepSequence(wizard, tipoBloco)} currentStep={wizard.step} isLight={isLight} />)}
@@ -2093,7 +2097,7 @@ function BlocosWizardPage() {
                       {opcoes.map((op) => (
                         <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                           <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <OptionIcon valor={op.valor} />
+                            <OptionIcon valor={op.valor} isLight={isLight} />
                             <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                           </span>
                         </button>
@@ -2118,7 +2122,7 @@ function BlocosWizardPage() {
                     {opcoes.map((op) => (
                       <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
                         <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <OptionIcon valor={op.valor} />
+                          <OptionIcon valor={op.valor} isLight={isLight} />
                           <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
                         </span>
                       </button>
@@ -2191,7 +2195,7 @@ function BlocosWizardPage() {
           {opcoes.map((op) => (
             <button key={op.valor} style={optionStyle()} onClick={() => selecionar(op.valor)}>
               <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <OptionIcon valor={op.valor} />
+                <OptionIcon valor={op.valor} isLight={isLight} />
                 <span style={{ fontSize: 15, fontWeight: 600, color: isLight ? L.text : undefined }}>{op.label}</span>
               </span>
             </button>
@@ -2265,7 +2269,7 @@ function BlocosWizardPage() {
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <div style={{ height: 1, background: "rgba(252,222,72,0.15)" }} />
+                <div style={{ height: 1, background: isLight ? "rgba(0,0,0,0.08)" : "rgba(252,222,72,0.15)" }} />
                 {itens.length === 0 ? (
                   <div style={{ fontSize: 13, color: isLight ? L.textSub : "rgba(255,255,255,0.5)" }}>
                     Nenhum equipamento configurado
