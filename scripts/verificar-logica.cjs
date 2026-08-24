@@ -4664,5 +4664,33 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R79 está documentado', /\*\*R79\*\*/.test(produto24), true);
 }
 
+// ── U68: o contexto do projeto viaja com o repo ────────────────────────────
+// A memória do assistente é por CONTA e por MÁQUINA — na troca das duas
+// (2026-08-24) ela evapora. CLAUDE.md carrega o método; ONBOARDING.md, a
+// transição. Se um dos dois sumir, a próxima sessão nova volta à arqueologia.
+{
+  const fs50 = require('fs');
+  eq('CLAUDE.md existe na raiz — é o que uma sessão nova lê sozinha', fs50.existsSync('CLAUDE.md'), true);
+  const cl = fs50.readFileSync('CLAUDE.md', 'utf8');
+  eq('CLAUDE.md ensina o ciclo completo (R → implementação → asserções → build → U → push)',
+     ['docs/PRODUTO.md', 'verificar-logica.cjs', 'vite build', 'PLANO_UNIFICACAO'].every((t) => cl.includes(t)),
+     true);
+  eq('CLAUDE.md avisa que migration NUNCA se aplica daqui — o Davi roda no SQL Editor',
+     /nunca aplica/i.test(cl) && /SQL Editor/.test(cl), true);
+  eq('CLAUDE.md registra o baseline do tsc — sem ele, a primeira sessão nova "conserta" 85 erros que não são dela',
+     /85 erros/.test(cl), true);
+  eq('CLAUDE.md carrega as invariantes que só existiam na memória da conta',
+     /quem conta é quem filtra/i.test(cl) && /encerra no ENVIO/i.test(cl) && /PGRST201/.test(cl), true);
+  eq('ONBOARDING.md existe — o checklist da migração de máquina', fs50.existsSync('ONBOARDING.md'), true);
+  const ob = fs50.readFileSync('ONBOARDING.md', 'utf8');
+  eq('ONBOARDING avisa que a SERVICE key da pasta-mãe NUNCA entra no repo',
+     /NUNCA entra no repo/.test(ob), true);
+  eq('ONBOARDING avisa contra pasta sincronizada por nuvem (a causa do tsc travado na máquina antiga)',
+     /nuvem/i.test(ob) && /iCloud/.test(ob), true);
+  eq('o manual não afirma mais que tsc nunca completa — a nota foi corrigida com o baseline',
+     /nunca completa\*\*/.test(fs50.readFileSync('docs/manual/desenvolvimento-e-verificacao.md', 'utf8')),
+     false);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -4136,3 +4136,50 @@ claro/escuro, par `color`/`colorDark`, e dourado como FUNDO.
 1332 asserções (13 novas), build ok, TypeScript nos mesmos 85 erros
 pré-existentes (nenhum novo). 42 arquivos, +451/−216. Não verificado em
 navegador — sem ferramenta de browser na sessão.
+
+### U68 — O contexto viaja com o repo: CLAUDE.md + ONBOARDING.md (2026-08-24)
+
+"Vou migrar todo o sistema para outro computador, e vou passar a usar outra
+conta do Claude. Revise toda a arquitetura dos arquivos para eu fazer a
+transição e continuar o projeto da melhor maneira possível."
+
+**O diagnóstico da revisão**: o repo em si está pronto para viajar — nenhum
+código referencia a pasta-mãe (`prever-importacao/`), os insumos históricos
+já viraram migrations, o template da proposta mora em `public/templates/`, e
+o `.env` versionado tem só chaves públicas (decisão antiga, documentada no
+`.gitignore`). O buraco era outro: **o método de trabalho inteiro vivia na
+memória local do assistente** — 17 arquivos de memória por conta/por máquina
+que evaporam na troca de qualquer um dos dois. Não havia `CLAUDE.md`; o
+`AGENTS.md` é só o boilerplate do Lovable.
+
+**`CLAUDE.md` (novo, na raiz)** — o que uma sessão nova lê sozinha. Carrega
+o que só a memória sabia: o ciclo R→implementação→asserções→build→U→push, a
+regra das migrations manuais, as invariantes (quem conta é quem filtra;
+ciclo comercial encerra no envio; dupla derivada × apoio gravado; paridade
+de tokens de tema), as armadilhas que já morderam (PGRST201, rename leva
+triggers, `<defs>` literal no recharts, função volátil vs ORDER BY, CSP), o
+baseline de 85 erros do tsc e o mapa do repo. O resto é ponteiro para os
+docs — o arquivo é índice + método, não enciclopédia.
+
+**`ONBOARDING.md` (novo, na raiz)** — o checklist da transição: o que levar
+(só o clone; a SERVICE key da pasta-mãe NUNCA entra no repo), como preparar
+a máquina (npm install; bun.lock fica — é o build da Lovable), as três
+sanidades antes de qualquer mudança, e o estado do projeto na entrega
+(R79/U67, 1332 asserções). Inclui o aviso que teria poupado semanas nesta
+máquina: **não pôr o repo em pasta sincronizada por nuvem** — o iCloud era a
+causa do `tsc` "impossível".
+
+**Uma correção de registro**: `docs/manual/desenvolvimento-e-verificacao.md`
+afirmava que `tsc --noEmit` "nunca completa". Completava era na máquina
+antiga com iCloud; hoje roda em segundos com ~85 erros pré-existentes
+(types.ts do Supabase desatualizado). A nota foi reescrita com o baseline e
+o critério real: não criar erro NOVO nos arquivos tocados.
+
+**O que deliberadamente NÃO mudou**: os dois lockfiles (package-lock do dev
+local, bun.lock do build da Lovable — apagar um "por higiene" é como o app
+já caiu duas vezes com o .env); o `AGENTS.md` do Lovable; a pasta `android/`
+(Capacitor versionado, builds ignorados). Higiene sem entender o porquê é o
+anti-padrão número um deste repo.
+
+1341 asserções (9 novas: existência e conteúdo-chave dos dois arquivos, e a
+garantia de que a afirmação falsa sobre o tsc não volta), build ok.

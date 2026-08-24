@@ -23,10 +23,15 @@ as três coisas que já derrubaram o app quando ignoradas.
    quebrou o build). O build também **regenera `src/routeTree.gen.ts`**.
 4. **Commit + push** — o deploy é automático via Lovable a partir do repo.
 
-### Por que não `tsc`
+### `tsc` — funciona, com um baseline
 
-`tsc --noEmit` **nunca completa** nesta máquina (projeto em disco iCloud).
-Não insista; o trio checador + verificador + vite build é a verificação.
+(Atualizado em 2026-08-24.) A nota antiga dizia que `tsc --noEmit` nunca
+completava — era o disco iCloud da máquina de então. Ele completa em
+segundos e reporta **~85 erros PRÉ-EXISTENTES** (o `types.ts` gerado do
+Supabase está desatualizado desde a Etapa 1 do sistema de OS). O critério
+não é zerar: é **não criar erro novo nos arquivos tocados** —
+`npx tsc --noEmit | grep -c "error TS"` tem de continuar no baseline.
+Verificador + vite build continuam obrigatórios.
 
 ## As três regras que já derrubaram o app
 
