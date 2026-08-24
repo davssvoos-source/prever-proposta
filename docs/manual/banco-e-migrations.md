@@ -13,12 +13,12 @@ detalhe decisivo é: **nada se aplica sozinho**.
 
 1. Migrations do repo (`supabase/migrations/`) **nunca rodam
    automaticamente**. O Davi as executa **manualmente no SQL Editor do
-   Lovable**, na ordem dos timestamps.
+   Supabase** (até a saída da Lovable, o painel dela abre o mesmo editor), na ordem dos timestamps.
 2. Por isso toda migration é **idempotente** — rodar duas vezes dá no mesmo
    (`IF NOT EXISTS`, `ON CONFLICT`, `DROP POLICY IF EXISTS` antes de criar).
 3. Toda migration termina com um **SELECT de verificação** com valores
    esperados no texto (`'... (esperado 0)'`). **`RAISE NOTICE` é invisível**
-   no editor do Lovable — não use para verificação.
+   no editor do Supabase — não use para verificação.
 4. **Editar migration já aplicada é no-op.** Mudança nova = arquivo novo com
    timestamp maior. (Editar uma AINDA não aplicada também é arriscado se não
    houver certeza de que não rodou — na dúvida, arquivo novo.)

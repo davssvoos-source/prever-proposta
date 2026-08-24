@@ -8,9 +8,12 @@ memória local do assistente. Se algo aqui discordar do código, o código ganha
 
 **Prever Proposta** — sistema interno do Grupo Prever (segurança eletrônica):
 orçamento/proposta comercial, chamados técnicos (campo e interno), clientes,
-contratos, cobrança e painéis. React + TypeScript + TanStack Start (SSR),
-Supabase, sincronizado com **Lovable** (deploy automático a cada push em
-`main` — mantenha a branch sempre buildável, nunca reescreva histórico).
+contratos, cobrança e painéis. Substitui o Notion e o Sigma OS. React +
+TypeScript + TanStack Start (SSR), Supabase. Deploy: em transição da
+**Lovable** para hospedagem própria (o build já sai para Cloudflare Workers)
+— ver `ONBOARDING.md` §5 pela ordem certa da saída. Enquanto a Lovable
+estiver conectada: push em `main` publica, mantenha a branch sempre
+buildável, nunca reescreva histórico.
 
 O usuário é o **Davi** — dita regras de produto em conversa, em português.
 Todo o repo (nomes, comentários, docs) é em **português**.
@@ -39,8 +42,8 @@ Todo o repo (nomes, comentários, docs) é em **português**.
 
 ## Migrations (regra inegociável)
 
-O repo **nunca aplica** migration: o Davi roda À MÃO no SQL Editor da
-Lovable. Toda migration é **idempotente**, termina com **SELECTs de
+O repo **nunca aplica** migration: o Davi roda À MÃO no SQL Editor do
+Supabase. Toda migration é **idempotente**, termina com **SELECTs de
 conferência** (valor obtido × esperado, e "quem não casou"), e traz o comando
 de DESFAZER no rodapé. Migration entregue = arquivo em `supabase/migrations/`
 + aviso ao Davi para rodar. Nunca edite migration já enviada — faça outra.

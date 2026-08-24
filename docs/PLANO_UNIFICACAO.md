@@ -4183,3 +4183,64 @@ anti-padrão número um deste repo.
 
 1341 asserções (9 novas: existência e conteúdo-chave dos dois arquivos, e a
 garantia de que a afirmação falsa sobre o tsc não volta), build ok.
+
+### U69 — Dados do zero, pastas limpas e o plano de saída da Lovable (2026-08-24)
+
+"Apague todas as atividades, todos os chamados. Quero começar a imputar os
+dados do zero... hoje à noite eu vou migrar todo o sistema para um PC novo,
+que não terá iCloud. Vamos tirar da Lovable, usar somente o Supabase...
+organize as pastas... a empresa vai assinar o Claude para todos nós do T.I."
+
+**A limpeza é migration, como sempre**
+(`20260824110000_u69_limpeza_dados_operacionais.sql`) — eu não executo; o
+Davi roda. Mas um wipe tem três decisões que valem registro:
+
+1. **O financeiro derivado sai JUNTO, e sai ANTES.** `cobrancas.chamado_id`
+   é `ON DELETE SET NULL`: apagar só os chamados deixaria cobrança órfã
+   apontando para o nada — dinheiro sem origem na tela financeira. A ordem
+   do arquivo (cobranças → fechamentos → chamados) é a diferença entre
+   "banco limpo" e "banco com fantasmas".
+2. **Visita entra na limpeza, mas numa seção COMENTÁVEL.** No vocabulário do
+   app, visita É atividade ("todas as atividades" as inclui) — mas apagar
+   visitas leva o funil comercial e as propostas geradas. A seção C existe
+   destacada para essa decisão custar 5 segundos, não uma arqueologia. Os
+   contratos não dependem dela (`origem_proposta_id` é SET NULL).
+3. **As importações ficam PROIBIDAS de re-rodar.** U59/U61/U65 são
+   idempotentes POR ORIGEM — a proteção que impedia duplicar vira, num banco
+   limpo, o mecanismo que REIMPORTA tudo. O cabeçalho avisa em maiúsculas.
+
+Os contadores também zeram: o próximo chamado nasce `CH-2026-0001`, que é o
+"começar com o pé direito" literal. A conferência mostra os alvos zerados E
+a fundação de pé (clientes, contratos, profiles, duplas, prospecções) — com
+a instrução de PARAR e restaurar se a fundação vier zerada.
+
+**As pastas.** A pasta-mãe (`prever-importacao/`) tinha ~35 itens soltos de
+três eras: as planilhas-base, o gerador Python/JS da era "app de proposta"
+(inclusive uma edge function `calcular` e migrations soltas pré-repo), os
+prompts da Lovable e as importações. Virou `arquivo/` com cinco subpastas e
+um README que diz o essencial: **o único item vivo é o repo** — nada no
+`arquivo/` roda nem é referenciado. Sobraram na raiz só o `.env` (SERVICE
+key, que NUNCA entra no repo) e o repo. O ninho de três níveis
+(`app-prever/prever-importacao/prever-proposta`) não se desfaz nesta máquina
+— mover o repo no meio da sessão quebraria a sessão — mas o `ONBOARDING.md`
+prescreve a estrutura da máquina nova: `~/prever/{sistema,arquivo}`, fora de
+qualquer pasta de nuvem.
+
+**A saída da Lovable tem UM passo perigoso, e ele vem primeiro.** O
+`ONBOARDING.md` §0 agora abre com a checagem de DONO do projeto Supabase:
+se `lrepuyaootngrbotmvhn` não aparecer na conta da empresa em supabase.com,
+o banco é gerenciado pela Lovable e **pode morrer com o cancelamento** —
+dump + restauração em projeto próprio ANTES de cancelar. O resto é ordem:
+hospedagem substituta primeiro (o build do nitro já sai para Cloudflare
+Workers com `wrangler.json` gerado — caminho de menor atrito), variáveis no
+painel, cancelar, e SÓ ENTÃO a faxina (AGENTS.md, `.lovable/`, e a
+possibilidade de tirar o `.env` do versionamento — a razão de ele ser
+versionado ERA a Lovable buildar do repo; as duas asserções sobre isso
+invertem juntas, nunca antes).
+
+**Obsidian e o Claude do T.I.**: `docs/` é Markdown puro — abre como vault
+sem conversão. A fonte de verdade continua o repo (versionado, assertado); o
+vault é espelho de leitura. E o `CLAUDE.md` vira o onboarding de TODAS as
+contas novas do T.I., não só a do Davi.
+
+1353 asserções (12 novas), build ok.

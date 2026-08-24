@@ -4692,5 +4692,39 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      false);
 }
 
+// ── U69: a limpeza dos dados operacionais + a saída da Lovable ─────────────
+{
+  const fs51 = require('fs');
+  const CAMINHO = 'supabase/migrations/20260824110000_u69_limpeza_dados_operacionais.sql';
+  eq('a migration da limpeza existe', fs51.existsSync(CAMINHO), true);
+  const sql = fs51.readFileSync(CAMINHO, 'utf8');
+
+  eq('CRÍTICO: ela avisa que é IRREVERSÍVEL e exige backup confirmado ANTES — não há undo de um wipe',
+     /IRREVERSÍVEL/.test(sql) && /backup/i.test(sql), true);
+  eq('apaga o financeiro DERIVADO antes de órfã-lo — cobrancas.chamado_id é SET NULL, e cobrança apontando para o nada é dinheiro sem origem na tela',
+     sql.indexOf('DELETE FROM public.cobrancas;') < sql.indexOf('DELETE FROM public.chamados;'), true);
+  eq('apaga chamados e visitas (no vocabulário do app, visita É atividade)',
+     /DELETE FROM public\.chamados;/.test(sql) && /DELETE FROM public\.visitas_tecnicas;/.test(sql), true);
+  eq('a seção do funil comercial é destacada como comentável — preservar propostas é decisão de 5 segundos, não de arqueologia',
+     /comente/i.test(sql), true);
+  eq('zera os contadores — "do zero" inclui a numeração voltar a CH-<ano>-0001',
+     /DELETE FROM public\.chamado_contadores;/.test(sql), true);
+  eq('CRÍTICO: a migration NÃO toca na fundação — nenhum DELETE em clientes/contratos/profiles/duplas/prospeccoes',
+     /DELETE FROM public\.(clientes|contratos|profiles|duplas|prospeccoes)\b/.test(sql), false);
+  eq('a conferência mostra a fundação DE PÉ, não só os alvos zerados — se clientes vier 0, a instrução é PARAR e restaurar',
+     /fundacao/.test(sql) && /PARE e restaure/.test(sql), true);
+  eq('CRÍTICO: avisa que U59/U61/U65 nunca mais rodam — num banco limpo, a idempotência por origem REIMPORTARIA tudo',
+     /NUNCA MAIS RODE/.test(sql) && /U59/.test(sql) && /U65/.test(sql), true);
+
+  // a saída da Lovable, documentada na ordem certa
+  const ob2 = fs51.readFileSync('ONBOARDING.md', 'utf8');
+  eq('CRÍTICO: o ONBOARDING põe a checagem de DONO do projeto Supabase ANTES do cancelamento da Lovable — banco gerenciado pela plataforma pode morrer com a assinatura',
+     /ANTES DE CANCELAR A LOVABLE/.test(ob2) && /pode ser\s+destruído no cancelamento/.test(ob2), true);
+  eq('a faxina pós-Lovable (AGENTS.md, .lovable/, .env fora do repo) é passo EXPLÍCITO e posterior — não se "arruma" antes de sair',
+     /pós-saída/.test(ob2) && /asserções\s+sobre isso devem ser invertidas juntas/.test(ob2), true);
+  eq('o CLAUDE.md aponta a transição de deploy em vez de afirmar Lovable como estado permanente',
+     /em transição da/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
