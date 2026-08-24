@@ -4244,3 +4244,23 @@ vault é espelho de leitura. E o `CLAUDE.md` vira o onboarding de TODAS as
 contas novas do T.I., não só a do Davi.
 
 1353 asserções (12 novas), build ok.
+
+**CORREÇÃO, na primeira execução (2026-08-24).** A U69 abortou no SQL Editor:
+`relation "public.contratos" does not exist` — a tabela se chama
+`cliente_contratos`, e eu escrevi o nome de memória na conferência. Dois
+fatos importam:
+
+1. **Nada foi aplicado.** O erro veio na linha 83 (conferência), depois dos
+   DELETEs — mas o arquivo inteiro é uma transação, e o abort desfez tudo.
+   O `BEGIN/COMMIT` obrigatório das migrations existe exatamente para isto:
+   a diferença entre "a conferência falhou" e "o banco ficou meio-apagado".
+2. **A migration foi editada em vez de ganhar uma u69b** — exceção
+   consciente à regra "nunca edite migration enviada": a regra protege banco
+   JÁ MIGRADO da divergência com o repo, e aqui o banco não aplicou nada.
+   Uma u69b deixaria a u69 quebrada para sempre no histórico.
+
+A classe do erro virou asserção: **toda tabela `public.<x>` citada na U69
+tem de ter nascido no histórico de migrations** (CREATE TABLE ou RENAME TO,
+varrendo o diretório inteiro). Teste negativo confirmado: "contratos" não
+está no histórico — a asserção teria abortado o commit antes do Davi ver o
+erro no painel. 1354 asserções.

@@ -4710,7 +4710,30 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('zera os contadores — "do zero" inclui a numeração voltar a CH-<ano>-0001',
      /DELETE FROM public\.chamado_contadores;/.test(sql), true);
   eq('CRÍTICO: a migration NÃO toca na fundação — nenhum DELETE em clientes/contratos/profiles/duplas/prospeccoes',
-     /DELETE FROM public\.(clientes|contratos|profiles|duplas|prospeccoes)\b/.test(sql), false);
+     /DELETE FROM public\.(clientes|cliente_contratos|profiles|duplas|prospeccoes)\b/.test(sql), false);
+
+  // A asserção que TERIA pegado o erro da primeira execução (2026-08-24):
+  // a conferência citava "public.contratos", que nunca existiu (a tabela é
+  // cliente_contratos) — e a migration abortou no SQL Editor, na frente do
+  // Davi, dentro da transação. Nome de tabela numa migration não é opinião:
+  // TODO public.<x> citado tem de ter nascido em alguma migration anterior
+  // (CREATE TABLE ou RENAME TO). Isto vale como proteção para qualquer
+  // edição futura da U69 — e o mecanismo fica aqui para as próximas.
+  {
+    const path51 = require('path');
+    const dir = 'supabase/migrations';
+    const historico = fs51.readdirSync(dir)
+      .filter((f) => f.endsWith('.sql'))
+      .map((f) => fs51.readFileSync(path51.join(dir, f), 'utf8'))
+      .join('\n');
+    const nascidas = new Set();
+    for (const m of historico.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?public\.(\w+)/gi)) nascidas.add(m[1]);
+    for (const m of historico.matchAll(/RENAME TO (\w+)/gi)) nascidas.add(m[1]);
+    const citadas = [...new Set([...sql.matchAll(/public\.(\w+)/g)].map((m) => m[1]))];
+    const fantasmas = citadas.filter((t) => !nascidas.has(t));
+    eq('CRÍTICO: toda tabela citada na U69 existe no histórico de migrations — "public.contratos" abortou a primeira execução',
+       fantasmas, []);
+  }
   eq('a conferência mostra a fundação DE PÉ, não só os alvos zerados — se clientes vier 0, a instrução é PARAR e restaurar',
      /fundacao/.test(sql) && /PARE e restaure/.test(sql), true);
   eq('CRÍTICO: avisa que U59/U61/U65 nunca mais rodam — num banco limpo, a idempotência por origem REIMPORTARIA tudo',

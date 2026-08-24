@@ -80,7 +80,9 @@ UNION ALL SELECT 'contadores (próximo = 0001)', count(*)::text, '0' FROM public
 -- a fundação: estes números NÃO podem ter mudado — se algum estiver zerado
 -- e você tinha dados, PARE e restaure o backup antes de qualquer coisa
 SELECT 'clientes' AS fundacao, count(*)::text AS registros FROM public.clientes
-UNION ALL SELECT 'contratos', count(*)::text FROM public.contratos
+-- (corrigido em 2026-08-24: a tabela é cliente_contratos — "contratos" nunca
+-- existiu, e a primeira execução abortou aqui, sem aplicar nada)
+UNION ALL SELECT 'cliente_contratos', count(*)::text FROM public.cliente_contratos
 UNION ALL SELECT 'profiles', count(*)::text FROM public.profiles
 UNION ALL SELECT 'duplas', count(*)::text FROM public.duplas
 UNION ALL SELECT 'prospeccoes (mantidas de propósito)', count(*)::text FROM public.prospeccoes;
