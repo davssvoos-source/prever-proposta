@@ -9,11 +9,15 @@ memória local do assistente. Se algo aqui discordar do código, o código ganha
 **Prever Proposta** — sistema interno do Grupo Prever (segurança eletrônica):
 orçamento/proposta comercial, chamados técnicos (campo e interno), clientes,
 contratos, cobrança e painéis. Substitui o Notion e o Sigma OS. React +
-TypeScript + TanStack Start (SSR), Supabase. Deploy: em transição da
-**Lovable** para hospedagem própria (o build já sai para Cloudflare Workers)
-— ver `ONBOARDING.md` §5 pela ordem certa da saída. Enquanto a Lovable
-estiver conectada: push em `main` publica, mantenha a branch sempre
-buildável, nunca reescreva histórico.
+TypeScript + TanStack Start (SSR), Supabase, deploy pela **Lovable**: push em
+`main` publica automaticamente — mantenha a branch sempre buildável e **nunca
+reescreva histórico** (force push/rebase/amend em commit já enviado corrompe
+o histórico do lado dela).
+
+Sair da Lovable é uma possibilidade FUTURA, não um plano em andamento: o
+passo a passo está guardado em `ONBOARDING.md` §6. Até lá, nada de "arrumar"
+o que existe por causa dela — `.env` versionado, `AGENTS.md` e `.lovable/`
+ficam como estão.
 
 O usuário é o **Davi** — dita regras de produto em conversa, em português.
 Todo o repo (nomes, comentários, docs) é em **português**.

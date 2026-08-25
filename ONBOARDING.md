@@ -1,27 +1,14 @@
-# ONBOARDING — migração para a máquina nova (e a saída da Lovable)
+# ONBOARDING — migração para a máquina nova
 
-Atualizado em 2026-08-24, na véspera da migração. O plano: PC novo **sem
-iCloud**, conta nova do Claude (a empresa vai assinar para o T.I.), **sair da
-Lovable e usar o Supabase direto**, dados operacionais zerados para lançar do
-zero. Este sistema substitui o Notion (assinatura será cancelada) e o Sigma
-OS.
+Atualizado em 2026-08-24. O plano: PC novo **sem iCloud**, conta nova do
+Claude (a empresa vai assinar para o T.I.), dados operacionais zerados para
+lançar do zero. Este sistema substitui o Notion (assinatura será cancelada) e
+o Sigma OS.
 
-## 0. ANTES DE CANCELAR A LOVABLE — o passo que não tem volta
-
-**Confirme que o projeto Supabase é SEU, não da Lovable.** O banco
-(`lrepuyaootngrbotmvhn.supabase.co`) hoje é acessado pelo painel da Lovable.
-Entre em **supabase.com** com a conta da empresa e verifique se esse projeto
-aparece na sua organização:
-
-- **Aparece** → ótimo: cancelar a Lovable não toca no banco. Siga.
-- **NÃO aparece** → o projeto é gerenciado pela Lovable e **pode ser
-  destruído no cancelamento**. Antes de cancelar: exporte TUDO (Dashboard →
-  Database → Backups, ou `pg_dump` com a connection string), crie um projeto
-  Supabase próprio, restaure o dump, e troque as chaves no `.env`. Só então
-  cancele.
-
-Sem essa confirmação, o cancelamento pode levar clientes, contratos e
-histórico junto. É o único passo perigoso da migração inteira.
+> **A Lovable FICA, por enquanto** (decisão do Davi, 2026-08-24). Ou seja: a
+> migração de máquina não mexe em deploy, hospedagem nem banco — é só clonar
+> o repo na máquina nova e continuar. O plano de saída existe e está pronto
+> na §6, para o dia em que valer a pena; não é pré-requisito de nada aqui.
 
 ## 1. O que levar
 
@@ -73,27 +60,7 @@ backup confirmado, e a seção C (funil comercial/propostas) pode ser comentada
 se quiser preservá-lo. Depois dela, **nunca re-rode** U59/U61/U65 (as
 importações — reimportariam tudo num banco limpo).
 
-## 5. A saída da Lovable — o que muda e a ordem certa
-
-A Lovable hoje faz duas coisas: **builda/hospeda** o app a cada push e provê
-o **SQL Editor**. O SQL Editor é o do próprio Supabase (só muda a porta de
-entrada). A hospedagem precisa de substituto:
-
-1. **Hospedagem** — o build já sai pronto para **Cloudflare Workers** (o
-   nitro gera `.output/` + `wrangler.json`). Caminho de menor atrito: conta
-   Cloudflare + `npx wrangler deploy` a partir do `.output`, ou GitHub
-   Action que rode build+deploy no push. Decidir e testar ANTES de cancelar.
-2. **Variáveis** — no novo host, configurar as `VITE_*` públicas (hoje no
-   `.env`) e manter os segredos (SERVICE key, ANTHROPIC) só no painel.
-3. **Cancelar a Lovable** — somente com o passo 0 confirmado e o novo deploy
-   no ar.
-4. **Faxina pós-saída** (commit próprio): remover `AGENTS.md` (boilerplate
-   da Lovable) e `.lovable/`; avaliar tirar o `.env` do versionamento — a
-   razão de ele ser versionado era a Lovable buildar do repo; sem ela, o
-   novo pipeline injeta as variáveis e o `.gitignore` + as DUAS asserções
-   sobre isso devem ser invertidas juntas.
-
-## 6. Conhecimento da empresa (Obsidian + Claude do T.I.)
+## 5. Conhecimento da empresa (Obsidian + Claude do T.I.)
 
 - `docs/` é Markdown puro — **abre direto como vault do Obsidian** (ou entra
   num vault da organização como subpasta). Nada a converter.
@@ -101,6 +68,41 @@ entrada). A hospedagem precisa de substituto:
   é espelho de leitura; regra nova entra por commit, não só pela nota.
 - Toda conta do Claude do T.I. herda o método pelo `CLAUDE.md` — ele é o
   onboarding dos colegas também.
+
+## 6. A saída da Lovable — plano guardado, NÃO é para agora
+
+A Lovable **fica** por enquanto. Enquanto ficar, nada aqui precisa ser feito
+e nada muda: push em `main` publica, o `.env` segue versionado (é dele que o
+build dela lê), o `AGENTS.md` e o `.lovable/` continuam onde estão. O SQL
+Editor pode ser o dela ou o do Supabase — é o mesmo banco, só muda a porta.
+
+Esta seção existe pronta para o dia em que a saída valer a pena. A ordem
+importa, e o primeiro passo é o único perigoso de tudo:
+
+1. **CONFIRME QUE O PROJETO SUPABASE É SEU.** O banco
+   (`lrepuyaootngrbotmvhn.supabase.co`) hoje é acessado pelo painel da
+   Lovable. Entre em **supabase.com** com a conta da empresa e veja se o
+   projeto aparece na sua organização.
+   - **Aparece** → cancelar a Lovable não toca no banco. Siga.
+   - **NÃO aparece** → o projeto é gerenciado por ela e **pode ser destruído
+     no cancelamento**. Antes: exporte tudo (Database → Backups, ou
+     `pg_dump`), crie um projeto Supabase próprio, restaure, troque as
+     chaves no `.env`. Só então cancele.
+
+   Vale fazer essa verificação **hoje**, mesmo sem cancelar nada — é 2
+   minutos e responde se os dados da empresa dependem de uma assinatura.
+2. **Hospedagem substituta** — o build já sai pronto para **Cloudflare
+   Workers** (o nitro gera `.output/` + `wrangler.json`). Menor atrito: conta
+   Cloudflare + `npx wrangler deploy`, ou uma GitHub Action no push. Testar
+   ANTES de cancelar.
+3. **Variáveis** no novo host: as `VITE_*` públicas (hoje no `.env`) e os
+   segredos (SERVICE key, ANTHROPIC) só no painel, nunca com prefixo VITE_.
+4. **Cancelar a Lovable** — só com o passo 1 confirmado e o deploy novo no ar.
+5. **Faxina pós-saída** (commit próprio): remover `AGENTS.md` (boilerplate
+   da Lovable) e `.lovable/`; avaliar tirar o `.env` do versionamento — a
+   razão de ele ser versionado era a Lovable buildar do repo; sem ela, o
+   novo pipeline injeta as variáveis e o `.gitignore` + as DUAS asserções
+   sobre isso devem ser invertidas juntas.
 
 ## 7. Estado do projeto na entrega (2026-08-24)
 

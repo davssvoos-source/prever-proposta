@@ -4741,12 +4741,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // a saída da Lovable, documentada na ordem certa
   const ob2 = fs51.readFileSync('ONBOARDING.md', 'utf8');
-  eq('CRÍTICO: o ONBOARDING põe a checagem de DONO do projeto Supabase ANTES do cancelamento da Lovable — banco gerenciado pela plataforma pode morrer com a assinatura',
-     /ANTES DE CANCELAR A LOVABLE/.test(ob2) && /pode ser\s+destruído no cancelamento/.test(ob2), true);
+  // 2026-08-24: o Davi decidiu MANTER a Lovable por enquanto. As três
+  // asserções abaixo mudaram de alvo junto — o que elas guardam não é "a
+  // saída está em andamento", é que o PLANO da saída continua completo e
+  // com o passo perigoso em primeiro lugar, para o dia em que for usado.
+  eq('CRÍTICO: o plano de saída da Lovable começa pela checagem de DONO do projeto Supabase — banco gerenciado pela plataforma pode morrer com a assinatura',
+     /CONFIRME QUE O PROJETO SUPABASE É SEU/.test(ob2)
+     && /pode ser destruído\s*\n?\s*no cancelamento/.test(ob2), true);
+  eq('…e o ONBOARDING deixa explícito que isso NÃO é pré-requisito da migração de máquina — a Lovable fica',
+     /A Lovable FICA, por enquanto/.test(ob2) && /NÃO é para agora/.test(ob2), true);
   eq('a faxina pós-Lovable (AGENTS.md, .lovable/, .env fora do repo) é passo EXPLÍCITO e posterior — não se "arruma" antes de sair',
      /pós-saída/.test(ob2) && /asserções\s+sobre isso devem ser invertidas juntas/.test(ob2), true);
-  eq('o CLAUDE.md aponta a transição de deploy em vez de afirmar Lovable como estado permanente',
-     /em transição da/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
+  eq('CRÍTICO: o CLAUDE.md avisa para NÃO "arrumar" .env/AGENTS.md/.lovable enquanto a Lovable estiver ativa — foi assim que o app caiu duas vezes',
+     /ficam como estão/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

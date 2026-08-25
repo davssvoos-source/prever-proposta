@@ -4264,3 +4264,28 @@ tem de ter nascido no histórico de migrations** (CREATE TABLE ou RENAME TO,
 varrendo o diretório inteiro). Teste negativo confirmado: "contratos" não
 está no histórico — a asserção teria abortado o commit antes do Davi ver o
 erro no painel. 1354 asserções.
+
+**A LOVABLE FICA (decisão do Davi, 2026-08-24).** A U69 tinha sido escrita
+assumindo saída iminente, e os documentos mestres saíram enviesados: o
+`ONBOARDING.md` abria com "§0 — ANTES DE CANCELAR A LOVABLE, o passo que não
+tem volta", e o `CLAUDE.md` dizia deploy "em transição". Com a saída adiada,
+isso deixou de ser contexto e virou **ruído perigoso**: fazia a migração de
+máquina — que não toca em deploy, hospedagem nem banco — parecer um
+procedimento de risco, e convidava alguém a "adiantar" a faxina (tirar o
+`.env` do versionamento, remover `AGENTS.md`) enquanto a plataforma ainda
+builda a partir deles. Tirar o `.env` do repo já derrubou o app duas vezes.
+
+Reenquadrado: o `ONBOARDING` abre dizendo que a Lovable fica e que a
+migração é só clonar o repo; o plano de saída desceu para a §6, **completo e
+intacto**, rotulado "plano guardado, NÃO é para agora", com o passo perigoso
+(confirmar o DONO do projeto Supabase) em primeiro lugar dentro dele. O
+`CLAUDE.md` passou a afirmar a Lovable como estado atual e a avisar
+explicitamente para não "arrumar" o que existe por causa dela.
+
+A checagem de dono do banco ficou recomendada para **hoje mesmo**, mesmo sem
+cancelar: são 2 minutos e responde se os dados da empresa dependem de uma
+assinatura de terceiro. Três asserções mudaram de alvo junto — o que elas
+guardam agora não é "a saída está em andamento", e sim que o plano continua
+completo e na ordem certa para o dia em que for usado.
+
+1355 asserções.
