@@ -45,6 +45,16 @@ export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSPr
 }
 
 /**
+ * Quantas etiquetas de LOCAL cabem antes do "+N" (R84/R85, U71).
+ *
+ * Dois é o teto porque a coluna do quadro tem 260px e a fileira ainda carrega
+ * tipo e prioridade. Com três nomes de condomínio a fileira quebra em duas
+ * linhas e o card cresce, desalinhando a coluna inteira. O `title` continua
+ * listando todos.
+ */
+const LOCAIS_NO_CARD = 2;
+
+/**
  * A pintura de cada faixa. O véu do tema claro é mais forte no amarelo e mais
  * fraco no vermelho e no azul de propósito: sobre branco, amarelo em 8% não
  * aparece, e vermelho em 16% vira alarme. O `glow` é uma sombra na própria cor
@@ -160,9 +170,16 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
             o cinza translúcido do `sobreFaixa` sempre: a cor aqui identifica
             categoria e prioridade, e um terceiro tom colorido brigaria com as
             duas sem acrescentar significado. */}
-        {a.cliente && (
+        {/* U71: virou LISTA. Davi, 2026-08-26: "cada card deve conter do(s)
+            local(is) referente(s) a aquela atividade". O teto de LOCAIS_NO_CARD
+            existe porque a coluna tem 260px — uma atividade de dez prédios
+            empurraria prazo e avatares para fora da tela. O excedente vira
+            "+N", como a pilha de avatares já faz, e o `title` da fileira lista
+            todos: o card resume, o detalhe detalha. */}
+        {a.locais.slice(0, LOCAIS_NO_CARD).map((local) => (
           <span
-            title={a.cliente}
+            key={local}
+            title={a.locais.join(" · ")}
             style={{
               display: "inline-flex", alignItems: "center", gap: 4,
               padding: "3px 9px", borderRadius: 999,
@@ -174,8 +191,23 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           >
             <Building2 size={11} style={{ flexShrink: 0, opacity: 0.75 }} />
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {a.cliente}
+              {local}
             </span>
+          </span>
+        ))}
+        {a.locais.length > LOCAIS_NO_CARD && (
+          <span
+            title={a.locais.join(" · ")}
+            style={{
+              display: "inline-flex", alignItems: "center",
+              padding: "3px 8px", borderRadius: 999,
+              fontFamily: FONT, fontWeight: 700, fontSize: PISO_TIPO,
+              letterSpacing: "0.04em", color: textPrimary,
+              background: isLight ? "rgba(0,0,0,0.055)" : "rgba(255,255,255,0.09)",
+              flexShrink: 0,
+            }}
+          >
+            +{a.locais.length - LOCAIS_NO_CARD}
           </span>
         )}
 

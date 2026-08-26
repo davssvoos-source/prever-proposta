@@ -348,37 +348,57 @@ export async function removerApoio(chamadoId: string, profileId: string): Promis
   if (error) throw error;
 }
 
-// ── Clientes extras (R54, U45) ───────────────────────────────────────────────
+// ── Locais da atividade (R54 → R84/R85, U45 → U71) ──────────────────────────
 //
-// Uma atividade pode ser de mais de um cliente. `cliente_id` (em `chamados`)
-// continua sendo o cliente PRINCIPAL — cobrança, matching e relatório
-// continuam lendo só ele, sem saber que isto existe. `chamado_clientes`
-// guarda os EXTRAS: clientes além do principal. Por isso a lista "clientes
-// deste chamado", em qualquer tela, é sempre `[cliente_id, ...extras]` — ver
-// `mexerClienteChamado` abaixo, que decide pra qual das duas tabelas
-// escrever conforme o slot principal está livre ou não.
+// Davi, 2026-08-26: "A etiqueta de cliente na verdade seria uma etiqueta de
+// LOCAL, este tempo todo estávamos usando a palavra errada. Então o Local pode
+// SER OU NÃO SER nosso cliente."
+//
+// `chamado_locais` substituiu `chamado_clientes` na U71. Cada linha é uma das
+// três formas, e só uma (o banco garante com num_nonnulls = 1):
+//
+//   cliente_id     → cliente da base do QAP
+//   prospeccao_id  → prédio que NÃO é nosso cliente (R22)
+//   setor          → um serviço inteiro, como ETIQUETA
+//
+// O setor é etiqueta e não expansão: "Enviar relatórios dos clientes de
+// Portaria Remota" é UMA atividade com UM rótulo, não uma atividade com
+// oitenta chips. Quem precisar da lista expande na leitura, por
+// `clientes.servicos_prestados` — e aí ela reflete o cadastro de HOJE, em vez
+// de congelar quem era do setor no dia em que alguém clicou.
+//
+// `chamados.cliente_id` continua sendo o local PRINCIPAL quando ele é cliente:
+// cobrança, matching e relatório seguem lendo só ele, sem saber que isto
+// existe. A lista canônica é sempre `[cliente_id, ...locais]`.
 
-export function useChamadoClientesExtra(chamadoId: string | undefined) {
+export type FormaLocal = "cliente" | "prospeccao" | "setor";
+
+export interface LocalDoChamado {
+  id: string;
+  cliente_id: string | null;
+  prospeccao_id: string | null;
+  setor: string | null;
+}
+
+export function useChamadoLocais(chamadoId: string | undefined) {
   return useQuery({
-    queryKey: ["chamado-clientes-extra", chamadoId],
+    queryKey: ["chamado-locais", chamadoId],
     enabled: !!chamadoId,
-    queryFn: async (): Promise<string[]> => {
+    queryFn: async (): Promise<LocalDoChamado[]> => {
       const { data, error } = await supabase
-        .from("chamado_clientes" as any)
-        .select("cliente_id")
+        .from("chamado_locais" as any)
+        .select("id, cliente_id, prospeccao_id, setor")
         .eq("chamado_id", chamadoId as string);
       if (error) throw error;
-      return ((data as any[]) ?? []).map((r) => r.cliente_id as string);
+      return (data as any[] as LocalDoChamado[]) ?? [];
     },
   });
 }
 
 /**
- * Adiciona um cliente à atividade. Se o slot principal (`cliente_id`) está
- * livre, o cliente novo VIRA o principal — é uma gravação a menos, e mantém
- * quem só lê `cliente_id` funcionando sem precisar saber que a lista existe.
- * Só quando o principal já está ocupado é que o cliente novo vai para
- * `chamado_clientes`.
+ * Adiciona um CLIENTE como local. Se o slot principal (`cliente_id`) está
+ * livre, ele vira o principal — é uma gravação a menos, e mantém quem só lê
+ * `cliente_id` funcionando sem precisar saber que a lista existe.
  */
 export async function adicionarClienteChamado(
   chamadoId: string, clienteIdAtual: string | null, clienteId: string,
@@ -388,17 +408,16 @@ export async function adicionarClienteChamado(
     return;
   }
   const { error } = await supabase
-    .from("chamado_clientes" as any)
+    .from("chamado_locais" as any)
     .insert({ chamado_id: chamadoId, cliente_id: clienteId } as any);
   if (error) throw error;
 }
 
 /**
- * Remove um cliente da atividade. Remover o PRINCIPAL só limpa o slot (não
- * promove um extra a principal — ver o cabeçalho da U45 em
- * supabase/migrations: ficar com extras e sem principal é um estado válido,
- * e a promoção automática seria uma decisão silenciosa sobre QUAL extra vira
- * principal, que ninguém pediu).
+ * Remove um cliente. Remover o PRINCIPAL só limpa o slot (não promove um
+ * extra — ver o cabeçalho da U45: ficar com extras e sem principal é estado
+ * válido, e a promoção automática seria uma decisão silenciosa sobre QUAL
+ * extra vira principal, que ninguém pediu).
  */
 export async function removerClienteChamado(
   chamadoId: string, clienteIdAtual: string | null, clienteId: string,
@@ -408,38 +427,81 @@ export async function removerClienteChamado(
     return;
   }
   const { error } = await supabase
-    .from("chamado_clientes" as any)
+    .from("chamado_locais" as any)
     .delete()
     .eq("chamado_id", chamadoId)
     .eq("cliente_id", clienteId);
   if (error) throw error;
 }
 
-/**
- * Grupo de clientes (R54): "portaria_remota"/"monitoramento_alarmes" hoje —
- * o mesmo vocabulário de `servicos_prestados` (U36). Adicionar um grupo é só
- * repetir `adicionarClienteChamado` para cada cliente que ainda não está na
- * atividade, então no máximo 1 UPDATE (o primeiro, se o slot principal
- * estava livre) + 1 INSERT em lote (o resto) — não N idas ao banco por
- * grupo grande.
- */
-export async function adicionarGrupoDeClientes(
-  chamadoId: string, clienteIdAtual: string | null, jaNaAtividade: string[], idsDoGrupo: string[],
+/** Pendura uma PROSPECÇÃO (local que não é cliente) na atividade. */
+export async function adicionarProspeccaoChamado(
+  chamadoId: string, prospeccaoId: string,
 ): Promise<void> {
-  const presentes = new Set([clienteIdAtual, ...jaNaAtividade].filter(Boolean) as string[]);
-  const faltando = idsDoGrupo.filter((id) => !presentes.has(id));
-  if (faltando.length === 0) return;
-
-  let restante = faltando;
-  let principalNovo = clienteIdAtual;
-  if (!principalNovo) {
-    [principalNovo, ...restante] = faltando;
-    await atualizarChamado(chamadoId, { cliente_id: principalNovo });
-  }
-  if (restante.length === 0) return;
   const { error } = await supabase
-    .from("chamado_clientes" as any)
-    .insert(restante.map((cliente_id) => ({ chamado_id: chamadoId, cliente_id })) as any);
+    .from("chamado_locais" as any)
+    .insert({ chamado_id: chamadoId, prospeccao_id: prospeccaoId } as any);
+  if (error) throw error;
+}
+
+/** O atalho do setor inteiro (R85). Uma linha, uma etiqueta. */
+export async function adicionarSetorChamado(
+  chamadoId: string, setor: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("chamado_locais" as any)
+    .insert({ chamado_id: chamadoId, setor } as any);
+  if (error) throw error;
+}
+
+export async function removerLocalChamado(localId: string): Promise<void> {
+  const { error } = await supabase
+    .from("chamado_locais" as any)
+    .delete()
+    .eq("id", localId);
+  if (error) throw error;
+}
+
+// ── Equipes da atividade (R83, U71) ─────────────────────────────────────────
+//
+// Davi: "Vamos considerar que mais de uma equipe pode fazer parte da mesma
+// atividade." Mesmo desenho aditivo dos locais: `chamados.equipe` continua
+// sendo a PRINCIPAL e não muda de semântica; `chamado_equipes` guarda só as
+// extras. Atividade de uma equipe só não ganha linha nenhuma aqui.
+
+export function useChamadoEquipesExtra(chamadoId: string | undefined) {
+  return useQuery({
+    queryKey: ["chamado-equipes-extra", chamadoId],
+    enabled: !!chamadoId,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase
+        .from("chamado_equipes" as any)
+        .select("equipe")
+        .eq("chamado_id", chamadoId as string);
+      if (error) throw error;
+      return ((data as any[]) ?? []).map((r) => r.equipe as string);
+    },
+  });
+}
+
+export async function adicionarEquipeChamado(
+  chamadoId: string, equipePrincipal: string | null, equipe: string,
+): Promise<void> {
+  if (equipe === equipePrincipal) return;
+  const { error } = await supabase
+    .from("chamado_equipes" as any)
+    .insert({ chamado_id: chamadoId, equipe } as any);
+  if (error) throw error;
+}
+
+export async function removerEquipeChamado(
+  chamadoId: string, equipe: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("chamado_equipes" as any)
+    .delete()
+    .eq("chamado_id", chamadoId)
+    .eq("equipe", equipe);
   if (error) throw error;
 }
 

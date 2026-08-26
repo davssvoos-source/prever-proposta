@@ -9,6 +9,49 @@
 Explica de onde a base de clientes vem (e de onde ela NÃO pode vir), como o
 inventário de equipamentos se estrutura e como o mapa de São Paulo funciona.
 
+## LOCAL × cliente — a palavra certa (R84, U71)
+
+**Nem todo local é cliente.** Desde 2026-08-26 o sistema chama de **LOCAL** o
+lugar onde a atividade acontece, e ele tem três formas:
+
+| Forma | Onde vive | Quem cria |
+|---|---|---|
+| **Cliente** | `clientes` | só o QAP (R21) |
+| **Prospecção** | `prospeccoes` | o app pode (R22/R84) |
+| **Setor** | etiqueta em `chamado_locais.setor` | o app |
+
+A tabela de vínculo é `chamado_locais` (U71), que substituiu a
+`chamado_clientes` da U45. Cada linha aponta para **exatamente uma** das três
+formas — o banco garante com `num_nonnulls(...) = 1`, não a aplicação.
+
+`chamados.cliente_id` **continua sendo o local principal** quando ele é
+cliente: cobrança, matching, relatório e o trigger do contrato seguem lendo só
+ele. A lista canônica é `[cliente_id, ...chamado_locais]`.
+
+**O setor é etiqueta, não expansão.** "Enviar relatórios dos clientes de
+Portaria Remota" grava UMA linha com `setor = 'portaria_remota'`, não oitenta
+linhas de cliente. Quem precisa da lista expande na leitura, por
+`servicos_prestados` — e aí ela reflete o cadastro de hoje.
+
+**Por que isto NÃO afrouxa a R21.** A R21 tranca `clientes` porque a tabela é
+espelho do QAP e um sync futuro faz upsert (e algum dia delete) nela.
+`prospeccoes` é o oposto: nasceu na U27 para guardar o que é nosso e o ERP não
+conhece. A U71 abriu INSERT em `prospeccoes` para `authenticated` justamente
+por isso — e deixou `clientes` sem policy de INSERT, como sempre esteve.
+
+**Duas funções novas que valem conhecer:**
+
+- `achar_ou_criar_prospeccao(nome)` — `SECURITY DEFINER`. A leitura de
+  prospecção é restrita (ver abaixo), então uma busca de duplicata feita pelo
+  cliente responderia "não existe" para um prédio que existe, e cada chamado
+  criaria outro registro do mesmo lugar. A função enxerga a tabela inteira para
+  decidir e devolve só um uuid.
+- `pode_ver_prospeccao(id)` — gestor vê tudo; os demais veem a prospecção
+  pendurada num chamado ou visita que já podem ver. Mesma forma de
+  `pode_ver_cliente`, que a U71 também corrigiu para enxergar
+  `chamado_locais` (era um furo desde a U45: técnico em chamado com cliente
+  extra não via o cliente, e o card nascia com o local em branco).
+
 ## A regra que governa tudo: R21
 
 **O cliente é do QAP, não nosso.** O ERP (QAP) é a fonte única de clientes e

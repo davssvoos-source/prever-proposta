@@ -53,7 +53,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare,
-  Bold, Italic, ListChecks, List,
+  Bold, Italic, ListChecks, List, Layers,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
@@ -65,13 +65,14 @@ import { codigoDeErro } from "@/lib/erros";
 import { envolverSelecao, prefixarLinhas } from "@/lib/edicao-texto";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 import {
-  useChamado, usePessoas, useChamadoApoios, useChamadoClientesExtra, useChamadoEventos,
+  useChamado, usePessoas, useChamadoApoios, useChamadoLocais, useChamadoEventos,
   atualizarChamado, adicionarApoio, removerApoio,
-  adicionarClienteChamado, removerClienteChamado, adicionarGrupoDeClientes,
+  adicionarClienteChamado, removerClienteChamado,
+  adicionarSetorChamado, removerLocalChamado,
   comentarChamado, mapaDePessoas,
   type ChamadoPatch,
 } from "@/features/chamados/data";
-import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, temServico, type ServicoCliente } from "@/features/clientes/data";
+import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
 import {
   PRIORIDADE_LABEL, PRIORIDADE_CORES, SPRINT_LABEL, SPRINT_ORDEM, TIPO_LABEL, TIPO_CORES,
   chamadoStatusInfo, statusDaNatureza, tiposDaNatureza,
@@ -550,7 +551,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const { data: pessoas = [] } = usePessoas();
   const { data: clientes = [] } = useClientes();
   const { data: apoios = [] } = useChamadoApoios(chamadoId ?? undefined);
-  const { data: clientesExtra = [] } = useChamadoClientesExtra(chamadoId ?? undefined);
+  const { data: locais = [] } = useChamadoLocais(chamadoId ?? undefined);
 
   const [estados, setEstados] = useState<Record<string, EstadoCampo>>({});
 
@@ -619,7 +620,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     onSuccess: () => {
       setEstados((e) => ({ ...e, cliente_id: "salvo" }));
       qc.invalidateQueries({ queryKey: ["chamado", chamadoId] });
-      qc.invalidateQueries({ queryKey: ["chamado-clientes-extra", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamado-locais", chamadoId] });
       qc.invalidateQueries({ queryKey: ["chamados"] });
       qc.invalidateQueries({ queryKey: ["home"] });
       qc.invalidateQueries({ queryKey: ["calendario"] });
@@ -628,22 +629,28 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: codigoDeErro(err, "/dashboard") } })),
   });
 
-  // "Grupo de clientes" (R54): adiciona de uma vez todo cliente marcado com
-  // um serviço (`servicos_prestados`, U36) — hoje Portaria Remota ou
-  // Monitoramento de Alarmes. Não é uma entidade nova no banco: o grupo É a
-  // marcação do serviço, então "adicionar o grupo" é só adicionar cada
-  // cliente que já tem aquele serviço.
-  const mexerGrupo = useMutation({
-    mutationFn: async (servico: ServicoCliente) => {
+  // O atalho do SETOR (R85). Até a U71 isto expandia o grupo em N clientes;
+  // agora grava UMA etiqueta. Davi, 2026-08-26: "quando for o setor você pode
+  // usar a etiqueta 'Portaria Remota'". A etiqueta é melhor que a expansão por
+  // dois motivos: o card cabe (oitenta chips não cabem em 260px) e a lista
+  // reflete o cadastro de HOJE, em vez de congelar quem era do setor no dia em
+  // que alguém clicou. Quem precisa dos clientes expande na leitura, por
+  // `servicos_prestados`.
+  const mexerSetor = useMutation({
+    mutationFn: async ({ setor, remover }: { setor: ServicoCliente; remover: boolean }) => {
       if (!chamadoId) throw new Error("sem chamado");
-      const idsDoGrupo = clientes.filter((c) => temServico(c, servico)).map((c) => c.id);
-      await adicionarGrupoDeClientes(chamadoId, chamado?.cliente_id ?? null, clientesExtra, idsDoGrupo);
+      if (remover) {
+        const linha = locais.find((l) => l.setor === setor);
+        if (linha) await removerLocalChamado(linha.id);
+      } else {
+        await adicionarSetorChamado(chamadoId, setor);
+      }
     },
     onMutate: () => setEstados((e) => ({ ...e, cliente_id: "salvando" })),
     onSuccess: () => {
       setEstados((e) => ({ ...e, cliente_id: "salvo" }));
       qc.invalidateQueries({ queryKey: ["chamado", chamadoId] });
-      qc.invalidateQueries({ queryKey: ["chamado-clientes-extra", chamadoId] });
+      qc.invalidateQueries({ queryKey: ["chamado-locais", chamadoId] });
       qc.invalidateQueries({ queryKey: ["chamados"] });
       qc.invalidateQueries({ queryKey: ["home"] });
       qc.invalidateQueries({ queryKey: ["calendario"] });
@@ -670,12 +677,20 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   );
   const nomeClienteDe = (id: string) => clientesPorId[id]?.nome ?? "Cliente";
   // [principal, ...extras] — sempre nesta ordem, sem duplicar se por algum
-  // motivo o principal também aparecer em chamado_clientes
+  // motivo o principal também aparecer em chamado_locais
   const clientesDoChamadoIds = useMemo(() => {
     const principal = chamado?.cliente_id ?? null;
-    const extras = clientesExtra.filter((id) => id !== principal);
+    const extras = locais
+      .map((l) => l.cliente_id)
+      .filter((id): id is string => !!id && id !== principal);
     return principal ? [principal, ...extras] : extras;
-  }, [chamado?.cliente_id, clientesExtra]);
+  }, [chamado?.cliente_id, locais]);
+
+  /** Os setores marcados como etiqueta nesta atividade (R85). */
+  const setoresDoChamado = useMemo(
+    () => locais.map((l) => l.setor).filter((s): s is string => !!s),
+    [locais],
+  );
 
   const info = chamado ? chamadoStatusInfo(chamado.status) : null;
   const tipo = (chamado?.tipo ?? null) as ChamadoTipo | null;
@@ -822,15 +837,15 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   sem o 0, um nome de cliente comprido poderia empurrar a
                   coluna além da largura justa dela. */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
-                {/* Cliente virou campo de MÚLTIPLOS valores (R54, Davi: "uma
-                    atividade pode ser para mais de um cliente"). Mesmo
-                    desenho de "Apoio" (chips + busca pra adicionar) — o
-                    primeiro cliente ocupa o slot principal (cliente_id) por
-                    baixo dos panos, mas na tela é só uma lista, igual à de
-                    Apoio. O seletor "+ grupo" adiciona de uma vez todo
-                    cliente marcado com um serviço (servicos_prestados, U36)
-                    — "grupo" não é uma entidade nova, é a marcação em si. */}
-                <Campo titulo="Cliente" estado={estados.cliente_id}>
+                {/* LOCAL, não "Cliente" (R84, Davi 2026-08-26: "a etiqueta de
+                    cliente na verdade seria uma etiqueta de LOCAL, este tempo
+                    todo estávamos usando a palavra errada"). Campo de MÚLTIPLOS
+                    valores, sem limite (R85), no mesmo desenho de "Apoio":
+                    chips + busca para adicionar. O primeiro cliente ocupa o
+                    slot principal (cliente_id) por baixo dos panos; na tela é
+                    só uma lista. O seletor "+ setor" pendura o SETOR INTEIRO
+                    como etiqueta — uma linha, não oitenta chips. */}
+                <Campo titulo="Local" estado={estados.cliente_id}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
                     {clientesDoChamadoIds.map((id) => (
                       <span key={id} style={{
@@ -874,21 +889,58 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     </div>
                     <select
                       value=""
-                      onChange={(e) => { if (e.target.value) mexerGrupo.mutate(e.target.value as ServicoCliente); }}
-                      aria-label="Adicionar um grupo inteiro de clientes (por serviço prestado)"
-                      title="Adicionar todo um grupo de clientes de uma vez"
+                      onChange={(e) => {
+                        if (e.target.value) mexerSetor.mutate({ setor: e.target.value as ServicoCliente, remover: false });
+                      }}
+                      aria-label="Marcar um setor inteiro como local desta atividade"
+                      title="Marcar o setor inteiro (todos os clientes daquele serviço)"
                       style={{
                         height: 30, borderRadius: 8, border: est.borda, background: est.campoBg,
                         color: est.textSecondary, fontFamily: FONT, fontSize: 11, fontWeight: 600,
                         padding: "0 5px", cursor: "pointer", flexShrink: 0, outline: "none",
                       }}
                     >
-                      <option value="">+ grupo</option>
-                      {SERVICO_ORDEM.map((s) => (
+                      <option value="">+ setor</option>
+                      {SERVICO_ORDEM.filter((s) => !setoresDoChamado.includes(s)).map((s) => (
                         <option key={s} value={s}>{SERVICO_LABEL[s]}</option>
                       ))}
                     </select>
                   </div>
+
+                  {/* As etiquetas de SETOR ficam numa fileira própria, e com a
+                      cor do serviço (SERVICO_CORES, U36) — misturar "Portaria
+                      Remota" (oitenta prédios) com "Green Village" (um prédio)
+                      na mesma fileira cinza faria os dois parecerem a mesma
+                      coisa, e eles não são. */}
+                  {setoresDoChamado.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 6 }}>
+                      {setoresDoChamado.map((s) => {
+                        const cor = SERVICO_CORES[s as ServicoCliente];
+                        return (
+                          <span key={s} style={{
+                            display: "inline-flex", alignItems: "center", gap: 5,
+                            padding: "4px 6px", borderRadius: 999,
+                            background: cor?.bg ?? est.campoBg,
+                            color: isLight ? cor?.light : cor?.dark,
+                            fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
+                          }}>
+                            <Layers size={11} style={{ flexShrink: 0 }} />
+                            {SERVICO_LABEL[s as ServicoCliente] ?? s}
+                            <button
+                              onClick={() => mexerSetor.mutate({ setor: s as ServicoCliente, remover: true })}
+                              aria-label={`Remover o setor ${SERVICO_LABEL[s as ServicoCliente] ?? s} da atividade`}
+                              style={{
+                                border: "none", background: "transparent", cursor: "pointer",
+                                color: "inherit", display: "flex", padding: 2, opacity: 0.75,
+                              }}
+                            >
+                              <X size={13} />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {/* o nome que veio do Notion, quando não há vínculo (U31):
                       sem isto o campo pareceria vazio numa atividade que TEM
                       cliente. Só aparece sem NENHUM cliente ainda escolhido —

@@ -7,9 +7,13 @@
 //
 // A lista vem do Notion (campo Equipe), que a U1 substitui.
 
+// U71 (Davi, 2026-08-26): "Remova as equipes: Audiovisual e Business Ops, e
+// adicione a opção 'Outras'." Quem estava nas duas que saíram foi para
+// comercial (audiovisual — material visual e comunicação são do comercial,
+// R81) e para outras (business_ops), na própria migration.
 export type Equipe =
-  | "ti" | "patrimonio" | "audiovisual" | "business_ops" | "tecnica"
-  | "comercial" | "sac" | "monitoramento";
+  | "ti" | "patrimonio" | "tecnica"
+  | "comercial" | "sac" | "monitoramento" | "outras";
 
 export const EQUIPES: Equipe[] = [
   "ti",
@@ -18,8 +22,7 @@ export const EQUIPES: Equipe[] = [
   "sac",
   "monitoramento",
   "comercial",
-  "audiovisual",
-  "business_ops",
+  "outras",
 ];
 
 export const EQUIPE_LABEL: Record<Equipe, string> = {
@@ -29,8 +32,7 @@ export const EQUIPE_LABEL: Record<Equipe, string> = {
   sac: "SAC",
   monitoramento: "Monitoramento / Portaria",
   comercial: "Comercial",
-  audiovisual: "Audiovisual",
-  business_ops: "Business Ops",
+  outras: "Outras",
 };
 
 /** Cores por equipe — claro/escuro, no padrão do design system (§9). */
@@ -41,8 +43,12 @@ export const EQUIPE_CORES: Record<Equipe, { dark: string; light: string; bg: str
   sac:           { dark: "#2DD4BF", light: "#0f766e", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.30)" },
   monitoramento: { dark: "#818CF8", light: "#4338ca", bg: "rgba(129,140,248,0.12)", border: "rgba(129,140,248,0.30)" },
   comercial:     { dark: "#FB923C", light: "#c2410c", bg: "rgba(251,146,60,0.12)",  border: "rgba(251,146,60,0.30)" },
-  audiovisual:   { dark: "#F472B6", light: "#be185d", bg: "rgba(244,114,182,0.12)", border: "rgba(244,114,182,0.30)" },
-  business_ops:  { dark: "#2DD2A5", light: "#047862", bg: "rgba(45,210,165,0.12)",  border: "rgba(45,210,165,0.30)" },
+  // "Outras" é o balde declarado, e cinza é a leitura honesta dele: nenhuma das
+  // seis equipes nomeadas. Usa os valores do PRISMA.neutro, que já passaram
+  // pela auditoria de contraste do modo claro (§8). Não confundir com o cinza
+  // de fallback do equipeCores() abaixo, que significa outra coisa — valor
+  // DESCONHECIDO, e por isso é um tom diferente de propósito.
+  outras:        { dark: "#9AA6B2", light: "#5a6172", bg: "rgba(154,166,178,0.12)", border: "rgba(154,166,178,0.30)" },
 };
 
 export function equipeLabel(e: string | null | undefined): string {

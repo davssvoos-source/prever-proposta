@@ -228,11 +228,22 @@ eq('encerrado não entra no banner',
    A.atividadesDeHoje([A.atividadeDoChamado(chamado('concluido', { data_hora_agendada: hojeIso }), ctxVazio)],
                       new Date(2026, 2, 10, 15, 0, 0)).length, 0);
 
-// invariante do modelo: campo não carrega equipe nem sprint
+// U71 (R83) INVERTEU metade desta invariante, de propósito. Ela era "campo não
+// carrega equipe nem sprint", e o modelo zerava `equipe` fora do interno.
+// Davi, 2026-08-26: "Em uma atividade de 'Proposta Comercial' por exemplo, o
+// técnico é responsável pela visita técnica, enquanto a equipe comercial é
+// responsável pela proposta em si." Ou seja: é justamente fora do interno que
+// mais de uma equipe aparece, e zerar ali escondia o que ele quer ver.
+//
+// O SPRINT continua zerado fora do interno — aquilo é ritmo de planejamento
+// interno, e não foi o que mudou. As duas metades desta invariante deixaram de
+// andar juntas, e é por isso que as asserções agora estão separadas.
 const interno = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', equipe: 'ti', sprint: 'este_mes' }), ctxVazio);
 const campo = A.atividadeDoChamado(chamado('aberto', { natureza: 'campo', equipe: 'tecnica', sprint: 'este_mes' }), ctxVazio);
 eq('interno mantém equipe', interno.equipe, 'ti');
-eq('campo NÃO carrega equipe (equipe é NOT NULL no banco: a nulidade é do modelo)', campo.equipe, null);
+eq('CRÍTICO (R83): campo TAMBÉM carrega equipe agora — zerar escondia do filtro o trabalho de campo', campo.equipe, 'tecnica');
+eq('a lista de equipes começa pela principal', campo.equipes[0], 'tecnica');
+eq('sem equipes extras a lista tem só a principal', campo.equipes.length, 1);
 eq('campo NÃO carrega sprint', campo.sprint, null);
 eq('interno não entra na fila por prioridade', interno.prioridadeRank, 4);
 
@@ -1356,8 +1367,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o vínculo do QAP vence o texto do Notion',
      /cliente: c\.cliente\?\.nome \?\? c\.cliente_origem_nome/.test(mod), true);
   const cardA = fs11.readFileSync('src/features/home/CardAtividade.tsx', 'utf8');
-  eq('a etiqueta de cliente é um chip (borderRadius 999), não texto solto',
-     /a\.cliente && \([\s\S]{0,400}borderRadius: 999/.test(cardA), true);
+  // U71: virou LISTA de locais (R84/R85). Continua sendo chip e não texto
+  // solto — a razão original não mudou: no quadro, "de qual prédio é isto?" é
+  // a segunda pergunta, e a resposta precisa do mesmo peso visual dos outros
+  // chips para ser achada varrendo a coluna.
+  eq('a etiqueta de LOCAL é um chip (borderRadius 999), não texto solto',
+     /a\.locais\.slice\(0, LOCAIS_NO_CARD\)\.map\([\s\S]{0,500}borderRadius: 999/.test(cardA), true);
+  eq('CRÍTICO: o card mostra TODOS os locais, com teto e "+N" — sem o teto a fileira quebra e desalinha a coluna de 260px',
+     /LOCAIS_NO_CARD/.test(cardA) && /a\.locais\.length > LOCAIS_NO_CARD/.test(cardA)
+     && /\+\{a\.locais\.length - LOCAIS_NO_CARD\}/.test(cardA), true);
+  eq('o title da etiqueta lista todos os locais — o card resume, o title não esconde',
+     /title=\{a\.locais\.join\(" · "\)\}/.test(cardA), true);
   const u31 = fs11.readFileSync('supabase/migrations/20260821200000_u31_cliente_de_origem.sql', 'utf8');
   eq('U31 cria a coluna de forma idempotente',
      /ADD COLUMN IF NOT EXISTS cliente_origem_nome/.test(u31), true);
@@ -1427,9 +1447,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o painel edita apoio (vários)', /adicionarApoio[\s\S]*removerApoio/.test(painel), true);
   // cliente_id saiu do patch direto (R54, U45): virou campo de VÁRIOS
   // valores, igual a apoio — mesmo cliente_id continuando o principal por
-  // baixo dos panos (ver data.ts)
-  eq('o painel edita cliente (vários, com grupo) — não mais um patch direto de cliente_id',
-     /adicionarClienteChamado[\s\S]*removerClienteChamado[\s\S]*adicionarGrupoDeClientes/.test(painel), true);
+  // baixo dos panos (ver data.ts). U71: o campo virou LOCAL, e o atalho de
+  // grupo virou atalho de SETOR — etiqueta, não expansão em N clientes.
+  eq('o painel edita LOCAL (vários, com atalho de setor) — não mais um patch direto de cliente_id',
+     /adicionarClienteChamado[\s\S]*removerClienteChamado[\s\S]*adicionarSetorChamado/.test(painel), true);
+  eq('CRÍTICO (R84): o campo se chama "Local", não "Cliente" — o local pode não ser cliente nenhum',
+     /titulo="Local"/.test(painel), true);
   eq('cliente_id não é mais escrito como patch direto no painel (virou lista)',
      /patch: \{ cliente_id/.test(painel), false);
 
@@ -2348,8 +2371,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // 3 colunas FIXAS (não auto-fit): a revisão adversarial de U40 achou que
   // auto-fit(180px) quebrava em 2+1 (Apoio órfão) numa faixa comum de
   // largura — fixo nunca quebra, o que "mesma linha" pedia de verdade.
-  eq('Cliente, Responsável e Apoio estão no MESMO grid de 3 colunas FIXAS',
-     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,800}<Campo titulo="Cliente"[\s\S]{0,4400}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
+  // U71: o campo "Cliente" virou "Local" (R84). A grade não mudou.
+  eq('Local, Responsável e Apoio estão no MESMO grid de 3 colunas FIXAS',
+     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,900}<Campo titulo="Local"[\s\S]{0,7000}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
      true);
   // R54/U45: Cliente virou chip-list (como Apoio) — o ícone agora mora
   // dentro de cada chip, não mais no iconeEsquerda de um CampoComBusca único
@@ -2431,8 +2455,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /<label htmlFor=\{idAlvo\}/.test(pc4), true);
   eq('Enter no campo de comentário respeita enviar.isPending (senão Enter duplo grava o comentário duas vezes)',
      /e\.key === "Enter" && !e\.shiftKey && texto\.trim\(\) && !enviar\.isPending/.test(pc4), true);
-  eq('o aviso "No Notion" mora DENTRO do Campo Cliente (alinhado com a coluna que ele descreve, não a largura toda)',
-     /<Campo titulo="Cliente"[\s\S]{0,4200}No Notion:/.test(pc4), true);
+  eq('o aviso "No Notion" mora DENTRO do Campo Local (alinhado com a coluna que ele descreve, não a largura toda)',
+     /<Campo titulo="Local"[\s\S]{0,6200}No Notion:/.test(pc4), true);
   eq('o aviso "No Notion" só aparece com ZERO clientes ainda escolhidos (some assim que o primeiro é adicionado)',
      /clientesDoChamadoIds\.length === 0 && chamado\.cliente_origem_nome/.test(pc4), true);
 
@@ -2759,38 +2783,40 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U45 termina com SELECT de verificação', /Verificação/.test(u45), true);
 
   // ── a camada de dados ────────────────────────────────────────────────────
-  eq('useChamadoClientesExtra lê chamado_clientes filtrando por chamado_id',
-     /function useChamadoClientesExtra[\s\S]{0,400}from\("chamado_clientes"/.test(cd2), true);
+  // U71: `chamado_clientes` deu lugar a `chamado_locais`, que sabe falar de
+  // cliente, prospecção e setor. As asserções abaixo mudaram de alvo junto — o
+  // que elas guardam continua sendo o mesmo: o slot principal é preservado, e
+  // remover o principal não promove extra nenhum.
+  eq('useChamadoLocais lê chamado_locais filtrando por chamado_id',
+     /function useChamadoLocais[\s\S]{0,400}from\("chamado_locais"/.test(cd2), true);
   eq('adicionarClienteChamado: slot principal livre vira cliente_id (1 gravação, não 2)',
      /export async function adicionarClienteChamado[\s\S]{0,200}if \(!clienteIdAtual\) \{\s*\n\s*await atualizarChamado\(chamadoId, \{ cliente_id: clienteId \}\);/.test(cd2),
      true);
-  eq('adicionarClienteChamado: slot principal ocupado vai para chamado_clientes',
-     /export async function adicionarClienteChamado[\s\S]{0,500}\.from\("chamado_clientes" as any\)\s*\n\s*\.insert\(\{ chamado_id: chamadoId, cliente_id: clienteId \}/.test(cd2),
+  eq('adicionarClienteChamado: slot principal ocupado vai para chamado_locais',
+     /export async function adicionarClienteChamado[\s\S]{0,500}\.from\("chamado_locais" as any\)\s*\n\s*\.insert\(\{ chamado_id: chamadoId, cliente_id: clienteId \}/.test(cd2),
      true);
   eq('removerClienteChamado: remover o principal só limpa o slot (sem promoção automática de extra)',
      /export async function removerClienteChamado[\s\S]{0,200}if \(clienteId === clienteIdAtual\) \{\s*\n\s*await atualizarChamado\(chamadoId, \{ cliente_id: null \}\);/.test(cd2),
      true);
-  eq('adicionarGrupoDeClientes: pula quem já está na atividade (principal OU extra)',
-     /const presentes = new Set\(\[clienteIdAtual, \.\.\.jaNaAtividade\]\.filter\(Boolean\)/.test(cd2),
-     true);
-  eq('adicionarGrupoDeClientes: no máximo 1 UPDATE + 1 INSERT em lote (não N idas ao banco por cliente)',
-     /\.insert\(restante\.map\(\(cliente_id\) => \(\{ chamado_id: chamadoId, cliente_id \}\)\)/.test(cd2),
+  eq('CRÍTICO (R84): existe caminho para pendurar PROSPECÇÃO — o local que não é cliente',
+     /export async function adicionarProspeccaoChamado[\s\S]{0,300}prospeccao_id/.test(cd2), true);
+  eq('CRÍTICO (R85): o setor entra como UMA etiqueta, não como expansão em N clientes',
+     /export async function adicionarSetorChamado[\s\S]{0,300}\.insert\(\{ chamado_id: chamadoId, setor \}/.test(cd2),
      true);
 
   // ── o painel ─────────────────────────────────────────────────────────────
-  eq('clientesDoChamadoIds junta o principal (cliente_id) com os extras, sem duplicar',
-     /const clientesDoChamadoIds = useMemo\(\(\) => \{\s*\n\s*const principal = chamado\?\.cliente_id \?\? null;\s*\n\s*const extras = clientesExtra\.filter\(\(id\) => id !== principal\);/.test(pc5),
+  eq('clientesDoChamadoIds junta o principal (cliente_id) com os locais, sem duplicar',
+     /const clientesDoChamadoIds = useMemo\(\(\) => \{\s*\n\s*const principal = chamado\?\.cliente_id \?\? null;\s*\n\s*const extras = locais/.test(pc5),
      true);
-  eq('o seletor de grupo lista SERVICO_ORDEM (hoje Portaria Remota e Monitoramento de Alarmes)',
-     /<option value="">\+ grupo<\/option>[\s\S]{0,100}SERVICO_ORDEM\.map/.test(pc5), true);
-  eq('mexerGrupo usa temServico para achar todo cliente do serviço escolhido — "grupo" é a marcação, não uma tabela nova',
-     /const idsDoGrupo = clientes\.filter\(\(c\) => temServico\(c, servico\)\)\.map\(\(c\) => c\.id\);/.test(pc5),
-     true);
+  eq('o seletor de setor lista SERVICO_ORDEM (hoje Portaria Remota e Monitoramento de Alarmes)',
+     /<option value="">\+ setor<\/option>[\s\S]{0,140}SERVICO_ORDEM\.filter/.test(pc5), true);
+  eq('o seletor de setor não reoferece setor já marcado (senão a etiqueta duplicaria)',
+     /SERVICO_ORDEM\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(pc5), true);
   eq('a busca de "+ adicionar" cliente exclui quem já está na atividade (senão ofereceria chave repetida)',
      /opcoes=\{opcoesClientes\.filter\(\(o\) => !clientesDoChamadoIds\.includes\(o\.valor\)\)\}/.test(pc5),
      true);
-  eq('remover um cliente invalida chamado E chamado-clientes-extra (o principal pode ter vindo de qualquer um dos dois)',
-     /mexerCliente = useMutation\(\{[\s\S]{0,700}chamado-clientes-extra/.test(pc5), true);
+  eq('remover um local invalida chamado E chamado-locais (o principal pode ter vindo de qualquer um dos dois)',
+     /mexerCliente = useMutation\(\{[\s\S]{0,700}chamado-locais/.test(pc5), true);
 
   const produto4 = fs27.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R54 (múltiplos clientes + grupo) está documentado', /\*\*R54\*\*/.test(produto4), true);
@@ -4783,6 +4809,177 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: a migration da U41 está em LF no disco — CRLF aqui derruba a asserção do backfill',
      !/\r\n/.test(fs52.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8')),
      true);
+}
+
+// ── U71: equipes revisadas, multi-equipe e o LOCAL que pode não ser cliente ──
+// (R80–R86). Este bloco exercita a lógica PURA da triagem com unidade real —
+// o `carregar()` transpila o .ts, então o que roda aqui é o que roda em
+// produção, e não uma regex sobre o fonte.
+{
+  const T = carregar('src/features/chamados/triagem.ts');
+  const E = carregar('src/lib/equipes.ts');
+  const fs53 = require('fs');
+
+  // ── o vocabulário de equipes ─────────────────────────────────────────────
+  eq('CRÍTICO (R81): audiovisual e business_ops saíram do vocabulário',
+     E.EQUIPES.includes('audiovisual') || E.EQUIPES.includes('business_ops'), false);
+  eq('R81: "outras" entrou, e tem rótulo', E.EQUIPES.includes('outras') && E.EQUIPE_LABEL.outras, 'Outras');
+  eq('toda equipe do vocabulário tem cor (senão o chip nasce cinza de fallback, que significa DESCONHECIDO)',
+     E.EQUIPES.every((e) => !!E.EQUIPE_CORES[e]), true);
+  eq('toda cor de equipe tem par claro E escuro (anti-padrão nº 9 do DESIGN_SYSTEM)',
+     E.EQUIPES.every((e) => !!E.EQUIPE_CORES[e].dark && !!E.EQUIPE_CORES[e].light), true);
+
+  // ── pessoas: o primeiro nome resolve, e o ambíguo CALA ───────────────────
+  const equipe1 = [
+    { id: 'p-davi', nome: 'Davi Voos', equipe: 'ti' },
+    { id: 'p-nick', nome: 'Nicholas Matos', equipe: 'ti' },
+    { id: 'p-erik', nome: 'Erik Freitas', equipe: 'ti' },
+    { id: 'p-gil', nome: 'Gilleno Souza', equipe: 'tecnica' },
+  ];
+  const idx1 = T.indicePrimeiroNome(equipe1);
+  eq('R80: o primeiro nome resolve a pessoa', T.resolverPessoa('Nicholas', idx1), 'p-nick');
+  eq('R80: o artigo na frente não derruba — "o Erik" resolve', T.resolverPessoa('o Erik', idx1), 'p-erik');
+  eq('R80: "com o Nicholas" resolve', T.resolverPessoa('com o Nicholas', idx1), 'p-nick');
+  // Dois nomes num campo que pede UM não é a mesma coisa que primeiro nome
+  // ambíguo, e por isso a resposta é outra. Colisão de primeiro nome é
+  // impossível de resolver: os dois Nicholas são candidatos legítimos e
+  // escolher é chutar. Já "Erik e Nicholas" tem uma leitura natural — o
+  // primeiro citado é quem faz —, que é exatamente o critério que o
+  // `casarPessoa()` do importador do Notion já usa há tempo. Duas regras
+  // diferentes para o mesmo sistema seria a incoerência.
+  eq('dois nomes num campo de um: vence o PRIMEIRO citado, como no importador',
+     T.resolverPessoa('Erik e Nicholas', idx1), 'p-erik');
+  eq('…e o segundo não se perde: ele volta pela lista de apoios',
+     T.resolverPessoas(['Erik', 'Nicholas'], idx1), ['p-erik', 'p-nick']);
+  eq('R80: o nome completo resolve', T.resolverPessoa('Erik Freitas', idx1), 'p-erik');
+  eq('R80: acento e caixa não atrapalham', T.resolverPessoa('DAVI', idx1), 'p-davi');
+  eq('quem não existe devolve null (e não o primeiro da lista)', T.resolverPessoa('Fulano', idx1), null);
+
+  // A regra que o importador do Notion NÃO tem, e que aqui é obrigatória.
+  const doisNick = [
+    { id: 'p-a', nome: 'Nicholas Matos', equipe: 'ti' },
+    { id: 'p-b', nome: 'Nicholas Pereira', equipe: 'comercial' },
+  ];
+  const idx2 = T.indicePrimeiroNome(doisNick);
+  eq('CRÍTICO (R80): primeiro nome AMBÍGUO não escolhe ninguém — pendurar na pessoa errada é pior que não pendurar',
+     T.resolverPessoa('Nicholas', idx2), null);
+  eq('…mas o nome COMPLETO continua resolvendo, mesmo com dois Nicholas',
+     T.resolverPessoa('Nicholas Pereira', idx2), 'p-b');
+
+  eq('a lista de apoios descarta o que não casou e não repete',
+     T.resolverPessoas(['Nicholas', 'Fulano', 'Nicholas'], idx1), ['p-nick']);
+
+  // ── equipes da atividade ─────────────────────────────────────────────────
+  eq('R82: a equipe do assunto entra',
+     T.equipesDaAtividade({ doAssunto: 'comercial' }), ['comercial']);
+  eq('CRÍTICO (R83): a equipe de QUEM PARTICIPA se soma à do assunto — é assim que "o Nicholas participou" vira T.I. sem nome no código',
+     T.equipesDaAtividade({ doAssunto: 'comercial', participantes: ['p-nick'], pessoas: equipe1 }),
+     ['comercial', 'ti']);
+  eq('a primeira da lista é a PRINCIPAL, e é o assunto que manda',
+     T.equipesDaAtividade({ doAssunto: 'tecnica', participantes: ['p-nick'], pessoas: equipe1 })[0], 'tecnica');
+  eq('sem repetição quando assunto e pessoa são da mesma equipe',
+     T.equipesDaAtividade({ doAssunto: 'ti', participantes: ['p-nick', 'p-erik'], pessoas: equipe1 }), ['ti']);
+  eq('atividade sem pista nenhuma cai em "outras", não em vazio (vazio some de todo filtro)',
+     T.equipesDaAtividade({}), ['outras']);
+  eq('equipe que não existe mais no vocabulário é ignorada',
+     T.equipesDaAtividade({ doAssunto: 'audiovisual' }), ['outras']);
+
+  // ── locais ───────────────────────────────────────────────────────────────
+  const base = [
+    { id: 'c-gv', nome: 'Green Village' },
+    { id: 'c-m1', nome: 'Mirant Vila Madalena Residencial' },
+    { id: 'c-m2', nome: 'Mirant Vila Madalena Studios' },
+  ];
+  const idxC = T.indiceClientes(base);
+  eq('R84: nome exato casa com o cliente', T.casarLocal('Green Village', idxC), 'c-gv');
+  eq('R84: contenção sem ambiguidade casa', T.casarLocal('Green Village Residencial', idxC), 'c-gv');
+  eq('CRÍTICO (R84): contenção AMBÍGUA desiste — "Mirant" está em dois prédios, e escolher um pendura trabalho no errado',
+     T.casarLocal('Mirant', idxC), null);
+  eq('nome curto não casa por contenção (casaria com meio mundo)', T.casarLocal('Gre', idxC), null);
+
+  const locais1 = T.resolverLocais({ nomes: ['Green Village'], setores: [], indiceClientes: idxC });
+  eq('local que é cliente vira forma "cliente"', locais1[0].forma, 'cliente');
+  eq('…com o id do cadastro', locais1[0].clienteId, 'c-gv');
+
+  const locais2 = T.resolverLocais({ nomes: ['Edifício Aurora'], setores: [], indiceClientes: idxC });
+  eq('CRÍTICO (R84): local que NÃO está na base vira PROSPECÇÃO, não some e não vira cliente (R21)',
+     locais2[0].forma, 'prospeccao');
+  eq('…guardando o nome como foi escrito', locais2[0].nome, 'Edifício Aurora');
+
+  const locais3 = T.resolverLocais({
+    nomes: ['Green Village'], setores: ['portaria_remota'], indiceClientes: idxC,
+  });
+  eq('R85: setor e prédio convivem na mesma atividade', locais3.length, 2);
+  eq('R85: o setor vira UMA etiqueta', locais3.filter((l) => l.forma === 'setor').length, 1);
+  eq('setor fora do vocabulário é ignorado',
+     T.resolverLocais({ setores: ['inexistente'], indiceClientes: idxC }).length, 0);
+  eq('sem limite de locais (R85) — dez entram os dez',
+     T.resolverLocais({ nomes: Array.from({ length: 10 }, (_, i) => `Predio ${i}`), indiceClientes: idxC }).length, 10);
+  eq('o mesmo local citado duas vezes entra uma só',
+     T.resolverLocais({ nomes: ['Green Village', 'green village'], indiceClientes: idxC }).length, 1);
+
+  // ── título sem local ─────────────────────────────────────────────────────
+  eq('CRÍTICO (R86): o local sai do fim do título',
+     T.tituloSemLocal('Portão social travando — Green Village', ['Green Village']),
+     'Portão social travando');
+  eq('R86: sai também quando vem na frente',
+     T.tituloSemLocal('Green Village: portão social travando', ['Green Village']),
+     'Portão social travando');
+  eq('R86: título que não cita o local fica intacto',
+     T.tituloSemLocal('Trocar a fechadura do portão', ['Green Village']),
+     'Trocar a fechadura do portão');
+  eq('CRÍTICO: não corta quando o que sobraria não descreve trabalho — título mutilado é pior que título com o prédio',
+     T.tituloSemLocal('Visita — Green Village', ['Green Village']),
+     'Visita — Green Village');
+  eq('não corta por nome curto demais (cortaria palavra comum)',
+     T.tituloSemLocal('Trocar o painel Sol da portaria', ['Sol']),
+     'Trocar o painel Sol da portaria');
+
+  // ── a função de IA carrega o vocabulário novo ────────────────────────────
+  const ia = fs53.readFileSync('src/lib/chamado-rapido.functions.ts', 'utf8');
+  eq('o schema da IA não oferece mais audiovisual/business_ops',
+     /audiovisual|business_ops/.test(ia), false);
+  eq('o schema da IA pede responsável, apoios, locais e setores',
+     ['responsavel_citado', 'apoios_citados', 'locais_citados', 'setores_citados']
+       .every((c) => ia.includes(c)), true);
+  eq('CRÍTICO (R86): o prompt manda o local FORA do título — o exemplo antigo ensinava o contrário',
+     /O LOCAL NÃO ENTRA NO TÍTULO/.test(ia), true);
+  eq('R82: o prompt manda material visual e comunicação para o comercial',
+     /comercial:[\s\S]{0,240}material visual e comunica/.test(ia), true);
+  eq('R80: o prompt distingue responsável de apoio, com exemplos de linguagem de ajuda',
+     /dar uma força/.test(ia) && /com apoio do/.test(ia), true);
+  eq('a IA devolve MENÇÃO, nunca id — quem casa identidade é o triagem.ts',
+     /_id"/.test(ia), false);
+
+  // ── a migration ──────────────────────────────────────────────────────────
+  const u71 = fs53.readFileSync('supabase/migrations/20260826120000_u71_equipes_e_locais.sql', 'utf8');
+  eq('U71 troca o CHECK de equipe nas três tabelas',
+     /chamados_equipe_check/.test(u71) && /profiles_equipe_check/.test(u71)
+     && /demandas_equipe_check/.test(u71), true);
+  eq('CRÍTICO: U71 MOVE quem estava nas equipes que saíram antes de apertar o CHECK — senão a migration aborta',
+     /UPDATE public\.chamados SET equipe = 'comercial' WHERE equipe = 'audiovisual'/.test(u71)
+     && /UPDATE public\.profiles SET equipe = 'outras'\s+WHERE equipe = 'business_ops'/.test(u71), true);
+  eq('U71 cria chamado_equipes e chamado_locais',
+     /CREATE TABLE IF NOT EXISTS public\.chamado_equipes/.test(u71)
+     && /CREATE TABLE IF NOT EXISTS public\.chamado_locais/.test(u71), true);
+  eq('CRÍTICO (R84): o banco garante UMA forma por linha de local — não confia na aplicação',
+     /num_nonnulls\(cliente_id, prospeccao_id, setor\) = 1/.test(u71), true);
+  eq('CRÍTICO: a RLS passa a enxergar o cliente vinculado por chamado_locais — sem isto o card nasce com o local em branco',
+     /FUNCTION public\.pode_ver_cliente[\s\S]{0,2000}FROM public\.chamado_locais l/.test(u71), true);
+  eq('CRÍTICO: quem cria prospecção consegue LER de volta (pode_ver_prospeccao)',
+     /FUNCTION public\.pode_ver_prospeccao/.test(u71)
+     && /CREATE POLICY "prospeccoes_select"[\s\S]{0,160}pode_ver_prospeccao/.test(u71), true);
+  eq('achar_ou_criar_prospeccao é SECURITY DEFINER — a busca de duplicata não pode depender do que o técnico enxerga',
+     /FUNCTION public\.achar_ou_criar_prospeccao[\s\S]{0,200}SECURITY DEFINER/.test(u71), true);
+  eq('U71 só derruba chamado_clientes DEPOIS de conferir que tudo atravessou',
+     /RAISE EXCEPTION[\s\S]{0,160}nada foi derrubado[\s\S]{0,200}DROP TABLE public\.chamado_clientes/.test(u71), true);
+  eq('U71 termina com SELECTs de conferência e traz o DESFAZER',
+     /esperado 0/.test(u71) && /DESFAZER/.test(u71), true);
+
+  const produto5 = fs53.readFileSync('docs/PRODUTO.md', 'utf8');
+  for (const r of ['R80', 'R81', 'R82', 'R83', 'R84', 'R85', 'R86']) {
+    eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto5), true);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

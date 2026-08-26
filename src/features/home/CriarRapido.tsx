@@ -33,7 +33,17 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA, degradePrisma } from "@/lib/paleta";
 import { interpretarChamado } from "@/lib/chamado-rapido.functions";
-import { abrirChamado, anexarFoto } from "@/features/chamados/data";
+import {
+  abrirChamado, anexarFoto, usePessoas, adicionarApoio,
+  adicionarEquipeChamado, adicionarClienteChamado,
+  adicionarSetorChamado, adicionarProspeccaoChamado,
+} from "@/features/chamados/data";
+import { useClientes } from "@/features/clientes/data";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  indicePrimeiroNome, indiceClientes, resolverPessoa, resolverPessoas,
+  equipesDaAtividade, resolverLocais, tituloSemLocal,
+} from "@/features/chamados/triagem";
 
 const ALTURA = 252;
 const CURVA = "all .5s cubic-bezier(0.175, 0.885, 0.32, 1.05)";
@@ -43,6 +53,11 @@ export function CriarRapido() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const interpretarFn = useServerFn(interpretarChamado);
+  // A IA devolve MENÇÃO ("Nicholas", "Green Village"); quem vira id é o
+  // triagem.ts, com estes dois cadastros. Ambos já vêm de cache do react-query
+  // — a Início inteira já os carregou.
+  const { data: pessoas = [] } = usePessoas();
+  const { data: clientes = [] } = useClientes();
 
   const [texto, setTexto] = useState("");
   const [arquivos, setArquivos] = useState<File[]>([]);
@@ -67,18 +82,73 @@ export function CriarRapido() {
       if (!r.ok || !r.chamado) throw new Error(r.erro ?? "Não consegui interpretar.");
       const c = r.chamado;
 
+      // ── Menção → vínculo (R80, R84) ──────────────────────────────────────
+      const idxPessoas = indicePrimeiroNome(pessoas as any[]);
+      const responsavelId = resolverPessoa(c.responsavel_citado, idxPessoas);
+      const apoioIds = resolverPessoas(c.apoios_citados, idxPessoas).filter(
+        (id) => id !== responsavelId, // ninguém é apoio de si mesmo
+      );
+
+      const locais = resolverLocais({
+        nomes: c.locais_citados,
+        setores: c.setores_citados,
+        indiceClientes: indiceClientes(clientes as any[]),
+      });
+
+      const equipes = equipesDaAtividade({
+        doAssunto: c.equipe,
+        participantes: [responsavelId, ...apoioIds].filter(Boolean) as string[],
+        pessoas: pessoas as any[],
+      });
+
+      // R86: o local sai do título e vai para a etiqueta. O prompt já pede
+      // isso; isto aqui é a rede embaixo.
+      const titulo = tituloSemLocal(c.titulo, c.locais_citados ?? []);
+
+      // O primeiro local que é CLIENTE ocupa o slot principal (`cliente_id`),
+      // que cobrança, matching e relatório continuam lendo sem saber da lista.
+      const primeiroCliente = locais.find((l) => l.forma === "cliente");
+
       const id = await abrirChamado({
         natureza: c.natureza,
         tipo: c.tipo,
-        titulo: c.titulo,
-        // o cliente citado fica registrado na descrição até alguém vincular —
-        // casar nome livre com cadastro é decisão humana, não da IA
-        descricao_problema: c.cliente_citado
-          ? `${c.descricao}\n\nCliente citado: ${c.cliente_citado}`
-          : c.descricao,
+        titulo,
+        descricao_problema: c.descricao,
         prioridade: c.prioridade,
-        equipe: c.natureza === "interno" ? c.equipe : undefined,
+        responsavel_id: responsavelId,
+        cliente_id: primeiroCliente?.forma === "cliente" ? primeiroCliente.clienteId : null,
+        // a equipe do banco é NOT NULL e o campo default é "tecnica"; a
+        // principal é a primeira da lista derivada
+        equipe: equipes[0],
       });
+
+      // O resto é aditivo, e cada peça falha sozinha: um apoio que não entrou
+      // não pode derrubar o chamado que JÁ existe. O usuário vai para o
+      // detalhe logo em seguida e vê o que ficou faltando.
+      const pendencias: string[] = [];
+      const tentar = async (o: string, f: () => Promise<unknown>) => {
+        try { await f(); } catch { pendencias.push(o); }
+      };
+
+      for (const p of apoioIds) await tentar("apoio", () => adicionarApoio(id, p));
+      for (const e of equipes.slice(1)) await tentar("equipe", () => adicionarEquipeChamado(id, equipes[0], e));
+
+      for (const l of locais) {
+        if (l.forma === "cliente") {
+          if (l.clienteId === (primeiroCliente as any)?.clienteId) continue; // já é o principal
+          await tentar("local", () => adicionarClienteChamado(id, primeiroCliente ? (primeiroCliente as any).clienteId : null, l.clienteId));
+        } else if (l.forma === "setor") {
+          await tentar("setor", () => adicionarSetorChamado(id, l.setor));
+        } else {
+          // Local que NÃO é cliente: vira prospecção (R22/R84). A função do
+          // banco acha a existente pelo nome normalizado antes de criar outra.
+          await tentar("local", async () => {
+            const { data, error } = await supabase.rpc("achar_ou_criar_prospeccao" as any, { _nome: l.nome } as any);
+            if (error) throw error;
+            if (data) await adicionarProspeccaoChamado(id, data as unknown as string);
+          });
+        }
+      }
 
       for (const f of arquivos) {
         try {
@@ -90,7 +160,13 @@ export function CriarRapido() {
 
       qc.invalidateQueries({ queryKey: ["chamados"] });
       qc.invalidateQueries({ queryKey: ["home-chamados"] });
-      toast.success("Chamado criado — confira a interpretação.");
+      qc.invalidateQueries({ queryKey: ["home-locais-todos"] });
+      qc.invalidateQueries({ queryKey: ["home-apoios-todos"] });
+      if (pendencias.length) {
+        toast.warning(`Chamado criado, mas ${[...new Set(pendencias)].join(" e ")} não entrou — confira no detalhe.`);
+      } else {
+        toast.success("Chamado criado — confira a interpretação.");
+      }
       setTexto("");
       setArquivos([]);
       navigate({ to: "/chamados/$id", params: { id } });

@@ -134,9 +134,15 @@ export const EQUIPE_NOTION: Record<string, Equipe> = {
   "sac": "sac",
   "monitoramento / portaria": "monitoramento",
   "monitoramento": "monitoramento",
-  "audiovisual": "audiovisual",
-  "business ops": "business_ops",
-  "businessops": "business_ops",
+  // U71: as duas equipes saíram do vocabulário, mas as CHAVES ficam — o export
+  // do Notion é histórico e continua trazendo estes rótulos. Apagar as linhas
+  // faria a demanda cair no fallback `?? "ti"` lá embaixo, que é pior do que o
+  // destino certo. O destino é o mesmo que a migration deu a quem já estava
+  // lá: audiovisual vira comercial (material visual e comunicação são do
+  // comercial, R81/R82) e business ops vira outras.
+  "audiovisual": "comercial",
+  "business ops": "outras",
+  "businessops": "outras",
   "tecnica": "tecnica",
 };
 

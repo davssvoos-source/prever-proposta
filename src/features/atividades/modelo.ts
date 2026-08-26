@@ -68,7 +68,14 @@ export interface Atividade {
 
   titulo: string;
   numero: string | null;
+  /** O local PRINCIPAL. A tabela e a ordenação leem este campo. */
   cliente: string | null;
+  /**
+   * Todos os locais, o principal na frente (R84/R85, U71). Pode conter nome de
+   * prédio, de prospecção e etiqueta de setor — do ponto de vista do card os
+   * três são a mesma coisa: onde a atividade acontece.
+   */
+  locais: string[];
 
   responsavelId: string | null;
   /** Quem está na atividade: responsável + apoios (ids de perfil, sem repetição). */
@@ -82,8 +89,11 @@ export interface Atividade {
   prioridadeLabel: string | null;
   prioridadeCor: Cores | null;
 
-  equipe: string | null;      // zerado fora do interno — invariante do modelo
-  sprint: string | null;      // idem
+  /** A equipe PRINCIPAL. Desde a U71 vale em qualquer natureza (R83). */
+  equipe: string | null;
+  /** [principal, ...extras] — mais de uma equipe por atividade (R83, U71). */
+  equipes: string[];
+  sprint: string | null;      // zerado fora do interno — invariante do modelo
 
   prazoLimite: string | null;
   prazoTexto: string | null;
@@ -368,6 +378,39 @@ export interface ContextoMontagem {
   fichas: Map<string, FichaCompra>;
   /** chamado_id → perfis de apoio — alimenta a pilha de avatares do card. */
   apoiosDoChamado?: Map<string, string[]>;
+  /** chamado_id → rótulos de LOCAL além do principal (R84/R85, U71). */
+  locaisDoChamado?: Map<string, string[]>;
+  /** chamado_id → equipes além da principal (R83, U71). */
+  equipesDoChamado?: Map<string, string[]>;
+}
+
+/**
+ * Os rótulos de local do card: o principal primeiro, depois os demais, sem
+ * repetir. Vazio quando não há local nenhum — atividade interna costuma não
+ * ter, e um chip "Sem local" seria ruído em toda a coluna.
+ */
+export function rotulosDeLocal(
+  principal: string | null,
+  outros: string[],
+): string[] {
+  const fora: string[] = [];
+  for (const r of [principal, ...outros]) {
+    const t = (r ?? "").trim();
+    if (t && !fora.includes(t)) fora.push(t);
+  }
+  return fora;
+}
+
+/** [principal, ...extras], sem repetição e sem vazio. */
+export function equipesDoChamado(
+  principal: string | null | undefined,
+  extras: string[],
+): string[] {
+  const fora: string[] = [];
+  for (const e of [principal, ...extras]) {
+    if (e && !fora.includes(e)) fora.push(e);
+  }
+  return fora;
 }
 
 export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Atividade {
@@ -402,6 +445,13 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     // endereço e contrato atrás). O texto do Notion é a rede de segurança das
     // atividades cujo nome não casou — sem ela a etiqueta sumiria (U31).
     cliente: c.cliente?.nome ?? c.cliente_origem_nome ?? null,
+    // R84/R85: a atividade pode ter VÁRIOS locais, e um deles pode ser um setor
+    // inteiro. `cliente` acima continua sendo o principal — a tabela e a
+    // ordenação leem ele, e não vale quebrá-las por causa do card.
+    locais: rotulosDeLocal(
+      c.cliente?.nome ?? c.cliente_origem_nome ?? null,
+      ctx.locaisDoChamado?.get(c.id) ?? [],
+    ),
     responsavelId: c.responsavel_id,
     participantes: Array.from(new Set([
       ...(c.responsavel_id ? [c.responsavel_id] : []),
@@ -415,8 +465,16 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     prioridadeRank: interno ? 4 : PRI_RANK[c.prioridade ?? ""] ?? 4,
     prioridadeLabel: interno || !pri ? null : PRIORIDADE_LABEL[pri] ?? null,
     prioridadeCor: interno || !pri ? null : PRIORIDADE_CORES[pri] ?? null,
-    // a invariante mora aqui, não na tela: campo não tem equipe nem sprint
-    equipe: interno ? c.equipe : null,
+    // U71 (R83) mudou a invariante que morava aqui. Ela era "campo não tem
+    // equipe nem sprint", e o `equipe` saía null fora do interno. Davi,
+    // 2026-08-26: "Em uma atividade de 'Proposta Comercial' por exemplo, o
+    // técnico é responsável pela visita técnica, enquanto a equipe comercial é
+    // responsável pela proposta em si." Ou seja, é justamente FORA do interno
+    // que mais de uma equipe faz sentido — zerar ali escondia a informação que
+    // ele quer ver. O SPRINT continua só no interno: aquilo é ritmo de
+    // planejamento interno, e não foi o que mudou.
+    equipe: c.equipe ?? null,
+    equipes: equipesDoChamado(c.equipe, ctx.equipesDoChamado?.get(c.id) ?? []),
     sprint: interno ? c.sprint : null,
     prazoLimite: c.prazo_limite,
     prazoTexto: c.prazo_limite && chamadoEmAberto(c.status) ? textoPrazo(c.prazo_limite) : null,
@@ -475,6 +533,11 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     // que aparece aqui. `clientes?.nome` só entra como ÚLTIMO recurso, se a
     // visita não tiver nem prédio nem título próprio.
     cliente: v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? null,
+    // A visita tem UM local por definição (o CHECK `visitas_alvo_unico` da U27
+    // garante que ela aponta para cliente OU prospecção, nunca os dois), então
+    // a lista aqui é sempre de zero ou um. Ela existe para o card ter uma
+    // forma só de desenhar local, venha de chamado ou de visita.
+    locais: rotulosDeLocal(v.nome_predio ?? v.titulo ?? v.clientes?.nome ?? null, []),
     responsavelId: v.tecnico_id,
     participantes: v.tecnico_id ? [v.tecnico_id] : [],
     souResponsavel: !!ctx.userId && v.tecnico_id === ctx.userId,
@@ -490,7 +553,11 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     prioridadeRank: 4,
     prioridadeLabel: null,
     prioridadeCor: null,
+    // A visita não tem equipe própria no banco (não é linha de `chamados`), e
+    // a U71 não muda isso: o que ela mudou foi parar de ZERAR a equipe do
+    // chamado fora do interno. Aqui não há o que zerar.
     equipe: null,
+    equipes: [],
     sprint: null,
     prazoLimite: null,
     // a visita não tem prazo, tem hora marcada — sem isto o card não dizia

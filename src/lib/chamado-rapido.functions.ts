@@ -1,17 +1,31 @@
-// Criação rápida de chamado por IA — Etapa U20.
+// Criação rápida de chamado por IA — Etapa U20, ampliada na U71 (R80–R86).
 //
 // O usuário escreve um resumo em linguagem corrente ("portão do Green Village
-// travando de novo, urgente, mandar o Erik") e o modelo devolve os campos que
-// o formulário pediria: natureza, tipo, título, descrição, prioridade, equipe.
+// travando de novo, urgente, mandar o Erik com apoio do Nicholas") e o modelo
+// devolve os campos que o formulário pediria — mais as MENÇÕES a pessoas,
+// locais e setores que o texto trouxer.
 //
 // A função INTERPRETA, não cria. Quem cria é o cliente, com o abrirChamado()
 // de sempre — assim a criação rápida passa pelos mesmos triggers (número,
 // SLA, sprint, classificação) e pelas mesmas policies do caminho normal, e
 // não existe um segundo caminho de escrita para manter.
 //
-// Espelha o padrão de contrato.functions.ts: createServerFn + auth +
-// output_config com json_schema. Modelo: claude-sonnet-5 — a tarefa é triagem
-// de um parágrafo, não leitura de contrato de 40 páginas; o rápido basta.
+// ── A divisão de trabalho com o `triagem.ts` ────────────────────────────────
+// O modelo devolve MENÇÃO ("Nicholas", "Green Village"), nunca id. Quem
+// transforma menção em vínculo é `features/chamados/triagem.ts`, que é código
+// puro e testado pelo verificador. A razão é que as duas coisas erram de
+// jeitos diferentes: o modelo é bom em ler "vai dar uma força" como apoio e
+// péssimo em garantir que existe UM Nicholas com conta no app. Deixar o
+// casamento de identidade com o modelo seria pendurar trabalho na pessoa
+// errada com cara de acerto.
+//
+// ── Modelo ──────────────────────────────────────────────────────────────────
+// Era claude-sonnet-5, escolhido quando a tarefa era só classificar um
+// parágrafo em seis campos fechados. A U71 acrescentou extração de entidades e
+// atribuição de PAPEL (quem é responsável × quem é apoio), que é justamente
+// onde um modelo sem raciocínio troca os dois. Passou para claude-opus-5 com
+// `effort: "low"` e o raciocínio adaptativo que ele já traz ligado — alinhando
+// com os outros três server functions de IA do repo, que sempre foram Opus.
 
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
@@ -26,31 +40,52 @@ export interface ChamadoInterpretado {
   // R48/U41 (2026-08-21): "pedido_compra" saiu das opções — compra/cotação
   // agora é "operacional", igual ao seletor do painel.
   tipo: "corretiva" | "preventiva" | "operacional" | "implantacao" | "melhoria";
+  /** R86: descreve O QUE FAZER. O local NÃO entra aqui — vai na etiqueta. */
   titulo: string;
   descricao: string;
   prioridade: "baixa" | "normal" | "alta" | "urgente";
-  equipe: "ti" | "patrimonio" | "audiovisual" | "business_ops" | "tecnica" | "comercial" | "sac" | "monitoramento";
-  /** Nome de cliente citado no texto, se houver — o app tenta casar depois. */
-  cliente_citado: string | null;
+  /** A equipe do ASSUNTO (R82). As equipes das pessoas se somam no triagem.ts. */
+  equipe: "ti" | "patrimonio" | "tecnica" | "comercial" | "sac" | "monitoramento" | "outras";
+  /** Quem VAI FAZER — nome como aparece no texto, geralmente só o primeiro. */
+  responsavel_citado: string | null;
+  /** Quem vai AJUDAR quem faz (R80). */
+  apoios_citados: string[];
+  /** Condomínios, prédios, empresas, endereços citados (R84). */
+  locais_citados: string[];
+  /** Quando o texto fala do setor inteiro em vez de um prédio (R85). */
+  setores_citados: Array<"portaria_remota" | "monitoramento_alarmes">;
 }
 
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["natureza", "tipo", "titulo", "descricao", "prioridade", "equipe", "cliente_citado"],
+  required: [
+    "natureza", "tipo", "titulo", "descricao", "prioridade", "equipe",
+    "responsavel_citado", "apoios_citados", "locais_citados", "setores_citados",
+  ],
   properties: {
     natureza: { type: "string", enum: ["campo", "interno"] },
     tipo: { type: "string", enum: ["corretiva", "preventiva", "operacional", "implantacao", "melhoria"] },
     titulo: { type: "string", maxLength: 120 },
     descricao: { type: "string", maxLength: 2000 },
     prioridade: { type: "string", enum: ["baixa", "normal", "alta", "urgente"] },
-    equipe: { type: "string", enum: ["ti", "patrimonio", "audiovisual", "business_ops", "tecnica", "comercial", "sac", "monitoramento"] },
-    cliente_citado: { type: ["string", "null"] },
+    equipe: {
+      type: "string",
+      enum: ["ti", "patrimonio", "tecnica", "comercial", "sac", "monitoramento", "outras"],
+    },
+    responsavel_citado: { type: ["string", "null"] },
+    apoios_citados: { type: "array", items: { type: "string" }, maxItems: 8 },
+    locais_citados: { type: "array", items: { type: "string" }, maxItems: 20 },
+    setores_citados: {
+      type: "array",
+      items: { type: "string", enum: ["portaria_remota", "monitoramento_alarmes"] },
+      maxItems: 2,
+    },
   },
 } as const;
 
-const SISTEMA = `Você triagem chamados do Grupo Prever (segurança predial: CFTV,
-controle de acesso, alarmes, portaria remota, interfonia).
+const SISTEMA = `Você faz a triagem de chamados do Grupo Prever (segurança
+predial: CFTV, controle de acesso, alarmes, portaria remota, interfonia).
 
 Decida os campos do chamado a partir do resumo escrito pelo atendente.
 
@@ -74,19 +109,48 @@ PRIORIDADE (só faz diferença no campo):
 - normal: o padrão quando nada indica pressa.
 - baixa: explicitamente sem pressa.
 
-EQUIPE (para natureza interna; no campo use "tecnica"):
-ti (sistemas, câmeras off-line, acessos, rede) · patrimonio (compras, estoque,
-equipamentos) · audiovisual (vídeo, arte, folder) · business_ops
-(administrativo, RH, processos) · comercial (proposta, cliente novo) · sac
-(atendimento) · monitoramento (central, portaria remota).
+EQUIPE — a equipe do ASSUNTO, uma só. Outras equipes podem ser acrescentadas
+depois pelo sistema, a partir de quem participa; não é problema seu.
+- comercial: proposta comercial, orçamento, cliente novo, e TAMBÉM tudo que é
+  criação de material visual e comunicação — arte, folder, vídeo, apresentação,
+  impresso, post, campanha, identidade visual.
+- ti: sistemas, software, rede, acessos, câmeras off-line, integração.
+- patrimonio: compras, estoque, equipamentos, patrimônio.
+- tecnica: trabalho técnico de campo.
+- sac: atendimento ao cliente.
+- monitoramento: central, portaria remota, monitoramento de alarmes.
+- outras: administrativo, RH, financeiro, jurídico, processo interno — e
+  qualquer coisa que não caiba nas de cima. Não force uma equipe nomeada.
 
-TÍTULO: curto e específico, como um humano escreveria na lista (ex.: "Portão
-social travando — Green Village"). Não repita a descrição.
+PESSOAS — o time se trata pelo PRIMEIRO NOME. Devolva o nome como está escrito;
+não invente sobrenome e não corrija grafia.
+- responsavel_citado: quem VAI FAZER o trabalho. "mandar o Erik", "o Davi
+  resolve", "passa pra Gilleno". Se ninguém for indicado, null.
+- apoios_citados: quem vai AJUDAR quem faz. Qualquer coisa que remeta a ajudar
+  o outro conta: "com ajuda do Nicholas", "com apoio do Nicholas", "o Nicholas
+  vai dar uma força", "junto com o Breno", "o Erik acompanha", "e o Nicholas
+  ajuda". Lista vazia se não houver.
+- Na dúvida entre responsável e apoio: quem é o sujeito da ação é responsável;
+  quem aparece numa expressão de ajuda é apoio. A mesma pessoa nunca vai nos
+  dois.
+
+LOCAIS — o lugar onde a atividade acontece. Pode ser mais de um, e pode não ter
+nenhum.
+- locais_citados: nome de condomínio, prédio, empresa ou residência, como
+  aparece no texto ("Green Village", "Residência Alcino Braga"). Não invente e
+  não complete o nome. Atividade puramente interna costuma não ter local.
+- setores_citados: use quando o texto falar do CONJUNTO de clientes de um
+  serviço, e não de um prédio específico — "os clientes de portaria remota",
+  "todo mundo do monitoramento". Valores: portaria_remota,
+  monitoramento_alarmes. Isso NÃO substitui locais_citados quando um prédio
+  também é nomeado; os dois podem vir juntos.
+
+TÍTULO: uma breve descrição DO QUE DEVE SER FEITO, curta e específica, como um
+humano escreveria na lista. O LOCAL NÃO ENTRA NO TÍTULO — ele tem etiqueta
+própria. Escreva "Portão social travando", não "Portão social travando — Green
+Village". Não repita a descrição.
 
 DESCRIÇÃO: o resumo reescrito limpo, completo, sem inventar fatos.
-
-CLIENTE_CITADO: o nome do condomínio/cliente exatamente como aparece no texto,
-ou null se nenhum for citado.
 
 Responda somente com o JSON pedido.`;
 
@@ -102,12 +166,20 @@ export const interpretarChamado = createServerFn({ method: "POST" })
       const client = new Anthropic();
 
       const response = await client.messages.create({
-        model: "claude-sonnet-5",
+        model: "claude-opus-5",
         max_tokens: 2000,
         output_config: {
+          // triagem de um parágrafo não precisa de esforço alto; o que ela
+          // precisa é do raciocínio existir, para não trocar responsável por
+          // apoio. O Opus 5 já vem com raciocínio adaptativo ligado, então
+          // `thinking` não é passado de propósito.
+          effort: "low",
           format: { type: "json_schema", schema: SCHEMA as unknown as Record<string, unknown> },
         },
-        // o prompt não muda entre chamados: cache o system inteiro
+        // O prompt é idêntico entre chamadas, então vale marcar para cache. O
+        // ganho só existe se ele cruzar o mínimo cacheável (~1024 tokens) — a
+        // marcação abaixo do mínimo é ignorada em silêncio. Quem quiser saber
+        // se está pegando: olhe `usage.cache_read_input_tokens` na resposta.
         system: [{ type: "text", text: SISTEMA, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: data.texto }],
       } as any);
@@ -118,7 +190,19 @@ export const interpretarChamado = createServerFn({ method: "POST" })
       const bloco = (response as any).content?.find((b: any) => b.type === "text");
       if (!bloco?.text) return { ok: false, erro: "Resposta sem conteúdo" };
 
-      return { ok: true, chamado: JSON.parse(bloco.text) as ChamadoInterpretado };
+      const bruto = JSON.parse(bloco.text) as Partial<ChamadoInterpretado>;
+
+      // As listas são obrigatórias no schema, mas o consumidor faz `.map()`
+      // direto nelas — um `undefined` que escape derruba a Início inteira.
+      return {
+        ok: true,
+        chamado: {
+          ...(bruto as ChamadoInterpretado),
+          apoios_citados: bruto.apoios_citados ?? [],
+          locais_citados: bruto.locais_citados ?? [],
+          setores_citados: bruto.setores_citados ?? [],
+        },
+      };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { ok: false, erro: `Falha ao interpretar: ${msg}` };

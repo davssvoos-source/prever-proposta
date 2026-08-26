@@ -4334,3 +4334,114 @@ o fim de linha em vez de deixar a asserção do backfill falhar acusando um SQL
 que está certo.
 
 1361 asserções (6 novas), build ok, tsc no baseline de 85.
+
+### U71 — Equipes revisadas, duas equipes na mesma atividade, e a palavra LOCAL (R80–R86, 2026-08-26)
+
+"No campo de ABRIR CHAMADO na página INICIO, o campo que usa I.A para abertura
+rápida de chamado, quando for mencionado por exemplo o 'Davi' no texto que o
+usuário inserir, a atividade criada deve ser de responsabilidade do Davi… A
+etiqueta de cliente na verdade seria uma etiqueta de LOCAL, este tempo todo
+estávamos usando a palavra errada."
+
+Sete regras de uma vez, mas com um eixo só: **a abertura rápida parou de
+produzir texto e passou a produzir vínculo.** Até aqui a I.A. lia "portão do
+Green Village travando, mandar o Erik" e devolvia seis campos fechados; o Erik
+virava palavra dentro da descrição e o Green Village virava a linha "Cliente
+citado: …" — as duas coisas visíveis para humano e invisíveis para o sistema.
+O chamado nascia sem dono e sem lugar.
+
+**A divisão que estrutura tudo: menção é da I.A., identidade é do código.**
+O modelo devolve `"Nicholas"`, nunca um uuid. Quem transforma menção em vínculo
+é `features/chamados/triagem.ts`, que é puro e testado com unidade real pelo
+verificador. Não é purismo: as duas metades erram de jeitos diferentes. O
+modelo é bom em ler "o Nicholas vai dar uma força" como apoio e péssimo em
+garantir que existe **um** Nicholas com conta no app. Se o casamento de
+identidade morasse no prompt, o erro sairia com cara de acerto.
+
+**Primeiro nome ambíguo CALA.** O `indicePessoas()` do importador do Notion já
+resolvia por primeiro nome, mas com uma regra que aqui seria perigosa: em
+colisão, fica com o primeiro que indexou. Numa importação em lote revisada em
+prévia aquilo é aceitável; aqui o texto vira atividade na hora. Com dois
+Nicholas cadastrados, o índice devolve `null` — a mesma escolha que a contenção
+de nome de prédio já fazia com "Mirant" ("Mirant Vila Madalena Residencial" E
+"Studios": desistir é resposta honesta, chutar é resposta errada com cara de
+certa). Nome completo continua resolvendo sempre.
+
+Dois nomes num campo que pede um (`"Erik e Nicholas"`) é **outro** problema, e
+tem outra resposta: vence o primeiro citado, que é o critério que o
+`casarPessoa()` do importador já usava. Duas regras diferentes para o mesmo
+sistema seria a incoerência de verdade.
+
+**"Sempre que for o Nicholas ou o Erik participando, considere a equipe de
+T.I." — escrito SEM os nomes.** A regra real por trás da frase é que a equipe
+de quem entra na atividade entra junto; os dois nomes eram o exemplo, não a
+regra. Implementada pela forma geral (`participante → profiles.equipe → equipe
+da atividade`), ela vale para o próximo contratado sem tocar em código, e a
+manutenção acontece onde deve: no cadastro. A contrapartida é honesta e está
+registrada — **se o Nicholas não estiver como T.I. em /gerencial/usuarios, a
+regra não dispara.**
+
+**Uma invariante foi invertida de propósito.** `atividades/modelo.ts` zerava a
+equipe fora do interno, com asserção CRÍTICA travando ("campo NÃO carrega
+equipe"). Mas o exemplo que o Davi deu para pedir multi-equipe foi justamente
+uma **proposta comercial** — técnico na visita, comercial na proposta. Ou seja,
+é fora do interno que a segunda equipe aparece, e o zeramento escondia do
+filtro exatamente o que ele quer ver. A asserção mudou de alvo junto, como as
+três da U69. O **sprint** continua zerado fora do interno: aquilo é ritmo de
+planejamento interno e não foi o que mudou — as duas metades da invariante
+deixaram de andar juntas, e agora estão em asserções separadas.
+
+**LOCAL: a palavra errada custou clareza, não código.** O conceito já existia
+partido em dois — `clientes` (do QAP, R21) e `prospeccoes` (nosso, R22) — e o
+`atividadeDaVisita` já chamava o prédio de LOCAL desde 2026-08-22, com o
+comentário explicando por quê. O que faltava era o vínculo N:N saber falar as
+duas línguas. `chamado_locais` substitui `chamado_clientes` e aceita três
+formas, com `num_nonnulls(...) = 1` garantindo no BANCO que a linha aponta para
+uma só — não na confiança da aplicação.
+
+**O setor é etiqueta, não expansão.** A U45 expandia "grupo de clientes" em N
+linhas. Uma etiqueta é melhor por dois motivos independentes: o card cabe (a
+coluna tem 260px; oitenta chips não entram), e a lista passa a refletir o
+cadastro de **hoje** em vez de congelar quem era do setor no dia do clique.
+
+**Um furo de RLS que já existia foi fechado no caminho.** `pode_ver_cliente()`
+é da S1 (2026-08-20) e nunca soube da `chamado_clientes` (U45, 2026-08-22):
+técnico num chamado cujo cliente é EXTRA não enxergava o cliente, e o card
+mostrava o local em branco — o sintoma exato que o comentário da S1 diz estar
+evitando. Com a U71 o vínculo por tabela vira o caminho normal, então o
+incômodo viraria defeito. A regra não mudou (se o chamado é visível, o local
+dele também é); só o caminho cresceu. `pode_ver_prospeccao()` nasceu com a
+mesma forma.
+
+**Criar prospecção pelo app NÃO afrouxa a R21**, e vale registrar porque parece
+que sim. A R21 tranca `clientes` porque aquela tabela é espelho do QAP e um
+sync futuro faz upsert nela — cliente criado aqui seria apagado pelo ERP ou
+duplicaria o cadastro oficial. `prospeccoes` nasceu na U27 pelo motivo oposto:
+guardar o que é nosso e o QAP não conhece. `clientes` continua sem policy de
+INSERT.
+
+`achar_ou_criar_prospeccao()` é `SECURITY DEFINER` por necessidade, não por
+conveniência: a leitura de prospecção é restrita de propósito, então a busca de
+duplicata feita pelo cliente responderia "não existe" para um prédio que
+existe, e cada chamado criaria outro registro do mesmo lugar. A função enxerga
+a tabela para decidir e devolve só um uuid — não vaza listagem, endereço nem
+contato, e quem chamou já sabia o nome porque foi ele quem digitou.
+
+**O modelo da I.A. subiu de Sonnet 5 para Opus 5**, com `effort: "low"`. A
+escolha do Sonnet foi feita quando a tarefa era classificar um parágrafo em
+seis campos fechados; a U71 acrescentou extração de entidade e atribuição de
+PAPEL — responsável × apoio —, que é exatamente onde um modelo sem raciocínio
+troca os dois. Os outros três server functions de IA do repo sempre foram Opus.
+
+**O que deliberadamente NÃO se fez.** O título perdeu o local por prompt E por
+rede de segurança (`tituloSemLocal`), mas a rede é conservadora: só corta
+quando o que sobra ainda descreve um trabalho — "Visita — Green Village" fica
+inteiro, porque "Visita" sozinho é pior. E `chamados.cliente_id` não virou
+N:N puro: cobrança, matching, relatório e o trigger do contrato continuam
+lendo o principal sem saber que a lista existe. Reescrever aqueles leitores é
+um projeto à parte, e forçá-lo aqui "para ficar completo" arriscaria quebrar
+cobrança de verdade sem necessidade — o mesmo raciocínio que a U45 registrou.
+
+1427 asserções (66 novas), build ok, tsc no baseline de 85. A migration
+`20260826120000_u71_equipes_e_locais.sql` **precisa ser rodada** — sem ela o
+CHECK antigo recusa "outras" e as duas tabelas novas não existem.

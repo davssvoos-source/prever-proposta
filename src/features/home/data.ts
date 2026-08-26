@@ -26,6 +26,7 @@ import {
   type Atividade, type BrutoChamado, type BrutoVisita, type FichaCompra,
 } from "@/features/atividades/modelo";
 import type { SituacaoCompra } from "@/features/chamados/compra";
+import { SERVICO_LABEL, type ServicoCliente } from "@/features/clientes/data";
 import { inicioSemana } from "@/lib/periodos";
 
 /** Encerrados mais velhos que isto não entram na Home. */
@@ -131,6 +132,89 @@ export function useApoiosDeTodos() {
   });
 }
 
+/**
+ * TODOS os locais dos cards (R84/R85, U71). Mesma razão do `useApoiosDeTodos`
+ * acima: a tabela é pequena e de leitura aberta, então uma consulta inteira
+ * sai mais barata que um `.in()` com centenas de ids na URL.
+ *
+ * O local é resolvido para RÓTULO aqui, e não no card: o card não precisa
+ * saber que existe cliente, prospecção e setor — para ele os três são "onde a
+ * atividade acontece". Setor vira o nome do serviço ("Portaria Remota");
+ * cliente e prospecção viram o nome do lugar.
+ *
+ * Um embed do PostgREST resolveria os nomes numa ida só, mas NÃO se faz isso
+ * aqui: `chamado_locais` tem duas FKs chegando em tabelas diferentes, e o
+ * embed ambíguo é exatamente o PGRST201 que derrubou a Início quando a U45
+ * subiu (ver o comentário em CAMPOS_CHAMADO). Consultas simples e um `Map`
+ * montado à mão é mais chato de ler e não cai.
+ */
+export function useLocaisDeTodos() {
+  return useQuery({
+    queryKey: ["home-locais-todos"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Map<string, string[]>> => {
+      const m = new Map<string, string[]>();
+      const { data, error } = await supabase
+        .from("chamado_locais" as any)
+        .select("chamado_id, cliente_id, prospeccao_id, setor")
+        .limit(4000);
+      if (error) return m;
+      const linhas = ((data as any[]) ?? []);
+      if (!linhas.length) return m;
+
+      const idsCliente = [...new Set(linhas.map((r) => r.cliente_id).filter(Boolean))];
+      const idsProsp = [...new Set(linhas.map((r) => r.prospeccao_id).filter(Boolean))];
+
+      const nomes = new Map<string, string>();
+      if (idsCliente.length) {
+        const { data: cs } = await supabase
+          .from("clientes" as any).select("id, nome").in("id", idsCliente);
+        for (const c of ((cs as any[]) ?? [])) nomes.set(c.id as string, c.nome as string);
+      }
+      if (idsProsp.length) {
+        const { data: ps } = await supabase
+          .from("prospeccoes" as any).select("id, nome").in("id", idsProsp);
+        for (const p of ((ps as any[]) ?? [])) nomes.set(p.id as string, p.nome as string);
+      }
+
+      for (const r of linhas) {
+        const rotulo = r.setor
+          ? (SERVICO_LABEL[r.setor as ServicoCliente] ?? (r.setor as string))
+          : nomes.get((r.cliente_id ?? r.prospeccao_id) as string);
+        // sem rótulo = a RLS não devolveu o nome. Silêncio é melhor que um
+        // chip "undefined" no card.
+        if (!rotulo) continue;
+        const lista = m.get(r.chamado_id as string) ?? [];
+        if (!lista.includes(rotulo)) lista.push(rotulo);
+        m.set(r.chamado_id as string, lista);
+      }
+      return m;
+    },
+  });
+}
+
+/** Todas as equipes extras (R83, U71) — chamado_id para as equipes além da principal. */
+export function useEquipesDeTodos() {
+  return useQuery({
+    queryKey: ["home-equipes-todos"],
+    staleTime: 60_000,
+    queryFn: async (): Promise<Map<string, string[]>> => {
+      const m = new Map<string, string[]>();
+      const { data, error } = await supabase
+        .from("chamado_equipes" as any)
+        .select("chamado_id, equipe")
+        .limit(4000);
+      if (error) return m;
+      for (const r of ((data as any[]) ?? [])) {
+        const lista = m.get(r.chamado_id as string) ?? [];
+        lista.push(r.equipe as string);
+        m.set(r.chamado_id as string, lista);
+      }
+      return m;
+    },
+  });
+}
+
 /** Chamados onde entrei como apoio — não dá para join, a RLS não devolveria. */
 export function useMeusApoios(s: Sessao) {
   return useQuery({
@@ -205,6 +289,8 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
   const chamados = useChamadosDaHome(s);
   const apoios = useMeusApoios(s);
   const apoiosDeTodos = useApoiosDeTodos();
+  const locaisDeTodos = useLocaisDeTodos();
+  const equipesDeTodos = useEquipesDeTodos();
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
   const historicoBruto = useHistoricoAmplo(s);
 
@@ -222,6 +308,8 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
         Object.entries(fichas.data ?? {}).map(([k, v]) => [k, { situacao: v }]),
       ),
       apoiosDoChamado: apoiosDeTodos.data,
+      locaisDoChamado: locaisDeTodos.data,
+      equipesDoChamado: equipesDeTodos.data,
     };
     const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
@@ -266,6 +354,8 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       apoios: new Set(apoios.data ?? []),
       fichas: new Map<string, FichaCompra>(),
       apoiosDoChamado: apoiosDeTodos.data,
+      locaisDoChamado: locaisDeTodos.data,
+      equipesDoChamado: equipesDeTodos.data,
     };
     const soMeus = s.cargo === "tecnico";
     const lista: Atividade[] = [];

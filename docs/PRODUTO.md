@@ -59,9 +59,11 @@ responde "de quem é a fila"**. Equipes nunca viram papel.
   dos outros (R1).
 - **Controle Patrimonial (Gilleno) usa o perfil de técnico** (R6): a fila dele
   são os chamados de "pedido de compra". Sem perfil especial.
-- A **equipe** (`profiles.equipe`: ti, patrimonio, tecnica, audiovisual,
-  business_ops, comercial) continua sendo atributo, definindo para qual fila as
-  demandas vão.
+- A **equipe** (`profiles.equipe`: ti, patrimonio, tecnica, sac,
+  monitoramento, comercial, outras) continua sendo atributo, definindo para
+  qual fila as demandas vão. *(Lista atualizada pela R81 — audiovisual e
+  business ops saíram, "outras" entrou. A equipe do cadastro também alimenta a
+  R83: ela entra na atividade junto com a pessoa.)*
 
 ### 2.2 Matriz de acesso (proposta — confirmar nas questões §8)
 
@@ -1293,3 +1295,86 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(Davi, 2026-08-23: "rode uma revisão completa do design do nosso sistema e
   aplique as alterações necessárias. Nessa revisão, o principal tópico deverá
   ser o white mode. Garanta que a revisão aplique em todas as páginas".)*
+
+- **R80** — **A abertura rápida por I.A. atribui gente.** Menção a uma pessoa
+  vira vínculo: quem é o sujeito da ação vira **responsável**, e quem aparece
+  numa expressão de ajuda vira **apoio** — "com ajuda do Nicholas", "com apoio
+  do", "o Nicholas vai dar uma força", "junto com o Breno". O time se trata
+  pelo **primeiro nome**, e é por ele que o casamento acontece.
+
+  **Primeiro nome ambíguo não escolhe ninguém.** Com dois Nicholas cadastrados,
+  "Nicholas" sozinho deixa o campo vazio em vez de sortear um — pendurar
+  trabalho na pessoa errada é pior do que não pendurar em ninguém, e é a mesma
+  regra que a contenção de nome de prédio já seguia. Nome completo continua
+  resolvendo sempre.
+  *(Davi, 2026-08-26: "quando for mencionado por exemplo o 'Davi' no texto que
+  o usuário inserir, a atividade criada deve ser de responsabilidade do Davi…
+  Geralmente vamos nos referir com o primeiro nome de cada usuário".)*
+
+- **R81** — **Saem Audiovisual e Business Ops; entra "Outras".** Quem estava
+  nas duas foi movido pela migration: audiovisual → **comercial** (é onde
+  material visual e comunicação passam a viver, R82) e business ops →
+  **outras**. "Outras" é balde declarado, não descuido: atividade sem equipe
+  nenhuma some de todo filtro, e um balde nomeado é melhor do que um campo
+  vazio.
+  *(Davi, 2026-08-26: "Remova as equipes: Audiovisual e Business Ops, e
+  adicione a opção 'Outras'".)*
+
+- **R82** — **A I.A. escolhe a equipe pelo assunto.** Criação de material
+  visual, comunicação e proposta comercial — arte, folder, vídeo,
+  apresentação, impresso, campanha — são da **equipe comercial**.
+  *(Davi, 2026-08-26.)*
+
+- **R83** — **Mais de uma equipe por atividade.** Numa proposta comercial o
+  técnico responde pela visita e o comercial pela proposta; são duas equipes no
+  mesmo trabalho. A primeira é a principal (fica em `chamados.equipe`, e todo
+  filtro e roteamento que só conhece uma continua funcionando); as demais são
+  aditivas.
+
+  **A equipe de quem participa entra junto.** Davi pediu isso citando dois
+  nomes — "sempre que for o Nicholas ou o Erik participando, considere a equipe
+  de T.I." —, e a regra foi escrita pela forma geral, não pelos nomes: a equipe
+  do **cadastro** de cada participante se soma à da atividade. Assim vale para
+  o próximo contratado sem tocar em código, e a manutenção acontece em
+  `/gerencial/usuarios`. A contrapartida é que o cadastro precisa estar certo:
+  se o Nicholas não estiver como T.I. lá, a regra não dispara.
+
+  Isto **inverteu** metade de uma invariante antiga ("campo não carrega
+  equipe"): era justamente fora do interno que a segunda equipe aparecia, e
+  zerar ali escondia do filtro o que o Davi quer ver. O **sprint** continua só
+  no interno.
+  *(Davi, 2026-08-26: "Vamos considerar que mais de uma equipe pode fazer parte
+  da mesma atividade… o técnico é responsável pela visita técnica, enquanto a
+  equipe comercial é responsável pela proposta em sí".)*
+
+- **R84** — **É LOCAL, não "cliente" — e o local pode não ser cliente.** A
+  palavra estava errada desde o começo. O lugar onde a atividade acontece tem
+  três formas: um **cliente** da base do QAP, uma **prospecção** (prédio que
+  orçamos e que não fechou — R22), ou um **setor** inteiro (R85).
+
+  Local citado que não está na base **vira prospecção**, não vira cliente:
+  a R21 continua de pé, e é ela que existe para o QAP não ser sobrescrito. É
+  comum fazermos propostas por anos para o mesmo condomínio que nunca fechou —
+  mapear esse lugar é o ponto.
+  *(Davi, 2026-08-26: "A etiqueta de cliente na verdade seria uma etiqueta de
+  LOCAL, este tempo todo estávamos usando a palavra errada. Então o Local pode
+  SER OU NÃO SER nosso cliente".)*
+
+- **R85** — **Locais sem limite, e atalho por setor.** Uma atividade aceita
+  quantos locais tiver. Quando ela é do **conjunto** de clientes de um serviço,
+  o que entra é **uma etiqueta de setor** ("Portaria Remota"), não a expansão
+  em oitenta chips: o card cabe, e a lista passa a refletir o cadastro de hoje
+  em vez de congelar quem era do setor no dia do clique. Quem precisa dos
+  clientes expande na leitura, por `servicos_prestados`.
+  *(Davi, 2026-08-26: "adicione a opção de colocar clientes na atividade sem
+  limite de clientes, e atalhos para agregar a um setor inteiro… 'Enviar
+  relatórios de acessos dos clientes de Portaria Remota'".)*
+
+- **R86** — **O local nunca fica no título.** O título é sempre uma breve
+  descrição **do que deve ser feito**; o lugar tem etiqueta própria. Vale para
+  a I.A. e para quem escreve à mão. No Kanban da Início, cada card mostra o(s)
+  local(is) da atividade — com teto e "+N" quando são muitos, porque a coluna
+  tem 260px e uma fileira quebrada desalinha a coluna inteira.
+  *(Davi, 2026-08-26: "O local não deve ficar no título - o título deve ser
+  SEMPRE UMA BREVE DESCRIÇÃO DO QUE DEVE SER FEITO. E o LOCAL deve ser inserido
+  na etiqueta de LOCAL".)*
