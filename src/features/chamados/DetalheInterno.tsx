@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card } from "@/lib/ui";
+import { card, botaoSelecao } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
 import {
@@ -25,9 +25,10 @@ import {
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
   SPRINT_ORDEM, SPRINT_LABEL, prazoParaData, dataParaPrazo,
-  statusDaNatureza, tiposDaNatureza, TIPO_LABEL,
+  statusDaNatureza, tiposDaNatureza, TIPO_LABEL, TIPO_CORES,
   type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
 } from "@/lib/chamado-status";
+import type { Cores } from "@/features/atividades/modelo";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import {
   useCompra, salvarCompra, decidirCompra, proximasSituacoes,
@@ -203,14 +204,15 @@ export function DetalheInterno({ id }: { id: string }) {
     !chamado.responsavel_id ||
     apoios.includes(userId ?? "");
 
-  const chip = (ativo: boolean): CSSProperties => ({
-    padding: "8px 12px", borderRadius: 10,
-    border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-    background: ativo
-      ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-      : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
-    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
+  /**
+   * O botão de opção, agora COLORIDO PELA COISA (R87, U72). Era o degradê
+   * dourado para tudo — status, equipe e classificação com a mesma cor, o que
+   * fazia a cor dizer só "escolhido" em vez de dizer O QUÊ. Ver `botaoSelecao`
+   * em lib/ui.ts para o raciocínio e para a mudança de regra do design system.
+   */
+  const chip = (ativo: boolean, cor?: Cores | null): CSSProperties => ({
+    ...botaoSelecao(ativo, isLight, cor as any),
+    padding: "8px 12px", borderRadius: 10, fontSize: 11.5,
     cursor: podeEditar ? "pointer" : "default", opacity: podeEditar ? 1 : 0.6,
   });
 
@@ -262,7 +264,13 @@ export function DetalheInterno({ id }: { id: string }) {
               key={s}
               type="button"
               disabled={!podeEditar || salvar.isPending}
-              style={chip(chamado.status === s)}
+              style={chip(chamado.status === s, (() => {
+                // a cor de cada status já é a hierarquia que o Davi descreveu:
+                // aguardando início azul, em andamento amarelo, stand-by
+                // laranja. Vem de chamado-status.ts, não daqui.
+                const i = chamadoStatusInfo(s);
+                return { dark: i.color, light: i.colorLight, bg: i.bg, border: i.border };
+              })())}
               onClick={() => salvar.mutate({ status: s as ChamadoStatus })}
             >
               {chamadoStatusInfo(s).label}
@@ -364,7 +372,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 key={e}
                 type="button"
                 disabled={!podeEditar}
-                style={chip(chamado.equipe === e)}
+                style={chip(chamado.equipe === e, equipeCores(e) as Cores)}
                 onClick={() => salvar.mutate({ equipe: e as Equipe })}
               >
                 {EQUIPE_LABEL[e]}
@@ -419,7 +427,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 key={t}
                 type="button"
                 disabled={!podeEditar}
-                style={chip(chamado.tipo === t)}
+                style={chip(chamado.tipo === t, TIPO_CORES[t] ?? null)}
                 onClick={() => salvar.mutate({ tipo: t as ChamadoTipo })}
               >
                 {TIPO_LABEL[t]}

@@ -10,6 +10,7 @@
 // - Sem backdrop-filter/blur em cards de conteúdo.
 
 import type React from "react";
+import { degradeDaCor, tintaSobreDegrade, hexParaRgb } from "@/lib/degrade";
 
 export const FONT = "var(--fonte)";
 
@@ -70,6 +71,62 @@ export const goldButton = (): React.CSSProperties => ({
   fontWeight: 600,
   cursor: "pointer",
 });
+
+/**
+ * Botão de SELEÇÃO, colorido pela coisa que ele representa (R87, U72).
+ *
+ * Davi, 2026-08-26: "mantenha o efeito degradê em cada botão, mas aplique a
+ * cor de acordo com a hierarquia, por exemplo, Aguardando Início em azul, Em
+ * andamento em amarelo, Stand By em laranja."
+ *
+ * Isto MUDA a §6.4 e a §11.5 do DESIGN_SYSTEM, que reservavam o degradê em
+ * botão para o dourado da marca. O motivo da mudança está no próprio pedido:
+ * quando toda opção escolhida fica dourada, a cor deixa de dizer QUAL opção
+ * foi escolhida — ela vira só "está selecionado", coisa que a forma do botão
+ * já dizia. Trocar o dourado pela cor da hierarquia devolve informação a um
+ * canal que estava sendo gasto à toa. As cores não são novas: saem de
+ * `chamado-status.ts`, `TIPO_CORES`, `PRIORIDADE_CORES` e `EQUIPE_CORES`, que
+ * já eram a paleta oficial de cada escala.
+ *
+ * A fileira INTEIRA fica colorida, não só a escolhida: com só a ativa pintada,
+ * nunca se veria azul, amarelo e laranja ao mesmo tempo, que é justamente a
+ * leitura de hierarquia que o pedido descreve. A escolhida ganha o degradê e o
+ * relevo; as outras ficam no véu da própria cor.
+ *
+ * O degradê é IGUAL nos dois temas, como o dourado sempre foi (§2.1) — é por
+ * isso que ele parte de `cor.dark`, o tom saturado, e não do par de tema. Quem
+ * escolhe a tinta por cima é o contraste medido, não o gosto (ver
+ * `tintaSobreDegrade`).
+ */
+export const botaoSelecao = (
+  ativo: boolean,
+  isLight: boolean,
+  cor?: { dark: string; light: string; bg: string; border: string } | null,
+): React.CSSProperties => {
+  if (ativo && cor) {
+    const [r, g, b] = hexParaRgb(cor.dark);
+    return {
+      background: degradeDaCor(cor.dark),
+      color: tintaSobreDegrade(cor.dark),
+      border: "none",
+      boxShadow: `0 6px 20px rgba(${r},${g},${b},0.35)`,
+      fontFamily: FONT, fontWeight: 600, cursor: "pointer",
+    };
+  }
+  if (ativo) {
+    // sem cor própria (sprint, por exemplo) o dourado da marca segue valendo
+    return {
+      background: GOLD_GRAD, color: "#08090E", border: "none", boxShadow: GOLD_GLOW,
+      fontFamily: FONT, fontWeight: 600, cursor: "pointer",
+    };
+  }
+  return {
+    background: cor ? cor.bg : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)"),
+    color: cor ? (isLight ? cor.light : cor.dark) : (isLight ? "#0a0b0e" : "#ffffff"),
+    border: `1px solid ${cor ? cor.border : (isLight ? "rgba(0,0,0,0.12)" : "rgba(252,222,72,0.16)")}`,
+    fontFamily: FONT, fontWeight: 600, cursor: "pointer",
+  };
+};
 
 /** Título padrão — Montserrat SemiBold. */
 export const title = (isLight: boolean): React.CSSProperties => ({

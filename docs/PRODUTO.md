@@ -1378,3 +1378,91 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(Davi, 2026-08-26: "O local não deve ficar no título - o título deve ser
   SEMPRE UMA BREVE DESCRIÇÃO DO QUE DEVE SER FEITO. E o LOCAL deve ser inserido
   na etiqueta de LOCAL".)*
+
+- **R87** — **A cor do botão de escolha é a cor da coisa escolhida.** Status,
+  Equipe e Classificação deixaram de ser todos dourados: cada botão leva a cor
+  da sua escala, com o mesmo degradê de antes. A hierarquia de status já
+  existia e não mudou — aguardando início azul, em andamento amarelo, stand-by
+  laranja, aguardando aprovação azul claro, concluído verde.
+
+  **A fileira inteira fica colorida, não só a escolhida.** Com só a ativa
+  pintada nunca se veria azul, amarelo e laranja ao mesmo tempo — que é
+  justamente a leitura de hierarquia que o pedido descreve. A escolhida ganha
+  o degradê e o relevo; as outras ficam no véu da própria cor.
+
+  Isto **muda o design system** (§6.4 e §11.5), que reservavam degradê em botão
+  para o dourado da marca. O motivo está no próprio pedido: quando toda opção
+  escolhida fica dourada, a cor deixa de dizer QUAL opção foi escolhida e passa
+  a dizer só "está selecionado" — coisa que a forma do botão já dizia. **Botão
+  de AÇÃO continua dourado**: ali o dourado é a marca, não uma escala.
+
+  A tinta por cima do degradê é decidida por **contraste medido**, não por
+  gosto: uma asserção exige 4,5:1 sobre o pé do degradê para toda cor do
+  sistema.
+  *(Davi, 2026-08-26: "mantenha o efeito degradê em cada botão, mas aplique a
+  cor de acordo com a hierarquia, por exemplo, Aguardando Início em azul, Em
+  andamento em amarelo, Stand By em laranja".)*
+
+- **R88** — **Ordenar com direção.** Seis opções na Início: Prazo
+  crescente/decrescente, Local, Prioridade, Recebimento crescente/decrescente.
+  Cada uma diz o que faz ("vence antes primeiro"), porque "crescente" sozinho
+  não responde crescente em quê.
+
+  Duas regras sobrevivem à inversão, e são o que separa isto de um
+  `.reverse()`: **vazio sempre por último nos dois sentidos** (sem data não é a
+  maior data), e o desempate por data de criação não inverte. Já o bloco de
+  **atrasados só vem na frente no crescente** — no decrescente seria
+  contraditório, porque quem pede "vence por último primeiro" não quer o mais
+  vencido no topo.
+  *(Davi, 2026-08-26: "o botão de ordenar deve ser mais bem montado — Prazo
+  Crescente / Decrescente ; Cliente ; Prioridade ; Data de recebimento
+  Crescente / Decrescente".)*
+
+- **R89** — **Arrastar o card grava o status, e o card anda junto.** Soltar
+  numa coluna muda o status da atividade; a coluna e o status nunca discordam.
+  O card se move **antes** da resposta do banco e volta se a gravação falhar.
+
+  Três defeitos reais foram corrigidos junto, e vale registrar porque nenhum
+  deles aparecia como erro:
+  1. **A recusa da RLS era invisível.** O PostgREST devolve 204 **sem erro**
+     quando a policy barra pelo `USING` — zero linhas afetadas, nenhuma
+     exceção. O app concluía que salvou, o refetch trazia o valor antigo e o
+     card voltava para a coluna de origem. Do lado de quem usa: "arrastei e não
+     aconteceu nada."
+  2. **O card era um `<button>` dentro de uma área arrastável.** Firefox e
+     Safari não iniciam o arrasto do elemento pai quando o gesto começa sobre
+     um botão nativo — fora do Chromium o arrasto simplesmente não pegava.
+  3. **Soltar um card agendado na própria coluna apagava o agendamento**, porque
+     a comparação olhava o status cru e "agendado" é desenhado em "Aguardando
+     início".
+
+  O que **não** arrasta, agora dizendo por quê em vez de ficar inerte: a
+  proposta comercial (o status dela mora na visita, e a capa é escrita por
+  trigger, de mão única) e o pedido de compra (segue a ficha de compra).
+  *(Davi, 2026-08-26: "o status da atividade deve atualizar e ele deve ser
+  posicionado nesta nova coluna. O status da atividade deve sempre estar de
+  acordo com a coluna de status do kanban".)*
+
+- **R90** — **Tudo salva sozinho.** No painel lateral, título e descrição
+  gravam depois de ~0,7s parado, e também ao sair do campo. Os demais campos já
+  eram imediatos.
+
+  A trava que faz isso funcionar: **enquanto o campo tem foco, o servidor nunca
+  escreve nele.** Salvar durante a digitação recarrega os dados, e o valor que
+  volta sobrescreveria o que está sendo escrito naquele instante — é o bug do
+  campo que "come letras". Sem foco, o campo sempre espelha o servidor, que é o
+  que faz o painel refletir a edição de outra pessoa.
+
+  O título ganhou indicador de estado junto: sem o clique que confirmava, ele
+  era o único campo que gravava — e falhava — sem dizer nada.
+  *(Davi, 2026-08-26: "qualquer alteração que o usuário faça, deve ser salva em
+  tempo real… Tudo é salvo automaticamente".)*
+
+- **R91** — **Botão "+" na Início, ao lado do alternador quadro/lista**, abrindo
+  um pop-up para criar atividade à mão. É o par manual do campo de I.A. do
+  painel de cima, e cria pela **mesma porta** — mesmos gatilhos, mesmas
+  permissões, nenhum segundo caminho de escrita. Diferente do campo de I.A.,
+  existe no celular também. Quem precisa do formulário longo (compra,
+  fornecedor, link) tem o atalho no rodapé do pop-up.
+  *(Davi, 2026-08-26: "Adicione um botão de '+' ao lado direito do botão de
+  alternar entre kanban e lista na tela de início".)*

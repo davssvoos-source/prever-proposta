@@ -64,6 +64,7 @@ import { PRISMA } from "@/lib/paleta";
 import { codigoDeErro } from "@/lib/erros";
 import { envolverSelecao, prefixarLinhas } from "@/lib/edicao-texto";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
+import { useRascunhoSalvo } from "@/hooks/useRascunhoSalvo";
 import {
   useChamado, usePessoas, useChamadoApoios, useChamadoLocais, useChamadoEventos,
   atualizarChamado, adicionarApoio, removerApoio,
@@ -79,7 +80,7 @@ import {
   prazoParaData, dataParaPrazo, situacaoPrazo, sprintDoPrazo,
   type ChamadoPrioridade, type ChamadoTipo, type Natureza,
 } from "@/lib/chamado-status";
-import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
+import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 
 export type EstadoCampo = "parado" | "salvando" | "salvo" | { erro: string };
 
@@ -222,20 +223,32 @@ function Texto({ titulo, estado, valor, aoSalvar, chaveReset, estiloProprio, pla
   estiloProprio?: CSSProperties; placeholder?: string;
 }) {
   const { entrada } = useEstiloCampo();
-  const [v, setV] = useState(valor);
-  useEffect(() => { setV(valor); }, [valor, chaveReset]);
+  // U72: grava sozinho depois de 700ms parado, e ainda no blur. Ver o
+  // cabeçalho de useRascunhoSalvo para a corrida que a guarda de foco evita.
+  const r = useRascunhoSalvo(valor, aoSalvar, chaveReset);
   const estilo = { ...entrada, ...estiloProprio };
   const campo = (
     <input
-      value={v}
+      value={r.valor}
       placeholder={placeholder}
-      onChange={(e) => setV(e.target.value)}
-      onBlur={() => { if (v !== valor) aoSalvar(v); }}
+      onChange={(e) => r.mudar(e.target.value)}
+      onFocus={r.aoFocar}
+      onBlur={r.aoDesfocar}
       style={estilo}
     />
   );
-  // sem rótulo = é o título no cabeçalho, que se explica sozinho
-  return titulo ? <Campo titulo={titulo} estado={estado}>{campo}</Campo> : campo;
+  // sem rótulo = é o título no cabeçalho. Mesmo assim ele PRECISA do selo:
+  // com autosave não existe mais o clique que confirma que gravou, e o
+  // título era o único campo do painel que salvava sem dizer nada — inclusive
+  // quando falhava.
+  return titulo
+    ? <Campo titulo={titulo} estado={estado}>{campo}</Campo>
+    : (
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{campo}</div>
+        <Selo estado={estado} />
+      </div>
+    );
 }
 
 /** Etiqueta colorida — o mesmo vocabulário dos cards do quadro. */
@@ -286,14 +299,15 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
   estado?: EstadoCampo; valor: string; aoSalvar: (v: string) => void; chaveReset?: string | null;
 }) {
   const est = useEstiloCampo();
-  const [v, setV] = useState(valor);
+  // U72: autosave com guarda de foco (ver useRascunhoSalvo).
+  const r0 = useRascunhoSalvo(valor, aoSalvar, chaveReset);
+  const v = r0.valor;
+  const setV = r0.mudar;
   const ref = useRef<HTMLTextAreaElement>(null);
   // seleção a restaurar DEPOIS do próximo render — o clique no botão muda o
   // valor controlado, e só depois de o React repintar dá para reposicionar
   // o cursor no DOM novo
   const selecaoPendente = useRef<{ inicio: number; fim: number } | null>(null);
-
-  useEffect(() => { setV(valor); }, [valor, chaveReset]);
 
   useEffect(() => {
     if (!selecaoPendente.current || !ref.current) return;
@@ -381,7 +395,8 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
           value={v}
           placeholder="O que precisa ser feito, o que já se sabe…"
           onChange={(e) => setV(e.target.value)}
-          onBlur={() => { if (v !== valor) aoSalvar(v); }}
+          onFocus={r0.aoFocar}
+          onBlur={r0.aoDesfocar}
           style={{
             width: "100%", boxSizing: "border-box", display: "block",
             fontFamily: FONT, fontSize: 14, fontWeight: 500, color: est.textPrimary,
@@ -769,6 +784,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   valor={chamado.titulo ?? ""}
                   chaveReset={chamadoId}
                   placeholder="Sem título"
+                  estado={estados.titulo}
                   aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
                   estiloProprio={{
                     // maior e em negrito (Davi, 2026-08-22) — 22px/700 é o
@@ -1060,6 +1076,13 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   vazio="— sem equipe —"
                   opcoes={(Object.keys(EQUIPE_LABEL) as Equipe[])
                     .map((e) => ({ v: e, t: EQUIPE_LABEL[e] }))}
+                  // U72: a equipe era o único seletor sem cor, mesmo com
+                  // EQUIPE_CORES pronto desde sempre — ficava cinza ao lado de
+                  // status, tipo e prioridade coloridos, como se não fosse da
+                  // mesma família de escolha.
+                  cor={chamado.equipe
+                    ? (isLight ? equipeCores(chamado.equipe).light : equipeCores(chamado.equipe).dark)
+                    : undefined}
                   aoMudar={(v) => salvar.mutate({ campo: "equipe", patch: { equipe: v as any } })}
                 />
               </div>

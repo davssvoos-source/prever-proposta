@@ -115,8 +115,23 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
 
   const emFaixa = !!f;
 
+  // `div role="button"` e NÃO `<button>` (U72). O card do quadro fica dentro
+  // de um wrapper `draggable`, e Firefox e Safari não iniciam o arrasto do
+  // ancestral quando o gesto começa sobre um `<button>` nativo — o mousedown
+  // é consumido pelo controle. Era por isso que o arrasto "não pegava" fora do
+  // Chromium. O papel, o foco e o Enter/Espaço ficam mantidos à mão, que é o
+  // preço de continuar acessível sem o elemento nativo.
   return (
-    <button onClick={onClick} className="elevavel" style={CARD}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); }
+      }}
+      className="elevavel"
+      style={CARD}
+    >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
@@ -247,6 +262,6 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           )}
         </div>
       )}
-    </button>
+    </div>
   );
 }

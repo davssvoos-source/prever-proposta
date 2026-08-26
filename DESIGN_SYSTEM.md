@@ -357,22 +357,42 @@ Variante outline: `background: transparent`, `color: #F59E0B`,
 
 ### 6.4 Botão de seleção (opção marcável)
 
-O padrão mais usado do app — grid de opções onde a selecionada vira dourada:
+O padrão mais usado do app. **Use `botaoSelecao(ativo, isLight, cor)` de
+`lib/ui.ts`** — não escreva o estilo à mão (havia três cópias divergentes antes
+da U72).
+
+**A cor é a da coisa escolhida, não o dourado** (R87, 2026-08-26). Status pega
+a cor do status, equipe a da equipe, classificação a do tipo. A fileira inteira
+fica colorida: a opção ativa ganha o degradê e o relevo, as outras ficam no véu
+da própria cor.
 
 ```jsx
+// ativo, com cor própria
 {
-  height: 60, borderRadius: 14,
-  border: selected ? "none"
-    : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-  background: selected
-    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-    : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-  color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
-  boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
-  fontWeight: 600, fontSize: 14, textTransform: "uppercase",
-  transition: "all 0.15s",
+  background: degradeDaCor(cor.dark),   // 3 paradas, 135deg, como o dourado
+  color: tintaSobreDegrade(cor.dark),   // decidido por CONTRASTE, >= 4.5:1
+  border: "none",
+  boxShadow: `0 6px 20px rgba(${rgb},0.35)`,
 }
+// inativo, com cor própria
+{ background: cor.bg, color: isLight ? cor.light : cor.dark, border: `1px solid ${cor.border}` }
 ```
+
+Sem cor própria (sprint, por exemplo), o dourado da marca segue valendo.
+
+**Por que mudou:** quando toda opção escolhida fica dourada, a cor deixa de
+dizer QUAL opção foi escolhida e passa a dizer só "está selecionado" — coisa
+que a forma do botão já dizia. O canal mais forte da interface estava sendo
+gasto à toa.
+
+**O degradê é igual nos dois temas**, como o dourado sempre foi (§2.1): parte
+de `cor.dark`, o tom saturado, não do par de tema. Não é o anti-padrão nº 1 —
+é a mesma decisão que o `GRAD_PRIMARIA` já tomava, e a legibilidade vem da
+tinta calculada, não do tema.
+
+**Botão de AÇÃO continua dourado** (§6.3). Ali o dourado é a marca, não uma
+escala — e é essa distinção que faz "escolher" e "confirmar" parecerem coisas
+diferentes.
 
 ### 6.5 Input / textarea
 
@@ -778,7 +798,14 @@ não lê como escolha — lê como erro. Por isso, **na Início vale o prisma**,
 tudo: micro-rótulos, filtros, alvo de arraste, contador de notificações.
 
 O dourado da marca continua onde é gradiente e lê como coisa própria:
-`GRAD_PRIMARIA` nos botões de ação e o logotipo.
+`GRAD_PRIMARIA` nos botões de **ação** e o logotipo.
+
+**Atualização da U72 (R87):** "gradiente = dourado" deixou de valer para o
+botão de **escolha**. Ele passou a levar o degradê da cor da própria escala
+(status, equipe, tipo), gerado por `degradeDaCor()` a partir do tom saturado —
+ver §6.4. A regra que sobrou, e que é a que interessa, é a distinção de papel:
+**dourado é ação, cor é escala.** O amarelo do prisma e o dourado continuam sem
+disputar espaço, porque agora nunca aparecem no mesmo tipo de botão.
 
 ## 12. Tipografia (v6 — 2026-08-20)
 

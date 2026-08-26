@@ -4445,3 +4445,105 @@ cobrança de verdade sem necessidade — o mesmo raciocínio que a U45 registrou
 1427 asserções (66 novas), build ok, tsc no baseline de 85. A migration
 `20260826120000_u71_equipes_e_locais.sql` **precisa ser rodada** — sem ela o
 CHECK antigo recusa "outras" e as duas tabelas novas não existem.
+
+### U72 — O arrasto que grava, ordenar com direção, autosave e cor por hierarquia (R87–R91, 2026-08-26)
+
+"No Kanban, quando o usuário segura e arrasta o card de uma atividade para
+outra coluna de status, o status da atividade deve atualizar… Sempre que o
+usuário clica em uma atividade e abre o menu da direita para esquerda, neste
+menu, qualquer alteração que o usuário faça, deve ser salva em tempo real…
+mantenha o efeito degradê em cada botão, mas aplique a cor de acordo com a
+hierarquia."
+
+**O arrasto já existia. O que faltava era ele gravar.** Três defeitos, e
+nenhum deles aparecia como erro em lugar nenhum — o que explica por que
+sobreviveram:
+
+1. **A recusa da RLS era invisível.** Quando a policy de UPDATE barra pelo
+   `USING`, o PostgREST **não devolve erro**: a linha não é encontrada, zero
+   linhas são afetadas, e a resposta é 204 com `error === null`. O
+   `atualizarChamado` só olhava `error`, então concluía sucesso, invalidava a
+   query, e o refetch trazia o status antigo — o card voltava para a coluna de
+   origem sem toast, sem log, sem nada. Do lado de quem usa: "arrastei e não
+   aconteceu nada". A correção é um `.select("id")`: com ele, lista vazia volta
+   a significar o que sempre significou.
+2. **O card era um `<button>` dentro do wrapper arrastável.** Firefox e Safari
+   não iniciam o arrasto do ancestral quando o gesto começa sobre um controle
+   nativo. Virou `div role="button"` com Enter/Espaço à mão — o preço de
+   continuar acessível sem o elemento nativo.
+3. **Soltar um card agendado na própria coluna apagava o agendamento.** A
+   guarda comparava o status CRU, mas `agendado` é desenhado em "Aguardando
+   início" (`colunaVisivel`). Soltar onde ele já estava passava pela guarda e
+   gravava `status='aberto'`.
+
+Entrou também **atualização otimista**: o card anda antes da resposta e volta
+se a gravação falhar. Sem isso ele ficava parado durante toda a ida e volta —
+que se lê como "não funcionou", e leva a arrastar de novo.
+
+**O que NÃO arrasta agora diz por quê.** A proposta comercial tem o status em
+`visitas_tecnicas`, e a capa em `chamados` é escrita por trigger de mão única
+(U41): gravar ali não moveria a visita e seria desfeito na próxima edição dela.
+Antes o card simplesmente não respondia ao gesto; agora recusa com o motivo. O
+mesmo para o pedido de compra, cuja coluna vem da ficha de compra.
+
+**Ordenar: a direção não é um `.reverse()`.** Duas regras sobrevivem à
+inversão. Vazio continua por último **nos dois sentidos** — invertendo cru,
+"Prazo decrescente" abriria com dezenas de itens sem prazo no topo, e "sem
+data" não é a maior data. E o desempate por data de criação não inverte: ele
+existe para a ordem ser estável, não para ser um segundo eixo.
+
+Uma coisa muda de propósito: **o bloco de atrasados só vem na frente no
+crescente.** No decrescente seria contraditório — quem pede "vence por último
+primeiro" não quer o mais vencido no topo.
+
+Detalhe que quase passou: `desc` significa "inverte a direção NATURAL desta
+chave", não "decrescente" em abstrato. `recentes` nasce decrescente (mais novo
+primeiro) e é assim que os presets a chamam. Tratar `desc=false` como
+"crescente" teria invertido o preset "Sem dono" em silêncio.
+
+**Autosave: a trava é o foco.** Salvar durante a digitação cria uma corrida com
+o próprio recarregamento — a gravação invalida a query, a query volta, e o
+valor do servidor sobrescreve o que está sendo escrito naquele instante. É o
+bug do campo que come letras. A regra que resolve os dois lados é uma só:
+**enquanto o campo tem foco, o servidor nunca escreve nele**; sem foco, o campo
+sempre espelha o servidor, que é o que faz o painel refletir a edição de outra
+pessoa.
+
+Efeito colateral bem-vindo: os botões da barra de formatação usam
+`onMouseDown` + `preventDefault` justamente para não tirar o foco — então
+aplicar negrito nunca salvava, porque a gravação dependia do blur. Agora salva.
+E o **título ganhou selo de estado**: era o único campo do painel que gravava
+sem dizer nada, inclusive quando falhava, e sem o clique que confirmava isso
+ficaria pior.
+
+**Cor: o dourado estava sendo gasto à toa.** O botão de escolha era o degradê
+dourado para tudo — status, equipe e classificação com a mesma cor. Isso faz a
+cor dizer só "está selecionado", que é o que a forma do botão já dizia. Agora
+cada botão leva a cor da sua escala, com o mesmo degradê.
+
+As cores **não são novas**: a hierarquia que o Davi descreveu ("Aguardando
+Início em azul, Em andamento em amarelo, Stand By em laranja") é literalmente o
+que `chamado-status.ts` já guardava desde a correção de 2026-08-22. O que
+faltava era ela chegar ao botão.
+
+Isso **muda o design system** (§6.4 e §11.5), que reservavam degradê em botão
+para o dourado da marca — e as duas seções foram reescritas junto, com a razão.
+A regra que sobrou é a que interessa: **dourado é ação, cor é escala.**
+
+A tinta por cima do degradê sai de **contraste medido**, não de gosto: o
+dourado pede quase-preto e o azul pede branco, e fixar um dos dois deixaria
+metade dos botões ilegível. Uma asserção percorre toda cor que o sistema pode
+jogar num botão e exige 4,5:1 contra o pé do degradê.
+
+**O que deliberadamente NÃO se fez.** O quadro do Painel Operacional continua
+sem arrasto: as colunas dele (`nao_agendado`, `agendado`, `atrasado`,
+`concluido`) **não são status** — são a leitura de `data_hora_agendada` e
+`prazo_limite`. Arrastar para "Atrasado" não tem status correspondente, e para
+"Agendado" exigiria pedir uma data. Fazer o gesto funcionar ali significa
+decidir o que cada coluna GRAVA, e isso é decisão de produto, não de
+implementação. E `EQUIPE_CORES` não foi remapeado para o PRISMA, apesar de ser
+a única tabela de cor do sistema com hexes fora dele: mexer nisso é redesenho,
+e não foi o que se pediu.
+
+1487 asserções (55 novas), build ok, tsc no baseline de 85. **Sem migration** —
+tudo nesta entrada é aplicação.

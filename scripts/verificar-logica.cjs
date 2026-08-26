@@ -1983,10 +1983,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const LN2 = carregar('src/features/home/lentes.ts');
   const dash2 = fs18.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
 
-  eq('as 3 ordenações que o Davi pode escolher, nesta ordem',
-     LN2.ORDENACOES.map((o) => o.chave), ['prazo', 'cliente', 'prioridade']);
-  eq('"recentes" e "atualização" ficam de fora do seletor (são só dos presets)',
-     LN2.ORDENACOES.some((o) => o.chave === 'recentes' || o.chave === 'atualizacao'), false);
+  // U72 (R88): eram 3 chaves sem direção. Davi, 2026-08-26: "o botão de
+  // ordenar deve ser mais bem montado — Prazo Crescente / Decrescente ;
+  // Cliente ; Prioridade ; Data de recebimento Crescente / Decrescente."
+  // "recentes" entrou no menu como a data de RECEBIMENTO, que é o que ela
+  // sempre foi; "atualizacao" continua fora, é ordem só dos presets.
+  eq('as 6 ordenações que o Davi pode escolher, nesta ordem',
+     LN2.ORDENACOES.map((o) => o.valor),
+     ['prazo:asc', 'prazo:desc', 'local', 'prioridade', 'recebimento:asc', 'recebimento:desc']);
+  eq('"atualização" fica de fora do seletor (é só dos presets)',
+     LN2.ORDENACOES.some((o) => o.chave === 'atualizacao'), false);
+  eq('toda opção do menu tem nota — "crescente" sozinho não diz crescente EM QUÊ',
+     LN2.ORDENACOES.every((o) => !!o.nota), true);
+  eq('lerOrdenacao separa chave e direção',
+     LN2.lerOrdenacao('prazo:desc'), { chave: 'prazo', desc: true });
+  eq('CRÍTICO: lerOrdenacao tolera a chave crua do sessionStorage antigo — senão a primeira visita após o deploy abre sem ordenação',
+     LN2.lerOrdenacao('prazo'), { chave: 'prazo', desc: false });
+  eq('valor desconhecido não vira ordenação inventada', LN2.lerOrdenacao('xpto'), null);
 
   const at2 = (extra) => ({
     id: 'x' + Math.random(), titulo: 'a', numero: null, cliente: null,
@@ -2005,7 +2018,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('Filtros tem o campo ordenacao, começando null (segue o padrão)',
      LN2.FILTROS_INICIAIS.ordenacao, null);
   eq('a escolha manual VENCE a ordem do preset',
-     /filtros\.ordenacao \?\? ordemDoPreset\(filtros\.preset\)/.test(dash2), true);
+     /lerOrdenacao\(filtros\.ordenacao\) \?\? \{ chave: ordemDoPreset\(filtros\.preset\), desc: false \}/.test(dash2), true);
+  eq('CRÍTICO (R88): o preset não passa direção — a direção NATURAL de cada chave é preservada, senão "Sem dono" inverteria calado',
+     /ordenar\(aplicarLentes\([\s\S]{0,140}ordem\.chave, ordem\.desc\)/.test(dash2), true);
   eq('trocar de padrão zera a ordenação escolhida (senão ela vazaria para o próximo)',
      /preset: v\[0\] \?\? null,[\s\S]{0,600}ordenacao: null,/.test(dash2), true);
   eq('o seletor de ordenação está na barra de filtros', /rotulo="Ordenar"/.test(dash2), true);
@@ -4979,6 +4994,189 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const produto5 = fs53.readFileSync('docs/PRODUTO.md', 'utf8');
   for (const r of ['R80', 'R81', 'R82', 'R83', 'R84', 'R85', 'R86']) {
     eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto5), true);
+  }
+}
+
+// ── U72: arrasto que grava, ordenar com direção, autosave e cor por hierarquia
+//    (R87–R91) ────────────────────────────────────────────────────────────────
+{
+  const fs54 = require('fs');
+  const D = carregar('src/lib/degrade.ts');
+  const LN3 = carregar('src/features/home/lentes.ts');
+  const EQ3 = carregar('src/lib/equipes.ts');
+  const CS4 = carregar('src/lib/chamado-status.ts');
+  const PAL = carregar('src/lib/paleta.ts');
+
+  // ── cor: o degradê e a tinta em cima dele ────────────────────────────────
+  eq('o degradê parte de 3 paradas, no ângulo do dourado original',
+     D.degradeDaCor('#F8C811').startsWith('linear-gradient(135deg, '), true);
+  eq('a parada do meio é a cor pedida (o degradê não desloca a matiz)',
+     D.degradeDaCor('#F8C811').includes(', #F8C811, '), true);
+  eq('clarear(0) e escurecer(0) devolvem a própria cor',
+     [D.clarear('#4F94E9', 0), D.escurecer('#4F94E9', 0)], ['#4f94e9', '#4f94e9']);
+  eq('clarear(1) é branco e escurecer(1) é preto',
+     [D.clarear('#4F94E9', 1), D.escurecer('#4F94E9', 1)], ['#ffffff', '#000000']);
+  eq('hex inválido não explode — vira preto',
+     D.hexParaRgb('não é cor'), [0, 0, 0]);
+  eq('o degradê gerado a partir do amarelo bate com o dourado da marca a olho (paradas a menos de 12 de distância em cada canal)',
+     (() => {
+       const alvo = [[0xFC, 0xDE, 0x48], [0xE8, 0xB0, 0x0A]];
+       const meu = [D.hexParaRgb(D.clarear('#F8C811', 0.22)), D.hexParaRgb(D.escurecer('#F8C811', 0.10))];
+       return meu.every((c, i) => c.every((v, j) => Math.abs(v - alvo[i][j]) <= 12));
+     })(), true);
+
+  // A asserção que mais importa deste bloco: a tinta escolhida É LEGÍVEL sobre
+  // o pé do degradê, para TODA cor que o sistema pode jogar num botão. Sem
+  // isto, "colorir por hierarquia" viraria um botão ilegível por escala.
+  const todasAsCores = [
+    ...Object.values(PAL.PRISMA).map((c) => c.dark),
+    ...Object.values(EQ3.EQUIPE_CORES).map((c) => c.dark),
+    ...EQ3.EQUIPES.map((e) => EQ3.equipeCores(e).dark),
+  ];
+  eq('CRÍTICO: a tinta do botão passa de 4.5:1 sobre o PÉ do degradê, em toda cor do sistema',
+     todasAsCores.every((hex) => D.contraste(D.escurecer(hex, 0.10), D.tintaSobreDegrade(hex)) >= 4.5),
+     true);
+  eq('sobre o dourado a tinta é o quase-preto da marca (nunca branco — §8.2)',
+     D.tintaSobreDegrade('#F8C811'), '#08090E');
+  eq('a escala de contraste está certa: preto×branco é 21',
+     Math.round(D.contraste('#000000', '#ffffff')), 21);
+
+  // ── ordenar com direção (R88) ────────────────────────────────────────────
+  const ativ = (extra) => ({
+    id: 'x' + (extra.criadoEm ?? '') + (extra.quando ?? ''), titulo: 't', numero: null,
+    cliente: null, criadoEm: '2026-08-01T10:00:00', atualizadoEm: '2026-08-01T10:00:00',
+    prioridadeRank: 2, prazoEstourado: false, quando: null, ...extra,
+  });
+  const cedo = ativ({ quando: '2026-09-01T10:00:00' });
+  const tarde = ativ({ quando: '2026-09-20T10:00:00' });
+  const semPrazo = ativ({ quando: null, criadoEm: '2026-07-01T10:00:00' });
+
+  eq('prazo crescente: o que vence antes vem primeiro',
+     LN3.ordenar([tarde, cedo], 'prazo', false).map((a) => a.quando), [cedo.quando, tarde.quando]);
+  eq('prazo decrescente: o que vence depois vem primeiro',
+     LN3.ordenar([cedo, tarde], 'prazo', true).map((a) => a.quando), [tarde.quando, cedo.quando]);
+  eq('CRÍTICO (R88): sem prazo fica por último NOS DOIS SENTIDOS — "sem data" não é a maior data',
+     [LN3.ordenar([semPrazo, cedo], 'prazo', false)[1].quando,
+      LN3.ordenar([semPrazo, cedo], 'prazo', true)[1].quando],
+     [null, null]);
+
+  const atrasado = ativ({ quando: '2026-09-25T10:00:00', prazoEstourado: true });
+  eq('no crescente o atrasado sobe, mesmo vencendo depois (é a fila de trabalho)',
+     LN3.ordenar([cedo, atrasado], 'prazo', false)[0].prazoEstourado, true);
+  eq('CRÍTICO: no DECRESCENTE o atrasado não é forçado ao topo — quem pede "vence por último primeiro" não quer o mais vencido na frente',
+     LN3.ordenar([cedo, atrasado], 'prazo', true)[0].quando, atrasado.quando);
+
+  const novo = ativ({ criadoEm: '2026-08-20T10:00:00' });
+  const velho = ativ({ criadoEm: '2026-08-01T10:00:00' });
+  eq('CRÍTICO: "recentes" SEM direção continua sendo o mais novo primeiro — os presets chamam assim e não podem inverter calados',
+     LN3.ordenar([velho, novo], 'recentes').map((a) => a.criadoEm), [novo.criadoEm, velho.criadoEm]);
+  eq('recebimento crescente (desc=true na chave "recentes") traz o pedido mais antigo primeiro',
+     LN3.ordenar([novo, velho], 'recentes', true).map((a) => a.criadoEm), [velho.criadoEm, novo.criadoEm]);
+  eq('a opção "Recebimento (crescente)" do menu aponta para esse par',
+     LN3.ORDENACOES.find((o) => o.valor === 'recebimento:asc'),
+     { valor: 'recebimento:asc', chave: 'recentes', desc: true,
+       label: 'Recebimento (crescente)', nota: 'Pedido mais antigo primeiro' });
+  eq('local decrescente inverte o alfabeto mas mantém "sem local" no fim',
+     LN3.ordenar([ativ({ cliente: 'Amarilis' }), ativ({ cliente: null }), ativ({ cliente: 'Zebra' })], 'cliente', true)
+       .map((a) => a.cliente), ['Zebra', 'Amarilis', null]);
+  eq('prioridade decrescente traz a baixa primeiro',
+     LN3.ordenar([ativ({ prioridadeRank: 0 }), ativ({ prioridadeRank: 3 })], 'prioridade', true)[0].prioridadeRank, 3);
+  eq('ordenar não muta a lista recebida',
+     (() => { const l = [tarde, cedo]; LN3.ordenar(l, 'prazo'); return l[0].quando; })(), tarde.quando);
+
+  // ── o arrasto que grava (R89) ────────────────────────────────────────────
+  const cd3 = fs54.readFileSync('src/features/chamados/data.ts', 'utf8');
+  eq('CRÍTICO (R89): atualizarChamado pede as linhas afetadas — sem o .select() a recusa da RLS volta 204 SEM erro e o arrasto falha em silêncio',
+     /export async function atualizarChamado[\s\S]{0,420}\.select\("id"\)/.test(cd3), true);
+  eq('…e lista vazia vira erro tipado, para a tela distinguir "recusado" de "caiu a rede"',
+     /class GravacaoRecusada/.test(cd3)
+     && /if \(!data \|\| \(data as any\[\]\)\.length === 0\) throw new GravacaoRecusada\(\)/.test(cd3), true);
+
+  const dash3 = fs54.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+  eq('CRÍTICO (R89): o card anda ANTES da resposta do banco (atualização otimista)',
+     /moverAtividade = useMutation\(\{[\s\S]{0,900}onMutate:[\s\S]{0,600}setQueriesData/.test(dash3), true);
+  eq('…e volta para a coluna de origem se a gravação falhar',
+     /onError:[\s\S]{0,300}for \(const \[chave, dado\] of ctx\?\.antes \?\? \[\]\) qc\.setQueryData/.test(dash3), true);
+  eq('a recusa da RLS vira mensagem de permissão, não "não consegui mover"',
+     /e instanceof GravacaoRecusada/.test(dash3), true);
+  eq('soltar em "Sem status" explica em vez de não fazer nada',
+     /"Sem status" não é um destino/.test(dash3), true);
+  eq('a proposta comercial recusa com o motivo (o status dela mora na visita, não no chamado)',
+     /A proposta comercial muda de etapa pelo fluxo da visita/.test(dash3), true);
+  eq('o rótulo da natureza recusada vem de NATUREZA_LABEL — o ternário antigo chamava "comercial" de "De campo"',
+     /NATUREZA_LABEL\[natureza\]/.test(dash3), true);
+
+  const q3 = fs54.readFileSync('src/features/home/Quadro.tsx', 'utf8');
+  eq('CRÍTICO (R89): o drop compara a coluna DESENHADA — comparar o status cru apagava o agendamento ao soltar na própria coluna',
+     /colunaVisivel\(a\.coluna\) !== c\) onMover\(a, c\)/.test(q3), true);
+  const ca3 = fs54.readFileSync('src/features/home/CardAtividade.tsx', 'utf8');
+  eq('CRÍTICO: o card é div[role=button], não <button> — Firefox e Safari não iniciam o arrasto do ancestral a partir de um botão nativo',
+     /role="button"/.test(ca3) && !/<button onClick=\{onClick\} className="elevavel"/.test(ca3), true);
+  eq('…e continua acessível pelo teclado (Enter e Espaço)',
+     /e\.key === "Enter" \|\| e\.key === " "/.test(ca3), true);
+
+  // ── autosave (R90) ───────────────────────────────────────────────────────
+  const hook = fs54.readFileSync('src/hooks/useRascunhoSalvo.ts', 'utf8');
+  eq('R90: o rascunho grava sozinho depois de um tempo parado',
+     /ESPERA_MS/.test(hook) && /setTimeout\(/.test(hook), true);
+  eq('CRÍTICO (R90): campo FOCADO nunca é sobrescrito pelo servidor — sem esta guarda o refetch da própria gravação come as letras digitadas',
+     /if \(focado\.current\) return;\s*\n\s*setValor\(valorServidor\);/.test(hook), true);
+  eq('sair do campo grava na hora, sem esperar o tempo',
+     /aoDesfocar = useCallback\(\(\) => \{[\s\S]{0,160}gravarAgora\(\)/.test(hook), true);
+  eq('trocar de atividade grava o pendente ANTES de descartar o rascunho',
+     /return \(\) => \{ gravarAgora\(\); \};/.test(hook), true);
+  const pc6 = fs54.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  eq('o painel usa o rascunho que se salva sozinho nos dois campos de texto',
+     (pc6.match(/useRascunhoSalvo\(/g) ?? []).length >= 2, true);
+  eq('CRÍTICO: o título ganhou selo de estado — com autosave não há mais clique que confirme, e ele era o único campo que gravava calado',
+     /estado=\{estados\.titulo\}/.test(pc6), true);
+
+  // ── cor por hierarquia (R87) ─────────────────────────────────────────────
+  const ui3 = fs54.readFileSync('src/lib/ui.ts', 'utf8');
+  eq('R87: existe um botão de seleção compartilhado, colorido pela coisa',
+     /export const botaoSelecao/.test(ui3), true);
+  eq('a tinta do botão sai do contraste medido, não de um valor fixo',
+     /tintaSobreDegrade\(cor\.dark\)/.test(ui3), true);
+  eq('sem cor própria, o dourado da marca segue valendo',
+     /background: GOLD_GRAD, color: "#08090E"/.test(ui3), true);
+  const di3 = fs54.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
+  // O dourado literal AINDA aparece no arquivo, nos botões de AÇÃO (salvar,
+  // abrir) — e deve mesmo: ação continua sendo território da marca (§6.3). O
+  // que mudou é só o botão de ESCOLHA, que é o `chip()`.
+  eq('CRÍTICO (R87): o botão de escolha deixou de ser dourado para tudo — agora recebe a cor da coisa',
+     /const chip = \(ativo: boolean, cor\?: Cores \| null\)[\s\S]{0,220}botaoSelecao\(ativo, isLight, cor/.test(di3),
+     true);
+  eq('…e cada um recebe a cor da SUA escala',
+     /chip\(chamado\.status === s, \(\(\) => \{/.test(di3)
+     && /chip\(chamado\.equipe === e, equipeCores\(e\)/.test(di3)
+     && /chip\(chamado\.tipo === t, TIPO_CORES\[t\]/.test(di3), true);
+  eq('a cor de status já era a hierarquia que o Davi descreveu: início azul, andamento amarelo, stand-by laranja',
+     [CS4.chamadoStatusInfo('aberto').color,
+      CS4.chamadoStatusInfo('em_andamento').color,
+      CS4.chamadoStatusInfo('stand_by').color],
+     [PAL.PRISMA.azul.dark, PAL.PRISMA.amarelo.dark, PAL.PRISMA.laranja.dark]);
+  eq('toda equipe tem cor, inclusive a "outras" que a U71 criou',
+     EQ3.EQUIPES.every((e) => !!EQ3.EQUIPE_CORES[e]), true);
+  const tab3 = fs54.readFileSync('src/features/home/TabelaAtividades.tsx', 'utf8');
+  eq('a coluna Equipe da tabela virou chip colorido, e plural (R83)',
+     /a\.equipes\.length \?/.test(tab3) && /equipeCores\(e\)/.test(tab3), true);
+
+  // ── o "+" e o diálogo (R91) ──────────────────────────────────────────────
+  eq('R91: existe o botão "+" ao lado do alternador de quadro/lista',
+     /aria-label="Criar uma nova atividade"/.test(dash3), true);
+  eq('…e ele abre o diálogo de nova atividade',
+     /<NovaAtividadeDialog aberto=\{novaAberta\}/.test(dash3), true);
+  const nad = fs54.readFileSync('src/features/home/NovaAtividadeDialog.tsx', 'utf8');
+  eq('CRÍTICO: o diálogo cria pela MESMA porta do resto (abrirChamado) — nada de um segundo caminho de escrita',
+     /await abrirChamado\(\{/.test(nad) && !/\.from\("chamados"/.test(nad), true);
+  eq('trocar de natureza limpa o tipo que a nova natureza não oferece (senão iria escondido para o banco)',
+     /if \(tipo && !\(tiposDaNatureza\(natureza\) as string\[\]\)\.includes\(tipo\)\) setTipo\(""\)/.test(nad), true);
+  eq('o diálogo diz que o local não vai no título (R86)',
+     /O local vai na etiqueta, não no título/.test(nad), true);
+
+  const produto6 = fs54.readFileSync('docs/PRODUTO.md', 'utf8');
+  for (const r of ['R87', 'R88', 'R89', 'R90', 'R91']) {
+    eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto6), true);
   }
 }
 

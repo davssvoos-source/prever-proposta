@@ -24,23 +24,28 @@
 
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpDown, Inbox, KanbanSquare, List as ListIcon, Search, WifiOff } from "lucide-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { ArrowUpDown, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
+import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
 
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, GOLD_GRAD } from "@/lib/ui";
 import { toast } from "sonner";
-import { statusDaNatureza } from "@/lib/chamado-status";
+import { statusDaNatureza, NATUREZA_LABEL, chamadoStatusInfo } from "@/lib/chamado-status";
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
-import { usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime, atualizarChamado } from "@/features/chamados/data";
+import {
+  usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime,
+  atualizarChamado, GravacaoRecusada,
+} from "@/features/chamados/data";
 import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
   aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
-  semData, FILTROS_INICIAIS, ORDENACOES, type Filtros, type Vinculo, type Prazo, type Ordenacao,
+  semData, FILTROS_INICIAIS, ORDENACOES, lerOrdenacao,
+  type Filtros, type Vinculo, type Prazo,
 } from "@/features/home/lentes";
 import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { CardAtividade } from "@/features/home/CardAtividade";
@@ -92,6 +97,8 @@ function Home() {
   const { data: sessao } = useSessao();
   const s = sessao ?? { userId: null, cargo: null };
   const gestor = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac";
+
+  const [novaAberta, setNovaAberta] = useState(false);
 
   const [visao, setVisao] = useState<"lista" | "quadro">(() => {
     try {
@@ -155,14 +162,18 @@ function Home() {
 
   const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
 
+  // A ordenação escolhida à mão vence a do padrão; sem escolha, cada padrão
+  // continua trazendo a ordem que já fazia sentido para ele. `lerOrdenacao`
+  // separa a chave da direção e tolera o valor cru que ficou no
+  // sessionStorage de antes da U72.
+  const ordem = useMemo(
+    () => lerOrdenacao(filtros.ordenacao) ?? { chave: ordemDoPreset(filtros.preset), desc: false },
+    [filtros.ordenacao, filtros.preset],
+  );
+
   const filtradas = useMemo(
-    () => ordenar(
-      aplicarLentes(atividades, filtros, ctx, normalizarTexto),
-      // a ordenação escolhida à mão vence a do padrão; sem escolha, cada
-      // padrão continua trazendo a ordem que já fazia sentido para ele
-      filtros.ordenacao ?? ordemDoPreset(filtros.preset),
-    ),
-    [atividades, filtros, ctx],
+    () => ordenar(aplicarLentes(atividades, filtros, ctx, normalizarTexto), ordem.chave, ordem.desc),
+    [atividades, filtros, ctx, ordem],
   );
 
   /**
@@ -213,9 +224,9 @@ function Home() {
    */
   const atividadesSelecao = useMemo(
     () => (selecaoPainel
-      ? ordenar(atividadesDaSelecao(selecaoPainel, paraPaineis, agora), filtros.ordenacao ?? "prazo")
+      ? ordenar(atividadesDaSelecao(selecaoPainel, paraPaineis, agora), ordem.chave, ordem.desc)
       : null),
-    [selecaoPainel, paraPaineis, agora, filtros.ordenacao],
+    [selecaoPainel, paraPaineis, agora, ordem],
   );
   /** O que a lista/quadro efetivamente mostram: o recorte da seleção quando
    *  há uma ativa, senão o filtro normal da barra. */
@@ -302,29 +313,79 @@ function Home() {
   }
 
   /**
-   * Soltar um card noutra coluna muda o STATUS. A tela valida o que consegue
-   * (vocabulário da natureza); o resto é do banco — o trigger carimba as
-   * datas da transição e a RLS pode recusar (técnico não conclui chamado de
-   * campo). A recusa vira toast e o refetch devolve o card.
+   * Soltar um card noutra coluna muda o STATUS (R89, U72).
+   *
+   * Davi, 2026-08-26: "o status da atividade deve atualizar e ele deve ser
+   * posicionado nesta nova coluna. O status da atividade deve sempre estar de
+   * acordo com a coluna de status do kanban."
+   *
+   * O card anda ANTES da resposta do banco (atualização otimista) e volta se a
+   * gravação falhar. Sem isso, o card ficava parado na coluna de origem
+   * durante toda a ida e volta e só pulava no refetch — o que se lê como
+   * "não funcionou", e leva a arrastar de novo.
+   *
+   * A recusa da RLS agora chega aqui como erro de verdade: até a U72 o
+   * PostgREST devolvia 204 sem erro quando a policy barrava, e o movimento
+   * falhava em silêncio absoluto (ver `atualizarChamado`).
    */
-  async function moverAtividade(a: Atividade, para: ColunaQuadro) {
-    if (para === "sem_status") return;
-    const natureza = a.natureza ?? "campo";
-    if (!statusDaNatureza(natureza).includes(para as any)) {
-      toast.error(`"${a.natureza === "interno" ? "Interno" : "De campo"}" não tem o status desta coluna.`);
-      return;
-    }
-    try {
+  const moverAtividade = useMutation({
+    mutationFn: async ({ a, para }: { a: Atividade; para: ColunaQuadro }) => {
       await atualizarChamado(a.registroId, { status: para as any });
+    },
+    onMutate: async ({ a, para }) => {
+      await qc.cancelQueries({ queryKey: ["home-chamados"] });
+      const antes = qc.getQueriesData({ queryKey: ["home-chamados"] });
+      // mexe no BRUTO, que é o que a query guarda — a Atividade é derivada
+      qc.setQueriesData({ queryKey: ["home-chamados"] }, (velho: any) =>
+        Array.isArray(velho)
+          ? velho.map((c: any) => (c.id === a.registroId ? { ...c, status: para } : c))
+          : velho,
+      );
+      return { antes };
+    },
+    onError: (e, { para }, ctx) => {
+      // devolve o card para onde estava, sem esperar o servidor
+      for (const [chave, dado] of ctx?.antes ?? []) qc.setQueryData(chave, dado);
+      if (e instanceof GravacaoRecusada) {
+        toast.error(
+          para === "concluido"
+            ? "Você não pode concluir esta atividade."
+            : "Você não tem permissão para mover esta atividade.",
+        );
+      } else {
+        toast.error(e instanceof Error && e.message ? e.message : "Não consegui mover a atividade.");
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["home-chamados"] });
       qc.invalidateQueries({ queryKey: ["chamados"] });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
-      toast.error(para === "concluido"
-        ? "Concluir este chamado é ato do gestor."
-        : msg || "Não consegui mover o chamado.");
-      qc.invalidateQueries({ queryKey: ["home-chamados"] });
+      qc.invalidateQueries({ queryKey: ["home"] });
+    },
+  });
+
+  function pedirMover(a: Atividade, para: ColunaQuadro) {
+    if (para === "sem_status") {
+      toast.error('"Sem status" não é um destino — é onde caem atividades com status desconhecido.');
+      return;
     }
+    // A visita não guarda status em `chamados`: o dela vive em
+    // `visitas_tecnicas`, e a capa é escrita por trigger, de mão única (U41).
+    // Gravar aqui não moveria a visita e seria desfeito na próxima edição
+    // dela — então a recusa é explícita, em vez de um arrasto que não pega.
+    if (a.fonte !== "chamado") {
+      toast.error("A proposta comercial muda de etapa pelo fluxo da visita, não pelo quadro.");
+      return;
+    }
+    if (a.compra) {
+      toast.error("O pedido de compra segue a situação da ficha de compra, não o status.");
+      return;
+    }
+    const natureza = a.natureza ?? "campo";
+    if (!statusDaNatureza(natureza).includes(para as any)) {
+      toast.error(`${NATUREZA_LABEL[natureza] ?? "Esta atividade"} não usa o status "${chamadoStatusInfo(para).label}".`);
+      return;
+    }
+    moverAtividade.mutate({ a, para });
   }
 
   function trocarVinculo(v: Vinculo) {
@@ -554,12 +615,17 @@ function Home() {
                 (a div so-desktop no fim da barra), então tocar na lupa só
                 alternava um estado que nada lia. A pílula "Ordenar" que
                 morava junto dos outros filtros saiu — vira este ícone. */}
+            {/* U72 (R88): seis opções, com a direção explícita onde ela muda
+                a resposta — prazo e recebimento. A `nota` de cada uma diz o
+                que a ordem faz de verdade ("vence antes primeiro"), porque
+                "crescente" sozinho não responde crescente EM QUÊ. */}
             <MenuFiltro
               rotulo="Ordenar"
               icone={ArrowUpDown}
-              opcoes={ORDENACOES.map((o) => ({ valor: o.chave, label: o.label }))}
+              larguraMenu={250}
+              opcoes={ORDENACOES.map((o) => ({ valor: o.valor, label: o.label, nota: o.nota }))}
               selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
-              onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: (v[0] ?? null) as Ordenacao | null }))}
+              onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: v[0] ?? null }))}
             />
             {/* a lupa continua existindo SÓ no celular — lá ela tem função de
                 verdade: abre o campo de busca colapsável abaixo da barra, que
@@ -583,6 +649,18 @@ function Home() {
               {/* o ícone mostra o DESTINO, igual a /chamados — trocar isso
                   deixaria as duas telas incoerentes entre si */}
               {visao === "lista" ? <KanbanSquare size={17} color={gold} /> : <ListIcon size={17} color={gold} />}
+            </button>
+            {/* R91 (Davi, 2026-08-26): "Adicione um botão de '+' ao lado
+                direito do botão de alternar entre kanban e lista". É o par
+                MANUAL do campo de I.A. do painel de cima — e diferente dele,
+                existe no celular também, onde aquele não cabe. */}
+            <button
+              onClick={() => setNovaAberta(true)}
+              title="Nova atividade"
+              aria-label="Criar uma nova atividade"
+              style={botaoIcone}
+            >
+              <Plus size={18} color={gold} />
             </button>
             {/* no desktop a busca mora aqui, depois dos botões — encostada na
                 margem direita do quadro, como o Davi desenhou */}
@@ -698,7 +776,7 @@ function Home() {
             foco={focoDoPreset(filtros.preset)}
             pessoas={pessoasPorId}
             onAbrir={abrir}
-            onMover={moverAtividade}
+            onMover={pedirMover}
           />
         ) : (
           // A MESMA sangria do quadro (Quadro.tsx usa "trilho-x sangra-x"):
@@ -734,6 +812,8 @@ function Home() {
         aoFechar={() => setPainelId(null)}
         aoAbrirPagina={abrirPagina}
       />
+
+      <NovaAtividadeDialog aberto={novaAberta} aoFechar={() => setNovaAberta(false)} />
     </>
   );
 }

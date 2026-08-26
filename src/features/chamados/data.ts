@@ -209,9 +209,38 @@ export type ChamadoPatch = Partial<
   >
 >;
 
+/**
+ * Erro de gravação recusada pela RLS. Existe para a tela distinguir "o banco
+ * disse não" de "a rede caiu" — as duas merecem mensagens diferentes.
+ */
+export class GravacaoRecusada extends Error {
+  constructor(msg = "Você não tem permissão para alterar esta atividade.") {
+    super(msg);
+    this.name = "GravacaoRecusada";
+  }
+}
+
+/**
+ * Atualiza o chamado. O `.select("id")` NÃO é enfeite (U72).
+ *
+ * Quando a policy de UPDATE recusa pelo `USING`, o PostgREST **não devolve
+ * erro**: a linha simplesmente não é encontrada, o UPDATE afeta zero linhas e
+ * a resposta é 204 com `error === null`. Sem o `.select()`, todo chamador
+ * concluía que tinha salvado — e no arrastar do quadro isso aparecia como o
+ * pior sintoma possível: o card voltava para a coluna de origem depois do
+ * refetch, sem erro, sem aviso, sem nada. "Arrastei e não aconteceu nada."
+ *
+ * Com o `.select("id")` a resposta traz as linhas afetadas, e lista vazia
+ * passa a ser o que sempre foi: recusa.
+ */
 export async function atualizarChamado(id: string, patch: ChamadoPatch): Promise<void> {
-  const { error } = await supabase.from("chamados" as any).update(patch as any).eq("id", id);
+  const { data, error } = await supabase
+    .from("chamados" as any)
+    .update(patch as any)
+    .eq("id", id)
+    .select("id");
   if (error) throw error;
+  if (!data || (data as any[]).length === 0) throw new GravacaoRecusada();
 }
 
 export async function excluirChamado(id: string): Promise<void> {

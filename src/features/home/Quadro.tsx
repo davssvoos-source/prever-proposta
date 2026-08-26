@@ -140,7 +140,12 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                 const a = arrastadaRef.current;
                 arrastadaRef.current = null;
                 setAlvoArrasto(null);
-                if (a && onMover && a.coluna !== c) onMover(a, c);
+                // Compara a coluna DESENHADA, não o status cru (U72). O card
+                // com status `agendado` é desenhado em "Aguardando início"
+                // (colunaVisivel), então soltá-lo na coluna onde ele já está
+                // passava por esta guarda e gravava status='aberto' —
+                // apagando o agendamento sem ninguém pedir.
+                if (a && onMover && colunaVisivel(a.coluna) !== c) onMover(a, c);
               }}
               style={{
                 ...COLUNA,

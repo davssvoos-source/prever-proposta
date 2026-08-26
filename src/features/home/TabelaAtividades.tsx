@@ -31,7 +31,7 @@ import { type PessoaAvatar } from "@/components/AvatarPilha";
 // primeira alteração de estilo (pior: cada uma poderia hashear a cor por um
 // campo diferente, quebrando "mesma pessoa, mesma cor em toda tela").
 import { PessoaComFoto } from "@/components/PessoaComFoto";
-import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
+import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import type { Atividade } from "@/features/atividades/modelo";
 
 export type ColunaTabela =
@@ -229,12 +229,29 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                   ) : <span style={{ color: textSecondary }}>—</span>}
                 </td>
 
-                <td style={{ ...td, ...corte, maxWidth: 130 }}>
-                  {/* equipe é invariante do modelo: só o interno tem. Em campo
-                      quem organiza é a dupla, e o traço diz isso sem mentir */}
-                  {a.equipe
-                    ? EQUIPE_LABEL[a.equipe as Equipe] ?? a.equipe
-                    : <span style={{ color: textSecondary }}>—</span>}
+                <td style={{ ...td, ...corte, maxWidth: 150 }}>
+                  {/* U72: virou chip COLORIDO e PLURAL. Era texto cinza — o
+                      único da fileira sem cor, ao lado de tipo e prioridade
+                      que já eram chips. E desde a R83 a equipe vale em
+                      qualquer natureza, então o traço aqui deixou de
+                      significar "é de campo": significa que não há equipe. */}
+                  {a.equipes.length ? (
+                    <span style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {a.equipes.map((e) => {
+                        const c = equipeCores(e);
+                        return (
+                          <span key={e} style={{
+                            padding: "2px 8px", borderRadius: 999,
+                            fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                            color: isLight ? c.light : c.dark,
+                            background: c.bg, whiteSpace: "nowrap",
+                          }}>
+                            {EQUIPE_LABEL[e as Equipe] ?? e}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  ) : <span style={{ color: textSecondary }}>—</span>}
                 </td>
 
                 <td style={td}>

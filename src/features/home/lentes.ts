@@ -25,20 +25,65 @@ export type Prazo = "hoje" | "essa_semana" | "semana_que_vem" | "este_mes" | nul
 export type Ordenacao = "prazo" | "recentes" | "prioridade" | "atualizacao" | "cliente";
 
 /**
- * As ordenações que a pessoa pode escolher À MÃO, na Início.
+ * As ordenações que a pessoa pode escolher À MÃO, na Início (R88, U72).
  *
- * O Davi pediu prazo e cliente; prioridade entra como a sugestão — é a mais
- * natural para quem está triando o que atacar primeiro, e já existia pronta
- * dentro de `ordenar()` (os presets a usavam, só faltava expor). "Recentes" e
- * "atualização" continuam existindo só para os presets: são ordens de
- * propósito estreito ("Sem dono" quer o mais antigo primeiro na fila), não o
- * tipo de coisa que se escolhe olhando o quadro inteiro.
+ * Davi, 2026-08-26: "o botão de ordenar deve ser mais bem montado — Prazo
+ * Crescente / Decrescente ; Cliente ; Prioridade ; Data de recebimento
+ * Crescente / Decrescente."
+ *
+ * O menu é de seleção única e o `MenuFiltro` só sabe de string, então a
+ * direção viaja no próprio valor (`"prazo:desc"`), e não num segundo controle.
+ * É o formato de menor atrito: os presets continuam guardando só a chave
+ * (`ordem: Ordenacao`) e não precisaram mudar.
+ *
+ * "recentes" é `criadoEm` DECRESCENTE e já existia — é a "data de recebimento"
+ * do pedido, vista do lado do mais novo. Aqui ela ganha o par crescente e um
+ * nome que diz o que ela é; o rótulo velho ("Recentes") não dizia de qual data
+ * estava falando. "atualizacao" continua fora do menu, como estava: é ordem de
+ * propósito estreito dos presets, não escolha de quem olha o quadro.
  */
-export const ORDENACOES: { chave: Ordenacao; label: string }[] = [
-  { chave: "prazo", label: "Prazo" },
-  { chave: "cliente", label: "Cliente" },
-  { chave: "prioridade", label: "Prioridade" },
+export interface OpcaoOrdenacao {
+  /** O valor que viaja no menu — "chave" ou "chave:desc". */
+  valor: string;
+  chave: Ordenacao;
+  desc: boolean;
+  label: string;
+  /** A linha fina do menu, dizendo o que a ordem faz de verdade. */
+  nota: string;
+}
+
+// `desc` aqui significa "inverte a direção NATURAL desta chave", e não
+// "decrescente" em abstrato. Cada chave tem um sentido próprio que já era o
+// dela: prazo cresce (vence antes primeiro), prioridade cresce (urgente
+// primeiro), cliente cresce (A→Z), e "recentes" nasce decrescente (mais novo
+// primeiro). Por isso o rótulo que a pessoa lê e a flag não andam juntos em
+// "Recebimento" — e por isso o `valor` do menu é uma etiqueta própria, em vez
+// de a flag vazar para dentro dele.
+export const ORDENACOES: OpcaoOrdenacao[] = [
+  { valor: "prazo:asc",        chave: "prazo",      desc: false, label: "Prazo (crescente)",        nota: "Vence antes primeiro; atrasados no topo" },
+  { valor: "prazo:desc",       chave: "prazo",      desc: true,  label: "Prazo (decrescente)",      nota: "Vence depois primeiro" },
+  { valor: "local",            chave: "cliente",    desc: false, label: "Local",                    nota: "A → Z; sem local por último" },
+  { valor: "prioridade",       chave: "prioridade", desc: false, label: "Prioridade",               nota: "Urgente primeiro" },
+  { valor: "recebimento:asc",  chave: "recentes",   desc: true,  label: "Recebimento (crescente)",  nota: "Pedido mais antigo primeiro" },
+  { valor: "recebimento:desc", chave: "recentes",   desc: false, label: "Recebimento (decrescente)", nota: "Pedido mais novo primeiro" },
 ];
+
+/** "prazo:desc" → { chave: "prazo", desc: true }. Valor desconhecido = null. */
+export function lerOrdenacao(valor: string | null): { chave: Ordenacao; desc: boolean } | null {
+  if (!valor) return null;
+  const o = ORDENACOES.find((x) => x.valor === valor);
+  if (o) return { chave: o.chave, desc: o.desc };
+  // Tolera a CHAVE CRUA: é o que os presets guardam e o que ficou no
+  // sessionStorage de quem usava a Início antes desta mudança. Sem isto, a
+  // primeira visita depois do deploy abriria com a ordenação zerada.
+  const chave = valor.split(":")[0] as Ordenacao;
+  return ORDENACOES.some((x) => x.chave === chave) ? { chave, desc: false } : null;
+}
+
+/** O valor de menu de um par — para o menu marcar a opção certa ao reabrir. */
+export function valorDaOrdenacao(chave: Ordenacao, desc: boolean): string {
+  return ORDENACOES.find((o) => o.chave === chave && o.desc === desc)?.valor ?? chave;
+}
 
 export interface ContextoLente {
   agora: Date;
@@ -198,8 +243,13 @@ export interface Filtros {
    * por prioridade). Escolher aqui é o usuário sobrepondo essa escolha, e por
    * isso troca de PRESET some com a marca (ver dashboard.tsx) — senão a
    * ordenação de um padrão vazaria, sem querer, para o próximo escolhido.
+   *
+   * Desde a U72 guarda o VALOR de menu (`"prazo:desc"`), não a chave — a
+   * direção precisava caber aqui e o `MenuFiltro` só sabe de string. Use
+   * `lerOrdenacao()` para virar o par {chave, desc}; ele tolera as chaves
+   * cruas que ficaram no sessionStorage de sessões anteriores.
    */
-  ordenacao: Ordenacao | null;
+  ordenacao: string | null;
 }
 
 export const FILTROS_INICIAIS: Filtros = {
@@ -329,33 +379,60 @@ export function recorteDosPaineis(
   });
 }
 
-export function ordenar(lista: Atividade[], modo: Ordenacao): Atividade[] {
+/**
+ * Ordena a lista. `desc` inverte o sentido (R88, U72).
+ *
+ * DUAS REGRAS SOBREVIVEM À INVERSÃO, e é o que separa isto de um `.reverse()`:
+ *
+ * 1. **Vazio sempre por último, nos dois sentidos.** É a regra da casa (o caso
+ *    `cliente` abaixo e a `TabelaAtividades` já a seguiam). Invertendo cru, uma
+ *    lista "Prazo decrescente" começaria com dezenas de itens SEM prazo — e
+ *    "sem data" não é a maior data, é a ausência dela.
+ * 2. **O desempate por `criadoEm` não inverte.** Ele existe para a ordem ser
+ *    estável e previsível entre itens empatados, não para ser um segundo eixo.
+ *
+ * O que a inversão MUDA de propósito: no crescente, atrasado vem sempre na
+ * frente (é a fila de trabalho). No decrescente isso seria contraditório —
+ * quem pede "prazo decrescente" quer o que vence por último no topo, e o
+ * atrasado é justamente o que vence primeiro. Então o bloco de estourados só
+ * vale no crescente.
+ */
+export function ordenar(lista: Atividade[], modo: Ordenacao, desc = false): Atividade[] {
   const l = [...lista];
+  const s = desc ? -1 : 1;
+  // desempate estável: o mais novo primeiro, independentemente do sentido
+  const novoPrimeiro = (a: Atividade, b: Atividade) => (a.criadoEm < b.criadoEm ? 1 : -1);
+
   switch (modo) {
     case "prazo":
       return l.sort((a, b) => {
-        if (a.prazoEstourado !== b.prazoEstourado) return a.prazoEstourado ? -1 : 1;
-        const qa = a.quando ? new Date(a.quando).getTime() : Infinity;
-        const qb = b.quando ? new Date(b.quando).getTime() : Infinity;
-        if (qa !== qb) return qa - qb;
-        return a.criadoEm < b.criadoEm ? 1 : -1;
+        const semA = !a.quando, semB = !b.quando;
+        if (semA !== semB) return semA ? 1 : -1;   // vazio por último, sempre
+        if (semA && semB) return novoPrimeiro(a, b);
+        if (!desc && a.prazoEstourado !== b.prazoEstourado) return a.prazoEstourado ? -1 : 1;
+        const qa = new Date(a.quando as string).getTime();
+        const qb = new Date(b.quando as string).getTime();
+        if (qa !== qb) return (qa - qb) * s;
+        return novoPrimeiro(a, b);
       });
     case "prioridade":
-      return l.sort((a, b) => a.prioridadeRank - b.prioridadeRank || (a.criadoEm < b.criadoEm ? 1 : -1));
+      return l.sort((a, b) => (a.prioridadeRank - b.prioridadeRank) * s || novoPrimeiro(a, b));
     case "atualizacao":
-      return l.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? -1 : 1)); // mais parado primeiro
+      return l.sort((a, b) => (a.atualizadoEm < b.atualizadoEm ? -1 : 1) * s); // mais parado primeiro
     case "cliente":
       return l.sort((a, b) => {
         // sem cliente vai para o fim, nos dois sentidos: alfabético que
         // começa com dez traços não ajuda a achar "quem é do Pateo Klabin"
-        if (!a.cliente && !b.cliente) return a.criadoEm < b.criadoEm ? 1 : -1;
+        if (!a.cliente && !b.cliente) return novoPrimeiro(a, b);
         if (!a.cliente) return 1;
         if (!b.cliente) return -1;
-        return a.cliente.localeCompare(b.cliente, "pt-BR", { numeric: true });
+        return a.cliente.localeCompare(b.cliente, "pt-BR", { numeric: true }) * s;
       });
     case "recentes":
     default:
-      return l.sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1));
+      // A direção NATURAL de "recentes" é o mais novo primeiro — é o que ela
+      // sempre significou, e é o que os presets esperam ao chamar sem `desc`.
+      return l.sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1) * s);
   }
 }
 
