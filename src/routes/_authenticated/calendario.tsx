@@ -28,6 +28,9 @@ import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
 import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
 import { PRISMA } from "@/lib/paleta";
 import { usePessoas } from "@/features/chamados/data";
+import {
+  useClientes, SERVICO_ORDEM, SERVICO_LABEL, type ServicoCliente,
+} from "@/features/clientes/data";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { visitaRouteFor } from "@/lib/visita-route";
@@ -59,6 +62,18 @@ interface Evento {
   /** true = já passou da data e não chegou a um estado final — pinta vermelho */
   atrasado: boolean;
   cor: string;
+  /**
+   * Os setores de serviço a que o evento pertence (R93, U73). Um evento chega
+   * a um setor por DOIS caminhos, e os dois valem:
+   *
+   *   1. a ETIQUETA explícita em `chamado_locais.setor` (R85)
+   *   2. o serviço prestado no local — `clientes.servicos_prestados` do
+   *      cliente principal ou de qualquer cliente vinculado
+   *
+   * Vazio = não pertence a setor nenhum (atividade interna, prospecção, ou
+   * cliente ainda sem serviço marcado).
+   */
+  setores: string[];
 }
 
 const chaveDia = (d: Date) =>
@@ -93,6 +108,17 @@ function CalendarioPage() {
 
   const [pessoaFiltro, setPessoaFiltro] = useState("todos");
   const [tipoFiltro, setTipoFiltro] = useState("todos");
+  const [setorFiltro, setSetorFiltro] = useState("todos");
+
+  // A base inteira, para saber que serviço cada local presta. Já vem de cache
+  // (a tela de Clientes e o painel do chamado usam a mesma query) e traz
+  // `servicos_prestados` no SELECT padrão.
+  const { data: clientesBase = [] } = useClientes();
+  const servicosPorCliente = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const c of clientesBase) m[c.id] = c.servicos_prestados ?? [];
+    return m;
+  }, [clientesBase]);
 
   const { data: pessoas = [] } = usePessoas();
   const mapaPessoas = useMemo(() => {
@@ -109,7 +135,10 @@ function CalendarioPage() {
     queryFn: async () => {
       let q = supabase
         .from("visitas_tecnicas")
-        .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id")
+        // cliente_id entra na U73: é por ele que a visita sabe de que setor
+        // ela é. Visita de prospecção fica sem — e é correto, o prédio que
+        // ainda não é cliente não presta serviço nenhum.
+        .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id, cliente_id")
         .not("data_hora_agendada", "is", null)
         .gte("data_hora_agendada", inicioMes.toISOString())
         .lte("data_hora_agendada", fimMes.toISOString());
@@ -138,7 +167,7 @@ function CalendarioPage() {
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
         // nome velho derrubava a consulta inteira (42703).
         // `!cliente_id`: desambigua o embed — ver features/home/data.ts (U45).
-        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente:clientes!cliente_id(nome)")
+        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente_id, cliente:clientes!cliente_id(nome)")
         .or(`and(data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),and(data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`);
       if (error) throw error;
       return (data as any[]) ?? [];
@@ -159,6 +188,32 @@ function CalendarioPage() {
       const m: Record<string, string[]> = {};
       for (const r of (data as any[]) ?? []) {
         (m[r.chamado_id] ??= []).push(r.profile_id);
+      }
+      return m;
+    },
+  });
+
+  /**
+   * Os LOCAIS de cada chamado do mês (U71), para o filtro de setor.
+   *
+   * Consulta crua, sem embed do PostgREST, de propósito: `chamado_locais` tem
+   * duas FKs chegando em tabelas diferentes, e o embed ambíguo é o PGRST201
+   * que já derrubou a Início inteira quando a U45 subiu. Aqui só precisamos
+   * de `setor` e `cliente_id` — nenhum join é necessário.
+   */
+  const { data: locais = {} } = useQuery({
+    queryKey: ["calendario", "locais", mes.getFullYear(), mes.getMonth()],
+    enabled: chamados.length > 0,
+    queryFn: async () => {
+      const ids = (chamados as any[]).map((c) => c.id);
+      const { data, error } = await supabase
+        .from("chamado_locais" as any)
+        .select("chamado_id, cliente_id, setor")
+        .in("chamado_id", ids);
+      if (error) return {};
+      const m: Record<string, { setor: string | null; cliente_id: string | null }[]> = {};
+      for (const r of (data as any[]) ?? []) {
+        (m[r.chamado_id] ??= []).push({ setor: r.setor, cliente_id: r.cliente_id });
       }
       return m;
     },
@@ -198,6 +253,7 @@ function CalendarioPage() {
         porPrazo: false,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
+        setores: v.cliente_id ? (servicosPorCliente[v.cliente_id] ?? []) : [],
       };
     });
     const deChamados: Evento[] = (chamados as any[]).map((c) => {
@@ -222,17 +278,30 @@ function CalendarioPage() {
         porPrazo: !c.data_hora_agendada,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
+        // etiqueta explícita + serviço do cliente principal + serviço de cada
+        // cliente vinculado, sem repetir
+        setores: Array.from(new Set([
+          ...(c.cliente_id ? (servicosPorCliente[c.cliente_id] ?? []) : []),
+          ...((locais as Record<string, { setor: string | null; cliente_id: string | null }[]>)[c.id] ?? [])
+            .flatMap((l) => (l.setor
+              ? [l.setor]
+              : l.cliente_id ? (servicosPorCliente[l.cliente_id] ?? []) : [])),
+        ])),
       };
     });
     return [...deVisitas, ...deChamados]
       .sort((a, b) => new Date(a.quando).getTime() - new Date(b.quando).getTime());
-  }, [visitas, chamados, apoios, isLight, vermelho, hoje]);
+  }, [visitas, chamados, apoios, locais, servicosPorCliente, isLight, vermelho, hoje]);
 
   const eventos = useMemo(
     () => todosEventos
       .filter((e) => pessoaFiltro === "todos" || e.pessoas.includes(pessoaFiltro))
-      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro),
-    [todosEventos, pessoaFiltro, tipoFiltro],
+      .filter((e) => tipoFiltro === "todos" || e.tipo === tipoFiltro)
+      // Escolher um setor esconde quem não é de setor nenhum — atividade
+      // interna, prospecção, cliente sem serviço marcado. É o que filtrar
+      // significa, mas surpreende, então o menu avisa quantos ficam de fora.
+      .filter((e) => setorFiltro === "todos" || e.setores.includes(setorFiltro)),
+    [todosEventos, pessoaFiltro, tipoFiltro, setorFiltro],
   );
 
   const porDia = useMemo(() => {
@@ -257,6 +326,18 @@ function CalendarioPage() {
    */
   const tiposPresentes = useMemo(
     () => Array.from(new Set(todosEventos.map((e) => e.tipo))).sort(),
+    [todosEventos],
+  );
+
+  /** Os setores com pelo menos um evento no mês — mesma regra do Tipo. */
+  const setoresPresentes = useMemo(
+    () => SERVICO_ORDEM.filter((s) => todosEventos.some((e) => e.setores.includes(s))) as string[],
+    [todosEventos],
+  );
+
+  /** Quantos ficariam de fora ao escolher um setor — o aviso ao lado da conta. */
+  const semSetor = useMemo(
+    () => todosEventos.filter((e) => e.setores.length === 0).length,
     [todosEventos],
   );
 
@@ -362,10 +443,15 @@ function CalendarioPage() {
               onMudar={(v) => setPessoaFiltro(v[0] ?? "todos")}
             />
           )}
-          {tiposPresentes.length > 1 && (
+          {/* U73: o botão passou a aparecer SEMPRE que há tipo no mês. Antes
+              exigia `> 1`, e num mês de um tipo só ele sumia — o filtro
+              existia e ninguém via. O rótulo virou "Tipo de demanda", que é
+              como o resto do app chama esse campo. */}
+          {tiposPresentes.length > 0 && (
             <MenuFiltro
-              rotulo="Tipo"
+              rotulo="Tipo de demanda"
               vazio="Todos os tipos"
+              larguraMenu={230}
               opcoes={tiposPresentes.map((t) => ({
                 valor: t,
                 // "visita" não é um ChamadoTipo — só os de chamado têm rótulo
@@ -377,8 +463,32 @@ function CalendarioPage() {
               onMudar={(v) => setTipoFiltro(v[0] ?? "todos")}
             />
           )}
+          {/* R93: setor = o SERVIÇO prestado no local (Portaria Remota,
+              Monitoramento), o mesmo vocabulário de `servicos_prestados` e da
+              etiqueta de setor da U71. As opções saem de `todosEventos`, nunca
+              da lista já filtrada — a armadilha documentada em
+              `tiposPresentes` logo acima vale igual aqui. */}
+          {setoresPresentes.length > 0 && (
+            <MenuFiltro
+              rotulo="Setor"
+              vazio="Todos os setores"
+              larguraMenu={250}
+              opcoes={setoresPresentes.map((s) => ({
+                valor: s,
+                label: SERVICO_LABEL[s as ServicoCliente] ?? s,
+                nota: `${todosEventos.filter((e) => e.setores.includes(s)).length} no mês`,
+              }))}
+              selecionados={setorFiltro === "todos" ? [] : [setorFiltro]}
+              onMudar={(v) => setSetorFiltro(v[0] ?? "todos")}
+            />
+          )}
           <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
             {eventos.length} no mês
+            {/* Escolher setor esconde quem não tem setor nenhum. Sem este
+                aviso, "12 no mês" num mês de 40 pareceria dado sumido. */}
+            {setorFiltro !== "todos" && semSetor > 0 && (
+              <span style={{ opacity: 0.75 }}> · {semSetor} sem setor</span>
+            )}
           </span>
         </div>
 

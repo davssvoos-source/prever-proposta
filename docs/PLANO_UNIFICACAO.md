@@ -4547,3 +4547,71 @@ e não foi o que se pediu.
 
 1487 asserções (55 novas), build ok, tsc no baseline de 85. **Sem migration** —
 tudo nesta entrada é aplicação.
+
+### U73 — Filtro por setor no calendário, e um eixo só em Clientes (R92–R93, 2026-08-26)
+
+"No calendário, adicione o filtro por setor, adicione também o filtro por tipo
+de demanda. Em clientes, remova o filtro 'Situação', mantenha somente o filtro
+'Serviço'. Remova a opção 'Todos', para exibir todos o usuário deve marcar
+todas as opções de filtro."
+
+**O filtro por tipo de demanda já existia — e ninguém via.** A condição era
+`tiposPresentes.length > 1`: num mês com um tipo só, o botão sumia da barra.
+A intenção original era não mostrar um seletor de uma opção; o efeito prático
+foi um filtro invisível, que é como ele chegou pedido de novo. Passou a
+aparecer sempre que há tipo, e o rótulo virou "Tipo de demanda", que é como o
+resto do app chama esse campo (o painel do chamado usa exatamente essa
+palavra).
+
+**Setor tem duas fontes, e ignorar uma delas seria mentir.** Desde a U71 um
+chamado chega a um setor por dois caminhos: a **etiqueta explícita**
+(`chamado_locais.setor`, gravada quando alguém marca "todos os clientes de
+Portaria Remota") e o **serviço prestado no local** (`servicos_prestados` do
+cliente principal ou de qualquer cliente vinculado). Considerar só a etiqueta
+esconderia todo chamado de um cliente de portaria que ninguém etiquetou;
+considerar só o serviço perderia a atividade de setor inteiro, que
+deliberadamente não tem cliente.
+
+A visita entrou pelo `cliente_id`, que precisou ser acrescentado ao SELECT.
+Visita de prospecção fica sem setor — e é correto: prédio que ainda não é
+cliente não presta serviço nenhum.
+
+A consulta de `chamado_locais` é **crua, sem embed**, e o comentário registra o
+porquê: duas FKs chegando em tabelas diferentes é exatamente o PGRST201 que
+derrubou a Início inteira quando a U45 subiu. Consulta simples e `Map` na mão é
+mais chato de ler e não cai.
+
+**Escolher setor esconde quem não tem setor** — atividade interna, prospecção,
+cliente sem serviço marcado. É o que filtrar significa, mas surpreende num
+calendário que costuma mostrar tudo. Em vez de inventar uma regra ("interno
+sempre aparece"), a contagem ao lado passou a dizer quantos ficaram de fora.
+
+**Clientes: o "Sem serviço" não é detalhe de implementação, é o que salva a
+tela.** Tirar o "Todos" de um filtro de serviço parece inofensivo até olhar os
+números: a marcação cobre **59 de 192 clientes** (29 na U36, 30 na U44). Sem
+uma opção para "nenhum serviço registrado", os ~130 restantes sumiriam da lista
+e ninguém teria como trazê-los de volta — o filtro estaria escondendo dois
+terços da base por omissão. "Nenhum serviço" é um valor real do cadastro, e por
+isso é marcável como os outros.
+
+**As contagens deixaram de cruzar, e é isso que as torna honestas agora.** No
+filtro antigo (escolha única em dois eixos), cruzar era o certo: "Ativos · 192"
+ao lado de uma lista de 29 seria mentira. Num filtro de **união**, a conta
+certa é a oposta: marcar mais só ACRESCENTA, então "Portaria · 29" continua
+verdade qualquer que seja o resto da seleção, e cruzar faria o número encolher
+enquanto a lista cresce.
+
+O subtítulo da tela mudou junto: era "N ativos · M cadastrados", agora é
+"N ativos · M na lista". Com múltipla escolha, anunciar o total do cadastro
+enquanto a lista mostra um recorte é a mesma promessa não cumprida que as
+contagens cruzadas evitavam.
+
+**O que deliberadamente NÃO se fez.** "Setor" foi lido como **serviço
+prestado**, não como equipe — é o vocabulário que o Davi vem usando desde a
+U71 ("atalhos para agregar a um setor inteiro, por exemplo todos clientes de
+portaria remota"), e equipe ele chama de equipe. Se a intenção era filtrar o
+calendário por equipe, é um menu a mais e o dado já está a um campo de
+distância no SELECT. E a etiqueta de situação continua no card de cliente: o
+pedido foi tirar o FILTRO, não a informação.
+
+1505 asserções (14 novas), build ok, tsc no baseline de 85. Sem migration.

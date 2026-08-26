@@ -1917,16 +1917,25 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 
   // ── a tela ──────────────────────────────────────────────────────────────
-  // serviço e situação são EIXOS que se combinam: um cliente é ativo E tem
-  // portaria. Um seletor só obrigaria a escolher entre as duas perguntas.
-  eq('o filtro de serviço é independente do de situação',
-     /servico !== "todos" && !temServico\(c, servico\)/.test(pag)
-     && /filtro !== "todos" && c\.situacao !== filtro/.test(pag), true);
-  eq('a página tem o filtro Portaria Remota', /SERVICO_LABEL\[s\]/.test(pag), true);
-  // chip que promete 192 e entrega 29 é chip que mente
-  eq('as contagens de um eixo respeitam o filtro do outro',
-     /porServico\.filter\(\(c\) => c\.situacao === "ativo"\)/.test(pag)
-     && /porSituacao\.filter\(\(c\) => temServico/.test(pag), true);
+  // U73 (R92): o eixo de SITUAÇÃO saiu do filtro — Davi, 2026-08-26: "remova o
+  // filtro 'Situação', mantenha somente o filtro 'Serviço'. Remova a opção
+  // 'Todos', para exibir todos o usuário deve marcar todas as opções". A
+  // etiqueta de ativo/inativo continua no card: ela informa, não recorta.
+  eq('R92: o filtro de situação saiu da tela',
+     /c\.situacao !== filtro/.test(pag), false);
+  eq('R92: serviço virou múltipla escolha (união), sem a opção "Todos"',
+     /servicos\.some\(\(k\) => casaServico\(c, k\)\)/.test(pag), true);
+  eq('CRÍTICO (R92): existe a opção "Sem serviço" — sem ela, tirar o "Todos" faria os ~130 clientes não marcados sumirem sem volta',
+     /sem_servico: "Sem serviço"/.test(pag)
+     && /\(c\.servicos_prestados \?\? \[\]\)\.length === 0/.test(pag), true);
+  eq('a tela abre com tudo marcado (é o que a faz abrir mostrando todo mundo)',
+     /useState<ChaveServico\[\]>\(\(\) => \[\.\.\.TODAS_AS_CHAVES\]\)/.test(pag), true);
+  eq('cada chip é interruptor e diz se está ligado (aria-pressed)',
+     /aria-pressed=\{servicos\.includes\(k\)\}/.test(pag), true);
+  eq('a página tem o filtro Portaria Remota', /CHAVE_LABEL\[k\]/.test(pag), true);
+  // contagem que promete 192 e entrega 29 é contagem que mente
+  eq('o subtítulo conta o que a tela MOSTRA, não o total do cadastro',
+     /\{lista\.length\} na lista/.test(pag), true);
   eq('a linha do cliente mostra os serviços dele',
      /SERVICO_ORDEM\.filter\(\(s\) => temServico\(c, s\)\)/.test(pag), true);
   // sem edição, a propriedade ficaria congelada nos 29 da migration
@@ -2064,7 +2073,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   eq('o calendário usa o MenuFiltro do resto do app, não <select> nativo',
      /<MenuFiltro[\s\S]{0,120}rotulo="Pessoa"/.test(cal2)
-     && /<MenuFiltro[\s\S]{0,200}rotulo="Tipo"/.test(cal2), true);
+     && /<MenuFiltro[\s\S]{0,200}rotulo="Tipo de demanda"/.test(cal2)
+     && /<MenuFiltro[\s\S]{0,200}rotulo="Setor"/.test(cal2), true);
   eq('nenhum <select> sobrou nos filtros de pessoa/tipo',
      /<select style=\{seletor\}/.test(cal2), false);
   // "visita" não é um ChamadoTipo — sem o fallback, o filtro mostraria a
@@ -2848,7 +2858,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── paginação ────────────────────────────────────────────────────────────
   eq('10 itens por página', /const ITENS_POR_PAGINA = 10;/.test(cl2), true);
   eq('mudar busca/filtro/serviço volta pra página 1 (senão a tela fica em branco numa página que não existe mais)',
-     /useEffect\(\(\) => \{ setPaginaAtual\(1\); \}, \[busca, filtro, servico\]\);/.test(cl2), true);
+     /useEffect\(\(\) => \{ setPaginaAtual\(1\); \}, \[busca, servicos\]\);/.test(cl2), true);
   eq('a página é fatiada (slice) da lista FILTRADA, com clamp contra o total (defesa se o total encolher)',
      /const pagina = Math\.min\(paginaAtual, totalPaginas\);/.test(cl2)
      && /lista\.slice\(\(pagina - 1\) \* ITENS_POR_PAGINA, pagina \* ITENS_POR_PAGINA\)/.test(cl2),
@@ -3399,13 +3409,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      true);
 
   // ── Situação + Serviço: um painel só, agora atrás do botão redondo (R71) ─
-  // O cartão único continua sendo a regra (são dois EIXOS que se combinam);
-  // o que mudou é que ele só ocupa altura quando está aberto.
-  eq('Situação e Serviço moram no MESMO cartão (card(isLight)), não em duas fileiras soltas',
+  // O cartão continua sendo a regra; o que mudou na U73 é que sobrou UM eixo
+  // (Serviço), porque o de Situação saiu (R92).
+  eq('o filtro mora num cartão (card(isLight)) e só ocupa altura quando aberto',
      /\{filtrosAbertos && \(\s*\n\s*<div style=\{\{\s*\n\s*\.\.\.card\(isLight\), borderRadius: 14/.test(cl3), true);
-  eq('as duas fileiras de chip (situação, serviço) estão DENTRO desse cartão único',
-     /\{filtrosAbertos && \([\s\S]{0,900}\["todos", `Todos · \$\{contagem\.todos\}`\][\s\S]{0,1200}Serviço/.test(cl3),
-     true);
+  eq('a fileira de chips de Serviço está DENTRO desse cartão',
+     /\{filtrosAbertos && \([\s\S]{0,900}Serviço[\s\S]{0,600}TODAS_AS_CHAVES\.map/.test(cl3), true);
 
   // ── A coluna da lista rola por dentro; a página, não ─────────────────────
   eq('CRÍTICO: .clientes-duas-colunas ganha flex:1 + minHeight:0 — sem isso a rolagem vazaria pra página inteira',
@@ -4200,17 +4209,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── busca alinhada ao título, filtros atrás do botão redondo ─────────────
   eq('a busca está na MESMA linha do título "Clientes"',
-     /<div style=\{\{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0\.01em" \}\}>Clientes<\/div>[\s\S]{0,900}placeholder="Buscar cliente, endereço, posto…"/.test(cl4),
+     /<div style=\{\{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0\.01em" \}\}>Clientes<\/div>[\s\S]{0,1600}placeholder="Buscar cliente, endereço, posto…"/.test(cl4),
      true);
   eq('o botão de filtro é um CÍRCULO ao lado da busca',
      /width: 42, height: 42, borderRadius: "50%"/.test(cl4), true);
   eq('ele anuncia que revela um painel (aria-expanded) — botão que esconde conteúdo sem dizer é armadilha',
      /aria-expanded=\{filtrosAbertos\}/.test(cl4), true);
   eq('CRÍTICO: filtro ATIVO e escondido acende um ponto no botão — sem isso "sumiu cliente da lista" vira mistério em vez de um clique',
-     /const temFiltro = filtro !== "todos" \|\| servico !== "todos";/.test(cl4)
+     /const temFiltro = servicos\.length !== TODAS_AS_CHAVES\.length;/.test(cl4)
      && /\{temFiltro && !filtrosAbertos && \(/.test(cl4), true);
-  eq('o painel aberto oferece limpar os filtros',
-     /Limpar filtros/.test(cl4), true);
+  // "Limpar" virou "Marcar todos" na U73: sem a opção "Todos", limpar não é
+  // mais tirar o recorte — é marcar tudo de novo, e o botão diz isso.
+  eq('o painel aberto oferece voltar a mostrar todos',
+     /Marcar todos/.test(cl4), true);
 
   // ── a bolinha: degradê, sem contorno, sem glow ───────────────────────────
   eq('o passo do cliente cai sempre em 0…7 — a rampa tem 9 amostras para servir 8 peças, e um passo 8 não teria par seguinte',
@@ -5177,6 +5188,50 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const produto6 = fs54.readFileSync('docs/PRODUTO.md', 'utf8');
   for (const r of ['R87', 'R88', 'R89', 'R90', 'R91']) {
     eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto6), true);
+  }
+}
+
+// ── U73: filtros do calendário e o eixo único de clientes (R92–R93) ─────────
+{
+  const fs55 = require('fs');
+  const cal3 = fs55.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
+  const cli5 = fs55.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
+
+  // ── calendário: setor e tipo de demanda ──────────────────────────────────
+  eq('R93: o Evento do calendário carrega os setores dele',
+     /setores: string\[\]/.test(cal3), true);
+  eq('CRÍTICO (R93): o setor vem pelos DOIS caminhos — a etiqueta explícita da U71 E o serviço prestado no local',
+     /l\.setor\s*\n?\s*\? \[l\.setor\]/.test(cal3)
+     && /servicosPorCliente\[c\.cliente_id\]/.test(cal3), true);
+  eq('a visita também sabe de que setor é (o cliente dela entrou no SELECT)',
+     /tecnico_id, cliente_id/.test(cal3)
+     && /setores: v\.cliente_id \? \(servicosPorCliente\[v\.cliente_id\] \?\? \[\]\) : \[\]/.test(cal3), true);
+  eq('CRÍTICO: a consulta de chamado_locais é CRUA, sem embed — duas FKs para tabelas diferentes dão PGRST201 e derrubam a tela',
+     /from\("chamado_locais" as any\)\s*\n\s*\.select\("chamado_id, cliente_id, setor"\)/.test(cal3), true);
+  eq('as opções de Setor saem de todosEventos, nunca da lista já filtrada (a armadilha que apagava o botão Tipo)',
+     /const setoresPresentes = useMemo\(\s*\n\s*\(\) => SERVICO_ORDEM\.filter\(\(s\) => todosEventos\.some/.test(cal3),
+     true);
+  eq('CRÍTICO: o botão "Tipo de demanda" aparece com UM tipo só — a condição > 1 fazia o filtro existir sem ninguém ver',
+     /tiposPresentes\.length > 0 &&/.test(cal3), true);
+  eq('escolher setor avisa quantos ficam de fora (senão a conta encolhida parece dado sumido)',
+     /setorFiltro !== "todos" && semSetor > 0/.test(cal3), true);
+  eq('o filtro de setor é mais um elo da cadeia, não uma consulta paralela',
+     /\.filter\(\(e\) => setorFiltro === "todos" \|\| e\.setores\.includes\(setorFiltro\)\)/.test(cal3), true);
+
+  // ── clientes: um eixo só, múltipla escolha ───────────────────────────────
+  eq('R92: não sobrou nenhum "Todos" no filtro de clientes',
+     /servico === "todos"|filtro === "todos"/.test(cli5), false);
+  eq('marcar/desmarcar é alternar, não substituir',
+     /v\.includes\(k\) \? v\.filter\(\(x\) => x !== k\) : \[\.\.\.v, k\]/.test(cli5), true);
+  eq('CRÍTICO: as contagens NÃO cruzam entre si — num filtro de união, marcar mais só ACRESCENTA, e cruzar faria o número encolher ao contrário da lista',
+     /for \(const k of TODAS_AS_CHAVES\) conta\[k\] = clientes\.filter\(\(c\) => casaServico\(c, k\)\)\.length/.test(cli5),
+     true);
+  eq('a etiqueta de situação continua no card — ela informa, o que saiu foi o recorte por ela',
+     /SITUACAO_LABEL\[c\.situacao\]/.test(cli5), true);
+
+  const produto7 = fs55.readFileSync('docs/PRODUTO.md', 'utf8');
+  for (const r of ['R92', 'R93']) {
+    eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto7), true);
   }
 }
 

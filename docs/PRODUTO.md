@@ -1466,3 +1466,46 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   fornecedor, link) tem o atalho no rodapé do pop-up.
   *(Davi, 2026-08-26: "Adicione um botão de '+' ao lado direito do botão de
   alternar entre kanban e lista na tela de início".)*
+
+- **R92** — **Em Clientes, um eixo de filtro só: Serviço.** O filtro de
+  Situação saiu — a etiqueta de ativo/inativo continua no card, porque ela
+  informa; o que saiu foi o recorte por ela. Serviço virou **múltipla
+  escolha** e perdeu o "Todos": ver tudo é ter tudo marcado. A tela abre com
+  todas as opções marcadas, que é o que a faz abrir mostrando todo mundo.
+
+  As opções **se somam** (união), então marcar Portaria e Monitoramento traz
+  quem tem qualquer um dos dois — e quem tem os dois aparece uma vez só.
+
+  **"Sem serviço" é uma das opções**, e não um detalhe de implementação. A
+  marcação cobre 59 dos 192 clientes (29 na U36 + 30 na U44); sem essa chave,
+  tirar o "Todos" faria os ~130 restantes sumirem da tela sem que ninguém
+  pudesse trazê-los de volta. "Nenhum serviço registrado" é um valor real do
+  cadastro.
+
+  As contagens dos chips **não cruzam entre si**: num filtro de união, marcar
+  mais só acrescenta, então "Portaria · 29" é verdade qualquer que seja o
+  resto da seleção. Cruzar faria o número encolher ao marcar outra opção — o
+  oposto do que acontece com a lista.
+  *(Davi, 2026-08-26: "remova o filtro 'Situação', mantenha somente o filtro
+  'Serviço'. Remova a opção 'Todos', para exibir todos o usuário deve marcar
+  todas as opções de filtro".)*
+
+- **R93** — **O calendário filtra por setor e por tipo de demanda.** Setor é o
+  **serviço prestado no local** (Portaria Remota, Monitoramento de Alarmes) —
+  o mesmo vocabulário de `servicos_prestados` e da etiqueta de setor da R85.
+
+  Um evento chega a um setor por **dois caminhos, e os dois valem**: a etiqueta
+  explícita em `chamado_locais.setor`, e o serviço do cliente vinculado (o
+  principal ou qualquer um da lista). A visita entra pelo cliente dela; visita
+  de prospecção fica sem setor, e é correto — prédio que ainda não é cliente
+  não presta serviço nenhum.
+
+  Escolher um setor **esconde quem não é de setor nenhum** (atividade interna,
+  prospecção, cliente sem serviço marcado). É o que filtrar significa, mas
+  surpreende — então a contagem ao lado diz quantos ficaram de fora.
+
+  O filtro por **tipo de demanda já existia e ninguém via**: ele só aparecia
+  quando havia mais de um tipo no mês. Agora aparece sempre que há tipo, e o
+  rótulo virou "Tipo de demanda", como o resto do app chama esse campo.
+  *(Davi, 2026-08-26: "No calendário, adicione o filtro por setor, adicione
+  também o filtro por tipo de demanda".)*

@@ -60,7 +60,33 @@ export const Route = createFileRoute("/_authenticated/clientes")({
   component: ClientesPage,
 });
 
-type Filtro = "todos" | SituacaoCliente;
+/**
+ * O eixo de filtro da tela (R92, U73). Davi, 2026-08-26: "remova o filtro
+ * 'Situação', mantenha somente o filtro 'Serviço'. Remova a opção 'Todos',
+ * para exibir todos o usuário deve marcar todas as opções de filtro."
+ *
+ * "sem_servico" é uma OPÇÃO, não um detalhe de implementação. A marcação de
+ * serviço cobre 59 dos 192 clientes (29 na U36 + 30 na U44) — sem esta chave,
+ * tirar o "Todos" faria os ~130 restantes sumirem da tela sem que ninguém
+ * pudesse trazê-los de volta. "Nenhum serviço registrado" é um valor real do
+ * cadastro, e por isso é marcável como os outros.
+ */
+type ChaveServico = ServicoCliente | "sem_servico";
+
+const TODAS_AS_CHAVES: ChaveServico[] = [...SERVICO_ORDEM, "sem_servico"];
+const CHAVE_LABEL: Record<ChaveServico, string> = {
+  ...SERVICO_LABEL,
+  sem_servico: "Sem serviço",
+};
+
+/** Nenhum serviço registrado — a coluna pode vir nula em cadastro antigo. */
+function semServico(c: { servicos_prestados?: string[] | null }): boolean {
+  return (c.servicos_prestados ?? []).length === 0;
+}
+
+function casaServico(c: { servicos_prestados?: string[] | null }, k: ChaveServico): boolean {
+  return k === "sem_servico" ? semServico(c) : temServico(c, k);
+}
 
 function ClientesPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -69,17 +95,25 @@ function ClientesPage() {
   const { data: isGerente = false } = useIsGerente();
   const { data: clientes = [], isLoading } = useClientes();
   const [busca, setBusca] = useState("");
-  const [filtro, setFiltro] = useState<Filtro>("todos");
-  // Serviço é outra DIMENSÃO, não outro valor do mesmo filtro: um cliente é
-  // ativo E tem portaria remota. Juntar tudo num seletor só obrigaria a
-  // escolher entre "ver os ativos" e "ver os de portaria" (R41).
-  const [servico, setServico] = useState<"todos" | ServicoCliente>("todos");
+  // U73: o filtro de SITUAÇÃO saiu. A etiqueta de ativo/inativo continua no
+  // card — ela informa; o que saiu foi o recorte por ela.
+  //
+  // Serviço virou MÚLTIPLA ESCOLHA e nasce com tudo marcado: é o que faz a
+  // tela abrir mostrando todo mundo, como sempre abriu. Desmarcar é que
+  // recorta. As opções se somam (união), então marcar Portaria e Monitoramento
+  // traz quem tem qualquer um dos dois — inclusive quem tem os dois, uma vez
+  // só.
+  const [servicos, setServicos] = useState<ChaveServico[]>(() => [...TODAS_AS_CHAVES]);
   // R71: os filtros viraram um painel que abre — o botão redondo ao lado da
   // busca é quem manda. Estado LOCAL e não persistido: é pergunta do
   // momento, não preferência (a mesma regra do drill-down do dashboard).
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   /** Há recorte escondido? É o que acende o ponto no botão. */
-  const temFiltro = filtro !== "todos" || servico !== "todos";
+  const temFiltro = servicos.length !== TODAS_AS_CHAVES.length;
+
+  function alternarServico(k: ChaveServico) {
+    setServicos((v) => (v.includes(k) ? v.filter((x) => x !== k) : [...v, k]));
+  }
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -91,15 +125,17 @@ function ClientesPage() {
   const lista = useMemo(() => {
     const termo = norm(busca.trim());
     return clientes.filter((c) => {
-      if (filtro !== "todos" && c.situacao !== filtro) return false;
-      if (servico !== "todos" && !temServico(c, servico)) return false;
+      // União: basta casar com UMA das opções marcadas. Nenhuma marcada
+      // devolve lista vazia, e isso é o esperado — não é bug, é o que
+      // "desmarquei tudo" significa (a tela diz isso no vazio).
+      if (!servicos.some((k) => casaServico(c, k))) return false;
       if (!termo) return true;
       const alvo = norm(
         `${c.nome} ${c.endereco ?? ""} ${c.cidade ?? ""} ${c.posto_servico ?? ""} ${c.nome_sindico ?? ""}`,
       );
       return alvo.includes(termo);
     });
-  }, [clientes, busca, filtro, servico]);
+  }, [clientes, busca, servicos]);
 
   // Paginação (R55): 10 por vez. O MAPA continua mostrando a `lista`
   // INTEIRA (filtrada, não paginada) — paginar é sobre quantos CARTÕES
@@ -110,7 +146,7 @@ function ClientesPage() {
   const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA));
   // busca/filtro/serviço mudou → a página 4 pode não existir mais na lista
   // nova; sem isto a tela ficaria em branco até alguém clicar em "1" à mão
-  useEffect(() => { setPaginaAtual(1); }, [busca, filtro, servico]);
+  useEffect(() => { setPaginaAtual(1); }, [busca, servicos]);
   const pagina = Math.min(paginaAtual, totalPaginas);
   const listaPaginada = useMemo(
     () => lista.slice((pagina - 1) * ITENS_POR_PAGINA, pagina * ITENS_POR_PAGINA),
@@ -118,28 +154,22 @@ function ClientesPage() {
   );
 
   /**
-   * As contagens dos chips de SITUAÇÃO respeitam o filtro de serviço, e
-   * vice-versa. Sem isso o chip diria "Ativos · 192" enquanto a lista
-   * filtrada por portaria mostra 29 — e o número viraria uma promessa que a
-   * tela não cumpre.
+   * Quantos clientes cada opção traz. Com filtro de UNIÃO a conta é o total
+   * daquela opção, e não o cruzamento com o que está marcado: marcar mais só
+   * ACRESCENTA, então "Portaria · 29" continua verdadeiro qualquer que seja o
+   * resto da seleção. Cruzar aqui faria o número encolher ao marcar outra
+   * opção, que é o oposto do que acontece com a lista.
+   *
+   * A soma das três é maior que o total de clientes quando alguém tem os dois
+   * serviços — e é por isso que a lista nunca duplica: ela usa `some`.
    */
   const contagem = useMemo(() => {
-    const porServico = servico === "todos"
-      ? clientes
-      : clientes.filter((c) => temServico(c, servico));
-    const porSituacao = filtro === "todos"
-      ? clientes
-      : clientes.filter((c) => c.situacao === filtro);
-    return {
-      todos: porServico.length,
-      ativo: porServico.filter((c) => c.situacao === "ativo").length,
-      inativo: porServico.filter((c) => c.situacao === "inativo").length,
-      servicoTodos: porSituacao.length,
-      portaria_remota: porSituacao.filter((c) => temServico(c, "portaria_remota")).length,
-      monitoramento_alarmes: porSituacao.filter((c) => temServico(c, "monitoramento_alarmes")).length,
-    };
-  }, [clientes, filtro, servico]);
+    const conta = {} as Record<ChaveServico, number>;
+    for (const k of TODAS_AS_CHAVES) conta[k] = clientes.filter((c) => casaServico(c, k)).length;
+    return conta;
+  }, [clientes]);
 
+  const ativosNoCadastro = clientes.filter((c) => c.situacao === "ativo").length;
   const semEndereco = clientes.filter((c) => !c.endereco).length;
 
   if (pathname !== "/clientes") return <Outlet />;
@@ -206,7 +236,13 @@ function ClientesPage() {
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
           <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em" }}>Clientes</div>
           <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
-            {contagem.ativo} ativo{contagem.ativo === 1 ? "" : "s"} · {contagem.todos} cadastrado{contagem.todos === 1 ? "" : "s"}
+            {/* O subtítulo passou a contar o que a tela MOSTRA, não o total do
+                cadastro: com o filtro de múltipla escolha, dizer "192
+                cadastrados" enquanto a lista mostra 29 seria uma promessa que
+                a tela não cumpre. `ativos` continua saindo do cadastro inteiro
+                porque a situação deixou de ser filtro — é informação, não
+                recorte. */}
+            {ativosNoCadastro} ativo{ativosNoCadastro === 1 ? "" : "s"} · {lista.length} na lista
           </div>
         </div>
 
@@ -264,10 +300,11 @@ function ClientesPage() {
         </div>
       </div>
 
-      {/* O painel de filtros — só ocupa altura quando está aberto. Situação e
-          Serviço são dois EIXOS que se combinam (um cliente é ativo E tem
-          portaria), por isso continuam em duas fileiras rotuladas dentro do
-          mesmo cartão, e não num seletor só. */}
+      {/* O painel de filtros — só ocupa altura quando está aberto. Um eixo só
+          desde a U73 (o de Situação saiu), e de MÚLTIPLA ESCOLHA: não há mais
+          "Todos", ver tudo é ter tudo marcado. Cada chip é um interruptor, e
+          por isso carrega `aria-pressed` — sem ele, quem usa leitor de tela
+          ouviria "botão Portaria Remota" sem saber se está ligado. */}
       {filtrosAbertos && (
         <div style={{
           ...card(isLight), borderRadius: 14, padding: "10px 12px",
@@ -279,44 +316,28 @@ function ClientesPage() {
               textTransform: "uppercase", color: textSecondary, flexShrink: 0, paddingRight: 2,
               width: 52,
             }}>
-              Situação
-            </span>
-            {([
-              ["todos", `Todos · ${contagem.todos}`],
-              ["ativo", `Ativos · ${contagem.ativo}`],
-              ["inativo", `Inativos · ${contagem.inativo}`],
-            ] as [Filtro, string][]).map(([valor, rotulo]) => (
-              <button key={valor} style={chipFiltro(filtro === valor)} onClick={() => setFiltro(valor)}>
-                {rotulo}
-              </button>
-            ))}
-          </div>
-          <div className="trilho-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.12em",
-              textTransform: "uppercase", color: textSecondary, flexShrink: 0, paddingRight: 2,
-              width: 52,
-            }}>
               Serviço
             </span>
-            <button style={chipFiltro(servico === "todos")} onClick={() => setServico("todos")}>
-              {`Todos · ${contagem.servicoTodos}`}
-            </button>
-            {SERVICO_ORDEM.map((s) => (
-              <button key={s} style={chipFiltro(servico === s)} onClick={() => setServico(s)}>
-                {`${SERVICO_LABEL[s]} · ${contagem[s]}`}
+            {TODAS_AS_CHAVES.map((k) => (
+              <button
+                key={k}
+                aria-pressed={servicos.includes(k)}
+                style={chipFiltro(servicos.includes(k))}
+                onClick={() => alternarServico(k)}
+              >
+                {`${CHAVE_LABEL[k]} · ${contagem[k]}`}
               </button>
             ))}
           </div>
           {temFiltro && (
             <button
-              onClick={() => { setFiltro("todos"); setServico("todos"); }}
+              onClick={() => setServicos([...TODAS_AS_CHAVES])}
               style={{
                 alignSelf: "flex-start", background: "transparent", border: "none", padding: 0,
                 cursor: "pointer", color: gold, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
               }}
             >
-              Limpar filtros
+              Marcar todos
             </button>
           )}
         </div>
