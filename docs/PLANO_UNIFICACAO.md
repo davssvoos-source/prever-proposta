@@ -4289,3 +4289,48 @@ guardam agora não é "a saída está em andamento", e sim que o plano continua
 completo e na ordem certa para o dia em que for usado.
 
 1355 asserções.
+
+### U70 — O fim de linha vira regra do repo, não do computador (2026-08-25)
+
+"Sobre o item 2, eu quero que você decida."
+
+Primeira sessão do projeto em Windows. A migração de máquina passou nas três
+sanidades, menos por uma asserção: a **U41**, do backfill da demanda
+comercial, acusava `obtido=false` com o SQL **correto** — as linhas do
+`UPDATE` estavam lá, idênticas às do Mac. A causa não era o SQL: o Git for
+Windows instala com `core.autocrlf=true`, o checkout materializou o arquivo
+com CRLF, e a asserção casa regex com `\n` sobre o fonte. São **86 asserções
+que usam esse padrão**; naquele dia só uma quebrou, mas todas estavam
+armadas.
+
+O mesmo CRLF tinha um segundo efeito, pior porque silencioso: depois de todo
+`vite build`, o `src/routeTree.gen.ts` aparecia modificado. `git diff`
+mostrava zero mudança de conteúdo — era só fim de linha. Commitar aquilo
+reescreveria o arquivo inteiro e poluiria o histórico com ruído.
+
+**Por que `.gitattributes` e não `core.autocrlf=false`.** As duas resolvem.
+A config resolve **a máquina de quem lembrou de rodar**; o arquivo viaja no
+clone. Como a empresa vai assinar o Claude para o T.I. inteiro e cada um vai
+clonar o repo num Windows, a config local só adiaria o mesmo dia perdido
+para a próxima pessoa. O arquivo é a única forma que escala.
+
+**O que a verificação pegou antes do commit.** Rodar `git add --renormalize`
+antes de confiar na regra mostrou que `* text=auto eol=lf` sozinho converte
+o `android/gradlew.bat` para LF — e script `.bat` em LF **não roda no
+Windows**. Entrou a exceção `*.bat/*.cmd/*.ps1 text eol=crlf`. O efeito final
+no `gradlew.bat` é só de armazenamento: o blob passa a ser LF, o checkout
+devolve CRLF em qualquer plataforma, e o arquivo na árvore continua byte a
+byte o que era. Os binários (o `.docx` da proposta, os 27 `.png`, o `.jar` do
+Gradle) foram marcados `binary` explicitamente — `text=auto` até os detecta
+sozinho, mas aqui um falso negativo corromperia o template da proposta.
+
+**O que deliberadamente NÃO se fez**: reescrever os fins de linha do
+histórico. O repo já armazenava LF em tudo (menos o `.bat`); a regra só
+impede a regressão daqui para a frente.
+
+Seis asserções novas guardam a regra — inclusive uma que checa a **causa** e
+não o sintoma: se a migration da U41 voltar a ter CRLF no disco, ela denuncia
+o fim de linha em vez de deixar a asserção do backfill falhar acusando um SQL
+que está certo.
+
+1361 asserções (6 novas), build ok, tsc no baseline de 85.

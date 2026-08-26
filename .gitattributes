@@ -1,0 +1,42 @@
+# Fim de linha: LF sempre, em qualquer máquina.
+#
+# O Git for Windows instala com core.autocrlf=true. Sem este arquivo, o
+# checkout numa máquina Windows vira CRLF e duas coisas quebram calado —
+# as duas custaram uma sessão inteira para isolar em 2026-08-25:
+#
+#   1. Asserções de scripts/verificar-logica.cjs que casam regex com \n
+#      sobre o FONTE passam a falhar com o arquivo CORRETO. A U41 (backfill
+#      da demanda comercial) acusava "obtido=false" com o SQL intacto.
+#   2. src/routeTree.gen.ts aparece modificado depois de todo vite build —
+#      diff fantasma, zero mudança de conteúdo. Se commitado, reescreve o
+#      arquivo inteiro e polui o histórico.
+#
+# Config de máquina (core.autocrlf=false) resolve só a máquina de quem
+# lembrou de rodar. Este arquivo viaja no clone e protege todo o T.I.
+
+* text=auto eol=lf
+
+# Exceção: script de shell do Windows SÓ funciona com CRLF. O android/
+# gradlew.bat é o caso real no repo — forçá-lo a LF quebra o wrapper do
+# Gradle na máquina do T.I.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binários — normalizar corromperia o conteúdo.
+*.docx     binary
+*.xlsx     binary
+*.pdf      binary
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.webp     binary
+*.zip      binary
+*.jar      binary
+*.keystore binary
+*.woff     binary
+*.woff2    binary
+*.ttf      binary
+*.eot      binary

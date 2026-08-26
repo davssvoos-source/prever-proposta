@@ -4756,5 +4756,34 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /ficam como estão/.test(fs51.readFileSync('CLAUDE.md', 'utf8')), true);
 }
 
+// ── U70: o fim de linha é LF, e isso viaja no clone ────────────────────────
+// 2026-08-25, primeira sessão em Windows. O Git for Windows instala com
+// core.autocrlf=true: o checkout virou CRLF e ESTAS asserções começaram a
+// falhar com o arquivo correto — várias delas casam regex com \n sobre o
+// FONTE (a U41 do backfill foi a que caiu). O mesmo CRLF fazia
+// routeTree.gen.ts aparecer modificado após todo build. Config de máquina
+// conserta uma máquina; .gitattributes conserta todo mundo que clonar.
+{
+  const fs52 = require('fs');
+  eq('.gitattributes existe — sem ele todo clone em Windows repete o bug do CRLF',
+     fs52.existsSync('.gitattributes'), true);
+  const ga = fs52.readFileSync('.gitattributes', 'utf8');
+  eq('CRÍTICO: o .gitattributes força LF em todo arquivo de texto',
+     /^\*\s+text=auto\s+eol=lf\s*$/m.test(ga), true);
+  eq('CRÍTICO: .bat/.cmd continuam CRLF — forçá-los a LF quebra o android/gradlew.bat no Windows',
+     /^\*\.bat\s+text\s+eol=crlf\s*$/m.test(ga) && /^\*\.cmd\s+text\s+eol=crlf\s*$/m.test(ga), true);
+  eq('os binários versionados estão marcados binary — normalizar corromperia o template da proposta',
+     ['docx', 'png', 'jpg', 'jar'].every((e) => new RegExp(`^\\*\\.${e}\\s+binary\\s*$`, 'm').test(ga)),
+     true);
+  eq('o .gitattributes explica POR QUE existe — senão a próxima faxina o apaga como ruído',
+     /autocrlf/.test(ga) && /verificar-logica/.test(ga) && /routeTree/.test(ga), true);
+  // O sintoma que custou a sessão: o SQL da U41 está correto, mas a regex
+  // acima só casa com LF. Se este arquivo voltar a ter CRLF, a asserção
+  // original volta a falhar — esta aqui denuncia a causa, não o sintoma.
+  eq('CRÍTICO: a migration da U41 está em LF no disco — CRLF aqui derruba a asserção do backfill',
+     !/\r\n/.test(fs52.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8')),
+     true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
