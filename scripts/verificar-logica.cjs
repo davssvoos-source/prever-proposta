@@ -5668,6 +5668,76 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R98 está documentado', produto77.includes('**R98**'), true);
 }
 
+// ── S2: apoio deixa de ser auto-serviço (escalada de privilégio) ────────────
+// Achada em 2026-09-01 pela varredura adversarial do Passo 1.2. Não é regra de
+// produto: é um CICLO entre uma policy e a função que decide quem edita chamado,
+// vivo desde a U7/S1.
+{
+  const fsS2 = require('fs');
+  const CAMINHO_S2 = 'supabase/migrations/20260901120000_s2_apoio_nao_e_auto_servico.sql';
+  eq('a migration do auto-apoio existe', fsS2.existsSync(CAMINHO_S2), true);
+  const s2 = fsS2.readFileSync(CAMINHO_S2, 'utf8');
+  const u7 = fsS2.readFileSync('supabase/migrations/20260819120000_u7_fusao_chamados.sql', 'utf8');
+  const s1 = fsS2.readFileSync('supabase/migrations/20260820170000_s1_blindagem_rls.sql', 'utf8');
+
+  // ── o buraco existia mesmo: as duas metades do ciclo, nos arquivos ──────
+  // Sem isto, a S2 pareceria zelo preventivo. O ciclo é FATO nos arquivos
+  // históricos, e é o que justifica mexer em RLS de produção.
+  eq('CRÍTICO: a U7 deixava qualquer autenticado se inscrever como apoio de QUALQUER chamado',
+     /CREATE POLICY "chamado_apoios_insert"[\s\S]{0,200}WITH CHECK \(public\.pode_acessar_chamado\(chamado_id\) OR profile_id = auth\.uid\(\)\)/.test(u7),
+     true);
+  eq('CRÍTICO: …e a S1 concedia edição a quem fosse apoio, sem perguntar quem o pôs lá — o ciclo fecha aqui',
+     /pode_editar_chamado[\s\S]{0,500}FROM public\.chamado_apoios a\s*\n\s*WHERE a\.chamado_id = _chamado_id AND a\.profile_id = auth\.uid\(\)/.test(s1),
+     true);
+  eq('…e chamados_update É pode_editar_chamado, então o ciclo dava ESCRITA',
+     /CREATE POLICY "chamados_update"[\s\S]{0,200}USING \(public\.pode_editar_chamado\(id\)\)/.test(s1), true);
+
+  // ── a porta ─────────────────────────────────────────────────────────────
+  eq('CRÍTICO: a S2 tira o "OU eu mesmo" do INSERT de apoio',
+     /CREATE POLICY "chamado_apoios_insert"[\s\S]{0,160}WITH CHECK \(public\.pode_acessar_chamado\(chamado_id\)\);/.test(s2),
+     true);
+  eq('e do DELETE também — quem esteve no prédio não se desconvida (R75: apoio é registro)',
+     /CREATE POLICY "chamado_apoios_delete"[\s\S]{0,160}USING \(public\.pode_acessar_chamado\(chamado_id\)\);/.test(s2),
+     true);
+  // [^;] e não [\s\S]: o comentário logo abaixo da policy explica o buraco
+  // CITANDO "profile_id = auth.uid()", e um quantificador que atravessa o
+  // ponto e vírgula alcança esse comentário e casa a si mesmo. Já mordeu
+  // esta casa antes — a asserção tem de olhar o COMANDO, não o arquivo.
+  eq('CRÍTICO: nenhuma das duas policies novas ainda aceita profile_id = auth.uid()',
+     /CREATE POLICY "chamado_apoios_(insert|delete)"[^;]{0,200}profile_id = auth\.uid\(\)/.test(
+       s2.slice(0, s2.indexOf('-- BEGIN;'))), false);
+
+  // ── o ciclo ─────────────────────────────────────────────────────────────
+  // Fechar só a policy não bastaria: pode_acessar_chamado inclui a FILA ABERTA
+  // (responsavel_id IS NULL), e por ela dava para se inscrever num chamado sem
+  // dono e ficar com direito de edição depois que ele ganhasse um.
+  eq('CRÍTICO: ser apoio só dá edição quando OUTRA pessoa pôs — nas DUAS funções do ciclo',
+     (s2.match(/a\.origem = 'dupla' OR a\.criado_por IS DISTINCT FROM a\.profile_id/g) || []).length >= 2,
+     true);
+  eq('a coluna que torna a pergunta respondível existe, e registra quem estava logado',
+     /ADD COLUMN IF NOT EXISTS criado_por uuid/.test(s2)
+     && /ALTER COLUMN criado_por SET DEFAULT auth\.uid\(\)/.test(s2), true);
+  eq('CRÍTICO: o gatilho da escala continua concedendo — origem=dupla é derivada, ninguém a forja',
+     /a\.origem = 'dupla' OR/.test(s2), true);
+  eq('as linhas ANTIGAS continuam valendo (criado_por NULL passa no IS DISTINCT FROM)',
+     /NULL IS DISTINCT FROM profile_id.{0,40}TRUE/is.test(s2)
+     || /criado_por IS NULL.{0,200}seguem concedendo/is.test(s2), true);
+  eq('a FILA ABERTA sobrevive — chamado sem dono continua sendo de quem pegar',
+     /OR c\.responsavel_id IS NULL/.test(s2), true);
+
+  // ── higiene da casa ─────────────────────────────────────────────────────
+  eq('as duas funções continuam revogadas de anon (a chave publishable está no .env versionado)',
+     (s2.match(/REVOKE EXECUTE ON FUNCTION public\.pode_(editar|acessar)_chamado\(uuid\) FROM PUBLIC, anon;/g) || []).length,
+     2);
+  eq('S2 é atômica, confere e traz DESFAZER',
+     /^BEGIN;$/m.test(s2) && /^COMMIT;$/m.test(s2)
+     && /CONFERÊNCIA/.test(s2) && s2.lastIndexOf('DESFAZER') > s2.indexOf('\nCOMMIT;'), true);
+  eq('CRÍTICO: a S2 não apaga apoio nenhum — a conferência prova pelo número',
+     /DELETE FROM public\.chamado_apoios/.test(s2), false);
+  eq('…e lista as linhas suspeitas para o Davi olhar, em vez de decidir por ele',
+     /a\.criado_por IS NULL[\s\S]{0,300}ORDER BY a\.created_at DESC/.test(s2), true);
+}
+
 // ── R99/R100/R101/U78: a grade da programação e o bloqueio de agenda ────────
 // A atividade em campo deixou de ser o chamado e virou um BLOCO DE TEMPO. O que
 // se ganha é cardinalidade (o retorno é o segundo bloco, e "retorno" some do
