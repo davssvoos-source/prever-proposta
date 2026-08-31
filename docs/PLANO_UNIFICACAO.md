@@ -4742,3 +4742,143 @@ ninguém pediu ainda, e que fica para quando T.I. e Controle Patrimonial pedirem
 painéis próprios.
 
 1533 asserções (10 novas), build ok, tsc no baseline de 85. Sem migration.
+
+## U76 — A equipe de campo ganha escala semanal (R96/R97)
+
+Fase 1, Passo 1 da absorção do Gestor OS. É a fundação da programação semanal:
+antes de conseguir montar a grade do Vinicius, o sistema precisa saber **quem
+saiu com quem em cada semana** — e até aqui ele só sabia quem sai com quem hoje.
+
+**O defeito que estava lá desde a U47, e ninguém tinha visto.** A equipe de uma
+atividade era derivada do responsável lendo `duplas.membro_a/membro_b`, que não
+têm eixo de tempo. Consequência: mover o Luan de equipe **reescrevia em silêncio
+as 12 semanas** do gráfico do Painel Operacional Técnica. O passado mudava
+sozinho toda vez que alguém mexia no cadastro. Pior, o cabeçalho de
+`features/duplas/data.ts` prometia o contrário — "a dupla desfeita ainda explica
+o histórico" — sem ter matéria-prima nenhuma para cumprir: desativar uma equipe
+apagava a linha dela do gráfico inteiro, retroativamente.
+
+A escala guarda o passado, e o passado para de mudar. É a asserção que resume a
+migration: *lançar a escala de uma semana nova não muda um único ponto do
+gráfico das semanas passadas*.
+
+### O desenho
+
+`duplas_escala_semanas` (as semanas DECIDIDAS) + `duplas_escala` (uma linha por
+pessoa por semana). Duas tabelas, e não uma, porque **"semana não decidida" e
+"equipe que não sai nesta semana" são respostas diferentes**: a primeira herda a
+última semana lançada, a segunda fica vazia de propósito. Com uma tabela só,
+ausência de linha significaria as duas coisas ao mesmo tempo — e esvaziar uma
+equipe numa semana faria a herança ressuscitá-la na semana seguinte.
+
+**A chave primária é `(semana, pessoa_id)`**, e ela substitui de uma vez os dois
+índices parciais da U47 **e** o trigger do caso cruzado. O trigger existia porque
+a composição morava em duas colunas (`membro_a` numa dupla, `membro_b` em outra —
+índice nenhum pega isso); normalizando em uma linha por pessoa, o caso cruzado
+deixa de existir. A regra também encolheu para o tamanho certo: "uma equipe por
+pessoa **por semana**", não "para sempre".
+
+**A herança olha só para trás** (`semana <= W`). Se aceitasse uma escala futura
+para tapar um buraco no passado, lançar a escala de amanhã reescreveria o
+gráfico de ontem — reconstruindo, com outro nome, exatamente o defeito acima.
+
+**`COLLATE "C"` em `semana`, e `padStart(2,"0")` no TS.** O formato `AAAA-SNN`
+tem largura fixa e ano ISO na frente, então ordem alfabética **é** ordem
+cronológica, inclusive na virada (`2025-S52` < `2026-S01`). Sem o zero à
+esquerda, `S9` > `S10` e a herança escolheria a semana errada — em silêncio.
+
+**Marco zero `0001-S01`.** Uma semana sintética anterior a qualquer data real,
+onde o backfill grava a composição do dia da migração. Assim **todo o passado
+herda o que o gráfico já desenhava**: congela o que a tela dizia, em vez de
+esvaziar 11 semanas de histórico. Na tela ela aparece como "escala de sempre" —
+`rotuloReferencia()` a renderizaria como "semana 1 de 1", que não quer dizer nada.
+
+### O apoio (R75) sobrevive, com data
+
+A invariante do CLAUDE.md — **apoio é gravado, dupla é derivada** — não regrediu.
+O que mudou é que a derivação virou função de *(pessoa, data)*:
+`parceiro_da_dupla(uuid)` morreu e virou `parceiro_da_dupla(uuid, date)`, e o
+gatilho passou a escutar `data_hora_agendada` além de `responsavel_id`. Sem isso
+a escala semanal recriaria, por outro caminho, o erro que a U64 existe para
+evitar: reagendar uma OS de uma semana para outra deixaria o apoio da semana
+errada gravado.
+
+Três comportamentos ficaram diferentes, de propósito: (1) reagendar uma OS
+**aberta** entre semanas recalcula o apoio (mover de terça para quarta, não);
+(2) corrigir a **data** de um chamado concluído nunca mexe no apoio, corrigir o
+**responsável**, sim; (3) desfazer uma equipe apaga a escala das semanas
+**futuras** — a semana em curso e as passadas ficam, porque já têm dias vividos.
+
+**"Não sei" não autoriza DELETE.** Semana sem escala vigente faz o gatilho voltar
+cedo em vez de apagar quem foi ao prédio. `null` é a resposta honesta para "antes
+da primeira semana aberta", e quem consome não pode lê-lo como "ninguém".
+
+### A migration prova antes de destruir
+
+Ela é atômica e destrói tarde: `BEGIN` → tabelas novas → backfill → **pré-voo**
+(alguém em duas duplas ativas? aborta nomeando as pessoas) → **portão** (a escala
+nova reproduz a composição atual, nome por nome? se não, aborta **antes de
+qualquer DROP**) → só então os DROPs da U47 → gatilhos → conferência → `COMMIT`.
+Nos dois abortos nada foi alterado, e não sobra rastro.
+
+O backfill semeia **uma vez só**: reexecução com escala já lançada é no-op —
+senão as colunas inertes `membro_a/membro_b` reescreveriam o presente. E a §9.5
+prova por contagem antes × depois que `chamado_apoios` ficou intacta: total,
+`origem='dupla'` e `origem='manual'`.
+
+**A ponte.** `trg_duplas_espelhar_na_escala` faz o pop-up antigo de cadastro
+continuar funcionando depois da migration, espelhando na semana corrente — é o
+que permite rodar o SQL **antes** de a tela nova subir, sem janela quebrada.
+Quando uma semana já foi lançada pela porta nova, a ponte **recusa** aquela
+semana em vez de sobrescrever a decisão. Ela some no Passo 2, junto com as
+colunas.
+
+Um buraco conhecido, dito de frente: agendar trabalho para uma semana e **depois**
+lançar a escala dela não refaz o apoio já gravado — de propósito, para lançar
+escala não sair reescrevendo chamados e tocando dezenas de sinos. A conferência
+§9.6 lista os chamados **abertos** divergentes, e o conserto é
+`SELECT public.reconciliar_apoios_abertos();` (nunca alcança concluído,
+cancelado, nem apoio posto à mão).
+
+### O que este commit NÃO faz, e por quê
+
+**Nenhuma tela mudou.** O push publica pela Lovable no mesmo instante, e o Davi
+roda a migration à mão depois — então código que LEIA `duplas_escala` não pode
+subir antes. Por isso o `modelo.ts` cresceu de forma **aditiva**: o bloco antigo
+(`membrosDaDupla`, `duplaDaPessoa`, `serieAtividadesPorDupla`) continua intacto e
+é o que as telas usam hoje; o bloco novo exige a semana em toda função
+(`duplaDaPessoaNaSemana`, `parceirosNaSemana`, `serieAtividadesPorEscala`) e
+ainda não tem consumidor. Nomes diferentes de propósito: "quem estava com quem" e
+"quem está com quem hoje" viraram perguntas diferentes, e confundi-las é
+exatamente o defeito que a U76 conserta.
+
+O Passo 2, depois de o Davi rodar o SQL: `DialogoDuplas` vira tela de escala com
+seletor de semana e campo veículo, o painel troca a atribuição do gráfico,
+`data.ts` lê as tabelas novas, e o bloco legado sai junto com a ponte e com
+`membro_a/membro_b`.
+
+### Duas armadilhas de regex desarmadas no verificador
+
+Não são cosmética — as duas mentiriam em silêncio:
+
+- `/ADD COLUMN[^;]{0,80}dupla_id/i` rodava sobre **todas** as migrations sem
+  exigir a tabela. A U76 passa por um triz (a coluna nasce dentro do
+  `CREATE TABLE`), mas a próxima migration que criar um `dupla_id` em qualquer
+  tabela derrubaria a suíte inteira. Agora exige `ALTER TABLE public.chamados`.
+- `DELETE FROM public\.(…|duplas|…)\b` **não** casa `duplas_escala`: `_` é word
+  char, e o `\b` falha. Uma faxina futura poderia apagar a escala inteira sem o
+  verificador reclamar. Os nomes longos entraram antes na alternância.
+
+E as asserções que continuariam **verdes descrevendo um banco que não existe
+mais** (os índices da U47, o trigger do caso cruzado, `parceiro_da_dupla` sem
+data, o seed da U65) ganharam "arquivo histórico" no texto, com a afirmação
+equivalente sobre o banco de hoje vivendo no bloco U76. Uma delas mudou de sinal:
+*"série: dupla DESFEITA não vira linha do gráfico"* virou **"equipe desfeita
+continua explicando o histórico — ela some do futuro pela ausência na escala, não
+do gráfico do passado"**. Era a asserção que travava o comportamento contrário ao
+que `data.ts` sempre prometeu; agora há com o quê cumprir a promessa.
+
+1600 asserções (67 novas), build ok, tsc no baseline de 85.
+**Migration `20260831180000_u76_escala_semanal_das_equipes.sql` — o Davi roda no
+SQL Editor.** Rodar uma vez; ela pode abortar de propósito em dois pontos e,
+quando aborta, nada foi alterado.

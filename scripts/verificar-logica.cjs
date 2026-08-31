@@ -3016,14 +3016,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /membro_b\s+uuid REFERENCES public\.profiles\(id\)/.test(u47), true);
   eq('U47 impede a mesma pessoa duas vezes na MESMA dupla',
      /CHECK \(membro_b IS NULL OR membro_a <> membro_b\)/.test(u47), true);
-  eq('U47 tem os dois índices parciais de membro único (só entre duplas ATIVAS)',
+  eq('U47 tinha os dois índices parciais de membro único — arquivo histórico: a U76 os dropa e põe a regra na PK (semana, pessoa_id)',
      /CREATE UNIQUE INDEX IF NOT EXISTS duplas_membro_a_unico[\s\S]{0,120}WHERE ativa/.test(u47)
      && /CREATE UNIQUE INDEX IF NOT EXISTS duplas_membro_b_unico[\s\S]{0,140}WHERE ativa AND membro_b IS NOT NULL/.test(u47),
      true);
-  eq('CRÍTICO: U47 tem o TRIGGER do caso cruzado (membro_a numa dupla e membro_b em outra) — índice nenhum pega isso',
+  eq('U47 precisava do trigger do caso cruzado porque a composição morava em DUAS COLUNAS — arquivo histórico: a U76 dissolve o caso cruzado com uma linha por pessoa',
      /CREATE TRIGGER trg_duplas_valida_membros/.test(u47)
      && /d\.membro_b = NEW\.membro_a/.test(u47), true);
-  eq('U47: leitura aberta ao time, escrita só de gestor',
+  eq('U47: leitura aberta ao time, escrita só de gestor — arquivo histórico; a irmã da U76 confere as policies de duplas_escala',
      /"duplas_select" ON public\.duplas\s*\n\s*FOR SELECT TO authenticated USING \(true\)/.test(u47)
      && /"duplas_write"[\s\S]{0,140}public\.is_gestor\(auth\.uid\(\)\)/.test(u47), true);
   // O nome `chamados.dupla_id` aparece de propósito no cabeçalho e no COMMENT
@@ -3033,7 +3033,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /ALTER TABLE[\s\S]{0,120}dupla_id/i.test(u47), false);
   eq('e nenhuma outra migration criou a coluna pelas costas',
      fs29.readdirSync('supabase/migrations').some((f) =>
-       /ADD COLUMN[^;]{0,80}dupla_id/i.test(fs29.readFileSync(`supabase/migrations/${f}`, 'utf8'))),
+       /ALTER TABLE\s+public\.chamados[\s\S]{0,120}ADD COLUMN[^;]{0,80}dupla_id/i.test(fs29.readFileSync(`supabase/migrations/${f}`, 'utf8'))),
      false);
   eq('U47 termina com SELECT de verificação', /Verificação/.test(u47), true);
 
@@ -4432,7 +4432,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: o apoio é GRAVADO, não derivado — "desse dia em diante" quer dizer que trocar a dupla não pode reescrever quem foi ao prédio no passado',
      /INSERT INTO public\.chamado_apoios \(chamado_id, profile_id, origem\)/.test(sql)
      && /VALUES \(NEW\.id, v_parceiro, 'dupla'\)/.test(sql), true);
-  eq('dispara ao INSERIR e ao TROCAR o responsável — é isso que dá o "sempre dinâmico"',
+  eq('a U64 disparava só em responsavel_id — arquivo histórico: a U76 acrescenta data_hora_agendada e natureza à lista OF',
      /CREATE TRIGGER trg_chamado_apoio_dupla_ins AFTER INSERT ON public\.chamados/.test(sql)
      && /CREATE TRIGGER trg_chamado_apoio_dupla_upd AFTER UPDATE OF responsavel_id ON public\.chamados/.test(sql),
      true);
@@ -4443,7 +4443,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /ON CONFLICT \(chamado_id, profile_id\) DO NOTHING;/.test(sql), true);
   eq('só vale para CAMPO — o chamado interno tem equipe própria e a proposta não tem par que a acompanhe',
      /IF NEW\.natureza <> 'campo' THEN RETURN NEW; END IF;/.test(sql), true);
-  eq('a função SQL só olha dupla ATIVA, como a gêmea em TS',
+  eq('a U64 lia a dupla ativa de HOJE, sem data — arquivo histórico: a U76 troca por parceiros_da_dupla(uuid, date)',
      /WHERE d\.ativa\s*\n\s*AND \(d\.membro_a = _pessoa OR d\.membro_b = _pessoa\)/.test(sql), true);
   eq('NÃO há backfill automático — usar a dupla de hoje em chamado antigo é o erro que a decisão de gravar evita',
      /NÃO HÁ BACKFILL, DE PROPÓSITO/.test(sql), true);
@@ -4584,7 +4584,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('é idempotente pelo origem_id', /c\.origem = 'seed_teste' AND c\.origem_id = 'TESTE-'/.test(sql), true);
   eq('sai inteiro com um DELETE — é dado de teste, tem de ser fácil de remover',
      /DELETE FROM public\.chamados WHERE origem = 'seed_teste';/.test(sql), true);
-  eq('CRÍTICO: os técnicos saem de DUPLAS ATIVAS — é o que faz o gatilho da U64 ter par e o apoio automático aparecer sozinho',
+  eq('os técnicos do seed saíam de DUPLAS ATIVAS — arquivo histórico: sem membro_a/membro_b a U65 quebra em execução, e a U69 já manda nunca mais rodá-la',
      /EXISTS \(SELECT 1 FROM public\.duplas d\s*\n\s*WHERE d\.ativa AND \(d\.membro_a = p\.id OR d\.membro_b = p\.id\)\)/.test(sql),
      true);
   eq('aborta com mensagem útil se não houver dupla cadastrada, em vez de criar 30 chamados órfãos',
@@ -4761,8 +4761,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /comente/i.test(sql), true);
   eq('zera os contadores — "do zero" inclui a numeração voltar a CH-<ano>-0001',
      /DELETE FROM public\.chamado_contadores;/.test(sql), true);
-  eq('CRÍTICO: a migration NÃO toca na fundação — nenhum DELETE em clientes/contratos/profiles/duplas/prospeccoes',
-     /DELETE FROM public\.(clientes|cliente_contratos|profiles|duplas|prospeccoes)\b/.test(sql), false);
+  eq('CRÍTICO: a migration NÃO toca na fundação — nenhum DELETE em clientes/contratos/profiles/duplas/escala/prospeccoes',
+     /DELETE FROM public\.(clientes|cliente_contratos|profiles|duplas_escala_semanas|duplas_escala|duplas|prospeccoes)\b/.test(sql), false);
 
   // A asserção que TERIA pegado o erro da primeira execução (2026-08-24):
   // a conferência citava "public.contratos", que nunca existiu (a tabela é
@@ -5372,6 +5372,259 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   eq('R95 está documentado',
      fs57.readFileSync('docs/PRODUTO.md', 'utf8').includes('**R95**'), true);
+}
+
+// ── R96/R97/U76: a equipe de campo ganha escala semanal ─────────────────────
+// A composição deixou de ser um estado sem eixo de tempo e virou uma SÉRIE POR
+// SEMANA. Tudo aqui exige a semana, de propósito: "quem estava com quem" e
+// "quem está com quem hoje" viraram perguntas diferentes.
+{
+  const fs76 = require('fs');
+  const E = carregar('src/features/duplas/modelo.ts');
+  const P76 = carregar('src/lib/periodos.ts');
+  const u76 = fs76.readFileSync('supabase/migrations/20260831180000_u76_escala_semanal_das_equipes.sql', 'utf8');
+  const produto76 = fs76.readFileSync('docs/PRODUTO.md', 'utf8');
+  const MZ = E.MARCO_ZERO;
+
+  const turma = (id, nome, o = {}) =>
+    ({ id, nome, membro_a: 'x', membro_b: null, veiculo: null, ativa: true, ...o });
+  const duplas76 = [turma('d1', 'Equipe 1'), turma('d2', 'Equipe 2'), turma('d3', 'Desfeita', { ativa: false })];
+  const L = (semana, dupla_id, pessoa_id, ordem) => ({ semana, dupla_id, pessoa_id, ordem });
+
+  // Marco zero e S32: breno+luan na d1, lucas+paulo na d2.
+  // S34: o Luan sai da d1 e vira o terceiro da d2.
+  const linhas76 = [
+    L(MZ, 'd1', 'breno', 1), L(MZ, 'd1', 'luan', 2),
+    L(MZ, 'd2', 'lucas', 1), L(MZ, 'd2', 'paulo', 2),
+    L('2026-S32', 'd1', 'breno', 1), L('2026-S32', 'd1', 'luan', 2),
+    L('2026-S32', 'd2', 'lucas', 1), L('2026-S32', 'd2', 'paulo', 2),
+    L('2026-S34', 'd1', 'breno', 1),
+    L('2026-S34', 'd2', 'lucas', 1), L('2026-S34', 'd2', 'paulo', 2), L('2026-S34', 'd2', 'luan', 3),
+  ];
+  const escala76 = E.montarEscala([MZ, '2026-S32', '2026-S34'], linhas76);
+
+  const NOMES76 = { breno: 'Breno', luan: 'Luan', lucas: 'Lucas', paulo: 'Paulo' };
+  const nomeDe76 = (id) => NOMES76[id] || id;
+  const rotuloDe76 = (id) => (duplas76.find((d) => d.id === id) || {}).nome || id;
+
+  // ── ordenação e formato de AAAA-SNN ─────────────────────────────────────
+  eq('a chave da semana ordena como o calendário — o zero à esquerda é o que faz S09 vir antes de S10',
+     ['2026-S10', '2026-S09', '2026-S02'].sort(E.comparaSemana), ['2026-S02', '2026-S09', '2026-S10']);
+  eq('CRÍTICO: a ordem de texto atravessa a virada de ano — sem isso a herança pegaria a semana errada em 31/12',
+     E.comparaSemana('2025-S52', '2026-S01') < 0, true);
+  eq('a chave nasce do mesmo gerador dos fechamentos (referenciaSemanal), inclusive na virada',
+     [P76.referenciaSemanal(new Date(2025, 11, 31)), P76.referenciaSemanal(new Date(2026, 0, 1))],
+     ['2026-S01', '2026-S01']);
+  eq('e o formato dela passa no mesmo CHECK que o banco aplica',
+     [E.semanaValida('2026-S01'), E.semanaValida('2026-S9'), E.semanaValida('2026-S54')],
+     [true, false, false]);
+  eq('o MARCO ZERO é semana válida — senão o CHECK do banco recusaria o próprio backfill',
+     E.semanaValida(MZ), true);
+
+  // ── a herança ───────────────────────────────────────────────────────────
+  eq('semana sem escala própria herda a ABERTA anterior mais recente',
+     E.semanaVigente('2026-S33', escala76), '2026-S32');
+  eq('semana com escala própria é ela mesma — herança não atropela decisão',
+     E.semanaVigente('2026-S32', escala76), '2026-S32');
+  eq('CRÍTICO: a herança NUNCA vem do futuro — lançar a escala da S34 não pode reescrever a S33',
+     E.semanaVigente('2026-S33', escala76) < '2026-S34', true);
+  eq('CRÍTICO: antes da primeira semana aberta a resposta é NULL, não "ninguém" — quem lê tem de tratar como "não sei"',
+     E.semanaVigente('0000-S01', escala76), null);
+  eq('todo o passado anterior ao sistema herda o MARCO ZERO — é o que mantém as 12 semanas do gráfico cheias',
+     E.semanaVigente('2020-S05', escala76), MZ);
+  eq('a tela sabe dizer que a escala é herdada, e de onde',
+     E.origemDaEscala('2026-S33', escala76), { semanaOrigem: '2026-S32', herdada: true });
+  eq('e sabe dizer quando ela é própria',
+     E.origemDaEscala('2026-S34', escala76), { semanaOrigem: '2026-S34', herdada: false });
+  eq('o marco zero aparece na tela como "desde sempre", não como "semana 1 de 1"',
+     E.rotuloDaOrigem(MZ, '2026-S20'), 'escala de sempre (composição do cadastro antigo)');
+  eq('e a semana sem escala nenhuma se anuncia em vez de fingir equipe vazia',
+     E.rotuloDaOrigem(null, '2026-S20'), 'sem escala lançada');
+
+  // ── composição por semana ───────────────────────────────────────────────
+  eq('composição da equipe é a DAQUELA semana, não a de hoje',
+     [E.composicaoDaDupla('d1', '2026-S32', escala76), E.composicaoDaDupla('d1', '2026-S34', escala76)],
+     [['breno', 'luan'], ['breno']]);
+  eq('CRÍTICO: a mesma pessoa em equipes DIFERENTES em semanas diferentes — é o recurso que os índices da U47 proibiam',
+     [E.duplaDaPessoaNaSemana('luan', '2026-S32', escala76), E.duplaDaPessoaNaSemana('luan', '2026-S34', escala76)],
+     ['d1', 'd2']);
+  eq('a equipe de uma pessoa numa semana herdada vem da semana de origem',
+     E.duplaDaPessoaNaSemana('luan', '2026-S33', escala76), 'd1');
+  eq('quem não está escalado não tem equipe naquela semana',
+     E.duplaDaPessoaNaSemana('ninguem', '2026-S32', escala76), null);
+  eq('sem responsável não há equipe — chamado sem dono é o caso mais comum da fila e não pode explodir',
+     E.duplaDaPessoaNaSemana(null, '2026-S32', escala76), null);
+  eq('semana sem escala nenhuma não atribui equipe a ninguém',
+     E.duplaDaPessoaNaSemana('breno', '0000-S01', escala76), null);
+
+  // ── parceiros / apoio (R75 com data) ────────────────────────────────────
+  eq('o par sai dos DOIS lados, e é o par DAQUELA semana',
+     [E.parceirosNaSemana('breno', '2026-S32', escala76), E.parceirosNaSemana('luan', '2026-S32', escala76)],
+     [['luan'], ['breno']]);
+  eq('CRÍTICO: trocar a escala muda o par das semanas SEGUINTES e não das anteriores',
+     [E.parceiroNaSemana('breno', '2026-S32', escala76), E.parceiroNaSemana('breno', '2026-S34', escala76)],
+     ['luan', null]);
+  eq('equipe de três devolve os DOIS outros — gravar um só perderia gente que foi ao prédio',
+     E.parceirosNaSemana('lucas', '2026-S34', escala76), ['paulo', 'luan']);
+  eq('e o singular devolve null quando há mais de um — escolher por sorte seria inventar',
+     E.parceiroNaSemana('lucas', '2026-S34', escala76), null);
+  eq('CRÍTICO: o par é o OUTRO, nunca a própria pessoa',
+     ['breno', 'luan', 'lucas', 'paulo'].every((p) => !E.parceirosNaSemana(p, '2026-S32', escala76).includes(p)),
+     true);
+  eq('sem responsável não há par', E.parceirosNaSemana(null, '2026-S32', escala76), []);
+
+  // ── validação do lançamento da escala ───────────────────────────────────
+  eq('CRÍTICO: recusa escalar quem já está em OUTRA equipe NA MESMA SEMANA (a regra que virou chave primária)',
+     E.erroDaEscala({ duplaId: 'd1', semana: '2026-S34', membros: ['luan'] }, escala76, nomeDe76, rotuloDe76),
+     'Luan já está na equipe "Equipe 2" na semana 2026-S34.');
+  eq('mas ACEITA a mesma pessoa em equipe diferente em OUTRA semana — é exatamente o que a composição fixa impedia',
+     E.erroDaEscala({ duplaId: 'd1', semana: '2026-S36', membros: ['luan'] }, escala76, nomeDe76, rotuloDe76),
+     null);
+  eq('não acusa conflito com a própria equipe em edição',
+     E.erroDaEscala({ duplaId: 'd2', semana: '2026-S34', membros: ['luan', 'lucas'] }, escala76, nomeDe76, rotuloDe76),
+     null);
+  eq('recusa a mesma pessoa duas vezes na mesma equipe',
+     E.erroDaEscala({ duplaId: 'd1', semana: '2026-S32', membros: ['breno', 'breno'] }, escala76, nomeDe76, rotuloDe76),
+     'A mesma pessoa aparece duas vezes na equipe.');
+  eq('recusa semana fora do formato — errar aqui quebraria a herança em silêncio',
+     E.erroDaEscala({ duplaId: 'd1', semana: '2026-S9', membros: [] }, escala76, nomeDe76, rotuloDe76),
+     'Semana fora do formato AAAA-SNN: 2026-S9.');
+  eq('equipe sem ninguém na semana é resposta legítima ("não sai nesta semana")',
+     E.erroDaEscala({ duplaId: 'd1', semana: '2026-S34', membros: [] }, escala76, nomeDe76, rotuloDe76), null);
+  eq('rótulo por composição usa o nome cadastrado quando ele existe',
+     E.rotuloDaComposicao(duplas76[0], ['breno', 'luan'], nomeDe76), 'Equipe 1');
+  eq('sem nome, monta a partir de quem estava nela NAQUELA semana',
+     E.rotuloDaComposicao(turma('d1', '   '), E.composicaoDaDupla('d1', '2026-S32', escala76), nomeDe76),
+     'Breno & Luan');
+  eq('e equipe aberta sem ninguém não vira rótulo vazio na legenda',
+     E.rotuloDaComposicao(turma('d1', ''), [], nomeDe76), 'Equipe sem composição');
+
+  // ── a série do gráfico, e a invariante central ──────────────────────────
+  const semanas76 = [
+    { chave: '2026-S32', rotulo: '03/08' },
+    { chave: '2026-S33', rotulo: '10/08' },
+    { chave: '2026-S34', rotulo: '17/08' },
+  ];
+  const chaveDe76 = (d) => P76.referenciaSemanal(d);
+  const QUANDO76 = {
+    'S32': '2026-08-04T09:00:00',
+    'S33': '2026-08-11T09:00:00',
+    'S34': '2026-08-18T09:00:00',
+    'fora': '2026-09-29T09:00:00',
+  };
+  const cham76 = (responsavel_id, quando) =>
+    ({ responsavel_id, data_hora_agendada: QUANDO76[quando] || null });
+  const trabalho76 = [
+    cham76('breno', 'S32'), cham76('luan', 'S32'), cham76('lucas', 'S32'),
+    cham76('breno', 'S34'), cham76('luan', 'S34'),
+  ];
+
+  eq('CRÍTICO: cada atividade cai na equipe da SEMANA DELA — o Luan soma na d1 na S32 e na d2 na S34',
+     E.serieAtividadesPorEscala(trabalho76, duplas76, semanas76, escala76, chaveDe76),
+     [{ semana: '03/08', d1: 2, d2: 1 }, { semana: '10/08', d1: 0, d2: 0 }, { semana: '17/08', d1: 1, d2: 1 }]);
+  eq('semana sem nada vira ZERO, não buraco — a linha não pode saltar por cima da semana vazia',
+     E.serieAtividadesPorEscala([cham76('breno', 'S32')], duplas76, semanas76, escala76, chaveDe76)
+       .map((p) => [p.d1, p.d2]),
+     [[1, 0], [0, 0], [0, 0]]);
+  eq('atividade sem data programada não entra (o gráfico é do que foi programado)',
+     E.serieAtividadesPorEscala([cham76('breno', null)], duplas76, semanas76, escala76, chaveDe76)
+       .map((p) => [p.d1, p.d2]),
+     [[0, 0], [0, 0], [0, 0]]);
+  eq('equipe sem escala nenhuma na janela não vira linha do gráfico',
+     E.duplasNaJanela(duplas76, semanas76, escala76).map((d) => d.id), ['d1', 'd2']);
+
+  // A INVERSÃO. Até a U76 havia uma asserção travando o contrário — e o
+  // cabeçalho de data.ts prometia "a dupla desfeita ainda explica o histórico"
+  // sem ter matéria-prima para cumprir. A escala guarda o passado, então a
+  // contradição de dois anos se fecha aqui.
+  const escalaComDesfeita76 = E.montarEscala([MZ, '2026-S32'], [
+    ...linhas76.filter((l) => l.semana === MZ || l.semana === '2026-S32'),
+    L('2026-S32', 'd3', 'denner', 1),
+  ]);
+  eq('CRÍTICO: equipe DESFEITA continua explicando o histórico — ela some do FUTURO pela ausência na escala, não do gráfico do passado',
+     E.duplasNaJanela(duplas76, semanas76, escalaComDesfeita76).map((d) => d.id), ['d1', 'd2', 'd3']);
+
+  eq('foraDeEscala conta o que o gráfico NÃO mostrou, pela escala DAQUELA semana',
+     E.foraDeEscala([cham76('ninguem', 'S32'), cham76(null, 'S33'), cham76('breno', 'S32')],
+                    semanas76, escala76, chaveDe76), 2);
+  eq('foraDeEscala ignora o que está fora da janela mostrada',
+     E.foraDeEscala([cham76('ninguem', null), cham76('ninguem', 'fora')], semanas76, escala76, chaveDe76), 0);
+
+  // Na S36 o Breno passa a sair com o Lucas, e o Luan com o Paulo.
+  const escalaDepois76 = E.montarEscala([MZ, '2026-S32', '2026-S34', '2026-S36'], [
+    ...linhas76,
+    L('2026-S36', 'd1', 'breno', 1), L('2026-S36', 'd1', 'lucas', 2),
+    L('2026-S36', 'd2', 'luan', 1), L('2026-S36', 'd2', 'paulo', 2),
+  ]);
+  eq('CRÍTICO: lançar a escala de uma semana NOVA não muda um único ponto do gráfico das semanas passadas — é a migration inteira em uma asserção',
+     E.serieAtividadesPorEscala(trabalho76, duplas76, semanas76, escalaDepois76, chaveDe76),
+     E.serieAtividadesPorEscala(trabalho76, duplas76, semanas76, escala76, chaveDe76));
+  eq('CRÍTICO: e o par de um chamado antigo continua sendo o daquela semana depois do remanejo',
+     E.parceiroNaSemana('breno', '2026-S32', escalaDepois76), 'luan');
+  eq('a escala nova, essa sim, vale da semana dela em diante',
+     E.parceiroNaSemana('breno', '2026-S37', escalaDepois76), 'lucas');
+
+  const escalaVazia76 = E.montarEscala([MZ, '2026-S34'], [
+    L(MZ, 'd1', 'breno', 1), L(MZ, 'd1', 'luan', 2),
+    L('2026-S34', 'd2', 'breno', 1),
+  ]);
+  eq('CRÍTICO: "semana aberta com equipe vazia" é decisão e sobrevive à herança — sem esse marcador, a próxima materialização ressuscitaria a equipe esvaziada',
+     E.composicaoDaDupla('d1', '2026-S34', escalaVazia76), []);
+
+  // ── a migration (o arquivo, não o modelo) ───────────────────────────────
+  eq('CRÍTICO: a regra "uma pessoa numa equipe só por semana" é a CHAVE PRIMÁRIA, não um trigger que pode ser desligado',
+     /CONSTRAINT duplas_escala_pkey PRIMARY KEY \(semana, pessoa_id\)/.test(u76), true);
+  eq('CRÍTICO: a herança olha para TRÁS — o <= é a migration inteira num operador',
+     /SELECT max\(s\.semana\) FROM public\.duplas_escala_semanas s WHERE s\.semana <= _semana/.test(u76), true);
+  eq('a herança não é filtrada por duplas.ativa — desfazer turma não pode tornar semanas passadas inalcançáveis',
+     /escala_semana_vigente[\s\S]{0,400}duplas_escala_semanas/.test(u76)
+     && !/escala_semana_vigente[\s\S]{0,400}d\.ativa/.test(u76), true);
+  eq('CRÍTICO: o backfill semeia UMA VEZ SÓ — reexecução com escala já lançada é no-op, senão as colunas inertes reescreveriam o presente',
+     /IF EXISTS \(SELECT 1 FROM public\.duplas_escala_semanas\) THEN[\s\S]{0,220}RETURN;/.test(u76), true);
+  eq('CRÍTICO: nada é dropado antes de o portão provar que a escala reproduz a composição antiga',
+     u76.indexOf('ABORTADO ANTES DE QUALQUER DROP') < u76.indexOf('DROP INDEX   IF EXISTS public.duplas_membro_a_unico'),
+     true);
+  eq('os dois índices parciais e o trigger da U47 saem JUNTOS — meia-garantia é pior que nenhuma',
+     /DROP INDEX\s+IF EXISTS public\.duplas_membro_a_unico/.test(u76)
+     && /DROP INDEX\s+IF EXISTS public\.duplas_membro_b_unico/.test(u76)
+     && /DROP TRIGGER IF EXISTS trg_duplas_valida_membros ON public\.duplas/.test(u76), true);
+  eq('CRÍTICO: "não sei" não autoriza DELETE — semana sem escala faz o gatilho voltar cedo em vez de apagar quem foi ao prédio',
+     /IF v_vig IS NULL THEN RETURN 0; END IF;/.test(u76), true);
+  eq('CRÍTICO: o apoio só é reavaliado quando a ATRIBUIÇÃO muda — corrigir a hora não pode reescrever registro',
+     /IF NOT v_mudou_dono AND NOT v_mudou_semana/.test(u76), true);
+  eq('chamado encerrado só reabre o assunto na troca de RESPONSÁVEL',
+     /NEW\.status IN \('concluido','cancelado'\) AND NOT v_mudou_dono/.test(u76), true);
+  eq('o vocabulário de status é o da U13 — "executado" não existe desde 2026-08-20',
+     /'executado'/.test(u76), false);
+  eq('CRÍTICO: o gatilho de apoio escuta reagendamento — mudar de semana deixou de ser não-evento',
+     /AFTER UPDATE OF responsavel_id, data_hora_agendada, natureza ON public\.chamados/.test(u76), true);
+  eq('a assinatura sem data morreu — perguntar o par sem dizer QUANDO é o erro que a escala existe para impedir',
+     /DROP FUNCTION IF EXISTS public\.parceiro_da_dupla\(uuid\);/.test(u76), true);
+  // Contar SECURITY DEFINER contra REVOKE dá número mágico; o que importa é
+  // que nenhuma função CHAMÁVEL por RPC fique aberta. As de gatilho não são
+  // chamáveis, e por isso não entram na conta.
+  const fns76 = [...u76.matchAll(/CREATE OR REPLACE FUNCTION\s+public\.([a-z_0-9]+)\s*\(([^)]*)\)([\s\S]{0,900}?)\$/g)];
+  const expostas76 = [...new Set(fns76
+    .filter((m) => /SECURITY DEFINER/.test(m[3]) && !/RETURNS trigger/i.test(m[3]))
+    .map((m) => m[1]))];
+  eq('CRÍTICO: toda SECURITY DEFINER chamável por RPC é revogada de anon — a chave publishable está no .env versionado',
+     expostas76.filter((n) => !new RegExp(`REVOKE EXECUTE ON FUNCTION public\\.${n}\\b`).test(u76)), []);
+  eq('…e são sete leituras mais duas escritas, não uma porta aberta a mais', expostas76.length >= 9, true);
+  eq('a ponte da tela antiga RECUSA quando a semana já foi lançada pela porta nova — espelho não sobrescreve decisão',
+     /já foi lançada na tela de Equipes de campo/.test(u76), true);
+  eq('desfazer a turma libera o FUTURO, não a semana em curso (que já tem dias vividos)',
+     /AND semana > public\.referencia_semanal/.test(u76), true);
+  eq('o fuso é explícito em toda conversão — uma hora de diferença vira uma semana de erro',
+     /AT TIME ZONE 'America\/Sao_Paulo'/.test(u76), true);
+  eq('a migration prova por CONTAGEM que não tocou em chamado_apoios (foto antes × depois)',
+     /_u76_antes/.test(u76) && /ON COMMIT DROP/.test(u76), true);
+  eq('U76 é atômica — se o portão abortar, não sobra rastro',
+     /^BEGIN;$/m.test(u76) && /^COMMIT;$/m.test(u76), true);
+  eq('U76 termina com conferência e DESFAZER, como toda migration da casa',
+     /CONFERÊNCIA/.test(u76) && u76.lastIndexOf('DESFAZER') > u76.indexOf('COMMIT;'), true);
+
+  eq('R96 e R97 estão documentados',
+     produto76.includes('**R96**') && produto76.includes('**R97**'), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

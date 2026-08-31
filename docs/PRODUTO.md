@@ -1554,3 +1554,55 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   entrega de controle, conferência), que é outro conceito e não mudou.
   *(Davi, 2026-08-31: "vamos começar alterando a aba 'Operacional' do nosso
   sistema para 'Operacional Técnica', que será o Painel que ele irá utilizar".)*
+
+- **R96** — **A equipe de campo tem escala POR SEMANA.** Quem sai com quem
+  deixou de ser um cadastro sem data e virou uma série: cada semana tem a sua
+  composição, e a semana que ninguém lançou **herda a última lançada antes
+  dela**. Lançar a escala de uma semana nova **não muda uma vírgula** das
+  semanas anteriores.
+
+  **O defeito que isto conserta.** Até aqui a equipe de cada atividade era
+  resolvida pela composição de HOJE. Mover o Luan de equipe reescrevia, em
+  silêncio, as 12 semanas do gráfico do Painel Operacional Técnica — o passado
+  mudava sozinho toda vez que alguém mexia no cadastro. A escala guarda o
+  passado, e o passado para de mudar.
+
+  **A herança olha só para trás.** Se ela aceitasse uma escala futura para tapar
+  um buraco no passado, lançar a escala de amanhã reescreveria o gráfico de
+  ontem — que é exatamente o defeito acima, com outro nome.
+
+  **"Semana não decidida" e "equipe que não sai nesta semana" são coisas
+  diferentes**, e o sistema guarda as duas: a primeira herda, a segunda fica
+  vazia de propósito. Sem essa distinção, esvaziar uma equipe numa semana faria
+  a herança ressuscitá-la na semana seguinte.
+
+  **Uma pessoa está em uma equipe só POR SEMANA** — não mais "uma equipe só,
+  para sempre". É o que permite o remanejo que a operação já fazia no papel.
+
+  **A equipe de campo pode ter três**, e aí o apoio automático (R75) grava os
+  dois outros. Quando são três ou mais, o sistema não elege "o par": escolher um
+  por sorte seria inventar.
+
+  **Consequência no apoio.** O par continua sendo GRAVADO, nunca derivado na
+  hora de exibir (R75 não muda). O que muda é que a derivação passou a ser
+  função de *(pessoa, data)*, não de *(pessoa)*: reagendar uma OS **aberta** de
+  uma semana para outra recalcula o apoio; mover de terça para quarta, não.
+  Corrigir a data de um chamado **concluído** nunca mexe no apoio; corrigir o
+  responsável dele, sim.
+
+  **Desfazer uma equipe libera o futuro, não o passado**: apaga a escala das
+  semanas seguintes, e as semanas já vividas continuam explicando o histórico.
+  A promessa que o código carregava desde a R56 ("a dupla desfeita ainda explica
+  o histórico") passa a ser verdade — antes não havia com o quê cumpri-la.
+
+  Na tela isto se chama **"equipe de campo"**, sempre com o adjetivo: "equipe"
+  sem qualificação é DEPARTAMENTO (R80 — técnica, T.I., comercial…). No banco a
+  tabela continua `duplas`, porque renomear leva os gatilhos mas não reescreve o
+  corpo deles nem renomeia as constraints.
+  *(U76. Primeiro passo da absorção do Gestor OS — a base sobre a qual a
+  programação semanal do Vinicius é construída.)*
+
+- **R97** — **A equipe de campo tem veículo.** Uma viatura por equipe, texto
+  livre (placa, apelido, o que a operação usar). Entra no compartilhamento do
+  dia e na programação: quem lê "Equipe 1 · Saveiro" no WhatsApp sabe quem
+  chega. Opcional — equipe sem veículo continua funcionando.
