@@ -4989,3 +4989,82 @@ ninguém ver.
 ok, tsc no baseline de 85.
 **Migration `20260831210000_u77_fim_das_colunas_legadas.sql` — o Davi roda no
 SQL Editor, depois do deploy.**
+
+### S2 — Apoio deixa de ser auto-serviço (2026-09-01)
+
+**Escalada de privilégio, aberta desde a U7/S1 (agosto) e viva em produção até
+hoje.** Não é funcionalidade: é um ciclo entre uma policy e a função que decide
+quem edita chamado.
+
+Ela não foi achada procurando. Apareceu na varredura adversarial do Passo 1.2
+(a grade da programação): uma das lentes precisava saber o que
+`pode_editar_chamado` realmente garante para julgar um gate novo, foi ler, e
+esbarrou nisto de lado. O passo que a encontrou está parado; ela não podia
+esperar por ele.
+
+**O ciclo, nas três peças:**
+
+1. `chamado_apoios_insert` (U7:642-644) tinha
+   `WITH CHECK (pode_acessar_chamado(chamado_id) OR profile_id = auth.uid())`.
+   O segundo termo diz, em português: qualquer autenticado pode se inscrever
+   como apoio de **qualquer** chamado — inclusive de um que ele não pode ler.
+2. `pode_editar_chamado` (S1:398-410) concedia edição a quem fosse apoio, sem
+   perguntar **quem** o pôs lá.
+3. `chamados_update` (S1:419-422) **é** `pode_editar_chamado(id)`.
+
+Com a chave publishable que está no `.env` versionado e o login de qualquer
+funcionário, são duas chamadas:
+
+```
+POST  /rest/v1/chamado_apoios      {"chamado_id":"<X>","profile_id":"<eu>"}
+PATCH /rest/v1/chamados?id=eq.<X>  {...}
+```
+
+Os ids de chamado saem de `chamado_apoios_select`, que é `USING (true)` — não é
+preciso adivinhar nada. Alcance honesto: exige **login**, então é escalada
+interna, não porta para a internet. Mas torna a matriz de permissões decorativa
+para quem abrir o DevTools.
+
+**Por que fechar nos dois lados.** Tirar só o `OR profile_id = auth.uid()` da
+policy não basta: sobra o caminho pelo `pode_acessar_chamado`, que inclui
+`OR c.responsavel_id IS NULL` — a **fila aberta**, que é assim de propósito. Por
+ela, alguém se inscreve como apoio de um chamado ainda sem dono (legítimo) e
+continua com direito de edição **depois** que ele for atribuído a outra pessoa
+(não legítimo). Então o remédio ataca o ciclo, não só a porta.
+
+**A regra nova, em uma frase:** *ser apoio dá direito de editar quando alguém
+com autoridade te pôs lá.* Isso pede saber **quem** pôs, e o banco não sabia —
+daí a coluna `criado_por`, com `DEFAULT auth.uid()`. É a diferença entre esse
+valor e `profile_id` que separa "me puseram aqui" de "eu me pus aqui". Nas
+escritas do gatilho da escala, `auth.uid()` é o gestor que trocou o responsável
+e nunca o apoiador, então elas seguem concedendo, como devem — e `origem='dupla'`
+ganha passe explícito por segurança, porque é derivada de `duplas_escala` e
+ninguém a forja.
+
+**As linhas antigas continuam valendo**, e é deliberado: nascem com
+`criado_por IS NULL`, e `NULL IS DISTINCT FROM profile_id` é TRUE. Não dá para
+saber quais delas foram auto-inscrição, e trancar gente legítima para fora por
+suspeita seria trocar um problema por outro pior. A porta fecha daqui para a
+frente; o §4 lista as linhas mais suspeitas — apoio manual em quem não é
+responsável nem abriu o chamado — para o Davi olhar com calma e apagar à mão se
+alguma não fizer sentido.
+
+O `DELETE` levou a mesma poda, por outro motivo: o `OR profile_id = auth.uid()`
+ali deixava a pessoa **apagar o registro de que ela foi ao prédio**. Apoio é
+registro de quem foi (R75) — quem esteve lá não se desconvida.
+
+**Sobre as asserções.** As 15 novas foram submetidas a teste de mutação antes de
+subir: reabri a auto-inscrição, reabri o ciclo, tirei o `DEFAULT auth.uid()` e
+tirei o passe do gatilho, uma de cada vez, e conferi que **as quatro ficam
+vermelhas**. Passou a ser o padrão daqui em diante, e a razão é o Passo 1.2: lá,
+160 asserções diziam "0 falharam" enquanto 12 de 12 quebras de regra passavam
+verdes. Asserção que não fica vermelha é pior que asserção nenhuma, porque
+produz confiança.
+
+Duas delas travam o buraco **nos arquivos históricos** (U7 e S1), e não na S2. É
+de propósito: sem isso, a S2 pareceria zelo preventivo, e daqui a um ano ninguém
+saberia dizer se o ciclo existiu mesmo. Ele existiu, e as asserções o provam.
+
+1623 asserções (15 novas), build ok, tsc no baseline de 85.
+**Migration `20260901120000_s2_apoio_nao_e_auto_servico.sql` — rodar assim que
+puder.** Ela não apaga nada e a conferência prova isso pelo número.
