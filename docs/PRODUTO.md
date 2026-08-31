@@ -1645,3 +1645,75 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   *(U77. Fecha o Passo 1 da absorção do Gestor OS: as colunas `membro_a`/
   `membro_b` saíram do banco, e a escala é a única fonte de "quem sai com
   quem".)*
+
+- **R99** — **A atividade em campo é um BLOCO DE AGENDA, não o chamado.** Um
+  chamado pode ter **vários** blocos, e um bloco pode **não ter chamado nenhum**.
+
+  A relação é 1:N por definição, e o caso que prova isso é o **retorno**: foi
+  terça, faltou peça, volta quinta — dois blocos de tempo, um chamado só. Se a
+  atividade fosse o próprio chamado, "retorno" teria de virar um valor novo em
+  `chamados.status`, e aí encostaria em sete lugares (a ordem dos status, as
+  cores, o kanban da Início, os indicadores, o prazo). Aqui **"retorno" é
+  derivado da ordem**: o segundo bloco de um chamado é um retorno, e ninguém
+  precisa digitar isso. É também a forma de que a Fase 4 (cronograma de
+  implantação) vai precisar, sem nada novo.
+
+  O outro lado é a **OS que veio de fora do sistema** — serviço para quem não
+  está na base de clientes. Ela não cabe num chamado (todo chamado tem cliente,
+  obrigatoriamente), mas **ocupa a equipe igual**, e uma grade que não a mostra
+  mente sobre a semana. O bloco sem chamado carrega um número de OS de terceiro
+  e um título, e é ato de gestão.
+
+  O bloco é MAGRO: dia, hora de início, duração, deslocamento e a equipe de
+  campo. Nada de status próprio, nada de segundo cadastro. "Feito" e
+  "desmarcado" são dois carimbos, e são coisas diferentes — desmarcar libera a
+  agenda, cumprir não.
+  *(U78. Fase 1, Passo 1.2 da absorção do Gestor OS.)*
+
+- **R100** — **A jornada é de 9 horas, e a primeira delas é reservada: sobram
+  8 horas de campo.** A primeira hora não é folga — é carregar o carro, pegar
+  peça, ver a ordem do dia. A equipe **sai às 09:00**, e por isso a primeira
+  atividade do dia não começa antes de **09:00 mais o tempo de deslocamento**.
+
+  **Deslocamento conta dentro da jornada**: técnico dirigindo é técnico ocupado.
+  O bloco ocupa a equipe do momento em que ela sai até o fim do serviço. Nesta
+  fase o tempo de estrada é **digitado à mão**; o campo já está no lugar para o
+  cálculo de rota da Fase 2 preencher.
+
+  **A ocupação da equipe é sobre 8h × 5 dias**, e ela mede o tempo do **carro**,
+  não o das pessoas: a equipe sai junta no mesmo veículo, então uma equipe de
+  três não faz o triplo. Equipe **sem escala** naquela semana não tem
+  porcentagem nenhuma (a pergunta não faz sentido); equipe **com escala e sem
+  nada marcado** tem 0% e ganha o selo **"disponível"**. Passar de 100% é
+  informação, não erro — quer dizer que trabalharam no sábado.
+
+  **A mesma equipe não está em dois lugares ao mesmo tempo.** Isso não é aviso, é
+  recusa: o banco não aceita dois blocos que se cruzam, e o erro volta **dentro
+  do formulário**, dizendo com o quê o horário bate. Terminar 11:00 e começar
+  11:00 é encaixe, não conflito.
+
+  **"Emergencial" não é tipo novo** — é **corretiva com prioridade urgente**
+  (Davi, 31/08/2026). E é ela a única exceção da jornada: o urgente pode estourar
+  as 8 horas e sair antes das 09:00, porque é para isso que ele existe. O chip
+  mostra "Corretiva · Urgente".
+  *(U78.)*
+
+- **R101** — **`chamados.data_hora_agendada` deixou de ser digitada e virou
+  ESPELHO do bloco.** Ela é o início do **bloco pendente mais antigo** do
+  chamado; se todos já foram cumpridos, o do **último**. O banco a mantém
+  sozinho.
+
+  É isso que faz o calendário, o card da Início, os indicadores, o gráfico por
+  equipe e o PDF continuarem lendo a mesma coisa de sempre — só que agora com
+  **hora de verdade**, em vez do meio-dia que a programação escrevia por não
+  perguntar a hora.
+
+  **Chamado com data e sem bloco não some e não finge**: ele aparece numa faixa
+  **"agendado sem horário"**, com um clique para dar horário. É onde todo o
+  passado começa, porque não se inventou hora nem duração para ninguém — a
+  contagem dessa faixa é a barra de progresso da mudança.
+
+  **Desmarcar um bloco e tirar o chamado da agenda são coisas diferentes**, e o
+  sistema cobra a distinção: cancelar o último bloco é o que apaga a data, e isso
+  **não** remexe em quem foi apoio de quem.
+  *(U78.)*

@@ -4989,3 +4989,187 @@ ninguém ver.
 ok, tsc no baseline de 85.
 **Migration `20260831210000_u77_fim_das_colunas_legadas.sql` — o Davi roda no
 SQL Editor, depois do deploy.**
+
+---
+
+## U78 — A grade da programação e o bloqueio de agenda (Fase 1, Passo 1.2)
+
+**R99/R100/R101.** Esta entrega é **só o alicerce**: a migration, o modelo puro e
+as asserções. **Nenhuma tela foi tocada**, e nenhum arquivo existente importa
+`src/features/programacao/modelo.ts` ainda — a grade, a faixa "agendado sem
+horário" e o formulário com erro vêm no passo seguinte, sobre um chão já
+provado.
+
+### A decisão de modelagem, e por que ela não é conveniência
+
+A atividade em campo virou um **satélite**: `public.agenda_campo`. O argumento é
+CARDINALIDADE, e ele tem dois lados que se somam.
+
+**1:N.** O retorno é 1:N por definição — foi terça, faltou peça, volta quinta.
+Dois blocos, um chamado. Com atividade = chamado, "retorno" viraria valor novo em
+`chamados.status` e encostaria em `STATUS_ORDEM`, `statusDaNatureza`,
+`chamadoEmAberto`, as cores, o kanban da Início, `indicadores.ts` e
+`situacaoPrazo` — sete lugares para dizer "segunda ida". Aqui é derivado da ordem
+(`ordinalDoBloco`): zero coluna.
+
+**N:0, e este é o lado que decidiu.** Fui conferir: `chamados.cliente_id` é
+`NOT NULL REFERENCES public.clientes(id)` desde a etapa 3. Então "OS que veio de
+fora do sistema" — serviço para quem não está na base de clientes — **não pode
+existir como chamado**, por estrutura, não por preferência. Mas ocupa a equipe
+igual, e uma grade que não a mostra mente sobre a semana. Nenhum desenho sem
+tabela nova resolve isso.
+
+### O que eu recusei
+
+- **`chamados.duracao_prevista_min` + `deslocamento_min` (o desenho "sem
+  satélite").** É mais barato de escrever — 10 arquivos contra 12, migration de
+  ~400 linhas contra ~1400 — e ganha limpo no Passo 1.2 isolado. Perde em duas
+  coisas que não são opinião: a OS sem cliente (acima), e o `EXCLUDE` teria de
+  nascer em `public.chamados`, a tabela mais quente do sistema — `ACCESS
+  EXCLUSIVE` mais um índice GiST inteiro sobre ela, e depois disso **toda carga
+  futura** precisaria de `DROP CONSTRAINT`/`ADD CONSTRAINT`, num idioma
+  (`ALTER TABLE … DISABLE TRIGGER`) que não sabe desligar constraint. Aqui o
+  `EXCLUDE` nasce em tabela vazia e nenhuma carga em `chamados` é afetada.
+- **A tabela genérica `blocos_tempo` com discriminador `especie`** (atividade /
+  plantão / sobreaviso / implantação). Escrevi o CHECK de quatro ramos antes de
+  recusar, e a recusa é contada: de 14 colunas, **uma** (`dia`) seria NOT NULL nas
+  quatro espécies. Pior, é empírica: a escolha certa aqui — `(dia, inicio_min)`,
+  que proíbe atravessar a meia-noite — é **fatal** para plantão noturno, que
+  atravessa por definição. As duas espécies discordam sobre o que é uma unidade
+  de tempo. O que a Fase 3 reusa é o núcleo aritmético do modelo puro (`Intervalo`,
+  jornada, ocupação), não a linha do banco — o mesmo padrão que `FonteAtividade`
+  já provou na Home.
+- **Backfill de blocos.** `NÃO HÁ BACKFILL, DE PROPÓSITO` (a frase é da U64). A
+  base de produção tem `12:00` significando duas coisas indistinguíveis por valor:
+  "a programação não perguntou a hora" (`T12:00:00` literal em
+  `chamados.programacao.tsx:251`) e "meio-dia mesmo" (novo-campo, PainelChamado).
+  Qualquer backfill escolhe um significado e falsifica o outro, e chutar uma
+  duração envenena o chip de ocupação no primeiro dia com um número inventado que
+  tem cara de medição. Todo chamado com data e sem bloco cai na faixa **"agendado
+  sem horário"**, e a contagem dela é a barra de progresso da mudança.
+- **Uma coluna `sobreposicao_ok`** que tirasse a linha do `EXCLUDE`. Um booleano
+  que qualquer escritor liga devolve a regra ao estado de promessa — que é
+  exatamente o que o `btree_gist` foi comprado para evitar. A equipe que se divide
+  numa emergência tem representação honesta e já construída: vira uma equipe de
+  campo própria naquela semana, por `escala_definir`.
+- **`retorno_de_id` em `chamados`** (o retorno como chamado-filho). O argumento a
+  favor é forte e fica registrado: a segunda ida precisa de diagnóstico, peça,
+  foto, assinatura e **cobrança** próprias, e todas essas moram no chamado
+  (`os_pecas.os_id`, `os_fotos.os_id`, `cobrancas.os_id`, `assinatura_url`). O
+  preço é três CH- para um problema, três relógios de SLA, e `chamadosDoKpi`
+  contando 3 onde a operação tem 1 — um imposto permanente no módulo mais lido do
+  repo. Ver o BURACO CONHECIDO abaixo.
+
+### A armadilha, resolvida e provada
+
+`chamados.data_hora_agendada` vira **espelho derivado**, mantido por gatilho:
+o início do bloco **pendente** mais antigo; se todos foram cumpridos, o **último**.
+O gêmeo puro é `espelhoDoChamado()`.
+
+O medo registrado no plano ("reagendei e tocaram 30 sinos") estava **mal
+endereçado**. `trg_notify_chamado_upd` é `OF status, responsavel_id` — o espelho
+escreve UMA coluna e não é nenhuma das duas; e `notify_chamado` não emite nada
+para `aberto → agendado`, nem quando disparado de propósito. O risco real é
+`trg_chamado_apoio_dupla_upd` (U76), porque cada INSERT em `chamado_apoios`
+dispara `trg_notify_chamado_apoio`. Ele é contido em quatro camadas:
+
+1. a lista `AFTER UPDATE OF` do gatilho do satélite é curta — `dia, inicio_min,
+   cumprido_em, cancelado_em, chamado_id`. Mexer na duração, no deslocamento ou na
+   equipe **não chama** a função de espelho;
+2. `IS DISTINCT FROM` no WHERE do UPDATE — `AFTER UPDATE OF` dispara pela
+   presença da coluna no SET, mesmo com valor igual;
+3. `status NOT IN ('concluido','cancelado')` no mesmo WHERE, que fecha de vez o
+   desvio de `updated_at → encerradoEm` (`atividades/modelo.ts:489-491`);
+4. a defesa interna da própria U76 (mesma semana ISO → volta cedo).
+
+**O gatilho da U76 não é desligado nem alterado na sua tese** — a cascata "mudou
+a semana do trabalho, recalcula o apoio" é a intenção declarada dela. A única
+mudança é uma **guarda de quatro termos** para o caso que o espelho CRIA: cancelar
+o último bloco escreve NULL, `dia_da_dupla` cairia no COALESCE para `created_at`
+— outra semana — e o par mudaria sozinho, com sino, por um ato que só disse "não
+sei mais quando". O corpo da U76 foi retranscrito LITERAL, o pré-voo prova que a
+função viva é a da U76 **antes** de reescrevê-la, e um **portão** recusa o COMMIT
+se a transcrição tiver perdido qualquer uma das quatro saídas cedo.
+
+**Não há ciclo, e a ausência é por construção:** existe um único sentido de
+escrita (`agenda_campo → chamados → chamado_apoios → notificacoes`). A aresta de
+volta — a faixa "agendado sem horário" com um clique para dar horário — é RPC,
+nunca gatilho. Uma linha da conferência prova que nenhum gatilho novo nasceu em
+`public.chamados`.
+
+### Dois fatos que circulavam errados, conferidos no repo
+
+- **`chamados_update` NÃO tem trava de concluído/cancelado.** A U7 (:553-558)
+  tinha; a **S1** (`20260820170000`, :414-424) fez DROP + CREATE com
+  `USING/WITH CHECK pode_editar_chamado(id)`, sem a trava, e nenhuma migration
+  posterior a repôs. Logo, a trava de encerrado do §3 não repete nada — ela
+  **repõe** uma garantia que não existe mais, e o espelho é a razão: o gatilho é
+  SECURITY DEFINER e passa por cima de qualquer policy de `chamados`.
+- **A função do `btree_gist` chama-se `gbt_uuid_compress`**, não
+  `gist_uuid_compress` (`gist_uuid_ops` é o nome da *opclass*). Um pré-voo escrito
+  contra o nome errado abortaria SEMPRE, com o banco correto, dizendo que a
+  extensão falta. O pré-voo aqui checa `pg_extension`.
+
+### A tensão da U3, resolvida em vez de contornada
+
+A U3 escolheu programação por DIA porque *"a grade não cabe na tela do celular,
+que é onde o Vinicius trabalha"* (:686-688). O motivo continua verdadeiro. A
+resposta não é ignorá-lo nem duplicar a tela: **o dia é a grade com uma coluna**.
+`linhasDaGrade(duplas, semana, dias, …)` recebe `semana` e `dias` como parâmetros
+SEPARADOS — a ocupação e a escala são sempre da semana (o chip do celular diz
+"68% da semana"), e só as colunas mudam. A asserção CRÍTICA compara as duas
+saídas por igualdade: se um dia divergirem, o verificador cai, e não existe "a
+grade diz 6h e o card diz 5h30".
+
+### Novidades de infraestrutura
+
+- **`btree_gist`** — primeiro `CREATE EXTENSION` deste repo. Sem ele, "a equipe
+  não está em dois lugares ao mesmo tempo" volta a ser gatilho plpgsql (com
+  early-return, com search_path, apagável por `DISABLE TRIGGER`, sem atomicidade
+  contra duas gravações simultâneas). O pré-voo aborta nomeando o obstáculo, e a
+  alternativa por gatilho está escrita no rodapé — escolhê-la é decisão do Davi.
+- **A válvula `prever.lote`** dentro de `notify_chamado_apoio()`:
+  `set_config('prever.lote','on', is_local => true)` prende a bandeira à
+  TRANSAÇÃO. É o substituto seguro de `ALTER TABLE … DISABLE TRIGGER`, que pega
+  ACCESS EXCLUSIVE e vale para o sistema inteiro enquanto dura. De quebra dá
+  remédio a um defeito pré-existente: a U65 desliga só `trg_notify_chamado_ins`,
+  então reexecutá-la manda "Você entrou como apoio" para os parceiros de até 22
+  chamados.
+
+### O que a verificação pegou
+
+Três defeitos meus, achados pelas asserções antes de qualquer tela existir:
+(a) eu esperava UM conflito onde a função devolvia DOIS — a expectativa estava
+errada, não o código, e a asserção passou a afirmar a coisa mais forte ("devolve
+todos, ordenados"); (b) as asserções negativas casavam o **comentário** que
+explica por que a coisa não existe (`gist_uuid_compress`, `DISABLE TRIGGER`,
+`sobreposicao_ok`) — a quinta vez que essa armadilha morde esta casa, e a correção
+é rodar sobre o código com os `--` filtrados; (c) um `indexOf` sobre o arquivo
+inteiro achava a **citação** do §1.3 (pré-voo) em vez do código do §7.1.
+
+### BURACO CONHECIDO — a execução do retorno
+
+`os_pecas.os_id`, `os_fotos.os_id`, `os_checklist`, `cobrancas.os_id`,
+`diagnostico`, `servico_executado`, `pecas_texto`, `assinatura_nome` e
+`assinatura_url` são todos do CHAMADO, não do bloco. Logo: **a segunda ida
+despeja diagnóstico, peça e assinatura em cima da primeira.** O satélite resolve
+o TEMPO do retorno e não resolve a EXECUÇÃO dele.
+
+*Gatilho de revisão:* se o retorno precisar de assinatura ou cobrança próprias,
+ou `os_pecas`/`os_fotos` ganham `agendamento_id`, ou a execução migra para o
+bloco. Custo estimado da segunda saída: as três peças da U78.
+
+*Segundo gatilho de revisão:* `agenda_campo.dupla_id` é a decisão com maior
+chance de precisar voltar atrás. A U76 é categórica — não existe
+`chamados.dupla_id`, a equipe é DERIVADA — e eu ponho a equipe numa linha nova.
+A defesa é que não se declara `EXCLUDE (derivação_em_outra_tabela WITH =)`, e que
+sem a coluna mover um bloco de semana o faria pular de linha na grade sozinho. Se
+a divergência bloco × escala virar rotina, a saída não é afrouxar a constraint: é
+`dupla_id` deixar de ser a equipe e passar a ser a PESSOA — e aí o `EXCLUDE` fica
+sobre quem de fato não se divide. Custo estimado: a tabela, o espelho e o modelo
+puro.
+
+1607 asserções verdes no verificador atual (o bloco U78 acrescenta 94, das quais
+26 CRÍTICO), `vite build` ok, `tsc` no baseline de 85 e zero erro no arquivo novo.
+**Migration `20260901090000_u78_grade_da_programacao.sql` — o Davi roda no SQL
+Editor. Ela é aditiva e pode ir sozinha, ANTES do código novo.**
