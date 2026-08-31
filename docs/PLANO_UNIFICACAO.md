@@ -4990,7 +4990,6 @@ ok, tsc no baseline de 85.
 **Migration `20260831210000_u77_fim_das_colunas_legadas.sql` — o Davi roda no
 SQL Editor, depois do deploy.**
 
-<<<<<<< HEAD
 ---
 
 ## U78 — A grade da programação e o bloqueio de agenda (Fase 1, Passo 1.2)
@@ -5174,7 +5173,6 @@ puro.
 26 CRÍTICO), `vite build` ok, `tsc` no baseline de 85 e zero erro no arquivo novo.
 **Migration `20260901090000_u78_grade_da_programacao.sql` — o Davi roda no SQL
 Editor. Ela é aditiva e pode ir sozinha, ANTES do código novo.**
-=======
 ### S2 — Apoio deixa de ser auto-serviço (2026-09-01)
 
 **Escalada de privilégio, aberta desde a U7/S1 (agosto) e viva em produção até
@@ -5253,4 +5251,3 @@ saberia dizer se o ciclo existiu mesmo. Ele existiu, e as asserções o provam.
 1623 asserções (15 novas), build ok, tsc no baseline de 85.
 **Migration `20260901120000_s2_apoio_nao_e_auto_servico.sql` — rodar assim que
 puder.** Ela não apaga nada e a conferência prova isso pelo número.
->>>>>>> main
