@@ -66,23 +66,48 @@ const SCHEMA = {
   properties: {
     natureza: { type: "string", enum: ["campo", "interno"] },
     tipo: { type: "string", enum: ["corretiva", "preventiva", "operacional", "implantacao", "melhoria"] },
-    titulo: { type: "string", maxLength: 120 },
-    descricao: { type: "string", maxLength: 2000 },
+    titulo: { type: "string" },
+    descricao: { type: "string" },
     prioridade: { type: "string", enum: ["baixa", "normal", "alta", "urgente"] },
     equipe: {
       type: "string",
       enum: ["ti", "patrimonio", "tecnica", "comercial", "sac", "monitoramento", "outras"],
     },
     responsavel_citado: { type: ["string", "null"] },
-    apoios_citados: { type: "array", items: { type: "string" }, maxItems: 8 },
-    locais_citados: { type: "array", items: { type: "string" }, maxItems: 20 },
+    apoios_citados: { type: "array", items: { type: "string" } },
+    locais_citados: { type: "array", items: { type: "string" } },
     setores_citados: {
       type: "array",
       items: { type: "string", enum: ["portaria_remota", "monitoramento_alarmes"] },
-      maxItems: 2,
     },
   },
 } as const;
+
+// ── Por que NÃO há limite nenhum no schema acima ────────────────────────────
+//
+// Os structured outputs não aceitam restrição de tamanho: nem `maxItems` em
+// array, nem `maxLength` em string, nem `minimum`/`maximum` em número. E a
+// recusa NÃO é silenciosa — a chamada inteira volta 400 e a triagem falha na
+// cara de quem estava abrindo o chamado:
+//
+//   "Falha ao interpretar: 400 ... For 'array' type, property 'maxItems' is
+//    not supported"  (Davi, 2026-08-26)
+//
+// O `maxLength` de `titulo`/`descricao` estava aqui desde a U20 e nunca deu
+// erro — o que só diz que a validação da API mudou ou é parcial, não que ele
+// seja seguro. Saiu junto: depender de uma palavra que a documentação lista
+// como não suportada é esperar o próximo 400 em produção.
+//
+// Os SDKs de Python e TypeScript removem essas palavras sozinhos quando o
+// schema passa por `zodOutputFormat`/`.parse()`. Este código monta o schema à
+// mão e faz `as any` na request, então nada é removido por ninguém — o corte
+// é aqui embaixo, na volta.
+const TETO_APOIOS = 8;
+const TETO_LOCAIS = 20;
+const TETO_TITULO = 120;
+const TETO_DESCRICAO = 2000;
+
+const cortar = (t: string | undefined, teto: number) => (t ?? "").slice(0, teto);
 
 const SISTEMA = `Você faz a triagem de chamados do Grupo Prever (segurança
 predial: CFTV, controle de acesso, alarmes, portaria remota, interfonia).
@@ -193,14 +218,19 @@ export const interpretarChamado = createServerFn({ method: "POST" })
       const bruto = JSON.parse(bloco.text) as Partial<ChamadoInterpretado>;
 
       // As listas são obrigatórias no schema, mas o consumidor faz `.map()`
-      // direto nelas — um `undefined` que escape derruba a Início inteira.
+      // direto nelas — um `undefined` que escape derruba a Início inteira. O
+      // corte de tamanho também mora aqui, porque o schema não pode declarar
+      // `maxItems` (ver o comentário no SCHEMA).
       return {
         ok: true,
         chamado: {
           ...(bruto as ChamadoInterpretado),
-          apoios_citados: bruto.apoios_citados ?? [],
-          locais_citados: bruto.locais_citados ?? [],
-          setores_citados: bruto.setores_citados ?? [],
+          titulo: cortar(bruto.titulo, TETO_TITULO),
+          descricao: cortar(bruto.descricao, TETO_DESCRICAO),
+          apoios_citados: (bruto.apoios_citados ?? []).slice(0, TETO_APOIOS),
+          locais_citados: (bruto.locais_citados ?? []).slice(0, TETO_LOCAIS),
+          // dois setores é o vocabulário inteiro; o corte é só contra repetição
+          setores_citados: Array.from(new Set(bruto.setores_citados ?? [])),
         },
       };
     } catch (e) {

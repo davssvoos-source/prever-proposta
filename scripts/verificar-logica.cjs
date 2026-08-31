@@ -4970,6 +4970,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        .every((c) => ia.includes(c)), true);
   eq('CRÍTICO (R86): o prompt manda o local FORA do título — o exemplo antigo ensinava o contrário',
      /O LOCAL NÃO ENTRA NO TÍTULO/.test(ia), true);
+  // 2026-08-26: `maxItems` num `array` faz os structured outputs devolverem
+  // 400 e a triagem inteira falhar na cara do usuário ("Falha ao interpretar:
+  // 400 ... property 'maxItems' is not supported"). Não é ignorado, é recusa.
+  // `maxLength` em string continua valendo — por isso a asserção é só de
+  // array.
+  // Procura o USO (`palavra:`), não a palavra solta — o comentário que explica
+  // a armadilha precisa poder citá-la pelo nome. O `SCHEMA` é montado à mão e
+  // a request leva `as any`, então nenhum SDK remove nada por nós: o que
+  // estiver escrito aqui vai para a API como está.
+  eq('CRÍTICO: o schema não declara restrição de tamanho — a API devolve 400 e a triagem falha na cara do usuário',
+     /maxItems\s*:|maxLength\s*:|minLength\s*:|minItems\s*:|minimum\s*:|maximum\s*:/.test(ia), false);
+  eq('…e os tetos são aplicados no código, que é onde eles podem existir',
+     /\.slice\(0, TETO_APOIOS\)/.test(ia) && /\.slice\(0, TETO_LOCAIS\)/.test(ia)
+     && /cortar\(bruto\.titulo, TETO_TITULO\)/.test(ia), true);
   eq('R82: o prompt manda material visual e comunicação para o comercial',
      /comercial:[\s\S]{0,240}material visual e comunica/.test(ia), true);
   eq('R80: o prompt distingue responsável de apoio, com exemplos de linguagem de ajuda',
