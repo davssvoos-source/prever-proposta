@@ -285,10 +285,10 @@ const semPrazo = A.atividadeDoChamado(chamado('aberto'), ctxVazio);
 eq('item sem data é reconhecido como tal', L.semData(semPrazo), true);
 eq('e o prazo o esconde (a tela avisa quantos)',
    L.aplicarLentes([semPrazo], { ...L.FILTROS_INICIAIS, prazo: 'hoje' },
-                   { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 0);
+                   { agora: new Date(2026, 2, 10) }, (x) => x).length, 0);
 eq('sem prazo escolhido ele aparece',
    L.aplicarLentes([semPrazo], L.FILTROS_INICIAIS,
-                   { agora: new Date(2026, 2, 10), minhaEquipe: null }, (x) => x).length, 1);
+                   { agora: new Date(2026, 2, 10) }, (x) => x).length, 1);
 
 // ── permissão por tela (U11) ────────────────────────────────────────────────
 // A régua tem que estar certa mesmo com o banco fora do ar: um erro aqui ou
@@ -1605,7 +1605,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // o espelho: o recorte NORMAL do quadro continua escondendo encerrado, que
     // é o certo lá — quadro é fila de trabalho
     const doQuadro = LN.aplicarLentes([feito, aberto], LN.FILTROS_INICIAIS,
-      { agora: agoraT, minhaEquipe: null }, (s) => s.toLowerCase());
+      { agora: agoraT }, (s) => s.toLowerCase());
     eq('o quadro continua mostrando só o que está em aberto', doQuadro.length, 1);
 
     // preset do técnico: sete dos oito exigem emAberto, e meu_dia ainda
@@ -2030,8 +2030,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /lerOrdenacao\(filtros\.ordenacao\) \?\? \{ chave: ordemDoPreset\(filtros\.preset\), desc: false \}/.test(dash2), true);
   eq('CRÍTICO (R88): o preset não passa direção — a direção NATURAL de cada chave é preservada, senão "Sem dono" inverteria calado',
      /ordenar\(aplicarLentes\([\s\S]{0,140}ordem\.chave, ordem\.desc\)/.test(dash2), true);
-  eq('trocar de padrão zera a ordenação escolhida (senão ela vazaria para o próximo)',
-     /preset: v\[0\] \?\? null,[\s\S]{0,600}ordenacao: null,/.test(dash2), true);
+  // U74: o handler que trocava de padrão (e zerava ordenacao/prazo junto)
+  // saiu com o próprio seletor "Padrão" — ver o bloco de R94, mais abaixo.
   eq('o seletor de ordenação está na barra de filtros', /rotulo="Ordenar"/.test(dash2), true);
 }
 
@@ -3225,21 +3225,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const abertoI = { emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
       responsavelId: null, equipe: null, sprint: null, quando: null, coluna: 'aberto' };
     const fechadoI = { ...abertoI, emAberto: false, coluna: 'concluido' };
-    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null };
+    const ctxR60 = { agora: new Date(2026, 7, 21) };
     eq('aplicarLentes: aberto passa', L2.aplicarLentes([abertoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 1);
     eq('aplicarLentes: encerrado NUNCA passa, mesmo sem nenhum filtro escolhido',
        L2.aplicarLentes([fechadoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 0);
   }
 
   // ── Prazo (era Período) — reaproveita sprintDoPrazo ──────────────────────
-  eq('Prazo tem as 4 opções que o Davi pediu, na ordem',
-     /const PRAZOS: \{ chave: Exclude<Prazo, null>; label: string \}\[\] = \[\s*\n\s*\{ chave: "hoje", label: "Hoje" \},\s*\n\s*\{ chave: "essa_semana", label: "Essa semana" \},\s*\n\s*\{ chave: "semana_que_vem", label: "Semana que vem" \},\s*\n\s*\{ chave: "este_mes", label: "Este mês" \},\s*\n\s*\];/.test(dash2),
+  eq('Prazo tem as 4 opções originais do Davi, na ordem, mais Atrasados ao fim (U74)',
+     /const PRAZOS: \{ chave: Exclude<Prazo, null>; label: string; nota\?: string \}\[\] = \[\s*\n\s*\{ chave: "hoje", label: "Hoje" \},\s*\n\s*\{ chave: "essa_semana", label: "Essa semana" \},\s*\n\s*\{ chave: "semana_que_vem", label: "Semana que vem" \},\s*\n\s*\{ chave: "este_mes", label: "Este mês" \},\s*\n\s*\{ chave: "atrasados", label: "Atrasados", nota: "Prazo vencido, ou parado 5\+ dias" \},\s*\n\s*\];/.test(dash2),
      true);
   eq('dentroDoPrazo reaproveita sprintDoPrazo — não reimplementa limite de semana/mês',
      /return sprintDoPrazo\(a\.quando, agora\) === p;/.test(fs31.readFileSync('src/features/home/lentes.ts', 'utf8')),
      true);
   {
-    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null }; // 21/ago/2026, sexta
+    const ctxR60 = { agora: new Date(2026, 7, 21) }; // 21/ago/2026, sexta
     const comData = (iso) => ({
       emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
       responsavelId: null, equipe: null, sprint: null, quando: iso, coluna: 'aberto',
@@ -3259,7 +3259,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // agora=21/ago, o balde de 2 semanas (semana_que_vem) já engole quase
     // agosto inteiro, e um teste com agora=21 não sobraria alvo pra "este
     // mês" testar de verdade. Ctx própria, cedo no mês.
-    const ctxCedoNoMes = { agora: new Date(2026, 7, 1), minhaEquipe: null }; // 01/ago/2026
+    const ctxCedoNoMes = { agora: new Date(2026, 7, 1) }; // 01/ago/2026
     eq('Prazo "este_mes" casa com fim de agosto (fora do balde de 2 semanas, dentro do mês)',
        L2.aplicarLentes([comData('2026-08-31T09:00:00')], { ...L2.FILTROS_INICIAIS, prazo: 'este_mes' }, ctxCedoNoMes, (x) => x).length,
        1);
@@ -3272,7 +3272,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o filtro Equipe está na barra, com as opções de lib/equipes.ts',
      /rotulo="Equipe"[\s\S]{0,200}opcoes=\{EQUIPES\.map/.test(dash2), true);
   {
-    const ctxR60 = { agora: new Date(2026, 7, 21), minhaEquipe: null };
+    const ctxR60 = { agora: new Date(2026, 7, 21) };
     const daEquipe = (eq_) => ({
       emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
       responsavelId: null, equipe: eq_, sprint: null, quando: null, coluna: 'aberto',
@@ -5247,6 +5247,98 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   for (const r of ['R92', 'R93']) {
     eq(`${r} está documentado`, new RegExp(`\\*\\*${r}\\*\\*`).test(produto7), true);
   }
+}
+
+// ── U74: o seletor "Padrão" sai, "Atrasados" vira opção de Prazo (R94) ──────
+{
+  const fs56 = require('fs');
+  const LN4 = carregar('src/features/home/lentes.ts');
+  const dash4 = fs56.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+
+  // ── o box sumiu da tela ──────────────────────────────────────────────────
+  eq('CRÍTICO (R94): o seletor "Padrão" saiu da barra de filtros',
+     /rotulo="Padrão"/.test(dash4), false);
+  eq('…e junto foi a função de role-scoping que só existia para alimentar aquele menu',
+     /presetsDoCargo|ORDEM_POR_CARGO/.test(dash4)
+     || /presetsDoCargo|ORDEM_POR_CARGO/.test(fs56.readFileSync('src/features/home/lentes.ts', 'utf8')),
+     false);
+
+  // ── só "Meu dia" sobrevive, sem catálogo em volta ────────────────────────
+  eq('CRÍTICO: dos 8 padrões antigos, só "meu_dia" continua em PRESETS — os outros 6 não tinham para onde voltar',
+     LN4.PRESETS.map((p) => p.chave), ['meu_dia']);
+  eq('e ele não carrega mais "papeis" — campo que só a catalogação por cargo lia',
+     'papeis' in LN4.PRESETS[0], false);
+  eq('o banner "Você tem X hoje" (R11) continua aplicando meu_dia ao toque',
+     /preset: "meu_dia", pessoa: "todos"/.test(dash4), true);
+  eq('o técnico continua abrindo a Início em "Meu dia" por padrão (presetPadrao)',
+     LN4.presetPadrao('tecnico'), 'meu_dia');
+  eq('gestor abre vendo tudo — presetPadrao não decide por ele',
+     LN4.presetPadrao('admin'), null);
+
+  // ── "Atrasados" virou balde de Prazo, não preset ─────────────────────────
+  eq('R94: Prazo aceita "atrasados" — Davi: "adicione a opção do filtro \'Atrasados\' no filtro de PRAZO"',
+     /opcoes={PRAZOS\.map\(\(p\) => \(\{ valor: p\.chave, label: p\.label, nota: p\.nota \}\)\)}/.test(dash4),
+     true);
+
+  const agoraR94 = new Date(2026, 7, 26, 12, 0, 0); // 26/ago/2026, quarta
+
+  const ativ4 = (extra) => ({
+    id: 'y' + Math.random(), titulo: 't', numero: null, cliente: null,
+    criadoEm: '2026-08-01T10:00:00', atualizadoEm: '2026-08-26T10:00:00',
+    prioridadeRank: 2, prazoEstourado: false, quando: null, coluna: 'aberto',
+    emAberto: true, ...extra,
+  });
+
+  eq('estaAtrasada: prazo estourado conta, mesmo recém-atualizado',
+     LN4.estaAtrasada(ativ4({ prazoEstourado: true, atualizadoEm: agoraR94.toISOString() }), agoraR94),
+     true);
+  eq('estaAtrasada: em_andamento parado há mais de 5 dias conta, MESMO SEM PRAZO ESTOURADO',
+     LN4.estaAtrasada(
+       ativ4({ coluna: 'em_andamento', atualizadoEm: new Date(agoraR94.getTime() - 6 * 864e5).toISOString() }),
+       agoraR94,
+     ), true);
+  eq('estaAtrasada: stand_by parado 5+ dias também conta',
+     LN4.estaAtrasada(
+       ativ4({ coluna: 'stand_by', atualizadoEm: new Date(agoraR94.getTime() - 6 * 864e5).toISOString() }),
+       agoraR94,
+     ), true);
+  eq('estaAtrasada: aberto parado 5+ dias NÃO conta — "aguardando início" não é "andamento esquecido"',
+     LN4.estaAtrasada(
+       ativ4({ coluna: 'aberto', atualizadoEm: new Date(agoraR94.getTime() - 10 * 864e5).toISOString() }),
+       agoraR94,
+     ), false);
+  eq('estaAtrasada: em_andamento parado só 2 dias NÃO conta',
+     LN4.estaAtrasada(
+       ativ4({ coluna: 'em_andamento', atualizadoEm: new Date(agoraR94.getTime() - 2 * 864e5).toISOString() }),
+       agoraR94,
+     ), false);
+  eq('estaAtrasada: nada de errado, nada de atraso',
+     LN4.estaAtrasada(ativ4({}), agoraR94), false);
+
+  eq('CRÍTICO: Prazo="atrasados" passa MESMO SEM `quando` — é a exceção aos outros 4 baldes, que excluem quem não tem data',
+     LN4.aplicarLentes(
+       [ativ4({ coluna: 'em_andamento', atualizadoEm: new Date(agoraR94.getTime() - 6 * 864e5).toISOString(), quando: null })],
+       { ...LN4.FILTROS_INICIAIS, prazo: 'atrasados' },
+       { agora: agoraR94 }, (x) => x,
+     ).length, 1);
+  eq('…e quem não está atrasado, sem quando, continua fora',
+     LN4.aplicarLentes(
+       [ativ4({ quando: null })],
+       { ...LN4.FILTROS_INICIAIS, prazo: 'atrasados' },
+       { agora: agoraR94 }, (x) => x,
+     ).length, 0);
+  eq('os outros 4 baldes de Prazo continuam excluindo quem não tem quando (comportamento de sempre, não regrediu)',
+     LN4.aplicarLentes(
+       [ativ4({ prazoEstourado: true, quando: null })],
+       { ...LN4.FILTROS_INICIAIS, prazo: 'hoje' },
+       { agora: agoraR94 }, (x) => x,
+     ).length, 0);
+
+  eq('CRÍTICO: o contador "N sem data" não superestima em Atrasados — quem passou pelo ramo de parado não conta como oculto',
+     /!\(filtros\.prazo === "atrasados" && estaAtrasada\(a, agora\)\)/.test(dash4), true);
+
+  const produto8 = fs56.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('R94 está documentado', /\*\*R94\*\*/.test(produto8), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

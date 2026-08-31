@@ -1509,3 +1509,22 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   rótulo virou "Tipo de demanda", como o resto do app chama esse campo.
   *(Davi, 2026-08-26: "No calendário, adicione o filtro por setor, adicione
   também o filtro por tipo de demanda".)*
+
+- **R94** — **O seletor "Padrão" saiu da Início.** Eram oito botões
+  pré-compostos (R17: Meu dia · Tudo meu · Sprint deste mês · Stand-by ·
+  Atrasados · A conferir · Sem responsável · Minha equipe), cada um uma
+  combinação fixa dos mesmos filtros que já estão na barra ao lado (vínculo,
+  prazo, equipe). O único que não tinha equivalente direto nos filtros
+  soltos era **Atrasados** — os baldes de Prazo são todos sobre uma DATA
+  (hoje/semana/mês), e "atrasado" não é: um chamado esquecido em andamento
+  conta como atraso mesmo sem prazo formal registrado. Esse conceito virou a
+  quinta opção do filtro de **Prazo**.
+
+  Os outros seis não tinham para onde voltar e saíram. **"Meu dia" é a
+  exceção que sobrevive** — não como opção de menu, mas como o que o banner
+  "Você tem X hoje" aplica ao ser tocado (R11) e como abertura padrão do
+  técnico. Sem seletor, ele deixou de ser uma ESCOLHA visível e virou
+  comportamento embutido — quem quiser sair dele usa "Limpar filtros", que
+  continua na tela.
+  *(Davi, 2026-08-26: "Remova esta caixa de filtros. Adicione a opção do
+  filtro 'Atrasados' no filtro de PRAZO".)*

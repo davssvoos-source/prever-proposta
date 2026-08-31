@@ -37,14 +37,14 @@ import { statusDaNatureza, NATUREZA_LABEL, chamadoStatusInfo } from "@/lib/chama
 import { normalizarTexto } from "@/lib/normalizar";
 import { visitaRouteFor } from "@/lib/visita-route";
 import {
-  usePessoas, mapaDePessoas, useMinhaEquipe, useChamadosRealtime,
+  usePessoas, mapaDePessoas, useChamadosRealtime,
   atualizarChamado, GravacaoRecusada,
 } from "@/features/chamados/data";
 import { atividadesDeHoje, type Atividade, type ColunaQuadro } from "@/features/atividades/modelo";
 import { useSessao, useAtividades } from "@/features/home/data";
 import {
-  aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, presetsDoCargo, presetPadrao,
-  semData, FILTROS_INICIAIS, ORDENACOES, lerOrdenacao,
+  aplicarLentes, recorteDosPaineis, ordenar, ordemDoPreset, focoDoPreset, PRESETS, presetPadrao,
+  semData, estaAtrasada, FILTROS_INICIAIS, ORDENACOES, lerOrdenacao,
   type Filtros, type Vinculo, type Prazo,
 } from "@/features/home/lentes";
 import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
@@ -79,11 +79,18 @@ const VINCULOS: { chave: Vinculo; label: string }[] = [
 ];
 // R60 (Davi, 2026-08-22): "Período" virou "Prazo", com os baldes que
 // sprintDoPrazo já usa no resto do app — ver o cabeçalho em lentes.ts.
-const PRAZOS: { chave: Exclude<Prazo, null>; label: string }[] = [
+//
+// "Atrasados" entrou na U74 (R94): era um dos oito PADRÕES antes de o
+// seletor "Padrão" sair da tela (Davi: "remova esta caixa de filtros...
+// adicione a opção do filtro 'Atrasados' no filtro de PRAZO"). É o único
+// balde que não é sobre uma DATA — por isso a nota, para não parecer só mais
+// um período.
+const PRAZOS: { chave: Exclude<Prazo, null>; label: string; nota?: string }[] = [
   { chave: "hoje", label: "Hoje" },
   { chave: "essa_semana", label: "Essa semana" },
   { chave: "semana_que_vem", label: "Semana que vem" },
   { chave: "este_mes", label: "Este mês" },
+  { chave: "atrasados", label: "Atrasados", nota: "Prazo vencido, ou parado 5+ dias" },
 ];
 
 function Home() {
@@ -157,10 +164,11 @@ function Home() {
     return () => { void supabase.removeChannel(canal); };
   }, [qc]);
   const { data: pessoas = [] } = usePessoas();
-  const { data: minhaEquipe = null } = useMinhaEquipe();
   const pessoasPorId = useMemo(() => mapaDePessoas(pessoas), [pessoas]);
 
-  const ctx = useMemo(() => ({ agora, minhaEquipe }), [agora, minhaEquipe]);
+  // U74: só `agora` sobrou aqui — `minhaEquipe` era exclusivo do preset
+  // "Minha equipe", que saiu junto com o seletor "Padrão".
+  const ctx = useMemo(() => ({ agora }), [agora]);
 
   // A ordenação escolhida à mão vence a do padrão; sem escolha, cada padrão
   // continua trazendo a ordem que já fazia sentido para ele. `lerOrdenacao`
@@ -237,18 +245,22 @@ function Home() {
   // de 1 — porque o preset "Meu dia" recorta por responsável e apoio.
   // quantos o prazo está escondendo por não terem data — some calado seria
   // a pior falha desta tela, e o número é o que torna a escolha auditável
+  //
+  // U74: "atrasados" é a EXCEÇÃO — ele não exige `quando` (quem está parado
+  // conta mesmo sem prazo formal, ver `estaAtrasada`). Contar todo item sem
+  // data como "escondido" aqui superestimaria: diria que sumiu gente que na
+  // verdade passou pelo ramo de "parado".
   const ocultosSemData = useMemo(() => {
     if (!filtros.prazo) return 0;
     const semPrazo = aplicarLentes(atividades, { ...filtros, prazo: null }, ctx, normalizarTexto);
-    return semPrazo.filter(semData).length;
-  }, [atividades, filtros, ctx]);
+    return semPrazo.filter((a) => semData(a) && !(filtros.prazo === "atrasados" && estaAtrasada(a, agora))).length;
+  }, [atividades, filtros, ctx, agora]);
 
   const hoje = useMemo(
     () => atividadesDeHoje(atividades.filter((a) => a.souResponsavel || a.souApoio), agora),
     [atividades, agora],
   );
   const proxima = useMemo(() => proximaVisitaDe(visitas, s.userId), [visitas, s.userId]);
-  const presets = useMemo(() => presetsDoCargo(s.cargo), [s.cargo]);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -545,28 +557,16 @@ function Home() {
 
         {/* Barra de controle: um botão por dimensão de filtro, cada um dizendo
             o que está escolhido sem precisar ser aberto. Antes eram duas
-            fileiras de chips disputando a largura — quinze alvos sem hierarquia. */}
+            fileiras de chips disputando a largura — quinze alvos sem hierarquia.
+            U74 (R94, Davi: "remova esta caixa de filtros"): o seletor "Padrão"
+            saiu — eram oito botões pré-compostos sobre os mesmos filtros que já
+            estão aqui do lado, e a única visão que não tinha equivalente
+            direto (Atrasados) virou opção de Prazo, logo abaixo. "Meu dia"
+            sobrevive só como o toque no banner "Você tem X hoje" (R11) e como
+            abertura padrão do técnico — sem botão próprio, porque não sobrou
+            catálogo para escolher DENTRO. */}
         {!semPerfil && (
           <div className="barra-filtros sangra-x" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <MenuFiltro
-              rotulo="Padrão"
-              vazio="Padrão"
-              opcoes={presets.map((p) => ({ valor: p.chave, label: p.label }))}
-              selecionados={filtros.preset ? [filtros.preset] : []}
-              onMudar={(v) => setFiltros((f) => ({
-                ...f,
-                preset: v[0] ?? null,
-                // trocar de padrão zera o prazo: a interseção vazia entre
-                // preset e prazo custa três toques cegos para descobrir
-                prazo: null,
-                // e zera a ordenação escolhida à mão: cada padrão já embute a
-                // ordem que faz sentido para ele ("Sem dono" quer prioridade,
-                // "Atrasados" quer prazo). Sem isto, escolher "Cliente" uma
-                // vez e depois trocar de padrão faria a nova ordem parecer
-                // quebrada — o padrão mudou mas a lista continuaria por nome.
-                ordenacao: null,
-              }))}
-            />
             <MenuFiltro
               rotulo="Vínculo"
               vazio="Meu vínculo"
@@ -577,11 +577,11 @@ function Home() {
             />
             {/* R60 (Davi, 2026-08-22): "Período" virou "Prazo", com os baldes
                 de sprintDoPrazo — hoje / essa semana (engole o vencido) /
-                semana que vem / este mês. */}
+                semana que vem / este mês. "Atrasados" entrou na U74. */}
             <MenuFiltro
               rotulo="Prazo"
               vazio="Prazo"
-              opcoes={PRAZOS.map((p) => ({ valor: p.chave, label: p.label }))}
+              opcoes={PRAZOS.map((p) => ({ valor: p.chave, label: p.label, nota: p.nota }))}
               selecionados={filtros.prazo ? [filtros.prazo] : []}
               onMudar={(v) => setFiltros((f) => ({ ...f, prazo: (v[0] ?? null) as Prazo }))}
             />
@@ -718,7 +718,7 @@ function Home() {
                     filtros.busca.trim() ? `busca "${filtros.busca.trim()}"` : null,
                   ].filter(Boolean).join(" · ")
                 : [
-                    filtros.preset && presets.find((p) => p.chave === filtros.preset)?.label,
+                    filtros.preset && PRESETS.find((p) => p.chave === filtros.preset)?.label,
                     filtros.prazo && PRAZOS.find((p) => p.chave === filtros.prazo)?.label,
                     filtros.vinculos.length ? filtros.vinculos.map((v) => VINCULOS.find((x) => x.chave === v)?.label).join(" + ") : null,
                     filtros.equipe !== "todas" ? EQUIPE_LABEL[filtros.equipe as Equipe] : null,

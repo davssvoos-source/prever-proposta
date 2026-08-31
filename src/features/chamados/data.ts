@@ -723,24 +723,6 @@ export function usePessoas() {
   });
 }
 
-/** Equipe do usuário logado — decide qual recorte do quadro ele abre. */
-export function useMinhaEquipe() {
-  return useQuery({
-    queryKey: ["minha-equipe"],
-    queryFn: async (): Promise<string | null> => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("equipe")
-        .eq("id", u.user.id)
-        .maybeSingle();
-      return ((data as any)?.equipe as string | null) ?? null;
-    },
-    staleTime: 60_000,
-  });
-}
-
 export function mapaDePessoas(pessoas: Pessoa[] | undefined): Record<string, Pessoa> {
   const m: Record<string, Pessoa> = {};
   for (const p of pessoas ?? []) m[p.id] = p;

@@ -4615,3 +4615,64 @@ distância no SELECT. E a etiqueta de situação continua no card de cliente: o
 pedido foi tirar o FILTRO, não a informação.
 
 1505 asserções (14 novas), build ok, tsc no baseline de 85. Sem migration.
+
+### U74 — "Padrão" sai da tela, "Atrasados" vira balde de Prazo (R94, 2026-08-26)
+
+"Remova esta caixa de filtros. Adicione a opção do filtro 'Atrasados' no
+filtro de PRAZO." — apontando o print do menu "Padrão" aberto, com os oito
+botões da R17.
+
+**A leitura do pedido não foi literal.** "Remova esta caixa" poderia
+significar só esconder o botão e deixar o mecanismo por baixo rodando
+invisível — mas isso trocaria um filtro visível por um filtro FANTASMA: o
+técnico continuaria abrindo em "Meu dia" sem nenhum controle na tela para ver
+ou desligar isso, e SAC/Comercial/Admin perderiam "A conferir"/"Sem
+responsável"/"Minha equipe" sem aviso. O pedido de mover especificamente
+"Atrasados" — e só ele — para dentro de Prazo é o sinal de que a intenção era
+maior: os outros sete não tinham voz para vir junto, porque ninguém pediu.
+
+**Por que só Atrasados precisava de uma casa nova.** Os quatro baldes de
+Prazo (Hoje/Essa semana/Semana que vem/Este mês) são todos sobre uma DATA.
+Atrasados nunca foi isso — é "prazo estourado OU em andamento/stand-by parado
+5+ dias", o mesmo que `alertas_chamados()` já notifica. Um chamado esquecido
+em andamento SEM prazo formal registrado conta como atraso, e é por isso que
+`dentroDoPrazo` faz dele a ÚNICA exceção que não exige `a.quando` — os outros
+quatro baldes continuam excluindo quem não tem data (regra de sempre,
+recoberta por asserção para não regredir sem querer).
+
+**A cascata de dead code, e onde ela parou.** Remover o seletor tornou
+inalcançáveis os outros seis presets (`tudo_meu`, `sprint_mes`, `stand_by`,
+`a_conferir`, `sem_dono`, `minha_equipe`) — nenhum código ainda os selecionava.
+Seguindo "se está certo que não é usado, apague por completo": saíram do
+array `PRESETS`, `ORDEM_POR_CARGO` e `presetsDoCargo` (existiam só para
+escalonar aquele catálogo por cargo, e um catálogo de 1 item não precisa de
+escalonamento). Isso destampou mais uma camada: `ContextoLente.minhaEquipe`
+ficou sem nenhum `Preset.aplica` para ler, e `useMinhaEquipe()` (o hook que
+buscava a equipe do usuário) tinha o próprio docstring dizendo pra que
+servia — "decide qual recorte do quadro ele abre" — ou seja, existia só para
+alimentar o preset que acabou de sair. Foi embora também.
+
+**Onde a cascata NÃO continuou, de propósito.** `Preset.foco` (as colunas que
+um preset destaca no quadro) ficou no tipo mesmo sabendo que hoje só resolve
+para `[]` (o "meu_dia" que sobrou nunca teve foco) — remover isso puxaria
+`Quadro.tsx` para dentro do diff por um ganho cosmético de "menos um campo",
+e esse arquivo não pedia para ser tocado. Nem toda cadeia de "isso ficou sem
+uso" precisa ser puxada até o fim; o critério foi: código **inalcançável**
+sai, valor que **sempre foi o mesmo caminho válido** (foco vazio) fica.
+
+**"Meu dia" sobrevive, e não como escolha.** É o que o banner "Você tem X
+hoje" aplica ao toque (R11) e o que o técnico abre por padrão — nenhum dos
+dois passa por um seletor, então nenhum dos dois precisava do catálogo. Isso
+significa que "Meu dia" deixou de ser uma ESCOLHA visível na tela e virou
+comportamento embutido; "Limpar filtros" continua sendo a saída para quem
+não quer aquele recorte.
+
+**Uma decisão que reverti no caminho**: cheguei a fazer o menu de Prazo zerar
+`ordenacao` ao trocar de valor, copiando o que o antigo seletor "Padrão"
+fazia (cada preset embutia sua própria ordem, então trocar de preset
+precisava limpar a escolha manual). Prazo nunca foi um combo de
+filtro+ordem+vínculo como preset era — é só mais um eixo, igual Equipe e
+Pessoa, nenhum dos quais mexe em `ordenacao`. Fazer Prazo ser a exceção seria
+inventar um efeito colateral que ninguém pediu; desfiz antes de commitar.
+
+1525 asserções (19 novas), build ok, tsc no baseline de 85. Sem migration.

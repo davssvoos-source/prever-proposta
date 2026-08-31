@@ -1,17 +1,25 @@
-// Lentes da Home — presets ("padrões de kanban") e filtros.
+// Lentes da Home — filtros, e o que sobrou de "preset" depois da U74.
 //
-// A invariante da tela, e ela não se negocia: **preset filtra e destaca
-// colunas; NUNCA reagrupa.** O eixo do quadro é sempre o status. Sem essa
-// regra o botão vira um segundo seletor de visualização escondido, e o usuário
-// perde a referência espacial que é justamente o que faz um quadro valer a pena.
+// Até a U74 havia OITO "padrões" (Meu dia · Tudo meu · Sprint deste mês ·
+// Stand-by · Atrasados · A conferir · Sem responsável · Minha equipe, R17) num
+// seletor próprio na barra. Davi removeu o seletor e pediu só "Atrasados" de
+// volta — como valor do filtro de Prazo, não como preset (`estaAtrasada`
+// acima). Os outros seis não tinham para onde voltar e saíram.
 //
-// Preset vale nas duas visões: em lista ele filtra e ordena; em quadro ele
-// filtra, ordena e coloca o foco em algumas colunas. Preset é filtro salvo;
-// visão é apresentação. Ortogonais de propósito.
+// "Meu dia" sozinho SOBREVIVE, porque não é escolhido num menu: é o que o
+// banner "Você tem X hoje" aplica ao ser tocado (R11), e o que abre sozinho
+// para o técnico na primeira visita da sessão (`presetPadrao`). Por isso
+// `PRESETS` continua existindo — com um item — e não virou um booleano solto:
+// o mecanismo de aplicar/ordenar/focar coluna (`aplicarLentes`,
+// `recorteDosPaineis`, `ordemDoPreset`, `focoDoPreset`) é o mesmo, só a
+// VITRINE que sumiu.
+//
+// A invariante que continua valendo: **preset filtra e destaca colunas; NUNCA
+// reagrupa.** O eixo do quadro é sempre o status.
 
 import type { Atividade, ColunaQuadro } from "@/features/atividades/modelo";
 import { mesmoDia } from "@/features/atividades/modelo";
-import { SPRINTS_DO_MES, sprintDoPrazo } from "@/lib/chamado-status";
+import { sprintDoPrazo } from "@/lib/chamado-status";
 
 export type Cargo = "tecnico" | "sac" | "comercial" | "admin";
 export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
@@ -20,8 +28,30 @@ export type Vinculo = "responsavel" | "apoio" | "autor" | "todos";
  * virou "Prazo", com os MESMOS 3 baldes que `sprintDoPrazo` já usa no resto
  * do app (essa_semana engole o vencido — R40, "o que venceu e segue aberto é
  * trabalho para agora") mais "Hoje", que nenhum balde de sprint isola sozinho.
+ *
+ * "atrasados" entrou na U74 (R94): era um dos oito PADRÕES (o seletor
+ * "Padrão" saiu da tela), e é o único que não cabia nos baldes de data — os
+ * outros três são sobre QUANDO a atividade vence; atrasados é sobre se ela
+ * JÁ deveria ter sido resolvida, o que inclui gente parada sem prazo formal
+ * nenhum (ver `estaAtrasada`).
  */
-export type Prazo = "hoje" | "essa_semana" | "semana_que_vem" | "este_mes" | null;
+export type Prazo = "hoje" | "essa_semana" | "semana_que_vem" | "este_mes" | "atrasados" | null;
+
+/**
+ * "Atrasada" no sentido do filtro de Prazo — não é só prazo vencido.
+ *
+ * Espelha o que `alertas_chamados()` já notifica (e o antigo preset
+ * "Atrasados" já aplicava): prazo estourado, OU em andamento/stand-by parado
+ * há mais de 5 dias sem nenhum movimento. Um chamado esquecido em andamento
+ * é tão atraso quanto um prazo vencido — e geralmente NEM TEM prazo formal
+ * registrado, o que é exatamente por que este teste nunca olha `a.quando`
+ * (ao contrário dos outros baldes de Prazo, que excluem quem não tem data).
+ */
+export function estaAtrasada(a: Atividade, agora: Date): boolean {
+  return a.prazoEstourado
+    || ((a.coluna === "em_andamento" || a.coluna === "stand_by")
+        && agora.getTime() - new Date(a.atualizadoEm).getTime() > 5 * 864e5);
+}
 export type Ordenacao = "prazo" | "recentes" | "prioridade" | "atualizacao" | "cliente";
 
 /**
@@ -87,13 +117,11 @@ export function valorDaOrdenacao(chave: Ordenacao, desc: boolean): string {
 
 export interface ContextoLente {
   agora: Date;
-  minhaEquipe: string | null;
 }
 
 export interface Preset {
   chave: string;
   label: string;
-  papeis: Cargo[];
   /** Colunas que o preset destaca. Vazio = todas com o mesmo peso. */
   foco: ColunaQuadro[];
   ordem: Ordenacao;
@@ -102,13 +130,16 @@ export interface Preset {
   vinculo?: Vinculo[];
 }
 
-const eMeu = (a: Atividade) => a.souResponsavel || a.souApoio || a.souAutor;
-
+/**
+ * O único preset que sobrou da U74 — ver o cabeçalho do arquivo. Continua
+ * sendo um ARRAY (não um objeto solto) porque `aplicarLentes`/
+ * `recorteDosPaineis` procuram por `f.preset` como chave, e assim nenhuma das
+ * duas precisou mudar quando os outros sete saíram.
+ */
 export const PRESETS: Preset[] = [
   {
     chave: "meu_dia",
     label: "Meu dia",
-    papeis: ["tecnico", "sac", "comercial", "admin"],
     foco: [],
     ordem: "prazo",
     vinculo: ["responsavel", "apoio"],
@@ -120,104 +151,7 @@ export const PRESETS: Preset[] = [
         || a.coluna === "em_andamento"
       ),
   },
-  {
-    chave: "tudo_meu",
-    label: "Tudo meu",
-    papeis: ["tecnico", "sac", "comercial", "admin"],
-    foco: [],
-    ordem: "prazo",
-    vinculo: ["responsavel", "apoio", "autor"],
-    aplica: (a) => a.emAberto && eMeu(a),
-  },
-  {
-    chave: "sprint_mes",
-    label: "Sprint deste mês",
-    papeis: ["tecnico", "sac", "comercial", "admin"],
-    foco: [],
-    ordem: "prazo",
-    // "este mês" passa a significar o mês corrente para TODAS as origens —
-    // se fosse só sprint='este_mes', o preset esconderia campo e visita, que
-    // não têm sprint, e quebraria a promessa de "todas as atividades".
-    aplica: (a, { agora }) => {
-      if (!a.emAberto) return false;
-      // os três baldes do mês (R40): "essa semana" também é deste mês, e
-      // testar só `este_mes` esconderia justamente o que vence antes
-      if (a.sprint && (SPRINTS_DO_MES as string[]).includes(a.sprint)) return true;
-      const q = a.quando ? new Date(a.quando) : null;
-      if (q) return q.getFullYear() === agora.getFullYear() && q.getMonth() === agora.getMonth();
-      // pedido de compra não tem sprint nem data: enquanto vivo, é do mês
-      return !!a.compra;
-    },
-  },
-  {
-    chave: "stand_by",
-    label: "Stand-by",
-    papeis: ["tecnico", "sac", "comercial", "admin"],
-    foco: ["stand_by", "aguardando_aprovacao"],
-    ordem: "atualizacao",
-    aplica: (a) => a.emAberto && (a.coluna === "stand_by" || a.coluna === "aguardando_aprovacao"),
-  },
-  {
-    chave: "atrasados",
-    label: "Atrasados",
-    papeis: ["tecnico", "sac", "comercial", "admin"],
-    foco: [],
-    ordem: "prazo",
-    // espelha o que alertas_chamados() já notifica: prazo estourado ou parado
-    aplica: (a, { agora }) =>
-      a.emAberto && (
-        a.prazoEstourado
-        || ((a.coluna === "em_andamento" || a.coluna === "stand_by")
-            && agora.getTime() - new Date(a.atualizadoEm).getTime() > 5 * 864e5)
-      ),
-  },
-  {
-    chave: "a_conferir",
-    label: "A conferir",
-    papeis: ["sac", "comercial", "admin"],
-    foco: ["concluido"],
-    ordem: "atualizacao",
-    // A fila de conferência nunca dependeu do status: quem manda nela é
-    // `faturamento_status`, deixado fora do ciclo lá na U0 exatamente por isso.
-    // É mais fiel que "executado" era: chamado sem nada a cobrar sai sozinho.
-    aplica: (a) => a.natureza === "campo" && a.aConferir,
-  },
-  {
-    chave: "sem_dono",
-    label: "Sem responsável",
-    papeis: ["sac", "admin"],
-    foco: ["aberto"],
-    ordem: "recentes",
-    aplica: (a) => a.emAberto && !a.responsavelId,
-  },
-  {
-    chave: "minha_equipe",
-    label: "Minha equipe",
-    papeis: ["tecnico", "sac", "admin"],
-    foco: [],
-    ordem: "prazo",
-    aplica: (a, { minhaEquipe }) => a.emAberto && !!minhaEquipe && a.equipe === minhaEquipe,
-  },
 ];
-
-/**
- * Quais presets cada perfil vê, e em que ordem — os três primeiros cabem na
- * tela sem rolar, então a ordem importa mais que o catálogo.
- */
-const ORDEM_POR_CARGO: Record<Cargo, string[]> = {
-  tecnico:   ["meu_dia", "tudo_meu", "atrasados", "stand_by", "sprint_mes", "minha_equipe"],
-  sac:       ["meu_dia", "sem_dono", "a_conferir", "stand_by", "atrasados", "sprint_mes", "minha_equipe"],
-  comercial: ["meu_dia", "a_conferir", "atrasados", "stand_by", "tudo_meu", "sprint_mes"],
-  admin:     ["meu_dia", "sem_dono", "a_conferir", "stand_by", "atrasados", "sprint_mes", "tudo_meu", "minha_equipe"],
-};
-
-export function presetsDoCargo(cargo: Cargo | null): Preset[] {
-  if (!cargo) return [];
-  const ordem = ORDEM_POR_CARGO[cargo];
-  return ordem
-    .map((k) => PRESETS.find((p) => p.chave === k))
-    .filter((p): p is Preset => !!p && p.papeis.includes(cargo));
-}
 
 export function presetPadrao(cargo: Cargo | null): string | null {
   if (cargo === "tecnico") return "meu_dia";
@@ -274,6 +208,10 @@ export function semData(a: Atividade): boolean {
  */
 function dentroDoPrazo(a: Atividade, p: Prazo, agora: Date): boolean {
   if (!p) return true;
+  // "atrasados" é a exceção à regra logo abaixo: ele PASSA mesmo sem
+  // `a.quando` — um chamado parado em andamento sem prazo formal é
+  // exatamente o caso que `estaAtrasada` existe para pegar.
+  if (p === "atrasados") return estaAtrasada(a, agora);
   // Item sem data NÃO passa quando há prazo escolhido — deixá-lo passar
   // fazia "Hoje" devolver a base inteira, porque a maioria dos chamados
   // internos não tem prazo. Mas ele também não some calado: a tela conta
