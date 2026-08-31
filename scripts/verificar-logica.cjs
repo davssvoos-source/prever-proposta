@@ -2926,90 +2926,25 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const conv = fs29.readFileSync('src/lib/convites.functions.ts', 'utf8');
   const CS2 = carregar('src/lib/chamado-status.ts');
 
-  const dupla = (o) => ({ id: 'd1', nome: 'Dupla 1', membro_a: 'a', membro_b: 'b', ativa: true, ...o });
+  const dupla = (o) => ({ id: 'd1', nome: 'Dupla 1', veiculo: null, ativa: true, ...o });
 
-  // ── membrosDaDupla ──────────────────────────────────────────────────────
-  eq('membrosDaDupla devolve os dois quando há par', DUP.membrosDaDupla(dupla({})), ['a', 'b']);
-  eq('membrosDaDupla devolve um só quando não há parceiro — sem null no meio',
-     DUP.membrosDaDupla(dupla({ membro_b: null })), ['a']);
+  // As funções SEM DATA (membrosDaDupla, duplaDaPessoa, rotuloDaDupla,
+  // serieAtividadesPorDupla, foraDeDupla) morreram na U77 — resolviam qualquer
+  // semana pela composição de hoje. As regras delas não sumiram: viraram as
+  // versões com semana, no bloco R96/R97/U76 no fim deste arquivo.
+  //
+  // O que sobra aqui é o que ainda pertence ao CADASTRO da equipe.
+  eq('erroDaDupla exige nome', DUP.erroDaDupla({ nome: ' ' }), 'Dê um nome à equipe.');
+  eq('erroDaDupla aceita equipe só com nome — composição saiu do cadastro e virou escala',
+     DUP.erroDaDupla({ nome: 'Equipe 2' }), null);
+  eq('CRÍTICO: perguntar a equipe de alguém SEM dizer quando deixou de ser possível',
+     [DUP.membrosDaDupla, DUP.duplaDaPessoa, DUP.serieAtividadesPorDupla, DUP.foraDeDupla]
+       .every((f) => f === undefined), true);
 
-  // ── duplaDaPessoa ───────────────────────────────────────────────────────
-  eq('duplaDaPessoa acha por membro_a', DUP.duplaDaPessoa('a', [dupla({})])?.id, 'd1');
-  eq('duplaDaPessoa acha por membro_b', DUP.duplaDaPessoa('b', [dupla({})])?.id, 'd1');
-  eq('duplaDaPessoa ignora dupla DESFEITA — trabalho novo não pode cair numa dupla que não existe mais',
-     DUP.duplaDaPessoa('a', [dupla({ ativa: false })]), null);
-  eq('duplaDaPessoa com pessoa fora de qualquer dupla', DUP.duplaDaPessoa('z', [dupla({})]), null);
-  // chamado sem responsável é o caso mais comum da fila — não pode explodir
-  eq('duplaDaPessoa tolera responsável nulo', DUP.duplaDaPessoa(null, [dupla({})]), null);
-
-  // ── rotuloDaDupla ───────────────────────────────────────────────────────
-  const nomeDe = (id) => ({ a: 'Breno', b: 'André' }[id] ?? id);
-  eq('rotuloDaDupla usa o nome cadastrado', DUP.rotuloDaDupla(dupla({}), nomeDe), 'Dupla 1');
-  eq('rotuloDaDupla sem nome monta a partir de quem está nela (legenda do gráfico precisa de rótulo)',
-     DUP.rotuloDaDupla(dupla({ nome: '   ' }), nomeDe), 'Breno & André');
-
-  // ── erroDaDupla (as 3 regras que o banco também garante) ────────────────
-  eq('erroDaDupla exige nome',
-     DUP.erroDaDupla({ nome: ' ', membroA: 'a', membroB: null }, [], nomeDe), 'Dê um nome à dupla.');
-  eq('erroDaDupla exige ao menos um técnico',
-     DUP.erroDaDupla({ nome: 'X', membroA: null, membroB: null }, [], nomeDe), 'Escolha ao menos um técnico.');
-  eq('erroDaDupla recusa a mesma pessoa duas vezes',
-     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: 'a' }, [], nomeDe),
-     'A dupla precisa de duas pessoas diferentes.');
-  eq('erroDaDupla recusa quem já está em outra dupla ativa (a mesma regra do trigger da U47)',
-     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: null }, [dupla({})], nomeDe),
-     'Breno já está na dupla "Dupla 1".');
-  // sem isto, editar a própria dupla acusaria conflito consigo mesma
-  eq('erroDaDupla NÃO acusa conflito com a dupla em edição',
-     DUP.erroDaDupla({ nome: 'X', membroA: 'a', membroB: 'b' }, [dupla({})], nomeDe, 'd1'), null);
-  eq('erroDaDupla aceita dupla válida',
-     DUP.erroDaDupla({ nome: 'Dupla 2', membroA: 'c', membroB: 'd' }, [dupla({})], nomeDe), null);
-  eq('erroDaDupla aceita técnico sem parceiro (dupla de um continua aparecendo no filtro/gráfico)',
-     DUP.erroDaDupla({ nome: 'Solo', membroA: 'c', membroB: null }, [dupla({})], nomeDe), null);
-
-  // ── série do gráfico ────────────────────────────────────────────────────
-  {
-    const semanas = [{ chave: 'S1', rotulo: '04/08' }, { chave: 'S2', rotulo: '11/08' }];
-    // a chave da semana vem de fora (referenciaSemanal, no app); aqui um
-    // marcador simples torna o teste independente do calendário real
-    const chaveDe = (d) => (d.getUTCDate() <= 10 ? 'S1' : 'S2');
-    const cham = (responsavel_id, dia) => ({
-      responsavel_id,
-      data_hora_agendada: `2026-08-${String(dia).padStart(2, '0')}T12:00:00.000Z`,
-    });
-    const duplas2 = [dupla({}), dupla({ id: 'd2', nome: 'Dupla 2', membro_a: 'c', membro_b: null })];
-
-    eq('série: conta por dupla e por semana, e o parceiro soma na MESMA dupla (não em duas linhas)',
-       DUP.serieAtividadesPorDupla(
-         [cham('a', 4), cham('b', 5), cham('c', 4), cham('a', 20)],
-         duplas2, semanas, chaveDe,
-       ),
-       [{ semana: '04/08', d1: 2, d2: 1 }, { semana: '11/08', d1: 1, d2: 0 }]);
-
-    eq('série: semana sem nada vira ZERO, não buraco — a linha não pode saltar por cima da semana vazia',
-       DUP.serieAtividadesPorDupla([cham('a', 4)], duplas2, semanas, chaveDe),
-       [{ semana: '04/08', d1: 1, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
-
-    eq('série: chamado SEM data programada não entra (o gráfico é do que foi programado)',
-       DUP.serieAtividadesPorDupla(
-         [{ responsavel_id: 'a', data_hora_agendada: null }], duplas2, semanas, chaveDe,
-       ),
-       [{ semana: '04/08', d1: 0, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
-
-    eq('série: responsável fora de dupla não entra em linha nenhuma',
-       DUP.serieAtividadesPorDupla([cham('z', 4)], duplas2, semanas, chaveDe),
-       [{ semana: '04/08', d1: 0, d2: 0 }, { semana: '11/08', d1: 0, d2: 0 }]);
-
-    eq('série: dupla DESFEITA não vira linha do gráfico',
-       Object.keys(DUP.serieAtividadesPorDupla([], [dupla({ ativa: false })], semanas, chaveDe)[0]),
-       ['semana']);
-
-    // o gráfico que some com trabalho sem avisar é um gráfico que mente
-    eq('foraDeDupla conta o que o gráfico NÃO mostrou (sem responsável ou fora de dupla)',
-       DUP.foraDeDupla([cham('z', 4), cham(null, 5), cham('a', 4)], duplas2, semanas, chaveDe), 2);
-    eq('foraDeDupla ignora o que está fora da janela de semanas mostrada',
-       DUP.foraDeDupla([{ responsavel_id: 'z', data_hora_agendada: null }], duplas2, semanas, chaveDe), 0);
-  }
+  // A série do gráfico agora é serieAtividadesPorEscala/foraDeEscala, cobertas
+  // no bloco R96/R97/U76. A asserção "dupla DESFEITA não vira linha do gráfico"
+  // que morava aqui foi INVERTIDA lá: a equipe desfeita continua explicando o
+  // histórico, e some do futuro pela ausência na escala.
 
   // ── a migration ─────────────────────────────────────────────────────────
   eq('U47 cria duplas com membro_b OPCIONAL (técnico sem par continua aparecendo)',
@@ -3058,19 +2993,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /\(\["semanal", "mensal"\] as ModoDeVisao\[\]\)\.map/.test(prog), true);
   eq('a grade do mês tem 42 células FIXAS (6 linhas) — senão a página pularia de altura ao trocar de mês',
      /Array\.from\(\{ length: 42 \}/.test(prog), true);
-  eq('tem filtro por dupla, com a opção "Sem dupla" (a fatia que o gestor precisa achar)',
-     /aria-label="Filtrar por dupla"/.test(prog) && /<option value="sem_dupla">Sem dupla<\/option>/.test(prog),
-     true);
+  eq('tem filtro por equipe de campo, com a opção "Sem equipe" (a fatia que o gestor precisa achar)',
+     /aria-label="Filtrar por equipe de campo"/.test(prog)
+     && /<option value="sem_equipe">Sem equipe<\/option>/.test(prog), true);
+  eq('…e o filtro oferece as equipes QUE TÊM composição na semana aberta, não as ativas de hoje',
+     /const equipesDaSemana = useMemo/.test(prog)
+     && /composicaoDaDupla\(d\.id, semanaDoDia, escala\)/.test(prog), true);
   eq('tem filtro por tipo de demanda, alimentado por TIPOS_DEMANDA_CAMPO',
      /aria-label="Filtrar por tipo de demanda"/.test(prog)
      && /TIPOS_DEMANDA_CAMPO\.map\(\(t\) => \(/.test(prog), true);
   eq('CRÍTICO: os filtros valem para TUDO na tela (agenda, fila e carga do seletor) — filtram `abertas`, a raiz de todas as três',
-     /const abertas = useMemo\(\(\) => emAberto\.filter\(\(o\) => \{[\s\S]{0,400}duplaDaPessoa\(o\.responsavel_id, duplasAtivas\)/.test(prog),
+     /const abertas = useMemo\(\(\) => emAberto\.filter\(\(o\) => \{[\s\S]{0,400}equipeDoChamado\(o\)/.test(prog),
      true);
-  eq('a agenda do dia agrupa por DUPLA (não uma linha por técnico, que separaria em dois o trabalho feito junto)',
-     /const porGrupo = useMemo/.test(prog) && /for \(const d of duplasAtivas\)/.test(prog), true);
-  eq('técnico fora de dupla continua tendo grupo próprio (ninguém some da agenda)',
-     /sub: "Sem dupla"/.test(prog), true);
+  // A régua de dias vai de domingo a sábado e ATRAVESSA a virada da semana
+  // ISO: resolver tudo pela semana aberta poria o domingo na equipe errada.
+  eq('CRÍTICO: cada chamado é resolvido pela semana DELE; só o que não tem data usa a semana aberta',
+     /duplaDaPessoaNaSemana\([\s\S]{0,200}o\.data_hora_agendada \? referenciaSemanal\(new Date\(o\.data_hora_agendada\)\) : semanaDoDia/.test(prog),
+     true);
+  eq('a agenda do dia agrupa pela EQUIPE DAQUELE DIA — a composição mostrada é a da semana do dia aberto, não a de hoje',
+     /const porGrupo = useMemo/.test(prog)
+     && /const membros = composicaoDaDupla\(d\.id, semanaDoDia, escala\);/.test(prog), true);
+  // itera a lista inteira, não só as ativas: equipe desfeita ainda explica
+  // as semanas em que saiu, e abrir a agenda de junho tem de mostrá-la
+  eq('…e a agenda de uma semana passada mostra até a equipe que foi desfeita depois',
+     /for \(const d of duplas\) \{/.test(prog), true);
+  eq('técnico fora de equipe continua tendo grupo próprio (ninguém some da agenda)',
+     /sub: "Sem equipe"/.test(prog), true);
   eq('o vazio explica que é o FILTRO quando há filtro (não deixa parecer que o dia está vazio)',
      /filtrando \? "Nada programado neste dia com esse filtro"/.test(prog), true);
 
@@ -3082,26 +3030,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      true);
   eq('o painel tem o botão que abre o pop-up de cadastro de duplas',
      /setDuplasAberto\(true\)/.test(pop) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(pop), true);
-  eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por dupla ativa',
+  eq('o gráfico é de LINHAS (pedido explícito), uma <Line> por equipe QUE TEVE ESCALA na janela — não por equipe ativa hoje',
      /<LineChart data=\{serieDuplas\}/.test(pop)
-     && /duplasAtivas\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(pop), true);
+     && /duplasDoGrafico\.map\(\(d, i\) => \{[\s\S]{0,300}<Line/.test(pop)
+     && /duplasNaJanela\(duplas, semanas, escala\)/.test(pop), true);
+  eq('CRÍTICO: o gráfico atribui cada atividade pela escala da SEMANA DELA — é o defeito que a U76 consertou',
+     /serieAtividadesPorEscala\(chamados as any\[\], duplas, semanas, escala, referenciaSemanal\)/.test(pop),
+     true);
   eq('cada item do eixo X é uma SEMANA',
      /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
-  eq('a legenda mostra o nome da dupla, não o uuid que é o dataKey',
-     /return d \? rotuloDaDupla\(d, nomeDeTecnico\) : v;/.test(pop), true);
-  eq('o painel avisa quantos atendimentos ficaram FORA de dupla (gráfico não pode sumir com trabalho em silêncio)',
-     /semDuplaNaJanela > 0 && \(/.test(pop), true);
+  eq('a legenda mostra o nome da equipe, não o uuid que é o dataKey',
+     /rotuloDaComposicao\(d, composicaoDaDupla\(d\.id, semanaDaLegenda, escala\), nomeDeTecnico\)/.test(pop),
+     true);
+  eq('o painel avisa quantos atendimentos ficaram FORA de equipe (gráfico não pode sumir com trabalho em silêncio)',
+     /semDuplaNaJanela > 0 && \(/.test(pop) && /foraDeEscala\(chamados as any\[\], semanas, escala, referenciaSemanal\)/.test(pop),
+     true);
   // R67 mudou COMO o vazio é dito, não a regra. Antes o painel inteiro sumia
   // e um card largo acima explicava o que fazer. Esse card largo saiu (o
   // botão de duplas virou o cabeçalho DESTE painel), e um painel que some
   // desequilibraria a faixa de altura única — então agora o painel fica e o
   // vazio se explica DENTRO dele. O que segue proibido é o mesmo: moldura de
   // gráfico vazia sem uma palavra sobre o próprio vazio.
-  eq('sem dupla cadastrada, o painel explica o vazio em vez de mostrar moldura de gráfico sem linha',
-     /duplasAtivas\.length === 0 \? \(/.test(pop)
-     && /Nenhuma dupla cadastrada — cadastre em/.test(pop), true);
-  eq('o gráfico de linhas só é montado quando HÁ dupla (o ramo else do vazio)',
-     /Nenhuma dupla cadastrada[\s\S]{0,600}<LineChart data=\{serieDuplas\}/.test(pop), true);
+  eq('sem escala na janela, o painel explica o vazio em vez de mostrar moldura de gráfico sem linha',
+     /duplasDoGrafico\.length === 0 \? \(/.test(pop)
+     && /Nenhuma equipe de campo com escala nestas semanas/.test(pop), true);
+  eq('o gráfico de linhas só é montado quando HÁ equipe com escala (o ramo else do vazio)',
+     /Nenhuma equipe de campo com escala[\s\S]{0,700}<LineChart data=\{serieDuplas\}/.test(pop), true);
   // R68 trocou a paleta categórica local pelo ESPECTRO — a rampa oficial da
   // casa, a mesma da Início. A regra que a asserção guarda é a de sempre:
   // a cor sai de paleta.ts, não de um hex digitado na tela.
@@ -3112,12 +3066,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── o pop-up de duplas (R56) ────────────────────────────────────────────
   eq('as opções vêm dos USUÁRIOS do sistema (useTecnicos), como o Davi pediu',
      /useTecnicos\(\)/.test(dlg), true);
-  eq('quem já está em outra dupla ativa não é oferecido (o banco recusaria; oferecer seria convidar ao erro)',
-     /const disponiveis = \(excetoEsteCampo: string\)/.test(dlg), true);
-  eq('desfazer uma dupla DESATIVA, não apaga — o histórico do gráfico depende dela',
+  eq('quem já está em outra equipe NAQUELA SEMANA não é oferecido (a PK recusaria; oferecer seria convidar ao erro)',
+     /disponiveisNaSemana\(/.test(dlg), true);
+  eq('desfazer uma equipe DESATIVA, não apaga — e desde a U76 o histórico do gráfico realmente depende disso',
      /tipo: "desativar"/.test(dlg) && /tipo: "reativar"/.test(dlg), true);
-  eq('valida no cliente antes de gravar, com a mesma função pura testada acima',
-     /const erro = erroDaDupla\(/.test(dlg), true);
+  eq('valida no cliente antes de gravar, com as mesmas funções puras testadas acima',
+     /const erro = erroDaDupla\(\{ nome \}\)/.test(dlg)
+     && /erroDaEscala\(\{ duplaId, semana, membros: rascunho \}/.test(dlg), true);
+
+  // ── R98: o pop-up virou tela de ESCALA ──────────────────────────────────
+  eq('CRÍTICO (R98): o pop-up tem seletor de SEMANA, e é ele que manda no que aparece',
+     /const semana = useMemo\(\(\) => referenciaSemanal\(base\)/.test(dlg)
+     && /aria-label="Semana anterior"/.test(dlg) && /aria-label="Próxima semana"/.test(dlg), true);
+  eq('…e a tela DIZ de onde veio o que mostra (própria × herdada), em vez de fingir que é decisão',
+     /rotuloDaOrigem\(origem\.semanaOrigem, semana\)/.test(dlg), true);
+  eq('cadastro e escala são coisas separadas — o formulário guarda nome e veículo, o botão Escalar guarda a semana',
+     /erroDaDupla\(\{ nome \}\)/.test(dlg) && /id="dupla-veiculo"/.test(dlg)
+     && !/id="dupla-membro-a"/.test(dlg), true);
+  eq('equipe sem ninguém na semana é gravável — "não sai nesta semana" é decisão, não formulário incompleto',
+     /Não sai nesta semana/.test(dlg), true);
+  eq('CRÍTICO: mover alguém de equipe PERGUNTA antes — o banco recusa, e a tela não repete sozinha com _mover',
+     /confirme a mudança para movê-lo/.test(dlg) && /window\.confirm\(/.test(dlg), true);
 
   // ── R59: cadastrar usuário não depende do e-mail sair ───────────────────
   eq('CRÍTICO: se o convite por e-mail falhar, createUser cria a conta assim mesmo — o cadastro não pode ficar em NADA',
@@ -4025,7 +3994,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      ['op-fila', 'op-dupla'].every((p) => op4.includes(`gradientesEspectro("${p}"`))
      && ['op-tec', 'op-cli'].every((p) => op4.includes(`prefixo="${p}"`)), true);
   eq('CRÍTICO: a LINHA usa userSpaceOnUse — linha toda no zero tem caixa de altura zero, e o SVG não desenha degradê sobre caixa de área nula (a linha sumiria justo na semana sem trabalho)',
-     /gradientesEspectro\("op-dupla", duplasAtivas\.length, isLight, true\)/.test(op4)
+     /gradientesEspectro\("op-dupla", duplasDoGrafico\.length, isLight, true\)/.test(op4)
      && /gradientUnits=\{userSpace \? "userSpaceOnUse" : undefined\}/.test(op4), true);
   eq('barra e fatia ficam no padrão objectBoundingBox — cada peça mostra a própria rampa inteira, como as barras da Início',
      /x2=\{userSpace \? "100%" : "1"\}/.test(op4), true);
@@ -4409,24 +4378,32 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a migration do apoio automático existe', fs45.existsSync(CAMINHO), true);
   const sql = fs45.readFileSync(CAMINHO, 'utf8');
 
-  const duplas = [
-    { id: 'd1', nome: 'Dupla do Breno', membro_a: 'breno', membro_b: 'luan', ativa: true },
-    { id: 'd2', nome: 'Dupla do Lucas', membro_a: 'lucas', membro_b: 'paulo', ativa: true },
-    { id: 'd3', nome: 'Sozinho',        membro_a: 'vinicius', membro_b: null, ativa: true },
-    { id: 'd4', nome: 'Desfeita',       membro_a: 'antigo', membro_b: 'outro', ativa: false },
-  ];
-  eq('o par sai dos DOIS lados da dupla — tanto faz quem foi cadastrado como membro_a',
-     [DUP.parceiroDaDupla('breno', duplas), DUP.parceiroDaDupla('luan', duplas)],
+  // A U77 removeu `parceiroDaDupla(pessoa, duplas)` — sem data ela devolvia a
+  // composição de HOJE para um chamado de qualquer época, que é o erro que o
+  // próprio cabeçalho desta migration diz querer evitar. As oito asserções que
+  // moravam aqui viraram as de `parceirosNaSemana`/`parceiroNaSemana` no bloco
+  // R96/R97/U76, com a semana como argumento.
+  //
+  // Uma delas mudou de sentido e vale registrar: "dupla DESFEITA não puxa
+  // ninguém" agora é "equipe desfeita não puxa ninguém DA SEMANA SEGUINTE EM
+  // DIANTE, e continua explicando as semanas passadas" — a precedência que a
+  // escala semanal obrigou a definir entre "desfeita" e "semana herda".
+  const S = '2026-S32';
+  const escala64 = DUP.montarEscala([S], [
+    { semana: S, dupla_id: 'd1', pessoa_id: 'breno',    ordem: 1 },
+    { semana: S, dupla_id: 'd1', pessoa_id: 'luan',     ordem: 2 },
+    { semana: S, dupla_id: 'd3', pessoa_id: 'vinicius', ordem: 1 },
+  ]);
+  eq('o par sai dos DOIS lados da equipe — tanto faz a ordem de exibição',
+     [DUP.parceiroNaSemana('breno', S, escala64), DUP.parceiroNaSemana('luan', S, escala64)],
      ['luan', 'breno']);
-  eq('cada técnico puxa o par da SUA dupla', DUP.parceiroDaDupla('lucas', duplas), 'paulo');
-  eq('dupla de uma pessoa só não tem par — e inventar um seria pior que deixar em branco',
-     DUP.parceiroDaDupla('vinicius', duplas), null);
-  eq('CRÍTICO: dupla DESFEITA não puxa ninguém — senão quem já saiu continuaria sendo escalado',
-     DUP.parceiroDaDupla('antigo', duplas), null);
-  eq('quem não está em dupla nenhuma não tem par', DUP.parceiroDaDupla('ninguem', duplas), null);
-  eq('sem responsável não há par', DUP.parceiroDaDupla(null, duplas), null);
-  eq('CRÍTICO: o par é o OUTRO, nunca a própria pessoa',
-     ['breno', 'luan', 'lucas', 'paulo'].every((p) => DUP.parceiroDaDupla(p, duplas) !== p), true);
+  eq('equipe de uma pessoa só não tem par — e inventar um seria pior que deixar em branco',
+     DUP.parceiroNaSemana('vinicius', S, escala64), null);
+  eq('CRÍTICO: quem não foi escalado NAQUELA semana não puxa ninguém',
+     DUP.parceiroNaSemana('antigo', S, escala64), null);
+  eq('sem responsável não há par', DUP.parceiroNaSemana(null, S, escala64), null);
+  eq('CRÍTICO: a assinatura sem data não existe mais — não dá para perguntar o par sem dizer quando',
+     DUP.parceiroDaDupla, undefined);
 
   // ── o gatilho, no SQL ────────────────────────────────────────────────────
   eq('CRÍTICO: o apoio é GRAVADO, não derivado — "desse dia em diante" quer dizer que trocar a dupla não pode reescrever quem foi ao prédio no passado',
@@ -5625,6 +5602,70 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   eq('R96 e R97 estão documentados',
      produto76.includes('**R96**') && produto76.includes('**R97**'), true);
+}
+
+// ── R98/U77: a escala vira a única verdade, as colunas legadas caem ─────────
+{
+  const fs77 = require('fs');
+  const CAMINHO77 = 'supabase/migrations/20260831210000_u77_fim_das_colunas_legadas.sql';
+  eq('a migration do fim das colunas legadas existe', fs77.existsSync(CAMINHO77), true);
+  const u77 = fs77.readFileSync(CAMINHO77, 'utf8');
+  const dt = fs77.readFileSync('src/features/duplas/data.ts', 'utf8');
+  const md = fs77.readFileSync('src/features/duplas/modelo.ts', 'utf8');
+  const produto77 = fs77.readFileSync('docs/PRODUTO.md', 'utf8');
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('CRÍTICO: a U77 recusa rodar antes da U76 — dropar as colunas sem a escala no lugar apagaria a composição sem substituto',
+     /to_regclass\('public\.duplas_escala'\) IS NULL THEN[\s\S]{0,300}RAISE EXCEPTION/.test(u77), true);
+  eq('…e recusa também com a escala VAZIA (a U76 rodou mas o backfill não semeou)',
+     /NOT EXISTS \(SELECT 1 FROM public\.duplas_escala_semanas\) THEN[\s\S]{0,300}RAISE EXCEPTION/.test(u77),
+     true);
+  eq('CRÍTICO: arquiva ANTES de dropar — a composição das equipes DESFEITAS só existia nessas colunas',
+     u77.indexOf('INSERT INTO public.duplas_composicao_legada')
+     < u77.indexOf('DROP COLUMN IF EXISTS membro_a'), true);
+  eq('o arquivo guarda os NOMES, não só os ids — se o profile sumir, o histórico ainda responde',
+     /nome_membro_a text/.test(u77) && /nome_membro_b text/.test(u77), true);
+  eq('a ponte da tela antiga sai, e o trigger sai ANTES da função (sem CASCADE às cegas)',
+     u77.indexOf('DROP TRIGGER  IF EXISTS trg_duplas_espelhar_na_escala')
+     < u77.indexOf('DROP FUNCTION IF EXISTS public.duplas_espelhar_na_escala()'), true);
+  eq('CRÍTICO: o DROP das colunas é SEM CASCADE — dependência escondida faz a migration abortar, não sumir',
+     /DROP COLUMN IF EXISTS membro_a;/.test(u77)
+     && !/DROP COLUMN IF EXISTS membro_[ab] CASCADE/.test(u77), true);
+  eq('duplas_valida_membros() morre junto: o corpo dela lia as colunas',
+     /DROP FUNCTION IF EXISTS public\.duplas_valida_membros\(\) CASCADE;/.test(u77), true);
+  eq('o cabeçalho avisa que este é o PONTO SEM VOLTA do DESFAZER da U76',
+     /PONTO SEM VOLTA DA U76/.test(u77), true);
+  eq('U77 é atômica e termina com conferência e DESFAZER',
+     /^BEGIN;$/m.test(u77) && /^COMMIT;$/m.test(u77)
+     && /CONFERÊNCIA/.test(u77) && u77.lastIndexOf('DESFAZER') > u77.indexOf('COMMIT;'), true);
+  eq('a escala NÃO é tocada — a U77 é sobre o que sai, não sobre o que manda',
+     /DELETE FROM public\.duplas_escala/.test(u77), false);
+  eq('o arquivo é de leitura, e só de gestor (é histórico de composição)',
+     /FOR SELECT TO authenticated USING \(public\.is_gestor\(auth\.uid\(\)\)\)/.test(u77), true);
+
+  // ── o cliente parou de ler as colunas ANTES de elas caírem ──────────────
+  // É o que faz este deploy ser seguro nas duas ordens: selecionar menos
+  // coluna nunca quebra, então o código novo funciona com ou sem a U77 rodada.
+  eq('CRÍTICO: o SELECT de duplas não nomeia mais membro_a/membro_b',
+     /const CAMPOS = "id, nome, veiculo, ativa";/.test(dt), true);
+  eq('…e o tipo Dupla também não os tem — quem tentasse ler não compilaria',
+     /export interface Dupla \{[\s\S]{0,220}\}/.exec(md)[0].includes('membro_'), false);
+  eq('o veículo entrou no SELECT junto (R97) — coluna que ninguém nomeia não chega ao cliente',
+     /veiculo/.test(dt), true);
+
+  // ── a escala inteira, de uma consulta só ────────────────────────────────
+  eq('useEscala lê as DUAS tabelas: as linhas dizem quem, as semanas dizem quais foram decididas',
+     /from\("duplas_escala_semanas" as any\)/.test(dt) && /from\("duplas_escala" as any\)/.test(dt),
+     true);
+  eq('CRÍTICO: a escrita da escala passa pela RPC, não por INSERT/DELETE do cliente — a ordem das três operações é o que a faz funcionar',
+     /supabase\.rpc\("escala_definir" as any/.test(dt)
+     && !/from\("duplas_escala" as any\)[\s\S]{0,80}\.(insert|delete)\(/.test(dt), true);
+  eq('mover alguém de equipe não é o padrão — _mover só vai true depois de perguntar',
+     /_mover: v\.mover \?\? false/.test(dt), true);
+  eq('desativar uma equipe invalida a escala junto (o gatilho apaga as semanas futuras dela)',
+     /queryKey: \["duplas-escala"\]/.test(dt), true);
+
+  eq('R98 está documentado', produto77.includes('**R98**'), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

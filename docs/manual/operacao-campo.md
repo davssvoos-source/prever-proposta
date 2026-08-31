@@ -54,8 +54,9 @@ A antiga lista `/chamados` morreu (R31). O detalhe continua em
 
 ## Programação e painéis
 
-- **Programação das duplas** (`/chamados/programacao`): quem sai com quem e
-  para onde. Só o líder da dupla tem conta (R14).
+- **Programação das equipes** (`/chamados/programacao`): quem sai com quem e
+  para onde, com o filtro e a agenda do dia lendo a escala **da semana daquele
+  dia** (R98). Só o líder da equipe tem conta (R14).
 - **Painel de chamados** (`/chamados/painel`): a visão gerencial dos quatro
   trilhos com filtros aplicados a tudo (R8). Tem guarda de rota própria
   (`chamados.painel`) desde a U30.
@@ -123,16 +124,45 @@ existe para evitar, por outro caminho.
   divergentes, e `SELECT public.reconciliar_apoios_abertos();` acerta (nunca
   alcança concluído, cancelado, nem apoio posto à mão).
 
+### Onde se mexe nisso (R98)
+
+O pop-up **Equipes de campo**, no Painel Operacional Técnica. Ele tem um
+**seletor de semana no topo**, e é ele que manda em tudo abaixo.
+
+Duas coisas separadas na mesma janela, porque têm prazos diferentes:
+
+- o **cadastro** — nome e veículo — vale até alguém mudar;
+- a **escala** (botão **Escalar**) — quem sai naquela semana — vale para aquela
+  semana e só.
+
+Enquanto as duas eram o mesmo formulário (os dois `<select>` "Técnico" e
+"Parceiro"), trocar a composição reescrevia o passado. A tela diz sempre de
+onde veio o que mostra: *escala desta semana* × *herdada de 2026-S32* ×
+*escala de sempre*.
+
+A composição é uma **lista**, não dois campos — a equipe de campo pode ter
+três. Quem já está em outra equipe **naquela semana** não aparece nas opções, e
+**mover alguém pergunta antes**: a RPC vai com `_mover: false`, o banco recusa
+nomeando a outra equipe, e a tela só repete depois do "sim".
+
+Equipe sem ninguém grava, e o botão assume: **"Não sai nesta semana"**.
+
 ### Anti-práticas específicas da escala
 
 - Perguntar o par **sem dizer quando**. A assinatura sem data foi dropada
   justamente para o erro não ser possível.
-- Ler `membro_a`/`membro_b` em código novo: são espelho legado e somem no
-  Passo 2. A verdade é a escala.
+- Ler `membro_a`/`membro_b`: **não existem mais** (U77). A verdade é a escala,
+  e o arquivo do que foi congelado está em `duplas_composicao_legada`.
 - Tratar `null` de "semana vigente" como "ninguém". É "não sei" — o gatilho
   volta cedo em vez de apagar registro, e a tela diz "sem escala".
 - Filtrar a escala por `duplas.ativa` na LEITURA. Desfazer uma equipe voltaria
-  a apagar o passado dela.
+  a apagar o passado dela — o gráfico e a agenda iteram a lista inteira.
+- Escrever em `duplas_escala` direto do cliente. A porta é a RPC
+  `escala_definir`: a ORDEM das três operações (abrir, remover, inserir) é o
+  que faz a coisa funcionar, e ela resolve as três numa transação.
+- Resolver todos os chamados de uma tela pela semana aberta nela. A régua de
+  dias da programação vai de domingo a sábado e atravessa a virada da semana
+  ISO: cada chamado é resolvido pela semana DELE.
 
 ## Os indicadores de campo — o que cada número responde
 

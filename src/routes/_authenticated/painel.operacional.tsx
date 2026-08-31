@@ -50,10 +50,11 @@ import { PainelChamado } from "@/features/chamados/PainelChamado";
 import { useApoiosDeTodos } from "@/features/home/data";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { atividadeDoChamado, type Atividade } from "@/features/atividades/modelo";
-import { useDuplas } from "@/features/duplas/data";
+import { useDuplas, useEscala } from "@/features/duplas/data";
 import { DialogoDuplas } from "@/features/duplas/DialogoDuplas";
 import {
-  serieAtividadesPorDupla, foraDeDupla, rotuloDaDupla, type SemanaDoGrafico,
+  serieAtividadesPorEscala, foraDeEscala, duplasNaJanela, composicaoDaDupla,
+  montarEscala, rotuloDaComposicao, type SemanaDoGrafico,
 } from "@/features/duplas/modelo";
 import { chamadoStatusInfo, textoPrazo } from "@/lib/chamado-status";
 import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
@@ -185,6 +186,7 @@ function PainelOperacional() {
   );
   const { data: tecnicos = [] } = useTecnicos();
   const { data: duplas = [] } = useDuplas();
+  const { data: escala = montarEscala([], []) } = useEscala();
   const { data: pessoas = [] } = usePessoas();
   const { data: apoiosDoChamado } = useApoiosDeTodos();
   const { isLight } = useTheme();
@@ -312,9 +314,7 @@ function PainelOperacional() {
     [ind],
   );
 
-  // ── Atividades por dupla ao longo do tempo (R58) ─────────────────────────
-  const duplasAtivas = useMemo(() => duplas.filter((d) => d.ativa), [duplas]);
-
+  // ── Atividades por equipe de campo ao longo do tempo (R58/R96) ───────────
   const semanas = useMemo<SemanaDoGrafico[]>(() => {
     const segundaDestaSemana = inicioSemana(new Date());
     return Array.from({ length: SEMANAS_NO_GRAFICO }, (_, i) => {
@@ -329,14 +329,24 @@ function PainelOperacional() {
     });
   }, []);
 
+  // Ganha <Line> quem teve ESCALA em alguma semana da janela — não quem está
+  // ativa hoje. Desde a U76 a equipe desfeita continua explicando o histórico:
+  // ela some do futuro pela ausência na escala, não do gráfico do passado.
+  const duplasDoGrafico = useMemo(
+    () => duplasNaJanela(duplas, semanas, escala),
+    [duplas, semanas, escala],
+  );
   const serieDuplas = useMemo(
-    () => serieAtividadesPorDupla(chamados as any[], duplasAtivas, semanas, referenciaSemanal),
-    [chamados, duplasAtivas, semanas],
+    () => serieAtividadesPorEscala(chamados as any[], duplas, semanas, escala, referenciaSemanal),
+    [chamados, duplas, semanas, escala],
   );
   const semDuplaNaJanela = useMemo(
-    () => foraDeDupla(chamados as any[], duplasAtivas, semanas, referenciaSemanal),
-    [chamados, duplasAtivas, semanas],
+    () => foraDeEscala(chamados as any[], semanas, escala, referenciaSemanal),
+    [chamados, semanas, escala],
   );
+  // a legenda mostra a composição da semana MAIS RECENTE da janela: é o rótulo
+  // "como está agora", e as semanas antigas continuam somando onde somavam
+  const semanaDaLegenda = semanas[semanas.length - 1]?.chave ?? "";
   const nomeDeTecnico = (id: string) => nomeTecnico.get(id) ?? "Técnico";
 
   // ── A lista ───────────────────────────────────────────────────────────────
@@ -677,12 +687,12 @@ function PainelOperacional() {
               duplas — botão de manutenção pertence à peça que ele mantém. */}
           <div className="elevavel" style={{ ...PAINEL, flex: 2, minWidth: 396 }}>
             <Cabeca
-              titulo={`Atividades por dupla · ${SEMANAS_NO_GRAFICO} semanas`}
+              titulo={`Atividades por equipe · ${SEMANAS_NO_GRAFICO} semanas`}
               direita={
                 <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {semDuplaNaJanela > 0 && (
                     <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
-                      {semDuplaNaJanela} fora de dupla
+                      {semDuplaNaJanela} fora de equipe
                     </span>
                   )}
                   <button
@@ -697,19 +707,20 @@ function PainelOperacional() {
                     }}
                   >
                     <Users size={11} />
-                    Duplas
+                    Equipes
                   </button>
                 </span>
               }
             />
-            {duplasAtivas.length === 0 ? (
+            {duplasDoGrafico.length === 0 ? (
               <div style={{
                 flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
                 textAlign: "center", fontFamily: FONT, fontSize: 11.5, color: textSecondary,
                 lineHeight: 1.5, padding: "0 20px",
               }}>
-                Nenhuma dupla cadastrada — cadastre em <strong style={{ color: gold, fontWeight: 600 }}>Duplas</strong>{" "}
-                para ver quem sai com quem ao longo das semanas.
+                Nenhuma equipe de campo com escala nestas semanas — cadastre e escale em{" "}
+                <strong style={{ color: gold, fontWeight: 600 }}>Equipes</strong>{" "}
+                para ver quem sai com quem ao longo do tempo.
               </div>
             ) : (
               <div style={{ flex: 1, minHeight: 0 }}>
@@ -718,7 +729,7 @@ function PainelOperacional() {
                     {/* userSpace: linha toda no zero tem caixa de altura zero,
                         e degradê em objectBoundingBox não desenha sobre caixa
                         de área nula — a linha sumiria na semana sem trabalho */}
-                    <defs>{gradientesEspectro("op-dupla", duplasAtivas.length, isLight, true)}</defs>
+                    <defs>{gradientesEspectro("op-dupla", duplasDoGrafico.length, isLight, true)}</defs>
                     <CartesianGrid stroke={grade} />
                     <XAxis dataKey="semana" tick={eixo} axisLine={false} tickLine={false} />
                     <YAxis allowDecimals={false} tick={eixo} axisLine={false} tickLine={false} width={22} />
@@ -727,11 +738,13 @@ function PainelOperacional() {
                       wrapperStyle={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}
                       iconSize={8}
                       formatter={(v: string) => {
-                        const d = duplasAtivas.find((x) => x.id === v);
-                        return d ? rotuloDaDupla(d, nomeDeTecnico) : v;
+                        const d = duplasDoGrafico.find((x) => x.id === v);
+                        return d
+                          ? rotuloDaComposicao(d, composicaoDaDupla(d.id, semanaDaLegenda, escala), nomeDeTecnico)
+                          : v;
                       }}
                     />
-                    {duplasAtivas.map((d, i) => {
+                    {duplasDoGrafico.map((d, i) => {
                       const passo = i % PECAS_ESPECTRO;
                       return (
                         <Line

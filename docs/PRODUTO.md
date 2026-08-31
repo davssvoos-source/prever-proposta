@@ -1606,3 +1606,42 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   livre (placa, apelido, o que a operação usar). Entra no compartilhamento do
   dia e na programação: quem lê "Equipe 1 · Saveiro" no WhatsApp sabe quem
   chega. Opcional — equipe sem veículo continua funcionando.
+
+- **R98** — **O cadastro de equipe e a escala da semana são duas telas na
+  mesma janela.** O pop-up de Equipes de campo (no Painel Operacional Técnica)
+  tem um **seletor de semana no topo**, e ele manda em tudo abaixo: a
+  composição que aparece em cada equipe é a **daquela semana**.
+
+  **Cadastro é uma coisa, escala é outra**, e elas foram separadas porque têm
+  prazos diferentes. O formulário guarda **nome e veículo** — vale até alguém
+  mudar. O botão **Escalar** guarda **quem sai naquela semana** — vale para
+  aquela semana e só. Enquanto as duas eram o mesmo formulário (os dois
+  `<select>` "Técnico" e "Parceiro"), trocar a composição reescrevia o passado.
+
+  **A tela diz sempre de onde veio o que está mostrando:** "escala desta
+  semana", "escala herdada de 2026-S32", ou "escala de sempre" (o marco zero da
+  R96). Escala herdada é escala que **ninguém confirmou** para aquela semana —
+  e o gestor precisa saber disso antes de confiar nela. Salvar qualquer equipe
+  fixa a semana inteira, e as anteriores não mudam.
+
+  **A composição é uma lista, não dois campos.** A equipe de campo pode ter
+  três (o ajudante, alguém cobrindo férias), e a R96 já permitia isso no banco.
+  Quem já está em outra equipe **naquela semana** não é oferecido.
+
+  **Equipe vazia numa semana é resposta legítima** — o botão diz "Não sai nesta
+  semana" e grava assim mesmo. É diferente de "semana não decidida", que herda.
+
+  **Mover alguém de equipe pergunta antes.** Se a pessoa já está em outra
+  equipe naquela semana, o banco recusa e devolve o nome da equipe; a tela
+  mostra a frase e só move depois do "sim". Roubar membro em silêncio é pior
+  que atritar.
+
+  Na programação, o filtro passou a se chamar **"equipe de campo"** e oferece as
+  equipes que **têm composição na semana aberta**; a agenda do dia agrupa pela
+  equipe **daquele dia**, não pela de hoje — abrir a agenda de junho mostra
+  quem realmente saiu em junho, equipe desfeita depois inclusive. No painel, o
+  gráfico ganha uma linha por equipe que **teve escala na janela**, e não por
+  equipe ativa hoje.
+  *(U77. Fecha o Passo 1 da absorção do Gestor OS: as colunas `membro_a`/
+  `membro_b` saíram do banco, e a escala é a única fonte de "quem sai com
+  quem".)*

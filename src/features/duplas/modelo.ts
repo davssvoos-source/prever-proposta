@@ -1,96 +1,43 @@
-// Duplas de campo (R56/U47) — a lógica pura, testável sem banco e sem React.
+// Equipes de campo (R56/U47 → R96/R97/U76, R98/U77) — a lógica pura, testável
+// sem banco e sem React.
 //
-// A DUPLA DE UM CHAMADO É DERIVADA DO RESPONSÁVEL, não guardada numa coluna:
-// se o responsável está numa dupla ativa, o chamado é daquela dupla. Ver o
-// cabeçalho de supabase/migrations/20260822050000_u47_duplas_de_campo.sql para
-// o porquê (retroatividade, uma fonte de verdade só, e é como a operação já
-// funciona — a programação atribui o técnico, a dupla vem junto).
+// A EQUIPE DE UM CHAMADO É DERIVADA DO RESPONSÁVEL, não guardada numa coluna:
+// não existe `chamados.dupla_id`, de propósito (ver o cabeçalho da U47). O que
+// a U76 acrescentou foi a DATA nessa derivação — a composição não é um estado
+// atual sem eixo de tempo, é uma SÉRIE POR SEMANA. "Quem estava com quem" e
+// "quem está com quem hoje" são perguntas diferentes, e por isso TODA função
+// deste arquivo que fala de composição exige a semana.
+//
+// A U77 tirou daqui o caminho antigo. Não existe mais `membrosDaDupla(d)`, nem
+// `duplaDaPessoa(pessoa, duplas)`, nem `serieAtividadesPorDupla(...)`: eram as
+// versões sem data, que resolviam qualquer semana pela composição de hoje.
+// Enquanto existiam, dava para perguntar sem dizer QUANDO — e essa era a
+// pergunta que reescrevia o passado em silêncio.
+//
+// No banco a tabela continua `duplas` e a escala é `duplas_escala`: a palavra
+// "equipe" está ocupada por DEPARTAMENTO desde a U71 (chamados.equipe,
+// profiles.equipe, src/lib/equipes.ts). "Equipe de campo" é rótulo de TELA.
 
 export interface Dupla {
   id: string;
   nome: string;
-  membro_a: string;
-  membro_b: string | null;
+  /** A viatura da turma — placa, modelo ou apelido (R97). */
+  veiculo: string | null;
   ativa: boolean;
-  /** U76 — a viatura da equipe. Opcional aqui até `data.ts` passar a lê-la. */
-  veiculo?: string | null;
-}
-
-/** Os ids das pessoas da dupla — uma ou duas, nunca com null no meio. */
-export function membrosDaDupla(d: Dupla): string[] {
-  return d.membro_b ? [d.membro_a, d.membro_b] : [d.membro_a];
 }
 
 /**
- * A dupla ATIVA de uma pessoa. Só considera duplas ativas: uma dupla desfeita
- * não pode continuar puxando o trabalho de quem já saiu dela.
- *
- * O banco garante que a resposta é única (índices parciais + trigger na U47),
- * então o primeiro achado é O achado.
+ * Valida o CADASTRO da equipe. Encolheu na U77 de propósito: composição saiu
+ * daqui e virou escala (ver `erroDaEscala`). O que sobra é o que pertence à
+ * TURMA e não à semana — e o veículo é opcional, porque equipe sem carro
+ * continua sendo equipe.
  */
-export function duplaDaPessoa(pessoaId: string | null, duplas: Dupla[]): Dupla | null {
-  if (!pessoaId) return null;
-  return duplas.find((d) => d.ativa && membrosDaDupla(d).includes(pessoaId)) ?? null;
-}
-
-/**
- * O PAR de uma pessoa na dupla ativa dela — o apoio automático (R75).
- *
- * Gêmeo TS de `public.parceiro_da_dupla()` (U64). Quem grava o apoio é o
- * gatilho no banco, para valer em qualquer caminho de escrita (app, import,
- * SQL na mão); esta versão existe para a tela poder ANTECIPAR o que vai
- * acontecer — mostrar "apoio: Luan" antes de salvar — e para a regra poder
- * ser travada por asserção sem subir banco.
- *
- * Devolve null quando não há dupla, ou quando a dupla é de uma pessoa só.
- * Null é resposta legítima: inventar um apoio é pior que deixar em branco.
- */
-export function parceiroDaDupla(pessoaId: string | null, duplas: Dupla[]): string | null {
-  const d = duplaDaPessoa(pessoaId, duplas);
-  if (!d) return null;
-  return membrosDaDupla(d).find((m) => m !== pessoaId) ?? null;
-}
-
-/**
- * Nome de exibição. `nome` é o que o gestor escreveu no cadastro; quando ele
- * está vazio, monta a partir de quem está nela — uma dupla sem rótulo ainda
- * precisa ser reconhecível na legenda do gráfico e no filtro.
- */
-export function rotuloDaDupla(d: Dupla, nomeDe: (id: string) => string): string {
-  const proprio = d.nome.trim();
-  if (proprio) return proprio;
-  return membrosDaDupla(d).map(nomeDe).join(" & ");
-}
-
-/**
- * Valida o formulário de cadastro. Devolve a mensagem do primeiro problema, ou
- * null quando está tudo certo — as três regras que o banco também garante,
- * checadas aqui para a pessoa saber ANTES de gravar e receber um erro cru.
- */
-export function erroDaDupla(
-  entrada: { nome: string; membroA: string | null; membroB: string | null },
-  duplas: Dupla[],
-  nomeDe: (id: string) => string,
-  idEmEdicao?: string,
-): string | null {
-  if (!entrada.nome.trim()) return "Dê um nome à dupla.";
-  if (!entrada.membroA) return "Escolha ao menos um técnico.";
-  if (entrada.membroB && entrada.membroA === entrada.membroB) {
-    return "A dupla precisa de duas pessoas diferentes.";
-  }
-  const escolhidos = [entrada.membroA, entrada.membroB].filter(Boolean) as string[];
-  for (const id of escolhidos) {
-    const outra = duplas.find(
-      (d) => d.ativa && d.id !== idEmEdicao && membrosDaDupla(d).includes(id),
-    );
-    if (outra) {
-      return `${nomeDe(id)} já está na dupla "${rotuloDaDupla(outra, nomeDe)}".`;
-    }
-  }
+export function erroDaDupla(entrada: { nome: string }): string | null {
+  if (!entrada.nome.trim()) return "Dê um nome à equipe.";
   return null;
 }
 
-// ── Série do gráfico: atividades por dupla ao longo das semanas ─────────────
+// ── Série do gráfico: atividades por equipe ao longo das semanas ────────────
 
 export interface SemanaDoGrafico {
   /** chave estável da semana — "2026-S34" (referenciaSemanal de periodos.ts) */
@@ -100,8 +47,8 @@ export interface SemanaDoGrafico {
 }
 
 /**
- * Uma linha do gráfico de linhas: a semana, mais uma contagem por dupla
- * (chaveadas pelo id da dupla, que é o `dataKey` de cada <Line>).
+ * Uma linha do gráfico de linhas: a semana, mais uma contagem por equipe
+ * (chaveadas pelo id, que é o `dataKey` de cada <Line>).
  */
 export type PontoDoGrafico = { semana: string } & Record<string, number | string>;
 
@@ -111,85 +58,15 @@ interface ChamadoParaGrafico {
   data_hora_agendada: string | null;
 }
 
-/**
- * Monta a série do gráfico "atividades por dupla ao longo do tempo".
- *
- * BUCKET POR `data_hora_agendada`, não por `created_at` nem `concluida_em`: o
- * gráfico responde "quanto cada dupla teve para fazer em cada semana", e é a
- * data programada que diz em que semana o trabalho caiu para elas. `created_at`
- * mediria quando a demanda ENTROU (que é outro indicador, o "fluxo do mês", já
- * no painel) e `concluida_em` deixaria de fora tudo que ainda está por fazer.
- *
- * Chamado sem responsável, ou com responsável fora de qualquer dupla ativa,
- * não entra em linha nenhuma — não há dupla a quem atribuir, e inventar uma
- * cesta "sem dupla" faria o gráfico de composição das duplas falar de outra
- * coisa. A tela informa esse resto por fora, em texto.
- */
-export function serieAtividadesPorDupla(
-  chamados: ChamadoParaGrafico[],
-  duplas: Dupla[],
-  semanas: SemanaDoGrafico[],
-  chaveDaSemana: (d: Date) => string,
-): PontoDoGrafico[] {
-  const ativas = duplas.filter((d) => d.ativa);
-  const contagem = new Map<string, Map<string, number>>();
-  for (const s of semanas) contagem.set(s.chave, new Map());
-
-  for (const c of chamados) {
-    if (!c.data_hora_agendada) continue;
-    const dupla = duplaDaPessoa(c.responsavel_id, ativas);
-    if (!dupla) continue;
-    const chave = chaveDaSemana(new Date(c.data_hora_agendada));
-    const daSemana = contagem.get(chave);
-    if (!daSemana) continue; // fora da janela mostrada
-    daSemana.set(dupla.id, (daSemana.get(dupla.id) ?? 0) + 1);
-  }
-
-  return semanas.map((s) => {
-    const ponto: PontoDoGrafico = { semana: s.rotulo };
-    for (const d of ativas) ponto[d.id] = contagem.get(s.chave)?.get(d.id) ?? 0;
-    return ponto;
-  });
-}
-
-/**
- * Quantos chamados o gráfico NÃO conseguiu atribuir a uma dupla (sem
- * responsável, ou responsável fora de dupla ativa) dentro da janela mostrada.
- * A tela informa esse número — um gráfico que some com parte do trabalho sem
- * dizer nada é um gráfico que mente por omissão.
- */
-export function foraDeDupla(
-  chamados: ChamadoParaGrafico[],
-  duplas: Dupla[],
-  semanas: SemanaDoGrafico[],
-  chaveDaSemana: (d: Date) => string,
-): number {
-  const ativas = duplas.filter((d) => d.ativa);
-  const janela = new Set(semanas.map((s) => s.chave));
-  return chamados.filter((c) => {
-    if (!c.data_hora_agendada) return false;
-    if (!janela.has(chaveDaSemana(new Date(c.data_hora_agendada)))) return false;
-    return !duplaDaPessoa(c.responsavel_id, ativas);
-  }).length;
-}
-
-// ── U76/R96/R97: a composição ganha EIXO DE TEMPO ───────────────────────────
+// ── A ESCALA: composição por semana, com herança ────────────────────────────
 //
-// Tudo acima responde "quem está com quem HOJE", lendo membro_a/membro_b. O que
-// vem abaixo responde "quem estava com quem NAQUELA SEMANA", lendo a escala.
-// São perguntas diferentes, e por isso são funções diferentes: cada uma daqui
-// para baixo EXIGE a semana, justamente para não poder ser confundida com a de
-// cima. O bloco antigo é o caminho legado — some no Passo 2, junto com as
-// colunas membro_a/membro_b e com a ponte que a U76 deixou no banco.
+// Toda função daqui para baixo EXIGE a semana. Não é verbosidade: é o que
+// impede a pergunta errada de ser feita. Até a U76 existia
+// `duplaDaPessoa(pessoa, duplas)` — sem data — e ela resolvia um chamado de
+// março pela composição de agosto; mover alguém de equipe reescrevia em
+// silêncio as 12 semanas do gráfico do painel. A U77 removeu essa porta.
 //
-// A razão da migration, em uma frase: até aqui, mover o Luan de equipe
-// reescrevia em silêncio as 12 semanas do gráfico do painel, porque a equipe de
-// cada atividade era resolvida pela composição de hoje. A escala guarda o
-// passado, e o passado para de mudar.
-//
-// No banco a tabela continua `duplas` e a escala é `duplas_escala`: a palavra
-// "equipe" está ocupada por DEPARTAMENTO desde a U71 (chamados.equipe,
-// profiles.equipe, src/lib/equipes.ts). "Equipe de campo" é rótulo de TELA.
+// A escala guarda o passado, e o passado para de mudar.
 
 /**
  * Semana sintética anterior a qualquer data real. A U76 grava nela a composição
@@ -362,10 +239,12 @@ export function parceiroNaSemana(
 }
 
 /**
- * Nome de exibição a partir da composição DAQUELA semana. Irmã de
- * `rotuloDaDupla` acima, que ainda lê membro_a/membro_b: uma equipe sem rótulo
- * precisa ser reconhecível na legenda do gráfico, e a composição que aparece
- * ali tem de ser a da semana mostrada, não a de hoje.
+ * Nome de exibição a partir da composição DAQUELA semana.
+ *
+ * `nome` é o que o gestor escreveu; vazio, monta a partir de quem estava nela.
+ * A composição vem por parâmetro em vez de ser lida aqui porque a legenda do
+ * gráfico e o chip da programação mostram semanas diferentes na mesma tela —
+ * quem chama já sabe de qual semana está falando.
  */
 export function rotuloDaComposicao(
   d: Dupla,
@@ -428,6 +307,31 @@ export function erroDaEscala(
 }
 
 /**
+ * Quem pode ser oferecido para esta equipe NESTA semana: quem não está gravado
+ * em OUTRA equipe na mesma semana.
+ *
+ * Olha só as linhas GRAVADAS (`porSemana`), e não a herdada — pelo mesmo motivo
+ * de `erroDaEscala`: enquanto a semana não foi lançada, ninguém está preso a
+ * nada, e filtrar pela herança esconderia justamente as pessoas que o gestor
+ * abriu a tela para remanejar.
+ *
+ * Oferecer um nome que a chave primária vai recusar é convidar ao erro — este
+ * é o par de tela da mesma regra que `erroDaEscala` devolve em texto.
+ */
+export function disponiveisNaSemana<T extends { id: string }>(
+  pessoas: T[],
+  duplaId: string,
+  semana: string,
+  escala: Escala,
+): T[] {
+  const daSemana = escala.porSemana.get(semana) ?? [];
+  const presos = new Set(
+    daSemana.filter((l) => l.dupla_id !== duplaId).map((l) => l.pessoa_id),
+  );
+  return pessoas.filter((p) => !presos.has(p.id));
+}
+
+/**
  * Quais equipes ganham uma <Line>: as que tiveram escala em ALGUMA semana da
  * janela — não as que estão `ativa` hoje.
  *
@@ -452,8 +356,7 @@ export function duplasNaJanela(
 }
 
 /**
- * A série do gráfico, resolvida pela ESCALA — sucessora de
- * `serieAtividadesPorDupla`, que o painel passa a chamar no Passo 2.
+ * A série do gráfico, resolvida pela ESCALA.
  *
  * O bucket continua sendo `data_hora_agendada`, pelo mesmo motivo de sempre. O
  * que muda é que a equipe de cada atividade sai da escala DA SEMANA DELA, e não
@@ -496,8 +399,8 @@ export function serieAtividadesPorEscala(
 /**
  * Quantas atividades o gráfico NÃO conseguiu atribuir a uma equipe dentro da
  * janela — sem responsável, responsável fora da escala daquela semana, ou
- * semana sem escala nenhuma. Sucessora de `foraDeDupla`; perdeu o parâmetro
- * `duplas` porque quem decide passou a ser a escala.
+ * semana sem escala nenhuma. Não recebe `duplas`: quem decide é a escala, e
+ * uma equipe desfeita continua explicando as semanas em que saiu.
  */
 export function foraDeEscala(
   chamados: ChamadoParaGrafico[],

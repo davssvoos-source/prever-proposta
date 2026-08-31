@@ -4882,3 +4882,110 @@ que `data.ts` sempre prometeu; agora há com o quê cumprir a promessa.
 **Migration `20260831180000_u76_escala_semanal_das_equipes.sql` — o Davi roda no
 SQL Editor.** Rodar uma vez; ela pode abortar de propósito em dois pontos e,
 quando aborta, nada foi alterado.
+
+## U77 — A escala vira a única verdade (R98)
+
+Fase 1, Passo 2 — e o fim do Passo 1. A U76 criou a escala semanal e deixou o
+mundo antigo de pé ao lado dela: `duplas.membro_a/membro_b` como espelho
+legado, uma ponte no banco para a tela velha continuar funcionando, e as
+funções sem data ainda exportadas em `modelo.ts`. Esta entrada tira tudo isso.
+
+**O Davi rodou a U76 em 31/08**, e é isso que destrava o passo: agora existe
+escala no banco para as telas lerem.
+
+### As funções sem data morreram
+
+`membrosDaDupla(d)`, `duplaDaPessoa(pessoa, duplas)`,
+`parceiroDaDupla(pessoa, duplas)`, `rotuloDaDupla(d, nomeDe)`,
+`serieAtividadesPorDupla(...)` e `foraDeDupla(...)` saíram de
+`src/features/duplas/modelo.ts`. Não foi limpeza: **enquanto elas existiam,
+dava para perguntar "de quem é a equipe dessa pessoa" sem dizer QUANDO** — e
+essa é a pergunta que resolvia um chamado de março pela composição de agosto.
+A U76 consertou o dado; a U77 fecha a porta.
+
+`erroDaDupla` encolheu para `{ nome }`. Composição não é mais cadastro.
+
+Ficou uma asserção só para guardar isso, e ela testa ausência:
+*"perguntar a equipe de alguém SEM dizer quando deixou de ser possível"* —
+`[membrosDaDupla, duplaDaPessoa, serieAtividadesPorDupla, foraDeDupla].every(f => f === undefined)`.
+
+### As telas
+
+**`DialogoDuplas`** deixou de ser um formulário e virou duas coisas na mesma
+janela, porque são decisões de prazos diferentes: o **cadastro** (nome e
+veículo, vale até alguém mudar) e a **escala** (quem sai naquela semana, vale
+para aquela semana). O seletor de semana no topo manda em tudo abaixo, e a tela
+sempre diz de onde veio o que mostra — "escala desta semana" × "herdada de
+2026-S32" × "escala de sempre". Escala herdada é escala que ninguém confirmou, e
+o gestor precisa saber disso antes de confiar nela.
+
+A composição virou lista de chips em vez de dois `<select>`: a equipe de campo
+pode ter três, e a R96 já permitia isso no banco — era a tela que não sabia
+dizer. Equipe vazia grava, e o botão assume: **"Não sai nesta semana"**.
+
+**Mover alguém pergunta antes.** A RPC `escala_definir` vai com `_mover: false`
+na primeira tentativa; o banco recusa nomeando a outra equipe, a tela mostra a
+frase e só repete com `true` depois do "sim". Roubar membro em silêncio seria
+pior que atritar — é a mesma doutrina do trigger da U47, agora com a pergunta
+no lugar certo.
+
+**`painel.operacional`**: o gráfico ganha uma `<Line>` por equipe que **teve
+escala na janela** (`duplasNaJanela`), não por equipe ativa hoje, e cada
+atividade cai na equipe da **semana dela**. É a correção que o cabeçalho de
+`duplas/data.ts` prometia desde a R56 sem ter como cumprir.
+
+**`chamados.programacao`**: o filtro virou "equipe de campo" e oferece as
+equipes com composição na semana aberta; a agenda do dia agrupa pela equipe
+**daquele dia** e itera a lista inteira de equipes, não só as ativas — abrir
+junho mostra quem saiu em junho, equipe desfeita depois inclusive.
+
+Um detalhe que quase passou: a régua de dias da programação vai de **domingo a
+sábado** e atravessa a virada da semana ISO (segunda a domingo). Resolver todos
+os chamados pela semana aberta na tela poria o domingo da régua na equipe
+errada. Cada chamado é resolvido pela semana **dele**; só o que ainda não tem
+data usa a semana aberta, porque não tem semana própria.
+
+### `useEscala`: a escala inteira, de uma consulta
+
+Parece exagero e não é — é uma linha por pessoa por semana decidida, ~520 por
+ano com dez técnicos. Trazer tudo faz o gráfico das 12 semanas, o filtro da
+programação e o pop-up saírem de **uma** consulta, resolvidos pelas funções
+puras; qualquer recorte por semana viraria uma consulta por semana mostrada.
+
+A escrita vai pela RPC `escala_definir`, nunca por INSERT/DELETE do cliente: a
+**ordem** das três operações é o que faz a coisa funcionar (abrir depois do
+delete não apaga nada; inserir antes de abrir faz a herança trazer de volta
+quem acabou de sair). Uma asserção guarda isso pelos dois lados — a RPC está
+lá, e não há `.insert()`/`.delete()` em `duplas_escala`.
+
+### A migration, e por que ela pode esperar
+
+A U77 arquiva `membro_a/membro_b` em `duplas_composicao_legada` (com os **nomes**,
+não só os ids — era o último registro da composição das equipes DESFEITAS, que
+a U76 não pôde incluir no backfill sem violar "uma pessoa por equipe por
+semana"), derruba a ponte e dropa as colunas.
+
+**Este deploy é seguro com ou sem ela rodada**, e isso foi construído de
+propósito: o cliente parou de **nomear** `membro_a/membro_b` no SELECT, e
+selecionar menos coluna nunca quebra. Duas asserções guardam essa propriedade.
+
+O único efeito colateral conhecido da janela: a ponte dispara em
+`AFTER INSERT OR UPDATE OF membro_a, membro_b`, e o INSERT dispara **sempre** —
+mesmo com as colunas nulas. Como ela recusa quando a semana corrente já tem
+escala lançada pela porta nova, cadastrar equipe nova numa semana já lançada
+falha com uma mensagem clara até a U77 rodar. Barulhento, recuperável, e some
+com ela.
+
+**A U77 é o ponto sem volta do DESFAZER da U76** — o nível 1 dela depende das
+colunas existirem. Por isso é migration separada, com um `RAISE` que recusa
+rodar antes da U76 ou com a escala vazia, e com o aviso no cabeçalho: se a
+escala ainda estiver em observação, não rode. Colunas paradas não custam nada.
+
+O DROP das colunas é **sem CASCADE**, de propósito: se alguma view tiver passado
+a depender delas, é melhor a migration abortar do que a dependência sumir sem
+ninguém ver.
+
+1607 asserções (as ~22 do caminho sem data saíram, 29 novas entraram), build
+ok, tsc no baseline de 85.
+**Migration `20260831210000_u77_fim_das_colunas_legadas.sql` — o Davi roda no
+SQL Editor, depois do deploy.**

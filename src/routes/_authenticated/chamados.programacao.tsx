@@ -18,9 +18,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
 import { useChamadosPorNatureza, atualizarChamado, type Chamado } from "@/features/chamados/data";
-import { useDuplas } from "@/features/duplas/data";
-import { duplaDaPessoa, rotuloDaDupla, membrosDaDupla } from "@/features/duplas/modelo";
+import { useDuplas, useEscala } from "@/features/duplas/data";
+import {
+  composicaoDaDupla, duplaDaPessoaNaSemana, montarEscala, rotuloDaComposicao,
+} from "@/features/duplas/modelo";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
+import { referenciaSemanal } from "@/lib/periodos";
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
   PRIORIDADE_LABEL, PRIORIDADE_CORES, TIPO_LABEL, TIPOS_DEMANDA_CAMPO,
@@ -65,6 +68,7 @@ function ProgramacaoPage() {
   const { data: ordens = [], isLoading } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
   const { data: duplas = [] } = useDuplas();
+  const { data: escala = montarEscala([], []) } = useEscala();
 
   const [dia, setDia] = useState(() => new Date());
   const [modo, setModo] = useState<ModoDeVisao>("semanal");
@@ -84,7 +88,21 @@ function ProgramacaoPage() {
     [tecnicos],
   );
   const nomeDeTecnico = (id: string) => nomePorTecnico[id] ?? "Técnico";
-  const duplasAtivas = useMemo(() => duplas.filter((d) => d.ativa), [duplas]);
+
+  /**
+   * A semana do dia aberto. É o eixo de tudo que fala de equipe nesta tela:
+   * desde a U76 "quem sai com quem" é pergunta com data, e a resposta de agosto
+   * não vale para o que foi feito em junho.
+   */
+  const semanaDoDia = useMemo(() => referenciaSemanal(dia), [dia]);
+
+  /** As equipes que TÊM composição na semana aberta — as que o filtro oferece. */
+  const equipesDaSemana = useMemo(
+    () => duplas
+      .map((d) => ({ dupla: d, membros: composicaoDaDupla(d.id, semanaDoDia, escala) }))
+      .filter((x) => x.membros.length > 0),
+    [duplas, semanaDoDia, escala],
+  );
 
   // a semana começa no domingo do dia escolhido
   const semana = useMemo(() => {
@@ -123,16 +141,29 @@ function ProgramacaoPage() {
    * ignorasse o filtro, o número embaixo do dia prometeria atendimentos que a
    * agenda daquele dia não mostraria.
    *
-   * A DUPLA VEM DO RESPONSÁVEL (ver features/duplas/modelo.ts): filtrar por
-   * dupla é ficar com os chamados de quem está nela. "Sem dupla" é opção
+   * A EQUIPE VEM DO RESPONSÁVEL (ver features/duplas/modelo.ts): filtrar por
+   * equipe é ficar com os chamados de quem está nela. "Sem equipe" é opção
    * própria — é justamente a fatia que o gestor precisa achar para distribuir.
+   *
+   * Cada chamado é resolvido pela semana DELE, e não pela semana aberta na
+   * tela: a régua de dias vai de domingo a sábado e atravessa a virada da
+   * semana ISO, então o domingo da régua pertence à semana anterior. Chamado
+   * ainda sem data usa a semana aberta — é o único palpite honesto, porque ele
+   * não tem semana própria.
    */
+  const equipeDoChamado = (o: { responsavel_id: string | null; data_hora_agendada: string | null }) =>
+    duplaDaPessoaNaSemana(
+      o.responsavel_id,
+      o.data_hora_agendada ? referenciaSemanal(new Date(o.data_hora_agendada)) : semanaDoDia,
+      escala,
+    );
+
   const abertas = useMemo(() => emAberto.filter((o) => {
     if (tipoFiltro !== "todos" && o.tipo !== tipoFiltro) return false;
     if (duplaFiltro === "todas") return true;
-    const d = duplaDaPessoa(o.responsavel_id, duplasAtivas);
-    return duplaFiltro === "sem_dupla" ? !d : d?.id === duplaFiltro;
-  }), [emAberto, tipoFiltro, duplaFiltro, duplasAtivas]);
+    const d = equipeDoChamado(o);
+    return duplaFiltro === "sem_equipe" ? !d : d === duplaFiltro;
+  }), [emAberto, tipoFiltro, duplaFiltro, semanaDoDia, escala]);
 
   const filtrando = tipoFiltro !== "todos" || duplaFiltro !== "todas";
 
@@ -166,35 +197,42 @@ function ProgramacaoPage() {
   }, [abertas]);
 
   /**
-   * A agenda do dia agrupada por DUPLA, caindo para o técnico quando ele não
-   * está em nenhuma (R57). Agrupar por dupla é o que a tela passou a
-   * prometer no título — e evita a leitura errada de duas linhas separadas
-   * ("Breno 3", "André 2") para um trabalho que as duas pessoas fizeram
-   * JUNTAS: são 5 atendimentos da dupla, não 3 de um e 2 do outro.
+   * A agenda do dia agrupada pela EQUIPE DAQUELE DIA, caindo para o técnico
+   * quando ele não está em nenhuma (R57). Agrupar por equipe evita a leitura
+   * errada de duas linhas separadas ("Breno 3", "André 2") para um trabalho
+   * que as duas pessoas fizeram JUNTAS: são 5 atendimentos da equipe, não 3 de
+   * um e 2 do outro.
+   *
+   * A composição é a da SEMANA do dia aberto, não a de hoje — é o que faz
+   * abrir a agenda de junho mostrar quem realmente saiu em junho. Itera
+   * a lista inteira de equipes (não só as ativas) porque equipe desfeita continua
+   * explicando as semanas em que saiu; quem não tem composição na semana
+   * simplesmente não rende grupo.
    */
   const porGrupo = useMemo(() => {
     const grupos: { id: string; nome: string; sub: string | null; ordens: Chamado[] }[] = [];
     const jaListados = new Set<string>();
 
-    for (const d of duplasAtivas) {
-      const membros = membrosDaDupla(d);
+    for (const d of duplas) {
+      const membros = composicaoDaDupla(d.id, semanaDoDia, escala);
+      if (membros.length === 0) continue;
       const lista = doDia.filter((o) => o.responsavel_id && membros.includes(o.responsavel_id));
       if (lista.length === 0) continue;
       lista.forEach((o) => jaListados.add(o.id));
       grupos.push({
         id: d.id,
-        nome: rotuloDaDupla(d, nomeDeTecnico),
+        nome: rotuloDaComposicao(d, membros, nomeDeTecnico),
         sub: membros.map(nomeDeTecnico).join(" · "),
         ordens: lista,
       });
     }
 
-    // técnico com atendimento no dia mas fora de qualquer dupla ativa
+    // técnico com atendimento no dia mas fora de qualquer equipe naquela semana
     for (const t of tecnicos as any[]) {
       const lista = doDia.filter((o) => o.responsavel_id === t.id && !jaListados.has(o.id));
       if (lista.length === 0) continue;
       lista.forEach((o) => jaListados.add(o.id));
-      grupos.push({ id: t.id, nome: t.nome ?? "—", sub: "Sem dupla", ordens: lista });
+      grupos.push({ id: t.id, nome: t.nome ?? "—", sub: "Sem equipe", ordens: lista });
     }
 
     const semDono = doDia.filter((o) => !o.responsavel_id);
@@ -202,7 +240,7 @@ function ProgramacaoPage() {
       grupos.push({ id: "sem-dono", nome: "Sem técnico definido", sub: null, ordens: semDono });
     }
     return grupos;
-  }, [doDia, tecnicos, duplasAtivas, nomePorTecnico]);
+  }, [doDia, tecnicos, duplas, semanaDoDia, escala, nomePorTecnico]);
 
   const programar = useMutation({
     mutationFn: async () => {
@@ -366,14 +404,16 @@ function ProgramacaoPage() {
         <select
           value={duplaFiltro}
           onChange={(e) => setDuplaFiltro(e.target.value)}
-          aria-label="Filtrar por dupla"
+          aria-label="Filtrar por equipe de campo"
           style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 150 }}
         >
-          <option value="todas">Todas as duplas</option>
-          {duplasAtivas.map((d) => (
-            <option key={d.id} value={d.id}>{rotuloDaDupla(d, nomeDeTecnico)}</option>
+          <option value="todas">Todas as equipes</option>
+          {equipesDaSemana.map(({ dupla, membros }) => (
+            <option key={dupla.id} value={dupla.id}>
+              {rotuloDaComposicao(dupla, membros, nomeDeTecnico)}
+            </option>
           ))}
-          <option value="sem_dupla">Sem dupla</option>
+          <option value="sem_equipe">Sem equipe</option>
         </select>
 
         <select
