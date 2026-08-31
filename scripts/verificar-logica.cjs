@@ -5341,5 +5341,38 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R94 está documentado', /\*\*R94\*\*/.test(produto8), true);
 }
 
+// ── U75: o painel Operacional vira Operacional Técnica (R95) ────────────────
+{
+  const fs57 = require('fs');
+  const tl  = fs57.readFileSync('src/lib/telas.ts', 'utf8');
+  const nav = fs57.readFileSync('src/components/nav-itens.ts', 'utf8');
+  const bn  = fs57.readFileSync('src/components/BottomNav.tsx', 'utf8');
+  const po  = fs57.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+
+  eq('R95: a tela se chama Painel Operacional Técnica',
+     tl.includes('"Painel Operacional Técnica"'), true);
+  // A chave é o que está gravado em permissoes_tela: renomeá-la apagaria a
+  // permissão de cada papel de uma vez, e ninguém ligaria uma coisa na outra.
+  eq('CRÍTICO: a CHAVE e a ROTA da tela não mudaram, só o rótulo',
+     tl.includes('T("painel.operacional", "Painel Operacional Técnica", "/painel/operacional"'), true);
+
+  eq('o menu diz "Operacional Técnica" nos dois perfis que veem o painel',
+     (nav.split('label: "Operacional Técnica"').length - 1), 2);
+  // cinco vagas em flex-1 dão ~50px a 10px de fonte: o nome inteiro quebraria
+  // a barra em duas linhas
+  eq('CRÍTICO: há rótulo curto para o celular, porque o inteiro não cabe na barra',
+     (nav.split('labelCurto: "Técnica"').length - 1), 2);
+  eq('…e a barra do celular usa o curto quando ele existe',
+     bn.includes('item.labelCurto ?? item.label'), true);
+
+  eq('CRÍTICO (R95): o painel recorta pela equipe TÉCNICA — antes lia todo chamado de campo e acertava por coincidência',
+     po.includes("chamadosDeCampo.filter((c) => c.equipe === \"tecnica\")"), true);
+  eq('…e o recorte vem ANTES dos indicadores, não dentro deles (a tela não calcula)',
+     po.indexOf('chamadosDeCampo.filter') < po.indexOf('calcularIndicadores(chamados'), true);
+
+  eq('R95 está documentado',
+     fs57.readFileSync('docs/PRODUTO.md', 'utf8').includes('**R95**'), true);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -1528,3 +1528,29 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   continua na tela.
   *(Davi, 2026-08-26: "Remova esta caixa de filtros. Adicione a opção do
   filtro 'Atrasados' no filtro de PRAZO".)*
+
+- **R95** — **A aba "Operacional" virou "Operacional Técnica"**, e passou a
+  mostrar só a equipe técnica. É o painel do Vinicius, líder da equipe técnica —
+  o primeiro passo da absorção do Gestor OS, o sistema que ele construiu e que
+  hoje roda em produção separado do nosso.
+
+  **A tela já era da técnica de fato, mas por coincidência.** Ela lia todo
+  chamado de `natureza='campo'` sem olhar equipe, e acertava porque todo chamado
+  de campo nasce com `equipe: "tecnica"`. Nada no banco impede um chamado de
+  campo de outra equipe, e no dia em que existir um ele apareceria ali sem
+  ninguém pedir. Agora o recorte é explícito.
+
+  **O que deliberadamente NÃO mudou:** a chave da tela (`painel.operacional`) e
+  a rota. A chave é o que está gravado em `permissoes_tela` — renomeá-la apagaria
+  a permissão de cada papel de uma vez, e nada ligaria uma coisa na outra. Só o
+  rótulo mudou.
+
+  No **celular** o menu mostra "Técnica": são cinco vagas em `flex-1`, o que dá
+  cerca de 50px a 10px de fonte, e o nome inteiro quebraria a barra em duas
+  linhas. O nome completo fica no menu lateral e na matriz de permissões, onde
+  há espaço.
+
+  Isto **não** tem relação com o `tipo` de chamado chamado "operacional" (R5 —
+  entrega de controle, conferência), que é outro conceito e não mudou.
+  *(Davi, 2026-08-31: "vamos começar alterando a aba 'Operacional' do nosso
+  sistema para 'Operacional Técnica', que será o Painel que ele irá utilizar".)*

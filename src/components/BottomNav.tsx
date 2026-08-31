@@ -101,7 +101,9 @@ export function BottomNav() {
                   transition: "opacity 200ms",
                 }}
               >
-                {item.label}
+                {/* U75: o nome completo ("Operacional Técnica") não cabe numa das
+                    cinco vagas desta barra — o item usa labelCurto quando tem. */}
+                {item.labelCurto ?? item.label}
               </span>
               {active && (
                 <span

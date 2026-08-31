@@ -4676,3 +4676,69 @@ Pessoa, nenhum dos quais mexe em `ordenacao`. Fazer Prazo ser a exceção seria
 inventar um efeito colateral que ninguém pediu; desfiz antes de commitar.
 
 1525 asserções (19 novas), build ok, tsc no baseline de 85. Sem migration.
+
+### U75 — A Operacional vira Operacional Técnica, e o Gestor OS ganha um plano (R95, 2026-08-31)
+
+"Eu quero que você entenda que ele é líder da equipe técnica, e que o sistema
+dele é utilizado para gestão da parte da equipe técnica… Vamos começar alterando
+a aba 'Operacional' do nosso sistema para 'Operacional Técnica', que será o
+Painel que ele irá utilizar. Trace um plano completo, vamos aplicar todas as
+funcionalidades presentes no sistema dele, em nosso sistema."
+
+**O que a investigação encontrou, e que muda o tamanho do trabalho.** O Vinicius
+mandou o documento mestre do Gestor OS dele — 11 seções, 20 telas, 20 modelos, em
+produção desde 26/08. Lido contra o nosso código, **cerca de 60% já estava aqui**:
+as etapas U2–U5 foram escritas em 18/08 exatamente para portar aquele sistema, a
+partir do mapeamento do código real dele. Contrato por PDF+IA, cascata de
+casamento de equipamento, valoração que nunca vira R$ 0, análise item a item,
+conferência humana como única porta de cobrança, fechamento semanal/mensal com
+CSV e PDF — tudo isso roda aqui, e vários arquivos dizem no cabeçalho "Portado
+de ~/Documents/gestor-os".
+
+Em dois pontos a nossa versão é melhor e não pode regredir na absorção:
+determinístico primeiro com IA só no resíduo (mais barato, auditável, e funciona
+sem chave de API), e a invariante "sem preço vira revisar" garantida por CHECK no
+banco em vez de convenção de código.
+
+**A lacuna real é o que ele construiu DEPOIS da nossa portabilidade**: programação
+semanal em grade com hora e deslocamento, composição de equipe que muda por
+semana, bloqueio de agenda cheia, plantão, escala de sobreaviso, implantação com
+cronograma PDF e os dashboards. Varredura confirmou zero ocorrência de
+"plantao"/"sobreaviso"/"deslocamento calculado"/"dia útil" no repo.
+
+O plano completo, em sete fases, ficou registrado fora do repo (o arquivo de
+plano da sessão). As três decisões que o Davi tomou e que o moldam: o Gestor OS
+**roda até estarmos prontos** (migração única no fim, com data de corte — e
+depende de o Vinicius congelar funcionalidade nova lá); a dupla **evolui para
+equipe de campo** com composição semanal, em vez de nascer um segundo conceito
+de turma; e a primeira fase é a **programação semanal completa**.
+
+**Esta entrada entrega só a Fase 0**, que é pequena de propósito — o rename com
+o recorte por equipe.
+
+**O recorte era coincidência, e virou regra.** A tela lia `natureza='campo'` e
+pronto; acertava porque todo chamado de campo nasce com `equipe: 'tecnica'`
+(`chamados/data.ts`). Nada no banco garante isso. Agora o filtro é explícito, e é
+o que faz este ser o painel do Vinicius em vez da fila de campo de todo mundo.
+
+**A chave da tela não mudou, e é o detalhe que mais importa aqui.** `telas.ts`
+avisa no próprio tipo que a chave é o que está gravado em `permissoes_tela` —
+renomeá-la apagaria a permissão de cada papel de uma vez, e nada ligaria uma
+coisa na outra. Mudou só o rótulo.
+
+**O celular ganhou rótulo próprio.** "Operacional Técnica" tem 19 caracteres; a
+barra inferior dá cinco vagas em `flex-1`, o que sobra ~50px a 10px de fonte —
+o nome inteiro quebraria a barra em duas linhas. Entrou `labelCurto` no
+`ItemNav`, que o `BottomNav` usa quando existe; o menu lateral e a matriz de
+permissões seguem com o nome completo, onde há espaço. É a segunda vez que a
+largura daquela barra dita produto (a primeira foi a vaga que devolveu Clientes),
+e por isso virou campo em vez de gambiarra local.
+
+**Uma decisão de escopo:** não construir permissão de tela por equipe. Hoje a
+permissão é por cargo, e não existe nem leitura de `profiles.equipe` do usuário
+logado. Fazer a Operacional Técnica ser "o painel dele" se resolve filtrando o
+DADO; uma segunda dimensão de permissão (cargo × equipe) é arquitetura que
+ninguém pediu ainda, e que fica para quando T.I. e Controle Patrimonial pedirem
+painéis próprios.
+
+1533 asserções (10 novas), build ok, tsc no baseline de 85. Sem migration.

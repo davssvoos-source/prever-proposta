@@ -15,6 +15,12 @@ export interface ItemNav {
    * caminho móvel continua sendo Gerencial → Clientes — que já existia.
    */
   soDesktop?: boolean;
+  /**
+   * Rótulo alternativo para a barra do CELULAR, onde cada item é `flex-1` em
+   * cinco vagas — sobram ~50px a 10px de fonte. Nome que não cabe ali quebra a
+   * barra em duas linhas. Sem isto, o item usa `label`.
+   */
+  labelCurto?: string;
 }
 
 /**
@@ -37,7 +43,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // R27: os painéis. No celular só o Operacional — o painel do dia a dia.
       // R32: o Comercial É a lista de visitas e propostas — o item aponta
       // direto para ela, sem painel-índice no meio.
-      { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
+      { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
       { to: "/painel/administrativo", label: "Administrativo", icon: Building2, tela: "painel.administrativo", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
@@ -53,7 +59,7 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // o SAC coordena: o Operacional é o painel dele. O Comercial (R32: a
       // própria lista de visitas) entra no desktop porque ele agenda a visita
       // de proposta (R24 tipo 1).
-      { to: "/painel/operacional", label: "Operacional", icon: Gauge, tela: "painel.operacional" },
+      { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];

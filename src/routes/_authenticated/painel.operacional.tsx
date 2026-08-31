@@ -169,7 +169,20 @@ function gradientesEspectro(
 function PainelOperacional() {
   const navigate = useNavigate();
   const { data: cargo } = useUserCargo();
-  const { data: chamados = [] } = useChamadosPorNatureza("campo");
+  const { data: chamadosDeCampo = [] } = useChamadosPorNatureza("campo");
+  /**
+   * R95/U75: este painel é da equipe TÉCNICA, não de todo chamado de campo.
+   *
+   * Até aqui a tela lia `natureza="campo"` e pronto — e acertava por
+   * COINCIDÊNCIA: todo chamado de campo nasce com `equipe: "tecnica"`
+   * (chamados/data.ts). Nada no banco impede um chamado de campo de outra
+   * equipe, e no dia em que existir um ele apareceria aqui sem ninguém pedir.
+   * Agora o recorte é explícito, e é o que faz este ser o painel do Vinicius.
+   */
+  const chamados = useMemo(
+    () => chamadosDeCampo.filter((c) => c.equipe === "tecnica"),
+    [chamadosDeCampo],
+  );
   const { data: tecnicos = [] } = useTecnicos();
   const { data: duplas = [] } = useDuplas();
   const { data: pessoas = [] } = usePessoas();

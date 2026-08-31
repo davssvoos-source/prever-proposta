@@ -59,8 +59,12 @@ A antiga lista `/chamados` morreu (R31). O detalhe continua em
 - **Painel de chamados** (`/chamados/painel`): a visão gerencial dos quatro
   trilhos com filtros aplicados a tudo (R8). Tem guarda de rota própria
   (`chamados.painel`) desde a U30.
-- **Painel Operacional** (`/painel/operacional`): a entrada do domínio, com
-  os indicadores de campo NA tela (R32).
+- **Painel Operacional Técnica** (`/painel/operacional`): a entrada do domínio,
+  com os indicadores de campo NA tela (R32). Desde a R95 ele recorta pela
+  **equipe técnica** — é o painel do Vinicius, não a fila de campo de todas as
+  equipes. A chave da tela continua `painel.operacional` (renomear a chave
+  apagaria a linha de permissão de cada papel); no celular o menu mostra
+  "Técnica", porque o nome inteiro não cabe na barra.
 
 ## Os indicadores de campo — o que cada número responde
 

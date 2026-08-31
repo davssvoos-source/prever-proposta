@@ -70,8 +70,13 @@ export const TELAS: Tela[] = [
   // ── Painéis (R27) ─────────────────────────────────────────────────────────
   // "Gerencial" virou três. Os painéis são a PORTA de cada domínio: números do
   // estado + atalhos. As telas de trabalho continuam onde estavam.
-  T("painel.operacional", "Painel Operacional", "/painel/operacional", "Painéis", [false, true, true], {
-    nota: "fila de campo — quem coordena entra por aqui (R26)",
+  // U75/R95: virou "Operacional Técnica". A CHAVE e a ROTA não mudaram de
+  // propósito — a chave é o que está gravado em `permissoes_tela`, e renomeá-la
+  // invalidaria a linha de permissão de todo mundo (ver o comentário do tipo
+  // `Tela`, acima). Só o rótulo mudou, e o painel passou a mostrar só a equipe
+  // técnica: é o painel do Vinicius, não a fila de campo de todas as equipes.
+  T("painel.operacional", "Painel Operacional Técnica", "/painel/operacional", "Painéis", [false, true, true], {
+    nota: "fila da equipe TÉCNICA — quem coordena entra por aqui (R26/R95)",
   }),
   // "painel.comercial" não é mais uma tela: o Painel Comercial FUNDIU com a
   // lista de visitas e propostas (R32) — a chave viva é "gerencial", abaixo.
