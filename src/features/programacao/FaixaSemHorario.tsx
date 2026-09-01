@@ -190,6 +190,63 @@ export function FilaSemData({ lista, isLight, onDarHorario, onAbrirChamado }: Pr
   );
 }
 
+interface PropsRetornos {
+  lista: ChamadoDaFila[];
+  isLight: boolean;
+  onDarHorario: (c: ChamadoDaFila) => void;
+  onAbrirChamado: (id: string) => void;
+}
+
+/**
+ * RETORNOS PENDENTES (R106) — a TERCEIRA seção, no mesmo molde das duas
+ * irmãs, com o mesmo `CartaoDaFila`.
+ *
+ * O balde: o chamado teve visita CUMPRIDA, continua ABERTO e não tem nenhum
+ * bloco pendente. Ele é invisível hoje — `espelhoDoChamado` deixa a data no
+ * último bloco cumprido, `classificarChamado` o joga em `com_bloco` (de
+ * propósito, para a barra de progresso não andar para trás), e aí ele não está
+ * na faixa, não está na fila e não desenha cartão na semana aberta. Quem o
+ * calcula é `retornosPendentes`, no modelo puro.
+ *
+ * ── AQUI O `AlertTriangle` É A VOZ CERTA, E ISSO NÃO CONTRADIZ O TOPO ─────
+ * O cabeçalho deste arquivo proíbe o triângulo na FAIXA "agendado sem
+ * horário", e o motivo está escrito lá: no dia 1 aquela faixa é 100% da base,
+ * e uma faixa vermelha com trezentos itens ensina a ignorá-la. Aqui é o
+ * oposto — é trabalho ABERTO E PARADO, sem nada marcado à frente, e a lista é
+ * curta por construção. É a mesma voz de `FilaSemData`, logo abaixo.
+ *
+ * Some sozinha quando a lista esvazia, como as outras duas.
+ */
+export function RetornosPendentes({ lista, isLight, onDarHorario, onAbrirChamado }: PropsRetornos) {
+  if (lista.length === 0) return null;
+  const laranja = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
+  return (
+    <div style={{ ...card(isLight), padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <AlertTriangle size={15} color={laranja} />
+        <span style={{
+          fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
+          textTransform: "uppercase", color: laranja,
+        }}>
+          Retornos pendentes ({lista.length})
+        </span>
+      </div>
+      <span style={{ fontFamily: FONT, fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+        A visita aconteceu, o atendimento continua aberto e não há nada marcado à frente.
+      </span>
+      {ordenarPorPrazo(lista).map((c) => (
+        <CartaoDaFila
+          key={c.id} c={c} isLight={isLight}
+          mostrarData
+          acao="Marcar retorno"
+          onAcao={() => onDarHorario(c)}
+          onAbrir={() => onAbrirChamado(c.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 function CartaoDaFila({ c, isLight, mostrarData, acao, onAcao, onAbrir }: {
   c: ChamadoDaFila; isLight: boolean; mostrarData: boolean;
   acao: string; onAcao: () => void; onAbrir: () => void;

@@ -88,6 +88,24 @@ const CAMPOS_COBRANCA =
   "data_referencia, tipo_servico, status, fechamento_id, created_at, " +
   "cliente:clientes(id, nome, documento)";
 
+/**
+ * "EXISTE LANÇAMENTO VIVO?" — O RECORTE, ESCRITO EM UM LUGAR SÓ.
+ *
+ * Gêmeo TS do `EXISTS (… AND b.status <> 'cancelada')` de
+ * `chamados_com_lancamento` (U80 §3). Ele existe porque o repo JÁ TEM duas
+ * contagens de "cobrança existe" que discordam: `useCobrancasDoChamado` traz
+ * todos os status (`cancelada` inclusive) e o card de `DetalheCampo` somava a
+ * cancelada junto no "N cobrança(s) geradas"; `consolidar()`, `csvFechamento()`
+ * e `montar_fechamento` (U5:139) filtram `<> 'cancelada'`.
+ *
+ * CANCELAR LIBERA. É o que a palavra quer dizer, é o recorte do fechamento, e é
+ * o mesmo predicado dos dois índices únicos da U80 — decidido AQUI, uma vez, em
+ * vez de cada consumidor escolher o seu.
+ */
+export function temLancamento(cobrancas: Pick<Cobranca, "status">[]): boolean {
+  return cobrancas.some((c) => c.status !== "cancelada");
+}
+
 export function useCobrancasDoChamado(chamadoId: string | undefined) {
   return useQuery({
     queryKey: ["cobrancas-chamado", chamadoId],
@@ -100,6 +118,44 @@ export function useCobrancasDoChamado(chamadoId: string | undefined) {
         .order("created_at");
       if (error) return [];
       return ((data as any[]) ?? []) as Cobranca[];
+    },
+  });
+}
+
+/**
+ * O MESMO BIT DA GRADE, PARA O PAINEL — e é o conserto do furo onde ele nasce.
+ *
+ * `useCobrancasDoChamado` faz SELECT direto, e `cobrancas_select` é
+ * `pode_ver_financeiro(auth.uid())` (U4:293). Uma policy de SELECT FILTRA
+ * LINHAS: ela não levanta erro. Para o SAC — que é gestor (U6a:58) e abre a
+ * programação — a resposta é HTTP 200 com `[]`, e `[]` significa DUAS coisas
+ * que o cliente não consegue separar: "não há cobrança" e "a RLS apagou tudo".
+ * O `if (error) return []` da linha acima NEM CHEGA A SER EXERCIDO — não há
+ * erro nenhum para tratar. Nenhum cuidado no cliente conserta isso: é a FORMA
+ * da RLS, e `SECURITY DEFINER` é a única construção que sabe distinguir os dois.
+ *
+ * `undefined` é o "não sei" (a RPC não respondeu sobre este chamado, ou quem
+ * pergunta não é gestor); `true`/`false` são fatos. Quem consome tem de tratar
+ * os três — e é por isso que o tipo não é `boolean`.
+ *
+ * SEGUNDO CONSUMIDOR DA MESMA RPC, de propósito: é o que impede o painel e a
+ * grade de passarem a discordar sobre o mesmo chamado.
+ */
+export function useLancamentoDoChamado(chamadoId: string | undefined) {
+  return useQuery({
+    queryKey: ["chamado-lancamento", chamadoId],
+    enabled: !!chamadoId,
+    staleTime: 30_000,
+    queryFn: async (): Promise<boolean | undefined> => {
+      const { data, error } = await supabase.rpc(
+        "chamados_com_lancamento" as any,
+        { _chamados: [chamadoId] } as any,
+      );
+      // Erro e linha ausente são o MESMO estado aqui, e ele tem nome:
+      // "não sei". Nunca `false`.
+      if (error) return undefined;
+      const linha = ((data as any[]) ?? [])[0];
+      return linha ? Boolean(linha.tem_lancamento) : undefined;
     },
   });
 }
@@ -122,9 +178,32 @@ export function useCobrancasAbertas() {
 
 // ── Ações (todas por RPC) ───────────────────────────────────────────────────
 
+/**
+ * O 23505 QUE A U80 PASSOU A PODER PRODUZIR, TRADUZIDO — e a tradução mora
+ * aqui, que NÃO é motor.
+ *
+ * A U80 criou `cobrancas_uma_por_peca_idx` sem tocar em
+ * `aprovar_chamado_financeiro`. O efeito colateral é declarado: onde antes duas
+ * aprovações simultâneas (ou uma reaprovação depois do período fechado)
+ * DUPLICAVAM em silêncio, agora a segunda recebe
+ * `duplicate key value violates unique constraint` — em inglês, para um
+ * comercial, às 18h, via `onError: (e) => toast.error(e.message)`. É correção
+ * trocando silêncio por barulho, e o barulho precisava de legenda.
+ *
+ * Uma chamada direta à RPC continua vendo o erro cru: o motor não mente sobre o
+ * que aconteceu, e quem fala com o humano é a camada que tem humano na frente.
+ */
 export async function aprovarCobranca(chamadoId: string): Promise<{ itens: number; total: number }> {
   const { data, error } = await supabase.rpc("aprovar_chamado_financeiro" as any, { _chamado_id: chamadoId } as any);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if ((error as { code?: string }).code === "23505") {
+      throw new Error(
+        "Este atendimento já tem cobrança lançada para estas peças. Recarregue a tela: "
+        + "ou alguém aprovou no mesmo instante, ou o período já foi fechado com elas dentro.",
+      );
+    }
+    throw new Error(error.message);
+  }
   const linha = Array.isArray(data) ? data[0] : data;
   return { itens: Number((linha as any)?.itens ?? 0), total: Number((linha as any)?.total ?? 0) };
 }

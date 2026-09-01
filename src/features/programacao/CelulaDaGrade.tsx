@@ -38,7 +38,42 @@ import {
   type CelulaDaGrade as Celula,
   type ItemDaGrade,
   type LinhaDaGrade,
+  type SeloDoCiclo,
 } from "./modelo";
+
+/**
+ * O SELO DO CICLO FINANCEIRO (R103/U80) — a palavra, e ela é escolhida com
+ * cuidado. "Lançado" JAMAIS vira "Cobrado", "A receber" ou "Faturado": o selo
+ * afirma que HOUVE lançamento e nunca que há valor a receber, e as duas coisas
+ * são diferentes por escolha declarada (o predicado conta a cobrança viva, e
+ * cancelar libera).
+ */
+export const SELO_LABEL: Record<SeloDoCiclo, string> = {
+  cancelado: "Cancelado",
+  fora_do_sistema: "OS de fora",
+  sem_os: "Sem OS",
+  a_conferir: "A conferir",
+  lancado: "Lançado",
+  nada_a_cobrar: "Nada a cobrar",
+};
+
+/**
+ * A COR DO SELO É SEPARADA DE `coresDoItem`, E ISSO NÃO É ARRUMAÇÃO.
+ *
+ * A cor do CARTÃO já está gasta: `coresDoItem` gasta fundo, borda e a borda
+ * esquerda de 3px com emergencial → oculto → `TIPO_CORES`, que é a mesma cor
+ * que o chamado tem no kanban, na lista e no painel. O ciclo financeiro é um
+ * EIXO ORTOGONAL — dois eixos na mesma cor é como se perde os dois. Por isso o
+ * selo é uma marca À PARTE, e `coresDoItem` não é tocada.
+ */
+export const SELO_CORES: Record<SeloDoCiclo, keyof typeof PRISMA> = {
+  cancelado: "neutro",
+  fora_do_sistema: "neutro",
+  sem_os: "laranja",
+  a_conferir: "amarelo",
+  lancado: "verde",
+  nada_a_cobrar: "neutro",
+};
 
 /** Altura do eixo do dia, em pixels. A escala se ajusta; a altura não. */
 export const ALTURA_EIXO = 340;
@@ -101,6 +136,11 @@ interface PropsCartao {
   eixo: boolean;
   /** false = linha colapsada: segmento sem texto, rótulo no title */
   mostrarRotulos: boolean;
+  /**
+   * O ciclo financeiro deste cartão, já resolvido por `selosDaGrade`.
+   * `undefined` = nada é pintado — e "não sei" nunca é "não tem".
+   */
+  selo?: SeloDoCiclo;
   estilo?: CSSProperties;
   onAbrir?: (item: ItemDaGrade) => void;
   /** só o desktop arrasta — HTML5 DnD não dispara em toque (Quadro.tsx:24) */
@@ -120,13 +160,23 @@ interface PropsCartao {
  * continuar acessível sem o elemento nativo.
  */
 export function CartaoDoBloco({
-  item, isLight, eixo, mostrarRotulos, estilo, onAbrir,
+  item, isLight, eixo, mostrarRotulos, selo, estilo, onAbrir,
   arrastavel, aoComecarArrasto, aoTerminarArrasto,
 }: PropsCartao) {
   const cor = coresDoItem(item);
   const cumprido = !item.seMove;
   const horario = `${horaTexto(item.de)}–${horaTexto(item.ate)}`;
-  const legenda = `${horario} · ${duracaoTexto(minutosDoBloco(item.bloco))} · ${item.rotulo}`;
+  /**
+   * O SELO ENTRA NA LEGENDA, QUE JÁ É `title` E `aria-label` — canal gratuito
+   * e acessível. A legenda visível de baixo já carrega seis elementos (Check,
+   * horário, duração, "2ª ida", "emergencial", Lock), e a sétima palavra
+   * quebraria a linha: com `overflow: hidden` e 0,708 px/min, um bloco de 30
+   * min tem 21 px e JÁ corta a segunda linha em silêncio. Então o que aparece
+   * no eixo é um PONTO de 6 px, e a palavra vem por aqui.
+   */
+  const legenda = `${horario} · ${duracaoTexto(minutosDoBloco(item.bloco))} · ${item.rotulo}`
+    + (selo ? ` · ${SELO_LABEL[selo]}` : "");
+  const corSelo = selo ? PRISMA[SELO_CORES[selo]] : null;
   const podeArrastar = !!arrastavel && item.seMove;
 
   const cartao = (
@@ -141,6 +191,7 @@ export function CartaoDoBloco({
       }}
       style={{
         boxSizing: "border-box",
+        position: "relative", // a âncora do ponto do selo (canto superior direito)
         width: "100%",
         height: eixo ? "100%" : undefined,
         minHeight: eixo ? 14 : 44,
@@ -157,11 +208,29 @@ export function CartaoDoBloco({
         textAlign: "left",
       }}
     >
+      {/* O PONTO. Posição absoluta: custa ZERO linha de conteúdo e sobrevive
+          aos 21 px de um bloco de 30 min, que é onde toda a aritmética desta
+          tela aperta. Ele aparece inclusive na linha COLAPSADA — ali o cartão
+          já é só um segmento, e o ponto continua sendo a única coisa que cabe.
+          `aria-hidden` porque a palavra já está no `aria-label` do cartão: o
+          leitor de tela ouviria duas vezes. */}
+      {corSelo && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute", top: 3, right: 3,
+            width: 6, height: 6, borderRadius: 3,
+            background: isLight ? corSelo.light : corSelo.dark,
+            boxShadow: `0 0 0 1.5px ${cor.bg}`,
+          }}
+        />
+      )}
       {mostrarRotulos && (
         <>
           <span style={{
             fontFamily: FONT, fontWeight: 700, fontSize: eixo ? 10 : 12,
             lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            paddingRight: corSelo ? 8 : 0,
           }}>
             {item.rotulo}
           </span>
@@ -187,6 +256,24 @@ export function CartaoDoBloco({
             )}
             {cumprido && <Lock size={eixo ? 9 : 10} style={{ opacity: 0.7 }} />}
           </span>
+          {/* NO CELULAR CABE A PALAVRA. `minHeight: 44` e padding de 8×10 dão
+              espaço que os 21 px do eixo não dão — mesmo componente, dois
+              pesos, como já acontece com todo o resto desta tela. No desktop
+              (`eixo`) o selo é só o ponto lá em cima, mais a palavra no
+              `title`/`aria-label`. */}
+          {!eixo && selo && corSelo && (
+            <span style={{
+              alignSelf: "flex-start", marginTop: 1,
+              padding: "2px 7px", borderRadius: 999,
+              fontFamily: FONT, fontWeight: 700, fontSize: 9,
+              letterSpacing: "0.06em", textTransform: "uppercase",
+              color: isLight ? corSelo.light : corSelo.dark,
+              background: corSelo.bg,
+              border: `1px solid ${corSelo.border}`,
+            }}>
+              {SELO_LABEL[selo]}
+            </span>
+          )}
         </>
       )}
     </div>
@@ -214,6 +301,12 @@ interface PropsCelula {
   isLight: boolean;
   eixo: boolean;
   mostrarRotulos: boolean;
+  /**
+   * `bloco.id → selo`, vindo pronto de `selosDaGrade`. Ausente (ou Map vazio,
+   * que é o caso de quem não é gestor) significa "nenhum selo" — e é
+   * exatamente a grade que existia antes desta entrega.
+   */
+  selos?: Map<string, SeloDoCiclo>;
   janela: { de: number; ate: number };
   alvo: boolean;
   onAbrir?: (item: ItemDaGrade) => void;
@@ -238,7 +331,7 @@ interface PropsCelula {
  * ofereceria uma equipe que não existe naquela semana.
  */
 export function CelulaDoDia({
-  celula, isLight, eixo, mostrarRotulos, janela, alvo,
+  celula, isLight, eixo, mostrarRotulos, selos, janela, alvo,
   onAbrir, onVazio, arrastavel, aoComecarArrasto, aoTerminarArrasto,
   aoPassarPorCima, aoSairDeCima, aoSoltar,
 }: PropsCelula) {
@@ -295,6 +388,7 @@ export function CelulaDoDia({
           isLight={isLight}
           eixo
           mostrarRotulos={mostrarRotulos}
+          selo={selos?.get(item.bloco.id)}
           onAbrir={mostrarRotulos ? onAbrir : undefined}
           arrastavel={arrastavel && mostrarRotulos}
           aoComecarArrasto={aoComecarArrasto}
@@ -333,6 +427,7 @@ export function CelulaDoDia({
           isLight={isLight}
           eixo={false}
           mostrarRotulos={mostrarRotulos}
+          selo={selos?.get(item.bloco.id)}
           onAbrir={mostrarRotulos ? onAbrir : undefined}
         />
       ))}

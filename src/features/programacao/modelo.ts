@@ -213,6 +213,50 @@ export interface ChamadoParaGrade {
   natureza: string | null;
   responsavel_id: string | null;
   data_hora_agendada: string | null;
+  /**
+   * O CICLO FINANCEIRO, e ele é LIVRE PARA QUEM LÊ O CHAMADO (U80/R103).
+   *
+   * A coluna mora em `public.chamados` (U0:168), cuja `chamados_select` começa
+   * por `is_gestor` — que INCLUI o SAC (U6a:58). Ela NÃO passa por
+   * `pode_ver_financeiro`, e a U0 a pôs ali de propósito: "deliberadamente FORA
+   * do CHECK de status — o ciclo de campo (SLA, painel, policy) não pode
+   * depender do financeiro". É por isso que quatro dos seis selos do cartão
+   * custam ZERO consulta.
+   *
+   * `null` é "não sei": um chamado montado sem a coluna (uma fixture, um
+   * caminho que ainda não a busca) não pode virar uma afirmação sobre cobrança.
+   */
+  faturamento_status: string | null;
+}
+
+/**
+ * A TRADUÇÃO DE DADOS, e ela existe para MATAR UM `as unknown as`.
+ *
+ * A tela fazia `ordens as unknown as ChamadoParaGrade[]`. Aquela dupla asserção
+ * DESLIGA o typechecker: um campo obrigatório novo (como `faturamento_status`,
+ * que esta entrega acrescenta) chegaria como `undefined` sem o `tsc` nem o
+ * CENSO dizerem uma palavra — e `undefined !== null`, então o selo cairia num
+ * ramo que ninguém escreveu.
+ *
+ * Aqui a conversão é explícita e o desconhecido vira `null` de propósito: o
+ * modelo inteiro trata `null` como "não sei", e é a direção segura.
+ */
+export function chamadosParaGrade(
+  linhas: Array<Record<string, unknown>>,
+): ChamadoParaGrade[] {
+  const txt = (v: unknown): string | null => (typeof v === "string" ? v : null);
+  return linhas.map((l) => ({
+    id: String(l.id),
+    numero: txt(l.numero),
+    titulo: txt(l.titulo),
+    tipo: txt(l.tipo),
+    prioridade: txt(l.prioridade),
+    status: txt(l.status),
+    natureza: txt(l.natureza),
+    responsavel_id: txt(l.responsavel_id),
+    data_hora_agendada: txt(l.data_hora_agendada),
+    faturamento_status: txt(l.faturamento_status),
+  }));
 }
 
 // ── Tempo: as conversões, num lugar só ──────────────────────────────────────
@@ -1983,4 +2027,543 @@ export function blocosForaDaGrade(
     naoMostrados: daSemana.filter((b) => !mostrados.has(b.id)).length,
     foraDaSemana: [...mostrados].filter((id) => !idsDaSemana.has(id)).length,
   };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// O CICLO FINANCEIRO NO CARTÃO (R103) — U80
+// ════════════════════════════════════════════════════════════════════════════
+//
+// ── O DEFEITO QUE ESTA SEÇÃO EXISTE PARA NÃO COMETER ───────────────────────
+// `cobrancas_select` é `USING (pode_ver_financeiro(auth.uid()))` (U4:293), e o
+// SAC está FORA dessa régua de propósito (U6a, R13: "o SAC é gestor que NÃO vê
+// valores"). Uma policy de SELECT FILTRA LINHAS; ela NÃO levanta erro — o SAC
+// recebe HTTP 200 com `[]`, indistinguível de "não há cobrança". Hoje isso é
+// inócuo porque as quatro leituras de `cobrancas` no app estão atrás de um gate
+// de UI ou de rota. UM SELO POR CARTÃO NÃO TEM GATE: o cartão é obrigado a
+// dizer alguma coisa, e é aí que a omissão vira mentira, multiplicada por
+// cartão.
+//
+// Por isso `temLancamento` é `boolean | null` e NUNCA `boolean`. `false` é "o
+// servidor contou e não há"; `null` é "não perguntei / não me deixam contar". A
+// fonte é a RPC `chamados_com_lancamento` (U80 §3), que devolve um ROWSET — a
+// AUSÊNCIA da linha é o "não sei", porque um mapa com zeros seria a mesma
+// mentira, do lado do servidor.
+//
+// ── QUATRO DOS SEIS SELOS CUSTAM ZERO CONSULTA ─────────────────────────────
+// `aprovar_chamado_financeiro` (U13:112-114) escreve, na MESMA transação em que
+// insere as linhas, `faturamento_status = CASE WHEN v_itens = 0 THEN
+// 'sem_cobranca' ELSE 'aprovada' END`. Logo `aprovada ⇒ EXISTS(cobrancas)`, e a
+// coluna já é lida pelo SAC. O parâmetro `temLancamento` é consumido em
+// EXATAMENTE DUAS LINHAS de `seloDoCiclo`, e essa é a medida honesta do que a
+// RPC compra: os dois casos de borda (cobranças canceladas depois; avulso
+// vinculado). Cortar a RPC custa esses dois casos e o resto fica de pé.
+//
+// ── A DEFESA CONTRA POLUIÇÃO É TEMPORAL, NÃO DE PIXEL ──────────────────────
+// Selo só existe para chamado `concluido`/`cancelado`, ou bloco sem chamado já
+// CUMPRIDO. A semana à frente sai com ZERO selos; a semana passada, selada.
+// Isso resolve "não virar poluição" melhor do que qualquer escolha de pixel — e
+// conserta de graça uma acusação falsa que a régua ingênua produziria: bloco
+// cumprido com chamado ainda ABERTO (esperando retorno) tem
+// `faturamento_status = 'a_analisar'` porque esse é o DEFAULT DA COLUNA, e
+// leria "a conferir" para trabalho que não acabou.
+
+/**
+ * Onde o atendimento está no ciclo financeiro. Seis valores e um `null`.
+ *
+ * O QUE CADA UM DIZ — e o que ele NÃO diz, que é a parte que importa:
+ *  · `a_conferir`      "acabou e ninguém decidiu a cobrança". NÃO diz se há o
+ *                      que cobrar, nem quanto.
+ *  · `lancado`         "existe pelo menos um lançamento vivo vinculado". NÃO
+ *                      diz quantos, nem quanto, nem em que competência, nem o
+ *                      status da cobrança. O rótulo é "Lançado", jamais
+ *                      "Cobrado", "A receber" ou "Faturado".
+ *  · `nada_a_cobrar`   "alguém olhou e decidiu não cobrar". NÃO diz por quê.
+ *  · `sem_os`          "ocupou a equipe e não tem OS no sistema". NÃO é
+ *                      acusação — é o balde nulo.
+ *  · `fora_do_sistema` "OS que veio de fora". NÃO diz que não foi cobrada:
+ *                      cobrança de OS externa não vive aqui.
+ *  · `cancelado`       "não aconteceu".
+ *  · `null`            NADA é pintado. E "não sei" NUNCA é "não tem".
+ */
+export type SeloDoCiclo =
+  | "cancelado"
+  | "fora_do_sistema"
+  | "sem_os"
+  | "a_conferir"
+  | "lancado"
+  | "nada_a_cobrar";
+
+/** Os seis, na ordem em que a tabela acima os apresenta — o CENSO lê daqui. */
+export const SELOS_DO_CICLO: SeloDoCiclo[] = [
+  "cancelado", "fora_do_sistema", "sem_os", "a_conferir", "lancado", "nada_a_cobrar",
+];
+
+/**
+ * O SELO DE UM CARTÃO. Função TOTAL, no idioma de `classificarChamado`.
+ *
+ * `null` sai em SEIS situações diferentes, e nenhuma delas é "não tem":
+ *   1. o bloco tem chamado que este usuário não pode ler (`oculto`) — é a
+ *      armadilha que `rotuloDoBloco` já pagou: sem esta linha o atendimento
+ *      alheio se apresentaria como "sem OS vinculada", que é CATEGORIA DE
+ *      GESTÃO colada em cima do trabalho de outro;
+ *   2. bloco sem chamado que ainda não aconteceu — afirmar "sem OS" sobre o
+ *      futuro é uma acusação sobre o que ninguém fez ainda;
+ *   3. o chamado ainda não acabou (a porta temporal);
+ *   4. o chamado não é de campo — anomalia, e não se acusa anomalia;
+ *   5. `temLancamento === null`: ninguém contou, ou não deixaram contar;
+ *   6. `faturamento_status` decidido (`aprovada`/`faturada`) e SEM lançamento
+ *      vivo. Ver o parágrafo abaixo — é o estado em que o cartão se CALA.
+ *
+ * ── O ESTADO EM QUE O CARTÃO SE CALA, E POR QUE CALAR É O CERTO ────────────
+ * `aprovada` sem lançamento vivo quer dizer "decidiram cobrar e o lançamento
+ * não está mais lá". Pintar "Lançado" afirmaria o que não existe; pintar "nada
+ * a cobrar" afirmaria o contrário E entregaria, por inferência, que alguém
+ * CANCELOU uma cobrança já lançada — que é conversa comercial com o cliente, e
+ * é exatamente o que a RPC se recusa a devolver. As duas leituras mentem, em
+ * direções opostas. Então o cartão se cala, e quem grita é
+ * `divergenciasDoCiclo` — uma faixa gateada por quem vê valores, onde a
+ * conversa cabe.
+ */
+export function seloDoCiclo(
+  item: Pick<ItemDaGrade, "bloco" | "chamado" | "oculto">,
+  temLancamento: boolean | null,
+): SeloDoCiclo | null {
+  if (item.oculto) return null;
+
+  if (item.bloco.chamado_id === null) {
+    if (blocoPendente(item.bloco)) return null;
+    return item.bloco.os_externa ? "fora_do_sistema" : "sem_os";
+  }
+
+  const c = item.chamado;
+  if (!c) return null;
+  if (c.status === "cancelado") return "cancelado";
+  if (c.status !== "concluido") return null;
+  if (c.natureza !== "campo") return null;
+  if (temLancamento === null) return null;
+  if (temLancamento) return "lancado";
+
+  switch (c.faturamento_status) {
+    // `em_conferencia` conta como PENDENTE, e isso conserta um defeito vivo de
+    // graça. `src/lib/cobranca.functions.ts:327` grava esse valor ao fim da
+    // análise, e a partir dali somem em cadeia o botão "Ajustar", o "Aprovar
+    // cobrança", o card de Conferência, a fila "A conferir"
+    // (atividades/modelo.ts:485) e o alerta diário (U13:139) — sem ninguém ter
+    // aprovado nada, e sem nenhum caminho no repo devolver o chamado a
+    // `a_analisar`. O cartão o traz de volta à vista sem tocar em nada.
+    case "a_analisar":
+    case "em_conferencia":
+      return "a_conferir";
+    case "sem_cobranca":
+      return "nada_a_cobrar";
+    default:
+      return null; // aprovada/faturada sem lançamento vivo — ver o docblock
+  }
+}
+
+/**
+ * QUEM PRECISA DE RESPOSTA DO BANCO — e ninguém mais.
+ *
+ * Só chamado de campo CONCLUÍDO tem um selo que depende de `temLancamento`:
+ * todos os outros ramos de `seloDoCiclo` decidem antes de o parâmetro ser lido.
+ * Perguntar pelo resto seria pagar uma consulta por uma resposta que a função
+ * joga fora — e alargar, à toa, a superfície que a U80 mediu com cuidado.
+ */
+export function idsComCicloFinanceiro(
+  blocos: BlocoDeAgenda[],
+  chamados: ChamadoParaGrade[],
+): string[] {
+  const porId = new Map(chamados.map((c) => [c.id, c]));
+  const ids = new Set<string>();
+  for (const b of blocos) {
+    if (!blocoVale(b) || !b.chamado_id) continue;
+    const c = porId.get(b.chamado_id);
+    if (c && c.natureza === "campo" && c.status === "concluido") ids.add(c.id);
+  }
+  return [...ids].sort();
+}
+
+/**
+ * `bloco.id → selo`, numa passada pura sobre as linhas JÁ MONTADAS.
+ *
+ * ── POR QUE O SELO NÃO ENTRA EM `ItemDaGrade` ──────────────────────────────
+ * `celulaDaGrade` é O ÁTOMO, e o átomo não pode mudar com quem olha. É a lição
+ * literal de `divergenciaDeEquipe`: enfiar uma régua de PAPEL lá dentro faz o
+ * contador do cabeçalho dar `[1,0,0,1]` para o gestor e `[3,1,0,1]` para o
+ * técnico — o mesmo número, na mesma tela, mudando com quem lê. O ciclo
+ * financeiro é um EIXO ORTOGONAL (por CHAMADO, com fonte própria), e ele fica
+ * do lado de fora.
+ *
+ * O preço de manter esta função fora do átomo é um `Map` a mais na tela. O
+ * ganho é que a entrega inteira sai com uma linha apagada se o Davi achar que
+ * virou poluição — um campo dentro de `ItemDaGrade` é para sempre.
+ *
+ * MAPA VAZIO É A GRADE DE HOJE. Para quem não é gestor, a RPC devolve zero
+ * linhas, este mapa nasce vazio, e nenhum cartão ganha selo. A degradação é
+ * silenciosa e correta; não existe parâmetro `veCiclo` porque um segundo gate —
+ * sempre verdadeiro para quem passou pelo primeiro — seria código morto num
+ * caminho de segurança.
+ */
+export function selosDaGrade(
+  linhas: LinhaDaGrade[],
+  lancamentos: Map<string, boolean>,
+): Map<string, SeloDoCiclo> {
+  const out = new Map<string, SeloDoCiclo>();
+  for (const l of linhas) {
+    for (const cel of l.celulas) {
+      for (const item of cel.itens) {
+        const id = item.bloco.chamado_id;
+        const tem = id !== null && lancamentos.has(id) ? (lancamentos.get(id) as boolean) : null;
+        const selo = seloDoCiclo(item, tem);
+        if (selo) out.set(item.bloco.id, selo);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * AS DUAS VERDADES SOBRE "EXISTE LANÇAMENTO", QUANDO ELAS DISCORDAM.
+ *
+ * `chamados.faturamento_status` diz `aprovada`/`faturada` (e o SAC lê isso
+ * direto) e `cobrancas` não tem uma linha viva. É LEGÍTIMO quando alguém
+ * cancelou a cobrança; é CORRUPÇÃO em qualquer outro caso — e as duas conversas
+ * são de quem vê valores, e só delas. Por isso `seloDoCiclo` devolve `null` ali
+ * e a divergência vem para cá, onde a tela a gateia por `veFinanceiro`: para o
+ * SAC o cartão fica em silêncio (omissão, igual à de um chamado ainda aberto),
+ * e para quem pode agir ela tem nome.
+ *
+ * É o gêmeo de tela das linhas 110/111 da conferência da U80, e é gêmeo de
+ * DESENHO de `blocosForaDaGrade`: um número que tem de ser zero, e que a tela
+ * mostra em faixa quando não é. O que ele NÃO é: vigilância contínua — ele só
+ * enxerga os chamados da semana aberta, para quem estiver olhando.
+ */
+export function divergenciasDoCiclo(
+  linhas: LinhaDaGrade[],
+  lancamentos: Map<string, boolean>,
+): ChamadoParaGrade[] {
+  const vistos = new Set<string>();
+  const out: ChamadoParaGrade[] = [];
+  for (const l of linhas) {
+    for (const cel of l.celulas) {
+      for (const item of cel.itens) {
+        const c = item.chamado;
+        if (!c || item.oculto || vistos.has(c.id)) continue;
+        if (c.natureza !== "campo" || c.status !== "concluido") continue;
+        if (c.faturamento_status !== "aprovada" && c.faturamento_status !== "faturada") continue;
+        if (lancamentos.get(c.id) !== false) continue; // ausente = não sei; true = ok
+        vistos.add(c.id);
+        out.push(c);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * O AGREGADO DO DIA. Sai das MESMAS células que a coluna desenha — "quem conta
+ * é quem filtra" por construção, e não por disciplina.
+ *
+ * Ele vai para a linha de resumo do dia, e NÃO para o `CabecalhoDaLinha`:
+ * aquele cabeçalho é por EQUIPE/semana (ocupação, divergências, ocultos) e o
+ * ciclo é por CHAMADO. Somar dois eixos no mesmo cabeçalho é o defeito que o
+ * comentário de `GradeSemana.tsx:17-20` já descreve por escrito.
+ */
+export function resumoDoCiclo(
+  linhas: LinhaDaGrade[],
+  dia: string,
+  lancamentos: Map<string, boolean>,
+): { total: number; aConferir: number; lancado: number; semOs: number } {
+  let total = 0, aConferir = 0, lancado = 0, semOs = 0;
+  const selos = selosDaGrade(linhas, lancamentos);
+  for (const l of linhas) {
+    const cel = l.celulas.find((c) => c.dia === dia);
+    if (!cel) continue;
+    for (const item of cel.itens) {
+      const selo = selos.get(item.bloco.id);
+      if (!selo) continue;
+      total++;
+      if (selo === "a_conferir") aConferir++;
+      else if (selo === "lancado") lancado++;
+      else if (selo === "sem_os") semOs++;
+    }
+  }
+  return { total, aConferir, lancado, semOs };
+}
+
+// ── RETORNOS PENDENTES (R106): o balde que existe e não tem nome ────────────
+
+/**
+ * O chamado tem bloco CUMPRIDO, continua ABERTO e não tem NENHUM bloco
+ * pendente. Ele é invisível hoje, e a invisibilidade é estrutural:
+ *
+ *   · `espelhoDoChamado` mantém `data_hora_agendada` no último bloco CUMPRIDO,
+ *     então ele TEM data e entra em `idsComData`;
+ *   · `useChamadosComBloco` diz que ele tem bloco (o predicado é `blocoVale`,
+ *     que inclui o cumprido);
+ *   · logo `classificarChamado` o joga em `com_bloco`, e o docblock de lá diz
+ *     que isso é DE PROPÓSITO — a barra de progresso da migração não pode andar
+ *     para trás quando uma equipe termina um atendimento sem retorno marcado.
+ *
+ * Resultado: não está na faixa, não está na fila, e não desenha cartão na
+ * semana aberta. É trabalho aberto e parado que nenhuma superfície mostra.
+ *
+ * É UM PREDICADO IRMÃO, NUNCA UM 5º BALDE. `classificarChamado` está sob
+ * asserção CRÍTICA em dois pontos do verificador; um balde novo lá dentro
+ * arriscaria os quatro por uma pergunta que não é a dele.
+ *
+ * ── A ARMADILHA, E É A MESMA QUE `useChamadosComBloco` JÁ DOCUMENTOU ───────
+ * `temCompromisso(id, blocos)` chamada com os blocos DA SEMANA responde "nada à
+ * frente" para um chamado cujo retorno está a três semanas. Por isso os dois
+ * Sets vêm do BANCO, em qualquer tempo, e na MESMA requisição: `data.ts` passou
+ * a pedir `cumprido_em` junto do `chamado_id`, e a mesma resposta produz os
+ * dois a custo zero.
+ */
+export function retornosPendentes<
+  T extends Pick<ChamadoParaGrade, "id" | "data_hora_agendada" | "natureza" | "status">,
+>(
+  chamados: T[],
+  comBlocoAtivo: Set<string>,
+  comBlocoPendente: Set<string>,
+): T[] {
+  // GENÉRICA no mesmo espírito de `ordenarPorPrazo`: a tela precisa devolver a
+  // LINHA INTEIRA (com `cliente` e `prazo_limite`) para o cartão da fila, e
+  // estreitar para `ChamadoParaGrade` na saída apagaria os dois campos que o
+  // cartão mostra. O predicado só lê os quatro do `Pick`.
+  return chamados.filter(
+    (c) => classificarChamado(c, comBlocoAtivo.has(c.id)) === "com_bloco"
+        && !comBlocoPendente.has(c.id),
+  );
+}
+
+// ── CONCLUIR COM DECISÃO DE COBRANÇA (R104): o gêmeo puro da porta ──────────
+
+export interface LancamentoCandidato {
+  descricao: string;
+  valorTotal: number;
+  parcelas: number;
+  tipoServico: "instalacao" | "manutencao";
+}
+
+/**
+ * O REGISTRO DO ATENDIMENTO NÃO PODE SER PULADO PELO ATALHO. Gêmeo do passo 4
+ * de `concluir_chamado_com_cobranca`, com a frase IDÊNTICA.
+ *
+ * `executarChamado` exige diagnóstico e serviço executado, e a tela do técnico
+ * exige assinatura por cima. Um "concluir" no cartão que não cobrasse isso
+ * seria um caminho novo para encerrar atendimento sem laudo — e o PDF de
+ * atendimento imprime esses dois campos. A ASSINATURA continua sendo regra da
+ * tela do técnico e não é reproduzida aqui: uma terceira redação daquela regra
+ * é como nascem três respostas.
+ */
+export function podeConcluirDoCartao(
+  c: { status: string | null; diagnostico: string | null; servico_executado: string | null },
+): string | null {
+  if (c.status === "cancelado") return "O atendimento foi cancelado — não há o que concluir.";
+  if (c.status === "concluido") return null;
+  if (!(c.diagnostico ?? "").trim() || !(c.servico_executado ?? "").trim()) {
+    return "Falta o registro do atendimento (diagnóstico e serviço executado). "
+      + "Quem esteve em campo encerra pelo painel do chamado; aqui se decide a cobrança.";
+  }
+  return null;
+}
+
+/**
+ * A RECUSA QUE O FORMULÁRIO ANTECIPA, com as palavras da porta (U80 §7).
+ *
+ * O contrato é o de `erroDoAgendamento` × `agenda_campo_marcar`: o modelo puro
+ * ANTECIPA a recusa, frase por frase, e NUNCA a substitui — quem autoriza é o
+ * servidor. Mentir aqui não compra nada, porque o gesto morre do outro lado
+ * assim mesmo; o que se perde é o usuário entender por que ele morreu.
+ *
+ * O servidor não repete a DIVISÃO, ele confere que a SOMA fecha — `parcelar()`
+ * (lib/periodos.ts) divide em centavos com o resto na primeira, e reimplementar
+ * aquilo em SQL criaria a segunda resposta para a mesma conta. Reimplementar a
+ * CONFERÊNCIA não: a soma é a invariante, e ela é a mesma dos dois lados.
+ */
+/**
+ * REAIS DIGITADOS À BRASILEIRA, e este parser existe por causa de UM caso.
+ *
+ * `Number(s.replace(",", "."))` troca só a PRIMEIRA vírgula, e a tabela do que
+ * uma pessoa digita num campo de valor é esta:
+ *
+ *   "1500"      →  1500    ok
+ *   "1500,00"   →  1500    ok
+ *   "1.500,00"  →  NaN     recusado — chato, mas seguro
+ *   "R$ 1500"   →  NaN     recusado — chato, mas seguro
+ *   "1.500"     →  1.5     **LANÇA R$ 1,50**
+ *
+ * O último é o mais provável de todos e é o ÚNICO que não é recusado: ele
+ * atravessa a validação, atravessa `parcelar`, o servidor confere que a soma
+ * fecha (1,50 = 1,50) e grava. O cliente é subcobrado em 99,9% com trilha de
+ * auditoria completa dizendo que alguém decidiu aquilo.
+ *
+ * A REGRA: a vírgula manda. Existindo ela, todo ponto é separador de milhar.
+ * Sem ela, ponto seguido de exatamente três dígitos até o fim do grupo também é
+ * milhar — o que deixa "1.5" (um e meio) passar como 1.5, porque quem escreve
+ * assim está usando ponto decimal de propósito. NaN é "não deu para ler", e
+ * quem chama decide o que fazer com isso.
+ */
+export function reaisDigitados(s: string): number {
+  const t = (s ?? "").trim().replace(/[^\d.,]/g, "");
+  if (t === "") return NaN;
+  return t.includes(",")
+    ? Number(t.replace(/\./g, "").replace(",", "."))
+    : Number(t.replace(/\.(?=\d{3}(?:\D|$))/g, ""));
+}
+
+export function erroDoLancamento(c: LancamentoCandidato): string | null {
+  if (!c.descricao.trim()) return "Descreva o que está sendo cobrado.";
+  if (!Number.isFinite(c.valorTotal) || c.valorTotal <= 0) {
+    return "Informe um valor maior que zero.";
+  }
+  const n = Math.floor(c.parcelas);
+  if (!Number.isFinite(c.parcelas) || n < 1) return "Informe ao menos uma parcela.";
+  if (c.tipoServico !== "instalacao" && c.tipoServico !== "manutencao") {
+    return `Tipo de serviço inválido: ${c.tipoServico}.`;
+  }
+  const teto = c.tipoServico === "instalacao" ? 60 : 12;
+  if (n > teto) {
+    return `Instalação vai até 60 parcelas; manutenção, até 12. Vieram ${n}.`;
+  }
+  // A parcela de zero é o sintoma de um total que não divide — e
+  // `cobrancas_valor_check CHECK (valor > 0)` (U4:79) recusaria a linha no
+  // banco com uma mensagem sobre constraint, não sobre cobrança.
+  if (Math.round(c.valorTotal * 100) < n) {
+    return `Parcela de zero: ${c.valorTotal.toFixed(2)} em ${n} vezes não divide. Reduza as parcelas.`;
+  }
+  return null;
+}
+
+// ── COMPARTILHAR O DIA (R105): a TERCEIRA projeção da mesma estrutura ───────
+//
+// A grade é a semana em pixels na horizontal; `ColunaDoDia` é o dia em pixels
+// na vertical; o texto é o dia em CARACTERES. Isso não é analogia: o texto sai
+// de `linha.celulas.find(c => c.dia === dia)`, exatamente como o celular. E por
+// isso três coisas saem DE GRAÇA, sem uma segunda redação de regra nenhuma:
+//   · "canceladas ficam de fora" — `blocosDaEquipeNoDia` já filtra `blocoVale`;
+//   · "ocupação ou disponível"   — `celula.disponivel` / `.comEscala`, com os
+//     dois zeros já separados;
+//   · "quem conta é quem filtra" — o texto e a coluna vêm do MESMO objeto.
+
+export interface DetalheParaTexto {
+  cliente: string | null;
+  endereco: string | null;
+  descricao: string | null;
+}
+
+/**
+ * O que o texto precisa e este módulo NÃO SABE. Mesmo contrato de `rotuloDe` em
+ * `ContextoDoAgendamento`: o módulo não conhece nomes (é a primeira coisa que o
+ * cabeçalho deste arquivo promete), então a tela injeta.
+ */
+export interface ContextoDoTexto {
+  rotuloDoDia: (dia: string) => string;
+  nomeDaEquipe: (duplaId: string) => string;
+  veiculoDaEquipe: (duplaId: string) => string | null;
+  membrosDaEquipe: (duplaId: string) => string[];
+  detalheDe: (chamadoId: string) => DetalheParaTexto | null;
+  /**
+   * GANCHO VAZIO — o plantonista da semana é FASE 3. `null` não produz UMA
+   * LINHA sequer, e há asserção pinando exatamente isso: uma linha
+   * "Plantonista: —" seria um gancho entregando meia mentira.
+   */
+  plantonista: string | null;
+}
+
+/**
+ * O DIA INTEIRO EM TEXTO, para colar no WhatsApp.
+ *
+ * ── O PONTO DE VAZAMENTO, E É O MAIS SÉRIO DESTA ENTREGA ───────────────────
+ * O texto compartilhado é a superfície mais fácil de exportar o que a grade
+ * esconde com cuidado. Um `item.oculto` aqui tem de cortar CLIENTE, ENDEREÇO,
+ * DESCRIÇÃO, TIPO, PRIORIDADE e Nº DE OS — não só o rótulo. Sobra o horário e
+ * `ROTULO_DO_OCULTO`, que é o mesmo que o cartão mostra e a mesma palavra que
+ * `agenda_campo_frase_do_conflito` usa no servidor.
+ *
+ * Com isso, o dia de um não-gestor vira um texto cheio de "Outro atendimento" —
+ * o que é HONESTO, é inútil, e é o argumento mais forte para o botão ser de
+ * gestor. A asserção que prova isso é de MUTAÇÃO, com canário: `detalheDe`
+ * devolve `CANARIO_*` para um item oculto e o texto não pode conter "CANARIO".
+ *
+ * ── `agora` É PARÂMETRO, E A LINHA "gerado em" NÃO É ENFEITE ───────────────
+ * O módulo não constrói `Date` (é a segunda promessa do cabeçalho), e sem o
+ * parâmetro a função seria inassertável. E o carimbo existe porque O TEXTO
+ * SOBREVIVE À GRADE: alguém cola o plano às 08:00, o plano muda às 10:00, e sem
+ * a hora o WhatsApp vira uma segunda verdade com prazo de validade indefinido.
+ */
+export function textoDoDia(
+  linhas: LinhaDaGrade[],
+  dia: string,
+  ctx: ContextoDoTexto,
+  agora: Date,
+): string {
+  const L: string[] = [];
+  L.push(`PROGRAMAÇÃO · ${ctx.rotuloDoDia(dia)}`);
+  L.push(`gerado em ${horaTexto(agora.getHours() * 60 + agora.getMinutes())}`);
+
+  for (const linha of linhas) {
+    const cel = linha.celulas.find((c) => c.dia === dia);
+    // Equipe sem escala na semana não entra: ela não existe naquela semana, e
+    // listá-la como "disponível" ofereceria gente que não está trabalhando.
+    if (!cel || !cel.comEscala) continue;
+
+    const membros = ctx.membrosDaEquipe(linha.duplaId);
+    const veiculo = ctx.veiculoDaEquipe(linha.duplaId);
+    const cabeca = [ctx.nomeDaEquipe(linha.duplaId), membros.join(" · ") || null, veiculo]
+      .filter((p): p is string => !!p && p.length > 0)
+      .join(" — ");
+    L.push("");
+    L.push(cabeca);
+
+    if (cel.itens.length === 0) {
+      L.push("  disponível");
+      continue;
+    }
+
+    for (const item of cel.itens) {
+      const janela = `${horaTexto(item.de)}–${horaTexto(item.ate)}`;
+      const dur = duracaoTexto(minutosDoBloco(item.bloco));
+
+      if (item.oculto) {
+        // TUDO cortado menos o horário. Ver o docblock.
+        L.push(`  ${janela} (${dur}) · ${ROTULO_DO_OCULTO}`);
+        continue;
+      }
+
+      const marcas = [
+        item.retorno ? `${item.ordinal}ª ida` : null,
+        item.emergencial ? "EMERGENCIAL" : null,
+        !item.seMove ? "feito" : null,
+      ].filter((m): m is string => !!m);
+      L.push(`  ${janela} (${dur}) · ${item.rotulo}${marcas.length ? " · " + marcas.join(" · ") : ""}`);
+
+      const c = item.chamado;
+      const d = c ? ctx.detalheDe(c.id) : null;
+      if (d && (d.cliente || d.endereco)) {
+        L.push(`    ${[d.cliente, d.endereco].filter(Boolean).join(" — ")}`);
+      }
+      const ficha = [
+        c?.tipo ?? null,
+        c?.prioridade && c.prioridade !== "normal" ? c.prioridade : null,
+        item.bloco.deslocamento_min > 0
+          ? `${duracaoTexto(item.bloco.deslocamento_min)} de estrada`
+          : null,
+        item.bloco.os_externa ? `OS ${item.bloco.os_externa}` : null,
+      ].filter((p): p is string => !!p);
+      if (ficha.length > 0) L.push(`    ${ficha.join(" · ")}`);
+      if (d?.descricao) L.push(`    ${d.descricao.trim()}`);
+    }
+
+    L.push(`  ${duracaoTexto(cel.jornada.ocupadoMin)} marcadas`);
+  }
+
+  // O GANCHO VAZIO. `null` não produz linha nenhuma — a Fase 3 só preenche o
+  // argumento, e nada mais neste arquivo muda.
+  if (ctx.plantonista) {
+    L.push("");
+    L.push(`Plantonista da semana: ${ctx.plantonista}`);
+  }
+
+  return L.join("\n");
 }

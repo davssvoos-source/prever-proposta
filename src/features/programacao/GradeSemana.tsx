@@ -23,7 +23,10 @@ import { type CSSProperties, type DragEvent } from "react";
 import { AlertTriangle, EyeOff } from "lucide-react";
 import { PRISMA } from "@/lib/paleta";
 import { FONT, card } from "@/lib/ui";
-import { dataDoDia, duracaoTexto, pctTexto, type ItemDaGrade, type LinhaDaGrade } from "./modelo";
+import {
+  dataDoDia, duracaoTexto, pctTexto,
+  type ItemDaGrade, type LinhaDaGrade, type SeloDoCiclo,
+} from "./modelo";
 import { CelulaDoDia, janelaDoDesenho } from "./CelulaDaGrade";
 
 const DIA_CURTO = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -149,6 +152,15 @@ interface Props {
   diaAberto: string;
   /** false ⇒ linha colapsada: os blocos viram segmentos sem rótulo */
   mostrarRotulos: (linha: LinhaDaGrade) => boolean;
+  /**
+   * O ciclo financeiro por bloco (U80). Só REPASSADO — o `CabecalhoDaLinha`
+   * NÃO ganha contador: aquele cabeçalho é por EQUIPE/semana (ocupação,
+   * divergências, ocultos) e o ciclo é por CHAMADO. Somar dois eixos no mesmo
+   * cabeçalho é o defeito que o comentário do topo deste arquivo já descreve
+   * para `divergencias` × `ocultos`. O agregado do ciclo vai na linha de
+   * resumo do dia, no route.
+   */
+  selos?: Map<string, SeloDoCiclo>;
   onAbrirItem: (item: ItemDaGrade) => void;
   onNovoNaCelula: (dia: string, duplaId: string) => void;
   /** ausente = grade só de leitura */
@@ -163,7 +175,8 @@ interface Props {
 }
 
 export function GradeSemana({
-  linhas, dias, isLight, rotulos, diaAberto, mostrarRotulos, onAbrirItem, onNovoNaCelula, arrasto,
+  linhas, dias, isLight, rotulos, diaAberto, mostrarRotulos, selos,
+  onAbrirItem, onNovoNaCelula, arrasto,
 }: Props) {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
@@ -252,6 +265,7 @@ export function GradeSemana({
                       isLight={isLight}
                       eixo
                       mostrarRotulos={detalhada}
+                      selos={selos}
                       janela={janela}
                       alvo={!!arrasto && arrasto.alvo?.duplaId === l.duplaId && arrasto.alvo?.dia === c.dia}
                       onAbrir={onAbrirItem}

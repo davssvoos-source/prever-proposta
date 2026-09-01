@@ -1778,3 +1778,97 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   operacional, esses quatro números entram como padrão **etiquetado** ("padrão da
   preventiva") — nunca como um número mudo.
   *(U79.)*
+
+- **R103** — **O cartão da grade diz em que ponto do ciclo financeiro o
+  atendimento está — e diz que HOUVE lançamento, nunca QUANTO.** São seis selos:
+  *A conferir*, *Lançado*, *Nada a cobrar*, *Sem OS*, *OS de fora* e
+  *Cancelado*. O rótulo é **"Lançado"** e jamais "Cobrado", "A receber" ou
+  "Faturado": ele afirma que existe lançamento vinculado, e não que há valor a
+  receber. São coisas diferentes, e a diferença é escolhida.
+
+  **Quatro dos seis não custam consulta nenhuma** — saem de
+  `chamados.faturamento_status` e do próprio bloco, que quem lê o chamado já lê.
+  Só "Lançado" atravessa a régua do financeiro, e a resposta dele é **um bit**:
+  nunca o valor, nunca a competência, nunca quantas cobranças, nunca o status
+  delas. "Existe cobrança" é fato operacional; "quanto" é privilégio (R13).
+
+  **"Não sei" nunca é "não tem", e o cartão prefere calar.** O selo não aparece
+  quando quem olha não pode ler o chamado, quando ninguém contou, ou quando as
+  duas verdades sobre "existe lançamento" discordam — um atendimento marcado
+  como cobrança aprovada e sem lançamento vivo. Nesse último caso as duas
+  leituras possíveis mentiriam em direções opostas ("Lançado" afirma o que não
+  existe; "nada a cobrar" entrega, por inferência, que alguém cancelou uma
+  cobrança já lançada). Então o cartão fica mudo e uma faixa avisa quem vê
+  valores.
+
+  **A defesa contra poluição é temporal, não visual.** Selo só existe depois que
+  o atendimento aconteceu: a semana à frente sai sem um único selo, e a semana
+  passada sai inteira selada. Isso também conserta uma acusação falsa que a
+  régua ingênua produziria — um chamado ainda aberto, com visita feita, diria "a
+  conferir" quando o serviço nem terminou.
+
+  **O que se ganha de graça:** o atendimento que foi analisado e nunca aprovado
+  (`em_conferencia`) volta a aparecer como *A conferir*. Hoje ele some da fila,
+  do alerta diário e dos três botões da conferência sem ninguém ter decidido
+  nada — é cobrança que nunca vai ser gerada, e o cartão é a primeira superfície
+  que a mostra.
+  *(U80.)*
+
+- **R104** — **Concluir um atendimento e decidir a cobrança são o mesmo gesto, e
+  a decisão tem três respostas.** *Lançar agora*, *Nada a cobrar* ou *Conferir
+  depois* — e as três acontecem numa transação só. Concluir e depois lançar
+  teria um instante em que o atendimento está fechado, o dinheiro não está
+  lançado, e ninguém sabe.
+
+  **Concluir não é decidir.** "Conferir depois" está sempre disponível para quem
+  responde pelo atendimento; as outras duas são de quem responde pelo
+  financeiro. Quem não vê valores não vê campo de valor, nem botão de lançar.
+
+  **Os dois caminhos da cobrança são disjuntos.** Onde as peças foram analisadas
+  item a item, a cobrança sai da **conferência** — com o valor do contrato, e
+  com o bloqueio que impede aprovar enquanto houver item em revisão. Onde não
+  houve análise, o valor digitado é a única verdade que existe, e é ele que
+  vale. O sistema recusa digitar um valor por cima de um atendimento analisado.
+
+  **Lançar duas vezes passou a ser impossível, e não improvável.** Antes, dois
+  gestores aprovando o mesmo atendimento no mesmo minuto cobravam o cliente duas
+  vezes, e reaprovar depois de o período fechar duplicava sozinho. Agora o banco
+  recusa: uma peça rende uma cobrança viva, e um lançamento avulso é único por
+  atendimento, competência e descrição.
+
+  **O registro do atendimento não é pulável pelo atalho.** Sem diagnóstico e
+  serviço executado, o painel recusa concluir e manda para o painel do chamado —
+  o relatório de atendimento imprime esses dois campos.
+  *(U80.)*
+
+- **R105** — **A programação de um dia se compartilha em texto, e o texto
+  esconde o que a tela esconde.** Um toque copia (ou abre o WhatsApp com) o dia
+  inteiro: cada equipe com seus técnicos, o veículo e as horas marcadas, e cada
+  atendimento com horário, duração, cliente, endereço, tipo, prioridade, tempo
+  de estrada e descrição. Equipe com escala e nada marcado sai como
+  *disponível*; equipe sem escala na semana não aparece; **atendimento cancelado
+  fica de fora**.
+
+  **O texto carrega a hora em que foi gerado**, porque ele sobrevive à grade:
+  alguém cola o plano às 08:00 e o plano muda às 10:00, e sem o carimbo a
+  mensagem vira uma segunda verdade sem prazo de validade.
+
+  **E ele corta cliente, endereço e descrição do atendimento que quem
+  compartilha não pode ler** — não só o nome, tudo. Sobra o horário e "Outro
+  atendimento". É a superfície mais fácil de exportar o que a grade protege com
+  cuidado, e quem compartilha não leva o parque de clientes dos colegas junto.
+  *(U80.)*
+
+- **R106** — **O atendimento que teve a visita, continua aberto e não tem nada
+  marcado à frente tem seção própria: "Retornos pendentes".** Hoje ele é
+  invisível: tem data (a do último atendimento que aconteceu), o sistema
+  considera que ele já foi programado — de propósito, para a barra de progresso
+  da migração não andar para trás — e por isso ele não está na faixa "sem
+  horário", não está na fila "aguardando programação" e não desenha cartão na
+  semana aberta. É trabalho aberto e parado que nenhuma tela mostrava.
+
+  A seção fica entre a grade e a fila sem data, ordenada por quanto plano
+  existe: sem hora → grade → retorno sem data marcada → sem plano nenhum. Aqui o
+  triângulo de alerta **é** a voz certa, ao contrário da faixa de migração: ali
+  não há nada errado, aqui há.
+  *(U80.)*

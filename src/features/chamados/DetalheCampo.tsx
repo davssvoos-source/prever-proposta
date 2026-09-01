@@ -30,8 +30,9 @@ import {
   DIRECAO_LABEL, DIRECAO_CORES, type DirecaoPeca,
 } from "@/features/chamados/pecas";
 import {
-  useAnaliseChamado, useCobrancasDoChamado, aprovarCobranca, marcarFaturada, ajustarItem,
-  totalFaturavel, moeda, RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL,
+  useAnaliseChamado, useCobrancasDoChamado, useLancamentoDoChamado, aprovarCobranca,
+  marcarFaturada, ajustarItem, totalFaturavel, moeda,
+  RESULTADO_LABEL, RESULTADO_CORES, FATURAMENTO_LABEL,
   type ResultadoItem, type FaturamentoStatus,
 } from "@/features/chamados/cobranca";
 import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
@@ -74,6 +75,18 @@ export function DetalheCampo({ id }: { id: string }) {
   // conferência de cobrança — Etapa U4
   const { data: analise = [] } = useAnaliseChamado(id);
   const { data: cobrancasOs = [] } = useCobrancasDoChamado(id);
+  /**
+   * O RECORTE, VINDO DE UM LUGAR SÓ (U80). `cancelada` NÃO conta como
+   * lançamento — é o mesmo predicado de `temLancamento`, de `montar_fechamento`
+   * (u5:139), de `consolidar()` e dos dois índices únicos da U80. Antes desta
+   * entrega o card somava a cancelada junto e anunciava dinheiro que não
+   * existe.
+   */
+  const cobrancasVivas = cobrancasOs.filter((c) => c.status !== "cancelada");
+  const canceladasOs = cobrancasOs.length - cobrancasVivas.length;
+  /** O bit da U80 — a mesma resposta que o cartão da grade usa, para as duas
+   *  telas nunca discordarem sobre o mesmo chamado. `undefined` = não sei. */
+  const { data: temLancamentoRpc } = useLancamentoDoChamado(id);
   const analisarFn = useServerFn(analisarCobrancaChamado);
   const [itemEditando, setItemEditando] = useState<string | null>(null);
   const [novoResultado, setNovoResultado] = useState<ResultadoItem>("revisar");
@@ -1069,16 +1082,50 @@ export function DetalheCampo({ id }: { id: string }) {
             </div>
           )}
 
-          {cobrancasOs.length > 0 && (
+          {/* AS COBRANÇAS VIVAS — e "vivas" é o recorte de `temLancamento`
+              (chamados/cobranca.ts), o mesmo do fechamento (u5:139) e o mesmo
+              dos dois índices únicos da U80. Antes esta linha somava a
+              CANCELADA junto: um chamado com uma cobrança de R$ 400 cancelada
+              e nada mais anunciava "1 cobrança(s) geradas · R$ 400,00", que é
+              dinheiro que não existe. A cancelada não some da tela — ela passa
+              a ser dita à parte, que é o que ela é. */}
+          {cobrancasVivas.length > 0 && (
             <div style={{
               padding: "10px 12px", borderRadius: 12,
               background: isLight ? "rgba(45,210,165,0.08)" : "rgba(45,210,165,0.08)",
               border: "1px solid rgba(45,210,165,0.28)",
             }}>
               <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
-                {cobrancasOs.length} cobrança(s) geradas ·{" "}
-                <strong>{moeda(cobrancasOs.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
-                {cobrancasOs[0]?.competencia}
+                {cobrancasVivas.length} cobrança(s) geradas ·{" "}
+                <strong>{moeda(cobrancasVivas.reduce((s, c) => s + Number(c.valor), 0))}</strong> na competência{" "}
+                {cobrancasVivas[0]?.competencia}
+                {canceladasOs > 0 && ` · ${canceladasOs} cancelada(s), fora da soma`}
+              </span>
+            </div>
+          )}
+
+          {/* O FURO, FECHADO ONDE ELE NASCE.
+              `useCobrancasDoChamado` faz SELECT direto, e `cobrancas_select` é
+              `pode_ver_financeiro(auth.uid())` (u4:293). Uma policy de SELECT
+              FILTRA LINHAS e NÃO levanta erro: a resposta é HTTP 200 com `[]`,
+              e `[]` quer dizer DUAS coisas indistinguíveis — "não há cobrança"
+              e "a RLS apagou tudo". O `if (error) return []` do hook nem chega
+              a ser exercido, porque não há erro nenhum.
+              A RPC da U80 é a única que sabe separar as duas, e quando ela
+              discorda da lista quem manda é ela: dizer "há lançamento e esta
+              tela não consegue listá-lo" é honesto; desenhar a ausência não é.
+              Hoje isto é inalcançável dentro deste card (ele é `veFinanceiro`,
+              e quem vê financeiro lê as linhas), e é de propósito: o defeito
+              deixa de depender de o gate acima continuar existindo. */}
+          {temLancamentoRpc === true && cobrancasVivas.length === 0 && (
+            <div style={{
+              padding: "10px 12px", borderRadius: 12,
+              background: isLight ? "rgba(250,132,45,0.07)" : "rgba(250,132,45,0.08)",
+              border: "1px solid rgba(250,132,45,0.28)",
+            }}>
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary }}>
+                Existe lançamento vinculado a este atendimento, e esta tela não consegue listá-lo.
+                Quem responde pelo financeiro vê o valor no fechamento.
               </span>
             </div>
           )}
@@ -1101,7 +1148,19 @@ export function DetalheCampo({ id }: { id: string }) {
                 {aprovar.isPending ? "Aprovando…" : "Aprovar cobrança"}
               </button>
             )}
-            {cobrancasOs.some((c) => c.status === "aberto" || c.status === "concluido") && (
+            {/* BOTÃO MORTO DESDE QUE NASCEU, CONSERTADO (U80).
+                A condição era `c.status === "aberto" || c.status === "concluido"`
+                — dois literais que NÃO EXISTEM no domínio de `cobrancas.status`,
+                que é `('aberta','fechada','faturada','cancelada')` (CHECK em
+                u4:54-55, e o tipo `Cobranca` diz o mesmo). Gênero masculino em
+                cima de valores femininos, e o `as any` da consulta impediu o
+                `tsc` de ver: o botão NUNCA renderizou para ninguém, e
+                `marcar_chamado_faturado` está instalada, com REVOKE e GRANT
+                corretos, sem um chamador vivo desde a U7.
+                A condição certa é "há cobrança que ainda não virou nota":
+                `aberta` ou `fechada`. `faturada` já saiu, `cancelada` não
+                conta. */}
+            {cobrancasOs.some((c) => c.status === "aberta" || c.status === "fechada") && (
               <button
                 style={{ ...btnSec, flex: 1 }}
                 onClick={() => faturar.mutate()}

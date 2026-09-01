@@ -313,6 +313,104 @@ verificador + só então pintar na tela. A tela não calcula nada.
 - Ligar tela de coordenação sem guarda de rota (o menu esconder não é
   proteção — cicatriz da U30 em `chamados.painel`).
 
+## O selo do ciclo financeiro no cartão (R103, U80)
+
+Cada cartão da grade pode carregar **um selo** dizendo em que ponto do ciclo
+financeiro aquele atendimento está. No desktop ele é um **ponto de 6 px** no
+canto do cartão, com a palavra no `title` e no `aria-label`; no celular é um
+**chip com a palavra**. O eixo do dia não tem espaço para uma sétima palavra
+visível — um bloco de 30 minutos tem 21 px de altura e já corta a própria
+segunda linha.
+
+Os seis selos:
+
+| Selo | Quer dizer | De onde sai |
+|---|---|---|
+| **A conferir** | acabou e ninguém decidiu a cobrança | `chamados.faturamento_status` |
+| **Lançado** | existe lançamento vinculado | a RPC `chamados_com_lancamento` |
+| **Nada a cobrar** | conferido, e não havia o que cobrar | `chamados.faturamento_status` |
+| **Sem OS** | serviço feito e sem OS no sistema | o próprio bloco |
+| **OS de fora** | serviço que veio de fora do sistema | o próprio bloco |
+| **Cancelado** | o atendimento foi cancelado | `chamados.status` |
+
+**"Lançado" nunca quer dizer "cobrado", "a receber" ou "faturado".** Ele afirma
+que existe lançamento vinculado, e nada sobre valor — o cartão não mostra
+dinheiro para ninguém, nem para quem vê valores.
+
+**Cartão sem selo não quer dizer "sem cobrança".** O selo não aparece em quatro
+situações, e nenhuma delas é "não tem": o atendimento ainda não acabou (a semana
+à frente sai sem um único selo, de propósito), o chamado não é seu para ler, o
+sistema não conseguiu perguntar, ou as duas fontes discordaram. **Se você
+precisa saber, abra o chamado** — a ausência do selo é honesta, não é resposta.
+
+## Concluir pelo cartão (R104)
+
+Abaixo da grade, quando há atendimentos do dia esperando decisão, aparece a
+seção **"A conferir"** com um botão **Decidir cobrança** por atendimento.
+Clicar no CARTÃO continua abrindo o formulário do bloco — aquilo é agenda, e
+não mudou.
+
+O painel oferece, conforme o caso:
+
+- **Concluir · conferir depois** — sempre. Encerra o atendimento e deixa a
+  cobrança para quem responde pelo financeiro. Não é preciso ser do financeiro
+  para isso: concluir não é decidir.
+- **Concluir e lançar** — só para quem vê valores, e só quando **nenhuma peça
+  foi analisada**. Descrição, valor total e parcelas; a prévia mostra as
+  parcelas exatas antes de gravar.
+- **Nada a cobrar** — só para quem vê valores.
+- **Conferir e aprovar no chamado** — quando as peças FORAM analisadas. Aí a
+  cobrança sai da conferência, com o valor do contrato, e não de um valor
+  digitado. O sistema recusa o contrário.
+
+**Sem diagnóstico e serviço executado o painel recusa concluir** e manda para o
+painel do chamado. O relatório de atendimento imprime esses dois campos.
+
+**Lançar duas vezes não é possível.** O banco recusa: uma peça rende uma
+cobrança viva, e um lançamento avulso é único por atendimento, competência e
+descrição. Se aparecer a mensagem "já tem cobrança lançada para estas peças",
+recarregue — ou alguém decidiu no mesmo instante, ou o período já foi fechado
+com elas dentro.
+
+## Retornos pendentes (R106)
+
+Entre a grade e a fila "aguardando programação" existe a seção **Retornos
+pendentes**: atendimentos cuja visita **aconteceu**, que continuam **abertos** e
+que **não têm nada marcado à frente**. Eles eram invisíveis — têm data (a do
+último atendimento que aconteceu), então não caem na faixa "sem horário" nem na
+fila "sem data", e não desenham cartão na semana aberta.
+
+O botão é **Marcar retorno**. A lista some sozinha quando esvazia.
+
+## Compartilhar o dia (R105)
+
+Dois botões — **Copiar o dia** e **WhatsApp** — na linha de resumo do dia e no
+topo da coluna do dia (celular). O texto sai com cada equipe (técnicos, veículo,
+horas marcadas ou *disponível*) e cada atendimento (horário, duração, cliente,
+endereço, tipo, prioridade, tempo de estrada, descrição). **Atendimento
+cancelado fica de fora.**
+
+O texto carrega **a hora em que foi gerado**: ele sobrevive à grade, e um plano
+colado às 08:00 que mudou às 10:00 vira uma segunda verdade sem o carimbo.
+
+**Só gestor vê os botões**, e a razão é o próprio texto: para quem não pode ler
+os chamados, o dia sai cheio de "Outro atendimento" — o texto corta cliente,
+endereço e descrição do atendimento alheio, não só o nome. Quem compartilha não
+leva o parque de clientes dos colegas junto.
+
+**Consulta-canário do ciclo** (o verificador não vê dado, só código) — quantos
+atendimentos de campo concluídos estão parados esperando decisão de cobrança:
+
+```sql
+SELECT faturamento_status, count(*)
+  FROM public.chamados
+ WHERE natureza = 'campo' AND status = 'concluido'
+ GROUP BY 1 ORDER BY 2 DESC;
+```
+
+Se `em_conferencia` não for zero, esses são os analisados que ninguém aprovou —
+ver P20 em `docs/PENDENCIAS_TECNICAS.md`.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`

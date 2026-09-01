@@ -370,6 +370,138 @@ U78), e `podeEditarChamado` passa a ser consultado por cartão — hoje resolvid
 por um gêmeo local síncrono, e não por RPC, justamente para não virar um N+1 de
 HTTP.
 
+## P18 — CRÍTICO · A linha do tempo entrega o valor em reais a TODO autenticado (2026-09-01, U80)
+
+**É o vazamento que a R13 e a U6a existem para impedir, e ele está aberto hoje.**
+
+`chamado_eventos_select` é `USING (true)` —
+`supabase/migrations/20260819120000_u7_fusao_chamados.sql:586-587`. Não é
+`pode_acessar_chamado`, é `true`. E `aprovar_chamado_financeiro` grava na linha
+do tempo (`20260820100000_u13_executado_vira_concluido.sql:116-120`):
+
+```sql
+INSERT INTO public.chamado_eventos (chamado_id, tipo, descricao, user_id)
+VALUES (_chamado_id, 'cobranca_aprovada',
+        CASE WHEN v_itens = 0 THEN 'Conferência concluída: nada a cobrar.'
+             ELSE 'Cobrança aprovada: ' || v_itens || ' item(ns), total ' ||
+                  to_char(v_total,'FM999G999G990D00') END, auth.uid());
+```
+
+`useChamadoEventos` (`src/features/chamados/data.ts`) busca **sem filtro de
+tipo**, e `DetalheCampo.tsx:1205-1207` pinta `{ev.descricao ?? ev.tipo}` **fora
+de qualquer gate de papel**. Resultado: hoje, **qualquer autenticado — o SAC, e o
+técnico que abre o próprio chamado — lê "Cobrança aprovada: 3 item(ns), total
+1.842,50"**. É o valor exato, em reais, que a R13 ("o SAC é gestor que NÃO vê
+valores") e a separação de réguas da U6a existem para esconder. `'cobranca_faturada'`
+(U7:758) e `'compra'` com a situação do pedido (U9:154) vazam junto, esses sem cifra.
+
+**Por que não foi consertado na U80:** é policy do MOTOR, e a Fase 1 Passo 1.3
+lê o motor financeiro sem reescrevê-lo. A U80 **não repete o erro** — o evento
+dela (`cobranca_decidida`) grava o FATO e a CONTAGEM, nunca o dinheiro, e há
+asserção pinando que `FM999G999G990D00` não aparece no INSERT dela.
+
+**Mas isto muda o cálculo da entrega inteira, e é preciso dizer:** não dá para
+argumentar que o selo "existe cobrança" é seguro *por ser menos que o valor*
+quando o valor já está aberto ao lado. O argumento do selo tem de se sustentar
+sozinho, e ele se sustenta (`aprovada ⇒ EXISTS(cobrancas)`, e o SAC já lê
+`aprovada` na mesma linha da mesma tabela). Só que **a ordem de prioridade
+provavelmente deveria mudar**: uma função meticulosamente mínima ao lado de um
+vazamento de valor é teatro enquanto o vazamento estiver lá.
+
+**As duas saídas, e são independentes:** fechar a policy
+(`chamado_eventos_select` passa a `pode_acessar_chamado(chamado_id)`) ou tirar a
+cifra do evento (o `to_char` sai, e a contagem fica). A segunda é uma linha e não
+mexe em permissão nenhuma; a primeira é a régua certa e precisa ser medida contra
+quem hoje depende de ler evento de chamado alheio.
+
+## P19 — ALTO · O DELETE de `aprovar_chamado_financeiro` come o avulso vinculado (2026-09-01, U80)
+
+`aprovar_chamado_financeiro` faz, incondicionalmente
+(`20260820100000_u13_executado_vira_concluido.sql:95`):
+
+```sql
+DELETE FROM public.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';
+```
+
+Ele **não discrimina `chamado_peca_id`**. Uma cobrança avulsa VINCULADA — que só
+passa a existir depois de `concluir_chamado_com_cobranca` (U80 §4) — seria
+apagada por ele. E como o chamado não tem peça faturável, `v_itens = 0` e o
+UPDATE crava `sem_cobranca`; o evento gravado diz *"Conferência concluída: nada a
+cobrar."* **O dinheiro some e a linha do tempo confirma que não havia dinheiro.**
+
+**Alcançabilidade hoje: nenhuma pela UI.** A porta da U80 recusa `lancar` num
+chamado que tem `chamado_pecas_analise`, e deixa o chamado em `aprovada` —
+estado em que o botão "Aprovar cobrança" (`DetalheCampo.tsx:1095`) não renderiza.
+Sobra um POST direto à RPC com papel financeiro, ou um ponto de entrada futuro
+que alguém escreva sem ler isto.
+
+**A linha 107 da conferência da U80 é o arame:** ela conta as cobranças presas a
+chamado que NÃO vieram de peça (`chamado_id IS NOT NULL AND chamado_peca_id IS
+NULL`). Hoje é 0. No dia em que deixar de ser, este defeito passa a ter alcance.
+
+**O conserto é uma linha, e é mexer no motor** — que este passo declarou não
+fazer:
+
+```sql
+-- em U13:95
+DELETE FROM public.cobrancas
+ WHERE chamado_id = _chamado_id AND status = 'aberta'
+   AND chamado_peca_id IS NOT NULL;   -- ← a linha
+```
+
+Se o Davi autorizar, é a única migration que eu recomendaria acrescentar em
+seguida à U80.
+
+## P20 — MÉDIO · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)
+
+`src/lib/cobranca.functions.ts:327` grava `faturamento_status = 'em_conferencia'`
+ao fim da análise, sob a RLS do próprio usuário — e passa, porque
+`chamados_update` é `pode_editar_chamado`, que começa por `is_gestor`. A tela
+invalida `["chamado", id]` e refaz o fetch com o valor novo. Aí, em cadeia:
+
+- `DetalheCampo.tsx:965` — o botão "Ajustar" de cada item exige `a_analisar` → **some**;
+- `DetalheCampo.tsx:1095` — "Aprovar cobrança" exige `a_analisar` → **some, exatamente depois da análise que existe para habilitá-lo**;
+- `DetalheCampo.tsx:1120` — o card de Conferência exige `a_analisar` → **some**;
+- `src/features/atividades/modelo.ts:485-486` e o alerta diário (U13:139) filtram `a_analisar` → o chamado **sai da fila** e **para de gerar aviso**.
+
+Sobra "Reanalisar", que reescreve `em_conferencia` de novo. **Nenhum caminho no
+repo devolve o chamado a `a_analisar`.** Um chamado analisado e não aprovado fica
+invisível para toda a operação, com a cobrança nunca gerada. É dinheiro que some
+da fila em silêncio.
+
+**O que a U80 fez:** o selo do cartão trata `em_conferencia` como **A conferir**,
+junto com `a_analisar` — o cartão é a primeira superfície que volta a mostrá-los,
+e a linha 113 da conferência da migration conta quantos estão parados assim hoje.
+Isso **não conserta** o defeito: os três botões continuam sumindo, e o motor
+aceitaria a aprovação (`aprovar_chamado_financeiro` não checa `faturamento_status`
+— só `status = 'concluido'`). É só a visibilidade dos botões que está errada.
+
+**O conserto de verdade** é decidir se `em_conferencia` deve existir: ou os três
+gates passam a aceitar `a_analisar` **ou** `em_conferencia`, ou a análise para de
+escrever o valor (e a coluna volta a ter quatro estados). A segunda é mais limpa;
+nenhum consumidor lê `em_conferencia` para nada.
+
+## P21 — MÉDIO · Duas telas discordam sobre a data da parcela: `setMonth` pula fevereiro (2026-09-01, U80)
+
+`lancarCobrancaAvulsa` (`src/features/financeiro/fechamentos.ts:137`) avança a
+competência com `d.setMonth(d.getMonth() + i)`. Em JavaScript, **31/01 + 1 mês é
+02/03**: a parcela 2 pula fevereiro e cai em março, e a competência de fevereiro
+fica sem linha. `date + interval` no Postgres GRAMPEIA para 28/02, que é o certo.
+
+A porta da U80 (`concluir_chamado_com_cobranca`) usa `make_interval(months => …)`
+e portanto está certa. **As duas telas passam a discordar sobre a mesma conta** —
+a de fechamentos pula, a do cartão não.
+
+**Não foi consertado aqui** porque aquela tela é de outro dono e não é objeto
+deste passo. É uma troca de `setMonth` por uma soma de mês grampeada (ou pela
+mesma RPC), com asserção sobre 31/01, 31/03 e 29/02 de ano bissexto.
+
+**E o avulso SEM chamado continua sem dedup algum**: dois cliques em "Lançar"
+criam dois jogos de parcelas. Nenhum dos dois índices da U80 o alcança — os dois
+predicados exigem `chamado_peca_id IS NOT NULL` ou `chamado_id IS NOT NULL`. A
+afirmação da U80 é **"lançar pelo cartão não duplica"**, e não "ninguém com papel
+financeiro duplica nada em lugar nenhum".
+
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 
 A auditoria da v7 varreu o sistema e achou amarelos de fora da paleta em telas

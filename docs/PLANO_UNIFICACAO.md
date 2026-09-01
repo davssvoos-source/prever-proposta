@@ -5848,3 +5848,328 @@ ANTES do deploy.** Ela abre as quatro portas a `authenticated`, prova o
 privilégio pelo catálogo e traz o DESFAZER. Depois de rodá-la, a **linha 209 da
 conferência da U78 passa a dizer `>>> OLHAR <<<` com o valor 4** — é o certo, e é
 bom que doa: quer dizer que a fronteira mudou.
+
+## U80 — O ciclo financeiro no cartão (Fase 1, Passo 1.3)
+
+R103 (o selo), R104 (concluir com decisão de cobrança), R105 (compartilhar o
+dia), R106 (retornos pendentes).
+
+Esta entrega **lê** o motor financeiro que existe desde agosto (U2–U5, U7, U13).
+Ela não reescreve `aprovar_chamado_financeiro`, `ajustar_item_cobranca`,
+`marcar_chamado_faturado`, os fechamentos, `cobrancas_select`, `cobrancas_write`
+nem `pode_ver_financeiro`. O censo da U80 no verificador prova isso pelo
+ARQUIVO (as funções que a migration define contra uma lista escrita à mão) e as
+linhas 105, 106 e 114 da conferência provam pelo CATÁLOGO.
+
+### A premissa do briefing estava errada, e a correção mudou o desenho
+
+O briefing dizia que hoje, para o SAC, um chamado COM cobrança lançada se
+apresenta como se não tivesse nenhuma — em `DetalheCampo.tsx`, no bloco gateado
+por `cobrancasOs.length > 0`. Fui conferir antes de construir: **aquele bloco
+está DENTRO do card aberto por `{veFinanceiro && os.status === "concluido" &&
+pecasOs.length > 0 && (`**, e o comentário logo acima diz textualmente "o SAC
+(gestor sem valores, R13) também não vê este card". Para o SAC o card inteiro
+não é pintado. Ele não vê "nenhuma cobrança"; ele não vê seção nenhuma. Isso é
+**omissão limpa, não mentira**.
+
+O que está vivo é o **mecanismo**, e ele é pior do que "erro engolido": não
+existe erro. `cobrancas_select` é `USING (pode_ver_financeiro(auth.uid()))`
+(U4:293), e **uma policy de SELECT filtra linhas — ela não levanta erro**. O SAC
+recebe HTTP 200 com `[]`. O `if (error) return []` de `cobranca.ts:101` nem
+chega a ser exercido, porque não há nada para tratar. Nenhum tratamento de erro
+no cliente conserta isso: é a FORMA da RLS. `SECURITY DEFINER` não é preferência
+de estilo — é a única construção que sabe separar "zero" de "não te deixam
+contar".
+
+A omissão vira mentira no instante em que uma superfície liberada ao SAC — a
+grade, `telas.ts` `[false, true, true]` — for **obrigada a dizer alguma coisa
+por cartão**. Era isso que o briefing tinha razão em temer, no lugar errado.
+
+### Quantos bits a RPC compra, medido
+
+`aprovar_chamado_financeiro` (corpo vivo em U13:112-114, e não em U7:689 como o
+briefing dizia) escreve, na MESMA transação em que insere as linhas,
+`faturamento_status = CASE WHEN v_itens = 0 THEN 'sem_cobranca' ELSE 'aprovada'
+END`. Logo `aprovada ⇒ EXISTS(cobrancas)`. E `chamados.faturamento_status`
+**não** é gateado por `pode_ver_financeiro`: mora em `chamados`, cuja
+`chamados_select` começa por `is_gestor`, que **inclui o SAC** (U6a:58).
+
+Fiz o censo do que o bit acrescenta ao que o SAC já lê:
+
+| Estado | Derivável da coluna? | O que a RPC acrescenta |
+|---|---|---|
+| `a_analisar`, `em_conferencia` | sim (não há) | nada |
+| `faturada` | sim (há) | nada |
+| `aprovada` | sim (há) | o caso em que as cobranças foram CANCELADAS depois |
+| `sem_cobranca` | sim (não há) | o avulso vinculado, que só a porta nova cria |
+
+**Dois casos de borda, e a medida está escrita no código**: o parâmetro
+`temLancamento` é lido em EXATAMENTE DUAS LINHAS de `seloDoCiclo`. Se o Davi
+quiser cortar escopo, cortar a RPC custa esses dois casos e o resto da entrega
+fica de pé — e a linha 108 da conferência diz, antes de instalar, se a função
+tem algum usuário (quantas pessoas são gestor E não veem financeiro; se for 0,
+ela não tem um único).
+
+Construí mesmo assim por três razões que não são estética: o painel de conclusão
+precisa da mesma resposta e discordaria da grade; ela é a fonte única dos dois
+consumidores, matando a divergência que já existe entre `useCobrancasDoChamado`
+(traz `cancelada` junto) e `consolidar()`/`montar_fechamento` (filtram); e ela
+devolve **um booleano**, nunca uma contagem — `3` é "três peças faturáveis neste
+atendimento", que é volume de serviço, e o cartão perguntou "já lançou?".
+
+### O gate é `is_gestor`, e a escolha tem uma razão medida
+
+`pode_acessar_chamado` (corpo vivo em S2:148-158) tem o ramo `c.responsavel_id
+IS NULL`: **qualquer autenticado acessa chamado sem dono**. `chamados_select`
+(U7:545) **não** tem esse ramo. Usar aquela régua faria a função responder sobre
+chamados que quem perguntou não consegue LER — e, combinada com
+`agenda_campo_select USING (true)` (decisão declarada da U78, porque sem ela o
+chip de ocupação da equipe do técnico mostraria 40% onde há 90%), ela viraria um
+oráculo que diz quais serviços dos colegas foram faturados, 150 por requisição.
+
+Gate ÚNICO, e de propósito: duas camadas em que a de dentro é sempre verdadeira
+para quem passou pela de fora é código morto num caminho de segurança — não
+exercitado, e dando conforto falso. Quem não é gestor recebe **zero linhas**, o
+`Map` do cliente nasce vazio, e a grade dele fica exatamente como era. A
+degradação é silenciosa e CORRETA; um 42501 ali daria a ele uma faixa vermelha
+no lugar da programação.
+
+### Os índices: onde "impossível" deixa de ser adjetivo
+
+Não existia UNIQUE nenhum em `cobrancas` — os quatro índices da U4:85-88 são
+todos não-únicos. O que travava reaprovação era o `DELETE … WHERE chamado_id = _
+AND status = 'aberta'` de U13:95, e ele é idempotente **de uma thread só**. Dois
+cenários duplicavam:
+
+1. **concorrência.** Em READ COMMITTED, T1 e T2 fazem DELETE (0 linhas cada, com
+   snapshots diferentes), inserem 3 cada, e o cliente é cobrado duas vezes.
+2. **reaprovar depois do fechamento.** O DELETE apaga só `'aberta'`; as
+   `fechada`/`faturada` sobrevivem e um jogo novo entra ao lado. Nada em
+   `aprovar_chamado_financeiro` olha `faturamento_status`. **A trava era de
+   tela** (o botão exige `a_analisar`), não de motor.
+
+`cobrancas_uma_por_peca_idx` e `cobrancas_avulsa_unica_por_chamado_idx`, os dois
+parciais em `status <> 'cancelada'` — cancelar libera a peça para ser cobrada de
+novo, que é o que a palavra quer dizer, e é o MESMO recorte de
+`montar_fechamento` (U5:139) e de `consolidar()`. Reaprovação legítima continua
+passando: DELETE e INSERT são da mesma transação, e as linhas apagadas já estão
+mortas para o índice quando o INSERT chega.
+
+**O preço, declarado:** `aprovar_chamado_financeiro`, que esta migration não
+toca, passa a poder devolver 23505 onde antes duplicava em silêncio. É correção
+trocando silêncio por barulho, e o barulho é feio — em inglês, para um
+comercial, às 18h. Quem traduz é `aprovarCobranca()`, que não é motor; uma
+chamada direta à RPC continua vendo o erro cru.
+
+**E o pré-voo ABORTA** se a base já tiver a duplicata que os índices proíbem,
+com a consulta de "quem não casou" dentro da mensagem. O padrão da casa para
+constraint (`DO $$ … EXCEPTION … RAISE NOTICE`, U4:52-83) engoliria a falha — e
+`RAISE NOTICE` é **invisível** no editor do Supabase: a migration terminaria
+VERDE sem o índice, com a promessa inteira apoiada em nada. **Existe uma chance
+real de a U80 abortar na primeira tentativa**, porque o cenário 2 está vivo
+desde a U13 e é acionável pela UI. Digo isso antes de o Davi rodar: descobrir às
+23h que a migration não passa é pior do que saber às 10h que ela pode não
+passar. E cancelar é `UPDATE status='cancelada'`, **nunca DELETE** — um
+fechamento pode já ter recolhido a linha.
+
+### O estado em que o cartão se cala
+
+`aprovada`/`faturada` **sem** lançamento vivo é o caso em que as duas verdades
+discordam. Considerei os dois selos possíveis e recusei os dois: "Lançado"
+afirma o que não existe; "nada a cobrar" afirma o contrário **e** entrega, por
+inferência, que alguém CANCELOU uma cobrança já lançada — que é conversa
+comercial com o cliente, e é exatamente o que a RPC se recusa a devolver. As
+duas leituras mentem, em direções opostas.
+
+Então `seloDoCiclo` devolve `null` e a divergência vai para `divergenciasDoCiclo`
+— gêmeo de desenho de `blocosForaDaGrade`: um número que tem de ser zero, com
+faixa quando não é, **gateada por `veFinanceiro`**, porque as duas conversas
+possíveis são de quem vê valores. Para o SAC o cartão fica em silêncio, que é
+omissão, igual à de um chamado ainda aberto.
+
+### O que eu recusei construir
+
+- **Lançar direto pelo cartão da grade.** O cartão mostra o selo e APONTA. A
+  porta é uma RPC, não um INSERT do navegador — `lancarCobrancaAvulsa` não grava
+  `chamado_id`, não grava `contrato_id`, não mexe em `faturamento_status`, e
+  usada como está criaria uma cobrança que o selo nunca encontra.
+- **Uma terceira via de nascimento de cobrança.** A U4:295-296 escreveu a
+  fronteira: "escrita direta existe para lançamento avulso; a cobrança que vem
+  de OS nasce só pela aprovação". A porta nova é a via do avulso VINCULADO, e
+  ela **recusa** rodar num chamado que teve análise item a item: onde houve
+  análise, a cobrança sai da conferência, com o valor do contrato. Sem essa
+  linha, um gestor digitaria R$ 480 num chamado com seis peças analisadas e o
+  contrato não teria opinião.
+- **Reescrever a divisão das parcelas em SQL.** `parcelar()` divide em centavos
+  com o resto na primeira, porque 3 × 33,33 em float dá 99,99 e o cliente paga a
+  menos para sempre. O array vai no corpo e o servidor **confere que a soma
+  fecha**: a divisão tem um dono só, e a invariante é conferida dos dois lados.
+- **Um 5º balde em `classificarChamado`.** Ela está sob asserção CRÍTICA em dois
+  pontos; "retorno pendente" é um predicado IRMÃO.
+- **Um contador de ciclo no `CabecalhoDaLinha`.** Aquele cabeçalho é por
+  EQUIPE/semana e o ciclo é por CHAMADO. O agregado vai na linha de resumo do
+  dia, que é onde "quem conta é quem filtra" já está aplicado.
+- **O selo dentro de `ItemDaGrade`.** `celulaDaGrade` é O ÁTOMO, e o átomo não
+  pode mudar com quem olha — é a lição literal de `divergenciaDeEquipe`, que
+  devolve `null` para o contador do cabeçalho não dar `[1,0,0,1]` para o gestor
+  e `[3,1,0,1]` para o técnico. O selo é eixo ortogonal e fica do lado de fora,
+  num `Map`. Bônus honesto: a entrega sai com uma linha apagada se virar
+  poluição; um campo no átomo é para sempre.
+- **Abrir o painel do ciclo pelo clique no cartão.** O clique continua sendo o
+  gesto da AGENDA. Trocá-lo faria quem só queria mover meia hora cair numa
+  decisão financeira. O ciclo entra por uma lista abaixo da grade, derivada dos
+  MESMOS selos.
+
+### Detalhes que só apareceram lendo o código
+
+- **`notify_chamado` lê `NEW.faturamento_status`** no ramo `NEW.status =
+  'concluido'` (U13:196-206) para decidir se dispara "Chamado a conferir" a todo
+  admin/comercial. Por isso a porta faz **UM ÚNICO UPDATE**: em dois, o primeiro
+  dispararia o aviso com o valor VELHO — um sino por atendimento encerrado, e um
+  alerta de conferência para algo que acabou de ser decidido.
+- **`trg_chamados_espelho_e_do_satelite` não dispara** no UPDATE da porta: ele é
+  `BEFORE UPDATE OF data_hora_agendada` (U79:239-241), e a coluna não está no SET.
+- **O comentário de `programacao/data.ts` estava errado** e afirmava que "o sac
+  NÃO é gestor para a porta", transcrevendo `is_gestor` sem `sac`. É falso desde
+  a U6a:51-66. Quem escrevesse um selo lendo aquele comentário erraria a régua na
+  primeira linha. Corrigido.
+- **O botão "Marcar faturada" nunca renderizou para ninguém.** A condição testava
+  `c.status === "aberto" || c.status === "concluido"` contra um domínio que é
+  `('aberta','fechada','faturada','cancelada')` (CHECK em U4:54-55) — gênero
+  masculino em cima de valores femininos, e o `as any` da consulta impediu o
+  `tsc` de ver. `marcar_chamado_faturado` está instalada, com REVOKE e GRANT
+  corretos, sem chamador vivo desde a U7. Consertado.
+- **O card de cobrança somava a `cancelada` junto** no "N cobrança(s) geradas ·
+  R$ X". Um atendimento com uma cobrança de R$ 400 cancelada anunciava dinheiro
+  que não existe. O recorte agora mora em UM lugar (`temLancamento`), e é o
+  mesmo dos índices e do fechamento.
+- **`useChamadosComBloco` passou a pedir `cumprido_em`** junto do `chamado_id` —
+  a coluna a mais custa ZERO requisição e a MESMA resposta produz os dois Sets
+  que "retorno pendente" precisa. Sem isso o predicado sairia dos blocos da
+  SEMANA e responderia "nada à frente" para um retorno marcado daqui a três
+  semanas, que é o defeito que o docblock daquela função já descreve.
+- **`useBlocosDaGrade` passou a devolver `idsDeChamado`.** `blocos` é o SUPERSET
+  (semana + irmãos de outras semanas, que o ordinal precisa); derivar a lista
+  dali inflaria a pergunta com chamados que não têm um cartão sequer na tela.
+- **O `as unknown as ChamadoParaGrade[]` morreu.** Aquela dupla asserção desliga
+  o typechecker: `faturamento_status`, obrigatório desde esta entrega, chegaria
+  como `undefined` sem o `tsc` nem o CENSO dizerem nada — e `undefined !== null`,
+  então o selo cairia num ramo que ninguém escreveu. Virou
+  `chamadosParaGrade()`, com asserção de que a string sumiu do route.
+
+### O que a verificação pegou
+
+- **Três falsos positivos de comentário, numa tarde.** O regex `RAISE NOTICE`
+  casava com a frase da U80 que explica **por que ela aborta em vez de usar
+  RAISE NOTICE**; o regex `prosrc` casava com a linha que diz que **nenhuma
+  conferência procura substring em prosrc**; e o regex do botão morto casava com
+  o comentário que **conta o conserto**. O filtro que o repo já tinha
+  (`^\s*(//|\*|/\*)`) não pega o terceiro, porque a linha do meio de um bloco
+  `{/* … */}` em JSX não começa por nenhum dos três. Passou a haver um
+  `soCodigo80` que remove os blocos INTEIROS.
+- **O censo das três listas da U79 ficou vermelho** quando a camada de dados
+  ganhou duas RPCs que a U79 não concede. Excluí-las ali sem medi-las em lugar
+  nenhum seria abrir um buraco no censo — então a exclusão é nominal e o censo
+  da U80 prova que aquelas duas são exatamente as RPCs da camada que não são
+  portas da agenda, e que as duas são concedidas pela U80. As duas listas se
+  conferem uma à outra.
+- **O censo dos escritores de `data_hora_agendada` acusou `modelo.ts`**, porque
+  `chamadosParaGrade` copia a coluna da linha lida para o modelo de tela. Não é
+  gravação. A isenção nova é apertada de propósito — a coluna aparecendo dos
+  DOIS lados —, e uma gravação de verdade (`{ data_hora_agendada: iso }`)
+  continua sendo pega.
+- **O CENSO dos exports do modelo puro** acusou `SELOS_DO_CICLO` sem consumidor
+  na primeira rodada. Ele tem consumidor agora: o censo dos seis selos.
+
+**Quatro asserções de mutação**, cada uma escrita quebrando a regra e vendo o
+verificador ficar vermelho antes de contar: (i) o item OCULTO não vaza cliente,
+endereço nem descrição para o texto compartilhado — com CANÁRIO, porque um regex
+procurando `ROTULO_DO_OCULTO` no fonte provaria que a linha existe e não que ela
+está viva; (ii) `null` e `false` em `temLancamento` são estados diferentes;
+(iii) o bloco de chamado ilegível devolve `null` e não "sem OS"; (iv)
+`plantonista: null` não produz uma linha sequer.
+
+**Dois censos de lista derivada contra lista escrita à mão:** os seis selos (o
+`type`, a constante, o rótulo e a cor têm de ser a MESMA lista — um selo novo
+sem palavra ou sem cor cai ali) e os cinco valores do CHECK de
+`faturamento_status` da U7 contra os três que produzem selo. O segundo é o que
+pegaria um valor novo no CHECK, e é o que pegou `em_conferencia` sendo o valor
+que existia e que gate nenhum lia.
+
+### O que fica declarado, e não foi consertado
+
+Quatro defeitos apurados no caminho, todos em `docs/PENDENCIAS_TECNICAS.md`. O
+mais grave muda o cálculo desta entrega inteira: **`chamado_eventos_select` é
+`USING (true)`** (U7:586-587) e `aprovar_chamado_financeiro` grava
+`'Cobrança aprovada: 3 item(ns), total 1.842,50'` ali (U13:116-120), pintado sem
+gate nenhum em `DetalheCampo.tsx:1205-1207`. **Hoje qualquer autenticado — o SAC
+e o técnico — lê o valor exato em reais que a R13 e a U6a existem para
+esconder.** Não é da Fase 1 e não conserto aqui, mas não dá para argumentar que
+"existe cobrança" é seguro *por ser menos que o valor* quando o valor já está
+aberto ao lado. O argumento do bit tem de se sustentar sozinho, e ele se
+sustenta (`aprovada ⇒ EXISTS`, e o SAC já lê `aprovada`) — mas a ordem de
+prioridade do Davi provavelmente deveria mudar.
+
+**Migration `20260903090000_u80_ciclo_financeiro_no_card.sql` — rodar DEPOIS da
+U79.** Ela pode ABORTAR no pré-voo se a base já tiver duplicata; a mensagem traz
+a consulta. Olhe a **linha 108** antes de decidir instalar (se ninguém é gestor
+sem financeiro, a RPC de leitura não tem usuário) e a **linha 112** (o ponto
+cego declarado: bloco que aconteceu e ninguém marcou "feito" não ganha selo, não
+entra em retornos pendentes e não desenha cartão na semana aberta).
+
+### As duas correções de DINHEIRO que a auditoria trouxe depois
+
+Zero FATAL, dez GRAVE. Duas mexiam em dinheiro, e por isso entraram antes de
+qualquer outra coisa — em dinheiro, "improvável" não conta.
+
+**"1.500" virava R$ 1,50.** `Number(valor.replace(",", "."))` troca só a
+PRIMEIRA vírgula. A tabela do que uma pessoa digita num campo de valor:
+
+| digitado | resultado | o que acontecia |
+|---|---|---|
+| `1500` | 1500 | ok |
+| `1500,00` | 1500 | ok |
+| `1.500,00` | NaN | recusado — chato, mas seguro |
+| `R$ 1500` | NaN | recusado — chato, mas seguro |
+| **`1.500`** | **1.5** | **lançava R$ 1,50** |
+
+O último é o mais provável de todos e era o **único que não era recusado**. Ele
+atravessava a validação, atravessava `parcelar`, o servidor conferia que a soma
+fecha (1,50 = 1,50) e gravava — subcobrando o cliente em 99,9% **com trilha de
+auditoria completa dizendo que alguém decidiu aquilo**. Virou `reaisDigitados`,
+função pura em `modelo.ts` com asserção sobre a tabela inteira: a vírgula manda,
+e sem ela o ponto só é milhar quando vem seguido de três dígitos. De quebra, a
+conversão saiu do componente, que é a regra 7 da casa.
+
+**A competência caía no mês errado.** `timestamptz::date` usa o TimeZone da
+SESSÃO, que no Supabase é UTC. Um atendimento encerrado às 21:30 de 31/08 em
+Brasília é 00:30 de 01/09 em UTC: a cobrança nascia com competência do mês
+SEGUINTE e entrava no fechamento errado.
+
+E aqui está a parte que muda a natureza do conserto: **o defeito não é da U80.**
+`aprovar_chamado_financeiro()` (U7:711) já fazia `COALESCE(...)::date` sem fuso,
+e a U80 copiou a convenção. Ou seja, isto está vivo desde agosto. A U76
+documentou a armadilha ("uma hora de diferença vira uma semana de erro"), a U78 e
+a U79 a respeitaram, e aqui ela custa um MÊS em vez de uma semana.
+
+Consertei os DOIS caminhos na mesma migration, e o motivo é que consertar só o
+novo seria pior que o defeito: a mesma conta cairia em meses diferentes conforme
+a porta por onde entrou, e ninguém entenderia olhando os dados. **Nenhuma linha
+já gravada é reescrita** — um fechamento pode já ter recolhido aquela cobrança, e
+mudar a competência de uma linha fechada alteraria um total que alguém conferiu e
+possivelmente já cobrou.
+
+**Os dois censos ficaram vermelhos, e estavam certos.** Eles acusaram
+`aprovar_chamado_financeiro` aparecendo numa migration que se declarava "não
+toca o motor". Era verdade quando foram escritos e deixou de ser quando eu
+encostei no motor — então a lista mudou, com o porquê ao lado, em vez de o censo
+ser afrouxado. É a diferença entre atualizar uma afirmação e silenciá-la.
+
+**Teste de mutação das duas correções: 12 de 12 pegas** — e a última só depois de
+apertar uma asserção que o `[sS]{0,200}` deixava passar: um `IF false`
+injetado desligava a garantia do "revisar" com a suíte verde. Terceira aparição
+da mesma família nesta semana.
+
+2061 asserções, build ok, tsc em **83** — dois ABAIXO do baseline de 85, porque a
+entrega fechou duas portas de tipo que estavam abertas.
+

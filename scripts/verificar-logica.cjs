@@ -7717,9 +7717,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // × os `supabase.rpc()` da camada de dados × os GRANT da migration. Nasce uma
   // quinta porta, ou uma que ninguém concedeu, e o censo acusa — coisa que três
   // asserções separadas não fariam.
+  // A U80 acrescentou DUAS RPCs a esta MESMA camada de dados
+  // (`chamados_com_lancamento` e `concluir_chamado_com_cobranca`). Elas não são
+  // portas da AGENDA e não são concedidas pela U79 — se entrassem aqui, este
+  // censo ficaria vermelho para sempre por uma razão que não é a dele.
+  //
+  // EXCLUIR SEM MEDIR SERIA ABRIR UM BURACO, e é por isso que a lista abaixo
+  // não fica solta: o censo da U80 (bloco próprio, mais adiante) prova que
+  // estas duas são EXATAMENTE as RPCs da camada que não são portas da agenda, e
+  // que as duas são concedidas pela U80. As duas listas se conferem uma à
+  // outra; uma RPC nova que ninguém conceder cai numa das duas.
+  const RPCS_DO_CICLO_U80 = ['chamados_com_lancamento', 'concluir_chamado_com_cobranca'];
   const rpcsDaCamada79 = [...new Set(
     [...dados79.matchAll(/supabase\.rpc\(\s*"([a-z_0-9]+)" as any/g)].map((m) => m[1]),
-  )].filter((n) => n !== 'is_gestor').sort();
+  )].filter((n) => n !== 'is_gestor' && !RPCS_DO_CICLO_U80.includes(n)).sort();
   const grantsDaU79 = [...u79.matchAll(/^GRANT EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^;]*\)\s+TO authenticated;$/gm)]
     .map((m) => m[1]).sort();
   eq('CRÍTICO: CENSO das três listas — as portas do modelo puro, as RPCs que a camada de dados chama e os GRANT da migration são a MESMA lista',
@@ -7834,6 +7845,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
       .filter((l) => /(^|[^.\w])data_hora_agendada\s*\??\s*[:=]/.test(l))
       .filter((l) => !/data_hora_agendada\s*\??\s*:\s*(string|Date|number|null)/.test(l))
+      // A SEGUNDA ISENÇÃO (U80): a linha em que a coluna aparece dos DOIS LADOS
+      // é CÓPIA DE LEITURA, não gravação — `data_hora_agendada:
+      // txt(l.data_hora_agendada)` em `chamadosParaGrade` copia a linha lida
+      // para o modelo de tela e não fala com o banco. Ela é apertada de
+      // propósito: uma gravação de verdade (`{ data_hora_agendada: iso }`,
+      // `{ data_hora_agendada: null }`, `{ data_hora_agendada: novaData }`) NÃO
+      // tem a coluna à direita e continua sendo pega. O único caso que ela
+      // deixa passar é `.update({ data_hora_agendada: c.data_hora_agendada })`,
+      // que é uma gravação que não muda nada.
+      .filter((l) => {
+        const i = l.indexOf('data_hora_agendada');
+        return !l.slice(i + 'data_hora_agendada'.length).includes('data_hora_agendada');
+      })
       .length > 0)
     .map((a) => a.split(path79.sep).join('/'))
     .sort();
@@ -8256,6 +8280,686 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [...new Set([...vivo79.matchAll(/^GRANT\s+EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^)]*\)\s+TO [^;]*authenticated/gm)].map((m) => m[1]))].sort(),
        PORTAS.slice().sort());
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// U80 — O CICLO FINANCEIRO NO CARTÃO (R103/R104/R105/R106)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// AS QUATRO ASSERÇÕES DE MUTAÇÃO ESTÃO MARCADAS `MUTAÇÃO:` no nome. Cada uma
+// foi escrita quebrando a regra de propósito e vendo o verificador ficar
+// VERMELHO antes de contar — é a regra 1 desta casa, e sem ela uma asserção é
+// só uma frase confiante.
+//
+// E o regex sobre SQL respeita as três cicatrizes da regra 2:
+//   · `-- REVOKE` contém `REVOKE` → tudo ancorado em `^` com flag `m`;
+//   · `[\s\S]{0,N}` atravessa o `;` até o comentário do lado → `[^;]`;
+//   · `RETURN` posto depois do `BEGIN` mata a função sem apagar linha → prende
+//     a PRIMEIRA INSTRUÇÃO EXECUTÁVEL, extraída do corpo.
+{
+  const fs80 = require('fs');
+  const M80 = carregar('src/features/programacao/modelo.ts');
+  const CAMINHO80 = 'supabase/migrations/20260903090000_u80_ciclo_financeiro_no_card.sql';
+  const u80 = fs80.readFileSync(CAMINHO80, 'utf8');
+  // Só o que RODA: o rodapé "DESFAZER" é um bloco comentado que contém DROP,
+  // GRANT e CREATE — medir o arquivo inteiro seria medir o desfazer junto.
+  const vivo80 = u80.slice(0, u80.indexOf('\n-- ╔') > 0 ? u80.indexOf('\n-- ╔') : u80.length);
+  const modelo80 = fs80.readFileSync('src/features/programacao/modelo.ts', 'utf8');
+  const dados80 = fs80.readFileSync('src/features/programacao/data.ts', 'utf8');
+  const tela80 = fs80.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+  const celula80 = fs80.readFileSync('src/features/programacao/CelulaDaGrade.tsx', 'utf8');
+  const cobranca80 = fs80.readFileSync('src/features/chamados/cobranca.ts', 'utf8');
+  const detalhe80 = fs80.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+
+  /**
+   * TODA ASSERÇÃO NEGATIVA RODA SOBRE O CÓDIGO, NUNCA SOBRE O ARQUIVO INTEIRO.
+   *
+   * Esta casa já contou 5+ falsos positivos pela mesma causa, e esta entrega
+   * produziu mais três em uma tarde: o comentário que EXPLICA por que a coisa
+   * não existe mais CONTÉM a coisa. Concretamente, aqui:
+   *   · a U80 diz "RAISE NOTICE é INVISÍVEL no editor do Supabase" para
+   *     justificar por que ABORTA — e um regex por `RAISE NOTICE` casava;
+   *   · ela diz "nenhuma linha aqui procura substring em `prosrc`" — e um
+   *     regex por `prosrc` casava;
+   *   · o `DetalheCampo` transcreve a condição MORTA (`c.status === "aberto"`)
+   *     no comentário que conta o conserto — e o regex casava com a cicatriz.
+   * O filtro do repo (`^\s*(//|\*|/\*)`) não pega o terceiro, porque a linha do
+   * meio de um bloco `{/* … *\/}` em JSX não começa por nenhum dos três.
+   * Então aqui os blocos são removidos INTEIROS, e não linha a linha.
+   */
+  const soCodigo80 = (fonte) => fonte
+    .replace(/\/\*[\s\S]*?\*\//g, '')                       // /* … */ e {/* … */}
+    .split('\n').filter((l) => !/^\s*(\/\/|--)/.test(l)).join('\n');
+  const vivoCod80 = soCodigo80(vivo80);
+  const detalheCod80 = soCodigo80(detalhe80);
+
+  // ── fixtures: uma célula com um item, montada pelo modelo de verdade ─────
+  const bloco80 = (p) => ({
+    id: p.id ?? 'B1', chamado_id: p.chamado_id ?? null, dupla_id: 'D1',
+    dia: '2026-09-03', inicio_min: 540, servico_min: 60, deslocamento_min: 0,
+    cumprido_em: p.cumprido_em ?? null, cancelado_em: null,
+    os_externa: p.os_externa ?? null, titulo_externo: p.titulo_externo ?? null,
+  });
+  const ch80 = (p) => ({
+    id: p.id ?? 'C1', numero: p.numero ?? 'CH-1', titulo: p.titulo ?? 'Troca de câmera',
+    tipo: p.tipo ?? 'corretiva', prioridade: p.prioridade ?? 'normal',
+    status: p.status ?? 'concluido', natureza: p.natureza ?? 'campo',
+    responsavel_id: null, data_hora_agendada: null,
+    faturamento_status: p.faturamento_status ?? 'a_analisar',
+  });
+  const item80 = (bloco, chamado, oculto = false) => ({ bloco, chamado, oculto });
+
+  // ══ 1) O SELO: função TOTAL, e o "não sei" é um valor de primeira classe ══
+  eq('CRÍTICO: os seis selos, cada um pelo seu predicado — quatro deles saem de `chamados` e NÃO custam consulta nenhuma',
+     [M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ status: 'cancelado' })), null),
+      M80.seloDoCiclo(item80(bloco80({ cumprido_em: 'x', os_externa: 'OS-9' }), null), null),
+      M80.seloDoCiclo(item80(bloco80({ cumprido_em: 'x' }), null), null),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'a_analisar' })), false),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'aprovada' })), true),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'sem_cobranca' })), false)],
+     ['cancelado', 'fora_do_sistema', 'sem_os', 'a_conferir', 'lancado', 'nada_a_cobrar']);
+
+  // MUTAÇÃO 1 — e a PRIMEIRA versão desta asserção NÃO TINHA DENTES, o que só
+  // apareceu quando eu quebrei a regra de propósito. Ela usava
+  // `item80(bloco, null, true)` — oculto E chamado ausente, que é a forma que
+  // `celulaDaGrade` produz hoje. Nessa forma, apagar `if (item.oculto) return
+  // null;` deixava tudo VERDE: o `if (!c) return null;` logo abaixo devolvia o
+  // mesmo `null` por outro caminho. Eu estava medindo a redundância, não a
+  // regra.
+  //
+  // A fixture certa é a que torna a linha LOAD-BEARING: `oculto: true` COM o
+  // chamado presente. `oculto` é um campo DECLARADO do item, e a função tem de
+  // honrá-lo por si — não por coincidência de o chamado estar ausente. Hoje as
+  // duas coisas nascem juntas; no dia em que `chamado` vier de outra fonte (um
+  // cache, uma segunda consulta, um join novo), este campo é a ÚNICA coisa
+  // entre o atendimento alheio e o cartão. Sem a guarda, esta linha agora
+  // devolve "a_conferir" e fica vermelha.
+  eq('CRÍTICO (MUTAÇÃO): `oculto` manda sozinho — mesmo com o chamado carregado, o cartão do atendimento que este usuário não pode ler fica SEM selo',
+     [M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({}), true), false),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1', cumprido_em: 'x' }), null, true), false)],
+     [null, null]);
+
+  // MUTAÇÃO 2 — a linha que separa "contei e não há" de "não me deixaram
+  // contar". Trocar `if (temLancamento === null) return null;` por `=== false`
+  // (ou apagá-la) faz o SAC ver "a conferir" onde ele não tem direito de saber,
+  // e faz o técnico ver selo onde a RPC devolveu ZERO LINHAS.
+  eq('CRÍTICO (MUTAÇÃO): `null` e `false` em `temLancamento` são estados DIFERENTES — `null` cala o cartão, `false` deixa o selo sair de faturamento_status',
+     [M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'a_analisar' })), null),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'a_analisar' })), false)],
+     [null, 'a_conferir']);
+
+  // A PORTA TEMPORAL, pelos dois lados. Sem ela o bloco que ainda VAI acontecer
+  // se apresentaria como "sem OS" (acusação sobre o futuro), e o chamado aberto
+  // com bloco no passado diria "a conferir" — porque `a_analisar` é o DEFAULT
+  // da coluna, não uma decisão de ninguém.
+  eq('CRÍTICO: a defesa contra poluição é TEMPORAL — bloco pendente sem chamado e chamado não concluído saem sem selo, e a semana à frente fica limpa',
+     [M80.seloDoCiclo(item80(bloco80({}), null), null),
+      M80.seloDoCiclo(item80(bloco80({ os_externa: 'OS-9' }), null), null),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ status: 'aberto' })), false),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ status: 'agendado' })), false)],
+     [null, null, null, null]);
+
+  eq('CRÍTICO: `em_conferencia` conta como A CONFERIR — a análise rodou, ninguém aprovou, e hoje o chamado some da fila, do alerta e dos três botões sem ninguém ter decidido nada',
+     M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'em_conferencia' })), false),
+     'a_conferir');
+
+  // O ESTADO EM QUE O CARTÃO SE CALA. As duas leituras possíveis mentem em
+  // direções opostas — "Lançado" afirma o que não existe, "nada a cobrar"
+  // entrega o cancelamento por inferência a quem não vê valores.
+  eq('CRÍTICO: decidido (aprovada/faturada) e SEM lançamento vivo → o cartão SE CALA, e quem grita é a faixa de divergência',
+     [M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'aprovada' })), false),
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: 'faturada' })), false)],
+     [null, null]);
+
+  eq('chamado que não é de campo não ganha selo — anomalia não se acusa (e um interno criado hoje nasce `a_analisar`, que é o DEFAULT da coluna)',
+     M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ natureza: 'interno' })), false),
+     null);
+
+  // ══ 2) CENSO: os selos do TIPO × a lista escrita à mão × o que a tela pinta ══
+  // Lista DERIVADA do fonte contra lista escrita à mão: é o que pega o sétimo
+  // selo que nascer sem ninguém pensar nele. Três listas, uma verdade.
+  {
+    const bloco = modelo80.slice(modelo80.indexOf('export type SeloDoCiclo'));
+    const doTipo = [...bloco.slice(0, bloco.indexOf(';')).matchAll(/"([a-z_]+)"/g)].map((m) => m[1]).sort();
+    const doLabel = [...celula80.slice(celula80.indexOf('export const SELO_LABEL'))
+      .slice(0, celula80.slice(celula80.indexOf('export const SELO_LABEL')).indexOf('};'))
+      .matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]).sort();
+    const doCores = [...celula80.slice(celula80.indexOf('export const SELO_CORES'))
+      .slice(0, celula80.slice(celula80.indexOf('export const SELO_CORES')).indexOf('};'))
+      .matchAll(/^\s{2}([a-z_]+):/gm)].map((m) => m[1]).sort();
+    eq('CRÍTICO: CENSO dos selos — o `type SeloDoCiclo`, a lista `SELOS_DO_CICLO`, o rótulo e a cor são a MESMA lista. Um selo novo sem palavra ou sem cor cai aqui',
+       [doTipo, [...M80.SELOS_DO_CICLO].sort(), doLabel, doCores],
+       [doTipo, doTipo, doTipo, doTipo]);
+    eq('…e são exatamente estes seis (a lista escrita à mão, contra a derivada do arquivo)',
+       doTipo,
+       ['a_conferir', 'cancelado', 'fora_do_sistema', 'lancado', 'nada_a_cobrar', 'sem_os']);
+  }
+
+  // CENSO do OUTRO eixo: os cinco valores do CHECK do banco × os que
+  // `seloDoCiclo` sabe tratar. É este que pega o `faturamento_status` que
+  // nascer amanhã — e que hoje pega `em_conferencia`, o valor que existia e que
+  // gate nenhum do sistema lia.
+  {
+    const u7 = fs80.readFileSync('supabase/migrations/20260819120000_u7_fusao_chamados.sql', 'utf8');
+    const m = /CHECK \(faturamento_status IN \(([^)]*)\)\)/.exec(u7);
+    const doCheck = m ? [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]).sort() : ['(não achei o CHECK)'];
+    // O que o modelo puro DECIDE para cada um, com lançamento ausente (false).
+    const tratados = doCheck.filter((v) =>
+      M80.seloDoCiclo(item80(bloco80({ chamado_id: 'C1' }), ch80({ faturamento_status: v })), false) !== null);
+    eq('CRÍTICO: CENSO — os cinco valores de `chamados.faturamento_status` no CHECK da U7, e os TRÊS que produzem selo sem lançamento vivo. Os outros dois são o estado em que o cartão se cala, e isso é escolha, não esquecimento',
+       [doCheck, tratados],
+       [['a_analisar', 'aprovada', 'em_conferencia', 'faturada', 'sem_cobranca'],
+        ['a_analisar', 'em_conferencia', 'sem_cobranca']]);
+  }
+
+  // ══ 3) O MAPA, O GUARDA E O AGREGADO — as três leituras do mesmo par ══════
+  {
+    const linha = {
+      duplaId: 'D1', semana: '2026-S36', herdada: false, semanaOrigem: null,
+      divergencias: 0, ocultos: 0,
+      ocupacao: { minutos: 0, base: 2400, pct: 0, comEscala: true },
+      celulas: [{
+        duplaId: 'D1', dia: '2026-09-03', semana: '2026-S36',
+        jornada: { ocupadoMin: 120, inicioMin: 540, fimMin: 660, estouro: false },
+        ocupacao: { minutos: 120, pct: 25 }, comEscala: true, disponivel: false,
+        itens: [
+          { ...item80(bloco80({ id: 'B1', chamado_id: 'C1' }), ch80({ id: 'C1', faturamento_status: 'a_analisar' })),
+            rotulo: 'CH-1', de: 540, ate: 600, ordinal: 1, retorno: false,
+            emergencial: false, seMove: false, divergencia: null },
+          { ...item80(bloco80({ id: 'B2', chamado_id: 'C2' }), ch80({ id: 'C2', faturamento_status: 'aprovada' })),
+            rotulo: 'CH-2', de: 600, ate: 660, ordinal: 1, retorno: false,
+            emergencial: false, seMove: false, divergencia: null },
+          { ...item80(bloco80({ id: 'B3', cumprido_em: 'x' }), null),
+            rotulo: 'Serviço fora do sistema', de: 660, ate: 720, ordinal: 1, retorno: false,
+            emergencial: false, seMove: false, divergencia: null },
+        ],
+      }],
+    };
+    const comLanc = new Map([['C1', false], ['C2', true]]);
+    eq('CRÍTICO: `selosDaGrade` resolve por BLOCO e o mapa vazio é a grade de ontem — quem não é gestor recebe zero linhas da RPC e nenhum cartão ganha selo',
+       [[...M80.selosDaGrade([linha], comLanc).entries()].sort(),
+        [...M80.selosDaGrade([linha], new Map()).entries()].sort()],
+       [[['B1', 'a_conferir'], ['B2', 'lancado'], ['B3', 'sem_os']],
+        [['B3', 'sem_os']]]);
+    // `sem_os` sobrevive ao mapa vazio de propósito: ele não depende da RPC —
+    // é `chamado_id IS NULL` no próprio bloco, e o bloco é `USING (true)`.
+
+    eq('CRÍTICO: QUEM CONTA É QUEM FILTRA — `resumoDoCiclo` sai dos MESMOS selos que os cartões mostram, nunca de uma segunda passada',
+       M80.resumoDoCiclo([linha], '2026-09-03', comLanc),
+       { total: 3, aConferir: 1, lancado: 1, semOs: 1 });
+    eq('…e o dia sem célula não inventa número',
+       M80.resumoDoCiclo([linha], '2026-09-04', comLanc),
+       { total: 0, aConferir: 0, lancado: 0, semOs: 0 });
+
+    // O GUARDA. Gêmeo de desenho de `blocosForaDaGrade`: tem de ser zero, e a
+    // tela mostra faixa quando não é.
+    eq('CRÍTICO: `divergenciasDoCiclo` acusa `aprovada` SEM lançamento vivo — e devolve VAZIO quando a RPC não respondeu, porque ausência não é divergência',
+       [M80.divergenciasDoCiclo([linha], new Map([['C2', false]])).map((c) => c.id),
+        M80.divergenciasDoCiclo([linha], comLanc).map((c) => c.id),
+        M80.divergenciasDoCiclo([linha], new Map()).map((c) => c.id)],
+       [['C2'], [], []]);
+
+    // Só chamado de campo CONCLUÍDO precisa de resposta do banco: perguntar
+    // pelo resto é pagar consulta por uma resposta que a função joga fora.
+    eq('CRÍTICO: `idsComCicloFinanceiro` pergunta SÓ pelos que precisam — campo e concluído, e nunca o bloco sem chamado',
+       M80.idsComCicloFinanceiro(
+         [bloco80({ id: 'B1', chamado_id: 'C1' }), bloco80({ id: 'B2', chamado_id: 'C3' }), bloco80({ id: 'B3' })],
+         [ch80({ id: 'C1' }), ch80({ id: 'C3', status: 'aberto' })],
+       ),
+       ['C1']);
+  }
+
+  // ══ 4) RETORNOS PENDENTES (R106): o balde que existe e não tem nome ══════
+  {
+    const abertos = [
+      ch80({ id: 'R1', status: 'aberto', data_hora_agendada: '2026-09-01T12:00:00Z' }),
+      ch80({ id: 'R2', status: 'aberto', data_hora_agendada: '2026-09-01T12:00:00Z' }),
+      ch80({ id: 'R3', status: 'concluido' }),
+    ];
+    eq('CRÍTICO: retorno pendente é `com_bloco` E sem NADA pendente à frente — R1 teve a visita e não tem retorno marcado; R2 tem; R3 está encerrado e sai por ESCOPO',
+       M80.retornosPendentes(abertos, new Set(['R1', 'R2', 'R3']), new Set(['R2'])).map((c) => c.id),
+       ['R1']);
+    eq('…e um chamado SEM bloco nenhum não é retorno pendente (é a fila "sem horário", que é outro balde e outra conversa)',
+       M80.retornosPendentes(abertos, new Set(), new Set()).map((c) => c.id),
+       []);
+    // A ARMADILHA: os dois Sets vêm do BANCO, em qualquer tempo. A camada de
+    // dados tem de pedir `cumprido_em` junto — sem a coluna, `pendentes` seria
+    // derivado dos blocos da SEMANA e responderia "nada à frente" para um
+    // retorno marcado daqui a três semanas.
+    eq('CRÍTICO: `useChamadosComBloco` pede `cumprido_em` na MESMA requisição e devolve os DOIS Sets — derivar "pendente" dos blocos da semana é o defeito que o docblock dela já descreve',
+       /\.select\("chamado_id, cumprido_em"\)/.test(dados80)
+       && /ativos: Set<string>; pendentes: Set<string>/.test(dados80), true);
+  }
+
+  // ══ 5) COMPARTILHAR O DIA (R105): a terceira projeção ════════════════════
+  {
+    const detalhe = () => ({
+      cliente: 'CANARIO_CLIENTE', endereco: 'CANARIO_ENDERECO', descricao: 'CANARIO_DESCRICAO',
+    });
+    const ctxBase = {
+      rotuloDoDia: () => 'quinta-feira, 03/09/2026',
+      nomeDaEquipe: () => 'Equipe A',
+      veiculoDaEquipe: () => 'Fiorino BRA-2E19',
+      membrosDaEquipe: () => ['Breno', 'Wesley'],
+      detalheDe: detalhe,
+      plantonista: null,
+    };
+    const linhaVisivel = {
+      duplaId: 'D1', semana: '2026-S36', herdada: false, semanaOrigem: null,
+      divergencias: 0, ocultos: 0,
+      ocupacao: { minutos: 60, base: 2400, pct: 3, comEscala: true },
+      celulas: [{
+        duplaId: 'D1', dia: '2026-09-03', semana: '2026-S36',
+        jornada: { ocupadoMin: 60, inicioMin: 540, fimMin: 600, estouro: false },
+        ocupacao: { minutos: 60, pct: 13 }, comEscala: true, disponivel: false,
+        itens: [{
+          ...item80(bloco80({ id: 'B1', chamado_id: 'C1' }), ch80({ id: 'C1' })),
+          rotulo: 'CH-1 · Troca de câmera', de: 540, ate: 600, ordinal: 1,
+          retorno: false, emergencial: false, seMove: true, divergencia: null,
+        }],
+      }],
+    };
+    // A FIXTURE DO CANÁRIO MANTÉM O CHAMADO CARREGADO, e isso é correção de uma
+    // asserção que não tinha dentes. A primeira versão punha `chamado = null`
+    // junto com `oculto = true` (a forma que `celulaDaGrade` produz hoje) — e
+    // aí apagar a guarda de `item.oculto` dentro de `textoDoDia` deixava tudo
+    // VERDE, porque `detalheDe` nem chegava a ser chamado: o `c ?
+    // ctx.detalheDe(c.id) : null` já devolvia null. Eu estava medindo o
+    // curto-circuito, não o corte.
+    // Com o chamado presente, `detalheDe` É chamado e devolve os canários — e
+    // a única coisa entre eles e o texto é a guarda. É também o cenário que
+    // importa no futuro: `detalheDe` é injetado pela tela, de uma fonte que
+    // pode não ser a mesma lista de onde `item.chamado` saiu.
+    const oculta = JSON.parse(JSON.stringify(linhaVisivel));
+    oculta.celulas[0].itens[0].oculto = true;
+    oculta.celulas[0].itens[0].rotulo = 'Outro atendimento';
+
+    const agora = new Date(2026, 8, 3, 8, 12);
+    const visivel = M80.textoDoDia([linhaVisivel], '2026-09-03', ctxBase, agora);
+    const escondido = M80.textoDoDia([oculta], '2026-09-03', ctxBase, agora);
+
+    // MUTAÇÃO 3 — o CANÁRIO. Apagar a guarda de `item.oculto` dentro de
+    // `textoDoDia` deixa esta linha VERMELHA. Um regex procurando
+    // `ROTULO_DO_OCULTO` no fonte não provaria nada: a linha existir não é a
+    // linha estar viva. É o vazamento mais sério desta entrega — um técnico
+    // compartilhando o dia não pode exportar o parque de clientes dos colegas.
+    eq('CRÍTICO (MUTAÇÃO): o item OCULTO não vaza cliente, endereço nem descrição para o texto compartilhado — sobra o horário e "Outro atendimento"',
+       [/CANARIO/.test(escondido), /Outro atendimento/.test(escondido), /09:00–10:00/.test(escondido)],
+       [false, true, true]);
+    eq('…e o item VISÍVEL leva os três (senão o canário acima passaria por a função não escrever nada)',
+       [/CANARIO_CLIENTE/.test(visivel), /CANARIO_ENDERECO/.test(visivel), /CANARIO_DESCRICAO/.test(visivel)],
+       [true, true, true]);
+
+    // MUTAÇÃO 4 — o GANCHO VAZIO. Uma linha "Plantonista: —" seria meia
+    // mentira: a Fase 3 é quem preenche o argumento, e até lá não há
+    // plantonista nenhum a anunciar.
+    eq('CRÍTICO (MUTAÇÃO): `plantonista: null` não produz UMA LINHA sequer — o gancho da Fase 3 é vazio de verdade',
+       visivel.split('\n').some((l) => /plant/i.test(l)), false);
+    eq('…e com plantonista ele aparece, uma vez (é o que prova que o gancho está ligado, e não morto)',
+       M80.textoDoDia([linhaVisivel], '2026-09-03', { ...ctxBase, plantonista: 'Igor' }, agora)
+         .split('\n').filter((l) => /Plantonista/.test(l)).length,
+       1);
+
+    eq('CRÍTICO: o texto carrega a HORA em que foi gerado — ele SOBREVIVE à grade, e sem carimbo o WhatsApp vira uma segunda verdade com validade indefinida',
+       /gerado em 08:12/.test(visivel), true);
+    eq('a equipe SEM escala na semana não entra no texto, e a equipe com escala e nada marcado sai como "disponível" — os dois zeros continuam diferentes',
+       (() => {
+         const vazia = JSON.parse(JSON.stringify(linhaVisivel));
+         vazia.celulas[0].itens = [];
+         const semEscala = JSON.parse(JSON.stringify(vazia));
+         semEscala.celulas[0].comEscala = false;
+         return [/disponível/.test(M80.textoDoDia([vazia], '2026-09-03', ctxBase, agora)),
+                 /Equipe A/.test(M80.textoDoDia([semEscala], '2026-09-03', ctxBase, agora))];
+       })(),
+       [true, false]);
+    eq('CRÍTICO: a tela NÃO monta o texto — quem monta é `textoDoDia`, e o route só injeta os nomes que o módulo puro não conhece',
+       /textoDoDia\(linhasVisiveis, dia, ctx, new Date\(\)\)/.test(tela80), true);
+    // `whatsappLink` é para uma PESSOA e não carrega texto; esta é outra forma.
+    eq('CRÍTICO: compartilhar usa `wa.me/?text=` com encodeURIComponent (a IRMÃ de whatsappLink, não ela) e `navigator.clipboard?.` COM o optional chaining',
+       [/return `https:\/\/wa\.me\/\?text=\$\{encodeURIComponent\(texto\)\}`;/
+          .test(fs80.readFileSync('src/features/gerencial/constants.ts', 'utf8')),
+        /navigator\.clipboard\?\.writeText/
+          .test(fs80.readFileSync('src/features/programacao/ColunaDoDia.tsx', 'utf8'))],
+       [true, true]);
+  }
+
+  // ══ 6) O GÊMEO PURO DA PORTA (R104) ══════════════════════════════════════
+  {
+    const bom = { descricao: 'Mão de obra', valorTotal: 480, parcelas: 2, tipoServico: 'manutencao' };
+    eq('CRÍTICO: `erroDoLancamento` recusa o que a porta recusa, com as MESMAS palavras — descrição vazia, parcela zero, e o teto por tipo de serviço',
+       [M80.erroDoLancamento(bom),
+        M80.erroDoLancamento({ ...bom, descricao: '   ' }),
+        M80.erroDoLancamento({ ...bom, parcelas: 13 }),
+        M80.erroDoLancamento({ ...bom, parcelas: 13, tipoServico: 'instalacao' }),
+        M80.erroDoLancamento({ ...bom, parcelas: 61, tipoServico: 'instalacao' }),
+        M80.erroDoLancamento({ ...bom, valorTotal: 0 }),
+        M80.erroDoLancamento({ ...bom, valorTotal: 0.05, parcelas: 12 })],
+       [null,
+        'Descreva o que está sendo cobrado.',
+        'Instalação vai até 60 parcelas; manutenção, até 12. Vieram 13.',
+        null,
+        'Instalação vai até 60 parcelas; manutenção, até 12. Vieram 61.',
+        'Informe um valor maior que zero.',
+        'Parcela de zero: 0.05 em 12 vezes não divide. Reduza as parcelas.']);
+    // As frases têm de estar VIVAS no corpo da RPC, não só parecidas: é o
+    // contrato de `erroDoAgendamento` × `agenda_campo_marcar`.
+    eq('CRÍTICO: as frases do modelo puro estão LITERALMENTE no corpo da porta — regra com duas redações é regra que o usuário aprende a não ler',
+       ['Descreva o que está sendo cobrado.',
+        'Instalação vai até 60 parcelas; manutenção, até 12. Vieram %.',
+        'Informe ao menos uma parcela.'].filter((f) => !vivo80.includes(f)),
+       []);
+    eq('CRÍTICO: o laudo não é pulável pelo atalho — `podeConcluirDoCartao` exige diagnóstico E serviço executado, com a frase idêntica à do passo 4 da porta',
+       [M80.podeConcluirDoCartao({ status: 'em_andamento', diagnostico: 'x', servico_executado: 'y' }),
+        M80.podeConcluirDoCartao({ status: 'em_andamento', diagnostico: '  ', servico_executado: 'y' }),
+        M80.podeConcluirDoCartao({ status: 'concluido', diagnostico: null, servico_executado: null }),
+        M80.podeConcluirDoCartao({ status: 'cancelado', diagnostico: 'x', servico_executado: 'y' })],
+       [null,
+        'Falta o registro do atendimento (diagnóstico e serviço executado). '
+          + 'Quem esteve em campo encerra pelo painel do chamado; aqui se decide a cobrança.',
+        null,
+        'O atendimento foi cancelado — não há o que concluir.']);
+    eq('…e essa frase também está viva na porta',
+       vivo80.includes('Falta o registro do atendimento (diagnóstico e serviço executado).'), true);
+  }
+
+  // ══ 7) A MIGRATION: privilégio, alcançabilidade e o que ela NÃO faz ══════
+  //
+  // Ancorado em `^` com flag `m`: `-- REVOKE …` contém `REVOKE …`, e essa
+  // família de falso-verde já mordeu três vezes nesta casa.
+  {
+    const ASSINATURAS = [
+      'public.chamados_com_lancamento\\(uuid\\[\\]\\)',
+      'public.concluir_chamado_com_cobranca\\(uuid,text,text,numeric,numeric\\[\\],text\\)',
+    ];
+    const semRevoke = ASSINATURAS.filter((a) =>
+      !new RegExp('^REVOKE EXECUTE ON FUNCTION ' + a + ' FROM PUBLIC, anon;$', 'm').test(vivo80));
+    eq('CRÍTICO: as DUAS funções da U80 levam REVOKE de PUBLIC e anon, na linha inteira e VIVA — a chave publishable está no .env VERSIONADO, e anon é o mundo',
+       semRevoke, []);
+    const semGrant = ASSINATURAS.filter((a) =>
+      !new RegExp('^GRANT  EXECUTE ON FUNCTION ' + a + ' TO authenticated, service_role;$', 'm').test(vivo80));
+    eq('…e as duas são concedidas a authenticated (sem isso o cartão nasce mudo e o painel nasce morto)',
+       semGrant, []);
+  }
+
+  // CENSO: as funções que a U80 DEFINE × a lista escrita à mão. É o que prova
+  // que ela não reescreveu o motor — e é mais forte do que procurar o nome de
+  // cada função do motor uma a uma, porque pega a que ninguém pensou em proibir.
+  // A TERCEIRA É DELIBERADA, e a lista carrega o motivo. `aprovar_chamado_financeiro`
+  // é do motor de agosto e a U80 a reescreve por UMA linha: `::date` vira
+  // `AT TIME ZONE 'America/Sao_Paulo'`. Sem isso, os DOIS caminhos de nascer
+  // cobrança (a aprovação e o lançamento novo) usariam convenções de fuso
+  // diferentes, e a mesma conta cairia em meses diferentes conforme a porta por
+  // onde entrou. O defeito é anterior a nós — desde agosto, chamado encerrado
+  // depois das 21h de Brasília gera competência do mês seguinte — e consertá-lo
+  // aqui é mais barato que conviver com dois relógios.
+  eq('CRÍTICO: CENSO — a U80 define EXATAMENTE estas três, e a terceira é o motor de agosto tocado SÓ no fuso (ajustar/faturar/fechamentos continuam como estão)',
+     [...new Set([...vivo80.matchAll(/^CREATE OR REPLACE FUNCTION public\.([a-z_0-9]+)/gm)].map((m) => m[1]))].sort(),
+     ['aprovar_chamado_financeiro', 'chamados_com_lancamento', 'concluir_chamado_com_cobranca']);
+  eq('CRÍTICO: e o que ela muda em aprovar_chamado_financeiro é o FUSO, nada mais — as duas garantias do motor continuam de pé',
+     /AT TIME ZONE 'America\/Sao_Paulo'/.test(vivo80)
+     // A condição TEM de vir COLADA no THEN. `[\s\S]{0,N}` engolia um
+     // `IF false` injetado no meio: a garantia do "revisar" ficava desligada
+     // e a asserção, verde. É a terceira vez que esta família aparece —
+     // quantificador frouxo não prova que a condição é a que se pensa.
+     && /IF v_revisar > 0 THEN\s*\n\s*RAISE EXCEPTION/.test(vivo80)
+     && /DELETE FROM public\.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';/.test(vivo80),
+     true);
+  eq('CRÍTICO: e ela NÃO reescreve competência de linha nenhuma já gravada — fechamento já recolhido não se mexe',
+     /UPDATE public\.cobrancas[^;]{0,200}competencia/m.test(vivo80), false);
+  eq('…e ela não recria policy nenhuma: a régua de leitura de `cobrancas` continua sendo a da U4',
+     /^CREATE POLICY/m.test(vivo80), false);
+
+  // O CENSO QUE FECHA O CICLO COM O DA U79: as RPCs desta camada que NÃO são
+  // portas da agenda são exatamente as duas da U80, e as duas são concedidas
+  // por ela. Sem esta linha, a exclusão feita no censo da U79 seria um buraco.
+  eq('CRÍTICO: CENSO das três listas do CICLO — as RPCs novas da camada de dados, as que a U80 concede e a lista escrita à mão são a MESMA',
+     [[...new Set([...dados80.matchAll(/supabase\.rpc\(\s*"([a-z_0-9]+)" as any/g)].map((m) => m[1]))]
+        .filter((n) => n !== 'is_gestor' && !n.startsWith('agenda_campo_') && n !== 'desagendar_chamado').sort(),
+      [...new Set([...vivo80.matchAll(/^GRANT  EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^;]*\) TO authenticated/gm)]
+        .map((m) => m[1]))].sort()],
+     [['chamados_com_lancamento', 'concluir_chamado_com_cobranca'],
+      // A SEGUNDA LISTA ganhou uma que a primeira não tem, e é correto que
+      // tenha: `aprovar_chamado_financeiro` é CONCEDIDA pela U80 (porque a U80
+      // a reescreveu, e repetir o GRANT torna a linha verdadeira sozinha) mas
+      // NÃO é uma RPC nova da camada de dados — ela é do motor de agosto e é
+      // chamada de onde sempre foi. As duas listas deixaram de ser iguais no
+      // dia em que a U80 encostou no motor, e o censo tem de dizer isso em vez
+      // de fingir simetria.
+      ['aprovar_chamado_financeiro', 'chamados_com_lancamento',
+       'concluir_chamado_com_cobranca']]);
+
+  // ALCANÇABILIDADE. Um `RETURN` posto logo depois do `BEGIN` mataria a porta
+  // sem apagar uma linha, e todo regex de conteúdo continuaria casando. Prende
+  // a PRIMEIRA INSTRUÇÃO EXECUTÁVEL.
+  {
+    const i = vivo80.indexOf('CREATE OR REPLACE FUNCTION public.concluir_chamado_com_cobranca');
+    const corpo = i < 0 ? '' : vivo80.slice(i, vivo80.indexOf('\n$u80b$;', i));
+    const k = corpo.search(/^BEGIN$/m);
+    const primeira = k < 0 ? '(sem BEGIN)'
+      : corpo.slice(k + 6).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('--'))[0];
+    eq('CRÍTICO: a PRIMEIRA instrução executável da porta é o gate de vínculo — regex de conteúdo não vê um RETURN posto na frente',
+       primeira, 'IF NOT public.pode_editar_chamado(_chamado) THEN');
+
+    // O CADEADO VEM ANTES DA LEITURA QUE ELE PROTEGE. `[^;]` e não
+    // `[\s\S]{0,N}`: aquele atravessa o `;` e casa com o comentário do lado.
+    const posLock = corpo.indexOf('FOR UPDATE');
+    const posLeitura = corpo.indexOf('v_ch.faturamento_status');
+    eq('CRÍTICO: o `SELECT … FOR UPDATE` vem ANTES da primeira leitura de `faturamento_status` — sem isso dois gestores leem `a_analisar` no mesmo instante e os dois lançam',
+       [posLock > 0, posLeitura > 0, posLock < posLeitura], [true, true, true]);
+    eq('…e o cadeado é sobre a linha do chamado, na mesma instrução que a lê',
+       /SELECT \* INTO v_ch FROM public\.chamados WHERE id = _chamado FOR UPDATE;/.test(corpo), true);
+
+    // UM ÚNICO UPDATE. `notify_chamado` (u13:196) lê NEW.faturamento_status no
+    // ramo `concluido`: em DOIS UPDATEs, o primeiro dispararia "Chamado a
+    // conferir" com o valor VELHO — um sino por atendimento encerrado.
+    // CONTA QUALQUER FORMA DO UPDATE, e não a linha inteira: a primeira versão
+    // ancorava em `^\s*UPDATE public\.chamados$` e a mutação que acrescentava
+    // um segundo UPDATE **numa linha só** (`UPDATE … SET … WHERE …;`) passava
+    // VERDE. Ancorar demais é tão cego quanto ancorar de menos — aqui o que
+    // importa é QUANTOS, não como estão quebrados. O corpo vem sem comentário
+    // porque o docblock ao lado explica o defeito citando "dois UPDATEs".
+    eq('CRÍTICO: a porta faz UM ÚNICO UPDATE em `chamados` — o gatilho de notificação lê NEW.faturamento_status no mesmo ramo, e dois UPDATEs disparariam o alerta "a conferir" com o valor VELHO, um sino por atendimento encerrado',
+       (soCodigo80(corpo).match(/UPDATE public\.chamados\b/g) || []).length, 1);
+
+    // A CIFRA NÃO ENTRA NA LINHA DO TEMPO. `chamado_eventos_select` é
+    // `USING (true)` (u7:586) e `aprovar_chamado_financeiro` grava o total em
+    // reais ali (u13:116-120) — está em PENDENCIAS_TECNICAS.md e não é
+    // consertado aqui, mas esta porta NÃO repete o erro.
+    const evento = corpo.slice(corpo.indexOf('INSERT INTO public.chamado_eventos'));
+    eq('CRÍTICO: o evento da U80 grava o FATO e a CONTAGEM, nunca o dinheiro — nada de to_char(…FM999G999G990D00) na linha do tempo, que é lida por TODO autenticado',
+       [/FM999G999G990D00/.test(evento), /v_total/.test(corpo), /'cobranca_decidida'/.test(evento)],
+       [false, false, true]);
+
+    // As duas vias de nascimento ficam disjuntas por construção.
+    eq('CRÍTICO: a porta RECUSA lançar valor digitado num chamado que teve análise item a item — onde houve análise, a cobrança sai da conferência e do contrato',
+       /IF _decisao = 'lancar'\s*\n\s*AND EXISTS \(SELECT 1 FROM public\.chamado_pecas_analise a WHERE a\.chamado_id = _chamado\)/.test(corpo),
+       true);
+    eq('e ela só decide a partir de `a_analisar` — a transição é de mão única, e nenhum caminho do repo devolve um chamado a esse valor',
+       /v_ch\.faturamento_status <> 'a_analisar'/.test(corpo), true);
+  }
+
+  // OS DOIS ÍNDICES: onde "impossível" deixa de ser adjetivo. Medidos como
+  // linha inteira e VIVA, com o predicado parcial que os define.
+  eq('CRÍTICO: os DOIS índices ÚNICOS existem, vivos, com o recorte `status <> cancelada` — sem eles, duas aprovações no mesmo minuto cobram em dobro e reaprovar depois do fechamento duplica',
+     [/^CREATE UNIQUE INDEX IF NOT EXISTS cobrancas_uma_por_peca_idx$/m.test(vivo80),
+      /^CREATE UNIQUE INDEX IF NOT EXISTS cobrancas_avulsa_unica_por_chamado_idx$/m.test(vivo80),
+      (vivo80.match(/WHERE chamado_(peca_)?id IS NOT NULL[^;]*status <> 'cancelada';/g) || []).length],
+     [true, true, 2]);
+
+  // O PRÉ-VOO ABORTA. O padrão da casa para constraint (DO $$ … EXCEPTION …
+  // RAISE NOTICE, u4:52-83) ENGOLIRIA a falha — e RAISE NOTICE é INVISÍVEL no
+  // editor do Supabase: a migration terminaria VERDE sem o índice, com a
+  // promessa inteira apoiada em nada.
+  eq('CRÍTICO: o pré-voo ABORTA (RAISE EXCEPTION) se a base já tiver duplicata, e traz a consulta de "quem não casou" DENTRO da mensagem — RAISE NOTICE é invisível no editor do Supabase',
+     [/RAISE EXCEPTION E'PRÉ-VOO U80: a base já tem cobrança duplicada/.test(vivo80),
+      /NUNCA DELETE/.test(vivo80),
+      /RAISE NOTICE/.test(vivoCod80)],
+     [true, true, false]);
+
+  // A conferência mede PRIVILÉGIO no catálogo, nunca substring de `prosrc`.
+  eq('a conferência lê o CATÁLOGO (has_function_privilege / pg_index.indisunique), e não texto de corpo de função',
+     [(vivo80.match(/has_function_privilege/g) || []).length >= 4,
+      /i\.indisunique/.test(vivo80),
+      /prosrc/.test(vivoCod80)],
+     [true, true, false]);
+  eq('CRÍTICO: a conferência traz as DUAS linhas de referência que precedem a decisão de instalar — quantos são gestor E não veem financeiro (se 0, a RPC não tem usuário) e o ponto cego da porta temporal',
+     [/is_gestor\(p\.id\) AND NOT public\.pode_ver_financeiro\(p\.id\)/.test(vivo80),
+      /a\.dia < \(current_date - 7\)/.test(vivo80)],
+     [true, true]);
+  eq('e o rodapé traz o DESFAZER, comentado, dizendo o que volta junto',
+     /^--   DROP FUNCTION IF EXISTS public\.concluir_chamado_com_cobranca/m.test(u80)
+     && /VOLTA A PODER DUPLICAR/.test(u80), true);
+
+  // ══ 8) A CAMADA DE DADOS E A TELA ════════════════════════════════════════
+  // `Map` vazio É o "não sei". Um `Map` de `false` seria a mesma mentira,
+  // inventada no cliente em vez de no servidor.
+  eq('CRÍTICO: `useLancamentosDosChamados` devolve Map VAZIO em erro, nunca um Map de `false` — e a grade não vira tela de erro porque o selo não veio',
+     /if \(error\) return \[\] as \{ chamado_id: string; tem_lancamento: boolean \}\[\];/.test(dados80),
+     true);
+  eq('…e ela é irmã de `useChamadosComBloco`: fatiada, com chave de ids e o mesmo staleTime — uma chamada por semana, nunca uma por cartão',
+     /emFatias\(ids\)\.map\(async \(fatia\) => \{\s*\n\s*const \{ data, error \} = await supabase\.rpc\(/.test(dados80),
+     true);
+  // QUEM CONTA É QUEM FILTRA, medido no route: o cartão, o número do cabeçalho
+  // e a lista que ele abre saem TODOS de `linhasVisiveis` — a mesma lista que a
+  // grade e a coluna do dia desenham. Computar os selos sobre `linhas` (o
+  // superset sem filtro) daria o mesmo resultado por bloco, mas dependeria
+  // dessa coincidência em vez da construção.
+  eq('CRÍTICO: os selos, o resumo do dia e a lista "a conferir" saem da MESMA `linhasVisiveis` que a grade desenha — e a DIVERGÊNCIA sai das linhas cruas, porque corrupção não pode se esconder atrás de um filtro de equipe',
+     [/selosDaGrade\(linhasVisiveis, lancamentos\)/.test(tela80),
+      /resumoDoCiclo\(linhasVisiveis, dia, lancamentos\)/.test(tela80),
+      /divergenciasDoCiclo\(linhas, lancamentos\)/.test(tela80),
+      /<GradeSemana\s*\n\s*linhas=\{linhasVisiveis\}/.test(tela80)],
+     [true, true, true, true]);
+  eq('CRÍTICO: a faixa de divergência é gateada por `veFinanceiro` — as duas conversas possíveis (cancelaram, ou corrompeu) são de quem vê valores, e para o SAC o cartão apenas se cala',
+     /veFinanceiro \? divergenciasDoCiclo\(linhas, lancamentos\) : \[\]/.test(tela80), true);
+  eq('e a seção "Retornos pendentes" entra entre a grade e a fila sem data — ordenado por quanto plano existe',
+     /<RetornosPendentes lista=\{retornos\}[\s\S]{0,200}<FilaSemData lista=\{semDataFiltrado\}/.test(tela80), true);
+  eq('CRÍTICO: o route NÃO tem mais `as unknown as ChamadoParaGrade[]` — aquela dupla asserção desligava o typechecker, e `faturamento_status` chegaria como undefined sem ninguém dizer nada',
+     /as unknown as ChamadoParaGrade\[\]/.test(tela80), false);
+  eq('…e a conversão passou a ser um construtor de verdade, no modelo puro',
+     /chamadosParaGrade\(ordens as unknown as Array<Record<string, unknown>>\)/.test(tela80), true);
+  eq('CRÍTICO: o construtor devolve `null` (e nunca `undefined`) para a coluna ausente — `undefined` cairia num ramo que ninguém escreveu no selo',
+     M80.chamadosParaGrade([{ id: 'X' }])[0],
+     { id: 'X', numero: null, titulo: null, tipo: null, prioridade: null, status: null,
+       natureza: null, responsavel_id: null, data_hora_agendada: null, faturamento_status: null });
+
+  // O SELO NÃO É COR DE CARTÃO, e o cabeçalho da linha não ganha um terceiro
+  // contador de outro eixo.
+  eq('CRÍTICO: `coresDoItem` continua sendo do TIPO do chamado — o selo é marca À PARTE, e dois eixos na mesma cor é como se perde os dois',
+     /function coresDoItem\(item: ItemDaGrade\) \{\s*\n\s*if \(item\.emergencial\) return PRISMA\.vermelho;/.test(celula80)
+     && /SELO_CORES/.test(celula80), true);
+  eq('CRÍTICO: o `CabecalhoDaLinha` NÃO ganhou contador de ciclo — ele é por EQUIPE/semana e o ciclo é por CHAMADO; o agregado vai na linha de resumo do dia',
+     /SeloDoCiclo|a_conferir|resumoDoCiclo/.test(
+       fs80.readFileSync('src/features/programacao/GradeSemana.tsx', 'utf8')
+         .slice(0, fs80.readFileSync('src/features/programacao/GradeSemana.tsx', 'utf8').indexOf('interface Props'))
+         .split('export function CabecalhoDaLinha')[1] ?? ''),
+     false);
+
+  // ══ 9) O FURO, FECHADO ONDE ELE JÁ ESTAVA VIVO ═══════════════════════════
+  eq('CRÍTICO: `temLancamento` existe e o recorte é UM SÓ — `cancelada` não conta, igual ao fechamento (u5:139) e igual aos dois índices da U80',
+     [M80 && typeof carregar('src/features/chamados/cobranca.ts').temLancamento === 'function',
+      carregar('src/features/chamados/cobranca.ts').temLancamento([]),
+      carregar('src/features/chamados/cobranca.ts').temLancamento([{ status: 'cancelada' }]),
+      carregar('src/features/chamados/cobranca.ts').temLancamento([{ status: 'cancelada' }, { status: 'aberta' }]),
+      carregar('src/features/chamados/cobranca.ts').temLancamento([{ status: 'faturada' }])],
+     [true, false, false, true, true]);
+  // O BOTÃO MORTO. `cobrancas.status` é ('aberta','fechada','faturada',
+  // 'cancelada') — os literais masculinos NUNCA casaram, e o `as any` da
+  // consulta impediu o tsc de ver. O botão nunca renderizou para ninguém.
+  eq('CRÍTICO: o botão "Marcar faturada" saiu do domínio ERRADO — `"aberto"`/`"concluido"` não existem em cobrancas.status, e a condição nunca foi verdadeira para ninguém',
+     [/c\.status === "aberto"/.test(detalheCod80),
+      /c\.status === "aberta" \|\| c\.status === "fechada"/.test(detalheCod80)],
+     [false, true]);
+  eq('CRÍTICO: o card de cobrança do DetalheCampo não soma mais a CANCELADA no total — dinheiro que não existe deixou de ser anunciado',
+     [/cobrancasVivas\.reduce\(\(s, c\) => s \+ Number\(c\.valor\), 0\)/.test(detalheCod80),
+      /cobrancasOs\.reduce\(\(s, c\) => s \+ Number\(c\.valor\), 0\)/.test(detalheCod80)],
+     [true, false]);
+  eq('CRÍTICO: painel e grade leem O MESMO BIT — `useLancamentoDoChamado` é o segundo consumidor da RPC, e é o que impede as duas telas de discordarem sobre o mesmo chamado',
+     [/export function useLancamentoDoChamado/.test(cobranca80),
+      /useLancamentoDoChamado\(id\)/.test(detalhe80),
+      /chamados_com_lancamento/.test(cobranca80)],
+     [true, true, true]);
+  eq('…e o hook devolve `undefined` (não `false`) quando não sabe — erro e linha ausente são o MESMO estado, e ele tem nome',
+     /if \(error\) return undefined;/.test(cobranca80), true);
+  eq('CRÍTICO: o 23505 que a U80 passou a poder produzir é traduzido em `aprovarCobranca` — a mensagem crua do Postgres é em inglês, e quem fala com humano é a camada que tem humano na frente',
+     /=== "23505"/.test(cobranca80) && /alguém aprovou no mesmo instante/.test(cobranca80), true);
+
+  // ══ 10) OS DOCUMENTOS ════════════════════════════════════════════════════
+  {
+    const produto80 = fs80.readFileSync('docs/PRODUTO.md', 'utf8');
+    eq('CRÍTICO: as quatro regras novas estão no PRODUTO.md, e a R103 diz por escrito que o selo afirma que HOUVE lançamento e nunca QUANTO',
+       [/\*\*R103\*\*/.test(produto80), /\*\*R104\*\*/.test(produto80),
+        /\*\*R105\*\*/.test(produto80), /\*\*R106\*\*/.test(produto80),
+        /nunca .quanto.|jamais .Cobrado./i.test(produto80)],
+       [true, true, true, true, true]);
+    eq('o diário tem a entrada U80',
+       /^## U80 — /m.test(fs80.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8')), true);
+    // Os quatro defeitos apurados e NÃO consertados. Nomeá-los é a entrega; um
+    // deles é um vazamento de valor em reais que a R13 existe para esconder.
+    const pend80 = fs80.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+    eq('CRÍTICO: os defeitos apurados e NÃO consertados estão nomeados em PENDENCIAS_TECNICAS.md — inclusive o `chamado_eventos USING (true)` que expõe o valor em reais a todo autenticado',
+       [/chamado_eventos/.test(pend80), /USING \(true\)/.test(pend80),
+        /chamado_peca_id IS NOT NULL/.test(pend80), /em_conferencia/.test(pend80),
+        /setMonth/.test(pend80)],
+       [true, true, true, true, true]);
+    eq('o manual de campo e o do financeiro contam o selo e o fluxo de conclusão',
+       [/Lançado/.test(fs80.readFileSync('docs/manual/operacao-campo.md', 'utf8')),
+        /ciclo financeiro no cart/i.test(fs80.readFileSync('docs/manual/financeiro.md', 'utf8'))],
+       [true, true]);
+  }
+}
+
+// ── U80: reais digitados à brasileira, e o fuso do dinheiro ─────────────────
+// As duas correções que uma lente adversarial achou depois da construção, e as
+// duas mexem em DINHEIRO — que é a categoria em que "improvável" não conta.
+{
+  const fsR = require('fs');
+  const MR = carregar('src/features/programacao/modelo.ts');
+  const pan = fsR.readFileSync('src/features/programacao/PainelDoCiclo.tsx', 'utf8');
+  const u80r = fsR.readFileSync('supabase/migrations/20260903090000_u80_ciclo_financeiro_no_card.sql', 'utf8');
+  const u80vivo = u80r.slice(0, u80r.indexOf('\n-- BEGIN;') > 0 ? u80r.indexOf('\n-- BEGIN;') : u80r.length);
+
+  // ── o parser ────────────────────────────────────────────────────────────
+  // `Number(s.replace(",", "."))` troca só a PRIMEIRA vírgula. A tabela abaixo é
+  // o que uma pessoa digita num campo de valor, e "1.500" era o único formato
+  // provável que NÃO era recusado: ele virava 1.5 e lançava R$ 1,50, com trilha
+  // de auditoria completa dizendo que alguém decidiu aquilo.
+  const r = (s) => MR.reaisDigitados(s);
+  eq('CRÍTICO: "1.500" é mil e quinhentos, não um e meio — era o único formato provável que passava, e ele subcobrava o cliente em 99,9%',
+     r('1.500'), 1500);
+  eq('a vírgula manda: existindo ela, todo ponto é separador de milhar',
+     [r('1.500,00'), r('1.234.567,89'), r('0,50')], [1500, 1234567.89, 0.5]);
+  eq('sem vírgula, o número seco continua sendo o que parece',
+     [r('1500'), r('0'), r('12')], [1500, 0, 12]);
+  eq('ponto com menos de três dígitos depois é DECIMAL — quem escreve "1.5" quer um e meio',
+     [r('1.5'), r('1.50')], [1.5, 1.5]);
+  eq('o cifrão e os espaços que a pessoa cola junto não recusam mais o valor',
+     [r('R$ 1.500,00'), r(' 1500 ')], [1500, 1500]);
+  eq('CRÍTICO: campo vazio é NaN, não zero — zero é um valor que alguém escolheu, vazio é ausência',
+     [Number.isNaN(r('')), Number.isNaN(r('   ')), Number.isNaN(r('abc'))], [true, true, true]);
+  eq('e a tela NÃO converte mais — a regra saiu do componente (regra 7 da casa)',
+     /const nTotal = reaisDigitados\(valor\);/.test(pan)
+     && !/Number\(valor\.replace/.test(pan), true);
+
+  // ── o fuso do dinheiro ──────────────────────────────────────────────────
+  // `timestamptz::date` usa o TimeZone da SESSÃO, que é UTC no Supabase.
+  // Encerrar às 21:30 de 31/08 em Brasília é 00:30 de 01/09 em UTC: a cobrança
+  // nascia na competência do mês SEGUINTE e entrava no fechamento errado.
+  eq('CRÍTICO: a data de referência da cobrança nova sai no fuso da OPERAÇÃO — uma hora de diferença aqui custa um MÊS de competência',
+     /v_data := coalesce\(v_ch\.finalizada_em, v_ch\.concluida_em, now\(\)\)\s*\n\s*AT TIME ZONE 'America\/Sao_Paulo';/.test(u80vivo),
+     true);
+  eq('CRÍTICO: e o motor de AGOSTO foi corrigido junto — dois caminhos de nascer cobrança com relógios diferentes seria pior que o defeito',
+     /v_data := COALESCE\(v_ch\.finalizada_em, v_ch\.created_at\) AT TIME ZONE 'America\/Sao_Paulo';/.test(u80vivo),
+     true);
+  eq('nenhum `::date` sem fuso sobrou nos dois caminhos de competência',
+     /COALESCE\(v_ch\.finalizada_em, v_ch\.created_at\)::date/.test(u80vivo), false);
+  // A tentação seria "consertar" as linhas antigas junto. Não se faz: um
+  // fechamento pode já ter recolhido aquela cobrança, e reescrever a
+  // competência mudaria um total que alguém conferiu e possivelmente cobrou.
+  eq('CRÍTICO: e NENHUMA competência já gravada é reescrita — fechamento recolhido não se mexe',
+     /UPDATE public\.cobrancas[^;]{0,300}competencia\s*=/m.test(u80vivo), false);
+  eq('a migration diz, por escrito, que o defeito de fuso é anterior a ela',
+     /desde agosto/.test(u80r), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

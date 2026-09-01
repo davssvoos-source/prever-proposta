@@ -63,29 +63,41 @@ import {
 } from "@/lib/chamado-status";
 import {
   blocosForaDaGrade,
+  chamadosParaGrade,
   classificarChamado,
   dataDoDia,
   diasDaGrade,
+  divergenciasDoCiclo,
   duracaoTexto,
   erroDoAgendamento,
+  idsComCicloFinanceiro,
   linhasDaGrade,
   parDoInstante,
+  resumoDoCiclo,
+  retornosPendentes,
   rotuloDoBloco,
+  selosDaGrade,
+  textoDoDia,
   type BlocoCandidato,
   type BlocoDeAgenda,
-  type ChamadoParaGrade,
   type ContextoDoAgendamento,
+  type ContextoDoTexto,
   type ItemDaGrade,
   type LinhaDaGrade,
 } from "@/features/programacao/modelo";
 import {
-  useAutorizacaoDaAgenda, useBlocosDaGrade, useChamadosComBloco, useMarcarBloco,
-  sqlstateDoErro,
+  useAutorizacaoDaAgenda, useBlocosDaGrade, useChamadosComBloco,
+  useLancamentosDosChamados, useMarcarBloco, sqlstateDoErro,
 } from "@/features/programacao/data";
+import { useVeFinanceiro } from "@/features/gerencial/data";
 import { GradeSemana, type RotulosDaEquipe } from "@/features/programacao/GradeSemana";
-import { ColunaDoDia } from "@/features/programacao/ColunaDoDia";
-import { FaixaSemHorario, FilaSemData, type ChamadoDaFila } from "@/features/programacao/FaixaSemHorario";
+import { BotoesDeCompartilhar, ColunaDoDia } from "@/features/programacao/ColunaDoDia";
+import { SELO_LABEL } from "@/features/programacao/CelulaDaGrade";
+import {
+  FaixaSemHorario, FilaSemData, RetornosPendentes, type ChamadoDaFila,
+} from "@/features/programacao/FaixaSemHorario";
 import { FormularioDoBloco, type AberturaDoFormulario } from "@/features/programacao/FormularioDoBloco";
+import { PainelDoCiclo } from "@/features/programacao/PainelDoCiclo";
 
 type ModoDeVisao = "semanal" | "mensal" | "grade";
 const MODOS: ModoDeVisao[] = ["semanal", "mensal", "grade"];
@@ -192,22 +204,61 @@ function ProgramacaoPage() {
   const semanaAberta = referenciaSemanal(dataDoAberto);
 
   // ── os blocos ───────────────────────────────────────────────────────────
-  const { blocos } = useBlocosDaGrade(dia);
+  const { blocos, idsDeChamado } = useBlocosDaGrade(dia);
 
   /**
    * O denominador da faixa. `classificarChamado` precisa saber se o chamado tem
    * bloco EM QUALQUER TEMPO, e não na janela desenhada — sem isto, um chamado
    * cujo único bloco está a três meses cai na faixa "sem horário" e o botão
    * "Dar horário" cria um SEGUNDO bloco, que a U78 lê como RETORNO.
+   *
+   * A MESMA resposta traz agora os DOIS Sets (U80): `ativos` é o de sempre, e
+   * `pendentes` é o que ainda VAI acontecer. O chamado que está no primeiro e
+   * não no segundo é um RETORNO PENDENTE — visita cumprida, atendimento aberto,
+   * nada marcado à frente —, que era invisível em toda superfície desta tela.
    */
   const idsComData = useMemo(
     () => ordens.filter((c) => c.data_hora_agendada).map((c) => c.id),
     [ordens],
   );
-  const { data: comBloco = new Set<string>() } = useChamadosComBloco(idsComData);
+  const VAZIO = useMemo(() => ({ ativos: new Set<string>(), pendentes: new Set<string>() }), []);
+  const { data: comBlocoDados = VAZIO } = useChamadosComBloco(idsComData);
+  const comBloco = comBlocoDados.ativos;
 
-  const paraGrade = ordens as unknown as ChamadoParaGrade[];
+  /**
+   * TRADUÇÃO DE DADOS, E NÃO MAIS UM `as unknown as`. Aquela dupla asserção
+   * desligava o typechecker: `faturamento_status` (obrigatório desde a U80)
+   * chegaria como `undefined` sem o `tsc` nem o CENSO dizerem nada, e o selo
+   * cairia num ramo que ninguém escreveu.
+   */
+  const paraGrade = useMemo(
+    () => chamadosParaGrade(ordens as unknown as Array<Record<string, unknown>>),
+    [ordens],
+  );
   const autz = useAutorizacaoDaAgenda(sessao?.userId ?? null, ordens as any[]);
+  const { data: veFinanceiro = false } = useVeFinanceiro();
+
+  /**
+   * O CICLO FINANCEIRO — UMA chamada por semana carregada, e só sobre os
+   * chamados cujo selo depende dela (campo + concluído). `Map` vazio é o "não
+   * sei": para quem não é gestor a RPC devolve zero linhas e a grade fica
+   * exatamente como era antes desta entrega.
+   */
+  const idsDoCiclo = useMemo(() => {
+    // `blocos` é o SUPERSET (semana + irmãos de outras semanas, que o ordinal
+    // precisa). A pergunta é sobre o que a SEMANA desenha, e é por isso que
+    // `useBlocosDaGrade` passou a devolver `idsDeChamado`.
+    const daSemana = new Set(idsDeChamado);
+    return idsComCicloFinanceiro(
+      blocos.filter((b) => b.chamado_id !== null && daSemana.has(b.chamado_id)),
+      paraGrade,
+    );
+  }, [blocos, idsDeChamado, paraGrade]);
+  // O vazio é ESTÁVEL (e não `= new Map()` no destructuring): um objeto novo a
+  // cada render trocaria a identidade da dependência e faria os três `useMemo`
+  // do ciclo recalcularem sempre — a mesma razão do `VAZIO` acima.
+  const SEM_LANCAMENTOS = useMemo(() => new Map<string, boolean>(), []);
+  const { data: lancamentos = SEM_LANCAMENTOS } = useLancamentosDosChamados(idsDoCiclo);
 
   // ── A CHAMADA ÚNICA ─────────────────────────────────────────────────────
   // `dias ∪ {dia}`: sem a união, escolher um sábado VAZIO na régua (que é
@@ -233,6 +284,24 @@ function ProgramacaoPage() {
   const guarda = useMemo(
     () => blocosForaDaGrade(linhas, semanaAberta, blocos, referenciaSemanal),
     [linhas, semanaAberta, blocos],
+  );
+
+  /**
+   * O guarda do ciclo, gêmeo de desenho de `blocosForaDaGrade`: decidido
+   * (`aprovada`/`faturada`) e sem lançamento vivo. O cartão SE CALA nesse
+   * estado — pintar "Lançado" afirmaria o que não existe, e pintar "nada a
+   * cobrar" entregaria o cancelamento por inferência a quem não vê valores. A
+   * faixa é gateada por `veFinanceiro` porque as duas conversas possíveis
+   * (cancelaram; ou está corrompido) são de quem vê valores.
+   *
+   * SOBRE `linhas`, E NÃO SOBRE AS VISÍVEIS — é o mesmo critério do guarda
+   * acima, e pelo mesmo motivo: filtrar por equipe é escolha de quem olha, e
+   * uma corrupção não pode se esconder atrás de um filtro. Os SELOS são o
+   * contrário (abaixo), porque eles são o que está DESENHADO.
+   */
+  const divergenciasCiclo = useMemo(
+    () => (veFinanceiro ? divergenciasDoCiclo(linhas, lancamentos) : []),
+    [veFinanceiro, linhas, lancamentos],
   );
 
   // ── nomes e rótulos ─────────────────────────────────────────────────────
@@ -357,6 +426,106 @@ function ProgramacaoPage() {
 
   const doDia = porDia.get(dia) ?? { minutos: 0, pctMax: 0, cartoes: 0 };
 
+  // ── o ciclo financeiro: UMA origem para o cartão, o número e a lista ─────
+  //
+  // QUEM CONTA É QUEM FILTRA, e aqui isso é ESTRUTURAL e não disciplina: as
+  // três leituras saem de `linhasVisiveis`, que é exatamente a lista que a
+  // grade e a coluna do dia desenham (o filtro de equipe já aplicado).
+  //   · `selos`          → o que cada cartão pinta;
+  //   · `resumoCiclo`    → o "N a conferir" do cabeçalho;
+  //   · `aConferirNoDia` → a lista que o número abre.
+  // Computar os selos sobre `linhas` (o superset, sem filtro) daria o MESMO
+  // resultado por bloco — `selosDaGrade` é determinística e o mapa é por
+  // `bloco.id` —, mas dependeria dessa coincidência. Aqui é a mesma chamada.
+  const selos = useMemo(() => selosDaGrade(linhasVisiveis, lancamentos), [linhasVisiveis, lancamentos]);
+  const resumoCiclo = useMemo(
+    () => resumoDoCiclo(linhasVisiveis, dia, lancamentos),
+    [linhasVisiveis, dia, lancamentos],
+  );
+
+  /** A LISTA que o número acima conta — o MESMO mapa `selos`, filtrado ao dia. */
+  const aConferirNoDia = useMemo(() => {
+    const out: { chamadoId: string; rotulo: string }[] = [];
+    const vistos = new Set<string>();
+    for (const l of linhasVisiveis) {
+      const cel = l.celulas.find((c) => c.dia === dia);
+      if (!cel) continue;
+      for (const item of cel.itens) {
+        const id = item.bloco.chamado_id;
+        if (!id || vistos.has(id)) continue;
+        if (selos.get(item.bloco.id) !== "a_conferir") continue;
+        vistos.add(id);
+        out.push({ chamadoId: id, rotulo: item.rotulo });
+      }
+    }
+    return out;
+  }, [linhasVisiveis, dia, selos]);
+
+  /** "quarta-feira, 03/09/2026" — formatação, e por isso mora na tela. */
+  const rotuloLongoDoDia = (d: string) => {
+    const data = dataDoDia(d);
+    if (!data) return d;
+    const semanaNome = ["domingo", "segunda-feira", "terça-feira", "quarta-feira",
+                        "quinta-feira", "sexta-feira", "sábado"][data.getDay()];
+    return `${semanaNome}, ${String(data.getDate()).padStart(2, "0")}/`
+      + `${String(data.getMonth() + 1).padStart(2, "0")}/${data.getFullYear()}`;
+  };
+
+  /**
+   * A TERCEIRA PROJEÇÃO (R105). O texto sai das MESMAS `linhasVisiveis` — logo
+   * "canceladas ficam de fora", "disponível" e a ocupação saem de graça, e o
+   * texto não pode discordar da coluna: é o mesmo objeto.
+   *
+   * A MONTAGEM É `textoDoDia`, no modelo puro e com asserção de mutação. Esta
+   * tela só INJETA os nomes, que o módulo não conhece — e `detalheDe` é o
+   * ponto de vazamento que o docblock de lá vigia: para um item `oculto` a
+   * função corta cliente, endereço e descrição antes de escrever a linha.
+   *
+   * O BOTÃO É DE GESTOR, e o argumento é do próprio texto: para um não-gestor o
+   * dia sai cheio de "Outro atendimento" — honesto e inútil.
+   */
+  const detalhePorChamado = useMemo(() => {
+    const m = new Map<string, { cliente: string | null; endereco: string | null; descricao: string | null }>();
+    for (const c of ordens as any[]) {
+      m.set(c.id, {
+        cliente: c.cliente?.nome ?? null,
+        endereco: c.cliente?.endereco ?? null,
+        descricao: c.descricao_problema ?? null,
+      });
+    }
+    return m;
+  }, [ordens]);
+
+  const textoDoDiaPronto = useMemo(() => {
+    if (!autz.ehGestor) return null;
+    const ctx: ContextoDoTexto = {
+      rotuloDoDia: rotuloLongoDoDia,
+      nomeDaEquipe: (id) => rotulos.nome(id),
+      veiculoDaEquipe: (id) => duplaPorId.get(id)?.veiculo ?? null,
+      membrosDaEquipe: (id) => composicaoDaDupla(id, semanaAberta, escala).map(nomeDeTecnico),
+      detalheDe: (id) => detalhePorChamado.get(id) ?? null,
+      // GANCHO VAZIO — o plantonista da semana é FASE 3. `null` não produz uma
+      // linha sequer, e há asserção pinando exatamente isso.
+      plantonista: null,
+    };
+    return textoDoDia(linhasVisiveis, dia, ctx, new Date());
+  }, [autz.ehGestor, linhasVisiveis, dia, detalhePorChamado, duplaPorId, semanaAberta, escala, nomePorTecnico]);
+
+  /**
+   * RETORNOS PENDENTES (R106) — visita cumprida, atendimento aberto, nada
+   * marcado à frente. Os dois Sets vêm da MESMA requisição de
+   * `useChamadosComBloco`, em qualquer tempo: perguntar aos blocos da semana
+   * responderia "nada à frente" para um retorno marcado daqui a três semanas.
+   */
+  const retornos = useMemo(
+    () => retornosPendentes(
+      ordens as unknown as ChamadoDaFila[],
+      comBlocoDados.ativos,
+      comBlocoDados.pendentes,
+    ).filter((c) => passaTipo(c.tipo)),
+    [ordens, comBlocoDados, tipoFiltro],
+  );
+
   // ── a régua ─────────────────────────────────────────────────────────────
   // ISO, ancorada em `inicioSemana`. SETE botões FIXOS: a régua é NAVEGAÇÃO (é
   // preciso poder ir a um sábado vazio para marcar o primeiro bloco nele),
@@ -385,6 +554,16 @@ function ProgramacaoPage() {
 
   // ── o gesto ─────────────────────────────────────────────────────────────
   const [gesto, setGesto] = useState<AberturaDoFormulario | null>(null);
+  /**
+   * O CICLO TEM PORTA PRÓPRIA, E ISSO É DECISÃO.
+   *
+   * Clicar no cartão continua abrindo o FORMULÁRIO DO BLOCO — é o gesto da
+   * AGENDA, é o gesto primário desta tela nos dois viewports, e trocá-lo por
+   * um painel de dinheiro faria a pessoa que só queria mover meia hora cair
+   * numa decisão financeira. O ciclo entra pela lista abaixo da grade, que é
+   * derivada dos MESMOS selos que os cartões mostram.
+   */
+  const [cicloAberto, setCicloAberto] = useState<string | null>(null);
   const [erroDoArrasto, setErroDoArrasto] = useState<{ frase: string; code: string | null } | null>(null);
   const arrastadoRef = useRef<Arrastado | null>(null);
   const [alvoArrasto, setAlvoArrasto] = useState<{ duplaId: string; dia: string } | null>(null);
@@ -632,8 +811,27 @@ function ProgramacaoPage() {
             {duracaoTexto(doDia.minutos)} marcadas · {doDia.cartoes} atendimento(s) no dia
             {semHorarioFiltrado.length > 0 && ` · ${semHorarioFiltrado.length} sem horário`}
             {semDataFiltrado.length > 0 && ` · ${semDataFiltrado.length} sem data`}
+            {/* O AGREGADO DO CICLO mora AQUI, e não no `CabecalhoDaLinha`:
+                aquele cabeçalho é por EQUIPE/semana e este número é por
+                CHAMADO. Ele sai de `resumoDoCiclo`, sobre as MESMAS células
+                que a grade desenha. */}
+            {resumoCiclo.aConferir > 0 && ` · ${resumoCiclo.aConferir} a conferir`}
+            {resumoCiclo.semOs > 0 && ` · ${resumoCiclo.semOs} sem OS`}
             {filtrando && " · filtrado"}
           </div>
+          {/* COMPARTILHAR O DIA — o primeiro ponto de entrada, na identidade do
+              dia aberto: "compartilhar ISTO" se lê sozinho. O segundo fica no
+              topo da coluna do dia, que é onde a pessoa em campo está. */}
+          {textoDoDiaPronto && (
+            <div style={{ marginTop: 8 }}>
+              <BotoesDeCompartilhar
+                texto={textoDoDiaPronto}
+                isLight={isLight}
+                compacto
+                aoCopiar={() => toast.success("Programação do dia copiada.")}
+              />
+            </div>
+          )}
         </div>
         <button
           onClick={() => navigate({ to: "/chamados/novo-campo" })}
@@ -662,6 +860,31 @@ function ProgramacaoPage() {
           A grade está incompleta: {guarda.naoMostrados} bloco(s) da semana não aparecem em
           nenhuma célula e {guarda.foraDaSemana} desenhado(s) não pertencem a esta semana.
           Recarregue; se continuar, avise — o número acima não pode ser confiado.
+        </div>
+      )}
+
+      {/* O GUARDA DO CICLO, irmão do de cima e pela mesma razão: as DUAS
+          verdades sobre "existe lançamento" — `chamados.faturamento_status` e
+          `cobrancas` — discordaram. É legítimo se alguém cancelou a cobrança; é
+          corrupção em qualquer outro caso, e nos dois a conversa é de quem vê
+          valores. O cartão desses atendimentos fica MUDO de propósito: pintar
+          um selo ali seria escolher entre duas mentiras. */}
+      {divergenciasCiclo.length > 0 && (
+        <div style={{
+          ...CARD, display: "flex", flexDirection: "column", gap: 6,
+          background: isLight ? "rgba(250,132,45,0.06)" : "rgba(250,132,45,0.07)",
+          border: isLight ? "1px solid rgba(173,71,0,0.22)" : "1px solid rgba(250,132,45,0.24)",
+          fontFamily: FONT, fontSize: 12.5,
+          color: isLight ? "#AD4700" : "#FA842D",
+        }}>
+          <span>
+            {divergenciasCiclo.length} atendimento(s) marcados como cobrança decidida e sem
+            lançamento vivo. Ou a cobrança foi cancelada depois, ou o lançamento se perdeu — o
+            cartão fica sem selo até alguém olhar.
+          </span>
+          <span style={{ opacity: 0.85 }}>
+            {divergenciasCiclo.map((c) => c.numero ?? c.id.slice(0, 8)).join(" · ")}
+          </span>
         </div>
       )}
 
@@ -827,6 +1050,7 @@ function ProgramacaoPage() {
                 rotulos={rotulos}
                 diaAberto={dia}
                 mostrarRotulos={mostrarRotulos}
+                selos={selos}
                 onAbrirItem={abrirBloco}
                 onNovoNaCelula={abrirNovoNaCelula}
                 arrasto={autz.ehGestor || autz.usuarioId ? arrasto : undefined}
@@ -852,6 +1076,9 @@ function ProgramacaoPage() {
               isLight={isLight}
               rotulos={rotulos}
               mostrarRotulos={mostrarRotulos}
+              selos={selos}
+              textoParaCompartilhar={textoDoDiaPronto}
+              aoCopiar={() => toast.success("Programação do dia copiada.")}
               onAbrirItem={abrirBloco}
               onNovoNaCelula={abrirNovoNaCelula}
             />
@@ -872,7 +1099,68 @@ function ProgramacaoPage() {
         </>
       )}
 
+      {/* O CICLO FINANCEIRO DO DIA (R104) — a porta do painel de conclusão.
+          A lista é a MESMA origem do "N a conferir" do cabeçalho, e o painel é
+          quem roteia por estado: com análise aponta para a conferência, sem
+          análise oferece lançar, e "conferir depois" existe sempre. O cartão
+          NUNCA lança — ele mostra o selo e aponta. */}
+      {aConferirNoDia.length > 0 && (
+        <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
+              textTransform: "uppercase", color: gold,
+            }}>
+              {SELO_LABEL.a_conferir} ({aConferirNoDia.length})
+            </span>
+          </div>
+          <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
+            Atendimentos deste dia que acabaram e cuja cobrança ninguém decidiu.
+          </span>
+          {aConferirNoDia.map((x) => (
+            <div
+              key={x.chamadoId}
+              style={{
+                padding: "10px 12px", borderRadius: 12,
+                background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 140, fontFamily: FONT, fontSize: 13, color: textPrimary }}>
+                {x.rotulo}
+              </span>
+              <button
+                onClick={() => setCicloAberto(x.chamadoId)}
+                style={{
+                  padding: "8px 12px", borderRadius: 10, cursor: "pointer", minHeight: 36,
+                  background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
+                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                  color: textPrimary, fontFamily: FONT, fontWeight: 600, fontSize: 11,
+                }}
+              >
+                Decidir cobrança
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* RETORNOS PENDENTES (R106) — entre a grade e a fila sem data, ordenado
+          por quanto plano existe: sem hora → grade → retorno sem data marcada →
+          sem plano nenhum. */}
+      <RetornosPendentes lista={retornos} isLight={isLight} {...filaProps} />
+
       <FilaSemData lista={semDataFiltrado} isLight={isLight} {...filaProps} />
+
+      {cicloAberto && (
+        <PainelDoCiclo
+          chamadoId={cicloAberto}
+          isLight={isLight}
+          aoFechar={() => setCicloAberto(null)}
+          aoAbrirChamado={(id) => navigate({ to: "/chamados/$id", params: { id } })}
+        />
+      )}
 
       {gesto && (
         <FormularioDoBloco

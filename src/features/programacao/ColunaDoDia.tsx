@@ -32,10 +32,76 @@
 // · COLUNAS LADO A LADO. Quatro equipes viram quatro cartões empilhados, na
 //   MESMA ordem das quatro linhas do desktop.
 
+import { Copy, Share2 } from "lucide-react";
+import { whatsappTextoLink } from "@/features/gerencial/constants";
 import { FONT, card } from "@/lib/ui";
-import { type ItemDaGrade, type LinhaDaGrade } from "./modelo";
+import { type ItemDaGrade, type LinhaDaGrade, type SeloDoCiclo } from "./modelo";
 import { CelulaDoDia } from "./CelulaDaGrade";
 import { CabecalhoDaLinha, rotuloDoDia, type RotulosDaEquipe } from "./GradeSemana";
+
+/**
+ * COMPARTILHAR O DIA (R105) — os DOIS botões, e são dois de propósito.
+ *
+ * COPIAR é o caminho confiável: a área de transferência aguenta o dia inteiro.
+ * O `wa.me` é a conveniência, e ele vira uma URL — um dia de seis equipes com
+ * descrição longa pode passar de alguns KB (ver o docblock de
+ * `whatsappTextoLink`). Se o link falhar num dia grande, o copiar continua
+ * inteiro.
+ *
+ * `navigator.clipboard?.writeText` COM o optional chaining: é o padrão seguro
+ * de `TelaDeErro.tsx:68`. `navigator.clipboard` é `undefined` em contexto não
+ * seguro (http), e as duas ocorrências em `visita.$id*.tsx` que omitem o `?.`
+ * são bug latente — não se copia o bug junto.
+ *
+ * O componente NÃO MONTA TEXTO. Ele recebe `texto` pronto de `textoDoDia`
+ * (lógica pura, com asserção): a tela não monta string de regra.
+ */
+export function BotoesDeCompartilhar({
+  texto, isLight, compacto, aoCopiar,
+}: {
+  texto: string;
+  isLight: boolean;
+  compacto?: boolean;
+  /** o aviso ("Programação copiada.") é da tela que chamou, não daqui */
+  aoCopiar?: () => void;
+}) {
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const estilo = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: compacto ? "6px 10px" : "8px 12px",
+    minHeight: compacto ? 32 : 36,
+    borderRadius: 10, cursor: "pointer",
+    background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    color: textPrimary, fontFamily: FONT, fontWeight: 600,
+    fontSize: compacto ? 10.5 : 11.5,
+  } as const;
+
+  return (
+    <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+      <button
+        type="button"
+        style={estilo}
+        title="Copiar a programação deste dia"
+        onClick={() => {
+          navigator.clipboard?.writeText(texto);
+          aoCopiar?.();
+        }}
+      >
+        <Copy size={13} /> Copiar o dia
+      </button>
+      <a
+        href={whatsappTextoLink(texto)}
+        target="_blank"
+        rel="noreferrer"
+        style={{ ...estilo, textDecoration: "none" }}
+        title="Abrir o WhatsApp com a programação deste dia"
+      >
+        <Share2 size={13} /> WhatsApp
+      </a>
+    </div>
+  );
+}
 
 interface Props {
   linhas: LinhaDaGrade[];
@@ -43,12 +109,21 @@ interface Props {
   isLight: boolean;
   rotulos: RotulosDaEquipe;
   mostrarRotulos: (linha: LinhaDaGrade) => boolean;
+  selos?: Map<string, SeloDoCiclo>;
+  /**
+   * O texto do dia, já montado por `textoDoDia`. `null` = sem botão — é como o
+   * não-gestor vê a coluna, e a razão está no docblock de `textoDoDia`: o dia
+   * dele viraria um texto cheio de "Outro atendimento", honesto e inútil.
+   */
+  textoParaCompartilhar?: string | null;
+  aoCopiar?: () => void;
   onAbrirItem: (item: ItemDaGrade) => void;
   onNovoNaCelula: (dia: string, duplaId: string) => void;
 }
 
 export function ColunaDoDia({
-  linhas, dia, isLight, rotulos, mostrarRotulos, onAbrirItem, onNovoNaCelula,
+  linhas, dia, isLight, rotulos, mostrarRotulos, selos,
+  textoParaCompartilhar, aoCopiar, onAbrirItem, onNovoNaCelula,
 }: Props) {
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
 
@@ -64,6 +139,19 @@ export function ColunaDoDia({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* O SEGUNDO PONTO DE ENTRADA do compartilhar, e ele é o que importa:
+          aqui é onde a pessoa EM CAMPO está. O primeiro fica na linha de
+          resumo do dia, no route, que é a identidade do dia aberto. */}
+      {textoParaCompartilhar && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <BotoesDeCompartilhar
+            texto={textoParaCompartilhar}
+            isLight={isLight}
+            compacto
+            aoCopiar={aoCopiar}
+          />
+        </div>
+      )}
       {linhas.map((l) => {
         // A célula do dia aberto SEMPRE existe: a tela une `diasDaGrade` com o
         // dia escolhido antes de chamar `linhasDaGrade` (sem essa união, abrir
@@ -79,6 +167,7 @@ export function ColunaDoDia({
               isLight={isLight}
               eixo={false}
               mostrarRotulos={mostrarRotulos(l)}
+              selos={selos}
               janela={{ de: 0, ate: 1440 }}
               alvo={false}
               onAbrir={onAbrirItem}

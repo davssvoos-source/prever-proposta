@@ -91,3 +91,20 @@ export function whatsappLink(phone: string): string {
   const full = d.startsWith("55") ? d : `55${d}`;
   return `https://wa.me/${full}`;
 }
+
+/**
+ * A IRMÃ de `whatsappLink`, e ela não podia ser a mesma função (U80/R105).
+ *
+ * `whatsappLink` é o link para uma PESSOA, a partir de um telefone, e não
+ * carrega texto. Compartilhar a programação do dia é o contrário: o texto vai
+ * pronto e QUEM recebe se escolhe na hora, no seletor de contato do próprio
+ * WhatsApp. Mesmo host, mesma convenção do `55` no vizinho, formas diferentes.
+ *
+ * O TETO, DITO PARA NINGUÉM O DESCOBRIR SOZINHO: isto vira uma URL, e um dia de
+ * seis equipes com descrição longa pode passar de alguns KB. Por isso o botão
+ * de COPIAR é o caminho principal na tela e este é a conveniência — se um dia
+ * um dia grande falhar no `wa.me`, a área de transferência continua inteira.
+ */
+export function whatsappTextoLink(texto: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(texto)}`;
+}

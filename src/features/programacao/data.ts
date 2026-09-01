@@ -190,21 +190,89 @@ export function useChamadosComBloco(ids: string[]) {
     queryKey: ["agenda-campo", "com-bloco", chave],
     enabled: ids.length > 0,
     staleTime: 30_000,
-    queryFn: async (): Promise<Set<string>> => {
-      const achados = new Set<string>();
+    queryFn: async (): Promise<{ ativos: Set<string>; pendentes: Set<string> }> => {
+      const ativos = new Set<string>();
+      const pendentes = new Set<string>();
       const partes = await Promise.all(
         emFatias(ids).map(async (fatia) => {
+          // `cumprido_em` VEIO JUNTO, e a coluna a mais custa ZERO requisição.
+          // Com ela a MESMA resposta produz os DOIS Sets, e é isso que torna
+          // "retorno pendente" (R106) exprimível sem uma segunda consulta:
+          //   · `ativos`    = o Set de antes, byte por byte (o `.is(cancelado_em,
+          //     null)` já garante que toda linha que volta é ativa) — é o
+          //     denominador da faixa e o predicado de `classificarChamado`;
+          //   · `pendentes` = as que ainda VÃO acontecer.
+          // O chamado que está em `ativos` e NÃO está em `pendentes` tem visita
+          // cumprida, continua aberto e não tem nada marcado à frente. Ele é
+          // invisível hoje: `classificarChamado` o põe em `com_bloco` de
+          // propósito (para a barra de progresso não andar para trás), e nenhuma
+          // faixa, fila ou célula o desenha.
+          //
+          // E o predicado precisa vir DAQUI, e não de `temCompromisso(id,
+          // blocos)`: aquele recebe os blocos DA SEMANA e responderia "nada à
+          // frente" para um retorno marcado daqui a três semanas — que é
+          // exatamente o defeito descrito no docblock desta função.
           const { data, error } = await supabase
             .from("agenda_campo" as any)
-            .select("chamado_id")
+            .select("chamado_id, cumprido_em")
             .is("cancelado_em", null)
             .in("chamado_id", fatia);
           if (error) throw error;
-          return ((data as any[]) ?? []) as { chamado_id: string | null }[];
+          return ((data as any[]) ?? []) as { chamado_id: string | null; cumprido_em: string | null }[];
         }),
       );
-      for (const linha of partes.flat()) if (linha.chamado_id) achados.add(linha.chamado_id);
-      return achados;
+      for (const linha of partes.flat()) {
+        if (!linha.chamado_id) continue;
+        ativos.add(linha.chamado_id);
+        if (linha.cumprido_em === null) pendentes.add(linha.chamado_id);
+      }
+      return { ativos, pendentes };
+    },
+  });
+}
+
+/**
+ * O BIT DO CICLO FINANCEIRO, UMA CHAMADA POR SEMANA CARREGADA — irmão de
+ * `useChamadosComBloco`, e de propósito: mesmo `emFatias`, mesmo `chaveDeIds`,
+ * mesmo `staleTime`. Nada de N+1, nada por cartão.
+ *
+ * ── POR QUE UMA RPC E NÃO UM SELECT ───────────────────────────────────────
+ * `cobrancas_select` é `USING (pode_ver_financeiro(auth.uid()))` (U4:293) e o
+ * SAC está FORA dessa régua (R13) — mas ELE ABRE ESTA TELA (`telas.ts`). Uma
+ * policy de SELECT filtra linhas e NÃO levanta erro: um SELECT direto devolveria
+ * HTTP 200 com `[]`, e `[]` seria indistinguível de "não há cobrança". Num
+ * cartão, que é obrigado a dizer alguma coisa, isso vira um número que mente por
+ * omissão — multiplicado por cartão. `SECURITY DEFINER` é a única construção
+ * que sabe separar "zero" de "não te deixam contar".
+ *
+ * ── `Map` VAZIO É O "NÃO SEI", E NUNCA UM `Map` DE `false` ────────────────
+ * A RPC devolve um ROWSET: chamado ausente da resposta é chamado sobre o qual
+ * ela não respondeu (quem não é gestor recebe ZERO LINHAS). Preencher os que
+ * faltaram com `false` seria a mesma mentira, inventada aqui em vez de lá — e é
+ * por isso que o erro também devolve `Map` vazio em vez de `throw`: a grade não
+ * pode virar tela de erro porque o selo não veio. Sem selo ela é exatamente a
+ * grade de ontem.
+ */
+export function useLancamentosDosChamados(ids: string[]) {
+  const chave = chaveDeIds(ids);
+  return useQuery({
+    queryKey: ["ciclo-financeiro", "lancamentos", chave],
+    enabled: ids.length > 0,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Map<string, boolean>> => {
+      const mapa = new Map<string, boolean>();
+      const partes = await Promise.all(
+        emFatias(ids).map(async (fatia) => {
+          const { data, error } = await supabase.rpc(
+            "chamados_com_lancamento" as any,
+            { _chamados: fatia } as any,
+          );
+          if (error) return [] as { chamado_id: string; tem_lancamento: boolean }[];
+          return ((data as any[]) ?? []) as { chamado_id: string; tem_lancamento: boolean }[];
+        }),
+      );
+      for (const l of partes.flat()) mapa.set(l.chamado_id, Boolean(l.tem_lancamento));
+      return mapa;
     },
   });
 }
@@ -240,6 +308,17 @@ export function useBlocosDaGrade(dia: string) {
   const irmaos = useBlocosDosChamados(idsDeChamado);
   return {
     blocos: ordenarPorId([...daSemana, ...(irmaos.data ?? [])]),
+    /**
+     * OS IDS DA SEMANA, DEVOLVIDOS — e devolvê-los é o que impede um defeito
+     * silencioso na próxima pergunta que alguém fizer por chamado.
+     *
+     * `blocos` (acima) é o SUPERSET: semana + os IRMÃOS de outras semanas, que
+     * `ordinalDoBloco` precisa. Quem derivasse a lista de ids dali para
+     * perguntar algo por chamado — como o ciclo financeiro faz — inflaria a
+     * pergunta com chamados que não têm um cartão sequer na tela. Esta é a
+     * lista dos que a semana REALMENTE mostra.
+     */
+    idsDeChamado,
     isPending: semana.isPending,
     erro: (semana.error ?? irmaos.error) as Error | null,
   };
@@ -250,12 +329,20 @@ export function useBlocosDaGrade(dia: string) {
 /**
  * `public.is_gestor(auth.uid())`, pela RPC e NÃO por `cargo`.
  *
- * O atalho de `dashboard.tsx:106` (`cargo === 'admin' || 'comercial' || 'sac'`)
- * NÃO serve aqui, e a diferença é observável: `is_gestor` é
- * `user_roles ∈ (admin,comercial) OR profiles.cargo ∈ (admin,comercial)`
- * (etapa0 / u6a) — o **sac NÃO é gestor** para a porta. Derivar aqui o oposto do
- * que a porta decide seria criar a segunda verdade sobre quem manda, numa
- * camada acima daquela que esta entrega existe para consertar.
+ * O atalho por `cargo` no cliente NÃO serve aqui: `is_gestor` lê `user_roles`
+ * E `profiles.cargo`, e as duas listas podem discordar de uma linha. Derivar
+ * aqui o oposto do que a porta decide seria criar a segunda verdade sobre quem
+ * manda, numa camada acima daquela que esta entrega existe para consertar.
+ *
+ * ── CORREÇÃO DE UM COMENTÁRIO QUE ESTAVA ERRADO (U80) ─────────────────────
+ * Este docblock afirmava, com todas as letras, que "o **sac NÃO é gestor** para
+ * a porta", e transcrevia `is_gestor` como
+ * `∈ (admin, comercial)`. É FALSO desde a U6a:51-66, que inclui `'sac'`
+ * explicitamente — a U6a separou DUAS réguas de propósito: `is_gestor` (admin,
+ * comercial, SAC) e `pode_ver_financeiro` (admin, comercial), porque a R13 diz
+ * que o SAC é gestor que NÃO vê valores. Quem escrevesse um selo ou um gate
+ * lendo o comentário velho erraria a régua na primeira linha, e é exatamente o
+ * tipo de coisa que esta entrega existe para não deixar acontecer.
  *
  * Uma chamada, cacheada por cinco minutos.
  */
@@ -493,6 +580,75 @@ export function useCumprirBloco() {
       if (error) throw error;
     },
     onSuccess: (_d, v) => invalidar(qc, v.bloco.chamado_id ? [v.bloco.chamado_id] : []),
+  });
+}
+
+// ── A PORTA DO CICLO FINANCEIRO (U80 §4) ───────────────────────────────────
+
+/** As três decisões que a porta aceita — gêmeo do `NOT IN` do passo 2 da RPC. */
+export type DecisaoDoCiclo = "conferir_depois" | "nada_a_cobrar" | "lancar";
+
+export interface GestoDoCiclo {
+  chamadoId: string;
+  decisao: DecisaoDoCiclo;
+  /** só quando `lancar`: a descrição, o total e as parcelas já divididas */
+  descricao?: string;
+  valorTotal?: number;
+  parcelas?: number[];
+  tipoServico?: "instalacao" | "manutencao";
+}
+
+/**
+ * CONCLUIR E DECIDIR A COBRANÇA, NA MESMA TRANSAÇÃO.
+ *
+ * Duas chamadas (concluir, depois lançar) teriam um estado intermediário
+ * OBSERVÁVEL: chamado concluído, dinheiro não lançado, ninguém sabendo. E o
+ * caminho antigo — `lancarCobrancaAvulsa` (financeiro/fechamentos.ts) — é um
+ * INSERT direto do navegador que NÃO grava `chamado_id`, não grava
+ * `contrato_id` e não mexe em `faturamento_status`: usada como está, ela cria
+ * uma cobrança que o selo nunca encontra e que a trava não trava.
+ *
+ * ── AS PARCELAS VÃO DIVIDIDAS, E O SERVIDOR CONFERE A SOMA ────────────────
+ * `parcelar()` (lib/periodos.ts) divide em CENTAVOS com o resto na primeira —
+ * 3 × 33,33 em float dá 99,99, e o cliente paga a menos para sempre.
+ * Reimplementar aquela divisão em PL/pgSQL criaria a SEGUNDA resposta para a
+ * mesma conta. Então o array vai no corpo e a RPC confere que a soma bate com o
+ * total: a divisão tem um dono só, a invariante é conferida dos dois lados.
+ *
+ * Rejeita com o erro CRU, como as quatro portas da agenda: quem escolhe o rosto
+ * é a tela, por `classeDoErro(error.code)`.
+ */
+export function useConcluirComCobranca() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (g: GestoDoCiclo): Promise<{ itens: number; status: string }> => {
+      const { data, error } = await supabase.rpc(
+        "concluir_chamado_com_cobranca" as any,
+        {
+          _chamado: g.chamadoId,
+          _decisao: g.decisao,
+          _descricao: g.descricao ?? null,
+          _valor_total: g.valorTotal ?? null,
+          _parcelas: g.parcelas ?? null,
+          _tipo_servico: g.tipoServico ?? null,
+        } as any,
+      );
+      if (error) throw error;
+      const linha = Array.isArray(data) ? data[0] : data;
+      return {
+        itens: Number((linha as any)?.itens ?? 0),
+        status: String((linha as any)?.status_final ?? ""),
+      };
+    },
+    onSuccess: (_d, g) => {
+      invalidar(qc, [g.chamadoId]);
+      // O ciclo é uma chave própria: `invalidar` cobre agenda e chamado, e o
+      // selo vive de outra pergunta.
+      qc.invalidateQueries({ queryKey: ["ciclo-financeiro"] });
+      qc.invalidateQueries({ queryKey: ["chamado-lancamento", g.chamadoId] });
+      qc.invalidateQueries({ queryKey: ["cobrancas-chamado", g.chamadoId] });
+      qc.invalidateQueries({ queryKey: ["cobrancas-abertas"] });
+    },
   });
 }
 
