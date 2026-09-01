@@ -572,40 +572,55 @@ DECLARE
   v_ch record; v_revisar int; v_competencia text; v_data date;
   v_itens int := 0; v_total numeric := 0;
 BEGIN
+  IF NOT public.pode_ver_financeiro(auth.uid()) THEN
+    RAISE EXCEPTION 'Somente quem responde pelo financeiro pode aprovar cobrança.' USING ERRCODE = '42501';
+  END IF;
   SELECT * INTO v_ch FROM public.chamados WHERE id = _chamado_id;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Chamado % não existe.', _chamado_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Chamado não encontrado.'; END IF;
+  IF v_ch.status <> 'concluido' THEN
+    RAISE EXCEPTION 'O chamado precisa estar concluído para ter a cobrança aprovada.';
   END IF;
 
-  SELECT count(*) INTO v_revisar
-    FROM public.chamado_pecas_analise
-   WHERE chamado_id = _chamado_id AND decisao = 'revisar';
+  SELECT count(*) INTO v_revisar FROM public.chamado_pecas_analise a
+  WHERE a.chamado_id = _chamado_id AND a.resultado IN ('revisar','nao_identificado');
   IF v_revisar > 0 THEN
-    RAISE EXCEPTION 'Há % item(ns) marcado(s) como "revisar" — a conferência humana precisa decidir antes de a cobrança nascer.', v_revisar;
+    RAISE EXCEPTION 'Ainda há % item(ns) em revisão. Resolva antes de aprovar.', v_revisar;
   END IF;
+
+  -- A ÚNICA MUDANÇA DA U80 NESTE CORPO. `timestamptz::date` usa o TimeZone da
+  -- SESSÃO, que é UTC no Supabase: encerrar às 21:30 de 31/08 em Brasília é
+  -- 00:30 de 01/09 em UTC, e a cobrança nasceria na competência do mês
+  -- SEGUINTE, entrando no fechamento errado. Ver o cabeçalho do §4b.
+  v_data := COALESCE(v_ch.finalizada_em, v_ch.concluida_em, v_ch.created_at)
+              AT TIME ZONE 'America/Sao_Paulo';
+  v_competencia := to_char(v_data, 'YYYY-MM');
 
   DELETE FROM public.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';
-
-  -- A ÚNICA MUDANÇA DA U80 NESTE CORPO, e é esta linha: AT TIME ZONE em vez de
-  -- ::date. Ver o comentário do §4b.
-  v_data := COALESCE(v_ch.finalizada_em, v_ch.created_at) AT TIME ZONE 'America/Sao_Paulo';
-  v_competencia := to_char(v_data, 'YYYY-MM');
 
   INSERT INTO public.cobrancas
     (cliente_id, chamado_id, chamado_peca_id, contrato_id, descricao, quantidade,
      valor_unitario, valor, competencia, data_referencia, tipo_servico, criada_por)
-  SELECT v_ch.cliente_id, _chamado_id, a.id, v_ch.contrato_id,
-         a.descricao, 1, a.valor_cobravel, a.valor_cobravel,
+  SELECT v_ch.cliente_id, _chamado_id, p.id, v_ch.contrato_id, p.descricao, p.quantidade,
+         a.valor_calculado, round(a.valor_calculado * p.quantidade, 2),
          v_competencia, v_data, COALESCE(v_ch.tipo_servico,'manutencao'), auth.uid()
-    FROM public.chamado_pecas_analise a
-   WHERE a.chamado_id = _chamado_id AND a.decisao = 'faturavel';
+  FROM public.chamado_pecas p
+  JOIN public.chamado_pecas_analise a ON a.peca_id = p.id
+  WHERE p.chamado_id = _chamado_id AND a.resultado = 'faturavel'
+    AND a.valor_calculado IS NOT NULL AND a.valor_calculado > 0;
   GET DIAGNOSTICS v_itens = ROW_COUNT;
 
-  SELECT COALESCE(sum(valor), 0) INTO v_total
-    FROM public.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';
+  SELECT COALESCE(sum(valor),0) INTO v_total FROM public.cobrancas
+  WHERE chamado_id = _chamado_id AND status = 'aberta';
 
-  UPDATE public.chamados SET faturamento_status = 'aprovada' WHERE id = _chamado_id;
+  UPDATE public.chamados
+  SET faturamento_status = CASE WHEN v_itens = 0 THEN 'sem_cobranca' ELSE 'aprovada' END
+  WHERE id = _chamado_id;
 
+  INSERT INTO public.chamado_eventos (chamado_id, tipo, descricao, user_id)
+  VALUES (_chamado_id, 'cobranca_aprovada',
+          CASE WHEN v_itens = 0 THEN 'Conferência concluída: nada a cobrar.'
+               ELSE 'Cobrança aprovada: ' || v_itens || ' item(ns), total ' ||
+                    to_char(v_total,'FM999G999G990D00') END, auth.uid());
   RETURN QUERY SELECT v_itens, v_total;
 END;
 $aprovar$;

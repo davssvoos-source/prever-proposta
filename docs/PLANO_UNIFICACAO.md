@@ -6445,3 +6445,55 @@ Mutação: reintroduzir cada uma das duas armadilhas deixa a suíte vermelha. 2/
 
 2095 asserções, build ok, tsc em 83.
 
+### A S4 e o erro que ela quase deixou passar — no meu §4b
+
+A auditoria de valor achou o que foi buscar (o total em reais legível por
+qualquer login na linha do tempo) e, de quebra, **dois defeitos BLOQUEANTES no
+§4b que eu mesmo tinha escrito na U80**:
+
+1. **O corpo foi copiado da U7, não da U13.** A U13 é a versão viva, e ela tinha
+   evoluído. Minha reescrita teria revertido, em silêncio: o gate
+   `pode_ver_financeiro` (qualquer autenticado passaria a aprovar cobrança e a
+   receber `total numeric` de volta), a trava `status <> concluido`, o
+   `sem_cobranca` quando não há item, o `concluida_em` no COALESCE, e o
+   `nao_identificado` na checagem de revisão.
+2. **Colunas que não existem.** A U7 lia `a.decisao` e `a.valor_cobravel`; a
+   U13 lê `a.resultado` e `a.valor_calculado` e junta `chamado_pecas`. Seria
+   `42703` na primeira aprovação, com a fila de faturamento parada.
+
+**E a asserção que eu escrevi para guardar a promessa "a única mudança é o
+fuso" checava a PRESENÇA de três coisas.** Presença nunca detecta o que foi
+APAGADO — e o que estava sendo apagado era o gate de papel. É a quarta variação
+desta semana da mesma família ("regex prova que a linha existe"), e a mais cara:
+as três anteriores deixavam passar código morto; esta deixava passar código VIVO
+E ERRADO num caminho de dinheiro.
+
+**A forma certa quando uma migration reescreve função de outra é um DIFF:**
+extrair os dois corpos, normalizar, e exigir que a diferença seja exatamente a
+esperada. Assim o que SAI sem querer acusa junto com o que ENTRA sem querer.
+Está aplicado nos dois lugares — no §4b da U80 (uma mudança: o fuso) e no corpo
+da S4 (duas: o fuso e o evento sem a cifra).
+
+**Sobre editar a U80 em vez de consertar pela S4.** O CLAUDE.md diz "nunca edite
+migration já enviada — faça outra", e o agente que desenhou a S4 leu isso ao pé
+da letra, construindo um plano inteiro em cima disso. A regra existe porque
+editar uma migration que JÁ RODOU não muda o banco — a alteração fica invisível.
+A U80 abortou duas vezes por erro de sintaxe e nunca aplicou nada (é tudo uma
+transação): o banco jamais a viu. Mandar uma segunda migration para consertar
+função definida por uma migration quebrada que nunca rodou seria absurdo. O
+corte é **rodada**, não "enviada", e a redação da regra foi afiada.
+
+**A S4, revisada.** Ela fecha na fonte (o evento novo não carrega cifra) e
+estreita a policy de `chamado_eventos_select` de `USING (true)` para
+`pode_acessar_chamado` — a mesma régua que `chamado_fotos` e
+`chamado_checklist` já usam desde 19/08. Não reescreve `descricao` de linha
+antiga, e isso é decisão: seria destruir registro de auditoria. Em vez disso ela
+MEDE o resíduo e põe o número na frente do Davi.
+
+Mutação sobre as promessas da S4: **8 de 8**. O único "sobrevivente" era mutação
+inválida — a âncora casou uma linha de COMENTÁRIO que citava o gate, e a função
+ficou intacta. Terceira vez que isso acontece nesta semana; conferir se a
+mutação atingiu o alvo virou parte do procedimento.
+
+2104 asserções, build ok, tsc em 83.
+

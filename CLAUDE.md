@@ -50,7 +50,10 @@ O repo **nunca aplica** migration: o Davi roda À MÃO no SQL Editor do
 Supabase. Toda migration é **idempotente**, termina com **SELECTs de
 conferência** (valor obtido × esperado, e "quem não casou"), e traz o comando
 de DESFAZER no rodapé. Migration entregue = arquivo em `supabase/migrations/`
-+ aviso ao Davi para rodar. Nunca edite migration já enviada — faça outra.
++ aviso ao Davi para rodar. Nunca edite migration que o Davi JÁ RODOU — faça outra (editar não
+mudaria o banco, e a alteração ficaria invisível). Migration que abortou e
+não aplicou nada corrige-se NO LUGAR: mandar outra para consertar o que a
+primeira nem chegou a criar é pior para quem lê depois.
 Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 
 ## As invariantes que não podem regredir

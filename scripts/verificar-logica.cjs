@@ -8722,12 +8722,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const iAp = vivo80.indexOf('CREATE OR REPLACE FUNCTION public.aprovar_chamado_financeiro');
     const ini = vivo80.indexOf('AS $aprovar$', iAp) + 'AS $aprovar$'.length;
     const corpoAp80 = iAp < 0 ? '' : vivo80.slice(ini, vivo80.indexOf('$aprovar$', ini));
-    eq('CRÍTICO: a U80 REESCREVEU o corpo de `aprovar_chamado_financeiro` e PERDEU o gate de papel e a trava de status — não é "só o fuso", e é por isso que a S4 existe e roda logo depois dela',
+    // A U80 chegou a reescrever este corpo a partir da U7 em vez da U13, e
+    // teria revertido em silêncio o gate de papel, a trava de status, o
+    // `sem_cobranca` e os nomes de coluna (a U7 lia `decisao`/`valor_cobravel`;
+    // a U13 lê `resultado`/`valor_calculado`). Foi corrigido NO ARQUIVO — ele
+    // abortou duas vezes por erro de sintaxe e nunca aplicou nada, então o
+    // banco jamais viu a versão errada.
+    eq('CRÍTICO: o corpo de aprovar_chamado_financeiro na U80 é o VIVO da U13 — gate de papel, trava de status, sem_cobranca, e as colunas que existem',
        [/pode_ver_financeiro/.test(corpoAp80),
         /v_ch\.status <> 'concluido'/.test(corpoAp80),
         /a\.valor_cobravel/.test(corpoAp80),
         /sem_cobranca/.test(corpoAp80)],
-       [false, false, true, false]);
+       [true, true, false, true]);
     // O ÚNICO ganho legítimo do §4b, e o que a S4 é obrigada a carregar adiante:
     // as duas portas de nascer cobrança têm de ter o mesmo relógio.
     // A condição TEM de vir COLADA no THEN. `[\s\S]{0,N}` engolia um `IF false`
@@ -8984,7 +8990,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /v_data := coalesce\(v_ch\.finalizada_em, v_ch\.concluida_em, now\(\)\)\s*\n\s*AT TIME ZONE 'America\/Sao_Paulo';/.test(u80vivo),
      true);
   eq('CRÍTICO: e o motor de AGOSTO foi corrigido junto — dois caminhos de nascer cobrança com relógios diferentes seria pior que o defeito',
-     /v_data := COALESCE\(v_ch\.finalizada_em, v_ch\.created_at\) AT TIME ZONE 'America\/Sao_Paulo';/.test(u80vivo),
+     /v_data := COALESCE\(v_ch\.finalizada_em, v_ch\.concluida_em, v_ch\.created_at\)\s*\n\s*AT TIME ZONE 'America\/Sao_Paulo';/.test(u80vivo),
      true);
   eq('nenhum `::date` sem fuso sobrou nos dois caminhos de competência',
      /COALESCE\(v_ch\.finalizada_em, v_ch\.created_at\)::date/.test(u80vivo), false);
@@ -9227,11 +9233,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // devolveria lista vazia e passaria verde para sempre. Aqui ele é apontado
   // para o corpo que SE SABE defeituoso (o §4b da U80) e tem de acusar as
   // quatro. É o mesmo padrão do detector de dollar-quote logo acima.
-  eq('…e o censo REALMENTE acusa: apontado para o corpo da U80, ele devolve as quatro colunas fantasma — sem este par, um extrator quebrado passaria verde para sempre',
-     refsDoAlias(corpoDe(lerS4('20260903090000_u80_ciclo_financeiro_no_card.sql'),
-                         'aprovar_chamado_financeiro', '$aprovar$'), 'a')
+  // A FIXTURE É ESCRITA À MÃO, e isto é correção de método: a versão anterior
+  // apontava o detector para o arquivo VIVO da U80, que na época carregava as
+  // colunas fantasma. Quando o defeito foi consertado na fonte, a fixture
+  // evaporou e o par negativo passou a falhar — medindo o repositório em vez
+  // de medir o detector. Fixture de par negativo é constante, sempre.
+  eq('…e o censo REALMENTE acusa: contra um corpo escrito à mão que lê as quatro colunas mortas da U7, ele devolve as quatro — sem este par, um extrator quebrado passaria verde para sempre',
+     refsDoAlias(
+       "SELECT a.id, a.descricao, a.valor_cobravel FROM public.chamado_pecas_analise a " +
+       "WHERE a.chamado_id = _c AND a.decisao = 'faturavel' AND a.resultado IS NULL", 'a')
        .filter((c) => !colsAnalise.includes(c)),
      ['decisao', 'descricao', 'id', 'valor_cobravel']);
+  // …e o mesmo detector POUPA um corpo que só lê coluna viva.
+  eq('…e ele poupa um corpo que só lê coluna que existe',
+     refsDoAlias("SELECT a.resultado, a.valor_calculado FROM public.chamado_pecas_analise a", 'a')
+       .filter((c) => !colsAnalise.includes(c)), []);
 
   // ── 4) A POLICY, COMO LINHA INTEIRA E VIVA ───────────────────────────────
   // Ancorada em `^…$` com /m sobre o CÓDIGO (o cabeçalho da própria migration
@@ -9554,6 +9570,130 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      acharIfCase("IF v_n > (CASE WHEN t = 'x' THEN 60 ELSE 12 END) THEN\n  NULL;\nEND IF;"), []);
   eq('…e poupa um IF comum, sem CASE nenhum',
      acharIfCase("IF v_n > 12 THEN\n  NULL;\nEND IF;"), []);
+}
+
+// ── REESCREVER FUNÇÃO VIVA: a asserção tem de ser um DIFF ───────────────────
+// A U80 §4b reescreve `aprovar_chamado_financeiro`, que é do motor de agosto, e
+// jurava no comentário "a ÚNICA mudança é o fuso". A asserção que guardava essa
+// promessa checava a PRESENÇA de três coisas — e presença NUNCA detecta o que
+// foi APAGADO. O corpo tinha sido copiado da U7, não da U13 que é a versão
+// viva, e teria revertido em silêncio:
+//   · o gate `pode_ver_financeiro` (u13:77-79) — qualquer autenticado passaria
+//     a aprovar cobrança e a receber `total numeric` de volta;
+//   · os nomes de coluna: a U7 lia `a.decisao`/`a.valor_cobravel`; a U13 lê
+//     `a.resultado`/`a.valor_calculado` e junta `chamado_pecas`. Erro 42703 na
+//     primeira aprovação, e a fila de faturamento parava;
+//   · a trava `status <> 'concluido'`, o `sem_cobranca` quando não há item, o
+//     `concluida_em` no COALESCE da competência, e o `nao_identificado` na
+//     checagem de revisão.
+//
+// É a QUARTA variação da mesma família desta semana ("regex prova que a linha
+// existe"), e a mais cara: as três anteriores deixavam passar código morto;
+// esta deixava passar código VIVO E ERRADO num caminho de dinheiro.
+//
+// A forma certa quando uma migration reescreve função de outra: extrair os DOIS
+// corpos e exigir que a diferença seja EXATAMENTE a esperada. Assim, o que sai
+// sem querer acusa junto com o que entra sem querer.
+{
+  const fsD = require('fs');
+  const u13d = fsD.readFileSync('supabase/migrations/20260820100000_u13_executado_vira_concluido.sql', 'utf8');
+  const u80d = fsD.readFileSync('supabase/migrations/20260903090000_u80_ciclo_financeiro_no_card.sql', 'utf8');
+
+  /** Recorta o corpo de uma função, do CREATE até o fecho do dólar-quote. */
+  const corpoDe = (src, nome) => {
+    const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
+    if (i < 0) return null;
+    const m = /AS (\$[A-Za-z_]*\$)/.exec(src.slice(i, i + 400));
+    if (!m) return null;
+    const j = src.indexOf('\n' + m[1] + ';', i);
+    return j < 0 ? null : src.slice(i, j);
+  };
+  /** Normaliza para comparar SENTIDO, não formatação: tira comentários de
+   *  linha, colapsa espaço e uniformiza o delimitador do dólar-quote. */
+  const normalizar = (s) => s
+    .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+    .replace(/AS \$[A-Za-z_]*\$/, 'AS $Q$')
+    .replace(/\s+/g, ' ').trim();
+
+  const vivo13 = corpoDe(u13d, 'aprovar_chamado_financeiro');
+  const novo80 = corpoDe(u80d, 'aprovar_chamado_financeiro');
+  eq('os dois corpos de aprovar_chamado_financeiro foram recortados (se este falhar, os de baixo mentem)',
+     [vivo13 !== null, novo80 !== null], [true, true]);
+
+  // A MUDANÇA ESPERADA, escrita à mão: só o fuso.
+  const esperado13 = normalizar(
+    (vivo13 || '').replace(
+      'v_data := COALESCE(v_ch.finalizada_em, v_ch.concluida_em, v_ch.created_at)::date;',
+      "v_data := COALESCE(v_ch.finalizada_em, v_ch.concluida_em, v_ch.created_at) AT TIME ZONE 'America/Sao_Paulo';",
+    ));
+  eq('CRÍTICO: a U80 reescreve aprovar_chamado_financeiro com o corpo VIVO da U13 e UMA mudança — o fuso. Checar PRESENÇA não pegaria o que SAIU, e o que saía era o gate de papel',
+     normalizar(novo80 || ''), esperado13);
+
+  // As duas garantias que a versão errada perdia, ditas por extenso — para o
+  // dia em que alguém encurtar a asserção de cima achando que o diff é demais.
+  eq('CRÍTICO: o gate de papel continua lá — sem ele, qualquer autenticado aprova cobrança e recebe o total de volta',
+     /IF NOT public\.pode_ver_financeiro\(auth\.uid\(\)\) THEN\s*\n\s*RAISE EXCEPTION/.test(novo80 || ''),
+     true);
+  eq('CRÍTICO: e as colunas são as que EXISTEM (a.resultado / a.valor_calculado), não as da U7 que morreram',
+     /a\.resultado/.test(novo80 || '') && /a\.valor_calculado/.test(novo80 || '')
+     && !/a\.decisao|valor_cobravel/.test(novo80 || ''), true);
+}
+
+// ── O MESMO DIFF, AGORA SOBRE A S4 ──────────────────────────────────────────
+// Uma bateria de mutação sobre a S4 pegou 4 de 6, e as duas que passaram eram
+// as garantias centrais dela: apagar o gate `pode_ver_financeiro` do corpo, e
+// apagar o fuso. As asserções existentes miravam o corpo da U80 — que foi
+// corrigido — e deixaram o da S4, que é o que efetivamente fica valendo, sem a
+// mesma régua. A S4 roda DEPOIS da U80, então é o corpo dela que sobrevive.
+//
+// A forma é a mesma da U80: DIFF contra o corpo vivo da U13, com as mudanças
+// esperadas escritas à mão. São DUAS aqui, e não uma:
+//   1. o fuso (idem U80);
+//   2. o evento perde a cifra — que é a razão de a S4 existir.
+{
+  const fsE = require('fs');
+  const u13e = fsE.readFileSync('supabase/migrations/20260820100000_u13_executado_vira_concluido.sql', 'utf8');
+  const s4e = fsE.readFileSync('supabase/migrations/20260903180000_s4_auditoria_de_valor.sql', 'utf8');
+
+  const corpoDeF = (src, nome) => {
+    const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
+    if (i < 0) return null;
+    const m = /AS (\$[A-Za-z_0-9]*\$)/.exec(src.slice(i, i + 400));
+    if (!m) return null;
+    const j = src.indexOf('\n' + m[1] + ';', i);
+    return j < 0 ? null : src.slice(i, j);
+  };
+  const norm = (s) => s
+    .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+    .replace(/AS \$[A-Za-z_0-9]*\$/, 'AS $Q$')
+    .replace(/\s+/g, ' ').trim();
+
+  const vivo = corpoDeF(u13e, 'aprovar_chamado_financeiro');
+  const naS4 = corpoDeF(s4e, 'aprovar_chamado_financeiro');
+  eq('os dois corpos foram recortados (se este falhar, o de baixo mente)',
+     [vivo !== null, naS4 !== null], [true, true]);
+
+  const esperadoS4 = norm(
+    (vivo || '')
+      .replace(
+        'v_data := COALESCE(v_ch.finalizada_em, v_ch.concluida_em, v_ch.created_at)::date;',
+        "v_data := COALESCE(v_ch.finalizada_em, v_ch.concluida_em, v_ch.created_at) AT TIME ZONE 'America/Sao_Paulo';",
+      )
+      .replace(
+        "ELSE 'Cobrança aprovada: ' || v_itens || ' item(ns), total ' ||\n                    to_char(v_total,'FM999G999G990D00') END, auth.uid());",
+        "ELSE 'Cobrança aprovada: ' || v_itens || ' item(ns).' END, auth.uid());",
+      ));
+  eq('CRÍTICO: o corpo da S4 é o VIVO da U13 com DUAS mudanças e nenhuma a mais — o fuso, e o evento sem a cifra. É o corpo que sobrevive, porque a S4 roda depois da U80',
+     norm(naS4 || ''), esperadoS4);
+
+  // As duas que a mutação derrubou, ditas por extenso — para o dia em que
+  // alguém achar o diff exagerado e o encurtar.
+  eq('CRÍTICO: o gate de papel está no corpo da S4 — sem ele, qualquer autenticado aprova cobrança e recebe o total de volta',
+     /IF NOT public\.pode_ver_financeiro\(auth\.uid\(\)\) THEN\s*\n\s*RAISE EXCEPTION[^;]{0,160}42501/.test(naS4 || ''),
+     true);
+  eq('CRÍTICO: e o fuso de Brasília também — sem ele a competência de quem encerra depois das 21h cai no mês seguinte',
+     /AT TIME ZONE 'America\/Sao_Paulo'/.test(naS4 || '')
+     && !/v_ch\.created_at\)::date/.test(naS4 || ''), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
