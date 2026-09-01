@@ -1,40 +1,110 @@
-// Programação da equipe técnica — Etapa U3 da unificação.
-// É a tela que o Vinicius usa hoje no SIGMA: quem vai onde, em que dia, e o
-// que ainda está sem data. Ver docs/PLANO_UNIFICACAO.md §5.2.
+// Programação da equipe de campo — U3 (o dia), R57 (os filtros), U79 (a grade).
 //
-// Desenhada para celular: em vez de uma grade semana × técnico (que não cabe
-// na tela), um dia por vez, com a fila de quem ainda não foi agendado logo
-// abaixo — que é a pergunta que ele realmente precisa responder.
+// ── O ÂNGULO: UMA ESTRUTURA, DUAS PROJEÇÕES ───────────────────────────────
+// `linhasDaGrade` é chamada UMA VEZ, com os `dias` da SEMANA INTEIRA. A GRADE
+// desenha todas as colunas; o DIA desenha uma (`celulas.find`). São o mesmo
+// objeto. É o que o próprio modelo puro anuncia em `celulaDaGrade`: "o átomo…
+// tudo o mais neste arquivo é composição disto — inclusive a grade da semana e
+// a lista do celular, que é a razão de o átomo existir".
+//
+// A U3 escolheu programar por DIA "porque a grade não cabe na tela do celular,
+// que é onde o Vinicius trabalha" (docs/PLANO_UNIFICACAO.md:686-688), e ele
+// construiu a grade depois no sistema dele. Os dois estão certos, e por isso
+// "grade" é o TERCEIRO valor do mesmo seletor de lente — não uma rota nova,
+// não uma tela nova, nada para reaprender. Trocar de modo continua sendo trocar
+// a lente, não a tela: os três leem o MESMO `dia`.
+//
+// ── A COSTURA DOS DOIS EIXOS DE SEMANA NÃO FOI COSTURADA: FOI REMOVIDA ────
+// A régua desta tela ia de DOMINGO (`base.getDate() - base.getDay()`) e a
+// escala é ISO (segunda). O arquivo assumia a contradição por escrito ("o
+// domingo da régua pertence à semana anterior") e resolvia chamado por chamado.
+// A régua agora é ISO, ancorada em `inicioSemana` — a mesma função do resto do
+// sistema. Conferido, e é por isso que a troca é segura: para um DOMINGO,
+// `inicioSemana` desloca −6 (a segunda anterior) e `semanaIso` joga para a
+// quinta daquela mesma semana. `referenciaSemanal(domingo)` e
+// `inicioSemana(domingo)` SEMPRE concordaram; quem criava o desencontro era a
+// régua Sunday-first. Trocada a régua, os dois eixos são um eixo só.
+//
+// A vista MENSAL continua domingo→sábado, e a assimetria é declarada: a régua
+// semanal fala de SEMANA (por isso é ISO); o mensal fala de MÊS e de DIA, não
+// carrega chip de semana nenhum, e no Brasil um calendário se lê a partir de
+// domingo.
+//
+// ── ESTA TELA NÃO CALCULA NADA ────────────────────────────────────────────
+// Saíram daqui, para `features/programacao/modelo.ts`: `chaveDia` (era cópia de
+// `dataIso`), a régua domingo→sábado, o `emAberto` cru, o balde-por-dia por
+// comparação de `new Date(iso)` (que resolvia no fuso do NAVEGADOR em oito
+// lugares), a `cargaPorDia` que contava CABEÇAS, o `porGrupo` com o balde nulo
+// faltando, e a mutação `programar` inteira. O que sobra é orquestração,
+// pixel e gesto.
+//
+// ── E ELA NÃO ESCREVE MAIS `chamados.data_hora_agendada` ─────────────────
+// A coluna virou ESPELHO derivado (R101), mantido por gatilho. Quem escreve
+// agenda de campo são as quatro portas da U78, abertas pela U79. `12:00` como
+// SENTINELA morreu junto com o `new Date(\`${d}T12:00:00\`)` desta tela.
 
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
-import { useMemo, useState, type CSSProperties } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle, ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, Plus, UserX,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { ArrowLeft, CalendarClock, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useTecnicos } from "@/features/gerencial/data";
-import { useChamadosPorNatureza, atualizarChamado, type Chamado } from "@/features/chamados/data";
+import { useChamadosPorNatureza, useChamadosRealtime, type Chamado } from "@/features/chamados/data";
+import { useSessao } from "@/features/home/data";
 import { useDuplas, useEscala } from "@/features/duplas/data";
 import {
-  composicaoDaDupla, duplaDaPessoaNaSemana, montarEscala, rotuloDaComposicao,
+  composicaoDaDupla, montarEscala, rotuloDaComposicao, rotuloDaOrigem,
 } from "@/features/duplas/modelo";
 import { FONT, GOLD_GRAD, card } from "@/lib/ui";
-import { referenciaSemanal } from "@/lib/periodos";
+import { dataIso, inicioSemana, referenciaSemanal } from "@/lib/periodos";
 import {
-  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
-  PRIORIDADE_LABEL, PRIORIDADE_CORES, TIPO_LABEL, TIPOS_DEMANDA_CAMPO,
-  type ChamadoPrioridade, type ChamadoTipo,
+  TIPO_LABEL, TIPOS_DEMANDA_CAMPO, type ChamadoTipo,
 } from "@/lib/chamado-status";
+import {
+  blocosForaDaGrade,
+  classificarChamado,
+  dataDoDia,
+  diasDaGrade,
+  duracaoTexto,
+  erroDoAgendamento,
+  linhasDaGrade,
+  parDoInstante,
+  rotuloDoBloco,
+  type BlocoCandidato,
+  type BlocoDeAgenda,
+  type ChamadoParaGrade,
+  type ContextoDoAgendamento,
+  type ItemDaGrade,
+  type LinhaDaGrade,
+} from "@/features/programacao/modelo";
+import {
+  useAutorizacaoDaAgenda, useBlocosDaGrade, useChamadosComBloco, useMarcarBloco,
+  sqlstateDoErro,
+} from "@/features/programacao/data";
+import { GradeSemana, type RotulosDaEquipe } from "@/features/programacao/GradeSemana";
+import { ColunaDoDia } from "@/features/programacao/ColunaDoDia";
+import { FaixaSemHorario, FilaSemData, type ChamadoDaFila } from "@/features/programacao/FaixaSemHorario";
+import { FormularioDoBloco, type AberturaDoFormulario } from "@/features/programacao/FormularioDoBloco";
+
+type ModoDeVisao = "semanal" | "mensal" | "grade";
+const MODOS: ModoDeVisao[] = ["semanal", "mensal", "grade"];
 
 export const Route = createFileRoute("/_authenticated/chamados/programacao")({
   beforeLoad: async () => {
     const { ok } = await guardaDeTela("chamados.programacao");
     if (!ok) throw redirect({ to: destinoNegado("chamados.programacao") as any });
   },
+  // O ESTADO SAI PARA A URL. Nada era persistido antes, e trocar de tela perdia
+  // o dia aberto e os filtros. Num quadro compartilhado, "olha a quinta da
+  // Equipe B" é o link mais pedido e o único que não existia.
+  validateSearch: (s: Record<string, unknown>) => ({
+    dia: typeof s.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.dia) ? s.dia : undefined,
+    modo: MODOS.includes(s.modo as ModoDeVisao) ? (s.modo as ModoDeVisao) : undefined,
+    equipe: typeof s.equipe === "string" ? s.equipe : undefined,
+    tipo: typeof s.tipo === "string" ? s.tipo : undefined,
+    chamado: typeof s.chamado === "string" ? s.chamado : undefined,
+  }),
   component: ProgramacaoPage,
 });
 
@@ -44,14 +114,9 @@ const MES_NOME = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
-/** AAAA-MM-DD no fuso local — comparar Date direto erra na virada do dia. */
-function chaveDia(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-type ModoDeVisao = "semanal" | "mensal";
-
-/** Os dois seletores de filtro (dupla, tipo) falam a mesma língua visual. */
+/** Os seletores de filtro falam a mesma língua visual. Função de `(isLight)`
+ *  porque constante de estilo em nível de módulo não enxerga tema (§8 do
+ *  design system, anti-padrão nº 4). */
 const SELETOR_FILTRO = (isLight: boolean, textPrimary: string): CSSProperties => ({
   height: 38, borderRadius: 999, padding: "0 13px", cursor: "pointer",
   background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
@@ -60,285 +125,493 @@ const SELETOR_FILTRO = (isLight: boolean, textPrimary: string): CSSProperties =>
   outline: "none", colorScheme: isLight ? "light" : "dark",
 });
 
+/**
+ * O que está sendo arrastado. Vai num `useRef` e nunca em state (R87/U21): o
+ * `dataTransfer` só carrega o id, porque `getData` não funciona no `dragover`.
+ *
+ * SÓ BLOCO. Arrastar um cartão da FAIXA "sem horário" para dentro de uma célula
+ * seria um acelerador bom para a migração, e não está construído — ele foi
+ * cortado, e não esquecido: o gesto do arrasto exprime (equipe, dia), e um
+ * chamado da faixa precisa ainda de DURAÇÃO, que só o formulário pergunta. Ele
+ * abriria o formulário do mesmo jeito, com dois campos a menos para digitar, e
+ * o preço seria uma união de tipos no ref para economizar dois cliques. Se a
+ * migração da base mostrar que vale, é um `tipo: "chamado"` aqui e um wrapper
+ * `draggable` na faixa.
+ */
+type Arrastado = { tipo: "bloco"; item: ItemDaGrade };
+
 function ProgramacaoPage() {
   const navigate = useNavigate();
-  const qc = useQueryClient();
+  const busca = Route.useSearch();
   const { isLight } = useTheme();
-  // programação é sobre deslocamento: só chamado de campo entra aqui
+
+  // ── as consultas ────────────────────────────────────────────────────────
+  // A lista de chamados vai COMPLETA e sem filtro para a grade, e isso não é
+  // descuido: `chamadoOculto` é `chamado_id !== null && !chamado`
+  // (modelo.ts:1582), então um bloco de chamado CONCLUÍDO que não esteja na
+  // lista entregue vira "Outro atendimento" no cartão e `divergencia: null`. A
+  // tela antiga filtrava cedo (`emAberto`) e passava a lista filtrada para tudo
+  // abaixo; repetir aquilo faria o rótulo mentir. Só os BALDES usam
+  // `naProgramacao`, por dentro de `classificarChamado`.
   const { data: ordens = [], isLoading } = useChamadosPorNatureza("campo");
   const { data: tecnicos = [] } = useTecnicos();
   const { data: duplas = [] } = useDuplas();
-  const { data: escala = montarEscala([], []) } = useEscala();
+  const { data: escala = montarEscala([], []), isPending: escalaPendente } = useEscala();
+  const { data: sessao } = useSessao();
 
-  const [dia, setDia] = useState(() => new Date());
-  const [modo, setModo] = useState<ModoDeVisao>("semanal");
-  const [duplaFiltro, setDuplaFiltro] = useState<string>("todas");
-  const [tipoFiltro, setTipoFiltro] = useState<"todos" | ChamadoTipo>("todos");
-  const [agendando, setAgendando] = useState<Chamado | null>(null);
-  const [novaData, setNovaData] = useState("");
-  const [novoTecnico, setNovoTecnico] = useState("");
+  // O quadro é COMPARTILHADO, e `agenda_campo` NÃO foi adicionada à publicação
+  // do realtime pela U78 — uma inscrição em tabela fora da publicação conecta,
+  // fica viva e nunca dispara, que é pior do que não existir (o repo já pagou
+  // por isso: chamados/data.ts:746-751). Então o canal aqui é o de `chamados`,
+  // que acorda quando o ESPELHO escreve. O que ele NÃO cobre, dito para ninguém
+  // supor o contrário: mover um bloco sem mudar o valor espelhado (uma correção
+  // de duração, um bloco que não é o mais antigo pendente) não dispara evento
+  // nenhum. O resto é `staleTime` curto e foco de janela.
+  useChamadosRealtime();
+
+  const hojeIso = dataIso(new Date());
+  const dia = busca.dia ?? hojeIso;
+  const modo: ModoDeVisao = busca.modo ?? "semanal";
+  const duplaFiltro = busca.equipe ?? "todas";
+  const tipoFiltro = busca.tipo ?? "todos";
+
+  const irPara = (patch: Record<string, string | undefined>) =>
+    navigate({
+      to: "/chamados/programacao",
+      search: (s: Record<string, unknown>) => ({ ...s, ...patch }),
+      replace: true,
+    } as any);
+  const setDia = (d: string) => irPara({ dia: d });
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
 
+  const dataDoAberto = dataDoDia(dia) ?? new Date();
+  const semanaAberta = referenciaSemanal(dataDoAberto);
+
+  // ── os blocos ───────────────────────────────────────────────────────────
+  const { blocos } = useBlocosDaGrade(dia);
+
+  /**
+   * O denominador da faixa. `classificarChamado` precisa saber se o chamado tem
+   * bloco EM QUALQUER TEMPO, e não na janela desenhada — sem isto, um chamado
+   * cujo único bloco está a três meses cai na faixa "sem horário" e o botão
+   * "Dar horário" cria um SEGUNDO bloco, que a U78 lê como RETORNO.
+   */
+  const idsComData = useMemo(
+    () => ordens.filter((c) => c.data_hora_agendada).map((c) => c.id),
+    [ordens],
+  );
+  const { data: comBloco = new Set<string>() } = useChamadosComBloco(idsComData);
+
+  const paraGrade = ordens as unknown as ChamadoParaGrade[];
+  const autz = useAutorizacaoDaAgenda(sessao?.userId ?? null, ordens as any[]);
+
+  // ── A CHAMADA ÚNICA ─────────────────────────────────────────────────────
+  // `dias ∪ {dia}`: sem a união, escolher um sábado VAZIO na régua (que é
+  // exatamente o gesto de marcar o primeiro bloco nele) tiraria o dia
+  // selecionado das colunas — e o celular, que faz `celulas.find`, não acharia
+  // célula nenhuma.
+  const dias = useMemo(
+    () => [...new Set([...diasDaGrade(dataDoAberto, blocos, dataIso), dia])].sort(),
+    [dia, blocos],
+  );
+  const linhas = useMemo(
+    () => linhasDaGrade(duplas, semanaAberta, dias, blocos, paraGrade, escala, referenciaSemanal),
+    [duplas, semanaAberta, dias, blocos, paraGrade, escala],
+  );
+
+  /**
+   * O GUARDA DOS DOIS LADOS, avaliado sobre a saída CRUA do modelo (nunca sobre
+   * as linhas já filtradas pela tela): ele prova que `linhasDaGrade` não perdeu
+   * nem inventou bloco. Quando o usuário filtra, a grade passa a mostrar menos
+   * DE PROPÓSITO, e quem diz isso é o "· filtrado" do cabeçalho — não este
+   * número. Tem de ser sempre {0, 0}.
+   */
+  const guarda = useMemo(
+    () => blocosForaDaGrade(linhas, semanaAberta, blocos, referenciaSemanal),
+    [linhas, semanaAberta, blocos],
+  );
+
+  // ── nomes e rótulos ─────────────────────────────────────────────────────
   const nomePorTecnico = useMemo(
     () => Object.fromEntries((tecnicos as any[]).map((t) => [t.id, t.nome ?? "—"])) as Record<string, string>,
     [tecnicos],
   );
   const nomeDeTecnico = (id: string) => nomePorTecnico[id] ?? "Técnico";
+  const duplaPorId = useMemo(() => new Map(duplas.map((d) => [d.id, d])), [duplas]);
 
-  /**
-   * A semana do dia aberto. É o eixo de tudo que fala de equipe nesta tela:
-   * desde a U76 "quem sai com quem" é pergunta com data, e a resposta de agosto
-   * não vale para o que foi feito em junho.
-   */
-  const semanaDoDia = useMemo(() => referenciaSemanal(dia), [dia]);
+  const rotulos: RotulosDaEquipe = {
+    nome: (id) => {
+      const d = duplaPorId.get(id);
+      const membros = composicaoDaDupla(id, semanaAberta, escala);
+      return d ? rotuloDaComposicao(d, membros, nomeDeTecnico) : "Equipe fora do cadastro";
+    },
+    sub: (id) => {
+      const membros = composicaoDaDupla(id, semanaAberta, escala);
+      return membros.length > 0 ? membros.map(nomeDeTecnico).join(" · ") : null;
+    },
+    // O selo de escala HERDADA vem de `rotuloDaOrigem` (duplas/modelo.ts:261) —
+    // "ninguém confirmou a escala desta semana, esta é a da semana tal".
+    origem: (l) => (l.herdada ? rotuloDaOrigem(l.semanaOrigem, l.semana) : null),
+  };
 
-  /** As equipes que TÊM composição na semana aberta — as que o filtro oferece. */
+  /** As equipes que TÊM composição na semana aberta — o filtro e o formulário. */
   const equipesDaSemana = useMemo(
     () => duplas
-      .map((d) => ({ dupla: d, membros: composicaoDaDupla(d.id, semanaDoDia, escala) }))
-      .filter((x) => x.membros.length > 0),
-    [duplas, semanaDoDia, escala],
+      .map((d) => ({ id: d.id, membros: composicaoDaDupla(d.id, semanaAberta, escala) }))
+      .filter((x) => x.membros.length > 0)
+      .map((x) => ({ id: x.id, rotulo: rotulos.nome(x.id) })),
+    [duplas, semanaAberta, escala, nomePorTecnico],
   );
 
-  // a semana começa no domingo do dia escolhido
-  const semana = useMemo(() => {
-    const base = new Date(dia);
-    base.setDate(base.getDate() - base.getDay());
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return d;
-    });
-  }, [dia]);
-
-  /**
-   * A grade do mês (R57): sempre 6 linhas de 7 dias, começando no domingo da
-   * semana em que o dia 1º cai. Seis linhas FIXAS, não "as que couberem" — um
-   * mês que ocupa 5 linhas e outro que ocupa 6 fariam a página inteira pular
-   * de altura ao trocar de mês, e o que está embaixo (a agenda) andaria junto.
-   * Os dias de fora do mês aparecem apagados, como em qualquer calendário.
-   */
-  const gradeDoMes = useMemo(() => {
-    const primeiro = new Date(dia.getFullYear(), dia.getMonth(), 1);
-    const base = new Date(primeiro);
-    base.setDate(1 - primeiro.getDay());
-    return Array.from({ length: 42 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return d;
-    });
-  }, [dia]);
-
-  const emAberto = useMemo(() => ordens.filter((o) => chamadoEmAberto(o.status)), [ordens]);
-
-  /**
-   * Os dois filtros novos (R57), aplicados JUNTOS a tudo que a tela mostra —
-   * agenda do dia, fila sem data e a carga de cada dia do seletor. Se a carga
-   * ignorasse o filtro, o número embaixo do dia prometeria atendimentos que a
-   * agenda daquele dia não mostraria.
-   *
-   * A EQUIPE VEM DO RESPONSÁVEL (ver features/duplas/modelo.ts): filtrar por
-   * equipe é ficar com os chamados de quem está nela. "Sem equipe" é opção
-   * própria — é justamente a fatia que o gestor precisa achar para distribuir.
-   *
-   * Cada chamado é resolvido pela semana DELE, e não pela semana aberta na
-   * tela: a régua de dias vai de domingo a sábado e atravessa a virada da
-   * semana ISO, então o domingo da régua pertence à semana anterior. Chamado
-   * ainda sem data usa a semana aberta — é o único palpite honesto, porque ele
-   * não tem semana própria.
-   */
-  const equipeDoChamado = (o: { responsavel_id: string | null; data_hora_agendada: string | null }) =>
-    duplaDaPessoaNaSemana(
-      o.responsavel_id,
-      o.data_hora_agendada ? referenciaSemanal(new Date(o.data_hora_agendada)) : semanaDoDia,
-      escala,
-    );
-
-  const abertas = useMemo(() => emAberto.filter((o) => {
-    if (tipoFiltro !== "todos" && o.tipo !== tipoFiltro) return false;
-    if (duplaFiltro === "todas") return true;
-    const d = equipeDoChamado(o);
-    return duplaFiltro === "sem_equipe" ? !d : d === duplaFiltro;
-  }), [emAberto, tipoFiltro, duplaFiltro, semanaDoDia, escala]);
-
+  // ── os filtros ──────────────────────────────────────────────────────────
+  //
+  // O FILTRO DE EQUIPE ESCONDE LINHAS; O DE TIPO ESMAECE CARTÕES. Não é
+  // capricho, é a única forma de filtrar sem mentir num número:
+  //   · esconder uma LINHA é honesto — a linha é uma equipe inteira, e o chip
+  //     de ocupação das que ficam não muda;
+  //   · tirar CARTÕES da célula mudaria `linha.ocupacao`, e o chip passaria a
+  //     dizer "20% da semana" para uma equipe que está a 68% — um percentual
+  //     sobre base fixa não sobrevive a um recorte. Então o tipo APAGA em vez de
+  //     remover: o cartão continua contando e continua desenhado.
+  // Os dois filtram as duas FILAS por inteiro, que são listas e não têm
+  // denominador.
   const filtrando = tipoFiltro !== "todos" || duplaFiltro !== "todas";
+  const linhasVisiveis = useMemo(() => {
+    if (duplaFiltro === "todas") return linhas;
+    if (duplaFiltro === "sem_equipe") return linhas.filter((l) => !l.ocupacao.comEscala);
+    return linhas.filter((l) => l.duplaId === duplaFiltro);
+  }, [linhas, duplaFiltro]);
 
-  const doDia = useMemo(() => {
-    const k = chaveDia(dia);
-    return abertas.filter((o) => o.data_hora_agendada && chaveDia(new Date(o.data_hora_agendada)) === k);
-  }, [abertas, dia]);
+  /**
+   * A GRADE DO TÉCNICO NÃO PODE VIRAR UM MURO CINZA. `agenda_campo_select` é
+   * `USING (true)` — decisão declarada da U78, porque sem ela o chip da equipe
+   * dele mostraria 40% onde há 90% — mas `chamados_select` NÃO é aberta. Para
+   * quem não é gestor, `chamadoOculto` é verdadeiro na maioria dos cartões
+   * alheios, e a grade seria três linhas de retângulos escritos "Outro
+   * atendimento".
+   *
+   * A saída óbvia — colapsar a linha alheia numa barra SEM cartões — é
+   * proibida por `blocosForaDaGrade`: bloco não desenhado conta como
+   * `naoMostrados`. Então a linha colapsada DESENHA os blocos, como segmentos
+   * posicionados pela mesma janela, com o rótulo só no `title`. O guarda que
+   * parecia obstáculo produziu a renderização certa: é o mesmo eixo, sem os
+   * rótulos. Ver `CelulaDaGrade.tsx`.
+   */
+  const mostrarRotulos = (l: LinhaDaGrade) => {
+    if (autz.ehGestor || l.ocultos === 0) return true;
+    const itens = l.celulas.reduce((s, c) => s + c.itens.length, 0);
+    return l.ocultos < itens; // colapsa só a linha em que TUDO é ilegível
+  };
 
-  const semData = useMemo(
-    () =>
-      abertas
-        .filter((o) => !o.data_hora_agendada)
-        .sort((a, b) => {
-          const pa = situacaoPrazo(a.prazo_limite, a.status) === "estourado" ? 0 : 1;
-          const pb = situacaoPrazo(b.prazo_limite, b.status) === "estourado" ? 0 : 1;
-          if (pa !== pb) return pa - pb;
-          return (a.prazo_limite ?? "9").localeCompare(b.prazo_limite ?? "9");
-        }),
-    [abertas],
+  // ── os baldes, num censo só ─────────────────────────────────────────────
+  // Uma passada de `classificarChamado` produz os quatro, e é dela que saem a
+  // faixa, a fila e os dois números da barra de progresso. Quem conta é quem
+  // filtra, no sentido literal: é a mesma chamada.
+  const baldes = useMemo(() => {
+    const semHorario: ChamadoDaFila[] = [];
+    const semData: ChamadoDaFila[] = [];
+    let comHorario = 0;
+    for (const c of ordens as unknown as ChamadoDaFila[]) {
+      const classe = classificarChamado(c, comBloco.has(c.id));
+      if (classe === "com_bloco") comHorario++;
+      else if (classe === "sem_horario") semHorario.push(c);
+      else if (classe === "sem_data") semData.push(c);
+    }
+    return { semHorario, semData, comHorario };
+  }, [ordens, comBloco]);
+
+  const passaTipo = (t: string | null | undefined) => tipoFiltro === "todos" || t === tipoFiltro;
+  const semHorarioFiltrado = baldes.semHorario.filter((c) => passaTipo(c.tipo));
+  const semDataFiltrado = baldes.semData.filter((c) => passaTipo(c.tipo));
+  const semHorarioDoDia = semHorarioFiltrado.filter(
+    (c) => parDoInstante(c.data_hora_agendada)?.dia === dia,
   );
 
-  /** Quantas OS cada dia da semana já tem — o Vinicius equilibra por aqui. */
-  const cargaPorDia = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const o of abertas) {
-      if (!o.data_hora_agendada) continue;
-      const k = chaveDia(new Date(o.data_hora_agendada));
-      m[k] = (m[k] ?? 0) + 1;
+  /** Ocupação e "sem horário" por dia — a régua, derivada das MESMAS células. */
+  const porDia = useMemo(() => {
+    const m = new Map<string, { minutos: number; pctMax: number; cartoes: number }>();
+    for (const l of linhasVisiveis) {
+      for (const c of l.celulas) {
+        const v = m.get(c.dia) ?? { minutos: 0, pctMax: 0, cartoes: 0 };
+        v.minutos += c.jornada.ocupadoMin;
+        v.pctMax = Math.max(v.pctMax, c.ocupacao.pct);
+        v.cartoes += c.itens.length;
+        m.set(c.dia, v);
+      }
     }
     return m;
-  }, [abertas]);
+  }, [linhasVisiveis]);
 
-  /**
-   * A agenda do dia agrupada pela EQUIPE DAQUELE DIA, caindo para o técnico
-   * quando ele não está em nenhuma (R57). Agrupar por equipe evita a leitura
-   * errada de duas linhas separadas ("Breno 3", "André 2") para um trabalho
-   * que as duas pessoas fizeram JUNTAS: são 5 atendimentos da equipe, não 3 de
-   * um e 2 do outro.
-   *
-   * A composição é a da SEMANA do dia aberto, não a de hoje — é o que faz
-   * abrir a agenda de junho mostrar quem realmente saiu em junho. Itera
-   * a lista inteira de equipes (não só as ativas) porque equipe desfeita continua
-   * explicando as semanas em que saiu; quem não tem composição na semana
-   * simplesmente não rende grupo.
-   */
-  const porGrupo = useMemo(() => {
-    const grupos: { id: string; nome: string; sub: string | null; ordens: Chamado[] }[] = [];
-    const jaListados = new Set<string>();
-
-    for (const d of duplas) {
-      const membros = composicaoDaDupla(d.id, semanaDoDia, escala);
-      if (membros.length === 0) continue;
-      const lista = doDia.filter((o) => o.responsavel_id && membros.includes(o.responsavel_id));
-      if (lista.length === 0) continue;
-      lista.forEach((o) => jaListados.add(o.id));
-      grupos.push({
-        id: d.id,
-        nome: rotuloDaComposicao(d, membros, nomeDeTecnico),
-        sub: membros.map(nomeDeTecnico).join(" · "),
-        ordens: lista,
-      });
+  const legadoPorDia = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of semHorarioFiltrado) {
+      const d = parDoInstante(c.data_hora_agendada)?.dia;
+      if (d) m.set(d, (m.get(d) ?? 0) + 1);
     }
+    return m;
+  }, [semHorarioFiltrado]);
 
-    // técnico com atendimento no dia mas fora de qualquer equipe naquela semana
-    for (const t of tecnicos as any[]) {
-      const lista = doDia.filter((o) => o.responsavel_id === t.id && !jaListados.has(o.id));
-      if (lista.length === 0) continue;
-      lista.forEach((o) => jaListados.add(o.id));
-      grupos.push({ id: t.id, nome: t.nome ?? "—", sub: "Sem equipe", ordens: lista });
-    }
+  const doDia = porDia.get(dia) ?? { minutos: 0, pctMax: 0, cartoes: 0 };
 
-    const semDono = doDia.filter((o) => !o.responsavel_id);
-    if (semDono.length > 0) {
-      grupos.push({ id: "sem-dono", nome: "Sem técnico definido", sub: null, ordens: semDono });
-    }
-    return grupos;
-  }, [doDia, tecnicos, duplas, semanaDoDia, escala, nomePorTecnico]);
+  // ── a régua ─────────────────────────────────────────────────────────────
+  // ISO, ancorada em `inicioSemana`. SETE botões FIXOS: a régua é NAVEGAÇÃO (é
+  // preciso poder ir a um sábado vazio para marcar o primeiro bloco nele),
+  // enquanto as COLUNAS da grade são CONTEÚDO (`diasDaGrade` só abre fim de
+  // semana com bloco ativo). Os dois não são a mesma lista, de propósito.
+  const semana = useMemo(() => {
+    const seg = inicioSemana(dataDoAberto);
+    return Array.from({ length: 7 }, (_, i) =>
+      dataIso(new Date(seg.getFullYear(), seg.getMonth(), seg.getDate() + i)),
+    );
+  }, [dia]);
 
-  const programar = useMutation({
-    mutationFn: async () => {
-      if (!agendando) return;
-      if (!novaData) throw new Error("Escolha a data do atendimento.");
-      // meio-dia local evita o pulo de fuso que jogaria o agendamento para o
-      // dia anterior no UTC
-      const quando = new Date(`${novaData}T12:00:00`);
-      await atualizarChamado(agendando.id, {
-        data_hora_agendada: quando.toISOString(),
-        responsavel_id: novoTecnico || null,
-        // agendar é o que tira o chamado da fila de triagem
-        status: agendando.status === "aberto" ? "agendado" : agendando.status,
-      } as any);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["chamados"] });
-      setAgendando(null);
-      toast.success("Chamado programado.");
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const gradeDoMes = useMemo(() => {
+    const primeiro = new Date(dataDoAberto.getFullYear(), dataDoAberto.getMonth(), 1);
+    const base = new Date(primeiro);
+    base.setDate(1 - primeiro.getDay());
+    return Array.from({ length: 42 }, (_, i) =>
+      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
+    );
+  }, [dia]);
+
+  const deslocarSemana = (dias7: number) => {
+    const d = new Date(dataDoAberto.getFullYear(), dataDoAberto.getMonth(), dataDoAberto.getDate() + dias7);
+    setDia(dataIso(d));
+  };
+
+  // ── o gesto ─────────────────────────────────────────────────────────────
+  const [gesto, setGesto] = useState<AberturaDoFormulario | null>(null);
+  const [erroDoArrasto, setErroDoArrasto] = useState<{ frase: string; code: string | null } | null>(null);
+  const arrastadoRef = useRef<Arrastado | null>(null);
+  const [alvoArrasto, setAlvoArrasto] = useState<{ duplaId: string; dia: string } | null>(null);
+  const marcar = useMarcarBloco();
+
+  const porIdChamado = useMemo(() => new Map(paraGrade.map((c) => [c.id, c])), [paraGrade]);
+  const contexto = (diaAlvo: string, bloco: BlocoDeAgenda | null, chamadoId: string | null): ContextoDoAgendamento => ({
+    blocosDoDia: blocos.filter((b) => b.dia === diaAlvo),
+    blocoAtual: bloco,
+    chamado: chamadoId ? porIdChamado.get(chamadoId) ?? null : null,
+    escala,
+    chaveDaSemana: referenciaSemanal,
+    rotuloDe: (b) => rotuloDoBloco(b, b.chamado_id ? porIdChamado.get(b.chamado_id) ?? null : null),
+    autz,
   });
 
-  const cartaoOs = (o: Chamado) => {
-    const st = chamadoStatusInfo(o.status);
-    const pr = PRIORIDADE_CORES[o.prioridade as ChamadoPrioridade];
-    const atrasado = situacaoPrazo(o.prazo_limite, o.status) === "estourado";
+  const abrirBloco = (item: ItemDaGrade) => {
+    setErroDoArrasto(null);
+    setGesto({
+      bloco: item.bloco, chamadoId: item.bloco.chamado_id,
+      dia: item.bloco.dia, duplaId: item.bloco.dupla_id,
+      servicoMin: null, deslocamentoMin: null, herdado: false, restantes: 0,
+    });
+  };
+
+  const abrirNovoNaCelula = (diaAlvo: string, duplaId: string) => {
+    setErroDoArrasto(null);
+    setGesto({
+      bloco: null, chamadoId: null, dia: diaAlvo, duplaId,
+      servicoMin: null, deslocamentoMin: null, herdado: false, restantes: 0,
+    });
+  };
+
+  const abrirDarHorario = (c: ChamadoDaFila, herdar?: { servicoMin: number | null; deslocamentoMin: number | null }) => {
+    setErroDoArrasto(null);
+    const doChamado = parDoInstante(c.data_hora_agendada)?.dia ?? dia;
+    const restantes = semHorarioDoDia.filter((x) => x.id !== c.id).length;
+    setGesto({
+      bloco: null, chamadoId: c.id, dia: doChamado,
+      duplaId: equipesDaSemana.length === 1 ? equipesDaSemana[0].id : null,
+      servicoMin: herdar?.servicoMin ?? null,
+      deslocamentoMin: herdar?.deslocamentoMin ?? null,
+      herdado: !!herdar,
+      restantes,
+    });
+  };
+
+  /**
+   * `?chamado=<uuid>` abre o formulário DAQUELE chamado, uma vez. É o link do
+   * PainelChamado ("abrir na grade"), e ele existe porque um campo de data só
+   * não consegue dizer a verdade sobre um chamado com dois blocos — a grade
+   * consegue.
+   *
+   * A GUARDA É O QUE IMPEDE UM RETORNO ACIDENTAL: o formulário só abre em modo
+   * CRIAR, e criar num chamado que JÁ TEM bloco é exatamente o segundo bloco
+   * que a U78 lê como retorno. Então, com bloco, o link só leva ao DIA — e o
+   * cartão está ali, para o gesto ser sobre ele.
+   */
+  const jaAbriuRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!busca.chamado || jaAbriuRef.current === busca.chamado) return;
+    const c = (ordens as unknown as ChamadoDaFila[]).find((x) => x.id === busca.chamado);
+    if (!c) return;
+    jaAbriuRef.current = busca.chamado;
+    if (comBloco.has(c.id)) return;
+    abrirDarHorario(c);
+  }, [busca.chamado, ordens, comBloco]);
+
+  /**
+   * SOLTAR O CARTÃO. A guarda final compara o que está DESENHADO com o destino
+   * e SAI sem chamar a RPC quando são iguais — é a lição literal do
+   * `Quadro.tsx:143-147`, onde soltar o card na própria coluna gravava
+   * `status='aberto'` e apagava o agendamento.
+   *
+   * E o modelo puro é o ROTEADOR do gesto: `erroDoAgendamento` decide. `null`
+   * dispara direto (que é o ponto de arrastar); não-`null` abre o FORMULÁRIO
+   * com o erro já visível, em vez de um toast e um cartão que salta de volta.
+   * O arrasto só sabe exprimir (equipe, dia) — os outros três campos são do
+   * formulário, e é por isso que ele é o gesto primário e o arrasto é o
+   * acelerador.
+   */
+  const soltar = (duplaId: string, diaAlvo: string, e: DragEvent) => {
+    e.preventDefault();
+    const a = arrastadoRef.current;
+    arrastadoRef.current = null;
+    setAlvoArrasto(null);
+    if (!a) return;
+
+    const b = a.item.bloco;
+    if (b.dupla_id === duplaId && b.dia === diaAlvo) return; // nada mudou
+    const cand: BlocoCandidato = {
+      id: b.id, chamado_id: b.chamado_id, dupla_id: duplaId, dia: diaAlvo,
+      inicio_min: b.inicio_min, servico_min: b.servico_min,
+      deslocamento_min: b.deslocamento_min, titulo_externo: b.titulo_externo,
+    };
+    const recusa = erroDoAgendamento(cand, contexto(diaAlvo, b, b.chamado_id));
+    const abertura: AberturaDoFormulario = {
+      bloco: b, chamadoId: b.chamado_id, dia: diaAlvo, duplaId,
+      servicoMin: null, deslocamentoMin: null, herdado: false, restantes: 0,
+    };
+    if (recusa) {
+      setErroDoArrasto({ frase: recusa, code: null });
+      setGesto(abertura);
+      return;
+    }
+    marcar.mutate(
+      {
+        id: b.id,
+        patch: { dupla_id: duplaId, dia: diaAlvo },
+        valores: {
+          chamado_id: b.chamado_id, dupla_id: duplaId, dia: diaAlvo,
+          inicio_min: b.inicio_min, servico_min: b.servico_min,
+          deslocamento_min: b.deslocamento_min,
+          os_externa: b.os_externa, titulo_externo: b.titulo_externo,
+        },
+        atual: b,
+      },
+      {
+        onSuccess: () => toast.success("Horário movido."),
+        // A frase da RPC não morre num toast: ela abre o formulário, que é onde
+        // dá para consertar o que ela apontou.
+        onError: (err: unknown) => {
+          setErroDoArrasto({ frase: (err as Error).message, code: sqlstateDoErro(err) });
+          setGesto(abertura);
+        },
+      },
+    );
+  };
+
+  const arrasto = {
+    alvo: alvoArrasto,
+    aoComecar: (item: ItemDaGrade) => { arrastadoRef.current = { tipo: "bloco", item }; },
+    aoTerminar: () => { arrastadoRef.current = null; setAlvoArrasto(null); },
+    aoPassarPorCima: (duplaId: string, diaAlvo: string, e: DragEvent) => {
+      if (!arrastadoRef.current) return;
+      e.preventDefault(); // sem isto o drop nunca dispara
+      if (alvoArrasto?.duplaId !== duplaId || alvoArrasto?.dia !== diaAlvo) {
+        setAlvoArrasto({ duplaId, dia: diaAlvo });
+      }
+    },
+    aoSairDeCima: (duplaId: string, diaAlvo: string, e: DragEvent) => {
+      // o `contains` é o que impede o realce de piscar ao passar sobre os filhos
+      if ((e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) return;
+      setAlvoArrasto((v) => (v && v.duplaId === duplaId && v.dia === diaAlvo ? null : v));
+    },
+    aoSoltar: soltar,
+  };
+
+  // ── render ──────────────────────────────────────────────────────────────
+  const botaoDia = (k: string, compacto: boolean) => {
+    const d = dataDoDia(k);
+    const ativo = k === dia;
+    const hoje = k === hojeIso;
+    const carga = porDia.get(k);
+    const legado = legadoPorDia.get(k) ?? 0;
     return (
-      <div
-        key={o.id}
+      <button
+        key={k}
+        onClick={() => setDia(k)}
+        aria-pressed={ativo}
+        aria-current={ativo ? "date" : undefined}
         style={{
-          padding: "10px 12px", borderRadius: 12,
-          background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
-          border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
-          display: "flex", flexDirection: "column", gap: 6,
+          flex: 1, minWidth: 0, padding: "7px 2px", borderRadius: 10, cursor: "pointer",
+          border: ativo ? "none" : hoje
+            ? `1px solid ${gold}`
+            : isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+          background: ativo ? GOLD_GRAD : "transparent",
+          color: ativo ? "#08090E" : textPrimary,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
         }}
       >
-        <button
-          onClick={() => navigate({ to: "/chamados/$id", params: { id: o.id } })}
-          style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
-        >
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: textPrimary }}>
-            {o.titulo}
-          </div>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 400, color: textSecondary, marginTop: 2 }}>
-            {o.numero} · {o.cliente?.nome ?? "cliente"}
-          </div>
-        </button>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 400, opacity: 0.75 }}>
+          {d ? DIA_CURTO[d.getDay()] : ""}
+        </span>
+        <span style={{ fontFamily: FONT, fontSize: compacto ? 13 : 14, fontWeight: 700 }}>
+          {d ? d.getDate() : "?"}
+        </span>
+        {/* MINUTOS, e não cabeças. Uma visita de 30min e uma implantação de 6h
+            contavam 1 e 1 na régua antiga — o instrumento de equilíbrio do
+            Vinicius media a coisa errada. */}
+        <span style={{
+          fontFamily: FONT, fontSize: 9, fontWeight: 600,
+          color: ativo ? "#08090E" : (carga?.minutos ?? 0) > 0 ? gold : "transparent",
+        }}>
+          {(carga?.minutos ?? 0) > 0 ? duracaoTexto(carga!.minutos) : "·"}
+        </span>
+        {/* A barra é o MÁXIMO entre as equipes daquele dia, nunca a média: duas
+            equipes a 8h e uma a 0h somam "16h" e parecem saudáveis — é
+            justamente a maldistribuição que a soma esconde. */}
+        <span aria-hidden style={{
+          width: "70%", height: 2, borderRadius: 1, marginTop: 1,
+          background: ativo
+            ? "rgba(8,9,14,0.35)"
+            : isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)",
+          overflow: "hidden", display: "block",
+        }}>
           <span style={{
-            padding: "3px 8px", borderRadius: 999,
-            fontFamily: FONT, fontWeight: 600, fontSize: 9,
-            letterSpacing: "0.06em", textTransform: "uppercase",
-            color: isLight ? pr.light : pr.dark, background: pr.bg, border: `1px solid ${pr.border}`,
-          }}>
-            {PRIORIDADE_LABEL[o.prioridade as ChamadoPrioridade]}
-          </span>
-          <span style={{
-            padding: "3px 8px", borderRadius: 999,
-            fontFamily: FONT, fontWeight: 600, fontSize: 9,
-            letterSpacing: "0.06em", textTransform: "uppercase",
-            color: isLight ? st.colorLight : st.color, background: st.bg, border: `1px solid ${st.border}`,
-          }}>
-            {st.label}
-          </span>
-          {o.prazo_limite && (
-            <span style={{
-              marginLeft: "auto", fontFamily: FONT, fontSize: 10.5, fontWeight: 400,
-              color: atrasado ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
-            }}>
-              {textoPrazo(o.prazo_limite)}
-            </span>
-          )}
-          <button
-            onClick={() => {
-              setAgendando(o);
-              setNovaData(o.data_hora_agendada ? chaveDia(new Date(o.data_hora_agendada)) : chaveDia(dia));
-              setNovoTecnico(o.responsavel_id ?? "");
-            }}
-            style={{
-              padding: "5px 10px", borderRadius: 8, cursor: "pointer",
-              background: isLight ? "#ffffff" : "rgba(255,255,255,0.05)",
-              border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-              color: textPrimary, fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-            }}
-          >
-            Programar
-          </button>
-        </div>
-      </div>
+            display: "block", height: "100%",
+            width: `${Math.min(100, carga?.pctMax ?? 0)}%`,
+            background: ativo ? "#08090E" : gold,
+          }} />
+        </span>
+        {/* o legado NUNCA em vermelho: ele é a barra de progresso da migração,
+            não uma acusação */}
+        <span style={{
+          fontFamily: FONT, fontSize: 8.5, fontWeight: 500,
+          color: ativo ? "rgba(8,9,14,0.7)" : legado > 0 ? textSecondary : "transparent",
+        }}>
+          {legado > 0 ? `${legado} s/ hora` : "·"}
+        </span>
+      </button>
     );
+  };
+
+  const filaProps = {
+    onDarHorario: (c: ChamadoDaFila) => abrirDarHorario(c),
+    onIrParaDia: (d: string) => setDia(d),
+    onAbrirChamado: (id: string) => navigate({ to: "/chamados/$id", params: { id } }),
   };
 
   return (
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+      {/* cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
           onClick={() => navigate({ to: "/dashboard" })}
+          aria-label="Voltar"
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",
@@ -353,14 +626,15 @@ function ProgramacaoPage() {
           <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 20 }}>
             Programação da equipe técnica de campo
           </div>
+          {/* QUEM CONTA É QUEM FILTRA: os três números saem do que está
+              DESENHADO — as linhas visíveis e as filas já filtradas. */}
           <div style={{ fontFamily: FONT, fontSize: 12, color: textSecondary }}>
-            {doDia.length} atendimento(s) no dia · {semData.length} sem data
+            {duracaoTexto(doDia.minutos)} marcadas · {doDia.cartoes} atendimento(s) no dia
+            {semHorarioFiltrado.length > 0 && ` · ${semHorarioFiltrado.length} sem horário`}
+            {semDataFiltrado.length > 0 && ` · ${semDataFiltrado.length} sem data`}
             {filtrando && " · filtrado"}
           </div>
         </div>
-        {/* "+" para abrir atividade nova já como chamado de CAMPO (R57) — o
-            /chamados/novo genérico obrigaria a escolher a natureza de novo,
-            e quem está nesta tela já está programando campo. */}
         <button
           onClick={() => navigate({ to: "/chamados/novo-campo" })}
           aria-label="Nova atividade para técnico de campo"
@@ -375,18 +649,36 @@ function ProgramacaoPage() {
         </button>
       </div>
 
-      {/* ── Modo de visão + filtros (R57) ───────────────────────────────── */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        {/* switch mensal/semanal: dois botões num trilho, o ativo em dourado —
-            o mesmo vocabulário de "selecionado" dos chips do resto do app */}
+      {/* O guarda dos dois lados. Ele NUNCA deve aparecer; se aparecer, a grade
+          está mostrando um número que a lista não contém, e é melhor dizer isso
+          do que deixar o gestor decidir sobre um retrato incompleto. */}
+      {(guarda.naoMostrados > 0 || guarda.foraDaSemana > 0) && (
+        <div style={{
+          ...CARD, display: "flex", alignItems: "center", gap: 9,
+          background: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
+          border: isLight ? "1px solid rgba(177,36,46,0.22)" : "1px solid rgba(241,120,129,0.24)",
+          fontFamily: FONT, fontSize: 12.5, color: isLight ? "#B1242E" : "#F17881",
+        }}>
+          A grade está incompleta: {guarda.naoMostrados} bloco(s) da semana não aparecem em
+          nenhuma célula e {guarda.foraDaSemana} desenhado(s) não pertencem a esta semana.
+          Recarregue; se continuar, avise — o número acima não pode ser confiado.
+        </div>
+      )}
+
+      {/* modo + filtros */}
+      <div className="barra-filtros sangra-x" style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <div style={{
           display: "flex", padding: 3, borderRadius: 999, gap: 3, flexShrink: 0,
           background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
         }}>
-          {(["semanal", "mensal"] as ModoDeVisao[]).map((m) => (
+          {MODOS.map((m) => (
             <button
               key={m}
-              onClick={() => setModo(m)}
+              // A pílula "grade" só existe a partir de 1024px, e a decisão é de
+              // CSS e não de `useIsMobile()`: aquele hook começa `false` no
+              // primeiro render, então no celular ele daria um flash de desktop.
+              className={m === "grade" ? "so-desktop" : undefined}
+              onClick={() => irPara({ modo: m })}
               aria-pressed={modo === m}
               style={{
                 padding: "7px 15px", borderRadius: 999, border: "none", cursor: "pointer",
@@ -394,6 +686,7 @@ function ProgramacaoPage() {
                 color: modo === m ? "#08090E" : textSecondary,
                 fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
                 letterSpacing: "0.04em", textTransform: "capitalize",
+                alignItems: "center",
               }}
             >
               {m}
@@ -403,24 +696,22 @@ function ProgramacaoPage() {
 
         <select
           value={duplaFiltro}
-          onChange={(e) => setDuplaFiltro(e.target.value)}
+          onChange={(e) => irPara({ equipe: e.target.value })}
           aria-label="Filtrar por equipe de campo"
-          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 150 }}
+          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 150, flexShrink: 0 }}
         >
           <option value="todas">Todas as equipes</option>
-          {equipesDaSemana.map(({ dupla, membros }) => (
-            <option key={dupla.id} value={dupla.id}>
-              {rotuloDaComposicao(dupla, membros, nomeDeTecnico)}
-            </option>
+          {equipesDaSemana.map((e) => (
+            <option key={e.id} value={e.id}>{e.rotulo}</option>
           ))}
-          <option value="sem_equipe">Sem equipe</option>
+          <option value="sem_equipe">Sem escala nesta semana</option>
         </select>
 
         <select
           value={tipoFiltro}
-          onChange={(e) => setTipoFiltro(e.target.value as "todos" | ChamadoTipo)}
+          onChange={(e) => irPara({ tipo: e.target.value })}
           aria-label="Filtrar por tipo de demanda"
-          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 175 }}
+          style={{ ...SELETOR_FILTRO(isLight, textPrimary), minWidth: 175, flexShrink: 0 }}
         >
           <option value="todos">Todos os tipos</option>
           {TIPOS_DEMANDA_CAMPO.map((t) => (
@@ -430,9 +721,9 @@ function ProgramacaoPage() {
 
         {filtrando && (
           <button
-            onClick={() => { setDuplaFiltro("todas"); setTipoFiltro("todos"); }}
+            onClick={() => irPara({ equipe: undefined, tipo: undefined })}
             style={{
-              padding: "8px 13px", borderRadius: 999, cursor: "pointer",
+              padding: "8px 13px", borderRadius: 999, cursor: "pointer", flexShrink: 0,
               background: "transparent", color: textSecondary,
               border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
               fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
@@ -443,63 +734,14 @@ function ProgramacaoPage() {
         )}
       </div>
 
-      {/* Seletor de dia — tira semanal, tira mensal (R57). Os dois escolhem o
-          MESMO `dia`: trocar de modo é trocar a lente, não a tela. A agenda
-          abaixo continua sendo a do dia escolhido nos dois casos. */}
-      {modo === "semanal" ? (
-        <div style={{ ...CARD, display: "flex", alignItems: "center", gap: 4 }}>
-          <button
-            onClick={() => { const d = new Date(dia); d.setDate(d.getDate() - 7); setDia(d); }}
-            aria-label="Semana anterior"
-            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          {semana.map((d) => {
-            const k = chaveDia(d);
-            const ativo = k === chaveDia(dia);
-            const carga = cargaPorDia[k] ?? 0;
-            const hoje = k === chaveDia(new Date());
-            return (
-              <button
-                key={k}
-                onClick={() => setDia(d)}
-                style={{
-                  flex: 1, padding: "7px 2px", borderRadius: 10, cursor: "pointer",
-                  border: ativo ? "none" : hoje
-                    ? `1px solid ${gold}`
-                    : isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                  background: ativo ? GOLD_GRAD : "transparent",
-                  color: ativo ? "#08090E" : textPrimary,
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-                }}
-              >
-                <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 400, opacity: 0.75 }}>
-                  {DIA_CURTO[d.getDay()]}
-                </span>
-                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>{d.getDate()}</span>
-                <span style={{
-                  fontFamily: FONT, fontSize: 9, fontWeight: 600,
-                  color: ativo ? "#08090E" : carga > 0 ? gold : "transparent",
-                }}>
-                  {carga > 0 ? carga : "·"}
-                </span>
-              </button>
-            );
-          })}
-          <button
-            onClick={() => { const d = new Date(dia); d.setDate(d.getDate() + 7); setDia(d); }}
-            aria-label="Próxima semana"
-            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      ) : (
+      {/* A RÉGUA — a mesma de sempre, com o eixo consertado e a carga em
+          MINUTOS. Ela é o instrumento de equilíbrio do Vinicius e não foi
+          trocada por outra coisa (U3). */}
+      {modo === "mensal" ? (
         <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 9 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button
-              onClick={() => setDia(new Date(dia.getFullYear(), dia.getMonth() - 1, 1))}
+              onClick={() => setDia(dataIso(new Date(dataDoAberto.getFullYear(), dataDoAberto.getMonth() - 1, 1)))}
               aria-label="Mês anterior"
               style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
             >
@@ -509,10 +751,10 @@ function ProgramacaoPage() {
               flex: 1, textAlign: "center", fontFamily: FONT, fontWeight: 600, fontSize: 13.5,
               color: textPrimary, textTransform: "capitalize",
             }}>
-              {MES_NOME[dia.getMonth()]} de {dia.getFullYear()}
+              {MES_NOME[dataDoAberto.getMonth()]} de {dataDoAberto.getFullYear()}
             </span>
             <button
-              onClick={() => setDia(new Date(dia.getFullYear(), dia.getMonth() + 1, 1))}
+              onClick={() => setDia(dataIso(new Date(dataDoAberto.getFullYear(), dataDoAberto.getMonth() + 1, 1)))}
               aria-label="Próximo mês"
               style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
             >
@@ -530,196 +772,139 @@ function ProgramacaoPage() {
               </span>
             ))}
             {gradeDoMes.map((d) => {
-              const k = chaveDia(d);
-              const ativo = k === chaveDia(dia);
-              const carga = cargaPorDia[k] ?? 0;
-              const hoje = k === chaveDia(new Date());
-              const doMes = d.getMonth() === dia.getMonth();
+              const k = dataIso(d);
+              const doMes = d.getMonth() === dataDoAberto.getMonth();
               return (
-                <button
-                  key={k}
-                  onClick={() => setDia(d)}
-                  aria-current={ativo ? "date" : undefined}
-                  style={{
-                    minHeight: 46, padding: "5px 2px", borderRadius: 10, cursor: "pointer",
-                    border: ativo ? "none" : hoje
-                      ? `1px solid ${gold}`
-                      : isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
-                    background: ativo ? GOLD_GRAD : "transparent",
-                    color: ativo ? "#08090E" : textPrimary,
-                    // dia de outro mês fica apagado, mas continua clicável —
-                    // é como se navega para o fim/começo do mês vizinho
-                    opacity: doMes || ativo ? 1 : 0.35,
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                  }}
-                >
-                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: doMes ? 700 : 400 }}>
-                    {d.getDate()}
-                  </span>
-                  <span style={{
-                    fontFamily: FONT, fontSize: 9, fontWeight: 700,
-                    color: ativo ? "#08090E" : carga > 0 ? gold : "transparent",
-                  }}>
-                    {carga > 0 ? carga : "·"}
-                  </span>
-                </button>
+                <span key={k} style={{ opacity: doMes || k === dia ? 1 : 0.35, display: "flex" }}>
+                  {botaoDia(k, true)}
+                </span>
               );
             })}
           </div>
         </div>
+      ) : (
+        <div style={{ ...CARD, display: "flex", alignItems: "center", gap: 4 }}>
+          <button
+            onClick={() => deslocarSemana(-7)}
+            aria-label="Semana anterior"
+            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          {semana.map((k) => botaoDia(k, false))}
+          <button
+            onClick={() => deslocarSemana(7)}
+            aria-label="Próxima semana"
+            style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, display: "flex", padding: 4 }}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
       )}
 
-      {/* Agenda do dia, por dupla (R57) — técnico fora de dupla vira grupo
-          próprio, e o que não tem responsável fica na cesta "sem técnico" */}
-      {isLoading ? (
+      {/* A FAIXA — logo abaixo da régua e acima da grade, nos dois modos. */}
+      <FaixaSemHorario
+        doDia={semHorarioDoDia}
+        todos={semHorarioFiltrado}
+        comHorario={baldes.comHorario}
+        isLight={isLight}
+        {...filaProps}
+      />
+
+      {/* A GRADE (desktop) e A COLUNA (celular) — a MESMA `linhas`. */}
+      {isLoading || escalaPendente ? (
         <div style={{ ...CARD, textAlign: "center", color: textSecondary, fontFamily: FONT, fontSize: 13 }}>
           Carregando…
         </div>
-      ) : porGrupo.length === 0 ? (
-        <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "26px 16px" }}>
-          <CalendarClock size={26} color={gold} />
-          <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600 }}>
-            {filtrando ? "Nada programado neste dia com esse filtro" : "Nada programado neste dia"}
-          </span>
-          <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
-            {filtrando
-              ? "Limpe os filtros acima para ver o dia inteiro."
-              : "Use a fila abaixo para distribuir os chamados que ainda não têm data."}
-          </span>
-        </div>
       ) : (
-        porGrupo.map((g) => (
-          <div key={g.id} style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {g.id === "sem-dono" && <UserX size={15} color={gold} />}
-              <span style={{
-                fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-              }}>
-                {g.nome}
-              </span>
-              {g.sub && (
-                <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
-                  {g.sub}
-                </span>
-              )}
-              <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 11, color: textSecondary }}>
-                {g.ordens.length} atendimento(s)
-              </span>
-            </div>
-            {g.ordens.map(cartaoOs)}
-          </div>
-        ))
-      )}
-
-      {/* Fila sem data */}
-      {semData.length > 0 && (
-        <div style={{ ...CARD, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <AlertTriangle size={15} color={gold} />
-            <span style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 10, letterSpacing: "0.14em",
-              textTransform: "uppercase", color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
-            }}>
-              Aguardando programação ({semData.length})
-            </span>
-          </div>
-          {semData.map(cartaoOs)}
-        </div>
-      )}
-
-      {/* Modal de programação */}
-      {agendando && (
-        <div
-          onClick={() => setAgendando(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 100, padding: 20,
-            background: isLight ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.7)",
-            backdropFilter: "blur(8px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ ...card(isLight), padding: 18, width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 12 }}
-          >
-            <div>
-              <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 15 }}>{agendando.titulo}</div>
-              <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
-                {agendando.numero} · {agendando.cliente?.nome ?? "cliente"}
-              </div>
-            </div>
-            <div>
-              <label style={{
-                fontFamily: FONT, fontWeight: 600, fontSize: 10, letterSpacing: "0.12em",
-                textTransform: "uppercase", color: textSecondary, marginBottom: 6, display: "block",
-              }}>
-                Data
-              </label>
-              <input
-                type="date"
-                value={novaData}
-                onChange={(e) => setNovaData(e.target.value)}
-                style={{
-                  width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-                  background: isLight ? "#ffffff" : "#16161d",
-                  border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                  color: textPrimary, fontFamily: FONT, fontSize: 14,
-                  outline: "none", colorScheme: isLight ? "light" : "dark",
-                }}
+        <>
+          {modo === "grade" && (
+            <div className="so-desktop" style={{ flexDirection: "column" }}>
+              <GradeSemana
+                linhas={linhasVisiveis}
+                dias={dias}
+                isLight={isLight}
+                rotulos={rotulos}
+                diaAberto={dia}
+                mostrarRotulos={mostrarRotulos}
+                onAbrirItem={abrirBloco}
+                onNovoNaCelula={abrirNovoNaCelula}
+                arrasto={autz.ehGestor || autz.usuarioId ? arrasto : undefined}
               />
             </div>
-            <div>
-              <label style={{
-                fontFamily: FONT, fontWeight: 600, fontSize: 10, letterSpacing: "0.12em",
-                textTransform: "uppercase", color: textSecondary, marginBottom: 6, display: "block",
-              }}>
-                Técnico
-              </label>
-              <select
-                value={novoTecnico}
-                onChange={(e) => setNovoTecnico(e.target.value)}
-                style={{
-                  width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-                  background: isLight ? "#ffffff" : "#16161d",
-                  border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                  color: textPrimary, fontFamily: FONT, fontSize: 14,
-                  outline: "none", colorScheme: isLight ? "light" : "dark",
-                }}
-              >
-                <option value="">Definir depois</option>
-                {(tecnicos as any[]).map((t) => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => setAgendando(null)}
-                style={{
-                  flex: 1, height: 46, borderRadius: 23, cursor: "pointer",
-                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.04)",
-                  border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-                  color: textSecondary, fontFamily: FONT, fontSize: 13,
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => programar.mutate()}
-                disabled={programar.isPending || !novaData}
-                style={{
-                  flex: 2, height: 46, borderRadius: 23, border: "none", background: GOLD_GRAD,
-                  color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
-                  cursor: programar.isPending || !novaData ? "default" : "pointer",
-                  opacity: programar.isPending || !novaData ? 0.6 : 1,
-                }}
-              >
-                {programar.isPending ? "Salvando…" : "Programar"}
-              </button>
-            </div>
+          )}
+          {/* O CELULAR NUNCA FICA SEM PROJEÇÃO, e este envelope é a razão.
+              `.so-desktop` é `display:none !important` abaixo de 1024px, então
+              com `?modo=grade` a grade some — e, quando a coluna do dia era
+              `modo !== "grade"`, sumia junto: entre a faixa e a fila não
+              sobrava NADA, sem uma palavra. E é o link mais provável de chegar
+              ao celular, porque é o que o gestor manda do desktop ("olha a
+              quinta da Equipe B") — a razão declarada de o estado ter ido para
+              a URL. Em `grade` o celular cai para o DIA, que é a doutrina da
+              U3: a mesma `linhas`, uma célula em vez de cinco. */}
+          <div
+            className={modo === "grade" ? "so-celular" : undefined}
+            style={{ display: "flex", flexDirection: "column", gap: 12 }}
+          >
+            <ColunaDoDia
+              linhas={linhasVisiveis}
+              dia={dia}
+              isLight={isLight}
+              rotulos={rotulos}
+              mostrarRotulos={mostrarRotulos}
+              onAbrirItem={abrirBloco}
+              onNovoNaCelula={abrirNovoNaCelula}
+            />
+            {linhasVisiveis.length > 0 && doDia.cartoes === 0 && (
+              <div style={{ ...CARD, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "22px 16px" }}>
+                <CalendarClock size={24} color={gold} />
+                <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 600 }}>
+                  {filtrando ? "Nada marcado neste dia com esse filtro" : "Nada marcado neste dia"}
+                </span>
+                <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, textAlign: "center" }}>
+                  {filtrando
+                    ? "Limpe os filtros acima para ver o dia inteiro."
+                    : "Use a faixa e a fila para dar horário ao que ainda não tem."}
+                </span>
+              </div>
+            )}
           </div>
-        </div>
+        </>
+      )}
+
+      <FilaSemData lista={semDataFiltrado} isLight={isLight} {...filaProps} />
+
+      {gesto && (
+        <FormularioDoBloco
+          key={`${gesto.bloco?.id ?? "novo"}-${gesto.chamadoId ?? "sem"}-${gesto.dia}-${gesto.duplaId ?? ""}`}
+          abertura={gesto}
+          erroInicial={erroDoArrasto}
+          aoFechar={() => { setGesto(null); setErroDoArrasto(null); }}
+          aoGravar={(valores) => {
+            setErroDoArrasto(null);
+            // "DAR HORÁRIO EM SÉRIE": o formulário não fecha; ele avança para o
+            // próximo do mesmo dia mantendo equipe, duração e deslocamento como
+            // valor INICIAL — visível e editável. Repetição é o único lugar em
+            // que um número inicial é honesto: é a última coisa que ESTA pessoa
+            // digitou, não algo que o sistema inventou.
+            const restantes = semHorarioDoDia.filter((c) => c.id !== gesto.chamadoId);
+            if (!gesto.bloco && gesto.chamadoId && restantes.length > 0) {
+              abrirDarHorario(restantes[0], {
+                servicoMin: Number.isFinite(valores.servico_min) ? valores.servico_min : null,
+                deslocamentoMin: valores.deslocamento_min,
+              });
+              return;
+            }
+            setGesto(null);
+          }}
+          blocos={blocos}
+          chamados={paraGrade}
+          equipes={equipesDaSemana}
+          escala={escala}
+          autz={autz}
+          isLight={isLight}
+          rota="/chamados/programacao"
+        />
       )}
     </div>
   );

@@ -2989,38 +2989,46 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('tem o "+" que abre atividade nova JÁ como chamado de campo',
      /navigate\(\{ to: "\/chamados\/novo-campo" \}\)/.test(prog)
      && /aria-label="Nova atividade para técnico de campo"/.test(prog), true);
-  eq('tem o switch semanal/mensal',
-     /\(\["semanal", "mensal"\] as ModoDeVisao\[\]\)\.map/.test(prog), true);
+  // ── U79: AS NOVE QUE MIGRARAM DE "A TELA CALCULA X" PARA "A TELA DELEGA X"
+  // Nove asserções desta seção afirmavam a EXISTÊNCIA de um cálculo dentro do
+  // .tsx: `const abertas = useMemo(() => emAberto.filter(...)`, `const porGrupo
+  // = useMemo`, `for (const d of duplas)`, `sub: "Sem equipe"`. Elas ficaram
+  // vermelhas quando a tela passou a delegar — e ficar vermelha foi o
+  // comportamento CERTO delas: cada uma pinava um cálculo que hoje é um defeito
+  // (o `porGrupo` engolia o chamado cujo responsável saiu da escala; o
+  // `equipeDoChamado` resolvia o balde por `new Date(iso)`, no fuso do
+  // navegador).
+  //
+  // Elas viram duas coisas: uma asserção de DELEGAÇÃO por regex (a tela chama a
+  // função pura, e não reimplementa) e a fixture correspondente sobre a função
+  // pura, no bloco da U78/U79 mais abaixo. É a troca boa — regex sobre .tsx
+  // prova que a linha existe, fixture prova que a regra está viva.
+  eq('tem o switch de lente, agora com a GRADE como terceiro valor (mesma tela, mesma rota, mesmo `dia`)',
+     /const MODOS: ModoDeVisao\[\] = \["semanal", "mensal", "grade"\];/.test(prog), true);
   eq('a grade do mês tem 42 células FIXAS (6 linhas) — senão a página pularia de altura ao trocar de mês',
      /Array\.from\(\{ length: 42 \}/.test(prog), true);
-  eq('tem filtro por equipe de campo, com a opção "Sem equipe" (a fatia que o gestor precisa achar)',
+  eq('tem filtro por equipe de campo, com a fatia "sem escala nesta semana" (a que o gestor abre a tela para achar)',
      /aria-label="Filtrar por equipe de campo"/.test(prog)
-     && /<option value="sem_equipe">Sem equipe<\/option>/.test(prog), true);
+     && /<option value="sem_equipe">Sem escala nesta semana<\/option>/.test(prog), true);
   eq('…e o filtro oferece as equipes QUE TÊM composição na semana aberta, não as ativas de hoje',
      /const equipesDaSemana = useMemo/.test(prog)
-     && /composicaoDaDupla\(d\.id, semanaDoDia, escala\)/.test(prog), true);
+     && /composicaoDaDupla\(d\.id, semanaAberta, escala\)/.test(prog), true);
   eq('tem filtro por tipo de demanda, alimentado por TIPOS_DEMANDA_CAMPO',
      /aria-label="Filtrar por tipo de demanda"/.test(prog)
      && /TIPOS_DEMANDA_CAMPO\.map\(\(t\) => \(/.test(prog), true);
-  eq('CRÍTICO: os filtros valem para TUDO na tela (agenda, fila e carga do seletor) — filtram `abertas`, a raiz de todas as três',
-     /const abertas = useMemo\(\(\) => emAberto\.filter\(\(o\) => \{[\s\S]{0,400}equipeDoChamado\(o\)/.test(prog),
-     true);
-  // A régua de dias vai de domingo a sábado e ATRAVESSA a virada da semana
-  // ISO: resolver tudo pela semana aberta poria o domingo na equipe errada.
-  eq('CRÍTICO: cada chamado é resolvido pela semana DELE; só o que não tem data usa a semana aberta',
-     /duplaDaPessoaNaSemana\([\s\S]{0,200}o\.data_hora_agendada \? referenciaSemanal\(new Date\(o\.data_hora_agendada\)\) : semanaDoDia/.test(prog),
-     true);
-  eq('a agenda do dia agrupa pela EQUIPE DAQUELE DIA — a composição mostrada é a da semana do dia aberto, não a de hoje',
-     /const porGrupo = useMemo/.test(prog)
-     && /const membros = composicaoDaDupla\(d\.id, semanaDoDia, escala\);/.test(prog), true);
-  // itera a lista inteira, não só as ativas: equipe desfeita ainda explica
-  // as semanas em que saiu, e abrir a agenda de junho tem de mostrá-la
-  eq('…e a agenda de uma semana passada mostra até a equipe que foi desfeita depois',
-     /for \(const d of duplas\) \{/.test(prog), true);
-  eq('técnico fora de equipe continua tendo grupo próprio (ninguém some da agenda)',
-     /sub: "Sem equipe"/.test(prog), true);
+  eq('CRÍTICO: a tela DELEGA a grade — uma chamada de `linhasDaGrade`, com a SEMANA e os DIAS separados, e o guarda dos dois lados avaliado sobre a saída crua',
+     /const linhas = useMemo\(\s*\n\s*\(\) => linhasDaGrade\(duplas, semanaAberta, dias, blocos, paraGrade, escala, referenciaSemanal\)/.test(prog)
+     && /blocosForaDaGrade\(linhas, semanaAberta, blocos, referenciaSemanal\)/.test(prog), true);
+  eq('CRÍTICO: os dias das colunas saem de `diasDaGrade` UNIDOS ao dia escolhido — sem a união, abrir um sábado vazio na régua tira a coluna dele da grade e o celular não acha célula nenhuma',
+     /\[\.\.\.new Set\(\[\.\.\.diasDaGrade\(dataDoAberto, blocos, dataIso\), dia\]\)\]\.sort\(\)/.test(prog), true);
+  eq('CRÍTICO: os baldes saem de `classificarChamado` numa passada só — é dela que saem a faixa, a fila e os DOIS números da barra de progresso',
+     /classificarChamado\(c, comBloco\.has\(c\.id\)\)/.test(prog), true);
+  eq('a régua é ISO (ancorada em `inicioSemana`) — os dois eixos de semana viraram um só, e o domingo deixou de pertencer à semana anterior',
+     /const seg = inicioSemana\(dataDoAberto\);/.test(prog), true);
+  eq('a carga da régua é em MINUTOS e não em cabeças — uma visita de 30min e uma implantação de 6h contavam 1 e 1',
+     /duracaoTexto\(carga!\.minutos\)/.test(prog), true);
   eq('o vazio explica que é o FILTRO quando há filtro (não deixa parecer que o dia está vazio)',
-     /filtrando \? "Nada programado neste dia com esse filtro"/.test(prog), true);
+     /filtrando \? "Nada marcado neste dia com esse filtro"/.test(prog), true);
 
   // ── o painel operacional (R58) ──────────────────────────────────────────
   eq('os 4 atalhos "Ir para" saíram do painel operacional',
@@ -7182,7 +7190,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/public\.pode_editar_chamado\(v\.chamado_id\)/.test(frase78sql),
       (frase78sql.match(/v\.numero/g) || []).length, /ELSE/.test(frase78sql),
       /END, 'outro atendimento'\)/.test(frase78sql),
-      /GRANT\s+EXECUTE ON FUNCTION public\.agenda_campo_frase_do_conflito\([^)]*\) TO [^;]*authenticated/.test(u78)],
+      /GRANT\s+EXECUTE ON FUNCTION public\.agenda_campo_frase_do_conflito\\([^)]*\\)\\s+TO [^;]*authenticated/.test(u78)],
      [true, 1, false, true, false]);
   eq('…e o HORÁRIO sai sempre (quem vai remarcar precisa dele), com travessão quando não há o que dizer — to_char(make_interval(mins => NULL)) imprimia "das  às "',
      [/COALESCE\(to_char\(make_interval\(mins => v\.inicio - v\.desloc\), 'HH24:MI'\), '—'\)/.test(frase78sql),
@@ -7652,6 +7660,601 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq(`CRÍTICO: a porta ${porta} tem gate de autorização com recusa 42501`,
        /pode_editar_chamado|is_gestor/.test(corpo(porta))
        && /USING ERRCODE = '42501'/.test(corpo(porta)), true);
+  }
+}
+
+// ── R102/U79: A TELA DA GRADE, E O FIM DAS DUAS VERDADES ────────────────────
+// A U78 entregou o alicerce e NENHUMA tela. Esta entrega liga a tela às quatro
+// portas e TIRA das três telas de campo a escrita direta de
+// `chamados.data_hora_agendada`.
+//
+// AS ASSERÇÕES AQUI SÃO DE TRÊS TIPOS, e a mistura é deliberada:
+//   · CENSO por varredura (a lista derivada do repositório contra a lista
+//     escrita à mão) — é o que pega a peça que NASCE sem ninguém pensar nela;
+//   · FIXTURE sobre função pura carregada pelo `carregar()` — é o que prova que
+//     a regra está VIVA, e não só que a linha existe;
+//   · regex ANCORADO (`^…$` com flag `m`) sobre o SQL — o `-- REVOKE` já mordeu
+//     três vezes, e um GRANT comentado contém um GRANT.
+{
+  const fs79 = require('fs');
+  const path79 = require('path');
+  const M79 = carregar('src/features/programacao/modelo.ts');
+  const D79 = carregar('src/features/programacao/data.ts');
+  const E79 = carregar('src/features/duplas/modelo.ts');
+  const P79 = carregar('src/lib/periodos.ts');
+  const CAMINHO79 = 'supabase/migrations/20260902090000_u79_a_tela_da_grade.sql';
+  const u79 = fs79.readFileSync(CAMINHO79, 'utf8');
+  const tela79 = fs79.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+  const novoCampo79 = fs79.readFileSync('src/routes/_authenticated/chamados.novo-campo.tsx', 'utf8');
+  const painel79 = fs79.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  const dadosChamados79 = fs79.readFileSync('src/features/chamados/data.ts', 'utf8');
+  const dados79 = fs79.readFileSync('src/features/programacao/data.ts', 'utf8');
+  // As asserções NEGATIVAS rodam sobre o CÓDIGO, nunca sobre o arquivo inteiro:
+  // grep acha o comentário que EXPLICA por que a coisa não existe mais, e o
+  // repo já contou 5+ falsos positivos por isso. O cabeçalho da tela cita
+  // literalmente o `new Date(`${d}T12:00:00`)` que ela deixou de fazer.
+  const semComentario79 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const telaCod79 = semComentario79(tela79);
+
+  // ══ 1) A MIGRATION: os quatro GRANT, vivos e ancorados ═══════════════════
+  // `to_regprocedure` no pré-voo, os quatro GRANT no corpo, e a conferência
+  // lendo o CATÁLOGO. Cada linha é ancorada em `^` com flag `m`: sem isso,
+  // comentar um GRANT deixaria a asserção verde (o `-- GRANT …` contém
+  // `GRANT …`), que é exatamente a família de defeito que já mordeu três vezes.
+  const PORTAS_COM_ASSINATURA = {
+    agenda_campo_marcar: 'public.agenda_campo_marcar\\(uuid,uuid,uuid,date,int,int,int,text,text\\)',
+    agenda_campo_cancelar: 'public.agenda_campo_cancelar\\(uuid\\)',
+    agenda_campo_cumprir: 'public.agenda_campo_cumprir\\(uuid, boolean\\)',
+    desagendar_chamado: 'public.desagendar_chamado\\(uuid\\)',
+  };
+  const semGrant79 = Object.entries(PORTAS_COM_ASSINATURA)
+    .filter(([, ass]) => !new RegExp('^GRANT EXECUTE ON FUNCTION ' + ass + '\\s+TO authenticated;$', 'm').test(u79))
+    .map(([nome]) => nome);
+  eq('CRÍTICO: a U79 concede as QUATRO portas a authenticated, cada uma na linha inteira e VIVA (não comentada)',
+     semGrant79, []);
+
+  // CENSO das três listas contra UMA verdade. `PORTAS_DA_AGENDA` (modelo puro)
+  // × os `supabase.rpc()` da camada de dados × os GRANT da migration. Nasce uma
+  // quinta porta, ou uma que ninguém concedeu, e o censo acusa — coisa que três
+  // asserções separadas não fariam.
+  const rpcsDaCamada79 = [...new Set(
+    [...dados79.matchAll(/supabase\.rpc\(\s*"([a-z_0-9]+)" as any/g)].map((m) => m[1]),
+  )].filter((n) => n !== 'is_gestor').sort();
+  const grantsDaU79 = [...u79.matchAll(/^GRANT EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^;]*\)\s+TO authenticated;$/gm)]
+    .map((m) => m[1]).sort();
+  eq('CRÍTICO: CENSO das três listas — as portas do modelo puro, as RPCs que a camada de dados chama e os GRANT da migration são a MESMA lista',
+     [[...M79.PORTAS_DA_AGENDA].sort(), rpcsDaCamada79, grantsDaU79],
+     [['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
+      ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
+      ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado']]);
+
+  eq('o pré-voo confere as ASSINATURAS EXATAS por to_regprocedure — GRANT numa assinatura errada falha com "function does not exist", e às 23h essa frase manda caçar a coisa errada',
+     (u79.match(/to_regprocedure/g) || []).length >= 1
+     && /'public\.agenda_campo_cumprir\(uuid,boolean\)'/.test(u79), true);
+  eq('CRÍTICO: o pré-voo ABORTA se authenticated já escrevesse direto na tabela — abrir a RPC em cima de uma porta que deixou de ser única é acrescentar superfície',
+     /has_table_privilege\('authenticated', 'public\.agenda_campo', 'INSERT'\)/.test(u79)
+     && /PRÉ-VOO U79: authenticated JÁ escreve direto/.test(u79), true);
+  eq('a conferência mede PRIVILÉGIO no catálogo (has_function_privilege), nunca substring de prosrc — é comportamento medido, não texto procurado',
+     (u79.match(/has_function_privilege/g) || []).length >= 3, true);
+  eq('CRÍTICO: a conferência tem o CENSO (string_agg dos nomes abertos), e não só a contagem — três de quatro vira "quais faltam" em vez de um número que não localiza nada',
+     /string_agg\(p\.proname, ',' ORDER BY p\.proname\)/.test(u79)
+     && /'agenda_campo_cancelar,agenda_campo_cumprir,agenda_campo_marcar,desagendar_chamado'/.test(u79), true);
+  eq('a conferência prova que anon continua fora, que a escrita direta continua fechada e que a frase do conflito continua FECHADA (ela seria um oráculo de enumeração)',
+     /has_function_privilege\('anon', p\.oid, 'EXECUTE'\)/.test(u79)
+     && /has_table_privilege\('authenticated','public\.agenda_campo','INSERT'\)/.test(u79)
+     && /agenda_campo_frase_do_conflito\(uuid,uuid,date,int,int\)', 'EXECUTE'\)/.test(u79), true);
+  eq('a U79 traz o DESFAZER (os quatro REVOKE) no rodapé, comentado',
+     (u79.match(/^--\s+REVOKE EXECUTE ON FUNCTION public\.[a-z_0-9]+\([^;]*\)\s+FROM authenticated;$/gm) || []).length, 4);
+  // A U79 é de PRIVILÉGIO mais UMA guarda, e a fronteira é nomeada em vez de
+  // proibida: sem enumerar, "nenhum DDL" viraria "nenhum DDL menos os que eu
+  // esqueci". A guarda pertence a esta migration e não à U78 porque antes da
+  // tela não havia satélite com que comparar — uma guarda rodada lá teria
+  // recusado toda escrita na base legada, que é a base inteira.
+  {
+    const ddl79 = (u79.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
+      .match(/^(?:CREATE(?: OR REPLACE)? (?:TABLE|FUNCTION|POLICY|TRIGGER|INDEX)|ALTER TABLE|DROP \w+)[^\n]*/gm) || [])
+      .map((l) => l.replace(/\s+/g, ' ').trim());
+    eq('CRÍTICO: a U79 concede as quatro portas e instala UMA guarda — e o DDL dela é exatamente este, nomeado, para nada entrar de carona',
+       ddl79,
+       ['CREATE OR REPLACE FUNCTION public.chamados_espelho_e_do_satelite()',
+        'DROP TRIGGER IF EXISTS trg_chamados_espelho_e_do_satelite ON public.chamados;',
+        'CREATE TRIGGER trg_chamados_espelho_e_do_satelite']);
+  }
+
+  // A LINHA 7554 (censo de privilégio da U78) PASSARIA A MENTIR SOBRE O BANCO
+  // depois desta migration rodar: ela afirma "as quatro portas ficam em
+  // service_role até a tela existir", lendo SÓ o arquivo da U78. O texto dela já
+  // foi corrigido para dizer "no arquivo da U78"; esta é a outra metade do par,
+  // e é ela que passa a afirmar o estado NOVO. Medir com o mesmo recorte que
+  // produziu a medida é medir a si mesmo.
+  eq('CRÍTICO: o par da U78 — o que a U78 deixou fechado, a U79 abre; as duas listas juntas são a fronteira de hoje',
+     [...new Set([...grantsDaU79, 'duracao_texto', 'reconciliar_apoios_abertos'])].sort(),
+     ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar',
+      'desagendar_chamado', 'duracao_texto', 'reconciliar_apoios_abertos']);
+
+  // ══ 2) AS DUAS PORTAS DE TIPO — o que faz o `tsc` barrar a regressão ═════
+  // Enquanto `NovoChamadoInput.data_hora_agendada` e o membro
+  // `"data_hora_agendada"` do `Pick<>` de `ChamadoPatch` existiam, qualquer tela
+  // futura reintroduzia a segunda verdade com UMA linha, e o religamento era
+  // CONVENÇÃO. Fechadas, ele é COMPILADOR. A extração é ESTRUTURAL (a lista de
+  // membros, derivada do arquivo) e comparada contra uma lista escrita à mão —
+  // um regex negativo (`!/data_hora_agendada/`) diria "não existe" para um
+  // arquivo que a tem num comentário.
+  const corpoNovoChamado = dadosChamados79.slice(
+    dadosChamados79.indexOf('export interface NovoChamadoInput {'),
+    dadosChamados79.indexOf('export async function abrirChamado'),
+  );
+  const chavesNovoChamado = [...corpoNovoChamado.matchAll(/^\s{2}([a-z_0-9]+)\??:/gm)].map((m) => m[1]).sort();
+  eq('CRÍTICO: `NovoChamadoInput` não tem mais `data_hora_agendada` — abrir chamado deixou de saber marcar hora, e quem marca é agenda_campo_marcar',
+     chavesNovoChamado,
+     ['cliente_id', 'cliente_sistema_id', 'descricao_problema', 'equipe', 'natureza',
+      'prazo_limite', 'prioridade', 'responsavel_id', 'sprint', 'tipo', 'titulo',
+      'visita_id'].sort());
+
+  const corpoPatch = dadosChamados79.slice(
+    dadosChamados79.indexOf('export type ChamadoPatch'),
+    dadosChamados79.indexOf('export class GravacaoRecusada'),
+  );
+  const membrosPatch = [...corpoPatch.matchAll(/"([a-z_0-9]+)"/g)].map((m) => m[1]).sort();
+  eq('CRÍTICO: `ChamadoPatch` não tem mais `data_hora_agendada` — a coluna é ESPELHO derivado (R101), e nenhuma tela a escreve por patch',
+     membrosPatch,
+     ['assinatura_nome', 'assinatura_url', 'cliente_id', 'cliente_sistema_id',
+      'concluida_em', 'descricao_problema', 'diagnostico', 'equipe', 'fechada_em',
+      'fechado_por', 'finalizada_em', 'iniciada_em', 'motivo_cancelamento',
+      'pecas_texto', 'prazo_limite', 'prioridade', 'responsavel_id',
+      'servico_executado', 'sprint', 'status', 'tipo', 'titulo'].sort());
+
+  eq('CRÍTICO: e a derivação de status saiu de abrirChamado — quem faz `aberto -> agendado` é o passo 8 de agenda_campo_marcar, num lugar só',
+     /input\.natureza === "campo" && input\.responsavel_id && input\.data_hora_agendada/.test(dadosChamados79),
+     false);
+
+  // ══ 3) O CENSO DOS ESCRITORES — derivado por VARREDURA ═══════════════════
+  // A lista de arquivos que ESCREVEM `data_hora_agendada`, derivada do `src/`
+  // inteiro, contra a lista escrita à mão dos CINCO escritores COMERCIAIS —
+  // que gravam `public.visitas_tecnicas`, são do gatilho da U41 e a U78 recusa
+  // estruturalmente. Se alguém reintroduzir a escrita de CAMPO, o censo acusa
+  // antes do deploy, e acusa NOMEANDO o arquivo.
+  //
+  // O recorte distingue ESCRITA de LEITURA: escrita é `data_hora_agendada:` ou
+  // `data_hora_agendada =` (a forma de chave de objeto e de atribuição);
+  // leitura é `c.data_hora_agendada`, `"data_hora_agendada"` dentro de um
+  // select e `.eq("data_hora_agendada", …)`. Declarações de TIPO
+  // (`data_hora_agendada: string | null`) saem por último — elas são contrato,
+  // não gravação —, e é por isso que a `Chamado` continua tendo a coluna.
+  const varrer79 = (dir, out = []) => {
+    for (const e of fs79.readdirSync(dir, { withFileTypes: true })) {
+      const p = path79.join(dir, e.name);
+      if (e.isDirectory()) varrer79(p, out);
+      else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  const escritores79 = varrer79('src')
+    .filter((a) => fs79.readFileSync(a, 'utf8').split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .filter((l) => /(^|[^.\w])data_hora_agendada\s*\??\s*[:=]/.test(l))
+      .filter((l) => !/data_hora_agendada\s*\??\s*:\s*(string|Date|number|null)/.test(l))
+      .length > 0)
+    .map((a) => a.split(path79.sep).join('/'))
+    .sort();
+  eq('CRÍTICO: CENSO — os ÚNICOS arquivos que escrevem data_hora_agendada são os CINCO comerciais (visitas_tecnicas, gatilho da U41). Nenhum caminho de CAMPO escreve a coluna direto',
+     escritores79,
+     ['src/features/gerencial/VisitaForm.tsx',
+      'src/features/visitas/NovaVisitaDialog.tsx',
+      'src/routes/_authenticated/gerencial.nova.tsx',
+      'src/routes/_authenticated/visita.$id.pendente.tsx',
+      'src/routes/_authenticated/visita.$id.reagendar.tsx']);
+
+  eq('…e as três telas religadas passaram a falar com as PORTAS: a programação, o novo-campo e o painel',
+     [/useMarcarBloco|FormularioDoBloco/.test(tela79),
+      /useMarcarBloco/.test(novoCampo79),
+      /AgendaDoChamado/.test(painel79)],
+     [true, true, true]);
+  eq('CRÍTICO: a programação não importa mais `atualizarChamado` — o único caminho de escrita dela é a RPC',
+     /atualizarChamado/.test(telaCod79), false);
+  eq('e o sentinela das 12:00 morreu junto com o `new Date(...T12:00:00)` que o escrevia',
+     /T12:00:00/.test(telaCod79), false);
+  eq('o painel perdeu o `datetime-local` de agendamento e a `paraEntradaLocal` que existia só por causa dele',
+     /type="datetime-local"/.test(painel79) || /function paraEntradaLocal/.test(painel79), false);
+
+  // ══ 4) `paramsDeMarcar` — a assimetria que a assinatura da porta impõe ═══
+  // OS SEIS PRIMEIROS PARÂMETROS NÃO TÊM DEFAULT (U78:1134): o PostgREST resolve
+  // a função pelo CONJUNTO de argumentos nomeados que chegam, e omitir um deles
+  // é PGRST202 — "não achei candidato" — ANTES de a função rodar. Um PATCH de
+  // arrasto (que muda só `dia`) mandaria `{_id, _dia}` e falharia INTEIRO, em
+  // toda gravação da tela, com uma mensagem que não fala de agenda nenhuma.
+  //
+  // OS TRÊS ÚLTIMOS SÓ ENTRAM QUANDO O PATCH OS PRODUZIU, e `_deslocamento_min`
+  // é o caso que a U78 documenta em letras: `DEFAULT NULL` num PATCH quer dizer
+  // "não mexi", e mandar `?? 0` por comodidade ZERA os 45 minutos de estrada
+  // digitados — encolhendo a janela do EXCLUDE e inventando 45 minutos de
+  // capacidade no dia. A CHAVE TEM DE ESTAR AUSENTE, não valer zero.
+  const valores79 = {
+    chamado_id: 'C1', dupla_id: 'D1', dia: '2026-09-02', inicio_min: 540,
+    servico_min: 60, deslocamento_min: 45, os_externa: null, titulo_externo: null,
+  };
+  const soDia79 = D79.paramsDeMarcar('B1', { dia: '2026-09-02' }, valores79);
+  eq('CRÍTICO: um PATCH de só `dia` manda as SEIS chaves obrigatórias (quatro delas null = "não mexi") — omitir qualquer uma é PGRST202 antes de a função rodar',
+     Object.keys(soDia79).sort(),
+     ['_chamado', '_dia', '_id', '_inicio_min', '_servico_min', '_dupla'].sort());
+  eq('…e as quatro que não mexeram vão NULAS, que é o que o passo 1b lê como "mantenha o que está na linha viva"',
+     [soDia79._chamado, soDia79._dupla, soDia79._inicio_min, soDia79._servico_min],
+     [null, null, null, null]);
+  eq('CRÍTICO: `_deslocamento_min` NÃO ESTÁ NO CORPO quando o patch não o produziu — um `?? 0` aqui apagaria os minutos de estrada digitados, que entram na jornada E na janela do EXCLUDE',
+     '_deslocamento_min' in soDia79, false);
+  eq('…e o zero de "não tem deslocamento" continua existindo: 45 → 0 é uma MUDANÇA, e entra explicitamente',
+     D79.paramsDeMarcar('B1', { deslocamento_min: 0 }, { ...valores79, deslocamento_min: 0 })._deslocamento_min,
+     0);
+  const criar79 = D79.paramsDeMarcar(null, {}, valores79);
+  eq('CRÍTICO: CRIAR manda tudo — não há linha viva contra a qual fazer COALESCE, e um campo ausente cairia no default da coluna em vez do que o formulário mostrou',
+     Object.keys(criar79).sort(),
+     ['_chamado', '_deslocamento_min', '_dia', '_dupla', '_id', '_inicio_min',
+      '_os_externa', '_servico_min', '_titulo_externo'].sort());
+
+  // ══ 5) O CELULAR É UMA PROJEÇÃO, PROVADO POR IGUALDADE ══════════════════
+  // `linhasDaGrade` é chamada UMA vez, com os dias da SEMANA INTEIRA, nos dois
+  // viewports; o celular faz `celulas.find(c => c.dia === D)`. A asserção
+  // POSITIVA é o deep-equal com o átomo; a NEGATIVA é o que dá dentes: com
+  // `dias = [D]`, `divergencias` MUDA (porque é reduzido sobre `celulas`)
+  // enquanto `ocupacao` NÃO muda (porque `ocupacaoDaSemana` filtra a semana
+  // internamente). Chamar o modelo com um dia só no celular poria dois escopos
+  // no mesmo cabeçalho — cada número certo sozinho, o par mentindo.
+  const SEM79 = '2026-S36';                 // a semana de 31/08/2026 (uma segunda)
+  const SEG79 = '2026-08-31', TER79 = '2026-09-01', QUA79 = '2026-09-02', SAB79 = '2026-09-05';
+  const escala79 = E79.montarEscala([SEM79], [
+    { semana: SEM79, dupla_id: 'D1', pessoa_id: 'P1', ordem: 0 },
+    { semana: SEM79, dupla_id: 'D2', pessoa_id: 'P2', ordem: 0 },
+  ]);
+  const duplas79 = [{ id: 'D1' }, { id: 'D2' }];
+  const chamados79 = [
+    { id: 'C1', numero: 'CH-1', titulo: 'Portão', tipo: 'corretiva', prioridade: 'normal',
+      status: 'agendado', natureza: 'campo', responsavel_id: 'P2', data_hora_agendada: null },
+    { id: 'C2', numero: 'CH-2', titulo: 'Câmera', tipo: 'preventiva', prioridade: 'normal',
+      status: 'agendado', natureza: 'campo', responsavel_id: 'P1', data_hora_agendada: null },
+  ];
+  const bloco79 = (id, dia, chamado) => ({
+    id, chamado_id: chamado, dupla_id: 'D1', dia, inicio_min: 540, servico_min: 60,
+    deslocamento_min: 30, cumprido_em: null, cancelado_em: null,
+    os_externa: null, titulo_externo: null,
+  });
+  // B1 é de C1, cujo responsável (P2) está na D2 nesta semana → DIVERGÊNCIA,
+  // e ela está na TERÇA. B2 é de C2 (P1, que é da D1) → sem divergência, QUARTA.
+  const blocos79 = [bloco79('B1', TER79, 'C1'), { ...bloco79('B2', QUA79, 'C2'), inicio_min: 660 }];
+  const diasSemana79 = M79.diasDaGrade(M79.dataDoDia(QUA79), blocos79, P79.dataIso);
+  const linhasSemana79 = M79.linhasDaGrade(duplas79, SEM79, diasSemana79, blocos79, chamados79, escala79, P79.referenciaSemanal);
+  const linhaD1 = linhasSemana79.find((l) => l.duplaId === 'D1');
+  eq('CRÍTICO: a célula do celular é LITERALMENTE a coluna da grade — `celulas.find(dia)` é deep-equal a `celulaDaGrade` do mesmo dia',
+     JSON.stringify(linhaD1.celulas.find((c) => c.dia === QUA79)),
+     JSON.stringify(M79.celulaDaGrade('D1', QUA79, SEM79, blocos79, chamados79, escala79)));
+
+  const linhasUmDia79 = M79.linhasDaGrade(duplas79, SEM79, [QUA79], blocos79, chamados79, escala79, P79.referenciaSemanal);
+  const linhaD1UmDia = linhasUmDia79.find((l) => l.duplaId === 'D1');
+  eq('CRÍTICO: e é por isso que o celular NÃO chama o modelo com um dia só — `divergencias` reduz sobre as células e MUDA, enquanto `ocupacao` é da SEMANA e não muda: dois escopos no mesmo cabeçalho',
+     [linhaD1.divergencias, linhaD1UmDia.divergencias,
+      linhaD1.ocupacao.minutos === linhaD1UmDia.ocupacao.minutos,
+      linhaD1.ocupacao.pct === linhaD1UmDia.ocupacao.pct],
+     [1, 0, true, true]);
+
+  // ══ 6) O EIXO DA RÉGUA — os dois eixos de semana viraram um só ══════════
+  // A régua ia de DOMINGO e a escala é ISO (segunda). O arquivo antigo assumia
+  // a contradição por escrito. Para um domingo, `inicioSemana` desloca −6 (a
+  // segunda anterior) e `semanaIso` joga para a quinta daquela mesma semana:
+  // os dois SEMPRE concordaram, e quem criava o desencontro era a régua.
+  const domingo79 = new Date(2026, 8, 6); // 06/09/2026, um domingo
+  eq('CRÍTICO: a primeira coluna da grade para um DOMINGO é a segunda que começou a semana dele — `diasDaGrade` normaliza, e a régua ISO passou a concordar',
+     [domingo79.getDay(),
+      M79.diasDaGrade(domingo79, [], P79.dataIso)[0],
+      P79.dataIso(P79.inicioSemana(domingo79)),
+      P79.referenciaSemanal(domingo79) === P79.referenciaSemanal(P79.inicioSemana(domingo79))],
+     [0, SEG79, SEG79, true]);
+
+  // ══ 7) O GUARDA DOS DOIS LADOS, sobre a fixture da tela ═════════════════
+  // Tem de ser SEMPRE {naoMostrados: 0, foraDaSemana: 0}. E a UNIÃO com o dia
+  // escolhido é o que faz o celular achar célula num sábado VAZIO — que é
+  // exatamente o gesto de marcar o primeiro bloco nele.
+  const diasComSabado79 = [...new Set([...diasSemana79, SAB79])].sort();
+  const linhasComSabado79 = M79.linhasDaGrade(duplas79, SEM79, diasComSabado79, blocos79, chamados79, escala79, P79.referenciaSemanal);
+  eq('CRÍTICO: o guarda dos dois lados é {0,0} sobre a fixture da tela, inclusive com o dia de fim de semana unido às colunas',
+     M79.blocosForaDaGrade(linhasComSabado79, SEM79, blocos79, P79.referenciaSemanal),
+     { naoMostrados: 0, foraDaSemana: 0 });
+  eq('CRÍTICO: e SEM a união o sábado vazio não tem célula — o celular faria `find` e receberia undefined para TODA linha',
+     [linhasComSabado79[0].celulas.some((c) => c.dia === SAB79),
+      linhasSemana79[0].celulas.some((c) => c.dia === SAB79)],
+     [true, false]);
+
+  // ══ 8) O GÊMEO LOCAL DE `pode_editar_chamado` ═══════════════════════════
+  // Ele é AFORDÂNCIA (o cadeado no cartão), nunca autorização — quem autoriza é
+  // a porta. Mas se ele for MAIS PERMISSIVO do que o servidor, a tela promete um
+  // gesto que morre do outro lado; se for mais restritivo, esconde um gesto
+  // legítimo. As três pernas são as da S2, na mesma ordem.
+  const s2corpo = fs79.readFileSync('supabase/migrations/20260901120000_s2_apoio_nao_e_auto_servico.sql', 'utf8');
+  const podeEditar79 = s2corpo.slice(
+    s2corpo.indexOf('CREATE OR REPLACE FUNCTION public.pode_editar_chamado(_chamado_id uuid)'),
+    s2corpo.indexOf('REVOKE EXECUTE ON FUNCTION public.pode_editar_chamado(uuid)'),
+  );
+  const pernasNoSql = [
+    /public\.is_gestor\(auth\.uid\(\)\)/.test(podeEditar79) && 'is_gestor',
+    /c\.responsavel_id = auth\.uid\(\) OR c\.aberto_por = auth\.uid\(\)/.test(podeEditar79) && 'responsavel_ou_abriu',
+    /a\.origem = 'dupla' OR a\.criado_por IS DISTINCT FROM a\.profile_id/.test(podeEditar79) && 'apoio_valido',
+  ].filter(Boolean);
+  eq('CRÍTICO: CENSO — as três pernas do gêmeo local são as três do corpo de pode_editar_chamado na S2, e nenhuma a mais',
+     pernasNoSql, ['is_gestor', 'responsavel_ou_abriu', 'apoio_valido']);
+
+  const chamadosAutz79 = [
+    { id: 'X1', responsavel_id: 'EU', aberto_por: 'OUTRO' },
+    { id: 'X2', responsavel_id: 'OUTRO', aberto_por: 'EU' },
+    { id: 'X3', responsavel_id: 'OUTRO', aberto_por: 'OUTRO' },
+    { id: 'X4', responsavel_id: 'OUTRO', aberto_por: 'OUTRO' },
+  ];
+  // A TERCEIRA PERNA, como FUNÇÃO PURA. Ela vivia num `.filter()` dentro da
+  // consulta, e o teste de mutação mostrou o preço: trocar a condição inteira
+  // por `true` — que é literalmente reabrir o auto-serviço que a S2 fechou —
+  // deixava o verificador VERDE. Agora ela é `apoioValeComoVinculo`, e cada um
+  // dos quatro casos é uma fixture.
+  eq('CRÍTICO: apoio SÓ vale como vínculo quando é do gatilho da escala OU quando ALGUÉM PÔS a pessoa — pôr-se a si mesmo não vira direito de edição (S2)',
+     [M79.apoioValeComoVinculo({ origem: 'dupla', criado_por: 'EU', profile_id: 'EU' }),
+      M79.apoioValeComoVinculo({ origem: 'manual', criado_por: 'OUTRO', profile_id: 'EU' }),
+      M79.apoioValeComoVinculo({ origem: 'manual', criado_por: null, profile_id: 'EU' }),
+      M79.apoioValeComoVinculo({ origem: 'manual', criado_por: 'EU', profile_id: 'EU' })],
+     [true, true, true, false]);
+  eq('…e a camada de dados usa ESSA função, em vez de reescrever a condição numa cláusula de consulta',
+     /\.filter\(apoioValeComoVinculo\)/.test(dados79), true);
+
+  const autzTecnico = M79.montarAutorizacao('EU', false, chamadosAutz79, ['X3']);
+  eq('as três pernas, uma a uma: responsável passa, quem abriu passa, apoio VÁLIDO passa, e o resto NÃO',
+     ['X1', 'X2', 'X3', 'X4'].map((id) => autzTecnico.podeEditarChamado(id)),
+     [true, true, true, false]);
+  eq('CRÍTICO: chamado fora da lista carregada devolve FALSE — a direção segura é o cartão ficar só-leitura, nunca prometer um gesto que a porta vai negar',
+     autzTecnico.podeEditarChamado('NUNCA-VISTO'), false);
+  eq('e o gestor passa em todos os ramos, como `is_gestor` faz por dentro de pode_editar_chamado',
+     M79.montarAutorizacao('EU', true, [], []).podeEditarChamado('QUALQUER'), true);
+  eq('sem sessão o gate inteiro passa — é o espelho exato do `IF auth.uid() IS NOT NULL THEN` do §6.1, e mentir para si mesmo não abre porta nenhuma do outro lado',
+     M79.erroDeAutorizacao(
+       { id: null, chamado_id: null, dupla_id: 'D1', dia: TER79, inicio_min: 540,
+         servico_min: 60, deslocamento_min: 0, titulo_externo: 'X' },
+       { blocosDoDia: [], blocoAtual: null, chamado: null, escala: escala79,
+         chaveDaSemana: P79.referenciaSemanal, rotuloDe: () => 'x',
+         autz: M79.montarAutorizacao(null, false, [], []) }),
+     null);
+
+  // ══ 9) OS BALDES DA TELA, no censo que a faixa mostra ═══════════════════
+  // A barra de progresso da migração são DOIS números do MESMO censo, e o
+  // predicado do "sem horário" NÃO pode ser `hora == null`: a base tem 12:00
+  // SENTINELA misturado com 12:00 de verdade, indistinguíveis por valor.
+  const paraBaldes = [
+    { id: 'K1', natureza: 'campo', status: 'aberto', data_hora_agendada: '2026-09-02T15:00:00Z' },
+    { id: 'K2', natureza: 'campo', status: 'aberto', data_hora_agendada: null },
+    { id: 'K3', natureza: 'campo', status: 'concluido', data_hora_agendada: '2026-09-02T15:00:00Z' },
+    { id: 'K4', natureza: 'comercial', status: 'aberto', data_hora_agendada: '2026-09-02T15:00:00Z' },
+  ];
+  eq('CRÍTICO: os quatro baldes são exaustivos e disjuntos — o encerrado e o comercial saem por ESCOPO, antes de qualquer pergunta sobre data',
+     paraBaldes.map((c) => M79.classificarChamado(c, false)),
+     ['sem_horario', 'sem_data', 'fora_da_programacao', 'fora_da_programacao']);
+  eq('…e um chamado com bloco ATIVO (cumprido inclusive) sai da faixa: a barra mede a MIGRAÇÃO, e a visita que aconteceu deu horário',
+     M79.classificarChamado(paraBaldes[0], true), 'com_bloco');
+  // O CONTRATO DAS PORTAS, do lado do cliente: o código do Postgres decide o
+  // ROSTO da caixa de erro, e a mensagem decide o TEXTO. Um código novo cai em
+  // "desconhecido" em vez de fingir uma classe — mentir aqui pintaria de
+  // "corrija no formulário" uma coisa que o formulário não conserta.
+  eq('CRÍTICO: as três classes de erro das portas, pelo SQLSTATE — 42501 permissão, 55000 regra, 23P01 conflito, e o que não é nenhum é "desconhecido"',
+     [M79.CLASSE_DO_ERRO['42501'], M79.CLASSE_DO_ERRO['55000'], M79.CLASSE_DO_ERRO['23P01'],
+      M79.classeDoErro('42501'), M79.classeDoErro('23P01'), M79.classeDoErro('XX000'), M79.classeDoErro(null)],
+     ['permissao', 'regra', 'conflito', 'permissao', 'conflito', 'desconhecido', 'desconhecido']);
+  // `blocoPendente` é o predicado do ESPELHO e o de "agendado": ele é mais
+  // estreito que `blocoVale` de propósito, e a diferença entre os dois é a que
+  // faz a barra de progresso da migração NÃO andar para trás quando uma equipe
+  // termina um atendimento sem retorno marcado.
+  eq('CRÍTICO: "vale" e "pendente" são predicados DIFERENTES — cancelar libera a agenda, cumprir NÃO, e o cumprido continua contando na ocupação',
+     [M79.blocoVale({ cancelado_em: null }), M79.blocoVale({ cancelado_em: 'x' }),
+      M79.blocoPendente({ cancelado_em: null, cumprido_em: null }),
+      M79.blocoPendente({ cancelado_em: null, cumprido_em: 'x' }),
+      M79.blocoPendente({ cancelado_em: 'x', cumprido_em: null })],
+     [true, false, true, false, false]);
+  eq('CRÍTICO: `semHorario` é o gêmeo da linha 701 da U78 — chamado de campo aberto, com data e sem bloco ativo',
+     M79.semHorario(
+       [{ ...paraBaldes[0], numero: null, titulo: null, tipo: null, prioridade: null, responsavel_id: null },
+        { ...paraBaldes[1], numero: null, titulo: null, tipo: null, prioridade: null, responsavel_id: null }],
+       [],
+     ).map((c) => c.id),
+     ['K1']);
+
+  // ══ 10) CENSO: os exports do modelo puro × quem os consome ══════════════
+  // Antes desta entrega, `features/programacao/modelo.ts` tinha ZERO
+  // importadores: 1898 linhas de lógica pura sem consumidor. Agora toda função
+  // e toda constante exportada tem de ter consumidor na TELA ou no VERIFICADOR
+  // — é o que pega decoração, e é o que descarrega o GATILHO DE REVISÃO escrito
+  // no docblock de `CAMPO_FECHA_MIN` ("se a Fase 2 não a consumir na tela, ela
+  // sai; constante que só a asserção lê é decoração com cara de regra").
+  const fonteModelo79 = fs79.readFileSync('src/features/programacao/modelo.ts', 'utf8');
+  const exportsModelo79 = [...fonteModelo79.matchAll(/^export (?:function|const) ([A-Za-z_0-9]+)/gm)]
+    .map((m) => m[1]);
+  const consumidores79 = [
+    ...varrer79('src/features/programacao').filter((a) => !a.endsWith('modelo.ts')),
+    'src/routes/_authenticated/chamados.programacao.tsx',
+    'src/routes/_authenticated/chamados.novo-campo.tsx',
+    'src/features/chamados/PainelChamado.tsx',
+    'scripts/verificar-logica.cjs',
+  ].map((a) => fs79.readFileSync(a, 'utf8')).join('\n');
+  const semConsumidor79 = exportsModelo79.filter(
+    (n) => !new RegExp('(^|[^A-Za-z_0-9])' + n + '($|[^A-Za-z_0-9])').test(consumidores79),
+  );
+  eq('CRÍTICO: CENSO — toda função e constante exportada do modelo puro tem consumidor na tela ou no verificador (o arquivo nasceu com ZERO importadores)',
+     semConsumidor79, []);
+
+  // ══ 11) O DESENHO QUE NÃO PODE PARECER ERRO ═════════════════════════════
+  const faixa79 = fs79.readFileSync('src/features/programacao/FaixaSemHorario.tsx', 'utf8');
+  eq('CRÍTICO: a faixa "agendado sem horário" NÃO usa AlertTriangle nem vermelho — no dia 1 ela é 100% da base, e uma faixa vermelha com trezentos itens ensina a ignorá-la',
+     [/<CalendarClock size=\{15\} color=\{azul\}/.test(faixa79),
+      /Agendado sem horário/.test(faixa79),
+      /Tem data e ainda não tem hora/.test(faixa79)],
+     [true, true, true]);
+  eq('…e ela some SOZINHA quando o último ganha horário — sem troféu, sem estado vazio, sem moldura',
+     /if \(todos\.length === 0\) return null;/.test(faixa79), true);
+  eq('CRÍTICO: o cartão da faixa mostra SÓ A DATA (parDoInstante(...).dia), nunca a hora — 12:00 sentinela e 12:00 de verdade são indistinguíveis por valor',
+     /\{par && ` · \$\{par\.dia\}`\}/.test(faixa79), true);
+
+  const form79 = fs79.readFileSync('src/features/programacao/FormularioDoBloco.tsx', 'utf8');
+  eq('CRÍTICO: os atalhos de duração estão em ordem CRESCENTE e nenhum é pré-selecionado — um default aqui seria o backfill que a U78 recusou, um clique por vez',
+     [JSON.stringify(M79.CAMPO_MIN > 0), JSON.stringify(require('fs').existsSync('src/features/programacao/FormularioDoBloco.tsx')),
+      /export const ATALHOS_DE_DURACAO = \[30, 60, 90, 120, 180, 240\];/.test(form79),
+      /const \[servico, setServico\] = useState<string>\(\s*\n?\s*bloco \? String\(bloco\.servico_min\)/.test(form79)],
+     ['true', 'true', true, true]);
+  eq('CRÍTICO: o erro do agendamento volta NO FORMULÁRIO com o rosto escolhido por `classeDoErro`, e não num toast solto',
+     [/classeDoErro\(erro\?\.code\)/.test(form79),
+      /toast\.error/.test(form79)],
+     [true, false]);
+  eq('a ordem do gesto é a do modelo: erroDoAgendamento → patchDoBloco → patchImpossivel → paramsDeMarcar',
+     /if \(erroLocal\) return;\s*\n\s*if \(impossivel\) return;/.test(form79), true);
+  // O BLOCO INTEIRO, contra string escrita à mão — e não um regex que procure
+  // `window.confirm` solto. O teste de mutação mostrou por quê: há três
+  // `window.confirm` neste arquivo (feito, desmarcar, tirar da agenda), então
+  // desligar ESTE (trocando `const ok = window.confirm(` por `const ok = true`)
+  // deixava a asserção verde pelos confirms dos vizinhos. Prender a condição, a
+  // chamada e a SAÍDA (`if (!ok) return;`) é o que não dá para contornar sem
+  // apagar.
+  eq('CRÍTICO: dar "feito" num bloco cujo espelho pula de semana ISO PERGUNTA antes — o gatilho da U76 reavalia o apoio contra a semana nova e apaga quem JÁ FOI',
+     [/espelhoDoChamado\(\s*\n?\s*bloco\.chamado_id,\s*\n?\s*blocos\.map\(\(b\) => \(b\.id === bloco\.id \? \{ \.\.\.b, cumprido_em: "\(feito\)" \} : b\)\),/.test(form79),
+      form79.includes('      if (sa && sd && sa !== sd && depois) {\n        const ok = window.confirm('),
+      form79.includes('        if (!ok) return;')],
+     [true, true, true]);
+  eq('CRÍTICO: o texto de "tirar da agenda" é DERIVADO de espelhoAposDesagendar — com bloco cumprido sobrando, "o horário some" é mentira',
+     /const resto = espelhoAposDesagendar\(chamado\.id, blocos\);/.test(form79), true);
+
+  // ══ 12) O ARRASTO reusa a mecânica do kanban (R87/U21/U72) ══════════════
+  const cartao79 = fs79.readFileSync('src/features/programacao/CelulaDaGrade.tsx', 'utf8');
+  eq('CRÍTICO: o cartão é `div role="button"` e NÃO `<button>` — Firefox e Safari não iniciam o arrasto do ancestral quando o gesto começa sobre um controle nativo (U72)',
+     /role="button"\s*\n\s*tabIndex=\{0\}/.test(cartao79)
+     && /onKeyDown=\{\(e\) => \{\s*\n\s*if \(e\.key === "Enter" \|\| e\.key === " "\)/.test(cartao79), true);
+  eq('o arrasto guarda o item num REF e o alvo em state, e o `dragover` chama preventDefault (sem ele o drop nunca dispara)',
+     /const arrastadoRef = useRef<Arrastado \| null>\(null\);/.test(tela79)
+     && /e\.preventDefault\(\); \/\/ sem isto o drop nunca dispara/.test(tela79), true);
+  eq('CRÍTICO: a guarda final compara o DESTINO com o que o bloco já é e SAI sem chamar a RPC — é a lição do Quadro.tsx:143-147, onde soltar na própria coluna apagava o agendamento',
+     /if \(b\.dupla_id === duplaId && b\.dia === diaAlvo\) return; \/\/ nada mudou/.test(tela79), true);
+  eq('e o `dragLeave` ignora os filhos (`contains(relatedTarget)`), senão o realce pisca',
+     /contains\(e\.relatedTarget as Node\)\) return;/.test(tela79), true);
+  eq('CRÍTICO: o celular NÃO depende de arrastar — HTML5 DnD não dispara em toque, e a coluna do dia não passa `arrasto` nenhum',
+     /arrastavel/.test(fs79.readFileSync('src/features/programacao/ColunaDoDia.tsx', 'utf8')), false);
+
+  // ══ 13) A CAMADA DE DADOS ═══════════════════════════════════════════════
+  eq('CRÍTICO: a camada de dados NÃO reescreve a frase da RPC — ela rejeita com o erro cru, e quem escolhe o rosto é a tela por classeDoErro(error.code)',
+     /toast/.test(dados79), false);
+  eq('a invalidação usa `chamadosTocadosPeloGesto` — são DOIS chamados quando o bloco troca de dono, e refazer só o destino deixa a origem com a data velha',
+     /for \(const id of chamados\) qc\.invalidateQueries\(\{ queryKey: \["chamado", id\] \}\);/.test(dados79)
+     && /chamadosTocadosPeloGesto\(g\.atual, g\.valores\)/.test(dados79), true);
+  eq('CRÍTICO: e ela invalida as quatro chaves que leem o ESPELHO (home, home-chamados, home-historico, calendario) mais a pilha de apoio — o gatilho acabou de mover a data',
+     /\[\["home"\], \["home-chamados"\], \["home-historico"\], \["calendario"\], \["home-apoios-todos"\]\]/.test(dados79), true);
+  eq('CRÍTICO: `useChamadosComBloco` existe e é o denominador da faixa — sem ela, um chamado cujo único bloco está a três meses cai na faixa e "dar horário" cria um RETORNO que ninguém pediu',
+     /export function useChamadosComBloco/.test(dados79)
+     && /useChamadosComBloco\(idsComData\)/.test(tela79), true);
+  eq('e `useBlocosDosChamados` traz os IRMÃOS — sem eles `ordinalDoBloco` diz "1ª ida" para um retorno cuja visita foi na semana passada, e o chip some sem avisar',
+     /export function useBlocosDosChamados/.test(dados79), true);
+  eq('CRÍTICO: nenhum canal de realtime em `agenda_campo` — a tabela NÃO está na publicação, e inscrição em tabela de fora conecta, fica viva e nunca dispara',
+     /channel\([^)]*agenda/.test(dados79), false);
+
+  // ══ 14) OS DOCUMENTOS ══════════════════════════════════════════════════
+  // A R100 tem as DUAS isenções por escrito (corretiva+urgente e bloco sem
+  // chamado). FUI CONFERIR ANTES DE "CONSERTAR": a U78 já tinha feito isso — o
+  // texto que ainda diz "a única exceção" é o PARÁGRAFO QUE CONTA a correção,
+  // não a regra. A asserção passa a ser POSITIVA (as duas estão lá e o modelo
+  // puro concorda), porque uma asserção negativa sobre a palavra "única"
+  // ficaria vermelha por causa da própria explicação — e uma asserção que
+  // proíbe contar a história é uma asserção que apaga a história.
+  const produto79 = fs79.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('CRÍTICO: a R100 no PRODUTO.md tem as DUAS isenções por escrito, e o modelo puro concorda com as duas',
+     [/A jornada tem DUAS isenções, e as duas são fatos já gravados na linha/.test(produto79),
+      M79.isentoDaJornada(null, null),
+      M79.isentoDaJornada('C1', { tipo: 'corretiva', prioridade: 'urgente' }),
+      M79.isentoDaJornada('C1', { tipo: 'corretiva', prioridade: 'normal' }),
+      M79.isentoDaJornada('C1', null)],
+     [true, true, true, false, false]);
+  eq('a R102 existe e nomeia a fronteira: programar é sobre a EQUIPE e a JANELA; o responsável se troca no chamado',
+     /\*\*R102\*\*/.test(produto79), true);
+  eq('o diário tem a entrada U79',
+     /^## U79 — /m.test(fs79.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8')), true);
+  eq('o manual de operação de campo ganhou a consulta-canário do servico_min (o chute é problema de DADO, e o verificador não o vê)',
+     /SELECT servico_min, count\(\*\) FROM agenda_campo GROUP BY 1 ORDER BY 2 DESC/
+       .test(fs79.readFileSync('docs/manual/operacao-campo.md', 'utf8')), true);
+}
+
+// ── U79, o que a auditoria trouxe depois ────────────────────────────────────
+// Três correções, e cada uma tem asserção porque cada uma foi achada por uma
+// bateria que olhou para as PROMESSAS e não para o que já estava coberto.
+{
+  const fsB = require('fs');
+  const u79b = fsB.readFileSync('supabase/migrations/20260902090000_u79_a_tela_da_grade.sql', 'utf8');
+  const vivo79 = u79b.slice(0, u79b.indexOf('\n-- BEGIN;') > 0 ? u79b.indexOf('\n-- BEGIN;') : u79b.length);
+  const prog79 = fsB.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+  const grade79 = fsB.readFileSync('src/features/programacao/GradeSemana.tsx', 'utf8');
+
+  // ── O FATAL: celular + ?modo=grade não pode ficar sem projeção ──────────
+  // `.so-desktop` é display:none abaixo de 1024px. Quando a coluna do dia era
+  // `modo !== "grade"`, a grade sumia e o dia sumia junto: entre a faixa e a
+  // fila não sobrava NADA. E é o link mais provável de chegar ao celular,
+  // porque é o que o gestor manda do desktop.
+  eq('CRÍTICO: no celular, ?modo=grade cai para o DIA — a grade some por CSS, e sem isto a área de conteúdo fica vazia sem uma palavra',
+     /className=\{modo === "grade" \? "so-celular" : undefined\}/.test(prog79), true);
+  eq('…e a coluna do dia NÃO é mais condicionada a modo !== "grade" (era o que a apagava junto)',
+     /\{modo !== "grade" && \(\s*\n\s*<ColunaDoDia/.test(prog79), false);
+  eq('a grade continua sendo só do desktop (ela não cabe em 390px — é a razão da U3)',
+     /className="so-desktop"[\s\S]{0,200}<GradeSemana/.test(prog79), true);
+
+  // ── A coluna fixa: overflow hidden × clip ───────────────────────────────
+  // `overflow: hidden` CRIA scroll container, e `position: sticky` resolve
+  // contra o container mais próximo — a coluna "grudava" onde já estava e
+  // rolava para fora junto com o resto.
+  eq('CRÍTICO: o card da grade recorta com `clip`, não com `hidden` — `hidden` cria scroll container e mata o position:sticky da coluna fixa',
+     /\.\.\.card\(isLight\), overflow: "clip"/.test(grade79)
+     && !/\.\.\.card\(isLight\), overflow: "hidden"/.test(grade79), true);
+  eq('…e a coluna da equipe é sticky de verdade (é o que impede a grade de rolar perdendo o nome)',
+     /position: "sticky", left: 0/.test(grade79), true);
+
+  // ── A guarda que faltava: o espelho vira ESTRUTURA ──────────────────────
+  // O censo prova o CÓDIGO. Não alcança um curl com a chave publishable, que
+  // está no .env versionado — e `chamados_update` é pode_editar_chamado(id).
+  eq('CRÍTICO: o banco RECUSA escrita direta em data_hora_agendada de chamado de campo — o censo do verificador não alcança um curl',
+     /^CREATE TRIGGER trg_chamados_espelho_e_do_satelite\s*\n\s*BEFORE UPDATE OF data_hora_agendada ON public\.chamados$/m.test(vivo79),
+     true);
+  eq('a guarda calcula os DOIS estágios do espelho — se calculasse outra coisa, recusaria o próprio gatilho da U78',
+     /a\.cancelado_em IS NULL\s*\n\s*AND a\.cumprido_em IS NULL\s*\n\s*ORDER BY a\.dia, a\.inicio_min, a\.id/.test(vivo79)
+     && /ORDER BY a\.dia DESC, a\.inicio_min DESC, a\.id DESC/.test(vivo79), true);
+  eq('CRÍTICO: e ela devolve cedo quando o valor NÃO muda — sem isso, editar o título de um chamado legado (com data e sem bloco) passaria a falhar',
+     /NEW\.data_hora_agendada IS NOT DISTINCT FROM OLD\.data_hora_agendada/.test(vivo79), true);
+  eq('comercial passa direto — aquela agenda é do gatilho da visita (U41)',
+     /NEW\.natureza IS DISTINCT FROM 'campo'/.test(vivo79), true);
+  eq('a recusa diz o que os blocos dizem, em vez de só recusar',
+     /O que os blocos dizem hoje é/.test(vivo79), true);
+  // Alcançabilidade: um RETURN NEW posto depois do BEGIN mataria a guarda sem
+  // apagar uma linha, e todo regex acima continuaria casando.
+  {
+    const i = vivo79.indexOf('CREATE OR REPLACE FUNCTION public.chamados_espelho_e_do_satelite');
+    const corpoG = i < 0 ? '' : vivo79.slice(i, vivo79.indexOf('\n$guarda$;', i));
+    const k = corpoG.search(/^BEGIN$/m);
+    const primeira = k < 0 ? '(sem BEGIN)'
+      : corpoG.slice(k + 6).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('--'))[0];
+    eq('CRÍTICO: a PRIMEIRA instrução da guarda é a esperada — regex de conteúdo não vê um RETURN posto na frente',
+       primeira, "IF NEW.natureza IS DISTINCT FROM 'campo'");
+  }
+
+  // ── A asserção da U78 que passa a MENTIR quando a U79 rodar ─────────────
+  // Ela deriva de `cod78`, que é SÓ o arquivo da U78 — então continua verde
+  // afirmando "as quatro portas ficam em service_role" depois de a U79 as
+  // abrir. É a regra 4 da casa (medir com o mesmo recorte que produziu a
+  // medida) mordendo o próprio autor. A correção é a afirmação passar a olhar
+  // os DOIS arquivos, que é onde a verdade sobre o banco mora.
+  {
+    const u78b = fsB.readFileSync('supabase/migrations/20260901090000_u78_grade_da_programacao.sql', 'utf8');
+    const vivo78 = u78b.slice(0, u78b.indexOf('\n-- BEGIN;'));
+    const PORTAS = ['agenda_campo_marcar', 'agenda_campo_cancelar',
+                    'agenda_campo_cumprir', 'desagendar_chamado'];
+    const abertaPor = (n) => [['U78', vivo78], ['U79', vivo79]]
+      .filter(([, src]) => new RegExp('^GRANT\\s+EXECUTE ON FUNCTION public\\.' + n + '\\([^)]*\\)\\s+TO [^;]*authenticated', 'm').test(src))
+      .map(([q]) => q);
+    eq('CRÍTICO: as quatro portas de escrita são abertas a authenticated pela U79 — e por ELA SÓ, nunca pela U78, que não tinha tela para consumi-las',
+       Object.fromEntries(PORTAS.map((n) => [n, abertaPor(n)])),
+       Object.fromEntries(PORTAS.map((n) => [n, ['U79']])));
+    eq('…e a U79 não abre nada além dessas quatro',
+       [...new Set([...vivo79.matchAll(/^GRANT\s+EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^)]*\)\s+TO [^;]*authenticated/gm)].map((m) => m[1]))].sort(),
+       PORTAS.slice().sort());
   }
 }
 

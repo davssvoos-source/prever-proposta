@@ -244,7 +244,29 @@ fechar por `Esc`.
 - **O rótulo "Aguardando início"** fica ao lado de "Aguardando aprovação". Não é
   defeito; é escolha a validar no uso.
 
-## P14 — Três telas ainda escrevem `chamados.data_hora_agendada` direto (2026-09-01)
+## P14 — ~~Três telas ainda escrevem `chamados.data_hora_agendada` direto~~ FECHADA (U79, 2026-09-01)
+
+**Fechada pela U79.** As três telas foram religadas às quatro portas da U78, e o
+freio que este item pedia acabou sendo **melhor do que o gatilho proposto**:
+em vez de um `BEFORE UPDATE OF data_hora_agendada ON public.chamados` (que
+recusaria em tempo de execução, com o usuário na frente), fecharam-se as **duas
+portas de TIPO** em `src/features/chamados/data.ts` —
+`NovoChamadoInput.data_hora_agendada` e o membro `"data_hora_agendada"` do
+`Pick<>` de `ChamadoPatch`. A regressão passou a ser **erro de compilação**, e o
+verificador ganhou um **censo por varredura**: a lista de arquivos que escrevem a
+coluna, derivada do `src/` inteiro, contra a lista escrita à mão dos **cinco
+escritores comerciais** (que gravam `visitas_tecnicas` e são do gatilho da U41).
+
+O gatilho no banco continua **não existindo**, e a decisão fica registrada: com o
+`tsc` e o censo fechando o caminho no cliente, o gatilho pegaria só um escritor
+vindo de fora do app (SQL Editor, carga) — e ali quem escreve é `service_role`,
+que é justamente quem precisa poder consertar dado à mão. O custo de errar nessa
+direção é alto (uma carga legítima recusada às 23h) e o benefício é pequeno.
+
+O texto original fica abaixo, porque o GATILHO DE REVISÃO dele foi o que
+disparou esta entrega.
+
+---
 
 A U78 fez daquela coluna um **espelho** do bloco de agenda (R101): quem escreve
 é o gatilho, e a promessa de "um escritor só" está no `COMMENT ON TABLE` da
@@ -269,6 +291,84 @@ levar a grade tem de trazer junto o gatilho que recusa a escrita direta, e a
 asserção que hoje pina "não nasce gatilho nenhum em `public.chamados`" tem de ser
 reescrita no mesmo commit (o que importa é a ausência de gatilho que escreve em
 `agenda_campo`, não a ausência de qualquer gatilho).
+
+## P15 — A grade da programação não tem realtime (2026-09-01, U79)
+
+`public.agenda_campo` **não foi adicionada à publicação do realtime** pela U78, e
+a U79 não a adicionou: uma inscrição em tabela fora da publicação **conecta, fica
+viva e nunca dispara** — o repo já registrou essa armadilha em
+`features/chamados/data.ts:746-751`, e ela é pior do que não existir.
+
+O que existe hoje na tela: `useChamadosRealtime()` (o canal de `public.chamados`,
+que acorda quando o **espelho** escreve), `staleTime` de 30s e o refetch por foco
+de janela. **O que isso NÃO cobre**, dito para ninguém supor o contrário: mover
+um bloco sem mudar o valor espelhado — corrigir uma duração, mexer num bloco que
+não é o pendente mais antigo — não dispara evento nenhum.
+
+**Consequência observável:** num quadro compartilhado, o `exclusion_violation`
+("Outra pessoa marcou este horário agora mesmo") deixa de ser corrida rara e vira
+rotina. A rede está no banco e a frase é boa, mas o usuário paga com um gesto
+perdido.
+
+**O conserto** é uma linha (`ALTER PUBLICATION supabase_realtime ADD TABLE
+public.agenda_campo;`) mais um canal com debounce, no molde de
+`useChamadosRealtime`. Não entrou aqui porque a U79 se anuncia **cirúrgica** — só
+os quatro GRANT — e acrescentar publicação é mudar o que o banco emite para todo
+mundo. Fica para a primeira migration que tiver outro motivo para existir.
+
+## P16 — `_servico_min` não tem número inicial honesto (2026-09-01, U79)
+
+O campo "duração do serviço" abre **vazio** e é obrigatório para marcar hora.
+Varredura do repositório: **não existe duração de serviço em lugar nenhum**.
+`useSla()` devolve **prazo de atendimento** ("até quando alguém tem de ir"), que é
+pergunta semanticamente outra — usá-lo faria uma corretiva urgente de 4h de SLA
+ocupar 4h de agenda.
+
+**O risco não é lixo, é uniformidade:** sob pressão, no celular, no campo, todo
+mundo toca o primeiro atalho, e em um mês `agenda_campo.servico_min` é 80% o
+mesmo valor — com cara de medição. Aí o chip de ocupação, a recusa da jornada, o
+selo "disponível" e (Fase 2) o cálculo de rota assentam num chute.
+
+**O que a tela já faz:** atalhos em ordem **crescente** e **nenhum**
+pré-selecionado (se alguém chutar, que chute para baixo, o que faz o dia parecer
+mais cheio — errar para o lado de recusar sobrecarga, nunca para o lado de
+inventar capacidade), e o "dar horário em série" herda a **última coisa que ESTA
+pessoa digitou**, visível e editável, que é o único lugar em que um número
+inicial é honesto.
+
+**O que falta é uma frase do Davi:** quanto dura, tipicamente, uma preventiva,
+uma corretiva, uma implantação e uma operacional. Os quatro números entram em
+`programacao/modelo.ts` ao lado de `JORNADA_MIN`, com asserção contra os
+LITERAIS, e o campo passa a vir preenchido **com etiqueta** ("padrão da
+preventiva") — default sem etiqueta é indistinguível de medição.
+
+**Enquanto isso, a defesa é de DADO e não de código** (o verificador não a vê): a
+consulta-canário em `docs/manual/operacao-campo.md`, com o limiar escrito ao
+lado — se um único valor passar de 70% do total, a duração está sendo chutada.
+
+## P17 — O técnico não abre a tela da grade, e o gate dele nunca rodou (2026-09-01, U79)
+
+`src/lib/telas.ts:67` dá `chamados.programacao` como
+`[tecnico: false, comercial: true, sac: true]`. Logo, **todo o ramo não-gestor de
+`erroDeAutorizacao`** (modelo.ts) é inalcançável por esta rota, e a peça de
+autorização mais delicada da entrega — o gêmeo local de `pode_editar_chamado`, a
+afordância "só-leitura fora da minha linha", a linha colapsada — sobe **sem ser
+exercitada por uso**.
+
+Ela **é** exercitada por asserção (fixtures das três pernas + censo contra o
+corpo de `pode_editar_chamado` na S2), e o caminho por onde um técnico realmente
+chega até a fronteira que a U78 desenhou continua vivo: a edição do **bloco
+único** dentro do PainelChamado. Mas código que só roda depois de alguém virar
+uma chave na tela de permissões é código que roda pela primeira vez em produção.
+
+**Não é decisão minha:** ligar `tecnico: true` aqui é decisão de permissão, e é do
+Davi. Fica registrado com o fato ao lado, para a decisão ser tomada sabendo o que
+ela liga. Se ela for tomada, vale antes um segundo olhar em duas coisas: a grade
+do técnico é majoritariamente "Outro atendimento" (`chamados_select` não é aberta
+enquanto `agenda_campo_select` é `USING (true)`, e isso é decisão declarada da
+U78), e `podeEditarChamado` passa a ser consultado por cartão — hoje resolvido
+por um gêmeo local síncrono, e não por RPC, justamente para não virar um N+1 de
+HTTP.
 
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 

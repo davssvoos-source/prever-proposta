@@ -5321,6 +5321,63 @@ arquivos tocados. **Migration `20260901090000_u78_grade_da_programacao.sql` — 
 Davi roda no SQL Editor. Ela é aditiva e INERTE: as quatro portas de escrita são
 concedidas só a `service_role`, então não têm consumidor até a migration da tela
 soltá-las — as quatro linhas prontas estão no rodapé.**
+### A guarda que a U79 acrescentou depois da auditoria
+
+A U79 nasceu como migration de PRIVILÉGIO — os quatro GRANT que a U78 deixou
+prontos no rodapé. Uma lente adversarial apontou o buraco que isso deixava, e
+ele é o mesmo da entrega inteira, entrando pela porta que ninguém trancou:
+
+> A U79 diz, com todas as letras, "a tela não escreve
+> `chamados.data_hora_agendada` por fora — esta é a condição dura, e ela é do
+> CÓDIGO, não do banco". Correto. E é justamente por isso que ela era a
+> migration errada para deixar a porta aberta.
+
+`chamados_update` é `pode_editar_chamado(id)` e não há REVOKE de coluna em
+`public.chamados`. A chave publishable está no `.env` versionado. Então um
+`PATCH /rest/v1/chamados?id=eq.<campo>` com `data_hora_agendada` gravava a
+coluna — e **nada nunca a recalcularia**, porque o espelho só roda por gatilho em
+`agenda_campo`. A divergência ficaria de pé até alguém, por acaso, mexer num
+bloco daquele chamado. O censo do verificador prova o código; não alcança um curl.
+
+Entrou o §2b: um `BEFORE UPDATE OF data_hora_agendada` que recusa, para chamado
+de CAMPO, qualquer valor que não seja o que os blocos dizem. É a consulta "quem
+não casou" do §9.0 da U78 virando **estrutura** em vez de relatório.
+
+**Por que não REVOKE de coluna:** é a cicatriz da S1b. `REVOKE UPDATE (coluna)`
+é no-op quando existe `GRANT UPDATE` de tabela, e o conserto de verdade
+(revogar a tabela e reconceder coluna a coluna) apodrece na primeira coluna nova
+que alguém acrescentar a `chamados`. Uma guarda que se auto-valida não enumera
+nada e não envelhece.
+
+**Por que aqui e não na U78:** antes da tela não havia satélite com que comparar.
+Rodada lá, a guarda teria recusado toda escrita na base legada — que é a base
+inteira. Ela devolve cedo quando o valor não muda, então editar o título de um
+chamado com data e sem bloco continua funcionando.
+
+E a auditoria achou mais duas coisas na tela, as duas confirmadas no arquivo:
+
+- **O celular ficava sem nada.** `.so-desktop` é `display:none` abaixo de 1024px,
+  e a coluna do dia era `modo !== "grade"`: com `?modo=grade` no celular, a
+  grade sumia e o dia sumia junto — entre a faixa e a fila não sobrava uma
+  palavra. E é o link mais provável de chegar ao celular, porque é o que o
+  gestor manda do desktop, que é a razão declarada de o estado ter ido para a
+  URL. Agora o celular cai para o DIA, que é a doutrina da U3.
+- **A coluna fixa da grade não grudava.** `overflow: hidden` **cria** scroll
+  container, e `position: sticky` resolve contra o container mais próximo — a
+  coluna se ancorava numa div cujo `scrollLeft` é sempre 0 e rolava para fora
+  junto com o resto, escondendo o nome da equipe. `overflow: clip` recorta sem
+  criar container.
+
+E uma asserção da U78 passou a mentir com a chegada da U79: ela derivava de
+`cod78` — só o arquivo da U78 — e continuaria verde afirmando "as quatro portas
+ficam em service_role" depois de a U79 as abrir. Regra 4 da casa mordendo o
+próprio autor. Agora ela olha os DOIS arquivos e exige que cada porta seja
+aberta pela U79 e por ela só.
+
+Teste de mutação das três correções, rodado isolado: **14 de 14 pegas**.
+
+1980 asserções, build ok, tsc no baseline de 85.
+
 ### S2 — Apoio deixa de ser auto-serviço (2026-09-01)
 
 **Escalada de privilégio, aberta desde a U7/S1 (agosto) e viva em produção até
@@ -5480,3 +5537,314 @@ escreveu o DEFAULT.
 **Migration `20260901180000_s3_criado_por_nao_e_do_cliente.sql` — rodar assim que
 puder, e depois da S2.** Ela não apaga nada e conta as linhas suspeitas da janela
 entre as duas.
+
+---
+
+## U79 — A tela da grade, e o fim das duas verdades (Fase 1, Passo 1.2)
+
+**R99/R100/R101/R102.** A U78 entregou o alicerce e **nenhuma tela**: a tabela
+`public.agenda_campo`, o espelho por gatilho, quatro portas RPC concedidas só a
+`service_role`, e 1898 linhas de lógica pura em
+`src/features/programacao/modelo.ts` — **sem um único importador**. Esta entrega
+liga a tela àquele chão e tira das três telas de campo a escrita direta de
+`chamados.data_hora_agendada`.
+
+**Arquivos:** 7 novos (a migration, `programacao/data.ts`, `GradeSemana.tsx`,
+`ColunaDoDia.tsx`, `CelulaDaGrade.tsx`, `FormularioDoBloco.tsx`,
+`FaixaSemHorario.tsx`, `AgendaDoChamado.tsx` — oito com este último, que nasceu
+para o PainelChamado não crescer) e 10 alterados. `programacao/modelo.ts` ganhou
+**duas** funções: `montarAutorizacao` (o construtor que a interface já prometia)
+e `apoioValeComoVinculo` — a segunda pedida pelo teste de mutação, ver abaixo.
+`routeTree.gen.ts` **não** mudou: a rota é a mesma, só os *search params* são
+novos.
+
+O religamento é a metade que importa mais. A grade é bonita; as duas verdades
+eram o defeito.
+
+### O ângulo: uma estrutura, duas projeções — e o que PROVA que são uma só
+
+A tentação é escrever `<GradeSemanal>` e `<ListaDoDia>`. A recusa é estrutural, e
+ela já estava escrita em `celulaDaGrade`: *"o átomo… tudo o mais neste arquivo é
+composição disto — inclusive a grade da semana e a lista do celular, que é a
+razão de o átomo existir"*.
+
+Então **`linhasDaGrade` é chamada UMA vez, com os `dias` da SEMANA INTEIRA, nos
+dois viewports**. O celular não chama o modelo com `[dia]`; ele faz
+`linha.celulas.find(c => c.dia === diaEscolhido)`. Uma chamada, um
+`LinhaDaGrade[]`, e o viewport escolhe quantas colunas do MESMO objeto viram
+pixel.
+
+Por que não `dias: [dia]` no celular, que seria o óbvio — e as duas razões são
+medidas, não estéticas:
+
+1. **`divergencias` e `ocultos` são reduzidos sobre `celulas`.** Com um dia só, o
+   cabeçalho diria "1 divergência" ao lado de um chip de ocupação que é sempre da
+   SEMANA. Dois escopos no mesmo cabeçalho é "quem conta é quem filtra" quebrado
+   do jeito mais difícil de enxergar: cada número está certo sozinho.
+2. **`blocosForaDaGrade` morreria.** Com um dia só, o guarda dos dois lados
+   devolve `naoMostrados` = os blocos dos outros quatro dias, toda vez. A saída
+   seria desligá-lo no celular — e um guarda que só vale num viewport não é
+   guarda.
+
+A asserção que prende isso tem um par positivo (a célula do celular é
+*deep-equal* ao átomo) e um **par negativo**, que é o que dá dentes: com uma
+divergência em OUTRO dia, `linhasDaGrade(…, [D], …).divergencias` é `0` e o da
+semana é `1`, **enquanto `ocupacao` é idêntica nos dois**. A asserção documenta,
+positivamente, exatamente por que a chamada é única.
+
+### A costura entre os dois eixos de semana não foi costurada: foi REMOVIDA
+
+A régua desta tela ia de **domingo** (`base.getDate() - base.getDay()`) e a escala
+é **ISO** (segunda). O arquivo antigo assumia a contradição por escrito ("o
+domingo da régua pertence à semana anterior") e a resolvia chamado por chamado.
+
+Fui conferir antes de trocar, porque parecia que o problema era o ISO. Não era:
+para um **domingo**, `inicioSemana` desloca −6 (a segunda anterior) e `semanaIso`
+joga para a quinta **daquela mesma semana**. `referenciaSemanal(domingo)` e
+`inicioSemana(domingo)` **sempre concordaram**. Quem criava o desencontro era a
+régua Sunday-first. Trocada a régua, os dois eixos são um eixo, e o comentário de
+148-152 virou histórico.
+
+Efeito colateral que eu não esperava e que vale: numa semana normal (sem trabalho
+no fim de semana) a grade tem 5 colunas em vez de 7, e no celular os botões da
+régua passam de 43px para 60px — **a régua ISO é mais tocável que a antiga no
+caso comum**.
+
+A vista **mensal** continua domingo→sábado, e a assimetria ficou declarada no
+arquivo: a régua semanal fala de SEMANA (por isso é ISO); o mensal fala de MÊS e
+de DIA, não carrega chip de semana nenhum, e no Brasil um calendário se lê a
+partir de domingo.
+
+### A grade é a TERCEIRA LENTE do mesmo dia, e não uma tela nova
+
+`"grade"` entrou como terceiro valor de `ModoDeVisao`, ao lado de `semanal` e
+`mensal`, só a partir de 1024px. Sem rota nova, sem tela nova, nada para
+reaprender — e o comentário que já estava lá ("trocar de modo é trocar a lente,
+não a tela") continua verdadeiro com três.
+
+A U3 escolheu programar por DIA *"porque a grade não cabe na tela do celular, que
+é onde o Vinicius trabalha"*, e ele construiu a grade depois no sistema dele. Os
+dois estão certos, e a única forma de os dois estarem certos ao mesmo tempo é a
+grade e o dia serem o mesmo objeto.
+
+### O que eu recusei
+
+- **Filtrar os BLOCOS pelo tipo de demanda.** Era o caminho óbvio ("os filtros
+  valem para tudo", que é a doutrina da R57) e ele **mente num número**: o chip de
+  ocupação é um percentual sobre base fixa, e recortar os blocos faria uma equipe
+  a 68% mostrar "20% da semana". Então o filtro de **equipe esconde LINHAS**
+  (honesto: a linha é uma equipe inteira, e o chip das que ficam não muda) e o de
+  **tipo esmaece CARTÕES** — o cartão continua desenhado e continua contando.
+  Também é o que mantém `blocosForaDaGrade` em `{0,0}`: bloco removido da célula
+  contaria como `naoMostrados`.
+- **Colapsar a linha alheia numa barra sem cartões.** Para quem não é gestor,
+  `chamados_select` não é aberta e `chamadoOculto` é verdadeiro na maioria dos
+  cartões: a grade dele seria um muro de "Outro atendimento". A saída óbvia é
+  colapsar — e **`blocosForaDaGrade` proíbe**, porque bloco não desenhado conta
+  como `naoMostrados`. Ou o técnico come o muro, ou o guarda é afrouxado para
+  "não mostrado numa linha que se diz detalhada", que é como um guarda morre.
+  A saída foi: **a linha colapsada DESENHA os blocos**, como segmentos
+  posicionados pela mesma janela, com o rótulo só no `title`. Todo bloco entra em
+  `mostrados`, o guarda passa, e o técnico vê a FORMA do dia das outras equipes
+  sem ler nada que não é dele. E o achado bom: essa barra é exatamente o eixo do
+  desktop com `mostrarRotulos: false` — **o modo colapsado não é um componente
+  novo**. O guarda que parecia obstáculo produziu a renderização certa.
+- **Canal de realtime em `agenda_campo`.** A tabela **não foi adicionada à
+  publicação** pela U78, e o repo já pagou por essa armadilha: *"uma inscrição em
+  tabela fora da publicação não dá erro — ela conecta, fica viva e nunca dispara,
+  que é pior do que não existir"*. O que entrou foi `useChamadosRealtime()` (que
+  esta tela **não** usava), porque o ESPELHO escreve em `chamados` — e ficou
+  escrito no arquivo o que ele **não** cobre: mover um bloco sem mudar o valor
+  espelhado não dispara evento nenhum.
+- **Update otimista no arrasto.** `classeDoErro('23P01')` é `conflito`, e o modelo
+  diz o que fazer com ele: recarregar, porque o estado que a tela mostra já está
+  velho. Um cartão que pousa e volta ensina o usuário a desconfiar do arrasto.
+- **Backfill, de novo.** Nem um bloco semeado. Continua valendo a frase da U64.
+
+### O religamento, escritor por escritor
+
+**`chamados.programacao.tsx`** — a mutação `programar` (com o `T12:00:00`
+sentinela, o `responsavel_id` que apagava o dono e o `status` decidido no
+cliente) sumiu inteira. Saíram junto: `chaveDia` (cópia literal de `dataIso`), a
+régua domingo→sábado, o `emAberto` cru, a `cargaPorDia` que contava **cabeças**,
+e o `porGrupo` — que tinha um defeito vivo: o chamado cujo responsável saiu da
+escala e não tem `cargo='tecnico'` **desaparecia em silêncio**, enquanto o
+cabeçalho o contava ("3 atendimentos no dia" com "Nada programado neste dia"
+logo abaixo). `linhasDaGrade` conserta isso com as linhas `orfas` e
+`desconhecidas`.
+
+**`chamados.novo-campo.tsx`** — virou duas etapas (`abrirChamado` sem data, e
+`agenda_campo_marcar` depois). Os campos **ficaram** e ganharam companhia:
+equipe, duração e deslocamento. A regressão real que eu me recusei a deixar
+silenciosa: hoje, data preenchida com técnico vazio GRAVA a data; sem equipe não
+há bloco, e a data seria perdida. Não travei o formulário (isso impediria alguém
+de abrir chamado por ainda não saber a equipe) — a seção **declara** para onde o
+chamado vai, numa linha embaixo do botão, e o toast confirma. E a ordem de falha
+está dita: o chamado é criado ANTES do bloco, então quando `marcar` recusa a tela
+**não navega** e **não** diz "falhou ao abrir chamado"; ela diz *"o chamado foi
+aberto; o horário não entrou:"* com a frase da RPC, e o botão passa a chamar só
+`marcar`.
+
+A prévia "Já agendado para este técnico" trocou de fonte: ela consultava
+`chamados` por responsável, mostrava um item por CHAMADO (não por bloco), não
+enxergava OS de fora nem retorno, e era por PESSOA e não por equipe. Virou
+`blocosDaEquipeNaSemana`.
+
+**`PainelChamado.tsx`** — e aqui a resposta honesta é um **estreitamento**. Um
+`datetime-local` não sabe representar N blocos: o espelho é o pendente mais
+antigo (ou o último cumprido), e qualquer valor que o campo mostrasse esconderia
+o outro. Pior: `marcar` sem `_id` **cria** bloco, então editar a data de um
+chamado com bloco criaria um segundo — um retorno que ninguém pediu. Então: 0
+blocos → criar; **1 bloco → continua editável ali mesmo** (é a fronteira que a
+U78 escolheu preservar: é onde o técnico não-gestor remarca o próprio
+atendimento); 2 ou mais → lista somente-leitura com o ordinal e "abrir na grade".
+Em `sem_horario` mostra **só a data**, nunca a hora — 12:00 sentinela e 12:00 de
+verdade são indistinguíveis por valor, e imprimir "12:00" ali seria a segunda
+verdade aparecendo na interface.
+
+**As duas portas de TIPO fecharam**, e é isso que transforma o religamento de
+convenção em compilador: `NovoChamadoInput.data_hora_agendada` e o membro
+`"data_hora_agendada"` do `Pick<>` de `ChamadoPatch`. Enquanto elas existiam,
+qualquer tela futura reintroduzia o defeito com uma linha. Junto foi a derivação
+de status de `abrirChamado` — que o §6.1 da U78 já declarava ter absorvido no
+passo 8. **A derivação não sumiu; mudou de lado**, e agora existe num lugar só.
+
+**Os cinco escritores COMERCIAIS não foram tocados.** Eles gravam
+`visitas_tecnicas`, são do gatilho da U41, e a U78 os recusa estruturalmente.
+
+### O erro no formulário, e o que ele engolia
+
+`erroDoAgendamento` já devolvia a frase pronta, e `classeDoErro` já dizia se é
+permissão, regra ou conflito. Faltava a tela. Agora o erro é uma caixa **dentro**
+do formulário, com o rosto escolhido pelo SQLSTATE: 23P01 vermelho, 55000 laranja,
+42501 com `EXPLICACAO.PERM` e o código `PRV-…`. Toast só para sucesso.
+
+E o `EstadoCampo` do PainelChamado ganhou `codigo`. Ele fazia
+`codigoDeErro(err, …)` e punha o RESULTADO no lugar da mensagem — **descartando
+`err.message`**. Com as portas da agenda, a frase é o produto ("Esta equipe já
+está em CH-0012 · Portão das 09:00 às 11:00 nesse dia."), e mostrar só
+`PRV-INI-PERM-42501` é trocar a explicação pela etiqueta. Agora a mensagem é o
+texto e o código é o complemento — para todos os campos do painel, de propósito.
+
+### O que a verificação pegou
+
+- **A conta do PostgREST, que eu tinha errado.** Meu primeiro `paramsDeMarcar`
+  montava o corpo só com o que o patch produziu — inclusive para
+  `_dupla`, `_dia`, `_inicio_min` e `_servico_min`, que **não têm DEFAULT** na
+  assinatura da porta. Arrastar um cartão (que muda só `dia`) mandaria
+  `{_id, _dia}`, e o PostgREST resolve a função pelo CONJUNTO de argumentos
+  nomeados: não acharia candidato e responderia **PGRST202 antes de a função
+  rodar**. Todo PATCH da tela falharia, com uma mensagem que não fala de agenda
+  nenhuma. Os seis primeiros vão **sempre**, com `null` explícito onde o gesto
+  não mexeu (que é o que o passo 1b lê como "não mexi"); os três com DEFAULT só
+  entram quando o patch os produziu.
+- **`_deslocamento_min` ausente, não zerado.** É o defeito mais avisado da U78 e
+  agora ele tem asserção dos dois lados: com um patch que não o toca, a chave
+  **não existe** no corpo; com 45 → 0, ela existe e vale zero.
+- **Nove asserções antigas ficaram vermelhas, e ficar vermelhas foi o
+  comportamento certo delas.** Elas afirmavam a EXISTÊNCIA de um cálculo dentro
+  do `.tsx` (`const abertas = useMemo(() => emAberto.filter(…)`, `const porGrupo
+  = useMemo`, `for (const d of duplas)`, `sub: "Sem equipe"`). Cada uma pinava um
+  cálculo que hoje é um defeito. Elas migraram de "a tela calcula X" para "a tela
+  DELEGA X", e as fixtures correspondentes foram para o bloco das funções puras —
+  regex sobre `.tsx` prova que a linha existe, fixture prova que a regra está
+  viva.
+- **Um falso positivo meu, da família de sempre.** A asserção "o sentinela das
+  12:00 morreu" ficou verde-invertida porque o **cabeçalho novo** cita
+  literalmente o `new Date(...T12:00:00)` que a tela deixou de fazer. As
+  asserções negativas passaram a rodar sobre o código sem linhas de comentário —
+  é a mesma disciplina que o repo já tinha e que eu tinha esquecido de aplicar
+  aos arquivos novos.
+- **O censo dos exports × importadores** achou dois sem consumidor
+  (`blocoPendente` e `CLASSE_DO_ERRO`) e os dois viraram asserção de verdade, não
+  menção. É o censo cumprindo o GATILHO DE REVISÃO escrito no docblock de
+  `CAMPO_FECHA_MIN` — e ela **é consumida**: é a última linha do eixo do dia.
+- **A R100 já estava certa.** A tarefa mandava dar a ela a segunda isenção por
+  escrito; fui conferir e a U78 já tinha feito. O texto que ainda diz "a única
+  exceção" é o parágrafo que CONTA a correção, não a regra. Mudei a asserção de
+  negativa (proibir a palavra) para positiva (as duas isenções estão lá, e
+  `isentoDaJornada` concorda com as duas) — uma asserção que proíbe contar a
+  história é uma asserção que apaga a história.
+- **O censo dos escritores**, derivado por varredura do `src/` inteiro contra a
+  lista escrita à mão dos cinco comerciais. Se alguém reintroduzir a escrita de
+  campo, ele acusa **nomeando o arquivo**, antes do deploy.
+
+### O teste de mutação: 25 quebras, e as DUAS que escaparam
+
+Rodei 25 mutações deliberadas — comentar um GRANT, omitir um parâmetro sem
+DEFAULT, mandar `?? 0` no deslocamento, chamar `linhasDaGrade` com um dia só,
+tirar a união do sábado, repor a régua domingo-primeiro, reabrir a porta de tipo,
+fazer nascer um escritor de campo, tirar a guarda do arrasto, trocar o `div
+role="button"` por `<button>`, pôr um DDL escondido na migration, e por aí. **23
+foram pegas de primeira. Duas escaparam, e as duas eram buracos de verdade.**
+
+**A que escapou por preguiça de regex.** Desligar a pergunta do "feito" — trocar
+`const ok = window.confirm(` por `const ok = true` — deixava tudo verde, porque a
+asserção procurava `window.confirm(` solto **e há três `window.confirm` neste
+arquivo** (feito, desmarcar, tirar da agenda). Ela passou a prender o BLOCO
+inteiro contra string escrita à mão: a condição, a chamada e a **saída**
+(`if (!ok) return;`). É a mesma família do `-- REVOKE` e do `[\s\S]{0,N}` que
+atravessa o `;`, na quarta variação: **um regex que procura uma peça encontra a
+peça do vizinho**.
+
+**A que escapou porque a regra estava no lugar errado — e essa mudou o código.**
+A terceira perna de `pode_editar_chamado` (o apoio que só vale quando é do
+gatilho da escala, ou quando *alguém pôs* a pessoa) vivia como uma cláusula
+`.filter()` dentro da consulta de `data.ts`. Trocar a condição inteira por `true`
+— que é **literalmente reabrir o auto-serviço que a S2 fechou** — deixava o
+verificador verde. Regra de autorização escondida numa cláusula de consulta é
+regra que ninguém consegue exercitar sem banco.
+
+Ela virou `apoioValeComoVinculo` no modelo puro, com os quatro casos como
+fixture: `origem='dupla'` mesmo com `criado_por` sendo a própria pessoa → vale;
+alguém pôs → vale; `criado_por` nulo (linha anterior à S2) → vale, porque
+`null !== id` é o `IS DISTINCT FROM` fazendo o que a S2 escreveu; **a própria
+pessoa se pondo → NÃO vale**. É a segunda função que este commit acrescenta ao
+modelo puro, e a única que eu não tinha planejado: quem a pediu foi o teste de
+mutação.
+
+Depois das duas correções: **25 de 25**.
+
+### O que ficou declarado e não resolvido
+
+- **`_servico_min` não tem resposta honesta**, e o campo abre vazio. Varri o
+  repositório: não existe duração de serviço em lugar nenhum. `useSla()` devolve
+  PRAZO de atendimento, que é pergunta semanticamente outra — usá-lo faria uma
+  corretiva urgente de 4h de SLA ocupar 4h de agenda. Os atalhos estão em ordem
+  crescente e nenhum vem marcado: se alguém chutar, que chute para BAIXO, o que
+  faz o dia parecer mais CHEIO — errar para o lado de recusar sobrecarga, nunca
+  para o lado de inventar capacidade. O modo de falha previsível não é lixo, é
+  **uniformidade**: todo mundo toca o primeiro atalho e em um mês
+  `agenda_campo.servico_min` é 80% o mesmo valor, com cara de medição. A defesa
+  que resta não é código — é a consulta-canário em `docs/manual/operacao-campo.md`,
+  com o limiar escrito ao lado.
+- **Dar "feito" pode reescrever o apoio.** Com dois blocos em semanas ISO
+  diferentes, carimbar o primeiro faz o espelho andar (certo, é o estágio 1) e o
+  gatilho da U76 reavalia o apoio contra a semana NOVA, apagando as linhas
+  `origem='dupla'` da turma que JÁ FOI — com sino. É cardinalidade, está
+  declarado no cabeçalho da U78, e **nada no cliente conserta**. O que a tela
+  pôde fazer sem decidir nada foi **parar de ser silenciosa**: os dois lados são
+  calculáveis com `espelhoDoChamado`, e quando a semana muda ela pergunta antes,
+  dizendo os dois efeitos.
+- **`telas.ts:67` continua com `tecnico: false`** para esta rota. Todo o ramo
+  não-gestor de `erroDeAutorizacao` é inalcançável por ela hoje — é decisão de
+  permissão, é do Davi, e não muda aqui. É também por isso que preservar a
+  edição do bloco único **no PainelChamado** importa: é o único caminho por onde
+  um técnico chega até a fronteira que a U78 desenhou.
+- **Arrastar da FAIXA para dentro de uma célula não foi construído**, e foi
+  cortado em vez de esquecido. O gesto do arrasto exprime (equipe, dia), e um
+  chamado da faixa precisa ainda de DURAÇÃO — que só o formulário pergunta.
+  Arrastá-lo abriria o mesmo formulário com dois campos a menos para digitar, e o
+  preço seria uma união de tipos no `ref` do arrasto para economizar dois
+  cliques. Se a migração da base mostrar que vale, é um `tipo: "chamado"` no
+  `Arrastado` e um wrapper `draggable` na faixa; o comentário no arquivo diz
+  isso, para a próxima pessoa não achar que foi descuido.
+- **Sem realtime em `agenda_campo`** — ver P15 em `docs/PENDENCIAS_TECNICAS.md`.
+
+1967 asserções (64 novas, 9 migradas), **25 de 25 mutações pegas**, build ok,
+`tsc` no baseline de 85.
+**Migration `20260902090000_u79_a_tela_da_grade.sql` — rodar DEPOIS da U78 e
+ANTES do deploy.** Ela abre as quatro portas a `authenticated`, prova o
+privilégio pelo catálogo e traz o DESFAZER. Depois de rodá-la, a **linha 209 da
+conferência da U78 passa a dizer `>>> OLHAR <<<` com o valor 4** — é o certo, e é
+bom que doa: quer dizer que a fronteira mudou.

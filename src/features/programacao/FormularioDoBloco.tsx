@@ -1,0 +1,662 @@
+// O FORMULÁRIO DO BLOCO — o ÚNICO do sistema (U79).
+//
+// A grade, o /chamados/novo-campo e o PainelChamado usam ESTE componente. Um
+// formulário, um conjunto de campos, uma caixa de erro, três telas. Três cópias
+// de um formulário que fala com a mesma porta divergem — é só questão de
+// quando —, e a divergência aparece como "aqui deixa e ali não".
+//
+// ── ELE NÃO VALIDA NADA: ELE PERGUNTA AO MODELO ───────────────────────────
+// `erroDoAgendamento` (modelo.ts:861) tem os DEZ passos NA ORDEM DA RPC, com as
+// frases da RPC palavra por palavra. Este arquivo monta o `BlocoCandidato` e o
+// `ContextoDoAgendamento`, chama, e mostra o que voltou. Pré-validar aqui por
+// conta própria criaria a segunda regra — o defeito que esta entrega existe
+// para matar, um andar acima.
+//
+// E ele NÃO pré-valida ABAIXO do modelo: um corretiva+urgente às 07:00 é aceito
+// (é a isenção da jornada da R100), e um campo de hora com `min="09:00"` o
+// recusaria antes de o modelo opinar.
+//
+// ── O ERRO VOLTA NO PRÓPRIO FORMULÁRIO, NOMEANDO O CONFLITO ───────────────
+// Nunca um toast solto. `classeDoErro(code)` escolhe o rosto — 23P01 conflito
+// (vermelho), 55000 regra (laranja), 42501 permissão (com o código PRV- que a
+// casa usa para RLS). A frase vem pronta em português da RPC ou do modelo puro,
+// e esta camada NUNCA a reescreve.
+//
+// ── O QUE ESTE FORMULÁRIO NÃO PERGUNTA: O RESPONSÁVEL ─────────────────────
+// R102. `responsavel_id` não é parâmetro de `agenda_campo_marcar`, e a
+// invariante do CLAUDE.md diz que a equipe do CHAMADO é derivada do responsável
+// enquanto `agenda_campo.dupla_id` é quem se comprometeu com a JANELA. Escrever
+// os dois no mesmo gesto seriam DOIS updates, duas reavaliações de apoio, e uma
+// janela de falha parcial ("o técnico mudou e nada foi agendado"). O
+// `<option value="">Definir depois</option>` da tela antiga ainda por cima
+// APAGAVA o responsável de quem só queria mudar a data. Trocar responsável é
+// ato próprio, com campo próprio e selo próprio, no chamado.
+
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AlertTriangle, Check, Loader2, ShieldAlert, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
+import { PRISMA } from "@/lib/paleta";
+import { FONT, GOLD_GRAD, card } from "@/lib/ui";
+import { codigoDeErro, EXPLICACAO } from "@/lib/erros";
+import { referenciaSemanal } from "@/lib/periodos";
+import { duplaDaPessoaNaSemana, type Escala } from "@/features/duplas/modelo";
+import {
+  baixaPedida,
+  classeDoErro,
+  dataDoDia,
+  divergenciaDeEquipe,
+  duracaoTexto,
+  erroDaBaixa,
+  erroDoAgendamento,
+  erroDoCancelamento,
+  erroDoDesagendamento,
+  espelhoAposDesagendar,
+  espelhoDoChamado,
+  horaTexto,
+  patchDoBloco,
+  patchImpossivel,
+  primeiroInicioPossivel,
+  rotuloDoBloco,
+  semanaDoDia,
+  type AutorizacaoDaAgenda,
+  type BlocoCandidato,
+  type BlocoDeAgenda,
+  type BlocoEditavel,
+  type ChamadoParaGrade,
+  type ContextoDoAgendamento,
+} from "./modelo";
+import {
+  sqlstateDoErro,
+  useCancelarBloco,
+  useCumprirBloco,
+  useDesagendarChamado,
+  useMarcarBloco,
+} from "./data";
+
+/**
+ * ATALHOS DE DURAÇÃO, EM ORDEM CRESCENTE E SEM NENHUM PRÉ-SELECIONADO.
+ *
+ * NÃO EXISTE RESPOSTA HONESTA PARA "QUANTO DURA", e por isso o campo abre
+ * VAZIO. Varri o repositório: não há duração de serviço em lugar nenhum.
+ * `useSla()` devolve PRAZO DE ATENDIMENTO ("até quando alguém tem de ir"), que
+ * é pergunta semanticamente outra — usá-lo faria uma corretiva urgente de 4h de
+ * SLA ocupar 4h de agenda, e três delas estourariam o dia por um motivo sem
+ * relação com a realidade.
+ *
+ * UM DEFAULT AQUI SERIA UM BACKFILL, UM CLIQUE POR VEZ. A U78 recusou semear
+ * blocos porque "chutar uma duração envenenaria o chip de ocupação no primeiro
+ * dia, com um número inventado que tem cara de medição" — pré-selecionar um
+ * chip faria exatamente isso, mais devagar.
+ *
+ * A ORDEM CRESCENTE É DELIBERADA: se alguém chutar, que chute para BAIXO, o que
+ * faz o dia parecer mais CHEIO do que é. Errar para o lado de recusar
+ * sobrecarga, nunca para o lado de inventar capacidade — a mesma direção que
+ * `isentoDaJornada` escolheu.
+ *
+ * O número inicial POR TIPO de serviço é frase do Davi, e até ela existir o
+ * campo é vazio (ver docs/PENDENCIAS_TECNICAS.md).
+ */
+export const ATALHOS_DE_DURACAO = [30, 60, 90, 120, 180, 240];
+
+export interface AberturaDoFormulario {
+  /** a linha viva (PATCH) ou null (criar) */
+  bloco: BlocoDeAgenda | null;
+  chamadoId: string | null;
+  dia: string;
+  duplaId: string | null;
+  /** herdados do gesto anterior ("dar horário em série") — visíveis e editáveis */
+  servicoMin: number | null;
+  deslocamentoMin: number | null;
+  herdado: boolean;
+  /** quantos ainda faltam na fila do dia; > 0 liga o "em série" */
+  restantes: number;
+}
+
+interface Props {
+  abertura: AberturaDoFormulario;
+  /**
+   * A recusa que o ARRASTO já colheu, para ela nascer visível dentro do
+   * formulário em vez de virar um toast e um cartão que salta de volta. O
+   * arrasto só sabe exprimir (equipe, dia); os outros três campos são daqui, e
+   * é aqui que a pessoa conserta o que a frase apontou.
+   */
+  erroInicial?: { frase: string; code: string | null } | null;
+  aoFechar: () => void;
+  /** o gesto gravou; o pai decide fechar ou avançar para o próximo da fila */
+  aoGravar: (valores: BlocoEditavel) => void;
+  blocos: BlocoDeAgenda[];
+  chamados: ChamadoParaGrade[];
+  equipes: { id: string; rotulo: string }[];
+  escala: Escala;
+  autz: AutorizacaoDaAgenda;
+  isLight: boolean;
+  /** a rota, para o código PRV- de recusa por permissão */
+  rota: string;
+}
+
+function numeroOuNulo(v: string): number | null {
+  if (v.trim() === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+/** "09:00" → 540. Devolve null para vazio ou malformado. */
+function minutosDaHora(v: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim());
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+export function FormularioDoBloco({
+  abertura, erroInicial, aoFechar, aoGravar, blocos, chamados, equipes, escala, autz, isLight, rota,
+}: Props) {
+  const marcar = useMarcarBloco();
+  const cancelar = useCancelarBloco();
+  const cumprir = useCumprirBloco();
+  const desagendar = useDesagendarChamado();
+
+  const bloco = abertura.bloco;
+  // A ABERTURA VENCE A LINHA VIVA. Quem abre o formulário por um arrasto já
+  // escolheu equipe e dia soltando o cartão; ler `bloco.dupla_id` aqui
+  // devolveria o cartão ao lugar de onde ele saiu, e o erro que o arrasto
+  // colheu passaria a falar de um gesto que a tela não está mais mostrando.
+  const [duplaId, setDuplaId] = useState<string>(abertura.duplaId ?? bloco?.dupla_id ?? "");
+  const [dia, setDia] = useState<string>(abertura.dia || bloco?.dia || "");
+  const [hora, setHora] = useState<string>(bloco ? horaTexto(bloco.inicio_min) : "");
+  const [servico, setServico] = useState<string>(
+    bloco ? String(bloco.servico_min) : abertura.servicoMin != null ? String(abertura.servicoMin) : "",
+  );
+  const [deslocamento, setDeslocamento] = useState<string>(
+    bloco ? String(bloco.deslocamento_min) : abertura.deslocamentoMin != null ? String(abertura.deslocamentoMin) : "",
+  );
+  const [osExterna, setOsExterna] = useState<string>(bloco?.os_externa ?? "");
+  const [tituloExterno, setTituloExterno] = useState<string>(bloco?.titulo_externo ?? "");
+  const [erroDoServidor, setErroDoServidor] = useState<{ frase: string; code: string | null } | null>(
+    erroInicial ?? null,
+  );
+
+  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const gold = isLight ? "#A06108" : "#F8C811";
+
+  const chamadoId = bloco ? bloco.chamado_id : abertura.chamadoId;
+  const porId = useMemo(() => new Map(chamados.map((c) => [c.id, c])), [chamados]);
+  const chamado = chamadoId ? porId.get(chamadoId) ?? null : null;
+  const blocosDoDia = useMemo(() => blocos.filter((b) => b.dia === dia), [blocos, dia]);
+  const desloc = numeroOuNulo(deslocamento) ?? 0;
+
+  /**
+   * A PROPOSTA DE HORA, e ela é PROPOSTA: `primeiroInicioPossivel` devolve o
+   * primeiro início ≥ 09:00 + deslocamento que não conflita com o que a equipe
+   * já tem naquele dia. `null` quer dizer QUE O DIA NÃO COMPORTA MAIS NADA — e
+   * aí o campo abre vazio, e a caixa de erro já mostra a frase da jornada antes
+   * de a pessoa digitar. É o retorno do modelo virando desenho.
+   */
+  const proposta = useMemo(
+    () => (duplaId && dia ? primeiroInicioPossivel(duplaId, dia, blocos, desloc) : null),
+    [duplaId, dia, blocos, desloc],
+  );
+  // A PROPOSTA ACONTECE UMA VEZ SÓ, e o `useRef` é o que garante isso. Sem ele,
+  // o efeito reencheria o campo toda vez que a pessoa o APAGASSE — o formulário
+  // discutindo com quem o preenche, que é o pior tipo de campo "inteligente".
+  const jaPropos = useRef(false);
+  useEffect(() => {
+    if (bloco || jaPropos.current || hora !== "" || proposta === null) return;
+    jaPropos.current = true;
+    setHora(horaTexto(proposta));
+  }, [bloco, hora, proposta]);
+
+  const valores: BlocoEditavel = {
+    chamado_id: chamadoId,
+    dupla_id: duplaId,
+    dia,
+    inicio_min: minutosDaHora(hora) ?? NaN,
+    servico_min: numeroOuNulo(servico) ?? NaN,
+    deslocamento_min: desloc,
+    os_externa: osExterna.trim() || null,
+    titulo_externo: tituloExterno.trim() || null,
+  };
+
+  const candidato: BlocoCandidato = {
+    id: bloco?.id ?? null,
+    chamado_id: valores.chamado_id,
+    dupla_id: valores.dupla_id,
+    dia: valores.dia,
+    inicio_min: valores.inicio_min,
+    servico_min: valores.servico_min,
+    deslocamento_min: valores.deslocamento_min,
+    titulo_externo: valores.titulo_externo,
+  };
+
+  const ctx: ContextoDoAgendamento = {
+    blocosDoDia,
+    blocoAtual: bloco,
+    chamado,
+    escala,
+    chaveDaSemana: referenciaSemanal,
+    rotuloDe: (b) => rotuloDoBloco(b, b.chamado_id ? porId.get(b.chamado_id) ?? null : null),
+    autz,
+  };
+
+  const erroLocal = erroDoAgendamento(candidato, ctx);
+  const atual: BlocoEditavel | null = bloco
+    ? {
+        chamado_id: bloco.chamado_id,
+        dupla_id: bloco.dupla_id,
+        dia: bloco.dia,
+        inicio_min: bloco.inicio_min,
+        servico_min: bloco.servico_min,
+        deslocamento_min: bloco.deslocamento_min,
+        os_externa: bloco.os_externa,
+        titulo_externo: bloco.titulo_externo,
+      }
+    : null;
+  const patch = atual ? patchDoBloco(atual, valores) : {};
+  const impossivel = atual ? patchImpossivel(patch) : null;
+  const semMudanca = !!atual && Object.keys(patch).length === 0;
+
+  const erro = erroDoServidor ?? (erroLocal ? { frase: erroLocal, code: null } : impossivel ? { frase: impossivel, code: "55000" } : null);
+
+  /**
+   * A DIVERGÊNCIA É OBSERVAÇÃO, NUNCA ERRO. O bloco diz Equipe B e a escala da
+   * semana põe o responsável na A: isso ACONTECE (basta remanejar a escala
+   * depois de marcar) e não tem conserto automático — escrita de cadastro não
+   * reescreve registro (U76). O formulário mostra e deixa gravar.
+   */
+  const semanaDoDestino = dia ? semanaDoDia(dia, referenciaSemanal) : null;
+  const divergencia = duplaId && semanaDoDestino
+    ? divergenciaDeEquipe({ dupla_id: duplaId, chamado_id: chamadoId }, chamado, semanaDoDestino, escala)
+    : null;
+  const derivada = chamado?.responsavel_id && semanaDoDestino
+    ? duplaDaPessoaNaSemana(chamado.responsavel_id, semanaDoDestino, escala)
+    : null;
+
+  // ── estilos ───────────────────────────────────────────────────────────────
+  const rotulo: CSSProperties = {
+    fontFamily: FONT, fontWeight: 600, fontSize: 10, letterSpacing: "0.12em",
+    textTransform: "uppercase", color: textSecondary, marginBottom: 6, display: "block",
+  };
+  const entrada: CSSProperties = {
+    width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
+    background: isLight ? "#ffffff" : "#16161d",
+    border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
+    color: textPrimary, fontFamily: FONT, fontSize: 13.5,
+    outline: "none", colorScheme: isLight ? "light" : "dark",
+  };
+  const setinha: CSSProperties = {
+    width: 32, height: 32, borderRadius: 9, flexShrink: 0, cursor: "pointer",
+    background: "transparent", color: textSecondary,
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+  };
+  const secundario: CSSProperties = {
+    height: 40, padding: "0 13px", borderRadius: 20, cursor: "pointer",
+    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.04)",
+    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
+    color: textSecondary, fontFamily: FONT, fontWeight: 600, fontSize: 12,
+    display: "inline-flex", alignItems: "center", gap: 6,
+  };
+
+  const emVoo = marcar.isPending || cancelar.isPending || cumprir.isPending || desagendar.isPending;
+
+  function guardarErro(e: unknown) {
+    const code = sqlstateDoErro(e);
+    const frase = (e as Error)?.message ?? "Não consegui gravar. Tente de novo.";
+    setErroDoServidor({ frase, code });
+  }
+
+  function gravar() {
+    setErroDoServidor(null);
+    // A ORDEM É A DO MODELO: erroDoAgendamento → patchDoBloco →
+    // patchImpossivel → paramsDeMarcar. Se o modelo recusou, a chamada NÃO sai:
+    // a frase já está na caixa, e mandar assim mesmo só trocaria a mesma recusa
+    // por uma viagem de rede.
+    if (erroLocal) return;
+    if (impossivel) return;
+    if (semMudanca) { aoFechar(); return; }
+    marcar.mutate(
+      { id: bloco?.id ?? null, patch, valores, atual: bloco },
+      {
+        onSuccess: () => { toast.success(bloco ? "Horário atualizado." : "Horário marcado."); aoGravar(valores); },
+        onError: guardarErro,
+      },
+    );
+  }
+
+  /**
+   * DAR "FEITO" PODE MANDAR A DATA DO CHAMADO PARA OUTRA SEMANA, E ISSO PRECISA
+   * DE UMA PERGUNTA.
+   *
+   * Carimbar um bloco move o espelho para o próximo bloco PENDENTE (estágio 1),
+   * o que está certo e é o que ele existe para fazer. Só que, com o retorno em
+   * outra semana ISO, o gatilho da U76 reavalia o apoio contra a semana NOVA e
+   * APAGA as linhas `origem='dupla'` da turma que JÁ FOI — com um sino por
+   * apoio inserido. A U78 declara isso em "O QUE AINDA ESPERA UMA FRASE DO
+   * DAVI" e não conserta de propósito: é cardinalidade (um conjunto de apoios
+   * por chamado não representa duas idas de duas turmas), e as duas saídas
+   * possíveis têm efeitos opostos.
+   *
+   * O que a TELA pode fazer sem decidir nada é PARAR DE SER SILENCIOSA. Os dois
+   * lados são puramente calculáveis com `espelhoDoChamado`, e o texto usa o
+   * vocabulário do modelo.
+   */
+  function baixar(feito: boolean) {
+    if (!bloco) return;
+    setErroDoServidor(null);
+    const recusa = erroDaBaixa(bloco, feito, autz);
+    if (recusa) { setErroDoServidor({ frase: recusa, code: "42501" }); return; }
+    if (baixaPedida(feito) && bloco.chamado_id) {
+      const antes = espelhoDoChamado(bloco.chamado_id, blocos);
+      const depois = espelhoDoChamado(
+        bloco.chamado_id,
+        blocos.map((b) => (b.id === bloco.id ? { ...b, cumprido_em: "(feito)" } : b)),
+      );
+      const sa = antes && dataDoDia(antes.dia) ? referenciaSemanal(dataDoDia(antes.dia) as Date) : null;
+      const sd = depois && dataDoDia(depois.dia) ? referenciaSemanal(dataDoDia(depois.dia) as Date) : null;
+      if (sa && sd && sa !== sd && depois) {
+        const ok = window.confirm(
+          `Este chamado tem outro atendimento marcado em outra semana.\n\n` +
+          `Ao dar "feito" aqui, o chamado passa a aparecer no dia do retorno (${depois.dia}, ${horaTexto(depois.inicio_min)}).\n\n` +
+          `E há um efeito conhecido e ainda não resolvido: o registro de quem foi como APOIO é recalculado contra a semana nova, e quem foi nesta ida pode sair da lista.\n\nMarcar assim mesmo?`,
+        );
+        if (!ok) return;
+      }
+    }
+    cumprir.mutate(
+      { bloco, feito },
+      {
+        onSuccess: () => { toast.success(feito ? "Atendimento marcado como feito." : "O “feito” foi tirado."); aoGravar(valores); },
+        onError: guardarErro,
+      },
+    );
+  }
+
+  function desmarcar() {
+    if (!bloco) return;
+    setErroDoServidor(null);
+    const recusa = erroDoCancelamento(bloco, autz);
+    if (recusa) { setErroDoServidor({ frase: recusa, code: "55000" }); return; }
+    if (!window.confirm("Desmarcar este horário? A agenda da equipe fica livre nesta janela.")) return;
+    cancelar.mutate(bloco, {
+      onSuccess: () => { toast.success("Horário desmarcado."); aoGravar(valores); },
+      onError: guardarErro,
+    });
+  }
+
+  /**
+   * TIRAR DA AGENDA — o ato do §6.4, e o TEXTO DA CONFIRMAÇÃO É DERIVADO.
+   * `espelhoAposDesagendar` existe com o propósito declarado de acertar esta
+   * frase: sobrando bloco CUMPRIDO, `data_hora_agendada` NÃO fica nula (o
+   * estágio 2 a põe no último atendimento que ACONTECEU), e prometer "o horário
+   * some" seria mentira escrita à mão em cima de uma função que sabe a resposta.
+   */
+  function tirarDaAgenda() {
+    if (!chamado) return;
+    setErroDoServidor(null);
+    const recusa = erroDoDesagendamento(chamado, autz);
+    if (recusa) { setErroDoServidor({ frase: recusa, code: "42501" }); return; }
+    const resto = espelhoAposDesagendar(chamado.id, blocos);
+    const texto = resto
+      ? `O chamado volta para "aberto", e a data continua mostrando a última visita que ACONTECEU (${resto.dia}, ${horaTexto(resto.inicio_min)}).`
+      : `O chamado volta para "aberto" e fica sem data.`;
+    if (!window.confirm(`Tirar este chamado da agenda?\n\n${texto}\n\nOs atendimentos já marcados como feitos não são apagados.`)) return;
+    desagendar.mutate(chamado.id, {
+      onSuccess: () => { toast.success("Chamado tirado da agenda."); aoGravar(valores); },
+      onError: guardarErro,
+    });
+  }
+
+  const classe = classeDoErro(erro?.code);
+  const rostoDoErro = classe === "regra"
+    ? { cor: isLight ? PRISMA.laranja.light : PRISMA.laranja.dark, bg: PRISMA.laranja.bg, borda: PRISMA.laranja.border }
+    : { cor: isLight ? "#B1242E" : "#F17881",
+        bg: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
+        borda: isLight ? "rgba(177,36,46,0.22)" : "rgba(241,120,129,0.24)" };
+
+  const titulo = bloco
+    ? rotuloDoBloco(bloco, chamado)
+    : chamado
+      ? rotuloDoBloco({ chamado_id: chamado.id, os_externa: null, titulo_externo: null } as BlocoDeAgenda, chamado)
+      : "Serviço fora do sistema";
+
+  return (
+    <div
+      onClick={aoFechar}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Horário do atendimento"
+      style={{
+        position: "fixed", inset: 0, zIndex: 100, padding: 20,
+        background: isLight ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.7)",
+        backdropFilter: "blur(8px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          ...card(isLight), padding: 18, width: "100%", maxWidth: 520,
+          maxHeight: "88vh", overflowY: "auto",
+          display: "flex", flexDirection: "column", gap: 13,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 15.5, color: textPrimary }}>
+              {titulo}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary, marginTop: 2 }}>
+              {bloco ? "Horário marcado — o que mudar aqui vale para este bloco." : "Dar horário: equipe, dia, hora e duração."}
+            </div>
+          </div>
+          <button onClick={aoFechar} aria-label="Fechar" style={setinha}><X size={15} /></button>
+        </div>
+
+        {/* EQUIPE — o formulário PERGUNTA, e não deriva.
+            `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE é por equipe: o bloco
+            É o compromisso de uma EQUIPE com uma janela. Perguntar a PESSOA e
+            derivar a equipe cria um formulário que se preenche inteiro e ainda
+            assim não tem resposta (`duplaDaPessoaNaSemana(null,…)` é null), e
+            formulário completável e não-submetível é formulário quebrado.
+            É também o campo que a camada (iv) do gate confere no servidor. */}
+        <div>
+          <label style={rotulo}>Equipe de campo</label>
+          <select
+            value={duplaId}
+            onChange={(e) => { setDuplaId(e.target.value); setErroDoServidor(null); }}
+            style={{ ...entrada, cursor: "pointer" }}
+          >
+            <option value="">— escolha a equipe —</option>
+            {equipes.map((e) => <option key={e.id} value={e.id}>{e.rotulo}</option>)}
+          </select>
+          {divergencia === "fora_da_equipe" && derivada && (
+            <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+              O responsável deste chamado está em <b>{equipes.find((e) => e.id === derivada)?.rotulo ?? "outra equipe"}</b> nesta semana.
+              Isto é observação, não impedimento — quem se compromete com a janela é a equipe escolhida acima.
+            </span>
+          )}
+          {divergencia === "sem_escala" && (
+            <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+              O responsável deste chamado não está escalado em nenhuma equipe nesta semana. Quem conserta isso é a escala, não a agenda.
+            </span>
+          )}
+          {divergencia === "sem_responsavel" && (
+            <span style={{ display: "block", marginTop: 6, fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+              Este chamado ainda não tem responsável. A equipe abaixo assume a janela mesmo assim.
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={rotulo}>Dia</label>
+            <input
+              type="date" value={dia}
+              onChange={(e) => { setDia(e.target.value); setErroDoServidor(null); }}
+              style={entrada}
+            />
+          </div>
+          <div>
+            <label style={rotulo}>Hora de início</label>
+            <input
+              type="time" value={hora}
+              onChange={(e) => { setHora(e.target.value); setErroDoServidor(null); }}
+              style={entrada}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={rotulo}>Duração do serviço (min)</label>
+            <input
+              type="number" min={1} step={5} value={servico} placeholder="—"
+              onChange={(e) => { setServico(e.target.value); setErroDoServidor(null); }}
+              style={entrada}
+            />
+          </div>
+          <div>
+            <label style={rotulo}>Deslocamento (min)</label>
+            <input
+              type="number" min={0} step={5} value={deslocamento} placeholder="0"
+              onChange={(e) => { setDeslocamento(e.target.value); setErroDoServidor(null); }}
+              style={entrada}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          {ATALHOS_DE_DURACAO.map((m) => (
+            <button
+              key={m}
+              onClick={() => { setServico(String(m)); setErroDoServidor(null); }}
+              aria-pressed={numeroOuNulo(servico) === m}
+              style={{
+                padding: "6px 11px", borderRadius: 999, cursor: "pointer",
+                background: numeroOuNulo(servico) === m ? GOLD_GRAD : "transparent",
+                color: numeroOuNulo(servico) === m ? "#08090E" : textSecondary,
+                border: numeroOuNulo(servico) === m ? "none"
+                  : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+                fontFamily: FONT, fontWeight: 600, fontSize: 11,
+              }}
+            >
+              {duracaoTexto(m)}
+            </button>
+          ))}
+          {abertura.herdado && !bloco && (
+            <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary }}>
+              (duração e deslocamento vieram do anterior — confira)
+            </span>
+          )}
+        </div>
+
+        {/* A estrada OCUPA a equipe: um dia de quatro visitas espalhadas pela
+            cidade apareceria como meio dia livre se o deslocamento não
+            contasse, e a grade convidaria a marcar a quinta. Nesta fase ele é
+            DIGITADO — a Fase 2 é que o calcula. */}
+        <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary }}>
+          A equipe ocupa {duracaoTexto((numeroOuNulo(servico) ?? 0) + desloc)} do dia: o deslocamento vem ANTES do serviço e conta na jornada.
+          {proposta !== null && !bloco && ` Sugestão de início: ${horaTexto(proposta)}.`}
+        </span>
+
+        {/* OS de fora do sistema: só aparece quando não há chamado. Ela existe
+            porque `chamados.cliente_id` é NOT NULL — serviço para quem não está
+            na base de clientes não CABE num chamado, mas ocupa a equipe igual. */}
+        {!chamadoId && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+            <div>
+              <label style={rotulo}>Nº da OS</label>
+              <input value={osExterna} onChange={(e) => setOsExterna(e.target.value)} style={entrada} placeholder="OS-9911" />
+            </div>
+            <div>
+              <label style={rotulo}>O que é este serviço</label>
+              <input value={tituloExterno} onChange={(e) => setTituloExterno(e.target.value)} style={entrada} placeholder="Portão do condomínio vizinho" />
+            </div>
+          </div>
+        )}
+
+        {/* A CAIXA DE ERRO — no formulário, nomeando o obstáculo. Nunca um toast
+            solto: o toast some, e o que ele dizia era a única pista de por que o
+            gesto morreu. */}
+        {erro && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 9, padding: "12px 14px", borderRadius: 12,
+            background: rostoDoErro.bg, border: `1px solid ${rostoDoErro.borda}`,
+            fontFamily: FONT, fontSize: 12.5, color: rostoDoErro.cor,
+          }}>
+            {classe === "permissao" ? <ShieldAlert size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+              : <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />}
+            <span style={{ minWidth: 0 }}>
+              {erro.frase}
+              {classe === "permissao" && (
+                <>
+                  <br />
+                  <span style={{ opacity: 0.85 }}>{EXPLICACAO.PERM.oQueFazer}</span>{" "}
+                  {/* o código carrega o SQLSTATE da RPC, não um hash da frase:
+                      `classificarErro` lê `code`, e sem ele o 42501 viraria
+                      PRV-CHM-APP-<hash>, que não diz que foi permissão. */}
+                  <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10 }}>
+                    {codigoDeErro({ message: erro.frase, code: erro.code ?? "42501" }, rota)}
+                  </span>
+                </>
+              )}
+              {classe === "conflito" && (
+                <>
+                  <br />
+                  <span style={{ opacity: 0.85 }}>Se isto apareceu de repente, outra pessoa marcou agora mesmo — recarregue a grade e refaça o gesto.</span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* ações do bloco vivo */}
+        {bloco && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => baixar(bloco.cumprido_em === null)} disabled={emVoo} style={secundario}>
+              <Check size={13} /> {bloco.cumprido_em === null ? "Marcar como feito" : "Tirar o “feito”"}
+            </button>
+            <button onClick={desmarcar} disabled={emVoo} style={secundario}>
+              <X size={13} /> Desmarcar
+            </button>
+            {chamado && (
+              <button onClick={tirarDaAgenda} disabled={emVoo} style={secundario}>
+                <Trash2 size={13} /> Tirar da agenda
+              </button>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={aoFechar} style={{ ...secundario, height: 46, borderRadius: 23, flex: 1, justifyContent: "center" }}>
+            Fechar
+          </button>
+          <button
+            onClick={gravar}
+            disabled={emVoo || !!erroLocal || !!impossivel}
+            style={{
+              flex: 2, height: 46, borderRadius: 23, border: "none", background: GOLD_GRAD,
+              color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
+              cursor: emVoo || erroLocal || impossivel ? "default" : "pointer",
+              opacity: emVoo || erroLocal || impossivel ? 0.6 : 1,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            }}
+          >
+            {emVoo && <Loader2 size={14} className="animate-spin" />}
+            {bloco ? "Salvar horário" : abertura.restantes > 0 ? `Marcar e ir para o próximo (${abertura.restantes})` : "Marcar horário"}
+          </button>
+        </div>
+        {semMudanca && (
+          <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary, textAlign: "center" }}>
+            Nada mudou neste bloco — salvar aqui não gera gravação.
+          </span>
+        )}
+        {abertura.restantes > 0 && !bloco && (
+          <span style={{ fontFamily: FONT, fontSize: 10.5, color: gold, textAlign: "center" }}>
+            Ainda faltam {abertura.restantes} sem horário neste dia. Ao gravar, o formulário abre o próximo mantendo equipe, duração e deslocamento.
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}

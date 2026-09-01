@@ -645,6 +645,95 @@ export interface AutorizacaoDaAgenda {
 }
 
 /**
+ * O MÍNIMO que o gêmeo local de `pode_editar_chamado` precisa ler do chamado.
+ * São as DUAS colunas da segunda perna do predicado da S2, e as duas já vêm na
+ * consulta de chamados (`CAMPOS`, features/chamados/data.ts) — nenhuma consulta
+ * nova nasce por causa disto.
+ */
+export interface ChamadoParaAutorizacao {
+  id: string;
+  responsavel_id: string | null;
+  aberto_por: string | null;
+}
+
+/**
+ * O APOIO CONTA COMO VÍNCULO? É a TERCEIRA PERNA de `pode_editar_chamado`
+ * depois da S2, e ela mora aqui — no modelo puro — por um motivo que um teste de
+ * mutação provou: enquanto ela era um `.filter()` dentro da consulta, quebrá-la
+ * (trocar a condição inteira por `true`) deixava o verificador VERDE. Regra de
+ * autorização escondida numa cláusula de consulta é regra que ninguém pode
+ * exercitar sem banco.
+ *
+ * Gêmeo literal de `s2:131-142`:
+ *   `a.origem = 'dupla' OR a.criado_por IS DISTINCT FROM a.profile_id`
+ *
+ *   · `origem='dupla'` é escrita do gatilho da escala — ninguém a forja, porque
+ *     ela é derivada de `duplas_escala`;
+ *   · `criado_por IS DISTINCT FROM profile_id` quer dizer "ALGUÉM PÔS esta
+ *     pessoa". Pôr-se a si mesmo como apoio não pode virar direito de edição —
+ *     era um formulário de auto-atendimento com cara de autorização, e é o
+ *     defeito exato que a S2 fechou.
+ *   · `criado_por` NULO são as linhas anteriores à S2, e elas CONTINUAM
+ *     concedendo: `null !== <id>` é verdadeiro, que é o `IS DISTINCT FROM`
+ *     fazendo o que a S2 escreveu.
+ */
+export function apoioValeComoVinculo(
+  a: { origem: string | null; criado_por: string | null; profile_id: string },
+): boolean {
+  return a.origem === "dupla" || a.criado_por !== a.profile_id;
+}
+
+/**
+ * O CONSTRUTOR do `AutorizacaoDaAgenda`, e ele é AFORDÂNCIA — nunca
+ * autorização. Quem autoriza é o servidor: as portas do §6 chamam
+ * `pode_editar_chamado` de dentro, em SECURITY DEFINER, e a resposta delas é a
+ * que vale. Isto aqui existe para o cartão que o usuário NÃO pode mexer não
+ * parecer arrastável, e para a frase da recusa chegar antes do clique.
+ *
+ * É UM GÊMEO LOCAL, E DIGO ISSO EM VOZ ALTA. O predicado é o corpo de
+ * `public.pode_editar_chamado(uuid)` depois da S2 (:131-142), com as três
+ * pernas na mesma ordem:
+ *   1. `is_gestor(auth.uid())` — injetada, porque é função do banco;
+ *   2. `c.responsavel_id = auth.uid() OR c.aberto_por = auth.uid()`;
+ *   3. apoio VÁLIDO: `origem='dupla'` (escrita do gatilho da escala, que
+ *      ninguém forja) OU `criado_por IS DISTINCT FROM profile_id` (alguém
+ *      PÔS a pessoa; pôr-se a si mesmo não vira direito de edição). O
+ *      `criado_por IS NULL` das linhas anteriores à S2 continua concedendo, e
+ *      isso é `IS DISTINCT FROM` fazendo o que a S2 escreveu.
+ *
+ * A ALTERNATIVA RECUSADA: `supabase.rpc('pode_editar_chamado')` por cartão. Uma
+ * semana de 40 blocos são 40 requisições por render, e `erroDoCancelamento` e
+ * `erroDaBaixa` consultam o predicado para CADA cartão (guardam os botões
+ * "Feito" e "Desmarcar"). Um N+1 de HTTP para desenhar afordância é o tipo de
+ * coisa que ninguém mede até a grade travar no celular.
+ *
+ * CHAMADO FORA DA LISTA CARREGADA DEVOLVE `false`, e é a direção segura: o
+ * cartão fica somente-leitura, o usuário clica, e a porta responde. Errar para
+ * o lado de mostrar um cadeado a mais é infinitamente melhor do que errar para
+ * o lado de prometer um gesto que morre do outro lado.
+ */
+export function montarAutorizacao(
+  usuarioId: string | null,
+  ehGestor: boolean,
+  chamados: ChamadoParaAutorizacao[],
+  apoiosValidos: Iterable<string>,
+): AutorizacaoDaAgenda {
+  const apoio = new Set(apoiosValidos);
+  const meus = new Set<string>();
+  if (usuarioId) {
+    for (const c of chamados) {
+      if (c.responsavel_id === usuarioId || c.aberto_por === usuarioId) meus.add(c.id);
+    }
+  }
+  return {
+    usuarioId,
+    ehGestor,
+    podeEditarChamado: (chamadoId: string) =>
+      ehGestor || meus.has(chamadoId) || apoio.has(chamadoId),
+  };
+}
+
+/**
  * O VÍNCULO COM O BLOCO, que as três portas simples cobram igual: com chamado,
  * quem responde por ele; sem chamado, quem responde pela operação. O verbo muda
  * porque a frase da RPC muda — "mexe em", "desmarca", "dá baixa em" —, e são as

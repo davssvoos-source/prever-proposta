@@ -1,21 +1,52 @@
 // Novo chamado de CAMPO — a dupla se desloca até o cliente (U7).
 // Cliente → sistema afetado → problema/prioridade → técnico e agenda.
 // O número e o prazo de atendimento (SLA) são preenchidos pelo banco.
+//
+// ── U79: ABRIR O CHAMADO E MARCAR O HORÁRIO VIRARAM DUAS ETAPAS ───────────
+// `abrirChamado` não recebe mais `data_hora_agendada` — aquela coluna é ESPELHO
+// derivado do bloco (R101), e quem marca hora de campo é `agenda_campo_marcar`.
+// O bloco precisa do id do chamado, então a ordem é obrigatória: cria, e só
+// então marca.
+//
+// A REGRESSÃO QUE EU ME RECUSO A DEIXAR SILENCIOSA. Hoje, preencher data/hora e
+// deixar o técnico vazio GRAVA a data. Depois do religamento, sem EQUIPE não há
+// bloco — `agenda_campo.dupla_id` é NOT NULL, porque o bloco É o compromisso de
+// uma equipe com uma janela — e a data seria simplesmente perdida. A saída não
+// é travar o formulário (isso impediria alguém de abrir um chamado só porque
+// ainda não sabe a equipe): a seção de agendamento passa a DECLARAR o que vai
+// acontecer, a linha secundária do botão diz para onde o chamado vai, e o toast
+// confirma. Nada some; muda de fila, e a tela diz qual.
+//
+// E A ORDEM DE FALHA É DITA PARA NÃO VIRAR MENTIRA: o chamado é criado ANTES do
+// bloco. Se `agenda_campo_marcar` recusar (conflito, jornada, escala), o chamado
+// JÁ EXISTE — então a tela NÃO navega e NÃO diz "falhou ao abrir chamado". Ela
+// diz "o chamado foi aberto; o horário não entrou:", mostra a frase da RPC no
+// próprio formulário, e o botão passa a chamar só `marcar` (o id está em mão).
 
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, Search } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, ArrowLeft, Building2, Search } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { card } from "@/lib/ui";
+import { PRISMA } from "@/lib/paleta";
+import { referenciaSemanal } from "@/lib/periodos";
 import { useTecnicos } from "@/features/gerencial/data";
 import { useClientes } from "@/features/clientes/data";
 import { useInventario } from "@/features/clientes/inventario";
 import { abrirChamado, useSla } from "@/features/chamados/data";
 import { montarChecklistPreventiva } from "@/features/chamados/checklist";
+import { useDuplas, useEscala } from "@/features/duplas/data";
+import {
+  composicaoDaDupla, duplaDaPessoaNaSemana, montarEscala, rotuloDaComposicao,
+} from "@/features/duplas/modelo";
+import { useBlocosDaSemana, useMarcarBloco, sqlstateDoErro } from "@/features/programacao/data";
+import {
+  blocosDaEquipeNaSemana, classeDoErro, dataDoDia, duracaoTexto, horaTexto,
+  primeiroInicioPossivel, type BlocoEditavel,
+} from "@/features/programacao/modelo";
 import {
   TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES,
   type ChamadoPrioridade, type ChamadoTipo,
@@ -46,9 +77,30 @@ function NovaOsPage() {
   const [prioridade, setPrioridade] = useState<ChamadoPrioridade>("normal");
   const [tecnicoId, setTecnicoId] = useState("");
   const [data, setData] = useState("");
+  // 09:00 é `CAMPO_ABRE_MIN`: a equipe SAI às 09h, então este default já passa
+  // no `v_inicio - v_desloc < 540` da jornada. Não é um chute — é a política.
   const [hora, setHora] = useState("09:00");
+  // `null` = "ainda não mexi" (vale a derivação do técnico); `""` = "escolhi NÃO
+  // agendar". Um estado só, com `""` fazendo os dois papéis, tornava impossível
+  // desmarcar a equipe: apagar caía de volta na derivação, e o formulário
+  // discutia com quem o preenche.
+  const [equipeId, setEquipeId] = useState<string | null>(null);
+  // A DURAÇÃO ABRE VAZIA E É OBRIGATÓRIA PARA AGENDAR. Não existe duração de
+  // serviço em lugar nenhum do repositório, e `useSla()` responde outra
+  // pergunta (PRAZO de atendimento: "até quando alguém tem de ir"). Um default
+  // aqui seria um backfill, um clique por vez — exatamente o que a U78 recusou
+  // ao não semear bloco nenhum.
+  const [servico, setServico] = useState("");
+  const [deslocamento, setDeslocamento] = useState("");
+  /** o chamado já nasceu e o bloco não entrou — o estado que não pode mentir */
+  const [criado, setCriado] = useState<string | null>(null);
+  const [erroDoBloco, setErroDoBloco] = useState<{ frase: string; code: string | null } | null>(null);
 
   const { data: sistemas = [] } = useInventario(clienteId ?? undefined);
+  const { data: duplas = [] } = useDuplas();
+  const { data: escala = montarEscala([], []) } = useEscala();
+  const { data: blocosDaSemana = [] } = useBlocosDaSemana(data);
+  const marcarBloco = useMarcarBloco();
   const cliente = clientes.find((c) => c.id === clienteId) ?? null;
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -99,25 +151,57 @@ function NovaOsPage() {
     );
   }, [clientes, buscaCliente]);
 
-  // agenda do técnico escolhido, para não marcar em cima de outro chamado
-  const { data: agenda = [] } = useQuery({
-    queryKey: ["os-agenda-tecnico", tecnicoId],
-    enabled: !!tecnicoId,
-    queryFn: async () => {
-      const de = new Date(); de.setDate(de.getDate() - 1);
-      const ate = new Date(); ate.setDate(ate.getDate() + 14);
-      const { data, error } = await supabase
-        .from("chamados" as any)
-        .select("id, numero, titulo, data_hora_agendada, status")
-        .eq("responsavel_id", tecnicoId)
-        .not("data_hora_agendada", "is", null)
-        .gte("data_hora_agendada", de.toISOString())
-        .lte("data_hora_agendada", ate.toISOString())
-        .order("data_hora_agendada");
-      if (error) throw error;
-      return ((data as any[]) ?? []).filter((o) => ["aberto", "agendado", "em_andamento"].includes(o.status));
-    },
-  });
+  /**
+   * A semana do DIA ESCOLHIDO — nunca "a semana de hoje". É a mesma que a
+   * camada (iv) do gate consulta no servidor (`dupla_da_pessoa(auth.uid(),
+   * v_dia)`), e é justamente no gesto que empurra o atendimento para a semana
+   * seguinte que a resposta muda.
+   */
+  const semanaDoDia = useMemo(() => {
+    const d = dataDoDia(data);
+    return d ? referenciaSemanal(d) : referenciaSemanal(new Date());
+  }, [data]);
+
+  const equipesDaSemana = useMemo(
+    () => duplas
+      .map((d) => ({ dupla: d, membros: composicaoDaDupla(d.id, semanaDoDia, escala) }))
+      .filter((x) => x.membros.length > 0),
+    [duplas, semanaDoDia, escala],
+  );
+  const nomeDeTecnico = (id: string) =>
+    (tecnicos as any[]).find((t) => t.id === id)?.nome ?? "Técnico";
+
+  /**
+   * A equipe DERIVADA do técnico escolhido, na semana do dia de destino — é a
+   * doutrina da U47/U76 ("a dupla é derivada do responsável"). Ela PROPÕE o
+   * valor do campo; quem manda é o que estiver selecionado, porque
+   * `agenda_campo.dupla_id` é quem se comprometeu com a janela e pode ser outro.
+   */
+  const equipeDerivada = useMemo(
+    () => duplaDaPessoaNaSemana(tecnicoId || null, semanaDoDia, escala),
+    [tecnicoId, semanaDoDia, escala],
+  );
+  const equipeEscolhida = equipeId ?? equipeDerivada ?? "";
+
+  /** O que a equipe escolhida já tem naquela semana — substitui a prévia antiga,
+   *  que consultava `chamados` por responsável e não enxergava nem OS de fora
+   *  nem retorno, e ainda era por PESSOA em vez de por equipe. */
+  const agendaDaEquipe = useMemo(
+    () => (equipeEscolhida
+      ? blocosDaEquipeNaSemana(equipeEscolhida, semanaDoDia, blocosDaSemana, referenciaSemanal)
+      : []),
+    [equipeEscolhida, semanaDoDia, blocosDaSemana],
+  );
+
+  const servicoMin = Number(servico) > 0 ? Math.round(Number(servico)) : null;
+  const deslocamentoMin = deslocamento.trim() === "" ? 0 : Math.max(0, Math.round(Number(deslocamento) || 0));
+  const vaiAgendar = !!data && !!equipeEscolhida && servicoMin !== null;
+  const propostaDeInicio = useMemo(
+    () => (equipeEscolhida && data
+      ? primeiroInicioPossivel(equipeEscolhida, data, blocosDaSemana, deslocamentoMin)
+      : null),
+    [equipeEscolhida, data, blocosDaSemana, deslocamentoMin],
+  );
 
   const horasPrazo = sla[prioridade] ?? null;
   const prazoPrevisto = useMemo(() => {
@@ -127,11 +211,43 @@ function NovaOsPage() {
     return d;
   }, [horasPrazo]);
 
+  /** O bloco que o formulário está prometendo, se estiver prometendo algum. */
+  const valoresDoBloco = (chamadoId: string): BlocoEditavel => ({
+    chamado_id: chamadoId,
+    dupla_id: equipeEscolhida,
+    dia: data,
+    inicio_min: (() => {
+      const m = /^(\d{1,2}):(\d{2})$/.exec(hora.trim());
+      return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+    })(),
+    servico_min: servicoMin ?? NaN,
+    deslocamento_min: deslocamentoMin,
+    os_externa: null,
+    titulo_externo: null,
+  });
+
+  /**
+   * A SEGUNDA ETAPA, isolada para poder ser repetida sozinha quando a primeira
+   * já aconteceu. `_id: null` é criação: este chamado acabou de nascer e não
+   * tem bloco nenhum, então não há como isto virar um "retorno" acidental.
+   */
+  const marcarHorario = (chamadoId: string, aoConseguir: () => void) => {
+    marcarBloco.mutate(
+      { id: null, patch: {}, valores: valoresDoBloco(chamadoId), atual: null },
+      {
+        onSuccess: aoConseguir,
+        onError: (e: unknown) => {
+          setCriado(chamadoId);
+          setErroDoBloco({ frase: (e as Error).message, code: sqlstateDoErro(e) });
+        },
+      },
+    );
+  };
+
   const criar = useMutation({
     mutationFn: async () => {
       if (!clienteId) throw new Error("Escolha o cliente do chamado.");
       if (!titulo.trim()) throw new Error("Descreva o assunto do chamado.");
-      const agendada = data && hora ? new Date(`${data}T${hora}:00`).toISOString() : null;
       const chamadoId = await abrirChamado({
         natureza: "campo",
         tipo,
@@ -141,7 +257,6 @@ function NovaOsPage() {
         descricao_problema: descricao.trim() || null,
         prioridade,
         responsavel_id: tecnicoId || null,
-        data_hora_agendada: agendada,
       });
       // Preventiva já nasce com o roteiro de verificação dos sistemas
       if (tipo === "preventiva") {
@@ -157,8 +272,19 @@ function NovaOsPage() {
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["chamados"] });
-      toast.success("Chamado aberto!");
-      navigate({ to: "/chamados/$id", params: { id } });
+      const irParaOChamado = () => navigate({ to: "/chamados/$id", params: { id } });
+      if (vaiAgendar) {
+        marcarHorario(id, () => { toast.success("Chamado aberto e horário marcado."); irParaOChamado(); });
+        return;
+      }
+      // NADA SOME CALADO: se havia data e não havia equipe (ou duração), o
+      // chamado vai para a fila da programação, e a tela DIZ isso.
+      toast.success(
+        data
+          ? "Chamado aberto — ele está aguardando programação."
+          : "Chamado aberto!",
+      );
+      irParaOChamado();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -348,6 +474,31 @@ function NovaOsPage() {
             ))}
           </select>
         </div>
+        {/* A EQUIPE, e não o técnico, é quem se compromete com a janela.
+            `agenda_campo.dupla_id` é NOT NULL e o EXCLUDE de sobreposição é por
+            equipe — a equipe sai JUNTA, no mesmo carro. O campo vem proposto
+            pela derivação do técnico (U47/U76) e continua editável. */}
+        <div>
+          <label style={LABEL}>Equipe que vai (para marcar o horário)</label>
+          <select
+            style={INPUT}
+            value={equipeEscolhida}
+            onChange={(e) => setEquipeId(e.target.value)}
+          >
+            <option value="">— sem equipe: vai para “aguardando programação” —</option>
+            {equipesDaSemana.map(({ dupla, membros }) => (
+              <option key={dupla.id} value={dupla.id}>
+                {rotuloDaComposicao(dupla, membros, nomeDeTecnico)}
+              </option>
+            ))}
+          </select>
+          {tecnicoId && !equipeDerivada && (
+            <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary, marginTop: 6 }}>
+              Este técnico não está escalado em nenhuma equipe na semana deste dia. Escolha a equipe acima,
+              ou lance a escala em Painel Operacional → Equipes.
+            </div>
+          )}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
             <label style={LABEL}>Data</label>
@@ -358,36 +509,114 @@ function NovaOsPage() {
             <input style={INPUT} type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
           </div>
         </div>
-        {tecnicoId && agenda.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <label style={LABEL}>Já agendado para este técnico</label>
+            <label style={LABEL}>Duração do serviço (min)</label>
+            <input
+              style={INPUT} type="number" min={1} step={5} placeholder="—"
+              value={servico} onChange={(e) => setServico(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={LABEL}>Deslocamento (min)</label>
+            <input
+              style={INPUT} type="number" min={0} step={5} placeholder="0"
+              value={deslocamento} onChange={(e) => setDeslocamento(e.target.value)}
+            />
+          </div>
+        </div>
+        {propostaDeInicio !== null && (
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+            A equipe está livre a partir das {horaTexto(propostaDeInicio)} nesse dia
+            {servicoMin ? ` · este atendimento ocupa ${duracaoTexto(servicoMin + deslocamentoMin)}` : ""}.
+          </div>
+        )}
+        {equipeEscolhida && data && propostaDeInicio === null && (
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+            Este dia já está cheio para esta equipe (8h de campo). Escolha outro dia, outra equipe,
+            ou marque depois pela programação.
+          </div>
+        )}
+        {agendaDaEquipe.length > 0 && (
+          <div>
+            <label style={LABEL}>A equipe já tem estes horários na semana</label>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {agenda.slice(0, 6).map((a: any) => (
-                <span key={a.id} style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
-                  {new Date(a.data_hora_agendada).toLocaleString("pt-BR", {
-                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-                  })} · {a.numero} {a.titulo}
+              {agendaDaEquipe.slice(0, 8).map((b) => (
+                <span key={b.id} style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+                  {b.dia} · {horaTexto(b.inicio_min)}–{horaTexto(b.inicio_min + b.servico_min)}
+                  {b.deslocamento_min > 0 ? ` (+${duracaoTexto(b.deslocamento_min)} de estrada)` : ""}
                 </span>
               ))}
             </div>
           </div>
         )}
+
+        {/* O ERRO DO BLOCO VOLTA AQUI DENTRO, e o cabeçalho dele não mente: o
+            chamado JÁ EXISTE. Um toast dizendo "falhou ao abrir chamado" seria
+            falso, e um toast solto sumiria levando junto a única pista. */}
+        {erroDoBloco && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 9, padding: "12px 14px", borderRadius: 12,
+            background: classeDoErro(erroDoBloco.code) === "regra"
+              ? PRISMA.laranja.bg
+              : isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
+            border: `1px solid ${classeDoErro(erroDoBloco.code) === "regra"
+              ? PRISMA.laranja.border
+              : isLight ? "rgba(177,36,46,0.22)" : "rgba(241,120,129,0.24)"}`,
+            fontFamily: "var(--fonte)", fontSize: 12.5,
+            color: classeDoErro(erroDoBloco.code) === "regra"
+              ? (isLight ? PRISMA.laranja.light : PRISMA.laranja.dark)
+              : (isLight ? "#B1242E" : "#F17881"),
+          }}>
+            <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>
+              <b>O chamado foi aberto. O horário não entrou:</b><br />
+              {erroDoBloco.frase}<br />
+              Ajuste os campos acima e toque em “Marcar horário”, ou abra o chamado e marque pela programação.
+            </span>
+          </div>
+        )}
       </div>
 
       <button
-        onClick={() => criar.mutate()}
-        disabled={criar.isPending}
+        onClick={() => {
+          if (criado) {
+            setErroDoBloco(null);
+            marcarHorario(criado, () => {
+              toast.success("Horário marcado.");
+              navigate({ to: "/chamados/$id", params: { id: criado } });
+            });
+            return;
+          }
+          criar.mutate();
+        }}
+        disabled={criar.isPending || marcarBloco.isPending}
         style={{
           width: "100%", height: 56, borderRadius: 28, border: "none",
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
           fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.16em", textTransform: "uppercase",
-          cursor: criar.isPending ? "wait" : "pointer", opacity: criar.isPending ? 0.7 : 1,
+          cursor: criar.isPending || marcarBloco.isPending ? "wait" : "pointer",
+          opacity: criar.isPending || marcarBloco.isPending ? 0.7 : 1,
           boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
         }}
       >
-        {criar.isPending ? "Abrindo…" : "Abrir chamado"}
+        {criado
+          ? (marcarBloco.isPending ? "Marcando…" : "Marcar horário")
+          : criar.isPending || marcarBloco.isPending ? "Abrindo…" : "Abrir chamado"}
       </button>
+      {/* A LINHA QUE DIZ PARA ONDE O CHAMADO VAI. Sem ela, preencher a data e
+          esquecer a equipe faria a data desaparecer em silêncio — que é
+          exatamente o defeito que este religamento existe para não ter. */}
+      {!criado && (
+        <div style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, textAlign: "center" }}>
+          {vaiAgendar
+            ? `Vai para a agenda: ${data} às ${hora}, ${duracaoTexto((servicoMin ?? 0) + deslocamentoMin)} da equipe.`
+            : data
+              ? "Sem equipe ou sem duração, o chamado entra na fila “aguardando programação” — a data escolhida aqui não é gravada."
+              : "Sem data, o chamado entra na fila “aguardando programação”."}
+        </div>
+      )}
     </div>
   );
 }

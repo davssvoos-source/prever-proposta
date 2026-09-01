@@ -1741,3 +1741,40 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   aberto sumir do calendário e do PDF por ter sido atendido. Nenhum texto de tela
   pode prometer que "o horário some".
   *(U78.)*
+
+- **R102** — **Programar é sobre a EQUIPE e a JANELA. O responsável se troca no
+  chamado.** O formulário de horário pergunta **qual equipe de campo** vai, em
+  que **dia**, a que **hora** e por **quanto tempo** — e não pergunta quem é o
+  técnico responsável.
+
+  Por quê: o bloco de agenda **é** o compromisso de uma equipe com uma janela de
+  tempo. É a equipe que sai junta, no mesmo carro, e é por equipe que o sistema
+  recusa dois atendimentos ao mesmo tempo. Perguntar a pessoa e adivinhar a
+  equipe dá um formulário que se preenche inteiro e mesmo assim não tem resposta
+  — quando a pessoa não está escalada naquela semana, não há equipe nenhuma para
+  deduzir.
+
+  E havia um defeito de perda de dado no caminho antigo: o seletor de técnico
+  trazia "Definir depois", então **quem abria o formulário só para mudar a data
+  apagava o responsável do chamado**. Hoje isso não pode acontecer, porque o
+  responsável não está mais nesse formulário.
+
+  **O que se ganha:** quando o bloco diz uma equipe e a escala da semana põe o
+  responsável em outra, o sistema **mostra** o desencontro — em vez de não
+  conseguir nem representá-lo, que era o caso quando ele só conhecia um dos dois
+  fatos. Ele mostra e deixa gravar: a escala muda depois do agendamento, e isso
+  é a vida normal, não um erro.
+
+  **O que se perde, dito por inteiro:** antes, atribuir técnico e data era um
+  gesto só. Agora são dois — a equipe no horário, o responsável no chamado. É o
+  preço de as duas coisas pararem de se sobrescrever.
+
+  **Quanto tempo dura um atendimento é sempre digitado, e nunca chutado pelo
+  sistema.** O campo abre **vazio** e é obrigatório para marcar hora. Há atalhos
+  (30min, 1h, 1h30, 2h, 3h, 4h) e **nenhum vem pré-selecionado**: um número
+  inicial inventado viraria medição no dia seguinte, e o chip de ocupação de
+  todas as equipes passaria a ser sobre um chute. Quando o Davi disser quanto
+  dura, tipicamente, uma preventiva, uma corretiva, uma implantação e uma
+  operacional, esses quatro números entram como padrão **etiquetado** ("padrão da
+  preventiva") — nunca como um número mudo.
+  *(U79.)*

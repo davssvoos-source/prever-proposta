@@ -81,8 +81,35 @@ import {
   type ChamadoPrioridade, type ChamadoTipo, type Natureza,
 } from "@/lib/chamado-status";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 
-export type EstadoCampo = "parado" | "salvando" | "salvo" | { erro: string };
+/**
+ * O estado de um campo que grava sozinho.
+ *
+ * `codigo` ENTROU NA U79, e a ausência dele era um defeito real: o `onError`
+ * fazia `codigoDeErro(err, …)` e punha o RESULTADO no lugar da mensagem —
+ * `PRV-INI-PERM-42501` —, DESCARTANDO `err.message`. Com as portas da agenda,
+ * quem manda a frase é o banco, e ela é o produto: "Esta equipe já está em
+ * CH-0012 · Portão das 09:00 às 11:00 nesse dia." Perder isso e mostrar só um
+ * código é trocar a explicação pela etiqueta. Agora a MENSAGEM é o texto e o
+ * código é o complemento — e o alargamento vale para todos os campos do painel,
+ * de propósito.
+ */
+export type EstadoCampo = "parado" | "salvando" | "salvo" | { erro: string; codigo?: string };
+
+/**
+ * A frase que o servidor mandou, quando ele mandou uma. As RPCs da agenda (U78)
+ * e `GravacaoRecusada` já vêm em português e prontas para ler; o resto do mundo
+ * manda inglês de driver, e aí o código é mais útil do que a frase.
+ */
+function mensagemDoErro(e: unknown): string {
+  const m = (e as { message?: unknown } | null)?.message;
+  const texto = typeof m === "string" ? m.trim() : "";
+  if (!texto) return "Não consegui salvar.";
+  // heurística estreita e declarada: o que vem sem acento e sem espaço em
+  // português quase sempre é mensagem de driver
+  return /[ãáéíóúçâêô]| não | não$/i.test(texto) || texto.length < 90 ? texto : "Não consegui salvar.";
+}
 
 // ── Peças de formulário ─────────────────────────────────────────────────────
 
@@ -130,8 +157,13 @@ function Selo({ estado }: { estado?: EstadoCampo }) {
   if (estado === "salvo") return <Check size={13} color={verde} />;
   if (estado && typeof estado === "object") {
     return (
-      <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: vermelho }}>
-        {estado.erro}
+      <span style={{ fontSize: 10, color: vermelho, minWidth: 0 }}>
+        <span style={{ fontFamily: FONT, fontWeight: 500 }}>{estado.erro}</span>
+        {estado.codigo && (
+          <span style={{ fontFamily: "ui-monospace, Menlo, monospace", opacity: 0.8 }}>
+            {" "}{estado.codigo}
+          </span>
+        )}
       </span>
     );
   }
@@ -598,7 +630,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     onError: (err, { campo }) => {
       // o código do erro na tela: RLS negando aparece como PRV-INI-PERM-42501
       // e a pessoa sabe que é permissão, não campo mal preenchido
-      setEstados((e) => ({ ...e, [campo]: { erro: codigoDeErro(err, "/dashboard") } }));
+      setEstados((e) => ({ ...e, [campo]: { erro: mensagemDoErro(err), codigo: codigoDeErro(err, "/dashboard") } }));
     },
   });
 
@@ -617,7 +649,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
       qc.invalidateQueries({ queryKey: ["calendario"] });
       setTimeout(() => setEstados((e) => (e.apoio === "salvo" ? { ...e, apoio: "parado" } : e)), 1600);
     },
-    onError: (err) => setEstados((e) => ({ ...e, apoio: { erro: codigoDeErro(err, "/dashboard") } })),
+    onError: (err) => setEstados((e) => ({ ...e, apoio: { erro: mensagemDoErro(err), codigo: codigoDeErro(err, "/dashboard") } })),
   });
 
   // Cliente virou campo de MÚLTIPLOS valores (R54, Davi: "uma atividade pode
@@ -641,7 +673,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
       qc.invalidateQueries({ queryKey: ["calendario"] });
       setTimeout(() => setEstados((e) => (e.cliente_id === "salvo" ? { ...e, cliente_id: "parado" } : e)), 1600);
     },
-    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: codigoDeErro(err, "/dashboard") } })),
+    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: mensagemDoErro(err), codigo: codigoDeErro(err, "/dashboard") } })),
   });
 
   // O atalho do SETOR (R85). Até a U71 isto expandia o grupo em N clientes;
@@ -671,7 +703,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
       qc.invalidateQueries({ queryKey: ["calendario"] });
       setTimeout(() => setEstados((e) => (e.cliente_id === "salvo" ? { ...e, cliente_id: "parado" } : e)), 1600);
     },
-    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: codigoDeErro(err, "/dashboard") } })),
+    onError: (err) => setEstados((e) => ({ ...e, cliente_id: { erro: mensagemDoErro(err), codigo: codigoDeErro(err, "/dashboard") } })),
   });
 
   const natureza = (chamado?.natureza ?? "campo") as Natureza;
@@ -1126,23 +1158,14 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   aoMudar={(v) => salvar.mutate({ campo: "sprint", patch: { sprint: v as any } })}
                 />
                 {/* Agendamento só faz sentido em campo: é a hora de a dupla
-                    sair. No chamado interno o que organiza é a sprint. */}
+                    sair. No chamado interno o que organiza é a sprint.
+                    U79: o `datetime-local` que escrevia `data_hora_agendada`
+                    direto virou LEITURA DOS BLOCOS + gestos nomeados. A coluna
+                    é espelho derivado (R101), e um campo só não sabe
+                    representar N blocos — ver o cabeçalho de
+                    features/programacao/AgendaDoChamado.tsx. */}
                 {natureza === "campo" && (
-                  <Campo titulo="Agendado para" estado={estados.data_hora_agendada}>
-                    <input
-                      type="datetime-local"
-                      value={chamado.data_hora_agendada
-                        ? paraEntradaLocal(chamado.data_hora_agendada) : ""}
-                      onChange={(e) => salvar.mutate({
-                        campo: "data_hora_agendada",
-                        patch: {
-                          data_hora_agendada: e.target.value
-                            ? new Date(e.target.value).toISOString() : null,
-                        },
-                      })}
-                      style={est.entrada}
-                    />
-                  </Campo>
+                  <AgendaDoChamado chamado={chamado as any} />
                 )}
               </div>
 
@@ -1176,13 +1199,8 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   );
 }
 
-/**
- * ISO → "AAAA-MM-DDTHH:MM" na hora LOCAL, que é o que o input espera.
- * `toISOString().slice(0,16)` devolveria UTC e mostraria a visita das 9h como
- * 12h — três horas de diferença que ninguém repara até alguém perder a hora.
- */
-function paraEntradaLocal(iso: string): string {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
+// `paraEntradaLocal` MORREU AQUI (U79), junto com o `datetime-local` que era a
+// única razão de ela existir. Ela convertia o instante gravado para a hora do
+// NAVEGADOR; quem faz essa ponte agora é `parDoInstante`
+// (features/programacao/modelo.ts), que resolve em `America/Sao_Paulo`
+// explícito e é a única função daquele arquivo que conhece fuso.

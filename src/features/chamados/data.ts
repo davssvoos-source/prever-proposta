@@ -165,7 +165,14 @@ export interface NovoChamadoInput {
   equipe?: Equipe;
   prioridade?: ChamadoPrioridade;
   responsavel_id?: string | null;
-  data_hora_agendada?: string | null;
+  // `data_hora_agendada` SAIU DAQUI (U79), e a ausência é a regra virando
+  // compilador. Ela é ESPELHO derivado do bloco de agenda desde a R101: quem
+  // marca hora de chamado de CAMPO é `agenda_campo_marcar`, e quem tira é
+  // `desagendar_chamado`. Enquanto esta chave existiu, qualquer tela futura
+  // reintroduzia a segunda verdade com UMA linha — e o religamento era
+  // convenção. Fechada, ele é `tsc`.
+  // (A agenda COMERCIAL não passa por aqui: ela é da visita técnica, escrita em
+  // `visitas_tecnicas` e sincronizada pelo gatilho da U41.)
   sprint?: ChamadoSprint | null;
   /** Sobrescreve o prazo calculado pelo SLA (campo) ou a data combinada (interno). */
   prazo_limite?: string | null;
@@ -175,13 +182,17 @@ export interface NovoChamadoInput {
  * Abre o chamado. Número, prazo pelo SLA e classificação sugerida ficam a
  * cargo do banco (trigger chamado_preencher). A policy de insert exige que
  * quem registra assine em aberto_por.
+ *
+ * O STATUS NASCE SEMPRE `aberto` (U79). Aqui havia uma derivação — "campo com
+ * responsável e com data nasce agendado" — e ela SAIU junto com a escrita da
+ * coluna: o §6.1 da U78 diz isso com todas as letras no passo 8, que é quem faz
+ * `aberto → agendado` no destino de `agenda_campo_marcar` (e `agendado →
+ * aberto` na origem que ficou sem bloco pendente). A derivação não sumiu, ela
+ * MUDOU DE LADO — e agora existe num lugar só, o que é o ponto.
  */
 export async function abrirChamado(input: NovoChamadoInput): Promise<string> {
   const { data: u } = await supabase.auth.getUser();
-  const status: ChamadoStatus =
-    input.natureza === "campo" && input.responsavel_id && input.data_hora_agendada
-      ? "agendado"
-      : "aberto";
+  const status: ChamadoStatus = "aberto";
   const { data, error } = await supabase
     .from("chamados" as any)
     .insert({
@@ -200,8 +211,13 @@ export async function abrirChamado(input: NovoChamadoInput): Promise<string> {
 export type ChamadoPatch = Partial<
   Pick<
     Chamado,
+    // A SEGUNDA PORTA DE TIPO FECHADA PELA U79: `data_hora_agendada` não é
+    // mais escrevível por patch. Ela é ESPELHO (R101) — mantido por gatilho a
+    // partir de `public.agenda_campo` — e as três telas que a escreviam direto
+    // (programação, novo-campo, PainelChamado) passaram a falar com as quatro
+    // portas da U78. Reabrir esta linha é reabrir as duas verdades.
     | "titulo" | "descricao_problema" | "prioridade" | "prazo_limite" | "status"
-    | "responsavel_id" | "data_hora_agendada" | "iniciada_em" | "finalizada_em"
+    | "responsavel_id" | "iniciada_em" | "finalizada_em"
     | "concluida_em" | "diagnostico" | "servico_executado" | "pecas_texto"
     | "assinatura_nome" | "assinatura_url" | "fechado_por" | "fechada_em"
     | "motivo_cancelamento" | "cliente_id" | "cliente_sistema_id"

@@ -164,6 +164,119 @@ Equipe sem ninguém grava, e o botão assume: **"Não sai nesta semana"**.
   dias da programação vai de domingo a sábado e atravessa a virada da semana
   ISO: cada chamado é resolvido pela semana DELE.
 
+## A programação por BLOCO DE TEMPO (R99/R100/R101/R102 — U78/U79)
+
+### O que mudou de conceito
+
+A atividade em campo **deixou de ser o chamado** e virou um **bloco de agenda**
+(`public.agenda_campo`): uma equipe, um dia, uma hora de início, uma duração e um
+tempo de estrada. Um chamado pode ter **vários** blocos — foi terça, faltou peça,
+volta quinta — e "retorno" é **derivado da ordem** deles, sem nenhuma coluna nova
+e sem nenhum valor novo em `chamados.status`.
+
+E existe o bloco **sem chamado**: a OS que veio de fora do sistema. Ela não cabe
+em `public.chamados` porque `cliente_id` é `NOT NULL`, mas ocupa a equipe igual —
+e uma grade que não a mostra mente sobre a semana. Só a gestão marca serviço de
+fora.
+
+`chamados.data_hora_agendada` **não é mais digitada**: ela é o **espelho** do
+bloco pendente mais antigo (ou, se todos foram cumpridos, do último), mantido por
+gatilho. É isso que faz o calendário, o card da Início, os indicadores, o gráfico
+por equipe e o PDF continuarem lendo a mesma coluna de sempre — agora com hora de
+verdade, em vez do meio-dia que a programação escrevia por não perguntar a hora.
+
+### As quatro portas, e o que cada uma autoriza
+
+| Porta | O que faz | Quem pode |
+|---|---|---|
+| `agenda_campo_marcar` | cria (`_id` nulo) ou **move** um bloco | gestor, **ou** quem responde pelo chamado que sai E pelo que entra E está escalado naquela equipe naquela semana |
+| `agenda_campo_cancelar` | desmarca **um** bloco | gestor, ou quem responde pelo chamado |
+| `agenda_campo_cumprir` | liga/desliga o "feito" | idem |
+| `desagendar_chamado` | tira o **chamado** da agenda | idem |
+
+Bloco **sem chamado** é ato de gestão nas quatro.
+
+`marcar` é **PATCH e não REPLACE**: parâmetro nulo quer dizer "não mexi", nunca
+"apague". Consequência que vale saber: ela **não desliga** um bloco do chamado
+dele — para isso existe "tirar da agenda".
+
+**O que já aconteceu não se move.** Um bloco marcado como feito recusa mudança de
+dia, hora, equipe ou chamado. Duração e deslocamento **continuam corrigíveis**:
+eles são medição do que houve ("levou três horas, não uma"), e proibir a correção
+obrigaria a apagar o bloco para consertar um número.
+
+### A faixa "agendado sem horário"
+
+É a **barra de progresso da mudança**. Todo chamado de campo aberto que tem data
+e nenhum bloco cai nela — no primeiro dia, isso é 100% da base, porque **não se
+semeou bloco nenhum de propósito**: `12:00` na base significa duas coisas
+indistinguíveis por valor ("a programação não perguntou a hora" e "meio-dia
+mesmo"), e chutar uma duração envenenaria o chip de ocupação com um número
+inventado que tem cara de medição.
+
+A faixa não é um alerta: não tem vermelho, não tem triângulo, e o cartão mostra
+**só a data**, nunca a hora. Ela some sozinha quando o último item ganhar horário
+— sem troféu, sem estado vazio.
+
+### Tirar da agenda NEM SEMPRE apaga a data
+
+Se sobrar bloco **cumprido**, `data_hora_agendada` fica no último atendimento que
+**aconteceu**, e o chamado lê-se "aberto, e a última visita foi dia tal". É de
+propósito: zerar faria um chamado ainda aberto sumir do calendário e do PDF por
+ter sido atendido. **Nenhum texto de tela pode prometer que "o horário some"** —
+a confirmação é derivada, não escrita à mão.
+
+### A CONSULTA-CANÁRIO DA DURAÇÃO (rodar de vez em quando)
+
+Quanto dura um atendimento é **sempre digitado**. O sistema não chuta, e o campo
+abre vazio — os atalhos (30min, 1h, 1h30, 2h, 3h, 4h) são digitação abreviada, e
+nenhum vem pré-selecionado.
+
+O risco disso não é lixo: é **uniformidade**. Sob pressão, no celular, no campo,
+todo mundo toca o mesmo atalho — e em um mês a duração média vira um número com
+cara de medição que ninguém mediu. Nesse ponto o chip de ocupação, a recusa da
+jornada, o selo "disponível" e (na Fase 2) o cálculo de rota assentam num chute.
+
+O verificador **não vê isso**: é problema de DADO, e ele lê código. A defesa é
+esta consulta, com o limiar escrito ao lado:
+
+```sql
+SELECT servico_min, count(*) FROM agenda_campo GROUP BY 1 ORDER BY 2 DESC;
+```
+
+**Se um único valor passar de 70% do total, a duração está sendo chutada e o chip
+de ocupação não vale nada.** A resposta certa aí não é apertar ninguém: é o Davi
+dizer quanto dura, tipicamente, uma preventiva, uma corretiva, uma implantação e
+uma operacional — e esses quatro números entrarem como padrão **etiquetado**
+("padrão da preventiva"), nunca como um número mudo. Um dia depois disso, o
+padrão honesto é a **mediana medida** dos blocos cumpridos, e aí os quatro
+números decretados saem.
+
+### A grade e o dia são o MESMO objeto
+
+No desktop, a grade é semana × equipe; no celular, o dia continua sendo a
+unidade. Não são duas telas: `linhasDaGrade` é calculada uma vez, com a semana
+inteira, e o celular desenha **uma coluna** dela. O chip de ocupação diz sempre
+"% da semana", inclusive no celular — é a mesma linha, com menos colunas
+desenhadas.
+
+**No celular não se arrasta**: HTML5 drag-and-drop não dispara em toque. O gesto
+é tocar o cartão e usar o mesmo formulário — que é o gesto primário nos dois
+viewports, porque o arrasto só sabe exprimir equipe e dia, e o formulário exprime
+os cinco campos.
+
+### Anti-práticas desta parte
+
+- Escrever `chamados.data_hora_agendada` de um chamado de **campo** por qualquer
+  caminho que não sejam as quatro portas. O verificador tem um censo por
+  varredura que acusa isso nomeando o arquivo.
+- Pré-selecionar uma duração "para agilizar". É um backfill, um clique por vez.
+- Mostrar a HORA de um chamado que está na faixa "sem horário" (12:00 sentinela
+  e 12:00 de verdade são o mesmo valor na base).
+- Prometer, em texto de tela, que "tirar da agenda apaga o horário".
+- Colapsar uma linha da grade sem desenhar os blocos dela: `blocosForaDaGrade`
+  existe para pegar isso, e ele tem de ser sempre `{0, 0}`.
+
 ## Os indicadores de campo — o que cada número responde
 
 Cálculo em `src/features/paineis/indicadores.ts` — **módulo puro, coberto por
