@@ -370,7 +370,53 @@ U78), e `podeEditarChamado` passa a ser consultado por cartão — hoje resolvid
 por um gêmeo local síncrono, e não por RPC, justamente para não virar um N+1 de
 HTTP.
 
-## P18 — CRÍTICO · A linha do tempo entrega o valor em reais a TODO autenticado (2026-09-01, U80)
+## P18 — ~~CRÍTICO · A linha do tempo entrega o valor em reais a TODO autenticado~~ FECHADA (S4, 2026-09-03)
+
+**FECHADA pela `20260903180000_s4_auditoria_de_valor.sql`, pelas DUAS saídas, e
+não por uma delas.** A migration está no repo aguardando o Davi rodar (depois da
+U80 — o §0 dela aborta se a U80 ainda não tiver rodado).
+
+- **Saída (b):** `aprovar_chamado_financeiro` perde o `to_char`. O evento passa a
+  ser `'Cobrança aprovada: N item(ns).'` — o FATO e a CONTAGEM. Nada de
+  informação legítima se perde: o dinheiro mora em `cobrancas`, atrás de
+  `cobrancas_select = pode_ver_financeiro` (u4:293).
+- **Saída (a):** `chamado_eventos_select` passa a `pode_acessar_chamado(chamado_id)`,
+  a mesma régua de `chamado_fotos_select` (u7:579) e `chamado_checklist_select`
+  (u7:594). **A condição que este item deixou aberta — "precisa ser medida contra
+  quem hoje depende de ler evento de chamado alheio" — foi medida:** existe um
+  único SELECT de `chamado_eventos` no `src/` (`data.ts:337-341`), sempre
+  `.eq("chamado_id", …)`, com três chamadores que partem de um chamado já aberto.
+  Nenhuma tela quebra.
+- **De brinde:** o `WITH CHECK` do INSERT ganhou o vínculo. Antes, qualquer
+  autenticado comentava em qualquer chamado, inclusive num que não conseguia ver.
+
+**Correções ao texto original deste item, para o histórico não mentir:**
+
+1. A citação `DetalheCampo.tsx:1205-1207` está **errada** (ela se propagou para
+   `u80:511` e para o diário). O card da linha do tempo é
+   **`DetalheCampo.tsx:1252-1278`, e a pintura é a 1267**; a 1207 hoje é o bloco
+   `isGerente && os.status === "concluido"`.
+2. A saída (a) foi proposta aqui como `pode_acessar_chamado` puro, e duas
+   leituras da auditoria pediram uma função nova com uma perna
+   `OR natureza = 'interno'`, citando `chamados_select` de u7:545. **Essa policy
+   está morta desde `u29:181-196`**, e o ramo não-comercial da versão viva não
+   tem essa perna: a função nova teria AFROUXADO a régua. `pode_acessar_chamado`
+   é superconjunto da `chamados_select` viva no ramo não-comercial.
+3. Resíduo declarado: para `natureza = 'comercial'`, `chamados_select` é mais
+   estrita que `pode_acessar_chamado`. Quem abriu um comercial que não é seu lê o
+   evento sem abrir a capa. É o mesmo desvio que fotos e checklist têm desde
+   19/08, e está escrito em comentário na S4.
+
+**O que NÃO foi fechado, e vira decisão do Davi:** a S4 conserta o FUTURO e
+estreita QUEM, mas **não reescreve `descricao` de linha antiga** — isso destruiria
+registro de auditoria. Uma linha histórica com cifra continua legível pelo
+técnico responsável daquele chamado. O §3 da migration MEDE esse resíduo (linhas
+300-302 da conferência). Se voltar zero — a U69:57 fez `DELETE FROM
+public.chamados`, e `chamado_eventos` sai por CASCADE — não há nada a fazer. Se
+voltar linha, a coluna `chamado_eventos.financeiro` (`DEFAULT true` invertido,
+para que um escritor futuro nasça escondido) vira a S5 e é obrigatória.
+
+<details><summary>Texto original do P18, preservado</summary>
 
 **É o vazamento que a R13 e a U6a existem para impedir, e ele está aberto hoje.**
 
@@ -414,6 +460,8 @@ cifra do evento (o `to_char` sai, e a contagem fica). A segunda é uma linha e n
 mexe em permissão nenhuma; a primeira é a régua certa e precisa ser medida contra
 quem hoje depende de ler evento de chamado alheio.
 
+</details>
+
 ## P19 — ALTO · O DELETE de `aprovar_chamado_financeiro` come o avulso vinculado (2026-09-01, U80)
 
 `aprovar_chamado_financeiro` faz, incondicionalmente
@@ -451,6 +499,18 @@ DELETE FROM public.cobrancas
 
 Se o Davi autorizar, é a única migration que eu recomendaria acrescentar em
 seguida à U80.
+
+**Correção da S4 (2026-09-03): a linha acima é INSUFICIENTE, e a S4 recusou
+incluí-la por isso.** A S4 recria `aprovar_chamado_financeiro` inteira, então a
+tentação de acrescentar o predicado ali era grande. Só que estreitar o `DELETE`
+salva a cobrança avulsa e **não conserta o resto do caminho**: como o chamado não
+tem peça faturável, `v_itens = 0` continua e o `UPDATE` continua cravando
+`sem_cobranca`. Trocaria-se "o dinheiro some e a linha do tempo confirma que não
+havia dinheiro" por **"o dinheiro fica e o `faturamento_status` mente"** — que é
+pior de diagnosticar, porque a inconsistência passa a ser silenciosa em vez de
+uma linha faltando. O conserto de verdade mexe na decisão de
+`faturamento_status` (contar as cobranças vivas, e não só as que este INSERT
+acabou de criar), e isso é motor, não auditoria de valor.
 
 ## P20 — MÉDIO · `em_conferencia` é um buraco negro: o chamado sai de toda fila sem ninguém aprovar (2026-09-01, U80)
 
@@ -501,6 +561,157 @@ criam dois jogos de parcelas. Nenhum dos dois índices da U80 o alcança — os 
 predicados exigem `chamado_peca_id IS NOT NULL` ou `chamado_id IS NOT NULL`. A
 afirmação da U80 é **"lançar pelo cartão não duplica"**, e não "ninguém com papel
 financeiro duplica nada em lugar nenhum".
+
+## P22 — ALTO · O catálogo de preço é público, e isto é R12 CONTRA R13 (2026-09-03, S4)
+
+**Não é policy errada. São duas regras de produto que se contradizem, e o código
+escolheu sozinho.** Por isso a S4 não consertou: não há conserto sem decisão.
+
+Três policies, todas `FOR SELECT TO authenticated USING (true)`, vivas desde a
+primeira migration (`20260628044253_c73bdb7f-…`):
+
+| tabela | linha | o que carrega |
+|---|---|---|
+| `equipamentos` | :84 | **`custo`** e **`markup`** (:67-68) |
+| `servicos` | :118 | **`preco_unitario_mensal`** (:106) |
+| `blocos` | :63 | `hh` (homem-hora — insumo de preço) |
+
+`pode_ver_financeiro()` nunca encostou nelas. E o preço da proposta não é uma
+coluna: é uma conta feita no navegador sobre esse catálogo —
+`gerarProposta.ts:227` busca `custo`, `:254-262` faz `custoTotal × MARKUP_VENDA`
+mais `blocos × HH_PADRAO_BLOCO × VALOR_HORA_HOMEM`, e as três constantes estão em
+`comercial/regrasComerciais.ts:7,11,14` (`1.5`, `R$ 45`, `10`), dentro do bundle.
+
+**O que um `curl` consegue hoje:** `GET /rest/v1/equipamentos?select=*` devolve a
+tabela de preço da Prever e a margem, para qualquer autenticado. É a informação
+comercialmente mais sensível do sistema, e está mais aberta que o telefone do
+zelador (que a S1 fechou).
+
+**Mas fechar quebra a R12, e o custo está medido.** A R12 (`PRODUTO.md:260-261`)
+manda o técnico montar o orçamento na visita. `BlocoItensEditor.tsx:169` busca
+`code,nome,marca,modelo,custo,markup`, `:178` calcula `preco = custo × markup` e
+`:625`/`:489` imprimem `R$`. Ele é montado em **quatro telas do fluxo do técnico**
+(`visita.$id.tsx:1266`, `.orcamento.blocos.$cat.tsx:1898`, `.categorias.tsx:314`,
+`.pre-envio.tsx:502`). **A tela do técnico já mostra o preço de venda, hoje.**
+
+Varredura por COLUNA, para o conserto não passar do ponto:
+
+| lê só identidade (`code,nome,marca,modelo`) — não sentiria nada | lê o dinheiro (`custo`, `markup`) |
+|---|---|
+| `checklist.ts:140` · `inventario.ts:243,382` · `visita.$id.orcamento.blocos.$cat.tsx:578,629` | `BlocoItensEditor.tsx:169` · `visita.$id.pagamento.tsx:132` · `gerarProposta.ts:227` · `projeto/data.ts:78` (`select("*")`) · `admin.tsx:60` · `lib/cobranca.functions.ts:138` |
+
+**O caminho de coluna está fechado, e já foi tentado.** `REVOKE` de coluna atinge
+o role `authenticated` inteiro — admin junto — e derruba `select *` (S1 §5,
+revertida pela `s1b`; ver P-histórico e `s1b:6-17`). O que sobra é **view
+`equipamentos_publico`** (sem `custo`/`markup`) para o fluxo do técnico, com a
+tabela crua em `pode_ver_financeiro`. Não existe view nenhuma no banco hoje
+(`grep "CREATE …VIEW" supabase/migrations` = 0): é máquina nova.
+
+**A decisão é do Davi, e é uma pergunta de uma frase:**
+
+> O técnico monta orçamento na visita e vê preço de venda (implementado, quatro
+> telas), ou o técnico não vê valores (escrito na R13)?
+
+- **Se vale a R13:** view + fechar a tabela crua, e a R12 precisa dizer como o
+  técnico monta orçamento sem ver preço.
+- **Se vale a R12:** a **R13 precisa ser reescrita** para dizer *o que* o técnico
+  e o SAC não veem (o que se COBRA do cliente: cobrança, contrato, fechamento)
+  em vez de "valores", que hoje é literalmente falso. O furo passa a ser "o
+  catálogo é público", que é decisão consciente e não buraco.
+
+Enquanto a resposta não vier, isto fica aberto e **declarado** — que é diferente
+de esquecido. Precedente de leitura na mesma direção: a S1 já decidiu que custo
+de fornecedor não é R13 (`s1:148-151`, *"a R13 trata do que COBRAMOS do cliente,
+não do que pagamos ao fornecedor"*); se a mesma leitura valer para o catálogo
+interno, isto é deliberado por analogia — mas nunca foi escrito, e a S4 se
+recusou a presumir.
+
+## P23 — MÉDIO · O SAC lê o orçamento da visita, por deriva silenciosa da U6a (2026-09-03, S4)
+
+`pode_acessar_visita` nasce em `etapa0:61` com o comentário *"(técnico responsável
+ou gestor)"*, e a seção que a usa declara em `etapa0:313`: **"Regra: técnico
+responsável pela visita OU gestor (admin/comercial)"**. Ela delega para
+`is_gestor` (`etapa0:67`). Três dias depois a **U6a ampliou `is_gestor` para
+incluir o SAC** (`u6a:51-66`), e `orcamentos_escopo_visita`,
+`blocos_escopo_visita` e `itens_escopo_visita` (`etapa0:321,329,337`) herdaram o
+papel novo sem ninguém revisitar. **A policy discorda do comentário que está três
+linhas acima dela.**
+
+É palavra por palavra o diagnóstico que a S1 §7 (`s1:278-297`) fez para
+`clientes` — *"a etapa1 escreveu `is_gestor` pensando em admin+comercial… a U6a
+AMPLIOU… ninguém revisitou"*. A S1 varreu clientes e inventário. **Não varreu as
+visitas.**
+
+**Em tela:** `visita.$id.pagamento.tsx` (custo, valor de venda, mensalidade de
+locação, escada de comodato 24/36/48/60) **não tem `beforeLoad`** (`:34-36`: só
+`component`). A UI esconde o botão (`visita.$id.tsx:1481-1484`, atrás de
+`canApprove`), e essa parte está certa — mas a rota é digitável, e as quatro
+consultas da página passam para um SAC: `:100` `visita_blocos` e `:114`
+`visita_bloco_itens` por `pode_acessar_visita`→`is_gestor`, `:131` `equipamentos`
+e `:147` `servicos` por `USING (true)`.
+
+**Por que a S4 NÃO consertou, e é o achado que muda o veredito:** as três tabelas
+do trio **não têm coluna de dinheiro**. `visita_blocos` (`…6ca84953:1-25`) e
+`visita_bloco_itens` (`…23c3a006:44-54`) são `tipo_bloco`, `hh_padrao`, `cod_eq`,
+`qtd`; a única coluna de valor é `visita_orcamentos.valor_hora_hh`
+(`…fe914b42:12`), uma *taxa*. **O R$ daquela tela é calculado no navegador a
+partir de `equipamentos.custo × markup` — ou seja, de P22.**
+
+E trocar `pode_acessar_visita` por `pode_ver_financeiro OR tecnico_id` nas três
+policies **quebraria o SAC**, medido:
+
+- `inventario.ts:298-310` e `derivarInventarioDaVisita` (`:347-375`) — derivar o
+  inventário do cliente a partir da visita aprovada. `/clientes` é
+  `[tec:false, com:true, sac:true]`: **o SAC tem a tela.** A lista voltaria vazia
+  e o botão diria "nada a importar";
+- `checklist.ts:119-135` — semear o checklist do chamado a partir dos blocos da
+  visita.
+
+**Fechar P23 sozinho quebra o SAC e não esconde um real.** Ele sai junto com P22
+ou não sai. O conserto, quando vier, tem a forma que a S1 já validou: uma função
+com o papel no nome (`pode_ver_orcamento_da_visita`), lendo `pode_ver_financeiro
+OR v.tecnico_id = auth.uid()`, em vez de `is_gestor` — cujo significado, nas
+palavras da própria S1 (`:290`), *"já mudou uma vez e pode mudar de novo"*.
+
+## P24 — MÉDIO · A S1 §2.3 está morta desde que nasceu: `unidades_select` sobreviveu (2026-09-03, S4)
+
+`cliente_equipamento_unidades` tem **duas** policies de SELECT vivas, e policies
+permissivas somam com OR:
+
+| policy | onde | USING |
+|---|---|---|
+| `unidades_select` | `u3:276-280` | **`true`** |
+| `cliente_equipamento_unidades_select` | `s1:124` | cadeia `pode_ver_cliente` |
+
+A S1 §2.3 (`s1:123-132`) dá `DROP POLICY IF EXISTS
+"cliente_equipamento_unidades_select"` — **um nome que ainda não existia** — e
+nunca derruba `unidades_select`. Grep completo: as únicas quatro menções são
+u3:276, u3:278, s1:123, s1:124. **O gate da S1 nunca valeu.**
+
+**E a própria conferência da S1 teria dito isso em 20/08.** A linha
+`'inventário: nenhuma policy aberta sobrou (esperado 0)'` (`s1:494-498`) conta
+`qual = 'true'` nas três tabelas — ela teria retornado **1**. Ou a conferência
+passou batida, ou alguém dropou a policy à mão e o repo não sabe. **Não sei qual;
+só o `pg_policies` responde.** Antes de escrever migration, rodar:
+
+```sql
+SELECT policyname, qual FROM pg_policies
+ WHERE schemaname='public' AND tablename='cliente_equipamento_unidades';
+```
+
+**Escopo, para não confundir com R13:** a tabela **não tem coluna de dinheiro** —
+é `numero_serie`, `tag_patrimonio`, `imei`, `codigo_barras`, `estado` (u3:30-33),
+o que a S1 §2 chama de "informação de segurança física" (`s1:91-93`). Não é
+vazamento de valor; é uma promessa de migration de segurança que não foi
+cumprida, e isso não pode ficar sem dono.
+
+**E fechar MUDA COMPORTAMENTO, o que provavelmente explica por que ninguém
+notou:** `acharUnidadePorSerie` (`pecas.ts:154-164`) é um lookup **global por
+número de série, sem filtro de cliente** — "o lookup do técnico em campo".
+Aplicar a S1 §2.3 de verdade o escopa por `pode_ver_cliente`, e uma peça de outro
+cliente passa a voltar `null`. É o que a S1 quis; é a mudança que a S1 achou que
+já tinha feito. Vale conferir com o Davi se o lookup global é intencional antes
+de fechar.
 
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 

@@ -428,7 +428,12 @@ BEGIN
       RAISE EXCEPTION 'Tipo de serviço inválido: %.', v_tipo USING ERRCODE = '55000';
     END IF;
     -- Gêmeo de PARCELAS_MAXIMAS = { instalacao: 60, manutencao: 12 } (periodos.ts:97)
-    IF v_n > CASE WHEN v_tipo = 'instalacao' THEN 60 ELSE 12 END THEN
+    -- OS PARÊNTESES SÃO OBRIGATÓRIOS, e não estilo: o plpgsql delimita a
+    -- condição de um IF procurando a palavra THEN no nível zero de parênteses.
+    -- Um CASE nu põe um THEN nesse nível, a condição é cortada em
+    -- "v_tipo = 'instalacao'" e o resto do corpo derrapa — o Postgres devolve
+    -- "syntax error at end of input" apontando para esta linha, que está certa.
+    IF v_n > (CASE WHEN v_tipo = 'instalacao' THEN 60 ELSE 12 END) THEN
       RAISE EXCEPTION 'Instalação vai até 60 parcelas; manutenção, até 12. Vieram %.', v_n
         USING ERRCODE = '55000';
     END IF;

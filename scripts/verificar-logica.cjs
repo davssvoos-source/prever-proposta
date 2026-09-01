@@ -8684,26 +8684,61 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // CENSO: as funções que a U80 DEFINE × a lista escrita à mão. É o que prova
   // que ela não reescreveu o motor — e é mais forte do que procurar o nome de
   // cada função do motor uma a uma, porque pega a que ninguém pensou em proibir.
-  // A TERCEIRA É DELIBERADA, e a lista carrega o motivo. `aprovar_chamado_financeiro`
-  // é do motor de agosto e a U80 a reescreve por UMA linha: `::date` vira
-  // `AT TIME ZONE 'America/Sao_Paulo'`. Sem isso, os DOIS caminhos de nascer
-  // cobrança (a aprovação e o lançamento novo) usariam convenções de fuso
-  // diferentes, e a mesma conta cairia em meses diferentes conforme a porta por
-  // onde entrou. O defeito é anterior a nós — desde agosto, chamado encerrado
-  // depois das 21h de Brasília gera competência do mês seguinte — e consertá-lo
-  // aqui é mais barato que conviver com dois relógios.
-  eq('CRÍTICO: CENSO — a U80 define EXATAMENTE estas três, e a terceira é o motor de agosto tocado SÓ no fuso (ajustar/faturar/fechamentos continuam como estão)',
+  // A TERCEIRA É O MOTOR DE AGOSTO, e o que a U80 fez com ela é assunto das
+  // duas asserções seguintes.
+  eq('CRÍTICO: CENSO — a U80 define EXATAMENTE estas três (ajustar/faturar/fechamentos continuam como estão)',
      [...new Set([...vivo80.matchAll(/^CREATE OR REPLACE FUNCTION public\.([a-z_0-9]+)/gm)].map((m) => m[1]))].sort(),
      ['aprovar_chamado_financeiro', 'chamados_com_lancamento', 'concluir_chamado_com_cobranca']);
-  eq('CRÍTICO: e o que ela muda em aprovar_chamado_financeiro é o FUSO, nada mais — as duas garantias do motor continuam de pé',
-     /AT TIME ZONE 'America\/Sao_Paulo'/.test(vivo80)
-     // A condição TEM de vir COLADA no THEN. `[\s\S]{0,N}` engolia um
-     // `IF false` injetado no meio: a garantia do "revisar" ficava desligada
-     // e a asserção, verde. É a terceira vez que esta família aparece —
-     // quantificador frouxo não prova que a condição é a que se pensa.
-     && /IF v_revisar > 0 THEN\s*\n\s*RAISE EXCEPTION/.test(vivo80)
-     && /DELETE FROM public\.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';/.test(vivo80),
-     true);
+
+  /* ══ A ASSERÇÃO QUE ESTAVA AQUI DIZIA UMA FALSIDADE, EM VERDE ═════════════
+   *
+   * Ela se chamava "…o que ela muda em aprovar_chamado_financeiro é o FUSO,
+   * nada mais — as duas garantias do motor continuam de pé", e provava isso com
+   * TRÊS REGEX DE PRESENÇA sobre o arquivo inteiro: `AT TIME ZONE`,
+   * `IF v_revisar > 0 THEN\n RAISE EXCEPTION` e o `DELETE`. As três passavam.
+   * NENHUMA PERGUNTAVA O QUE SAIU.
+   *
+   * E saíram três coisas do corpo, contra a U13 (u13:70-124):
+   *   1. o GATE DE PAPEL (`IF NOT public.pode_ver_financeiro(auth.uid()) THEN
+   *      RAISE … 42501`, u13:76-78) — numa SECURITY DEFINER concedida a
+   *      `authenticated`, o corpo é o ÚNICO lugar onde o papel pode ser checado.
+   *      Sem ele, qualquer técnico chama a RPC e recebe `total numeric`;
+   *   2. a trava `IF v_ch.status <> 'concluido'` (u13:81-83);
+   *   3. o `sem_cobranca` e o `concluida_em`.
+   * E entraram quatro colunas que NÃO EXISTEM (`decisao`, `valor_cobravel`,
+   * `descricao`, `id` em `chamado_pecas_analise`) — 42703 na primeira aprovação.
+   *
+   * É a regra 4 desta casa em estado puro: a asserção foi escrita a partir do
+   * corpo NOVO, listou o que o corpo novo manteve, e chamou isso de "as duas
+   * garantias". Eram três. Medir cobertura com o mesmo recorte que a produziu é
+   * medir a si mesmo.
+   *
+   * A U80 NÃO É EDITADA (CLAUDE.md:53 — migration enviada não se reescreve).
+   * Então a asserção passa a dizer a VERDADE sobre ela, e a verdade inclui a
+   * consequência: a S4 tem de rodar logo em seguida. As asserções da S4, no fim
+   * deste arquivo, provam que o conserto está lá.
+   */
+  {
+    const iAp = vivo80.indexOf('CREATE OR REPLACE FUNCTION public.aprovar_chamado_financeiro');
+    const ini = vivo80.indexOf('AS $aprovar$', iAp) + 'AS $aprovar$'.length;
+    const corpoAp80 = iAp < 0 ? '' : vivo80.slice(ini, vivo80.indexOf('$aprovar$', ini));
+    eq('CRÍTICO: a U80 REESCREVEU o corpo de `aprovar_chamado_financeiro` e PERDEU o gate de papel e a trava de status — não é "só o fuso", e é por isso que a S4 existe e roda logo depois dela',
+       [/pode_ver_financeiro/.test(corpoAp80),
+        /v_ch\.status <> 'concluido'/.test(corpoAp80),
+        /a\.valor_cobravel/.test(corpoAp80),
+        /sem_cobranca/.test(corpoAp80)],
+       [false, false, true, false]);
+    // O ÚNICO ganho legítimo do §4b, e o que a S4 é obrigada a carregar adiante:
+    // as duas portas de nascer cobrança têm de ter o mesmo relógio.
+    // A condição TEM de vir COLADA no THEN. `[\s\S]{0,N}` engolia um `IF false`
+    // injetado no meio: a garantia do "revisar" ficava desligada e a asserção,
+    // verde. Quantificador frouxo não prova que a condição é a que se pensa.
+    eq('…e o que ela ganhou, e a S4 preserva: o fuso de Brasília na competência, mais o "revisar" e o DELETE que já vinham da U13',
+       [/AT TIME ZONE 'America\/Sao_Paulo'/.test(corpoAp80),
+        /IF v_revisar > 0 THEN\s*\n\s*RAISE EXCEPTION/.test(corpoAp80),
+        /DELETE FROM public\.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';/.test(corpoAp80)],
+       [true, true, true]);
+  }
   eq('CRÍTICO: e ela NÃO reescreve competência de linha nenhuma já gravada — fechamento já recolhido não se mexe',
      /UPDATE public\.cobrancas[^;]{0,200}competencia/m.test(vivo80), false);
   eq('…e ela não recria policy nenhuma: a régua de leitura de `cobrancas` continua sendo a da U4',
@@ -9055,6 +9090,470 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      analisarSql("-- AS $desfaz$\n--   SELECT 1;\n-- $desfaz$;\nSELECT 1;"), []);
   eq('…nem um bloco normal, sem comentário citando delimitador',
      analisarSql("DO $$\nBEGIN\n  -- isto é um comentário comum\n  PERFORM 1;\nEND $$;"), []);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// S4 — AUDITORIA DE VALOR: "quem consegue ler dinheiro, e isso bate com a R13"
+// ══════════════════════════════════════════════════════════════════════════
+//
+// Três censos e uma cadeia de alcançabilidade. Nenhuma asserção aqui foi
+// escrita sem antes quebrar a regra de propósito e ver o verificador ficar
+// VERMELHO — é a regra 1 desta casa, e sem ela uma asserção é só uma frase
+// confiante. O registro das mutações está no diário (PLANO_UNIFICACAO, S4).
+//
+// E o regex sobre SQL respeita as três cicatrizes da regra 2:
+//   · `-- REVOKE` contém `REVOKE` → tudo ancorado em `^` com flag `m`;
+//   · `[\s\S]{0,N}` atravessa o `;` até o comentário do lado → `[^;]`;
+//   · `RETURN` depois do `BEGIN` mata a função sem apagar linha → prende a
+//     PRIMEIRA INSTRUÇÃO EXECUTÁVEL, extraída do corpo delimitado.
+{
+  const fsS4 = require('fs');
+  const DIR_S4 = 'supabase/migrations';
+  const MIGS4 = fsS4.readdirSync(DIR_S4).filter((f) => f.endsWith('.sql')).sort();
+  const lerS4 = (f) => fsS4.readFileSync(`${DIR_S4}/${f}`, 'utf8');
+  const ARQ_S4 = '20260903180000_s4_auditoria_de_valor.sql';
+  const s4 = lerS4(ARQ_S4);
+  // Só o que RODA: o rodapé DESFAZER é um bloco comentado que contém
+  // `USING (true)` de propósito (é para onde se volta). Medir o arquivo inteiro
+  // seria medir o desfazer junto — e o desfazer é o defeito.
+  const vivoS4 = s4.slice(0, s4.indexOf('\n-- ╔') > 0 ? s4.indexOf('\n-- ╔') : s4.length);
+  const codS4 = vivoS4.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+
+  // ── o corpo da função, delimitado — nunca o arquivo ──────────────────────
+  const corpoDe = (fonte, nome, tag) => {
+    const i = fonte.indexOf(`CREATE OR REPLACE FUNCTION public.${nome}`);
+    if (i < 0) return '';
+    const j = fonte.indexOf(`AS ${tag}`, i);
+    if (j < 0) return '';
+    const k = j + `AS ${tag}`.length;
+    const f = fonte.indexOf(tag, k);
+    return f < 0 ? '' : fonte.slice(k, f);
+  };
+  const corpoS4 = corpoDe(vivoS4, 'aprovar_chamado_financeiro', '$s4$');
+  const primeiraInstrucao = (corpo) => {
+    const k = corpo.search(/^BEGIN$/m);
+    return k < 0 ? '(sem BEGIN)'
+      : corpo.slice(k + 6).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('--'))[0];
+  };
+
+  eq('CRÍTICO: o corpo da S4 foi encontrado e é o de aprovar_chamado_financeiro (sem isto, todas as asserções abaixo medem string vazia e passam de graça)',
+     corpoS4.length > 400 && /RETURN QUERY SELECT v_itens, v_total;/.test(corpoS4), true);
+
+  // ── 1) ALCANÇABILIDADE: o gate é a PRIMEIRA instrução executável ─────────
+  // Um `RETURN` posto logo depois do `BEGIN` mataria a porta sem apagar uma
+  // linha, e todo regex de conteúdo continuaria casando. E a ORDEM importa por
+  // si: em u80 a primeira instrução era `SELECT * INTO v_ch FROM chamados` —
+  // SECURITY DEFINER, furando a RLS — o que fazia da função um oráculo de
+  // existência de UUID mesmo quando ela quebrava na instrução seguinte.
+  eq('CRÍTICO: a PRIMEIRA instrução executável de `aprovar_chamado_financeiro` é o gate de papel da R13 — numa SECURITY DEFINER concedida a authenticated, o corpo é o ÚNICO lugar onde o papel pode ser checado, e nenhuma conferência de catálogo enxerga isso',
+     primeiraInstrucao(corpoS4), 'IF NOT public.pode_ver_financeiro(auth.uid()) THEN');
+  eq('…e ela VEM ANTES da leitura de `chamados` que ela protege — gate posto depois do SELECT não é gate',
+     corpoS4.indexOf('pode_ver_financeiro') > 0
+     && corpoS4.indexOf('pode_ver_financeiro') < corpoS4.indexOf('SELECT * INTO v_ch FROM public.chamados'),
+     true);
+  eq('…e o RAISE dela é 42501 (permissão), não um erro genérico que o cliente traduziria errado',
+     /RAISE EXCEPTION 'Somente quem responde pelo financeiro pode aprovar cobrança\.' USING ERRCODE = '42501';/.test(corpoS4),
+     true);
+  eq('CRÍTICO: e as outras três restaurações da U13 estão no corpo — a trava de status, o `sem_cobranca` e o `concluida_em` na competência',
+     [/IF v_ch\.status <> 'concluido' THEN/.test(corpoS4),
+      /CASE WHEN v_itens = 0 THEN 'sem_cobranca' ELSE 'aprovada' END/.test(corpoS4),
+      /COALESCE\(v_ch\.finalizada_em, v_ch\.concluida_em, v_ch\.created_at\)/.test(corpoS4)],
+     [true, true, true]);
+  eq('…e o único ganho legítimo da U80 sobrevive: as DUAS portas de nascer cobrança têm o mesmo relógio',
+     /AT TIME ZONE 'America\/Sao_Paulo'/.test(corpoS4), true);
+
+  // ── 2) A CIFRA SAI DA LINHA DO TEMPO ─────────────────────────────────────
+  // Medido no INSERT do evento, e não no corpo: `to_char(v_data,'YYYY-MM')` é
+  // legítimo e mora duas linhas acima. Medir o corpo inteiro daria falso
+  // positivo — e medir o arquivo inteiro daria falso NEGATIVO, porque o
+  // cabeçalho cita `FM999G999G990D00` para explicar o defeito.
+  {
+    // Até o `;` do próprio INSERT, e não até o fim do corpo: o corpo termina em
+    // `RETURN QUERY SELECT v_itens, v_total;`, e medir até lá acusaria `v_total`
+    // num lugar onde ele é a devolução legítima da função (que é gateada).
+    const iIns = corpoS4.indexOf('INSERT INTO public.chamado_eventos');
+    const ins = corpoS4.slice(iIns, corpoS4.indexOf(';', iIns) + 1);
+    eq('CRÍTICO: o evento da linha do tempo grava o FATO e a CONTAGEM, nunca o dinheiro — a linha do tempo é lida por quem não vê financeiro, e o total mora em `cobrancas` atrás de pode_ver_financeiro (u4:293)',
+       [/FM999G999G990D00/.test(ins), /v_total/.test(ins), /to_char/.test(ins),
+        /'Cobrança aprovada: ' \|\| v_itens \|\| ' item\(ns\)\.'/.test(ins)],
+       [false, false, false, true]);
+  }
+
+  // ── 3) CENSO DE COLUNA: o corpo × o DDL, e é o que teria pego a U80 sozinha
+  // Corpo plpgsql não é resolvido no CREATE: a U80 aplica VERDE referenciando
+  // quatro colunas que nunca existiram, e o 42703 só aparece na primeira
+  // aprovação em produção. A única forma de o texto e o schema conversarem
+  // antes disso é derivar as colunas VIVAS do DDL — CREATE TABLE mais os
+  // ADD/DROP/RENAME COLUMN de todas as migrations, na ordem — e cruzar.
+  const colunasVivasS4 = (nomes) => {
+    let cols = null;
+    for (const f of MIGS4) {
+      const txt = lerS4(f);
+      if (cols === null) {
+        for (const n of nomes) {
+          const i = txt.indexOf(`CREATE TABLE IF NOT EXISTS public.${n} (`);
+          if (i < 0) continue;
+          let j = txt.indexOf('(', i), prof = 0, k = j;
+          for (; k < txt.length; k++) { if (txt[k] === '(') prof++; else if (txt[k] === ')' && --prof === 0) break; }
+          cols = new Set(txt.slice(j + 1, k).split('\n')
+            .map((l) => l.replace(/--.*$/, '').trim())
+            .map((l) => (/^([a-z_0-9]+)\s+[a-z]/.test(l) ? l.match(/^([a-z_0-9]+)\s/)[1] : null))
+            .filter(Boolean));
+          break;
+        }
+      }
+      if (cols === null) continue;
+      const alvo = nomes.join('|');
+      for (const m of txt.matchAll(new RegExp(`^ALTER TABLE (?:IF EXISTS )?public\\.(?:${alvo})\\b([^;]*);`, 'gm'))) {
+        for (const r of m[1].matchAll(/RENAME COLUMN ([a-z_0-9]+) TO ([a-z_0-9]+)/g)) { cols.delete(r[1]); cols.add(r[2]); }
+        for (const r of m[1].matchAll(/ADD COLUMN (?:IF NOT EXISTS )?([a-z_0-9]+)\s/g)) cols.add(r[1]);
+        for (const r of m[1].matchAll(/DROP COLUMN (?:IF EXISTS )?([a-z_0-9]+)/g)) cols.delete(r[1]);
+      }
+    }
+    return [...(cols || [])].sort();
+  };
+  const colsAnalise = colunasVivasS4(['os_pecas_analise', 'chamado_pecas_analise']);
+  const refsDoAlias = (corpo, alias) =>
+    [...new Set([...corpo.matchAll(new RegExp(`\\b${alias}\\.([a-z_0-9]+)`, 'g'))].map((m) => m[1]))].sort();
+
+  eq('CRÍTICO: CENSO — as colunas VIVAS de `chamado_pecas_analise`, derivadas do DDL da U3 mais os renames da U7, contra a lista escrita à mão',
+     colsAnalise,
+     ['ajustado_manualmente', 'ajustado_por', 'analisado_em', 'chamado_id', 'cobertura_item_id',
+      'confianca', 'justificativa', 'peca_id', 'resultado', 'updated_at', 'valor_calculado']);
+  eq('CRÍTICO: e TODA coluna que o corpo da S4 lê dessa tabela existe — `resultado` e `valor_calculado`, e não `decisao`/`valor_cobravel`',
+     refsDoAlias(corpoS4, 'a').filter((c) => !colsAnalise.includes(c)), []);
+
+  // O PAR NEGATIVO. Sem ele o censo acima é decoração: um extrator quebrado
+  // devolveria lista vazia e passaria verde para sempre. Aqui ele é apontado
+  // para o corpo que SE SABE defeituoso (o §4b da U80) e tem de acusar as
+  // quatro. É o mesmo padrão do detector de dollar-quote logo acima.
+  eq('…e o censo REALMENTE acusa: apontado para o corpo da U80, ele devolve as quatro colunas fantasma — sem este par, um extrator quebrado passaria verde para sempre',
+     refsDoAlias(corpoDe(lerS4('20260903090000_u80_ciclo_financeiro_no_card.sql'),
+                         'aprovar_chamado_financeiro', '$aprovar$'), 'a')
+       .filter((c) => !colsAnalise.includes(c)),
+     ['decisao', 'descricao', 'id', 'valor_cobravel']);
+
+  // ── 4) A POLICY, COMO LINHA INTEIRA E VIVA ───────────────────────────────
+  // Ancorada em `^…$` com /m sobre o CÓDIGO (o cabeçalho da própria migration
+  // transcreve `USING (true)` para explicar o defeito, e o rodapé DESFAZER o
+  // recria: medir o arquivo inteiro casaria com a cicatriz e com o desfazer).
+  eq('CRÍTICO: `chamado_eventos_select` passa a ser a régua das fotos e do checklist do mesmo chamado — antes era `USING (true)`, e um curl com qualquer login lia o total em reais de toda cobrança aprovada da empresa',
+     /^  USING \(public\.pode_acessar_chamado\(chamado_id\)\);$/m.test(codS4), true);
+  // A QUARTA VARIAÇÃO DA MESMA CICATRIZ, e ela apareceu escrevendo esta
+  // asserção: o `COMMENT ON POLICY` e a linha 302 da conferência CITAM
+  // `USING (true)` para dizer o que era — e as duas citações moram dentro de
+  // uma STRING SQL, que o filtro de linhas `--` não alcança. Por isso a medida
+  // é o STATEMENT (`USING (true);`, com o terminador) e não a substring.
+  eq('…e `USING (true)` não sobrou em nenhum COMANDO vivo da S4 — medido como statement, porque a prosa que explica o defeito o cita dentro de string SQL',
+     /USING \(true\)\s*;/.test(codS4), false);
+  eq('CRÍTICO: e o INSERT de comentário passa a exigir vínculo — o WITH CHECK de u7:589 pedia autoria e tipo, mas deixava qualquer autenticado comentar em chamado que ele nem consegue ver',
+     /^  WITH CHECK \(user_id = auth\.uid\(\) AND tipo = 'comentario'\n\s+AND public\.pode_acessar_chamado\(chamado_id\)\);$/m.test(codS4),
+     true);
+  // A régua escolhida é a que JÁ EXISTE, e isso é metade do argumento de que
+  // ela não quebra nada. Duas leituras desta auditoria propuseram uma função
+  // NOVA (`pode_ler_chamado`) para acrescentar uma perna `natureza = 'interno'`
+  // que citavam de `chamados_select` em u7:545 — policy que u29:181 DROPPA e
+  // u29:182 recria SEM essa perna. Regra 2 aplicada a policy: a linha existia,
+  // mas não estava VIVA. A perna teria sido um AFROUXAMENTO.
+  eq('CRÍTICO: a S4 NÃO inventa função de autorização — usa `pode_acessar_chamado`, que u7:579 e u7:594 já usam, e a perna `natureza = interno` (de uma chamados_select morta desde u29:181) não entrou',
+     [/CREATE OR REPLACE FUNCTION public\.pode_(ler|acessar)_chamado/.test(codS4),
+      /natureza = 'interno'/.test(codS4)],
+     [false, false]);
+
+  // ── 5) CENSO DOS ESCRITORES DE EVENTO ────────────────────────────────────
+  // Asserção-por-caso não pega a peça que NASCE sem ninguém pensar nela. Aqui
+  // a lista é DERIVADA: o corpo VIVO de cada função (a última definição no
+  // repo, descontados os DROP FUNCTION) que insere na linha do tempo, contra
+  // uma lista escrita à mão. Um sexto escritor acusa sozinho.
+  const corposVivosS4 = () => {
+    const vivo = new Map();
+    for (const f of MIGS4) {
+      const txt = lerS4(f);
+      let m;
+      const re = /^CREATE OR REPLACE FUNCTION public\.([a-z_0-9]+)\s*\(/gm;
+      while ((m = re.exec(txt)) !== null) {
+        const mt = /\bAS\s+(\$[A-Za-z_0-9]*\$)/.exec(txt.slice(m.index, m.index + 4000));
+        if (!mt) continue;
+        const ini = m.index + mt.index + mt[0].length;
+        const fim = txt.indexOf(mt[1], ini);
+        if (fim < 0) continue;
+        vivo.set(m[1], txt.slice(ini, fim));
+      }
+      const rd = /^DROP FUNCTION IF EXISTS public\.([a-z_0-9]+)\s*\(/gm;
+      while ((m = rd.exec(txt)) !== null) vivo.delete(m[1]);
+    }
+    return vivo;
+  };
+  const vivasS4 = corposVivosS4();
+  const insertsDeEvento = (corpo) =>
+    [...corpo.matchAll(/INSERT INTO public\.(?:chamado|os)_eventos/g)]
+      .map((m) => corpo.slice(m.index, corpo.indexOf(';', m.index) + 1));
+  const escritores = [...vivasS4.entries()]
+    .filter(([, c]) => insertsDeEvento(c).length > 0).map(([n]) => n).sort();
+
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas cinco (derivado do repo × lista à mão; um sexto escritor acusa sozinho)',
+     escritores,
+     ['aprovar_chamado_financeiro',    // S4 — 'Cobrança aprovada: N item(ns).'
+      'chamado_registrar_evento',      // u7:353 — aberto / status / atribuído / sprint
+      'concluir_chamado_com_cobranca', // u80:514 — 'cobrança lançada: N parcela(s).'
+      'decidir_pedido_compra',         // u9:154 — situação do pedido + motivo digitado
+      'marcar_chamado_faturado']);     // u7:758 — contagem de cobranças faturadas
+  eq('CRÍTICO: e NENHUM dos inserts vivos carrega cifra — nem to_char de valor, nem "R$", nem v_total. É o invariante, medido no INSERT e não no corpo (`to_char(v_data,\'YYYY-MM\')` é legítimo e fica duas linhas acima)',
+     [...vivasS4.entries()].flatMap(([n, c]) => insertsDeEvento(c).map((s) => [n, s]))
+       .filter(([, s]) => /FM9|to_char|R\$|v_total/.test(s)).map(([n]) => n),
+     []);
+  // Os dois textos livres que sobram são ESCOLHA declarada, não esquecimento:
+  // o `_motivo` de decidir_pedido_compra e o comentário de um humano podem
+  // conter um número se alguém digitar. A R13 promete que o SISTEMA não mostra
+  // valores; ela não amordaça colegas, e esconder do técnico o motivo da recusa
+  // da peça que ele pediu é o "portão aberto" com outra roupa.
+
+  // ── 6) CENSO DAS POLICIES PERMISSIVAS × A LISTA DAS DELIBERADAS ──────────
+  // A peça central do pedido: a lista DERIVADA (replay de CREATE/DROP POLICY,
+  // ciente de RENAME TO e DROP TABLE — sem isso `os_sla_select` e três outras
+  // aparecem como vivas em tabelas que não existem mais) contra a lista escrita
+  // à mão. Uma policy nova e frouxa acusa sozinha, e ninguém precisa lembrar de
+  // escrever asserção para ela.
+  const censoPermissivas = () => {
+    const vivas = new Map();
+    const norm = (s) => s.replace(/"/g, '').toLowerCase().replace(/^public\./, '');
+    for (const f of MIGS4) {
+      const txt = lerS4(f);
+      const re = /\b(CREATE\s+POLICY|DROP\s+POLICY|ALTER\s+TABLE|DROP\s+TABLE)\b/gi;
+      let m;
+      while ((m = re.exec(txt)) !== null) {
+        const ini = m.index;
+        if (txt.slice(txt.lastIndexOf('\n', ini) + 1, ini).includes('--')) continue;
+        let i = ini, fim = -1, str = false;
+        while (i < txt.length) {
+          const c = txt[i];
+          if (str) { if (c === "'") { if (txt[i + 1] === "'") i++; else str = false; } }
+          else if (c === "'") str = true;
+          else if (c === '-' && txt[i + 1] === '-') { const nl = txt.indexOf('\n', i); i = nl < 0 ? txt.length : nl; continue; }
+          else if (c === ';') { fim = i; break; }
+          i++;
+        }
+        const sql = txt.slice(ini, fim < 0 ? txt.length : fim + 1);
+        const verbo = m[1].toUpperCase().replace(/\s+/g, ' ');
+        if (verbo === 'ALTER TABLE') {
+          const r = sql.match(/^ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?([\w".]+)\s+RENAME\s+TO\s+([\w"]+)/i);
+          if (!r) continue;
+          const de = norm(r[1]), para = norm(r[2]);
+          for (const k of [...vivas.keys()]) if (k.split('|')[0] === de) { vivas.set(`${para}|${k.split('|')[1]}`, vivas.get(k)); vivas.delete(k); }
+          continue;
+        }
+        if (verbo === 'DROP TABLE') {
+          const r = sql.match(/^DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?([\w".]+)/i);
+          if (!r) continue;
+          for (const k of [...vivas.keys()]) if (k.split('|')[0] === norm(r[1])) vivas.delete(k);
+          continue;
+        }
+        const mc = sql.match(/^(?:CREATE|DROP)\s+POLICY\s+(?:IF\s+EXISTS\s+)?("[^"]+"|\w+)\s+ON\s+([\w".]+)/i);
+        if (!mc) continue;
+        const k = `${norm(mc[2])}|${norm(mc[1])}`;
+        if (verbo === 'DROP POLICY') { vivas.delete(k); continue; }
+        const cmd = (sql.match(/\bFOR\s+(ALL|SELECT|INSERT|UPDATE|DELETE)\b/i) || [, 'ALL'])[1].toUpperCase();
+        const iu = sql.search(/\bUSING\s*\(/i);
+        let usando = null;
+        if (iu >= 0) {
+          let j = sql.indexOf('(', iu), prof = 0, z = j;
+          for (; z < sql.length; z++) { if (sql[z] === '(') prof++; else if (sql[z] === ')' && --prof === 0) break; }
+          usando = sql.slice(j + 1, z).replace(/\s+/g, ' ').trim().replace(/^\((.*)\)$/, '$1').trim().toLowerCase();
+        }
+        if ((cmd === 'SELECT' || cmd === 'ALL') && usando === 'true') vivas.set(k, `${f}`);
+        else vivas.delete(k);
+      }
+    }
+    return [...vivas.keys()].sort();
+  };
+
+  /* AS 22 QUE FICAM ABERTAS, E POR QUÊ — cada linha respondeu "quem usa isto
+   * hoje, e para quê" por varredura do `src/`, não por suposição.
+   *
+   *  DECLARADAS na própria migration (o motivo está escrito no banco):
+   *   agenda_campo            u78:86-92  — denominador da ocupação: esconder um
+   *                                        bloco faz o chip mostrar 40% onde há 90%
+   *   duplas_escala(_semanas) u76        — precedente que a u78:86 cita
+   *
+   *  ESTRUTURA E VÍNCULO, sem conteúdo (dois uuids, um id de equipe, um catálogo):
+   *   chamado_apoios          u45:46 a cita como O padrão da casa
+   *   chamado_equipamentos · chamado_equipes · chamado_locais
+   *   chamado_sla · chamado_checklist_templates  — catálogo de prazos e modelos
+   *   duplas · tecnico_aliases · permissoes_tela
+   *
+   *  PESSOAS: `profiles` tem DUAS policies abertas vivas (a segunda, de
+   *   ..76fa7944:38, é duplicata nunca derrubada). Não carrega dinheiro; a S1b
+   *   explica por que privilégio de coluna não resolve nada aqui.
+   *
+   *  BOM / DIMENSIONAMENTO, sem uma coluna de valor: `regras_blocos`,
+   *   `regras_cftv`, `regras_cerca` (`cod_eq`, `qtd`, `condicao`) e
+   *   `blocos_itens` (`qty`, `modelo`). Fechar quebraria o wizard de orçamento
+   *   e não fecharia um real. Estavam na lista de suspeitos e SAÍRAM dela.
+   *
+   *  SEGURANÇA FÍSICA, não R13: `cliente_equipamento_unidades` (série, IMEI,
+   *   patrimônio). A S1 §2.3 achou que a tinha fechado e não fechou — ela
+   *   dropou `cliente_equipamento_unidades_select`, um nome que não existia, e
+   *   deixou `unidades_select` (u3:278) de pé. Registrado como P24.
+   *
+   *  ⚠ AS TRÊS QUE CARREGAM DINHEIRO E FICAM ABERTAS DE PROPÓSITO POR ORA:
+   *   equipamentos (`custo`, `markup`) · servicos (`preco_unitario_mensal`) ·
+   *   blocos (`hh`). Aqui NÃO há policy errada: há R12 contra R13. A R12 manda
+   *   o técnico montar o orçamento na visita, e `BlocoItensEditor.tsx:168-178`
+   *   faz `custo × markup` em quatro telas do fluxo dele. Fechar quebra a R12;
+   *   não fechar deixa a R13 literalmente falsa — qualquer autenticado
+   *   reproduz a tabela de preço e a margem da empresa com um curl. É chamada
+   *   de produto do Davi. Registrado como P22.
+   */
+  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 22, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+     censoPermissivas(),
+     ['agenda_campo|agenda_campo_select',
+      'blocos_itens|blocos_itens read all auth',
+      'blocos|blocos read all auth',
+      'chamado_apoios|chamado_apoios_select',
+      'chamado_checklist_templates|chamado_checklist_templates_select',
+      'chamado_equipamentos|chamado_equipamentos_select',
+      'chamado_equipes|chamado_equipes_select',
+      'chamado_locais|chamado_locais_select',
+      'chamado_sla|chamado_sla_select',
+      'cliente_equipamento_unidades|unidades_select',
+      'duplas_escala_semanas|duplas_escala_semanas_select',
+      'duplas_escala|duplas_escala_select',
+      'duplas|duplas_select',
+      'equipamentos|equip read all auth',
+      'permissoes_tela|permissoes_select',
+      'profiles|profiles_select',
+      'profiles|profiles_select_all_authenticated',
+      'regras_blocos|authenticated read regras_blocos',
+      'regras_cerca|auth read regras_cerca',
+      'regras_cftv|authenticated read regras_cftv',
+      'servicos|servicos read all auth',
+      'tecnico_aliases|tecnico_aliases_select']);
+  eq('…e `chamado_eventos` saiu dessa lista, que é o conserto inteiro em uma linha',
+     censoPermissivas().includes('chamado_eventos|chamado_eventos_select'), false);
+
+  // ── 7) A MIGRATION, COMO MIGRATION DESTA CASA ────────────────────────────
+  // A trava de ordem ABORTA. O padrão `DO $$ … EXCEPTION … RAISE NOTICE`
+  // ENGOLIRIA a falha, e RAISE NOTICE é INVISÍVEL no editor do Supabase: a S4
+  // terminaria verde e a U80 sobrescreveria o conserto meia hora depois.
+  eq('CRÍTICO: a S4 ABORTA se a U80 ainda não rodou — `CREATE OR REPLACE` é a última palavra, e na ordem errada o conserto é sobrescrito pelo defeito',
+     [/RAISE EXCEPTION E'ABORTADO — nada foi alterado \(ROLLBACK\)\./.test(vivoS4),
+      /to_regprocedure\('public\.concluir_chamado_com_cobranca/.test(codS4),
+      /RAISE NOTICE/.test(codS4)],
+     [true, true, false]);
+  // `^` com /m por causa da primeira cicatriz da regra 2: `-- REVOKE` contém
+  // `REVOKE`, e o cabeçalho desta migration fala de REVOKE em prosa.
+  eq('CRÍTICO: a SECURITY DEFINER leva REVOKE de anon — a chave publishable está no `.env` VERSIONADO, então anon é o mundo',
+     [/^REVOKE EXECUTE ON FUNCTION public\.aprovar_chamado_financeiro\(uuid\) FROM PUBLIC, anon;$/m.test(codS4),
+      /^GRANT  EXECUTE ON FUNCTION public\.aprovar_chamado_financeiro\(uuid\) TO authenticated, service_role;$/m.test(codS4)],
+     [true, true]);
+  eq('CRÍTICO: a conferência lê o CATÁLOGO (pg_policies, has_function_privilege, information_schema) — e lê `prosrc` UMA vez, ORDENADA, porque gate de papel de SECURITY DEFINER é a única coisa que o catálogo NÃO sabe enxergar (foi essa cegueira que deixou a U80 passar verde sem ele)',
+     [/pg_policies/.test(codS4), /has_function_privilege/.test(codS4),
+      // has_table_privilege e NÃO information_schema.table_privileges: a view só
+      // mostra a linha quando o usuário corrente é grantor, grantee ou membro —
+      // ela devolve 0 por falta de VISIBILIDADE, e esse 0 passaria como "ok".
+      (codS4.match(/has_table_privilege\('authenticated','public\.chamado_eventos'/g) || []).length === 4,
+      /information_schema\.columns/.test(codS4),
+      /information_schema\.table_privileges/.test(codS4),
+      (codS4.match(/p\.prosrc/g) || []).length >= 3,
+      /strpos\(p\.prosrc, 'pode_ver_financeiro'\)\s*\n?\s*< strpos/.test(codS4)],
+     [true, true, true, true, false, true, true]);
+  // O RESÍDUO. A S4 conserta o FUTURO (nenhum escritor grava cifra) e estreita
+  // QUEM (só quem alcança o chamado). Ela NÃO reescreve `descricao` de linha
+  // antiga — isso seria destruir registro de auditoria e mentir sobre o que foi
+  // aprovado. Então a migration MEDE o que sobra, e é esse número que decide se
+  // existe uma S5 com a coluna `chamado_eventos.financeiro`.
+  eq('CRÍTICO: a migration CONTA o resíduo em vez de supor — quantas linhas já gravadas carregam cifra, e quantas delas continuam legíveis por quem não vê financeiro DEPOIS da S4',
+     [/RESÍDUO: linhas de evento JÁ GRAVADAS que carregam cifra/.test(vivoS4),
+      /RESÍDUO: dessas, quantas continuam legíveis DEPOIS da S4/.test(vivoS4),
+      // o padrão casa os DOIS formatos de FM999G999G990D00: `G`/`D` saem de
+      // lc_numeric, então é "1.842,50" em pt_BR e "1,842.50" em en_US.
+      (codS4.match(/\[0-9\]\[\.,\]\[0-9\]\{2\}\(\[\^0-9\]\|\$\)/g) || []).length >= 3],
+     [true, true, true]);
+  eq('e o rodapé traz o DESFAZER, comentado, dizendo que voltar o motor é voltar o DEFEITO',
+     /^--   CREATE POLICY "chamado_eventos_select" ON public\.chamado_eventos$/m.test(s4)
+     && /Não é rollback de rotina; é o defeito/.test(s4), true);
+
+  // ── 8) O LADO DO APP: nada a fazer, e é preciso dizer POR QUÊ ────────────
+  // O conserto é de banco inteiro. O app não muda porque nada nele lê `tipo`
+  // de evento nem interpreta `descricao`: a linha do tempo pinta o texto que
+  // vier. Um gate em `DetalheCampo.tsx:1267` seria TEATRO pelo modelo de ameaça
+  // desta casa — o que a tela esconde, o `curl` mostra. As duas asserções
+  // abaixo pinam o que o conserto DEPENDE que continue verdade.
+  {
+    const dataS4 = fsS4.readFileSync('src/features/chamados/data.ts', 'utf8');
+    const selects = [...dataS4.matchAll(/\.from\("chamado_eventos" as any\)/g)];
+    eq('CRÍTICO: existe UM ÚNICO SELECT de `chamado_eventos` no app e ele é sempre por UM chamado — é o que faz `pode_acessar_chamado` não quebrar nenhuma tela (nenhum feed agregado, nenhuma listagem entre chamados)',
+       [selects.length, /\.eq\("chamado_id", chamadoId\)/.test(dataS4)], [2, true]);
+    eq('…e o segundo `.from` é o INSERT do comentário, que continua mandando só `user_id` e `tipo=comentario` — o WITH CHECK novo pede vínculo, e quem comenta parte de um chamado já aberto',
+       /\.insert\(\{[\s\S]{0,200}tipo: "comentario"/.test(dataS4), true);
+  }
+}
+
+// ── A SEGUNDA ARMADILHA DO plpgsql: IF … CASE … THEN ────────────────────────
+// A U80 travou DUAS vezes no SQL Editor, por causas diferentes. A primeira foi
+// o delimitador de dollar-quote em comentário (bloco acima). A segunda:
+//
+//   IF v_n > CASE WHEN v_tipo = 'instalacao' THEN 60 ELSE 12 END THEN
+//
+// O plpgsql delimita a condição de um IF/ELSIF procurando a palavra THEN NO
+// NÍVEL ZERO DE PARÊNTESES. Um CASE nu põe um THEN nesse nível: a condição é
+// cortada em "v_tipo = 'instalacao'", o resto do corpo derrapa, e o Postgres
+// devolve "syntax error at end of input" apontando para uma linha que não tem
+// nada de errado. Os parênteses em volta do CASE não são estilo — são o que faz
+// o comando existir.
+//
+// AS DUAS ARMADILHAS TÊM A MESMA RAIZ, e ela vale escrever: neste repositório o
+// SQL NUNCA É ANALISADO POR UM PARSER antes de o Davi colar no editor. O
+// verificador lê TEXTO; o build não compila SQL; não há Postgres local. Então
+// erro de sintaxe só aparece na produção, com ele parado esperando. Estas
+// asserções não substituem um parser — elas cobrem as armadilhas CONHECIDAS, e
+// cada nova que morder deve virar mais uma linha aqui.
+{
+  const fsI = require('fs');
+  const DIR_I = 'supabase/migrations';
+
+  /** IF/ELSIF cuja condição tem um CASE ao nível zero antes do THEN. */
+  const acharIfCase = (src) => {
+    const achados = [];
+    const linhas = src.split('\n');
+    for (let n = 0; n < linhas.length; n++) {
+      const m = /^\s*(ELSIF|IF)\s/i.exec(linhas[n]);
+      if (!m) continue;
+      let texto = linhas[n].slice(m.index + m[0].length);
+      let k = n;
+      while (k + 1 < linhas.length && !/\bTHEN\b/i.test(texto) && !/;\s*$/.test(texto)) {
+        k++; texto += '\n' + linhas[k];
+      }
+      let depth = 0, caseTop = false;
+      for (const t of (texto.match(/\(|\)|\b[A-Za-z_][A-Za-z0-9_]*\b|'[^']*'|\S/g) || [])) {
+        if (t === '(') { depth++; continue; }
+        if (t === ')') { depth--; continue; }
+        if (depth !== 0) continue;
+        if (/^CASE$/i.test(t)) caseTop = true;
+        if (/^THEN$/i.test(t)) { if (caseTop) achados.push(n + 1); break; }
+      }
+    }
+    return achados;
+  };
+
+  const comDefeito = [];
+  for (const f of fsI.readdirSync(DIR_I).sort()) {
+    if (!f.endsWith('.sql')) continue;
+    const a = acharIfCase(fsI.readFileSync(`${DIR_I}/${f}`, 'utf8'));
+    if (a.length) comDefeito.push(`${f}:${a.join(',')}`);
+  }
+  eq('CRÍTICO: nenhum IF/ELSIF de migration tem CASE sem parênteses na condição — o THEN do CASE encerra a condição e o corpo inteiro derrapa',
+     comDefeito, []);
+
+  // Os pares negativos, sem os quais um detector quebrado passa verde para
+  // sempre. Foi assim que a primeira versão do detector de dollar-quote quase
+  // passou, e a lição custou catorze falsos positivos.
+  eq('…e o detector ACHA o defeito quando ele existe',
+     acharIfCase("IF v_n > CASE WHEN t = 'x' THEN 60 ELSE 12 END THEN\n  NULL;\nEND IF;").length, 1);
+  eq('…e POUPA a forma correta, com o CASE entre parênteses',
+     acharIfCase("IF v_n > (CASE WHEN t = 'x' THEN 60 ELSE 12 END) THEN\n  NULL;\nEND IF;"), []);
+  eq('…e poupa um IF comum, sem CASE nenhum',
+     acharIfCase("IF v_n > 12 THEN\n  NULL;\nEND IF;"), []);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

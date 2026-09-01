@@ -61,6 +61,37 @@ Pontos que valem regra:
   de banco. Por isso `REVOKE` de coluna é ferramenta errada (atinge admin
   junto E quebra `select *` — cicatriz S1b). Visibilidade fina = policy ou
   view, nunca REVOKE.
+- **Duas réguas, e elas NÃO são sinônimos** (U6a): `is_gestor()` =
+  admin+comercial+**sac** decide **operação**; `pode_ver_financeiro()` =
+  admin+comercial decide **dinheiro** (R13: o SAC não vê valores). Escolher a
+  errada é o erro mais comum desta base, e ele é silencioso: `is_gestor` numa
+  policy de valor abre para o SAC sem que nada reclame. No app o par é
+  `useIsGerente` × `useVeFinanceiro` (`features/gerencial/data.ts`), espelhos
+  fiéis das duas.
+- **`is_gestor()` já mudou de significado uma vez** — a U6a acrescentou o SAC
+  três dias depois de a etapa0/etapa1 a usarem "pensando em admin+comercial", e
+  as policies daquelas migrations herdaram o papel novo por efeito colateral. A
+  S1 §7 consertou `clientes`; a S4 encontrou a mesma deriva viva nas visitas
+  (P23). **Policy de valor não delega para uma função cujo nome fala de
+  hierarquia** — usa `pode_ver_financeiro`, ou uma função com o papel no nome.
+- **Gate de papel de `SECURITY DEFINER` mora no CORPO, e o catálogo não o
+  enxerga.** Numa DEFINER o `GRANT` tem de ser `authenticated` (senão ninguém
+  chama), então `has_function_privilege` dá "ok" mesmo com a checagem apagada.
+  Foi assim que a U80 perdeu o gate de `aprovar_chamado_financeiro` com a
+  conferência verde (S4). Conferência de DEFINER = catálogo para o ACL **mais**
+  uma leitura ORDENADA de `prosrc` para o gate: ele tem de vir ANTES da leitura
+  que protege, e ser a primeira instrução executável.
+- **Policy de SELECT FILTRA LINHAS; ela NÃO levanta erro.** Fechar demais
+  devolve `[]` — indistinguível de "não há nada" — e a tela desenha o estado
+  vazio para uma conversa cheia. Por isso toda proposta de aperto responde
+  "quem usa isto hoje, e para quê" **por varredura do `src/`** antes de virar
+  migration. Quando o número em si é fato operacional e o valor é privilégio, o
+  padrão é uma DEFINER que devolve **um bit** (`chamados_com_lancamento`, R103).
+- **Duas policies permissivas somam com OR.** Uma nova, restritiva, não fecha
+  nada se a antiga aberta continuar de pé — e `DROP POLICY IF EXISTS` de um nome
+  que não existe não avisa (cicatriz S1 §2.3 / P24). O verificador mantém um
+  **censo das policies `USING (true)` vivas** contra a lista das que são
+  deliberadas: uma policy nova e frouxa fica vermelha sozinha.
 
 ## Procedimento: adicionar uma tela nova com permissão
 
@@ -85,9 +116,17 @@ das linhas + a semente efetiva absorve o DELETE (modelo: U30).
 - Checar admin/gestão por UMA fonte só (roles OU cargo).
 - Renomear chave de tela.
 - Dar à capa (chamado) leitura mais larga que a do corpo (satélite).
+- Usar `is_gestor()` numa policy que protege dinheiro (ela inclui o SAC).
+- Escrever valor em reais em texto livre que outra régua vai ler — a linha do
+  tempo não é o livro-caixa; o evento diz QUE a etapa aconteceu, e o valor mora
+  na tabela que tem a régua certa.
+- Provar gate de papel de `SECURITY DEFINER` só pelo ACL do catálogo.
+- Confiar que um `DROP POLICY IF EXISTS` fechou algo sem conferir o nome vivo.
+- Fechar uma policy sem antes varrer quem lê aquela tabela hoje.
 
 ## Referências
 
 - `src/lib/telas.ts` · `src/features/gerencial/permissoes.ts`
-- Migrations U11, S1/S1b, U28, U30 · `scripts/verificar-logica.cjs` (seção da semente)
-- `docs/PRODUTO.md` — R13, R18
+- Migrations U11, U6a, S1/S1b, S2, S3, S4, U28, U30 · `scripts/verificar-logica.cjs`
+  (seção da semente; e o bloco S4 no fim, com os três censos)
+- `docs/PRODUTO.md` — R13, R18, R103 · `docs/PENDENCIAS_TECNICAS.md` — P22, P23, P24

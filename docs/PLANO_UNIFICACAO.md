@@ -6102,7 +6102,9 @@ Quatro defeitos apurados no caminho, todos em `docs/PENDENCIAS_TECNICAS.md`. O
 mais grave muda o cálculo desta entrega inteira: **`chamado_eventos_select` é
 `USING (true)`** (U7:586-587) e `aprovar_chamado_financeiro` grava
 `'Cobrança aprovada: 3 item(ns), total 1.842,50'` ali (U13:116-120), pintado sem
-gate nenhum em `DetalheCampo.tsx:1205-1207`. **Hoje qualquer autenticado — o SAC
+gate nenhum em `DetalheCampo.tsx:1252-1278` (a pintura é a 1267 — a citação
+original dizia 1205-1207, e a S4 a corrigiu: 1207 é outro bloco). **Hoje
+qualquer autenticado — o SAC
 e o técnico — lê o valor exato em reais que a R13 e a U6a existem para
 esconder.** Não é da Fase 1 e não conserto aqui, mas não dá para argumentar que
 "existe cobrança" é seguro *por ser menos que o valor* quando o valor já está
@@ -6208,4 +6210,238 @@ passou.
 Mutação: reintroduzir o defeito exato deixa a suíte vermelha.
 
 2065 asserções, build ok, tsc em 83.
+
+
+## S4 — Auditoria de valor: quem consegue ler dinheiro, e isso bate com a R13
+
+Série S (segurança), como a S1, a S2 e a S3. A pergunta foi uma só: **quem
+consegue ler dinheiro neste sistema, e isso bate com o que a R13 promete?** A
+R13 diz que o SAC é *gestor que não vê valores*, e a U6a materializou isso
+separando duas réguas de propósito — `is_gestor()` = admin+comercial+sac
+(operação) e `pode_ver_financeiro()` = admin+comercial (dinheiro).
+
+Quatro leituras independentes varreram o repo (a linha do tempo, o censo de
+policies, a matriz de papéis e a superfície de tela). Uma triagem cruzou os
+achados contra o arquivo. **A régua `pode_ver_financeiro` está correta e
+consistente em 100% das tabelas de REGISTRO de dinheiro** — `cobrancas` (u4:293),
+`fechamentos` (u5:302), `cliente_contratos` (u2:267), `contrato_precos`
+(u2:285), `contrato_cobertura_itens` (u2:276), `chamado_pecas_analise` (u7:631).
+O motor financeiro da série U está certo. O que estava aberto era o que fica
+**ao lado** dele: a narrativa e o catálogo.
+
+### O que a S4 fecha, e é o menor conjunto possível
+
+**1. A linha do tempo entregava o total em reais a todo autenticado.**
+`chamado_eventos_select` era `FOR SELECT TO authenticated USING (true)`
+(u7:586-587) — e a mesma migration, oito linhas acima, escreveu
+`chamado_fotos_select` e `chamado_checklist_select` com
+`pode_acessar_chamado(chamado_id)`. Não foi decisão: foi a peça que nasceu sem
+ninguém pensar nela. E `aprovar_chamado_financeiro` gravava ali
+`'Cobrança aprovada: N item(ns), total ' || to_char(v_total,'FM999G999G990D00')`
+(u13:116-120).
+
+O alcance real não é "o técnico vê o total do chamado dele". Pelo modelo de
+ameaça desta casa — todo usuário fala direto com o Postgres com a MESMA chave
+publishable, que está no `.env` versionado —
+`GET /rest/v1/chamado_eventos?tipo=eq.cobranca_aprovada` devolvia os totais
+aprovados da empresa inteira. A tela (`DetalheCampo.tsx:1267`, que pinta
+`{ev.descricao ?? ev.tipo}` fora de qualquer `veFinanceiro`) era o caso menor.
+
+**2. A U80 tinha apagado o gate de papel de `aprovar_chamado_financeiro`.**
+Este é o mais grave, e foi pego antes de rodar. O cabeçalho da U80 afirma, na
+linha 11, "Não reescreve `aprovar_chamado_financeiro`", e a linha 583 afirma "A
+ÚNICA MUDANÇA DA U80 NESTE CORPO, e é esta linha: AT TIME ZONE". As duas são
+falsas: o corpo de u80:562-605 é novo. Contra a U13 sumiram o gate
+(`IF NOT public.pode_ver_financeiro(auth.uid()) THEN RAISE … 42501`), a trava
+`status <> 'concluido'`, o `sem_cobranca` e o `concluida_em` — e entraram quatro
+colunas que **não existem** em `chamado_pecas_analise` (`decisao`,
+`valor_cobravel`, `descricao`, `id`; as reais são `resultado` e
+`valor_calculado`, u3:150-165 mais os renames da u7).
+
+Numa `SECURITY DEFINER` o `GRANT` tem de ser `authenticated` — o corpo é o
+**único** lugar onde o papel pode ser checado. Sem o gate, qualquer técnico faz
+`POST /rest/v1/rpc/aprovar_chamado_financeiro` e recebe
+`RETURNS TABLE (itens integer, total numeric)`, além de gravar cobranças por
+cima de `cobrancas_write`. É pior que o defeito 1, porque não depende de o
+chamado ter tido evento. E corpo plpgsql não é resolvido no `CREATE`: a U80
+aplica **verde** e a função quebra com 42703 na primeira aprovação
+(`cobranca.ts:197`) — a fila de faturamento inteira morre com ela.
+
+### Por que nada tinha pego isso, e as duas lições
+
+A conferência da U80 lê o catálogo e diz, em u80:614-615, "privilégio não mora
+no corpo da função, mora no catálogo — nenhuma linha aqui procura substring em
+`prosrc`". Para GRANT/REVOKE, verdade inteira. **Para o gate de papel de uma
+SECURITY DEFINER, é o oposto exato: o catálogo NÃO PODE enxergá-lo.** A linha
+105 deu "ok" no ACL enquanto a régua que ele deveria proteger não estava mais
+lá. A S4 lê `prosrc` uma vez, de propósito, e **ordenada** — não pergunta se o
+gate aparece, pergunta se ele aparece ANTES da leitura que protege.
+
+E a asserção `verificar-logica.cjs:8698` jurava, verde, que "o que ela muda é o
+FUSO, nada mais — as duas garantias do motor continuam de pé", provando isso com
+três regex de **presença**. Nenhuma perguntava o que SAIU. É a regra 4 em estado
+puro: a asserção foi escrita a partir do corpo NOVO, listou o que o corpo novo
+manteve, e chamou isso de "as duas garantias". Eram três. **Uma asserção verde
+que diz uma falsidade é pior do que não ter asserção nenhuma** — ela foi
+substituída por uma que diz a verdade sobre a U80 (que não pode ser editada,
+CLAUDE.md:53) e aponta para a S4 como consequência.
+
+### O falso-positivo que mudou o conserto
+
+Duas leituras propuseram uma função nova (`pode_ler_chamado`) só para
+acrescentar uma perna `OR natureza = 'interno'`, as duas citando
+`chamados_select` como estando em u7:545-548, e as duas argumentando que sem ela
+o feed de comentários dos chamados internos voltaria vazio, sem erro.
+
+**Essa policy está morta.** `u29:181` a droppa e `u29:182-196` a recria, e o ramo
+não-comercial da versão viva não tem `natureza = 'interno'`. Hoje o técnico já
+não enxerga chamado interno de outra pessoa. A perna teria sido um
+**afrouxamento** disfarçado de compatibilidade — daria linha do tempo de chamado
+interno a quem não consegue nem abrir a capa. É a regra 2 aplicada a policy em
+vez de a regex: *a linha existia no repo, mas não estava VIVA*.
+
+Com a régua viva na mão, `pode_acessar_chamado` (s2:147-164) é **superconjunto**
+de `chamados_select` no ramo não-comercial: ninguém que hoje abre um chamado
+perde a linha do tempo dele. Resíduo declarado em comentário na migration: para
+`natureza = 'comercial'`, `chamados_select` é mais estrita, então quem abriu um
+comercial que não é seu passa a ler o evento sem abrir a capa. É muito menos que
+`true`, e é o mesmo desvio que fotos e checklist já têm desde 19/08.
+
+### "Quem usa isto hoje, e para quê" — respondido, não suposto
+
+Fechar demais quebra trabalho legítimo, e em silêncio: policy de SELECT **filtra
+linhas**, não levanta erro; o feed volta vazio e a tela desenha "Ninguém comentou
+ainda." para uma conversa cheia. Então a varredura veio antes da policy: existe
+**um único SELECT** de `chamado_eventos` em todo o `src/` (`data.ts:337-341`) e
+ele é sempre `.eq("chamado_id", <um id>)`, com três chamadores que partem de um
+chamado já aberto. Nenhum feed agregado. `supabase/functions/` não toca a tabela.
+Nenhuma tela quebra — e o lado do app não muda em uma linha, o que é o resultado
+certo: um gate em `DetalheCampo.tsx:1267` seria teatro, porque o `curl` continua
+mostrando o que a tela esconde.
+
+### O que a S4 recusou fazer, e cada recusa tem motivo
+
+- **`equipamentos.custo`/`markup` e `servicos.preco_unitario_mensal`**, abertos
+  em `USING (true)` desde junho, por onde qualquer autenticado reproduz a tabela
+  de preço e a margem da empresa. Aqui **não há policy errada: há R12 contra
+  R13.** A R12 manda o técnico montar o orçamento na visita, e
+  `BlocoItensEditor.tsx:168-178` faz `custo × markup` em quatro telas do fluxo
+  dele. Fechar quebra a R12; não fechar deixa a R13 literalmente falsa. É
+  chamada de produto do Davi — P22, com o mapa de impacto pronto.
+- **O SAC lê o orçamento da visita** por deriva do `is_gestor` (a etapa0:313 diz
+  "admin/comercial" e a U6a ampliou a função três dias depois). A deriva é real e
+  está documentada contra si mesma, mas as três tabelas do trio **não têm coluna
+  de dinheiro** — o R$ daquela tela é calculado no navegador a partir de
+  `equipamentos` — e fechá-las quebraria `inventario.ts` e `checklist.ts` para o
+  SAC sem esconder um real. É sintoma de P22. Registrado como P23.
+- **`unidades_select`**, que a S1 §2.3 achou ter fechado e não fechou (ela dropou
+  `cliente_equipamento_unidades_select`, um nome que não existia). É segurança
+  física/LGPD, não R13, e antes precisa do `pg_policies` real. P24.
+- **A coluna `chamado_eventos.financeiro`**, com `DEFAULT true` invertido para
+  que um escritor futuro nasça escondido. O desenho é bom e o argumento do
+  "escritor que ainda não nasceu" é o certo — mas o custo dela depende de um
+  número que ninguém mediu, e **o §3 da migration É essa medição**: a U69:57 fez
+  `DELETE FROM public.chamados` e `chamado_eventos` sai por CASCADE. Se o resíduo
+  voltar zero, a coluna guardaria conjunto vazio ao preço de recriar cinco
+  funções. Se voltar linha, ela vira a S5 e é obrigatória. E o invariante que ela
+  protegeria é melhor servido pelo censo de escritores, que falha no CI em vez de
+  esconder uma linha em produção.
+- **O P19** (o `DELETE` incondicional come a cobrança avulsa vinculada). Aqui
+  apareceu algo novo: **o conserto de uma linha que o P19 propõe é
+  insuficiente.** Estreitar o `DELETE` para `chamado_peca_id IS NOT NULL` salva o
+  dinheiro, mas o `v_itens = 0` seguinte crava `sem_cobranca` — trocaria "o
+  dinheiro some e a linha do tempo confirma que não havia dinheiro" por "o
+  dinheiro fica e o status mente". O conserto certo mexe também na decisão de
+  `faturamento_status`, e isso é motor, não auditoria.
+
+### O que a verificação pegou
+
+Três censos, e cada um pega o que asserção-por-caso não pegaria:
+
+- **Censo de COLUNA** — as colunas vivas de `chamado_pecas_analise` derivadas do
+  DDL da U3 mais os `RENAME COLUMN` da U7, cruzadas com o que o corpo referencia.
+  É a asserção que teria pego a U80 sozinha, e ela vem com **par negativo**:
+  apontada para o corpo da U80, tem de acusar as quatro fantasmas. Sem o par, um
+  extrator quebrado devolveria lista vazia e passaria verde para sempre.
+- **Censo de ESCRITOR** — o corpo VIVO de cada função (última definição no repo,
+  descontados os `DROP FUNCTION`) que insere na linha do tempo, contra uma lista
+  de cinco escrita à mão; mais o invariante de que nenhum insert vivo carrega
+  cifra. Um sexto escritor acusa sozinho.
+- **Censo de POLICY PERMISSIVA** — replay de `CREATE`/`DROP POLICY` ciente de
+  `RENAME TO` e `DROP TABLE`, contra a lista das 22 que ficam abertas com o
+  motivo escrito ao lado. Sem o `RENAME TO`, quatro fantasmas (`os_sla_select` e
+  companhia) aparecem vivas em tabelas que não existem mais. Uma policy nova e
+  frouxa entra na lista sozinha, e fica vermelha sem ninguém lembrar de escrever
+  asserção para ela.
+
+**A quarta variação da cicatriz da regra 2, e ela apareceu escrevendo isto.** A
+negativa "não sobrou `USING (true)` na S4" ficava vermelha com a migration
+CORRETA — porque o `COMMENT ON POLICY` e a linha 302 da conferência **citam**
+`USING (true)` para dizer o que era, e as duas citações moram dentro de uma
+**string SQL**, que o filtro de linhas de comentário não alcança. As três
+anteriores eram `-- REVOKE`, o quantificador frouxo atravessando o `;`, e o
+`RETURN` posto depois do `BEGIN`. Esta é: *o comentário que explica o defeito,
+escrito dentro de uma string*. A medida passou a ser o STATEMENT (`USING (true);`,
+com o terminador), não a substring.
+
+**Teste de mutação: 18 de 18 pegas.** Entre elas, as duas que mutam o próprio
+censo — tirar o `RENAME COLUMN` do extrator de coluna e o `RENAME TO` do censo de
+policy — e a que afrouxa a asserção nova sobre a U80 para "o gate está lá".
+
+2091 asserções, build ok, tsc em 83 (baseline).
+
+### A ordem de execução, e ela importa
+
+**U76 → U79 → U80 → S4, na mesma sessão, sem clicar em "Aprovar cobrança" no
+meio.** A janela entre a U80 e a S4 é o único momento em que a função fica sem
+gate *e* quebrada. A S4 é `CREATE OR REPLACE` na mesma assinatura `(uuid)`, então
+ela sobrescreve — e o §0 dela **aborta** se a U80 ainda não rodou, porque na
+ordem errada o conserto é sobrescrito pelo defeito meia hora depois. A U80 não
+foi editada (CLAUDE.md:53).
+
+### As duas perguntas para o Davi
+
+1. **R12 ou R13?** O técnico monta orçamento na visita e vê preço de venda
+   (implementado, quatro telas), ou o técnico não vê valores (escrito)? Uma das
+   duas precisa ser reescrita em `PRODUTO.md`; hoje elas se contradizem e o
+   código escolheu sozinho. Sem essa resposta, P22 e P23 não têm conserto — têm
+   palpite.
+2. `SELECT policyname, qual FROM pg_policies WHERE tablename='cliente_equipamento_unidades';`
+   — decide se P24 é conserto ou se o repo é que está desatualizado.
+
+### A segunda travada da U80, e a raiz que as duas compartilham
+
+`ERROR: 42601: syntax error at end of input`, apontando para a linha 431 — que
+está correta. A linha era:
+
+```sql
+IF v_n > CASE WHEN v_tipo = instalacao THEN 60 ELSE 12 END THEN
+```
+
+**O plpgsql delimita a condição de um IF procurando a palavra `THEN` no nível
+zero de parênteses.** Um `CASE` nu põe um `THEN` nesse nível: a condição é
+cortada em `v_tipo = instalacao`, o resto do corpo derrapa, e o erro sai lá na
+frente — no fim da entrada. Os parênteses em volta do CASE não são estilo; são o
+que faz o comando existir.
+
+**A raiz que as duas travadas compartilham, e que é mais importante que
+qualquer uma delas:** neste repositório **o SQL nunca é analisado por um parser
+antes de o Davi colar no editor**. O verificador lê TEXTO. O `vite build` não
+compila SQL. Não há Postgres local. Então erro de sintaxe só aparece na
+produção, com ele parado esperando — foi o que aconteceu duas vezes hoje, com a
+mesma migration.
+
+As duas asserções novas **não substituem um parser**, e vale ser honesto sobre
+isso: elas cobrem as armadilhas CONHECIDAS. Cada nova que morder vira mais uma
+linha ali. O conserto de verdade seria um `postgres` de teste no laço, e isso
+não existe aqui hoje.
+
+Cada detector veio com **pares negativos** — ele tem de achar o defeito E poupar
+a forma correta. É a lição do detector de dollar-quote, cuja primeira versão
+acusou catorze inocentes (os rodapés DESFAZER, comentados linha a linha) e por
+pouco não escondeu o único culpado.
+
+Mutação: reintroduzir cada uma das duas armadilhas deixa a suíte vermelha. 2/2.
+
+2095 asserções, build ok, tsc em 83.
 

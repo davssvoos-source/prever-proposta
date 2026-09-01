@@ -262,6 +262,26 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 - **R13** — Papéis definidos: Davi e Vinicius são **Admin**; Gilleno, Nicholas,
   Erik e Breno são **Técnicos**; o SAC é **gestor que não vê valores**; o
   Comercial é **gestor que vê valores** e aprova visitas para fazer propostas.
+
+  **O que "não vê valores" alcança HOJE, e a pergunta aberta** *(S4, auditoria de
+  valor de 2026-09-03 — este parágrafo é registro, não regra nova)*. No banco a
+  R13 mora em duas funções separadas de propósito (U6a): `is_gestor()` =
+  admin+comercial+sac decide **operação**; `pode_ver_financeiro()` =
+  admin+comercial decide **dinheiro**. A segunda protege, corretamente e sem
+  exceção, tudo o que REGISTRA dinheiro: cobranças, contratos, preços de
+  contrato, cobertura, fechamentos e a análise de cobrança. A S4 acrescentou a
+  narrativa (a linha do tempo do chamado, que entregava o total em reais a todo
+  autenticado).
+
+  **O que ela NÃO alcança é o catálogo que GERA o preço** — `equipamentos.custo`
+  e `.markup`, `servicos.preco_unitario_mensal` — aberto a qualquer autenticado
+  desde junho. E aqui a R13 colide com a **R12**: a R12 manda o técnico montar o
+  orçamento na visita, e a tela dele já mostra o preço de venda (`custo × markup`)
+  em quatro lugares. **Uma das duas precisa ser reescrita, e é decisão do Davi:**
+  ou o técnico não vê valores (e a R12 diz como ele monta orçamento sem preço),
+  ou a R13 passa a dizer *o que* ele não vê — o que se COBRA do cliente — em vez
+  de "valores", que hoje é literalmente falso. Enquanto isso não for decidido,
+  fica em `PENDENCIAS_TECNICAS.md` P22, com o mapa de impacto pronto.
 - **R14** — Nas duplas de campo, **só o líder tem conta no app**; o ajudante
   não. Tudo é registrado no nome do líder. O Breno é líder de uma das duplas
   (equipe Técnica).
