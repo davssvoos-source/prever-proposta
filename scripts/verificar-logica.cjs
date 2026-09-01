@@ -8962,5 +8962,100 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /desde agosto/.test(u80r), true);
 }
 
+// ── O LEXER DO POSTGRES, E A ARMADILHA QUE ELE ESCONDE ──────────────────────
+// A U80 não rodou na primeira tentativa: `syntax error at or near ".."`. A
+// causa foi um comentário DENTRO de um bloco `DO $$ … $$` que citava, em prosa,
+// o padrão `DO $$ … EXCEPTION WHEN check_violation`.
+//
+// O Postgres NÃO PULA COMENTÁRIOS ao procurar o fim de um dollar-quote. Fora do
+// bloco, `--` comenta até o fim da linha; DENTRO dele, o lexer procura apenas o
+// delimitador de fechamento, e um `$$` escrito num comentário FECHA O BLOCO ali.
+// O resto do corpo vira SQL solto, e o erro aponta para um lugar que não tem
+// nada de errado — no caso, para as reticências do próprio comentário.
+//
+// É uma armadilha que só morde quem ESCREVE SOBRE migrations dentro de
+// migrations, que é exatamente o estilo desta casa: os comentários aqui
+// explicam padrões, citam outras migrations e mostram trechos. Por isso ela
+// merece asserção em vez de cuidado.
+//
+// A DIFERENÇA QUE O DETECTOR PRECISA FAZER, e que a primeira versão dele errou:
+// o rodapé DESFAZER de várias migrations é código comentado LINHA A LINHA, e
+// ali `-- AS $desfaz$` é inofensivo — o lexer nunca entra em modo dollar-quote,
+// porque a linha inteira é comentário. Um detector que não simula o lexer
+// acusa 14 falsos positivos e esconde o único verdadeiro. A prova de que os 14
+// são falsos: U76, U78 e S2 rodaram limpas em produção.
+{
+  const fsL = require('fs');
+  const DIR_L = 'supabase/migrations';
+
+  /** Simula o lexer: devolve os pontos em que um delimitador aparece depois de
+   *  `--` DENTRO de um bloco vivo, mais os blocos que ficam sem fechar. */
+  const analisarSql = (src) => {
+    const problemas = [];
+    let i = 0, linha = 1, tag = null, tagLinha = 0;
+    while (i < src.length) {
+      if (tag === null) {
+        const c = src[i];
+        if (c === '\n') { linha++; i++; continue; }
+        if (c === '-' && src[i + 1] === '-') {
+          while (i < src.length && src[i] !== '\n') i++;
+          continue;
+        }
+        if (c === '/' && src[i + 1] === '*') {
+          i += 2;
+          while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) {
+            if (src[i] === '\n') linha++;
+            i++;
+          }
+          i += 2; continue;
+        }
+        if (c === "'") {
+          i++;
+          while (i < src.length) {
+            if (src[i] === "'" && src[i + 1] === "'") { i += 2; continue; }
+            if (src[i] === "'") break;
+            if (src[i] === '\n') linha++;
+            i++;
+          }
+          i++; continue;
+        }
+        const m = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(src.slice(i));
+        if (m) { tag = m[0]; tagLinha = linha; i += tag.length; continue; }
+        i++; continue;
+      }
+      if (src.startsWith(tag, i)) {
+        const iniLinha = src.lastIndexOf('\n', i) + 1;
+        if (src.slice(iniLinha, i).includes('--')) {
+          problemas.push(`delimitador ${tag} em comentário na linha ${linha} (bloco aberto em ${tagLinha})`);
+        }
+        i += tag.length; tag = null; continue;
+      }
+      if (src[i] === '\n') linha++;
+      i++;
+    }
+    if (tag !== null) problemas.push(`bloco ${tag} aberto na linha ${tagLinha} e nunca fechado`);
+    return problemas;
+  };
+
+  const quebradas = [];
+  for (const f of fsL.readdirSync(DIR_L).sort()) {
+    if (!f.endsWith('.sql')) continue;
+    const ps = analisarSql(fsL.readFileSync(`${DIR_L}/${f}`, 'utf8'));
+    if (ps.length) quebradas.push(`${f}: ${ps.join('; ')}`);
+  }
+  eq('CRÍTICO: nenhuma migration tem delimitador de dollar-quote dentro de um bloco VIVO — o Postgres não pula comentários ao procurar o fim, e um $$ em comentário fecha o bloco cedo',
+     quebradas, []);
+
+  // E o par negativo: o detector precisa ACHAR o defeito quando ele existe,
+  // senão a asserção acima é decoração. Sem isto, um detector quebrado passaria
+  // verde para sempre — e foi assim que a primeira versão dele quase passou.
+  eq('…e o detector realmente acusa: um $$ em comentário dentro de um DO vivo é pego',
+     analisarSql("DO $$\nBEGIN\n  -- padrão: DO $$ … END\n  PERFORM 1;\nEND $$;").length > 0, true);
+  eq('…e NÃO acusa o rodapé DESFAZER, que é comentado linha a linha e é inofensivo',
+     analisarSql("-- AS $desfaz$\n--   SELECT 1;\n-- $desfaz$;\nSELECT 1;"), []);
+  eq('…nem um bloco normal, sem comentário citando delimitador',
+     analisarSql("DO $$\nBEGIN\n  -- isto é um comentário comum\n  PERFORM 1;\nEND $$;"), []);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

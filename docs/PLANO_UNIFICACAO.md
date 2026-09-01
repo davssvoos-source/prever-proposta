@@ -6173,3 +6173,39 @@ da mesma família nesta semana.
 2061 asserções, build ok, tsc em **83** — dois ABAIXO do baseline de 85, porque a
 entrega fechou duas portas de tipo que estavam abertas.
 
+### A U80 não rodou na primeira tentativa, e a causa é uma armadilha do lexer
+
+`ERROR: 42601: syntax error at or near ".."`, apontando para a linha 95 — que
+é um COMENTÁRIO. O comentário dizia, em prosa, que o padrão da casa para
+constraint é `DO $` + `$ ... EXCEPTION WHEN check_violation`.
+
+**O Postgres não pula comentários ao procurar o fim de um dollar-quote.** Fora
+do bloco, `--` comenta até o fim da linha. DENTRO dele, o lexer procura apenas
+o delimitador de fechamento — então aquele par de cifrões, escrito num
+comentário dentro de um `DO` vivo, FECHOU o bloco ali. Todo o resto do corpo
+virou SQL solto, e o erro foi cair nas reticências do próprio comentário.
+
+É uma armadilha que só morde quem **escreve sobre migrations dentro de
+migrations**, que é exatamente o estilo desta casa: os comentários daqui
+explicam padrões, citam outras migrations e mostram trechos. Por isso ela
+mereceu asserção em vez de cuidado.
+
+**A varredura das 100+ migrations, e o falso positivo que ela quase produziu.**
+A primeira versão do detector acusou 15 ocorrências — 14 delas no rodapé
+DESFAZER de U76, U78 e S2, onde linhas como `-- AS $desfaz$` aparecem. Elas são
+INOFENSIVAS: ali o código está comentado linha a linha, o lexer nunca entra em
+modo dollar-quote, e a prova é que as três rodaram limpas em produção. Um
+detector que não simula o lexer acusa catorze inocentes e esconde o único
+culpado.
+
+A versão que ficou simula o lexer de verdade (comentário de linha, comentário de
+bloco, string com aspas duplicadas, e o modo dollar-quote onde nada disso vale),
+e vem com três **pares negativos**: ela tem de ACUSAR o defeito real, e tem de
+NÃO acusar o rodapé comentado nem um bloco normal. Sem esses três, um detector
+quebrado passaria verde para sempre — que foi como a primeira versão quase
+passou.
+
+Mutação: reintroduzir o defeito exato deixa a suíte vermelha.
+
+2065 asserções, build ok, tsc em 83.
+

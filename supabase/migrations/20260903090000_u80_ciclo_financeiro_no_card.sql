@@ -92,8 +92,9 @@ BEGIN
   -- ── A CONFERÊNCIA QUE PODE ABORTAR A MIGRATION INTEIRA ──────────────────
   -- Os dois índices do §2 são a diferença entre "improvável" e "impossível".
   -- Se a base já tem a duplicata que eles proíbem, criá-los falha — e o padrão
-  -- da casa para constraint (DO $$ ... EXCEPTION WHEN check_violation THEN
-  -- RAISE NOTICE, u4:52-83) ENGOLIRIA a falha: RAISE NOTICE é INVISÍVEL no
+  -- da casa para constraint (bloco anônimo com EXCEPTION WHEN
+  -- check_violation e RAISE NOTICE, u4:52-83) ENGOLIRIA a falha: RAISE NOTICE
+  -- é INVISÍVEL no
   -- editor do Supabase, e a migration terminaria verde SEM O ÍNDICE, com a
   -- promessa inteira desta entrega apoiada em nada. Então aqui é ABORTO, e a
   -- mensagem traz o rastro.
