@@ -5591,8 +5591,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /já foi lançada na tela de Equipes de campo/.test(u76), true);
   eq('desfazer a turma libera o FUTURO, não a semana em curso (que já tem dias vividos)',
      /AND semana > public\.referencia_semanal/.test(u76), true);
-  eq('o fuso é explícito em toda conversão — uma hora de diferença vira uma semana de erro',
-     /AT TIME ZONE 'America\/Sao_Paulo'/.test(u76), true);
+  // Uma ocorrência em qualquer lugar do arquivo satisfazia a versão antiga
+  // desta asserção — inclusive uma dentro de comentário. Agora ela FATIA
+  // dia_da_dupla, conta as três conversões e recusa qualquer outro fuso no
+  // arquivo inteiro. Uma hora de diferença vira uma semana de erro.
+  {
+    const iDD = u76.indexOf('CREATE OR REPLACE FUNCTION public.dia_da_dupla');
+    const corpoDD = iDD < 0 ? '' : u76.slice(iDD, u76.indexOf('\n$$;', iDD));
+    eq('CRÍTICO: dia_da_dupla converte o fuso nas TRÊS pontas do COALESCE (agendada, criada, hoje)',
+       (corpoDD.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 3);
+    eq('CRÍTICO: e nenhum outro fuso aparece na U76 — a operação é São Paulo, a sessão do Supabase é UTC',
+       [...u76.matchAll(/AT TIME ZONE '([^']+)'/g)].map((m) => m[1])
+         .filter((z) => z !== 'America/Sao_Paulo'), []);
+    eq('a chave da semana usa ANO ISO (IYYY), não o civil — 31/12/2025 é 2026-S01',
+       /to_char\(_dia, 'IYYY-"S"IW'\)/.test(u76), true);
+  }
   eq('a migration prova por CONTAGEM que não tocou em chamado_apoios (foto antes × depois)',
      /_u76_antes/.test(u76) && /ON COMMIT DROP/.test(u76), true);
   eq('U76 é atômica — se o portão abortar, não sobra rastro',
@@ -5806,6 +5819,1840 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: a garantia de que origem não se forja agora depende do PRIVILÉGIO, não da boa vontade',
      /REVOKE INSERT ON public\.chamado_apoios FROM authenticated;/.test(vivo)
      && /has_column_privilege[\s\S]{0,120}'origem', 'INSERT'/.test(s3), true);
+}
+
+// ── R99/R100/R101/U78: a grade da programação e o bloqueio de agenda ────────
+// A atividade em campo deixou de ser o chamado e virou um BLOCO DE TEMPO. O que
+// se ganha é cardinalidade (o retorno é o segundo bloco, e "retorno" some do
+// vocabulário de status) e a OS que não tem cliente na base. O que se paga é um
+// ESPELHO: chamados.data_hora_agendada passa a ser derivada, e o gêmeo puro
+// dela é o que permite travar o gatilho por asserção sem subir banco.
+//
+// AS FIXTURES DESTE BLOCO SÃO ESCOLHIDAS PARA DISCRIMINAR, não para ilustrar —
+// é a correção de um defeito da primeira versão, em que a fixture da jornada era
+// CONTÍGUA (soma e span davam o mesmo número, e a asserção que existia para
+// distinguir os dois não distinguia), a de "passar de 100%" dava 35%, e o
+// desempate por id era testado através de uma função que não o observa. Fixture
+// que ilustra o autor não prende ninguém.
+{
+  const fs78 = require('fs');
+  const M78 = carregar('src/features/programacao/modelo.ts');
+  const E78 = carregar('src/features/duplas/modelo.ts');
+  const P78 = carregar('src/lib/periodos.ts');
+  const CS78 = carregar('src/lib/chamado-status.ts');
+  const CAMINHO78 = 'supabase/migrations/20260901090000_u78_grade_da_programacao.sql';
+  const u78 = fs78.readFileSync(CAMINHO78, 'utf8');
+  const produto78 = fs78.readFileSync('docs/PRODUTO.md', 'utf8');
+  const fonte78 = fs78.readFileSync('src/features/programacao/modelo.ts', 'utf8');
+  // grep acha o comentário que EXPLICA por que a coisa não existe: as asserções
+  // negativas rodam sobre o CÓDIGO, não sobre o arquivo inteiro.
+  const cod78 = u78.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  const codTs78 = fonte78.split('\n')
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  // O §1.3 (pré-voo) CITA as mesmas marcas que o §7.1 grava: um indexOf sobre o
+  // arquivo inteiro acharia a citação em vez do código.
+  const corpo78 = u78.slice(u78.indexOf('CREATE OR REPLACE FUNCTION public.chamado_apoio_da_dupla()'));
+  // Cada porta do §6 é lida SOZINHA: "a função X confere o dono" tem de ser uma
+  // afirmação sobre o corpo de X, não sobre o arquivo (onde a frase pode estar
+  // no vizinho, ou num comentário do rodapé).
+  const trecho78 = (de, ate) => u78.slice(u78.indexOf(de), u78.indexOf(ate));
+  const frase78sql = trecho78('CREATE OR REPLACE FUNCTION public.agenda_campo_frase_do_conflito(',
+                              '-- ── 6.1 MARCAR');
+  const marcar78 = trecho78('CREATE OR REPLACE FUNCTION public.agenda_campo_marcar(',
+                            '-- ── 6.2 CANCELAR');
+  const cancelar78 = trecho78('CREATE OR REPLACE FUNCTION public.agenda_campo_cancelar(',
+                              '-- ── 6.3 CUMPRIR');
+  const cumprir78 = trecho78('CREATE OR REPLACE FUNCTION public.agenda_campo_cumprir(',
+                             '-- ── 6.4 DESAGENDAR');
+  const desag78 = trecho78('CREATE OR REPLACE FUNCTION public.desagendar_chamado(',
+                           '-- §7) A MESMA GUARDA');
+  const recon78 = trecho78('CREATE OR REPLACE FUNCTION public.reconciliar_apoios_abertos(',
+                           '-- §8) PORTÃO');
+  // ── O ESPELHO, FATIADO — o buraco que o teste de mutação abriu ──────────
+  // `agenda_campo_espelhar` é o coração da R101 (a coluna lida em doze
+  // arquivos) e era a ÚNICA função do §5/§6 sem fatia própria: as quatro
+  // asserções que pareciam cobri-la casavam substring sobre `u78`, o arquivo
+  // INTEIRO, e três delas achavam o ECO da regra em vez da regra —
+  //   · `AND c.status NOT IN ('concluido','cancelado')` existe em outras quatro
+  //     consultas do arquivo (§9);
+  //   · `AT TIME ZONE 'America/Sao_Paulo'` existe seis vezes no §9;
+  //   · `data_hora_agendada IS DISTINCT FROM v_novo` existe na linha 402 da
+  //     CONFERÊNCIA, que CITA o texto para procurá-lo no prosrc — a linha que
+  //     faz a prova do banco funcionar era a que cegava a asserção do
+  //     verificador.
+  // Seis dos treze sobreviventes moravam aqui. A fatia é o conserto, e o corpo
+  // vem sem comentário pelo mesmo motivo que `cod78` existe.
+  const espelhar78 = trecho78('CREATE OR REPLACE FUNCTION public.agenda_campo_espelhar(_chamado uuid)',
+                              'REVOKE EXECUTE ON FUNCTION public.agenda_campo_espelhar(uuid)');
+  const espelharCod78 = espelhar78.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  // …e dentro do corpo, cada COMANDO sozinho. `split(';')` é o recorte honesto
+  // aqui: um `[\s\S]{0,400}` entre o SELECT e o ORDER BY atravessa o ponto e
+  // vírgula e alcança o estágio vizinho, que é a mesma armadilha noutra escala.
+  const cmds78 = (corpo) => corpo.split(';').map((s) => s.trim()).filter(Boolean);
+  const estagios78 = cmds78(espelharCod78)
+    .filter((s) => /SELECT a\.dia, a\.inicio_min INTO v_dia, v_min/.test(s));
+  const updEspelho78 = cmds78(espelharCod78).find((s) => /^UPDATE public\.chamados c/.test(s)) ?? '';
+  const fusoEspelho78 = cmds78(espelharCod78).find((s) => /^v_novo :=/.test(s)) ?? '';
+  // ── O EXCLUDE, RECORTADO ATÉ O PONTO E VÍRGULA ─────────────────────────
+  // A asserção antiga procurava `/dupla_id WITH =/` no arquivo inteiro e achava
+  // a LINHA 413, um comentário que EXPLICA a constraint: apagar o eixo `dia` do
+  // índice de verdade deixava tudo verde. O comando é uma frase só, e é ela que
+  // tem de ser lida.
+  const excl78 = (() => {
+    const de = cod78.indexOf('ALTER TABLE public.agenda_campo ADD CONSTRAINT agenda_campo_sem_sobreposicao');
+    return de < 0 ? '' : cod78.slice(de, cod78.indexOf(';', de) + 1);
+  })();
+  // os eixos, extraídos como LISTA (para conferir contra uma lista escrita à
+  // mão, e não contra o próprio arquivo)
+  const eixos78 = excl78.split('\n')
+    .map((l) => /^\s*(.+?)\s+WITH\s+(=|&&)\s*,?\s*$/.exec(l))
+    .filter(Boolean).map((m) => `${m[1]} WITH ${m[2]}`);
+  // A frase da RPC e a frase do formulário têm de ser a MESMA frase. O molde do
+  // SQL usa % (RAISE) ou %s (format); casá-lo contra o texto que o modelo puro
+  // produz é o que impede as duas de divergirem sem ninguém ver.
+  const casaComMolde = (molde, frase) => {
+    const partes = molde.split(/%s|%/).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp("^" + partes.join("(.+)") + "$").test(frase);
+  };
+
+  // ── a jornada é uma CONTA, e a asserção é sobre os LITERAIS ─────────────
+  // A versão anterior afirmava `CAMPO_MIN === JORNADA_MIN - RESERVA_MIN`, que é
+  // a própria definição da constante: `x === x` sobrevive a qualquer mutação dos
+  // três números ao mesmo tempo. Quem prende são os números escritos à mão — e
+  // os mesmos números escritos à mão dentro da RPC.
+  eq('CRÍTICO: 9h de jornada com a PRIMEIRA HORA RESERVADA são 8h de campo — a base da ocupação é 480 e não 540',
+     [M78.JORNADA_INICIO_MIN, M78.RESERVA_MIN, M78.CAMPO_ABRE_MIN,
+      M78.JORNADA_MIN, M78.CAMPO_MIN, M78.BASE_SEMANAL_MIN, M78.DIAS_DE_CAMPO, M78.MINUTOS_DO_DIA],
+     [480, 60, 540, 540, 480, 2400, 5, 1440]);
+  eq('CRÍTICO: e são os MESMOS literais dentro de agenda_campo_marcar — a jornada mora na porta, e uma constante que só o TypeScript conhece não segura ninguém',
+     [/IF v_inicio - v_desloc < 540 THEN/.test(marcar78),
+      /IF v_ja \+ v_servico \+ v_desloc > 480 THEN/.test(marcar78)],
+     [true, true]);
+  eq('a equipe sai às 09:00, que é o começo da jornada mais a reserva',
+     M78.horaTexto(M78.CAMPO_ABRE_MIN), '09:00');
+
+  // ── formatação de tempo, que não é a de indicadores.ts ──────────────────
+  eq('duração fala em h e min dentro de uma jornada — horasTexto de indicadores vira dias acima de 24 e não serve aqui',
+     [M78.duracaoTexto(90), M78.duracaoTexto(45), M78.duracaoTexto(480), M78.duracaoTexto(0),
+      M78.duracaoTexto(300), M78.duracaoTexto(481)],
+     ['1h30', '45min', '8h', '0min', '5h', '8h01']);
+  eq('…e o travessão para o desconhecido, como no gêmeo public.duracao_texto(int) — que a conferência do §9 executa contra os mesmos cinco valores',
+     [M78.duracaoTexto(null), M78.duracaoTexto(undefined), M78.duracaoTexto(NaN),
+      /public\.duracao_texto\(90\) \|\| '\|' \|\| public\.duracao_texto\(45\)/.test(u78),
+      /'1h30\|45min\|8h\|0min\|5h'/.test(u78)],
+     ['—', '—', '—', true, true]);
+  eq('percentual indefinido é travessão na tela, nunca zero',
+     [M78.pctTexto(null), M78.pctTexto(0), M78.pctTexto(112)], ['—', '0%', '112%']);
+  eq('CRÍTICO: 1440 é "24:00" e não "00:00" — a janela é meia-aberta, então 1440 é o FIM do dia, e "das 22:00 às 00:00" diria que o atendimento acaba antes de começar',
+     [M78.horaTexto(1440), M78.horaTexto(0), M78.horaTexto(1439)], ['24:00', '00:00', '23:59']);
+  eq('dataDoDia monta a data pelos COMPONENTES — new Date("2026-09-01") seria meia-noite UTC e devolveria 31/08 no Brasil',
+     [M78.dataDoDia('2026-09-01').getDate(), M78.dataDoDia('2026-09-01').getMonth(),
+      M78.dataDoDia('01/09/2026')],
+     [1, 8, null]);
+
+  // ── a fixture: uma semana real da equipe de campo ───────────────────────
+  // 2026-08-31 é SEGUNDA e abre a semana ISO 2026-S36; 2026-09-05 é o sábado dela.
+  const D0 = '2026-08-31', D1 = '2026-09-01', D2 = '2026-09-02', D3 = '2026-09-03',
+        D4 = '2026-09-04', SAB = '2026-09-05';
+  const S30 = '2026-S30', S33 = '2026-S33', S36 = '2026-S36';
+  const chaveSem = (d) => P78.referenciaSemanal(d);
+  const chaveDia = (d) => P78.dataIso(d);
+  eq('a semana da fixture é a mesma que periodos.ts calcula — segunda e sábado na MESMA semana ISO',
+     [chaveSem(M78.dataDoDia(D0)), chaveSem(M78.dataDoDia(D1)), chaveSem(M78.dataDoDia(SAB))],
+     [S36, S36, S36]);
+
+  const L78 = (semana, dupla_id, pessoa_id, ordem) => ({ semana, dupla_id, pessoa_id, ordem });
+  // S30: e1 = ana; e2 = caio.  S36: e1 = ana + bia; e2 = caio; e4 = dina.
+  // e3 NUNCA tem escala — é a equipe que vai ter bloco sem estar escalada.
+  const escala78 = E78.montarEscala([E78.MARCO_ZERO, S30, S36], [
+    L78(E78.MARCO_ZERO, 'e1', 'ana', 1), L78(E78.MARCO_ZERO, 'e2', 'caio', 1),
+    L78(S30, 'e1', 'ana', 1), L78(S30, 'e2', 'caio', 1),
+    L78(S36, 'e1', 'ana', 1), L78(S36, 'e1', 'bia', 2),
+    L78(S36, 'e2', 'caio', 1),
+    L78(S36, 'e4', 'dina', 1),
+  ]);
+  const duplas78 = [{ id: 'e1' }, { id: 'e2' }, { id: 'e3' }, { id: 'e4' }];
+
+  const B = (id, o) => ({
+    id, chamado_id: null, dupla_id: 'e1', dia: D1,
+    inicio_min: 540, servico_min: 60, deslocamento_min: 0,
+    cumprido_em: null, cancelado_em: null, os_externa: null, titulo_externo: null, ...o,
+  });
+  // b1 (09:30 + 30 de estrada) e b2 (12:00 + 30) ENCAIXAM: b1 termina 11:30 e a
+  // saída de b2 é 11:30. b3 é o RETORNO de c1, na quinta. b5 está cancelado e
+  // ocupa exatamente a janela de b1 — se ele contasse, tudo colidiria. b9 é
+  // separado de b3 por um BURACO de quatro horas e meia: é ele que faz a soma da
+  // jornada (150) diferir do span (420), e sem essa diferença a asserção que
+  // existe para distinguir soma de span não distingue nada.
+  const b1 = B('b1', { chamado_id: 'c1', inicio_min: 570, servico_min: 120, deslocamento_min: 30 });
+  const b2 = B('b2', { chamado_id: 'c2', inicio_min: 720, servico_min: 120, deslocamento_min: 30 });
+  const b3 = B('b3', { chamado_id: 'c1', dia: D3, inicio_min: 540, servico_min: 60 });
+  const b4 = B('b4', { dupla_id: 'e2', inicio_min: 600, servico_min: 60,
+                       os_externa: 'OS-9911', titulo_externo: 'Portão do condomínio vizinho' });
+  const b5 = B('b5', { chamado_id: 'c3', inicio_min: 570, servico_min: 120, deslocamento_min: 30,
+                       cancelado_em: '2026-08-30T10:00:00Z' });
+  const b6 = B('b6', { chamado_id: 'c4', dupla_id: 'e3', inicio_min: 540, servico_min: 60 });
+  const b7 = B('b7', { chamado_id: 'c7', dia: SAB, dupla_id: 'e2', inicio_min: 540, servico_min: 120 });
+  const b8 = B('b8', { chamado_id: 'c8', dia: D2, inicio_min: 540, servico_min: 60 });
+  const b9 = B('b9', { dia: D3, inicio_min: 900, servico_min: 60, deslocamento_min: 30,
+                       titulo_externo: 'Instalação sem cliente na base' });
+  const blocos78 = [b1, b2, b3, b4, b5, b6, b7, b8, b9];
+  // b1 depois da visita: o mesmo bloco com "feito". É ele que separa "registro"
+  // de "agenda" em quatro lugares — o que não se move, o que não se desmarca, o
+  // espelho que ANDA para o retorno, e a data que NÃO some ao desagendar.
+  const b1feito = { ...b1, cumprido_em: '2026-09-01T13:00:00Z' };
+
+  const C = (id, numero, titulo, o = {}) => ({
+    id, numero, titulo, tipo: 'corretiva', prioridade: 'normal', status: 'agendado',
+    natureza: 'campo', responsavel_id: null, data_hora_agendada: null, ...o,
+  });
+  const chamados78 = [
+    C('c1', 'CH-001', 'Troca de câmera', { responsavel_id: 'ana', data_hora_agendada: '2026-09-01T12:30:00Z' }),
+    C('c2', 'CH-002', 'Preventiva mensal', { tipo: 'preventiva', responsavel_id: 'caio' }),
+    C('c3', 'CH-003', 'Cancelado'),
+    C('c4', 'CH-004', 'Sem dono'),
+    C('c5', 'CH-005', 'Tem data e não tem hora', { data_hora_agendada: '2026-09-02T15:00:00Z' }),
+    C('c6', 'CH-006', 'Nem data tem', { status: 'aberto' }),
+    C('c7', 'CH-007', 'Sábado', { responsavel_id: 'caio' }),
+    C('c8', 'CH-008', 'Emergência no cliente', { prioridade: 'urgente', responsavel_id: 'ana' }),
+    C('c9', 'CH-009', 'Já foi feito', { status: 'concluido', data_hora_agendada: '2026-08-20T15:00:00Z' }),
+    C('c10', 'CH-010', 'Cancelado com data', { status: 'cancelado', data_hora_agendada: '2026-08-21T15:00:00Z' }),
+    C('c11', 'CH-011', 'Visita comercial', { natureza: 'comercial', data_hora_agendada: '2026-09-02T15:00:00Z' }),
+  ];
+  const porId78 = new Map(chamados78.map((c) => [c.id, c]));
+  const rotulo78 = (b) => M78.rotuloDoBloco(b, b.chamado_id ? porId78.get(b.chamado_id) ?? null : null);
+
+  // ── a janela ocupada: a estrada vem ANTES do serviço ────────────────────
+  eq('CRÍTICO: o bloco ocupa a equipe do momento em que ela SAI — o deslocamento entra na janela, senão o dia parece meio vazio',
+     M78.janelaDoBloco(b1), { de: 540, ate: 690 });
+  eq('e o peso do bloco na jornada é serviço + estrada',
+     [M78.minutosDoBloco(b1), M78.minutosDoBloco(b3)], [150, 60]);
+  eq('CRÍTICO: a janela é MEIA-ABERTA — terminar 11:30 e começar 11:30 é encaixe, não conflito (gêmeo do int4range do banco)',
+     [M78.seSobrepoem({ de: 540, ate: 690 }, { de: 690, ate: 750 }),
+      M78.seSobrepoem({ de: 540, ate: 690 }, { de: 689, ate: 750 })],
+     [false, true]);
+
+  // ── conflito ────────────────────────────────────────────────────────────
+  const cand = (o) => ({ id: null, chamado_id: 'c5', dupla_id: 'e1', dia: D1,
+                         inicio_min: 540, servico_min: 60, deslocamento_min: 0,
+                         titulo_externo: null, ...o });
+  eq('CRÍTICO: dois atendimentos da MESMA equipe no MESMO dia não se cruzam — e a função devolve QUEM (todos, ordenados), não um booleano',
+     M78.conflitosDoBloco(cand({ inicio_min: 660, servico_min: 60 }), blocos78).map((b) => b.id), ['b1', 'b2']);
+  eq('…e o encaixe passa: começar exatamente quando o outro acaba não é conflito',
+     M78.conflitosDoBloco(cand({ inicio_min: 690, servico_min: 30 }), [b1]), []);
+  eq('mover um bloco não colide consigo mesmo — o bug clássico deste tipo de tela',
+     M78.conflitosDoBloco(cand({ id: 'b1', inicio_min: 570, servico_min: 120, deslocamento_min: 30 }), blocos78), []);
+  eq('bloco CANCELADO libera a agenda — b5 ocupa a janela inteira de b1 e não conflita com nada',
+     M78.conflitosDoBloco(cand({ chamado_id: 'c3', inicio_min: 570, servico_min: 120, deslocamento_min: 30 }), [b5]), []);
+  eq('a equipe do lado não conflita — a regra é por equipe de campo, e é por isso que ela cabe num EXCLUDE',
+     M78.conflitosDoBloco(cand({ dupla_id: 'e2', inicio_min: 570, servico_min: 120, deslocamento_min: 30 }), blocos78)
+       .map((b) => b.id), ['b4']);
+  eq('…e o MESMO horário em OUTRO DIA também não conflita — dia e equipe são os dois eixos do EXCLUDE',
+     M78.conflitosDoBloco(cand({ dia: D4, inicio_min: 570, servico_min: 120, deslocamento_min: 30 }), blocos78), []);
+  eq('o eixo PESSOA é o que a constraint do banco NÃO pega — o responsável da e2 marcado num bloco da e1 no mesmo horário',
+     M78.conflitosDaPessoa('caio', cand({ dupla_id: 'e1', inicio_min: 600, servico_min: 60 }), blocos78, S36, escala78)
+       .map((b) => b.id), ['b4']);
+  eq('…e quem está na PRÓPRIA equipe do bloco não gera conflito de pessoa (aí quem manda é o EXCLUDE)',
+     M78.conflitosDaPessoa('ana', cand({ inicio_min: 600, servico_min: 60 }), blocos78, S36, escala78), []);
+  eq('o filtro "esta equipe, neste dia, o que conta" é UMA função — três cópias do mesmo filter divergem, e uma delas somava a jornada de todas as equipes juntas',
+     [M78.blocosDaEquipeNoDia('e1', D1, blocos78).map((b) => b.id),
+      M78.blocosDaEquipeNoDia('e1', D3, blocos78).map((b) => b.id),
+      M78.blocosDaEquipeNoDia('e9', D1, blocos78)],
+     [['b1', 'b2'], ['b3', 'b9'], []]);
+
+  // ── a jornada do dia: SOMA, e não span ──────────────────────────────────
+  // A fixture tem um BURACO de propósito (b3 acaba 10:00, b9 sai 14:30): com
+  // blocos contíguos, soma e span dão o mesmo número e a asserção não separa as
+  // duas leituras — foi o que aconteceu na primeira versão deste bloco.
+  const jorD3 = M78.jornadaDoDia(M78.blocosDaEquipeNoDia('e1', D3, blocos78));
+  eq('CRÍTICO: a jornada do dia SOMA os blocos e não mede da primeira saída ao último fim — buraco entre atendimentos é ocioso',
+     [jorD3, jorD3.ultimoFimMin - jorD3.primeiraSaidaMin, jorD3.ocupadoMin === jorD3.ultimoFimMin - jorD3.primeiraSaidaMin],
+     [{ servicoMin: 120, deslocamentoMin: 30, ocupadoMin: 150, excedenteMin: 0,
+        primeiraSaidaMin: 540, ultimoFimMin: 960 }, 420, false]);
+  eq('o cancelado não entra na soma — b5 pesa 150 e some',
+     M78.jornadaDoDia([b1, b2, b5]).ocupadoMin, 300);
+  eq('dia vazio não tem primeira saída — null, e não zero, que seria meia-noite',
+     [M78.jornadaDoDia([]).primeiraSaidaMin, M78.jornadaDoDia([]).ultimoFimMin,
+      M78.jornadaDoDia([]).ocupadoMin],
+     [null, null, 0]);
+  eq('o excedente é o que passa das 8h, e ele existe (o urgente estoura a jornada de propósito)',
+     [M78.jornadaDoDia([b1, b2]).excedenteMin,
+      M78.jornadaDoDia([B('bz', { servico_min: 500, deslocamento_min: 30 })]).excedenteMin],
+     [0, 50]);
+
+  // ── QUEM ESTÁ OLHANDO ───────────────────────────────────────────────────
+  // O gate das portas não é derivável do modelo puro (is_gestor e
+  // pode_editar_chamado são funções do banco), então a tela injeta a resposta —
+  // e as asserções injetam três pessoas diferentes:
+  //   · gestor78 — passa por cima de tudo, e é o contexto PADRÃO das asserções
+  //     de forma/conflito/jornada, para elas continuarem medindo o que medem;
+  //   · ana78 — técnica, escalada na e1 na S36, responde por c1, c5 e c8;
+  //   · dina78 — técnica, escalada na e4 SÓ na S36 (na S33 ela não existe): é
+  //     ela que prova que a semana consultada sai do DIA DO CANDIDATO;
+  //   · semSessao78 — auth.uid() nulo, o SQL Editor: o gate passa inteiro, como
+  //     no `IF auth.uid() IS NOT NULL THEN` da RPC.
+  const gestor78 = { usuarioId: 'gestao', ehGestor: true, podeEditarChamado: () => true };
+  const ana78 = { usuarioId: 'ana', ehGestor: false,
+                  podeEditarChamado: (id) => ['c1', 'c5', 'c8'].includes(id) };
+  const dina78 = { usuarioId: 'dina', ehGestor: false,
+                   podeEditarChamado: (id) => ['c1', 'c5'].includes(id) };
+  const semSessao78 = { usuarioId: null, ehGestor: false, podeEditarChamado: () => false };
+
+  // ── o erro do agendamento: a ORDEM é a da RPC, e as FRASES são as dela ──
+  const ctx = (o = {}) => ({ blocosDoDia: blocos78, blocoAtual: null, chamado: null,
+                             escala: escala78, chaveDaSemana: chaveSem,
+                             rotuloDe: rotulo78, autz: gestor78, ...o });
+
+  // ── O GATE DAS PORTAS: quem manda neste bloco hoje ─────────────────────
+  // É a camada nova, e a única deste arquivo que fala de PERMISSÃO. Ela vem
+  // ANTES da forma porque vem antes na RPC: um gesto que viola as duas tem de
+  // receber a MESMA frase dos dois lados, senão a validação do cliente vira uma
+  // segunda regra — que é o defeito que este bloco inteiro existe para não ter.
+  // O modelo puro NÃO autoriza nada: ele antecipa a recusa, com a frase da RPC,
+  // para o usuário não clicar e descobrir depois.
+  eq('CRÍTICO: o gestor passa por cima das três camadas, e quem não tem sessão também — é o `IF auth.uid() IS NOT NULL` da RPC, e na migration e no SQL Editor não há JWT nenhum',
+     [M78.erroDeAutorizacao(cand({ chamado_id: null, titulo_externo: 'x', dupla_id: 'e2' }), ctx()),
+      M78.erroDeAutorizacao(cand({ chamado_id: 'c2', dupla_id: 'e2' }), ctx({ autz: semSessao78 })),
+      /IF auth\.uid\(\) IS NOT NULL THEN/.test(marcar78)],
+     [null, null, true]);
+  eq('CRÍTICO: (i) serviço fora do sistema é ato de GESTÃO, e a recusa olha os DOIS lados — o que ESTÁ na linha e o que VAI ficar; olhando só o destino, um PATCH sobre um bloco de gestão escapava, e aquele bloco é o único registro que o serviço tem',
+     [M78.erroDeAutorizacao(cand({ chamado_id: null, titulo_externo: 'x' }), ctx({ autz: ana78 })),
+      M78.erroDeAutorizacao(cand({ id: 'b4', chamado_id: null, titulo_externo: 'x', dupla_id: 'e2' }),
+                            ctx({ autz: ana78, blocoAtual: b4 })),
+      // e o PATCH que tira o bloco de gestão do limbo (sem chamado -> c1, que a
+      // ana pode editar) é recusado pela MESMA metade: quem estava lá é gestão
+      M78.erroDeAutorizacao(cand({ id: 'b4', chamado_id: 'c1', dupla_id: 'e1' }),
+                            ctx({ autz: ana78, blocoAtual: b4 })),
+      u78.includes('Só quem responde pela operação mexe em serviço fora do sistema.')],
+     ['Só quem responde pela operação mexe em serviço fora do sistema.',
+      'Só quem responde pela operação mexe em serviço fora do sistema.',
+      'Só quem responde pela operação mexe em serviço fora do sistema.', true]);
+  eq('CRÍTICO: (ii) o chamado que SAI — sem esta camada, quem abre um chamado bobo arrasta para ele o bloco de um chamado que não pode nem LER, e o espelho escreve NULL na data do chamado roubado, sem sino nenhum',
+     [M78.erroDeAutorizacao(cand({ id: 'b2', chamado_id: 'c1', dupla_id: 'e1' }),
+                            ctx({ autz: ana78, blocoAtual: b2 })),
+      u78.includes('Este horário é de um atendimento pelo qual você não responde. Peça a quem responde por ele, ou à gestão.')],
+     ['Este horário é de um atendimento pelo qual você não responde. Peça a quem responde por ele, ou à gestão.', true]);
+  eq('CRÍTICO: (iii) e o chamado que ENTRA, que impede usar um bloco autorizado para agendar trabalho de terceiros — a segunda chamada tem o bloco de origem autorizado e o destino não, para as duas camadas não se cobrirem',
+     [M78.erroDeAutorizacao(cand({ chamado_id: 'c2' }), ctx({ autz: ana78 })),
+      M78.erroDeAutorizacao(cand({ id: 'b1', chamado_id: 'c2', dupla_id: 'e1' }),
+                            ctx({ autz: ana78, blocoAtual: b1 })),
+      u78.includes('Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.')],
+     ['Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.',
+      'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.', true]);
+  eq('CRÍTICO: (iv) a ESCALA era a camada que faltava POR INTEIRO — sem ela a função nunca olhava para a equipe, e quem respondesse por um chamado qualquer ocupava a terça-feira de QUALQUER time; e "sem escala nenhuma" recusa junto com "outra equipe", porque quem não está escalado não ocupa agenda de campo nenhuma',
+     [M78.erroDeAutorizacao(cand({ chamado_id: 'c1', dupla_id: 'e2' }), ctx({ autz: ana78 })),
+      M78.erroDeAutorizacao(cand({ chamado_id: 'c1', dupla_id: 'e1' }), ctx({ autz: ana78 })),
+      M78.erroDeAutorizacao(cand({ chamado_id: 'c1', dupla_id: 'e3' }),
+                            ctx({ autz: { ...ana78, usuarioId: 'zeca' } })),
+      u78.includes('Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.')],
+     ['Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.',
+      null,
+      'Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.', true]);
+  // A SEMANA SAI DO DIA DO CANDIDATO, e não de um valor recebido. A dina está na
+  // e4 na S36 e NÃO existe na escala da S33 (que herda a S30, onde a e4 nem
+  // nasceu). Com "a semana da grade" no contexto, empurrar um bloco para outra
+  // semana consultaria a escala errada exatamente no gesto em que ela muda.
+  eq('CRÍTICO: a escala consultada é a da semana do DIA DE DESTINO — o mesmo gesto, na mesma equipe, passa numa semana e é recusado na outra',
+     [M78.erroDeAutorizacao(cand({ chamado_id: 'c1', dupla_id: 'e4', dia: D1 }), ctx({ autz: dina78 })),
+      M78.erroDeAutorizacao(cand({ chamado_id: 'c1', dupla_id: 'e4', dia: '2026-08-10' }), ctx({ autz: dina78 })),
+      M78.semanaDoDia('2026-08-10', chaveSem), M78.semanaDoDia(D1, chaveSem),
+      M78.semanaDoDia('01/09/2026', chaveSem),
+      /public\.dupla_da_pessoa\(auth\.uid\(\), v_dia\)/.test(marcar78)],
+     [null, 'Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.',
+      S33, S36, null, true]);
+  eq('CRÍTICO: o gate vem ANTES da forma, como na RPC — e a checagem de ESCALA se cala quando falta o dia ou a equipe, senão um gesto incompleto recebia "você não está na escala", uma recusa de AUTORIZAÇÃO para um erro de FORMA, mandando o gestor procurar permissão onde falta um campo',
+     [M78.erroDoAgendamento(cand({ chamado_id: 'c2', dupla_id: 'e2', servico_min: 0 }), ctx({ autz: ana78 })),
+      M78.erroDoAgendamento(cand({ chamado_id: 'c1', dupla_id: '' }), ctx({ autz: ana78 })),
+      M78.erroDoAgendamento(cand({ chamado_id: 'c1', dupla_id: 'e2', dia: '01/09/2026' }), ctx({ autz: ana78 })),
+      // e a RPC guarda a comparação do mesmo jeito, contra os valores EFETIVOS
+      /IF v_dia IS NOT NULL AND v_dupla IS NOT NULL/.test(marcar78)],
+     ['Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.',
+      'Diga a equipe, o dia e a hora do atendimento.',
+      'Data fora do formato AAAA-MM-DD: 01/09/2026.', true]);
+  eq('CRÍTICO: o gesto que diz reescrever um bloco que o contexto não trouxe cai na frase do `IF NOT FOUND` do passo 1a — decidir sobre a linha errada é pior do que pedir para recarregar, porque é essa linha que o gate e a recusa do "feito" leem',
+     [M78.erroDoAgendamento(cand({ id: 'b1' }), ctx()),
+      M78.erroDoAgendamento(cand({ id: 'b1' }), ctx({ blocoAtual: b2 })),
+      M78.erroDoAgendamento(cand({ id: 'b1', chamado_id: 'c1', inicio_min: 570, servico_min: 120,
+                                   deslocamento_min: 30 }), ctx({ blocoAtual: b1 })),
+      u78.includes('Este bloco não existe mais — recarregue a grade e refaça o gesto.')],
+     ['Este bloco não existe mais — recarregue a grade e refaça o gesto.',
+      'Este bloco não existe mais — recarregue a grade e refaça o gesto.', null, true]);
+
+  eq('forma: sem equipe, dia ou hora não há o que checar — e a frase é a mesma da RPC',
+     [M78.erroDoAgendamento(cand({ dupla_id: '' }), ctx()),
+      M78.erroDoAgendamento(cand({ inicio_min: NaN }), ctx()),
+      u78.includes('Diga a equipe, o dia e a hora do atendimento.')],
+     ['Diga a equipe, o dia e a hora do atendimento.',
+      'Diga a equipe, o dia e a hora do atendimento.', true]);
+  eq('data fora do formato é recusada AQUI e só aqui — no banco o tipo date já garante',
+     M78.erroDoAgendamento(cand({ dia: '01/09/2026' }), ctx()),
+     'Data fora do formato AAAA-MM-DD: 01/09/2026.');
+  eq('duração sem número não vira bloco de zero minuto',
+     [M78.erroDoAgendamento(cand({ servico_min: 0 }), ctx({ blocosDoDia: [] })),
+      u78.includes('Diga quanto tempo o atendimento deve durar.')],
+     ['Diga quanto tempo o atendimento deve durar.', true]);
+  eq('deslocamento negativo é forma, não política — nem o urgente passa',
+     [M78.erroDoAgendamento(cand({ chamado_id: 'c8', deslocamento_min: -5 }), ctx({ chamado: porId78.get('c8') })),
+      u78.includes('O tempo de deslocamento não pode ser negativo.')],
+     ['O tempo de deslocamento não pode ser negativo.', true]);
+  eq('a hora tem de caber no dia — 1440 não é uma hora, é o fim dele',
+     [M78.erroDoAgendamento(cand({ inicio_min: 1440 }), ctx()),
+      M78.erroDoAgendamento(cand({ inicio_min: -1 }), ctx()),
+      u78.includes('A hora do atendimento tem de estar dentro do dia.')],
+     ['A hora do atendimento tem de estar dentro do dia.',
+      'A hora do atendimento tem de estar dentro do dia.', true]);
+  eq('CRÍTICO: a frase da estrada que começa no dia anterior é o MESMO MOLDE da RPC — molde diferente é a mesma regra falando duas línguas',
+     [M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 540, deslocamento_min: 600 }), ctx()),
+      casaComMolde('Começando % com % de deslocamento, a equipe teria de sair no dia anterior.',
+                   M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 540, deslocamento_min: 600 }), ctx())),
+      u78.includes('Começando % com % de deslocamento, a equipe teria de sair no dia anterior.')],
+     ['Começando 09:00 com 10h de deslocamento, a equipe teria de sair no dia anterior.', true, true]);
+  eq('CRÍTICO: e o dia tem 1440 minutos — física, não política: nem o urgente atravessa a meia-noite',
+     [M78.erroDoAgendamento(cand({ chamado_id: 'c8', dupla_id: 'e4', dia: D2, inicio_min: 1380, servico_min: 120 }),
+                            ctx({ chamado: porId78.get('c8') })),
+      u78.includes('Começando % e durando %, o atendimento passaria da meia-noite.')],
+     ['Começando 23:00 e durando 2h, o atendimento passaria da meia-noite.', true]);
+  eq('bloco sem chamado precisa dizer O QUÊ — é o gêmeo do CHECK agenda_campo_identificavel',
+     [M78.erroDoAgendamento(cand({ chamado_id: null, titulo_externo: null, dupla_id: 'e4', dia: D2 }), ctx()),
+      M78.erroDoAgendamento(cand({ chamado_id: null, titulo_externo: '   ', dupla_id: 'e4', dia: D2 }), ctx()),
+      u78.includes('Um bloco sem chamado precisa de um título — diga o que é este serviço.')],
+     ['Um bloco sem chamado precisa de um título — diga o que é este serviço.',
+      'Um bloco sem chamado precisa de um título — diga o que é este serviço.', true]);
+
+  eq('CRÍTICO: o erro NOMEIA o conflito — é isso que ele tem de fazer dentro do formulário, e é o que "Possível conflito de horário" nunca fez',
+     [M78.erroDoAgendamento(cand({ inicio_min: 660, servico_min: 60 }), ctx()),
+      u78.includes('Esta equipe já está em "%s" das %s às %s nesse dia.'),
+      casaComMolde('Esta equipe já está em "%s" das %s às %s nesse dia.',
+                   M78.erroDoAgendamento(cand({ inicio_min: 660, servico_min: 60 }), ctx()))],
+     ['Esta equipe já está em "CH-001 · Troca de câmera" das 09:00 às 11:30 nesse dia.', true, true]);
+  // A FRASE NÃO PODE MUDAR COM A ORDEM DA LISTA. A RPC escolhe o conflitante com
+  // `ORDER BY a.inicio_min, a.id` antes do LIMIT 1 (ela não tinha ORDER BY, e a
+  // MESMA recusa saía com nomes diferentes entre o ensaio e a rede de corrida).
+  // O gêmeo tem de escolher pela MESMA ordem — e não pelo primeiro que a lista
+  // trouxer, que é ordem de plano de um lado e ordem de fetch do outro.
+  const zzD1 = B('zzc', { chamado_id: 'c1', inicio_min: 600, servico_min: 30 });
+  const aaD1 = B('aac', { chamado_id: 'c2', inicio_min: 600, servico_min: 30 });
+  eq('CRÍTICO: a lista de conflitos e a FRASE são insensíveis à ordem em que os blocos chegam, e o empate no mesmo minuto desempata por id — é a mesma ordem total do `ORDER BY a.inicio_min, a.id` da RPC, e sem ela a mesma recusa sai com dois nomes',
+     [M78.conflitosDoBloco(cand({ inicio_min: 660, servico_min: 60 }), [...blocos78].reverse()).map((b) => b.id),
+      M78.erroDoAgendamento(cand({ inicio_min: 660, servico_min: 60 }),
+                            ctx({ blocosDoDia: [...blocos78].reverse() })),
+      M78.conflitosDoBloco(cand({ inicio_min: 600, servico_min: 30 }), [zzD1, aaD1]).map((b) => b.id),
+      M78.conflitosDoBloco(cand({ inicio_min: 600, servico_min: 30 }), [aaD1, zzD1]).map((b) => b.id)],
+     [['b1', 'b2'],
+      'Esta equipe já está em "CH-001 · Troca de câmera" das 09:00 às 11:30 nesse dia.',
+      ['aac', 'zzc'], ['aac', 'zzc']]);
+  eq('CRÍTICO: o conflito vem ANTES da jornada — ele é específico e acionável, a jornada é agregada; e a RPC ensaia o conflito antes de chegar em v_urgente',
+     [M78.erroDoAgendamento(cand({ inicio_min: 660, servico_min: 300 }), ctx()).startsWith('Esta equipe já está em'),
+      marcar78.indexOf('agenda_campo_frase_do_conflito(') > 0,
+      marcar78.indexOf('agenda_campo_frase_do_conflito(') < marcar78.indexOf('IF NOT v_urgente THEN')],
+     [true, true, true]);
+  eq('o eixo PESSOA entra DEPOIS do conflito de equipe e ANTES das isenções — uma pessoa não fica em dois prédios nem em emergência',
+     M78.erroDoAgendamento(cand({ chamado_id: 'c2', dupla_id: 'e4', inicio_min: 600, servico_min: 60 }),
+                           ctx({ chamado: porId78.get('c2') })),
+     'O responsável já está em "OS-9911 · Portão do condomínio vizinho" com a equipe dele das 10:00 às 11:00 nesse dia.');
+
+  // A BORDA, nos dois lados. Sem ela `>` vira `>=` e a asserção não vê: no dia
+  // D3 a equipe já tem 2h30 marcadas, então o teto para o novo é 5h30 de peso.
+  eq('CRÍTICO: serviço + deslocamento não passam das 8h de campo — e a BORDA EXATA é fixada: 480 cravados passam, 481 não',
+     [M78.erroDoAgendamento(cand({ dia: D3, inicio_min: 1000, servico_min: 300, deslocamento_min: 30 }), ctx()),
+      M78.erroDoAgendamento(cand({ dia: D3, inicio_min: 1000, servico_min: 301, deslocamento_min: 30 }), ctx())],
+     [null, 'A equipe já tem 2h30 marcados nesse dia; com este atendimento (5h01 + 30min de deslocamento) passaria das 8h de campo.']);
+  eq('…e o molde da frase da jornada é o da RPC',
+     [u78.includes('A equipe já tem % marcados nesse dia; com este atendimento (% + % de deslocamento) passaria das 8h de campo.'),
+      casaComMolde('A equipe já tem % marcados nesse dia; com este atendimento (% + % de deslocamento) passaria das 8h de campo.',
+                   M78.erroDoAgendamento(cand({ dia: D3, inicio_min: 1000, servico_min: 301, deslocamento_min: 30 }), ctx()))],
+     [true, true]);
+  // MOVER UM BLOCO DENTRO DO PRÓPRIO DIA — o caso que faltava, e que nenhuma
+  // asserção exercitava: todas as fixtures da jornada CRIAVAM bloco (`id: null`),
+  // e com `id` nulo o `filter(b => b.id !== cand.id)` não tem o que tirar. Sem o
+  // desconto, arrastar um cartão de 5h três horas para a frente conta o MESMO
+  // bloco duas vezes e a grade recusa um gesto que não muda a carga do dia em um
+  // minuto — a recusa mais absurda que uma tela de arrasto pode dar.
+  // O terceiro caso é o que impede a correção de virar buraco: quem desconta o
+  // dia INTEIRO em vez de só a própria linha também passaria nos dois primeiros.
+  const bm78 = B('bm', { chamado_id: 'c5', dupla_id: 'e4', dia: D2, inicio_min: 540, servico_min: 300 });
+  const bo78 = B('bo', { dupla_id: 'e4', dia: D2, inicio_min: 1140, servico_min: 200, titulo_externo: 'a outra do dia' });
+  const mover78D2 = (o) => cand({ id: 'bm', chamado_id: 'c5', dupla_id: 'e4', dia: D2,
+                                  inicio_min: 840, servico_min: 300, deslocamento_min: 0, ...o });
+  eq('CRÍTICO: a jornada do dia DESCONTA o próprio bloco quando o gesto é um MOVER — mover 5h das 09:00 para as 14:00 não acrescenta nada ao dia, e sem o desconto o dia é contado duas vezes; a BORDA é fixada (481 estoura) e o desconto é de UMA linha, não do dia inteiro: com uma segunda equipe de 3h20 no mesmo dia, os mesmos 5h passam a estourar',
+     [M78.erroDoAgendamento(mover78D2({}), ctx({ blocosDoDia: [bm78], blocoAtual: bm78, chamado: porId78.get('c5') })),
+      M78.erroDoAgendamento(mover78D2({ servico_min: 481 }), ctx({ blocosDoDia: [bm78], blocoAtual: bm78, chamado: porId78.get('c5') })),
+      M78.erroDoAgendamento(mover78D2({}), ctx({ blocosDoDia: [bm78, bo78], blocoAtual: bm78, chamado: porId78.get('c5') })),
+      // …e o gêmeo do desconto está na RPC, com o mesmo `IS NULL OR <>`: numa
+      // CRIAÇÃO (_id nulo) não há linha a descontar, e um `a.id <> _id` cru com
+      // _id NULL devolveria NULL e zeraria a soma do dia inteiro
+      /AND \(_id IS NULL OR a\.id <> _id\);/.test(marcar78)],
+     [null,
+      'A equipe já tem 0min marcados nesse dia; com este atendimento (8h01 + 0min de deslocamento) passaria das 8h de campo.',
+      'A equipe já tem 3h20 marcados nesse dia; com este atendimento (5h + 0min de deslocamento) passaria das 8h de campo.',
+      true]);
+  eq('CRÍTICO: a primeira atividade não começa antes de 09h MAIS o deslocamento, e a BORDA é fixada: sair 09:00 cravado passa, um minuto antes não',
+     [M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 580, deslocamento_min: 40 }), ctx()),
+      M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 579, deslocamento_min: 40 }), ctx())],
+     [null, 'A equipe só sai às 09:00 — com 40min de deslocamento o atendimento não pode começar antes das 09:40.']);
+  eq('…e esse molde também é o da RPC',
+     [u78.includes('A equipe só sai às 09:00 — com % de deslocamento o atendimento não pode começar antes das %.'),
+      casaComMolde('A equipe só sai às 09:00 — com % de deslocamento o atendimento não pode começar antes das %.',
+                   M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 579, deslocamento_min: 40 }), ctx()))],
+     [true, true]);
+
+  // ── AS DUAS ISENÇÕES, e as duas são FATOS DA LINHA ─────────────────────
+  eq('CRÍTICO: "emergencial" é corretiva + urgente (Davi, 31/08) e é ISENTO da jornada — e a isenção sai do CHAMADO, não de um booleano que quem chama decide',
+     [M78.erroDoAgendamento(cand({ chamado_id: 'c8', dupla_id: 'e4', dia: D4, inicio_min: 400, servico_min: 600 }),
+                            ctx({ chamado: porId78.get('c8') })),
+      M78.erroDoAgendamento(cand({ chamado_id: 'c5', dupla_id: 'e4', dia: D4, inicio_min: 400, servico_min: 600 }),
+                            ctx({ chamado: porId78.get('c5') }))],
+     [null, 'A equipe só sai às 09:00 — com 0min de deslocamento o atendimento não pode começar antes das 09:00.']);
+  eq('CRÍTICO: a SEGUNDA isenção é o bloco SEM CHAMADO — o formulário recusava a OS de fora das 10h que a RPC aceitava, porque lá a isenção é `v_urgente := (v_chamado IS NULL)`',
+     [M78.erroDoAgendamento(cand({ chamado_id: null, titulo_externo: 'Portão do vizinho', dupla_id: 'e4', dia: D4, inicio_min: 400, servico_min: 600 }), ctx()),
+      M78.isentoDaJornada(null, null), M78.isentoDaJornada('c8', porId78.get('c8')),
+      M78.isentoDaJornada('c5', porId78.get('c5')), M78.isentoDaJornada('c8', null)],
+     [null, true, true, false, false]);
+  eq('CRÍTICO: e as DUAS isenções estão na RPC como fatos da linha — nenhum parâmetro de "forçar" nasceu junto',
+     [/v_urgente := \(v_chamado IS NULL\);/.test(marcar78),
+      /c\.tipo = 'corretiva' AND c\.prioridade = 'urgente'/.test(marcar78),
+      /_forcar|_ignorar|_bypass/.test(cod78)],
+     [true, true, false]);
+  eq('contexto desencontrado (a tela trocou de cartão e esqueceu de trocar o chamado) cai no lado SEGURO: a jornada volta a valer',
+     M78.erroDoAgendamento(cand({ chamado_id: 'c8', dupla_id: 'e4', dia: D4, inicio_min: 400, servico_min: 600 }),
+                           ctx({ chamado: porId78.get('c1') })),
+     'A equipe só sai às 09:00 — com 0min de deslocamento o atendimento não pode começar antes das 09:00.');
+  eq('…e "emergencial" NÃO virou tipo novo: o vocabulário de chamados.tipo continua sem essa palavra',
+     [CS78.TIPOS.includes('emergencial'),
+      M78.ehEmergencial({ tipo: 'corretiva', prioridade: 'urgente' }),
+      M78.ehEmergencial({ tipo: 'corretiva', prioridade: 'alta' }),
+      M78.ehEmergencial(null)],
+     [false, true, false, false]);
+  // …E O "E" É DAS DUAS METADES. A asserção acima só variava a PRIORIDADE, e
+  // por isso a metade `tipo = 'corretiva'` da frase do Davi não estava presa:
+  // apagá-la deixava tudo verde e transformava QUALQUER urgente em isento da
+  // jornada. Consequência medida: uma PREVENTIVA marcada como urgente ganhava
+  // um bloco das 06:40 durando 10h no formulário — e a RPC recusaria, porque lá
+  // o teste é `c.tipo = 'corretiva' AND c.prioridade = 'urgente'`, as duas.
+  // Formulário mais permissivo que a porta é a pior direção da divergência:
+  // o usuário monta o dia inteiro e leva o erro só no salvar.
+  const cPrevUrg78 = C('cpu', 'CH-012', 'Preventiva que alguém marcou como urgente',
+                       { tipo: 'preventiva', prioridade: 'urgente', status: 'aberto' });
+  eq('CRÍTICO: "emergencial" é corretiva E urgente — as DUAS metades, e a que faltava prender era o TIPO: preventiva urgente NÃO é emergencial, NÃO é isenta da jornada e o formulário recusa o mesmo bloco de 10h que aceita no corretiva urgente (é a frase do Davi de 31/08, e a RPC exige as duas na mesma linha)',
+     [M78.ehEmergencial({ tipo: 'preventiva', prioridade: 'urgente' }),
+      M78.ehEmergencial({ tipo: 'instalacao', prioridade: 'urgente' }),
+      M78.ehEmergencial({ tipo: 'preventiva', prioridade: 'alta' }),
+      M78.isentoDaJornada('cpu', cPrevUrg78),
+      M78.isentoDaJornada('c8', porId78.get('c8')),
+      M78.erroDoAgendamento(cand({ chamado_id: 'cpu', dupla_id: 'e4', dia: D4, inicio_min: 400, servico_min: 600 }),
+                            ctx({ chamado: cPrevUrg78 })),
+      /c\.tipo = 'corretiva' AND c\.prioridade = 'urgente'/.test(marcar78)],
+     [false, false, false, false, true,
+      'A equipe só sai às 09:00 — com 0min de deslocamento o atendimento não pode começar antes das 09:00.',
+      true]);
+  eq('a JORNADA continua fora do CHECK do banco (política que vira constraint faz o gestor mentir na duração para caber), e as duas isenções vivem na porta',
+     [/CONSTRAINT agenda_campo_tempo[\s\S]{0,400}CHECK/.test(u78),
+      /CONSTRAINT agenda_campo_tempo[\s\S]{0,400}(480|540)/.test(u78),
+      /IF NOT v_urgente THEN/.test(marcar78)],
+     [true, false, true]);
+
+  // ── as 17h NÃO são regra, e a constante é o eixo do desenho ─────────────
+  eq('CRÍTICO: nada recusa um bloco que termina depois das 17:00 — "a jornada acaba às 17h" é HÁBITO e teto de 8h, e o §2.1 da U78 diz isso com todas as letras',
+     [M78.CAMPO_FECHA_MIN, M78.horaTexto(M78.CAMPO_FECHA_MIN),
+      M78.erroDoAgendamento(cand({ dupla_id: 'e4', dia: D2, inicio_min: 960, servico_min: 480 }), ctx()),
+      u78.includes('não regra checada')],
+     [1020, '17:00', null, true]);
+
+  // ── o valor com que o formulário abre ──────────────────────────────────
+  const cheio78 = [B('cheio', { dupla_id: 'e4', dia: D2, inicio_min: 540, servico_min: 480,
+                                titulo_externo: 'dia inteiro' })];
+  eq('CRÍTICO: o formulário abre com um valor que ele mesmo ACEITA — num dia já cheio ele devolve null ("este dia não comporta"), e não 17:00 para ser recusado no instante seguinte',
+     [M78.primeiroInicioPossivel('e4', D2, blocos78, 40),
+      M78.primeiroInicioPossivel('e1', D1, blocos78, 30),
+      M78.primeiroInicioPossivel('e1', D3, blocos78, 0),
+      M78.primeiroInicioPossivel('e4', D2, cheio78, 0)],
+     [580, 870, 960, null]);
+  eq('…e "aceita" é medido, não prometido: em cada caso com resposta, um serviço de 1 minuto ali passa',
+     [['e4', D2, blocos78, 40], ['e1', D1, blocos78, 30], ['e1', D3, blocos78, 0]].map(([d, dia, bl, desl]) =>
+       M78.erroDoAgendamento(
+         cand({ dupla_id: d, dia, inicio_min: M78.primeiroInicioPossivel(d, dia, bl, desl), servico_min: 1, deslocamento_min: desl }),
+         ctx({ blocosDoDia: bl }))),
+     [null, null, null]);
+
+  // ── ocupação: os DOIS zeros são diferentes ──────────────────────────────
+  const ocupE1 = M78.ocupacaoDaSemana('e1', S36, blocos78, escala78, chaveSem);
+  eq('a ocupação da semana soma serviço e estrada de todos os dias, e ignora o cancelado',
+     [ocupE1.minutos, ocupE1.base, ocupE1.pct, ocupE1.disponivel], [510, 2400, 21, false]);
+  eq('CRÍTICO: equipe COM escala e sem bloco nenhum é 0% e "disponível" — e não divide por zero',
+     M78.ocupacaoDaSemana('e4', S36, blocos78, escala78, chaveSem),
+     { minutos: 0, base: 2400, pct: 0, disponivel: true, comEscala: true, blocos: [] });
+  eq('…e "disponível" é sobre a LISTA, não sobre os minutos: uma semana só de blocos cancelados também é disponível, e a igualdade é afirmada',
+     (() => {
+       const o = M78.ocupacaoDaSemana('e4', S36, [B('bc', { dupla_id: 'e4', cancelado_em: 'x', titulo_externo: 'x' })], escala78, chaveSem);
+       return [o.minutos, o.blocos, o.disponivel, o.disponivel === (o.comEscala && o.blocos.length === 0)];
+     })(), [0, [], true, true]);
+  // …E A FIXTURE ANTERIOR NÃO DISCRIMINAVA: no bloco CANCELADO as duas leituras
+  // ("a lista está vazia" e "os minutos são zero") CONCORDAM, então trocar uma
+  // pela outra passava verde. O caso que as separa é o bloco ATIVO que pesa
+  // zero. Ele é hoje IMPOSSÍVEL no banco (o CHECK agenda_campo_tempo exige
+  // servico_min > 0) e a asserção diz isso — mas a regra que ela prende não é
+  // sobre o CHECK, é a doutrina da casa: "quem conta é quem filtra". `disponivel`
+  // é uma promessa sobre a LISTA que o clique abre, e um selo "disponível" numa
+  // linha com cartão desenhado é a mesma segunda verdade de sempre. Se o CHECK
+  // um dia afrouxar (bloco de espera, de deslocamento puro), a asserção já está
+  // aqui.
+  eq('CRÍTICO: "disponível" é uma afirmação sobre a LISTA e nunca sobre a soma dos minutos — bloco ATIVO que pesa zero mantém a equipe OCUPADA, senão o selo aparece numa linha que tem cartão desenhado embaixo (hoje o CHECK do banco torna esse bloco impossível; a regra é o contrato do chip com a lista, não o CHECK)',
+     (() => {
+       const zeroAtivo = [B('bz0', { dupla_id: 'e4', servico_min: 0, deslocamento_min: 0, titulo_externo: 'peso zero' })];
+       const o = M78.ocupacaoDaSemana('e4', S36, zeroAtivo, escala78, chaveSem);
+       return [o.minutos, o.blocos, o.disponivel, o.pct,
+               o.disponivel === (o.comEscala && o.blocos.length === 0)];
+     })(), [0, ['bz0'], false, 0, true]);
+  // …E A OUTRA METADE DO `&&`: "disponível" é uma OFERTA ("marque aqui"), e
+  // oferecer a semana de uma equipe que não existe naquela semana manda o
+  // gestor programar trabalho para ninguém. As duas fixtures anteriores tinham
+  // BLOCO (e3) ou tinham ESCALA (e4), e nas duas o `comEscala &&` era
+  // redundante: apagá-lo passava verde. A equipe SEM escala e SEM bloco é a
+  // única fixture em que ele é a única coisa segurando o selo.
+  eq('CRÍTICO: e o selo exige ESCALA, não só lista vazia — equipe sem escala e sem bloco nenhum (apagada do cadastro, ou fora da escala da semana) NÃO é uma vaga que a grade oferece: sem essa metade do `&&`, a semana em que a equipe não existe é a que aparece mais convidativa',
+     M78.ocupacaoDaSemana('e9', S36, [], escala78, chaveSem),
+     { minutos: 0, base: 0, pct: null, disponivel: false, comEscala: false, blocos: [] });
+  eq('CRÍTICO: equipe SEM escala na semana é null, não 0 — "não sei" nunca é "ninguém", e o bloco dela continua contado no total',
+     M78.ocupacaoDaSemana('e3', S36, blocos78, escala78, chaveSem),
+     { minutos: 60, base: 0, pct: null, disponivel: false, comEscala: false, blocos: ['b6'] });
+  // "NÃO DIVIDE POR ZERO" TEM DE SER MEDIDO PELO TIPO. A asserção acima diz
+  // `pct: null` e passa por JSON.stringify — e JSON.stringify(Infinity) e
+  // JSON.stringify(NaN) são os DOIS a string "null". Ou seja: a asserção que se
+  // chamava "…e não divide por zero" era estruturalmente incapaz de ver uma
+  // divisão por zero, e tirar a guarda `base > 0` passava verde com `pctTexto`
+  // escrevendo "Infinity%" na tela. O `eq` deste arquivo ganhou um marcador para
+  // não-finitos por causa disto (vale para o verificador INTEIRO); aqui a regra
+  // fica dita, com os dois zeros do denominador exercitados.
+  eq('CRÍTICO: e "não divide por zero" é medido pelo TIPO, não pelo JSON — 60/0 é Infinity e 0/0 é NaN, e os dois viram a string "null" num stringify: sem a guarda `base > 0` a equipe sem escala mostrava "Infinity%" e a equipe sem escala e sem bloco mostrava "NaN%", e nenhuma asserção que compare com null podia vê-los',
+     (() => {
+       const semEsc = M78.ocupacaoDaSemana('e3', S36, blocos78, escala78, chaveSem);      // 60 / 0
+       const semNada = M78.ocupacaoDaSemana('e9', S36, [], escala78, chaveSem);           // 0 / 0
+       return [semEsc.pct === null, String(semEsc.pct), Number.isFinite(semEsc.pct),
+               semNada.pct === null, String(semNada.pct), Number.isFinite(semNada.pct),
+               M78.pctTexto(semEsc.pct), M78.pctTexto(semNada.pct),
+               // e o denominador do DIA é constante: lá nunca há divisão por zero
+               M78.ocupacaoDoDia([]).pct === 0];
+     })(),
+     [true, 'null', false, true, 'null', false, '—', '—', true]);
+  eq('CRÍTICO: o número mostrado e a lista que o clique abre saem da MESMA base',
+     ocupE1.blocos, M78.blocosDaEquipeNaSemana('e1', S36, blocos78, chaveSem).map((b) => b.id));
+  // A fixture antiga desta regra dava 35% — nomeava "passar de 100% não é capado"
+  // e não exercitava o cap: `Math.min(100, ...)` sobrevivia a ela.
+  const blocos112 = [D0, D1, D2, D3, D4].map((d, i) =>
+    B(`x${i}`, { dupla_id: 'e4', dia: d, inicio_min: 540, servico_min: 480, titulo_externo: 'semana cheia' }))
+    .concat([B('x5', { dupla_id: 'e4', dia: SAB, inicio_min: 540, servico_min: 288, titulo_externo: 'sábado' })]);
+  eq('CRÍTICO: passar de 100% NÃO é capado — 112% quer dizer que trabalharam no sábado, e capar é o gráfico escondendo trabalho',
+     (() => { const o = M78.ocupacaoDaSemana('e4', S36, blocos112, escala78, chaveSem);
+              return [o.minutos, o.pct, o.pct > 100]; })(),
+     [2688, 112, true]);
+  eq('a ocupação de UM dia é sobre 8h, e ali o denominador é constante — nunca há null',
+     [M78.ocupacaoDoDia([b1, b2]), M78.ocupacaoDoDia([])],
+     [{ minutos: 300, pct: 63 }, { minutos: 0, pct: 0 }]);
+  eq('CRÍTICO: a herança da escala pega a semana ABERTA anterior mais recente e NUNCA uma futura — a e4 nasceu na S36 e não tem ocupação na S33',
+     [M78.ocupacaoDaSemana('e4', S33, blocos78, escala78, chaveSem).pct,
+      M78.ocupacaoDaSemana('e4', S36, blocos78, escala78, chaveSem).pct,
+      E78.semanaVigente(S33, escala78), E78.semanaVigente('2026-S35', escala78),
+      E78.semanaVigente(S36, escala78)],
+     [null, 0, S30, S30, S36]);
+
+  // ── o retorno, derivado ─────────────────────────────────────────────────
+  eq('CRÍTICO: "retorno" é DERIVADO da ordem dos blocos — sem coluna e sem valor novo em chamados.status',
+     [M78.ordinalDoBloco(b1, blocos78), M78.ordinalDoBloco(b3, blocos78),
+      M78.blocoEhRetorno(b1, blocos78), M78.blocoEhRetorno(b3, blocos78)],
+     [1, 2, false, true]);
+  eq('bloco sem chamado é sempre o primeiro de si mesmo — "retorno de OS de fora" não é pergunta que este sistema saiba responder',
+     [M78.ordinalDoBloco(b4, blocos78), M78.ordinalDoBloco(b9, blocos78)], [1, 1]);
+  eq('o bloco cancelado não conta como ida: cancelar a primeira visita faz a segunda deixar de ser retorno',
+     M78.ordinalDoBloco(b3, [{ ...b1, cancelado_em: 'x' }, b3]), 1);
+  // A justificativa antiga do desempate por id citava o ESPELHO, e era falsa: o
+  // espelho devolve {dia, inicio_min}, que é exatamente o que empata. Onde o
+  // desempate é OBSERVÁVEL é aqui.
+  const zz = B('zz', { chamado_id: 'c9', inicio_min: 600 });
+  const aa = B('aa', { chamado_id: 'c9', dupla_id: 'e2', inicio_min: 600 });
+  eq('CRÍTICO: dois blocos no MESMO minuto desempatam por id, e é no ORDINAL que isso se vê — sem ordem total "esta é a 2ª ida" trocaria de cartão a cada render',
+     [M78.ordinalDoBloco(aa, [zz, aa]), M78.ordinalDoBloco(zz, [zz, aa]),
+      M78.ordinalDoBloco(aa, [aa, zz]), M78.ordinalDoBloco(zz, [aa, zz]),
+      M78.comparaBlocos(aa, zz) < 0],
+     [1, 2, 1, 2, true]);
+
+  // ── O GÊMEO PURO DO ESPELHO ─────────────────────────────────────────────
+  // blocos78 é a lista INTEIRA de propósito: b6 (do c4) começa às 09:00 do mesmo
+  // dia, mais cedo que b1 (do c1). A versão que não filtrava por chamado
+  // devolvia o bloco do OUTRO chamado — e era justamente a função que existe
+  // para ser o gêmeo do gatilho `WHERE a.chamado_id = _chamado`.
+  eq('CRÍTICO: o espelho é o início do bloco PENDENTE mais antigo DO CHAMADO — e o filtro por chamado é o gêmeo do WHERE do gatilho',
+     [M78.espelhoDoChamado('c1', blocos78), M78.espelhoDoChamado('c4', blocos78),
+      M78.espelhoDoChamado('c2', blocos78)],
+     [{ dia: D1, inicio_min: 570 }, { dia: D1, inicio_min: 540 }, { dia: D1, inicio_min: 720 }]);
+  eq('CRÍTICO: cumprida a visita de terça, o espelho ANDA para o retorno de quinta — sem isso o retorno some da tela em que o técnico vive',
+     M78.espelhoDoChamado('c1', [{ ...b1, cumprido_em: '2026-09-01T13:00:00Z' }, b3, b6]),
+     { dia: D3, inicio_min: 540 });
+  // O ATO NÃO PROMETE QUE A DATA SOME, e o texto da tela não pode prometer.
+  // Medido: com b1 CUMPRIDO e b3 pendente o espelho está na quinta (o retorno) e,
+  // depois de "tirar da agenda", VOLTA para a terça — a última visita que
+  // aconteceu. O chamado fica "aberto, e a última visita foi dia tal".
+  eq('CRÍTICO: "tirar da agenda" NEM SEMPRE zera a data — sobrando bloco CUMPRIDO, o estágio 2 do espelho a põe no último atendimento que ACONTECEU (o chamado ainda aberto não pode sumir do calendário e do PDF por ter sido atendido), e a data ANDA PARA TRÁS',
+     [M78.espelhoDoChamado('c1', [b1feito, b3]),
+      M78.espelhoAposDesagendar('c1', [b1feito, b3]),
+      M78.espelhoAposDesagendar('c1', [b1, b3]),
+      M78.espelhoAposDesagendar('c1', blocos78),
+      u78.includes('ATENÇÃO AO CASO DO RETORNO')],
+     [{ dia: D3, inicio_min: 540 }, { dia: D1, inicio_min: 570 }, null, null, true]);
+  eq('cumpridos TODOS, vale o ÚLTIMO — zerar faria o chamado ainda aberto perder a data no PDF e sair do calendário',
+     M78.espelhoDoChamado('c1', [{ ...b1, cumprido_em: 'x' }, { ...b3, cumprido_em: 'y' }]),
+     { dia: D3, inicio_min: 540 });
+  eq('CRÍTICO: sem bloco ativo o espelho é NULL — e é por isso que a U78 precisou de uma guarda nova dentro do gatilho de apoio da U76',
+     [M78.espelhoDoChamado('c1', []),
+      M78.espelhoDoChamado('c1', [{ ...b1, cancelado_em: 'x' }, { ...b3, cancelado_em: 'y' }]),
+      M78.espelhoDoChamado('c99', blocos78)],
+     [null, null, null]);
+  eq('cancelado não conta nem para escolher o espelho',
+     M78.espelhoDoChamado('c1', [{ ...b1, cancelado_em: 'x' }, b3]), { dia: D3, inicio_min: 540 });
+  eq('e o espelho é INSENSÍVEL à ordem da lista que chega — é isso que faz ele não oscilar e não reescrever updated_at a cada gravação',
+     [M78.espelhoDoChamado('c9', [zz, aa]), M78.espelhoDoChamado('c9', [aa, zz])],
+     [{ dia: D1, inicio_min: 600 }, { dia: D1, inicio_min: 600 }]);
+  eq('o espelho devolve o PAR (dia, minuto local) e não um instante — new Date(iso) resolve no fuso do navegador e o gatilho resolve em São Paulo',
+     Object.keys(M78.espelhoDoChamado('c1', blocos78)).sort(), ['dia', 'inicio_min']);
+  eq('e comparar dois espelhos trata null como resposta, não como erro',
+     [M78.espelhoIgual(null, null), M78.espelhoIgual({ dia: D1, inicio_min: 570 }, null),
+      M78.espelhoIgual({ dia: D1, inicio_min: 570 }, { dia: D1, inicio_min: 570 })],
+     [true, false, true]);
+
+  // ── A PONTE DO FUSO: sem ela o gêmeo não podia ser comparado com a coluna ─
+  eq('CRÍTICO: o instante gravado volta a ser (dia, minuto) em SÃO PAULO — 22:00 de terça é 01:00 de QUARTA em UTC, e ler pelo UTC moveria o bloco de dia e a semana ISO do apoio junto',
+     [M78.parDoInstante('2026-09-02T01:00:00Z'),
+      new Date('2026-09-02T01:00:00Z').getUTCDate()],
+     [{ dia: D1, inicio_min: 1320 }, 2]);
+  eq('…e a ida e a volta fecham para a hora cheia e para a meia-noite',
+     [M78.parDoInstante('2026-09-01T12:30:00Z'), M78.parDoInstante('2026-09-01T03:00:00Z')],
+     [{ dia: D1, inicio_min: 570 }, { dia: D1, inicio_min: 0 }]);
+  eq('instante ausente ou impossível é null, e não uma data inventada',
+     [M78.parDoInstante(null), M78.parDoInstante(''), M78.parDoInstante('não é data')],
+     [null, null, null]);
+  const cAberto78 = (o) => ({ ...porId78.get('c1'), ...o });
+  eq('CRÍTICO: o espelho CALCULADO e o espelho GRAVADO são o mesmo par — é a asserção que a U78 chama de "quem não casou" (§9.0), aqui sem banco',
+     [M78.espelhoConfere(porId78.get('c1'), blocos78),
+      M78.espelhoConfere(cAberto78({ data_hora_agendada: '2026-09-01T15:00:00Z' }), blocos78),
+      M78.espelhoConfere(cAberto78({ data_hora_agendada: null }), blocos78)],
+     [true, false, false]);
+  // O FILTRO QUE FALTAVA, e sem ele a função acusava 100% DA BASE NO DIA 1: a
+  // consulta do §9.0 tem `natureza='campo'`, `status NOT IN (...)` e
+  // `e.quando IS NOT NULL`, e esta não tinha nenhum dos três. Uma divergência
+  // que aparece para a base inteira é uma divergência que se aprende a ignorar.
+  eq('CRÍTICO: chamado de campo com data LEGADA e nenhum bloco NÃO é divergência — é a faixa "agendado sem horário", que no dia 1 está certa e cheia; sem este filtro a tela nasceria vermelha de ponta a ponta',
+     [M78.espelhoConfere(porId78.get('c5'), []),
+      M78.espelhoConfere(porId78.get('c5'), blocos78),
+      M78.espelhoConfere(porId78.get('c6'), [])],
+     [true, true, true]);
+  eq('…e quem não é assunto desta tela não é divergência dela: concluído, cancelado e comercial saem pelo ESCOPO, mesmo com bloco discordando da data',
+     [M78.espelhoConfere(porId78.get('c9'), [zz, aa]),
+      M78.espelhoConfere(porId78.get('c10'), [zz, aa]),
+      M78.espelhoConfere({ ...porId78.get('c11'), id: 'c9' }, [zz, aa]),
+      // e o mesmo dado, num chamado de campo ABERTO, continua sendo notícia —
+      // senão o filtro teria comido a pergunta junto com o ruído
+      M78.espelhoConfere({ ...porId78.get('c9'), status: 'aberto' }, [zz, aa])],
+     [true, true, true, false]);
+  eq('…e os três filtros são os MESMOS da consulta, lidos do arquivo',
+     [/WHERE c\.natureza='campo'\n\s+AND c\.status NOT IN \('concluido','cancelado'\)\n\s+AND e\.quando IS NOT NULL/.test(u78),
+      /naProgramacao\(chamado\)/.test(codTs78)],
+     [true, true]);
+  eq('o fuso aparece UMA vez no código do modelo puro, como constante — espalhá-lo é como o erro de uma hora vira uma semana',
+     [M78.FUSO_DA_OPERACAO, (codTs78.match(/America\/Sao_Paulo/g) || []).length,
+      /AT TIME ZONE 'America\/Sao_Paulo'/.test(u78)],
+     ['America/Sao_Paulo', 1, true]);
+
+  // ── o patch mínimo: o IS DISTINCT FROM do lado do TypeScript ────────────
+  const edit = { chamado_id: 'c1', dupla_id: 'e1', dia: D1, inicio_min: 570, servico_min: 120,
+                 deslocamento_min: 30, os_externa: null, titulo_externo: null };
+  eq('salvar sem mexer em nada não vira ida ao banco — patch vazio é a primeira barreira contra updated_at e realtime à toa',
+     M78.patchDoBloco(edit, { ...edit }), {});
+  eq('só o que mudou entra no patch',
+     M78.patchDoBloco(edit, { ...edit, servico_min: 90 }), { servico_min: 90 });
+  eq('CRÍTICO: `undefined` é "não sei", nunca "mudou para nada" — um select("col_a,col_b") do Supabase entrega undefined, e com o !== cru isso virava uma escrita de chamado_id (JSON.stringify do patch continuava "{}", então asserção nenhuma pegava)',
+     [Object.keys(M78.patchDoBloco(edit, { ...edit, chamado_id: undefined })),
+      M78.mexeNoEspelho(M78.patchDoBloco(edit, { ...edit, chamado_id: undefined })),
+      M78.mexeNoEspelho({ chamado_id: undefined })],
+     [[], false, false]);
+  // O DESLOCAMENTO MUDOU DE SEMÂNTICA NA PORTA: `_deslocamento_min` era
+  // `DEFAULT 0` e virou `DEFAULT NULL`, porque num PATCH um default que não é
+  // NULL é um apagador disfarçado (o PostgREST preenche o default do que não vem
+  // no corpo, e arrastar o cartão zerava os minutos de estrada digitados). Quem
+  // resolve isso do lado de cá é o patch mínimo: omitir é "não mexi", e o ZERO
+  // de "não tem deslocamento" tem de ser MANDADO.
+  eq('CRÍTICO: 45 -> 0 no deslocamento é uma MUDANÇA e entra no patch; não mexer não entra — é assim que o zero explícito chega à porta que passou a ler NULL como "não mexi", e sem ele a estrada some da janela do EXCLUDE e da jornada do dia',
+     [M78.patchDoBloco(edit, { ...edit, deslocamento_min: 0 }),
+      M78.patchDoBloco(edit, { ...edit }),
+      M78.patchDoBloco({ ...edit, deslocamento_min: 0 }, { ...edit, deslocamento_min: 0 }),
+      /_deslocamento_min int DEFAULT NULL/.test(marcar78),
+      /COALESCE\(_deslocamento_min, v_a_desloc, 0\)/.test(marcar78)],
+     [{ deslocamento_min: 0 }, {}, {}, true, true]);
+  eq('…e `null` continua sendo um VALOR: bloco sem chamado é chamado_id null, e isso é mudança de verdade',
+     [M78.patchDoBloco(edit, { ...edit, chamado_id: null }), M78.mexeNoEspelho({ chamado_id: null })],
+     [{ chamado_id: null }, true]);
+  eq('CRÍTICO: mexer na DURAÇÃO ou no DESLOCAMENTO não pode alcançar o espelho — é o gêmeo da lista AFTER UPDATE OF do gatilho',
+     [M78.mexeNoEspelho({ servico_min: 90 }), M78.mexeNoEspelho({ deslocamento_min: 10 }),
+      M78.mexeNoEspelho({ dupla_id: 'e2' }), M78.mexeNoEspelho({ inicio_min: 600 }),
+      M78.mexeNoEspelho({ dia: D2 })],
+     [false, false, false, true, true]);
+  // A constante tem TRÊS e a lista OF tem CINCO, e a diferença não é
+  // esquecimento: cumprido_em e cancelado_em também acordam o espelho, mas não
+  // passam por este formulário — quem as escreve são as portas cumprir/cancelar.
+  eq('CRÍTICO: COLUNAS_DO_ESPELHO é a INTERSEÇÃO da lista AFTER UPDATE OF com o que o formulário edita — lida do próprio arquivo da migration, não de uma lista copiada à mão',
+     M78.COLUNAS_DO_ESPELHO.slice().sort(),
+     /AFTER UPDATE OF ([a-z_, ]+)\n?\s*ON public\.agenda_campo/.exec(u78)[1]
+       .split(',').map((s) => s.trim()).filter((c) => c in edit).sort());
+  eq('…e as duas que sobram são carimbo de OUTRA porta — pô-las em BlocoEditavel daria ao formulário um jeito de marcar "feito" por engano',
+     /AFTER UPDATE OF ([a-z_, ]+)\n?\s*ON public\.agenda_campo/.exec(u78)[1]
+       .split(',').map((s) => s.trim()).filter((c) => !(c in edit)).sort(),
+     ['cancelado_em', 'cumprido_em']);
+  eq('CRÍTICO: a porta virou PATCH, e o que ela deixou de saber fazer é dito ANTES de o usuário clicar — "some com o horário" é outro ato (desagendar_chamado)',
+     [M78.patchImpossivel({ chamado_id: null }),
+      M78.patchImpossivel({ os_externa: null }),
+      M78.patchImpossivel({ inicio_min: 600 }),
+      /COALESCE\(_chamado, v_a_chamado\)/.test(marcar78)],
+     ['Para tirar o atendimento da agenda, use "tirar da agenda" — mover o bloco não o desliga do chamado.',
+      'Para limpar o número da OS de fora, escreva o número novo — a agenda não apaga por omissão.',
+      null, true]);
+
+  eq('CRÍTICO: mover um bloco entre chamados mexe em DOIS chamados — a porta ajusta o status dos dois lados e o gatilho recalcula as duas datas, então a tela que refaz a busca só do destino deixa o cartão de ORIGEM com o chip e a data velhos, que é a segunda verdade que esta entrega existe para matar',
+     [M78.chamadosTocadosPeloGesto(b1, { chamado_id: 'c2' }),
+      M78.chamadosTocadosPeloGesto(b1, { chamado_id: 'c1' }),
+      M78.chamadosTocadosPeloGesto(null, { chamado_id: 'c1' }),
+      M78.chamadosTocadosPeloGesto(b4, { chamado_id: null }),
+      M78.chamadosTocadosPeloGesto(b4, { chamado_id: 'c1' }),
+      /v_a_chamado IS NOT NULL AND v_a_chamado IS DISTINCT FROM v_chamado/.test(marcar78)],
+     [['c1', 'c2'], ['c1'], ['c1'], [], ['c1'], true]);
+
+  // ── as portas: o que a tela tem de saber antes de clicar ───────────────
+  // A LISTA DAS QUATRO SAI DO MODELO PURO e é a MESMA que este bloco confere
+  // contra os GRANT do arquivo SQL (ver "A PORTA SEM CONSUMIDOR", mais abaixo):
+  // "qual RPC?" não pode ter duas respostas, e a asserção do GRANT cobrindo uma
+  // lista diferente da que a camada de dados vai chamar não cobre nada.
+  eq('CRÍTICO: o modelo puro nomeia as QUATRO portas de escrita, e é essa lista que a asserção do GRANT usa — hoje elas são concedidas só a service_role, e por isso a camada de dados não pode subir antes da migration da tela',
+     [[...M78.PORTAS_DA_AGENDA],
+      /PORTAS_DA_AGENDA/.test(codTs78),
+      /supabase\.rpc/.test(codTs78)],
+     [['agenda_campo_marcar', 'agenda_campo_cancelar', 'agenda_campo_cumprir', 'desagendar_chamado'],
+      true, false]);
+  // A FRASE ESPERADA É ESCRITA À MÃO, e isso é conserto de uma asserção que
+  // PASSAVA COM A REGRA QUEBRADA: ela fazia `u78.includes(<o que a função
+  // devolveu>)`, e com a recusa neutralizada a função devolvia `null` —
+  // `includes(null)` procura a palavra "null", que existe no arquivo SQL. Verde
+  // com a regra morta. Medido no teste de mutação; é a única que sobreviveu.
+  const desmarcar78 = 'Este atendimento já está marcado como feito — desmarcá-lo apagaria o registro de que ele aconteceu. Se ele NÃO aconteceu, tire o "feito" do bloco primeiro e desmarque depois.';
+  eq('CRÍTICO: bloco CUMPRIDO não se desmarca, e a frase do formulário é LITERALMENTE a que a RPC devolve',
+     [M78.erroDoCancelamento({ chamado_id: 'c1', cumprido_em: null }, gestor78),
+      M78.erroDoCancelamento({ chamado_id: 'c1', cumprido_em: 'x' }, gestor78),
+      u78.includes(desmarcar78),
+      /IF v_cumprido IS NOT NULL THEN/.test(cancelar78)],
+     [null, desmarcar78, true, true]);
+  // ── O QUE JÁ ACONTECEU NÃO SE MOVE ─────────────────────────────────────
+  // `cancelar` já recusava desmarcar o cumprido e `marcar` movia — a mesma
+  // assimetria que denunciou o gate faltando. Mover o que aconteceu reescreve a
+  // ocupação de uma semana PASSADA e manda o chamado, pelo estágio 2 do espelho,
+  // para um dia em que ninguém esteve.
+  const feito78 = 'Este atendimento já está marcado como feito — mudar o dia, a hora, a equipe ou o chamado dele reescreveria o registro de que ele aconteceu. Se ele NÃO aconteceu assim, tire o "feito" do bloco primeiro. A duração e o deslocamento você pode corrigir sem tirar.';
+  const mover78 = (o) => ({ dia: b1.dia, inicio_min: b1.inicio_min, dupla_id: b1.dupla_id,
+                            chamado_id: b1.chamado_id, ...o });
+  eq('CRÍTICO: bloco cumprido não muda de DIA, de HORA, de EQUIPE nem de CHAMADO — são os quatro eixos da afirmação "a equipe esteve neste prédio nesse horário", e a frase é a da RPC, palavra por palavra',
+     [M78.erroDeMover(b1feito, mover78({ dia: D2 })),
+      M78.erroDeMover(b1feito, mover78({ inicio_min: 600 })),
+      M78.erroDeMover(b1feito, mover78({ dupla_id: 'e2' })),
+      M78.erroDeMover(b1feito, mover78({ chamado_id: 'c2' })),
+      u78.includes(feito78)],
+     [feito78, feito78, feito78, feito78, true]);
+  eq('…e a recusa é ESTREITA: duração e deslocamento continuam corrigíveis, porque são MEDIÇÃO do que houve ("levou três horas, não uma") — proibi-los obrigaria a apagar o bloco para consertar um número',
+     [M78.erroDeMover(b1feito, mover78({})), M78.erroDeMover(b1, mover78({ dia: D2 })),
+      M78.blocoSeMove(b1), M78.blocoSeMove(b1feito),
+      /v_servico IS DISTINCT FROM v_a_servico/.test(marcar78),
+      /v_desloc IS DISTINCT FROM v_a_desloc/.test(marcar78)],
+     [null, null, true, false, false, false]);
+  eq('CRÍTICO: e a grade não deixa nem ARRASTAR o cartão do que já aconteceu — `seMove` viaja resolvido dentro do item, porque oferecer o arrasto é prometer o que o servidor vai negar, e o erro é a última defesa e não a primeira',
+     [M78.erroDoAgendamento(cand({ id: 'b1', chamado_id: 'c1', dia: D2, inicio_min: 570,
+                                   servico_min: 120, deslocamento_min: 30 }),
+                            ctx({ blocoAtual: b1feito })),
+      M78.celulaDaGrade('e1', D1, S36, [b1feito, b2], chamados78, escala78)
+        .itens.map((i) => [i.bloco.id, i.seMove])],
+     [feito78, [['b1', false], ['b2', true]]]);
+
+  // ── as outras três portas: o vínculo, e o gestor para o que é de gestão ─
+  eq('CRÍTICO: as três portas simples cobram o MESMO vínculo com o verbo de cada uma, e bloco sem chamado é ato de gestão nas TRÊS — `agenda_campo_cumprir` era a única sem o braço, e o estrago pequeno (dar baixa em serviço de fora não espelha nem entra na ocupação) é justamente o que faria a inconsistência sobreviver: ninguém a veria',
+     [M78.erroDoCancelamento({ chamado_id: 'c2', cumprido_em: null }, ana78),
+      M78.erroDoCancelamento({ chamado_id: null, cumprido_em: null }, ana78),
+      M78.erroDoCancelamento({ chamado_id: null, cumprido_em: null }, gestor78),
+      M78.erroDoCancelamento({ chamado_id: null, cumprido_em: null }, semSessao78),
+      M78.erroDaBaixa({ chamado_id: null, cancelado_em: null }, true, ana78),
+      M78.erroDaBaixa({ chamado_id: 'c2', cancelado_em: null }, true, ana78),
+      M78.erroDaBaixa({ chamado_id: 'c1', cancelado_em: null }, true, ana78),
+      u78.includes('Só quem responde pela operação desmarca serviço fora do sistema.'),
+      u78.includes('Só quem responde pela operação dá baixa em serviço fora do sistema.')],
+     ['Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.',
+      'Só quem responde pela operação desmarca serviço fora do sistema.', null, null,
+      'Só quem responde pela operação dá baixa em serviço fora do sistema.',
+      'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.',
+      null, true, true]);
+  eq('…e a ORDEM é a da RPC: o vínculo ANTES do registro — trocada, ela diria a quem nem pode desmarcar que o problema é o "feito"',
+     M78.erroDoCancelamento({ chamado_id: 'c2', cumprido_em: 'x' }, ana78),
+     'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.');
+  eq('CRÍTICO: "não dizer nada" e "dizer nada" são a mesma coisa, e as duas querem dizer MARQUE — `_feito: null` caía no ELSE do CASE e APAGAVA o "feito" em silêncio, que é a direção destrutiva escolhida por omissão; e bloco DESMARCADO não recebe "feito", senão o estado que o §6.2 recusa criar nascia pelo outro lado',
+     [M78.baixaPedida(undefined), M78.baixaPedida(null), M78.baixaPedida(true), M78.baixaPedida(false),
+      M78.erroDaBaixa({ chamado_id: 'c1', cancelado_em: 'x' }, null, gestor78),
+      M78.erroDaBaixa({ chamado_id: 'c1', cancelado_em: 'x' }, undefined, gestor78),
+      M78.erroDaBaixa({ chamado_id: 'c1', cancelado_em: 'x' }, false, gestor78),
+      M78.erroDaBaixa({ chamado_id: 'c1', cancelado_em: null }, true, gestor78),
+      u78.includes('Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.')],
+     [true, true, true, false,
+      'Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.',
+      'Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.',
+      null, null, true]);
+  eq('CRÍTICO: desagendar é ato de CAMPO — a agenda comercial é da visita técnica (U41), e a função é SECURITY DEFINER, então a divisão que o §3 faz por estrutura precisa ser dita nas duas pontas; e o vínculo vem antes da natureza, como lá',
+     [M78.erroDoDesagendamento(porId78.get('c1'), gestor78),
+      M78.erroDoDesagendamento(porId78.get('c11'), gestor78),
+      M78.erroDoDesagendamento({ id: 'cx', natureza: null }, gestor78),
+      M78.erroDoDesagendamento(porId78.get('c2'), ana78),
+      casaComMolde('A agenda de campo não manda em chamado comercial (este é "%") — quem desmarca a visita é a própria visita técnica.',
+                   M78.erroDoDesagendamento(porId78.get('c11'), gestor78)),
+      u78.includes('A agenda de campo não manda em chamado comercial (este é "%") — quem desmarca a visita é a própria visita técnica.')],
+     [null,
+      'A agenda de campo não manda em chamado comercial (este é "comercial") — quem desmarca a visita é a própria visita técnica.',
+      'A agenda de campo não manda em chamado comercial (este é "sem natureza") — quem desmarca a visita é a própria visita técnica.',
+      'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.', true, true]);
+
+  eq('o cliente reage pelo CÓDIGO e mostra a MENSAGEM: as três classes são as três que as portas do §6 levantam',
+     [M78.classeDoErro('42501'), M78.classeDoErro('55000'), M78.classeDoErro('23P01'),
+      M78.classeDoErro('42P01'), M78.classeDoErro(null),
+      /USING ERRCODE = '42501'/.test(u78), /USING ERRCODE = '55000'/.test(u78),
+      /USING ERRCODE = 'exclusion_violation'/.test(u78)],
+     ['permissao', 'regra', 'conflito', 'desconhecido', 'desconhecido', true, true, true]);
+
+  // ── os baldes, exaustivos — e o quarto, que é o ESCOPO ─────────────────
+  eq('CRÍTICO: são QUATRO baldes: "com data e sem bloco" não cabia em lugar nenhum, e o chamado ENCERRADO ou COMERCIAL não é assunto desta tela',
+     [M78.classificarChamado(porId78.get('c1'), true),
+      M78.classificarChamado(porId78.get('c5'), false),
+      M78.classificarChamado(porId78.get('c6'), false),
+      M78.classificarChamado(porId78.get('c9'), false),
+      M78.classificarChamado(porId78.get('c10'), false),
+      M78.classificarChamado(porId78.get('c11'), false),
+      M78.classificarChamado(porId78.get('c9'), true)],
+     ['com_bloco', 'sem_horario', 'sem_data', 'fora_da_programacao',
+      'fora_da_programacao', 'fora_da_programacao', 'fora_da_programacao']);
+  eq('CRÍTICO: a faixa "agendado sem horário" é a BARRA DE PROGRESSO da migração, e ela não pode nascer com o passado dentro — o gêmeo (§9.7) filtra natureza=campo e status não encerrado',
+     M78.semHorario(chamados78, blocos78).map((c) => c.numero), ['CH-005']);
+  eq('…e o que o ESCOPO tirou é nomeado, não engolido — concluído, cancelado e comercial, os três com data e sem bloco',
+     chamados78.filter((c) => M78.classificarChamado(c, false) === 'fora_da_programacao').map((c) => c.numero),
+     ['CH-009', 'CH-010', 'CH-011']);
+  eq('o escopo sai de chamadoEmAberto (chamado-status.ts) e não de uma segunda lista de status escrita aqui',
+     [M78.naProgramacao(porId78.get('c5')), M78.naProgramacao(porId78.get('c9')),
+      M78.naProgramacao(porId78.get('c11')),
+      /chamadoEmAberto/.test(codTs78), /'concluido'\s*,\s*'cancelado'/.test(codTs78)],
+     [true, false, false, true, false]);
+  eq('…e o chamado cujo ÚNICO bloco foi cancelado cai na faixa junto — ele tem data e não tem hora marcada',
+     M78.semHorario([porId78.get('c1')], [{ ...b1, cancelado_em: 'x' }]).map((c) => c.numero), ['CH-001']);
+  eq('a faixa é o gêmeo LITERAL do WHERE da conferência da U78',
+     [/c\.natureza='campo'/.test(u78),
+      /AND c\.status NOT IN \('concluido','cancelado'\)/.test(u78),
+      /AND c\.data_hora_agendada IS NOT NULL/.test(u78),
+      /NOT EXISTS \(SELECT 1 FROM public\.agenda_campo a/.test(u78)],
+     [true, true, true, true]);
+  // E O BALDE CONTA BLOCO ATIVO, NÃO PENDENTE — de propósito, e é o gêmeo do
+  // `a.cancelado_em IS NULL` da linha 701. Estes baldes medem a MIGRAÇÃO ("já
+  // deram horário a este chamado?"), e a visita que aconteceu deu: contar só o
+  // pendente faria a barra de progresso ANDAR PARA TRÁS quando uma equipe
+  // termina um atendimento sem retorno marcado. É a distinção que dá nome às
+  // duas perguntas — a outra é `statusAposOsBlocos`.
+  eq('CRÍTICO: o chamado cujo único bloco foi CUMPRIDO saiu da faixa e não volta — o balde conta bloco ATIVO (o gêmeo do `cancelado_em IS NULL` da linha 701), senão a barra de progresso da migração anda para trás quando uma visita termina',
+     [M78.semHorario([porId78.get('c1')], [b1feito]).map((c) => c.numero),
+      M78.classificarChamado(porId78.get('c1'), true),
+      /a\.cancelado_em IS NULL\)\),\n\s+'\(referência\)'/.test(u78)],
+     [[], 'com_bloco', true]);
+  eq('CRÍTICO: "agendado" quer dizer bloco PENDENTE, e as duas pontas contam igual — contando o CUMPRIDO como agenda, o chamado que teve a visita de terça e teve o retorno de quinta desmarcado ficava "agendado" para sempre, com o chip prometendo um compromisso que não existe',
+     [M78.statusAposOsBlocos(porId78.get('c1'), blocos78),
+      M78.statusAposOsBlocos(porId78.get('c1'), [b1feito, { ...b3, cancelado_em: 'y' }]),
+      M78.statusAposOsBlocos(porId78.get('c1'), []),
+      M78.statusAposOsBlocos(porId78.get('c6'), [{ ...b1, chamado_id: 'c6' }]),
+      M78.temCompromisso('c1', [b1feito]), M78.temCompromisso('c1', [{ ...b1, cancelado_em: 'x' }]),
+      M78.temCompromisso('c1', [b1]),
+      /a\.cancelado_em IS NULL AND a\.cumprido_em IS NULL/.test(cancelar78),
+      /a\.cancelado_em IS NULL AND a\.cumprido_em IS NULL/.test(marcar78)],
+     ['agendado', 'aberto', 'aberto', 'agendado', false, false, true, true, true]);
+  eq('…e as transições são ESTREITAS: só `aberto` vira `agendado` e só `agendado` volta a `aberto`; chamado em execução ou encerrado não é remexido por marcação de agenda, e a agenda comercial é da visita técnica',
+     [M78.statusAposOsBlocos(porId78.get('c9'), [{ ...b1, chamado_id: 'c9' }]),
+      M78.statusAposOsBlocos({ id: 'cx', status: 'em_execucao', natureza: 'campo' }, []),
+      M78.statusAposOsBlocos({ id: 'c11', status: 'aberto', natureza: 'comercial' },
+                             [{ ...b1, chamado_id: 'c11' }]),
+      /SET status = 'agendado'\n\s+WHERE id = v_chamado AND status = 'aberto';/.test(marcar78),
+      /SET status = 'aberto'\n\s+WHERE id = v_a_chamado AND status = 'agendado' AND natureza = 'campo';/.test(marcar78)],
+     ['concluido', 'em_execucao', 'aberto', true, true]);
+
+  // ── divergência: mostra, não conserta — e "não sei" não é acusação ─────
+  eq('o bloco diz uma equipe e a escala da semana diz outra — isto ACONTECE e não é consertado sozinho (escrita de cadastro não reescreve registro)',
+     [M78.divergenciaDeEquipe(b1, porId78.get('c1'), S36, escala78),
+      M78.divergenciaDeEquipe(b2, porId78.get('c2'), S36, escala78),
+      M78.divergenciaDeEquipe(b6, porId78.get('c4'), S36, escala78),
+      M78.divergenciaDeEquipe(b1, porId78.get('c1'), '0000-S01', escala78),
+      M78.divergenciaDeEquipe(b4, null, S36, escala78)],
+     [null, 'fora_da_equipe', 'sem_responsavel', 'sem_escala', null]);
+  eq('CRÍTICO: chamado INVISÍVEL devolve null e não "sem_responsavel" — "não sei" nunca é "está errado", e a acusação era a leitura MAIS ALTA das duas',
+     [M78.divergenciaDeEquipe(b1, null, S36, escala78),
+      M78.chamadoOculto(b1, null), M78.chamadoOculto(b1, porId78.get('c1')),
+      M78.chamadoOculto(b4, null)],
+     [null, true, false, false]);
+
+  // ── a grade ─────────────────────────────────────────────────────────────
+  const dias78 = M78.diasDaGrade(M78.dataDoDia(D0), blocos78, chaveDia);
+  eq('a grade é segunda a sexta SEMPRE, e o fim de semana só aparece quando há algo marcado nele',
+     dias78, [D0, D1, D2, D3, D4, SAB]);
+  eq('…e sem bloco ATIVO no sábado a semana tem cinco colunas — bloco cancelado não abre coluna, porque desmarcar libera a agenda',
+     [M78.diasDaGrade(M78.dataDoDia(D0), [b1], chaveDia).length,
+      M78.diasDaGrade(M78.dataDoDia(D0), [{ ...b7, cancelado_em: 'x' }], chaveDia).length],
+     [5, 5]);
+  eq('CRÍTICO: a grade NORMALIZA para a segunda — chamada com uma quarta-feira ela devolvia [qua..dom] como "os cinco dias úteis" e testava a segunda seguinte como fim de semana',
+     [M78.diasDaGrade(M78.dataDoDia(D2), blocos78, chaveDia),
+      M78.diasDaGrade(M78.dataDoDia(SAB), blocos78, chaveDia)],
+     [dias78, dias78]);
+
+  const linhas78 = M78.linhasDaGrade(duplas78, S36, dias78, blocos78, chamados78, escala78, chaveSem);
+  eq('CRÍTICO: TODA equipe com escala aparece na grade, mesmo vazia — e a equipe sem escala que tem bloco aparece DEPOIS, porque nada pode sumir do total',
+     linhas78.map((l) => l.duplaId), ['e1', 'e2', 'e4', 'e3']);
+  eq('…e a equipe que nem está na lista de duplas (apagada do cadastro, ou filtrada por ativa) também ganha linha — é a doutrina do balde nulo',
+     M78.linhasDaGrade(duplas78, S36, dias78,
+       [...blocos78, B('b99', { dupla_id: 'e99', dia: D4, titulo_externo: 'equipe fantasma' })],
+       chamados78, escala78, chaveSem).map((l) => l.duplaId),
+     ['e1', 'e2', 'e4', 'e3', 'e99']);
+  // …MAS O CONVITE PARA A LINHA É BLOCO ATIVO, e essa metade não estava presa:
+  // quem decide quais equipes SEM escala entram na grade é a mesma lista
+  // `daSemana`, e sem o `blocoVale` dela uma equipe cujo único bloco da semana
+  // foi DESMARCADO ganhava linha permanente — uma linha 0%, sem escala e sem
+  // cartão nenhum, que é ruído puro numa tela cuja pergunta é "quem está livre".
+  // Nenhuma fixture tinha equipe com SÓ bloco cancelado (a e1 do b5 já tem
+  // linha por escala), então a mutação passava verde por acidente de fixture.
+  eq('CRÍTICO: desmarcar o único bloco da semana TIRA a equipe da grade — quem abre linha sem escala é bloco ATIVO, dos dois jeitos: a equipe que está no cadastro (o balde "órfã") e a que nem está (o balde "desconhecida")',
+     [M78.linhasDaGrade([...duplas78, { id: 'e97' }], S36, dias78,
+        [...blocos78, B('b97', { dupla_id: 'e97', dia: D4, cancelado_em: 'x', titulo_externo: 'só cancelado' })],
+        chamados78, escala78, chaveSem).map((l) => l.duplaId),
+      M78.linhasDaGrade(duplas78, S36, dias78,
+        [...blocos78, B('b98', { dupla_id: 'e98', dia: D4, cancelado_em: 'x', titulo_externo: 'só cancelado' })],
+        chamados78, escala78, chaveSem).map((l) => l.duplaId),
+      // e o mesmo bloco ATIVO abre a linha nos dois baldes — senão a asserção
+      // acima estaria satisfeita por uma grade que não mostra equipe nenhuma
+      M78.linhasDaGrade([...duplas78, { id: 'e97' }], S36, dias78,
+        [...blocos78, B('b97', { dupla_id: 'e97', dia: D4, titulo_externo: 'ativo' })],
+        chamados78, escala78, chaveSem).map((l) => l.duplaId)],
+     [['e1', 'e2', 'e4', 'e3'], ['e1', 'e2', 'e4', 'e3'], ['e1', 'e2', 'e4', 'e3', 'e97']]);
+  eq('CRÍTICO: o guarda da grade olha os DOIS lados — nada da semana fica fora da grade, e nada de fora da semana é desenhado nela',
+     M78.blocosForaDaGrade(linhas78, S36, blocos78, chaveSem), { naoMostrados: 0, foraDaSemana: 0 });
+  // O LADO `naoMostrados` NUNCA TINHA SIDO EXERCITADO: as duas asserções do
+  // guarda esperavam zero nas duas fixtures, e cravá-lo em `0` passava verde —
+  // é o lado que existia PRIMEIRO e o único que nada media. O caso real dele é
+  // este: as COLUNAS saem de uma lista de blocos e os CARTÕES de outra. Aqui a
+  // coluna de sábado foi decidida olhando só b1 (uma terça), então a grade tem
+  // cinco colunas e o bloco de sábado da e2 fica INVISÍVEL — a linha diz uma
+  // ocupação que a grade não desenha, que é a segunda verdade que o guarda
+  // existe para gritar. O segundo caso é o CELULAR: uma coluna só, e o número
+  // tem de ser 4 de verdade, não um zero de conveniência.
+  const diasSemSabado78 = M78.diasDaGrade(M78.dataDoDia(D0), [b1], chaveDia);
+  const linhasSemSabado78 = M78.linhasDaGrade(duplas78, S36, diasSemSabado78, blocos78, chamados78, escala78, chaveSem);
+  eq('CRÍTICO: e o lado `naoMostrados` conta DE VERDADE — grade de cinco colunas com um bloco no sábado esconde UM cartão, e a coluna de hoje no celular esconde os QUATRO dos outros dias: cravar este lado em zero deixaria o chip da linha prometendo horas que a tela não mostra, e é exatamente ele que nenhuma fixture exercitava',
+     [diasSemSabado78.length,
+      M78.blocosForaDaGrade(linhasSemSabado78, S36, blocos78, chaveSem),
+      M78.blocosForaDaGrade(M78.linhasDaGrade(duplas78, S36, [D1], blocos78, chamados78, escala78, chaveSem),
+                            S36, blocos78, chaveSem),
+      // e a grade VAZIA não engole a semana inteira: oito blocos ativos na S36
+      M78.blocosForaDaGrade([], S36, blocos78, chaveSem)],
+     [5, { naoMostrados: 1, foraDaSemana: 0 }, { naoMostrados: 4, foraDaSemana: 0 },
+      { naoMostrados: 8, foraDaSemana: 0 }]);
+  eq('…e o chip da linha e a lista dela saem da mesma base',
+     linhas78[0].ocupacao.blocos.slice().sort(),
+     [...new Set(linhas78[0].celulas.flatMap((c) => c.itens.map((i) => i.bloco.id)))].sort());
+
+  const celTer = linhas78[0].celulas[dias78.indexOf(D1)];
+  eq('a célula vem ordenada pela SAÍDA da equipe, e já traz o chamado junto para a tela não fazer lookup',
+     celTer.itens.map((i) => [i.bloco.id, i.de, i.rotulo]),
+     [['b1', 540, 'CH-001 · Troca de câmera'], ['b2', 690, 'CH-002 · Preventiva mensal']]);
+  eq('o bloco sem chamado se apresenta pelo número da OS de fora e pelo título — ele não cabe em public.chamados porque cliente_id é NOT NULL',
+     [M78.rotuloDoBloco(b4, null), M78.rotuloDoBloco(b9, null),
+      M78.rotuloDoBloco(B('bn', { titulo_externo: null, os_externa: null }), null)],
+     ['OS-9911 · Portão do condomínio vizinho', 'Instalação sem cliente na base', 'Serviço fora do sistema']);
+  eq('CRÍTICO: bloco COM chamado que este usuário não pode ler NÃO se apresenta como "Serviço fora do sistema" — aquilo é categoria de GESTÃO, e as palavras são as mesmas que a RPC usa quando pode_editar_chamado diz não',
+     [M78.rotuloDoBloco(b1, null), u78.includes("'outro atendimento'")],
+     ['Outro atendimento', true]);
+  // …e as MESMAS PALAVRAS quer dizer as mesmas letras. No cartão o rótulo vem
+  // sozinho e é maiúsculo; dentro da frase de recusa ele vem entre aspas no meio
+  // de uma oração, e a RPC o escreve minúsculo. Duas caixas para a mesma recusa
+  // é o defeito de sempre — a mesma regra com dois textos —, agora numa letra só.
+  eq('CRÍTICO: dentro da frase de recusa o atendimento invisível se chama "outro atendimento", com a caixa que a RPC usa — e o HORÁRIO continua saindo, porque quem vai remarcar precisa dele e não precisa saber de quem é',
+     [M78.erroDoAgendamento(cand({ inicio_min: 660, servico_min: 60 }),
+                            ctx({ rotuloDe: (b) => M78.rotuloDoBloco(b, null) })),
+      M78.ROTULO_DO_OCULTO, M78.ROTULO_DO_OCULTO_NA_FRASE,
+      u78.includes("END, 'outro atendimento')")],
+     ['Esta equipe já está em "outro atendimento" das 09:00 às 11:30 nesse dia.',
+      'Outro atendimento', 'outro atendimento', true]);
+
+  // OS CAMPOS QUE A TELA VAI LER. Helper sem consumidor e sem asserção é código
+  // morto que parece pronto — e `retorno` é o argumento de cardinalidade inteiro
+  // da R99, `emergencial` é a frase do Davi.
+  eq('CRÍTICO: o item da grade já traz ordinal, RETORNO e EMERGENCIAL resolvidos — o retorno é a segunda ida do mesmo chamado, sem status novo',
+     linhas78[0].celulas[dias78.indexOf(D3)].itens
+       .map((i) => [i.bloco.id, i.ordinal, i.retorno, i.emergencial, i.oculto, i.divergencia]),
+     [['b3', 2, true, false, false, null], ['b9', 1, false, false, false, null]]);
+  eq('…e o chip "Corretiva · Urgente" nasce do chamado, não de um campo novo',
+     linhas78[0].celulas[dias78.indexOf(D2)].itens
+       .map((i) => [i.bloco.id, i.ordinal, i.retorno, i.emergencial]),
+     [['b8', 1, false, true]]);
+  eq('equipe com escala e dia vazio ganha o selo "disponível"; equipe sem escala não ganha selo nenhum',
+     [linhas78[2].celulas[0].disponivel, linhas78[2].celulas[0].comEscala,
+      linhas78[3].celulas[0].disponivel, linhas78[3].celulas[0].comEscala],
+     [true, true, false, false]);
+
+  // O NÚMERO DO CABEÇALHO NÃO PODE MUDAR COM QUEM OLHA. Medido antes da
+  // correção: [1,0,0,1] para o gestor e [3,1,0,1] para quem não enxerga os
+  // chamados — e a leitura mais alta era a errada.
+  const linhasCego = M78.linhasDaGrade(duplas78, S36, dias78, blocos78, [], escala78, chaveSem);
+  eq('CRÍTICO: a divergência é contada no CABEÇALHO da semana, e quem NÃO ENXERGA os chamados não vê divergência inventada — vê quantos blocos não deu para avaliar',
+     [linhas78.map((l) => l.divergencias), linhas78.map((l) => l.ocultos),
+      linhasCego.map((l) => l.divergencias), linhasCego.map((l) => l.ocultos)],
+     [[1, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [4, 1, 0, 1]]);
+  eq('…e a ocupação NÃO muda com quem olha: ela sai de agenda_campo, que é USING(true) justamente para o denominador não mentir',
+     linhasCego.map((l) => l.ocupacao.pct), linhas78.map((l) => l.ocupacao.pct));
+
+  const linhaS33 = M78.linhasDaGrade(duplas78, S33, [D1], blocos78, chamados78, escala78, chaveSem);
+  eq('a linha diz de onde veio a escala dela, sem reimplementar a herança — na S33 a composição é a que a S30 decidiu',
+     [linhaS33.map((l) => l.duplaId), linhaS33[0].herdada, linhaS33[0].semanaOrigem],
+     [['e1', 'e2'], true, S30]);
+  eq('…e a origem da escala vem de origemDaEscala, sem reimplementação',
+     [linhas78[0].herdada, linhas78[0].semanaOrigem], [false, S36]);
+  // O DEFEITO QUE O GUARDA DE UMA MÃO SÓ APROVAVA: semana e dias são parâmetros
+  // separados (é o que torna o celular uma coluna do desktop), e quando eles
+  // discordam a linha sai "0%, disponível" com cartões desenhados embaixo.
+  eq('CRÍTICO: quando `semana` e `dias` discordam, o guarda ACUSA pelo segundo lado — a linha dizia 0% e disponível com dois cartões desenhados, e o guarda antigo devolvia zero',
+     [M78.blocosForaDaGrade(linhaS33, S33, blocos78, chaveSem),
+      linhaS33[0].ocupacao.pct, linhaS33[0].ocupacao.disponivel,
+      linhaS33[0].celulas[0].itens.length],
+     [{ naoMostrados: 0, foraDaSemana: 3 }, 0, true, 2]);
+
+  // A TENSÃO DA U3 RESOLVIDA: a U3 escolheu programação por DIA porque "a grade
+  // não cabe na tela do celular, que é onde o Vinicius trabalha". A resposta não
+  // é ignorar o motivo nem duplicar a tela — é o DIA ser a grade com uma coluna.
+  // (Isto é guarda de ARQUITETURA, não de comportamento: as duas chamadas usam a
+  // mesma função, então a igualdade é estrutural. Ela prende o dia em que
+  // alguém escrever uma segunda função "só para o celular".)
+  const gradeDia78 = M78.linhasDaGrade(duplas78, S36, [D1], blocos78, chamados78, escala78, chaveSem);
+  eq('a tela do celular é a COLUNA de hoje da grade do desktop — mesma função, um dia na lista',
+     gradeDia78.map((l) => l.celulas[0]),
+     linhas78.map((l) => l.celulas[dias78.indexOf(D1)]));
+  eq('…e o chip de ocupação é o da SEMANA nos dois, porque semana e colunas são parâmetros separados',
+     gradeDia78.map((l) => l.ocupacao), linhas78.map((l) => l.ocupacao));
+
+  // ── a forma do modelo puro: o que não pode ser opcional ────────────────
+  eq('CRÍTICO: `semana` e `escala` NÃO são opcionais no contexto do agendamento — enquanto eram, esquecer dois parâmetros apagava em silêncio a única regra que o BANCO não pega (o eixo pessoa), e nem o tsc nem o verificador notavam',
+     [/semana\?:/.test(codTs78), /escala\?:/.test(codTs78),
+      /urgente\?:/.test(codTs78), /chamadoVisivel\s*=\s*true/.test(codTs78)],
+     [false, false, false, false]);
+  // …e a mesma doutrina para o que ENTROU nesta rodada. `autz` opcional
+  // desligaria o gate inteiro em silêncio (que é pior do que não ter gate:
+  // produz confiança), `blocoAtual` opcional desligaria a recusa do "feito" e a
+  // camada do chamado que SAI, e `semana` de volta como valor recebido traria a
+  // consulta à escala da semana errada no gesto que atravessa a semana.
+  const ctxIface78 = fonte78
+    .slice(fonte78.indexOf('export interface ContextoDoAgendamento {')).split('\n}')[0];
+  eq('CRÍTICO: `autz`, `blocoAtual` e `chaveDaSemana` também não são opcionais, e `semana` NÃO voltou como valor recebido — opção que desliga uma regra em silêncio não é opção, e as quatro desligariam o gate, a recusa do "feito" e a consulta à escala da semana do DIA DE DESTINO',
+     [/autz\?:/.test(ctxIface78), /blocoAtual\?:/.test(ctxIface78), /chaveDaSemana\?:/.test(ctxIface78),
+      /^\s*semana:/m.test(ctxIface78), /ehGestor\s*=\s*(true|false)/.test(codTs78),
+      /autz: AutorizacaoDaAgenda;/.test(ctxIface78),
+      /blocoAtual: BlocoDeAgenda \| null;/.test(ctxIface78),
+      /chaveDaSemana: \(d: Date\) => string;/.test(ctxIface78)],
+     [false, false, false, false, false, true, true, true]);
+
+  // ── a migration ─────────────────────────────────────────────────────────
+  eq('a migration da grade existe', fs78.existsSync(CAMINHO78), true);
+  eq('CRÍTICO: "a equipe de campo não está em dois lugares ao mesmo tempo" é uma CONSTRAINT DE EXCLUSÃO, não um gatilho que pode ser desligado numa carga',
+     /ADD CONSTRAINT agenda_campo_sem_sobreposicao\s+EXCLUDE USING gist/.test(u78)
+     && /int4range\(inicio_min::int - deslocamento_min::int, inicio_min::int \+ servico_min::int\)/.test(u78), true);
+  // OS EIXOS SÃO CONFERIDOS COMO LISTA, DENTRO DO COMANDO, CONTRA UMA LISTA
+  // ESCRITA À MÃO. A asserção anterior fazia `/dupla_id WITH =/.test(u78)` e
+  // achava a LINHA 413 — um COMENTÁRIO que explica a constraint: apagar o eixo
+  // `dia` (ou o `dupla_id`) do índice de verdade passava VERDE, e as duas
+  // mutações que provaram isso são as duas metades da regra central da entrega.
+  // Lista escrita à mão e não derivada do arquivo, senão a asserção confere o
+  // arquivo consigo mesmo e concorda com qualquer coisa.
+  eq('CRÍTICO: e os EIXOS dela são EQUIPE, DIA e a JANELA — os três, nessa ordem, lidos DENTRO do comando (até o ponto e vírgula) e comparados com a lista escrita aqui: sem o eixo `dia` a equipe fica presa a um horário para o resto da vida, e sem o `dupla_id` uma equipe passa a bloquear a agenda das outras',
+     eixos78,
+     ['dupla_id WITH =', 'dia WITH =',
+      'int4range(inicio_min::int - deslocamento_min::int, inicio_min::int + servico_min::int) WITH &&']);
+  eq('…e ela ignora o cancelado, que é o que faz desmarcar LIBERAR a agenda — e o predicado também é lido dentro do comando, porque "WHERE (cancelado_em IS NULL)" é frase comum num arquivo com dez consultas',
+     [/\)\s*WHERE \(cancelado_em IS NULL\);$/.test(excl78),
+      /cumprido_em/.test(excl78)],
+     [true, false]);
+  eq('CRÍTICO: o cast vem ANTES da soma, no CHECK e no EXCLUDE — int2 + int2 devolve int2, e a soma estoura antes do CHECK reprovar, devolvendo "smallint out of range" no lugar da frase (alcançável justamente pelas duas isenções da jornada)',
+     [/inicio_min::int - deslocamento_min::int >= 0/.test(u78),
+      /inicio_min::int \+ servico_min::int <= 1440/.test(u78),
+      /int4range\(\(inicio_min - deslocamento_min\)/.test(u78)],
+     [true, true, false]);
+  eq('o pré-voo roda ANTES de a tabela nascer, e ele prova que as funções da U76 são as que a U78 pensa antes de reescrevê-las',
+     u78.indexOf('ABORTADO NO PRÉ-VOO') < u78.indexOf('CREATE TABLE IF NOT EXISTS public.agenda_campo')
+     && u78.indexOf('chamado_apoio_da_dupla() NÃO é a versão da U76') < u78.indexOf('CREATE TABLE IF NOT EXISTS public.agenda_campo'),
+     true);
+  eq('CRÍTICO: o portão prova que a transcrição do corpo da U76 manteve as quatro saídas cedo, e ele roda antes do COMMIT',
+     u78.indexOf('ABORTADO NO PORTÃO') > u78.indexOf('CREATE OR REPLACE FUNCTION public.chamado_apoio_da_dupla()')
+     && u78.indexOf('ABORTADO NO PORTÃO') < u78.indexOf('\nCOMMIT;'), true);
+  eq('o pré-voo checa a extensão por pg_extension, e não pelo nome de uma função interna que não existe (gbt_, não gist_)',
+     /FROM pg_extension WHERE extname = 'btree_gist'/.test(u78)
+     && !/gist_uuid_compress/.test(cod78), true);
+  // ── O CORPO DE agenda_campo_espelhar, LIDO COMO CORPO ──────────────────
+  // Esta era a peça MENOS assegurada da entrega, e o teste de mutação mediu por
+  // quê: nenhuma asserção fatiava esta função. As que pareciam cobri-la liam o
+  // ARQUIVO, e o arquivo diz as mesmas palavras em outros seis lugares — o §9
+  // repete `AT TIME ZONE 'America/Sao_Paulo'` seis vezes e
+  // `status NOT IN ('concluido','cancelado')` quatro, e a linha 402 da
+  // conferência CITA `data_hora_agendada IS DISTINCT FROM v_novo` para
+  // procurá-la no prosrc. A linha que faz a prova do banco funcionar era a que
+  // cegava a prova do verificador.
+  //
+  // O WHERE inteiro vira LISTA e é comparado com a lista escrita à mão: assim
+  // não é só "as três defesas existem em algum lugar", é "o WHERE é ESTE, e não
+  // ganhou nem perdeu cláusula".
+  const whereEspelho78 = updEspelho78.split('\n').map((l) => l.trim())
+    .filter((l) => /^(WHERE|AND) /.test(l));
+  eq('CRÍTICO: o espelho só grava quando o valor MUDA, só em campo e só em chamado NÃO encerrado — e o WHERE é lido DENTRO do UPDATE de agenda_campo_espelhar, cláusula por cláusula: sem o IS DISTINCT FROM mexer na duração reescreve a MESMA data e cascateia updated_at (e daí o apoio da U76); sem o filtro de status, o espelho move o mês em que um chamado encerrado é contado',
+     [whereEspelho78,
+      /^UPDATE public\.chamados c\s*\n\s*SET data_hora_agendada = v_novo\s*\n/.test(updEspelho78)],
+     [["WHERE c.id = _chamado",
+       "AND c.natureza = 'campo'",
+       "AND c.status NOT IN ('concluido','cancelado')",
+       "AND c.data_hora_agendada IS DISTINCT FROM v_novo"],
+      true]);
+  // OS DOIS ESTÁGIOS, cada um sozinho — recortados por `;` e não por um
+  // quantificador solto, que atravessaria o ponto e vírgula e leria o estágio
+  // vizinho como se fosse este. O estágio 2 carrega o próprio `IF v_dia IS NULL
+  // THEN` dentro da fatia: é o guarda que decide se ele existe.
+  // Cada estágio vira LISTA DE CLÁUSULAS e é comparado com a lista escrita à
+  // mão — do jeito que o WHERE do UPDATE acima. Uma bateria de `.test()` sobre
+  // o mesmo texto prende o que ela nomeia e ignora o que ela esqueceu: a
+  // primeira versão desta asserção não cobrava `cancelado_em` do estágio 2, e a
+  // segunda rodada de mutação passou por ali (o chamado voltava para uma visita
+  // DESMARCADA). Lista inteira contra lista inteira não tem esse buraco: o que
+  // some fica vermelho e o que nasce também.
+  const clausulas78 = (s) => s.split('\n').map((l) => l.trim())
+    .filter((l) => /^(FROM|WHERE|AND|ORDER BY|LIMIT)\b/.test(l));
+  eq('CRÍTICO: o espelho tem DOIS estágios e eles não se confundem — o 1 é o PENDENTE mais antigo (cancelado E cumprido fora, ordem CRESCENTE) e o 2 só roda quando o 1 não achou nada, pegando o último que ACONTECEU (cancelado fora, ordem DECRESCENTE). Trocando a ordem do estágio 2, o chamado atendido duas vezes volta para a PRIMEIRA visita; matando o estágio 2, o chamado ainda aberto cujas visitas foram todas cumpridas perde a data no PDF e some do calendário',
+     [estagios78.length,
+      clausulas78(estagios78[0] ?? ''),
+      clausulas78(estagios78[1] ?? ''),
+      // o estágio 2 é CONDICIONAL, e o guarda dele mora dentro da mesma fatia
+      /^IF v_dia IS NULL THEN\s*\n\s*SELECT a\.dia, a\.inicio_min INTO v_dia, v_min/.test(estagios78[1] ?? ''),
+      // e nada dentro deste corpo pode estar neutralizado por constante
+      /IF (false|true)\b/.test(espelharCod78)],
+     [2,
+      ['FROM public.agenda_campo a',
+       'WHERE a.chamado_id = _chamado',
+       'AND a.cancelado_em IS NULL',
+       'AND a.cumprido_em IS NULL',
+       'ORDER BY a.dia, a.inicio_min, a.id',
+       'LIMIT 1'],
+      ['FROM public.agenda_campo a',
+       'WHERE a.chamado_id = _chamado',
+       'AND a.cancelado_em IS NULL',
+       'ORDER BY a.dia DESC, a.inicio_min DESC, a.id DESC',
+       'LIMIT 1'],
+      true, false]);
+  eq('CRÍTICO: a ÚNICA conversão de fuso do caminho inteiro é a do espelho, e ela é São Paulo — em UTC, 22h de domingo vira segunda, o dia do bloco anda e a semana ISO do apoio da U76 anda junto; a asserção lê o COMANDO `v_novo :=`, porque o nome do fuso aparece seis vezes no §9 e a busca no arquivo achava o eco',
+     [/^v_novo := CASE WHEN v_dia IS NULL THEN NULL\s*\n\s*ELSE \(v_dia \+ make_interval\(mins => v_min\)\) AT TIME ZONE 'America\/Sao_Paulo'\s*\n\s*END$/.test(fusoEspelho78),
+      (espelharCod78.match(/AT TIME ZONE/g) || []).length,
+      /AT TIME ZONE '(?!America\/Sao_Paulo)/.test(cod78)],
+     [true, 1, false]);
+  eq('CRÍTICO: a lista OF do gatilho do espelho é CURTA — duração, deslocamento e equipe não chegam a escrever em public.chamados',
+     /AFTER UPDATE OF dia, inicio_min, cumprido_em, cancelado_em, chamado_id/.test(u78)
+     && !/AFTER UPDATE OF[^\n]*servico_min/.test(cod78), true);
+  eq('o gatilho de apoio da U76 NÃO é recriado — CREATE OR REPLACE troca o corpo sem tocar em quem o chama, e recriar seria a chance de mudar a lista OF por acidente',
+     /CREATE TRIGGER trg_chamado_apoio_dupla_upd/.test(cod78), false);
+  eq('CRÍTICO: não nasce gatilho nenhum em public.chamados — é a AUSÊNCIA dessa aresta de volta que faz não haver ciclo HOJE (e o arquivo diz com todas as letras o que essa prova por SUBSTRING não cobre)',
+     [/CREATE TRIGGER[\s\S]{0,200}ON public\.chamados/.test(cod78),
+      u78.includes('prova isso por SUBSTRING')],
+     [false, true]);
+
+  // ── §6: as portas, que são o único lugar onde alguém destrói dado ──────
+  eq('CRÍTICO: agenda_campo_marcar LÊ a linha que vai reescrever ANTES de decidir, e com FOR UPDATE — sem a leitura, ela autoriza os ARGUMENTOS e nunca o ESTADO; sem a trava, outra transação move a linha entre o gate e a escrita e o gate terá autorizado um estado que já não existe',
+     [/-- ══ 1a\) LER A LINHA QUE VAI SER REESCRITA/.test(marcar78),
+      /WHERE a\.id = _id\s+FOR UPDATE;/.test(marcar78),
+      // a leitura tem de trazer cumprido_em: é ela que sustenta a recusa de mover
+      // o que já aconteceu, e sem a coluna no SELECT a recusa não tem como existir
+      /a\.titulo_externo, a\.cumprido_em/.test(marcar78),
+      marcar78.indexOf('FOR UPDATE') < marcar78.indexOf('-- ══ 1c) U78: QUEM MANDA NESTE BLOCO HOJE'),
+      marcar78.indexOf('FOR UPDATE') < marcar78.indexOf('UPDATE public.agenda_campo a')],
+     [true, true, true, true, true]);
+  // O GATE TEM TRÊS CAMADAS, e cada uma fecha um caminho que as outras deixam
+  // aberto. A de ESCALA é a que faltava POR INTEIRO: a função nunca olhava para
+  // `_dupla`, então quem respondesse por um chamado qualquer ocupava a
+  // terça-feira de QUALQUER equipe. Corrigir só o dono do bloco não fechava isso.
+  // O TETO DESTA ASSERÇÃO, dito para ninguém confiar demais nela: ela lê TEXTO.
+  // Ela pega o gate sumindo, mudando de alvo ou saindo de lugar — foi medida
+  // contra oito mutações — e NÃO pega alguém escrevendo `AND false` no meio de
+  // uma condição que continua com todas as palavras certas. Prova de recusa de
+  // autorização exige um banco com JWT, e não há nenhum aqui nem dentro da
+  // própria migration (no SQL Editor auth.uid() é NULL e todo gate passa por
+  // desenho). Por isso o ANCORAMENTO da primeira linha do gate importa: é ele
+  // que faz "IF auth.uid() IS NOT NULL" virar "IF false" ficar vermelho.
+  eq('CRÍTICO: o gate de marcar é is_gestor OU (pode editar o chamado que SAI, e o que ENTRA, e está ESCALADO naquela equipe naquela semana) — as três dentro do mesmo ramo de não-gestor, e todas ANTES da escrita',
+     // e o COALESCE do v_gestor é a DIREÇÃO DA FALHA: sem ele, um is_gestor que
+     // devolvesse NULL faria `IF NOT v_gestor` ser NULL, o ramo inteiro ser
+     // pulado e o gate falhar ABERTO — as três camadas sumiriam sem erro nenhum
+     [/v_gestor := COALESCE\(public\.is_gestor\(auth\.uid\(\)\), false\);/.test(marcar78),
+      /IF auth\.uid\(\) IS NOT NULL THEN/.test(marcar78),
+      /IF NOT v_gestor THEN/.test(marcar78),
+      /NOT public\.pode_editar_chamado\(v_a_chamado\)/.test(marcar78),
+      /NOT public\.pode_editar_chamado\(v_chamado\)/.test(marcar78),
+      /public\.dupla_da_pessoa\(auth\.uid\(\), v_dia\) IS DISTINCT FROM v_dupla/.test(marcar78),
+      // a ESCALA é conferida contra os valores EFETIVOS (v_dia/v_dupla), não
+      // contra os parâmetros: num PATCH o dia e a equipe podem vir da linha viva,
+      // e checar `_dia` deixaria o gesto que omite o dia passar sem gate nenhum
+      /public\.dupla_da_pessoa\(auth\.uid\(\), _dia\)/.test(marcar78),
+      marcar78.indexOf('IF NOT v_gestor THEN') < marcar78.indexOf('public.dupla_da_pessoa'),
+      marcar78.indexOf('public.dupla_da_pessoa') < marcar78.indexOf('UPDATE public.agenda_campo a')],
+     [true, true, true, true, true, true, false, true, true]);
+  eq('CRÍTICO: bloco SEM chamado é ato de gestão, e em marcar a recusa olha os DOIS lados — o que ESTÁ na linha e o que VAI ficar; olhando só o que vai ficar, um PATCH que mantém chamado_id nulo escapava',
+     /IF v_chamado IS NULL OR \(_id IS NOT NULL AND v_a_chamado IS NULL\) THEN/.test(marcar78), true);
+  eq('CRÍTICO: e o portão do §8 recusa a transação se o gate do dono, o de ESCALA ou a recusa de mover bloco cumprido sumirem do corpo vivo — substring, e o arquivo diz que é só isso que ela prova (no SQL Editor auth.uid() é NULL e nenhuma recusa é exercitável)',
+     [/position\('U78: QUEM MANDA NESTE BLOCO HOJE' in v_marcar\) = 0/.test(u78),
+      /position\('public\.dupla_da_pessoa\(auth\.uid\(\), v_dia\) IS DISTINCT FROM v_dupla' in v_marcar\) = 0/.test(u78),
+      /position\('v_a_cumprido IS NOT NULL' in v_marcar\) = 0/.test(u78),
+      u78.includes('Substring de prosrc, e não teste de comportamento')],
+     [true, true, true, true]);
+  // ── A PORTA SEM CONSUMIDOR: o achado de maior retorno da revisão ────────
+  // Esta é a única asserção de autorização do bloco que NÃO é sobre texto dentro
+  // de um corpo de função: ela é sobre a existência de uma linha de GRANT. Pôr o
+  // GRANT de volta a torna vermelha, que é exatamente o que se quer dela.
+  // A lista vem do MODELO PURO (é a mesma que a camada de dados vai chamar), e
+  // não de uma cópia à mão que pode encolher sem ninguém ver.
+  const portas78 = [...M78.PORTAS_DA_AGENDA];
+  eq('CRÍTICO: NENHUMA das quatro portas de escrita é concedida a authenticated nesta migration — sem tela não há consumidor, e no instante do COMMIT desagendar_chamado seria um /rest/v1/rpc que apaga data_hora_agendada de qualquer chamado de campo com UMA requisição (a chave publishable está no .env versionado, e o md5 do §0 e o freio do §8 morrem no COMMIT, que é quando o risco começaria)',
+     portas78.filter((n) => new RegExp(
+       `GRANT\\s+EXECUTE ON FUNCTION public\\.${n}\\([^)]*\\)[^;]*authenticated`).test(cod78)),
+     []);
+  eq('…e as quatro SÃO concedidas a service_role, senão a porta não existe para ninguém e nem o ensaio do rodapé roda',
+     portas78.filter((n) => !new RegExp(
+       `GRANT\\s+EXECUTE ON FUNCTION public\\.${n}\\([^)]*\\) TO service_role;`).test(cod78)),
+     []);
+  // lastIndexOf, e comparado contra o COMMIT: o cabeçalho CITA o nome do bloco
+  // do rodapé, então um `includes` acharia a citação e daria verde com o bloco
+  // apagado. É a mesma armadilha que obrigou o `corpo78` a existir neste
+  // arquivo — grep acha o comentário que fala da coisa, não a coisa.
+  eq('…e o GRANT que falta está no RODAPÉ (depois do COMMIT), comentado e endereçado à migration da TELA, junto com a linha da conferência que vai passar a acusar quando ele for dado (ali acusar é o certo: quer dizer que a fronteira mudou)',
+     [u78.lastIndexOf('AS QUATRO PORTAS, QUANDO A TELA CHEGAR') > u78.indexOf('\nCOMMIT;'),
+      /-- GRANT EXECUTE ON FUNCTION public\.desagendar_chamado\(uuid\)\s+TO authenticated;/.test(u78),
+      /has_function_privilege\('authenticated', p\.oid, 'EXECUTE'\)\), '0'/.test(u78)],
+     [true, true, true]);
+  eq('CRÍTICO: TODO parâmetro omissível de marcar é DEFAULT NULL, o deslocamento inclusive — num PATCH um default que não é NULL é um apagador disfarçado: o PostgREST preenche o default do que não vem no corpo, e arrastar o cartão zerava os minutos de estrada digitados, que entram na jornada E na janela do EXCLUDE',
+     [/_deslocamento_min int DEFAULT NULL/.test(marcar78),
+      /_deslocamento_min int DEFAULT 0/.test(marcar78),
+      /COALESCE\(_deslocamento_min, v_a_desloc, 0\)/.test(marcar78),
+      // e o portão lê a ASSINATURA, porque prosrc é só o corpo e não sabe de
+      // default de parâmetro
+      /pg_get_function_arguments\(p\.oid\) LIKE '%deslocamento_min integer DEFAULT 0%'/.test(u78)],
+     [true, false, true, true]);
+  eq('CRÍTICO: marcar RECUSA mover bloco já cumprido — cancelar já recusava desmarcá-lo e marcar movia, e mover o que aconteceu reescreve a ocupação de uma semana PASSADA e manda o chamado, pelo estágio 2 do espelho, para um dia em que ninguém esteve',
+     [/v_a_cumprido IS NOT NULL/.test(marcar78),
+      /v_dia\s+IS DISTINCT FROM v_a_dia/.test(marcar78),
+      /v_inicio\s+IS DISTINCT FROM v_a_inicio/.test(marcar78),
+      /v_dupla\s+IS DISTINCT FROM v_a_dupla/.test(marcar78),
+      /v_chamado IS DISTINCT FROM v_a_chamado/.test(marcar78)],
+     [true, true, true, true, true]);
+  eq('…e a recusa é ESTREITA: duração e deslocamento NÃO estão nela, porque são MEDIÇÃO do que houve ("levou três horas, não uma") e não afirmação sobre QUANDO houve — proibi-los obrigaria a apagar o bloco para consertar um número',
+     [/v_servico IS DISTINCT FROM v_a_servico/.test(marcar78),
+      /v_desloc IS DISTINCT FROM v_a_desloc/.test(marcar78)],
+     [false, false]);
+  eq('CRÍTICO: "agendado" quer dizer bloco PENDENTE, e as duas pontas contam igual — cancelar contava o CUMPRIDO como agenda (o chamado cujo retorno foi desmarcado ficava agendado para sempre, sem nada marcado), e marcar não tinha a metade de baixo: mover o último bloco para outro chamado deixava o de origem agendado, sem data e sem bloco',
+     [/a\.cancelado_em IS NULL AND a\.cumprido_em IS NULL/.test(cancelar78),
+      /a\.cancelado_em IS NULL AND a\.cumprido_em IS NULL/.test(marcar78),
+      /v_a_chamado IS NOT NULL AND v_a_chamado IS DISTINCT FROM v_chamado/.test(marcar78),
+      /AND natureza = 'campo';/.test(cancelar78)],
+     [true, true, true, true]);
+  eq('agenda_campo_cumprir fecha o par do §6.2 pelos DOIS lados: NULL explícito não desmarca em silêncio (caía no ELSE do CASE, a direção destrutiva escolhida por omissão), e bloco desmarcado não recebe "feito" — cancelado_em e cumprido_em preenchidos juntos são o estado que o §6.2 recusa criar pelo outro lado',
+     [/_feito := COALESCE\(_feito, true\);/.test(cumprir78),
+      /IF _feito AND v_cancelado IS NOT NULL THEN/.test(cumprir78)],
+     [true, true]);
+  eq('CRÍTICO: marcar é PATCH e não REPLACE — arrastar o cartão de uma OS de fora sem repassar o título apagava o ÚNICO registro daquele serviço (ele não cabe em public.chamados porque cliente_id é NOT NULL)',
+     [/COALESCE\(_chamado, v_a_chamado\)/.test(marcar78),
+      /COALESCE\(nullif\(btrim\(_titulo_externo\), ''\), v_a_titulo\)/.test(marcar78),
+      /COALESCE\(nullif\(btrim\(_os_externa\), ''\), v_a_os\)/.test(marcar78),
+      /WHEN check_violation THEN/.test(marcar78)],
+     [true, true, true, true]);
+  eq('CRÍTICO: a frase do conflito gateia o RÓTULO por pode_editar_chamado e devolve "outro atendimento" a quem não pode saber — sem isso a mensagem de erro é um oráculo de enumeração de número, título e cliente de TODO chamado de campo, a uma requisição por chamado',
+     // Presença do gate não basta: o rótulo tem de ter UM caminho só. `v.numero`
+     // aparecendo duas vezes, ou um ELSE no CASE, é o vazamento de volta.
+     [/public\.pode_editar_chamado\(v\.chamado_id\)/.test(frase78sql),
+      (frase78sql.match(/v\.numero/g) || []).length, /ELSE/.test(frase78sql),
+      /END, 'outro atendimento'\)/.test(frase78sql),
+      /GRANT\s+EXECUTE ON FUNCTION public\.agenda_campo_frase_do_conflito\([^)]*\) TO [^;]*authenticated/.test(u78)],
+     [true, 1, false, true, false]);
+  eq('…e o HORÁRIO sai sempre (quem vai remarcar precisa dele), com travessão quando não há o que dizer — to_char(make_interval(mins => NULL)) imprimia "das  às "',
+     [/COALESCE\(to_char\(make_interval\(mins => v\.inicio - v\.desloc\), 'HH24:MI'\), '—'\)/.test(frase78sql),
+      /COALESCE\(to_char\(make_interval\(mins => v\.inicio \+ v\.servico\), 'HH24:MI'\), '—'\)/.test(frase78sql)],
+     [true, true]);
+  eq('CRÍTICO: e ela tem ORDEM TOTAL antes do LIMIT 1 — sem ORDER BY o Postgres devolve o que o plano der, e a MESMA recusa saía com nomes diferentes entre o ENSAIO (passo 5 de marcar) e a REDE DE CORRIDA (o handler do EXCLUDE), que perguntam exatamente a mesma coisa; mensagem de erro que muda sozinha ensina o usuário a não ler',
+     [/ORDER BY a\.inicio_min, a\.id\s*\n\s*LIMIT 1;/.test(frase78sql),
+      // o desempate por id é o MESMO do espelho e do gêmeo puro — duas ordens
+      // totais diferentes para a mesma tabela seriam duas verdades
+      /ORDER BY a\.dia, a\.inicio_min, a\.id/.test(u78)],
+     [true, true]);
+  eq('agenda_campo_cumprir também exige gestor para bloco sem chamado — era a única das quatro portas sem o braço, e o estrago pequeno é justamente o que faria a inconsistência sobreviver',
+     [/NOT public\.is_gestor\(auth\.uid\(\)\)/.test(cumprir78),
+      /NOT public\.is_gestor\(auth\.uid\(\)\)/.test(cancelar78)],
+     [true, true]);
+  eq('CRÍTICO: desagendar_chamado chama o espelho À MÃO — com zero blocos o UPDATE casa 0 linhas, gatilho AFTER nenhum dispara, e o chamado ficava "aberto" COM a data velha de pé; é 100% da base no dia 1',
+     /PERFORM public\.agenda_campo_espelhar\(_chamado\);/.test(desag78), true);
+  eq('…e ela poupa o bloco CUMPRIDO (que tem cancelado_em NULL e caía no WHERE como se fosse agenda) e recusa chamado comercial (a agenda da visita é do gatilho da U41, e esta função é DEFINER)',
+     [/AND cumprido_em IS NULL;/.test(desag78),
+      /v_natureza IS DISTINCT FROM 'campo'/.test(desag78),
+      /AND natureza = 'campo';/.test(desag78)],
+     [true, true, true]);
+
+  // ── §7: a MESMA guarda nos DOIS chamadores da U76 ──────────────────────
+  eq('CRÍTICO: a guarda nova tem os QUATRO termos — sem o de natureza, um flip de natureza junto com data->NULL seria engolido',
+     /NEW\.data_hora_agendada IS NULL\s+AND OLD\.data_hora_agendada IS NOT NULL\s+AND NOT v_mudou_dono\s+AND NEW\.natureza IS NOT DISTINCT FROM OLD\.natureza/.test(u78),
+     true);
+  eq('…e ela entra DEPOIS de v_mudou_semana, onde as três variáveis já estão calculadas',
+     corpo78.indexOf('v_mudou_semana := public.referencia_semanal(v_dia)')
+     < corpo78.indexOf('U78: DESAGENDAR NÃO É REATRIBUIR'), true);
+  eq('CRÍTICO: a VOLTA também está protegida — desmarcar e remarcar para a semana de created_at faz v_dia_antes cair no MESMO palpite que a guarda acabou de recusar, e a saída cedo herdada da U76 o trataria como fato, deixando o apoio na semana antiga',
+     /AND NOT \(OLD\.data_hora_agendada IS NULL AND NEW\.data_hora_agendada IS NOT NULL\)/.test(u78),
+     true);
+  eq('CRÍTICO: e a MESMA regra vale na reconciliação — ela chama chamado_sincronizar_apoio DIRETO, pulando o gatilho, e sem o filtro a ferramenta oficial da casa faz o dano que a guarda previne',
+     [/NOT \(c\.data_hora_agendada IS NULL/.test(recon78),
+      /FROM public\.chamado_apoios a\s*\n\s*WHERE a\.chamado_id = c\.id AND a\.origem = 'dupla'/.test(recon78)],
+     [true, true]);
+  eq('…e o filtro é ESTREITO: chamado sem data e SEM apoio continua passando, porque ali não há registro a proteger e o palpite é autocorrigível quando a data chegar',
+     /AND EXISTS \(SELECT 1 FROM public\.chamado_apoios a/.test(recon78), true);
+  eq('a regra NÃO desceu para chamado_sincronizar_apoio, e o motivo está escrito: aquela função recebe só o id e não sabe O QUE mudou — recusando lá, trocar de responsável num chamado sem data deixaria o apoio do dono ANTIGO colado',
+     [/CREATE OR REPLACE FUNCTION public\.chamado_sincronizar_apoio/.test(cod78),
+      u78.includes('não sabe O QUE')],
+     [false, true]);
+
+  // ── o que SAIU do arquivo, e a decisão registrada ─────────────────────
+  eq('CRÍTICO: a válvula prever.lote FOI CORTADA — ela era local à transação e o cenário que o comentário nomeava ("mover cem blocos") são N transações do PostgREST, sem parâmetro de lote e sem RPC companheira; com ela some também a reescrita de uma função viva da U7',
+     [/prever\.lote/.test(cod78), /notify_chamado_apoio/.test(cod78),
+      u78.includes('A VÁLVULA `prever.lote`')],
+     [false, false, true]);
+  eq('…e nada de ALTER TABLE ... DISABLE TRIGGER entrou no lugar dela (isso pega ACCESS EXCLUSIVE no sistema inteiro)',
+     /ALTER TABLE\s+public\.\w+\s+DISABLE TRIGGER/.test(cod78), false);
+  eq('o código da "alternativa com gatilho" saiu do rodapé e o PARÁGRAFO que explica por que o gatilho é pior ficou — ninguém cola vinte linhas de plpgsql comentado às 23h no meio de um aborto',
+     [u78.includes('O CÓDIGO DO PLANO B FOI REMOVIDO DESTE RODAPÉ'),
+      u78.includes('atômico contra duas gravações simultâneas')],
+     [true, true]);
+  eq('a U78 não apaga UMA LINHA de nada — cancelar é carimbo, não DELETE (nomes longos antes na alternância: \\b não fecha depois de _)',
+     /DELETE FROM public\.(agenda_campo|chamado_apoios|duplas_escala_semanas|duplas_escala|chamados)\b/.test(cod78),
+     false);
+  eq('a coluna de "sobreposição autorizada" NÃO existe, e a ausência é decisão: um booleano que tira a linha do EXCLUDE devolve a regra ao estado de promessa',
+     /sobreposicao_ok/.test(cod78), false);
+  eq('NÃO HÁ BACKFILL, DE PROPÓSITO — 12:00 sentinela e 12:00 de verdade são indistinguíveis por valor, e chutar duração envenena o chip no primeiro dia',
+     /NÃO HÁ BACKFILL, DE PROPÓSITO/.test(u78)
+     && !/INSERT INTO public\.agenda_campo\s*\([^)]*\)\s*SELECT/.test(cod78), true);
+
+  // ── grants, atomicidade, conferência e DESFAZER ───────────────────────
+  eq('CRÍTICO: authenticated não escreve na tabela — a porta é a RPC, que é quem checa a jornada e nomeia o conflito',
+     /GRANT SELECT ON public\.agenda_campo TO authenticated;/.test(u78)
+     && !/GRANT[^\n;]*\b(INSERT|UPDATE|DELETE)\b[^\n;]*ON public\.agenda_campo TO authenticated/.test(cod78),
+     true);
+  eq('CRÍTICO: e o REVOKE vem ANTES do GRANT — "não escrevi um GRANT" não é o mesmo que "não há GRANT", e sem esta linha a porta única dependeria de o bootstrap do Supabase não ter ALTER DEFAULT PRIVILEGES ligado',
+     [/REVOKE ALL\s+ON public\.agenda_campo FROM PUBLIC, anon, authenticated;/.test(u78),
+      u78.indexOf('REVOKE ALL   ON public.agenda_campo') < u78.indexOf('GRANT SELECT ON public.agenda_campo')],
+     [true, true]);
+  eq('a conferência de grant usa has_table_privilege, e não information_schema.role_table_grants (que não enxerga privilégio herdado de PUBLIC)',
+     /has_table_privilege\('authenticated','public\.agenda_campo','SELECT'\)/.test(u78), true);
+  eq('o índice liso de chamado_id existe — o ON DELETE CASCADE precisa achar TAMBÉM os blocos cancelados, e o índice do espelho é PARCIAL',
+     /CREATE INDEX IF NOT EXISTS agenda_campo_chamado_idx\s+ON public\.agenda_campo \(chamado_id\);/.test(u78),
+     true);
+  // Contar SECURITY DEFINER contra REVOKE dá número mágico; o que importa é que
+  // nenhuma função CHAMÁVEL por RPC fique aberta. As de gatilho não são
+  // chamáveis, e por isso não entram na conta.
+  const fns78 = [...cod78.matchAll(/CREATE OR REPLACE FUNCTION\s+public\.([a-z_0-9]+)\s*\(([^)]*)\)([\s\S]{0,900}?)\$/g)];
+  const expostas78 = [...new Set(fns78
+    .filter((m) => /SECURITY DEFINER/.test(m[3]) && !/RETURNS trigger/i.test(m[3]))
+    .map((m) => m[1]))];
+  eq('CRÍTICO: toda SECURITY DEFINER chamável por RPC é revogada de anon — a chave publishable está no .env versionado',
+     expostas78.filter((n) => !new RegExp(`REVOKE EXECUTE ON FUNCTION public\\.${n}\\b`).test(u78)), []);
+  eq('…e são o espelho, a peça de frase e as quatro portas de escrita, não uma porta a mais',
+     expostas78.length >= 6, true);
+  eq('CRÍTICO: a migration prova por CONTAGEM que não tocou em chamado_apoios, e por MD5 que ninguém perdeu ou trocou data_hora_agendada',
+     /_u78_antes/.test(u78) && /ON COMMIT DROP/.test(u78)
+     && /md5\(COALESCE\(string_agg/.test(u78) && /digest_agenda/.test(u78), true);
+  eq('CRÍTICO: o md5 virou FREIO e não relatório — e ele anda JUNTO com REPEATABLE READ, senão a foto do §0 e a conferência do §8 saem de snapshots diferentes e qualquer reprogramação pela tela antiga abortaria uma migration que não fez nada errado',
+     [/SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;/.test(cod78),
+      /IS DISTINCT FROM \(SELECT digest_agenda FROM _u78_antes\) THEN\s*\n\s*RAISE EXCEPTION/.test(u78)],
+     [true, true]);
+  eq('o sinal de reexecução sai em COLUNA, e não por RAISE NOTICE — que o próprio arquivo declara invisível no editor do Supabase',
+     [/AS reexecucao,/.test(u78), /RAISE NOTICE/.test(cod78)], [true, false]);
+  eq('CRÍTICO: a conferência é UM result set com veredito — o editor do Supabase mostra o ÚLTIMO, e com sete conjuntos a prova negativa (a afirmação central do arquivo) ficava escondida no meio',
+     [/ELSE '>>> OLHAR <<<' END AS veredito/.test(u78),
+      (u78.match(/ORDER BY t\.ordem;/g) || []).length],
+     [true, 1]);
+  // …e "UM result set" não bastava, porque não era um: a lista "quem não casou"
+  // é um segundo SELECT de topo, e ela vinha DEPOIS. Num banco são ela vem
+  // VAZIA — então o que o editor deixava na tela era uma tabela em branco, e o
+  // veredito ficava invisível. A ordem é a correção; o número dentro da tabela
+  // é o que faz o veredito não depender de ninguém rolar a tela para cima.
+  eq('CRÍTICO: a TABELA DE VEREDITO é o ÚLTIMO SELECT do arquivo, e a lista "quem não casou" vem ANTES dela — invertidas, o que o editor mostrava era a lista (vazia num banco são) e o veredito não aparecia',
+     [u78.indexOf('ORDER BY t.ordem;')
+        > u78.indexOf("'espelho diverge do bloco que manda' AS problema"),
+      (u78.match(/'espelho diverge do bloco que manda' AS problema/g) || []).length,
+      /SELECT 801, 'CRÍTICO: nenhum chamado com o espelho DIVERGINDO/.test(u78)],
+     [true, 1, true]);
+  eq('o pré-voo cobra a peça NOVA de que o gate de escala depende — sem esta linha a falta de dupla_da_pessoa só apareceria no PRIMEIRO CLIQUE da tela, como "function does not exist" dentro de um formulário',
+     /to_regprocedure\('public\.dupla_da_pessoa\(uuid, date\)'\) IS NULL/.test(u78), true);
+  // ── CLUSTER F: o arquivo não pode afirmar o que não é ──────────────────
+  // A "camada (1)" (a lista OF curta) era vendida como a defesa mais externa
+  // contra a cascata de apoio. Ela NÃO opera na porta única: o UPDATE do §6.1 é
+  // um PATCH que põe chamado_id, dia, inicio_min e cancelado_em no SET SEMPRE, e
+  // `AFTER UPDATE OF` dispara pela PRESENÇA da coluna, com valor igual ou não.
+  // Quem segura ali é a camada (2), o IS DISTINCT FROM de dentro do espelho.
+  eq('CRÍTICO: o arquivo NÃO afirma mais que a lista OF do espelho protege a porta única — ela vale para UPDATE parcial (service_role, carga, porta futura), e pela RPC o espelho roda em TODA gravação, com o IS DISTINCT FROM fazendo o UPDATE em chamados casar zero linhas',
+     [u78.includes('a camada (1) NÃO opera'),
+      u78.includes('MAS ELA NÃO COBRE A RPC'),
+      /SET chamado_id = v_chamado, dupla_id = v_dupla, dia = v_dia,/.test(marcar78),
+      // e a frase que overclaimava não pode voltar: era ELA que dizia que a
+      // camada mais externa matava "metade das gravações da tela nova"
+      /Isto mata metade das gravações/.test(u78),
+      /não chega nem a CHAMAR a função\n-- de espelho, e portanto não pode acordar/.test(u78)],
+     [true, true, true, false, false]);
+  eq('…e o COMMENT do deslocamento não promete mais o "previsto × calculado" da Fase 2: é UMA coluna, e preencher pelo cálculo de rota destruiria o digitado',
+     [/NÃO permite, sozinha, o "previsto × calculado"/.test(u78),
+      /2 preenche pelo cálculo de rota e a coluna já está no lugar/.test(u78)],
+     [true, false]);
+  eq('…e o §5 não manda mais o leitor procurar uma "tabela completa no cabeçalho" que nunca existiu — ele aponta para as linhas 403 e 404 da conferência, que são a prova',
+     [/linhas 403 e 404 do §9/.test(u78),
+      /A tabela\n-- completa está no cabeçalho/.test(u78)],
+     [true, false]);
+  eq('a DECISÃO DE FRONTEIRA está registrada com o custo de afrouxá-la escrito, e não sobrou nenhuma linha chamando-a de pendente — migration que muda quem pode o quê e não diz por quê vira folclore na sessão seguinte',
+     [u78.includes('A DECISÃO DE FRONTEIRA, TOMADA'),
+      u78.includes('PODE SER AFROUXADA PARA GESTOR-SÓ'),
+      /decisão pendente do Davi/.test(u78),
+      /O QUE A PORTA AINDA NÃO DECIDE/.test(u78)],
+     [true, true, false, false]);
+  eq('as duas perguntas que ficaram para o Davi estão DECLARADAS, não esquecidas: dar "feito" com retorno em outra semana reescreve o apoio (é CARDINALIDADE, não a guarda do §7 — e por isso a guarda não foi alargada no escuro), e o bloco isento da jornada não tem teto de forma',
+     [u78.includes('O QUE AINDA ESPERA UMA FRASE DO DAVI'),
+      u78.includes('TETO DE FORMA PARA O BLOCO ISENTO'),
+      u78.includes('o apoio pendurar no BLOCO e não no chamado')],
+     [true, true, true]);
+  eq('o ENSAIO do rodapé exercita o que esta revisão consertou — é a única coisa do arquivo que testa COMPORTAMENTO em vez de texto, e uma correção sem etapa nova nele é uma correção que ninguém experimentou',
+     [/\(2b\) mover sem repassar o deslocamento/.test(u78),
+      /\(6b\) mover bloco cumprido recusado/.test(u78),
+      /\(6c\) corrigir a duração de um bloco cumprido/.test(u78),
+      /\(8\) dar feito em bloco desmarcado recusado/.test(u78)],
+     [true, true, true, true]);
+  eq('U78 é atômica — se o portão abortar, não sobra rastro',
+     /^BEGIN;$/m.test(u78) && /^COMMIT;$/m.test(u78), true);
+  eq('U78 termina com conferência e DESFAZER, como toda migration da casa',
+     /CONFERÊNCIA/.test(u78) && u78.lastIndexOf('DESFAZER') > u78.indexOf('COMMIT;'), true);
+  eq('CRÍTICO: o DESFAZER nível 1 FECHA AS PORTAS primeiro — sem esse passo ele prometia um estado que não entregava: as quatro RPCs seguiriam concedidas, a grade gravaria bloco que não espelha e agenda_campo_cancelar viraria status sem mexer na data, fabricando a divergência que ele existe para desfazer',
+     [/REVOKE EXECUTE ON FUNCTION public\.agenda_campo_marcar\([^)]*\) FROM authenticated;/.test(u78),
+      /REVOKE EXECUTE ON FUNCTION public\.desagendar_chamado\(uuid\)\s+FROM authenticated;/.test(u78),
+      u78.indexOf('REVOKE EXECUTE ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) FROM authenticated;')
+        < u78.indexOf('-- DROP TRIGGER IF EXISTS trg_agenda_campo_espelho_ins')],
+     [true, true, true]);
+  eq('o DESFAZER nível 1 devolve o comportamento sem apagar bloco nenhum, e traz o corpo LITERAL das duas funções da U76 com dólar-quote próprio',
+     /DROP TRIGGER IF EXISTS trg_agenda_campo_espelho_ins ON public\.agenda_campo;/.test(u78)
+     && (u78.match(/\$desfaz\$/g) || []).length >= 4, true);
+  eq('e existe um ENSAIO à mão para a única porta que a conferência não pode executar (ela escreveria) — o corpo de uma função plpgsql só é analisado na primeira execução de verdade',
+     [/ENSAIO OK/.test(u78), u78.lastIndexOf('ENSAIO OK') > u78.indexOf('\nCOMMIT;'),
+      /agenda_campo_marcar\(NULL, NULL, v_dupla/.test(u78)],
+     [true, true, true]);
+
+  eq('R99, R100 e R101 estão documentados',
+     produto78.includes('**R99**') && produto78.includes('**R100**') && produto78.includes('**R101**'),
+     true);
+}
+
+// ── U78: o ESPELHO, os três gêmeos, e o gatilho que ninguém lia ─────────────
+// O veredito da rodada de correção: neutralizar `agenda_campo_espelho()` por
+// inteiro deixava a suíte VERDE. É o gatilho da regra mais crítica da entrega
+// (a R101, a coluna que doze arquivos leem), e nenhuma asserção o alcançava.
+//
+// A técnica aqui é a que a casa aprendeu a duras penas: FATIAR o alvo (a função,
+// o comando) e comparar LISTA CONTRA LISTA ESCRITA À MÃO, em vez de varrer o
+// arquivo com um regex frouxo. Regex sobre o arquivo inteiro prova que a linha
+// existe em algum lugar; não prova que ela está VIVA nem que está no lugar certo.
+{
+  const fsE = require('fs');
+  const u78e = fsE.readFileSync('supabase/migrations/20260901090000_u78_grade_da_programacao.sql', 'utf8');
+
+  /** Recorta o corpo de uma função pelo cabeçalho dela até o `$$;` que a fecha. */
+  const corpoDe = (assinatura) => {
+    const i = u78e.indexOf('CREATE OR REPLACE FUNCTION ' + assinatura);
+    if (i < 0) return '';
+    const j = u78e.indexOf('\n$$;', i);
+    return j < 0 ? '' : u78e.slice(i, j);
+  };
+  /** Recorta um CREATE TRIGGER até o `;` que o fecha. */
+  const gatilhoDe = (nome) => {
+    const i = u78e.indexOf('CREATE TRIGGER ' + nome);
+    if (i < 0) return '';
+    const j = u78e.indexOf(';', i);
+    return j < 0 ? '' : u78e.slice(i, j);
+  };
+
+  // ── o GATILHO: as três chamadas, na ordem, contra lista escrita à mão ────
+  const espelho = corpoDe('public.agenda_campo_espelho()');
+  eq('o gatilho do espelho existe e foi recortado (se este falhar, os de baixo mentem)',
+     espelho.length > 200, true);
+
+  // A ordem importa: OLD no DELETE, OLD DE NOVO quando o bloco troca de dono, e
+  // NEW sempre. Tirar a do meio deixa o chamado ANTIGO com espelho velho —
+  // exatamente o defeito silencioso que o gatilho existe para não ter.
+  eq('CRÍTICO: o gatilho do espelho faz TRÊS chamadas, nesta ordem — OLD no DELETE, OLD na troca de chamado, NEW sempre',
+     [...espelho.matchAll(/PERFORM public\.agenda_campo_espelhar\((OLD|NEW)\.chamado_id\)/g)].map((m) => m[1]),
+     ['OLD', 'OLD', 'NEW']);
+  eq('CRÍTICO: o DELETE espelha o chamado que PERDEU o bloco e devolve OLD',
+     /IF TG_OP = 'DELETE' THEN\s*\n\s*PERFORM public\.agenda_campo_espelhar\(OLD\.chamado_id\);\s*\n\s*RETURN OLD;/.test(espelho),
+     true);
+  eq('CRÍTICO: bloco que troca de chamado atualiza os DOIS lados — só NEW deixaria o antigo mentindo',
+     /IF TG_OP = 'UPDATE' AND NEW\.chamado_id IS DISTINCT FROM OLD\.chamado_id THEN\s*\n\s*PERFORM public\.agenda_campo_espelhar\(OLD\.chamado_id\);/.test(espelho),
+     true);
+
+  // ── os três CREATE TRIGGER, com a lista OF literal ──────────────────────
+  // A lista OF é a primeira defesa contra cascata: UPDATE que não cita nenhuma
+  // dessas colunas não acorda o espelho, e portanto não acorda o gatilho de
+  // apoio da U76 que escuta data_hora_agendada.
+  eq('o gatilho de INSERT existe e é AFTER INSERT em agenda_campo',
+     /^CREATE TRIGGER trg_agenda_campo_espelho_ins\s*\n\s*AFTER INSERT ON public\.agenda_campo\s*\n\s*FOR EACH ROW EXECUTE FUNCTION public\.agenda_campo_espelho\(\)/m.test(u78e),
+     true);
+  eq('CRÍTICO: a lista OF do UPDATE é exatamente esta — coluna a mais acorda o apoio à toa, coluna a menos deixa o espelho velho',
+     (gatilhoDe('trg_agenda_campo_espelho_upd').match(/AFTER UPDATE OF ([^\n]+)/) || [, ''])[1].trim(),
+     'dia, inicio_min, cumprido_em, cancelado_em, chamado_id');
+  eq('o gatilho de DELETE existe e é AFTER DELETE',
+     /^CREATE TRIGGER trg_agenda_campo_espelho_del\s*\n\s*AFTER DELETE ON public\.agenda_campo/m.test(u78e),
+     true);
+  eq('os três são recriados de forma idempotente (DROP antes)',
+     ['ins', 'upd', 'del'].every((s) =>
+       new RegExp(`^DROP TRIGGER IF EXISTS trg_agenda_campo_espelho_${s} ON public\\.agenda_campo;`, 'm').test(u78e)),
+     true);
+
+  // ── o TRABALHADOR: os dois estágios, e o que os separa ──────────────────
+  const trab = corpoDe('public.agenda_campo_espelhar(_chamado uuid)');
+  eq('o trabalhador do espelho existe e foi recortado', trab.length > 400, true);
+  eq('CRÍTICO: estágio 1 é o bloco PENDENTE mais antigo — ORDER BY crescente, com id de desempate',
+     /a\.cancelado_em IS NULL\s*\n\s*AND a\.cumprido_em IS NULL\s*\n\s*ORDER BY a\.dia, a\.inicio_min, a\.id\s*\n\s*LIMIT 1;/.test(trab),
+     true);
+  eq('CRÍTICO: estágio 2 (todos cumpridos) é o ÚLTIMO — DESC nos três, não o mais antigo de novo',
+     /ORDER BY a\.dia DESC, a\.inicio_min DESC, a\.id DESC\s*\n\s*LIMIT 1;/.test(trab), true);
+  eq('CRÍTICO: e o estágio 2 só roda quando o 1 não achou nada',
+     /IF v_dia IS NULL THEN[\s\S]{0,400}ORDER BY a\.dia DESC/.test(trab), true);
+  eq('CRÍTICO: uma conversão de fuso, explícita — 22h de domingo em UTC viraria segunda, e a semana ISO do apoio mudaria',
+     (trab.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 1);
+  eq('chamado sem id devolve cedo em vez de varrer a tabela',
+     /IF _chamado IS NULL THEN RETURN false; END IF;/.test(trab), true);
+  // As três cláusulas do WHERE são as três defesas contra cascata: natureza
+  // (comercial é de outro gatilho), status (registro é registro) e o
+  // IS DISTINCT FROM (não escreve o que já está lá, logo não acorda o apoio).
+  eq('CRÍTICO: o UPDATE do espelho só toca CAMPO, só NÃO-ENCERRADO, e só quando o valor MUDA',
+     /AND c\.natureza = 'campo'/.test(trab)
+     && /AND c\.status NOT IN \('concluido','cancelado'\)/.test(trab)
+     && /IS DISTINCT FROM/.test(trab), true);
+
+  // ── o TERCEIRO gêmeo: a conferência do §9.0, que é o que o Davi lê ──────
+  // Ela recalcula o que o gatilho calcula. Se divergir do trabalhador, ela
+  // inventa divergência às 23h — e o Davi acredita nela, porque é o que está
+  // na tela.
+  const i90 = u78e.indexOf('§9.0) QUEM NÃO CASOU');
+  const conf90 = i90 < 0 ? '' : u78e.slice(i90, u78e.indexOf(';', u78e.indexOf('SELECT c.numero', i90)));
+  eq('a conferência §9.0 existe e foi recortada', conf90.length > 300, true);
+  eq('CRÍTICO: o §9.0 repete os DOIS estágios do trabalhador — um COALESCE, pendente primeiro e cumprido depois',
+     /COALESCE\(\s*\n\s*\(SELECT[\s\S]{0,300}cumprido_em IS NULL\s*\n\s*ORDER BY x\.dia, x\.inicio_min, x\.id LIMIT 1\),\s*\n\s*\(SELECT[\s\S]{0,300}ORDER BY x\.dia DESC, x\.inicio_min DESC, x\.id DESC LIMIT 1\)/.test(conf90),
+     true);
+  eq('CRÍTICO: e usa o MESMO fuso do trabalhador — divergir aqui inventa divergência na tela',
+     (conf90.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 2);
+  eq('o §9.0 recorta o mesmo universo do trabalhador (campo, não encerrado)',
+     /c\.natureza='campo'/.test(conf90)
+     && /c\.status NOT IN \('concluido','cancelado'\)/.test(conf90), true);
+  eq('CRÍTICO: o §9.0 vem ANTES da tabela de veredito — o editor do Supabase mostra o ÚLTIMO result set, e uma lista vazia escondia o veredito',
+     u78e.indexOf('§9.0) QUEM NÃO CASOU') < u78e.indexOf('9.9 O NÚMERO DA LISTA DO §9.0'), true);
+}
+
+// ── U78: os quatro CENSOS ───────────────────────────────────────────────────
+// Uma bateria de mutação independente (173 quebras, derivadas das promessas do
+// Passo 1.2 e não do que as asserções fatiam) achou 42 sobreviventes. Todos com
+// a mesma forma: as asserções cobriam a NARRATIVA — a regra interessante, o
+// comentário bonito — e pulavam a ESTRUTURA. E, pior, uma família inteira
+// escapava por um motivo só:
+//
+//   REGEX PROVA QUE A LINHA EXISTE. NÃO PROVA QUE ELA ESTÁ VIVA.
+//
+// Pôr `RETURN NEW;` logo depois do BEGIN mata a função inteira sem apagar uma
+// linha sequer — todo regex de conteúdo continua casando. É a mesma família do
+// `-- REVOKE` (linha comentada) e do `[\s\S]{0,N}` que atravessa o `;`, agora na
+// terceira variação. A defesa é ALCANÇABILIDADE: prender a PRIMEIRA instrução.
+//
+// Daí a escolha de CENSO em vez de asserção por caso: uma lista derivada do
+// arquivo, comparada contra uma lista escrita à mão. Some uma peça, o censo
+// acusa; nasce uma peça sem ninguém pensar nela, o censo também acusa.
+{
+  const fsC = require('fs');
+  const u78c = fsC.readFileSync('supabase/migrations/20260901090000_u78_grade_da_programacao.sql', 'utf8');
+  // Só o que a migration EXECUTA. O DESFAZER é um bloco comentado no rodapé e
+  // contém CREATE/GRANT/REVOKE que não valem como prova de nada.
+  const cod78 = u78c.slice(0, u78c.indexOf('\n-- BEGIN;'));
+
+  const corpo = (nome) => {
+    const i = cod78.search(new RegExp('^CREATE OR REPLACE FUNCTION\\s+public\\.' + nome + '\\s*\\(', 'm'));
+    if (i < 0) return '';
+    const j = cod78.indexOf('\n$$;', i);
+    return j < 0 ? '' : cod78.slice(i, j);
+  };
+
+  // ── CENSO 1: ALCANÇABILIDADE ────────────────────────────────────────────
+  // A primeira instrução executável de cada função plpgsql, contra o que ela
+  // TEM de ser. É a asserção mais barata do arquivo e a que mata a família
+  // inteira de "neutraliza o corpo com uma linha".
+  const PRIMEIRA = {
+    agenda_campo_valida: "IF NEW.chamado_id IS NULL THEN",
+    agenda_campo_espelhar: "IF _chamado IS NULL THEN RETURN false; END IF;",
+    agenda_campo_espelho: "IF TG_OP = 'DELETE' THEN",
+    agenda_campo_frase_do_conflito: "SELECT a.inicio_min::int AS inicio, a.deslocamento_min::int AS desloc,",
+    agenda_campo_marcar: "IF _id IS NOT NULL THEN",
+    agenda_campo_cancelar: "SELECT a.chamado_id, a.cumprido_em INTO v_chamado, v_cumprido",
+    agenda_campo_cumprir: "_feito := COALESCE(_feito, true);",
+    desagendar_chamado: "SELECT c.natureza INTO v_natureza FROM public.chamados c WHERE c.id = _chamado;",
+    chamado_apoio_da_dupla: "IF NEW.natureza IS DISTINCT FROM 'campo' THEN RETURN NEW; END IF;",
+    reconciliar_apoios_abertos: "IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN",
+  };
+  const primeiraDe = (nome) => {
+    const c = corpo(nome);
+    const k = c.search(/^BEGIN$/m);
+    if (k < 0) return '(sem BEGIN)';
+    return c.slice(k + 6).split('\n').map((s) => s.trim())
+      .filter((s) => s && !s.startsWith('--'))[0] || '(vazio)';
+  };
+  eq('CRÍTICO: a PRIMEIRA instrução de cada função é a esperada — regex de conteúdo não vê um RETURN posto na frente, e um RETURN na frente mata a função inteira',
+     Object.fromEntries(Object.keys(PRIMEIRA).map((n) => [n, primeiraDe(n)])), PRIMEIRA);
+
+  // ── CENSO 2: PRIVILÉGIO ─────────────────────────────────────────────────
+  // O modelo de ameaça da casa: todo usuário fala direto com o Postgres usando
+  // a MESMA chave publishable, que está no .env VERSIONADO. EXECUTE é concedido
+  // a PUBLIC por padrão e `anon` herda — uma SECURITY DEFINER sem REVOKE é um
+  // /rest/v1/rpc/<nome> aberto ao mundo.
+  const funcoes78 = [...cod78.matchAll(/^CREATE OR REPLACE FUNCTION\s+public\.([a-z_0-9]+)\s*\(/gm)]
+    .map((m) => m[1]);
+  eq('a U78 cria exatamente estas funções — nasceu uma a mais e ninguém pensou nela? o censo acusa',
+     [...new Set(funcoes78)].sort(),
+     ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_espelhar',
+      'agenda_campo_espelho', 'agenda_campo_frase_do_conflito', 'agenda_campo_marcar',
+      'agenda_campo_valida', 'chamado_apoio_da_dupla', 'desagendar_chamado',
+      'duracao_texto', 'reconciliar_apoios_abertos'].sort());
+
+  // Gatilho não é chamável por RPC e não leva REVOKE; o resto leva, sem exceção.
+  const DE_GATILHO = ['agenda_campo_valida', 'agenda_campo_espelho', 'chamado_apoio_da_dupla'];
+  const semRevoke78 = [...new Set(funcoes78)]
+    .filter((n) => !DE_GATILHO.includes(n))
+    .filter((n) => !new RegExp('^REVOKE EXECUTE ON FUNCTION public\\.' + n + '\\([^)]*\\) FROM PUBLIC, anon;$', 'm').test(cod78));
+  eq('CRÍTICO: toda função chamável por RPC é revogada de PUBLIC e anon, na linha inteira e viva',
+     semRevoke78, []);
+
+  const paraAutenticado = [...new Set(funcoes78)]
+    .filter((n) => new RegExp('^GRANT\\s+EXECUTE ON FUNCTION public\\.' + n + '\\([^)]*\\) TO [^;]*authenticated', 'm').test(cod78));
+  // duracao_texto é IMMUTABLE e não lê tabela; reconciliar_apoios_abertos tem
+  // gate de gestor dentro. As QUATRO PORTAS DE ESCRITA não estão aqui de
+  // propósito: sem tela não há consumidor, e o GRANT delas vai na migration que
+  // levar a tela (as linhas prontas estão no rodapé).
+  eq('CRÍTICO: só estas duas chegam a authenticated — as quatro portas de escrita ficam em service_role até a tela existir',
+     paraAutenticado.sort(), ['duracao_texto', 'reconciliar_apoios_abertos']);
+
+  // ── CENSO 3: A TABELA ───────────────────────────────────────────────────
+  eq('a RLS da tabela nova é ligada (sem isto a policy é enfeite)',
+     /^ALTER TABLE public\.agenda_campo ENABLE ROW LEVEL SECURITY;$/m.test(cod78), true);
+  eq('CRÍTICO: o REVOKE ALL vem antes do GRANT — "não escrevi um GRANT" não é o mesmo que "não há GRANT", porque o bootstrap do Supabase traz ALTER DEFAULT PRIVILEGES',
+     /^REVOKE ALL\s+ON public\.agenda_campo FROM PUBLIC, anon, authenticated;$/m.test(cod78)
+     && cod78.search(/^REVOKE ALL\s+ON public\.agenda_campo/m) < cod78.search(/^GRANT SELECT ON public\.agenda_campo/m),
+     true);
+  eq('CRÍTICO: authenticated LÊ a tabela e não escreve nela — a escrita é por porta única',
+     /^GRANT SELECT ON public\.agenda_campo TO authenticated;$/m.test(cod78)
+     && !/^GRANT [^;]*(INSERT|UPDATE|DELETE)[^;]* ON public\.agenda_campo TO [^;]*authenticated/m.test(cod78),
+     true);
+  eq('CRÍTICO: a policy de SELECT existe, é para authenticated e não alcança anon',
+     /^CREATE POLICY "agenda_campo_select" ON public\.agenda_campo\s*\n\s*FOR SELECT TO authenticated USING \(true\);$/m.test(cod78),
+     true);
+
+  const checks78 = [...cod78.matchAll(/CONSTRAINT\s+([a-z_0-9]+)\s+CHECK/g)].map((m) => m[1]);
+  eq('os três CHECKs da tabela, pelo nome — sumiu um, o censo acusa',
+     checks78.sort(),
+     ['agenda_campo_externo_so_sem_chamado', 'agenda_campo_identificavel', 'agenda_campo_tempo']);
+  eq('CRÍTICO: e a sobreposição é CONSTRAINT DE EXCLUSÃO, não convenção de código',
+     [...cod78.matchAll(/CONSTRAINT\s+([a-z_0-9]+)\s+EXCLUDE/g)].map((m) => m[1]),
+     ['agenda_campo_sem_sobreposicao']);
+
+  // A ação da FK é decisão de produto: CASCADE no chamado (bloco sem chamado é
+  // órfão), RESTRICT na equipe (a doutrina da casa desde a U47 é DESATIVAR, NÃO
+  // APAGAR — que o banco grite), SET NULL em quem carimbou (a pessoa pode sair
+  // da empresa; o bloco fica).
+  eq('CRÍTICO: as ações das quatro chaves estrangeiras são estas, e cada uma é decisão',
+     Object.fromEntries([...cod78.matchAll(/^\s+([a-z_0-9]+)\s+uuid[^\n]*REFERENCES\s+public\.([a-z_0-9]+)\(id\)\s*(ON DELETE [A-Z ]+)/gm)]
+       .map((m) => [m[1], m[2] + ' ' + m[3].trim()])),
+     {
+       chamado_id: 'chamados ON DELETE CASCADE',
+       dupla_id: 'duplas ON DELETE RESTRICT',
+       cancelado_por: 'profiles ON DELETE SET NULL',
+       criado_por: 'profiles ON DELETE SET NULL',
+     });
+
+  eq('os três índices, pelo nome — o do espelho é a consulta do gatilho, e sem ele o espelho varre a tabela',
+     [...cod78.matchAll(/CREATE (?:UNIQUE )?INDEX IF NOT EXISTS ([a-z_0-9]+)/g)].map((m) => m[1]).sort(),
+     ['agenda_campo_chamado_idx', 'agenda_campo_espelho_idx', 'agenda_campo_grade_idx']);
+
+  eq('CRÍTICO: os cinco gatilhos da tabela, pelo nome — o de updated_at, o de validação e os três do espelho',
+     [...cod78.matchAll(/^CREATE TRIGGER ([a-z_0-9]+)/gm)].map((m) => m[1]).sort(),
+     ['trg_agenda_campo_espelho_del', 'trg_agenda_campo_espelho_ins',
+      'trg_agenda_campo_espelho_upd', 'trg_agenda_campo_updated_at',
+      'trg_agenda_campo_valida'].sort());
+  eq('a lista OF do gatilho de validação inclui chamado_id — trocar o chamado do bloco tem de ser revalidado',
+     /^CREATE TRIGGER trg_agenda_campo_valida\s*\n\s*BEFORE INSERT OR UPDATE[^\n]*\n?[^\n]*ON public\.agenda_campo/m.test(cod78),
+     true);
+
+  // ── CENSO 4: OS GATES, COMO BLOCO ───────────────────────────────────────
+  // Um `IF false AND` na frente da condição derrota qualquer regex que só
+  // procure o RAISE. Prender o bloco inteiro — condição, mensagem e END IF —
+  // contra string escrita à mão é o que não dá para contornar sem apagar.
+  const gateInteiro = (nome, trecho) =>
+    eq(`CRÍTICO: o gate de ${nome} está inteiro e sem condição enxertada`,
+       corpo(nome).includes(trecho), true);
+
+  // ── as TRÊS recusas de agenda_campo_valida, cada uma como bloco ────────
+  // Ela é o único guarda que roda em QUALQUER caminho de escrita, inclusive
+  // SQL na mão. Uma bateria independente derrubou as três com um `false AND`
+  // enxertado na condição, e nenhuma asserção viu.
+  eq('CRÍTICO: bloco SEM chamado é ato de gestão — serviço fora do sistema ocupa a equipe e não presta contas a chamado nenhum',
+     corpo('agenda_campo_valida').includes(
+       "  IF NEW.chamado_id IS NULL THEN"), true);
+  eq('…e a recusa dele está inteira, sem condição enxertada',
+     corpo('agenda_campo_valida').includes(
+       "    IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN\n" +
+       "      RAISE EXCEPTION 'Só quem responde pela operação marca serviço fora do sistema.'\n" +
+       "        USING ERRCODE = '42501';\n" +
+       "    END IF;"), true);
+  eq('CRÍTICO: a agenda de campo recusa chamado que não é de natureza campo — a comercial é da visita técnica (U41)',
+     corpo('agenda_campo_valida').includes(
+       "  IF c.natureza IS DISTINCT FROM 'campo' THEN"), true);
+  eq('CRÍTICO: remarcar trabalho ENCERRADO é só da gestão — registro é registro',
+     corpo('agenda_campo_valida').includes(
+       "  IF c.status IN ('concluido','cancelado')\n" +
+       "     AND auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN"), true);
+  eq('e chamado inexistente estoura como violação de chave, não como sucesso silencioso',
+     /IF NOT FOUND THEN[\s\S]{0,160}USING ERRCODE = 'foreign_key_violation';/.test(corpo('agenda_campo_valida')),
+     true);
+  eq('CRÍTICO: o gatilho de validação escuta as três colunas que mudam o julgamento',
+     (cod78.match(/^CREATE TRIGGER trg_agenda_campo_valida\n\s*BEFORE INSERT OR UPDATE OF ([^\n]+) ON public\.agenda_campo$/m) || [, ''])[1],
+     'chamado_id, dia, inicio_min');
+
+  gateInteiro('reconciliar_apoios_abertos',
+    "IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN");
+  eq('CRÍTICO: e ele recusa com 42501, que é o código que a tela sabe traduzir',
+     /USING ERRCODE = '42501'/.test(corpo('reconciliar_apoios_abertos')), true);
+
+  // As quatro portas: cada uma tem de conferir QUEM manda no bloco/chamado.
+  // `cancelar` e `cumprir` leem a linha; `marcar` lê os dois lados; `desagendar`
+  // gateia pelo chamado. Nenhuma pode ficar sem.
+  for (const porta of ['agenda_campo_marcar', 'agenda_campo_cancelar',
+                       'agenda_campo_cumprir', 'desagendar_chamado']) {
+    eq(`CRÍTICO: a porta ${porta} tem gate de autorização com recusa 42501`,
+       /pode_editar_chamado|is_gestor/.test(corpo(porta))
+       && /USING ERRCODE = '42501'/.test(corpo(porta)), true);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

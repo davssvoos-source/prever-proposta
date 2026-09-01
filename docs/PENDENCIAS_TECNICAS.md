@@ -244,6 +244,32 @@ fechar por `Esc`.
 - **O rótulo "Aguardando início"** fica ao lado de "Aguardando aprovação". Não é
   defeito; é escolha a validar no uso.
 
+## P14 — Três telas ainda escrevem `chamados.data_hora_agendada` direto (2026-09-01)
+
+A U78 fez daquela coluna um **espelho** do bloco de agenda (R101): quem escreve
+é o gatilho, e a promessa de "um escritor só" está no `COMMENT ON TABLE` da
+tabela nova. Só que ela é **promessa**, não estrutura — três telas antigas
+continuam sabendo escrever a coluna à mão, e nenhuma recalcula o espelho depois:
+
+- `src/routes/chamados.programacao.tsx:253` — a programação de hoje, que grava
+  `T12:00:00` literal por não perguntar a hora;
+- `src/routes/chamados.novo-campo.tsx:144`;
+- `src/components/chamados/PainelChamado.tsx:1139`.
+
+**Hoje isto é inofensivo**, e é por isso que não foi corrigido junto: enquanto
+não existir bloco nenhum em produção, não há espelho para divergir, e a U78 é
+aditiva de propósito (nenhuma tela mudou). O freio tem de nascer com a tela nova,
+não antes — pôr agora um `BEFORE UPDATE OF data_hora_agendada ON public.chamados`
+tiraria o único caminho que existe hoje para dar hora a um chamado.
+
+**GATILHO DE REVISÃO, explícito:** no dia em que existir o **primeiro bloco em
+produção**, estas três telas viram fonte de segunda verdade — elas mexem na
+coluna e o §9.0 da U78 (a lista "quem não casou") passa a acusar. A migration que
+levar a grade tem de trazer junto o gatilho que recusa a escrita direta, e a
+asserção que hoje pina "não nasce gatilho nenhum em `public.chamados`" tem de ser
+reescrita no mesmo commit (o que importa é a ausência de gatilho que escreve em
+`agenda_campo`, não a ausência de qualquer gatilho).
+
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 
 A auditoria da v7 varreu o sistema e achou amarelos de fora da paleta em telas
