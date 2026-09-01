@@ -5269,7 +5269,54 @@ dos três `CREATE TRIGGER`, os dois estágios do trabalhador, e o §9.0 (o terce
 gêmeo, que é o que o Davi lê às 23h) obrigado a calcular o mesmo que o gatilho.
 Bateria própria: **15 de 15 pegas**, começando pela que motivou tudo.
 
-1877 asserções verdes, `vite build` ok, `tsc` no baseline de 85 e zero erro nos
+**Terceira medição, e a que fecha o assunto.** Uma bateria independente — 173
+quebras derivadas da LISTA DE PROMESSAS do Passo 1.2, montada sem olhar quais
+regiões as asserções fatiavam — achou **42 sobreviventes**. Todos com a mesma
+forma: as asserções cobriam a NARRATIVA (a regra interessante, o comentário bem
+escrito) e pulavam a ESTRUTURA (os CHECKs, as FKs, os índices, os gatilhos, os
+GRANT/REVOKE). E uma família inteira escapava por um motivo só, que agora está
+escrito no topo do bloco:
+
+> **Regex prova que a linha EXISTE. Não prova que ela está VIVA.**
+
+Pôr `RETURN NEW;` logo depois do `BEGIN` mata a função inteira sem apagar uma
+linha sequer — todo regex de conteúdo continua casando. É a terceira variação da
+mesma família: a primeira foi o `-- REVOKE` (a regex casava a linha comentada),
+a segunda foi o `[\s\S]{0,N}` atravessando o `;` até o comentário ao lado. A
+defesa é **alcançabilidade**: prender a PRIMEIRA instrução executável de cada
+função contra uma string escrita à mão.
+
+A resposta foi trocar asserção-por-caso por **quatro CENSOS**, que é o desenho
+certo para isto: uma lista derivada do arquivo comparada contra uma lista escrita
+à mão. Some uma peça, o censo acusa; **nasce** uma peça sem ninguém pensar nela,
+o censo também acusa — que é a metade que asserção-por-caso nunca cobre.
+
+1. **Alcançabilidade** — a primeira instrução das dez funções plpgsql.
+2. **Privilégio** — toda função chamável por RPC tem `REVOKE ... FROM PUBLIC, anon`
+   na linha inteira e viva; e o conjunto que chega a `authenticated` é comparado
+   contra `['duracao_texto', 'reconciliar_apoios_abertos']`. As quatro portas de
+   escrita ficam de fora até a tela existir.
+3. **Estrutura** — os três CHECKs e o EXCLUDE pelo nome, as quatro ações de FK
+   (cada uma é decisão: CASCADE no chamado, RESTRICT na equipe, SET NULL em quem
+   carimbou), os três índices, os cinco gatilhos.
+4. **Gates como bloco** — o `IF … THEN … RAISE … END IF` inteiro contra string
+   escrita à mão, porque um `IF false AND` enxertado derrota qualquer regex que
+   só procure o `RAISE`.
+
+Bateria própria contra os sobreviventes, rodada **isolada**: **30 de 30 pegas**.
+
+**Uma correção ao relatório da auditoria, que vale registrar.** Ela reportou que
+o verificador seria **não-determinístico** (40 execuções dando 1877/0, 1876/1,
+1874/3…) e concluiu que `0 falharam` não era fato reproduzível. Medi sozinho: 50
+execuções sequenciais e 24 concorrentes, todas idênticas. O não-determinismo era
+**artefato de orquestração minha** — rodei o agente que MUTA arquivos em
+paralelo com dois que liam o mesmo diretório, então as leituras pegavam a árvore
+no meio de uma mutação. Agente que escreve no repositório roda sozinho, ou em
+worktree próprio. Os 42 sobreviventes, esses, seguem válidos: interferência
+deixa o verificador VERMELHO, não verde, então a contagem de sobreviventes é
+conservadora.
+
+1903 asserções verdes, `vite build` ok, `tsc` no baseline de 85 e zero erro nos
 arquivos tocados. **Migration `20260901090000_u78_grade_da_programacao.sql` — o
 Davi roda no SQL Editor. Ela é aditiva e INERTE: as quatro portas de escrita são
 concedidas só a `service_role`, então não têm consumidor até a migration da tela

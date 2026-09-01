@@ -7466,5 +7466,194 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      u78e.indexOf('§9.0) QUEM NÃO CASOU') < u78e.indexOf('9.9 O NÚMERO DA LISTA DO §9.0'), true);
 }
 
+// ── U78: os quatro CENSOS ───────────────────────────────────────────────────
+// Uma bateria de mutação independente (173 quebras, derivadas das promessas do
+// Passo 1.2 e não do que as asserções fatiam) achou 42 sobreviventes. Todos com
+// a mesma forma: as asserções cobriam a NARRATIVA — a regra interessante, o
+// comentário bonito — e pulavam a ESTRUTURA. E, pior, uma família inteira
+// escapava por um motivo só:
+//
+//   REGEX PROVA QUE A LINHA EXISTE. NÃO PROVA QUE ELA ESTÁ VIVA.
+//
+// Pôr `RETURN NEW;` logo depois do BEGIN mata a função inteira sem apagar uma
+// linha sequer — todo regex de conteúdo continua casando. É a mesma família do
+// `-- REVOKE` (linha comentada) e do `[\s\S]{0,N}` que atravessa o `;`, agora na
+// terceira variação. A defesa é ALCANÇABILIDADE: prender a PRIMEIRA instrução.
+//
+// Daí a escolha de CENSO em vez de asserção por caso: uma lista derivada do
+// arquivo, comparada contra uma lista escrita à mão. Some uma peça, o censo
+// acusa; nasce uma peça sem ninguém pensar nela, o censo também acusa.
+{
+  const fsC = require('fs');
+  const u78c = fsC.readFileSync('supabase/migrations/20260901090000_u78_grade_da_programacao.sql', 'utf8');
+  // Só o que a migration EXECUTA. O DESFAZER é um bloco comentado no rodapé e
+  // contém CREATE/GRANT/REVOKE que não valem como prova de nada.
+  const cod78 = u78c.slice(0, u78c.indexOf('\n-- BEGIN;'));
+
+  const corpo = (nome) => {
+    const i = cod78.search(new RegExp('^CREATE OR REPLACE FUNCTION\\s+public\\.' + nome + '\\s*\\(', 'm'));
+    if (i < 0) return '';
+    const j = cod78.indexOf('\n$$;', i);
+    return j < 0 ? '' : cod78.slice(i, j);
+  };
+
+  // ── CENSO 1: ALCANÇABILIDADE ────────────────────────────────────────────
+  // A primeira instrução executável de cada função plpgsql, contra o que ela
+  // TEM de ser. É a asserção mais barata do arquivo e a que mata a família
+  // inteira de "neutraliza o corpo com uma linha".
+  const PRIMEIRA = {
+    agenda_campo_valida: "IF NEW.chamado_id IS NULL THEN",
+    agenda_campo_espelhar: "IF _chamado IS NULL THEN RETURN false; END IF;",
+    agenda_campo_espelho: "IF TG_OP = 'DELETE' THEN",
+    agenda_campo_frase_do_conflito: "SELECT a.inicio_min::int AS inicio, a.deslocamento_min::int AS desloc,",
+    agenda_campo_marcar: "IF _id IS NOT NULL THEN",
+    agenda_campo_cancelar: "SELECT a.chamado_id, a.cumprido_em INTO v_chamado, v_cumprido",
+    agenda_campo_cumprir: "_feito := COALESCE(_feito, true);",
+    desagendar_chamado: "SELECT c.natureza INTO v_natureza FROM public.chamados c WHERE c.id = _chamado;",
+    chamado_apoio_da_dupla: "IF NEW.natureza IS DISTINCT FROM 'campo' THEN RETURN NEW; END IF;",
+    reconciliar_apoios_abertos: "IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN",
+  };
+  const primeiraDe = (nome) => {
+    const c = corpo(nome);
+    const k = c.search(/^BEGIN$/m);
+    if (k < 0) return '(sem BEGIN)';
+    return c.slice(k + 6).split('\n').map((s) => s.trim())
+      .filter((s) => s && !s.startsWith('--'))[0] || '(vazio)';
+  };
+  eq('CRÍTICO: a PRIMEIRA instrução de cada função é a esperada — regex de conteúdo não vê um RETURN posto na frente, e um RETURN na frente mata a função inteira',
+     Object.fromEntries(Object.keys(PRIMEIRA).map((n) => [n, primeiraDe(n)])), PRIMEIRA);
+
+  // ── CENSO 2: PRIVILÉGIO ─────────────────────────────────────────────────
+  // O modelo de ameaça da casa: todo usuário fala direto com o Postgres usando
+  // a MESMA chave publishable, que está no .env VERSIONADO. EXECUTE é concedido
+  // a PUBLIC por padrão e `anon` herda — uma SECURITY DEFINER sem REVOKE é um
+  // /rest/v1/rpc/<nome> aberto ao mundo.
+  const funcoes78 = [...cod78.matchAll(/^CREATE OR REPLACE FUNCTION\s+public\.([a-z_0-9]+)\s*\(/gm)]
+    .map((m) => m[1]);
+  eq('a U78 cria exatamente estas funções — nasceu uma a mais e ninguém pensou nela? o censo acusa',
+     [...new Set(funcoes78)].sort(),
+     ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_espelhar',
+      'agenda_campo_espelho', 'agenda_campo_frase_do_conflito', 'agenda_campo_marcar',
+      'agenda_campo_valida', 'chamado_apoio_da_dupla', 'desagendar_chamado',
+      'duracao_texto', 'reconciliar_apoios_abertos'].sort());
+
+  // Gatilho não é chamável por RPC e não leva REVOKE; o resto leva, sem exceção.
+  const DE_GATILHO = ['agenda_campo_valida', 'agenda_campo_espelho', 'chamado_apoio_da_dupla'];
+  const semRevoke78 = [...new Set(funcoes78)]
+    .filter((n) => !DE_GATILHO.includes(n))
+    .filter((n) => !new RegExp('^REVOKE EXECUTE ON FUNCTION public\\.' + n + '\\([^)]*\\) FROM PUBLIC, anon;$', 'm').test(cod78));
+  eq('CRÍTICO: toda função chamável por RPC é revogada de PUBLIC e anon, na linha inteira e viva',
+     semRevoke78, []);
+
+  const paraAutenticado = [...new Set(funcoes78)]
+    .filter((n) => new RegExp('^GRANT\\s+EXECUTE ON FUNCTION public\\.' + n + '\\([^)]*\\) TO [^;]*authenticated', 'm').test(cod78));
+  // duracao_texto é IMMUTABLE e não lê tabela; reconciliar_apoios_abertos tem
+  // gate de gestor dentro. As QUATRO PORTAS DE ESCRITA não estão aqui de
+  // propósito: sem tela não há consumidor, e o GRANT delas vai na migration que
+  // levar a tela (as linhas prontas estão no rodapé).
+  eq('CRÍTICO: só estas duas chegam a authenticated — as quatro portas de escrita ficam em service_role até a tela existir',
+     paraAutenticado.sort(), ['duracao_texto', 'reconciliar_apoios_abertos']);
+
+  // ── CENSO 3: A TABELA ───────────────────────────────────────────────────
+  eq('a RLS da tabela nova é ligada (sem isto a policy é enfeite)',
+     /^ALTER TABLE public\.agenda_campo ENABLE ROW LEVEL SECURITY;$/m.test(cod78), true);
+  eq('CRÍTICO: o REVOKE ALL vem antes do GRANT — "não escrevi um GRANT" não é o mesmo que "não há GRANT", porque o bootstrap do Supabase traz ALTER DEFAULT PRIVILEGES',
+     /^REVOKE ALL\s+ON public\.agenda_campo FROM PUBLIC, anon, authenticated;$/m.test(cod78)
+     && cod78.search(/^REVOKE ALL\s+ON public\.agenda_campo/m) < cod78.search(/^GRANT SELECT ON public\.agenda_campo/m),
+     true);
+  eq('CRÍTICO: authenticated LÊ a tabela e não escreve nela — a escrita é por porta única',
+     /^GRANT SELECT ON public\.agenda_campo TO authenticated;$/m.test(cod78)
+     && !/^GRANT [^;]*(INSERT|UPDATE|DELETE)[^;]* ON public\.agenda_campo TO [^;]*authenticated/m.test(cod78),
+     true);
+  eq('CRÍTICO: a policy de SELECT existe, é para authenticated e não alcança anon',
+     /^CREATE POLICY "agenda_campo_select" ON public\.agenda_campo\s*\n\s*FOR SELECT TO authenticated USING \(true\);$/m.test(cod78),
+     true);
+
+  const checks78 = [...cod78.matchAll(/CONSTRAINT\s+([a-z_0-9]+)\s+CHECK/g)].map((m) => m[1]);
+  eq('os três CHECKs da tabela, pelo nome — sumiu um, o censo acusa',
+     checks78.sort(),
+     ['agenda_campo_externo_so_sem_chamado', 'agenda_campo_identificavel', 'agenda_campo_tempo']);
+  eq('CRÍTICO: e a sobreposição é CONSTRAINT DE EXCLUSÃO, não convenção de código',
+     [...cod78.matchAll(/CONSTRAINT\s+([a-z_0-9]+)\s+EXCLUDE/g)].map((m) => m[1]),
+     ['agenda_campo_sem_sobreposicao']);
+
+  // A ação da FK é decisão de produto: CASCADE no chamado (bloco sem chamado é
+  // órfão), RESTRICT na equipe (a doutrina da casa desde a U47 é DESATIVAR, NÃO
+  // APAGAR — que o banco grite), SET NULL em quem carimbou (a pessoa pode sair
+  // da empresa; o bloco fica).
+  eq('CRÍTICO: as ações das quatro chaves estrangeiras são estas, e cada uma é decisão',
+     Object.fromEntries([...cod78.matchAll(/^\s+([a-z_0-9]+)\s+uuid[^\n]*REFERENCES\s+public\.([a-z_0-9]+)\(id\)\s*(ON DELETE [A-Z ]+)/gm)]
+       .map((m) => [m[1], m[2] + ' ' + m[3].trim()])),
+     {
+       chamado_id: 'chamados ON DELETE CASCADE',
+       dupla_id: 'duplas ON DELETE RESTRICT',
+       cancelado_por: 'profiles ON DELETE SET NULL',
+       criado_por: 'profiles ON DELETE SET NULL',
+     });
+
+  eq('os três índices, pelo nome — o do espelho é a consulta do gatilho, e sem ele o espelho varre a tabela',
+     [...cod78.matchAll(/CREATE (?:UNIQUE )?INDEX IF NOT EXISTS ([a-z_0-9]+)/g)].map((m) => m[1]).sort(),
+     ['agenda_campo_chamado_idx', 'agenda_campo_espelho_idx', 'agenda_campo_grade_idx']);
+
+  eq('CRÍTICO: os cinco gatilhos da tabela, pelo nome — o de updated_at, o de validação e os três do espelho',
+     [...cod78.matchAll(/^CREATE TRIGGER ([a-z_0-9]+)/gm)].map((m) => m[1]).sort(),
+     ['trg_agenda_campo_espelho_del', 'trg_agenda_campo_espelho_ins',
+      'trg_agenda_campo_espelho_upd', 'trg_agenda_campo_updated_at',
+      'trg_agenda_campo_valida'].sort());
+  eq('a lista OF do gatilho de validação inclui chamado_id — trocar o chamado do bloco tem de ser revalidado',
+     /^CREATE TRIGGER trg_agenda_campo_valida\s*\n\s*BEFORE INSERT OR UPDATE[^\n]*\n?[^\n]*ON public\.agenda_campo/m.test(cod78),
+     true);
+
+  // ── CENSO 4: OS GATES, COMO BLOCO ───────────────────────────────────────
+  // Um `IF false AND` na frente da condição derrota qualquer regex que só
+  // procure o RAISE. Prender o bloco inteiro — condição, mensagem e END IF —
+  // contra string escrita à mão é o que não dá para contornar sem apagar.
+  const gateInteiro = (nome, trecho) =>
+    eq(`CRÍTICO: o gate de ${nome} está inteiro e sem condição enxertada`,
+       corpo(nome).includes(trecho), true);
+
+  // ── as TRÊS recusas de agenda_campo_valida, cada uma como bloco ────────
+  // Ela é o único guarda que roda em QUALQUER caminho de escrita, inclusive
+  // SQL na mão. Uma bateria independente derrubou as três com um `false AND`
+  // enxertado na condição, e nenhuma asserção viu.
+  eq('CRÍTICO: bloco SEM chamado é ato de gestão — serviço fora do sistema ocupa a equipe e não presta contas a chamado nenhum',
+     corpo('agenda_campo_valida').includes(
+       "  IF NEW.chamado_id IS NULL THEN"), true);
+  eq('…e a recusa dele está inteira, sem condição enxertada',
+     corpo('agenda_campo_valida').includes(
+       "    IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN\n" +
+       "      RAISE EXCEPTION 'Só quem responde pela operação marca serviço fora do sistema.'\n" +
+       "        USING ERRCODE = '42501';\n" +
+       "    END IF;"), true);
+  eq('CRÍTICO: a agenda de campo recusa chamado que não é de natureza campo — a comercial é da visita técnica (U41)',
+     corpo('agenda_campo_valida').includes(
+       "  IF c.natureza IS DISTINCT FROM 'campo' THEN"), true);
+  eq('CRÍTICO: remarcar trabalho ENCERRADO é só da gestão — registro é registro',
+     corpo('agenda_campo_valida').includes(
+       "  IF c.status IN ('concluido','cancelado')\n" +
+       "     AND auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN"), true);
+  eq('e chamado inexistente estoura como violação de chave, não como sucesso silencioso',
+     /IF NOT FOUND THEN[\s\S]{0,160}USING ERRCODE = 'foreign_key_violation';/.test(corpo('agenda_campo_valida')),
+     true);
+  eq('CRÍTICO: o gatilho de validação escuta as três colunas que mudam o julgamento',
+     (cod78.match(/^CREATE TRIGGER trg_agenda_campo_valida\n\s*BEFORE INSERT OR UPDATE OF ([^\n]+) ON public\.agenda_campo$/m) || [, ''])[1],
+     'chamado_id, dia, inicio_min');
+
+  gateInteiro('reconciliar_apoios_abertos',
+    "IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid()) THEN");
+  eq('CRÍTICO: e ele recusa com 42501, que é o código que a tela sabe traduzir',
+     /USING ERRCODE = '42501'/.test(corpo('reconciliar_apoios_abertos')), true);
+
+  // As quatro portas: cada uma tem de conferir QUEM manda no bloco/chamado.
+  // `cancelar` e `cumprir` leem a linha; `marcar` lê os dois lados; `desagendar`
+  // gateia pelo chamado. Nenhuma pode ficar sem.
+  for (const porta of ['agenda_campo_marcar', 'agenda_campo_cancelar',
+                       'agenda_campo_cumprir', 'desagendar_chamado']) {
+    eq(`CRÍTICO: a porta ${porta} tem gate de autorização com recusa 42501`,
+       /pode_editar_chamado|is_gestor/.test(corpo(porta))
+       && /USING ERRCODE = '42501'/.test(corpo(porta)), true);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
