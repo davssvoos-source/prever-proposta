@@ -5068,3 +5068,84 @@ saberia dizer se o ciclo existiu mesmo. Ele existiu, e as asserções o provam.
 1623 asserções (15 novas), build ok, tsc no baseline de 85.
 **Migration `20260901120000_s2_apoio_nao_e_auto_servico.sql` — rodar assim que
 puder.** Ela não apaga nada e a conferência prova isso pelo número.
+
+### S3 — `criado_por` e `origem` deixam de ser do cliente (2026-09-01)
+
+**A S2 fechou menos do que prometeu, e a S2 é minha.** Ela rodou em produção pela
+manhã; isto conserta o que ela deixou aberto.
+
+A S2 passou a decidir autorização lendo duas colunas da própria linha —
+`AND (a.origem = 'dupla' OR a.criado_por IS DISTINCT FROM a.profile_id)` — e
+apostou que `criado_por` seria preenchida pelo `DEFAULT auth.uid()`. **DEFAULT
+vale para coluna AUSENTE do comando.** O GRANT de `chamado_apoios` é de TABELA
+(veio da U1:427 e o rename da U7 o carregou), e GRANT de tabela alcança todas as
+colunas — inclusive as duas que a S2 promoveu a regra de segurança. Não há
+gatilho `BEFORE INSERT`, e a policy da S2 só olha `chamado_id`.
+
+Então a escalada voltou custando **um campo JSON a mais**:
+
+```
+POST /rest/v1/chamado_apoios {"chamado_id":"<X>","profile_id":"<eu>","criado_por":null}
+   → NULL IS DISTINCT FROM '<eu>' é TRUE, e pode_editar_chamado concede.
+POST /rest/v1/chamado_apoios {"chamado_id":"<X>","profile_id":"<eu>","origem":"dupla"}
+   → concede pelo outro ramo do OR.
+```
+
+Alcance menor que o do buraco original — a policy da S2 ainda exige
+`pode_acessar_chamado(chamado_id)`, então não é mais "qualquer chamado". Mas a
+fila aberta (`responsavel_id IS NULL`) é acessível a todos de propósito, e por
+ela dá para virar apoio de um chamado sem dono e **manter a edição depois que
+ele for atribuído a outra pessoa** — o caminho que a S2 diz ter fechado.
+
+**A correção é privilégio de coluna, não mais um gatilho.** No Postgres, GRANT de
+tabela cobre todas as colunas e não há como tirar uma; o caminho é revogar o
+INSERT da tabela e conceder só as colunas que o cliente tem direito de escrever:
+
+```sql
+REVOKE INSERT ON public.chamado_apoios FROM authenticated;
+GRANT  INSERT (chamado_id, profile_id) ON public.chamado_apoios TO authenticated;
+```
+
+Quem manda só os dois campos passa e os DEFAULTs valem; quem tenta mandar
+`criado_por` ou `origem` leva `permission denied for column` **do próprio
+Postgres, antes da policy**; e as funções SECURITY DEFINER (o gatilho da escala
+da U64/U76 e `chamado_sincronizar_apoio`) rodam como a dona da tabela e passam por
+cima, que é como elas já gravam `origem='dupla'` hoje. Não há GRANT de UPDATE
+nesta tabela, então também não existe o caminho "insiro certo e corrijo depois" —
+e a conferência prova isso em vez de confiar na memória.
+
+Preferi privilégio a um `BEFORE INSERT` por um motivo: o gatilho teria de
+distinguir "o gatilho da escala está escrevendo" de "o cliente está escrevendo",
+e a única forma é uma flag de sessão — mais uma peça para alguém esquecer de
+setar, e mais um jeito de a regra **falhar aberta**. Privilégio é declarativo,
+mora no catálogo, e o §3 o confere lendo o catálogo (`has_column_privilege`) em
+vez de casar texto.
+
+**Uma asserção minha estava verde afirmando o que não conferia.** Ela dizia
+*"origem=dupla é derivada, ninguém a forja"* enquanto `origem` era gravável pelo
+cliente. Foi reescrita para afirmar só o que ela pode provar — que o ramo do OR
+existe — e a afirmação forte mudou de lugar: quem garante que não se forja é o
+privilégio de coluna, e é lá que a asserção CRÍTICO mora agora.
+
+**O teste de mutação achou um defeito meu de novo, e é o mesmo de sempre.**
+Comentar o `REVOKE` — o coração da S3 — deixava a suíte **verde**, porque a regex
+não ancorava no início da linha e `-- REVOKE ...` contém `REVOKE ...`. Três
+asserções foram ancoradas com `^` e a flag `m`; a da trava trocou
+`[\s\S]{0,200}` por uma exigência de o `RAISE` vir colado no `THEN` (o
+quantificador frouxo engolia um `false AND` injetado no meio, que desliga a
+trava sem apagar nenhuma das duas pontas que a asserção olhava). Placar final:
+**9 de 9 mutações pegas.**
+
+Ficou de fora, de propósito, uma décima: afrouxar uma asserção do próprio
+verificador. Isso nunca é pegável por ele mesmo — é meta, não lacuna.
+
+**A lição, para a próxima vez que uma coluna virar regra:** quando uma coluna
+passa a decidir autorização, ela deixa de ser dado e vira superfície de ataque. A
+pergunta "quem pode escrever nela?" tem de ser respondida **na mesma migration**
+que a promove, e respondida lendo o catálogo — não lendo a intenção de quem
+escreveu o DEFAULT.
+
+1638 asserções (15 novas), build ok, tsc no baseline de 85.
+**Migration `20260901180000_s3_criado_por_nao_e_do_cliente.sql` — rodar assim que
+puder, e depois da S2.** Ela não apaga nada e conta as linhas suspeitas da janela
+entre as duas.

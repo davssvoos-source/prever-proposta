@@ -5717,7 +5717,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a coluna que torna a pergunta respondível existe, e registra quem estava logado',
      /ADD COLUMN IF NOT EXISTS criado_por uuid/.test(s2)
      && /ALTER COLUMN criado_por SET DEFAULT auth\.uid\(\)/.test(s2), true);
-  eq('CRÍTICO: o gatilho da escala continua concedendo — origem=dupla é derivada, ninguém a forja',
+  // Esta asserção AFIRMAVA "ninguém a forja" e ficou verde o dia inteiro
+  // enquanto `origem` era gravável pelo cliente (GRANT de tabela alcança toda
+  // coluna). O que ela podia provar era só que o ramo do OR existe — quem
+  // garante que não se forja é o PRIVILÉGIO DE COLUNA da S3, e é lá que a
+  // afirmação forte mora agora.
+  eq('o gatilho da escala continua tendo o ramo dele no OR (quem impede a forja é a S3)',
      /a\.origem = 'dupla' OR/.test(s2), true);
   eq('as linhas ANTIGAS continuam valendo (criado_por NULL passa no IS DISTINCT FROM)',
      /NULL IS DISTINCT FROM profile_id.{0,40}TRUE/is.test(s2)
@@ -5736,6 +5741,71 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /DELETE FROM public\.chamado_apoios/.test(s2), false);
   eq('…e lista as linhas suspeitas para o Davi olhar, em vez de decidir por ele',
      /a\.criado_por IS NULL[\s\S]{0,300}ORDER BY a\.created_at DESC/.test(s2), true);
+}
+
+// ── S3: criado_por e origem deixam de ser do cliente ────────────────────────
+// A S2 promoveu duas colunas a REGRA DE AUTORIZAÇÃO e não perguntou quem pode
+// escrevê-las. GRANT de tabela alcança toda coluna, então dava para derrotar a
+// regra mandando um campo a mais no JSON. Isto é a correção da correção.
+{
+  const fsS3 = require('fs');
+  const CAMINHO_S3 = 'supabase/migrations/20260901180000_s3_criado_por_nao_e_do_cliente.sql';
+  eq('a migration que fecha criado_por/origem existe', fsS3.existsSync(CAMINHO_S3), true);
+  const s3 = fsS3.readFileSync(CAMINHO_S3, 'utf8');
+  const s2b = fsS3.readFileSync('supabase/migrations/20260901120000_s2_apoio_nao_e_auto_servico.sql', 'utf8');
+  const u1 = fsS3.readFileSync('supabase/migrations/20260818140000_u1_demandas.sql', 'utf8');
+  const vivo = s3.slice(0, s3.indexOf('-- BEGIN;'));  // fora o DESFAZER comentado
+
+  // ── o buraco existia: as três metades, nos arquivos ─────────────────────
+  eq('CRÍTICO: a S2 apoiou AUTORIZAÇÃO em criado_por e origem',
+     /a\.origem = 'dupla' OR a\.criado_por IS DISTINCT FROM a\.profile_id/.test(s2b), true);
+  eq('CRÍTICO: …e o GRANT era de TABELA, que alcança TODA coluna — inclusive essas duas',
+     /GRANT SELECT, INSERT, DELETE\s+ON public\.demanda_apoios\s+TO authenticated;/.test(u1), true);
+  eq('…e a policy da S2 só olha chamado_id, então não barrava o campo a mais',
+     /CREATE POLICY "chamado_apoios_insert"[^;]{0,160}WITH CHECK \(public\.pode_acessar_chamado\(chamado_id\)\)/.test(s2b),
+     true);
+
+  // ── a correção ──────────────────────────────────────────────────────────
+  eq('CRÍTICO: o INSERT de TABELA é revogado — sem isso a concessão de coluna é decoração',
+     /^REVOKE INSERT ON public\.chamado_apoios FROM authenticated;/m.test(vivo), true);
+  eq('CRÍTICO: e o cliente recebe INSERT em exatamente duas colunas',
+     /^GRANT\s+INSERT \(chamado_id, profile_id\) ON public\.chamado_apoios TO authenticated;/m.test(vivo),
+     true);
+  eq('CRÍTICO: a ordem importa — REVOKE vem ANTES do GRANT de coluna',
+     vivo.indexOf('REVOKE INSERT ON public.chamado_apoios') <
+     vivo.indexOf('GRANT  INSERT (chamado_id, profile_id)'), true);
+  eq('nem criado_por nem origem entram na lista concedida',
+     /GRANT\s+INSERT \([^)]*(criado_por|origem)[^)]*\)/.test(vivo), false);
+
+  // ── a conferência lê o CATÁLOGO, e é isso que a torna prova ─────────────
+  // Regex sobre texto provaria que a linha existe. has_column_privilege
+  // pergunta ao Postgres, que é quem decide de verdade.
+  eq('CRÍTICO: a conferência mede privilégio no catálogo, não substring no arquivo',
+     /has_column_privilege\('authenticated', 'public\.chamado_apoios',\s*'criado_por', 'INSERT'\)/.test(s3)
+     && /has_column_privilege\('authenticated', 'public\.chamado_apoios',\s*'origem', 'INSERT'\)/.test(s3),
+     true);
+  eq('…e prova que não sobrou UPDATE para o cliente corrigir depois',
+     /privilege_type='UPDATE'/.test(s3), true);
+  eq('a leitura do time continua aberta (a U1 abriu de propósito)',
+     /has_table_privilege\('authenticated', 'public\.chamado_apoios', 'SELECT'\)/.test(s3), true);
+  eq('conta as linhas suspeitas da janela entre a S2 e a S3, em vez de supor zero',
+     /_s3_suspeitas/.test(s3) && /criado_por = a\.profile_id/.test(s3), true);
+  // O RAISE tem de vir COLADO no THEN: um quantificador frouxo aqui deixava
+  // passar uma condição injetada no meio ("THEN false AND ..."), que desliga a
+  // trava sem apagar nenhuma das duas pontas que a asserção olhava.
+  eq('S3 recusa rodar sem a S2 (a coluna que ela protege precisa existir)',
+     /AND column_name='criado_por'\) THEN\s*\n\s*RAISE EXCEPTION/.test(s3), true);
+  eq('S3 é atômica, confere e traz DESFAZER',
+     /^BEGIN;$/m.test(s3) && /^COMMIT;$/m.test(s3)
+     && /CONFERÊNCIA/.test(s3) && s3.lastIndexOf('DESFAZER') > s3.indexOf('\nCOMMIT;'), true);
+
+  // ── a asserção da S2 que MENTIA ─────────────────────────────────────────
+  // Ela dizia "origem=dupla é derivada, ninguém a forja" enquanto origem era
+  // gravável pelo cliente. Ficou verde o dia inteiro. A troca é o registro de
+  // que asserção pode afirmar o que não confere — e de como se conserta.
+  eq('CRÍTICO: a garantia de que origem não se forja agora depende do PRIVILÉGIO, não da boa vontade',
+     /REVOKE INSERT ON public\.chamado_apoios FROM authenticated;/.test(vivo)
+     && /has_column_privilege[\s\S]{0,120}'origem', 'INSERT'/.test(s3), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
