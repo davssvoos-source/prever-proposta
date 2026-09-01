@@ -1693,9 +1693,23 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   11:00 é encaixe, não conflito.
 
   **"Emergencial" não é tipo novo** — é **corretiva com prioridade urgente**
-  (Davi, 31/08/2026). E é ela a única exceção da jornada: o urgente pode estourar
-  as 8 horas e sair antes das 09:00, porque é para isso que ele existe. O chip
-  mostra "Corretiva · Urgente".
+  (Davi, 31/08/2026). Ela pode estourar as 8 horas e sair antes das 09:00,
+  porque é para isso que ela existe. O chip mostra "Corretiva · Urgente".
+
+  **A jornada tem DUAS isenções, e as duas são fatos já gravados na linha** —
+  nunca um botão de "forçar", que seria a válvula que esta regra recusou:
+  1. **corretiva + urgente**, acima;
+  2. **o bloco sem chamado** (a OS que veio de fora do sistema). Serviço de fora
+     só a gestão marca, e ele é, por definição, a categoria "isto não estava no
+     plano" — cobrar dele o horário de saída seria aplicar o plano ao que
+     aconteceu apesar do plano.
+
+  Este texto dizia "é ela a **única** exceção" enquanto o banco e o modelo puro
+  já tinham as duas, e uma regra com duas contagens diferentes é a regra que
+  ninguém consegue citar. A segunda está escrita aqui porque é o que os dois
+  lados do código fazem hoje (§6.1 da U78, `isentoDaJornada` no modelo puro);
+  se o Davi decidir que serviço de fora também obedece às 8 horas, **muda nos
+  três lugares de uma vez**.
   *(U78.)*
 
 - **R101** — **`chamados.data_hora_agendada` deixou de ser digitada e virou
@@ -1714,6 +1728,16 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   contagem dessa faixa é a barra de progresso da mudança.
 
   **Desmarcar um bloco e tirar o chamado da agenda são coisas diferentes**, e o
-  sistema cobra a distinção: cancelar o último bloco é o que apaga a data, e isso
-  **não** remexe em quem foi apoio de quem.
+  sistema cobra a distinção: cancelar o último bloco **pendente** é o que apaga a
+  data, e isso **não** remexe em quem foi apoio de quem.
+
+  **"Agendado" quer dizer compromisso que ainda vai acontecer.** Um chamado cuja
+  visita já aconteceu e que não tem retorno marcado volta a ser **aberto** — o
+  que já aconteceu é registro, e mora no bloco.
+
+  **Tirar da agenda nem sempre apaga a data**: sobrando bloco **cumprido**, a
+  data fica no último atendimento que **aconteceu**, e o chamado lê-se "aberto, e
+  a última visita foi dia tal". É de propósito — zerar faria um chamado ainda
+  aberto sumir do calendário e do PDF por ter sido atendido. Nenhum texto de tela
+  pode prometer que "o horário some".
   *(U78.)*

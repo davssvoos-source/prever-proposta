@@ -15,6 +15,24 @@
 -- >>> caminhos de sempre enquanto não houver bloco. A ordem segura é:
 -- >>> MIGRATION PRIMEIRO, DEPLOY DEPOIS.
 --
+-- ── ADITIVA QUER DIZER INERTE, E ISSO CUSTA QUATRO LINHAS ──────────────────
+-- Uma revisão pegou esta migration se chamando de aditiva enquanto CONCEDIA a
+-- `authenticated`, no instante do COMMIT, as quatro RPCs que escrevem: marcar,
+-- cancelar, cumprir e desagendar. Não é preciso deploy nem bloco nenhum para
+-- usá-las — a chave publishable está no `.env` VERSIONADO, e
+-- `POST /rest/v1/rpc/desagendar_chamado` apaga `data_hora_agendada` de um
+-- chamado de campo pela API. O md5 do §0 e o freio do §8 protegem aquela coluna
+-- DURANTE a transação e vão embora no COMMIT, que é exatamente quando o risco
+-- começaria.
+-- SEM TELA NÃO HÁ CONSUMIDOR. Então as quatro portas do §6 são concedidas a
+-- `service_role` e SÓ. O `GRANT EXECUTE ... TO authenticated` de cada uma
+-- pertence à MIGRATION QUE LEVAR A TELA — ela é o primeiro momento em que
+-- existe alguém do outro lado, e é lá que abrir a porta passa a ser uma decisão
+-- com consequência visível em vez de um efeito colateral de um arquivo que se
+-- anuncia inerte. As quatro linhas estão prontas, comentadas, no rodapé
+-- ("AS QUATRO PORTAS, QUANDO A TELA CHEGAR"): copie-as para a migration da tela.
+-- Enquanto isso, a conferência do §9 (linha 209) PROVA que elas estão fechadas.
+--
 -- ── O DEFEITO QUE ESTA MIGRATION EXISTE PARA CONSERTAR ─────────────────────
 -- /chamados/programacao grava `new Date(`${novaData}T12:00:00`)`. Meio-dia é um
 -- SENTINELA, não uma hora escolhida — e reprogramar por aquela tela APAGA a hora
@@ -72,43 +90,91 @@
 -- 40% onde há 90%. O preço é que TODO autenticado enumera o id de TODO bloco, e
 -- que a autorização inteira passa a morar na porta de escrita — que é SECURITY
 -- DEFINER e portanto passa por cima da RLS.
--- Por isso `agenda_campo_marcar` (§6.1) autoriza DUAS coisas, não uma:
+-- Por isso `agenda_campo_marcar` (§6.1) autoriza TRÊS coisas, não uma:
+--   · o DONO ATUAL do bloco — o chamado que já está lá;
 --   · o chamado de DESTINO — o que o chamador está PONDO no bloco;
---   · o DONO ATUAL do bloco — o chamado que já está lá; e, quando não há
---     chamado, o papel de gestor, porque serviço fora do sistema é ato de
---     gestão (a mesma régua do §3 e do §6.2).
--- Sem a segunda, quem abriu um chamado bobo qualquer arrasta para ele o bloco
+--   · a ESCALA — quem não é gestor só ocupa a agenda da equipe em que ELE está
+--     escalado naquela semana (`dupla_da_pessoa(auth.uid(), v_dia) = v_dupla`,
+--     função da U76).
+-- E bloco SEM chamado é ato de gestão: só gestor, em qualquer das quatro portas
+-- (a mesma régua do §3, do §6.2 e do §6.3).
+--
+-- Sem a primeira, quem abriu um chamado bobo qualquer arrasta para ele o bloco
 -- de um chamado alheio: o espelho reage à troca de `chamado_id`, o chamado
 -- roubado perde `data_hora_agendada`, some do calendário, do card da Início e
 -- do PDF, e não há sino nem linha do tempo para contar. `agenda_campo_cancelar`
 -- e `agenda_campo_cumprir` sempre leram a linha antes de decidir; `marcar` era
 -- a única que decidia sobre os ARGUMENTOS e nunca sobre o ESTADO, e a
 -- assimetria entre as três é que denunciava o buraco.
+-- Sem a terceira, a função nunca olhava para `_dupla`: qualquer autenticado com
+-- um chamado seu ocupava a terça-feira de QUALQUER equipe sem estar na escala
+-- dela, e a primeira correção sozinha não fechava isso.
+--
+-- ── A DECISÃO DE FRONTEIRA, TOMADA (Davi, revisão da U78) ──────────────────
+-- A pergunta era: programar é PAPEL (gestor) ou VÍNCULO (quem responde pelo
+-- chamado)? `duplas`, `duplas_escala` e `duplas_escala_semanas` (U47/U76)
+-- gateiam escrita por `is_gestor` NA POLICY, e a R13 diz que coordenar e
+-- programar é papel do SAC — o que puxa para gestor-só. Mas gestor-só REGRIDE o
+-- técnico que hoje reagenda o próprio atendimento pelo PainelChamado, e tirar
+-- isso dele não era o assunto desta migration.
+-- O gate escolhido é EM CAMADAS, e preserva os dois:
+--     is_gestor(auth.uid())
+--   OU (pode editar o chamado que SAI
+--       E  pode editar o chamado que ENTRA
+--       E  está escalado NAQUELA equipe NAQUELA semana)
+-- Bloco sem chamado fica fora da segunda perna inteira: é gestor e ponto.
+-- ELA PODE SER AFROUXADA PARA GESTOR-SÓ se o Davi preferir, e o custo de fazer
+-- isso é UMA linha: trocar o `IF NOT v_gestor THEN ...` do passo 1 do §6.1 por
+-- `IF NOT v_gestor THEN RAISE EXCEPTION 'Programar é ato de gestão.'`. O
+-- caminho contrário (afrouxar depois de gestor-só) seria mais caro, porque
+-- exigiria reconstruir as três camadas — por isso a escolha default é a que
+-- preserva comportamento.
+-- NÃO se gateia a escala do lado de ORIGEM quando o bloco muda de equipe: quem
+-- move o próprio atendimento da Equipe A para a Equipe B em que ele está
+-- escalado já foi autorizado pelo chamado, e exigir escala nas duas pontas
+-- impediria o técnico de passar o serviço adiante — que é o gesto normal.
 --
 -- E NULL NUM PARÂMETRO DE `marcar` É "NÃO MEXI", NUNCA "APAGUE": a função é
 -- PATCH contra a linha viva, não REPLACE. Arrastar o cartão "OS-9911 · Portão
 -- do condomínio vizinho" de terça para quarta sem repassar `_os_externa` e
 -- `_titulo_externo` apagaria o ÚNICO registro daquele serviço — ele não cabe em
--- `public.chamados` porque `cliente_id` é NOT NULL.
+-- `public.chamados` porque `cliente_id` é NOT NULL. Por isso TODOS os
+-- parâmetros omissíveis são `DEFAULT NULL`, `_deslocamento_min` inclusive: ele
+-- era `DEFAULT 0`, e como o PostgREST preenche o default do que não vem no
+-- corpo, arrastar um cartão ZERAVA os 45 min de estrada — encolhendo a janela
+-- do EXCLUDE e inventando 45 min de capacidade no dia. Um default que não é
+-- NULL, numa função PATCH, é um apagador com cara de conveniência.
 --
--- ── O QUE A PORTA AINDA NÃO DECIDE (pergunta pendente para o Davi) ─────────
--- `agenda_campo_marcar` é concedida a `authenticated` inteiro e delega a
--- autorização a `pode_editar_chamado`, que é VÍNCULO com o chamado, não PAPEL.
--- Efeito declarado: um técnico que responde por um chamado pode ocupar a agenda
--- de QUALQUER equipe de campo, em qualquer dia, sem estar na escala dela — ao
--- passo que `duplas`, `duplas_escala` e `duplas_escala_semanas` (U47/U76)
--- gateiam escrita por `is_gestor` NA POLICY, e a R13 diz que coordenar e
--- programar é papel do SAC.
--- Isto é uma MUDANÇA DE FRONTEIRA DE PERMISSÃO, e ela está aqui registrada como
--- decisão consciente, não como esquecimento. O fecho, se o Davi quiser,
--- é uma linha em `agenda_campo_marcar`:
---     IF auth.uid() IS NOT NULL AND NOT public.is_gestor(auth.uid())
---        AND public.dupla_da_pessoa(auth.uid(), v_dia) IS DISTINCT FROM v_dupla
---     THEN RAISE EXCEPTION 'Você não está na escala desta equipe nesta semana.'
---     END IF;
--- (`dupla_da_pessoa` existe desde a U76 e é concedida a authenticated.) Não foi
--- aplicada porque a resposta muda a R99/R100 antes de mudar o SQL, e migration
--- não é lugar de decidir produto sozinha.
+-- ── E O QUE JÁ ACONTECEU NÃO SE MOVE ───────────────────────────────────────
+-- `cumprido_em` preenchido quer dizer "a equipe foi ao prédio nesse dia, nesse
+-- horário". `agenda_campo_cancelar` já recusava desmarcar um bloco assim (§6.2);
+-- `marcar` movia. Mover o que aconteceu reescreve a ocupação de uma semana
+-- PASSADA e, pelo estágio 2 do espelho, manda o chamado para um dia em que
+-- ninguém esteve. Agora `marcar` recusa mudar DIA, HORA, EQUIPE ou CHAMADO de um
+-- bloco cumprido — e CONTINUA deixando corrigir DURAÇÃO e DESLOCAMENTO, que são
+-- medição do que houve, não afirmação sobre quando houve.
+--
+-- ── O QUE AINDA ESPERA UMA FRASE DO DAVI (declarado, não esquecido) ────────
+--   · DAR "FEITO" NUM BLOCO PODE REESCREVER O APOIO. Com dois blocos em semanas
+--     ISO diferentes (a visita de terça e o retorno da quinta da semana
+--     seguinte), carimbar o primeiro como cumprido faz o espelho andar para o
+--     segundo — está certo, é o que o estágio 1 existe para fazer — e o gatilho
+--     da U76 reavalia o apoio contra a semana NOVA, apagando as linhas
+--     `origem='dupla'` da turma que JÁ FOI. É a invariante do CLAUDE.md ("apoio
+--     responde quem foi") esbarrando na cardinalidade que a U78 criou: um
+--     conjunto de apoios não sabe representar "a turma de terça" e "a turma de
+--     quinta" ao mesmo tempo. NÃO foi consertado aqui de propósito: as saídas
+--     possíveis (congelar o apoio quando há bloco cumprido; ou promover a
+--     `origem='manual'` quem foi, deixando o registro acumular) são DECISÕES DE
+--     PRODUTO com efeitos opostos, e a lição da própria U76-1 é que uma guarda
+--     escolhida sozinha troca um bug por outro. O caminho estrutural, se um dia
+--     valer o preço, é o apoio pendurar no BLOCO e não no chamado.
+--   · TETO DE FORMA PARA O BLOCO ISENTO. Um corretiva+urgente das 00:00 às 24:00
+--     é aceito (a isenção da jornada é justamente para o urgente estourar), e a
+--     partir dele o EXCLUDE recusa TUDO naquela equipe naquele dia, para o gestor
+--     inclusive. O remédio seria um teto em minutos, e qualquer número aqui é
+--     inventado — 8h já é a jornada, 12h é chute. Fica registrado; o dia em que
+--     acontecer, o Davi diz o número.
 --
 -- ── A ARMADILHA: trg_chamado_apoio_dupla_upd (U76) ─────────────────────────
 -- A U76 criou `AFTER UPDATE OF responsavel_id, data_hora_agendada, natureza`.
@@ -124,9 +190,21 @@
 --     `chamado_apoios` dispara `trg_notify_chamado_apoio` ("Você entrou como
 --     apoio"). Ele é controlado em QUATRO camadas, em ordem de dureza:
 --       (1) a lista `AFTER UPDATE OF` do gatilho do satélite é curta: só
---           `dia, inicio_min, cumprido_em, cancelado_em, chamado_id`. Corrigir a
---           duração, o deslocamento ou a equipe do bloco não CHAMA a função de
---           espelho. Isto mata metade das gravações da tela nova antes de tudo.
+--           `dia, inicio_min, cumprido_em, cancelado_em, chamado_id`. Um UPDATE
+--           que toque SÓ `servico_min`, `deslocamento_min` ou `dupla_id` não
+--           CHAMA a função de espelho.
+--           E AQUI VAI A RESSALVA QUE FALTAVA, porque sem ela esta camada
+--           descreve outro banco: o UPDATE do §6.1 põe `chamado_id, dia,
+--           inicio_min, cancelado_em` no SET SEMPRE — é um PATCH que reescreve a
+--           linha inteira com os valores efetivos —, e `AFTER UPDATE OF` dispara
+--           pela PRESENÇA da coluna no SET, com valor igual ou não. Logo, pela
+--           RPC (que é a única porta, porque o §4 não concede UPDATE a
+--           `authenticated`) a camada (1) NÃO opera: o espelho é chamado em toda
+--           gravação. Quem segura de verdade nesse caminho é a camada (2), que
+--           faz o UPDATE em `chamados` casar ZERO linhas — o custo é uma chamada
+--           de função por gravação, não uma cascata. A camada (1) vale para o
+--           caminho de `service_role` (SQL Editor, carga, job) e para qualquer
+--           porta futura que faça UPDATE parcial, e é por isso que ela fica.
 --       (2) `IS DISTINCT FROM` no WHERE do UPDATE. `AFTER UPDATE OF` dispara
 --           pela PRESENÇA da coluna no SET, mesmo com valor igual (a U76 escreve
 --           isso em letras), então sem esta cláusula cada mexida no satélite
@@ -250,7 +328,9 @@
 --   §7 a MESMA guarda nos dois chamadores da U76 (gatilho e reconciliação)
 --   §8 PORTÃO                            ← o corpo retranscrito manteve tudo? E
 --                                          o md5 continua o mesmo?
---   §9 conferência                       ← UM result set, com veredito
+--   §9 conferência                       ← a lista "quem não casou" primeiro, e
+--                                          a TABELA DE VEREDITO por último, que
+--                                          é o result set que o editor mostra
 -- Tudo em UMA transação: DDL no Postgres é transacional, então qualquer RAISE
 -- (inclusive o do portão) devolve tabela, gatilhos e corpos de função ao estado
 -- exato de antes. O BEGIN/COMMIT também é obrigatório porque o §7 troca o corpo
@@ -377,6 +457,11 @@ BEGIN
     v_falta := v_falta || E'\n  · public.referencia_semanal(date) (U76)'; END IF;
   IF to_regprocedure('public.dia_da_dupla(timestamptz, timestamptz)') IS NULL THEN
     v_falta := v_falta || E'\n  · public.dia_da_dupla(timestamptz, timestamptz) (U76)'; END IF;
+  -- NOVA DEPENDÊNCIA DESTA REVISÃO: o gate de ESCALA do §6.1 é ela. Sem esta
+  -- linha, a falta dela só apareceria no primeiro clique da tela — "function
+  -- public.dupla_da_pessoa(uuid, date) does not exist" dentro de um formulário.
+  IF to_regprocedure('public.dupla_da_pessoa(uuid, date)') IS NULL THEN
+    v_falta := v_falta || E'\n  · public.dupla_da_pessoa(uuid, date) (U76) — é o gate de ESCALA do §6.1'; END IF;
   IF to_regclass('public.duplas') IS NULL THEN
     v_falta := v_falta || E'\n  · public.duplas (U47)'; END IF;
 
@@ -480,10 +565,13 @@ CREATE TABLE IF NOT EXISTS public.agenda_campo (
   -- DIGITADO À MÃO nesta fase. NOT NULL DEFAULT 0 e não NULL de propósito:
   -- "ninguém digitou" e "não tem deslocamento" precisam ser o MESMO zero, senão
   -- a soma da jornada teria de decidir o que fazer com o desconhecido — e ela
-  -- decidiria errado, na direção perigosa (parece que cabe mais). A coluna já
-  -- está no lugar para o cálculo de rota da Fase 2 preencher, e guardar o
-  -- digitado é o que deixa a Fase 2 comparar previsto × calculado em vez de
-  -- apagar o histórico.
+  -- decidiria errado, na direção perigosa (parece que cabe mais).
+  -- CUIDADO COM A PROMESSA: esta coluna é UMA, e uma coluna não guarda duas
+  -- respostas. Quando a Fase 2 calcular a rota, preencher AQUI destrói o
+  -- digitado; comparar "previsto × calculado" exige uma SEGUNDA coluna
+  -- (`deslocamento_calc_min`) que ainda não existe e que é decisão da Fase 2, não
+  -- desta. O que esta coluna garante hoje é só isto: o número que o gestor
+  -- digitou entra na jornada e no EXCLUDE, e nada o sobrescreve sozinho.
   deslocamento_min smallint NOT NULL DEFAULT 0,
 
   -- "ATIVO" e "PENDENTE" são estados DIFERENTES, e o espelho precisa dos dois.
@@ -616,9 +704,11 @@ COMMENT ON COLUMN public.agenda_campo.inicio_min IS
   'vem ANTES: o bloco ocupa a equipe de (inicio_min - deslocamento_min) até '
   '(inicio_min + servico_min), que é o intervalo do EXCLUDE.';
 COMMENT ON COLUMN public.agenda_campo.deslocamento_min IS
-  'Tempo de estrada ATÉ o serviço, em minutos. DIGITADO à mão na Fase 1; a Fase '
-  '2 preenche pelo cálculo de rota e a coluna já está no lugar. Conta DENTRO da '
-  'jornada de 8h: técnico dirigindo é técnico ocupado.';
+  'Tempo de estrada ATÉ o serviço, em minutos. DIGITADO à mão na Fase 1. Conta '
+  'DENTRO da jornada de 8h: técnico dirigindo é técnico ocupado. É UMA coluna, '
+  'e por isso ela NÃO permite, sozinha, o "previsto × calculado" da Fase 2 — '
+  'preencher pelo cálculo de rota apagaria o digitado. Se a Fase 2 quiser os '
+  'dois números, ela cria a segunda coluna.';
 COMMENT ON COLUMN public.agenda_campo.cumprido_em IS
   'Quando este bloco aconteceu. É a única razão de a coluna existir: com N '
   'blocos por chamado, chamados.finalizada_em (que é um) não sabe QUAL bloco '
@@ -712,6 +802,13 @@ ALTER TABLE public.agenda_campo ENABLE ROW LEVEL SECURITY;
 --   · a JORNADA é política e mora na porta, não no CHECK.
 -- Uma porta só: agenda_campo_marcar() e as três irmãs do §6.
 --
+-- E POR ORA A PORTA TAMBÉM NÃO ESTÁ ABERTA: as quatro RPCs do §6 são concedidas
+-- a `service_role` e só, porque não existe tela que as chame. Então, no dia
+-- seguinte a esta migration, `authenticated` LÊ `agenda_campo` e não escreve por
+-- caminho nenhum — nem direto (este REVOKE), nem pela RPC. É o que faz esta
+-- migration ser de fato o que ela se anuncia: aditiva. Ver "ADITIVA QUER DIZER
+-- INERTE" no cabeçalho, e a linha 209 da conferência.
+--
 -- O REVOKE VEM PRIMEIRO, E ELE É O QUE TORNA "PORTA ÚNICA" ESTRUTURA EM VEZ DE
 -- HERANÇA DE CONFIGURAÇÃO. "Não escrevi um GRANT" não é o mesmo que "não há
 -- GRANT": todo projeto Supabase pode trazer, do bootstrap,
@@ -740,10 +837,13 @@ CREATE POLICY "agenda_campo_select" ON public.agenda_campo
 -- §5) O ESPELHO
 -- ═══════════════════════════════════════════════════════════════════════
 -- UMA COLUNA. É a decisão que torna a cascata analisável: o UPDATE toca
--- `data_hora_agendada` e mais nada, então a lista `AFTER UPDATE OF` de cada um
--- dos SETE gatilhos de public.chamados decide, sozinha, quem acorda. A tabela
--- completa está no cabeçalho; o resumo é: acordam `set_updated_at` (BEFORE, sem
--- lista) e `trg_chamado_apoio_dupla_upd`, e mais ninguém.
+-- `data_hora_agendada` e mais nada, então a lista `AFTER UPDATE OF` de cada
+-- gatilho de public.chamados decide, sozinha, quem acorda. Quem acorda, pelas
+-- listas conferidas nas linhas 403 e 404 do §9: `set_updated_at` (BEFORE, sem
+-- lista) e `trg_chamado_apoio_dupla_upd`. `trg_notify_chamado_upd` é
+-- `OF status, responsavel_id` e NÃO acorda. (A versão anterior desta linha dizia
+-- "a tabela completa está no cabeçalho" e não havia tabela nenhuma — a
+-- conferência é a prova, o comentário só aponta para ela.)
 --
 -- Os dois estágios são o gêmeo literal de `espelhoDoChamado()` em
 -- src/features/programacao/modelo.ts. Se um dia divergirem, o espelho apodrece
@@ -835,10 +935,16 @@ DROP TRIGGER IF EXISTS trg_agenda_campo_espelho_del ON public.agenda_campo;
 CREATE TRIGGER trg_agenda_campo_espelho_ins
   AFTER INSERT ON public.agenda_campo
   FOR EACH ROW EXECUTE FUNCTION public.agenda_campo_espelho();
--- A LISTA `OF` É A PRIMEIRA DEFESA, antes mesmo do IS DISTINCT FROM: corrigir a
--- duração, o deslocamento ou a equipe do bloco não chega nem a CHAMAR a função
--- de espelho, e portanto não pode acordar trg_chamado_apoio_dupla_upd. Isto é
--- estrutura, não um IF que alguém apaga.
+-- A LISTA `OF` É A PRIMEIRA DEFESA, e ela vale para UPDATE PARCIAL: um UPDATE
+-- que toque só `servico_min`, `deslocamento_min` ou `dupla_id` não chega nem a
+-- CHAMAR a função de espelho. Isto é estrutura, não um IF que alguém apaga.
+-- MAS ELA NÃO COBRE A RPC, e dizer o contrário seria descrever outro banco: o
+-- UPDATE do §6.1 é um PATCH que reescreve a linha inteira, e `AFTER UPDATE OF`
+-- dispara pela PRESENÇA da coluna no SET, mesmo com valor igual. Pela porta
+-- única, então, o espelho roda em toda gravação — e quem impede a cascata ali é
+-- o `IS DISTINCT FROM` de dentro de `agenda_campo_espelhar`, que faz o UPDATE em
+-- `chamados` casar zero linhas. Uma chamada de função por gravação, não uma
+-- cascata. As duas defesas são necessárias porque cobrem caminhos diferentes.
 CREATE TRIGGER trg_agenda_campo_espelho_upd
   AFTER UPDATE OF dia, inicio_min, cumprido_em, cancelado_em, chamado_id
   ON public.agenda_campo
@@ -880,6 +986,12 @@ AS $$
          END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.duracao_texto(int) FROM PUBLIC, anon;
+-- Esta É concedida a `authenticated`, e é a única do §6 que é — a exceção tem
+-- regra: ela não lê tabela nenhuma, não escreve nada e não sabe da existência de
+-- agenda. É um formatador de inteiro, IMMUTABLE. O critério que fechou as quatro
+-- portas ("sem tela não há consumidor, e porta de escrita sem consumidor é só
+-- superfície") não se aplica a uma função que não alcança dado nenhum: o pior
+-- que se faz com ela é descobrir que 90 minutos são '1h30'.
 GRANT  EXECUTE ON FUNCTION public.duracao_texto(int) TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.duracao_texto(int) IS
@@ -924,6 +1036,15 @@ BEGIN
      AND (_id IS NULL OR a.id <> _id)
      AND int4range(a.inicio_min::int - a.deslocamento_min::int,
                    a.inicio_min::int + a.servico_min::int) && int4range(_de, _ate)
+   -- ORDEM TOTAL ANTES DO LIMIT 1, e ela não é enfeite: sem ORDER BY o Postgres
+   -- devolve o que o plano der, então a MESMA recusa saía com nomes diferentes
+   -- de uma chamada para a outra — inclusive entre o ensaio (passo 5 do §6.1) e
+   -- a rede de corrida (o handler), que perguntam a mesma coisa. Uma mensagem de
+   -- erro que muda de conteúdo sem o dado mudar ensina o usuário a não lê-la.
+   -- `inicio_min` primeiro porque o conflitante que interessa é o mais CEDO (é
+   -- ele que o gestor vai tentar empurrar); `id` fecha o empate e é o mesmo
+   -- desempate do espelho e do gêmeo puro.
+   ORDER BY a.inicio_min, a.id
    LIMIT 1;
   IF NOT FOUND THEN RETURN NULL; END IF;
 
@@ -976,8 +1097,9 @@ COMMENT ON FUNCTION public.agenda_campo_frase_do_conflito(uuid,uuid,date,int,int
 -- virar folclore: quem manda é a R100, e hoje ela e este corpo discordam.
 --
 -- ── A ORDEM DAS CHECAGENS É A DO FORMULÁRIO, e isso não é estilo ───────────
---   1. quem manda no BLOCO QUE JÁ ESTÁ AÍ  (autorização do dono atual)
---   2. quem manda no CHAMADO DE DESTINO    (autorização do destino)
+--   1. quem manda no BLOCO QUE JÁ ESTÁ AÍ, no CHAMADO DE DESTINO e na ESCALA
+--      (as três camadas do gate — ver o cabeçalho do arquivo)
+--   2. o que JÁ ACONTECEU não se move  (bloco cumprido: dia/hora/equipe/chamado)
 --   3. forma e física                      (duração, meia-noite, deslocamento)
 --   4. CONFLITO                            (específico: "já está em CH-001")
 --   5. JORNADA                             (agregada: "já tem 5h nesse dia")
@@ -1000,6 +1122,15 @@ COMMENT ON FUNCTION public.agenda_campo_frase_do_conflito(uuid,uuid,date,int,int
 -- do chamado dele — `_chamado => NULL` significa "mantenha o chamado que já
 -- está lá". Tirar da agenda é o ato nomeado do §6.4; virar serviço de fora é
 -- cancelar e criar outro.
+--
+-- E `_deslocamento_min` É `DEFAULT NULL` COMO OS OUTROS DOIS. Ele era
+-- `DEFAULT 0`, e num PATCH um default que não é NULL é um apagador disfarçado: o
+-- PostgREST preenche o default de todo parâmetro que não vem no corpo, então
+-- `COALESCE(0, 45, 0)` dá 0 e arrastar o cartão zerava os 45 min de estrada
+-- digitados — encolhendo a janela do EXCLUDE (o bloco passa a ocupar menos do
+-- que ocupa de verdade) e inventando 45 min de capacidade na jornada do dia. O
+-- zero de "não tem deslocamento" continua existindo: ele se escreve mandando
+-- `_deslocamento_min => 0` de propósito, que é diferente de não mandar nada.
 CREATE OR REPLACE FUNCTION public.agenda_campo_marcar(
   _id uuid,
   _chamado uuid,
@@ -1007,7 +1138,7 @@ CREATE OR REPLACE FUNCTION public.agenda_campo_marcar(
   _dia date,
   _inicio_min int,
   _servico_min int,
-  _deslocamento_min int DEFAULT 0,
+  _deslocamento_min int DEFAULT NULL,
   _os_externa text DEFAULT NULL,
   _titulo_externo text DEFAULT NULL)
 RETURNS uuid
@@ -1018,36 +1149,28 @@ DECLARE
   -- a linha que JÁ ESTÁ LÁ (só é lida quando _id não é nulo)
   v_a_chamado uuid; v_a_dupla uuid; v_a_dia date;
   v_a_inicio  int;  v_a_servico int; v_a_desloc int;
-  v_a_os      text; v_a_titulo  text;
+  v_a_os      text; v_a_titulo  text; v_a_cumprido timestamptz;
   -- os valores EFETIVOS, depois do COALESCE: é sobre ELES que tudo é checado e
   -- gravado. Checar o parâmetro e gravar o efetivo seria checar uma coisa e
   -- escrever outra.
   v_chamado uuid; v_dupla uuid; v_dia date;
   v_inicio  int;  v_servico int; v_desloc int;
   v_os      text; v_titulo  text;
+  v_gestor  boolean;
   v_urgente boolean;
   v_ja      int;
+  v_restam  int;
   v_frase   text;
 BEGIN
-  -- ══ 1) U78: QUEM MANDA NESTE BLOCO HOJE ══════════════════════════════════
-  -- O gate do passo 2 autoriza o chamado de DESTINO — o que o chamador está
-  -- PONDO no bloco. Sem ESTE, mover um bloco alheio para um chamado próprio é
-  -- reescrita não autorizada: `agenda_campo_select` é USING (true), então
-  -- qualquer autenticado tem o id de qualquer bloco; `agenda_campo_marcar` é
-  -- concedida a authenticated; e SECURITY DEFINER passa por cima da RLS. Quem
-  -- abre um chamado bobo (basta `aberto_por` para `pode_editar_chamado`)
-  -- arrastaria para ele o bloco de um chamado que não pode nem ler — e o
-  -- espelho do §5, vendo `NEW.chamado_id IS DISTINCT FROM OLD.chamado_id`,
-  -- escreveria NULL em `data_hora_agendada` do chamado roubado, que sumiria do
-  -- calendário, do card da Início e do PDF sem sino nenhum.
+  -- ══ 1a) LER A LINHA QUE VAI SER REESCRITA ════════════════════════════════
   -- FOR UPDATE porque o gate LÊ a linha que ele está prestes a REESCREVER: sem
   -- a trava, outra transação move a linha entre a leitura e a escrita e o gate
   -- terá autorizado um estado que já não existe.
   IF _id IS NOT NULL THEN
     SELECT a.chamado_id, a.dupla_id, a.dia, a.inicio_min::int, a.servico_min::int,
-           a.deslocamento_min::int, a.os_externa, a.titulo_externo
+           a.deslocamento_min::int, a.os_externa, a.titulo_externo, a.cumprido_em
       INTO v_a_chamado, v_a_dupla, v_a_dia, v_a_inicio, v_a_servico,
-           v_a_desloc, v_a_os, v_a_titulo
+           v_a_desloc, v_a_os, v_a_titulo, v_a_cumprido
       FROM public.agenda_campo a
      WHERE a.id = _id
      FOR UPDATE;
@@ -1055,23 +1178,12 @@ BEGIN
       RAISE EXCEPTION 'Este bloco não existe mais — recarregue a grade e refaça o gesto.'
         USING ERRCODE = '55000';
     END IF;
-
-    IF auth.uid() IS NOT NULL THEN
-      IF v_a_chamado IS NOT NULL THEN
-        IF NOT public.pode_editar_chamado(v_a_chamado) THEN
-          RAISE EXCEPTION 'Este horário é de um atendimento pelo qual você não responde. Peça a quem responde por ele, ou à gestão.'
-            USING ERRCODE = '42501';
-        END IF;
-      ELSIF NOT public.is_gestor(auth.uid()) THEN
-        -- mesma régua do §3 e do §6.2: serviço fora do sistema é ato de gestão,
-        -- e este bloco é o único registro que ele tem.
-        RAISE EXCEPTION 'Só quem responde pela operação mexe em serviço fora do sistema.'
-          USING ERRCODE = '42501';
-      END IF;
-    END IF;
   END IF;
 
-  -- ══ 2) OS VALORES EFETIVOS, e o gate do DESTINO ══════════════════════════
+  -- ══ 1b) OS VALORES EFETIVOS ══════════════════════════════════════════════
+  -- Antes do gate, porque o gate precisa deles: a ESCALA é conferida contra o
+  -- DIA e a EQUIPE efetivos, que num PATCH podem vir da linha viva e não do
+  -- gesto.
   v_chamado := COALESCE(_chamado, v_a_chamado);
   v_dupla   := COALESCE(_dupla,   v_a_dupla);
   v_dia     := COALESCE(_dia,     v_a_dia);
@@ -1087,10 +1199,99 @@ BEGIN
   v_titulo := CASE WHEN v_chamado IS NOT NULL THEN NULL
                    ELSE COALESCE(nullif(btrim(_titulo_externo), ''), v_a_titulo) END;
 
-  IF v_chamado IS NOT NULL AND auth.uid() IS NOT NULL
-     AND NOT public.pode_editar_chamado(v_chamado) THEN
-    RAISE EXCEPTION 'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.'
-      USING ERRCODE = '42501';
+  -- ══ 1c) U78: QUEM MANDA NESTE BLOCO HOJE ═════════════════════════════════
+  -- TRÊS CAMADAS, e a decisão de produto está escrita no cabeçalho do arquivo:
+  --   is_gestor  OU  (pode editar o que SAI  E  pode editar o que ENTRA
+  --                   E  está escalado NAQUELA equipe NAQUELA semana).
+  -- Cada camada fecha um buraco diferente, e nenhuma sobra:
+  --   · o que SAI — `agenda_campo_select` é USING (true), então qualquer
+  --     autenticado tem o id de qualquer bloco, e SECURITY DEFINER passa por
+  --     cima da RLS. Sem esta camada, quem abre um chamado bobo (basta
+  --     `aberto_por` para `pode_editar_chamado`) arrasta para ele o bloco de um
+  --     chamado que não pode nem ler — e o espelho do §5, vendo
+  --     `NEW.chamado_id IS DISTINCT FROM OLD.chamado_id`, escreve NULL em
+  --     `data_hora_agendada` do chamado roubado, que some do calendário, do card
+  --     da Início e do PDF sem sino nenhum.
+  --   · o que ENTRA — impede usar um bloco autorizado para agendar trabalho de
+  --     terceiros.
+  --   · a ESCALA — sem ela a função nunca olhava para `_dupla`, e um técnico com
+  --     um chamado seu ocupava a terça-feira de QUALQUER equipe. `duplas_escala`
+  --     é gateada por `is_gestor` na policy (U47/U76) e a R13 diz que programar é
+  --     ato de gestão; esta camada é o meio-termo que não regride o técnico que
+  --     hoje reagenda o próprio atendimento.
+  -- Bloco SEM chamado não tem meio-termo: é ato de gestão, aqui como no §3, no
+  -- §6.2 e no §6.3 — o bloco é o único registro que aquele serviço tem.
+  -- auth.uid() é NULL na migration e no SQL Editor (sem JWT); ali o gate não faz
+  -- sentido e passa inteiro, o que é também o motivo de o §9 não conseguir
+  -- exercitar recusa nenhuma (ver a nota do §9.2).
+  IF auth.uid() IS NOT NULL THEN
+    -- COALESCE não é zelo, é a DIREÇÃO DA FALHA. `is_gestor` hoje já embrulha o
+    -- resultado dela num COALESCE(..., false) (u6a:55), mas se um dia devolvesse
+    -- NULL, `IF NOT v_gestor` seria NULL, o bloco inteiro seria PULADO e o gate
+    -- falharia ABERTO — as três camadas sumiriam sem uma linha de erro. Uma
+    -- palavra para garantir que a dúvida recuse em vez de liberar.
+    v_gestor := COALESCE(public.is_gestor(auth.uid()), false);
+
+    IF NOT v_gestor THEN
+      -- (i) serviço fora do sistema, dos dois lados: o que está lá e o que vai
+      --     ficar. Um PATCH que mantenha `chamado_id` nulo é mexer num bloco de
+      --     gestão tanto quanto criar um.
+      IF v_chamado IS NULL OR (_id IS NOT NULL AND v_a_chamado IS NULL) THEN
+        RAISE EXCEPTION 'Só quem responde pela operação mexe em serviço fora do sistema.'
+          USING ERRCODE = '42501';
+      END IF;
+
+      -- (ii) o chamado que SAI
+      IF _id IS NOT NULL AND NOT public.pode_editar_chamado(v_a_chamado) THEN
+        RAISE EXCEPTION 'Este horário é de um atendimento pelo qual você não responde. Peça a quem responde por ele, ou à gestão.'
+          USING ERRCODE = '42501';
+      END IF;
+
+      -- (iii) o chamado que ENTRA
+      IF NOT public.pode_editar_chamado(v_chamado) THEN
+        RAISE EXCEPTION 'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.'
+          USING ERRCODE = '42501';
+      END IF;
+
+      -- (iv) a ESCALA da equipe de DESTINO, na semana do dia de destino.
+      --      `dupla_da_pessoa` devolve NULL para quem não tem escala naquela
+      --      semana, e `NULL IS DISTINCT FROM <uuid>` é true — então "sem
+      --      escala" recusa junto com "outra equipe", que é o certo: quem não
+      --      está escalado não ocupa agenda de campo nenhuma.
+      --      O `IS NOT NULL` na frente não afrouxa nada e evita uma mentira: com
+      --      `v_dia` ou `v_dupla` nulos (gesto incompleto), a comparação daria
+      --      "não está na escala" — uma recusa de AUTORIZAÇÃO para um erro de
+      --      FORMA, mandando o gestor procurar permissão onde falta um campo. O
+      --      passo 3, logo abaixo, é quem dá a frase certa, e nada é gravado
+      --      entre um e outro.
+      IF v_dia IS NOT NULL AND v_dupla IS NOT NULL
+         AND public.dupla_da_pessoa(auth.uid(), v_dia) IS DISTINCT FROM v_dupla THEN
+        RAISE EXCEPTION 'Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.'
+          USING ERRCODE = '42501';
+      END IF;
+    END IF;
+  END IF;
+
+  -- ══ 2) O QUE JÁ ACONTECEU NÃO SE MOVE ════════════════════════════════════
+  -- `cumprido_em` preenchido é a afirmação "a equipe esteve no prédio nesse dia,
+  -- nesse horário". `agenda_campo_cancelar` já recusava desmarcá-lo (§6.2) com o
+  -- argumento de que registro não é agenda; `marcar` movia, e a assimetria entre
+  -- as duas portas era a mesma que denunciou o gate faltando. Mover o que
+  -- aconteceu reescreve a ocupação de uma semana PASSADA (o chip do histórico
+  -- muda para trás) e, pelo estágio 2 do espelho, manda `data_hora_agendada`
+  -- para um dia em que ninguém esteve.
+  -- A RECUSA É ESTREITA DE PROPÓSITO: dia, hora, equipe e chamado são a
+  -- afirmação sobre QUANDO e COM QUEM, e essas não se corrigem por arrasto.
+  -- DURAÇÃO e DESLOCAMENTO continuam editáveis — eles são MEDIÇÃO do que houve
+  -- ("levou três horas, não uma"), e proibir a correção obrigaria a apagar o
+  -- bloco para consertar um número.
+  IF v_a_cumprido IS NOT NULL
+     AND (v_dia     IS DISTINCT FROM v_a_dia
+       OR v_inicio  IS DISTINCT FROM v_a_inicio
+       OR v_dupla   IS DISTINCT FROM v_a_dupla
+       OR v_chamado IS DISTINCT FROM v_a_chamado) THEN
+    RAISE EXCEPTION 'Este atendimento já está marcado como feito — mudar o dia, a hora, a equipe ou o chamado dele reescreveria o registro de que ele aconteceu. Se ele NÃO aconteceu assim, tire o "feito" do bloco primeiro. A duração e o deslocamento você pode corrigir sem tirar.'
+      USING ERRCODE = '55000';
   END IF;
 
   -- ══ 3) FORMA E FÍSICA, antes de qualquer política ════════════════════════
@@ -1239,27 +1440,58 @@ BEGIN
      WHERE id = v_chamado AND status = 'aberto';
   END IF;
 
+  -- E A METADE DE BAIXO, que faltava: mover o ÚLTIMO bloco de um chamado para
+  -- OUTRO chamado deixava o de origem `agendado` sem data (o espelho já escreveu
+  -- NULL) e sem bloco nenhum — um chip mentindo, e o simétrico exato do que
+  -- `agenda_campo_cancelar` faz quando o último bloco cai. "Agendado" quer dizer
+  -- "tem compromisso marcado que ainda vai acontecer", então o que conta é bloco
+  -- PENDENTE: nem cancelado, nem cumprido.
+  IF v_a_chamado IS NOT NULL AND v_a_chamado IS DISTINCT FROM v_chamado THEN
+    SELECT count(*) INTO v_restam FROM public.agenda_campo a
+     WHERE a.chamado_id = v_a_chamado
+       AND a.cancelado_em IS NULL AND a.cumprido_em IS NULL;
+    IF v_restam = 0 THEN
+      UPDATE public.chamados SET status = 'aberto'
+       WHERE id = v_a_chamado AND status = 'agendado' AND natureza = 'campo';
+    END IF;
+  END IF;
+
   RETURN v_id;
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) TO authenticated, service_role;
+-- SERVICE_ROLE E SÓ — ver "ADITIVA QUER DIZER INERTE" no cabeçalho. O
+-- `GRANT ... TO authenticated` vai na migration que levar a TELA; enquanto ela
+-- não existe, esta porta não tem consumidor e uma porta sem consumidor concedida
+-- a todo mundo é só superfície de ataque. A linha pronta está no rodapé.
+GRANT  EXECUTE ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) TO service_role;
 
 COMMENT ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) IS
   'A porta única de escrita da agenda de campo: cria (_id NULL) ou move um '
-  'bloco. AUTORIZA OS DOIS LADOS — o chamado de DESTINO e o dono ATUAL do bloco '
-  '(gestor, quando o bloco não tem chamado) — porque mover um bloco desagenda o '
-  'chamado de onde ele saiu. É PATCH e não REPLACE: parâmetro NULL quer dizer '
-  '"não mexi", nunca "apague", e por isso ela NÃO desliga um bloco do chamado '
-  'dele (para isso existe desagendar_chamado). Checa, nesta ordem, forma e '
+  'bloco. O GATE TEM TRÊS CAMADAS — is_gestor, OU (pode editar o chamado que '
+  'SAI, e o que ENTRA, e está escalado naquela equipe naquela semana pela U76). '
+  'Bloco sem chamado é ato de gestão: só gestor. É PATCH e não REPLACE: '
+  'parâmetro NULL quer dizer "não mexi", nunca "apague" (por isso TODO parâmetro '
+  'omissível é DEFAULT NULL, deslocamento inclusive), e por isso ela NÃO desliga '
+  'um bloco do chamado dele — para isso existe desagendar_chamado. RECUSA mover '
+  'bloco já cumprido (dia, hora, equipe ou chamado); duração e deslocamento '
+  'continuam corrigíveis, porque são medição. Checa, nesta ordem, forma e '
   'física, o CONFLITO (frase que nomeia o conflitante, com o rótulo respeitando '
   'pode_editar_chamado) e a JORNADA (8h de campo, saída às 09:00 — isentos o '
-  'corretiva+urgente e o bloco sem chamado). A transição aberto->agendado é um '
-  'UPDATE separado do que o espelho escreve. NÃO gateia por PAPEL: quem responde '
-  'pelo chamado marca em qualquer equipe, e essa fronteira está discutida no '
-  'cabeçalho do arquivo como decisão pendente do Davi.';
+  'corretiva+urgente e o bloco sem chamado). Ajusta o status dos DOIS chamados: '
+  'aberto->agendado no destino, agendado->aberto na origem que ficou sem bloco '
+  'pendente. Concedida a service_role apenas até a tela existir.';
 
 -- ── 6.2 CANCELAR um bloco ──────────────────────────────────────────────────
+-- A ASSIMETRIA COM O §6.1 É DELIBERADA, e fica dita para ninguém a ler como
+-- esquecimento: `cancelar` e `cumprir` NÃO têm o gate de ESCALA que `marcar`
+-- ganhou. O gate de escala existe porque MARCAR OCUPA a agenda de uma equipe —
+-- é aí que alguém toma a terça-feira de um time em que não está. Cancelar
+-- LIBERA, e cumprir só carimba o que houve; nenhum dos dois toma tempo de
+-- ninguém. Exigir escala aqui impediria o técnico de desmarcar o PRÓPRIO
+-- atendimento numa semana em que ele não está escalado — que é justamente a
+-- semana em que ele mais precisa desmarcar. O que ambos exigem é o vínculo com o
+-- chamado (`pode_editar_chamado`) e, para bloco sem chamado, o papel de gestor.
 CREATE OR REPLACE FUNCTION public.agenda_campo_cancelar(_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public
@@ -1302,11 +1534,22 @@ BEGIN
   -- deixá-lo "agendado" seria o chip mentindo. O espelho já escreveu NULL pelo
   -- gatilho; aqui só o status acompanha.
   IF v_chamado IS NOT NULL THEN
+    -- CONTA SÓ O QUE AINDA VAI ACONTECER, e o `cumprido_em IS NULL` é a
+    -- correção: contando o bloco CUMPRIDO como se fosse agenda, um chamado que
+    -- teve a visita de terça e teve o retorno da quinta desmarcado ficava
+    -- `agendado` para sempre, sem nada pendente — o chip prometendo um
+    -- compromisso que não existe. "Agendado" é ter compromisso marcado que ainda
+    -- vai acontecer; o que já aconteceu é registro e mora no bloco.
     SELECT count(*) INTO v_restam FROM public.agenda_campo a
-     WHERE a.chamado_id = v_chamado AND a.cancelado_em IS NULL;
+     WHERE a.chamado_id = v_chamado
+       AND a.cancelado_em IS NULL AND a.cumprido_em IS NULL;
     IF v_restam = 0 THEN
+      -- `natureza = 'campo'` por simetria com o §6.4: hoje é redundante (o §3
+      -- não deixa nascer bloco para chamado comercial), e é justamente por ser
+      -- redundante que ela sobrevive a alguém mexer no §3 um dia. Esta função é
+      -- SECURITY DEFINER e passa por cima de `chamados_update`.
       UPDATE public.chamados SET status = 'aberto'
-       WHERE id = v_chamado AND status = 'agendado';
+       WHERE id = v_chamado AND status = 'agendado' AND natureza = 'campo';
     END IF;
   END IF;
 
@@ -1314,7 +1557,8 @@ BEGIN
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.agenda_campo_cancelar(uuid) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.agenda_campo_cancelar(uuid) TO authenticated, service_role;
+-- service_role e só — ver "ADITIVA QUER DIZER INERTE" no cabeçalho.
+GRANT  EXECUTE ON FUNCTION public.agenda_campo_cancelar(uuid) TO service_role;
 
 -- ── 6.3 CUMPRIR — o alternador "feito" ─────────────────────────────────────
 -- Sem isto `cumprido_em` é a coluna que ninguém preenche, e o espelho apodrece
@@ -1326,9 +1570,17 @@ CREATE OR REPLACE FUNCTION public.agenda_campo_cumprir(_id uuid, _feito boolean 
 RETURNS boolean
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE v_chamado uuid;
+DECLARE v_chamado uuid; v_cancelado timestamptz;
 BEGIN
-  SELECT a.chamado_id INTO v_chamado FROM public.agenda_campo a WHERE a.id = _id;
+  -- NULL EXPLÍCITO NÃO É "DESMARQUE". O parâmetro tem `DEFAULT true`, mas um
+  -- cliente que mande `{"_feito": null}` caía no ELSE do CASE lá embaixo e
+  -- APAGAVA o "feito" em silêncio — a direção destrutiva escolhida por omissão.
+  -- COALESCE contra o próprio default: não dizer nada e dizer nada são a mesma
+  -- coisa, e as duas querem dizer "marque".
+  _feito := COALESCE(_feito, true);
+
+  SELECT a.chamado_id, a.cancelado_em INTO v_chamado, v_cancelado
+    FROM public.agenda_campo a WHERE a.id = _id;
   IF NOT FOUND THEN RETURN false; END IF;
   IF v_chamado IS NOT NULL AND auth.uid() IS NOT NULL
      AND NOT public.pode_editar_chamado(v_chamado) THEN
@@ -1347,6 +1599,17 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
+  -- BLOCO DESMARCADO NÃO RECEBE "FEITO", e a recusa fecha o par do §6.2. Lá,
+  -- cancelar um bloco cumprido é recusado porque `cancelado_em` e `cumprido_em`
+  -- preenchidos ao mesmo tempo são um estado que nada na grade sabe ler. Sem
+  -- esta linha, o mesmo estado nascia pelo outro lado: cancela primeiro, carimba
+  -- depois. Quem quer dar baixa num atendimento desmarcado remarca o bloco (o
+  -- §6.1 ressuscita) e então carimba.
+  IF _feito AND v_cancelado IS NOT NULL THEN
+    RAISE EXCEPTION 'Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.'
+      USING ERRCODE = '55000';
+  END IF;
+
   UPDATE public.agenda_campo
      SET cumprido_em = CASE WHEN _feito THEN COALESCE(cumprido_em, now()) ELSE NULL END
    WHERE id = _id
@@ -1355,7 +1618,8 @@ BEGIN
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.agenda_campo_cumprir(uuid, boolean) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.agenda_campo_cumprir(uuid, boolean) TO authenticated, service_role;
+-- service_role e só — ver "ADITIVA QUER DIZER INERTE" no cabeçalho.
+GRANT  EXECUTE ON FUNCTION public.agenda_campo_cumprir(uuid, boolean) TO service_role;
 
 -- ── 6.4 DESAGENDAR o chamado — o ATO deliberado ────────────────────────────
 -- "Some com o horário deste chamado" é uma frase diferente de "desmarque este
@@ -1423,13 +1687,23 @@ BEGIN
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.desagendar_chamado(uuid) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.desagendar_chamado(uuid) TO authenticated, service_role;
+-- service_role e só — e AQUI a razão é a mais dura das quatro: esta é a função
+-- que apaga `data_hora_agendada` de um chamado de campo com UMA requisição, sem
+-- bloco nenhum envolvido. Concedida a `authenticated` no COMMIT, ela seria, no
+-- dia 1 e sem uma linha de tela, um /rest/v1/rpc que zera a coluna que o §0, o
+-- §8 e o md5 existem para proteger — e depois do COMMIT nenhum freio deste
+-- arquivo alcança. Ver "ADITIVA QUER DIZER INERTE" no cabeçalho.
+GRANT  EXECUTE ON FUNCTION public.desagendar_chamado(uuid) TO service_role;
 
 COMMENT ON FUNCTION public.desagendar_chamado(uuid) IS
   'O ato de tirar um chamado de campo da agenda: cancela os blocos que ainda '
   'VÃO acontecer (nunca os cumpridos, que são registro), recalcula o espelho À '
   'MÃO — sem isso o ato não faria nada no chamado legado que tem data e não tem '
   'bloco, que é a base inteira no primeiro mês — e devolve agendado -> aberto. '
+  'ATENÇÃO AO CASO DO RETORNO: se sobrar bloco CUMPRIDO, data_hora_agendada NÃO '
+  'fica nula — o estágio 2 do espelho a põe no último bloco que ACONTECEU, de '
+  'propósito (§5), para o chamado ainda aberto não sumir do calendário e do PDF '
+  'por ter sido atendido. Ou seja: "aberto, e a última visita foi dia tal". '
   'Recusa chamado comercial: aquela agenda é da visita técnica (U41). Devolve '
   'quantos blocos foram desmarcados (0 é resposta normal, não erro).';
 
@@ -1447,6 +1721,23 @@ COMMENT ON FUNCTION public.desagendar_chamado(uuid) IS
 -- pessoa — quebrando a promessa central da U76 para consertar um caso vizinho.
 -- Os dois corpos abaixo são os da U76, LITERAIS, com as linhas novas marcadas. O
 -- corpo original de cada um vai inteiro no DESFAZER, com dólar-quote diferente.
+--
+-- "DOIS CHAMADORES" É AFIRMAÇÃO CONFERIDA, e não suposição: um grep por
+-- `chamado_sincronizar_apoio` em `supabase/migrations/` acha exatamente estes
+-- dois pontos de chamada (U76:1115, no gatilho, e U76:1177, no laço da
+-- reconciliação), mais as declarações e o DESFAZER. Nenhum código de app a
+-- chama — ela é `GRANT ... TO service_role` e só. Por isso a regra em dois
+-- lugares COBRE, e por isso a alternativa de "descer para o callee" seria trocar
+-- cobertura igual por um efeito colateral: ver o parágrafo acima.
+--
+-- E O QUE ESTA GUARDA NÃO RESOLVE, dito aqui para não virar folclore: dar
+-- "feito" num bloco quando existe um RETORNO em outra semana ISO faz o espelho
+-- andar (certo, é o estágio 1) e o apoio ser reavaliado contra a semana NOVA —
+-- apagando as linhas `origem='dupla'` da turma que JÁ FOI. Não é o caso da
+-- guarda ("não sei quando"), é um caso de CARDINALIDADE: um conjunto de apoios
+-- por chamado não representa duas idas de duas turmas. Está declarado no
+-- cabeçalho, em "O QUE AINDA ESPERA UMA FRASE DO DAVI", com as duas saídas
+-- possíveis e o motivo de nenhuma ter sido escolhida sozinha.
 
 -- ── 7.1 DESAGENDAR NÃO É REATRIBUIR (o gatilho) ────────────────────────────
 --
@@ -1689,6 +1980,10 @@ BEGIN
   IF position('U78: QUEM MANDA NESTE BLOCO HOJE' in v_marcar) = 0
      OR position('v_a_chamado' in v_marcar) = 0 THEN
     v_falta := v_falta || E'\n  · o gate do DONO ATUAL do bloco em agenda_campo_marcar (sem ele, mover bloco alheio é reescrita não autorizada)'; END IF;
+  IF position('public.dupla_da_pessoa(auth.uid(), v_dia) IS DISTINCT FROM v_dupla' in v_marcar) = 0 THEN
+    v_falta := v_falta || E'\n  · o gate de ESCALA em agenda_campo_marcar (sem ele a função nunca olha para _dupla, e qualquer um ocupa a agenda de qualquer equipe)'; END IF;
+  IF position('v_a_cumprido IS NOT NULL' in v_marcar) = 0 THEN
+    v_falta := v_falta || E'\n  · a recusa de MOVER bloco já cumprido em agenda_campo_marcar (cancelar já recusava; marcar movia)'; END IF;
   IF position('agenda_campo_frase_do_conflito' in v_marcar) = 0 THEN
     v_falta := v_falta || E'\n  · o ensaio de conflito ANTES da jornada em agenda_campo_marcar'; END IF;
   IF position('COALESCE(_chamado, v_a_chamado)' in v_marcar) = 0 THEN
@@ -1696,6 +1991,26 @@ BEGIN
   IF position('cumprido_em IS NULL' in v_desag) = 0
      OR position('agenda_campo_espelhar' in v_desag) = 0 THEN
     v_falta := v_falta || E'\n  · desagendar_chamado sem o filtro de bloco cumprido ou sem o espelho à mão'; END IF;
+
+  -- ── O DESLOCAMENTO É `DEFAULT NULL`, e isto se lê na ASSINATURA ─────────
+  -- prosrc é só o CORPO: o default de um parâmetro não aparece nele. Quem sabe
+  -- é pg_get_function_arguments. Um `DEFAULT 0` aqui é o PostgREST preenchendo
+  -- zero no que o cliente não mandou, e o COALESCE do PATCH engolindo o
+  -- deslocamento digitado a cada arraste — perda de dado silenciosa numa coluna
+  -- que entra na jornada E na janela do EXCLUDE.
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+              WHERE n.nspname='public' AND p.proname='agenda_campo_marcar'
+                AND pg_get_function_arguments(p.oid) LIKE '%deslocamento_min integer DEFAULT 0%') THEN
+    v_falta := v_falta || E'\n  · _deslocamento_min voltou a ser DEFAULT 0 em agenda_campo_marcar (num PATCH, default que não é NULL apaga o que não veio no corpo)';
+  END IF;
+
+  -- E AS QUATRO PORTAS CONCEDIDAS A `authenticated` NÃO ENTRAM AQUI, DE
+  -- PROPÓSITO — a conferência do §9 (linha 209) as mede, e ela COMMITA. O
+  -- motivo é idempotência: `CREATE OR REPLACE` preserva a ACL, então no dia em
+  -- que a migration da TELA fizer o GRANT (que é onde ele pertence), um portão
+  -- com esta regra abortaria toda reexecução legítima da U78 — e este arquivo
+  -- promete, na primeira tela, que reexecutar é seguro. Freio para o que ESTE
+  -- arquivo faz; medição visível para o que os outros fizerem depois.
 
   -- ── a lista OF do gatilho da U76 ────────────────────────────────────────
   -- Tem de estar EXATAMENTE como ela nasceu: se esta migration a tivesse
@@ -1727,28 +2042,72 @@ BEGIN
 END $$;
 
 -- ═══════════════════════════════════════════════════════════════════════
--- §9) CONFERÊNCIA — UM RESULT SET, COM VEREDITO
+-- §9) CONFERÊNCIA — A TABELA DE VEREDITO É O ÚLTIMO RESULT SET
 -- ═══════════════════════════════════════════════════════════════════════
--- DUAS coisas para ler, nesta ordem:
---   · a TABELA abaixo, em que a coluna `veredito` já fez a comparação. O que o
---     Davi tem de procurar às 23h é a palavra '>>> OLHAR <<<'. Nada mais.
---   · a LISTA depois dela ("quem não casou"), que tem de vir VAZIA.
+-- O QUE O DAVI OLHA ÀS 23H: a TABELA, que é o que o editor deixa na tela. Ele
+-- procura a palavra '>>> OLHAR <<<' na coluna `veredito`. Nada mais.
 --
--- POR QUE UM SÓ, e por que isto é correção e não estilo: RAISE NOTICE é
--- INVISÍVEL no editor do Supabase — por isso tudo que precisa ser visto sai em
+-- POR QUE A ORDEM É ESTA, e por que isto é correção e não estilo: RAISE NOTICE
+-- é INVISÍVEL no editor do Supabase — por isso tudo que precisa ser visto sai em
 -- SELECT, com valor obtido × esperado — e o editor mostra o ÚLTIMO conjunto de
--- resultados. A versão anterior desta seção tinha SETE conjuntos (contados: 9.1,
--- 9.2, 9.3, 9.4, as duas listas do 9.5 e o 9.6): a prova
--- negativa (a afirmação central do arquivo) ficava escondida no meio, e o que
--- aparecia na tela era um número de referência que nem tem "esperado". Emendar
--- tudo num UNION ALL ordenado custa uma coluna `ordem` e devolve uma tela só.
+-- resultados. A versão anterior desta seção tinha SETE conjuntos e o veredito
+-- ficava escondido no meio; a correção emendou tudo num UNION ALL ordenado, mas
+-- deixou a LISTA "quem não casou" DEPOIS da tabela — e a lista, que num banco
+-- são passou VAZIA, era exatamente o que aparecia. A tela ficava em branco e o
+-- veredito, invisível. Agora a lista vem PRIMEIRO (quem quiser vê-la rola para
+-- cima ou roda o §9.0 sozinho) e o número dela é uma LINHA da tabela, para o
+-- veredito não depender de ninguém rolar.
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- §9.0) QUEM NÃO CASOU: o espelho × o bloco que manda
+-- ═══════════════════════════════════════════════════════════════════════
+-- TEM de vir vazia, e hoje vem por um motivo trivial: não há bloco nenhum. A
+-- consulta fica no arquivo porque daqui a um mês divergir é NOTÍCIA — quer dizer
+-- que alguém escreveu data_hora_agendada de um chamado de campo por fora do
+-- satélite (as três telas antigas ainda sabem fazer isso; ver PENDENCIAS).
+-- Os DOIS estágios, escritos aqui de novo e por extenso: um `ORDER BY
+-- (cumprido_em IS NULL) DESC` pareceria equivalente e NÃO é — com todos os
+-- blocos cumpridos ele devolveria o mais ANTIGO, e a função devolve o ÚLTIMO. A
+-- conferência tem de calcular o que o gatilho calcula, ou ela inventa
+-- divergência.
+--
+-- A SEGUNDA LISTA que existia aqui (bloco × escala da semana) FOI CORTADA: ela
+-- comparava `dupla_da_pessoa(...) IS DISTINCT FROM a.dupla_id`, e
+-- `dupla_da_pessoa` devolve NULL para quem não tem escala na semana — a lista
+-- nascia misturando "sem escala" com "fora da equipe", que o gêmeo puro
+-- (`divergenciaDeEquipe`) separa. Consulta de acompanhamento mora em
+-- `docs/manual/`, não numa migration.
+SELECT c.numero,
+       c.data_hora_agendada AS espelho_gravado,
+       e.quando             AS espelho_calculado,
+       'espelho diverge do bloco que manda' AS problema
+  FROM public.chamados c
+  JOIN LATERAL (
+    SELECT COALESCE(
+      (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
+         FROM public.agenda_campo x
+        WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL AND x.cumprido_em IS NULL
+        ORDER BY x.dia, x.inicio_min, x.id LIMIT 1),
+      (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
+         FROM public.agenda_campo x
+        WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL
+        ORDER BY x.dia DESC, x.inicio_min DESC, x.id DESC LIMIT 1)
+    ) AS quando) e ON true
+ WHERE c.natureza='campo'
+   AND c.status NOT IN ('concluido','cancelado')
+   AND e.quando IS NOT NULL
+   AND c.data_hora_agendada IS DISTINCT FROM e.quando;
 --
 -- O QUE ESTA TABELA NÃO CONSEGUE PROVAR, dito antes que alguém suponha o
 -- contrário: as recusas de AUTORIZAÇÃO. No SQL Editor `auth.uid()` é NULL e
 -- todos os gates passam por desenho, então não há como exercitar aqui dentro um
--- "você não responde por este chamado". As linhas 201-208 são SUBSTRING do
--- corpo vivo da função: elas provam que o código não voltou atrás, e só isso.
--- Quem prova comportamento é o ensaio à mão do rodapé.
+-- "você não responde por este chamado". As linhas 201-208 e 210-214 são
+-- SUBSTRING do corpo vivo da função: elas provam que o código não voltou atrás,
+-- e só isso. Quem prova comportamento é o ensaio à mão do rodapé.
+-- A EXCEÇÃO É A LINHA 209, e ela é a mais importante das duas dúzias: PRIVILÉGIO
+-- não mora no corpo da função, mora no catálogo — `has_function_privilege` é
+-- comportamento medido, não texto procurado. Ela responde "quem, de fato, pode
+-- chamar estas quatro portas hoje".
 SELECT t.ordem, t.conferencia, t.valor, t.esperado,
        CASE WHEN t.esperado = '(referência)'             THEN '— referência'
             WHEN t.valor IS NOT DISTINCT FROM t.esperado THEN 'ok'
@@ -1860,6 +2219,46 @@ SELECT 208, 'desagendar_chamado recusa chamado comercial — a agenda da visita 
        (SELECT (position('natureza IS DISTINCT FROM ''campo''' in p.prosrc) > 0)::text
           FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
          WHERE n.nspname='public' AND p.proname='desagendar_chamado'), 'true'
+UNION ALL
+-- ESTA LINHA É A MAIS IMPORTANTE DA TELA, e ela mede COMPORTAMENTO, não texto:
+-- privilégio é estado do catálogo. Enquanto não existir tela, nenhuma das quatro
+-- portas de escrita pode estar aberta a `authenticated` — sem consumidor, um
+-- GRANT é só superfície de ataque, e `desagendar_chamado` apaga
+-- data_hora_agendada de um chamado de campo com UMA requisição. Quando a
+-- migration da TELA rodar, ESTE número vira 4 de propósito e esta linha passa a
+-- dizer '>>> OLHAR <<<' — é o lembrete de que a fronteira mudou, não um erro.
+SELECT 209, 'CRÍTICO: as QUATRO portas de escrita estão FECHADAS a authenticated — não há tela que as chame, e o GRANT pertence à migration que levar a tela (depois dela, esperar 4 aqui é o certo)',
+       (SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public'
+           AND p.proname IN ('agenda_campo_marcar','agenda_campo_cancelar',
+                             'agenda_campo_cumprir','desagendar_chamado')
+           AND has_function_privilege('authenticated', p.oid, 'EXECUTE')), '0'
+UNION ALL
+SELECT 210, 'CRÍTICO: agenda_campo_marcar confere a ESCALA — sem isso ela nunca olha para _dupla, e quem responde por um chamado qualquer ocupa a terça-feira de QUALQUER equipe sem estar na escala dela',
+       (SELECT (position('public.dupla_da_pessoa(auth.uid(), v_dia) IS DISTINCT FROM v_dupla' in p.prosrc) > 0)::text
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='agenda_campo_marcar'), 'true'
+UNION ALL
+SELECT 211, 'CRÍTICO: agenda_campo_marcar RECUSA mover bloco já cumprido (dia, hora, equipe ou chamado) — cancelar já recusava, marcar movia, e mover o que aconteceu reescreve a ocupação de uma semana passada',
+       (SELECT (position('v_a_cumprido IS NOT NULL' in p.prosrc) > 0)::text
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='agenda_campo_marcar'), 'true'
+UNION ALL
+-- Lido da ASSINATURA e não do corpo: prosrc não sabe de default de parâmetro.
+SELECT 212, 'CRÍTICO: _deslocamento_min é DEFAULT NULL como os outros omissíveis — com DEFAULT 0 o PostgREST preenche zero no que o cliente não mandou, e arrastar o cartão apagava os minutos de estrada digitados (que entram na jornada E na janela do EXCLUDE)',
+       (SELECT (pg_get_function_arguments(p.oid) NOT LIKE '%deslocamento_min integer DEFAULT 0%')::text
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='agenda_campo_marcar'), 'true'
+UNION ALL
+SELECT 213, 'a frase do conflito tem ORDEM TOTAL antes do LIMIT 1 — sem ela a MESMA recusa saía com nomes diferentes entre o ensaio e a rede de corrida, e mensagem que muda sozinha ensina o usuário a não ler',
+       (SELECT (position('ORDER BY a.inicio_min, a.id' in p.prosrc) > 0)::text
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='agenda_campo_frase_do_conflito'), 'true'
+UNION ALL
+SELECT 214, 'agenda_campo_cancelar conta como "agendado" só o bloco PENDENTE — contando o cumprido, um chamado cujo retorno foi desmarcado ficava agendado para sempre sem nada marcado',
+       (SELECT (position('a.cancelado_em IS NULL AND a.cumprido_em IS NULL' in p.prosrc) > 0)::text
+          FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname='public' AND p.proname='agenda_campo_cancelar'), 'true'
 
 -- ── 9.3 AS TRÊS QUE RODAM DE VERDADE ──────────────────────────────────────
 -- O corpo de uma função plpgsql só tem as consultas dele analisadas na PRIMEIRA
@@ -2004,46 +2403,32 @@ SELECT 701, 'chamados de campo ABERTOS com data e SEM bloco (a faixa "agendado s
                             WHERE a.chamado_id = c.id AND a.cancelado_em IS NULL)),
        '(referência)'
 
+-- ── 9.9 O NÚMERO DA LISTA DO §9.0, DENTRO DA TABELA ───────────────────────
+-- A lista sai no result set que o editor NÃO deixa na tela; o número dela sai
+-- aqui, onde ele é lido. É a mesma consulta do §9.0, contada — e ela tem de dar
+-- zero: se der outra coisa, alguém escreveu chamados.data_hora_agendada de um
+-- chamado de campo por fora do satélite, e a lista lá em cima diz quem.
+UNION ALL
+SELECT 801, 'CRÍTICO: nenhum chamado com o espelho DIVERGINDO do bloco que manda (a lista do §9.0, contada — role para cima para ver quem, se este número não for 0)',
+       (SELECT count(*)::text FROM public.chamados c
+          JOIN LATERAL (
+            SELECT COALESCE(
+              (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
+                 FROM public.agenda_campo x
+                WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL AND x.cumprido_em IS NULL
+                ORDER BY x.dia, x.inicio_min, x.id LIMIT 1),
+              (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
+                 FROM public.agenda_campo x
+                WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL
+                ORDER BY x.dia DESC, x.inicio_min DESC, x.id DESC LIMIT 1)
+            ) AS quando) e ON true
+         WHERE c.natureza='campo'
+           AND c.status NOT IN ('concluido','cancelado')
+           AND e.quando IS NOT NULL
+           AND c.data_hora_agendada IS DISTINCT FROM e.quando), '0'
+
   ) t
  ORDER BY t.ordem;
-
--- ── 9.8 QUEM NÃO CASOU: o espelho × o bloco que manda ──────────────────────
--- TEM de vir vazia, e hoje vem por um motivo trivial: não há bloco nenhum. A
--- consulta fica no arquivo porque daqui a um mês divergir é NOTÍCIA — quer dizer
--- que alguém escreveu data_hora_agendada de um chamado de campo por fora do
--- satélite (as três telas antigas ainda sabem fazer isso; ver PENDENCIAS).
--- Os DOIS estágios, escritos aqui de novo e por extenso: um `ORDER BY
--- (cumprido_em IS NULL) DESC` pareceria equivalente e NÃO é — com todos os
--- blocos cumpridos ele devolveria o mais ANTIGO, e a função devolve o ÚLTIMO. A
--- conferência tem de calcular o que o gatilho calcula, ou ela inventa
--- divergência.
---
--- A SEGUNDA LISTA que existia aqui (bloco × escala da semana) FOI CORTADA: ela
--- comparava `dupla_da_pessoa(...) IS DISTINCT FROM a.dupla_id`, e
--- `dupla_da_pessoa` devolve NULL para quem não tem escala na semana — a lista
--- nascia misturando "sem escala" com "fora da equipe", que o gêmeo puro
--- (`divergenciaDeEquipe`) separa. Consulta de acompanhamento mora em
--- `docs/manual/`, não numa migration.
-SELECT c.numero,
-       c.data_hora_agendada AS espelho_gravado,
-       e.quando             AS espelho_calculado,
-       'espelho diverge do bloco que manda' AS problema
-  FROM public.chamados c
-  JOIN LATERAL (
-    SELECT COALESCE(
-      (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
-         FROM public.agenda_campo x
-        WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL AND x.cumprido_em IS NULL
-        ORDER BY x.dia, x.inicio_min, x.id LIMIT 1),
-      (SELECT (x.dia + make_interval(mins => x.inicio_min)) AT TIME ZONE 'America/Sao_Paulo'
-         FROM public.agenda_campo x
-        WHERE x.chamado_id = c.id AND x.cancelado_em IS NULL
-        ORDER BY x.dia DESC, x.inicio_min DESC, x.id DESC LIMIT 1)
-    ) AS quando) e ON true
- WHERE c.natureza='campo'
-   AND c.status NOT IN ('concluido','cancelado')
-   AND e.quando IS NOT NULL
-   AND c.data_hora_agendada IS DISTINCT FROM e.quando;
 
 COMMIT;
 
@@ -2060,14 +2445,16 @@ COMMIT;
 -- POR QUE O PASSO 1.0 (fechar as portas) VEM ANTES DE TUDO, e por que ele não
 -- existia: o texto antigo prometia que, tirados os gatilhos,
 -- `chamados.data_hora_agendada` "volta a ser escrita só pelos caminhos de
--- sempre". Isso é verdade HOJE, com a tela nova ainda não publicada, e é FALSO
--- no dia seguinte ao deploy dela: as quatro RPCs continuariam concedidas a
--- `authenticated`, a grade continuaria gravando bloco que não espelha mais, e
--- `agenda_campo_cancelar` continuaria virando `chamados.status` para 'aberto'
--- SEM mexer na data. O nível 1 fabricaria, em silêncio, exatamente a divergência
--- que ele existe para desfazer. Falhar alto ("função não existe") é melhor do
--- que divergir baixo. Se a tela ainda não foi publicada, o passo 1.0 é inócuo —
--- rode-o do mesmo jeito.
+-- sempre". Isso é FALSO no dia seguinte ao deploy da tela: as quatro RPCs
+-- estariam concedidas a `authenticated` (pela migration da TELA — esta aqui as
+-- concede só a `service_role`), a grade continuaria gravando bloco que não
+-- espelha mais, e `agenda_campo_cancelar` continuaria virando `chamados.status`
+-- para 'aberto' SEM mexer na data. O nível 1 fabricaria, em silêncio,
+-- exatamente a divergência que ele existe para desfazer. Falhar alto ("função
+-- não existe") é melhor do que divergir baixo. ENQUANTO A TELA NÃO EXISTIR o
+-- passo 1.0 é no-op (não há o que revogar) — rode-o do mesmo jeito: ele é
+-- barato, é idempotente, e o dia em que ele deixar de ser inócuo é justamente o
+-- dia em que ninguém vai lembrar de acrescentá-lo.
 --
 -- ATENÇÃO: o nível 1 NÃO devolve `data_hora_agendada` ao que era antes de a
 -- U78 rodar — o espelho terá escrito valores verdadeiros no meio tempo, e
@@ -2221,6 +2608,16 @@ COMMIT;
 -- ele fez — e, de quebra, é assim que a mensagem aparece no editor do Supabase,
 -- onde RAISE NOTICE é invisível. Ver "ENSAIO OK" no vermelho é o resultado bom.
 --
+-- E ELE RODA MESMO COM AS PORTAS FECHADAS A `authenticated`: o SQL Editor
+-- executa como `postgres`, que é o DONO destas funções, e dono não precisa de
+-- GRANT. O `GRANT ... TO service_role` do §6 é para o backend; a ausência do
+-- GRANT a `authenticated` é para o app. Nenhum dos dois alcança este ensaio.
+--
+-- O QUE ELE NÃO CONSEGUE TESTAR, e é bom saber antes de confiar: as recusas de
+-- AUTORIZAÇÃO. `auth.uid()` é NULL no editor, então o gate de três camadas do
+-- §6.1 passa inteiro por desenho. Ele testa FORMA, CONFLITO, PATCH e as recusas
+-- de registro (cumprido/cancelado) — que é tudo o que dá para testar sem um JWT.
+--
 -- Descomente (tire o "-- " de cada linha) e rode:
 --
 -- DO $ensaio$
@@ -2243,6 +2640,17 @@ COMMIT;
 --     RAISE EXCEPTION 'ENSAIO FALHOU: mover o bloco apagou o titulo_externo — o COALESCE do §6.1 não está valendo.';
 --   END IF;
 --   v_log := v_log || E'\n(2) mover sem repassar o título preservou o título — ok';
+--
+--   -- (2b) E MOVER SEM REPASSAR O DESLOCAMENTO NÃO PODE ZERÁ-LO. Este é o caso
+--   --      que o `DEFAULT 0` engolia: o parâmetro fica de fora da chamada, o
+--   --      PostgREST (e aqui, o próprio Postgres) preenche o default, e o
+--   --      COALESCE recebe 0 em vez de NULL. É perda de dado numa coluna que
+--   --      entra na jornada E na janela do EXCLUDE, sem uma linha de erro.
+--   PERFORM public.agenda_campo_marcar(v_b1, NULL, v_dupla, DATE '1900-01-02', 810, 60);
+--   IF (SELECT deslocamento_min FROM public.agenda_campo WHERE id = v_b1) IS DISTINCT FROM 30 THEN
+--     RAISE EXCEPTION 'ENSAIO FALHOU: mover o bloco sem repassar o deslocamento zerou os 30 min de estrada — _deslocamento_min voltou a ser DEFAULT 0.';
+--   END IF;
+--   v_log := v_log || E'\n(2b) mover sem repassar o deslocamento preservou os 30 min — ok';
 --
 --   -- (3) o CONFLITO tem de vir em português e NOMEAR o outro atendimento
 --   BEGIN
@@ -2284,6 +2692,28 @@ COMMIT;
 --     v_log := v_log || E'\n(6) cancelar bloco cumprido recusado: ' || v_erro;
 --   END;
 --
+--   -- (6b) E MOVER O BLOCO CUMPRIDO TAMBÉM TEM DE SER RECUSADO — era a
+--   --      assimetria que sobrou: cancelar recusava, marcar movia. Mover o que
+--   --      aconteceu reescreve a ocupação de uma semana passada e, pelo estágio
+--   --      2 do espelho, manda o chamado para um dia em que ninguém esteve.
+--   BEGIN
+--     PERFORM public.agenda_campo_marcar(v_b1, NULL, v_dupla, DATE '1900-01-04', 900, 60, 30);
+--     RAISE EXCEPTION 'ENSAIO FALHOU: moveu um bloco já cumprido para outro dia.';
+--   EXCEPTION WHEN sqlstate '55000' THEN
+--     GET STACKED DIAGNOSTICS v_erro = MESSAGE_TEXT;
+--     v_log := v_log || E'\n(6b) mover bloco cumprido recusado: ' || v_erro;
+--   END;
+--
+--   -- (6c) …mas CORRIGIR A DURAÇÃO dele continua permitido, e é de propósito:
+--   --      duração é MEDIÇÃO do que houve ("levou três horas, não uma"), não
+--   --      afirmação sobre QUANDO houve. Proibir aqui obrigaria a apagar o bloco
+--   --      para consertar um número.
+--   PERFORM public.agenda_campo_marcar(v_b1, NULL, v_dupla, DATE '1900-01-02', 810, 90, 30);
+--   IF (SELECT servico_min FROM public.agenda_campo WHERE id = v_b1) IS DISTINCT FROM 90 THEN
+--     RAISE EXCEPTION 'ENSAIO FALHOU: corrigir a duração de um bloco cumprido não pegou.';
+--   END IF;
+--   v_log := v_log || E'\n(6c) corrigir a duração de um bloco cumprido continua permitido — ok';
+--
 --   -- (7) tirado o "feito", cancelar volta a funcionar
 --   PERFORM public.agenda_campo_cumprir(v_b1, false);
 --   IF NOT public.agenda_campo_cancelar(v_b1) THEN
@@ -2291,9 +2721,46 @@ COMMIT;
 --   END IF;
 --   v_log := v_log || E'\n(7) tirado o feito, o bloco foi desmarcado — ok';
 --
---   RAISE EXCEPTION E'ENSAIO OK — as sete etapas passaram. Esta exceção é DE PROPÓSITO: ela desfaz tudo o que o ensaio criou e é o único jeito de a mensagem aparecer no editor.%', v_log;
+--   -- (8) e dar "feito" num bloco DESMARCADO tem de ser recusado — é o par do
+--   --     (6) pelo outro lado: cancelado_em e cumprido_em preenchidos ao mesmo
+--   --     tempo são um estado que nada na grade sabe ler.
+--   BEGIN
+--     PERFORM public.agenda_campo_cumprir(v_b1, true);
+--     RAISE EXCEPTION 'ENSAIO FALHOU: deu baixa num bloco desmarcado.';
+--   EXCEPTION WHEN sqlstate '55000' THEN
+--     GET STACKED DIAGNOSTICS v_erro = MESSAGE_TEXT;
+--     v_log := v_log || E'\n(8) dar feito em bloco desmarcado recusado: ' || v_erro;
+--   END;
+--
+--   RAISE EXCEPTION E'ENSAIO OK — as onze etapas passaram. Esta exceção é DE PROPÓSITO: ela desfaz tudo o que o ensaio criou e é o único jeito de a mensagem aparecer no editor.%', v_log;
 -- END
 -- $ensaio$;
+
+-- ╔══════════════════════════════════════════════════════════════════════╗
+-- ║ AS QUATRO PORTAS, QUANDO A TELA CHEGAR                               ║
+-- ╚══════════════════════════════════════════════════════════════════════╝
+-- ESTAS QUATRO LINHAS NÃO PERTENCEM A ESTE ARQUIVO — elas pertencem à migration
+-- que levar a TELA da grade, e estão aqui só para serem COPIADAS de lá. O
+-- motivo está no cabeçalho ("ADITIVA QUER DIZER INERTE"): sem tela não há
+-- consumidor, e uma porta de escrita concedida a todo autenticado sem
+-- consumidor é só superfície de ataque — `desagendar_chamado`, em particular,
+-- apaga `data_hora_agendada` de um chamado de campo com UMA requisição, e o md5
+-- do §0 e o freio do §8 morrem no COMMIT, que é quando o risco começaria.
+--
+-- ANTES DE COLÁ-LAS NA MIGRATION DA TELA, confira as três coisas que elas
+-- pressupõem:
+--   · o gate de ESCALA do §6.1 é o que o Davi quer (ver "A DECISÃO DE FRONTEIRA"
+--     no cabeçalho) — se ele preferir gestor-só, mude o §6.1 ANTES de abrir;
+--   · a tela não escreve `chamados.data_hora_agendada` por fora (as três telas
+--     antigas ainda sabem: chamados.programacao.tsx, novo-campo.tsx,
+--     PainelChamado.tsx). Enquanto elas escreverem, há duas verdades;
+--   · a linha 209 da conferência do §9 vai passar a dizer '>>> OLHAR <<<' com o
+--     valor 4. Ali é o certo, e é bom que doa: quer dizer que a fronteira mudou.
+--
+-- GRANT EXECUTE ON FUNCTION public.agenda_campo_marcar(uuid,uuid,uuid,date,int,int,int,text,text) TO authenticated;
+-- GRANT EXECUTE ON FUNCTION public.agenda_campo_cancelar(uuid)         TO authenticated;
+-- GRANT EXECUTE ON FUNCTION public.agenda_campo_cumprir(uuid, boolean) TO authenticated;
+-- GRANT EXECUTE ON FUNCTION public.desagendar_chamado(uuid)            TO authenticated;
 
 -- ╔══════════════════════════════════════════════════════════════════════╗
 -- ║ SE O PRÉ-VOO DO §1.1 ABORTAR (btree_gist não nasce)                  ║

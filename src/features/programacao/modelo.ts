@@ -51,6 +51,28 @@
 // `chamadoOculto()`, e por isso `divergenciaDeEquipe` devolve `null` — não uma
 // divergência — quando não dá para saber.
 //
+// ── AS QUATRO PORTAS ESTÃO FECHADAS ATÉ A TELA EXISTIR ─────────────────────
+// `agenda_campo_marcar`, `agenda_campo_cancelar`, `agenda_campo_cumprir` e
+// `desagendar_chamado` são concedidas SÓ a `service_role` na U78 — a migration
+// diz por quê ("aditiva quer dizer inerte"): porta sem consumidor concedida a
+// todo mundo é só superfície de ataque, e `desagendar_chamado` apaga
+// `data_hora_agendada` de um chamado de campo com UMA requisição. Enquanto a
+// migration da TELA não rodar os quatro GRANT que a U78 deixou prontos no
+// rodapé, todo `supabase.rpc(...)` para elas volta 42501.
+// Este arquivo continua valendo — ele é o que o formulário vai usar quando a
+// porta abrir —, mas a CAMADA DE DADOS não pode subir antes daquela migration.
+// `PORTAS_DA_AGENDA` existe para essa lista ter um lugar só, e a asserção que a
+// acompanha lê os GRANT do arquivo SQL.
+//
+// ── O QUE O FORMULÁRIO SABE ANTES DE CLICAR, E O QUE ELE NÃO PODE SABER ────
+// As portas recusam por PAPEL e por VÍNCULO (`is_gestor`, `pode_editar_chamado`,
+// a escala da semana). Nada disso é derivável daqui: são funções do banco. Então
+// a tela INJETA o resultado delas em `AutorizacaoDaAgenda`, do mesmo jeito que
+// injeta `rotuloDe` — o modelo puro antecipa a recusa, com a frase da RPC,
+// palavra por palavra, e nunca a substitui: quem autoriza é o servidor.
+// Mentir aqui não compra nada, porque o gesto morre do outro lado assim mesmo;
+// o que se perde é o usuário entender POR QUE ele morreu.
+//
 // ── O VOCABULÁRIO, QUE JÁ TEM DUAS COLISÕES E NÃO PODE TER A TERCEIRA ──────
 // · "equipe" sem adjetivo é DEPARTAMENTO (chamados.equipe, profiles.equipe,
 //   src/lib/equipes.ts, desde a U71). A turma de campo é "equipe de campo", e no
@@ -151,6 +173,13 @@ export interface BlocoDeAgenda {
  * medido: uma OS de fora marcada para as 10h era recusada pelo formulário e
  * aceita pela RPC. Regra que o servidor deriva do dado e a tela deriva de um
  * parâmetro é uma regra com duas respostas.
+ *
+ * `cumprido_em` NÃO ENTROU AQUI, e a ausência é decisão. "Este atendimento já
+ * aconteceu" é fato da LINHA VIVA, nunca do que o formulário deseja: pôr o campo
+ * no candidato daria à tela um jeito de afirmar que o bloco não foi feito para
+ * poder movê-lo — e a RPC lê a linha, não o gesto. Quem carrega esse fato é
+ * `ContextoDoAgendamento.blocoAtual`, o gêmeo do `SELECT … FOR UPDATE` do passo
+ * 1a de `agenda_campo_marcar`.
  */
 export interface BlocoCandidato {
   id: string | null;
@@ -200,6 +229,23 @@ export function dataDoDia(dia: string): Date | null {
   if (!m) return null;
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * A SEMANA DE UM DIA, e não a semana que alguém disse. Existe porque a escala é
+ * semanal e o gesto é diário: `dupla_da_pessoa(auth.uid(), v_dia)` na RPC olha a
+ * semana DO DIA DE DESTINO, e um contexto que carregasse "a semana da grade"
+ * consultaria a escala errada no gesto que empurra um bloco para a semana
+ * seguinte — justamente o gesto em que a resposta muda.
+ *
+ * `chaveDaSemana` continua injetada (a tela passa `referenciaSemanal`) porque é
+ * ela que faz a asserção provar que esta grade usa a MESMA chave ISO do resto do
+ * sistema, sem este módulo reimplementá-la. Dia impossível devolve `null`, e
+ * quem chama decide — aqui isso quer dizer "erro de forma, não de permissão".
+ */
+export function semanaDoDia(dia: string, chaveDaSemana: (d: Date) => string): string | null {
+  const d = dataDoDia(dia);
+  return d === null ? null : chaveDaSemana(d);
 }
 
 /**
@@ -343,6 +389,21 @@ export function blocoPendente(
   b: Pick<BlocoDeAgenda, "cancelado_em" | "cumprido_em">,
 ): boolean {
   return b.cancelado_em === null && b.cumprido_em === null;
+}
+
+/**
+ * O cartão PODE SER ARRASTADO. Bloco com "feito" não se move: a RPC recusa
+ * mudar dia, hora, equipe ou chamado de um bloco cumprido (§6.1, passo 2), e uma
+ * grade que deixa arrastar o que o servidor vai devolver é uma grade que ensina
+ * o usuário a desconfiar do arrasto.
+ *
+ * É um PREDICADO e não o erro: o erro nomeia o que mudou e é `erroDeMover`. Este
+ * aqui é a afordância — cursor, `draggable`, o cadeado no canto do card — e por
+ * isso ele viaja dentro de `ItemDaGrade`, resolvido, junto com `retorno` e
+ * `emergencial`.
+ */
+export function blocoSeMove(b: Pick<BlocoDeAgenda, "cumprido_em">): boolean {
+  return b.cumprido_em === null;
 }
 
 /**
@@ -552,6 +613,67 @@ export function isentoDaJornada(
   return ehEmergencial(chamado);
 }
 
+// ── QUEM ESTÁ OLHANDO: o gate das portas, do lado de cá ─────────────────────
+
+/**
+ * O que o modelo puro precisa saber sobre QUEM faz o gesto. Ele não descobre
+ * nada disso sozinho: `is_gestor` e `pode_editar_chamado` são funções do banco,
+ * e a tela injeta o resultado delas — o mesmo contrato de `rotuloDe`.
+ *
+ * `usuarioId` NULO É "NÃO HÁ SESSÃO", E O GATE INTEIRO PASSA. É o espelho exato
+ * do `IF auth.uid() IS NOT NULL THEN` do §6.1: na migration e no SQL Editor não
+ * há JWT, e ali gate nenhum faz sentido. Numa tela isso não acontece — sem
+ * sessão a chamada morre antes, no GRANT —, e é por isso que a direção escolhida
+ * aqui não é perigosa: mentir para si mesmo não abre porta nenhuma do outro
+ * lado, só faz o usuário descobrir a recusa depois de clicar.
+ *
+ * `podeEditarChamado` É O `pode_editar_chamado(uuid)` DEPOIS DA S2, e a S2 muda
+ * o que este gate significa: até ela, qualquer autenticado se gravava como apoio
+ * de qualquer chamado (`POST /chamado_apoios`) e o predicado era auto-emissível
+ * — um formulário de auto-atendimento com cara de autorização. Agora o apoio só
+ * conta quando é `origem='dupla'` (escrita do gatilho da escala, que ninguém
+ * forja) ou quando quem gravou não é a própria pessoa. `is_gestor` está dentro
+ * dele, então gestor passa em todos os ramos que o consultam.
+ */
+export interface AutorizacaoDaAgenda {
+  /** `auth.uid()`. `null` = não há sessão (SQL Editor, migration, teste) */
+  usuarioId: string | null;
+  /** `public.is_gestor(auth.uid())` */
+  ehGestor: boolean;
+  /** `public.pode_editar_chamado(uuid)` */
+  podeEditarChamado: (chamadoId: string) => boolean;
+}
+
+/**
+ * O VÍNCULO COM O BLOCO, que as três portas simples cobram igual: com chamado,
+ * quem responde por ele; sem chamado, quem responde pela operação. O verbo muda
+ * porque a frase da RPC muda — "mexe em", "desmarca", "dá baixa em" —, e são as
+ * palavras dela, não uma paráfrase.
+ *
+ * Uma função só para as três porque a regra é uma só: três cópias divergem, e a
+ * primeira a divergir foi `agenda_campo_cumprir`, que ficou sem o braço de
+ * gestor até a revisão da U78 achar a assimetria.
+ *
+ * `agenda_campo_marcar` NÃO usa esta função: lá o gestor passa por cima de tudo
+ * (`IF NOT v_gestor`), a recusa de serviço de fora olha os DOIS lados do gesto e
+ * ainda há a escala. Ver `erroDeAutorizacao`.
+ */
+function erroDoVinculo(
+  chamadoId: string | null,
+  autz: AutorizacaoDaAgenda,
+  verbo: "mexe em" | "desmarca" | "dá baixa em",
+): string | null {
+  if (!autz.usuarioId) return null;
+  if (chamadoId === null) {
+    return autz.ehGestor
+      ? null
+      : `Só quem responde pela operação ${verbo} serviço fora do sistema.`;
+  }
+  return autz.podeEditarChamado(chamadoId)
+    ? null
+    : "Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.";
+}
+
 // ── O ERRO, em português, nomeando o obstáculo ──────────────────────────────
 
 /**
@@ -560,20 +682,147 @@ export function isentoDaJornada(
  * que o BANCO não pega — devolvia `null` calado onde havia conflito. Esquecer
  * dois parâmetros na tela apagaria a regra inteira, e nem o `tsc` nem o
  * verificador notariam. Opção que desliga uma regra em silêncio não é opção.
+ *
+ * `semana` SAIU E VIROU `chaveDaSemana`. Ela era um valor recebido, e um valor
+ * recebido pode discordar do gesto: a escala que manda é a da semana do DIA DE
+ * DESTINO (é o que `dupla_da_pessoa(auth.uid(), v_dia)` consulta na RPC), e
+ * empurrar um bloco para a semana seguinte com "a semana da grade" no contexto
+ * consultaria a escala errada exatamente no gesto em que a resposta muda. Agora
+ * a semana é DERIVADA de `cand.dia`, e o contexto não tem como discordar dele.
  */
 export interface ContextoDoAgendamento {
   /** todos os blocos daquele dia (de todas as equipes) */
   blocosDoDia: BlocoDeAgenda[];
+  /**
+   * A LINHA VIVA que este gesto vai reescrever (`cand.id` não nulo), ou `null`
+   * quando é bloco novo. É o gêmeo do `SELECT … FOR UPDATE` do passo 1a de
+   * `agenda_campo_marcar`, e ele existe porque a porta autoriza e recusa sobre o
+   * ESTADO, não sobre os argumentos: quem manda no bloco que SAI, e o "feito"
+   * que impede mover. Um `cand.id` sem `blocoAtual` é contexto desencontrado, e
+   * cai na mesma frase que a RPC dá quando o `SELECT` não acha a linha.
+   */
+  blocoAtual: BlocoDeAgenda | null;
   /**
    * O chamado de `cand.chamado_id` — ou `null` quando não há chamado, e também
    * quando este usuário não pode lê-lo. Os dois casos caem no lado seguro
    * (jornada aplicada, eixo pessoa não avaliado).
    */
   chamado: ChamadoParaGrade | null;
-  semana: string;
   escala: Escala;
+  /** a chave ISO da semana (a tela passa `referenciaSemanal`) */
+  chaveDaSemana: (d: Date) => string;
   /** o modelo puro não conhece nomes — ele os pede */
   rotuloDe: (b: BlocoDeAgenda) => string;
+  /** quem está fazendo o gesto, e o que o banco responde sobre ele */
+  autz: AutorizacaoDaAgenda;
+}
+
+/** A linha viva DESTE gesto — contexto desencontrado não vale como linha. */
+function atualDoGesto(cand: BlocoCandidato, ctx: ContextoDoAgendamento): BlocoDeAgenda | null {
+  return ctx.blocoAtual && ctx.blocoAtual.id === cand.id ? ctx.blocoAtual : null;
+}
+
+/**
+ * O GATE DE `agenda_campo_marcar` (§6.1, passo 1c), inteiro e na ordem dele:
+ *
+ *     is_gestor  OU  (pode editar o que SAI  E  pode editar o que ENTRA
+ *                     E  dupla_da_pessoa(auth.uid(), dia) = a equipe de destino)
+ *
+ * Cada camada fecha um caminho que as outras deixam abertas, e a de ESCALA é a
+ * que faltava por inteiro: sem ela a função nunca olhava para a equipe, e quem
+ * respondesse por um chamado qualquer ocupava a terça-feira de QUALQUER time.
+ *
+ * A CONSEQUÊNCIA PARA A TELA, dita aqui porque ela é de desenho e não de
+ * validação: para quem não é gestor, a grade é SOMENTE LEITURA fora da linha da
+ * própria equipe. O cartão que ele não pode mover não deve nem parecer
+ * arrastável — o erro é a última defesa, não a primeira.
+ *
+ * A ESCALA SÓ É CONFERIDA COM DIA E EQUIPE PRESENTES, e o motivo é o mesmo que
+ * a RPC escreve: com o dia em branco a comparação diria "você não está na escala
+ * desta equipe", uma recusa de AUTORIZAÇÃO para um erro de FORMA — mandando o
+ * gestor procurar permissão onde falta um campo. Quem dá a frase certa é o passo
+ * de forma, logo adiante, e nada é gravado entre um e outro.
+ */
+export function erroDeAutorizacao(
+  cand: BlocoCandidato,
+  ctx: ContextoDoAgendamento,
+): string | null {
+  const autz = ctx.autz;
+  if (!autz.usuarioId || autz.ehGestor) return null;
+  const atual = atualDoGesto(cand, ctx);
+
+  // (i) serviço fora do sistema, dos DOIS lados: o que está lá e o que vai
+  //     ficar. Um PATCH que mantém `chamado_id` nulo é mexer num bloco de
+  //     gestão tanto quanto criar um — e olhando só o destino, ele escapava.
+  if (cand.chamado_id === null || (cand.id !== null && atual !== null && atual.chamado_id === null)) {
+    return "Só quem responde pela operação mexe em serviço fora do sistema.";
+  }
+  // (ii) o chamado que SAI. Sem esta camada, quem abre um chamado bobo arrasta
+  //      para ele o bloco de um chamado que não pode nem ler, e o espelho
+  //      escreve NULL na data do chamado roubado, sem sino nenhum.
+  if (atual !== null && atual.chamado_id !== null && !autz.podeEditarChamado(atual.chamado_id)) {
+    return "Este horário é de um atendimento pelo qual você não responde. Peça a quem responde por ele, ou à gestão.";
+  }
+  // (iii) o chamado que ENTRA
+  if (!autz.podeEditarChamado(cand.chamado_id)) {
+    return "Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.";
+  }
+  // (iv) a ESCALA da equipe de DESTINO, na semana do dia de destino. Sem escala
+  //      recusa junto com "outra equipe", e é o certo: quem não está escalado
+  //      não ocupa agenda de campo nenhuma.
+  const semana = cand.dia ? semanaDoDia(cand.dia, ctx.chaveDaSemana) : null;
+  if (semana !== null && cand.dupla_id) {
+    if (duplaDaPessoaNaSemana(autz.usuarioId, semana, ctx.escala) !== cand.dupla_id) {
+      return "Você não está na escala desta equipe nesta semana — quem programa a agenda de outra equipe é a gestão.";
+    }
+  }
+  return null;
+}
+
+/**
+ * O QUE JÁ ACONTECEU NÃO SE MOVE (§6.1, passo 2). `cumprido_em` preenchido é a
+ * afirmação "a equipe esteve no prédio nesse dia, nesse horário"; mover o bloco
+ * reescreve a ocupação de uma semana PASSADA (o chip do histórico muda para
+ * trás) e, pelo estágio 2 do espelho, manda `data_hora_agendada` para um dia em
+ * que ninguém esteve.
+ *
+ * A RECUSA É ESTREITA DE PROPÓSITO: dia, hora, equipe e chamado são a afirmação
+ * sobre QUANDO e COM QUEM. DURAÇÃO e DESLOCAMENTO continuam editáveis — eles são
+ * MEDIÇÃO do que houve ("levou três horas, não uma"), e proibir a correção
+ * obrigaria a apagar o bloco para consertar um número.
+ */
+export function erroDeMover(
+  atual: Pick<BlocoDeAgenda, "cumprido_em" | "dia" | "inicio_min" | "dupla_id" | "chamado_id">,
+  desejado: Pick<BlocoCandidato, "dia" | "inicio_min" | "dupla_id" | "chamado_id">,
+): string | null {
+  if (blocoSeMove(atual)) return null;
+  const mudouOQuando =
+    atual.dia !== desejado.dia ||
+    atual.inicio_min !== desejado.inicio_min ||
+    atual.dupla_id !== desejado.dupla_id ||
+    atual.chamado_id !== desejado.chamado_id;
+  if (!mudouOQuando) return null;
+  return 'Este atendimento já está marcado como feito — mudar o dia, a hora, a equipe ou o chamado dele reescreveria o registro de que ele aconteceu. Se ele NÃO aconteceu assim, tire o "feito" do bloco primeiro. A duração e o deslocamento você pode corrigir sem tirar.';
+}
+
+/**
+ * COMO SE CHAMA O ATENDIMENTO QUE ESTE USUÁRIO NÃO PODE LER. É a mesma palavra
+ * do servidor (`agenda_campo_frase_do_conflito` devolve `'outro atendimento'`
+ * quando `pode_editar_chamado` diz não), em duas caixas, porque ela aparece em
+ * dois lugares gramaticalmente diferentes: sozinha no cartão da grade e no meio
+ * de uma frase, entre aspas, dentro da recusa.
+ *
+ * As duas formas existem para o gêmeo ser gêmeo LITERAL: a RPC escreve
+ * `Esta equipe já está em "outro atendimento" das …` com minúscula, e o
+ * formulário escrevendo `"Outro atendimento"` seria a mesma recusa com dois
+ * textos — o defeito de sempre, agora numa letra só.
+ */
+export const ROTULO_DO_OCULTO = "Outro atendimento";
+export const ROTULO_DO_OCULTO_NA_FRASE = "outro atendimento";
+
+/** O rótulo como ele entra no MEIO de uma frase. Só o oculto muda de caixa. */
+function rotuloNaFrase(rotulo: string): string {
+  return rotulo === ROTULO_DO_OCULTO ? ROTULO_DO_OCULTO_NA_FRASE : rotulo;
 }
 
 /**
@@ -586,16 +835,24 @@ export interface ContextoDoAgendamento {
  * passo a passo — antes a RPC checava a jornada ANTES do conflito, e um bloco
  * que violasse as duas recebia do formulário a frase específica e do servidor a
  * agregada: a mesma regra falando duas línguas.
- *   1. forma       — equipe/dia/hora, duração, deslocamento
- *   2. física      — o dia tem 1440 minutos e a estrada vem antes
- *   3. identidade  — bloco sem chamado precisa de título
- *   4. conflito    — específico e acionável: "a equipe já está em X às Y"
- *   5. pessoa      — só aqui (não existe no banco: a EXCLUDE é por equipe)
- *   6. saída       — política: a equipe só sai às 09h
- *   7. jornada     — política: 8h de campo é o teto
- * Os itens 6 e 7 são pulados pelas isenções (`isentoDaJornada`). Os itens 1 a 5
+ *   1. a linha     — o bloco que o gesto diz reescrever ainda está lá? (passo 1a)
+ *   2. quem manda  — o gate das três camadas (`erroDeAutorizacao`, passo 1c)
+ *   3. o feito     — o que já aconteceu não se move (`erroDeMover`, passo 2)
+ *   4. forma       — equipe/dia/hora, duração, deslocamento
+ *   5. física      — o dia tem 1440 minutos e a estrada vem antes
+ *   6. identidade  — bloco sem chamado precisa de título
+ *   7. conflito    — específico e acionável: "a equipe já está em X às Y"
+ *   8. pessoa      — só aqui (não existe no banco: a EXCLUDE é por equipe)
+ *   9. saída       — política: a equipe só sai às 09h
+ *  10. jornada     — política: 8h de campo é o teto
+ * Os itens 9 e 10 são pulados pelas isenções (`isentoDaJornada`). Os itens 1 a 8
  * nunca são: eles não são política, e nenhuma urgência põe a mesma equipe em
  * dois prédios.
+ *
+ * OS TRÊS PRIMEIROS SÃO NOVOS, e eles vêm antes da forma porque vêm antes na
+ * RPC. A ordem não é gosto: um gesto que viola a autorização E a forma tem de
+ * receber a MESMA frase dos dois lados, senão a validação do cliente vira uma
+ * segunda regra — que é o defeito que este arquivo inteiro existe para não ter.
  *
  * AS FRASES SÃO AS DA RPC, palavra por palavra. Mudar uma aqui sem mudar a
  * outra faz o usuário ver dois textos para a mesma recusa dependendo de a
@@ -605,7 +862,28 @@ export function erroDoAgendamento(
   cand: BlocoCandidato,
   ctx: ContextoDoAgendamento,
 ): string | null {
-  // ── 1. forma ────────────────────────────────────────────────────────────
+  const atual = atualDoGesto(cand, ctx);
+
+  // ── 1. a linha que o gesto vai reescrever ───────────────────────────────
+  // Gêmeo do `IF NOT FOUND` do passo 1a. Contexto desencontrado (a tela trocou
+  // de cartão e não trocou o bloco) cai aqui de propósito: o gate e a recusa do
+  // "feito" leem esta linha, e decidir sobre a linha errada é pior do que pedir
+  // para recarregar.
+  if (cand.id !== null && atual === null) {
+    return "Este bloco não existe mais — recarregue a grade e refaça o gesto.";
+  }
+
+  // ── 2. quem manda neste bloco hoje ──────────────────────────────────────
+  const naoPode = erroDeAutorizacao(cand, ctx);
+  if (naoPode) return naoPode;
+
+  // ── 3. o que já aconteceu não se move ───────────────────────────────────
+  if (atual) {
+    const imovel = erroDeMover(atual, cand);
+    if (imovel) return imovel;
+  }
+
+  // ── 4. forma ────────────────────────────────────────────────────────────
   if (!cand.dupla_id || !cand.dia || !Number.isFinite(cand.inicio_min)) {
     return "Diga a equipe, o dia e a hora do atendimento.";
   }
@@ -620,7 +898,7 @@ export function erroDoAgendamento(
     return "O tempo de deslocamento não pode ser negativo.";
   }
 
-  // ── 2. física ───────────────────────────────────────────────────────────
+  // ── 5. física ───────────────────────────────────────────────────────────
   if (cand.inicio_min < 0 || cand.inicio_min > MINUTOS_DO_DIA - 1) {
     return "A hora do atendimento tem de estar dentro do dia.";
   }
@@ -632,7 +910,7 @@ export function erroDoAgendamento(
     return `Começando ${horaTexto(cand.inicio_min)} e durando ${duracaoTexto(cand.servico_min)}, o atendimento passaria da meia-noite.`;
   }
 
-  // ── 3. identidade ───────────────────────────────────────────────────────
+  // ── 6. identidade ───────────────────────────────────────────────────────
   if (!cand.chamado_id && !(cand.titulo_externo ?? "").trim()) {
     return "Um bloco sem chamado precisa de um título — diga o que é este serviço.";
   }
@@ -643,36 +921,48 @@ export function erroDoAgendamento(
   const doCandidato =
     ctx.chamado && ctx.chamado.id === cand.chamado_id ? ctx.chamado : null;
 
-  // ── 4. conflito de EQUIPE ───────────────────────────────────────────────
+  // ── 7. conflito de EQUIPE ───────────────────────────────────────────────
+  // O conflitante é o PRIMEIRO da lista, e a lista tem ordem TOTAL (dia, hora,
+  // id) — a mesma do `ORDER BY a.inicio_min, a.id` que a RPC ganhou antes do
+  // `LIMIT 1`. Sem a mesma ordem dos dois lados, a MESMA recusa sai com nomes
+  // diferentes conforme quem respondeu, e mensagem que muda sozinha ensina o
+  // usuário a não lê-la.
   const colide = conflitosDoBloco(cand, ctx.blocosDoDia);
   if (colide.length > 0) {
     const o = colide[0];
     const jo = janelaDoBloco(o);
-    return `Esta equipe já está em "${ctx.rotuloDe(o)}" das ${horaTexto(jo.de)} às ${horaTexto(jo.ate)} nesse dia.`;
+    return `Esta equipe já está em "${rotuloNaFrase(ctx.rotuloDe(o))}" das ${horaTexto(jo.de)} às ${horaTexto(jo.ate)} nesse dia.`;
   }
 
-  // ── 5. conflito de PESSOA (não existe no banco) ─────────────────────────
+  // ── 8. conflito de PESSOA (não existe no banco) ─────────────────────────
+  // A semana é a do DIA DO CANDIDATO, e o `null` volta a ser erro de FORMA em
+  // vez de desligar o eixo em silêncio: o passo 4 já recusou data fora de
+  // formato, mas se um dia ele mudar, a única regra que o banco não pega não
+  // pode sumir sem uma palavra (foi assim que ela sumiu quando `semana` e
+  // `escala` eram opcionais).
+  const semana = semanaDoDia(cand.dia, ctx.chaveDaSemana);
+  if (semana === null) return `Data fora do formato AAAA-MM-DD: ${cand.dia}.`;
   const pessoa = conflitosDaPessoa(
     doCandidato?.responsavel_id ?? null,
     cand,
     ctx.blocosDoDia,
-    ctx.semana,
+    semana,
     ctx.escala,
   );
   if (pessoa.length > 0) {
     const o = pessoa[0];
     const jo = janelaDoBloco(o);
-    return `O responsável já está em "${ctx.rotuloDe(o)}" com a equipe dele das ${horaTexto(jo.de)} às ${horaTexto(jo.ate)} nesse dia.`;
+    return `O responsável já está em "${rotuloNaFrase(ctx.rotuloDe(o))}" com a equipe dele das ${horaTexto(jo.de)} às ${horaTexto(jo.ate)} nesse dia.`;
   }
 
   if (isentoDaJornada(cand.chamado_id, doCandidato)) return null;
 
-  // ── 6. a saída ──────────────────────────────────────────────────────────
+  // ── 9. a saída ──────────────────────────────────────────────────────────
   if (j.de < CAMPO_ABRE_MIN) {
     return `A equipe só sai às ${horaTexto(CAMPO_ABRE_MIN)} — com ${duracaoTexto(cand.deslocamento_min)} de deslocamento o atendimento não pode começar antes das ${horaTexto(CAMPO_ABRE_MIN + cand.deslocamento_min)}.`;
   }
 
-  // ── 7. a jornada ────────────────────────────────────────────────────────
+  // ── 10. a jornada ───────────────────────────────────────────────────────
   const doDia = blocosDaEquipeNoDia(cand.dupla_id, cand.dia, ctx.blocosDoDia).filter(
     (b) => b.id !== cand.id,
   );
@@ -695,15 +985,101 @@ export function erroDoAgendamento(
  * frase é a mesma para o usuário não ver dois textos.
  */
 export function erroDoCancelamento(
-  b: Pick<BlocoDeAgenda, "cumprido_em">,
+  b: Pick<BlocoDeAgenda, "chamado_id" | "cumprido_em">,
+  autz: AutorizacaoDaAgenda,
 ): string | null {
+  // A ORDEM É A DA RPC: o vínculo primeiro, o registro depois. Trocar diria a
+  // quem nem pode desmarcar que o problema é o "feito".
+  const naoPode = erroDoVinculo(b.chamado_id, autz, "desmarca");
+  if (naoPode) return naoPode;
   if (b.cumprido_em !== null) {
     return 'Este atendimento já está marcado como feito — desmarcá-lo apagaria o registro de que ele aconteceu. Se ele NÃO aconteceu, tire o "feito" do bloco primeiro e desmarque depois.';
   }
   return null;
 }
 
+/**
+ * "NÃO DIZER NADA" E "DIZER NADA" SÃO A MESMA COISA, e as duas querem dizer
+ * MARQUE. Gêmeo do `_feito := COALESCE(_feito, true)` de `agenda_campo_cumprir`:
+ * o parâmetro tem `DEFAULT true`, mas um cliente que mandasse `{"_feito": null}`
+ * caía no `ELSE` do CASE e APAGAVA o "feito" em silêncio — a direção destrutiva
+ * escolhida por omissão, que é a pior de todas porque ninguém a pediu.
+ */
+export function baixaPedida(feito: boolean | null | undefined): boolean {
+  return feito ?? true;
+}
+
+/**
+ * O gêmeo de `agenda_campo_cumprir` (U78 §6.3). Duas recusas:
+ *   · o vínculo — e bloco sem chamado é ato de gestão aqui também. Esta era a
+ *     única das quatro portas sem o braço de gestor, e o estrago pequeno (dar
+ *     baixa em serviço de fora não espelha nem entra na ocupação) é justamente o
+ *     que faria a inconsistência sobreviver: ninguém a veria;
+ *   · BLOCO DESMARCADO NÃO RECEBE "FEITO". É o par da recusa do §6.2 pelo outro
+ *     lado: lá, cancelar um bloco cumprido é recusado porque `cancelado_em` e
+ *     `cumprido_em` preenchidos juntos são um estado que nada na grade sabe ler.
+ *     Sem esta linha o mesmo estado nascia invertendo a ordem dos cliques.
+ * Tirar o "feito" de um bloco cancelado continua passando: aí o estado some.
+ */
+export function erroDaBaixa(
+  b: Pick<BlocoDeAgenda, "chamado_id" | "cancelado_em">,
+  feito: boolean | null | undefined,
+  autz: AutorizacaoDaAgenda,
+): string | null {
+  const naoPode = erroDoVinculo(b.chamado_id, autz, "dá baixa em");
+  if (naoPode) return naoPode;
+  if (baixaPedida(feito) && b.cancelado_em !== null) {
+    return "Este bloco está desmarcado — não dá para dar baixa em atendimento que foi cancelado. Remarque-o primeiro, se ele aconteceu.";
+  }
+  return null;
+}
+
+/**
+ * O gêmeo de `desagendar_chamado` (U78 §6.4) — o ato deliberado, que é diferente
+ * de desmarcar um bloco. Duas recusas, na ordem da RPC: o vínculo e a NATUREZA.
+ *
+ * A agenda de campo não manda em chamado comercial: aquela agenda é da visita
+ * técnica (U41), que tem gatilho próprio. A função no banco é SECURITY DEFINER e
+ * passa por cima de `chamados_update`, então a divisão que o §3 faz por
+ * estrutura precisa ser dita aqui por escrito — nos dois lados.
+ *
+ * O QUE ESTA FUNÇÃO NÃO PROMETE: que a data vai sumir. Ver
+ * `espelhoAposDesagendar` — com bloco cumprido sobrando, `data_hora_agendada`
+ * fica no último atendimento que ACONTECEU, de propósito. O texto do botão e o
+ * da confirmação não podem dizer "o horário some".
+ */
+export function erroDoDesagendamento(
+  c: Pick<ChamadoParaGrade, "id" | "natureza">,
+  autz: AutorizacaoDaAgenda,
+): string | null {
+  if (autz.usuarioId && !autz.podeEditarChamado(c.id)) {
+    return "Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.";
+  }
+  if (c.natureza !== "campo") {
+    return `A agenda de campo não manda em chamado comercial (este é "${c.natureza ?? "sem natureza"}") — quem desmarca a visita é a própria visita técnica.`;
+  }
+  return null;
+}
+
 // ── O CONTRATO DAS PORTAS: como um erro do banco vira reação na tela ────────
+
+/**
+ * AS QUATRO PORTAS DE ESCRITA DA AGENDA, pelo nome com que a camada de dados vai
+ * chamá-las. A lista existe para ter UM lugar, e para a asserção poder ler os
+ * `GRANT` do arquivo da U78 e provar o que este arquivo afirma no cabeçalho:
+ * hoje elas são concedidas SÓ a `service_role`.
+ *
+ * ENQUANTO ISSO FOR VERDADE, `supabase.rpc(<qualquer uma>)` volta 42501 para
+ * todo usuário logado. Não é bug e não é falta de permissão do usuário: é a U78
+ * sendo inerte de propósito até a migration da TELA rodar os quatro GRANT que
+ * ela deixou prontos no rodapé. A camada de dados não pode subir antes disso.
+ */
+export const PORTAS_DA_AGENDA = [
+  "agenda_campo_marcar",
+  "agenda_campo_cancelar",
+  "agenda_campo_cumprir",
+  "desagendar_chamado",
+] as const;
 
 /**
  * As três classes de erro que as RPCs do §6 devolvem. O cliente reage pelo
@@ -886,6 +1262,33 @@ export function espelhoDoChamado(
 }
 
 /**
+ * ONDE A DATA DO CHAMADO VAI PARAR DEPOIS DE "TIRAR DA AGENDA". E ela NEM SEMPRE
+ * FICA NULA: `desagendar_chamado` cancela só o que ainda VAI acontecer (bloco
+ * cumprido é registro, não agenda), então, sobrando bloco cumprido, o estágio 2
+ * do espelho põe `data_hora_agendada` no ÚLTIMO atendimento que ACONTECEU. Isso
+ * é desenho, não resto: o chamado continua aberto (esperando peça, digamos) e
+ * some do calendário e do PDF se a data zerar por ter sido atendido.
+ *
+ * A tela precisa disto porque o TEXTO muda: com bloco cumprido, "o horário some"
+ * é mentira — o certo é "aberto, e a última visita foi dia tal".
+ *
+ * Reusa `espelhoDoChamado` em vez de reescrever os dois estágios: a regra tem um
+ * dono. O carimbo de cancelamento aqui é um valor QUALQUER não nulo, porque a
+ * única coisa que o espelho pergunta a ele é `=== null`.
+ */
+export function espelhoAposDesagendar(
+  chamadoId: string,
+  blocos: BlocoDeAgenda[],
+): { dia: string; inicio_min: number } | null {
+  const depois = blocos.map((b) =>
+    b.chamado_id === chamadoId && blocoPendente(b)
+      ? { ...b, cancelado_em: "(desagendado)" }
+      : b,
+  );
+  return espelhoDoChamado(chamadoId, depois);
+}
+
+/**
  * O que o espelho já vale HOJE para um chamado, lido da coluna. Serve para a
  * tela comparar sem refazer a conta, e para a asserção provar que o par
  * calculado e o gravado são o mesmo instante.
@@ -900,19 +1303,34 @@ export function espelhoIgual(
 
 /**
  * O espelho gravado bate com os blocos? É a versão de UMA LINHA da consulta
- * "quem não casou" do §9.8 da U78 — a que tem de vir vazia e que, daqui a um
+ * "quem não casou" do §9.0 da U78 — a que tem de vir vazia e que, daqui a um
  * mês, divergir é NOTÍCIA (quer dizer que alguém escreveu
  * `chamados.data_hora_agendada` de um chamado de campo por fora do satélite; as
  * três telas antigas ainda sabem fazer isso — ver PENDENCIAS_TECNICAS).
+ *
+ * OS DOIS FILTROS DA CONSULTA ESTAVAM FALTANDO AQUI, e sem eles a função acusava
+ * 100% DA BASE NO DIA 1. Medido: `espelhoConfere({campo, aberto, com data}, [])`
+ * devolvia `false`, e `false` também para o chamado concluído e para o
+ * comercial. A consulta do §9.0 tem três condições que esta função não tinha:
+ *   · `natureza='campo' AND status NOT IN ('concluido','cancelado')` — quem não
+ *     é assunto desta tela não é divergência desta tela (é `naProgramacao`);
+ *   · `e.quando IS NOT NULL` — chamado com data LEGADA e nenhum bloco não é
+ *     divergência, é a faixa "agendado sem horário", que é a barra de progresso
+ *     da migração e no dia 1 está certa e cheia.
+ * Divergência que aparece para a base inteira é divergência que se aprende a
+ * ignorar, e aí a que importa passa junto.
+ *
+ * "Confere" quer dizer "NÃO É NOTÍCIA": o `true` do chamado fora de escopo é a
+ * ausência dele na lista, não uma afirmação sobre a data dele.
  */
 export function espelhoConfere(
-  chamado: Pick<ChamadoParaGrade, "id" | "data_hora_agendada">,
+  chamado: Pick<ChamadoParaGrade, "id" | "natureza" | "status" | "data_hora_agendada">,
   blocos: BlocoDeAgenda[],
 ): boolean {
-  return espelhoIgual(
-    espelhoDoChamado(chamado.id, blocos),
-    parDoInstante(chamado.data_hora_agendada),
-  );
+  if (!naProgramacao(chamado)) return true;
+  const calculado = espelhoDoChamado(chamado.id, blocos);
+  if (calculado === null) return true;
+  return espelhoIgual(calculado, parDoInstante(chamado.data_hora_agendada));
 }
 
 // ── O PATCH MÍNIMO: o `IS DISTINCT FROM` do lado do TypeScript ──────────────
@@ -945,6 +1363,15 @@ export interface BlocoEditavel {
  *
  * O `WHERE ... IS DISTINCT FROM` do espelho continua existindo no banco e
  * continua sendo obrigatório — este é a primeira barreira, não a única.
+ *
+ * E É ELE QUEM RESOLVE O `_deslocamento_min`, que mudou de semântica na porta.
+ * O parâmetro era `DEFAULT 0` e virou `DEFAULT NULL`: num PATCH, um default que
+ * não é NULL é um apagador disfarçado — o PostgREST preenche o default de todo
+ * parâmetro que não vem no corpo, então arrastar o cartão zerava os 45 minutos
+ * de estrada digitados, encolhendo a janela do EXCLUDE e inventando 45 minutos
+ * de capacidade no dia. Agora omitir quer dizer "não mexi", e o ZERO de "não tem
+ * deslocamento" se escreve mandando `0` de propósito. Este patch faz exatamente
+ * isso: 45 → 0 é uma mudança, entra; não mexer não entra.
  */
 export function patchDoBloco(
   atual: BlocoEditavel,
@@ -1005,6 +1432,27 @@ export function mexeNoEspelho(patch: Partial<BlocoEditavel>): boolean {
   return COLUNAS_DO_ESPELHO.some((k) => patch[k] !== undefined);
 }
 
+/**
+ * QUAIS CHAMADOS ESTE GESTO MEXEU — e são DOIS quando o bloco troca de chamado.
+ *
+ * A porta ajusta o status dos dois lados: `aberto → agendado` no destino e
+ * `agendado → aberto` na origem que ficou sem bloco pendente. O espelho também:
+ * o gatilho recalcula a data do chamado que ganhou e a do que perdeu. Uma tela
+ * que refaz a busca só do destino deixa o cartão de origem com o chip e a data
+ * velhos na tela até alguém recarregar — e o que ela mostra ali é exatamente a
+ * segunda verdade que esta entrega existe para matar.
+ *
+ * Devolve os ids sem repetição e sem nulo (bloco sem chamado não tem chamado a
+ * recarregar). Serve para invalidar cache/refetch, não para autorizar nada.
+ */
+export function chamadosTocadosPeloGesto(
+  atual: Pick<BlocoDeAgenda, "chamado_id"> | null,
+  desejado: Pick<BlocoCandidato, "chamado_id">,
+): string[] {
+  const ids = [atual?.chamado_id ?? null, desejado.chamado_id];
+  return [...new Set(ids.filter((id): id is string => typeof id === "string" && id !== ""))];
+}
+
 // ── OS BALDES, exaustivos ───────────────────────────────────────────────────
 
 export type ClasseDoChamado = "com_bloco" | "sem_horario" | "sem_data" | "fora_da_programacao";
@@ -1044,6 +1492,13 @@ export function naProgramacao(
  * hoje escreve `T12:00:00` literal) misturado com 12:00 DE VERDADE
  * (novo-campo, PainelChamado), indistinguíveis por valor. O único predicado
  * honesto é "tem data e não tem bloco".
+ *
+ * `temBlocoAtivo` É `blocoVale` (não cancelado), E ISSO INCLUI O CUMPRIDO — de
+ * propósito, e é o gêmeo literal do `a.cancelado_em IS NULL` da linha 701. Estes
+ * baldes medem a MIGRAÇÃO ("alguém já deu horário a este chamado?"), e a visita
+ * que aconteceu deu: contar só o pendente faria a barra de progresso ANDAR PARA
+ * TRÁS quando uma equipe termina um atendimento sem retorno marcado. Quem conta
+ * pendente é `statusAposOsBlocos`, que responde outra pergunta.
  */
 export function classificarChamado(
   c: Pick<ChamadoParaGrade, "data_hora_agendada" | "natureza" | "status">,
@@ -1068,6 +1523,50 @@ export function semHorario(
     blocos.filter((b) => blocoVale(b) && b.chamado_id).map((b) => b.chamado_id as string),
   );
   return chamados.filter((c) => classificarChamado(c, comBloco.has(c.id)) === "sem_horario");
+}
+
+/**
+ * O CHAMADO TEM COMPROMISSO MARCADO QUE AINDA VAI ACONTECER. É bloco PENDENTE:
+ * nem cancelado, nem cumprido.
+ *
+ * NÃO É O MESMO PREDICADO DE `classificarChamado`, e a diferença tem nome. Lá o
+ * que interessa é "alguém já deu horário a este chamado no sistema novo" — e a
+ * visita que já aconteceu deu —, então o filtro é `blocoVale`, o mesmo
+ * `cancelado_em IS NULL` da linha 701 da conferência. Aqui o que interessa é
+ * "há algo marcado à frente", que é o que a palavra `agendado` promete no chip.
+ * Contar cumprido como agenda é o defeito que a U78 corrigiu nas duas portas: o
+ * chamado que teve a visita de terça e teve o retorno da quinta desmarcado
+ * ficava `agendado` para sempre, sem nada pendente.
+ */
+export function temCompromisso(chamadoId: string, blocos: BlocoDeAgenda[]): boolean {
+  return blocos.some((b) => b.chamado_id === chamadoId && blocoPendente(b));
+}
+
+/**
+ * O STATUS QUE AS PORTAS DEIXAM. Gêmeo do passo 8 de `agenda_campo_marcar`
+ * (`aberto → agendado` no destino, `agendado → aberto` na origem que ficou sem
+ * bloco pendente), da metade de baixo de `agenda_campo_cancelar` e do
+ * `desagendar_chamado`.
+ *
+ * As três transições são ESTREITAS de propósito: só `aberto` vira `agendado` e
+ * só `agendado` volta a `aberto`. Chamado em execução, concluído ou cancelado
+ * não é remexido por marcação de agenda — o estado dele foi afirmado por alguém,
+ * e agenda não desafirma trabalho.
+ *
+ * `natureza` diferente de campo devolve o status como está: as três portas
+ * carregam `AND natureza = 'campo'` no UPDATE, e a agenda comercial é da visita
+ * técnica (U41). A tela usa isto para antecipar o chip sem esperar o refetch —
+ * e para a asserção provar que os dois lados contam PENDENTE, não ativo.
+ */
+export function statusAposOsBlocos(
+  c: Pick<ChamadoParaGrade, "id" | "status" | "natureza">,
+  blocos: BlocoDeAgenda[],
+): string | null {
+  if (c.natureza !== "campo") return c.status;
+  const pendente = temCompromisso(c.id, blocos);
+  if (pendente && c.status === "aberto") return "agendado";
+  if (!pendente && c.status === "agendado") return "aberto";
+  return c.status;
 }
 
 // ── A DIVERGÊNCIA: mostra, não conserta ─────────────────────────────────────
@@ -1140,6 +1639,13 @@ export interface ItemDaGrade {
   ordinal: number;
   retorno: boolean;
   emergencial: boolean;
+  /**
+   * o cartão pode ser ARRASTADO. Falso no bloco cumprido — a porta recusa mudar
+   * dia, hora, equipe ou chamado dele, e oferecer o arrasto é prometer o que o
+   * servidor vai negar. Duração e deslocamento continuam editáveis pelo
+   * formulário: são medição, não afirmação sobre quando.
+   */
+  seMove: boolean;
   /** o bloco tem chamado que este usuário não pode ler */
   oculto: boolean;
   divergencia: Divergencia;
@@ -1178,9 +1684,11 @@ export interface LinhaDaGrade {
  * O TERCEIRO CASO É O QUE FALTAVA: bloco COM chamado e sem chamado carregado.
  * Ele caía no ramo de baixo e se apresentava como "Serviço fora do sistema" —
  * uma CATEGORIA DE GESTÃO (só gestor marca serviço de fora) posta em cima do
- * atendimento alheio que o técnico não pode ler. "Outro atendimento" são as
+ * atendimento alheio que o técnico não pode ler. `ROTULO_DO_OCULTO` são as
  * mesmas palavras que `agenda_campo_frase_do_conflito` usa no servidor quando
- * `pode_editar_chamado` diz não; os dois lados escondem a mesma coisa com o
+ * `pode_editar_chamado` diz não — em caixa alta aqui porque no cartão ela vem
+ * sozinha, e em caixa baixa dentro da frase de recusa, que é como a RPC a
+ * escreve (ver `rotuloNaFrase`). Os dois lados escondem a mesma coisa com o
  * mesmo nome, e o HORÁRIO continua aparecendo, que é o que permite remarcar sem
  * descobrir o parque de chamados dos outros.
  */
@@ -1191,7 +1699,7 @@ export function rotuloDoBloco(bloco: BlocoDeAgenda, chamado: ChamadoParaGrade | 
     if (n && t) return `${n} · ${t}`;
     return n || t || "Chamado sem título";
   }
-  if (chamadoOculto(bloco, chamado)) return "Outro atendimento";
+  if (chamadoOculto(bloco, chamado)) return ROTULO_DO_OCULTO;
   const t = (bloco.titulo_externo ?? "").trim();
   const os = (bloco.os_externa ?? "").trim();
   if (t && os) return `${os} · ${t}`;
@@ -1230,6 +1738,7 @@ export function celulaDaGrade(
       ordinal,
       retorno: ordinal > 1,
       emergencial: ehEmergencial(chamado),
+      seMove: blocoSeMove(b),
       oculto: chamadoOculto(b, chamado),
       divergencia: divergenciaDeEquipe(b, chamado, semana, escala),
     };

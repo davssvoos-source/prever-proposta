@@ -5128,13 +5128,15 @@ grade diz 6h e o card diz 5h30".
   early-return, com search_path, apagável por `DISABLE TRIGGER`, sem atomicidade
   contra duas gravações simultâneas). O pré-voo aborta nomeando o obstáculo, e a
   alternativa por gatilho está escrita no rodapé — escolhê-la é decisão do Davi.
-- **A válvula `prever.lote`** dentro de `notify_chamado_apoio()`:
-  `set_config('prever.lote','on', is_local => true)` prende a bandeira à
-  TRANSAÇÃO. É o substituto seguro de `ALTER TABLE … DISABLE TRIGGER`, que pega
-  ACCESS EXCLUSIVE e vale para o sistema inteiro enquanto dura. De quebra dá
-  remédio a um defeito pré-existente: a U65 desliga só `trg_notify_chamado_ins`,
-  então reexecutá-la manda "Você entrou como apoio" para os parceiros de até 22
-  chamados.
+- ~~**A válvula `prever.lote`** dentro de `notify_chamado_apoio()`~~ — **CORTADA
+  na revisão**, e o corte está registrado dentro da migration. Ela prendia uma
+  bandeira à TRANSAÇÃO, e o cenário que o comentário nomeava ("mover cem blocos
+  de sexta para segunda") são **N transações do PostgREST**: a válvula era
+  inalcançável do único lugar que ela dizia servir. Não havia parâmetro de lote,
+  não havia RPC companheira, e o cliente não emite `SET`. Com o corte, a U78
+  deixa de reescrever à mão uma função viva da U7 — que é a operação de maior
+  variância do arquivo. Se a Fase 2 precisar de lote, ele nasce como
+  `agenda_campo_marcar_lote`, e aí a válvula tem consumidor.
 
 ### O que a verificação pegou
 
@@ -5169,10 +5171,94 @@ a divergência bloco × escala virar rotina, a saída não é afrouxar a constra
 sobre quem de fato não se divide. Custo estimado: a tabela, o espelho e o modelo
 puro.
 
-1607 asserções verdes no verificador atual (o bloco U78 acrescenta 94, das quais
-26 CRÍTICO), `vite build` ok, `tsc` no baseline de 85 e zero erro no arquivo novo.
-**Migration `20260901090000_u78_grade_da_programacao.sql` — o Davi roda no SQL
-Editor. Ela é aditiva e pode ir sozinha, ANTES do código novo.**
+### A REVISÃO — o que mudou depois que cinco lentes leram isto
+
+O texto acima descreve a PRIMEIRA versão. Ela foi refutada, corrigida e cobrada
+de novo, e o que subiu é diferente em quatro pontos que valem ser lidos antes do
+código:
+
+1. **As quatro portas de escrita são concedidas só a `service_role`.** Aditiva
+   tinha virado sinônimo de inofensiva, e não é: concedidas a `authenticated` no
+   `COMMIT`, elas seriam, no dia 1 e sem uma linha de tela, um `/rest/v1/rpc` que
+   apaga `data_hora_agendada` de chamado de campo. O `GRANT` que falta está no
+   rodapé, endereçado à migration da TELA.
+2. **`agenda_campo_marcar` autoriza ESTADO, não argumento.** O gate tem três
+   camadas — `is_gestor` OU (pode editar o que SAI **e** o que ENTRA **e** está
+   escalado naquela equipe naquela semana) —, lê a linha viva com `FOR UPDATE`
+   antes de decidir, e recusa **mover bloco cumprido** (dia, hora, equipe,
+   chamado; duração e deslocamento continuam corrigíveis, porque são medição).
+3. **"Agendado" quer dizer bloco PENDENTE**, nas duas pontas: mover o último
+   bloco para outro chamado devolve o de origem a `aberto`, e o retorno
+   desmarcado não deixa mais o chamado agendado para sempre.
+4. **O modelo puro acompanhou tudo isso** — `erroDeAutorizacao`, `erroDeMover`,
+   `erroDaBaixa`, `erroDoDesagendamento`, `espelhoAposDesagendar`,
+   `statusAposOsBlocos` — com as frases da RPC, palavra por palavra. E
+   `espelhoConfere` ganhou os filtros do §9.0: sem eles, ela acusava **100% da
+   base no dia 1**, e divergência que aparece para todo mundo é divergência que
+   se aprende a ignorar.
+
+**A lição que virou regra:** a rodada anterior fechou "160 asserções, 0 falharam"
+enquanto **12 de 12 quebras de regra passavam verdes** — as asserções procuravam
+o *token* dentro de um `IF` que alguém podia neutralizar. Asserção que não fica
+vermelha é PIOR que asserção nenhuma, porque produz confiança. Desde então, regra
+crítica só conta depois de **teste de mutação**: quebra-se de propósito, roda-se
+o verificador, e ele TEM de acusar.
+
+**O teste de mutação, em duas rodadas, e o que ele custou.** A primeira rodada
+foram **94 mutações escritas a partir das REGRAS** (nunca a partir das
+asserções), e **13 passaram VERDES**. As treze caíam em três famílias, e as três
+merecem nome porque vão se repetir:
+
+1. **A asserção acha o ECO da coisa, não a coisa.** Quatro asserções liam o
+   arquivo `.sql` INTEIRO por substring e encontravam a frase num comentário ou
+   noutra consulta. A demonstração mais dura: `data_hora_agendada IS DISTINCT
+   FROM v_novo` também aparece na **linha 402 da conferência**, que cita o texto
+   para procurá-lo no `prosrc` — *a linha que faz a prova do banco funcionar era
+   a que cegava a prova do verificador.* Idem `dupla_id WITH =`, que a asserção
+   do EXCLUDE achava num comentário explicativo (linha 413) enquanto o eixo real
+   do índice estava apagado.
+2. **O corpo nunca foi FATIADO.** `agenda_campo_espelhar` — o coração da R101, a
+   coluna lida em doze arquivos — era a única função do §5/§6 sem fatia própria.
+   Seis dos treze sobreviventes moravam dentro dela: os dois estágios, o
+   `ORDER BY … DESC`, o fuso, o `IS DISTINCT FROM`.
+3. **A fixture não discrimina.** Cinco regras eram exercitadas por dados em que
+   as duas leituras possíveis CONCORDAM: "disponível" testado num bloco
+   cancelado (onde lista vazia e zero minuto dão o mesmo), a jornada testada só
+   em CRIAÇÃO (`id: null`, e o desconto do próprio bloco não tem o que
+   descontar), `naoMostrados` esperando zero nas duas fixtures que existiam, e
+   "emergencial" variando só a PRIORIDADE — nunca o TIPO, que é a metade da
+   frase do Davi que ficava solta.
+
+E um achado que mudou o **método**, não a lista: `eq()` compara por
+`JSON.stringify`, e **`JSON.stringify(NaN)` e `JSON.stringify(Infinity)` são os
+dois a string `"null"`**. A asserção que se chamava *"…e não divide por zero"*
+era estruturalmente incapaz de ver uma divisão por zero. O `eq` do verificador
+inteiro ganhou um marcador para não-finitos por causa disso — vale para todos os
+blocos, não só a U78.
+
+As treze foram tapadas lendo COMPORTAMENTO onde dá (o módulo puro) e, no SQL,
+recortando o **comando** até o ponto e vírgula e comparando **listas de cláusulas
+contra listas escritas à mão** — o WHERE do espelho, os dois estágios e os eixos
+do EXCLUDE são conferidos inteiros, então cláusula que some fica vermelha e
+cláusula que nasce também.
+
+**A segunda rodada existe porque asserção escrita olhando a mutação não prova
+nada.** Foram **27 mutações novas, independentes**, escritas a partir das regras
+das regiões recém-cobertas — e **três sobreviveram**, todas gaps de verdade que a
+primeira rodada não tinha tocado: o estágio 2 do espelho sem `cancelado_em` (o
+chamado voltava para uma visita DESMARCADA), `disponivel` sem a metade
+`comEscala` (a semana em que a equipe não existe era a que aparecia mais
+convidativa) e `linhasDaGrade` abrindo linha por bloco cancelado (equipe cujo
+único bloco foi desmarcado ganhava linha permanente). Tapadas também.
+
+**Placar final: 121 mutações, 121 pegas, 0 sobreviventes** — 94 + 27, os três
+arquivos restaurados byte a byte com md5 conferido nas duas rodadas.
+
+1840 asserções verdes no verificador (o bloco U78 é a maior parte do
+crescimento), `vite build` ok, `tsc` no baseline de 85 e zero erro nos arquivos
+tocados. **Migration `20260901090000_u78_grade_da_programacao.sql` — o Davi roda
+no SQL Editor. Ela é aditiva, INERTE (as portas não têm consumidor até a tela) e
+pode ir sozinha, ANTES do código novo.**
 ### S2 — Apoio deixa de ser auto-serviço (2026-09-01)
 
 **Escalada de privilégio, aberta desde a U7/S1 (agosto) e viva em produção até
