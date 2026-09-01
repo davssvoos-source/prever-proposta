@@ -5591,8 +5591,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /já foi lançada na tela de Equipes de campo/.test(u76), true);
   eq('desfazer a turma libera o FUTURO, não a semana em curso (que já tem dias vividos)',
      /AND semana > public\.referencia_semanal/.test(u76), true);
-  eq('o fuso é explícito em toda conversão — uma hora de diferença vira uma semana de erro',
-     /AT TIME ZONE 'America\/Sao_Paulo'/.test(u76), true);
+  // Uma ocorrência em qualquer lugar do arquivo satisfazia a versão antiga
+  // desta asserção — inclusive uma dentro de comentário. Agora ela FATIA
+  // dia_da_dupla, conta as três conversões e recusa qualquer outro fuso no
+  // arquivo inteiro. Uma hora de diferença vira uma semana de erro.
+  {
+    const iDD = u76.indexOf('CREATE OR REPLACE FUNCTION public.dia_da_dupla');
+    const corpoDD = iDD < 0 ? '' : u76.slice(iDD, u76.indexOf('\n$$;', iDD));
+    eq('CRÍTICO: dia_da_dupla converte o fuso nas TRÊS pontas do COALESCE (agendada, criada, hoje)',
+       (corpoDD.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 3);
+    eq('CRÍTICO: e nenhum outro fuso aparece na U76 — a operação é São Paulo, a sessão do Supabase é UTC',
+       [...u76.matchAll(/AT TIME ZONE '([^']+)'/g)].map((m) => m[1])
+         .filter((z) => z !== 'America/Sao_Paulo'), []);
+    eq('a chave da semana usa ANO ISO (IYYY), não o civil — 31/12/2025 é 2026-S01',
+       /to_char\(_dia, 'IYYY-"S"IW'\)/.test(u76), true);
+  }
   eq('a migration prova por CONTAGEM que não tocou em chamado_apoios (foto antes × depois)',
      /_u76_antes/.test(u76) && /ON COMMIT DROP/.test(u76), true);
   eq('U76 é atômica — se o portão abortar, não sobra rastro',
@@ -7346,6 +7359,111 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R99, R100 e R101 estão documentados',
      produto78.includes('**R99**') && produto78.includes('**R100**') && produto78.includes('**R101**'),
      true);
+}
+
+// ── U78: o ESPELHO, os três gêmeos, e o gatilho que ninguém lia ─────────────
+// O veredito da rodada de correção: neutralizar `agenda_campo_espelho()` por
+// inteiro deixava a suíte VERDE. É o gatilho da regra mais crítica da entrega
+// (a R101, a coluna que doze arquivos leem), e nenhuma asserção o alcançava.
+//
+// A técnica aqui é a que a casa aprendeu a duras penas: FATIAR o alvo (a função,
+// o comando) e comparar LISTA CONTRA LISTA ESCRITA À MÃO, em vez de varrer o
+// arquivo com um regex frouxo. Regex sobre o arquivo inteiro prova que a linha
+// existe em algum lugar; não prova que ela está VIVA nem que está no lugar certo.
+{
+  const fsE = require('fs');
+  const u78e = fsE.readFileSync('supabase/migrations/20260901090000_u78_grade_da_programacao.sql', 'utf8');
+
+  /** Recorta o corpo de uma função pelo cabeçalho dela até o `$$;` que a fecha. */
+  const corpoDe = (assinatura) => {
+    const i = u78e.indexOf('CREATE OR REPLACE FUNCTION ' + assinatura);
+    if (i < 0) return '';
+    const j = u78e.indexOf('\n$$;', i);
+    return j < 0 ? '' : u78e.slice(i, j);
+  };
+  /** Recorta um CREATE TRIGGER até o `;` que o fecha. */
+  const gatilhoDe = (nome) => {
+    const i = u78e.indexOf('CREATE TRIGGER ' + nome);
+    if (i < 0) return '';
+    const j = u78e.indexOf(';', i);
+    return j < 0 ? '' : u78e.slice(i, j);
+  };
+
+  // ── o GATILHO: as três chamadas, na ordem, contra lista escrita à mão ────
+  const espelho = corpoDe('public.agenda_campo_espelho()');
+  eq('o gatilho do espelho existe e foi recortado (se este falhar, os de baixo mentem)',
+     espelho.length > 200, true);
+
+  // A ordem importa: OLD no DELETE, OLD DE NOVO quando o bloco troca de dono, e
+  // NEW sempre. Tirar a do meio deixa o chamado ANTIGO com espelho velho —
+  // exatamente o defeito silencioso que o gatilho existe para não ter.
+  eq('CRÍTICO: o gatilho do espelho faz TRÊS chamadas, nesta ordem — OLD no DELETE, OLD na troca de chamado, NEW sempre',
+     [...espelho.matchAll(/PERFORM public\.agenda_campo_espelhar\((OLD|NEW)\.chamado_id\)/g)].map((m) => m[1]),
+     ['OLD', 'OLD', 'NEW']);
+  eq('CRÍTICO: o DELETE espelha o chamado que PERDEU o bloco e devolve OLD',
+     /IF TG_OP = 'DELETE' THEN\s*\n\s*PERFORM public\.agenda_campo_espelhar\(OLD\.chamado_id\);\s*\n\s*RETURN OLD;/.test(espelho),
+     true);
+  eq('CRÍTICO: bloco que troca de chamado atualiza os DOIS lados — só NEW deixaria o antigo mentindo',
+     /IF TG_OP = 'UPDATE' AND NEW\.chamado_id IS DISTINCT FROM OLD\.chamado_id THEN\s*\n\s*PERFORM public\.agenda_campo_espelhar\(OLD\.chamado_id\);/.test(espelho),
+     true);
+
+  // ── os três CREATE TRIGGER, com a lista OF literal ──────────────────────
+  // A lista OF é a primeira defesa contra cascata: UPDATE que não cita nenhuma
+  // dessas colunas não acorda o espelho, e portanto não acorda o gatilho de
+  // apoio da U76 que escuta data_hora_agendada.
+  eq('o gatilho de INSERT existe e é AFTER INSERT em agenda_campo',
+     /^CREATE TRIGGER trg_agenda_campo_espelho_ins\s*\n\s*AFTER INSERT ON public\.agenda_campo\s*\n\s*FOR EACH ROW EXECUTE FUNCTION public\.agenda_campo_espelho\(\)/m.test(u78e),
+     true);
+  eq('CRÍTICO: a lista OF do UPDATE é exatamente esta — coluna a mais acorda o apoio à toa, coluna a menos deixa o espelho velho',
+     (gatilhoDe('trg_agenda_campo_espelho_upd').match(/AFTER UPDATE OF ([^\n]+)/) || [, ''])[1].trim(),
+     'dia, inicio_min, cumprido_em, cancelado_em, chamado_id');
+  eq('o gatilho de DELETE existe e é AFTER DELETE',
+     /^CREATE TRIGGER trg_agenda_campo_espelho_del\s*\n\s*AFTER DELETE ON public\.agenda_campo/m.test(u78e),
+     true);
+  eq('os três são recriados de forma idempotente (DROP antes)',
+     ['ins', 'upd', 'del'].every((s) =>
+       new RegExp(`^DROP TRIGGER IF EXISTS trg_agenda_campo_espelho_${s} ON public\\.agenda_campo;`, 'm').test(u78e)),
+     true);
+
+  // ── o TRABALHADOR: os dois estágios, e o que os separa ──────────────────
+  const trab = corpoDe('public.agenda_campo_espelhar(_chamado uuid)');
+  eq('o trabalhador do espelho existe e foi recortado', trab.length > 400, true);
+  eq('CRÍTICO: estágio 1 é o bloco PENDENTE mais antigo — ORDER BY crescente, com id de desempate',
+     /a\.cancelado_em IS NULL\s*\n\s*AND a\.cumprido_em IS NULL\s*\n\s*ORDER BY a\.dia, a\.inicio_min, a\.id\s*\n\s*LIMIT 1;/.test(trab),
+     true);
+  eq('CRÍTICO: estágio 2 (todos cumpridos) é o ÚLTIMO — DESC nos três, não o mais antigo de novo',
+     /ORDER BY a\.dia DESC, a\.inicio_min DESC, a\.id DESC\s*\n\s*LIMIT 1;/.test(trab), true);
+  eq('CRÍTICO: e o estágio 2 só roda quando o 1 não achou nada',
+     /IF v_dia IS NULL THEN[\s\S]{0,400}ORDER BY a\.dia DESC/.test(trab), true);
+  eq('CRÍTICO: uma conversão de fuso, explícita — 22h de domingo em UTC viraria segunda, e a semana ISO do apoio mudaria',
+     (trab.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 1);
+  eq('chamado sem id devolve cedo em vez de varrer a tabela',
+     /IF _chamado IS NULL THEN RETURN false; END IF;/.test(trab), true);
+  // As três cláusulas do WHERE são as três defesas contra cascata: natureza
+  // (comercial é de outro gatilho), status (registro é registro) e o
+  // IS DISTINCT FROM (não escreve o que já está lá, logo não acorda o apoio).
+  eq('CRÍTICO: o UPDATE do espelho só toca CAMPO, só NÃO-ENCERRADO, e só quando o valor MUDA',
+     /AND c\.natureza = 'campo'/.test(trab)
+     && /AND c\.status NOT IN \('concluido','cancelado'\)/.test(trab)
+     && /IS DISTINCT FROM/.test(trab), true);
+
+  // ── o TERCEIRO gêmeo: a conferência do §9.0, que é o que o Davi lê ──────
+  // Ela recalcula o que o gatilho calcula. Se divergir do trabalhador, ela
+  // inventa divergência às 23h — e o Davi acredita nela, porque é o que está
+  // na tela.
+  const i90 = u78e.indexOf('§9.0) QUEM NÃO CASOU');
+  const conf90 = i90 < 0 ? '' : u78e.slice(i90, u78e.indexOf(';', u78e.indexOf('SELECT c.numero', i90)));
+  eq('a conferência §9.0 existe e foi recortada', conf90.length > 300, true);
+  eq('CRÍTICO: o §9.0 repete os DOIS estágios do trabalhador — um COALESCE, pendente primeiro e cumprido depois',
+     /COALESCE\(\s*\n\s*\(SELECT[\s\S]{0,300}cumprido_em IS NULL\s*\n\s*ORDER BY x\.dia, x\.inicio_min, x\.id LIMIT 1\),\s*\n\s*\(SELECT[\s\S]{0,300}ORDER BY x\.dia DESC, x\.inicio_min DESC, x\.id DESC LIMIT 1\)/.test(conf90),
+     true);
+  eq('CRÍTICO: e usa o MESMO fuso do trabalhador — divergir aqui inventa divergência na tela',
+     (conf90.match(/AT TIME ZONE 'America\/Sao_Paulo'/g) || []).length, 2);
+  eq('o §9.0 recorta o mesmo universo do trabalhador (campo, não encerrado)',
+     /c\.natureza='campo'/.test(conf90)
+     && /c\.status NOT IN \('concluido','cancelado'\)/.test(conf90), true);
+  eq('CRÍTICO: o §9.0 vem ANTES da tabela de veredito — o editor do Supabase mostra o ÚLTIMO result set, e uma lista vazia escondia o veredito',
+     u78e.indexOf('§9.0) QUEM NÃO CASOU') < u78e.indexOf('9.9 O NÚMERO DA LISTA DO §9.0'), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

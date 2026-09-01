@@ -5251,14 +5251,29 @@ chamado voltava para uma visita DESMARCADA), `disponivel` sem a metade
 convidativa) e `linhasDaGrade` abrindo linha por bloco cancelado (equipe cujo
 único bloco foi desmarcado ganhava linha permanente). Tapadas também.
 
-**Placar final: 121 mutações, 121 pegas, 0 sobreviventes** — 94 + 27, os três
-arquivos restaurados byte a byte com md5 conferido nas duas rodadas.
+**O placar honesto, que substitui o "121 mutações, 121 pegas" que esta entrada
+chegou a afirmar:** 121 pegas **nas regiões que a rodada escolheu fatiar**. Uma
+bateria independente, montada depois e sem saber quais regiões eram essas, achou
+**18 de 31 sobreviventes** — e a causa era uma só: o gatilho `agenda_campo_espelho()`
+não tinha fatia nenhuma. Neutralizá-lo por inteiro devolvia `0 falharam`.
 
-1840 asserções verdes no verificador (o bloco U78 é a maior parte do
-crescimento), `vite build` ok, `tsc` no baseline de 85 e zero erro nos arquivos
-tocados. **Migration `20260901090000_u78_grade_da_programacao.sql` — o Davi roda
-no SQL Editor. Ela é aditiva, INERTE (as portas não têm consumidor até a tela) e
-pode ir sozinha, ANTES do código novo.**
+O número antigo não era mentira deliberada; era a armadilha de medir a cobertura
+com o mesmo recorte que a produziu. Um teste de mutação que só quebra o que as
+asserções já olham mede a si mesmo. Ficou registrado assim de propósito: o
+projeto adotou a regra do teste de mutação neste mesmo dia, e o primeiro número
+que ela produziu já precisava de correção.
+
+**Depois de tapar:** o espelho ganhou o bloco que faltava — o gatilho fatiado com
+as três chamadas comparadas contra lista escrita à mão, as listas `OF` literais
+dos três `CREATE TRIGGER`, os dois estágios do trabalhador, e o §9.0 (o terceiro
+gêmeo, que é o que o Davi lê às 23h) obrigado a calcular o mesmo que o gatilho.
+Bateria própria: **15 de 15 pegas**, começando pela que motivou tudo.
+
+1877 asserções verdes, `vite build` ok, `tsc` no baseline de 85 e zero erro nos
+arquivos tocados. **Migration `20260901090000_u78_grade_da_programacao.sql` — o
+Davi roda no SQL Editor. Ela é aditiva e INERTE: as quatro portas de escrita são
+concedidas só a `service_role`, então não têm consumidor até a migration da tela
+soltá-las — as quatro linhas prontas estão no rodapé.**
 ### S2 — Apoio deixa de ser auto-serviço (2026-09-01)
 
 **Escalada de privilégio, aberta desde a U7/S1 (agosto) e viva em produção até
