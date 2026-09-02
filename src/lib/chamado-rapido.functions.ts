@@ -30,6 +30,54 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { tiposDaNatureza, type ChamadoTipo } from "@/lib/chamado-status";
+
+// ── OS TIPOS QUE A IA PODE DEVOLVER (U83) ───────────────────────────────────
+//
+// Era uma lista escrita à mão, DUAS vezes: no union de `ChamadoInterpretado` e
+// no `enum` do SCHEMA — a quarta cópia do domínio de tipos, e a única cujo
+// resultado é GRAVADO sem uma pessoa conferir. Agora deriva de
+// `tiposDaNatureza`, que é a lista de OFERTA: o que a IA pode devolver é, por
+// definição, o que um humano poderia escolher no formulário.
+//
+// A união das duas naturezas na ordem campo→interno reproduz exatamente a
+// lista que estava aqui à mão (corretiva, preventiva, operacional,
+// implantacao, melhoria) — a `Set` só tira as repetidas.
+const TIPOS_IA: ChamadoTipo[] = Array.from(new Set([
+  ...tiposDaNatureza("campo"),
+  ...tiposDaNatureza("interno"),
+]));
+
+// A prosa que o prompt usa para CADA tipo. `Record<ChamadoTipo, string>`: o
+// compilador exige uma linha por tipo do union, então um tipo novo não pode
+// entrar no vocabulário sem que alguém diga à IA como reconhecê-lo.
+//
+// AS LINHAS SÃO FILTRADAS PELA MESMA `TIPOS_IA`, e é isso que faz o commit B
+// ser UMA LINHA: enquanto 'vistoria' estiver em `NAO_OFERECIDOS`
+// (chamado-status.ts), nem o enum nem a descrição dela chegam ao modelo.
+// Apagar aquela linha liga as duas coisas juntas, sem caçada.
+const TIPO_IA_DESCRICAO: Record<ChamadoTipo, string> = {
+  corretiva: "algo quebrou/parou/está travando e precisa de conserto.",
+  preventiva: "revisão/manutenção programada, sem defeito relatado.",
+  operacional: `rotina que não é conserto nem melhoria (entrega de controle,
+  conferência, cadastro, comprar/cotar material ou equipamento).`,
+  implantacao: "instalação de sistema novo ou ampliação.",
+  melhoria: "melhorar algo que já funciona (processo, material, software).",
+  // R112 — a descrição existe para a IA não CHUTAR entre vistoria, corretiva e
+  // preventiva, que é o risco real: as três mandam alguém ao prédio. O corte é
+  // pelo que a pessoa VAI FAZER lá, não pelo motivo de ir.
+  vistoria: `ir ao cliente só para OLHAR e levantar — medir, conferir uma
+  instalação de terceiro, avaliar o que vai ser preciso, laudo. Ninguém
+  conserta nem instala nada nessa ida; se sair serviço, ele vira outro chamado.
+  Se há defeito relatado esperando conserto, é corretiva, não vistoria. Se é
+  roteiro de manutenção programada de um sistema que já é nosso, é preventiva.`,
+  // Nunca chegam ao modelo (não estão em TIPOS_IA); as linhas existem porque o
+  // Record é exaustivo, e dizem por que não estão lá.
+  prospeccao: "(não oferecido) visita comercial de proposta — quem cuida dela é o fluxo comercial.",
+  pedido_compra: "(não oferecido, R48) aposentado — compra e cotação são operacional.",
+};
+
+const LINHAS_DE_TIPO = TIPOS_IA.map((t) => `- ${t}: ${TIPO_IA_DESCRICAO[t]}`).join("\n");
 
 const inputSchema = z.object({
   texto: z.string().min(8, "Descreva o chamado em pelo menos uma frase.").max(4000),
@@ -37,9 +85,14 @@ const inputSchema = z.object({
 
 export interface ChamadoInterpretado {
   natureza: "campo" | "interno";
-  // R48/U41 (2026-08-21): "pedido_compra" saiu das opções — compra/cotação
-  // agora é "operacional", igual ao seletor do painel.
-  tipo: "corretiva" | "preventiva" | "operacional" | "implantacao" | "melhoria";
+  /**
+   * Um dos `TIPOS_IA` — a união das listas de OFERTA de campo e interno.
+   * Era um union literal copiado à mão (R48/U41 tinha tirado "pedido_compra"
+   * dele); virou `ChamadoTipo` na U83 porque manter a cópia estreita aqui
+   * significava editar dois arquivos a cada tipo novo, e o compilador não
+   * reclamava de nenhum dos dois.
+   */
+  tipo: ChamadoTipo;
   /** R86: descreve O QUE FAZER. O local NÃO entra aqui — vai na etiqueta. */
   titulo: string;
   descricao: string;
@@ -65,7 +118,7 @@ const SCHEMA = {
   ],
   properties: {
     natureza: { type: "string", enum: ["campo", "interno"] },
-    tipo: { type: "string", enum: ["corretiva", "preventiva", "operacional", "implantacao", "melhoria"] },
+    tipo: { type: "string", enum: TIPOS_IA },
     titulo: { type: "string" },
     descricao: { type: "string" },
     prioridade: { type: "string", enum: ["baixa", "normal", "alta", "urgente"] },
@@ -121,12 +174,7 @@ NATUREZA:
   tarefa administrativa. Sem deslocamento = interno.
 
 TIPO:
-- corretiva: algo quebrou/parou/está travando e precisa de conserto.
-- preventiva: revisão/manutenção programada, sem defeito relatado.
-- operacional: rotina que não é conserto nem melhoria (entrega de controle,
-  conferência, cadastro, comprar/cotar material ou equipamento).
-- implantacao: instalação de sistema novo ou ampliação.
-- melhoria: melhorar algo que já funciona (processo, material, software).
+${LINHAS_DE_TIPO}
 
 PRIORIDADE (só faz diferença no campo):
 - urgente: risco, cliente sem segurança, palavra "urgente"/"agora"/"parado".

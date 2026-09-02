@@ -2553,10 +2553,22 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a triagem "Pedido de compra" abre como tipo operacional (não mais pedido_compra)',
      /equipe: "patrimonio", tipo: "operacional"/.test(triagem), true);
 
-  // a IA de criação rápida (chamado-rapido.functions.ts) segue o mesmo corte
+  // a IA de criação rápida (chamado-rapido.functions.ts) segue o mesmo corte.
+  //
+  // U83: a asserção MUDOU DE FORMA, e a troca é a boa. Ela afirmava a lista
+  // literal do enum — o que travava a lista em cinco nomes e, pior, teria
+  // ficado VERDE se alguém acrescentasse um tipo ao vocabulário sem tocar a
+  // IA (que é exatamente o defeito que a U83 foi consertar). Agora ela afirma
+  // a IGUALDADE entre o enum e a lista de oferta, calculada aqui: o mesmo
+  // corte de 'pedido_compra' continua provado, e ele passa a valer para
+  // qualquer tipo futuro sem ninguém vir aqui.
   const rapido = fs24.readFileSync('src/lib/chamado-rapido.functions.ts', 'utf8');
-  eq('o schema da criação rápida por IA não tem mais "pedido_compra" no enum',
-     /enum: \["corretiva", "preventiva", "operacional", "implantacao", "melhoria"\]/.test(rapido), true);
+  eq('o schema da criação rápida por IA DERIVA da lista de oferta — logo não tem "pedido_compra" (R48) nem nada que o seletor não ofereça',
+     /const TIPOS_IA: ChamadoTipo\[\] = Array\.from\(new Set\(\[\s*\n\s*\.\.\.tiposDaNatureza\("campo"\),\s*\n\s*\.\.\.tiposDaNatureza\("interno"\),\s*\n\s*\]\)\);/.test(rapido)
+     && /enum: TIPOS_IA/.test(rapido), true);
+  eq('…e a lista que ela produz hoje é exatamente a que estava escrita à mão aqui antes da U83 (o corte do R48, provado por valor)',
+     Array.from(new Set([...CS3.tiposDaNatureza('campo'), ...CS3.tiposDaNatureza('interno')])),
+     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria']);
 
   // a migration U41 — CHECK aberto, trigger reescrito, backfill
   const u41 = fs24.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8');
@@ -2973,15 +2985,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U47 termina com SELECT de verificação', /Verificação/.test(u47), true);
 
   // ── tipos de demanda de campo (R57) ─────────────────────────────────────
-  eq('TIPOS_DEMANDA_CAMPO são exatamente os 3 que o Davi listou',
-     CS2.TIPOS_DEMANDA_CAMPO, ['corretiva', 'preventiva', 'implantacao']);
-  eq('e os 3 têm rótulo — são o que aparece no filtro',
-     CS2.TIPOS_DEMANDA_CAMPO.map((t) => CS2.TIPO_LABEL[t]),
-     ['Manutenção Corretiva', 'Manutenção Preventiva', 'Implantação']);
-  // é mais estrito que tiposDaNatureza('campo'), que ainda oferece operacional
+  // U83: os TRÊS que o Davi listou em 2026-08-22 continuam aqui, e a lista
+  // ganhou um quarto (vistoria, R112) — o bloco da U83 no fim do arquivo é que
+  // afirma o conteúdo atual, porque é lá que mora a razão dele. O que ESTE
+  // bloco continua guardando é o R57 puro: os três originais não podem sair, e
+  // a exclusão de 'operacional' é o que define a lista.
+  eq('R57: os três tipos que o Davi listou continuam em TIPOS_DEMANDA_CAMPO',
+     ['corretiva', 'preventiva', 'implantacao'].filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), []);
+  eq('e todos têm rótulo — são o que aparece no filtro',
+     CS2.TIPOS_DEMANDA_CAMPO.filter((t) => !CS2.TIPO_LABEL[t]), []);
+  // é mais estrito que os tipos de campo, que ainda incluem operacional
   // no formulário de abertura — a diferença é proposital
-  eq('TIPOS_DEMANDA_CAMPO é mais estrito que tiposDaNatureza("campo") (que inclui operacional)',
-     CS2.tiposDaNatureza('campo').filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), ['operacional']);
+  eq('R57: TIPOS_DEMANDA_CAMPO é mais estrito que os tipos de campo, e a diferença é EXATAMENTE operacional',
+     CS2.TIPOS_DA_NATUREZA.campo.filter((t) => !CS2.TIPOS_DEMANDA_CAMPO.includes(t)), ['operacional']);
 
   // ── a tela de programação (R57) ─────────────────────────────────────────
   eq('o título é o que o Davi pediu',
@@ -11066,6 +11082,382 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /responda\n> "Aconteceu" ANTES de cancelar/.test(man82),
       /O que esta entrega NÃO faz: o passado/.test(man82)],
      [true, true, true, true]);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// U83 — VISTORIA É UM TIPO (R112), E O CENSO QUE IMPEDE O PRÓXIMO TIPO DE
+//       TER ESTE PROBLEMA
+// ══════════════════════════════════════════════════════════════════════════
+//
+// A entrega desta U não é o tipo novo: é a DESDUPLICAÇÃO que o tipo novo
+// tornou necessária. O domínio "tipos de chamado de campo" estava copiado à
+// mão em quatro lugares fora de chamado-status.ts, todos com `as ChamadoTipo[]`
+// — que desliga o compilador. Acrescentar 'vistoria' só em `tiposDaNatureza`
+// não alcançaria nenhum deles: o tipo ficaria invisível no gráfico e no filtro
+// do painel, e o fallback de chamados.painel.tsx o CONTARIA COMO CORRETIVA,
+// sem um único erro em lugar nenhum.
+//
+// Por isso a peça central deste bloco é uma asserção de CENSO (regra 3):
+// ela varre `src/` derivando a lista de infratores do arquivo, em vez de
+// afirmar caso a caso os quatro que eu conheço. Um quinto lugar escrito amanhã
+// por outra pessoa cai nela sem que ninguém precise se lembrar de vir aqui.
+{
+  const fs83 = require('fs');
+  const pth83 = require('path');
+  const CS83 = carregar('src/lib/chamado-status.ts');
+  const PAL83 = carregar('src/lib/paleta.ts');
+
+  // ── 1) O TIPO NOVO EXISTE E É RENDERIZÁVEL ────────────────────────────────
+  eq('U83: o tipo vistoria existe no vocabulário', CS83.TIPOS.includes('vistoria'), true);
+  eq('U83: e o rótulo é "Vistoria" — UMA palavra, porque "visita técnica" já é o fluxo comercial',
+     CS83.TIPO_LABEL.vistoria, 'Vistoria');
+  eq('U83: e o rótulo NÃO contém "visita" — a colisão de vocabulário que o Davi recusou por escolha explícita',
+     /visita/i.test(CS83.TIPO_LABEL.vistoria), false);
+  eq('U83: vistoria tem cor, e é o laranja do PRISMA (o passo entre "o que se antecipa" e "o que quebrou")',
+     CS83.TIPO_CORES.vistoria, PAL83.PRISMA.laranja);
+  // A cor NÃO pode repetir outro TIPO: dois chips de tipo com a mesma cor na
+  // mesma lista é exatamente o que a §9 do design system proíbe.
+  eq('CRÍTICO: nenhuma cor de TIPO_CORES se repete entre tipos — o chip de tipo é a única leitura de cor que distingue um do outro',
+     Object.values(CS83.TIPO_CORES).map((c) => c.dark).length
+     === new Set(Object.values(CS83.TIPO_CORES).map((c) => c.dark)).size,
+     true);
+
+  // ── 2) A ORDEM DE DEPLOY, QUE AQUI INVERTE (regra 5) ─────────────────────
+  // O código passaria a ESCREVER um valor que o CHECK ainda recusa (23514) na
+  // janela entre o push da Lovable e a rodada da U83 à mão. O commit A
+  // RENDERIZA e não OFERECE; o commit B apaga UMA linha de `NAO_OFERECIDOS` e
+  // liga a oferta em cinco lugares de uma vez.
+  //
+  // QUANDO O COMMIT B SUBIR, ESTA ASSERÇÃO TEM DE VIRAR — os `false` de campo
+  // e das duas naturezas viram `true`. Ela é o lembrete, e é de propósito que
+  // ela seja barulhenta em vez de sumir sozinha.
+  eq('CRÍTICO (regra 5, e aqui ela INVERTE): no COMMIT A, vistoria é RENDERIZÁVEL e NÃO É OFERECIDA em natureza nenhuma — oferecer antes de a U83 rodar é 23514 na cara de quem abre o chamado. COMMIT B = apagar "vistoria" de NAO_OFERECIDOS em src/lib/chamado-status.ts, e virar esta asserção',
+     [CS83.TIPOS.includes('vistoria'),
+      CS83.tiposDaNatureza('campo').includes('vistoria'),
+      CS83.tiposDaNatureza('interno').includes('vistoria'),
+      CS83.tiposDaNatureza('comercial').includes('vistoria')],
+     [true, false, false, false]);
+  // …e o gate é UMA LINHA, não uma condição espalhada: a prova é que ele mora
+  // numa lista só, e que essa lista é o único lugar do arquivo onde 'vistoria'
+  // aparece como valor a ser retirado.
+  {
+    const fonte83 = fs83.readFileSync('src/lib/chamado-status.ts', 'utf8');
+    const vivo83 = fonte83.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    eq('U83: o gate do commit B é UMA entrada numa lista chamada NAO_OFERECIDOS, e `tiposDaNatureza` é o único consumidor dela',
+       [/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[[\s\S]{0,200}?"vistoria",/.test(vivo83),
+        (vivo83.match(/NAO_OFERECIDOS/g) || []).length, 2],
+       [true, 2, 2]);
+    eq('U83: e a linha do commit B está SINALIZADA no código — quem for ligar não precisa caçar',
+       /A LINHA DO COMMIT B\. APAGUE ESTA LINHA/.test(fonte83), true);
+  }
+
+  // ── 3) TIPOS_DEMANDA_CAMPO — a pergunta de produto nº 1, respondida ──────
+  // O critério do R57 nunca foi "é manutenção?", foi "é demanda que se AGENDA
+  // numa equipe?". A vistoria ocupa uma janela de uma dupla num dia, logo
+  // entra. 'operacional' continua fora pelo mesmo critério de sempre.
+  eq('R112: TIPOS_DEMANDA_CAMPO passou a ter QUATRO — a vistoria se programa para uma dupla, e é isso que a lista mede',
+     CS83.TIPOS_DEMANDA_CAMPO, ['corretiva', 'preventiva', 'implantacao', 'vistoria']);
+  eq('…e os quatro têm rótulo — são o que aparece no filtro da programação',
+     CS83.TIPOS_DEMANDA_CAMPO.map((t) => CS83.TIPO_LABEL[t]),
+     ['Manutenção Corretiva', 'Manutenção Preventiva', 'Implantação', 'Vistoria']);
+  eq('…e a diferença para os tipos de campo continua sendo EXATAMENTE "operacional" — a exclusão é uma só, e é a do R57',
+     CS83.TIPOS_DA_NATUREZA.campo.filter((t) => !CS83.TIPOS_DEMANDA_CAMPO.includes(t)),
+     ['operacional']);
+  // TIPOS_DEMANDA_CAMPO alimenta um FILTRO, não um seletor de escrita — é por
+  // isso que ela pode conter 'vistoria' já no commit A. A prova é sobre a
+  // TELA: o "+" da programação navega SEM levar `tipo` na busca.
+  {
+    const prog83 = fs83.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+    eq('CRÍTICO: o "+" da programação abre o formulário SEM carregar o tipo do filtro — se levasse, o filtro viraria caminho de escrita e TIPOS_DEMANDA_CAMPO ofereceria vistoria pelas costas',
+       /navigate\(\{ to: "\/chamados\/novo-campo" \}\)/.test(prog83)
+       && !/to: "\/chamados\/novo-campo",\s*search/.test(prog83), true);
+  }
+
+  // ── 4) A DESDUPLICAÇÃO, LUGAR POR LUGAR (o que a regra 3 chama de "os que eu
+  //      conheço" — o censo abaixo é o que pega os que eu não conheço) ──────
+  {
+    const novoCampo83 = fs83.readFileSync('src/routes/_authenticated/chamados.novo-campo.tsx', 'utf8');
+    eq('U83: o seletor de novo chamado de campo DERIVA de tiposDaNatureza("campo") — era uma cópia com `as ChamadoTipo[]`, e é um caminho de ESCRITA (por isso deriva da lista de OFERTA)',
+       /\{tiposDaNatureza\("campo"\)\.map\(\(t\) => \(/.test(novoCampo83), true);
+
+    const painel83 = fs83.readFileSync('src/routes/_authenticated/chamados.painel.tsx', 'utf8');
+    eq('U83: a série do gráfico do painel DERIVA de TIPOS_DA_NATUREZA.campo — era a cópia cujo fallback contava o tipo desconhecido COMO CORRETIVA',
+       /const tiposCampo: ChamadoTipo\[\] = TIPOS_DA_NATUREZA\.campo;/.test(painel83), true);
+    eq('U83: e o filtro de tipo do painel DERIVA de TIPOS menos prospeccao — eram três listas coladas à mão (os quatro de campo, melhoria e pedido_compra um a um)',
+       /\.\.\.TIPOS\.filter\(\(t\) => t !== "prospeccao"\)\.map\(/.test(painel83), true);
+
+    const rapido83 = fs83.readFileSync('src/lib/chamado-rapido.functions.ts', 'utf8');
+    eq('U83: o enum do schema da IA DERIVA da lista de oferta — era a quarta cópia, e a única cujo resultado é gravado sem uma pessoa conferir',
+       /tipo: \{ type: "string", enum: TIPOS_IA \}/.test(rapido83), true);
+    eq('U83: e o PROMPT da IA deriva do MESMO filtro (TIPO_IA_DESCRICAO × TIPOS_IA) — é isso que faz o commit B ser uma linha e não duas',
+       /const LINHAS_DE_TIPO = TIPOS_IA\.map\(\(t\) => `- \$\{t\}: \$\{TIPO_IA_DESCRICAO\[t\]\}`\)\.join\("\\n"\);/.test(rapido83)
+       && /TIPO:\n\$\{LINHAS_DE_TIPO\}/.test(rapido83), true);
+    // …e a descrição de vistoria DIZ O QUE A DISTINGUE. Sem isso a IA chuta
+    // entre as três que mandam alguém ao prédio (pergunta de produto nº 3).
+    eq('R112: a descrição de vistoria para a IA corta contra corretiva E contra preventiva, por NOME — senão o modelo chuta entre as três que mandam alguém ao prédio',
+       /Se há defeito relatado esperando conserto, é corretiva, não vistoria\./.test(rapido83)
+       && /roteiro de manutenção programada de um sistema que já é nosso, é preventiva/.test(rapido83), true);
+  }
+
+  // ── 5) TIPOS DEIXOU DE SER UMA OITAVA LISTA ──────────────────────────────
+  eq('U83: TIPOS é derivado das chaves de TIPO_LABEL (Record<ChamadoTipo,…>, exaustivo por compilador) — era uma lista à mão capaz de divergir do union em silêncio',
+     CS83.TIPOS, Object.keys(CS83.TIPO_LABEL));
+  eq('CRÍTICO: e TODO tipo oferecido em QUALQUER natureza está no vocabulário — uma natureza que ofereça um tipo sem rótulo pinta um chip em branco',
+     ['campo', 'interno', 'comercial']
+       .flatMap((n) => CS83.TIPOS_DA_NATUREZA[n])
+       .filter((t) => !CS83.TIPOS.includes(t)),
+     []);
+
+  // ── 6) A ASSERÇÃO DE CENSO — a peça que impede o PRÓXIMO tipo ────────────
+  //
+  // Deriva do repositório: varre todo `.ts`/`.tsx` de `src/` procurando
+  // QUALQUER lista literal entre colchetes com dois ou mais tipos de campo, e
+  // exige que a lista de infratores seja vazia. `chamado-status.ts` é o único
+  // endereço autorizado, e é o único isento.
+  //
+  // AS TRÊS CICATRIZES QUE ELA RESPEITA:
+  //  · regra 2 — grep acha COMENTÁRIO: as linhas que começam com `//`, `*` ou
+  //    `/*` são retiradas antes da varredura (já rendeu 5+ falsos positivos
+  //    nesta casa);
+  //  · `[^\]]` e não `[\s\S]`: a busca para no primeiro `]`, senão um regex
+  //    guloso atravessaria o arquivo inteiro e casaria dois tipos que nunca
+  //    estiveram na mesma lista;
+  //  · DOIS tipos e não um: `tipo === "corretiva"` é um predicado legítimo
+  //    (reincidência, emergencial, KPI de corretiva urgente) e não é uma
+  //    enumeração do domínio. Uma lista COM DOIS é sempre uma cópia.
+  const TIPOS_CAMPO_LIT = ['corretiva', 'preventiva', 'operacional', 'implantacao', 'vistoria'];
+  const censoDeLista = (fonte) => {
+    const vivo = fonte.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const achados = [];
+    const re = /\[[^\]]{0,400}\]/g;
+    let m;
+    while ((m = re.exec(vivo)) !== null) {
+      const dentro = TIPOS_CAMPO_LIT.filter((t) => new RegExp(`["']${t}["']`).test(m[0]));
+      if (dentro.length >= 2) achados.push(m[0].replace(/\s+/g, ' ').slice(0, 100));
+    }
+    return achados;
+  };
+
+  const arquivosTs = (dir, acc = []) => {
+    for (const e of fs83.readdirSync(dir, { withFileTypes: true })) {
+      const p = pth83.join(dir, e.name).replace(/\\/g, '/');
+      if (e.isDirectory()) arquivosTs(p, acc);
+      else if (/\.tsx?$/.test(e.name)) acc.push(p);
+    }
+    return acc;
+  };
+
+  const AUTORIZADO = 'src/lib/chamado-status.ts';
+  const infratores = [];
+  for (const arq of arquivosTs('src')) {
+    if (arq === AUTORIZADO) continue;
+    for (const lista of censoDeLista(fs83.readFileSync(arq, 'utf8'))) {
+      infratores.push(`${arq}: ${lista}`);
+    }
+  }
+  eq('CRÍTICO (CENSO, regra 3): NENHUM arquivo de src/ fora de chamado-status.ts escreve uma lista literal com dois ou mais tipos de chamado de campo. É esta asserção — e não a memória de quem entrega — que impede o PRÓXIMO tipo de nascer invisível em quatro telas',
+     infratores, []);
+
+  // O PAR NEGATIVO, e ele é CONSTANTE ESCRITA À MÃO (regra 4). Sem isto, um
+  // detector quebrado — um regex que não casa nada, um filtro de comentário
+  // que come o arquivo inteiro — passaria verde para sempre, e o censo acima
+  // seria decoração com nome de garantia.
+  eq('…e o detector ACHA a cópia quando ela existe (a linha exata que a U83 apagou de chamados.novo-campo.tsx)',
+     censoDeLista('  {(["corretiva", "preventiva", "operacional", "implantacao"] as ChamadoTipo[]).map((t) => (').length,
+     1);
+  eq('…acha também a forma anotada, que é como as quatro cópias estavam escritas',
+     censoDeLista('const tiposCampo: ChamadoTipo[] = ["corretiva", "preventiva", "operacional", "implantacao"];').length,
+     1);
+  eq('…acha a lista QUEBRADA EM VÁRIAS LINHAS — a cópia seguinte não vai estar numa linha só',
+     censoDeLista('const x = [\n  "corretiva",\n  "vistoria",\n];').length, 1);
+  eq('…acha o enum de schema, que não tem anotação de tipo nenhuma para denunciá-lo',
+     censoDeLista('tipo: { type: "string", enum: ["corretiva", "preventiva", "melhoria"] },').length, 1);
+  eq('…e NÃO acusa um predicado de UM tipo só, que é uso legítimo (reincidência, emergencial, KPI)',
+     censoDeLista('if (c.tipo !== "corretiva" || !c.cliente_id) continue;'), []);
+  eq('…nem uma lista de OUTRO domínio que por acaso tem uma palavra em comum (origem do equipamento, tipo de contrato)',
+     censoDeLista('type OrigemEquipamento = "implantacao" | "campo" | "manual";'), []);
+  eq('…nem a cópia escrita dentro de um COMENTÁRIO, que é o falso positivo que já mordeu esta casa cinco vezes',
+     censoDeLista('// era ["corretiva", "preventiva", "operacional", "implantacao"] antes da U83'), []);
+  eq('…e NÃO deixa o regex atravessar o `]` para juntar dois tipos que nunca estiveram na mesma lista',
+     censoDeLista('const a = ["corretiva"]; const outraCoisa = 1; const b = ["preventiva"];'), []);
+
+  // ── 7) O CENSO DO OUTRO LADO: o CHECK vivo × o union do TS ───────────────
+  //
+  // A lista de tipos existe em DOIS lugares que nenhum compilador cruza: o
+  // union em TypeScript e a constraint no Postgres. Um tipo acrescentado só de
+  // um lado é 23514 em produção (TS na frente) ou um valor que o banco aceita
+  // e a tela não sabe pintar (banco na frente). Esta asserção lê a ÚLTIMA
+  // migration que reescreve `chamados_tipo_check` — por ordem de timestamp, que
+  // é a ordem em que o Davi as roda — e compara conjunto com conjunto.
+  {
+    const DIR83 = 'supabase/migrations';
+    const comCheck = fs83.readdirSync(DIR83).filter((f) => f.endsWith('.sql')).sort()
+      .filter((f) => /ADD CONSTRAINT chamados_tipo_check/.test(fs83.readFileSync(`${DIR83}/${f}`, 'utf8')));
+    eq('U83: a última migration que reescreve chamados_tipo_check é a U83 (por timestamp, que é a ordem em que o Davi roda)',
+       comCheck[comCheck.length - 1], '20260906090000_u83_vistoria.sql');
+
+    const u83 = fs83.readFileSync(`${DIR83}/${comCheck[comCheck.length - 1]}`, 'utf8');
+    // O corpo VIVO: o rodapé DESFAZER traz de propósito a lista ANTIGA (é para
+    // onde se volta), e medir o arquivo inteiro seria medir o desfazer junto.
+    // Foi assim que a S4 quase mediu o próprio defeito.
+    const vivoU83 = u83.slice(0, u83.indexOf('\n-- ╔') > 0 ? u83.indexOf('\n-- ╔') : u83.length);
+    const iAdd = vivoU83.lastIndexOf('ADD CONSTRAINT chamados_tipo_check');
+    const trecho = vivoU83.slice(iAdd, vivoU83.indexOf(';', iAdd));
+    const noCheck = (trecho.match(/'([a-z_]+)'/g) || []).map((s) => s.slice(1, -1)).sort();
+    eq('CRÍTICO: o corpo VIVO da U83 foi encontrado (sem isto tudo abaixo mede string vazia e passa de graça)',
+       iAdd > 0 && noCheck.length > 0, true);
+    eq('CRÍTICO (CENSO banco × código): o CHECK vivo aceita EXATAMENTE o union do TS mais "proposta_comercial" (legado da U41, renomeado para prospeccao e mantido só para o histórico continuar legível). Tipo acrescentado de um lado só é 23514 em produção',
+       noCheck, [...CS83.TIPOS, 'proposta_comercial'].sort());
+    eq('…e nenhum dos oito valores da U41 foi perdido no DROP/ADD — o CHECK que estreita trava UPDATE em linha que já existe',
+       ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria',
+        'pedido_compra', 'proposta_comercial', 'prospeccao'].filter((t) => !noCheck.includes(t)),
+       []);
+
+    // O pré-voo ABORTA, e o desfazer existe — as duas exigências da casa.
+    eq('U83: a migration tem pré-voo que ABORTA quando o CHECK vivo não é o da U41, e quando existe linha com tipo fora da lista nova',
+       [/DO \$preflight\$/.test(u83),
+        // A GUARDA É COMPARAÇÃO DE CONJUNTO, nas DUAS direções, e fora de
+        // qualquer `ELSE`. `@>` pega REMOÇÃO de um dos oito; `<@` pega ADIÇÃO
+        // de um nono que o §3 apagaria em silêncio. A versão anterior eram oito
+        // `position(…) = 0` dentro do `ELSE` de "já tem vistoria?": cega a
+        // adição, e DESLIGADA inteira na segunda rodada — justamente onde a
+        // adição é mais provável. O `v_vals IS NULL` fecha o buraco booleano
+        // (`NOT (NULL AND …)` é NULL, e o IF não dispararia).
+        /IF v_vals IS NULL\n\s*OR NOT \(v_vals @> ARRAY\[[\s\S]{0,400}?AND v_vals <@ ARRAY\[/.test(u83)
+        && /não é a versão da U41 nem a desta migration/.test(u83),
+        /o ADD CONSTRAINT do §3 valida a tabela inteira/.test(u83)],
+       [true, true, true]);
+    eq('U83: e a conferência final é obtido × esperado × veredito em SELECT (RAISE NOTICE é invisível no editor do Supabase)',
+       /AS veredito/.test(u83) && />>> OLHAR <<</.test(u83), true);
+    // A ORDEM ESPERADA É DERIVADA, NÃO COPIADA. A primeira versão desta linha
+    // colou a mesma string que estava no SQL — e a string estava ERRADA
+    // (`prospeccao` antes de `proposta_comercial`; elas divergem na quarta
+    // letra e `p` < `s`). A asserção passava porque comparava o arquivo consigo
+    // mesmo: ela CERTIFICAVA o defeito em vez de pegá-lo, e a conferência
+    // CRÍTICA teria dito '>>> OLHAR <<<' numa execução perfeita.
+    // `sort()` de JS ordena por code unit, que é o que `COLLATE "C"` faz no
+    // Postgres — por isso o SQL foi obrigado a declarar a collation: os dois
+    // lados passam a derivar a ordem da MESMA regra.
+    eq('U83: a conferência 101 compara a LISTA INTEIRA extraída do catálogo, não um LIKE "%vistoria%" — presença do valor novo não vê a remoção de um antigo (regra 2)',
+       [/string_agg\(m\.grupo\[1\], ',' ORDER BY m\.grupo\[1\] COLLATE "C"\)/.test(u83),
+        u83.includes([...CS83.TIPOS, 'proposta_comercial'].sort().join(','))],
+       [true, true]);
+    eq('U83: e ela confere `convalidated` — uma constraint NOT VALID passa por todas as outras conferências sem proteger uma linha',
+       /convalidated/.test(u83), true);
+    eq('U83 traz o DESFAZER comentado, com o aviso de que ele só funciona enquanto não houver vistoria gravada',
+       /DESFAZER — volta o CHECK ao estado da U41/.test(u83)
+       && /SÓ FUNCIONA ENQUANTO NÃO EXISTIR NENHUM CHAMADO com tipo='vistoria'/.test(u83), true);
+  }
+
+  // ── 8) O QUE ESTA ENTREGA NÃO FAZ, PRESO POR ASSERÇÃO ────────────────────
+  //
+  // Sem isto, "eu não mexi em X" é uma frase confiante. Com isto, mexer em X
+  // fica vermelho.
+  //
+  // 8a. O SLA (pergunta de produto nº 4). O prazo sai de `chamado_sla`, que é
+  // indexada por PRIORIDADE e só por ela — o tipo não entra no cálculo em
+  // lugar nenhum. Uma vistoria normal tem o mesmo prazo de uma corretiva
+  // normal, e isso NÃO MUDA nesta entrega.
+  eq('R112 / pergunta 4: o prazo do campo é função só de PRIORIDADE — nenhuma migration do repo indexa chamado_sla (ou os_sla) por tipo, então vistoria não tem SLA próprio e não precisa de um',
+     fs83.readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).filter((f) => {
+       const s = fs83.readFileSync(`supabase/migrations/${f}`, 'utf8');
+       return /FROM public\.(chamado_sla|os_sla)\s+WHERE[^;]*\btipo\b/.test(s);
+     }),
+     []);
+  eq('…e o espelho em TS não inventa prazo por tipo: `situacaoPrazo` decide por prazo_limite e status, e nada mais',
+     [CS83.situacaoPrazo('2030-01-01T00:00:00Z', 'aberto'),
+      CS83.situacaoPrazo('2000-01-01T00:00:00Z', 'aberto'),
+      CS83.situacaoPrazo(null, 'aberto')],
+     ['no_prazo', 'estourado', 'sem_prazo']);
+
+  // 8b. O CLASSIFICADOR DE TEXTO, e a dívida declarada. "vistoria" é palavra-
+  // chave de `preventiva` desde a U1, e continua sendo — mexer aqui é ESCRITA
+  // (importar-notion.ts grava direto o que esta função devolve), e o gêmeo no
+  // banco teria de mudar na mesma migration. Prender o comportamento ATUAL é o
+  // que impede alguém de "consertar" isso sem a migration do par.
+  eq('U83 (dívida declarada): sugerirTipoChamado("vistoria …") continua devolvendo preventiva — mudar isto é ESCRITA (importar-notion.ts:364 grava direto) e exige o gêmeo public.sugerir_tipo_chamado na MESMA migration',
+     CS83.sugerirTipoChamado('Fazer vistoria no CFTV do bloco B'), 'preventiva');
+  eq('…e a dívida está ESCRITA no código, com as três razões e o caminho de saída — regra 8: se só se conserta com maquinaria, declare',
+     /DÍVIDA DECLARADA NA U83, e ela é uma PALAVRA/.test(fs83.readFileSync('src/lib/chamado-status.ts', 'utf8')), true);
+  // ── OS GÊMEOS DO CLASSIFICADOR, MEDIDOS POR ACORDO DE VALOR ─────────────
+  // A versão anterior desta asserção media "nenhuma migration DEPOIS da U7
+  // redefine sugerir_tipo_chamado", e ficava VERDE — porque ninguém tinha
+  // consertado o lado atrasado. Ela media PRESENÇA DE DEFINIÇÃO onde o risco é
+  // DIVERGÊNCIA DE RESPOSTA (regra 2), e por isso certificou por dois meses um
+  // defeito vivo: a R48/U41 trocou o ramo de compra do lado TS para
+  // `operacional` e o lado do BANCO continuou devolvendo `pedido_compra` — que
+  // é o que `chamado_preencher` grava em todo chamado não-campo sem tipo. A
+  // tela dizia "Operacional", o registro nascia `pedido_compra`, e o gatilho da
+  // U9 criava uma ficha de compra que a tela nem sabe oferecer para preencher.
+  //
+  // Agora a régua é um DIFF: o corpo que a U83 escreve é o de u6c LITERAL com
+  // UMA linha trocada, e nenhuma a menos.
+  {
+    const corpoDe83 = (src, marcador) => {
+      const i = src.indexOf(marcador);
+      if (i < 0) return null;
+      const j = src.indexOf('\nEND;', i);
+      return j < 0 ? null : src.slice(i, j);
+    };
+    const norm83 = (s) => s
+      .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+      .replace(/sugerir_tipo_(demanda|chamado)/g, 'sugerir_tipo_X')
+      .replace(/AS \$[A-Za-z_0-9]*\$/, 'AS $Q$')
+      .replace(/\s+/g, ' ').trim();
+    const u6c83 = fs83.readFileSync('supabase/migrations/20260819010000_u6c_tipos_chamado.sql', 'utf8');
+    const arq83 = fs83.readFileSync('supabase/migrations/20260906090000_u83_vistoria.sql', 'utf8');
+    const velho83 = corpoDe83(u6c83, 'CREATE OR REPLACE FUNCTION public.sugerir_tipo_demanda');
+    const novo83  = corpoDe83(arq83, 'CREATE OR REPLACE FUNCTION public.sugerir_tipo_chamado');
+    eq('os dois corpos do classificador foram recortados (se este falhar, o de baixo mente)',
+       [velho83 !== null, novo83 !== null], [true, true]);
+    eq('CRÍTICO: a U83 reescreve sugerir_tipo_chamado com o corpo de u6c e UMA mudança — o ramo de compra passa de pedido_compra a operacional, pondo o gêmeo do BANCO em dia com a R48. Checar presença não veria uma segunda mudança entrando de carona',
+       norm83(novo83 || ''),
+       norm83((velho83 || '').replace("THEN RETURN 'pedido_compra'; END IF;", "THEN RETURN 'operacional'; END IF;")));
+    // E O ACORDO, DITO PELO VALOR: os seis ramos do gêmeo TS, exercitados de
+    // verdade, contra o que o texto do SQL devolve em cada um. É a mesma prova
+    // que a conferência 110 faz do lado do banco, e as duas juntas é que
+    // fecham — uma lê o catálogo, a outra lê o arquivo.
+    const ramos83 = [
+      ['Comprar cabo de rede para o rack',      'operacional'],
+      ['Portão não funciona, parou de abrir',   'corretiva'],
+      ['Revisao preventiva mensal',             'preventiva'],
+      ['Instalacao de nova unidade',            'implantacao'],
+      ['Otimizar o fluxo de aprovacao',         'melhoria'],
+      ['Levar o controle na portaria',          'operacional'],
+    ];
+    eq('CRÍTICO: o gêmeo TS responde o mesmo que a conferência 110 espera do banco nos SEIS ramos — é acordo de VALOR, e é o que a asserção anterior (presença de definição) não media',
+       ramos83.map(([t]) => CS83.sugerirTipoChamado(t)),
+       ramos83.map(([, r]) => r));
+    eq('…e a conferência 110 da migration exercita exatamente esses seis, lendo do CATÁLOGO',
+       /SELECT 110,[^;]*'operacional,corretiva,preventiva,implantacao,melhoria,operacional'/.test(arq83),
+       true);
+  }
+
+  // 8c. tipo_servico é uma ENUMERAÇÃO POR EXCLUSÃO (regra 3 avisa dela por
+  // nome), e ela ALCANÇA o tipo novo: vistoria cai no ELSE e nasce
+  // 'manutencao'. Está certo — tipo_servico tem dois valores, que são as duas
+  // seções do PDF de fechamento, e vistoria não é obra. A asserção prende que
+  // continuam sendo DOIS: um terceiro valor mudaria a resposta em silêncio.
+  eq('R112: tipo_servico continua com DOIS valores (instalacao × manutencao) — vistoria cai no ELSE do CASE de chamado_preencher e nasce manutencao, que é a resposta certa e o motivo de não mexer',
+     /CHECK \(tipo_servico IS NULL OR tipo_servico IN \('instalacao','manutencao'\)\)/
+       .test(fs83.readFileSync('supabase/migrations/20260819120000_u7_fusao_chamados.sql', 'utf8')),
+     true);
+  eq('…e a U83 diz por escrito que não toca chamado_preencher, e por quê',
+     /NÃO toca `chamado_preencher`/.test(fs83.readFileSync('supabase/migrations/20260906090000_u83_vistoria.sql', 'utf8')),
+     true);
+
+  // ── 9) DOCUMENTAÇÃO ──────────────────────────────────────────────────────
+  {
+    const prod83 = fs83.readFileSync('docs/PRODUTO.md', 'utf8');
+    eq('R112 está documentado, com o nome escolhido e a razão dele',
+       /\*\*R112\*\*/.test(prod83) && /quarta colisão de vocabulário/.test(prod83), true);
+    const plano83 = fs83.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+    eq('U83 tem entrada no diário, e ela declara o commit B por nome de arquivo e de constante',
+       /^## U83 —/m.test(plano83) && /NAO_OFERECIDOS/.test(plano83), true);
+    const manual83 = fs83.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+    eq('o manual de operação de campo explica ao operador a diferença entre Vistoria e a visita técnica COMERCIAL — a colisão que o nome existe para evitar só é evitada se alguém disser isso a quem usa',
+       /Vistoria/.test(manual83) && /não é a visita técnica comercial/i.test(manual83), true);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

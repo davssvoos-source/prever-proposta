@@ -2072,3 +2072,55 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   de quem foi ser apagada e reescrita por efeito colateral, com sino e com acesso
   concedido a quem ninguém escolheu. Arrastar o bloco na grade recalcula a data
   pelo caminho normal. *(U82; a limitação está no P35.)*
+
+- **R112** — **A vistoria é um tipo de chamado de campo, e ela se chama
+  "Vistoria" — nunca "visita técnica".** O Vinicius tem na programação dele uma
+  atividade que não é conserto, não é preventiva e não é implantação: ir ao
+  cliente **só para olhar** — medir, conferir uma instalação de terceiro,
+  avaliar o que vai ser preciso, laudo. Ninguém conserta nem instala nada nessa
+  ida; se sair serviço, ele vira outro chamado.
+
+  **O nome foi escolhido pelo Davi entre alternativas, e a escolha é a regra.**
+  "Visita técnica" **já significa outra coisa aqui**: é a visita COMERCIAL de
+  proposta — tabela `visitas_tecnicas`, tela `/gerencial`, tipo `prospeccao`.
+  Reusar as duas palavras seria a **quarta colisão de vocabulário** do projeto
+  e a pior das quatro: as outras três (equipe, modalidade, bloco) pelo menos
+  moram em telas diferentes, enquanto estas duas dividiriam a **mesma lista de
+  tipos**, lado a lado, no mesmo seletor. Por isso o rótulo é uma palavra só, e
+  a asserção do verificador recusa qualquer rótulo que contenha "visita".
+
+  **Ela entra na programação (R57).** O critério daquela lista nunca foi "é
+  manutenção?", foi *"é demanda que se agenda numa equipe?"* — e a vistoria
+  ocupa uma janela de uma dupla num dia. É também por isso que ela **não é**
+  `operacional`: operacional é o serviço que se encaixa entre duas coisas
+  (levar equipamento, buscar peça); a vistoria é o compromisso.
+
+  **O que NÃO muda:** o prazo. O SLA do campo sai de `chamado_sla`, indexada
+  por **prioridade** e só por ela — uma vistoria normal tem exatamente o mesmo
+  prazo de uma corretiva normal, e isso é intencional: a vistoria não é mais
+  nem menos urgente por ser vistoria, é urgente pelo que a motivou. Também não
+  muda `tipo_servico`, que continua com dois valores (as duas seções do PDF de
+  fechamento) — vistoria não é obra, logo entra como manutenção.
+
+  *(U83. A entrega é em dois commits porque a ordem de deploy inverte: o
+  código escreveria um valor que o CHECK ainda recusa. Ver o diário.)*
+
+- **R113** — **Quando o sistema adivinha o tipo, a tela e o registro dizem a
+  mesma coisa.** Um chamado interno aberto sem tipo escolhido tem o tipo
+  adivinhado por palavra-chave, e essa adivinhação existe em dois lugares: na
+  tela (para mostrar a sugestão) e no banco (que é quem **grava**).
+
+  Eles estavam discordando havia dois meses. A R48 tirou "Pedido de compra" da
+  lista de escolhas e mandou o classificador da tela responder "Operacional"
+  para texto de compra — mas o do banco continuou respondendo "Pedido de
+  compra". Quem escrevia *"Comprar cabo de rede"* e não mexia no seletor via
+  **Operacional** na tela e o chamado nascia **Pedido de compra**, com uma
+  ficha de compra criada automaticamente que o formulário nem oferece para
+  preencher. A ficha ficava lá, vazia, e ninguém sabia.
+
+  Corrigido na U83, no lado do banco, que é o que estava atrasado. A regra
+  geral fica escrita: **os dois classificadores mudam juntos ou não mudam** — e
+  a prova disso deixou de ser "ninguém redefiniu a função" (que ficava verde
+  justamente porque ninguém consertava) e passou a ser o **acordo de resposta**:
+  os seis casos são exercitados dos dois lados e comparados valor a valor.
+  *(U83.)*

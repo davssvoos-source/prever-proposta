@@ -19,7 +19,10 @@ import { ArrowLeft, AlertTriangle, CalendarDays, CalendarRange, CalendarCheck, C
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { chamadoEmAberto, situacaoPrazo, TIPO_LABEL, type ChamadoTipo } from "@/lib/chamado-status";
+import {
+  chamadoEmAberto, situacaoPrazo, TIPO_LABEL, TIPOS, TIPOS_DA_NATUREZA,
+  type ChamadoTipo,
+} from "@/lib/chamado-status";
 import { isPendenteBucket, isAguardandoAprovacaoBucket } from "@/lib/visita-status";
 import { EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
 import { useChamados, usePessoas } from "@/features/chamados/data";
@@ -43,7 +46,10 @@ const CORES_LIGHT = ["#2a78d6", "#008300", "#e87ba4", "#eda100", "#1baf7a", "#eb
 interface Item {
   trilho: "campo" | "demanda" | "proposta";
   equipe: string | null;
-  tipo: string;       // corretiva | preventiva | operacional | implantacao | melhoria | pedido_compra | visita
+  // um ChamadoTipo, OU o pseudo-tipo "visita" (a proposta, que vem de
+  // visitas_tecnicas e não é um chamado). Deliberadamente `string`: a lista de
+  // tipos vive em chamado-status.ts e não se copia para cá (U83).
+  tipo: string;
   cliente: string | null;
   responsavelId: string | null;
   emAberto: boolean;
@@ -169,7 +175,13 @@ function PainelChamadosPage() {
         rotulo: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""),
       });
     }
-    const tiposCampo: ChamadoTipo[] = ["corretiva", "preventiva", "operacional", "implantacao"];
+    // U83: era a segunda cópia à mão da lista de tipos de campo, e ela tinha
+    // um defeito SILENCIOSO embutido — o fallback logo abaixo joga em
+    // "corretiva" todo tipo que não estiver nesta lista. Um tipo de campo novo
+    // que não fosse acrescentado AQUI não sumia do gráfico: ele era CONTADO
+    // COMO CORRETIVA, e a barra vermelha crescia sem que nada avisasse.
+    // Derivar da lista de RENDER (e não da de oferta) é o que fecha isso.
+    const tiposCampo: ChamadoTipo[] = TIPOS_DA_NATUREZA.campo;
     const base = meses.map((m) => {
       const linha: Record<string, string | number> = { mes: m.rotulo };
       for (const t of tiposCampo) linha[t] = 0;
@@ -206,14 +218,23 @@ function PainelChamadosPage() {
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]).map(([nome]) => nome);
   }, [itens]);
 
-  // tipos disponíveis para o filtro: os de campo + os de demanda + visita
+  // Tipos disponíveis para o filtro: TODO o vocabulário menos 'prospeccao',
+  // mais o pseudo-tipo "visita".
+  //
+  // U83: eram três listas coladas à mão (os quatro de campo, e depois
+  // 'melhoria' e 'pedido_compra' um a um) — a terceira cópia do domínio. O
+  // filtro FILTRA, não cria: por isso ele mostra o vocabulário inteiro, e não
+  // a lista de oferta. Um tipo que existe no banco e não tem opção aqui é um
+  // conjunto de chamados que ninguém consegue isolar nesta tela.
+  //
+  // 'prospeccao' fica de fora porque este painel já representa a proposta pelo
+  // trilho dela: os itens vêm de `visitas_tecnicas` com o pseudo-tipo
+  // "visita", que não é um ChamadoTipo e não tem entrada no vocabulário.
   const tiposFiltro: { valor: string; rotulo: string }[] = [
     { valor: "todos", rotulo: "Todos os tipos" },
-    ...(["corretiva", "preventiva", "operacional", "implantacao"] as ChamadoTipo[]).map((t) => ({
-      valor: t, rotulo: TIPO_LABEL[t],
+    ...TIPOS.filter((t) => t !== "prospeccao").map((t) => ({
+      valor: t as string, rotulo: TIPO_LABEL[t],
     })),
-    { valor: "melhoria", rotulo: TIPO_LABEL.melhoria },
-    { valor: "pedido_compra", rotulo: TIPO_LABEL.pedido_compra as string },
     { valor: "visita", rotulo: "Visita (proposta)" },
   ];
 

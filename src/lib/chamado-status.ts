@@ -44,6 +44,17 @@ export type ChamadoTipo =
   // virou satélite, mas na fila, no quadro e nos indicadores ela entra igual,
   // com número CH- e tudo.
   | "prospeccao"
+  // R112/U83 (2026-09-02, Davi): a atividade de campo que o Vinicius chama de
+  // "visita técnica" na programação dele — ir ao cliente só para OLHAR.
+  //
+  // O NOME NÃO É "visita_tecnica" POR ESCOLHA EXPLÍCITA DO DAVI, e a razão é
+  // que essas duas palavras JÁ SIGNIFICAM outra coisa aqui: a visita comercial
+  // de proposta (tabela `visitas_tecnicas`, tela `/gerencial`, tipo
+  // `prospeccao`). Reusá-las seria a quarta colisão de vocabulário do projeto
+  // — e a pior das quatro, porque as outras três (equipe, modalidade, bloco)
+  // pelo menos moram em telas diferentes; estas duas dividiriam a MESMA lista
+  // de tipos de chamado.
+  | "vistoria"
   // R48/U41: aposentado da SELEÇÃO (não do vocabulário) — ver o comentário
   // de `tiposDaNatureza`. Fica no union e em todo o resto do arquivo para os
   // chamados antigos continuarem legíveis.
@@ -182,23 +193,72 @@ export const TIPO_LABEL: Record<ChamadoTipo, string> = {
   preventiva: "Manutenção Preventiva",
   operacional: "Operacional",
   implantacao: "Implantação",
+  // R112: uma palavra só, de propósito. "Visita técnica" é o nome do OUTRO
+  // fluxo (o comercial) e não pode voltar a aparecer numa lista de tipos.
+  vistoria: "Vistoria",
   melhoria: "Melhoria",
   pedido_compra: "Pedido de compra",
 };
 
-/** Tipos que fazem sentido em cada natureza (o seletor usa isto). */
-export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
+// ── A FONTE ÚNICA DE "QUE TIPOS EXISTEM EM CADA NATUREZA" ───────────────────
+//
+// Isto nasceu na U83, e nasceu de um censo: os tipos de chamado de CAMPO
+// estavam copiados À MÃO em quatro lugares fora deste arquivo, todos com
+// `as ChamadoTipo[]` — que desliga o compilador. Acrescentar 'vistoria' só em
+// `tiposDaNatureza` não alcançaria nenhum deles, e o tipo novo ficaria
+// invisível no gráfico e no filtro do painel SEM UM ÚNICO ERRO. Os quatro
+// eram: chamados.novo-campo.tsx:319, chamados.painel.tsx:172 e :212, e o
+// union + o enum do schema da IA em chamado-rapido.functions.ts:42/:68.
+//
+// A regra que fica: NINGUÉM MAIS ESCREVE UMA LISTA DE TIPOS DE CAMPO À MÃO.
+// Uma asserção de CENSO no verificador varre `src/` atrás de qualquer lista
+// literal com dois ou mais tipos de campo e falha se achar — este arquivo é o
+// único endereço autorizado.
+//
+// A LISTA É O QUE O SISTEMA SABE RENDERIZAR. O que ele OFERECE para escrita é
+// `tiposDaNatureza()`, que é esta mesma lista menos `NAO_OFERECIDOS`. Os dois
+// conceitos eram um só até a U83, e a diferença entre eles é o que torna
+// possível soltar um tipo novo em dois passos sem janela de 23514.
+export const TIPOS_DA_NATUREZA: Record<Natureza, ChamadoTipo[]> = {
+  campo: ["corretiva", "preventiva", "operacional", "implantacao", "vistoria"],
+  interno: ["melhoria", "corretiva", "preventiva", "operacional", "implantacao"],
   // a prospecção tem um tipo só, e ele não aparece nas outras naturezas: quem
   // abre chamado de campo não escolhe "prospecção" num seletor
-  if (natureza === "comercial") return ["prospeccao"];
-  // R48/U41 (2026-08-21, Davi): "pedido_compra" SAI da lista oferecida — na
-  // prática ela vai usar "Operacional" no lugar daqui pra frente. Não sai do
-  // union nem de TIPO_LABEL/TIPO_CORES/TIPOS/CHECK: os pedidos de compra já
-  // abertos continuam com ficha própria (chamado_compra), filtro no painel e
-  // tudo mais funcionando — só não é mais uma opção para um chamado NOVO.
-  return natureza === "campo"
-    ? ["corretiva", "preventiva", "operacional", "implantacao"]
-    : ["melhoria", "corretiva", "preventiva", "operacional", "implantacao"];
+  comercial: ["prospeccao"],
+};
+
+/**
+ * O que o vocabulário CONHECE mas NÃO oferece para escrita. Uma lista só, e
+ * cada linha diz por quê — é aqui que se liga e se desliga um tipo.
+ */
+const NAO_OFERECIDOS: ChamadoTipo[] = [
+  // R48/U41 (2026-08-21, Davi): "na prática, vou usar o Operacional no lugar".
+  // Não sai do union nem de TIPO_LABEL/TIPO_CORES/TIPOS/CHECK: os pedidos de
+  // compra já abertos continuam com ficha própria (chamado_compra), filtro no
+  // painel e tudo mais funcionando — só não é opção para um chamado NOVO.
+  "pedido_compra",
+  // ═════════════════════════════════════════════════════════════════════════
+  // ↓↓↓ A LINHA DO COMMIT B. APAGUE ESTA LINHA — SÓ ELA — DEPOIS QUE O DAVI
+  //     RODAR `20260906090000_u83_vistoria.sql`. ↓↓↓
+  //
+  // Enquanto ela estiver aqui, 'vistoria' é RENDERIZÁVEL (rótulo, cor, filtro,
+  // série do gráfico, PDF) e NÃO É OFERECIDA em lugar nenhum que grave. A
+  // ordem de deploy INVERTEU em relação aos casos anteriores: o perigo de
+  // sempre era o código LER coluna que ainda não existe; aqui o código
+  // ESCREVERIA um valor que o CHECK ainda recusa — 23514 na cara de quem abre
+  // o chamado, na janela entre o push e a rodada da migration.
+  //
+  // Apagar esta linha liga, de uma vez e sem caçada: o seletor de novo chamado
+  // de campo, o seletor de tipo do PainelChamado, o diálogo de nova atividade,
+  // o enum do schema da IA de criação rápida E a linha "vistoria: …" do prompt
+  // dela (as duas derivam desta função — ver chamado-rapido.functions.ts).
+  "vistoria",
+  // ═════════════════════════════════════════════════════════════════════════
+];
+
+/** Tipos que o seletor OFERECE em cada natureza — o que pode ser GRAVADO. */
+export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
+  return TIPOS_DA_NATUREZA[natureza].filter((t) => !NAO_OFERECIDOS.includes(t));
 }
 
 /**
@@ -206,19 +266,37 @@ export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
  * 2026-08-22: "são as únicas possibilidades que um técnico de campo pode ter
  * com tipo de demanda").
  *
- * É mais estrito que `tiposDaNatureza('campo')`, que inclui 'operacional' — e
- * a diferença é proposital: 'operacional' existe na natureza campo para o
+ * É mais estrito que os tipos de campo porque exclui 'operacional', e a
+ * diferença é proposital: 'operacional' existe na natureza campo para o
  * trabalho que não é manutenção nem instalação (levar equipamento, buscar
  * peça), mas não é uma demanda que se PROGRAMA para uma dupla. O filtro da
  * programação usa esta lista; o seletor de "novo chamado de campo" continua
  * usando `tiposDaNatureza`.
+ *
+ * DERIVADA POR EXCLUSÃO desde a U83, e a escolha tem consequência: o padrão
+ * para um tipo de campo NOVO passa a ser "sim, é programável", e quem
+ * acrescentar a exceção seguinte tem de dizê-la aqui, por nome. É o padrão
+ * certo — 'operacional' é o caso raro, não a regra.
+ *
+ * R112 (2026-09-02, Davi): 'vistoria' ENTRA. O critério do R57 nunca foi "é
+ * manutenção?", foi "é demanda que se AGENDA numa equipe?" — e a vistoria do
+ * Vinicius é exatamente isso: ela ocupa uma janela de uma dupla num dia. É
+ * também por isso que ela NÃO é 'operacional': operacional é o serviço que se
+ * encaixa entre duas coisas, a vistoria é o compromisso.
+ *
+ * Esta lista alimenta um FILTRO (`<option>` da programação), não um seletor de
+ * escrita — por isso 'vistoria' pode entrar já no commit A.
  */
-export const TIPOS_DEMANDA_CAMPO: ChamadoTipo[] = ["corretiva", "preventiva", "implantacao"];
+export const TIPOS_DEMANDA_CAMPO: ChamadoTipo[] =
+  TIPOS_DA_NATUREZA.campo.filter((t) => t !== "operacional");
 
-export const TIPOS: ChamadoTipo[] = [
-  "prospeccao",
-  "corretiva", "preventiva", "operacional", "implantacao", "melhoria", "pedido_compra",
-];
+/**
+ * TODO o vocabulário, na ordem de leitura. Derivado das chaves de TIPO_LABEL
+ * (que é `Record<ChamadoTipo, …>`, logo o compilador garante que nenhum tipo
+ * do union fica de fora) — antes da U83 era uma oitava lista escrita à mão,
+ * capaz de divergir do union em silêncio.
+ */
+export const TIPOS: ChamadoTipo[] = Object.keys(TIPO_LABEL) as ChamadoTipo[];
 
 export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
   // o azul claro do degradê: negócio em formação, ainda sem serviço no chão
@@ -227,6 +305,23 @@ export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
   preventiva:    PRISMA.amarelo,    // o que se antecipa
   operacional:   PRISMA.neutro,     // o dia a dia, sem tensão
   implantacao:   PRISMA.azulEscuro, // obra nova, de fôlego longo
+  // R112 — laranja, e a escolha foi MEDIDA contra as outras duas livres.
+  // Semântica: a rampa vai do que se antecipa (amarelo) ao que quebrou
+  // (vermelho), e o laranja é literalmente o passo entre os dois — que é o que
+  // uma vistoria é: ir olhar porque ainda NÃO SE SABE se quebrou.
+  // Colisão em uso: laranja também é STATUS stand_by e PRIORIDADE alta, e as
+  // três aparecem lado a lado no cabeçalho do PainelChamado. Sobrou por
+  // eliminação medida — das três cores livres do PRISMA:
+  //   · `verde` é o "terminado com sucesso" da casa inteira (cobrança, compra,
+  //     contratos, inventário, checklist) — um tipo verde ao lado de um status
+  //     verde diria que o chamado acabou;
+  //   · `azul` é STATUS aberto E agendado E PRIORIDADE normal — ou seja, o
+  //     ESTADO DE REPOUSO de uma vistoria (agendada, normal). Seriam três
+  //     chips azuis em fila no caso mais comum, que é o pior lugar possível;
+  //   · `laranja` colide com stand_by (esperar material não é o que trava uma
+  //     vistoria) e com prioridade alta (não é o padrão). Colide fora do
+  //     repouso, e não dentro dele.
+  vistoria:      PRISMA.laranja,
   melhoria:      PRISMA.rosa,       // amarração pedida pelo Davi
   pedido_compra: PRISMA.pessego,    // dinheiro, mas sem urgência própria — legado
 };
@@ -400,6 +495,29 @@ export function dataParaPrazo(data: string | null | undefined): string | null {
  * os dois PRECISAM concordar, inclusive no colapso de espaços (senão uma
  * quebra de linha no texto faz a tela prometer um tipo e o registro nascer
  * com outro).
+ *
+ * ── DÍVIDA DECLARADA NA U83, e ela é uma PALAVRA ────────────────────────────
+ * "vistoria" já é palavra-chave aqui — e devolve `preventiva`. Depois do R112
+ * isso passou a ser uma resposta errada em português, e MESMO ASSIM ela fica.
+ * Três razões, nesta ordem:
+ *
+ *   1. Mexer aqui é ESCRITA. `importar-notion.ts:364` grava direto o que esta
+ *      função devolve; devolver 'vistoria' antes de a U83 rodar é 23514. É a
+ *      regra 5 (ordem de deploy), e é o mesmo motivo de `NAO_OFERECIDOS`.
+ *   2. O gêmeo no banco (`public.sugerir_tipo_chamado`) teria de mudar na MESMA
+ *      migration, e uma função de classificação nova não é o que a U83 entrega.
+ *      Divergir os dois é a cicatriz que o manual de banco chama de "trigger
+ *      espelha função do app".
+ *   3. O ESTRAGO É PEQUENO E ESTÁ MEDIDO: esta cascata só é consultada em
+ *      caminho INTERNO — `chamados.novo-interno.tsx` (como sugestão visível,
+ *      que a pessoa pode trocar) e a importação do Notion. No banco,
+ *      `chamado_preencher` (u7:296-298) só a chama quando `natureza <> 'campo'`;
+ *      no campo o default é 'corretiva', fixo. A vistoria do Vinicius é
+ *      atividade de CAMPO — ela nunca passa por aqui.
+ *
+ * Fica para depois da U83, junto com o commit B, e vale para os DOIS lados de
+ * uma vez. Enquanto isso, um chamado interno intitulado "vistoria" nasce
+ * preventiva, como sempre nasceu.
  */
 export function sugerirTipoChamado(titulo: string, descricao?: string | null): ChamadoTipo {
   const t = `${titulo ?? ""} ${descricao ?? ""}`

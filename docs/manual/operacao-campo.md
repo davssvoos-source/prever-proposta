@@ -649,10 +649,74 @@ SELECT count(*) AS encerrados_sem_resposta
    AND c.status IN ('concluido','cancelado');
 ```
 
+## Vistoria: um tipo de chamado, e ele NÃO é a visita técnica comercial (R112, U83)
+
+### As duas coisas que se chamavam parecido
+
+Existem no Grupo Prever duas atividades diferentes que a boca chama do mesmo
+jeito, e o sistema agora separa as duas por NOME:
+
+| O que é | Como se chama no sistema | Onde vive |
+|---|---|---|
+| Ir ao cliente **só para olhar** — medir, conferir instalação de terceiro, avaliar o que vai ser preciso, laudo | tipo **Vistoria** de chamado de campo | fila de chamados, programação da equipe técnica |
+| A **visita comercial** de proposta — levantar o escopo para orçar | "visita técnica", tipo **Prospecção** | `/gerencial`, tela da visita, funil da proposta |
+
+**Se você está abrindo um chamado de CAMPO, o que você quer é "Vistoria".** Se
+o que você quer é marcar a visita para fazer um orçamento, isso não é um
+chamado de campo: é o fluxo comercial, e ele começa em `/gerencial`.
+
+Esse é o motivo de o rótulo ser uma palavra só. "Visita técnica" já era o nome
+do outro fluxo, e duas coisas diferentes com o mesmo nome na mesma lista é
+erro de digitação esperando acontecer.
+
+### Quando é Vistoria, e quando NÃO é
+
+O corte é pelo que a equipe **vai fazer lá**, não pelo motivo de ir:
+
+- **Vistoria** — ninguém conserta e ninguém instala nada nessa ida. Se sair
+  serviço, ele vira **outro chamado**.
+- **Manutenção Corretiva** — tem defeito relatado esperando conserto. Mesmo que
+  a equipe precise olhar antes para saber o que fazer, é corretiva: o objetivo
+  da ida é resolver.
+- **Manutenção Preventiva** — é roteiro de manutenção programada de um sistema
+  que já é nosso (aquele que abre checklist).
+- **Operacional** — o serviço que se encaixa entre duas coisas: levar
+  equipamento, buscar peça. Não ocupa a agenda de uma equipe como compromisso.
+
+### O que a Vistoria muda na sua rotina — e o que não muda
+
+**Ela entra na programação.** Aparece no filtro "tipo de demanda" da
+programação da equipe técnica, junto com corretiva, preventiva e implantação,
+porque ela ocupa uma janela de uma dupla num dia como qualquer atendimento.
+
+**A cor dela é laranja** no cartão da grade e no chip do chamado.
+
+**O prazo é o mesmo.** O prazo de atendimento do campo sai da **prioridade**, e
+só dela — uma vistoria "normal" tem exatamente o mesmo prazo de uma corretiva
+"normal". A vistoria não é mais nem menos urgente por ser vistoria: ela é
+urgente pelo que a motivou. Se precisar de prazo curto, suba a **prioridade**.
+
+**No fechamento ela conta como manutenção**, não como instalação — vistoria não
+é obra.
+
+### Enquanto o tipo não aparecer no seletor
+
+A liberação vai em dois passos, de propósito. Até o segundo passo subir, você
+vai **ver** "Vistoria" nos filtros e nos rótulos, mas ela **ainda não aparece**
+na lista de tipos ao abrir um chamado novo. Isso é esperado, não é defeito: o
+banco precisa aceitar o valor antes de o formulário oferecê-lo, senão quem
+tentasse salvar levaria um erro. Enquanto isso, abra como estava abrindo e
+troque o tipo depois.
+
+E um aviso que vale para os chamados **internos**: escrever a palavra
+"vistoria" no título de uma demanda interna ainda faz o sistema **sugerir**
+"Manutenção Preventiva". É uma pendência conhecida, e a sugestão é só sugestão
+— troque o tipo à mão se não for isso.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`
 - `src/features/paineis/indicadores.ts` · `painel.operacional.tsx`
 - `docs/SISTEMA_OS.md` (o plano original do sistema de OS)
 - `src/features/duplas/modelo.ts` — a escala semanal e a herança (R96/U76)
-- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R111
+- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R112

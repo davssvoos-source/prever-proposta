@@ -7148,3 +7148,284 @@ depois da migration.
    decide o tamanho do problema.
 
 2229 asserções, build ok, tsc em 83. Migration de 951 → 847 linhas.
+
+## U83 — Vistoria é um tipo, e o domínio de tipos para de ser copiado (R112)
+
+Davi, 02/09, escolhendo explicitamente entre alternativas: **o tipo novo se
+chama `vistoria`, rótulo "Vistoria"**. É a atividade que o Vinicius tem na
+programação dele e que não tinha lugar no vocabulário — ir ao cliente só para
+olhar. Hoje ela cai em `corretiva` (o default de campo de `chamado_preencher`,
+u7:296-297) ou em `operacional`, e some do relatório de manutenção como se
+fosse conserto.
+
+**O nome é metade da decisão.** "Visita técnica" JÁ SIGNIFICA a visita
+comercial neste sistema — `visitas_tecnicas`, `/gerencial`, tipo `prospeccao`,
+o trigger `sincronizar_chamado_da_visita`. Reusar as duas palavras seria a
+quarta colisão de vocabulário do projeto e a pior: as outras três (equipe,
+modalidade, bloco) moram em telas diferentes; estas duas dividiriam a MESMA
+lista de tipos, no mesmo seletor. O verificador recusa qualquer rótulo de
+`vistoria` que contenha a palavra "visita" — a decisão virou trava.
+
+E uma armadilha confirmada, dita para o próximo leitor não repetir: o plano do
+projeto dizia *"e então `vistoria` cobre"*, como se o tipo já existisse. **Não
+existia.** Os tipos de campo eram quatro.
+
+### A entrega não é o tipo. É a desduplicação que o tipo tornou necessária.
+
+O censo do repositório encontrou o domínio "tipos de chamado de CAMPO" copiado
+à mão em **quatro lugares fora de `chamado-status.ts`**, todos com
+`as ChamadoTipo[]` — que desliga o compilador:
+
+| Onde | O que era |
+|---|---|
+| `chamados.novo-campo.tsx:319` | `(["corretiva",…] as ChamadoTipo[]).map` — o seletor de abrir chamado |
+| `chamados.painel.tsx:172` | `const tiposCampo: ChamadoTipo[] = […]` — as séries do gráfico |
+| `chamados.painel.tsx:212` | outra cópia da mesma lista — as opções do filtro |
+| `chamado-rapido.functions.ts:42` e `:68` | o union e o `enum` do schema da IA |
+
+Acrescentar `vistoria` só em `tiposDaNatureza` **não alcançaria nenhum deles**.
+O tipo novo ficaria invisível nas quatro telas, **sem um único erro** — e num
+dos quatro o silêncio era pior que invisibilidade: o fallback de
+`chamados.painel.tsx:187` joga em `"corretiva"` todo tipo que não esteja na
+lista, então cada vistoria engordaria a barra vermelha do gráfico de
+manutenções. Um número errado que ninguém tem como perceber olhando.
+
+**O que o censo trouxe e o grep de `'corretiva'` não teria trazido:**
+`chamados.painel.tsx:212` não era uma cópia, eram **três** — os quatro de
+campo, e depois `melhoria` e `pedido_compra` colados um a um. E `TIPOS` era uma
+**oitava** lista, escrita à mão em paralelo ao union, capaz de divergir dele em
+silêncio; virou `Object.keys(TIPO_LABEL)`, que é `Record<ChamadoTipo, …>` e
+portanto exaustivo por compilador.
+
+### O desenho: RENDERIZAR e OFERECER passaram a ser duas listas
+
+Até aqui eram a mesma coisa, e é por isso que a entrega precisava de dois
+commits. `TIPOS_DA_NATUREZA` (novo, exportado) é o que o sistema sabe
+**renderizar**; `tiposDaNatureza()` continua sendo o que ele **oferece**, e
+agora é derivado: a mesma lista menos `NAO_OFERECIDOS`.
+
+`NAO_OFERECIDOS` não é mecanismo novo — é o padrão que a U41 já tinha criado em
+prosa para `pedido_compra` ("sai da SELEÇÃO, não do vocabulário"), agora escrito
+como uma lista em vez de como um `if`. Ele tem duas entradas, e cada uma diz por
+quê. **A segunda é a linha do commit B.**
+
+### A ordem de deploy INVERTEU, e é a única razão de haver dois commits
+
+Nos casos anteriores o perigo era o código LER coluna que ainda não existe — a
+migration ia na frente. Aqui o código passaria a **ESCREVER um valor que o
+CHECK ainda recusa (23514)** na janela entre o push (que a Lovable publica
+sozinha) e a rodada da migration (que o Davi faz à mão). A janela tem o tamanho
+do tempo dele.
+
+- **COMMIT A (este):** a migration; o suporte a renderizar `vistoria`; a
+  desduplicação inteira; `vistoria` em `TIPOS_DEMANDA_CAMPO` (filtro, não
+  escrita); as asserções; os docs. **Nada que ofereça `vistoria` para escrita.**
+- **COMMIT B (depois que o Davi rodar):** apagar **uma linha** — a entrada
+  `"vistoria"` na lista `NAO_OFERECIDOS`, em `src/lib/chamado-status.ts`.
+
+Apagar aquela linha liga, de uma vez: o seletor de novo chamado de campo, o
+seletor de tipo do `PainelChamado`, o diálogo de nova atividade, o `enum` do
+schema da IA **e a linha de descrição de vistoria no prompt dela**. Os cinco
+derivam da mesma função. Fazer o prompt derivar do mesmo filtro
+(`TIPO_IA_DESCRICAO` × `TIPOS_IA`) foi trabalho deliberado: sem ele o commit B
+seriam duas edições, e "duas" é onde a segunda é esquecida.
+
+A asserção que guarda isso é barulhenta de propósito — ela afirma
+`[renderizável=true, oferecido em campo/interno/comercial=false]` e o texto dela
+diz que o commit B tem de virá-la. Uma trava que some sozinha não é trava.
+
+### As quatro perguntas de produto
+
+**1. `vistoria` entra em `TIPOS_DEMANDA_CAMPO`? Sim.** Li o comentário antes de
+decidir, e ele é o argumento: a lista é mais estreita que os tipos de campo
+porque `operacional` "não é uma demanda que se PROGRAMA para uma dupla". O
+critério nunca foi "é manutenção?" — foi "ocupa uma janela de uma equipe?". A
+vistoria do Vinicius ocupa. É também o que a distingue de `operacional`:
+operacional se encaixa entre duas coisas, a vistoria é o compromisso.
+
+A lista passou a ser **derivada por exclusão** (`campo` menos `operacional`), e
+essa escolha tem consequência dita por escrito: o padrão para um tipo de campo
+novo passa a ser *"sim, é programável"*, e quem quiser a exceção seguinte tem
+de nomeá-la. É o padrão certo — `operacional` é o caso raro.
+
+E ela pode entrar **já no commit A** porque alimenta um `<option>` de filtro, o
+que foi verificado e não suposto: o "+" da programação navega para
+`/chamados/novo-campo` **sem levar `tipo` na busca** (há asserção sobre isso).
+Se levasse, o filtro seria um caminho de escrita disfarçado.
+
+**2. Que cor? `PRISMA.laranja`, e a escolha foi medida.** Semântica: a rampa de
+`TIPO_CORES` vai do que se antecipa (amarelo) ao que quebrou (vermelho), e o
+laranja é literalmente o passo entre os dois — que é o que uma vistoria é: ir
+olhar porque **ainda não se sabe** se quebrou.
+
+Sobraram três cores livres no PRISMA, e as três colidem em algum lugar; a
+escolha foi por onde a colisão dói menos:
+
+- `verde` é o "terminado com sucesso" da casa inteira (cobrança, compra,
+  contratos, inventário, checklist). Um tipo verde ao lado de um status verde
+  diria que o chamado acabou. Fora.
+- `azul` é STATUS `aberto` **e** `agendado` **e** PRIORIDADE `normal` — ou seja,
+  o **estado de repouso** de uma vistoria. Seriam três chips azuis em fila no
+  caso mais comum. É o pior lugar possível para uma colisão. Fora.
+- `laranja` é STATUS `stand_by` (esperar material não é o que trava uma
+  vistoria) e PRIORIDADE `alta` (não é o padrão). Colide **fora** do repouso, e
+  não dentro dele. Escolhido.
+
+Há asserção nova de que nenhuma cor de `TIPO_CORES` se repete entre tipos.
+
+**3. A IA passa a poder classificar como vistoria? Sim — mas só no commit B**, e
+com a descrição pronta desde já. O risco real não é a IA usar o tipo novo; é ela
+chutar entre as **três que mandam alguém ao prédio**. Então o corte está escrito
+por nome, nos dois sentidos: *"se há defeito relatado esperando conserto, é
+corretiva, não vistoria"* e *"se é roteiro de manutenção programada de um
+sistema que já é nosso, é preventiva"*. `TIPO_IA_DESCRICAO` é
+`Record<ChamadoTipo, string>`: um tipo novo no vocabulário não compila sem que
+alguém diga à IA como reconhecê-lo.
+
+**4. `vistoria` tem SLA/prazo diferente? NÃO, e está dito por escrito.** O prazo
+do campo é calculado em `chamado_preencher` (u7:301-306, e o recálculo por
+escalada de prioridade em u7:333-338) lendo `chamado_sla` — que é indexada por
+**prioridade** e só por ela. O tipo não entra no cálculo em lugar nenhum. Uma
+vistoria `normal` tem exatamente o mesmo prazo de uma corretiva `normal`, e essa
+é a resposta certa: a vistoria não é mais nem menos urgente por ser vistoria, é
+urgente pelo que a motivou. Há asserção que varre as migrations procurando
+qualquer leitura de `chamado_sla` filtrada por `tipo` e exige lista vazia — "não
+muda" virou algo que fica vermelho se um dia mudar.
+
+### O que esta entrega NÃO faz, e por quê
+
+**A palavra "vistoria" continua classificando como `preventiva`.** Ela é
+palavra-chave de `sugerir_tipo_chamado` desde a U1 (u1:63) e do gêmeo em TS. Com
+o R112 isso passou a ser uma resposta errada em português, e mesmo assim fica:
+
+1. mexer no gêmeo TS é **escrita** — `importar-notion.ts:364` grava direto o que
+   ele devolve, e devolver `vistoria` antes de a U83 rodar é o 23514 que o
+   desenho de dois commits existe para evitar;
+2. os dois lados precisam concordar palavra por palavra (convenção "trigger
+   espelha função do app" do manual de banco) — mudam juntos ou não mudam;
+3. **o estrago está medido e é pequeno:** `chamado_preencher` só consulta a
+   função quando `natureza <> 'campo'`; no campo o default é `'corretiva'`,
+   fixo. A vistoria do Vinicius é atividade de campo — nunca passa por ali. O
+   que sobra é um chamado *interno* intitulado "vistoria" nascendo preventiva,
+   como sempre nasceu.
+
+Dívida declarada no próprio código, com as três razões e o caminho de saída
+(regra 8: se só se conserta com maquinaria, declare). Duas asserções a prendem:
+o comportamento atual, e o fato de nenhuma migration depois da U7 redefinir a
+função — se alguém "consertar" um lado, o outro fica vermelho.
+
+**`tipo_servico` não foi tocado, e isso é decisão.** `chamado_preencher` tem uma
+**enumeração por exclusão** (`CASE WHEN tipo = 'implantacao' THEN 'instalacao'
+ELSE 'manutencao'`), e ela alcança o tipo novo: uma vistoria nasce
+`manutencao`. Está certo — `tipo_servico` tem dois valores e eles são as duas
+seções do PDF de fechamento; vistoria não é obra. Um terceiro valor seria
+maquinaria nova para um detalhe já resolvido. A asserção prende que continuam
+sendo **dois**, para que um terceiro não apareça mudando a resposta em silêncio.
+
+**Sem backfill.** Não existe critério: nada no banco distingue hoje uma vistoria
+de uma corretiva mal classificada, e adivinhar por palavra do título
+reescreveria histórico com um chute. A conferência 105 da migration conta
+`tipo = 'vistoria'` e espera **zero** — é ao mesmo tempo a prova de que o commit
+A não grava nada e o pré-voo do DESFAZER.
+
+### A peça que fica: a asserção de CENSO
+
+É a metade da entrega que sobrevive a ela. Uma varredura de todo `.ts`/`.tsx` de
+`src/` atrás de **qualquer lista literal entre colchetes com dois ou mais tipos
+de campo**, com `chamado-status.ts` como único endereço autorizado. Deriva do
+arquivo; não afirma caso a caso os quatro que eu conheço.
+
+As três cicatrizes que ela respeita: linhas de comentário são retiradas antes
+(regra 2 — grep acha comentário, e isso já rendeu 5+ falsos positivos aqui); o
+regex usa `[^\]]` para parar no primeiro `]`, senão atravessaria o arquivo e
+juntaria dois tipos que nunca estiveram na mesma lista; e o corte é em **dois**
+tipos, não um, porque `tipo === "corretiva"` é predicado legítimo
+(reincidência, emergencial, KPI de corretiva urgente) e não enumeração.
+
+Oito pares negativos, todos **constantes escritas à mão** (regra 4): a linha
+exata que a U83 apagou, a forma anotada, a lista quebrada em várias linhas, o
+`enum` de schema sem anotação nenhuma, e os quatro que ela **não** pode acusar —
+o predicado de um tipo só, a lista de outro domínio que tem uma palavra em
+comum, a cópia escrita dentro de um comentário, e o regex atravessando o `]`.
+
+E o **censo do outro lado**: a última migration que reescreve
+`chamados_tipo_check` (por timestamp, que é a ordem em que o Davi as roda) tem
+de aceitar exatamente o union do TS mais `proposta_comercial`, que é legado da
+U41. Um tipo acrescentado de um lado só é 23514 em produção, ou um valor que o
+banco aceita e a tela não sabe pintar — nenhum compilador cruza esses dois
+arquivos, e agora o verificador cruza.
+
+### A migration
+
+`20260906090000_u83_vistoria.sql` — DDL pura, uma constraint. Pré-voo que
+**aborta** se o CHECK vivo não for o da U41 (os oito valores conferidos um a um:
+reescrever por cima de uma versão que eu não li é apagar a correção de outra
+pessoa sem que ninguém veja) e se existir alguma linha com tipo fora da lista
+nova (o `ADD CONSTRAINT` valida a tabela inteira, e o 23514 dele aponta para a
+constraint, não para a linha).
+
+A conferência 101 não faz `LIKE '%vistoria%'`: ela extrai do catálogo **a lista
+inteira** de literais e compara com a string esperada completa — presença do
+valor novo não veria a remoção de um antigo (regra 2). A 106 confere
+`convalidated`, porque uma constraint `NOT VALID` passaria por todas as outras
+sem proteger uma linha sequer. A 107 confere que `chamado_sla` continua sem
+coluna de tipo — a resposta "o SLA não muda" fica vermelha se um dia mudar.
+
+### O que a rodada de refutação achou — e o defeito VIVO que ela desenterrou
+
+**A conferência 101 diria `>>> OLHAR <<<` numa execução PERFEITA (GRAVE).** O
+`string_agg(… ORDER BY …)` devolve os nove valores ordenados, e
+`proposta_comercial` vem ANTES de `prospeccao` (divergem na quarta letra, e
+`p` < `s`). A string esperada tinha as duas trocadas. É o pior modo de falhar,
+porque ensina a ignorar a única coluna que o Davi lê. Pior: **a asserção do
+verificador tinha copiado a mesma string errada** — ela comparava o arquivo
+consigo mesmo e portanto CERTIFICAVA o defeito. Agora o SQL declara
+`COLLATE "C"` e o verificador **deriva** a ordem com `sort()`, que é a mesma
+regra: os dois lados param de coincidir por acaso.
+
+**O pré-voo era cego a ADIÇÃO e se desligava na segunda rodada (GRAVE).** Eram
+oito `position(…) = 0` dentro do `ELSE` de "já tem vistoria?". Só detectavam
+REMOÇÃO — se uma migration futura acrescentasse um nono valor ao CHECK, o §3 o
+APAGARIA em silêncio, e o próximo INSERT daquele tipo seria 23514 em produção.
+E o guarda estava desligado exatamente na segunda rodada, que é onde esse caso é
+mais provável. Virou comparação de CONJUNTO (`@>` pega remoção, `<@` pega
+adição), fora de qualquer `ELSE`, com `v_vals IS NULL` explícito — sem ele
+`NOT (NULL AND …)` é NULL e o guarda passaria MUDO, que é a mesma família do
+`position(…) >= 0` que nunca é falso.
+
+### O GÊMEO DO CLASSIFICADOR — dois meses de divergência, e a asserção que a mantinha verde
+
+O censo do domínio de tipos desenterrou um defeito **vivo em produção desde a
+R48**, e ele não é do escopo original desta entrega: é da mesma regra de
+produto, "qual tipo o sistema escolhe quando ninguém escolhe".
+
+`sugerir_tipo_chamado` existe em dois exemplares — o do banco (u6c:48, renomeado
+por u7:282; o RENAME preserva o corpo) e o gêmeo TS. Os seis ramos eram
+idênticos. A R48/U41 trocou o ramo de compra do lado do TS para `operacional`
+**e o lado do banco ficou como estava — e é ele que grava.**
+
+O caminho, do clique ao registro: chamado interno, a pessoa escreve "Comprar
+cabo de rede" e não toca no seletor → a tela mostra **Operacional** → o app
+grava `tipo = NULL` → `chamado_preencher` chama o gêmeo do banco → devolve
+**`pedido_compra`** → o gatilho da U9 cria a ficha de compra. O registro nasce
+com um tipo que a R48 aposentou, e com uma ficha vazia que a tela nem sabe
+oferecer para preencher, porque o mini-formulário de compra depende do gêmeo TS
+ter dito `pedido_compra` — e ele nunca mais diz.
+
+**A asserção que devia pegar isso ficava verde, e ficava verde POR CAUSA do
+defeito.** Ela media "nenhuma migration depois da U7 redefine
+`sugerir_tipo_chamado`" — presença de definição, onde o risco é divergência de
+resposta. Enquanto ninguém consertasse o lado atrasado, ela passava. É a regra 2
+na forma mais cara até agora: não é que a asserção não viu o defeito, é que a
+existência do defeito era a condição para ela passar.
+
+A correção é uma linha no corpo do banco, e a prova mudou de natureza: a
+conferência 110 da migration exercita os **seis ramos** contra o catálogo, o
+verificador exercita os mesmos seis contra o gêmeo TS, e um **DIFF** exige que o
+corpo novo seja o de u6c com exatamente uma mudança. Acordo de VALOR, dos dois
+lados, em vez de presença de qualquer coisa.
+
+A palavra `vistoria` **continua no ramo de `preventiva`** e isso é decisão: ela
+está ali desde a u6c como palavra-chave ("vistoria de rotina" é preventiva), e o
+tipo novo se ESCOLHE no seletor, não se adivinha por texto. Mover a palavra
+faria todo chamado que a menciona mudar de tipo sozinho.

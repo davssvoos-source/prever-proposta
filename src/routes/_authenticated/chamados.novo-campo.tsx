@@ -48,7 +48,7 @@ import {
   primeiroInicioPossivel, type BlocoEditavel,
 } from "@/features/programacao/modelo";
 import {
-  TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES,
+  TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES, tiposDaNatureza,
   type ChamadoPrioridade, type ChamadoTipo,
 } from "@/lib/chamado-status";
 
@@ -316,7 +316,11 @@ function NovaOsPage() {
       <div style={CARD}>
         <span style={SEC}>Tipo de atendimento</span>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["corretiva", "preventiva", "operacional", "implantacao"] as ChamadoTipo[]).map((t) => (
+          {/* U83: era uma cópia à mão da lista de tipos de campo, com
+              `as ChamadoTipo[]` desligando o compilador. Agora DERIVA da
+              lista de OFERTA — este seletor grava, então ele é o lugar em que
+              a diferença entre "renderizável" e "oferecido" morde. */}
+          {tiposDaNatureza("campo").map((t) => (
             <button key={t} style={chip(tipo === t)} onClick={() => setTipo(t)}>
               {TIPO_LABEL[t]}
             </button>
