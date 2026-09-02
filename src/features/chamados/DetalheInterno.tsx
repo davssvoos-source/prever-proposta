@@ -29,6 +29,7 @@ import {
   type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
 } from "@/lib/chamado-status";
 import type { Cores } from "@/features/atividades/modelo";
+import { especieDoApoio } from "@/features/programacao/modelo";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import {
   useCompra, salvarCompra, decidirCompra, proximasSituacoes,
@@ -202,7 +203,13 @@ export function DetalheInterno({ id }: { id: string }) {
     chamado.responsavel_id === userId ||
     chamado.aberto_por === userId ||
     !chamado.responsavel_id ||
-    apoios.includes(userId ?? "");
+    // U81: `apoios` virou lista de LINHAS (profile_id, origem, congelado_em) —
+    // antes era um array de ids. Este predicado continua sendo o gêmeo
+    // DESATUALIZADO de `pode_editar_chamado`: ele não aplica
+    // `apoioValeComoVinculo`, ao contrário da grade (programacao/modelo.ts:724).
+    // Está em docs/PENDENCIAS_TECNICAS.md; alargar aqui seria mudar autorização
+    // de carona numa entrega que prometeu não tocar em nenhuma.
+    apoios.some((a) => a.profile_id === (userId ?? ""));
 
   /**
    * O botão de opção, agora COLORIDO PELA COISA (R87, U72). Era o degradê
@@ -310,14 +317,25 @@ export function DetalheInterno({ id }: { id: string }) {
                 ninguém ainda
               </span>
             )}
-            {apoios.map((pid) => (
+            {apoios.map(({ profile_id: pid, origem, congelado_em }) => (
               <span
                 key={pid}
+                // U81: mesma marca do PainelChamado — borda mais forte quando a
+                // linha é REGISTRO (alguém carimbou "feito" no bloco daquela
+                // semana). Em chamado INTERNO ela nunca aparece hoje: não há
+                // bloco de agenda para chamado interno, logo nada congela. Fica
+                // aqui porque o campo é o mesmo componente conceitual e um
+                // gêmeo que só existe de um lado é um gêmeo que apodrece.
+                title={especieDoApoio({ origem, congelado_em }) === "registro"
+                  ? "Esteve num atendimento que já aconteceu — o sistema não troca mais este nome sozinho."
+                  : undefined}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "6px 10px", borderRadius: 999,
                   background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.05)",
-                  border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
+                  border: especieDoApoio({ origem, congelado_em }) === "registro"
+                    ? (isLight ? "1px solid rgba(0,0,0,0.28)" : "1px solid rgba(255,255,255,0.32)")
+                    : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)"),
                   fontFamily: "var(--fonte)", fontSize: 12, color: textPrimary,
                 }}
               >
@@ -342,7 +360,8 @@ export function DetalheInterno({ id }: { id: string }) {
               >
                 <option value="">Escolher pessoa…</option>
                 {pessoas
-                  .filter((p) => !apoios.includes(p.id) && p.id !== chamado.responsavel_id)
+                  .filter((p) => !apoios.some((a) => a.profile_id === p.id)
+                                 && p.id !== chamado.responsavel_id)
                   .map((p) => (
                     <option key={p.id} value={p.id}>{p.nome}</option>
                   ))}

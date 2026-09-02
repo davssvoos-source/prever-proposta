@@ -727,6 +727,90 @@ export function apoioValeComoVinculo(
   return a.origem === "dupla" || a.criado_por !== a.profile_id;
 }
 
+/** REGISTRO = a visita foi afirmada e a máquina soltou a linha. ATUAL = viva. */
+export type EspecieDeApoio = "registro" | "atual";
+
+/**
+ * O APOIO É REGISTRO OU É ATRIBUIÇÃO DE HOJE? (U81)
+ *
+ * Gêmeo da coluna `chamado_apoios.congelado_em`. Preenchida quer dizer que
+ * alguém carimbou "feito" no bloco da semana desta linha: ela deixou de ser
+ * cadastro (reescrevível pela escala) e virou registro de quem esteve no
+ * prédio. `chamado_sincronizar_apoio` não a alcança mais — nem pelo gatilho,
+ * nem pela reconciliação.
+ *
+ * NÃO É AUTORIZAÇÃO. `apoioValeComoVinculo` continua sendo a terceira perna de
+ * `pode_editar_chamado`, e ela NÃO olha `congelado_em` — de propósito: quem foi
+ * ao prédio na terça não perde o direito de mexer no chamado na quinta.
+ * Congelar mudou o que a MÁQUINA pode apagar, não o que a PESSOA pode fazer.
+ *
+ * SÓ VALE PARA `origem='dupla'`, e é por isso que a assinatura pede as duas
+ * colunas. Quem o automatismo nunca pôs, o automatismo nunca tira: apoio manual
+ * já é permanente sem congelar nada, e chamar de REGISTRO uma linha que alguém
+ * escolheu à mão diria da tela algo que o banco não afirmou. Hoje o gatilho e o
+ * backfill só congelam `'dupla'`, então o caso é latente — a guarda existe para
+ * que continue latente se um caminho novo aparecer.
+ */
+export function especieDoApoio(a: {
+  origem: string | null;
+  congelado_em: string | null;
+}): EspecieDeApoio {
+  if (a.origem !== "dupla") return "atual";
+  return a.congelado_em ? "registro" : "atual";
+}
+
+/** Uma ida já afirmada: o instante do carimbo e quem estava gravado nele. */
+export interface IdaDoApoio {
+  /** `congelado_em` — o timestamp da TRANSAÇÃO do carimbo, igual para a turma. */
+  instante: string;
+  /** `profile_id` das pessoas congeladas naquele instante, na ordem recebida. */
+  pessoas: string[];
+}
+
+/**
+ * AS TURMAS EM ORDEM DE IDA — de graça, sem coluna nova.
+ *
+ * `congelado_em` é gravado com `now()`, que no Postgres é o timestamp da
+ * TRANSAÇÃO. Cada carimbo de "feito" é uma transação. Logo as linhas congeladas
+ * na ida de terça carregam um instante e as da quinta carregam outro, e agrupar
+ * por esse valor devolve as turmas na ordem em que as visitas foram afirmadas.
+ *
+ * ── O QUE ELA NÃO SABE, DITO AQUI PARA NÃO VIRAR FOLCLORE ──────────────────
+ * · NÃO diz de QUAL BLOCO cada ida é. O instante é do carimbo, não do bloco;
+ *   ligar um ao outro exige `agenda_campo`, e isso é a saída que a U81 recusou
+ *   por ora (ver o cabeçalho da migration).
+ * · QUEM FOI NAS DUAS IDAS APARECE SÓ NA PRIMEIRA. A PK de `chamado_apoios` é
+ *   `(chamado_id, profile_id)`: a mesma pessoa não cabe duas vezes no mesmo
+ *   chamado, e o `congelado_em IS NULL` do gatilho faz o primeiro instante
+ *   vencer. Isto é a cardinalidade que continua errada — "computado POR VISITA"
+ *   segue não sendo computável, e R107 registra isso por extenso.
+ * · Linha VIVA (congelado_em nulo) não é ida nenhuma e fica de fora.
+ * · TUDO QUE O BACKFILL DA U81 CONGELOU COMPARTILHA UM ÚNICO INSTANTE, e essa é
+ *   a mesma propriedade lida ao contrário: `now()` é o timestamp da TRANSAÇÃO e
+ *   o backfill é UMA transação. Para todo chamado anterior à U81 esta função
+ *   devolve UMA ida só, com as turmas de todas as semanas juntas. A ordem de
+ *   idas só passa a ser real do primeiro carimbo em diante. Quem for pintar isto
+ *   numa tela tem de dizer isso ao usuário, ou a tela inventa uma precisão que
+ *   o dado não tem.
+ *
+ * Ordem: crescente por instante — a ida mais antiga primeiro.
+ */
+export function idasDoApoio(
+  linhas: { profile_id: string; origem: string | null; congelado_em: string | null }[],
+): IdaDoApoio[] {
+  const por = new Map<string, string[]>();
+  for (const l of linhas) {
+    if (especieDoApoio(l) !== "registro") continue;
+    if (!l.congelado_em) continue;
+    const atual = por.get(l.congelado_em);
+    if (atual) atual.push(l.profile_id);
+    else por.set(l.congelado_em, [l.profile_id]);
+  }
+  return [...por.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([instante, pessoas]) => ({ instante, pessoas }));
+}
+
 /**
  * O CONSTRUTOR do `AutorizacaoDaAgenda`, e ele é AFORDÂNCIA — nunca
  * autorização. Quem autoriza é o servidor: as portas do §6 chamam

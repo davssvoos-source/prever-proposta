@@ -507,7 +507,15 @@ export function sqlstateDoErro(e: unknown): string | null {
 function invalidar(qc: QueryClient, chamados: string[]) {
   qc.invalidateQueries({ queryKey: ["agenda-campo"] }); // semana + irmãos + com-bloco + chamado
   qc.invalidateQueries({ queryKey: ["chamados"] }); // pega ["chamados","campo"] por prefixo
-  for (const id of chamados) qc.invalidateQueries({ queryKey: ["chamado", id] });
+  for (const id of chamados) {
+    qc.invalidateQueries({ queryKey: ["chamado", id] });
+    // U81: o carimbo CONGELA linhas de apoio (gatilho) e a cascata do espelho
+    // INSERE a turma nova — as duas coisas que o chip de apoio pinta, e a chave
+    // de `useChamadoApoios` é esta. Sem ela o `confirm` promete uma lista que a
+    // tela não recarrega. Só não era visível porque `PainelChamado` não fica
+    // montado na grade e o `staleTime` dessa query é 0.
+    qc.invalidateQueries({ queryKey: ["chamado-apoios", id] });
+  }
   for (const k of [["home"], ["home-chamados"], ["home-historico"], ["calendario"], ["home-apoios-todos"]]) {
     qc.invalidateQueries({ queryKey: k });
   }

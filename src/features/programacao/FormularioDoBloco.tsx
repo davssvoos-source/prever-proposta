@@ -328,17 +328,27 @@ export function FormularioDoBloco({
    * DE UMA PERGUNTA.
    *
    * Carimbar um bloco move o espelho para o próximo bloco PENDENTE (estágio 1),
-   * o que está certo e é o que ele existe para fazer. Só que, com o retorno em
-   * outra semana ISO, o gatilho da U76 reavalia o apoio contra a semana NOVA e
-   * APAGA as linhas `origem='dupla'` da turma que JÁ FOI — com um sino por
-   * apoio inserido. A U78 declara isso em "O QUE AINDA ESPERA UMA FRASE DO
-   * DAVI" e não conserta de propósito: é cardinalidade (um conjunto de apoios
-   * por chamado não representa duas idas de duas turmas), e as duas saídas
-   * possíveis têm efeitos opostos.
+   * o que está certo e é o que ele existe para fazer. A SURPRESA continua
+   * existindo — o chamado passa a aparecer no dia do retorno —, e por isso a
+   * pergunta fica.
    *
-   * O que a TELA pode fazer sem decidir nada é PARAR DE SER SILENCIOSA. Os dois
-   * lados são puramente calculáveis com `espelhoDoChamado`, e o texto usa o
-   * vocabulário do modelo.
+   * ── O QUE MUDOU NA U81, E POR QUE O TEXTO TEVE DE MUDAR JUNTO ────────────
+   * A segunda metade deste aviso era verdadeira e deixou de ser. Até a U81, o
+   * carimbo fazia o gatilho da U76 reavaliar o apoio contra a semana NOVA e
+   * APAGAR as linhas `origem='dupla'` da turma que JÁ FOI. Agora o mesmo
+   * carimbo CONGELA essas linhas (`chamado_apoios.congelado_em`) antes de a
+   * cascata rodar, e o DELETE de `chamado_sincronizar_apoio` não as alcança
+   * mais: a turma da ida FICA, e a turma do retorno é ACRESCENTADA.
+   *
+   * Um aviso obsoleto é pior do que nenhum: ele ensina a operação a temer um
+   * gesto que ficou seguro, e ensina a não ler a caixa. O que a tela continua
+   * dizendo é o que continua sendo verdade — a data anda, e a lista de apoio
+   * passa a ter os dois times. Os dois lados são puramente calculáveis com
+   * `espelhoDoChamado`, e o texto usa o vocabulário do modelo.
+   *
+   * O QUE ESTE AVISO NÃO PROMETE: que a lista diga QUEM foi em QUAL ida. A PK
+   * `(chamado_id, profile_id)` continua colapsando quem foi nas duas, e
+   * "computado POR VISITA" segue não sendo computável (R107).
    */
   function baixar(feito: boolean) {
     if (!bloco) return;
@@ -357,7 +367,14 @@ export function FormularioDoBloco({
         const ok = window.confirm(
           `Este chamado tem outro atendimento marcado em outra semana.\n\n` +
           `Ao dar "feito" aqui, o chamado passa a aparecer no dia do retorno (${depois.dia}, ${horaTexto(depois.inicio_min)}).\n\n` +
-          `E há um efeito conhecido e ainda não resolvido: o registro de quem foi como APOIO é recalculado contra a semana nova, e quem foi nesta ida pode sair da lista.\n\nMarcar assim mesmo?`,
+          // A primeira metade é garantida pela U81 (a linha congelada não é mais
+          // alcançável pelo DELETE). A segunda é CONDICIONAL e o texto diz isso:
+          // `chamado_sincronizar_apoio` volta cedo quando nenhuma escala cobre a
+          // semana do retorno, e não insere ninguém quando o responsável não tem
+          // parceiro lá. Prometer "os dois times" chapado seria afirmar o que a
+          // máquina não garante — e este é o texto que aparece no instante do
+          // gesto irreversível.
+          `O registro de quem foi NESTA ida fica GUARDADO, e a turma do retorno entra na lista de apoio assim que a escala daquela semana estiver lançada.\n\nMarcar assim mesmo?`,
         );
         if (!ok) return;
       }

@@ -6497,3 +6497,310 @@ mutação atingiu o alvo virou parte do procedimento.
 
 2104 asserções, build ok, tsc em 83.
 
+
+## U81 — O apoio que já foi é registro (R107/R108 — Fase 1, Passo 1.4)
+
+O defeito estava DECLARADO desde a U78, no cabeçalho, na seção "O QUE AINDA
+ESPERA UMA FRASE DO DAVI", e a frase chegou em 02/09. O defeito, verificado no
+código antes de qualquer linha ser escrita:
+
+Um chamado com dois blocos em semanas ISO diferentes — a visita de terça e o
+retorno da quinta da semana seguinte. Carimbar o primeiro como cumprido faz o
+espelho andar para o segundo (CORRETO: é o estágio 1 de `agenda_campo_espelhar`,
+U78:851-902). Isso muda `chamados.data_hora_agendada`, o que acorda
+`trg_chamado_apoio_dupla_upd` (U76:1129-1131), que vê `v_mudou_semana = true` e
+chama `chamado_sincronizar_apoio` — que APAGA as linhas `origem='dupla'` da turma
+que JÁ FOI (U76:1030-1033) e grava a turma da semana nova.
+
+**Marcar a visita como feita apagava o registro de quem a fez.** E de forma
+completamente muda: o sino é `AFTER INSERT` (u7:502-503),
+`trg_chamado_evento_upd` é `OF status, responsavel_id, sprint` e a tabela não tem
+`updated_at`. Nada gerava sino, linha de tempo ou rastro. Na variante pior —
+responsável sem turma na semana nova, ou `responsavel_id` nulo — `v_alvo` vinha
+vazio, `NOT (profile_id = ANY('{}'))` era TRUE para todo mundo, e o DELETE varria
+TODAS as linhas `'dupla'` do chamado.
+
+### As duas saídas, e por que a barata venceu
+
+A U78 já tinha nomeado as duas: **congelar** (o apoio do chamado para de ser
+reescrito quando existe bloco cumprido) e **pendurar no bloco** (cada bloco
+guarda quem foi nele, que é o que permite contar por visita). A segunda responde
+a frase do Davi literalmente. Escolhi a primeira, e o argumento não é custo.
+
+**O argumento é que pendurar no bloco constrói a máquina de contar em cima de um
+sensor que ela mesma prova quebrado.** Um apoio pendurado no bloco ainda precisa
+de alguém que AFIRME que a visita aconteceu. A U78:1566-1568 diz que duas mãos
+preencheriam `cumprido_em` — a RPC e `executarChamado` no app, "que ao iniciar o
+atendimento marca os blocos abertos até hoje". **Fui conferir: a segunda mão não
+existe.** `executarChamado` (`src/features/chamados/data.ts:281-293`) escreve só
+`status` e carimbos em `chamados`; um grep por `cumprido_em` em `src/` devolve
+leituras e UMA escrita, `useCumprirBloco`, a partir de um botão. E a U80 já
+mediu o rombo: a conferência 112 conta blocos pendentes com dia passado há mais
+de 7 dias — aconteceu, ninguém marcou feito.
+
+Sem esse carimbo, apoio-por-bloco conta INTENÇÕES AGENDADAS, não visitas. Um
+ranking de "visitas por técnico" construído assim subcontaria justamente o
+técnico que não clica, e publicá-lo puniria omissão administrativa com aparência
+de improdutividade — destruindo a disciplina do carimbo, que é o pré-requisito
+das DUAS saídas. A ordem certa é: **(1) parar de apagar; (2) construir a segunda
+mão do carimbo; (3) só então a cardinalidade por visita.** Está escrito como
+portão de sequenciamento: a conferência 110 da U81 repete a 112 da U80, e
+enquanto esse número não estiver perto de zero não se constrói tabela nova. A
+próxima entrega desta linha não é a tabela — é a segunda mão do carimbo.
+
+**A "opção 1-forte" que eu também recusei**, e ela é sedutora porque cabe em 12
+linhas: proteger por RE-DERIVAÇÃO, um `NOT EXISTS` contra
+`escala_da_semana(referencia_semanal(bloco.dia))` dentro do próprio DELETE. Sem
+tabela, sem coluna, sem backfill. Recusada por um motivo só, e ele é fatal:
+`escala_definir` (U76:601-663) **não recusa semana passada**, e
+`escala_semana_vigente` é `max(semana) <= W` (U76:415-420) — logo abrir uma
+semana INTERMEDIÁRIA também muda a resposta de W. O conjunto protegido mudaria
+retroativamente: reescrever a S36 hoje faria alguém deixar de estar protegido
+amanhã, e a próxima sincronização o apagaria. Um congelamento que descongela
+sozinho. E derivar "quem foi" da escala é literalmente o que a U64 proibiu em
+prosa (:11-26) e o que o CLAUDE.md chama de invariante não-regressível.
+
+### Congelar por MARCA e não por GUARDA — é o coração do desenho
+
+A saída óbvia ("não rode `sincronizar` quando existir bloco cumprido") é
+*stateless*: ela re-deriva a decisão a cada chamada, e o botão **"Tirar o
+feito"** (`agenda_campo_cumprir(id, false)`) a desfaz com um clique — a história
+volta a ser apagável. A MARCA é monotônica: `congelado_em` só vai de NULL para
+um instante, e nada da máquina o devolve, inclusive tirar o "feito". É o que
+"registro é registro" quer dizer em DDL, e o verificador prova por **censo**
+(tudo que a migration faz com a palavra `congelado_em`, derivado do arquivo,
+contra uma lista escrita à mão) que `= NULL` não aparece em lugar nenhum.
+
+E porque a proteção é propriedade da **linha** e não guarda no **caminho**, ela
+vale igualmente para os dois chamadores — inclusive para
+`reconciliar_apoios_abertos`, que chama a função DIRETO e pula o gatilho (o
+problema exato que obrigou a U78 a duplicar a guarda em §7.1 e §7.2). A
+ferramenta manual do Davi não foi tocada e ficou **estritamente mais segura**:
+reconcilia a parte viva e não alcança mais a parte histórica.
+
+**BEFORE, e não é estética.** Na mesma linha de `agenda_campo`, `cumprido_em`
+acorda também `trg_agenda_campo_espelho_upd` (AFTER), que move o espelho, que
+acorda o gatilho do apoio, que chama o DELETE. Se o congelamento fosse AFTER,
+quem chega primeiro seria decidido pela ORDEM ALFABÉTICA DO NOME do gatilho — e
+um rename futuro reabriria o defeito em silêncio, sem uma linha de diff que o
+denuncie. Todo BEFORE de linha roda antes de todo AFTER de linha: estrutura, não
+convenção. E os vizinhos BEFORE são inertes: `trg_agenda_campo_valida` é
+`OF chamado_id, dia, inicio_min` e não acorda num UPDATE de `cumprido_em`.
+
+### O que a entrega custa em superfície: quase nada, e é o ponto
+
+Uma coluna anulável, um gatilho, **uma linha** no DELETE. Zero policy, zero
+GRANT, zero INSERT, zero DELETE, zero sino novo. `congelado_em` nasce
+inescrevível pelo cliente **sem uma linha minha**: a S3 revogou INSERT da tabela
+e devolveu POR COLUNA, e coluna nova não entra em grant por coluna; UPDATE nunca
+existiu ali. As conferências 102 e 103 provam isso pelo catálogo em vez de
+afirmar. As seis funções/policies de autorização que leem apoio
+(`pode_editar_chamado`, `pode_acessar_chamado`, `chamados_select`,
+`pode_ver_cliente`, `pode_ver_prospeccao`, `chamado_compra_select`) não mudam uma
+vírgula — é a diferença mais cara entre congelar e pendurar no bloco, onde cada
+uma delas ganharia um salto a mais em caminho quente de RLS avaliado por linha.
+
+**A conta dos sinos é invariante, e isso é demonstrável em vez de medido.**
+Dentro de `chamado_sincronizar_apoio`, o DELETE remove linhas com
+`profile_id` fora de `v_alvo` e o INSERT tenta inserir exatamente `v_alvo` com
+`ON CONFLICT DO NOTHING`: os dois conjuntos são disjuntos por construção.
+Estreitar o DELETE não pode mudar o `ROW_COUNT` do INSERT, e o sino é
+`AFTER INSERT FOR EACH ROW`. O único sino que muda é de VERDADE: hoje o parceiro
+da quinta recebe "Você entrou como apoio" enquanto quem foi na terça acaba de ser
+apagado.
+
+### A propriedade que ninguém tinha reivindicado
+
+`congelado_em` é gravado com `now()`, que no Postgres é o timestamp da
+**transação**. Cada carimbo de "feito" é uma transação. Logo as linhas congeladas
+na ida de terça carregam um instante e as da quinta carregam outro, e agrupar por
+esse valor devolve **as turmas em ordem de ida** — de graça, com uma coluna. É o
+`idasDoApoio` do modelo puro. Não é a resposta completa (a PK
+`(chamado_id, profile_id)` continua colapsando quem foi nas duas idas na
+primeira, e o valor não diz de QUAL bloco), e o JSDoc diz as três coisas que ela
+não sabe. Mas é per-visita legível na tela sem construir nada.
+
+### O que me recusei a inventar no backfill
+
+O backfill é um `UPDATE` de uma coluna que acabou de nascer: zero INSERT, zero
+DELETE, zero `DISABLE TRIGGER` (não há gatilho a desligar — o sino é de INSERT, e
+um DISABLE ali seria teatro; gatilho desligado que alguém esquece de religar é
+cicatriz conhecida da casa). A prova de que nada sumiu é mais forte do que
+"copiou e a contagem bate": **não houve cópia**, e a conferência 105 mostra
+total/dupla/manual contra a foto do §1.
+
+Seis recusas, escritas por extenso na migration. A mais importante:
+**reconstruir a turma que o defeito já apagou.** Para os chamados que já
+sofreram, as linhas não existem — o DELETE não deixou sino, evento nem
+`updated_at`. Derivá-las de `escala_da_semana` seria inventar, porque
+`escala_definir` não recusa semana passada: a composição de hoje pode não ser a
+que vigorava quando o apoio foi escrito. Não escrevo uma linha. Elas ficam
+perdidas, e a conferência 109 conta onde isso pode ter acontecido, para o Davi
+olhar com olho humano. As outras cinco: não congelar chamado sem bloco cumprido;
+não congelar `origem='manual'`; não congelar quando a semana do espelho não casa
+com a de nenhum bloco cumprido; não tratar o conjunto da conferência 112 da U80
+("provavelmente aconteceu") como se fosse "aconteceu"; e não usar
+`agenda_campo.criado_por` como "quem foi" — é quem arrastou o cartão, e o portão
+deixa gestor puro passar, tipicamente o SAC, que não esteve no prédio.
+
+### O preço, dito na frente: o registro CONCEDE ACESSO (R108)
+
+Linha `origem='dupla'` concede `pode_editar_chamado` e `pode_acessar_chamado`
+pela terceira perna da S2. Congelar significa que, num chamado de bloco ÚNICO já
+cumprido, **trocar o responsável passa a ACUMULAR**: as duas turmas ficam com
+acesso ao chamado, ao cliente, ao local, às fotos, ao checklist e ao pedido de
+compra. A promessa da U76 ("apoio segue o responsável") continua inteira no que
+ela prometia — a turma nova É atribuída —, mas o descarte da antiga era efeito
+colateral, e o efeito colateral acaba aqui. A troca é deliberada: **prefiro
+guardar um registro a mais a apagar o registro de quem esteve no prédio.** A
+saída é humana e o X do chip fica aberto — não há GRANT de UPDATE nesta tabela,
+então corrigir é remover e pôr outro, e fechar o X seria trancar a porta com o
+erro dentro.
+
+E os outros dois piores casos, em `PENDENCIAS_TECNICAS.md`: (1) a visita que
+ninguém carimba não congela nunca, e para ela o defeito continua 100% vivo — a
+proteção pende de um clique opcional, e se o número da conferência 110 crescer a
+U81 é decoração; (2) congelo o que estiver lá, inclusive um palpite de escala
+HERDADA (o buraco que a U76 §8.4 descreve), e o promovo a registro
+permanentemente. Considerei recusar o congelamento quando a escala da semana é
+herdada, e recusei a recusa: sem congelar, as linhas ficam desprotegidas e são
+apagadas — troca de um problema pelo problema original.
+
+### A asserção que ficou VERDE MENTINDO
+
+`verificar-logica.cjs:8139` prendia o `window.confirm` que a U78 pôs na tela
+antes de carimbar "feito", e o nome dela dizia "…e apaga quem JÁ FOI". A
+estrutura sobreviveu inteira à U81, então a asserção **continuaria passando** —
+carimbando como verdadeira uma afirmação que a entrega acabou de tornar falsa.
+Asserção verde mentindo é pior que asserção vermelha: a segunda alguém conserta.
+Foi reescrita para prender três coisas: a estrutura (o motivo de perguntar
+continua existindo — a data anda), o TEXTO NOVO, e a **trava no banco** que torna
+o texto novo verdadeiro. Trocar uma promessa por outra só vale se a asserção
+provar a promessa nova onde ela mora de verdade, que é o SQL.
+
+A asserção `:7341` (a U78 declarando "o apoio pendurar no BLOCO e não no
+chamado") continua verde e **correta**: ela lê o arquivo da U78, que não foi
+editado — migration que já rodou não se edita. A declaração da U78 continua sendo
+a descrição fiel do que a U78 fez. E `:2400-2401` (o campo "Apoio" na grade de 3
+colunas do PainelChamado) também continua verde: o chip mudou de forma por
+dentro, o `<AvatarCirculo id={id} nome={nomeDe(id)}` que ela prende continua lá.
+
+### O que a verificação pegou
+
+**19 mutações aplicadas, 19 vermelhas.** Duas delas merecem registro:
+
+1. **Uma mutação foi ABORTADA por não atingir o alvo** — apagar o
+   `ON CONFLICT DO NOTHING` casava DUAS vezes no arquivo, porque o DESFAZER
+   comentado repete o corpo inteiro. Refeita com âncora de duas linhas sem o
+   `--`, ficou vermelha. É a quarta vez nesta semana que a conferência de alvo
+   evita um "sobrevivente" falso — e a primeira em que a causa foi o DESFAZER, e
+   não um comentário de prosa.
+2. **Uma mutação achou uma asserção MINHA passando VAZIA.** A checagem de ordem
+   do DESFAZER comparava `indexOf(DROP COLUMN) > indexOf(CREATE OR REPLACE …)`, e
+   a segunda string estava escrita `…(uuid)` onde o arquivo diz
+   `…(_chamado uuid)`. `indexOf` devolvia -1, qualquer posição era maior que -1,
+   e a asserção passava sem tocar em nada. Corrigida para provar que as DUAS
+   posições existem antes de compará-las. **Comparar índices sem provar que os
+   dois existem é o mesmo erro de checar presença quando o risco é deleção** — a
+   regra 2 do método ganhou uma quinta variação.
+
+A asserção crítica do corpo é um **DIFF** contra o corpo vivo da U76 recortado do
+arquivo, com a única mudança esperada escrita à mão — porque quando uma migration
+reescreve função de outra o risco é DELEÇÃO, e regex de presença não vê deleção.
+As mutações que apagam a guarda de "não sei ≠ ninguém", o `ON CONFLICT` e o
+filtro `origem='dupla'` confirmam que ele pega remoção. Há ainda dois **censos**:
+os chamadores de `chamado_sincronizar_apoio`, derivados do diretório de
+migrations contra uma lista escrita à mão (a U81 não pode virar um terceiro), e o
+censo de monotonicidade acima.
+
+Uma armadilha da própria casa quase mordeu de novo: a asserção "a U81 não desliga
+gatilho nenhum" ficou vermelha na primeira execução porque o **cabeçalho da
+migration FALA de `DISABLE TRIGGER`** para explicar por que não usa um. Grep acha
+comentário — sexto falso positivo desta família no arquivo. O filtro de linhas
+que começam com `--` virou parte da asserção.
+
+### A rodada de refutação — três lentes, e o que ela derrubou
+
+Três lentes independentes (perda de registro, regressão, produção+sintaxe) leram
+o que estava construído. **Duas delas chegaram sozinhas ao mesmo GRAVE, por
+caminhos diferentes** — e ele era estrutural, não cosmético.
+
+**1) A trava fechava METADE do buraco.** O gatilho só congela quando a semana do
+bloco carimbado bate com a semana do espelho. Carimbar o RETORNO antes da IDA
+(nada ordena os carimbos; há um botão por bloco) produzia: o carimbo do retorno
+não congela nada — certo, porque ali o apoio gravado ainda é o da ida, e congelar
+carimbaria a turma errada; depois, o carimbo da ida congela a turma da ida e faz
+o espelho pular para o retorno pelo estágio 2, o que faz `chamado_sincronizar_apoio`
+gravar a turma DELE **viva**. E o gatilho nunca mais dispara para aquele bloco,
+porque `cumprido_em` só transiciona de NULL uma vez. **A turma que esteve no
+prédio na quinta ficava alcançável pelo DELETE para sempre — o defeito original
+inteiro, dentro da entrega feita para fechá-lo.**
+
+A correção é a **segunda metade da trava**, no INSERT: a linha nasce congelada
+quando a semana para a qual está sendo escrita já tem visita afirmada. O instante
+gravado é o `cumprido_em` DAQUELE bloco e não `now()`, porque no fluxo fora de
+ordem as duas turmas são escritas na MESMA transação — com `now()` elas cairiam
+no mesmo instante e colapsariam duas idas em uma, cegando `idasDoApoio`
+justamente no caso que ela existe para descrever. Por simetria, o gatilho também
+passou a gravar `NEW.cumprido_em` (hoje o mesmo valor, `u78:1614`, mas agora os
+dois caminhos são demonstravelmente o mesmo instante).
+
+**O DIFF pegou a mudança na hora**, e é o argumento a favor dele: a asserção
+falhou vermelha no instante em que o corpo mudou, e a mudança esperada passou a
+ser escrita à mão em DUAS partes. Presença nunca teria acusado nada.
+
+**2) O app pedia uma coluna que o banco ainda não tem.** `useChamadoApoios`
+nomeava `congelado_em` no `select` e fazia `throw` no erro. Push em `main`
+publica na hora; a migration o Davi roda à mão, depois. Nessa janela o PostgREST
+devolve 42703 para a consulta INTEIRA, e o `throw` apagaria a lista de apoio de
+TODO chamado, derrubaria a perna de apoio do `podeEditar` em `DetalheInterno` e
+dispararia um toast vermelho a cada abertura — por uma coluna que só pinta uma
+borda. É a mesma lição da U76 ("código que leia a tabela nova não pode subir
+antes"), por outro caminho.
+
+A correção foi `select("*")`: vem o que existir, e o `?? null` do mapa lê a
+ausência como "atual" — que é exatamente o que o banco sabe responder enquanto a
+U81 não rodou. **Vale igual no sentido inverso**, e é por isso que ela é melhor
+do que separar o commit: o DESFAZER derruba a coluna com o front publicado ainda
+pedindo-a, e a mesma linha protege os dois lados. Separar o commit teria
+protegido só esta subida.
+
+### O que a refutação pediu e eu NÃO fiz
+
+Uma lente pediu para filtrar as linhas congeladas fora do calendário e do "Meu
+dia", com o argumento correto de que o atendimento tem UMA data e ela andou para
+o retorno — quem foi na terça aparece na quinta. **Recusado**, porque o remédio é
+pior que a doença: no caso COMUM (uma visita só), a linha também fica congelada e
+a data do chamado é a do dia em que a pessoa foi. O filtro apagaria da tela de
+histórico exatamente o registro que a U81 existe para guardar, para ganhar
+precisão no caso raro. Fica declarado em R107 e some quando o apoio morar no
+bloco. **Auditor propõe; quem decide mede a população dos dois lados.**
+
+### O resto da rodada
+
+- A conferência 109 era cega ao caso que dizia contar: `NOT EXISTS` por CHAMADO
+  em vez de por SEMANA tirava da conta o chamado com a ida apagada e o retorno
+  congelado — sobrava a população benigna. Passou a ser por semana.
+- Três conferências novas: **115** mede o que a reconciliação não alcança mais
+  (o preço do R108, medido em vez de afirmado); **116** dimensiona o P26 (quantos
+  chamados foram congelados sobre escala HERDADA, isto é, palpite virando
+  registro); **117** é a 110 sem os blocos de OS externa, que não têm apoio a
+  proteger e embaçam o número que libera a próxima entrega.
+- O cabeçalho afirmava que a reconciliação ficara "ESTRITAMENTE MAIS SEGURA".
+  **Era falso na população para a qual ela foi construída** — ela passa a
+  acrescentar sem remover e devolve "corrigido" assim mesmo. A afirmação virou a
+  declaração do preço.
+- A foto do §1 rodava ANTES do pré-voo e liam `chamado_apoios`/`notificacoes`:
+  num banco sem esses pressupostos o Davi receberia o erro cru que o pré-voo
+  existe para substituir. Foi para depois, e `notificacoes` entrou na lista.
+- `especieDoApoio` ignorava `origem`, que o SQL declara ser parte do significado
+  da coluna. Passou a lê-la: apoio manual nunca é "registro".
+- O `confirm` do carimbo prometia "os dois times" chapado; a entrada da turma do
+  retorno é condicional à escala existir. O texto passou a dizer isso — é o
+  aviso que aparece no instante do gesto irreversível.
+- `invalidar()` não invalidava `["chamado-apoios", id]`: o `confirm` prometia uma
+  lista que a tela não recarregava.
+- O DESFAZER não restaurava o `COMMENT` da função, deixando a única documentação
+  viva dela descrevendo uma cláusula que não existiria mais.
+
+2136 asserções, build ok, tsc em 83.

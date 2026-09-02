@@ -362,17 +362,49 @@ export async function comentarChamado(chamadoId: string, texto: string): Promise
 
 // ── Apoio ───────────────────────────────────────────────────────────────────
 
+/**
+ * Uma linha de apoio, e não só o id da pessoa (U81).
+ *
+ * `congelado_em` é o que separa REGISTRO de ATRIBUIÇÃO DE HOJE: preenchida quer
+ * dizer que alguém carimbou "feito" no bloco daquela semana e o automatismo da
+ * escala soltou a linha para sempre. Quem interpreta é `especieDoApoio` /
+ * `idasDoApoio` em `features/programacao/modelo.ts` — aqui só se transporta.
+ *
+ * `origem` vem junto porque é o que `apoioValeComoVinculo` lê, e ter os dois na
+ * mesma linha evita a segunda consulta no dia em que a tela precisar do par.
+ */
+export interface LinhaDeApoio {
+  profile_id: string;
+  origem: string | null;
+  congelado_em: string | null;
+}
+
 export function useChamadoApoios(chamadoId: string | undefined) {
   return useQuery({
     queryKey: ["chamado-apoios", chamadoId],
     enabled: !!chamadoId,
-    queryFn: async (): Promise<string[]> => {
+    queryFn: async (): Promise<LinhaDeApoio[]> => {
+      // `*` E NÃO A LISTA DE COLUNAS, DE PROPÓSITO. `congelado_em` nasce na U81
+      // e migration neste repo é rodada À MÃO pelo Davi, DEPOIS do push — que
+      // publica na hora. Nomear a coluna aqui faria o PostgREST devolver 42703
+      // até ela existir, e o `throw` abaixo apagaria a lista de apoio de TODO
+      // chamado, além de derrubar a perna de apoio do `podeEditar` em
+      // DetalheInterno. Por uma coluna que só pinta uma borda. Vale igual no
+      // sentido inverso: o DESFAZER da U81 derruba a coluna com o app publicado
+      // ainda pedindo-a. Com `*` vem o que existir, e o `?? null` do mapa lê a
+      // ausência como "atual" — que é exatamente o que o banco sabe responder
+      // enquanto a U81 não rodou. A S3 manteve o SELECT de TABELA justamente
+      // para que `*` continuasse sendo caminho suportado.
       const { data, error } = await supabase
         .from("chamado_apoios" as any)
-        .select("profile_id")
+        .select("*")
         .eq("chamado_id", chamadoId as string);
       if (error) throw error;
-      return ((data as any[]) ?? []).map((r) => r.profile_id as string);
+      return ((data as any[]) ?? []).map((r) => ({
+        profile_id: r.profile_id as string,
+        origem: (r.origem ?? null) as string | null,
+        congelado_em: (r.congelado_em ?? null) as string | null,
+      }));
     },
   });
 }

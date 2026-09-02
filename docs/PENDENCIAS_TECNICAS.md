@@ -713,6 +713,177 @@ cliente passa a voltar `null`. É o que a S1 quis; é a mudança que a S1 achou 
 já tinha feito. Vale conferir com o Davi se o lookup global é intencional antes
 de fechar.
 
+## P25 — ALTO · O congelamento da U81 pende de um clique OPCIONAL, e degrada em silêncio (2026-09-04, U81)
+
+A U81 protege o registro de quem foi ao prédio **no instante em que alguém marca
+o atendimento como feito**. Fora desse instante ela não faz nada — e há **um
+único gesto no sistema inteiro** que o produz: `FormularioDoBloco.tsx:616` →
+`useCumprirBloco` → `agenda_campo_cumprir`.
+
+A U78:1566-1568 afirma que existem duas mãos: *"esta e `executarChamado` no app,
+que ao iniciar o atendimento marca os blocos abertos até hoje"*. **A segunda não
+existe.** `executarChamado` (`src/features/chamados/data.ts:281-293`) chama
+`atualizarChamado` com status e carimbos de `chamados`, e nada mais; um grep por
+`cumprido_em` em `src/` devolve leituras (`programacao/data.ts`, `modelo.ts`,
+`AgendaDoChamado.tsx`) e **uma** escrita. A U80 já mediu o rombo pelo outro lado
+— conferência 112: blocos pendentes com dia passado há mais de 7 dias.
+
+**Por que é ALTO e não MÉDIO:** para o bloco nunca carimbado, o defeito da U81
+continua **100% vivo**, inclusive na variante muda (responsável sem turma na
+semana nova → o DELETE varre todas as linhas `origem='dupla'`, sem sino e sem
+rastro). E nada na tela diz que a proteção não se aplicou àquele chamado: ela não
+tem alarme próprio, herda o da U80, que é um número numa conferência que só roda
+quando alguém a roda. **Quanto mais a operação relaxar no carimbo, mais a U81 é
+decoração — e ninguém vê isso acontecer.**
+
+**A correção é estrutural e não está nesta entrega:** dar uma segunda mão ao
+carimbo. É a próxima entrega da linha, antes de qualquer tabela nova — o portão
+está escrito na U81 (conferência 110) e no §U81 do `PLANO_UNIFICACAO.md`.
+
+**Consulta-canário:**
+
+```sql
+SELECT count(*) FROM public.agenda_campo
+ WHERE cancelado_em IS NULL AND cumprido_em IS NULL AND dia < (current_date - 7);
+```
+
+## P26 — MÉDIO · A U81 congela o que estiver lá, inclusive um palpite de escala HERDADA (2026-09-04, U81)
+
+No instante do carimbo, as linhas `origem='dupla'` podem ser a turma de uma
+escala **herdada** — `escala_da_semana` devolve um `herdada boolean` (U76:437-446)
+justamente porque ninguém confirmou aquela semana. A U76 §8.4 (:1139-1156)
+descreve o buraco palavra por palavra: o apoio nasce com escala herdada, o gestor
+abre a semana depois e muda a composição.
+
+Antes da U81 esse palpite era sobrescrito depois por outro palpite. Agora ele é
+**carimbado como registro e fica**.
+
+**O agravante é a saída.** Não existe `GRANT UPDATE` em `chamado_apoios` e nunca
+existiu (`s3:89-91`): não há como *corrigir* uma linha congelada, só apagá-la e
+pôr outra. E a linha nova entra por `adicionarApoio`, com `origem='manual'` e
+`criado_por = auth.uid()` — o que **muda o significado de autorização da linha**
+sob a S2 (`origem='dupla' OR criado_por IS DISTINCT FROM profile_id`). Corrigir
+um congelamento errado degrada a proveniência do registro, e o sistema não avisa
+disso em lugar nenhum.
+
+**Considerei recusar o congelamento quando a escala da semana é herdada, e
+recusei a recusa:** sem congelar, as linhas ficam desprotegidas e são apagadas —
+troca de um problema pelo problema original. A escolha é esta, por extenso:
+*prefiro guardar um palpite a apagar um registro*. Fica registrado para o dia em
+que alguém achar uma linha congelada errada e quiser saber de onde ela veio.
+
+## P27 — MÉDIO · A cardinalidade do apoio continua errada, e agora ela ACUMULA (2026-09-04, U81)
+
+`chamado_apoios` é `PRIMARY KEY (chamado_id, profile_id)` desde `u1:219`. *"O
+Luan foi na terça e o Luan foi na quinta"* é **inexprimível** — não por falta de
+coluna, por chave. `congelado_em` diz *que* a linha virou registro e *em qual
+ida* (pelo instante da transação), jamais *de qual bloco*. Três consequências
+concretas, e a terceira tem prazo:
+
+1. **`TabelaAtividades.tsx:78,222-230`** tem UMA coluna "Apoio" por atividade.
+   Ela passa a imprimir mais rostos, sem agrupamento e sem forma para tê-lo.
+   Ninguém vai notar que os dois primeiros são de outra semana.
+2. **`useApoiosDeTodos` (`home/data.ts:114-133`) tem `.limit(2000)` com
+   `if (error) return m`** — teto **silencioso**, nem erro dá. A U81 torna o
+   conjunto **monotonicamente crescente** onde antes ele girava em torno de si
+   mesmo: linha congelada nunca mais sai por máquina. **O dia de bater o teto
+   passou de hipótese a questão de tempo**, e quando ele chegar as pilhas de
+   avatar dos cards esvaziam sem uma mensagem.
+3. **"Computado POR VISITA" (a 2ª metade da frase do Davi de 02/09) continua sem
+   resposta** — ver R107. Nenhuma consulta responde "quantas visitas o Luan fez
+   em setembro".
+
+**A saída conhecida** é pendurar o apoio no BLOCO (`u78:171` já a nomeia), e ela
+está adiada de propósito atrás do P25: sem disciplina de carimbo, apoio-por-bloco
+conta intenções agendadas, não visitas. Quando chegar a hora, `congelado_em` diz
+quais linhas são história a carregar.
+
+## P28 — BAIXO · O sino "Você entrou como apoio" não tem ícone (2026-09-04, achado na U81)
+
+`u7:497` grava `tipo = 'chamado_apoio'`; `src/components/NotificationPanel.tsx:36`
+só conhece `'demanda_apoio'` — o nome de antes da U7. A notificação cai no
+`default` (`:52-54`) e sai com o ícone genérico de Info. Defeito vivo hoje,
+independente da U81; achado ao mapear todos os caminhos que tocam o sino.
+
+## P29 — BAIXO · Duas cópias desatualizadas de `pode_editar_chamado` (2026-09-04, achado na U81)
+
+Duas, e as duas ficaram para trás em momentos diferentes:
+
+- **`chamados_select` (`u29:193-194`)** lê apoio **cru**, sem o filtro da S2
+  (`origem='dupla' OR criado_por IS DISTINCT FROM profile_id`). Estar em
+  `chamado_apoios` te faz VER o chamado. Não é buraco — a S2 matou a
+  auto-inscrição na porta de INSERT —, mas é a única cópia da regra que ficou
+  para trás. Assimetria viva: **ver ≠ editar**.
+- **`DetalheInterno.tsx:205`** é um terceiro gêmeo do predicado, e o único sem
+  `apoioValeComoVinculo` (`programacao/modelo.ts:724`), que foi extraído
+  justamente porque um teste de mutação provou que regra escondida num
+  `.filter()` fica verde. A U81 tocou essa linha (a lista virou objetos) e
+  **deliberadamente não a alargou**: mudar autorização de carona numa entrega que
+  prometeu não tocar em nenhuma é como se instala um buraco sem querer.
+
+## P30 — BAIXO · O relatório de atendimento imprime UMA pessoa quando a turma foi de duas (2026-09-04, achado na U81)
+
+`src/features/chamados/relatorio.ts` **não lê `chamado_apoios`** — nenhuma linha.
+O PDF imprime `linhaCampo("Técnico responsável", tecnicoNome ?? "—")`
+(`relatorio.ts:222`), alimentado por `DetalheCampo.tsx:336`
+(`tecnicos.find(t => t.id === os.responsavel_id)?.nome`). E quem assina não é
+ninguém da Prever: `relatorio.ts:307-335` imprime `os.assinatura_nome` sob
+*"Assinatura de quem acompanhou o atendimento"* — é o síndico/cliente.
+
+**Ou seja: o documento que sai para o cliente diz que o atendimento foi de UMA
+pessoa quando a turma foi de duas.** Já estava errado antes da U81 e continua
+errado depois — ela não regride nem melhora isso sozinha. É o único leitor da
+cadeia onde "por visita" seria uma melhora óbvia, e mudar um documento que sai
+para o cliente é decisão de produto, não refatoração.
+
+## P31 — MÉDIO · Quem foi na ida aparece na agenda do RETORNO (2026-09-04, U81)
+
+O chamado tem **uma data só** — `data_hora_agendada`, o espelho — e o carimbo da
+ida a move para o retorno. Como a linha de apoio agora fica, quem foi na terça
+continua aparecendo naquele chamado no calendário (`calendario.tsx:274-277,298`)
+e no "Meu dia" (`dashboard.tsx:260` via `useMeusApoios`, `home/data.ts:219-233`)
+— mas **na data do retorno**, que não é a dele. E não aparece na terça em que
+esteve. Antes da U81 a linha era apagada: ele não via nada, errado de outro jeito.
+
+**Uma lente adversarial propôs filtrar as linhas congeladas fora dessas duas
+consultas, e isso foi RECUSADO** — o registro está no diário da U81. O motivo:
+no caso COMUM (uma visita só, sem retorno) a linha também fica congelada e a
+data do chamado É a data em que a pessoa foi. O filtro apagaria da tela de
+histórico exatamente o registro que a U81 existe para guardar, para ganhar
+precisão num caso raro. Trocaria um fantasma estreito por um apagamento largo.
+
+**O que resolve de verdade:** o apoio pendurado no bloco. Aí cada linha tem a
+data da SUA visita e a agenda deixa de depender do espelho. Enquanto isso não
+existe, o defeito é o preço declarado em R107.
+
+## P32 — MÉDIO · `useApoiosDeTodos` tem teto silencioso de 2000, e agora o conjunto só cresce (2026-09-04, U81)
+
+`src/features/home/data.ts:114` traz `chamado_apoios` com `.limit(2000)` e
+`if (error) return m` — passado o teto, a pilha de avatares simplesmente para de
+mostrar gente, sem aviso. Já era assim antes.
+
+**O que a U81 muda é a inclinação da curva.** Linha congelada nunca mais sai:
+o DELETE não a alcança, e não há caminho de descongelamento. O conjunto passa a
+crescer de forma **monotônica** — bater no teto deixou de ser hipótese e virou
+questão de quando. Duas saídas: paginar, ou trazer só os apoios dos chamados
+visíveis na tela (que é o que a consulta realmente precisa).
+
+## P33 — MÉDIO · A reconciliação devolve "corrigido" sem corrigir (2026-09-04, U81)
+
+`reconciliar_apoios_abertos` (U76 §8.4) existe para um caso: o apoio nasceu de
+escala **herdada** e o gestor lançou a semana depois, com outra composição. Se o
+bloco daquela semana já foi carimbado, a linha errada está congelada — o DELETE
+não a alcança, o INSERT acrescenta a pessoa certa, `GET DIAGNOSTICS` conta 1 e a
+função devolve **1 chamado corrigido**. O gestor lê sucesso e vai embora com o
+nome errado ainda na lista, e essa pessoa mantém acesso ao chamado, ao cliente,
+às fotos, ao checklist e ao pedido de compra.
+
+Está declarado em R108 e **medido pela conferência 115** da U81 — o número da
+primeira rodada é que diz o tamanho disto. Se for grande, a saída provável não é
+desfazer o congelamento (isso reabre o defeito) mas dar ao gestor uma ação
+explícita de "esta pessoa não esteve aqui", que hoje só existe como o X do chip,
+sem nada na tela dizendo que é preciso usá-lo.
+
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 
 A auditoria da v7 varreu o sistema e achou amarelos de fora da paleta em telas

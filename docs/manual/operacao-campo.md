@@ -411,10 +411,107 @@ SELECT faturamento_status, count(*)
 Se `em_conferencia` não for zero, esses são os analisados que ninguém aprovou —
 ver P20 em `docs/PENDENCIAS_TECNICAS.md`.
 
+## Quem foi ao prédio: o apoio que já aconteceu (R107/R108, U81)
+
+**A regra em uma frase:** no instante em que alguém marca um atendimento como
+**feito**, quem está na lista de apoio daquele chamado vira **registro** — o
+sistema nunca mais troca aqueles nomes sozinho.
+
+### O que acontecia antes, e o que muda
+
+O caso é o atendimento de **duas idas**: a visita de terça e o retorno da quinta
+da semana seguinte. Marcar a visita de terça como feita faz o chamado passar a
+aparecer no dia do retorno — isso está certo e é o que o "feito" existe para
+fazer. Só que, ao mudar de semana, o sistema recalculava o apoio contra a escala
+da semana NOVA e **apagava** quem tinha ido na terça. Sem sino, sem linha na
+linha do tempo, sem rastro nenhum.
+
+Agora o carimbo **congela** a lista antes de o chamado mudar de dia. A turma da
+terça fica; a turma da quinta é **acrescentada**. O atendimento de duas idas
+termina com os dois times na lista de apoio.
+
+**Vale em qualquer ordem.** Se alguém marcar o retorno primeiro e a visita
+depois — que acontece, porque há um botão por atendimento e nada obriga a ordem
+— as duas turmas ficam protegidas do mesmo jeito.
+
+**A turma do retorno entra quando a escala daquela semana existir.** Se a semana
+do retorno ainda não foi lançada, o sistema não sabe quem é a turma e não
+inventa: a lista fica só com quem já foi, e os nomes novos entram assim que a
+escala for lançada. A caixa de confirmação diz isso.
+
+A caixa de confirmação que aparece ao dar "feito" com retorno em outra semana
+**continua existindo** — porque a surpresa continua existindo: o chamado muda de
+dia. O que ela diz mudou: agora ela promete que o registro fica.
+
+### Como isso aparece na tela
+
+No campo **Apoio** do painel do chamado, o chip de quem esteve num atendimento
+que já aconteceu ganha uma **borda mais forte** e um visto. Passando o mouse:
+*"esteve num atendimento que já aconteceu — o sistema não troca mais este nome
+sozinho"*.
+
+O **X do chip continua funcionando**. Não existe "corrigir" um apoio no sistema:
+se o nome congelado estiver errado, remova-o e ponha o certo. Fechar esse X
+seria trancar a porta com o erro dentro.
+
+### As três coisas que você precisa saber, e que não são óbvias
+
+**1. O congelamento depende de alguém clicar "Feito".** É o único gesto no
+sistema inteiro que transforma plano em registro. O atendimento que aconteceu e
+ninguém marcou continua desprotegido: se o chamado mudar de semana, a lista é
+recalculada e quem foi some. **Marcar "feito" deixou de ser burocracia e passou
+a ser o que guarda quem trabalhou.**
+
+**2. Tirar o "feito" NÃO descongela.** O carimbo registrou que alguém afirmou que
+a visita aconteceu, e desafirmar não a desacontece. Se descongelasse, o botão
+"Tirar o feito" viraria o botão "apagar quem foi".
+
+**3. Quem foi continua com acesso, mesmo se o responsável mudar (R108).** Ser
+apoio dá direito de ver e editar o chamado, o cliente, o local, as fotos, o
+checklist e o pedido de compra. Como o registro não é mais apagado, trocar o
+responsável de um atendimento já cumprido deixa **as duas turmas** com esse
+acesso. É a troca deliberada: guardar um registro a mais é melhor do que apagar o
+registro de quem esteve no prédio. Se a pessoa não deve mais ter acesso, remova-a
+pelo X.
+
+### O que o sistema AINDA NÃO sabe responder
+
+*"Quantas visitas o Luan fez em setembro?"* — não sabe, e não é esquecimento.
+
+A lista de apoio é **por atendimento**, não por visita: a mesma pessoa não cabe
+duas vezes no mesmo chamado. O sistema consegue mostrar as turmas **na ordem das
+idas** (quem foi primeiro, quem foi depois), mas quem foi nas DUAS idas aparece
+só uma vez, e a lista não diz de qual bloco cada nome é.
+
+Contar por visita exigiria pendurar o apoio no **bloco de agenda**, e isso está
+adiado **de propósito** até que marcar "feito" seja rotina. Um ranking de
+"visitas por técnico" construído hoje contaria menos visitas para o técnico que
+esquece de clicar — que é medir disciplina administrativa e chamar de
+produtividade.
+
+**Consulta-canário** (o verificador não vê dado, só código) — quantos
+atendimentos aconteceram e ninguém marcou "feito". É o número que decide se o
+congelamento está protegendo alguma coisa de verdade:
+
+```sql
+SELECT count(*) AS blocos_esquecidos
+  FROM public.agenda_campo
+ WHERE cancelado_em IS NULL AND cumprido_em IS NULL
+   AND dia < (current_date - 7);
+```
+
+E quantos atendimentos já têm registro congelado:
+
+```sql
+SELECT count(*) AS linhas, count(DISTINCT chamado_id) AS atendimentos
+  FROM public.chamado_apoios
+ WHERE congelado_em IS NOT NULL;
+```
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`
 - `src/features/paineis/indicadores.ts` · `painel.operacional.tsx`
 - `docs/SISTEMA_OS.md` (o plano original do sistema de OS)
 - `src/features/duplas/modelo.ts` — a escala semanal e a herança (R96/U76)
-- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97
+- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R108

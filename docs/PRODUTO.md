@@ -1892,3 +1892,68 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   triângulo de alerta **é** a voz certa, ao contrário da faixa de migração: ali
   não há nada errado, aqui há.
   *(U80.)*
+
+- **R107** — **Marcar a visita como feita NÃO apaga mais o registro de quem a
+  fez.** Davi, 02/09: *"Se o retorno cai para outra semana, sem problemas nós
+  podemos ou trocar o apoio ou manter o mesmo, de qualquer forma será computado
+  POR VISITA e não por obra completa."*
+
+  Até aqui, carimbar "feito" num atendimento cujo retorno cai em outra semana
+  fazia o sistema recalcular o apoio contra a semana NOVA — e apagar, sem sino e
+  sem rastro, quem tinha ido ao prédio. Agora o carimbo **congela**: quem estava
+  na lista no momento em que alguém afirmou que a visita aconteceu fica lá para
+  sempre, e a turma do retorno é **acrescentada**. O atendimento de duas idas
+  termina com os dois times na lista de apoio.
+
+  Vale **em qualquer ordem de carimbo**: quem marca o retorno primeiro e a ida
+  depois protege as duas turmas do mesmo jeito. A garantia tem duas metades — a
+  máquina para de descartar quem já foi, e a turma que entra numa semana que
+  **já teve visita afirmada** nasce protegida. Sem a segunda, marcar fora de
+  ordem deixava a turma do retorno desprotegida para sempre.
+
+  A entrada da turma do retorno é **condicional**, e a tela diz isso na hora do
+  gesto: se a escala daquela semana ainda não foi lançada, o sistema não sabe
+  quem é a turma e não inventa — ela entra assim que a escala existir.
+
+  **Uma coisa que ainda fica errada, e está aqui para não virar surpresa:** o
+  atendimento tem UMA data só, e ela anda para o retorno. Quem foi na ida
+  continua vendo aquele atendimento na agenda e no calendário — mas na data do
+  **retorno**, não na data em que foi. Não filtramos essas linhas fora da agenda
+  porque o remédio seria pior: apagaria da tela de histórico exatamente o
+  registro que o R107 existe para guardar, inclusive no caso comum de uma visita
+  só. Some de vez quando o apoio passar a morar no bloco.
+
+  **A segunda metade da frase NÃO foi atendida, e isto está aqui para não virar
+  folclore.** "Computado POR VISITA" descreve uma CONTAGEM, e o sistema continua
+  sem saber dizer *"o Luan foi na terça e o Luan foi na quinta"* — a chave da
+  tabela de apoio é (atendimento, pessoa), então a mesma pessoa não cabe duas
+  vezes no mesmo chamado. O que a tela consegue mostrar é a **ordem das idas**
+  (as turmas agrupadas pelo instante de cada carimbo), e é só isso. Um ranking
+  de "visitas por técnico" continua não existindo, **de propósito**: ele
+  dependeria de a operação carimbar "feito" com disciplina, e hoje existe um
+  único clique no sistema inteiro que faz isso. Publicar o ranking antes disso
+  puniria com cara de improdutividade justamente quem esquece de clicar.
+  *(U81.)*
+
+- **R108** — **Quem foi a um atendimento que já aconteceu continua com acesso a
+  ele, mesmo depois de o responsável mudar.** É a consequência direta do R107 e
+  ela precisa estar escrita: ser apoio dá direito de ver e editar o chamado, o
+  cliente, o local, as fotos, o checklist e o pedido de compra. Como o registro
+  não é mais apagado, trocar o responsável de um atendimento já cumprido deixa
+  **as duas turmas** com esse acesso — a que foi e a que passou a responder.
+
+  É a troca deliberada: *prefiro guardar um registro a mais do que apagar o
+  registro de quem esteve no prédio*. A saída é humana e continua aberta — o X
+  no chip de apoio remove a pessoa. Não existe "corrigir" um apoio: só remover e
+  pôr outro.
+
+  **E a ferramenta de reconciliação deixa de alcançar essas linhas.** Ela existe
+  para um caso só: o apoio nasceu de uma escala *herdada* (a semana ainda não
+  tinha sido lançada) e o gestor lançou a semana depois, com outra composição.
+  Se o atendimento daquela semana já tiver sido carimbado, o nome errado está
+  congelado: a reconciliação acrescenta a pessoa certa, **não remove a errada**,
+  e ainda assim informa "corrigido". Quem vê essa mensagem pode ir embora com o
+  nome errado ainda na lista. A remoção é pelo X do chip, à mão. A migration
+  mede essa população (conferência 115) e o volume disso decide se a próxima
+  entrega precisa abrir uma porta de correção antes de qualquer outra coisa.
+  *(U81.)*

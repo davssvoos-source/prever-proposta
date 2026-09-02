@@ -8136,11 +8136,31 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // deixava a asserção verde pelos confirms dos vizinhos. Prender a condição, a
   // chamada e a SAÍDA (`if (!ok) return;`) é o que não dá para contornar sem
   // apagar.
-  eq('CRÍTICO: dar "feito" num bloco cujo espelho pula de semana ISO PERGUNTA antes — o gatilho da U76 reavalia o apoio contra a semana nova e apaga quem JÁ FOI',
+  // ── U81: A ASSERÇÃO FICOU VERDE MENTINDO, E POR ISSO FOI REESCRITA ────────
+  // A estrutura que ela prendia (`sa && sd && sa !== sd` → `const ok =
+  // window.confirm(` → `if (!ok) return;`) sobreviveu inteira à U81 — logo a
+  // asserção continuaria PASSANDO. Só que o NOME dela dizia "…e apaga quem JÁ
+  // FOI", e a U81 é exatamente o fim disso: o carimbo CONGELA as linhas
+  // origem='dupla' (chamado_apoios.congelado_em) antes de a cascata rodar, e o
+  // DELETE de chamado_sincronizar_apoio ganhou `AND a.congelado_em IS NULL`.
+  // Asserção verde carimbando uma afirmação falsa é pior do que asserção
+  // vermelha: a segunda alguém conserta.
+  //
+  // A nova prende TRÊS coisas: a estrutura (que continua sendo o motivo de
+  // perguntar — a data anda), o TEXTO NOVO, e a TRAVA NO BANCO que torna o
+  // texto novo verdadeiro. Trocar uma promessa por outra só vale se a asserção
+  // provar a promessa nova onde ela mora de verdade, que é o SQL.
+  const u81form = fs79.readFileSync('supabase/migrations/20260904090000_u81_apoio_por_visita.sql', 'utf8');
+  eq('CRÍTICO: dar "feito" num bloco cujo espelho pula de semana ISO PERGUNTA antes — a data anda para o retorno; e o texto promete que quem foi NESTA ida FICA, o que só é verdade porque a U81 travou o DELETE',
      [/espelhoDoChamado\(\s*\n?\s*bloco\.chamado_id,\s*\n?\s*blocos\.map\(\(b\) => \(b\.id === bloco\.id \? \{ \.\.\.b, cumprido_em: "\(feito\)" \} : b\)\),/.test(form79),
       form79.includes('      if (sa && sd && sa !== sd && depois) {\n        const ok = window.confirm('),
-      form79.includes('        if (!ok) return;')],
-     [true, true, true]);
+      form79.includes('        if (!ok) return;'),
+      form79.includes('O registro de quem foi NESTA ida fica GUARDADO'),
+      // a MENTIRA ANTIGA não pode ter sobrado em lugar nenhum do arquivo
+      /pode sair da lista/.test(form79),
+      // e a promessa tem lastro: a trava está DENTRO do DELETE da U81
+      /^  DELETE FROM public\.chamado_apoios a$[^;]*^     AND a\.congelado_em IS NULL$/m.test(u81form)],
+     [true, true, true, true, false, true]);
   eq('CRÍTICO: o texto de "tirar da agenda" é DERIVADO de espelhoAposDesagendar — com bloco cumprido sobrando, "o horário some" é mentira',
      /const resto = espelhoAposDesagendar\(chamado\.id, blocos\);/.test(form79), true);
 
@@ -8163,8 +8183,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: a camada de dados NÃO reescreve a frase da RPC — ela rejeita com o erro cru, e quem escolhe o rosto é a tela por classeDoErro(error.code)',
      /toast/.test(dados79), false);
   eq('a invalidação usa `chamadosTocadosPeloGesto` — são DOIS chamados quando o bloco troca de dono, e refazer só o destino deixa a origem com a data velha',
-     /for \(const id of chamados\) qc\.invalidateQueries\(\{ queryKey: \["chamado", id\] \}\);/.test(dados79)
+     /for \(const id of chamados\) \{[^}]*queryKey: \["chamado", id\]/.test(dados79)
      && /chamadosTocadosPeloGesto\(g\.atual, g\.valores\)/.test(dados79), true);
+  // U81: o carimbo congela linhas de apoio e a cascata do espelho insere a turma
+  // nova — as duas coisas que o chip pinta, e nenhuma delas chega à tela sem
+  // esta chave. É a chave de `useChamadoApoios`, e o `confirm` do carimbo faz
+  // uma promessa sobre a lista de apoio na hora exata do gesto.
+  eq('CRÍTICO: a invalidação inclui `chamado-apoios` — sem ela o carimbo promete uma lista de apoio que a tela não recarrega',
+     /queryKey: \["chamado-apoios", id\]/.test(dados79), true);
   eq('CRÍTICO: e ela invalida as quatro chaves que leem o ESPELHO (home, home-chamados, home-historico, calendario) mais a pilha de apoio — o gatilho acabou de mover a data',
      /\[\["home"\], \["home-chamados"\], \["home-historico"\], \["calendario"\], \["home-apoios-todos"\]\]/.test(dados79), true);
   eq('CRÍTICO: `useChamadosComBloco` existe e é o denominador da faixa — sem ela, um chamado cujo único bloco está a três meses cai na faixa e "dar horário" cria um RETORNO que ninguém pediu',
@@ -9694,6 +9720,333 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: e o fuso de Brasília também — sem ele a competência de quem encerra depois das 21h cai no mês seguinte',
      /AT TIME ZONE 'America\/Sao_Paulo'/.test(naS4 || '')
      && !/v_ch\.created_at\)::date/.test(naS4 || ''), true);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// U81 — O APOIO QUE JÁ FOI É REGISTRO (R107/R108)
+// ════════════════════════════════════════════════════════════════════════════
+// O defeito: carimbar a visita de terça fazia o espelho andar para o retorno da
+// quinta (certo), a semana ISO do chamado mudar (certo) e
+// `chamado_sincronizar_apoio` APAGAR as linhas origem='dupla' da turma que JÁ
+// FOI (errado, e mudo — o sino é AFTER INSERT). Marcar a visita como feita
+// apagava o registro de quem a fez.
+//
+// A correção é UMA COLUNA (`chamado_apoios.congelado_em`), UM GATILHO (BEFORE
+// em agenda_campo) e UMA LINHA no DELETE. Nada mais é tocado — nenhuma policy,
+// nenhum GRANT, nenhum caminho de INSERT, nenhum sino novo.
+{
+  const fs81 = require('fs');
+  const u76file = 'supabase/migrations/20260831180000_u76_escala_semanal_das_equipes.sql';
+  const u81file = 'supabase/migrations/20260904090000_u81_apoio_por_visita.sql';
+  const u76 = fs81.readFileSync(u76file, 'utf8');
+  const u81 = fs81.readFileSync(u81file, 'utf8');
+  const M81 = carregar('src/features/programacao/modelo.ts');
+
+  // ── 1) A LÓGICA PURA, exercitada de verdade (carregar transpila o .ts) ────
+  eq('especieDoApoio: congelado_em nulo é ATRIBUIÇÃO DE HOJE — o automatismo ainda responde por ela',
+     M81.especieDoApoio({ origem: 'dupla', congelado_em: null }), 'atual');
+  eq('especieDoApoio: congelado_em preenchida é REGISTRO — alguém afirmou a visita e a máquina soltou a linha',
+     M81.especieDoApoio({ origem: 'dupla', congelado_em: '2026-09-03T14:02:11.000Z' }), 'registro');
+  // string vazia não é instante: seria um "congelado em coisa nenhuma"
+  eq('especieDoApoio: string vazia NÃO é registro (é ausência, não instante)',
+     M81.especieDoApoio({ origem: 'dupla', congelado_em: '' }), 'atual');
+  // O SQL diz que a coluna SÓ TEM SIGNIFICADO em origem='dupla' (§2). O modelo
+  // puro tem de saber disso, senão a tela chama de REGISTRO uma linha que uma
+  // PESSOA escolheu à mão — e apoio manual já é permanente sem congelar nada.
+  // Hoje nenhum caminho congela 'manual'; a guarda existe para que continue
+  // assim se um caminho novo aparecer.
+  eq('CRÍTICO: especieDoApoio NÃO chama de registro um apoio MANUAL, mesmo congelado — a coluna só tem significado em origem=dupla, e o SQL afirma isso',
+     M81.especieDoApoio({ origem: 'manual', congelado_em: '2026-09-03T14:02:11.000Z' }), 'atual');
+  eq('…e origem nula (carga histórica da U59/U61) idem',
+     M81.especieDoApoio({ origem: null, congelado_em: '2026-09-03T14:02:11.000Z' }), 'atual');
+
+  // idasDoApoio: `now()` no Postgres é o timestamp da TRANSAÇÃO, e cada carimbo
+  // é uma transação — então quem foi na terça compartilha um instante e quem
+  // vai na quinta compartilha outro. Agrupar por ele devolve as turmas EM ORDEM
+  // DE IDA, sem coluna nova.
+  const linhas81 = [
+    { profile_id: 'quinta-1', origem: 'dupla', congelado_em: '2026-09-17T13:00:00.000Z' },
+    { profile_id: 'viva',     origem: 'dupla', congelado_em: null },
+    { profile_id: 'terca-1',  origem: 'dupla', congelado_em: '2026-09-08T13:00:00.000Z' },
+    { profile_id: 'terca-2',  origem: 'dupla', congelado_em: '2026-09-08T13:00:00.000Z' },
+  ];
+  eq('CRÍTICO: idasDoApoio agrupa por instante e ordena da ida mais ANTIGA para a mais nova — é a ordem das visitas, e ela sai de graça do timestamp da transação',
+     M81.idasDoApoio(linhas81),
+     [{ instante: '2026-09-08T13:00:00.000Z', pessoas: ['terca-1', 'terca-2'] },
+      { instante: '2026-09-17T13:00:00.000Z', pessoas: ['quinta-1'] }]);
+  eq('idasDoApoio ignora a linha VIVA: ela não é ida nenhuma, é atribuição de hoje',
+     M81.idasDoApoio(linhas81).flatMap((i) => i.pessoas).includes('viva'), false);
+  eq('idasDoApoio sem nada congelado devolve lista vazia (e não uma ida fantasma)',
+     M81.idasDoApoio([{ profile_id: 'x', origem: 'dupla', congelado_em: null }]), []);
+  eq('idasDoApoio herda a guarda de origem: apoio MANUAL congelado não vira ida',
+     M81.idasDoApoio([{ profile_id: 'x', origem: 'manual', congelado_em: '2026-09-08T13:00:00.000Z' }]), []);
+
+  // ── 2) O DIFF — porque o risco é DELEÇÃO, não ausência ────────────────────
+  // A U81 REESCREVE uma função da U76. Regex de PRESENÇA prova que a linha
+  // EXISTE; ela não prova que as OUTRAS continuam lá. A régua é o corpo vivo da
+  // U76 com a única mudança esperada escrita À MÃO. Mesma forma do diff da U80
+  // e do da S4, logo acima.
+  const corpoDeF81 = (src, nome) => {
+    const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
+    if (i < 0) return null;
+    const m = /AS (\$[A-Za-z_0-9]*\$)/.exec(src.slice(i, i + 400));
+    if (!m) return null;
+    const j = src.indexOf('\n' + m[1] + ';', i);
+    return j < 0 ? null : src.slice(i, j);
+  };
+  const norm81 = (s) => s
+    .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+    .replace(/AS \$[A-Za-z_0-9]*\$/, 'AS $Q$')
+    .replace(/\s+/g, ' ').trim();
+
+  const sincU76 = corpoDeF81(u76, 'chamado_sincronizar_apoio');
+  const sincU81 = corpoDeF81(u81, 'chamado_sincronizar_apoio');
+  eq('os dois corpos de chamado_sincronizar_apoio foram recortados (se este falhar, o de baixo mente)',
+     [sincU76 !== null, sincU81 !== null], [true, true]);
+
+  // SÃO DUAS MUDANÇAS ESPERADAS, e a segunda foi acrescentada depois que uma
+  // lente adversarial mostrou que a primeira sozinha fecha METADE do buraco:
+  //   (1) o DELETE deixa de alcançar linha congelada;
+  //   (2) o INSERT passa a NASCER congelado quando a semana para a qual está
+  //       escrevendo já tem visita afirmada — o caso do carimbo FORA DE ORDEM,
+  //       em que a turma do retorno é escrita depois do carimbo dela e o gatilho
+  //       do bloco nunca mais dispara (cumprido_em só transiciona de NULL uma
+  //       vez). Sem (2), essa turma fica alcançável pelo DELETE para sempre.
+  const esperadoU81 = norm81(
+    (sincU76 || '')
+      .replace(
+        "     AND a.origem = 'dupla'\n     AND NOT (a.profile_id = ANY (v_alvo));",
+        "     AND a.origem = 'dupla'\n     AND a.congelado_em IS NULL\n     AND NOT (a.profile_id = ANY (v_alvo));",
+      )
+      .replace(
+        "    INSERT INTO public.chamado_apoios (chamado_id, profile_id, origem)\n"
+        + "    SELECT c.id, p.pessoa_id, 'dupla' FROM unnest(v_alvo) AS p(pessoa_id)\n"
+        + '    ON CONFLICT (chamado_id, profile_id) DO NOTHING;',
+        "    INSERT INTO public.chamado_apoios (chamado_id, profile_id, origem, congelado_em)\n"
+        + "    SELECT c.id, p.pessoa_id, 'dupla',\n"
+        + '           (SELECT max(b.cumprido_em) FROM public.agenda_campo b\n'
+        + '             WHERE b.chamado_id = c.id\n'
+        + '               AND b.cancelado_em IS NULL\n'
+        + '               AND b.cumprido_em IS NOT NULL\n'
+        + '               AND public.referencia_semanal(b.dia) = public.referencia_semanal(v_dia))\n'
+        + '      FROM unnest(v_alvo) AS p(pessoa_id)\n'
+        + '    ON CONFLICT (chamado_id, profile_id) DO NOTHING;',
+      ));
+  eq('CRÍTICO: o corpo da U81 é o VIVO da U76 com DUAS mudanças e NENHUMA a menos — a guarda de natureza, a de "não sei ≠ ninguém", o origem=dupla, o array_length e o ON CONFLICT continuam todos lá',
+     norm81(sincU81 || ''), esperadoU81);
+
+  // A SEGUNDA METADE DA TRAVA, prendida sozinha — para o dia em que alguém achar
+  // o DIFF exagerado e o encurtar. Sem ela, carimbar o retorno antes da ida
+  // deixa a turma do retorno viva para sempre, que é o defeito original inteiro.
+  eq('CRÍTICO: o INSERT nasce congelado quando a semana de destino já tem visita AFIRMADA — a metade da trava que cobre o carimbo fora de ordem',
+     /INSERT INTO public\.chamado_apoios \(chamado_id, profile_id, origem, congelado_em\)[^;]*max\(b\.cumprido_em\)[^;]*b\.cumprido_em IS NOT NULL[^;]*ON CONFLICT/.test(sincU81 || ''),
+     true);
+  // E o instante é o do BLOCO, não `now()`: as duas turmas são escritas na mesma
+  // transação no fluxo fora de ordem, e `now()` as colapsaria numa ida só.
+  // O RECORTE É O CORPO DO GATILHO, e não o arquivo: o BACKFILL do §5 grava
+  // `now()` de propósito — ele é UMA transação e o instante único dele é a
+  // marca de procedência que distingue "congelado pela carga" de "congelado por
+  // um carimbo". Medir o arquivo inteiro mediria as duas coisas como se fossem
+  // uma, e foi exatamente o que esta asserção fez na primeira escrita.
+  const corpoCongelar = (() => {
+    const i = u81.indexOf('AS $congelar$');
+    const j = u81.indexOf('\n$congelar$;', i);
+    return i < 0 || j < 0 ? null : u81.slice(i, j);
+  })();
+  eq('o corpo do gatilho de congelamento foi recortado (se este falhar, o de baixo mente)',
+     corpoCongelar !== null, true);
+  eq('CRÍTICO: o gatilho grava o instante do BLOCO (NEW.cumprido_em), não now() — com now() as duas turmas do carimbo fora de ordem cairiam no mesmo instante e idasDoApoio cegaria',
+     /SET congelado_em = NEW\.cumprido_em/.test(corpoCongelar || '')
+     && !/SET congelado_em = now\(\)/.test(corpoCongelar || ''),
+     true);
+  // …e o backfill continua sendo o único lugar com `now()`, que é a propriedade
+  // que `idasDoApoio` documenta: tudo que a carga congelou compartilha um
+  // instante, e por isso devolve UMA ida só para o passado.
+  eq('…e o backfill do §5 é o ÚNICO now() — a marca de procedência da carga, e a ressalva que idasDoApoio declara',
+     (u81.match(/SET congelado_em = now\(\)/g) || []).length, 1);
+
+  // E a mesma trava, prendida onde ela MORA — dentro do DELETE, antes do `;`.
+  // `[^;]` e não `[\s\S]{0,N}`: a segunda atravessa o ponto-e-vírgula e casa um
+  // comentário do bloco seguinte. E a mutação que derruba esta linha é apagar a
+  // CLÁUSULA, não o comentário `-- ══ A LINHA DA U81` que fica logo acima —
+  // conferido, porque três "sobreviventes" desta semana eram âncoras casando
+  // comentário.
+  eq('CRÍTICO: a trava está DENTRO do DELETE de chamado_apoios, e não numa linha de comentário ao lado',
+     /^  DELETE FROM public\.chamado_apoios a$[^;]*^     AND a\.congelado_em IS NULL$/m.test(u81), true);
+
+  // ── 3) O GATILHO É BEFORE, E ISSO É ESTRUTURA ─────────────────────────────
+  // Na mesma linha de agenda_campo, `cumprido_em` acorda também o gatilho AFTER
+  // do espelho (U78:948-951), que move data_hora_agendada, que acorda o gatilho
+  // do apoio (U76), que chama o DELETE. Se o congelamento fosse AFTER, quem
+  // chega primeiro seria decidido pela ORDEM ALFABÉTICA DO NOME — e um rename
+  // futuro reabriria o defeito em silêncio. Todo BEFORE de linha roda antes de
+  // todo AFTER de linha: estrutura, não convenção.
+  // Mutação que derruba: trocar BEFORE por AFTER.
+  eq('CRÍTICO: o gatilho do congelamento é BEFORE INSERT OR UPDATE OF cumprido_em em agenda_campo — AFTER dependeria da ordem alfabética do nome contra o gatilho do espelho',
+     /^CREATE TRIGGER trg_agenda_campo_congela_apoio\n  BEFORE INSERT OR UPDATE OF cumprido_em ON public\.agenda_campo$/m.test(u81),
+     true);
+
+  // ── 4) MONOTONICIDADE, por CENSO ──────────────────────────────────────────
+  // A promessa central: congelado_em só vai de NULL para um instante, e NADA na
+  // máquina o devolve — inclusive tirar o "feito". Se descongelasse, o botão
+  // "Tirar o feito" viraria o botão "apagar quem foi", que é o defeito de volta
+  // com outra roupa.
+  //
+  // CENSO e não asserção-por-caso: a lista DERIVADA do arquivo (tudo que segue
+  // a palavra `congelado_em`) contra a lista escrita à mão. Uma escrita nova
+  // que ninguém previu aparece aqui como item estranho, em vez de passar
+  // despercebida por um regex que só procurava o que já se conhecia.
+  const seguidores81 = [...new Set(
+    [...u81.matchAll(/congelado_em(\s*(?:IS NOT NULL|IS NULL|=\s*now\(\)|=\s*NULL))?/g)]
+      .map((m) => (m[1] || '').replace(/\s+/g, ' ').trim() || '(prosa/DDL)'))].sort();
+  eq('CRÍTICO: censo de tudo que a U81 faz com congelado_em — só lê (IS NULL / IS NOT NULL), grava now(), ou fala dela em prosa. `= NULL` NÃO está na lista, e é isso que torna a marca monotônica',
+     seguidores81, ['(prosa/DDL)', '= now()', 'IS NOT NULL', 'IS NULL']);
+  eq('CRÍTICO: e a forma direta da mesma prova — em nenhum lugar da U81 congelado_em aparece à esquerda de = NULL',
+     /congelado_em\s*=\s*NULL/i.test(u81), false);
+
+  // ── 5) CENSO DOS CHAMADORES ───────────────────────────────────────────────
+  // O argumento inteiro do desenho é que a proteção é propriedade da LINHA e
+  // não guarda no CAMINHO — por isso ela vale igualmente para o gatilho e para
+  // `reconciliar_apoios_abertos`, que chama a função DIRETO e pula o gatilho (o
+  // problema que obrigou a U78 a duplicar a guarda em §7.1 e §7.2). Esse
+  // argumento só é verdadeiro enquanto os chamadores forem esses dois arquivos.
+  // A lista sai do DIRETÓRIO, não da memória.
+  const chamadores81 = [];
+  for (const f of fs81.readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort()) {
+    const t = fs81.readFileSync('supabase/migrations/' + f, 'utf8');
+    for (const l of t.split('\n')) {
+      if (/^\s*--/.test(l)) continue;                       // grep acha comentário
+      if (!/chamado_sincronizar_apoio\s*\(/.test(l)) continue;
+      if (/CREATE OR REPLACE FUNCTION|REVOKE |GRANT |COMMENT ON|DROP FUNCTION|to_regprocedure|position\(|RAISE EXCEPTION|v_falta|'chamado_sincronizar_apoio'/.test(l)) continue;
+      if (!chamadores81.includes(f)) chamadores81.push(f);
+    }
+  }
+  eq('CRÍTICO: quem CHAMA chamado_sincronizar_apoio continua sendo só a U76 (gatilho + reconciliação) e a U78 (as duas versões vivas) — a U81 REESCREVE a função e não acrescenta caminho de chamada nenhum',
+     chamadores81,
+     ['20260831180000_u76_escala_semanal_das_equipes.sql',
+      '20260901090000_u78_grade_da_programacao.sql']);
+
+  // ── 6) O QUE A U81 PROMETEU NÃO TOCAR ─────────────────────────────────────
+  // Censo negativo, derivado do arquivo: nomes que a U81 NÃO pode redefinir.
+  // Se um deles aparecer num CREATE OR REPLACE aqui, a promessa "zero policy,
+  // zero GRANT, nenhuma função de autorização" deixou de ser verdade e o
+  // cabeçalho da migration virou folclore.
+  const intocaveis81 = [
+    'chamado_apoio_da_dupla', 'reconciliar_apoios_abertos', 'agenda_campo_cumprir',
+    'agenda_campo_espelhar', 'pode_editar_chamado', 'pode_acessar_chamado',
+    'pode_ver_cliente', 'pode_ver_prospeccao', 'notify_chamado_apoio',
+  ];
+  eq('CRÍTICO: a U81 não redefine NENHUMA das nove funções que ela promete não tocar — as duas de autorização da S2 inclusive, que é a diferença mais cara entre congelar e pendurar o apoio no bloco',
+     intocaveis81.filter((n) => new RegExp('^CREATE OR REPLACE FUNCTION public\\.' + n + '\\b', 'm').test(u81)),
+     []);
+  eq('CRÍTICO: e ela não cria, dropa nem altera policy nenhuma, nem concede privilégio de tabela — congelado_em nasce inescrevível pelo cliente porque o GRANT da S3 é POR COLUNA, não porque a U81 escreveu algo',
+     [/^(CREATE|DROP|ALTER) POLICY/m.test(u81),
+      /^GRANT [A-Z]+ ON public\./m.test(u81)],
+     [false, false]);
+
+  // ── 7) A MIGRATION É ATÔMICA E TEM DESFAZER ───────────────────────────────
+  eq('U81 é atômica — se o pré-voo abortar, não sobra rastro',
+     [/^BEGIN;$/m.test(u81), /^COMMIT;$/m.test(u81)], [true, true]);
+  // AS DUAS POSIÇÕES SÃO CONFERIDAS ANTES DE SEREM COMPARADAS, e essa linha
+  // nasceu de um sobrevivente: a primeira versão procurava
+  // `…chamado_sincronizar_apoio(uuid)` no DESFAZER, e lá está escrito
+  // `(_chamado uuid)`. `indexOf` devolvia -1, qualquer posição era MAIOR que
+  // -1, e a asserção passava VAZIA. Comparar índices sem provar que os dois
+  // existem é o mesmo erro de checar presença quando o risco é deleção.
+  const iDrop81 = u81.indexOf('--   ALTER TABLE public.chamado_apoios DROP COLUMN IF EXISTS congelado_em;');
+  const iCorpo81 = u81.indexOf('--   CREATE OR REPLACE FUNCTION public.chamado_sincronizar_apoio(_chamado uuid)');
+  eq('CRÍTICO: o DESFAZER restaura o corpo da U76 ANTES do DROP COLUMN — na ordem inversa, o corpo vivo referenciaria uma coluna que não existe mais e todo INSERT de chamado de campo estouraria',
+     [iDrop81 >= 0, iCorpo81 >= 0, iDrop81 > iCorpo81], [true, true, true]);
+  // O pré-voo checa FORCE ROW LEVEL SECURITY, e essa checagem não é zelo: o
+  // congelamento é um UPDATE numa tabela SEM policy de UPDATE (S3:89-91). Ele
+  // funciona porque o dono passa por cima da RLS — e para de funcionar, EM
+  // SILÊNCIO, no dia em que alguém ligar o FORCE. É a única falha muda do
+  // desenho, e ela morre no pré-voo.
+  // A ASSERÇÃO PRENDE O `IF`, E NÃO SÓ O NOME DA COLUNA. A primeira versão
+  // checava a presença de `relforcerowsecurity` e de uma frase — e sobreviveu
+  // inteira a uma mutação que trocou a condição por `IF false THEN`, deixando a
+  // leitura no lugar e o RAISE inalcançável. É a mesma família da regra 2
+  // (presença não vê deleção), agora na forma "presença não vê guarda
+  // DESLIGADA": tudo continua escrito, e nada mais acontece.
+  eq('CRÍTICO: o pré-voo recusa rodar se chamado_apoios estiver com FORCE ROW LEVEL SECURITY — sem policy de UPDATE, o congelamento casaria zero linhas em silêncio',
+     /SELECT c\.relforcerowsecurity INTO v_force/.test(u81)
+     && /IF COALESCE\(v_force, false\) THEN\s*\n\s*RAISE EXCEPTION/.test(u81), true);
+  // E o pré-voo lê o corpo VIVO antes de reescrevê-lo: reescrever por cima de
+  // uma versão que ninguém leu é o jeito de apagar a correção de outra pessoa.
+  eq('CRÍTICO: o pré-voo prova que o corpo vivo é o da U76 antes de reescrevê-lo (os dois termos que a U81 preserva palavra por palavra)',
+     [u81.includes("position('NOT (a.profile_id = ANY (v_alvo))' in COALESCE(v_src, '')) = 0"),
+      u81.includes("position('escala_semana_vigente' in COALESCE(v_src, '')) = 0")],
+     [true, true]);
+
+  // ── 8) A CONTA DOS SINOS, provada pelo ARQUIVO ────────────────────────────
+  // O sino é AFTER **INSERT** em chamado_apoios (u7:502-503), um por linha. A
+  // U81 não insere e não apaga NENHUMA linha: o backfill é um UPDATE de uma
+  // coluna que acabou de nascer. Logo a conta dos sinos é invariante — e a
+  // prova de que nada sumiu é mais forte que "a cópia bate": não houve cópia.
+  const escritas81 = [...u81.matchAll(/^\s*(INSERT INTO|DELETE FROM)\s+public\.chamado_apoios/gm)].map((m) => m[1]);
+  eq('CRÍTICO: a U81 não INSERE nem APAGA nada em chamado_apoios fora do DELETE que ela herda da U76 — o backfill é UPDATE puro, e é por isso que ela dispara ZERO sinos',
+     [escritas81.filter((x) => x === 'INSERT INTO').length,   // só o da U76, dentro da função
+      escritas81.filter((x) => x === 'DELETE FROM').length],
+     [1, 1]);
+  eq('CRÍTICO: o backfill marca, não move — UPDATE ... SET congelado_em = now() com o filtro origem=dupla E congelado_em IS NULL (o filtro é o que o torna idempotente)',
+     /UPDATE public\.chamado_apoios ap\n   SET congelado_em = now\(\)[^;]*AND ap\.origem = 'dupla'[^;]*AND ap\.congelado_em IS NULL;/m.test(u81),
+     true);
+  // Nenhum DISABLE TRIGGER: não há gatilho a desligar (o sino é de INSERT), e
+  // gatilho desligado que alguém esquece de religar é cicatriz conhecida. O
+  // filtro de linhas `--` é obrigatório: o cabeçalho FALA de DISABLE TRIGGER
+  // para explicar por que não usa um, e grep acha comentário (já rendeu 5+
+  // falsos positivos neste arquivo — este teria sido o sexto, e foi).
+  const vivas81 = u81.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  eq('a U81 NÃO desliga gatilho nenhum — não há o que desligar, e um DISABLE aqui seria teatro',
+     /DISABLE TRIGGER/.test(vivas81), false);
+
+  // ── 9) O NÚMERO QUE DECIDE SE A U81 É DECORAÇÃO ───────────────────────────
+  // Toda a proteção pende de um clique OPCIONAL num único botão. A segunda mão
+  // que a U78:1566-1568 prometeu (executarChamado carimbando os blocos abertos)
+  // NÃO EXISTE — e o verificador prova isso pelo FONTE, não pela memória. Se um
+  // dia ela existir, esta asserção fica vermelha e alguém relê o §5 do diário.
+  const dataCh81 = fs81.readFileSync('src/features/chamados/data.ts', 'utf8');
+  eq('CRÍTICO: a segunda mão do carimbo continua NÃO existindo — executarChamado não toca cumprido_em nem chama agenda_campo_cumprir. É o pré-requisito de "computado por visita", e ele não está nesta entrega',
+     /cumprido_em|agenda_campo_cumprir/.test(dataCh81), false);
+  eq('e a migration repete a conferência 112 da U80 de propósito, como o número que libera (ou não) a próxima entrega da linha',
+     /blocos PENDENTES com dia já passado há mais de 7 dias/.test(u81), true);
+
+  // ── AS CONFERÊNCIAS QUE CARREGAM A PROVA ─────────────────────────────────
+  // Uma bateria de mutação apagou três delas e o verificador não piscou. A
+  // conferência é o único canal por onde a migration fala com o Davi: ele roda
+  // no SQL Editor e lê a tabela final. Apagar uma não quebra nada e não deixa
+  // rastro — a migration só passa a provar menos do que diz provar. Elas são
+  // asserção de PRODUTO, não de estilo, e por isso ficam presas aqui.
+  eq('CRÍTICO: a conferência 105 existe — é ela que prova que nada saiu e nada entrou em chamado_apoios (total/dupla/manual contra a foto do §1), e a prova é mais forte que "a contagem bate" porque NÃO HOUVE CÓPIA',
+     /SELECT 105, 'CRÍTICO: nada saiu e nada entrou em chamado_apoios/.test(u81)
+     && /u81_foto/.test(u81), true);
+  // A 109 tem de casar a semana do espelho com a semana DO BLOCO. Por chamado,
+  // ela some justamente no caso maligno: chamado com a ida já apagada pelo
+  // defeito e o retorno congelado pelo backfill TEM linha congelada, e saía
+  // inteiro da conta — sobrava a população benigna, e a frase mentia.
+  eq('CRÍTICO: a conferência 109 conta POR SEMANA e não por chamado — por chamado ela é cega exatamente ao caso que diz contar',
+     /SELECT 109,[^;]*NOT EXISTS \(SELECT 1 FROM public\.chamado_apoios ap[^;]*= public\.referencia_semanal\(a\.dia\)\)\)/.test(u81), true);
+  // A 115 é o preço do R108 MEDIDO em vez de afirmado: quantos nomes a
+  // reconciliação deixou de alcançar enquanto devolve "corrigido".
+  eq('CRÍTICO: a conferência 115 mede o que a reconciliação não alcança mais — sem ela, o preço do R108 é só uma frase no cabeçalho',
+     /SELECT 115, 'referência: apoios CONGELADOS de chamados ABERTOS/.test(u81), true);
+  eq('…e a 116 dimensiona o P26 (congelar sobre escala HERDADA é promover palpite a registro)',
+     /SELECT 116,[^;]*e\.herdada/.test(u81), true);
+
+  // ── A ORDEM DE DEPLOY, PRESA POR ASSERÇÃO ────────────────────────────────
+  // `useChamadoApoios` NÃO PODE nomear `congelado_em` no select. O push em main
+  // publica na hora e a migration é rodada à mão DEPOIS: nomear a coluna faz o
+  // PostgREST devolver 42703 para a consulta inteira, e o `throw` logo abaixo
+  // apaga a lista de apoio de TODO chamado e derruba a perna de apoio do
+  // `podeEditar` em DetalheInterno — por uma coluna que só pinta uma borda. O
+  // mesmo vale ao contrário: o DESFAZER derruba a coluna com o front publicado.
+  // É a lição da U76 ("código que leia a tabela nova não sobe antes"), e aqui
+  // ela é uma propriedade do CÓDIGO, não uma disciplina de quem faz o commit.
+  const selApoios81 = /from\("chamado_apoios" as any\)\s*\n\s*\.select\("([^"]*)"\)\s*\n\s*\.eq\("chamado_id"/.exec(dataCh81);
+  eq('o select de useChamadoApoios foi recortado (se este falhar, o de baixo mente)',
+     selApoios81 !== null, true);
+  eq('CRÍTICO: useChamadoApoios pede `*` e NÃO nomeia congelado_em — nomeá-la quebra toda tela de chamado entre o push e a rodada da migration, e de novo no DESFAZER',
+     selApoios81 && selApoios81[1], '*');
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

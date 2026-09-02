@@ -82,6 +82,7 @@ import {
 } from "@/lib/chamado-status";
 import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
+import { especieDoApoio } from "@/features/programacao/modelo";
 
 /**
  * O estado de um campo que grava sozinho.
@@ -1018,15 +1019,36 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
 
                 <Campo titulo="Apoio" estado={estados.apoio}>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                    {apoios.map((id) => (
-                      <span key={id} style={{
+                    {apoios.map(({ profile_id: id, origem, congelado_em }) => (
+                      <span key={id}
+                        // U81: o chip diz se aquele nome é REGISTRO ou atribuição
+                        // de hoje. `registro` quer dizer que alguém carimbou
+                        // "feito" no bloco daquela semana e o automatismo da
+                        // escala soltou a linha — trocar o responsável não a
+                        // reescreve mais. O X CONTINUA AQUI de propósito: não há
+                        // GRANT de UPDATE nesta tabela, então corrigir um
+                        // congelamento errado é apagar e pôr outro, e fechar a
+                        // porta seria trancá-la com o erro dentro.
+                        title={especieDoApoio({ origem, congelado_em }) === "registro"
+                          ? `${nomeDe(id)} esteve num atendimento que já aconteceu — o sistema não troca mais este nome sozinho. Para corrigir, remova e ponha outro.`
+                          : undefined}
+                        style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
                         padding: "4px 6px 4px 6px", borderRadius: 999,
                         background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
                         fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                        // a marca é uma BORDA, não uma cor de fundo nova: o chip
+                        // já usa fundo para dizer "é um chip", e uma segunda
+                        // cor ali competiria com o avatar da pessoa
+                        border: especieDoApoio({ origem, congelado_em }) === "registro"
+                          ? `1px solid ${isLight ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.32)"}`
+                          : "1px solid transparent",
                       }}>
                         <AvatarCirculo id={id} nome={nomeDe(id)} pessoa={pessoasPorId[id]} tamanho={17} />
                         {nomeDe(id)}
+                        {especieDoApoio({ origem, congelado_em }) === "registro" && (
+                          <Check size={11} aria-label="atendimento já realizado" color={est.textSecondary} />
+                        )}
                         <button
                           onClick={() => mexerApoio.mutate({ id, remover: true })}
                           aria-label={`Remover ${nomeDe(id)} do apoio`}
@@ -1048,7 +1070,8 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                         // quem já está na atividade sai da lista: oferecer de
                         // novo quem já é apoio só produz chave repetida
                         opcoes={opcoesPessoas.filter(
-                          (o) => o.valor !== chamado.responsavel_id && !apoios.includes(o.valor),
+                          (o) => o.valor !== chamado.responsavel_id
+                            && !apoios.some((a) => a.profile_id === o.valor),
                         )}
                         valor={null}
                         aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
