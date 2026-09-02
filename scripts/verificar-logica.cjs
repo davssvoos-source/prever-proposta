@@ -2566,9 +2566,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o schema da criação rápida por IA DERIVA da lista de oferta — logo não tem "pedido_compra" (R48) nem nada que o seletor não ofereça',
      /const TIPOS_IA: ChamadoTipo\[\] = Array\.from\(new Set\(\[\s*\n\s*\.\.\.tiposDaNatureza\("campo"\),\s*\n\s*\.\.\.tiposDaNatureza\("interno"\),\s*\n\s*\]\)\);/.test(rapido)
      && /enum: TIPOS_IA/.test(rapido), true);
-  eq('…e a lista que ela produz hoje é exatamente a que estava escrita à mão aqui antes da U83 (o corte do R48, provado por valor)',
+  // A lista que ela produz HOJE: a de antes da U83 mais `vistoria`, que entrou
+  // na oferta no commit B (depois de a U83 rodar). O corte de 'pedido_compra'
+  // (R48) continua provado por VALOR, e agora prova junto que um tipo novo
+  // chega à IA sozinho — que é o defeito que a U83 foi consertar.
+  eq('…e a lista que ela produz hoje é a de antes da U83 mais `vistoria` — o corte do R48 continua provado por valor, e o tipo novo chegou à IA sem ninguém editar o enum',
      Array.from(new Set([...CS3.tiposDaNatureza('campo'), ...CS3.tiposDaNatureza('interno')])),
-     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria']);
+     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'vistoria', 'melhoria']);
 
   // a migration U41 — CHECK aberto, trigger reescrito, backfill
   const u41 = fs24.readFileSync('supabase/migrations/20260822020000_u41_tipos_de_chamado.sql', 'utf8');
@@ -11128,27 +11132,37 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // RENDERIZA e não OFERECE; o commit B apaga UMA linha de `NAO_OFERECIDOS` e
   // liga a oferta em cinco lugares de uma vez.
   //
-  // QUANDO O COMMIT B SUBIR, ESTA ASSERÇÃO TEM DE VIRAR — os `false` de campo
-  // e das duas naturezas viram `true`. Ela é o lembrete, e é de propósito que
-  // ela seja barulhenta em vez de sumir sozinha.
-  eq('CRÍTICO (regra 5, e aqui ela INVERTE): no COMMIT A, vistoria é RENDERIZÁVEL e NÃO É OFERECIDA em natureza nenhuma — oferecer antes de a U83 rodar é 23514 na cara de quem abre o chamado. COMMIT B = apagar "vistoria" de NAO_OFERECIDOS em src/lib/chamado-status.ts, e virar esta asserção',
+  // O COMMIT B SUBIU (a U83 rodou em 02/09) e esta asserção VIROU, que é o que
+  // ela foi construída para fazer: os `false` de campo viraram `true`. Ela
+  // continua aqui medindo a forma FINAL — vistoria é oferecida em CAMPO e em
+  // lugar nenhum além disso. Interno não a oferece porque vistoria é ir ao
+  // cliente olhar; comercial tem um tipo só.
+  eq('CRÍTICO: vistoria é oferecida em CAMPO e só lá — é atividade de ir ao cliente olhar, não cabe em demanda interna nem no funil comercial',
      [CS83.TIPOS.includes('vistoria'),
       CS83.tiposDaNatureza('campo').includes('vistoria'),
       CS83.tiposDaNatureza('interno').includes('vistoria'),
       CS83.tiposDaNatureza('comercial').includes('vistoria')],
-     [true, false, false, false]);
+     [true, true, false, false]);
   // …e o gate é UMA LINHA, não uma condição espalhada: a prova é que ele mora
   // numa lista só, e que essa lista é o único lugar do arquivo onde 'vistoria'
   // aparece como valor a ser retirado.
   {
     const fonte83 = fs83.readFileSync('src/lib/chamado-status.ts', 'utf8');
     const vivo83 = fonte83.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
-    eq('U83: o gate do commit B é UMA entrada numa lista chamada NAO_OFERECIDOS, e `tiposDaNatureza` é o único consumidor dela',
-       [/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[[\s\S]{0,200}?"vistoria",/.test(vivo83),
-        (vivo83.match(/NAO_OFERECIDOS/g) || []).length, 2],
-       [true, 2, 2]);
-    eq('U83: e a linha do commit B está SINALIZADA no código — quem for ligar não precisa caçar',
-       /A LINHA DO COMMIT B\. APAGUE ESTA LINHA/.test(fonte83), true);
+    // O COMMIT B saiu: 'vistoria' NÃO está mais em NAO_OFERECIDOS, e o par
+    // negativo prende isso — se alguém a repuser, o tipo some dos seletores
+    // sem nenhum outro sinal. A lista continua existindo (o corte do R48 para
+    // 'pedido_compra' é permanente) e continua com UM consumidor só.
+    eq('U83: o gate continua sendo UMA lista com UM consumidor, e `vistoria` já NÃO está nela — o commit B saiu',
+       [/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[[\s\S]{0,400}?"vistoria",/.test(vivo83),
+        /"pedido_compra",/.test(vivo83),
+        (vivo83.match(/NAO_OFERECIDOS/g) || []).length],
+       [false, true, 2]);
+    // O MECANISMO fica escrito mesmo depois de usado: ele vale para o PRÓXIMO
+    // tipo, e um comentário que some com o uso é conhecimento que se perde.
+    eq('U83: e o mecanismo dos dois commits continua explicado no código — renderizar é aditivo, OFERECER é o que grava',
+       /renderizar é\s*\n\s*\/\/ aditivo e inofensivo[\s\S]{0,400}?OFERECER é o\s*\n\s*\/\/ que grava/.test(fonte83),
+       true);
   }
 
   // ── 3) TIPOS_DEMANDA_CAMPO — a pergunta de produto nº 1, respondida ──────

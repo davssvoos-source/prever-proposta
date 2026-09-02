@@ -238,8 +238,8 @@ const NAO_OFERECIDOS: ChamadoTipo[] = [
   // painel e tudo mais funcionando — só não é opção para um chamado NOVO.
   "pedido_compra",
   // ═════════════════════════════════════════════════════════════════════════
-  // ↓↓↓ A LINHA DO COMMIT B. APAGUE ESTA LINHA — SÓ ELA — DEPOIS QUE O DAVI
-  //     RODAR `20260906090000_u83_vistoria.sql`. ↓↓↓
+  // AQUI ESTAVA `"vistoria"`, E ELA SAIU NO COMMIT B (a U83 rodou em 02/09).
+  // O registro do mecanismo fica, porque ele vale para o PRÓXIMO tipo:
   //
   // Enquanto ela estiver aqui, 'vistoria' é RENDERIZÁVEL (rótulo, cor, filtro,
   // série do gráfico, PDF) e NÃO É OFERECIDA em lugar nenhum que grave. A
@@ -252,7 +252,12 @@ const NAO_OFERECIDOS: ChamadoTipo[] = [
   // de campo, o seletor de tipo do PainelChamado, o diálogo de nova atividade,
   // o enum do schema da IA de criação rápida E a linha "vistoria: …" do prompt
   // dela (as duas derivam desta função — ver chamado-rapido.functions.ts).
-  "vistoria",
+  //
+  // O MECANISMO EM UMA FRASE, para quem for soltar o próximo tipo: renderizar é
+  // aditivo e inofensivo (faz um valor existente ficar legível); OFERECER é o
+  // que grava. Migration + renderização sobem juntas; a entrada nesta lista sai
+  // depois, sozinha, quando o CHECK já aceita o valor. É o que fecha a janela
+  // de 23514 entre o push (que publica na hora) e a migration (rodada à mão).
   // ═════════════════════════════════════════════════════════════════════════
 ];
 

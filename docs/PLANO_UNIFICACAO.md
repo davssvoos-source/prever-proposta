@@ -7429,3 +7429,26 @@ A palavra `vistoria` **continua no ramo de `preventiva`** e isso é decisão: el
 está ali desde a u6c como palavra-chave ("vistoria de rotina" é preventiva), e o
 tipo novo se ESCOLHE no seletor, não se adivinha por texto. Mover a palavra
 faria todo chamado que a menciona mudar de tipo sozinho.
+
+### O commit B (02/09) — a oferta ligada
+
+A U83 rodou e o commit B saiu: **uma linha apagada** de `NAO_OFERECIDOS` em
+`src/lib/chamado-status.ts`. Ela ligou, de uma vez, o seletor de chamado novo de
+campo, o seletor de tipo do `PainelChamado`, o diálogo de nova atividade, o enum
+do schema da IA e a linha de descrição dela no prompt — todos derivam da mesma
+função, que é o que a desduplicação comprou.
+
+**As quatro asserções que o commit A deixou armadas viraram**, e é isso que elas
+existiam para fazer. A que dizia "vistoria é renderizável e NÃO é oferecida em
+natureza nenhuma" passou a afirmar a forma final: oferecida em CAMPO e só lá.
+A que verificava a presença da linha no gate virou um **par negativo** — se
+alguém repuser `"vistoria"` naquela lista, o tipo some de todos os seletores sem
+nenhum outro sinal, e agora isso fica vermelho.
+
+O comentário que explicava o mecanismo **ficou no código**, sem o `vistoria`:
+ele vale para o próximo tipo, e comentário que some junto com o uso é
+conhecimento que se perde. A regra, em uma frase: *renderizar é aditivo e
+inofensivo; oferecer é o que grava*. Migration e renderização sobem juntas; a
+entrada em `NAO_OFERECIDOS` sai depois, sozinha, quando o CHECK já aceita o
+valor. É o que fecha a janela de 23514 entre o push (que publica na hora) e a
+migration (rodada à mão).

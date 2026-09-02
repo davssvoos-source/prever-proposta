@@ -2102,8 +2102,12 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   muda `tipo_servico`, que continua com dois valores (as duas seções do PDF de
   fechamento) — vistoria não é obra, logo entra como manutenção.
 
-  *(U83. A entrega é em dois commits porque a ordem de deploy inverte: o
-  código escreveria um valor que o CHECK ainda recusa. Ver o diário.)*
+  **Já está no ar.** A entrega foi em dois commits porque a ordem de deploy
+  inverte aqui — o código escreveria um valor que o CHECK ainda recusava —, e
+  os dois subiram: a migration rodou em 02/09 e a Vistoria passou a ser
+  oferecida no seletor de chamado novo de campo, no painel do chamado, no
+  diálogo de nova atividade, no filtro da programação e na classificação por
+  IA. *(U83.)*
 
 - **R113** — **Quando o sistema adivinha o tipo, a tela e o registro dizem a
   mesma coisa.** Um chamado interno aberto sem tipo escolhido tem o tipo
