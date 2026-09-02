@@ -57,6 +57,14 @@ export const TELAS: Tela[] = [
   T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true], {
     nota: "o técnico vê só o que é dele, por RLS",
   }),
+  // U86/R116. Os três nascem TRUE porque a LEITURA é aberta na policy
+  // (`sobreaviso_select USING (true)`): esconder o menu de quem pode ler a
+  // página por `curl` seria o pior dos dois mundos. Quem EDITA é `is_gestor()`,
+  // que a policy decide — `permissoes_tela` esconde o menu, não protege dado
+  // (docs/manual/seguranca.md:62).
+  T("sobreaviso", "Sobreaviso", "/sobreaviso", "Trabalho", [true, true, true], {
+    nota: "todos VEEM a escala (cobertura não é dinheiro); quem edita é gestor, e gestor inclui o SAC",
+  }),
 
   // ── Chamados ──────────────────────────────────────────────────────────────
   // R31: a LISTA /chamados morreu — a Início entrega a fila. E os indicadores

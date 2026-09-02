@@ -2,7 +2,7 @@
 // barra inferior (celular) consomem. Antes cada uma teria a sua lista, e a
 // primeira mudança de menu faria as duas divergirem.
 
-import { Building2, Calendar, Gauge, Home, LayoutGrid, User, type LucideIcon } from "lucide-react";
+import { Building2, Calendar, Gauge, Home, LayoutGrid, ShieldAlert, User, type LucideIcon } from "lucide-react";
 
 export interface ItemNav {
   to: string;
@@ -45,6 +45,10 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // direto para ela, sem painel-índice no meio.
       { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
+      // U86: a grade do sobreaviso. SÓ DESKTOP — a barra do celular tem 5 vagas
+      // e elas já estavam tomadas. O caminho móvel é o LINK com `?mes=`/`?dia=`,
+      // que é o que o gestor manda do desktop, e a rota cai na projeção do dia.
+      { to: "/sobreaviso", label: "Sobreaviso", icon: ShieldAlert, tela: "sobreaviso", soDesktop: true },
       { to: "/painel/administrativo", label: "Administrativo", icon: Building2, tela: "painel.administrativo", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
@@ -61,6 +65,8 @@ export function itensDoCargo(cargo: string | null | undefined): ItemNav[] {
       // de proposta (R24 tipo 1).
       { to: "/painel/operacional", label: "Operacional Técnica", labelCurto: "Técnica", icon: Gauge, tela: "painel.operacional" },
       { to: "/gerencial", label: "Comercial", icon: LayoutGrid, tela: "gerencial", soDesktop: true },
+      // O SAC coordena o plantão — a escala existe PARA ele. Só desktop, mesmo motivo.
+      { to: "/sobreaviso", label: "Sobreaviso", icon: ShieldAlert, tela: "sobreaviso", soDesktop: true },
       { to: "/perfil", label: "Perfil", icon: User, tela: "perfil" },
     ];
   }

@@ -4,6 +4,7 @@
 // escuro. Inclui fotos antes/depois e a assinatura de quem recebeu o serviço.
 
 import { supabase } from "@/integrations/supabase/client";
+import { slug } from "@/lib/format";
 import {
   PRIORIDADE_LABEL, TIPO_LABEL, chamadoStatusInfo,
   type ChamadoPrioridade, type ChamadoTipo,
@@ -350,8 +351,9 @@ export async function gerarRelatorioOs({ os, tecnicoNome, fotos, pecas = [] }: R
     doc.text(`${p}/${paginas}`, LARGURA - MARGEM, ALTURA - 11, { align: "right" });
   }
 
-  const slug = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  const nome = `${slug(os.numero ?? "OS")}-${slug(os.cliente?.nome ?? "Cliente")}.pdf`;
+  // `slug` mora em src/lib/format.ts desde a U86 — era a MESMA função em três
+  // arquivos, e só esta cópia tratava acento. O separador continua `_` para o
+  // nome do arquivo não mudar: ele já circula por e-mail.
+  const nome = `${slug(os.numero ?? "OS", "_")}-${slug(os.cliente?.nome ?? "Cliente", "_")}.pdf`;
   doc.save(nome);
 }

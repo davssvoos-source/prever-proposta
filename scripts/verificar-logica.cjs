@@ -338,10 +338,26 @@ const ARQUIVOS_SEMENTE = [
   'supabase/migrations/20260821140000_u28_tres_paineis.sql',
   'supabase/migrations/20260821180000_u30_fusao_de_telas.sql',
   'supabase/migrations/20260821220000_u34_prospeccao_vira_aba.sql',
+  // U86: a chave 'sobreaviso'. Sem esta linha a asserção "catálogo e semente
+  // têm as mesmas telas" acusaria a chave nova como órfã — e o remédio errado
+  // (tirar a chave do catálogo) deixaria a tela sem linha em permissoes_tela.
+  'supabase/migrations/20260908090000_u86_sobreaviso.sql',
 ];
 const semente = {};
+// REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
+// da U86 traz, comentado, `DELETE FROM public.permissoes_tela WHERE tela =
+// 'sobreaviso'` — e o regex de DELETE, mais abaixo, apagava da semente uma
+// chave que a migration acabara de inserir. O sintoma foi a chave nova
+// aparecendo como órfã, e o remédio errado (tirá-la do catálogo) deixaria a
+// tela sem linha em permissoes_tela para sempre. Filtra-se linha de comentário
+// ANTES de medir — inclusive as linhas de caixa `-- ║ … ║` que a casa usa nos
+// rodapés de DESFAZER.
+const semComentario = (sql) => sql
+  .split('\n')
+  .map((l) => (/^\s*--/.test(l) ? '' : l))
+  .join('\n');
 for (const arq of ARQUIVOS_SEMENTE) {
-  const sql = fs2.readFileSync(arq, 'utf8');
+  const sql = semComentario(fs2.readFileSync(arq, 'utf8'));
   const ini = sql.indexOf('INSERT INTO public.permissoes_tela (tela, cargo, permitido) VALUES');
   const fim = sql.indexOf('ON CONFLICT (tela, cargo)', ini);
   const bloco = sql.slice(ini, fim);
@@ -9529,6 +9545,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   não fechar deixa a R13 literalmente falsa — qualquer autenticado
    *   reproduz a tabela de preço e a margem da empresa com um curl. É chamada
    *   de produto do Davi. Registrado como P22.
+   *
+   *  E `sobreaviso` (u86) NUNCA ENTROU NESTA LISTA — a policy nasceu
+   *   `USING (true)` no desenho e foi apertada ANTES de a migration rodar. O
+   *   argumento a favor da leitura ampla continua valendo (se o técnico não vê
+   *   as horas dos outros, a faixa de cobertura MENTE para ele), mas `true` não
+   *   é "todo mundo que trabalha aqui": é todo mundo que consegue LOGAR, o que
+   *   inclui o convite `pendente_aprovacao` e o ex-funcionário cujo login nada
+   *   aqui revoga. A folha de plantão diz quem estava trabalhando às 2h da
+   *   manhã, todo dia — é informação de PESSOAL, e não `blocos.hh`. O predicado
+   *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
+   *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
   eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 22, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
      censoPermissivas(),
@@ -9554,6 +9581,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'regras_cftv|authenticated read regras_cftv',
       'servicos|servicos read all auth',
       'tecnico_aliases|tecnico_aliases_select']);
+  // PAR NEGATIVO do censo, e ele é o achado desta rodada: `sobreaviso_select`
+  // NÃO está na lista acima porque o predicado dela não é `true`. Se alguém
+  // afrouxar a policy, a linha volta ao censo E esta asserção acende — duas
+  // vezes, que é o que se quer para uma fronteira de informação de pessoal.
+  eq('CRÍTICO (par negativo): `sobreaviso_select` NÃO é `USING (true)` — a escala de plantão diz quem estava trabalhando às 2h da manhã, e a policy exige linha ATIVA e APROVADA em profiles, o mesmo teste de dois eixos que a grade faz na tela',
+     [censoPermissivas().includes('sobreaviso|sobreaviso_select'),
+      /USING \(EXISTS \(SELECT 1 FROM public\.profiles p[\s\S]{0,220}?p\.ativo[\s\S]{0,120}?p\.status <> 'pendente_aprovacao'\)\)/
+        .test(require('fs').readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8'))],
+     [false, true]);
   eq('…e `chamado_eventos` saiu dessa lista, que é o conserto inteiro em uma linha',
      censoPermissivas().includes('chamado_eventos|chamado_eventos_select'), false);
 
@@ -12382,6 +12418,1202 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /^## P46 —/m.test(pend84)],
        [true, true, true, true, true, true, true, true, true]);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U85 — O CALENDÁRIO (R115). Módulo PURO, sem migration, sobe sozinho.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const FE = carregar('src/lib/feriados.ts');
+
+  // ── O COMPUTUS CONTRA FONTE EXTERNA (regras 4 e 9) ───────────────────────
+  // A fixture é CONSTANTE ESCRITA À MÃO, e não a saída da própria função —
+  // asserção que copia o valor do arquivo que audita não audita nada. São
+  // datas de Páscoa conferidas em efeméride, incluindo os QUATRO extremos
+  // reais do intervalo gregoriano: 22/03 (o mais cedo possível, 1818 e 2285) e
+  // 25/04 (o mais tarde possível, 1943 e 2038).
+  const PASCOAS_CONFERIDAS = [
+    [1818, '1818-03-22'], [1943, '1943-04-25'], [2000, '2000-04-23'],
+    [2005, '2005-03-27'], [2008, '2008-03-23'], [2010, '2010-04-04'],
+    [2011, '2011-04-24'], [2015, '2015-04-05'], [2016, '2016-03-27'],
+    [2018, '2018-04-01'], [2019, '2019-04-21'], [2020, '2020-04-12'],
+    [2021, '2021-04-04'], [2022, '2022-04-17'], [2023, '2023-04-09'],
+    [2024, '2024-03-31'], [2025, '2025-04-20'], [2026, '2026-04-05'],
+    [2027, '2027-03-28'], [2028, '2028-04-16'], [2029, '2029-04-01'],
+    [2030, '2030-04-21'], [2038, '2038-04-25'], [2285, '2285-03-22'],
+  ];
+  eq('CRÍTICO: o computus bate com as 24 Páscoas conferidas em fonte externa, INCLUSIVE os quatro extremos reais do calendário gregoriano (1818 e 2285 em 22/03; 1943 e 2038 em 25/04) — é um algoritmo famoso por errar em ano de borda, e a fixture é constante escrita à mão, não a saída dele mesmo',
+     PASCOAS_CONFERIDAS.filter(([a, esperado]) => FE.pascoa(a) !== esperado),
+     []);
+
+  // AS DUAS PROPRIEDADES INDEPENDENTES, varridas em 818 anos. Elas não vêm da
+  // fixture nem uma da outra: "toda Páscoa é domingo" e "toda Páscoa cai entre
+  // 22/03 e 25/04" são fatos do calendário litúrgico, e o algoritmo tem de
+  // satisfazer os dois sem que ninguém lhe conte as datas.
+  {
+    let foraDaFaixa = 0, naoDomingo = 0, cedo = '99-99', tarde = '00-00';
+    for (let a = FE.ANO_MIN; a <= FE.ANO_MAX; a++) {
+      const p = FE.pascoa(a);
+      const md = p.slice(5);
+      if (md < '03-22' || md > '04-25') foraDaFaixa++;
+      if (new Date(Number(p.slice(0, 4)), Number(p.slice(5, 7)) - 1, Number(p.slice(8, 10)), 12).getDay() !== 0) naoDomingo++;
+      if (md < cedo) cedo = md;
+      if (md > tarde) tarde = md;
+    }
+    eq('CRÍTICO: varredura de 1583 a 2400 — nenhuma Páscoa fora de [22/03, 25/04], nenhuma fora de DOMINGO, e os dois extremos são efetivamente ATINGIDOS (uma implementação que devolvesse sempre 01/04 passaria nas duas primeiras propriedades)',
+       [foraDaFaixa, naoDomingo, cedo, tarde], [0, 0, '03-22', '04-25']);
+  }
+
+  // ── OS DESLOCAMENTOS, CONFERIDOS CONTRA DOIS ANOS REAIS ──────────────────
+  // Constantes escritas à mão: Carnaval, Cinzas, Paixão e Corpus Christi de
+  // 2025 e 2026, como os decretos os publicaram.
+  eq('CRÍTICO: os móveis de 2026 batem com o decreto — Carnaval 16 e 17/02, Cinzas 18/02, Paixão 03/04, Corpus Christi 04/06',
+     FE.diasEspeciais(2026)
+       .filter((d) => /Carnaval|Cinzas|Santa|Corpus/.test(d.nome))
+       .map((d) => `${d.data} ${d.nome}`)
+       .sort(),
+     ['2026-02-16 Carnaval (segunda)',
+      '2026-02-17 Carnaval (terça)',
+      '2026-02-18 Quarta-feira de Cinzas',
+      '2026-04-03 Sexta-feira Santa',
+      '2026-06-04 Corpus Christi',
+      '2026-06-04 Corpus Christi']);
+  eq('CRÍTICO: e os de 2025 também — Carnaval 03 e 04/03, Cinzas 05/03, Paixão 18/04, Corpus Christi 19/06 (dois anos com Páscoas distantes, senão o teste seria de um caso só)',
+     FE.diasEspeciais(2025)
+       .filter((d) => /Carnaval|Cinzas|Santa|Corpus/.test(d.nome))
+       .map((d) => d.data)
+       .sort(),
+     ['2025-03-03', '2025-03-04', '2025-03-05', '2025-04-18', '2025-06-19', '2025-06-19']);
+
+  // ── FERIADO × PONTO FACULTATIVO: O PAR NEGATIVO É CONSTANTE (regra 4) ────
+  // Carnaval é o caso que derruba o booleano: ele fecha meia cidade e NÃO é
+  // feriado. Se um dia alguém o promover a `feriado`, o sobreaviso passa a
+  // pedir 24h onde a regra pede 14h, e o cronograma da Fase 4 perde dois dias
+  // úteis por ano — em silêncio.
+  eq('CRÍTICO (par negativo): Carnaval e Cinzas NÃO são feriado, e portanto CONTAM como dia útil — a Prever é privada, e ponto facultativo obriga repartição pública. Colapsar os dois num booleano é o defeito que este módulo existe para não ter',
+     [FE.ehFeriado('2026-02-16'), FE.ehFeriado('2026-02-17'), FE.ehFeriado('2026-02-18'),
+      FE.ehDiaUtil('2026-02-16'), FE.ehDiaUtil('2026-02-17'), FE.ehDiaUtil('2026-02-18')],
+     [false, false, false, true, true, true]);
+
+  // O caso que prova que UM CAMPO NÃO BASTA: 04/06/2026 é feriado municipal em
+  // São Paulo capital E ponto facultativo federal, no mesmo dia. Um booleano
+  // erraria um dos dois lados — e o lado que ele erraria é o dia em que
+  // Interlagos fecha.
+  eq('CRÍTICO: 04/06/2026 devolve DUAS entradas — feriado municipal (Lei 14.485/2007) e ponto facultativo nacional (Portaria MGI) —, e a projeção diz "não é dia útil" porque UMA delas é feriado',
+     [FE.diaEspecial('2026-06-04').map((d) => `${d.tipo}/${d.jurisdicao}`).sort(),
+      FE.ehFeriado('2026-06-04'), FE.ehDiaUtil('2026-06-04')],
+     [['facultativo/nacional', 'feriado/municipal'], true, false]);
+
+  // ── A VIGÊNCIA DO 20/11, QUE É O QUE MUDOU E QUASE NINGUÉM ATUALIZOU ─────
+  eq('CRÍTICO: a Consciência Negra virou feriado NACIONAL em 2024 (Lei 14.759/2023) e antes disso era MUNICIPAL em São Paulo capital (Lei 14.485/2007). As duas linhas existem com vigências que não se sobrepõem — colapsá-las produziria "feriado nacional em 2019", que é falso',
+     [FE.diaEspecial('2019-11-20').map((d) => d.jurisdicao),
+      FE.diaEspecial('2023-11-20').map((d) => d.jurisdicao),
+      FE.diaEspecial('2024-11-20').map((d) => d.jurisdicao),
+      FE.diaEspecial('2026-11-20').map((d) => d.jurisdicao)],
+     [['municipal'], ['municipal'], ['nacional'], ['nacional']]);
+
+  // ── A EXCEÇÃO DE 2020: OS QUATRO VALORES ────────────────────────────────
+  // Lei municipal 17.341/2020 antecipou Corpus Christi (11/06) e Consciência
+  // Negra (20/11) para 20 e 21 de maio. Nenhum algoritmo derivado da Páscoa
+  // sabe disso — é exatamente por isso que a tabela de exceções existe. Os
+  // DOIS `true` e os DOIS `false` são medidos: sem os `false`, uma tabela que
+  // só acrescentasse (e não removesse) passaria verde deixando quatro feriados
+  // em 2020 onde a lei deixou dois.
+  eq('CRÍTICO: a Lei municipal 17.341/2020 antecipou dois feriados de SP capital, e o módulo obedece nos QUATRO pontos — 20/05 e 21/05 viraram feriado, 11/06 e 20/11 deixaram de ser',
+     [FE.ehFeriado('2020-05-20'), FE.ehFeriado('2020-05-21'),
+      FE.ehFeriado('2020-06-11'), FE.ehFeriado('2020-11-20')],
+     [true, true, false, false]);
+  // …e o ponto facultativo FEDERAL de Corpus Christi NÃO foi movido pela lei
+  // municipal: a exceção remove o feriado, não o dia inteiro.
+  eq('CRÍTICO: a antecipação municipal de 2020 NÃO apagou o ponto facultativo federal do Corpus Christi em 11/06 — a lei da cidade move o feriado dela, não o calendário da União',
+     FE.diaEspecial('2020-06-11').map((d) => `${d.tipo}/${d.jurisdicao}`),
+     ['facultativo/nacional']);
+
+  // ── OS 13 FERIADOS DE SÃO PAULO CAPITAL, COM JURISDIÇÃO (regra 7) ───────
+  // "a jurisdição que o módulo DECLARA", e não "a jurisdição certa": a da
+  // Sexta-feira Santa é contestada pela própria `norma` do registro (a Lei
+  // 9.093/1995 a trata como municipal; a Portaria MGI e o Anexo I paulistano a
+  // listam com as nacionais). A lista continua sendo a trava — ela só não
+  // afirma o que o campo ao lado nega.
+  eq('CRÍTICO: são exatamente 13 os feriados de 2026 em São Paulo capital, cada um com a jurisdição que o MÓDULO DECLARA. A lista inteira, e não "contém X": um LIKE veria o valor novo entrar e NÃO veria um dos doze antigos sair',
+     FE.feriadosDoAno(2026).map((d) => `${d.data} ${d.jurisdicao} ${d.nome}`),
+     ['2026-01-01 nacional Confraternização Universal',
+      '2026-01-25 municipal Aniversário da cidade de São Paulo',
+      '2026-04-03 nacional Sexta-feira Santa',
+      '2026-04-21 nacional Tiradentes',
+      '2026-05-01 nacional Dia do Trabalho',
+      '2026-06-04 municipal Corpus Christi',
+      '2026-07-09 estadual Revolução Constitucionalista de 1932',
+      '2026-09-07 nacional Independência do Brasil',
+      '2026-10-12 nacional Nossa Senhora Aparecida',
+      '2026-11-02 nacional Finados',
+      '2026-11-15 nacional Proclamação da República',
+      '2026-11-20 nacional Dia Nacional de Zumbi e da Consciência Negra',
+      '2026-12-25 nacional Natal']);
+
+  eq('CRÍTICO: TODO dia especial traz a NORMA que o sustenta — sem ela ninguém confere nem contesta uma data sem abrir o código, e a nota ambígua da Sexta-feira Santa (Lei 9.093/1995 diz municipal; a Portaria MGI e o Anexo I paulistano dizem nacional) mora DENTRO do campo, não num comentário que alguém apaga',
+     [FE.diasEspeciais(2026).filter((d) => !d.norma || d.norma.length < 12).length,
+      /9\.093/.test(FE.diaEspecial('2026-04-03')[0].norma),
+      /14\.485/.test(FE.diaEspecial('2026-06-04').map((d) => d.norma).join(' ')),
+      /14\.759/.test(FE.diaEspecial('2026-11-20')[0].norma)],
+     [0, true, true, true]);
+
+  // ── ATÉ QUE ANO ELE RESPONDE, E O QUE ACONTECE DEPOIS ───────────────────
+  // `conferido()` afirma um ATO HUMANO — alguém abriu o decreto daquele ano e
+  // comparou as datas — e NÃO a existência de uma norma. O piso era 2007 (o ano
+  // da Lei 14.485) e o esperado desta asserção era o próprio número lido do
+  // módulo, com o comentário a dizê-lo em voz alta: regra 9 no formato
+  // clássico, o esperado copiado do arquivo auditado. A faixa avalizava vinte
+  // anos dos quais treze ninguém olhou — 2021 entre eles, e 2021 teve
+  // antecipação municipal de feriados em São Paulo (a mesma classe de ato da
+  // Lei 17.341/2020) que NÃO está na tabela de EXCEÇÕES. Resultado: a barra da
+  // tela sumia e o PDF imprimia "conferido" sobre um março com quatro dias
+  // pedindo 14h onde a cidade pediu 24.
+  //
+  // O ESPERADO AGORA É DERIVADO POR REGRA INDEPENDENTE: esta é a lista, escrita
+  // à mão, dos anos cujas datas estão presas NESTE arquivo contra o decreto
+  // publicado — os móveis de 2025 e 2026 (as duas asserções logo acima, com
+  // Carnaval, Cinzas, Paixão e Corpus de cada um) e a lista inteira dos treze
+  // feriados de 2026. Nenhum outro ano tem isso. A faixa conferida não pode
+  // conter um ano que não esteja aqui; baixar a constante sem acrescentar a
+  // asserção acende.
+  const ANOS_PRESOS_CONTRA_DECRETO = [2025, 2026];
+  {
+    const faixa = [];
+    for (let a = FE.ANO_CONFERIDO_DESDE; a <= FE.ANO_CONFERIDO_ATE; a++) faixa.push(a);
+    eq('CRÍTICO: TODO ano que `conferido()` avaliza tem asserção de decreto NESTE arquivo. A constante afirma um ato humano; ancorá-la no ano de uma LEI (era 2007) fazia a tela e o PDF avalizarem treze anos que ninguém olhou — 2021 inclusive, que teve antecipação municipal em São Paulo e não tem entrada em EXCECOES',
+       faixa.filter((a) => !ANOS_PRESOS_CONTRA_DECRETO.includes(a)),
+       []);
+    eq('…e os dois lados são exercitados: o ano ABAIXO do piso e o ano ACIMA do teto devolvem false, os dois de dentro devolvem true. Sem o lado de fora, um `conferido()` que devolvesse true sempre passaria',
+       [FE.conferido(FE.ANO_CONFERIDO_DESDE - 1), FE.conferido(FE.ANO_CONFERIDO_DESDE),
+        FE.conferido(FE.ANO_CONFERIDO_ATE), FE.conferido(FE.ANO_CONFERIDO_ATE + 1),
+        FE.conferido(2021)],
+       [false, true, true, false, false]);
+  }
+  eq('…e fora da faixa o módulo NÃO PARA de responder: ele responde e DECLARA que a resposta é derivada. Uma tabela chumbada devolveria "nenhum feriado em 2031", que é falso e silencioso',
+     [FE.feriadosDoAno(2031).length > 10, FE.conferido(2031)], [true, false]);
+
+  // ── A PROJEÇÃO POLÍTICA MORA NUM LUGAR SÓ ───────────────────────────────
+  eq('CRÍTICO: ehDiaUtil é falso em fim de semana e em feriado, e VERDADEIRO em ponto facultativo e expediente parcial. É a única função que sabe disso — se o sobreaviso e o cronograma da Fase 4 divergirem um dia, é ELA que se desdobra, e nenhuma outra linha do sistema muda',
+     [FE.ehDiaUtil('2026-08-22'), FE.ehDiaUtil('2026-08-23'), FE.ehDiaUtil('2026-08-24'),
+      FE.ehDiaUtil('2026-12-25'), FE.ehDiaUtil('2026-12-24'), FE.ehDiaUtil('2026-10-28')],
+     [false, false, true, false, true, true]);
+
+  // O módulo NÃO reescreve `dataIso` (regra 8): ele importa a que já existe.
+  eq('U85: feriados.ts REUSA dataIso de periodos.ts em vez de reescrever a conversão para AAAA-MM-DD — regra 8, e é a mesma conta que src/features/programacao/modelo.ts argumenta contra reafirmar',
+     [/from "\.\/periodos"/.test(require('fs').readFileSync('src/lib/feriados.ts', 'utf8')),
+      /function dataIso/.test(require('fs').readFileSync('src/lib/feriados.ts', 'utf8'))],
+     [true, false]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U86 — O SOBREAVISO (R116)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fsS = require('fs');
+  const S = carregar('src/features/sobreaviso/modelo.ts');
+  const FE2 = carregar('src/lib/feriados.ts');
+  const u86 = fsS.readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8');
+
+  // ── A COBERTURA É DERIVADA, E O 118 FECHA POR DOIS CAMINHOS ─────────────
+  eq('CRÍTICO: a cobertura de um dia é 24 − (útil ? 10 : 0) — 14 em dia útil, 24 em fim de semana e em FERIADO. Fim de semana e feriado valem o mesmo, e é por isso que a grade dá UMA lavagem só',
+     [S.coberturaDoDia('2026-08-18'), S.coberturaDoDia('2026-08-22'),
+      S.coberturaDoDia('2026-08-23'), S.coberturaDoDia('2026-06-04'),
+      S.coberturaDoDia('2026-02-17')],
+     [14, 24, 24, 24, 14]);
+  eq('CRÍTICO: a semana padrão soma 118h, e o número fecha por DUAS contas independentes — 6 + 14×4 + 24×2 + 8 pela grade, e 14×5 dias úteis + 24×2 de fim de semana pelo calendário',
+     [S.totalDoPadrao(S.semanaPadrao('2026-08-17')),
+      14 * 5 + 24 * 2,
+      S.semanaPadrao('2026-08-17').map((c) => c.horas)],
+     [118, 118, [6, 14, 14, 14, 14, 24, 24, 8]]);
+
+  // ── A INVARIANTE DAS PONTAS, E A CÉLULA ZERO QUE NÃO EXISTE ─────────────
+  {
+    const segundas = [];
+    let d = '2026-01-05';
+    while (d.slice(0, 4) === '2026') { segundas.push(d); d = FE2.somarDias(d, 7); }
+    const quebradas = [];
+    let zeros = 0;
+    for (const s of segundas) {
+      for (const c of S.semanaPadrao(s)) {
+        if (c.horas <= 0) zeros++;
+        if (c.absorve !== null && c.horas + c.absorve !== S.coberturaDoDia(c.dia)) quebradas.push(c.dia);
+      }
+    }
+    eq('CRÍTICO: nas 52 semanas de 2026 (416 células), NENHUMA célula sai zero e as pontas fecham `horas + absorve = cobertura` sempre. Uma célula 0 gravada seria VAZIA para a tela e PREENCHIDA para o teste de colisão do gesto em massa — a tricotomia 0/NULL/ausente vazando justamente no gesto destrutivo',
+       [segundas.length, zeros, quebradas], [52, 0, []]);
+
+    // ── A TRAVESSIA DO MÊS: O NÚMERO QUE DECIDE A UNIDADE DO DADO ─────────
+    const atravessam = segundas.filter((s) => new Set(S.semanaPadrao(s).map((c) => c.dia.slice(0, 7))).size === 2);
+    eq('CRÍTICO: 12 das 52 segundas de 2026 têm o oitavo dia no mês SEGUINTE — 23% das aplicações do gesto mais usado da tela, e é ESTRUTURAL (todo mês tem exatamente uma segunda nos seus últimos sete dias). É o número que recusa o vetor mensal, cuja única virtude ("uma linha, uma transação") some no caso principal, e é o que obriga a janela de leitura a ser de três meses',
+       [atravessam.length, S.janelaDaCompetencia('2026-08')],
+       [12, { de: '2026-07-01', ate: '2026-09-30' }]);
+
+    // ── A VARREDURA ANUAL: TODO DIA ÚTIL FECHA 14, TODO NÃO-ÚTIL FECHA 24 ─
+    const banco = {};
+    let trocas = 0;
+    segundas.forEach((s, i) => {
+      const p = `P${i % 3}`;
+      for (const c of S.semanaPadrao(s)) {
+        const k = `${c.dia}|${p}`;
+        const dec = S.acaoDoPadrao(banco[k] ?? null, c.horas, c.absorve);
+        if (dec.acao === 'trocar') trocas++;
+        banco[k] = dec.depois;
+      }
+    });
+    const porDia = {};
+    for (const k of Object.keys(banco)) {
+      const dia = k.split('|')[0];
+      porDia[dia] = (porDia[dia] ?? 0) + banco[k];
+    }
+    const primeiro = segundas[0], ultimo = FE2.somarDias(segundas[segundas.length - 1], 7);
+    const divergentes = Object.keys(porDia).sort()
+      .filter((dia) => dia > primeiro && dia < ultimo)
+      .filter((dia) => porDia[dia] !== S.coberturaDoDia(dia));
+    eq('CRÍTICO: aplicando a semana padrão em rodízio às 52 semanas de 2026, TODO dia útil fecha 14h e TODO não-útil fecha 24h, sem uma única colisão que exija confirmação. Recorte DECLARADO: os dias estritamente entre a primeira e a última segunda — as duas pontas são cobertas por um lado só e fechariam pela metade por construção',
+       [trocas, divergentes], [0, []]);
+
+    eq('CRÍTICO (par negativo da varredura): tirar horas acende "curto", faltar tudo acende "vazio", passar do esperado acende "sobra" — sem estes três, um vereditoDoDia que devolvesse "ok" sempre passaria na varredura anual inteira',
+       [S.vereditoDoDia(24, 24), S.vereditoDoDia(18, 24), S.vereditoDoDia(0, 24), S.vereditoDoDia(30, 24),
+        S.vereditoDoDia(14, 14), S.vereditoDoDia(24, 14)],
+       ['ok', 'curto', 'vazio', 'sobra', 'ok', 'sobra']);
+
+    let naoIgual = 0;
+    segundas.forEach((s, i) => {
+      const p = `P${i % 3}`;
+      for (const c of S.semanaPadrao(s)) {
+        if (S.acaoDoPadrao(banco[`${c.dia}|${p}`] ?? null, c.horas, c.absorve).acao !== 'igual') naoIgual++;
+      }
+    });
+    eq('CRÍTICO: reaplicar as 52 semanas devolve 416 "igual" e nenhuma escrita — a idempotência vale inclusive nas viradas já SOMADAS, que é o caso em que o ramo "igual por soma" existe. Sem ele, reaplicar pediria confirmação para não fazer nada, e é assim que se treina alguém a clicar "sim" sem ler',
+       naoIgual, 0);
+  }
+
+  // ── AS QUATRO AÇÕES, EXERCITADAS, E O PAR NEGATIVO ──────────────────────
+  eq('CRÍTICO: as quatro sondas da virada devolvem inserir / igual / somar / igual, NESSA ordem. É o caso que nenhuma das três respostas óbvias acerta: sobrescrever perderia 8h, "só preenche vazio" perderia 6h, e o certo é 8 + 6 = 14, que é exatamente a cobertura daquela segunda',
+     [[null, 6, 8], [6, 6, 8], [8, 6, 8], [14, 6, 8]]
+       .map(([a, h, ab]) => `${S.acaoDoPadrao(a, h, ab).acao}:${S.acaoDoPadrao(a, h, ab).depois}`),
+     ['inserir:6', 'igual:6', 'somar:14', 'igual:14']);
+  eq('CRÍTICO (par negativo): o MESMO 8 no MEIO da semana cai em "trocar", porque ali `absorve` é null — não há vizinho com quem somar. Sem esta linha, um "somar" que ignorasse `absorve` engoliria 8h de plantão digitado à mão e chamaria isso de soma',
+     [S.acaoDoPadrao(8, 14, null).acao, S.acaoDoPadrao(8, 14, null).depois,
+      S.precisaConfirmar([S.acaoDoPadrao(8, 14, null)]),
+      S.precisaConfirmar([S.acaoDoPadrao(8, 6, 8)])],
+     ['trocar', 14, true, false]);
+  eq('CRÍTICO: e o teto trava a soma — 20 + 6 passaria de 24, então não é soma, é troca, e troca pede confirmação',
+     S.acaoDoPadrao(20, 6, 20).acao, 'trocar');
+
+  // ── ACORDO DE VALOR COM A MIGRATION (regra 10): OS DOIS LADOS ───────────
+  {
+    const m = /CHECK \(horas > (\d+) AND horas <= (\d+)\)/.exec(u86);
+    eq('CRÍTICO (regra 10, acordo de valor): o teto do CHECK da migration, a constante HORAS_MAX do modelo puro EXECUTADO e o fato independente "um dia tem 24 horas" dizem os três o mesmo número — e o piso é 0 EXCLUSIVO, porque célula vazia é AUSÊNCIA de linha',
+       [m ? Number(m[2]) : null, S.HORAS_MAX, 24, m ? Number(m[1]) : null],
+       [24, 24, 24, 0]);
+    eq('CRÍTICO: a soma que produz a cobertura também concorda dos dois lados — 24 − 10 = 14, e a madrugada de 8h mais a noite de 6h fecham o mesmo dia útil',
+       [S.HORAS_MAX - S.HORAS_EXPEDIENTE, S.coberturaDoDia('2026-08-18'),
+        S.HORAS_MADRUGADA + (S.HORAS_MAX - S.HORAS_EXPEDIENTE - S.HORAS_MADRUGADA)],
+       [14, 14, 14]);
+  }
+
+  // ── OS QUATRO RAMOS DO CASE DA RPC, NA ORDEM, CONTRA O GÊMEO TS ────────
+  // Não é "o texto contém somar": é a SEQUÊNCIA dos rótulos extraída do CASE da
+  // migration, comparada com a sequência que `acaoDoPadrao()` EXERCITADA
+  // devolve para as quatro sondas correspondentes. Presença de texto não prova
+  // concordância — foi assim que o classificador de tipo de chamado ficou dois
+  // meses divergindo com o verificador verde (U83).
+  {
+    const i = u86.indexOf('WHEN s.horas IS NULL');
+    const bloco = i < 0 ? '' : u86.slice(i, u86.indexOf('END) AS ac', i));
+    const doSql = [...bloco.matchAll(/THEN '(\w+)'/g)].map((x) => x[1]);
+    const doTs = [[null, 6, 8], [6, 6, 8], [8, 6, 8], [14, 6, 8]].map(([a, h, ab]) => S.acaoDoPadrao(a, h, ab).acao);
+    eq('CRÍTICO: os quatro ramos do CASE da RPC estão na MESMA ordem que os do gêmeo em TypeScript, e os dois lados foram exercitados. A ordem é regra: "somar" tem de vir antes de "igual por soma", porque os dois olham `absorve`',
+       [doSql, doTs, /ELSE 'trocar'/.test(bloco)],
+       [['inserir', 'igual', 'somar', 'igual'], ['inserir', 'igual', 'somar', 'igual'], true]);
+  }
+
+  // ── A UNIDADE DO DADO, LIDA DA MIGRATION ────────────────────────────────
+  eq('CRÍTICO: a PK é (dia, pessoa_id) NESSA ORDEM (a consulta de toda abertura é faixa contígua de datas), a FK de pessoa é RESTRICT (quem sai da empresa não some do histórico) e NÃO existe coluna `travado` — um booleano que qualquer escritor liga devolve a regra ao estado de promessa, que é o que a U78 recusou no sobreposicao_ok',
+     // `travado` é medido no BLOCO DA TABELA e não no arquivo: a palavra
+     // aparece de propósito no COMMENT ON COLUMN que explica por que a coluna
+     // NÃO existe, e um grep sobre o arquivo inteiro casaria a explicação —
+     // que é a regra 2 mordendo de novo, agora dentro de um literal SQL.
+     [/PRIMARY KEY \(dia, pessoa_id\)/.test(u86),
+      /pessoa_id\s+uuid\s+NOT NULL REFERENCES public\.profiles\(id\) ON DELETE RESTRICT/.test(u86),
+      /^\s*travado\b/m.test(u86.slice(u86.indexOf('CREATE TABLE IF NOT EXISTS public.sobreaviso'),
+                                      u86.indexOf('CREATE INDEX IF NOT EXISTS sobreaviso_pessoa_idx'))),
+      /ON DELETE CASCADE/.test(u86)],
+     [true, true, false, false]);
+
+  eq('CRÍTICO: a migration NÃO cria uma segunda lista de gente — nenhuma tabela `funcionarios`, e as únicas FKs de pessoa apontam para public.profiles. Todo técnico tem usuário desde 2026-08-22 (o PRODUTO.md supera a R14 com todas as letras), e duas listas de gente divergem em silêncio',
+     [/CREATE TABLE[^;]*funcionarios/i.test(u86),
+      (u86.match(/REFERENCES public\.profiles\(id\)/g) ?? []).length],
+     [false, 2]);
+
+  // ── O GESTO DESTRUTIVO: DUAS FASES, E LIMPAR É ASSIMÉTRICO ─────────────
+  eq('CRÍTICO: o gesto em massa tem duas fases (`_confirmar boolean DEFAULT false`) e o de LIMPAR é assimétrico — nele `_confirmar` não tem caminho livre, porque limpar sempre perde. E a tela do sobreaviso NÃO usa confirm() genérico em lugar nenhum: ela mostra os oito números',
+     [/_confirmar boolean DEFAULT false/.test(u86),
+      (u86.match(/_confirmar boolean DEFAULT false/g) ?? []).length,
+      /_so_padrao boolean DEFAULT true/.test(u86),
+      /window\.confirm\(|[^.\w]confirm\(/.test(fsS.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8'))],
+     [true, 2, true, false]);
+
+  {
+    // REGRA 2: filtra linha de comentário ANTES de medir. O cabeçalho do
+    // arquivo diz, em prosa, que não existe "tem certeza?" nesta tela — e um
+    // grep cru casaria justamente a frase que promete a ausência dela.
+    const telaCrua = fsS.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+    const tela = telaCrua.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+    eq('CRÍTICO: a confirmação NOMEIA o que se perde — a de aplicar diz "vai SUBSTITUIR horas já lançadas" e mostra os oito dias com antes/depois; a de limpar diz quantos dias e quantas HORAS morrem. Nenhuma das duas diz "tem certeza"',
+       [/SUBSTITUIR horas já lançadas/.test(tela),
+        /Apagar \{limpeza\.linhas\.length\} dia\(s\), \{limpeza\.linhas\.reduce/.test(tela),
+        /Nada foi gravado ainda/.test(tela),
+        /Nada foi apagado ainda/.test(tela),
+        /tem certeza/i.test(tela)],
+       [true, true, true, true, false]);
+    eq('CRÍTICO: a tela chama gradeDoMes UMA VEZ com o mês inteiro e o celular projeta com plantaoDoDia sobre o MESMO objeto — nunca gradeDoMes com um dia só, que faria o total do mês virar o total do dia e mentir com a mesma cara. E o fallback do celular é declarado (cicatriz da U79: `.so-desktop` some abaixo de 1024px, e o link com ?mes= é o que o gestor manda)',
+       [(tela.match(/gradeDoMes\(/g) ?? []).length,
+        /plantaoDoDia\(grade, diaAberto\)/.test(tela),
+        /className="so-desktop"/.test(tela),
+        /className="so-celular"/.test(tela)],
+       [1, true, true, true]);
+  }
+
+  // ── QUEM APARECE NA GRADE: OS DOIS EIXOS, E ZERO LITERAL DE CARGO ──────
+  {
+    const gente = [
+      { id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico' },
+      { id: 'b', nome: 'Bruno', ativo: true, status: 'ativo', cargo: 'sac' },
+      { id: 'c', nome: 'Carla', ativo: true, status: 'ativo', cargo: null },
+      { id: 'd', nome: 'Davi', ativo: true, status: 'pendente_aprovacao', cargo: 'tecnico' },
+      { id: 'e', nome: 'Elza', ativo: false, status: 'ativo', cargo: 'tecnico' },
+      { id: 'f', nome: 'Fábio', ativo: false, status: 'ativo', cargo: 'tecnico' },
+    ];
+    const linhas = [{ dia: '2026-08-10', pessoa_id: 'e', horas: 14, origem: 'manual' }];
+    eq('CRÍTICO: entra quem pode ser escalado HOJE mais quem tem horas NESTE mês — o coordenador (cargo sac) entra, porque é ele quem atende às 2h; o convite pendente não entra; quem SAIU da empresa entra ESMAECIDO se tiver horas, e some se não tiver. Zero literal de cargo: filtrar por "tecnico" tiraria o coordenador da escala',
+       S.pessoasDaGrade(gente, linhas).map((p) => `${p.nome}${p.historico ? '*' : ''}`),
+       ['Ana', 'Bruno', 'Carla', 'Elza*']);
+    eq('CRÍTICO: o eixo de status exclui O VALOR QUE SE QUER EXCLUIR (`!== "pendente_aprovacao"`) e não `=== "ativo"` — a segunda forma excluiria qualquer status FUTURO sem ninguém decidir isso, e o primeiro status novo esvaziaria a grade em silêncio',
+       [S.pessoasDaGrade([{ id: 'x', nome: 'Novo', ativo: true, status: 'ferias', cargo: 'tecnico' }], []).length,
+        /status !== "pendente_aprovacao"/.test(fsS.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8')),
+        /status === "ativo"/.test(fsS.readFileSync('src/features/sobreaviso/modelo.ts', 'utf8'))],
+       [1, true, false]);
+  }
+
+  // ── A GRADE DESENHA OS 28-31 DIAS, INCONDICIONALMENTE ──────────────────
+  eq('CRÍTICO: diasDoMes desenha TODOS os dias — 28, 29, 30 ou 31 — e é o OPOSTO de diasDaGrade da programação, que esconde fim de semana vazio. Aqui o fim de semana é 48 das 118 horas da semana, e esconder coluna vazia esconderia justamente o buraco de cobertura que a grade existe para mostrar',
+     [S.diasDoMes('2026-02').length, S.diasDoMes('2024-02').length,
+      S.diasDoMes('2026-04').length, S.diasDoMes('2026-08').length,
+      S.diasDoMes('2026-08')[30]],
+     [28, 29, 30, 31, '2026-08-31']);
+
+  // ── UMA ESTRUTURA, DUAS PROJEÇÕES, MEDIDA ──────────────────────────────
+  {
+    const gente = [{ id: 'a', nome: 'Ana', ativo: true, status: 'ativo', cargo: 'tecnico' }];
+    const linhas = S.semanaPadrao('2026-08-17')
+      .filter((c) => c.dia.slice(0, 7) === '2026-08')
+      .map((c) => ({ dia: c.dia, pessoa_id: 'a', horas: c.horas, origem: 'padrao' }));
+    const g = S.gradeDoMes('2026-08', gente, linhas);
+    const doDia = S.plantaoDoDia(g, '2026-08-22');
+    eq('CRÍTICO: o total do MÊS e a projeção do DIA saem da MESMA chamada — o celular faz .find sobre o resultado, e por isso o número do mês continua certo sozinho enquanto o do dia também está',
+       [g.total, g.linhas[0].total, doDia.quem.map((q) => `${q.pessoa.nome}:${q.horas}`),
+        doDia.coluna.cobertura, doDia.coluna.veredito],
+       [118, 118, ['Ana:24'], 24, 'ok']);
+    eq('CRÍTICO: a grade de agosto tem 31 colunas e a última segunda da semana (24/08) cai dentro dela com as 8h de madrugada — é a semana de 31/08 que abriria setembro, e é por isso que a janela de leitura tem três meses',
+       [g.colunas.length, g.colunas[23].dia, g.colunas[23].somado, g.censo.ok > 0],
+       [31, '2026-08-24', 8, true]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U86b — A CÉLULA QUE GRAVAVA NÚMERO ERRADO EM SILÊNCIO
+// ═══════════════════════════════════════════════════════════════════════════
+// A célula era um `<input>` CONTROLADO pelo dado do servidor, sem estado local
+// e sem `onMutate`. Digitar "24" gravava 2, o React devolvia a caixa ao valor
+// do servidor, o "4" era digitado numa caixa vazia e gravava 4. O gestor queria
+// 24 e o banco ficava com 4, sem aviso.
+//
+// ISTO NÃO É UMA REGEX PROCURANDO `useState` — uma regex não vê o defeito, que
+// é de COMPORTAMENTO. O componente é transpilado e EXECUTADO com um hospedeiro
+// mínimo de hooks, e o passo que reproduz o defeito é a última linha de
+// `teclar()`: depois de cada renderização a CAIXA é sincronizada a partir da
+// prop `value`, que é literalmente o `restoreControlledState` do React. Com a
+// célula controlada pelo servidor essa linha zera a caixa, a segunda tecla
+// chega como "4", e a asserção acende sozinha.
+{
+  const fsC = require('fs');
+
+  function montarCelula(propsIniciais) {
+    const src = fsC.readFileSync('src/features/sobreaviso/CelulaHoras.tsx', 'utf8');
+    const js = ts.transpileModule(src, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
+        jsx: ts.JsxEmit.React, jsxFactory: '__h',
+      },
+    }).outputText;
+
+    const slots = [];
+    let idx = 0, pendentes = [], sujo = false, props = propsIniciais, arvore = null;
+    const react = {
+      useState(ini) {
+        const k = idx++;
+        if (slots[k] === undefined) slots[k] = { v: typeof ini === 'function' ? ini() : ini };
+        const s = slots[k];
+        return [s.v, (nv) => {
+          const p = typeof nv === 'function' ? nv(s.v) : nv;
+          if (!Object.is(p, s.v)) { s.v = p; sujo = true; }
+        }];
+      },
+      useEffect(fn, deps) {
+        const k = idx++;
+        const ant = slots[k];
+        const mudou = !ant || !ant.deps || !deps || deps.length !== ant.deps.length
+          || deps.some((d, j) => !Object.is(d, ant.deps[j]));
+        slots[k] = { deps };
+        if (mudou) pendentes.push(fn);
+      },
+      // Se a célula um dia usar outro hook, o hospedeiro ACUSA em vez de fingir.
+      useRef() { throw new Error('hook não previsto pelo hospedeiro de teste'); },
+      useMemo() { throw new Error('hook não previsto pelo hospedeiro de teste'); },
+    };
+    const h = (tipo, p, ...filhos) => ({ tipo, props: Object.assign({}, p, filhos.length ? { children: filhos } : {}) });
+    const mod = { exports: {} };
+    const req = (spec) => {
+      if (spec === 'react') return react;
+      if (spec === './modelo') return carregar('src/features/sobreaviso/modelo.ts');
+      throw new Error('import inesperado em CelulaHoras.tsx: ' + spec);
+    };
+    new Function('exports', 'require', 'module', '__h', js)(mod.exports, req, mod, h);
+    const Comp = mod.exports.CelulaHoras;
+
+    function render() {
+      for (let passe = 0; passe < 12; passe++) {
+        sujo = false; idx = 0; pendentes = [];
+        arvore = Comp(props);
+        const f = pendentes;
+        for (const fn of f) fn();
+        if (!sujo) return;
+      }
+      throw new Error('a renderização não estabilizou em 12 passes');
+    }
+    render();
+    // A CAIXA é o DOM. O React a restaura a partir de `value` depois de cada
+    // renderização — é essa linha que transformava a segunda tecla em "4".
+    let caixa = String(arvore.props.value ?? '');
+    const sincronizar = () => { caixa = String(arvore.props.value ?? ''); };
+    return {
+      caixa: () => caixa,
+      teclar: (ch) => { caixa += ch; arvore.props.onChange({ target: { value: caixa } }); render(); sincronizar(); },
+      apagarTudo: () => { caixa = ''; arvore.props.onChange({ target: { value: '' } }); render(); sincronizar(); },
+      tecla: (k) => {
+        arvore.props.onKeyDown({ key: k, target: { blur: () => arvore.props.onBlur() } });
+        render(); sincronizar();
+      },
+      sair: () => { arvore.props.onBlur(); render(); sincronizar(); },
+      doServidor: (h2) => { props = Object.assign({}, props, { horas: h2 }); render(); sincronizar(); },
+    };
+  }
+
+  const base = { ariaLabel: 'Ana em 2026-08-22', title: undefined, estilo: {} };
+
+  // ── O CASO EXATO DO DEFEITO: 24 EM DUAS TECLAS, CÉLULA VAZIA ─────────────
+  {
+    const gravou = [];
+    const c = montarCelula(Object.assign({}, base, { horas: null, aoDefinir: (h) => gravou.push(h) }));
+    c.teclar('2');
+    const depoisDaPrimeira = [c.caixa(), gravou.slice()];
+    c.teclar('4');
+    const depoisDaSegunda = [c.caixa(), gravou.slice()];
+    c.sair();
+    eq('CRÍTICO (comportamento): digitar "2" e depois "4" numa célula VAZIA deixa 24 na caixa, NÃO grava nada até a decisão, e grava 24 UMA vez no blur. Com o input controlado pelo servidor a primeira tecla gravava 2, a caixa voltava a vazia e a segunda gravava 4 — o gestor queria 24 e o banco ficava com 4, sem aviso',
+       [depoisDaPrimeira, depoisDaSegunda, c.caixa(), gravou],
+       [['2', []], ['24', []], '24', [24]]);
+  }
+
+  // ── O MESMO EM CÉLULA JÁ PREENCHIDA, que era o caso pior ────────────────
+  {
+    const gravou = [];
+    const c = montarCelula(Object.assign({}, base, { horas: 14, aoDefinir: (h) => gravou.push(h) }));
+    const inicial = c.caixa();
+    c.apagarTudo(); c.teclar('2'); c.teclar('4');
+    c.tecla('Enter');
+    eq('CRÍTICO (comportamento): na célula que já tem 14, apagar e digitar "24" grava 24 — e o Enter é uma decisão, não uma tecla a mais. Antes, selecionar tudo e digitar "2" devolvia a caixa para 14 e deixava 2 no banco',
+       [inicial, c.caixa(), gravou],
+       ['14', '24', [24]]);
+  }
+
+  // ── A GRAVAÇÃO RECUSADA DESFAZ A CAIXA ──────────────────────────────────
+  // É o espelho exato do defeito original, e ele nasceu do próprio conserto: o
+  // efeito de sincronia depende de `doServidor`, que numa RECUSA não muda —
+  // então ele nunca mais dispara e a caixa segura o número digitado para
+  // sempre. A tela mostrava 24, o total da linha mostrava 14, e o PDF (que sai
+  // do dado do servidor) saía com 14: a tela se contradizendo, e quem digitou
+  // jurando ter lançado.
+  // O teste é ASSÍNCRONO por natureza (a recusa chega numa promessa), então o
+  // `.catch` só roda numa microtarefa — daí o `await` antes de medir.
+  // O `aoDefinir` devolve um THENABLE SÍNCRONO — o mesmo contrato de uma
+  // promessa (`.then(aoCumprir, aoRecusar)`), resolvido na hora. É o que
+  // permite medir isto no mesmo estilo síncrono de todo o resto do arquivo, e
+  // é honesto porque a célula chama `r.then(...)` e mais nada.
+  {
+    const c = montarCelula(Object.assign({}, base, {
+      horas: 14,
+      aoDefinir: () => ({ then: (_ok, naoDeu) => naoDeu(new Error('RLS: recusado')) }),
+    }));
+    c.apagarTudo(); c.teclar('2'); c.teclar('4');
+    const antesDoBlur = c.caixa();
+    c.sair();
+    eq('CRÍTICO (comportamento): gravação RECUSADA devolve a caixa ao valor do BANCO — sem isso o número digitado fica na tela para sempre, contradizendo o total da linha e o PDF, que saem do dado do servidor',
+       [antesDoBlur, c.caixa()], ['24', '14']);
+  }
+  // …e o par negativo: quando a gravação DÁ CERTO, a caixa NÃO volta atrás.
+  // Sem esta metade, um desfazer incondicional passaria no teste acima.
+  {
+    const c = montarCelula(Object.assign({}, base, {
+      horas: 14,
+      // `ok` chega `undefined`, porque a célula pede só o ramo de RECUSA
+      // (`then(undefined, …)`) — como uma promessa de verdade, que nesse caso
+      // simplesmente repassa o valor adiante.
+      aoDefinir: () => ({ then: (ok) => { if (ok) ok('ok'); } }),
+    }));
+    c.apagarTudo(); c.teclar('2'); c.teclar('4');
+    c.sair();
+    eq('…e a gravação que DEU CERTO não desfaz nada: a caixa segura o 24 até o refetch trazer o valor novo',
+       c.caixa(), '24');
+  }
+  // …e APAGAR também escuta a recusa. São dois pontos de chamada em `gravar()`
+  // (esvaziar e gravar número), e uma bateria de mutação mostrou que cobrir só
+  // o segundo deixava o primeiro passar: apagar uma célula com a escrita
+  // recusada deixava a caixa VAZIA na tela com 14 no banco — a mesma
+  // contradição, no gesto que destrói.
+  {
+    const c = montarCelula(Object.assign({}, base, {
+      horas: 14,
+      aoDefinir: () => ({ then: (_ok, naoDeu) => naoDeu(new Error('RLS: recusado')) }),
+    }));
+    c.apagarTudo();
+    const antesDoBlur = c.caixa();
+    c.sair();
+    eq('CRÍTICO (comportamento): APAGAR com a gravação recusada também devolve a caixa ao valor do banco — a caixa vazia com 14 no banco é a mesma mentira, no gesto que destrói',
+       [antesDoBlur, c.caixa()], ['', '14']);
+  }
+  // …e quem NÃO devolve nada (o `void` do tipo) continua funcionando como antes.
+  {
+    const g = [];
+    const c = montarCelula(Object.assign({}, base, { horas: 14, aoDefinir: (h) => { g.push(h); } }));
+    c.apagarTudo(); c.teclar('2'); c.teclar('4'); c.sair();
+    eq('…e o chamador que não devolve promessa nenhuma não quebra: grava e a caixa fica',
+       [c.caixa(), g], ['24', [24]]);
+  }
+
+  // ── O CLAMP FICA VISÍVEL, e é par negativo do anterior ──────────────────
+  {
+    const gravou = [];
+    const c = montarCelula(Object.assign({}, base, { horas: null, aoDefinir: (h) => gravou.push(h) }));
+    c.teclar('9'); c.teclar('9');
+    const antes = c.caixa();
+    c.sair();
+    eq('CRÍTICO: 99 vira 24 NA CAIXA, e não só no banco. Um teto que corrige calado é a mesma classe de defeito do input controlado com outro nome — a tela mostraria 99 e a folha teria 24',
+       [antes, c.caixa(), gravou], ['99', '24', [24]]);
+  }
+
+  // ── ESVAZIAR É APAGAR, E SÓ QUANDO HÁ O QUE APAGAR ──────────────────────
+  {
+    const g1 = [], g2 = [];
+    const cheia = montarCelula(Object.assign({}, base, { horas: 14, aoDefinir: (h) => g1.push(h) }));
+    cheia.apagarTudo(); cheia.sair();
+    const vazia = montarCelula(Object.assign({}, base, { horas: null, aoDefinir: (h) => g2.push(h) }));
+    vazia.teclar('0'); vazia.sair();
+    eq('CRÍTICO: esvaziar uma célula preenchida manda `null` (célula vazia é AUSÊNCIA de linha, o CHECK do banco é `horas > 0`), e digitar 0 numa célula JÁ vazia não manda nada — um DELETE de nada é uma escrita a cada tabulação',
+       [g1, vazia.caixa(), g2], [[null], '', []]);
+  }
+
+  // ── ESCAPE DESFAZ, E NÃO GRAVA O QUE DESFEZ ─────────────────────────────
+  {
+    const gravou = [];
+    const c = montarCelula(Object.assign({}, base, { horas: 14, aoDefinir: (h) => gravou.push(h) }));
+    c.teclar('9');
+    const antes = c.caixa();
+    c.tecla('Escape');
+    const depois = c.caixa();
+    c.sair();
+    eq('CRÍTICO: Escape restaura o valor do servidor e o blur seguinte NÃO grava nada. Se o Escape chamasse `.blur()` no mesmo evento, o onBlur rodaria com o texto de ANTES na clausura e gravaria exatamente o 149 que o Escape existe para desfazer',
+       [antes, depois, gravou], ['149', '14', []]);
+  }
+
+  // ── O SERVIDOR REESCREVE A CAIXA QUANDO O VALOR DELE MUDA ───────────────
+  {
+    const c = montarCelula(Object.assign({}, base, { horas: null, aoDefinir: () => {} }));
+    const zerada = c.caixa();
+    c.doServidor(24);          // "aplicar semana padrão" chegou pelo refetch
+    const depoisDoPadrao = c.caixa();
+    c.doServidor(24);          // refetch que não muda nada não mexe na caixa
+    eq('CRÍTICO: quando o VALOR DO SERVIDOR muda, a caixa acompanha — senão a grade ficaria surda ao botão da semana padrão que está logo abaixo dela. O efeito depende de `doServidor` e de mais nada: com `editando` na lista de dependências, sair do campo devolveria a caixa ao valor ANTIGO até o refetch chegar',
+       [zerada, depoisDoPadrao, c.caixa()], ['', '24', '24']);
+  }
+
+  // ── E A GRADE USA O COMPONENTE, em vez de um input solto ────────────────
+  {
+    const grade = fsC.readFileSync('src/features/sobreaviso/GradeMes.tsx', 'utf8')
+      .split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+    eq('CRÍTICO: a grade desenha `CelulaHoras` e NÃO tem mais um `<input>` com `value=` vindo do dado do servidor. Comentário filtrado antes de medir (regra 2): o cabeçalho do arquivo conta a cicatriz e casaria o grep',
+       [/<CelulaHoras/.test(grade),
+        /value=\{cel\.horas/.test(grade),
+        /onChange=/.test(grade)],
+       [true, false, false]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U86c — A TELA DISTINGUE "NINGUÉM ESCALADO" DE "A CONSULTA FALHOU"
+// ═══════════════════════════════════════════════════════════════════════════
+// O único tratamento era `?? []`. Uma falha de leitura produzia a grade
+// COMPLETA, com todos os nomes, dizendo "total do mês 0 h" e "dias descobertos
+// 31" — e o botão de PDF, sem guarda nenhuma, exportava a mentira em A4
+// paisagem com a faixa dourada da Prever. O PDF circula por e-mail e sobrevive
+// à tela.
+//
+// A GUARDA É MEDIDA POR POSIÇÃO, e não por presença: o que importa é que o
+// botão de PDF esteja DEPOIS dos dois returns. "O arquivo contém isError" não
+// prova que o PDF é inalcançável — foi assim que a U83 ficou dois meses verde.
+{
+  const fsE = require('fs');
+  const cru = fsE.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+  const tela = cru.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+
+  const iErro = tela.indexOf('if (escala.isError || pessoas.isError)');
+  const iCarga = tela.indexOf('if (escala.isLoading || pessoas.isLoading)');
+  const iPdf = tela.indexOf('gerarPdfSobreaviso(grade)');
+  eq('CRÍTICO (regra 5 como propriedade do CÓDIGO): a tela tem estado de ERRO e de CARREGAMENTO, os dois ANTES do botão de PDF — e na ordem invertida de deploy ela se auto-diagnostica pelo PGRST205 em vez de depender de alguém lembrar do cabeçalho da migration. O botão de PDF não é `disabled`: ele NÃO EXISTE nesses dois estados',
+     [iErro > 0, iCarga > 0, iPdf > 0, iErro < iPdf, iCarga < iPdf, /PGRST205/.test(tela),
+      /isto NÃO é um mês vazio/i.test(tela)],
+     [true, true, true, true, true, true, true]);
+
+  // A MESMA DOUTRINA, APLICADA À ESCRITA: uma gravação que falhou não pode
+  // parecer uma que deu certo. São DUAS metades e as duas foram achadas por
+  // mutação — cobrir uma só deixava a outra passar.
+  //   · a tela DEVOLVE a promessa (`mutateAsync`), que é o que permite à célula
+  //     desfazer a caixa. Com `mutate` (fogo e esquece) o número digitado ficava
+  //     na tela para sempre, contradizendo o total da linha e o PDF;
+  //   · e a recusa fica VISÍVEL enquanto durar, num aviso DERIVADO de
+  //     `definir.isError` — que não guarda estado próprio e se limpa sozinho na
+  //     próxima gravação boa. Um toast de quatro segundos não serve: quem está
+  //     digitando em outra célula não o vê.
+  eq('CRÍTICO: a escrita da célula devolve a promessa (mutateAsync) E a recusa vira aviso persistente derivado de `definir.isError` — com `mutate` a célula não tem como saber que foi recusada, e um toast some antes de a pessoa olhar',
+     [/definir\.mutateAsync\(\{ dia, pessoa_id: pessoaId, horas \}\)/.test(tela),
+      /\{definir\.isError \? \(/.test(tela),
+      /A última célula não foi salva\./.test(tela),
+      // par negativo: o fogo-e-esquece não pode voltar
+      /definir\.mutate\(/.test(tela)],
+     [true, true, true, false]);
+
+  eq('CRÍTICO (par negativo): `?? []` continua existindo (a grade tem de aceitar mês legitimamente vazio), e é justamente por isso que a guarda de erro precisa vir ANTES dele — as duas coisas não são alternativas',
+     [(tela.match(/\?\? \[\]/g) ?? []).length > 0,
+      tela.indexOf('gradeDoMes(mes, pessoas.data ?? []') > iErro],
+     [true, false]);
+
+  // ── ?mes=2026-13 DERRUBAVA A TELA INTEIRA ───────────────────────────────
+  // `\d{2}` aceita 00..99. Com `diasDoMes` devolvendo [], `diaAberto` virava
+  // undefined e a renderização estourava em `.split` de undefined — dentro do
+  // invólucro do celular, que o CSS esconde e o React RENDERIZA, então quebrava
+  // no desktop também. É a tela cujo link o gestor cola do desktop para o
+  // celular: um dígito trocado = tela branca sem mensagem.
+  {
+    const rx = /mes: typeof s\.mes === "string" && (\/[^/]+\/)\.test\(s\.mes\)/.exec(tela);
+    const reMes = rx ? eval(rx[1]) : /$^/;
+    const S2 = carregar('src/features/sobreaviso/modelo.ts');
+    eq('CRÍTICO: o regex de `?mes=` aceita 01..12 e RECUSA 00, 13 e 99 — entrada de URL é entrada de usuário. O par é medido dos DOIS lados, e o lado que importa é o negativo: com `\\d{2}` os três eram aceitos, `diasDoMes` devolvia [] e a tela abria em branco',
+       [reMes.test('2026-01'), reMes.test('2026-12'), reMes.test('2026-00'),
+        reMes.test('2026-13'), reMes.test('2026-99'),
+        S2.diasDoMes('2026-13').length, S2.diasDoMes('2026-12').length],
+       [true, true, false, false, false, 0, 31]);
+  }
+
+  // ── A BORRACHA É O INVERSO EXATO DA VARINHA ─────────────────────────────
+  // A varinha aplica `segundaDaSemana(diaAberto)` + 8 dias; a borracha apagava
+  // `diasDoMes(mes)`. Em novembro de 2026 (01/11 é domingo) a segunda da semana
+  // é 26/10: sete dos oito dias que a varinha grava caem em OUTUBRO, e a
+  // borracha ao lado alcançava UM.
+  {
+    const S3 = carregar('src/features/sobreaviso/modelo.ts');
+    const FEb = carregar('src/lib/feriados.ts');
+    const seg = S3.segundaDaSemana('2026-11-01');
+    const oito = S3.semanaPadrao(seg).map((c) => c.dia);
+    const doMes = S3.diasDoMes('2026-11');
+    eq('CRÍTICO: em 01/11/2026 (domingo) a semana padrão começa em 26/10 e SEIS dos oito dias caem em outubro — fora do mês aberto. É o número que obriga a borracha a apagar a SEMANA e não o mês, senão três quartos do gesto ficam fora do alcance do desfazer, em outro mês, invisíveis na grade que está na tela',
+       [seg, oito.length, oito.filter((d) => !doMes.includes(d)).length,
+        FEb.somarDias(seg, S3.DIAS_DO_PADRAO - 1)],
+       ['2026-10-26', 8, 6, '2026-11-02']);
+    eq('CRÍTICO: e a tela usa essa faixa — `abrirLimpeza` e `confirmarLimpeza` saem de `segundaDaSemana(diaAberto)` + DIAS_DO_PADRAO, e NENHUMA das duas chama `diasDoMes` para montar a faixa de apagar',
+       [/const de = segundaDaSemana\(diaAberto\)/.test(tela),
+        /somarDias\(de, DIAS_DO_PADRAO - 1\)/.test(tela),
+        /de: dias\[0\], ate: dias\[dias\.length - 1\]/.test(tela)],
+       [true, true, false]);
+  }
+
+  // ── A CONFIRMAÇÃO CONFIRMA UM ESTADO QUE PODE JÁ NÃO EXISTIR ────────────
+  eq('CRÍTICO: com `_confirmar = true` a RPC recalcula contra um instantâneo NOVO — se outro gestor editou os dias entre a prévia e o clique, a tabela lida não descrevia o que foi gravado. A tela COMPARA o `antes` previsto com o `antes` que voltou e diz que a escala mudou. É post-hoc e está dito que é: torna a perda encontrável, não a impede',
+     [/const previsto = padrao\.doBanco\.map/.test(tela),
+      /const real = r\.map/.test(tela),
+      /real !== previsto/.test(tela),
+      /toast\.warning\(/.test(tela)],
+     [true, true, true, true]);
+
+  // ── O RAMO MORTO SAIU (regra 8) ─────────────────────────────────────────
+  {
+    const dados = fsE.readFileSync('src/features/sobreaviso/data.ts', 'utf8')
+      .split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+    const u86b = fsE.readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8');
+    eq('CRÍTICO (regra 8): o ramo `soPadrao = false` — que apagaria também o digitado à mão — saiu do cliente e do texto do modal. Ele não tinha porta na tela: era código morto documentando um botão inexistente, e a frase mais assustadora da tela estava escrita para ninguém ler. O parâmetro CONTINUA na RPC, com DEFAULT true, para o dia em que o botão nascer',
+       [/soPadrao/.test(dados), /soPadrao/.test(tela), /_so_padrao/.test(dados),
+        /_so_padrao boolean DEFAULT true/.test(u86b),
+        /inclusive o que foi digitado à mão/.test(tela)],
+       [false, false, false, true, false]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U86d — A FRONTEIRA DA ESCALA, E A DÍVIDA QUE ELA DESTAPOU
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fsG = require('fs'), pathG = require('path');
+  const u86c = fsG.readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8');
+  const semCom = (s) => s.split('\n').map((l) => (/^\s*--/.test(l) ? '' : l)).join('\n');
+  const vivoU86 = semCom(u86c);
+
+  eq('CRÍTICO: as DUAS RPCs são SECURITY DEFINER e NÃO passam pela RLS — então o mesmo teste de dois eixos da policy está escrito nos dois gates. Sem ele, um ex-funcionário com login vivo e cargo de gestor reescreveria a escala inteira por /rest/v1/rpc, por fora da policy que acabou de ser apertada',
+     [(vivoU86.match(/IF auth\.uid\(\) IS NOT NULL AND NOT \(\s*\n\s*public\.is_gestor\(auth\.uid\(\)\)\s*\n\s*AND EXISTS \(SELECT 1 FROM public\.profiles p\s*\n\s*WHERE p\.id = auth\.uid\(\)\s*\n\s*AND p\.ativo\s*\n\s*AND p\.status <> 'pendente_aprovacao'\)\s*\n\s*\) THEN/g) ?? []).length,
+      // CENSO com recorte declarado (regra 3): as SETE ocorrências vivas do
+      // eixo `status` na migration — 1 no pré-voo, 1 na policy de leitura, 2 na
+      // de escrita (USING e WITH CHECK, e contar só uma deixaria passar uma
+      // escrita que a leitura recusa), 2 nos gates das RPCs e 1 na escolha da
+      // cobaia do PORTÃO. Comentários filtrados antes de medir.
+      (vivoU86.match(/AND p\.status <> 'pendente_aprovacao'/g) ?? []).length,
+      /USING \(true\)/.test(vivoU86)],
+     [2, 7, false]);
+
+  eq('CRÍTICO: a conferência 106 deixou de esperar `todos` — ela classifica em `vinculo` e `gestor+vinculo`, e MANTÉM o ramo `todos` nomeado, para que afrouxar a policy um dia acenda a linha em vez de fazê-la sumir',
+     [/'sobreaviso_select:vinculo \| sobreaviso_write:gestor\+vinculo'/.test(vivoU86),
+      /THEN 'todos'/.test(vivoU86),
+      /THEN 'gestor\+vinculo'/.test(vivoU86)],
+     [true, true, true]);
+
+  eq('CRÍTICO: o comentário da PROVA 3 nomeia a data que o código usa. Num arquivo em que o comentário é a prova, um comentário apontando para outro dia é o começo de uma investigação errada — dizia 08/01/1900, e a data é 12/03/1900 (v_virada)',
+     [/O 12\/03\/1900 \(v_virada\) já tem as 8h/.test(u86c),
+      /08\/01\/1900/.test(u86c),
+      /v_virada\s*:?=\s*DATE '1900-03-12'|DATE '1900-03-12'/.test(vivoU86)],
+     [true, false, true]);
+
+  eq('CRÍTICO: o gatilho do carimbo e o índice do eixo pessoa TÊM conferência (113), e ela mede o gatilho ARMADO (`tgenabled`) e não só presente — é ele que sustenta a promessa da P49, e um DISABLE TRIGGER deixa o objeto no catálogo com a promessa no chão',
+     [/SELECT 113,/.test(vivoU86), /tgenabled = 'O'/.test(vivoU86),
+      /sobreaviso_pessoa_idx/.test(vivoU86.slice(vivoU86.indexOf('SELECT 113,'))),
+      /'indice=true \| trigger=true'/.test(vivoU86)],
+     [true, true, true, true]);
+
+  eq('CRÍTICO (regra 8): `sobreaviso_carimbo` deixou de ser SECURITY DEFINER. Um gatilho BEFORE que só escreve em NEW não precisa elevar privilégio, e com o definer ele seria a terceira função definer do arquivo — a única fora do REVOKE que a conferência 107 mede, ou seja, uma exceção fora do próprio censo',
+     [/CREATE OR REPLACE FUNCTION public\.sobreaviso_carimbo\(\)\s*\nRETURNS trigger\s*\nLANGUAGE plpgsql SET search_path = public/.test(vivoU86),
+      // Mede o CABEÇALHO da função, e não a palavra: a conferência 107 tem
+      // "SECURITY DEFINER" dentro de um literal SQL, e contar a palavra crua
+      // acusaria a asserção que existe para medir isto — a regra 2 mordendo
+      // dentro de uma string, que é a cicatriz da S4.
+      (vivoU86.match(/^LANGUAGE plpgsql[^\n]*SECURITY DEFINER/gm) ?? []).length],
+     [true, 2]);
+
+  eq('CRÍTICO: o DESFAZER diz que o DELETE da chave de tela NÃO esconde o menu — sem linha em permissoes_tela a chave volta ao padrão do catálogo, que é [true,true,true] em src/lib/telas.ts, e o item REAPARECE para todo mundo se o commit do front não tiver sido revertido',
+     [/volta ao PADRÃO DO CATÁLOGO/.test(u86c), /REAPARECE no menu/.test(u86c)],
+     [true, true]);
+
+  // ── A DÍVIDA MEDIDA, E O CENSO DECLARA O PRÓPRIO RECORTE (regra 3) ──────
+  // `is_gestor()` NÃO olha `ativo`. Não é defeito desta entrega e não se
+  // conserta de passagem: mudar a função muda o comportamento de dezenas de
+  // policies de uma vez. O que esta asserção faz é MEDIR o alcance e travá-lo,
+  // para a decisão do Davi ser tomada com o número na frente.
+  {
+    const g = carregar; // (só para o linter não reclamar da variável não usada)
+    void g;
+    const dir = 'supabase/migrations';
+    let ocorrencias = 0, policies = 0;
+    const arquivos = new Set();
+    for (const f of fsG.readdirSync(dir).sort()) {
+      if (!f.endsWith('.sql')) continue;
+      const txt = semCom(fsG.readFileSync(pathG.join(dir, f), 'utf8'));
+      const n = (txt.match(/is_gestor/g) ?? []).length;
+      if (n === 0) continue;
+      arquivos.add(f); ocorrencias += n;
+      const re = /CREATE\s+POLICY[\s\S]*?;/gi; let m;
+      while ((m = re.exec(txt)) !== null) if (/is_gestor/.test(m[0])) policies++;
+    }
+    const u6a = fsG.readFileSync('supabase/migrations/20260818230000_u6a_papel_sac.sql', 'utf8');
+    const corpo = u6a.slice(u6a.indexOf('CREATE OR REPLACE FUNCTION public.is_gestor'),
+                            u6a.indexOf('4) pode_ver_financeiro'));
+    eq('CRÍTICO (dívida P51, alcance MEDIDO): `is_gestor()` decide por CARGO e por PAPEL e NÃO olha `ativo` — um ex-funcionário com login vivo é gestor para o sistema INTEIRO. O censo declara o recorte: ocorrências VIVAS (linhas de comentário filtradas) em supabase/migrations, e statements CREATE POLICY que a mencionam, replays de DROP/CREATE incluídos',
+       [/cargo IN \('admin', 'comercial', 'sac'\)/.test(corpo),
+        /\bativo\b/.test(corpo),
+        arquivos.size, ocorrencias, policies],
+       [true, false, 27, 110, 40]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U85b — O CALENDÁRIO: O CAMPO QUE INVERTIA A CINZAS, E O CACHE VAZADO
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const FEc = carregar('src/lib/feriados.ts');
+  const cru = require('fs').readFileSync('src/lib/feriados.ts', 'utf8');
+  const vivo = cru.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+
+  // ── O CAMPO `ate` SAIU, E A CONTRADIÇÃO FICOU IRREPRESENTÁVEL ───────────
+  // Ele carregava um NÚMERO sem carregar a DIREÇÃO, e os dois casos vivos têm
+  // direções OPOSTAS: 24/12 e 31/12 têm expediente ATÉ as 14h; a Quarta-feira
+  // de Cinzas tem expediente A PARTIR das 14h. Com um campo só, um dos dois sai
+  // invertido — e saía: o rótulo dizia "expediente até 14:00" na Cinzas, o
+  // oposto do que o `norma` do MESMO objeto dizia, duas linhas acima.
+  eq('CRÍTICO (regra 8): o campo `ate` e o tipo `HoraDeCorte` SAÍRAM. Nenhum consumidor calculava com eles (`ehDiaUtil` é true nos três casos) e a hora já vive em `norma`, COM a direção. Um número sem direção não é dado: é uma contradição esperando para ser lida',
+     [/HoraDeCorte/.test(vivo), /\bate\?:/.test(vivo), /expediente até \$\{/.test(vivo),
+      Object.prototype.hasOwnProperty.call(FEc.diaEspecial('2026-12-24')[0], 'ate')],
+     [false, false, false, false]);
+
+  eq('CRÍTICO (acordo de valor, os DOIS lados): a Quarta-feira de Cinzas e a Véspera de Natal são os dois `expediente_parcial` de 2026 e as direções são OPOSTAS — a Cinzas tem o expediente COMEÇANDO às 14:00 e a véspera tem o expediente indo ATÉ as 14:00. Medir só um dos dois deixaria o invertido passar, que foi exatamente o que aconteceu',
+     // AS MESMAS DUAS SONDAS nos dois dias, e os resultados têm de ser
+     // ESPELHADOS. Medir sondas diferentes em cada um deixaria o invertido
+     // passar — que é exatamente o que acontecia.
+     ['2026-02-18', '2026-12-24', '2026-12-31'].map((d) => {
+       const n = FEc.diaEspecial(d)[0];
+       return `${n.tipo}|comeca=${/o expediente COMEÇA às 14:00/.test(n.norma)}|ate=${/o expediente vai ATÉ as 14:00/.test(n.norma)}`;
+     }),
+     ['expediente_parcial|comeca=true|ate=false',
+      'expediente_parcial|comeca=false|ate=true',
+      'expediente_parcial|comeca=false|ate=true']);
+
+  eq('CRÍTICO: e o rótulo da tela não afirma mais uma hora que não sabe a direção de — ele diz "expediente parcial" nos dois, e continua dizendo o NOME e a JURISDIÇÃO no feriado, que é a informação que cor nenhuma transporta',
+     [FEc.rotuloDoDia('2026-02-18'), FEc.rotuloDoDia('2026-12-24'),
+      FEc.rotuloDoDia('2026-06-04'), FEc.rotuloDoDia('2026-08-19')],
+     ['Quarta-feira de Cinzas (expediente parcial)',
+      'Véspera de Natal (expediente parcial)',
+      'Corpus Christi (feriado municipal) · Corpus Christi (ponto facultativo nacional)',
+      null]);
+
+  // ── O CACHE NÃO SAI MAIS PELA PORTA, NOS DOIS CAMINHOS ──────────────────
+  // O ANO É FRIO DE PROPÓSITO. Medir 2026 exercitaria só o caminho de ACERTO
+  // DE CACHE — este arquivo já perguntou por 2026 dez vezes antes daqui —, e a
+  // saída da PRIMEIRA montagem, que é o outro `return` da função, ficaria sem
+  // asserção nenhuma. Um teste que cobre metade da função fica verde por causa
+  // do defeito na outra metade, que é a regra 10 em pessoa.
+  {
+    const ANO_FRIO = 2087;
+    const inventar = (a) => ({ data: `${a}-01-02`, nome: 'INVENTADO', tipo: 'feriado', jurisdicao: 'nacional', norma: 'x' });
+    const fria = FEc.diasEspeciais(ANO_FRIO);   // caminho 1: monta e memoriza
+    const nFrio = fria.length;
+    fria.push(inventar(ANO_FRIO));
+    fria.sort(() => -1);
+    const depoisDaFria = FEc.diasEspeciais(ANO_FRIO).length;
+    const quente = FEc.diasEspeciais(ANO_FRIO); // caminho 2: acerto de cache
+    quente.push(inventar(ANO_FRIO));
+    eq('CRÍTICO: `diasEspeciais` devolve uma CÓPIA nos DOIS caminhos — na primeira montagem e no acerto de cache. O comentário dizia que o resultado era "imutável por construção" e não era: é um array, a função é exportada, e um `.push()` ou um `.sort()` de quem chegar depois envenenava o calendário do processo inteiro',
+       [nFrio, depoisDaFria, FEc.diasEspeciais(ANO_FRIO).length,
+        FEc.ehFeriado(`${ANO_FRIO}-01-02`)],
+       [20, 20, 20, false]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U86e — O QUE O PDF PERDIA NO CAMINHO
+// ═══════════════════════════════════════════════════════════════════════════
+// jsPDF com a fonte padrão descarta EM SILÊNCIO todo caractere acima de U+00FF.
+// A meia-risca era o símbolo do PIOR caso ("sem ninguém"): a legenda do rodapé
+// explicava um símbolo que a página nunca imprimia, e a célula do dia
+// descoberto saía vazia. Os acentos passam — eles são WinAnsi de um byte.
+{
+  const fsF = require('fs');
+  const cruPdf = fsF.readFileSync('src/features/sobreaviso/pdf.ts', 'utf8');
+  const vivoPdf = cruPdf.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+
+  const foraDoWinAnsi = [...vivoPdf].filter((ch) => ch.codePointAt(0) > 0xff);
+  eq('CRÍTICO: nenhum caractere acima de U+00FF no código VIVO do PDF — jsPDF com helvetica os descarta calado, e um símbolo que some da página é pior que um símbolo feio. Comentário filtrado antes de medir (regra 2): o cabeçalho deste arquivo cita `—` e `•` para EXPLICAR o defeito',
+     [...new Set(foraDoWinAnsi)],
+     []);
+
+  // PAR NEGATIVO: os acentos, que são a razão de o teste não ser "só ASCII".
+  eq('…e o teste NÃO é "só ASCII": ç, ã, ê e · continuam no arquivo e saem certos no PDF, porque WinAnsi os codifica em um byte. Um detector que exigisse ASCII acusaria "Serviços" e ensinaria a ignorá-lo',
+     [/Serviços/.test(vivoPdf), /mês/.test(vivoPdf), /·/.test(vivoPdf),
+      'ç'.codePointAt(0) <= 0xff, '—'.codePointAt(0) <= 0xff],
+     [true, true, true, true, false]);
+
+  eq('CRÍTICO: o marcador do dia sem ninguém é `-` (WinAnsi) e não `—`, e o rodapé explica esse mesmo `-`. A legenda e a página têm de falar do mesmo símbolo',
+     [/vazio: "-"/.test(vivoPdf), /- = sem ninguém/.test(vivoPdf), /— = sem ninguém/.test(vivoPdf)],
+     [true, true, false]);
+
+  eq('CRÍTICO: "(saiu)" é PREFIXO. A coluna do nome tem 38mm com corte seco (`overflow: hidden`), então o sufixo é o primeiro a cair — e caía justamente nos nomes compridos. Na tela quem carrega essa informação é a opacidade; no PDF é só esta palavra',
+     [/`\(saiu\) \$\{l\.pessoa\.nome\}`/.test(vivoPdf), /`\$\{l\.pessoa\.nome\} \(saiu\)`/.test(vivoPdf)],
+     [true, false]);
+
+  // O defeito é de CLASSE e é PRÉ-EXISTENTE nos outros três PDFs. Não se
+  // conserta aqui — está declarado —, mas o censo mede o tamanho dele.
+  {
+    const rel = fsF.readFileSync('src/features/chamados/relatorio.ts', 'utf8');
+    eq('CRÍTICO (regra 3, censo com recorte declarado): o mesmo defeito está VIVO no relatório de OS — `—` como placeholder e `•` na lista de peças, os dois somem hoje na página. Recorte: literais fora de comentário em src/features/chamados/relatorio.ts. Não foi consertado nesta rodada (é outro PDF, que já circula), e está em PENDENCIAS_TECNICAS.md',
+       [rel.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n')
+          .split('').some((ch) => ch.codePointAt(0) > 0xff),
+        /\\u[0-9a-f]{4}/.test(rel)],
+       [true, false]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEFEITO DE CLASSE: NOME DO `RETURNS TABLE` SEM QUALIFICAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+// Em PL/pgSQL, com o padrão `plpgsql.variable_conflict = error`, um nome que é
+// ao mesmo tempo parâmetro OUT e coluna de uma tabela em escopo levanta 42702
+// "column reference is ambiguous" — EM EXECUÇÃO, não na leitura. O repositório
+// tem mais de vinte RPCs com RETURNS TABLE e NADA pegava isso; um único
+// `WHERE acao = 'trocar'` sem alias numa CTE aborta a chamada, e no desenho
+// desta rodada ele caiu exatamente na expressão que decide se o gesto
+// destrutivo escreve.
+//
+// COMENTÁRIO É FILTRADO ANTES DE MEDIR (regra 2), e as duas formas legítimas de
+// nome nu — a lista de colunas do INSERT e o alvo de um SET — são apagadas
+// antes da busca, senão o detector acusaria escrita correta.
+{
+  const fsQ = require('fs'), pathQ = require('path');
+  const DIR_Q = 'supabase/migrations';
+  const semComentarioQ = (s) => s.split('\n').map((l) => (/^\s*--/.test(l) ? '' : l)).join('\n');
+
+  const naoQualificados = (sql) => {
+    const achados = [];
+    const re = /RETURNS\s+TABLE\s*\(([\s\S]*?)\)\s*\n/gi;
+    let m;
+    while ((m = re.exec(sql))) {
+      const cols = [...m[1].matchAll(/(?:^|,)\s*([a-z_][a-z0-9_]*)\s+/gi)].map((x) => x[1].toLowerCase());
+      const depois = sql.slice(m.index);
+      // O DELIMITADOR PODE TER DÍGITO — `$u80a$`, `$u78b$`. A primeira versão
+      // deste detector aceitava só letras, não casava esses, e ia procurar o
+      // PRÓXIMO `AS $tag$` do arquivo: media o corpo da função ERRADA e
+      // atribuía a ela as colunas desta. Um detector que mede o arquivo errado
+      // é a pior asserção da regra 10, com a agravante de acusar inocente.
+      const tag = /AS\s+(\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)/.exec(depois);
+      if (!tag) continue;
+      const ini = depois.indexOf(tag[1]) + tag[1].length;
+      const fim = depois.indexOf(tag[1], ini);
+      if (fim < 0) continue;
+      const cru = depois.slice(ini, fim);
+      // `#variable_conflict use_column` é a saída EXPLÍCITA do plpgsql para
+      // isto: quem a declara escolheu que o nome resolve para a coluna, e o
+      // ambiente deixa de levantar 42702. A U80 a usa nas duas funções dela.
+      // Acusar quem declarou a diretiva seria acusar a correção.
+      if (/#variable_conflict/.test(cru)) continue;
+      const corpo = cru
+        // lista de colunas do INSERT: ali o nome nu É a coluna, sem ambiguidade
+        .replace(/INSERT\s+INTO\s+[\w."]+(?:\s+AS\s+\w+)?\s*\([^)]*\)/gi, ' ')
+        // alvo de SET: idem
+        .replace(/\bSET\b[\s\S]*?(?=\bWHERE\b|\bFROM\b|\bRETURNING\b|;|$)/gi, ' ');
+      for (const c of cols) {
+        const rx = new RegExp(`(?<![.\\w"])${c}\\s*(?:=|<>|!=|>=|<=|>|<)|(?<![.\\w"])${c}\\s+(?:IS|IN|BETWEEN)\\b`, 'gi');
+        const hits = corpo.match(rx);
+        // conta as OCORRÊNCIAS, e não a primeira: duas no mesmo corpo são dois
+        // pontos de falha, e um censo que mostrasse só a primeira ficaria verde
+        // depois de alguém consertar metade.
+        if (hits) achados.push(`${c} x${hits.length}`);
+      }
+    }
+    return achados;
+  };
+
+  const quebradasQ = [];
+  for (const f of fsQ.readdirSync(DIR_Q).sort()) {
+    if (!f.endsWith('.sql')) continue;
+    const ps = naoQualificados(semComentarioQ(fsQ.readFileSync(pathQ.join(DIR_Q, f), 'utf8')));
+    if (ps.length) quebradasQ.push(`${f}: ${ps.join('; ')}`);
+  }
+  // ── CENSO, E ELE JÁ NASCEU COM UM ACHADO ─────────────────────────────────
+  // Não é "zero ocorrências": é O CONJUNTO das ocorrências vivas, cada uma com
+  // motivo escrito ao lado — o mesmo idioma do censo de policies permissivas
+  // desta casa. Uma ocorrência NOVA entra na lista sozinha e fica vermelha, e
+  // consertar metade das duas de `montar_fechamento` também acende (o censo
+  // conta as ocorrências, não a primeira).
+  //
+  // O ACHADO: `public.montar_fechamento` (U5) declara `fechamento_id` como
+  // coluna do RETURNS TABLE e depois o usa NU duas vezes contra
+  // `public.cobrancas`, que tem uma coluna com esse nome — `AND fechamento_id
+  // IS NULL` (u5:134) e `WHERE fechamento_id = v_id` (u5:139). Com o
+  // `plpgsql.variable_conflict = error` padrão, isso é 42702 em execução, e
+  // quem chama é `src/features/financeiro/fechamentos.ts:88`, ou seja, o botão
+  // de montar fechamento. NÃO foi consertado nesta rodada de propósito: a U5 já
+  // rodou (o repo nunca edita migration aplicada), o conserto é uma migration
+  // nova sobre a função mais cara do financeiro, e ela não pode ser exercitada
+  // aqui. Está escrito, datado e com o remédio, em PENDENCIAS_TECNICAS.md P50.
+  eq('CRÍTICO: CENSO — as comparações com nome NU de coluna do próprio RETURNS TABLE vivas no repositório são EXATAMENTE estas, e cada uma tem motivo escrito ao lado. Em PL/pgSQL isso é 42702 em EXECUÇÃO (não na leitura), e NADA pegava esta classe até a U86',
+     quebradasQ,
+     ['20260818220000_u5_fechamentos.sql: fechamento_id x2']);
+
+  // PAR NEGATIVO: o detector precisa ACHAR o defeito quando ele existe, senão a
+  // asserção acima é decoração. Este é o defeito real que a revisão pegou no
+  // desenho, reproduzido literalmente.
+  {
+    const cifra = String.fromCharCode(36);
+    const defeito = [
+      'CREATE FUNCTION f() RETURNS TABLE (dia date, acao text)',
+      'LANGUAGE plpgsql AS ' + cifra + 'x' + cifra,
+      'BEGIN',
+      'RETURN QUERY WITH calc AS (SELECT 1)',
+      "SELECT (NOT EXISTS (SELECT 1 FROM calc WHERE acao = 'trocar'));",
+      'END',
+      cifra + 'x' + cifra + ';',
+    ].join('\n');
+    const bom = defeito.replace('WHERE acao =', 'WHERE c2.acao =');
+    eq('…e o detector realmente acusa o defeito e absolve a correção: `WHERE acao = …` num corpo cujo RETURNS TABLE tem uma coluna `acao` é pego, e `WHERE c2.acao = …` passa',
+       [naoQualificados(defeito).length > 0, naoQualificados(bom).length],
+       [true, 0]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O PDF PAISAGEM E O `slug` QUE DEIXOU DE SER TRIPLICADO
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fsP = require('fs');
+  // REGRA 2 de novo: o cabeçalho do arquivo EXPLICA por que 297 não pode estar
+  // chumbado. Medir o arquivo cru casaria a explicação.
+  const semComentarioTs = (s) => s.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+  const pdf = semComentarioTs(fsP.readFileSync('src/features/sobreaviso/pdf.ts', 'utf8'));
+  const rel = fsP.readFileSync('src/features/chamados/relatorio.ts', 'utf8');
+  const exp = fsP.readFileSync('src/features/projeto/ExportarTab.tsx', 'utf8');
+  const fmt = carregar('src/lib/format.ts');
+
+  eq('CRÍTICO: o PDF novo é PAISAGEM e DERIVA a largura da página em vez de chumbá-la. `relatorio.ts` chuma `LARGURA = 210` com o comentário "A4 retrato" — copiar essa constante para cá seria escrever 297 chumbado, que é o mesmo erro com outro número, e ele só apareceria no dia em que alguém trocasse o formato',
+     [/orientation: "landscape"/.test(pdf),
+      /doc\.internal\.pageSize\.getWidth\(\)/.test(pdf),
+      /\b297\b/.test(pdf),
+      /unit: "mm"/.test(pdf),
+      /jspdf-autotable/.test(pdf)],
+     [true, true, false, true, true]);
+
+  eq('CRÍTICO: `slug` deixou de ser triplicado — mora em src/lib/format.ts e os três PDFs o importam. Só a cópia do relatório de OS tratava ACENTO, e a do projeto mandava "Condomínio Jardim" virar Condom-nio-Jardim no arquivo que o cliente recebe',
+     [/export function slug\(/.test(fsP.readFileSync('src/lib/format.ts', 'utf8')),
+      /const slug = \(s: string\)/.test(rel),
+      /slug\(os\.numero \?\? "OS", "_"\)/.test(rel),
+      /replace\(\/\[\^a-z0-9\]\+\/gi, "-"\)/.test(exp),
+      /slug\(projeto\.nome\)/.test(exp),
+      /slug\(grade\.competencia\)/.test(pdf)],
+     [true, false, true, false, true, true]);
+  eq('CRÍTICO (acordo de valor): o `slug` compartilhado tira acento nos dois separadores, e o do relatório continua devolvendo BYTE POR BYTE o que devolvia — o arquivo dele já circula por e-mail',
+     [fmt.slug('Condomínio Jardim das Acácias'),
+      fmt.slug('OS-2026/0134', '_'),
+      fmt.slug('  ...São Paulo!!  ')],
+     ['Condominio-Jardim-das-Acacias', 'OS_2026_0134', 'Sao-Paulo']);
+
+  eq('CRÍTICO: o PDF imprime a faixa de cobertura como última linha e carrega o aviso de calendário NÃO conferido — a folha circula por e-mail e sobrevive à tela onde o aviso aparecia',
+     [/Cobertura esperada/.test(pdf), /Somado \/ veredito/.test(pdf),
+      /conferido\(ano\)/.test(pdf), /ANO_CONFERIDO_ATE/.test(pdf)],
+     [true, true, true, true]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DOCUMENTAÇÃO — regra 7: conferência é asserção de PRODUTO
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fsD = require('fs');
+  const prod = fsD.readFileSync('docs/PRODUTO.md', 'utf8');
+  const plano = fsD.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+  const manual = fsD.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+  const perm = fsD.readFileSync('docs/manual/permissoes-e-acesso.md', 'utf8');
+  const pend = fsD.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+  const FE3 = carregar('src/lib/feriados.ts');
+
+  // A R115 NOMEIA OS TREZE, e a lista esperada NÃO é escrita aqui (regra 9):
+  // ela é MEDIDA do módulo, e cada nome tem de aparecer no documento. Trocar um
+  // pelo outro em qualquer um dos dois lados acende.
+  const iR115 = prod.indexOf('**R115**');
+  const iR116 = prod.indexOf('**R116**');
+  // Espaço em branco é NORMALIZADO antes de medir: o markdown quebra linha no
+  // meio de "Revolução Constitucionalista de 1932", e um nome partido por
+  // quebra de linha não é um nome diferente. Sem isto a asserção acusaria o
+  // documento CERTO — que é o pior jeito de falhar, porque ensina a ignorá-la.
+  const juntar = (s) => s.replace(/\s+/g, ' ');
+  const secaoR115 = juntar(iR115 < 0 ? '' : prod.slice(iR115, iR116 > iR115 ? iR116 : iR115 + 8000));
+  eq('CRÍTICO (regra 7): a R115 existe e NOMEIA os treze feriados que o módulo devolve para São Paulo capital, com a jurisdição de cada um. A lista esperada é MEDIDA do código, não escrita aqui — trocar uma data em qualquer um dos dois lados acende',
+     [secaoR115.length > 800,
+      FE3.feriadosDoAno(2026).map((d) => d.nome).filter((n) => !secaoR115.includes(n)),
+      /ponto facultativo/i.test(secaoR115),
+      /Carnaval/.test(secaoR115),
+      /14\.759/.test(secaoR115)],
+     [true, [], true, true, true]);
+
+  const secaoR116 = juntar(iR116 < 0 ? '' : prod.slice(iR116, iR116 + 9000));
+  eq('CRÍTICO (regra 7): a R116 existe, diz as 118 horas da semana padrão e diz O QUE O BOTÃO FAZ COM O QUE JÁ ESTÁ PREENCHIDO — as quatro ações nomeadas. Uma regra que dissesse só "aplica a semana padrão" descreveria o gesto destrutivo pela metade',
+     [secaoR116.length > 800,
+      /118/.test(secaoR116),
+      ['inserir', 'igual', 'somar', 'trocar'].filter((a) => !secaoR116.includes(a)),
+      /is_gestor|gestor/.test(secaoR116),
+      /correção|correcao/i.test(secaoR116)],
+     [true, true, [], true, true]);
+
+  eq('U85 e U86 têm entradas SEPARADAS no diário, e cada uma declara a SUA ordem de deploy — elas são OPOSTAS no mesmo dia (o calendário sobe sozinho, sem migration; o sobreaviso exige a migration ANTES do push), e duas ordens opostas num repo em que o Davi roda o SQL à mão é a receita para a metade errada subir primeiro',
+     [/^## U85 —/m.test(plano), /^## U86 —/m.test(plano),
+      /MIGRATION PRIMEIRO|migration primeiro/i.test(plano.slice(plano.indexOf('## U86'))),
+      /PGRST205/.test(plano.slice(plano.indexOf('## U86')))],
+     [true, true, true, true]);
+
+  eq('CRÍTICO: o diário guarda a recusa ARGUMENTADA do vetor mensal, com o número que a decide — senão alguém repropõe o array em 2027 e a discussão recomeça do zero',
+     [/12 das 52/.test(plano.slice(plano.indexOf('## U86'))),
+      /vetor|array/i.test(plano.slice(plano.indexOf('## U86')))],
+     [true, true]);
+
+  eq('CRÍTICO: o manual ensina a tela que EXISTE — a grade, o botão da semana padrão e o que ele faz com o preenchido, o fato de a semana atravessar o mês, QUANDO a célula salva (na saída do campo, não a cada tecla), que o Esc desfaz, e que "não pôde ser lida" não é mês vazio',
+     [/[Ss]obreaviso/.test(manual), /118/.test(manual), /semana padrão/i.test(manual),
+      /atravessa/.test(manual),
+      /quando você sai\s*\n?do campo/.test(manual), /\*\*Esc\*\*/.test(manual),
+      /não é um mês vazio/.test(manual),
+      /nos mesmos oito dias/i.test(manual)],
+     [true, true, true, true, true, true, true, true]);
+
+  // PAR NEGATIVO do manual: ele NÃO pode descrever o registro de atendimento de
+  // plantão, que é entrega PRÓPRIA e não foi construída. Manual que ensina um
+  // botão inexistente faz quem o procura concluir que o sistema quebrou.
+  eq('CRÍTICO (par negativo): o manual NÃO descreve o registro de atendimento de plantão (hora, cliente, plantonista, selo de cobrança) — ele é entrega própria e NÃO foi construído nesta rodada. Manual que ensina botão inexistente faz quem procura concluir que o sistema está quebrado',
+     [/atendimentos_plantao/.test(manual),
+      /registrar o atendimento do plantão|selo de cobrança do plantão/i.test(manual)],
+     [false, false]);
+
+  eq('CRÍTICO: a chave de permissão nova está no manual de permissões, com a distinção que importa — ver é de todo mundo que TRABALHA aqui (e o manual NOMEIA os dois grupos que ficam de fora), editar é de gestor, e gestor INCLUI o SAC',
+     // A seção do sobreaviso, recortada: o documento inteiro fala de
+     // `USING (true)` em prosa (o censo das permissivas mora nele), e medir o
+     // arquivo todo acusaria o parágrafo que EXPLICA a decisão — regra 2 na
+     // versão markdown.
+     (() => {
+       const i = perm.indexOf('## Sobreaviso (chave `sobreaviso`');
+       const s = i < 0 ? '' : perm.slice(i);
+       return [i > 0, /is_gestor/.test(s), /convite pendente/i.test(s), /ex-funcionário/i.test(s),
+               /a \*policy\* de\s*\n?leitura é `USING \(true\)`/.test(s),
+               /P51/.test(s)];
+     })(),
+     [true, true, true, true, false, true]);
+
+  // REGRA 7 sobre as duas dívidas que esta rodada destapou. A do `is_gestor` é
+  // decisão do Davi e precisa do ALCANCE no documento, não de um adjetivo.
+  eq('CRÍTICO (regra 7): P51 e P52 estão declaradas, e a P51 traz o alcance MEDIDO — 27 arquivos, 110 ocorrências vivas e 40 CREATE POLICY. "is_gestor não olha ativo" sem o número é um adjetivo; com o número é uma decisão que o Davi pode tomar',
+     [/^## P51 —/m.test(pend), /^## P52 —/m.test(pend),
+      /\*\*27\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /\*\*110\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /\*\*40\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /relatorio\.ts/.test(pend.slice(pend.indexOf('## P52')))],
+     [true, true, true, true, true, true]);
+
+  eq('CRÍTICO (regra 7): a P47 registra que o PISO desceu de 2007 para 2025 e POR QUE — `conferido()` afirma um ato humano, não a existência de uma norma —, e diz a ordem de subir o piso: primeiro a asserção do decreto, depois a constante',
+     [/2021/.test(pend.slice(pend.indexOf('## P47'), pend.indexOf('## P48'))),
+      /ANOS_PRESOS_CONTRA_DECRETO/.test(pend),
+      /ANO_CONFERIDO_DESDE = 2025/.test(pend)],
+     [true, true, true]);
+
+  eq('CRÍTICO (regra 7): a R116 deixou de prometer "ver é de todo autenticado", diz o que a célula faz com o que se digita (grava na DECISÃO, e o teto aparece na caixa) e diz que o PDF não existe enquanto o dado não é confiável',
+     [/ver é de todo autenticado/.test(secaoR116),
+      /ativa/.test(secaoR116) && /pendente de aprovação/.test(secaoR116),
+      /Enter/.test(secaoR116),
+      /Escape/.test(secaoR116),
+      /botão de PDF \*\*não existe\*\*/.test(secaoR116)],
+     [false, true, true, true, true]);
+
+  eq('CRÍTICO: as dívidas desta rodada estão declaradas — o calendário conferido só até 2026 (e o módulo NÃO avisa quando a lei muda), o escalar que não sabe a hora do handover, e o mês fechado que pode ser reaberto sem o fechamento saber',
+     [/^## P47 —/m.test(pend), /^## P48 —/m.test(pend), /^## P49 —/m.test(pend),
+      /ANO_CONFERIDO_ATE/.test(pend), /handover/i.test(pend), /alterada_em/.test(pend)],
+     [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

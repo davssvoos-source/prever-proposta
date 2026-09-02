@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { FileDown, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { brl, formatDate, CONTRATO_LABEL } from "@/lib/format";
+import { brl, formatDate, slug, CONTRATO_LABEL } from "@/lib/format";
 import { useCatalogos, useProjetoBlocos, useProjetoItensVar, useProjetoServicos } from "./data";
 import { computeBom, computeServicoQty } from "./calc";
 import { toast } from "sonner";
@@ -187,7 +187,10 @@ export function ExportarTab({ projeto }: { projeto: Projeto }) {
         align: "center",
       });
 
-      doc.save(`Proposta-${projeto.nome.replace(/[^a-z0-9]+/gi, "-")}.pdf`);
+      // `slug` compartilhado (src/lib/format.ts, U86): a cópia que morava aqui
+      // NÃO tirava acento, e "Condomínio Jardim" virava `Condom-nio-Jardim` no
+      // nome do arquivo que o cliente recebe.
+      doc.save(`Proposta-${slug(projeto.nome)}.pdf`);
       toast.success("PDF gerado");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar PDF");

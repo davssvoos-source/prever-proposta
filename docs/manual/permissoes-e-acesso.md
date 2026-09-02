@@ -130,3 +130,43 @@ das linhas + a semente efetiva absorve o DELETE (modelo: U30).
 - Migrations U11, U6a, S1/S1b, S2, S3, S4, U28, U30 · `scripts/verificar-logica.cjs`
   (seção da semente; e o bloco S4 no fim, com os três censos)
 - `docs/PRODUTO.md` — R13, R18, R103 · `docs/PENDENCIAS_TECNICAS.md` — P22, P23, P24
+
+
+## Sobreaviso (chave `sobreaviso`, U86)
+
+**Ver é de todo mundo que trabalha aqui; editar é de gestor.** A chave
+`sobreaviso` nasce liberada para os três papéis da matriz (técnico, comercial,
+SAC), e a *policy* de leitura exige que quem pergunta tenha em `profiles` uma
+linha **ativa** e **não pendente de aprovação**. A leitura é ampla de propósito:
+a escala é **cobertura, não dinheiro** — a valoração das horas continua atrás de
+`pode_ver_financeiro()`, em outra tabela —, e se o técnico não vê as horas dos
+colegas a faixa de cobertura do mês mente para ele, mostrando buraco onde o
+colega já cobre.
+
+**Mas ampla não é `USING (true)`.** Os dois grupos que a *policy* recusa são
+exatamente os dois que a tela já recusava e a fronteira não recusava: o
+**convite pendente**, que tem login e ainda não é ninguém aqui, e o
+**ex-funcionário**, cujo acesso nada no sistema revoga hoje. A folha de plantão
+diz **quem estava trabalhando às duas da manhã, todo dia**; isso é informação de
+pessoal, e é a *policy* que a guarda, porque todo usuário fala com o Postgres
+com a mesma chave publicável.
+
+**Escrever é `is_gestor()` E o mesmo vínculo, e `is_gestor()` INCLUI o SAC.** Não
+foi criado um predicado novo: seria uma quarta lista de papéis a ter de
+concordar com as três que já existem. O sobreaviso existe *para* o SAC — uma
+escala que ele não pode corrigir fica velha exatamente quando importa, às 2h da
+manhã. A defesa é o carimbo `alterada_por`/`alterada_em` em cada célula, mais a
+grade ser visível para todos. As duas RPCs (`sobreaviso_aplicar_padrao` e
+`sobreaviso_limpar`) são `SECURITY DEFINER` e **não passam pela policy**: o
+mesmo teste de dois eixos está escrito dentro delas.
+
+> **Dívida conhecida, e ela não é desta tela:** `is_gestor()` decide por cargo e
+> por papel e **não olha `ativo`**. Um ex-funcionário com login vivo continua
+> sendo gestor para o sistema inteiro — é o `AND EXISTS (… p.ativo …)` desta
+> policy que o barra *aqui*, e só aqui. Está registrado como **P51**.
+
+**Lembre da fronteira real:** `permissoes_tela` esconde o **item de menu**.
+Quem impede escrita é a *policy*, e só ela — todo usuário fala com o Postgres
+usando a mesma chave publicável. Se o Davi decidir que o SAC não edita a escala,
+o lugar da mudança é o par de listas de papéis que já existe, não um predicado
+novo e não a matriz de telas.

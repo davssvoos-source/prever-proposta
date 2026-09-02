@@ -2206,3 +2206,167 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   `docs/PENDENCIAS_TECNICAS.md` — e ela depende de uma chave de serviço de rota
   que ainda não existe no ambiente, ou seja, não poderia ser exercitada de
   verdade nesta rodada. *(U84.)*
+
+
+- **R115** — **Feriado e ponto facultativo não são a mesma coisa, e o calendário
+  guarda os dois separados.** Toda pergunta do sistema sobre "este dia conta?"
+  passa por um módulo puro (`src/lib/feriados.ts`) que responde com **três
+  campos, nunca um booleano**: o **tipo** (`feriado`, `facultativo`,
+  `expediente_parcial`), a **jurisdição** (`nacional`, `estadual`,
+  `municipal`) e a **norma** que sustenta a data.
+
+  **Por que não um booleano.** No dia **04/06/2026**, Corpus Christi é *feriado
+  municipal* em São Paulo capital (Lei mun. 14.485/2007, Anexo I) e *ponto
+  facultativo federal* (Portaria anual do Ministério da Gestão) — as duas coisas
+  ao mesmo tempo. Um campo só teria de escolher um lado, e o lado que ele erraria
+  é justamente o dia em que Interlagos fecha. Carnaval é o inverso: fecha meia
+  cidade e **não é feriado**. Um dia pode devolver **duas** entradas, e devolve.
+
+  **A projeção é POLÍTICA e mora num lugar só** (`ehDiaUtil`): **feriado não
+  conta** como dia útil, **ponto facultativo conta**, **expediente parcial
+  conta** — porque a Prever é empresa privada, e ponto facultativo obriga
+  repartição pública. Se um dia a resposta precisar ser diferente para o
+  sobreaviso e para o cronograma de implantação, é essa função que se desdobra
+  em duas, e nenhuma outra linha do sistema muda.
+
+  **Os treze feriados de São Paulo capital**, com a jurisdição de cada um:
+  *Confraternização Universal* (01/01, nacional), *Aniversário da cidade de São
+  Paulo* (25/01, municipal), *Sexta-feira Santa* (móvel, nacional na prática —
+  ver a nota abaixo), *Tiradentes* (21/04, nacional), *Dia do Trabalho* (01/05,
+  nacional), *Corpus Christi* (móvel, **municipal**), *Revolução
+  Constitucionalista de 1932* (09/07, estadual — Lei paulista 9.497/1997),
+  *Independência do Brasil* (07/09, nacional), *Nossa Senhora Aparecida* (12/10,
+  nacional — Lei 6.802/1980), *Finados* (02/11, nacional), *Proclamação da
+  República* (15/11, nacional), *Dia Nacional de Zumbi e da Consciência Negra*
+  (20/11) e *Natal* (25/12, nacional). Os fixos nacionais vêm da Lei 662/1949 com
+  a redação da Lei 10.607/2002.
+
+  **O que MUDOU e quase ninguém atualizou:** o **20/11** virou feriado
+  **nacional** em **2024**, pela **Lei 14.759/2023**. Antes disso era feriado
+  **municipal** em São Paulo capital (Lei 14.485/2007). O módulo guarda as
+  **duas linhas**, com vigências que não se sobrepõem — colapsá-las produziria
+  "feriado nacional em 2019", que é falso, ou "nenhum feriado em Interlagos em
+  2015", que também é.
+
+  **Os móveis saem da Páscoa**, por deslocamento em dias: Carnaval (−48 e −47,
+  *ponto facultativo*), Quarta-feira de Cinzas (−46, *expediente parcial* — e o
+  expediente **começa** às 14:00, ao contrário de 24/12 e 31/12, em que ele vai
+  **até** as 14:00; é por isso que o dia especial **não** carrega um campo de
+  hora: um número sem direção inverte um dos dois casos, e invertia),
+  Sexta-feira Santa (−2, *feriado*) e Corpus Christi (+60). A **Sexta-feira
+  Santa** tem uma ambiguidade de fonte, e ela está escrita **dentro do campo
+  `norma`** e não num comentário: a Lei 9.093/1995, art. 2º, trata o feriado
+  religioso como matéria *municipal*, enquanto a Portaria do MGI e o Anexo I
+  paulistano a listam com os nacionais. A leitura prática é a que vale — a
+  empresa fecha.
+
+  **Até que ano ele responde.** O cálculo da Páscoa vale de 1583 a 2400, mas
+  **algoritmo puro mente**: em 2020 a Prefeitura antecipou Corpus Christi
+  (11/06 → 20/05) e a Consciência Negra (20/11 → 21/05) pela **Lei mun.
+  17.341/2020**, e nenhum algoritmo derivado da Páscoa sabe disso. Por isso é
+  **algoritmo + tabela de exceções datada + a constante
+  `ANO_CONFERIDO_ATE`**, hoje **2026** (o piso é **2007**, o ano da Lei
+  14.485 que o módulo cita). No ano em que a lei mudar, **o módulo não avisa** —
+  não há como avisar. O que existe é tornar a divergência barata (colar as datas
+  do decreto e subir a constante) e **visível**: `conferido(ano)` devolve
+  falso, a barra do mês diz "conferido até 2026" e o **PDF imprime o aviso**,
+  porque a folha circula por e-mail e sobrevive à tela onde o aviso apareceu.
+  Ano sem entrada na tabela não recebe correção nenhuma — **omissão declarada**,
+  e não silenciosa. *(U85.)*
+
+- **R116** — **O sobreaviso é uma grade pessoa × dias do mês, com horas por
+  célula, e o botão que a preenche nunca é silencioso.**
+
+  **A unidade do dado é uma linha por (dia, pessoa), com horas escalar.** Não é
+  um mês por linha com um vetor de 31 posições: a unidade de *decisão* é a
+  semana, a de *relatório* é a competência, e a semana padrão tem **oito dias de
+  calendário** — **12 das 52 segundas de um ano** têm o oitavo dia no mês
+  seguinte, para sempre (todo mês contém exatamente uma segunda nos seus últimos
+  sete dias). O dia é a única unidade que é subconjunto tanto da semana quanto do
+  mês. **Célula vazia é ausência de linha**: o banco recusa 0 e recusa mais de
+  24, e zerar é apagar.
+
+  **A cobertura esperada de um dia é derivada do calendário (R115)**: 24 − 10 de
+  expediente = **14 horas em dia útil**, e **24 horas** em fim de semana e em
+  feriado. Fim de semana e feriado valem o mesmo, e é por isso que a grade dá
+  **uma lavagem só** para "não é dia útil" — o que os distingue é o **nome** no
+  `title`, porque cor nenhuma transporta "Corpus Christi".
+
+  **A semana padrão** vai de **segunda 18:00 a segunda 08:00**: 6h na segunda de
+  entrada, 14h de terça a sexta, 24h no sábado e no domingo, 8h na segunda de
+  saída — **118 horas**, e o número fecha por outra conta também (14 × 5 dias
+  úteis + 24 × 2 de fim de semana). Com feriado no meio ela **não** dá 118, e
+  isso é o certo: um feriado na terça troca 14 por 24.
+
+  **O que o botão faz com o que já está preenchido — as quatro ações.**
+  Nenhuma das três respostas óbvias acerta, e o caso que as derruba é a mesma
+  pessoa em duas semanas seguidas: na segunda de virada ela já tem as 8h de
+  madrugada da semana anterior, e a nova quer pôr 6h de noite. *Sobrescrever*
+  perderia 8h; *só preencher vazio* perderia 6h; *perguntar sempre* pergunta no
+  caso em que a resposta é óbvia e treina todo mundo a clicar "sim" sem ler.
+  Então:
+
+  | ação | quando | o que faz |
+  |---|---|---|
+  | **inserir** | a célula está vazia | grava |
+  | **igual** | já é esse valor (ou já é a soma) | não toca no banco |
+  | **somar** | ali está exatamente o pedaço do plantonista vizinho | 8 + 6 = **14**, que é a cobertura daquele dia |
+  | **trocar** | qualquer outra coisa | **substitui** — e é a única que exige confirmação |
+
+  Com qualquer **trocar** na lista, a primeira chamada **não escreve nada** e
+  devolve os oito dias com o *antes*, o *depois* e a ação de cada um. A tela
+  mostra essa tabela; só a segunda chamada grava. **Quem decide isso é o banco**,
+  na mesma função e no mesmo instantâneo em que escreveria — não é promessa do
+  app. Reaplicar é idempotente. **Limpar é assimétrico**: ele nunca tem caminho
+  livre, porque limpar sempre perde, e a primeira chamada lista as linhas que
+  morreriam, com as horas de cada uma.
+
+  **Quem aparece na grade:** quem pode ser escalado hoje (`ativo` e status
+  diferente de `pendente_aprovacao`) **mais** quem tem horas gravadas naquele
+  mês. **Zero filtro por cargo** — filtrar por "técnico" tiraria da escala o
+  coordenador que atende às 2h da manhã, e ele atende. **Quem sai da empresa não
+  some do histórico**: sai das grades futuras, continua nas passadas, esmaecido.
+
+  **Quem vê e quem edita:** **ver é de todo mundo que trabalha aqui** — quem tem
+  em `profiles` uma linha **ativa** e **não pendente de aprovação**. A leitura é
+  ampla porque a escala é *cobertura*, não dinheiro (a valoração continua atrás
+  de `pode_ver_financeiro()`), e se o técnico não vê as horas dos outros a faixa
+  de cobertura mente para ele. Mas **ampla não é "qualquer um que consiga
+  logar"**: a folha de plantão diz quem estava trabalhando às duas da manhã,
+  todo dia, e isso é informação de pessoal — o convite pendente e o
+  ex-funcionário ficam de fora, na *policy*, que é a única fronteira real.
+  **Editar é `is_gestor()` mais o mesmo vínculo, e `is_gestor()` inclui o SAC**,
+  e a escolha é deliberada: o sobreaviso existe *para* o SAC, e uma escala que
+  ele não pode corrigir fica velha exatamente quando importa. Um quarto
+  predicado de papel seria uma quarta lista a ter de concordar com as outras
+  três; a defesa é o carimbo `alterada_por`/`alterada_em` mais a grade ser
+  visível para todos.
+
+  **E o botão da grade nunca grava um número que ninguém digitou.** A célula é
+  caixa de rascunho enquanto se digita e **grava na decisão** — ao sair do campo
+  ou no Enter —, com `Escape` desfazendo. O limite de 24h **aparece na caixa**:
+  digitar 99 deixa **24** escrito na tela, e não 99 na tela com 24 na folha.
+
+  **E a tela distingue "ninguém escalado" de "a consulta falhou".** Uma grade
+  vazia por falha é indistinguível de um mês sem plantonista e é a mais cara das
+  duas, porque o **botão de PDF exportaria a mentira** e ela circularia por
+  e-mail. Enquanto o dado não é confiável a tela diz o que houve — e o botão de
+  PDF **não existe**.
+
+  **Plano ou registro:** é **plano que vira registro por decurso**. Editar o mês
+  passado é **correção**, permitida e carimbada — não é falsificação. Proibir não
+  impediria a correção: empurraria para uma planilha fora do sistema, onde a
+  folha e a tela discordam e ninguém sabe qual está certa. **Custo assumido:** o
+  mês que o financeiro já fechou pode ser reaberto sem o fechamento saber. Não há
+  coluna `travado` — um booleano que qualquer escritor liga devolve a regra ao
+  estado de promessa, que é o que a U78 recusou. O que existe é `alterada_em`,
+  que torna a alteração pós-fechamento **encontrável**.
+
+  **O que a R116 NÃO entrega.** O **registro do atendimento de plantão** (hora,
+  cliente, plantonista, remoto ou presencial, vínculo com chamado, selo de
+  cobrança) é entrega **própria**, com tela e integração financeira próprias, e
+  **não existe**. O sobreaviso fica de pé sem ele: ele já responde quem está de
+  plantão em cada dia, o mês fechado por pessoa e a cobertura conferida dia a
+  dia — e a faixa de cobertura valida o plano inteiro sem um único atendimento
+  registrado, porque 14/24 é derivado do calendário e não da soma que o app fez.
+  A dependência é na direção contrária. *(U86.)*

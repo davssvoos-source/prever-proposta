@@ -7582,3 +7582,296 @@ já melhora o sistema de hoje.
 data dentro do formulário agora **navega a grade** para aquela semana (só quando
 a semana muda). É o preço do conserto — a consulta precisa seguir o campo — e
 está no manual.
+
+
+## U85 — O calendário de feriados (R115 — Fase 3, Passo 1)
+
+**Esta entrega não tem migration, não tem tela e não tem consumidor
+obrigatório.** É `src/lib/feriados.ts`, puro, e sobe sozinho, hoje, sem
+janela. Ela é dependência de **duas** coisas independentes: o sobreaviso (U86,
+para saber se um dia pede 14h ou 24h) e o **cronograma de implantação por dia
+útil da Fase 4**, que ainda não existe. A Fase 4 depende DELE e não do
+sobreaviso, e é por isso que ele é entrega separada em vez de um arquivo dentro
+de `features/sobreaviso/`.
+
+Antes desta rodada não havia **nada** de feriado ou dia útil no repositório —
+zero ocorrências em `src/` e em `supabase/`. Então esta entrega escolhe o
+vocabulário que o projeto vai carregar, e foi por isso que ela virou regra
+numerada em vez de utilitário.
+
+**A decisão que decide o resto: feriado e ponto facultativo não colapsam num
+booleano.** O caso que resolve a discussão é uma data só: **04/06/2026** é
+feriado *municipal* em São Paulo capital e ponto facultativo *federal*. Um campo
+teria de escolher, e o lado que ele erraria é o dia em que Interlagos fecha.
+`diaEspecial()` devolve uma **lista**, e no 04/06 ela tem dois itens com
+normas diferentes. Carnaval é o espelho: fecha meia cidade e não é feriado. O
+que se perde por não achatar é nada; o que se perde por achatar é
+irrecuperável, porque o dado já nasce sem o segundo eixo.
+
+A **projeção** ("isto conta como dia útil?") é política, não factual, e mora
+numa função só. Feriado não conta; facultativo conta; expediente parcial conta —
+a Prever é privada. Se um dia o sobreaviso e o cronograma precisarem de
+respostas diferentes, é `ehDiaUtil` que se desdobra, e nada mais muda.
+
+**O computus.** Meeus/Jones/Butcher, e a asserção dele **não** compara o
+resultado com ele mesmo (regra 9): a fixture são 24 Páscoas conferidas em
+efeméride, escritas à mão (regra 4), incluindo os quatro extremos reais —
+1818-03-22 e 2285-03-22 (o mais cedo possível) e 1943-04-25 e 2038-04-25 (o mais
+tarde). Mais duas propriedades independentes varridas em 818 anos: toda Páscoa é
+domingo, e toda Páscoa cai em [22/03, 25/04] — **e os dois extremos são
+efetivamente atingidos**, senão uma implementação que devolvesse sempre 01/04
+passaria nas duas primeiras.
+
+**Até que ano ele responde, e o que acontece quando errar.** Tabela chumbada
+morre: no primeiro ano não cadastrado todo dia vira útil, em massa e em silêncio.
+Algoritmo puro **mente**: em 2020 a Lei mun. 17.341 antecipou Corpus Christi e a
+Consciência Negra para 20 e 21 de maio, e nenhum algoritmo derivado da Páscoa
+sabe disso. Ficou o par — algoritmo + tabela de exceções datada + a constante
+`ANO_CONFERIDO_ATE`. No ano em que a lei mudar o módulo **não avisa**; não há
+como. O que se fez foi tornar a divergência barata e **visível**:
+`conferido(ano)`, a barra do mês e o **aviso impresso no PDF**.
+
+**O que eu NÃO pus na tabela de exceções, e por quê.** As "pontes" (o facultativo
+de segunda ou sexta colada a um feriado) que a Prefeitura decreta ano a ano.
+Duas razões, nesta ordem: (1) elas **não mudam uma resposta** deste módulo —
+ponte é ponto facultativo, e facultativo conta como dia útil para empresa
+privada, então `ehDiaUtil`, `ehFeriado` e a cobertura do sobreaviso devolvem
+o mesmo número com ou sem elas; o ganho seria um nome num tooltip. (2) Cada uma
+exige citar um decreto anual específico, e escrever a citação sem ter o decreto
+na mão é **inventar fonte** — que é exatamente a classe de defeito que a U84
+passou uma entrega arrancando do catálogo do banco. O mecanismo está pronto;
+falta o decreto, e ele entra quando alguém o tiver aberto.
+
+**Regra 8 aplicada:** o módulo **importa** `dataIso` de `periodos.ts` em vez
+de reescrever a conversão. É a mesma conta, e `features/programacao/modelo.ts`
+já argumenta em prosa contra reafirmar conta existente. O verificador prende as
+duas metades: que o import existe e que não há `function dataIso` aqui.
+
+Uma sutileza que custou nada e evita um bug de fuso: **toda data é construída ao
+meio-dia**. O Brasil aboliu o horário de verão em 2019, mas o módulo responde
+desde 1583 e em São Paulo o relógio pulava de 23:59:59 para 01:00:00 — a
+meia-noite **não existia** em várias datas de outubro. Ao meio-dia, nenhum
+deslocamento de ±1h atravessa a fronteira do dia.
+
+## U86 — O sobreaviso: a grade pessoa × dias do mês (R116 — Fase 3, Passo 2)
+
+**ORDEM DE DEPLOY: MIGRATION PRIMEIRO, PUSH DEPOIS.** A regra 5 da casa
+(*push publica na hora, migration roda à mão depois*) **inverte** aqui, porque o
+código passa a nomear `public.sobreaviso` e duas RPCs que não existem: subir o
+código antes abre `/sobreaviso` com **PGRST205** para todo mundo. E a entrega
+irmã do mesmo dia, a U85, é o contrário — .ts puro, sem migration, sem janela.
+**Duas ordens opostas no mesmo dia, num repo em que o Davi roda o SQL à mão, é a
+receita para a metade errada subir primeiro.** Por isso são duas entradas e dois
+commits.
+
+### A escolha que estrutura tudo: uma linha por (dia, pessoa)
+
+A alternativa séria era **um mês por linha, com um vetor de 31 posições**. Ela
+tem uma virtude — "uma linha, uma transação" — e essa virtude **é falsa no caso
+principal**. A unidade de *decisão* é a semana; a de *relatório* é a competência;
+e a semana padrão tem **oito dias de calendário**. Medi: **12 das 52 segundas de
+2026** têm o oitavo dia no mês seguinte, e não é acidente de 2026 — todo mês
+contém exatamente uma segunda nos seus últimos sete dias, então são 12 por ano,
+para sempre. O **vetor mensal precisaria de duas linhas e duas transações em 23%
+das aplicações do gesto mais usado da tela**. Um desenho cuja vantagem central
+desaparece no caso principal não é um desenho.
+
+O **dia** é a única unidade que é subconjunto tanto da semana quanto do mês. Com
+ele, "quem estava de sobreaviso em 14/03?", "quanto a Fabiana fez em 2027?" e
+"qual dia ficou descoberto?" são SQL comum — sem decodificador, sem view, sem
+domínio sobre array. E `dia date` torna **30 de fevereiro inexprimível**, coisa
+que um vetor de 31 posições não faz.
+
+O **intervalo** `(dia, inicio_min, fim_min)` também foi recusado, e não por
+mim: a U78 já o recusou por ser fatal para plantão que atravessa a meia-noite
+(`PLANO_UNIFICACAO.md:5033`). O preço está declarado em P48: o escalar não sabe
+a **hora** do handover.
+
+**Célula vazia é ausência de linha.** `CHECK (horas > 0 AND horas <= 24)`, e
+zerar é DELETE. Isso mata a tricotomia 0 / NULL / ausente antes que ela exista:
+um `horas = 0` gravado seria *vazio* para a tela e *preenchido* para o teste de
+colisão do gesto em massa — divergência silenciosa exatamente no lugar mais caro.
+Conferi que a semana padrão **nunca** emite zero: nas 416 células de 2026 o
+mínimo é 6.
+
+### O gesto destrutivo, e o achado que ele produziu
+
+**Nenhuma das três respostas do enunciado acerta a segunda de virada.** Mesma
+pessoa em duas semanas seguidas: ela já tem 8h de madrugada da semana anterior e
+a nova quer pôr 6h de noite. Sobrescrever perde 8h; "só vazio" perde 6h;
+perguntar sempre pergunta onde a resposta é óbvia e **treina todo mundo a clicar
+"sim" sem ler**, que é como o gesto vira silencioso. O certo é **somar até o
+teto**: 8 + 6 = 14 = a cobertura daquela segunda. Daí as quatro ações nomeadas
+(`inserir` / `igual` / `somar` / `trocar`), e a invariante que as
+sustenta: `horas + absorve = coberturaDoDia(dia)` nas duas pontas.
+
+Foi preciso um **quinto ramo escondido dentro de `igual`**: "já é a soma". Sem
+ele, reaplicar uma semana já somada cairia em `trocar` e o sistema pediria
+confirmação **para não fazer nada** — que é a mesma doença por outro caminho.
+Com ele, reaplicar as 52 semanas de 2026 devolve 416 `igual` e zero escritas.
+
+A confirmação **nomeia o que se perde**: os oito dias, com o *antes*, o *depois*
+e a ação de cada um. Não existe "tem certeza?" nesta tela, e há asserção para
+isso. E **quem decide se escreve é o banco**, na mesma função e no mesmo
+instantâneo em que escreveria — a prévia e a escrita saem do mesmo `SELECT`, e
+por isso não podem discordar. Limpar é **assimétrico** de propósito: nunca tem
+caminho livre, porque limpar sempre perde.
+
+### O que o portão prova, e o caminho que ele NÃO podia deixar de fora
+
+Seis provas dentro da transação, com uma pessoa real e datas de 1900 (que são
+apagadas no fim, com a ausência provada). A que mais importa é a **prova 5**: o
+teto de 24h é exercitado **pelo UPDATE direto**, que é o caminho da R90 ("tudo
+salva sozinho", a cada digitação) — provar o teto só pela porta do array seria
+provar a porta que quase ninguém usa, e um portão que passa provando o caminho
+errado é a pior asserção que existe.
+
+### Duas listas de gente: não
+
+O plano previa um fork ("ou criamos `funcionarios`, ou aceitamos
+perfis-fantasma"), e a premissa dele caiu: `docs/PRODUTO.md` diz com todas as
+letras que **todo técnico tem usuário** desde 2026-08-22, superando a R14. Não
+existe tabela `funcionarios`, `profiles.id` referencia `auth.users`, e a
+migration `20260628063033` já registra a doutrina no comentário da coluna
+`ativo`: *"reutilizando profiles em vez de criar perfis"*. Uma segunda lista de
+pessoas seria a **quinta** colisão de vocabulário deste projeto e a mais cara.
+
+O recorte de quem entra na grade não tem **um literal de cargo**. O CHECK vivo é
+`cargo IS NULL OR cargo IN ('admin','comercial','sac','tecnico')` — filtrar por
+"tecnico" tiraria o coordenador que atende às 2h. Os eixos são `ativo` e
+`status`, e a comparação é `!== 'pendente_aprovacao'` e **não**
+`=== 'ativo'`: excluir *o valor que se quer excluir* sobrevive a um status
+novo; a outra forma esvaziaria a grade no dia em que alguém criasse "férias".
+
+### O que o verificador ganhou de permanente, e o que ele achou
+
+Nasceu um detector de **defeito de classe**: nenhuma RPC pode comparar um nome
+de coluna do próprio `RETURNS TABLE` sem qualificar. Em PL/pgSQL, com o
+`plpgsql.variable_conflict = error` padrão, isso é **42702 em execução** — não
+na leitura —, e o repositório tem mais de vinte RPCs com `RETURNS TABLE` sem
+nada que pegasse isso. O detector filtra comentário antes de medir, apaga as duas
+formas legítimas de nome nu (lista de colunas do INSERT e alvo de `SET`),
+honra `#variable_conflict use_column` e tem par negativo.
+
+**Ele já nasceu com um achado, e é grave:** `public.montar_fechamento` (U5)
+declara `fechamento_id` no `RETURNS TABLE` e depois o usa **nu duas vezes**
+contra `public.cobrancas`, que tem coluna com esse nome. Quem chama é o botão
+de montar fechamento (`features/financeiro/fechamentos.ts:88`). **Não
+consertei nesta rodada**, de propósito: a U5 já rodou (o repo nunca edita
+migration aplicada), o conserto é uma migration nova sobre a função mais cara do
+financeiro, e ela não pode ser exercitada aqui. Está em **P50**, com o remédio
+escrito. A asserção é um **censo** — a ocorrência conhecida está declarada e
+contada; uma nova, ou o conserto de metade das duas, acende.
+
+Duas asserções da própria casa também foram consertadas no caminho, as duas por
+**regra 2** (regex casa comentário): o leitor da semente de `permissoes_tela`
+não filtrava comentário e estava apagando da semente uma chave inserida pela
+migration, porque o rodapé DESFAZER traz um `DELETE FROM permissoes_tela`
+**comentado**; e a primeira versão do detector novo aceitava só letras no
+delimitador dollar-quote (`$u80a$` tem dígito), media o corpo da função errada
+e **acusava inocente**.
+
+### O que NÃO entrou, e por quê
+
+O **`atendimentos_plantao`** (hora, cliente, plantonista, remoto/presencial,
+vínculo com chamado, selos de cobrança) não foi construído — é entrega própria,
+com tela e integração financeira próprias. E o sobreaviso **fica de pé sem ele,
+e fica melhor sozinho**: entrega quem está de plantão em cada dia, o mês fechado
+por pessoa e a cobertura conferida dia a dia — e a faixa de cobertura valida o
+plano inteiro **sem um único atendimento registrado**, porque 14/24 é derivado do
+calendário e não da soma que o app fez. A dependência é na direção contrária: o
+atendimento vai precisar saber quem estava de sobreaviso naquela hora, e é esta
+tabela que responde, com **uma linha**.
+
+Também **não** entraram, e ficam registradas para ninguém as repropor: uma
+`CREATE VIEW` (o repositório não tem nenhuma), um `CREATE DOMAIN` (idem),
+`security_invoker` (idem) e a codificação em array. Um `CHECK (horas > 0 AND
+horas <= 24)` aparece em `pg_get_constraintdef` na conferência, legível na
+tela do Davi; um domínio aparece em `contypid` e obriga quem confere a saber
+onde procurar.
+
+### A pergunta que volta para o Davi
+
+Uma só, e ela **não bloqueia**: **o SAC pode editar a escala?** `is_gestor()`
+o inclui, e eu reusei em vez de criar um quarto predicado de papel. A favor: o
+sobreaviso existe *para* o SAC, e uma escala que ele não pode corrigir fica velha
+exatamente quando importa. Contra: é decisão de pessoal. O default que subiu é
+`is_gestor`. Se a resposta for "SAC fora", o lugar é um quarto valor no par de
+listas que já existe, não um predicado novo.
+
+---
+
+### Rodada de correção da U85/U86 — o que a auditoria derrubou antes de a migration rodar
+
+Nada disto tinha subido: a migration não rodou e o código não foi commitado. São
+correções sobre o desenho, e as três primeiras são as que mudam decisão.
+
+**1. A célula da grade gravava número errado, em silêncio.** Era um `<input>`
+CONTROLADO pelo dado do servidor, sem estado local: digitar `24` gravava **2**, o
+React devolvia a caixa ao valor do servidor, o `4` era digitado numa caixa vazia
+e gravava **4**. O gestor queria 24, o banco ficava com 4, e ninguém era avisado.
+Em célula preenchida era pior. Todo outro input numérico do repositório usa
+estado local; esta tela era a exceção, e o conserto foi adotar o padrão da casa:
+`src/features/sobreaviso/CelulaHoras.tsx`, rascunho local, grava no blur e no
+Enter, `Escape` desfaz, e o **clamp ficou visível** (99 deixa 24 escrito na
+caixa). A asserção que prende isso **executa o componente** e digita as duas
+teclas — uma regex procurando `useState` não veria o defeito, porque o defeito é
+de comportamento.
+
+**2. A tela não distinguia "ninguém escalado" de "a consulta falhou".** O único
+tratamento era `?? []`. Uma falha produzia a grade completa, com todos os nomes,
+dizendo "total do mês 0 h / dias descobertos 31" — e o botão de PDF, **sem
+guarda**, exportava isso em A4 paisagem com a faixa dourada. O PDF circula por
+e-mail e **sobrevive à tela**. Agora há estado de erro e de carregamento antes de
+qualquer projeção, o `PGRST205` é traduzido em "a migration U86 não foi rodada",
+e o botão de PDF **não existe** nesses dois estados — não é `disabled`, é
+ausência. **É a regra 5 deixando de ser propriedade do comentário da migration e
+passando a ser propriedade do código.**
+
+**3. A escala era legível por qualquer um que conseguisse logar.** A policy de
+leitura nasceu `USING (true)`, copiando `duplas_escala`. O argumento a favor da
+leitura ampla continua de pé — se o técnico não vê as horas dos colegas a faixa
+de cobertura mente para ele —, mas `true` não é "todo mundo que trabalha aqui": é
+todo mundo que consegue logar, o que inclui o **convite pendente** e o
+**ex-funcionário**, os dois grupos que a *tela* já excluía e a *fronteira* não.
+A folha de plantão diz quem estava trabalhando às duas da manhã, todo dia — é
+informação de pessoal. A policy passou a exigir linha **ativa e aprovada** em
+`profiles`, e o mesmo teste entrou nos gates das duas RPCs, que são
+`SECURITY DEFINER` e não passam pela RLS. Não é um quarto predicado: é o teste de
+dois eixos que `pessoasDaGrade()` já fazia, movido para onde ele vale.
+
+**E a metade que NÃO é desta entrega, com o alcance medido:** `is_gestor()` não
+olha `ativo`. Um ex-funcionário com login vivo é gestor para o sistema **inteiro**
+— 27 arquivos de migration, 110 ocorrências vivas, 40 `CREATE POLICY`. Mudar a
+função de passagem seria trocar dezenas de policies de uma vez, em telas que
+ninguém exercitou nesta rodada. Está em **P51**, com as duas saídas e o número na
+frente, para o Davi decidir.
+
+**4. O piso de `conferido()` desceu de 2007 para 2025.** `conferido()` afirma um
+**ato humano** — alguém abriu o decreto —, não a existência de uma norma. Ancorado
+no ano da Lei 14.485, ele avalizava vinte anos dos quais treze ninguém olhou,
+**2021 inclusive**, e 2021 teve antecipação municipal de feriados em São Paulo que
+não está em `EXCECOES`. A asserção do verificador copiava a constante do módulo
+(regra 9 no formato clássico); agora ela deriva de uma lista escrita à mão dos
+anos presos contra decreto, e **recusa** um piso que avalize ano sem asserção.
+
+**5. O campo `ate` do calendário saiu inteiro.** Ele carregava um número sem
+carregar a **direção**, e os dois casos vivos têm direções opostas: 24/12 e 31/12
+têm expediente **até** as 14h; a Quarta-feira de Cinzas tem expediente **a partir**
+das 14h. Com um campo só, um dos dois sai invertido — e saía. Nenhum consumidor
+calculava com ele e a hora já vive em `norma`, com a direção escrita. Regra 8: o
+campo saiu, e a contradição ficou irrepresentável. Se a Fase 4 precisar da hora
+como dado, o campo tem de nascer com a direção, e só depois de existir o
+consumidor.
+
+**6. Os menores que também eram reais.** `?mes=2026-13` derrubava a tela inteira
+(regex apertado para `01..12`); a borracha apagava o **mês** enquanto a varinha
+ao lado gravava a **semana**, e em novembro/2026 seis dos oito dias ficavam fora
+do alcance do desfazer; o PDF perdia a **meia-risca** (jsPDF descarta calado tudo
+acima de U+00FF — **P52**, e o defeito está vivo hoje nos outros três PDFs);
+`diasEspeciais()` devolvia o array **do cache** por referência; o ramo
+`soPadrao = false` era código morto documentando um botão inexistente e foi
+apagado; e a confirmação do gesto em massa agora **diz** quando a escala mudou
+entre a prévia e a gravação — post-hoc e declarado como tal, porque a trava
+otimista é mecanismo novo e a regra 8 manda o contrário enquanto o segundo gestor
+não apareceu.

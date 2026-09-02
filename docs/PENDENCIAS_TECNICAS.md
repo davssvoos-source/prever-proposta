@@ -1631,3 +1631,197 @@ ficaram de fora da migration S1 por decisão, não por esquecimento:
   mapa, feito na S1 e que continua valendo.
 
   bloqueio, olhando o que ela quebraria. Eu inverti a ordem e o app caiu.
+
+
+## P47 — MÉDIO · O calendário está conferido só de 2025 a 2026, e ele NÃO avisa quando a lei muda (2026-09-08, U85)
+
+`src/lib/feriados.ts` responde para qualquer ano entre 1583 e 2400, mas a faixa
+**conferida** é `ANO_CONFERIDO_DESDE = 2025` a `ANO_CONFERIDO_ATE = 2026`. Fora
+dela as datas são **derivadas** (o computus mais as leis já conhecidas), não
+conferidas contra o decreto.
+
+**O piso desceu de 2007 para 2025, e isso é conserto e não regressão.** O 2007
+era o ano da **Lei municipal 14.485**, e `conferido()` não pergunta "a norma
+existe?": pergunta "**alguém olhou?**". Com o piso na lei, a faixa avalizava
+vinte anos dos quais treze ninguém conferiu — **2021 entre eles**, e 2021 teve
+antecipação municipal de feriados em São Paulo (a mesma classe de ato da Lei
+17.341/2020) que **não está** na tabela `EXCECOES`. Abrir março de 2021 na grade
+dava a barra de aviso escondida, o PDF dizendo "conferido", e quatro dias
+pedindo 14h onde a cidade pediu 24. O piso agora é o primeiro ano cujas datas
+estão presas, ano a ano, contra o decreto publicado, em asserção nomeada do
+verificador — e o verificador **recusa** um piso que avalize ano sem asserção.
+
+**Para subir o piso (ou baixá-lo):** abra o decreto do ano, acrescente a
+asserção com as datas dele em `scripts/verificar-logica.cjs`, ponha o ano em
+`ANOS_PRESOS_CONTRA_DECRETO` e só então mexa na constante. Na ordem inversa, o
+verificador acende.
+
+**O que é impossível:** avisar. Uma lei nova não emite sinal para dentro de um
+arquivo `.ts`. Se a Prefeitura criar, mover ou extinguir um feriado, o módulo
+continua respondendo com convicção a resposta antiga.
+
+**O que existe no lugar:** a divergência é **barata** de consertar (abrir o
+decreto anual, colar as datas na tabela `EXCECOES` e subir a constante) e
+**visível** de fora — `conferido(ano)` devolve falso, a barra do mês do
+sobreaviso escreve o aviso, e o **PDF imprime o aviso no cabeçalho**, porque a
+folha circula por e-mail e sobrevive à tela.
+
+**Consequência se ninguém fizer:** um feriado novo não conhecido faz o
+sobreaviso pedir **14h** onde deveria pedir **24h**, e fará o cronograma de dia
+útil da Fase 4 contar um dia a mais. Nenhum dos dois erra alto o bastante para
+alguém notar por acaso.
+
+**As pontes NÃO estão na tabela**, e é decisão: ponte é ponto facultativo,
+facultativo conta como dia útil para empresa privada, então incluí-las não
+mudaria **nenhuma** resposta do módulo — só acrescentaria um nome no tooltip, ao
+preço de citar um decreto que ninguém tinha na mão.
+
+## P48 — BAIXO · O escalar do sobreaviso não sabe a HORA do handover (2026-09-08, U86)
+
+`public.sobreaviso.horas` é um `smallint` por (dia, pessoa). Ele responde
+"quantas horas" e não "de que hora a que hora". É o preço assumido de recusar o
+intervalo `(dia, inicio_min, fim_min)`, que a U78 já havia recusado por ser
+fatal para plantão que atravessa a meia-noite
+(`docs/PLANO_UNIFICACAO.md:5033`).
+
+Na prática o horário é convenção — o handover é sempre às 08:00 de segunda, e o
+expediente vai das 08:00 às 18:00 —, e é dela que sai a cobertura 14/24. Se um
+dia a operação passar a ter troca em horário variável, **o conserto é pequeno e
+preserva o histórico**: `ALTER TABLE ... RENAME horas TO minutos`, um
+`UPDATE ... SET minutos = minutos * 60`, e trocar o CHECK por
+`> 0 AND <= 1440`. Três linhas, uma vez.
+
+## P49 — MÉDIO · Editar o sobreaviso de um mês já fechado NÃO avisa o fechamento (2026-09-08, U86)
+
+O sobreaviso é **plano que vira registro por decurso**, e editar o mês passado é
+**correção**, não falsificação — proibir empurraria a correção para uma planilha
+fora do sistema, onde a folha e a tela discordam e ninguém sabe qual está certa.
+
+**O custo:** um mês que o financeiro já fechou pode ser reaberto e alterado sem
+que o fechamento saiba. Não existe coluna `travado`, de propósito: um booleano
+que qualquer escritor liga devolve a regra ao estado de promessa, que é o que a
+U78 recusou no `sobreposicao_ok`
+(`20260901090000_u78...sql:641`).
+
+**O que existe:** `alterada_em` e `alterada_por` em cada célula, o que torna
+a alteração pós-fechamento **encontrável**. Se um dia a trava dura for
+necessária, o lugar dela é o **fechamento**, que já existe e já sabe travar.
+
+## P50 — ALTO · `montar_fechamento` usa `fechamento_id` NU e levanta 42702 (2026-09-08, achado pela U86)
+
+**Achado pelo detector de classe que nasceu na U86**, não por relato de uso.
+
+`public.montar_fechamento(text, date)` (migration U5,
+`20260818220000_u5_fechamentos.sql:89`) declara `fechamento_id` como coluna
+do `RETURNS TABLE`. No corpo, ela usa esse nome **NU duas vezes** contra
+`public.cobrancas`, que tem uma coluna com exatamente esse nome:
+
+- `u5:134` — `AND fechamento_id IS NULL`
+- `u5:139` — `WHERE fechamento_id = v_id AND status <> 'cancelada'`
+
+Em PL/pgSQL, com o `plpgsql.variable_conflict = error` padrão, um nome que é ao
+mesmo tempo parâmetro OUT e coluna de tabela em escopo levanta
+**42702 — `column reference "fechamento_id" is ambiguous`**, e isso acontece
+**em execução**, não na leitura. Quem chama é
+`src/features/financeiro/fechamentos.ts:88`, ou seja, o botão de **montar
+fechamento**.
+
+**Por que NÃO foi consertado na U86.** Três razões, nesta ordem: a U5 **já
+rodou** e o repositório nunca edita migration aplicada; o conserto é uma
+migration nova sobre a função mais cara do financeiro; e ela **não podia ser
+exercitada** na rodada do sobreaviso — escrever DDL não testada sobre o
+fechamento como prato de acompanhamento de outra entrega é exatamente o
+mecanismo que já foi fatal duas vezes aqui.
+
+**O remédio, quando for a hora:** `CREATE OR REPLACE FUNCTION
+public.montar_fechamento` com a tabela aliasada nos dois pontos —
+`UPDATE public.cobrancas c SET fechamento_id = v_id WHERE c.status = 'aberta'
+AND c.fechamento_id IS NULL AND c.data_referencia BETWEEN ...` e
+`... FROM public.cobrancas c WHERE c.fechamento_id = v_id AND c.status <>
+'cancelada'`. O alvo de `SET` **não** precisa (nem pode) ser qualificado.
+Antes de subir, **exercite o botão** de montar fechamento num período de teste:
+se hoje ele já devolve 42702, o conserto é visível na primeira tentativa.
+
+**A guarda permanente:** o censo em `scripts/verificar-logica.cjs` declara esta
+ocorrência (`fechamento_id x2`) e **conta** as ocorrências, não a primeira —
+uma nova acende, e consertar só metade das duas também acende.
+
+---
+
+## P51 — ALTO · `is_gestor()` não olha `ativo`: um ex-funcionário com login vivo é gestor do sistema INTEIRO (2026-09-08, achado pela U86)
+
+`public.is_gestor(uuid)` (`supabase/migrations/20260818230000_u6a_papel_sac.sql:51-66`)
+decide por **papel** (`user_roles.role IN ('admin','comercial','sac')`) e por
+**cargo** (`profiles.cargo IN ('admin','comercial','sac')`). Ela **não consulta
+`profiles.ativo`** — conferido, zero ocorrências no corpo. Quem sai da empresa e
+mantém o login continua sendo gestor para tudo o que essa função guarda.
+
+**O ALCANCE, MEDIDO** (recorte declarado: ocorrências fora de linha de
+comentário, em `supabase/migrations/*.sql`):
+
+| medida | valor |
+|---|---|
+| arquivos de migration que a mencionam | **27** |
+| ocorrências vivas | **110** |
+| *statements* `CREATE POLICY` que a usam (replays de DROP/CREATE incluídos) | **40** |
+
+Trocar a função é trocar o comportamento de **dezenas de policies de uma vez**,
+em telas que ninguém exercitou nesta rodada. Por isso **não foi consertada de
+passagem** — é decisão do Davi, e ela precisa do número na frente.
+
+**O que a U86 fez em vez disso:** pôs o teste de vínculo *ao lado* de
+`is_gestor()` na própria fronteira do sobreaviso — na policy de escrita e nos
+gates das duas RPCs (`AND EXISTS (… p.ativo AND p.status <> 'pendente_aprovacao')`).
+O ex-funcionário fica de fora **aqui**, e só aqui.
+
+**As duas saídas, quando for a hora.** (a) Acrescentar `AND EXISTS (… p.ativo)`
+dentro de `is_gestor()`, o que conserta as 40 policies de uma vez e é a mudança
+mais arriscada do repositório até hoje — exige rodar o sistema inteiro depois.
+(b) Revogar o login de quem sai (o que hoje **nada** faz), tratando `ativo =
+false` como o gesto de desligamento de verdade. A (b) é mais barata e é a que
+resolve o problema que o `ativo` já promete resolver.
+
+**A guarda permanente:** o verificador mede o corpo de `is_gestor` (que ele
+decide por cargo e **não** por `ativo`) e o censo das três medidas acima. Se
+alguém consertar a função, a asserção acende — e o que ela pede é que o número
+seja atualizado junto com a decisão.
+
+---
+
+## P52 — MÉDIO · Os PDFs perdem em silêncio todo caractere acima de U+00FF (2026-09-08, achado pela U86)
+
+`jsPDF` com a fonte padrão (helvetica) codifica em **WinAnsi**, um byte por
+caractere, e **descarta calado** tudo o que não couber. Medido nos bytes de um
+PDF gerado com o mesmo par de bibliotecas que o app importa:
+
+```
+"-" U+002D  -> "([-]) Tj"   OK        "–" U+2013 -> "([]) Tj"   SUMIU
+"·" U+00B7  -> "([·]) Tj"   OK        "—" U+2014 -> "([]) Tj"   SUMIU
+"ç ã ê á"                   OK        "•" U+2022 -> "([]) Tj"   SUMIU
+                                      "…" U+2026 -> "([]) Tj"   SUMIU
+```
+
+Os acentos passam. A **meia-risca, o bullet e as reticências, não** — e nenhum
+dos quatro PDFs do sistema embute fonte (`grep addFont/addFileToVFS` = 0 no
+repositório inteiro).
+
+**Consertado na U86:** `src/features/sobreaviso/pdf.ts`. O `—` era o marcador do
+**pior caso** ("sem ninguém"): a legenda do rodapé explicava um símbolo que a
+página nunca imprimia, e a célula do dia descoberto saía em branco. Trocado por
+`-` e `·`, que são WinAnsi. Há asserção varrendo o arquivo por qualquer ponto de
+código acima de `0xFF` fora de comentário.
+
+**VIVO HOJE, e não foi consertado** (é outro PDF, que já circula por e-mail, e
+mexer nele de passagem é a classe de risco que esta casa já pagou duas vezes):
+
+- `src/features/chamados/relatorio.ts` — `doc.text(os.numero ?? "—", …)`: OS sem
+  número imprime **em branco**; todos os placeholders `—`; `• ${…}` na lista de
+  peças, que perde **todas** as marcas; "Registro fotográfico — antes/depois",
+  que sai "Registro fotográfico  antes".
+- `src/features/projeto/ExportarTab.tsx` — mesmos placeholders.
+
+**O remédio, quando for a hora:** trocar os caracteres (é o conserto barato) ou
+embutir uma fonte UTF-8 via `addFileToVFS` + `addFont` — o que muda o tamanho de
+todos os PDFs e é decisão, não reflexo. A asserção da U86 já mede que o defeito
+**existe** em `relatorio.ts`, para o dia em que alguém o consertar não ficar sem
+saber que ele existia.

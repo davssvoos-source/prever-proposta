@@ -13,6 +13,7 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSobreavisoRouteImport } from './routes/_authenticated/sobreaviso'
 import { Route as AuthenticatedProspeccaoRouteImport } from './routes/_authenticated/prospeccao'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedNovoRouteImport } from './routes/_authenticated/novo'
@@ -76,6 +77,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSobreavisoRoute = AuthenticatedSobreavisoRouteImport.update({
+  id: '/sobreaviso',
+  path: '/sobreaviso',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProspeccaoRoute = AuthenticatedProspeccaoRouteImport.update({
   id: '/prospeccao',
@@ -343,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/prospeccao': typeof AuthenticatedProspeccaoRoute
+  '/sobreaviso': typeof AuthenticatedSobreavisoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/novo': typeof AuthenticatedNovoRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/prospeccao': typeof AuthenticatedProspeccaoRoute
+  '/sobreaviso': typeof AuthenticatedSobreavisoRoute
   '/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/chamados/novo': typeof AuthenticatedChamadosNovoRoute
@@ -442,6 +450,7 @@ export interface FileRoutesById {
   '/_authenticated/novo': typeof AuthenticatedNovoRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/prospeccao': typeof AuthenticatedProspeccaoRoute
+  '/_authenticated/sobreaviso': typeof AuthenticatedSobreavisoRoute
   '/_authenticated/chamados/$id': typeof AuthenticatedChamadosIdRoute
   '/_authenticated/chamados/importar': typeof AuthenticatedChamadosImportarRoute
   '/_authenticated/chamados/novo': typeof AuthenticatedChamadosNovoRoute
@@ -493,6 +502,7 @@ export interface FileRouteTypes {
     | '/novo'
     | '/perfil'
     | '/prospeccao'
+    | '/sobreaviso'
     | '/chamados/$id'
     | '/chamados/importar'
     | '/chamados/novo'
@@ -542,6 +552,7 @@ export interface FileRouteTypes {
     | '/novo'
     | '/perfil'
     | '/prospeccao'
+    | '/sobreaviso'
     | '/chamados/$id'
     | '/chamados/importar'
     | '/chamados/novo'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/_authenticated/novo'
     | '/_authenticated/perfil'
     | '/_authenticated/prospeccao'
+    | '/_authenticated/sobreaviso'
     | '/_authenticated/chamados/$id'
     | '/_authenticated/chamados/importar'
     | '/_authenticated/chamados/novo'
@@ -660,6 +672,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/sobreaviso': {
+      id: '/_authenticated/sobreaviso'
+      path: '/sobreaviso'
+      fullPath: '/sobreaviso'
+      preLoaderRoute: typeof AuthenticatedSobreavisoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/prospeccao': {
       id: '/_authenticated/prospeccao'
@@ -1127,6 +1146,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedNovoRoute: typeof AuthenticatedNovoRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProspeccaoRoute: typeof AuthenticatedProspeccaoRoute
+  AuthenticatedSobreavisoRoute: typeof AuthenticatedSobreavisoRoute
   AuthenticatedPainelAdministrativoRoute: typeof AuthenticatedPainelAdministrativoRoute
   AuthenticatedPainelComercialRoute: typeof AuthenticatedPainelComercialRoute
   AuthenticatedPainelOperacionalRoute: typeof AuthenticatedPainelOperacionalRoute
@@ -1148,6 +1168,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedNovoRoute: AuthenticatedNovoRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProspeccaoRoute: AuthenticatedProspeccaoRoute,
+  AuthenticatedSobreavisoRoute: AuthenticatedSobreavisoRoute,
   AuthenticatedPainelAdministrativoRoute:
     AuthenticatedPainelAdministrativoRoute,
   AuthenticatedPainelComercialRoute: AuthenticatedPainelComercialRoute,

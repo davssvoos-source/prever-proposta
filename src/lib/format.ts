@@ -7,6 +7,28 @@ export function brl(n: number | null | undefined): string {
   return BRL.format(Number(n ?? 0));
 }
 
+/**
+ * Nome de arquivo seguro a partir de texto livre — a peça que estava
+ * TRIPLICADA (`features/chamados/relatorio.ts`, `features/projeto/ExportarTab.tsx`
+ * e, agora, `features/sobreaviso/pdf.ts`).
+ *
+ * Só a versão do relatório de OS tratava ACENTO (NFD + strip dos diacríticos);
+ * a do projeto não, e "Condomínio Jardim" virava `Condom-nio-Jardim` no nome do
+ * arquivo que o cliente recebe. Extrair era regra 8 (prefira apagar a
+ * acrescentar): este é o quarto PDF do sistema e já havia três esquemas de nome.
+ *
+ * O SEPARADOR É PARÂMETRO porque os dois esquemas vivos discordam — o relatório
+ * usa `_`, o projeto usa `-` — e trocar o nome de um arquivo que já circula por
+ * e-mail não é conserto, é ruído. `-` é o padrão para quem nasce agora.
+ */
+export function slug(s: string, separador: "-" | "_" = "-"): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, separador)
+    .replace(new RegExp(`^${separador}+|${separador}+$`, "g"), "");
+}
+
 export function formatDate(d: string | null | undefined): string {
   if (!d) return "—";
   try {

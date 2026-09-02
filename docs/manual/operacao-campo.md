@@ -790,3 +790,97 @@ entrega futura; nada nesta rodada muda o campo **Deslocamento (min)**.
 - `docs/SISTEMA_OS.md` (o plano original do sistema de OS)
 - `src/features/duplas/modelo.ts` — a escala semanal e a herança (R96/U76)
 - `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R112
+
+
+## Sobreaviso — a escala do plantão (R116, U86)
+
+**Onde fica:** menu → **Sobreaviso** (só no desktop; no celular chega-se pelo
+link). A tela é uma **grade: uma linha por pessoa, uma coluna por dia do mês**.
+Digite as horas direto na célula — **salva sozinho, sem botão**, quando você sai
+do campo (com **Tab**, com o mouse, ou apertando **Enter**). **Esc** desfaz o que
+você digitou e devolve o número que estava lá. Apagar o conteúdo da célula apaga
+o plantão daquele dia.
+
+> **Salva quando você termina, e não a cada tecla.** É o que faz "24" ser vinte e
+> quatro: uma gravação por tecla registraria o **2** e depois o **4**, e a folha
+> ficaria com 4. Se você digitar um número maior que 24, a caixa mostra **24** na
+> hora — o limite aparece na tela, ele não corrige escondido.
+
+> **Se a tela disser que a escala não pôde ser lida, não é um mês vazio.** Nesse
+> caso não há grade nem botão de PDF, de propósito: uma folha exportada de uma
+> leitura que falhou diria "mês inteiro descoberto" e circularia por e-mail.
+
+### O que a grade está dizendo
+
+- **Coluna com fundo cinza** = não é dia útil. **Sábado, domingo e feriado
+  recebem a mesma cor**, porque valem a mesma coisa: 24 horas de plantão. O que
+  os distingue é o **nome**, que aparece ao passar o mouse sobre o número do dia
+  (por exemplo *"Corpus Christi (feriado municipal)"*). Um pontinho abaixo do
+  número indica que aquele dia tem nome.
+- **Ponto facultativo NÃO é feriado.** Carnaval, Cinzas e o Dia do Servidor
+  Público **contam como dia útil** aqui, porque a Prever é empresa privada.
+- **A última linha, "Cobertura"**, é a que vale conferir. Ela mostra
+  *somado/esperado*: **14 horas em dia útil** (o expediente das 8h às 18h é da
+  equipe, não do plantonista) e **24 horas** em fim de semana e feriado.
+  Vermelho = falta gente; laranja = há mais de um plantonista no dia (o que é
+  legítimo, não é erro); cinza = ninguém.
+- **Quem saiu da empresa aparece esmaecido** se tiver horas naquele mês. Ele não
+  some do histórico — só não recebe célula nova.
+
+### O botão "Semana padrão"
+
+A semana padrão vai de **segunda 18:00 à segunda 08:00**: 6h na segunda de
+entrada, 14h de terça a sexta, 24h no sábado e no domingo, 8h na segunda
+seguinte. **118 horas** na semana. Com feriado no meio o total sobe, porque o
+feriado troca 14 por 24.
+
+**Ela tem OITO dias e ATRAVESSA o mês.** Em 12 das 52 semanas do ano o oitavo
+dia cai no mês seguinte — a tela grava lá também, mesmo que você não veja aquela
+coluna.
+
+**O que ele faz com o que já está preenchido.** Ele não sobrescreve calado. Se
+houver qualquer célula em conflito, **nada é gravado** e abre uma tabela com os
+oito dias mostrando *o que está lá hoje*, *o que ficaria* e *o que vai acontecer
+com cada um*:
+
+- **preenche** — a célula estava vazia;
+- **já está assim** — nada muda;
+- **soma ao plantão que já estava** — é o caso da **segunda de virada**, quando
+  a mesma pessoa emenda duas semanas: as 8h da madrugada mais as 6h da noite
+  dão as 14h do dia. O sistema soma em vez de escolher uma das duas;
+- **SUBSTITUI o que está lá** — em vermelho. Esta é a única que exige o seu
+  "Gravar assim".
+
+Aplicar duas vezes a mesma semana não muda nada e não pergunta nada.
+
+### O botão da borracha
+
+Apaga o que a **semana padrão** lançou para aquela pessoa **nos mesmos oito dias
+que o botão ao lado grava** — a semana, e não o mês —, poupando o que foi
+digitado à mão. Ele **nunca apaga na primeira vez**: mostra a lista de dias e
+horas que morreriam, com as datas da faixa, e só apaga depois de você confirmar.
+
+> A borracha é o **inverso exato** da varinha de propósito. Quando a semana
+> atravessa o mês (12 vezes por ano), a varinha grava dos dois lados da
+> fronteira — e uma borracha que só alcançasse o mês aberto deixaria a maior
+> parte do gesto de pé, em outro mês, sem você ver.
+
+### O PDF
+
+Sai em **A4 paisagem** com o mês inteiro, o total por pessoa e a faixa de
+cobertura na última linha. Se o calendário de feriados **não** tiver sido
+conferido para aquele ano, o aviso vem impresso no cabeçalho — a folha circula
+por e-mail e sobrevive à tela.
+
+### No celular
+
+O celular mostra **quem está de sobreaviso no dia**, com as setas para andar
+dia a dia. É a mesma conta da grade, projetada num dia — o total do mês não vira
+o total do dia. A grade completa e a edição são do desktop.
+
+### O que esta tela AINDA NÃO faz
+
+Ela registra **quem está de plantão**, não **o que aconteceu no plantão**. O
+registro do atendimento (hora, cliente, plantonista, remoto ou presencial,
+vínculo com o chamado, cobrança) é entrega própria e ainda não existe — não
+procure o botão.
