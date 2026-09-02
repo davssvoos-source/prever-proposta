@@ -6378,6 +6378,31 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /CONSTRAINT agenda_campo_tempo[\s\S]{0,400}(480|540)/.test(u78),
       /IF NOT v_urgente THEN/.test(marcar78)],
      [true, false, true]);
+  // ── O BLOCO ISENTO NÃO TEM TETO (Davi, 02/09: "não põe teto, confio na
+  //    operação") — e a asserção mede COMPORTAMENTO, não ausência de código.
+  // A U78 deixou isto em aberto porque um isento das 00:00 às 24:00 é aceito e
+  // trava a agenda daquela equipe no dia. A decisão se sustenta pelo MODO DE
+  // FALHA: quem marcar assim descobre no gesto seguinte, porque nada mais entra
+  // e o erro diz com o quê está batendo — estrago visível e reversível, não
+  // número errado que ninguém vê. Um teto recusaria o atendimento longo
+  // legítimo, que é justamente o caso para o qual a isenção existe.
+  // Provar a AUSÊNCIA de um teto por regex seria frágil (qualquer número novo
+  // teria de ser adivinhado); provar que o bloco EXTREMO passa é exato.
+  eq('CRÍTICO: o bloco ISENTO não tem teto de duração — um corretiva+urgente do minuto 0 às 24h é aceito, e um bloco sem chamado também. Teto foi RECUSADO por decisão do Davi (02/09), e um número aqui seria inventado',
+     [M78.erroDoAgendamento(cand({ chamado_id: 'c8', dupla_id: 'e4', dia: D4,
+                                   inicio_min: 0, servico_min: 1440, deslocamento_min: 0 }),
+                            ctx({ chamado: porId78.get('c8') })),
+      M78.erroDoAgendamento(cand({ chamado_id: null, titulo_externo: 'OS de fora', dupla_id: 'e4',
+                                   dia: D4, inicio_min: 0, servico_min: 1440, deslocamento_min: 0 }),
+                            ctx({ chamado: null }))],
+     [null, null]);
+  // …e o mesmo bloco extremo NÃO isento continua recusado — o teto que não
+  // existe é o do isento, e a jornada continua valendo para todo o resto.
+  eq('…e o bloco NÃO isento do mesmo tamanho continua recusado: a ausência de teto é da ISENÇÃO, não da jornada',
+     M78.erroDoAgendamento(cand({ chamado_id: 'c1', dupla_id: 'e4', dia: D4,
+                                  inicio_min: 0, servico_min: 1440, deslocamento_min: 0 }),
+                           ctx()) !== null,
+     true);
 
   // ── as 17h NÃO são regra, e a constante é o eixo do desenho ─────────────
   eq('CRÍTICO: nada recusa um bloco que termina depois das 17:00 — "a jornada acaba às 17h" é HÁBITO e teto de 8h, e o §2.1 da U78 diz isso com todas as letras',

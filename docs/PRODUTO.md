@@ -1730,7 +1730,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   lados do código fazem hoje (§6.1 da U78, `isentoDaJornada` no modelo puro);
   se o Davi decidir que serviço de fora também obedece às 8 horas, **muda nos
   três lugares de uma vez**.
-  *(U78.)*
+
+  **O bloco isento NÃO tem teto de duração.** Davi, 02/09: *"Não põe teto,
+  confio na operação."* A U78 tinha deixado a pergunta em aberto porque um
+  atendimento isento marcado das 00:00 às 24:00 é aceito, e a partir dele a
+  agenda daquela equipe naquele dia recusa tudo — inclusive para a gestão.
+
+  A decisão se sustenta, e a razão é o **modo de falha**: quem marcar um bloco
+  assim descobre no gesto seguinte, porque nada mais entra naquele dia e o erro
+  diz com o quê está batendo. É um estrago **visível e reversível** (basta
+  corrigir a duração do bloco), não um número errado que ninguém vê. Teto seria
+  proteger contra um erro que se anuncia sozinho, ao preço de recusar o
+  atendimento longo legítimo — e a isenção existe justamente para o caso que
+  não cabe no plano. Qualquer minuto escolhido aqui seria inventado.
+  *(U78 declarou; Davi decidiu em 02/09.)*
 
 - **R101** — **`chamados.data_hora_agendada` deixou de ser digitada e virou
   ESPELHO do bloco.** Ela é o início do **bloco pendente mais antigo** do
