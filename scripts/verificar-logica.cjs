@@ -6636,11 +6636,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // contra os GRANT do arquivo SQL (ver "A PORTA SEM CONSUMIDOR", mais abaixo):
   // "qual RPC?" não pode ter duas respostas, e a asserção do GRANT cobrindo uma
   // lista diferente da que a camada de dados vai chamar não cobre nada.
-  eq('CRÍTICO: o modelo puro nomeia as QUATRO portas de escrita, e é essa lista que a asserção do GRANT usa — hoje elas são concedidas só a service_role, e por isso a camada de dados não pode subir antes da migration da tela',
+  // A LISTA À MÃO É DAS PORTAS DESTE ARQUIVO, e ela fica PINADA à do modelo puro
+  // na asserção logo abaixo: `PORTAS_DA_U78` ∪ {a quinta, da U82} tem de ser
+  // exatamente `PORTAS_DA_AGENDA`. Sem esse par, cobrar de um arquivo de 2026-09-01
+  // um GRANT que nasce em 2026-09-05 deixaria o bloco vermelho para sempre — e
+  // deixar a lista solta deixaria ela encolher sem ninguém ver.
+  const PORTAS_DA_U78 = ['agenda_campo_marcar', 'agenda_campo_cancelar',
+                         'agenda_campo_cumprir', 'desagendar_chamado'];
+  eq('CRÍTICO: o modelo puro nomeia as portas de escrita — as QUATRO da U78 mais a QUINTA da U82 (agenda_campo_afirmar) — e é essa lista que a asserção do GRANT usa; no arquivo da U78 as quatro são concedidas só a service_role, e por isso a camada de dados não pôde subir antes da migration da tela',
      [[...M78.PORTAS_DA_AGENDA],
       /PORTAS_DA_AGENDA/.test(codTs78),
       /supabase\.rpc/.test(codTs78)],
-     [['agenda_campo_marcar', 'agenda_campo_cancelar', 'agenda_campo_cumprir', 'desagendar_chamado'],
+     [[...PORTAS_DA_U78, 'agenda_campo_afirmar'],
       true, false]);
   // A FRASE ESPERADA É ESCRITA À MÃO, e isso é conserto de uma asserção que
   // PASSAVA COM A REGRA QUEBRADA: ela fazia `u78.includes(<o que a função
@@ -7129,9 +7136,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // Esta é a única asserção de autorização do bloco que NÃO é sobre texto dentro
   // de um corpo de função: ela é sobre a existência de uma linha de GRANT. Pôr o
   // GRANT de volta a torna vermelha, que é exatamente o que se quer dela.
-  // A lista vem do MODELO PURO (é a mesma que a camada de dados vai chamar), e
-  // não de uma cópia à mão que pode encolher sem ninguém ver.
-  const portas78 = [...M78.PORTAS_DA_AGENDA];
+  // A lista é a DESTE ARQUIVO (`PORTAS_DA_U78`), pinada à do modelo puro pela
+  // asserção lá em cima: a quinta porta (`agenda_campo_afirmar`) nasce na U82 e
+  // não pode ser cobrada de um arquivo que a antecede.
+  const portas78 = [...PORTAS_DA_U78];
   eq('CRÍTICO: NENHUMA das quatro portas de escrita é concedida a authenticated nesta migration — sem tela não há consumidor, e no instante do COMMIT desagendar_chamado seria um /rest/v1/rpc que apaga data_hora_agendada de qualquer chamado de campo com UMA requisição (a chave publishable está no .env versionado, e o md5 do §0 e o freio do §8 morrem no COMMIT, que é quando o risco começaria)',
      portas78.filter((n) => new RegExp(
        `GRANT\\s+EXECUTE ON FUNCTION public\\.${n}\\([^)]*\\)[^;]*authenticated`).test(cod78)),
@@ -7731,13 +7739,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const rpcsDaCamada79 = [...new Set(
     [...dados79.matchAll(/supabase\.rpc\(\s*"([a-z_0-9]+)" as any/g)].map((m) => m[1]),
   )].filter((n) => n !== 'is_gestor' && !RPCS_DO_CICLO_U80.includes(n)).sort();
-  const grantsDaU79 = [...u79.matchAll(/^GRANT EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^;]*\)\s+TO authenticated;$/gm)]
-    .map((m) => m[1]).sort();
-  eq('CRÍTICO: CENSO das três listas — as portas do modelo puro, as RPCs que a camada de dados chama e os GRANT da migration são a MESMA lista',
-     [[...M79.PORTAS_DA_AGENDA].sort(), rpcsDaCamada79, grantsDaU79],
-     [['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
-      ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
-      ['agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado']]);
+  // A U82 abriu a QUINTA porta (`agenda_campo_afirmar`) e a concedeu no PRÓPRIO
+  // arquivo dela — a U79 já rodou e não se edita. Então o lado "GRANT" deste
+  // censo lê os DOIS arquivos: uma porta nova que ninguém conceder continua
+  // caindo aqui, e uma concessão que ninguém consome também.
+  const u82porta = fs79.readFileSync('supabase/migrations/20260905090000_u82_a_segunda_mao_do_carimbo.sql', 'utf8');
+  const grantDeAuth = (txt) =>
+    [...txt.matchAll(/^GRANT\s+EXECUTE ON FUNCTION public\.([a-z_0-9]+)\([^;]*\)\s+TO authenticated;$/gm)]
+      .map((m) => m[1]).sort();
+  const grantsDaU79 = grantDeAuth(u79);
+  const grantsDasPortas = [...new Set([...grantsDaU79, ...grantDeAuth(u82porta)])].sort();
+  eq('CRÍTICO: CENSO das três listas — as portas do modelo puro, as RPCs que a camada de dados chama e os GRANT das migrations são a MESMA lista',
+     [[...M79.PORTAS_DA_AGENDA].sort(), rpcsDaCamada79, grantsDasPortas],
+     [['agenda_campo_afirmar', 'agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
+      ['agenda_campo_afirmar', 'agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado'],
+      ['agenda_campo_afirmar', 'agenda_campo_cancelar', 'agenda_campo_cumprir', 'agenda_campo_marcar', 'desagendar_chamado']]);
 
   eq('o pré-voo confere as ASSINATURAS EXATAS por to_regprocedure — GRANT numa assinatura errada falha com "function does not exist", e às 23h essa frase manda caçar a coisa errada',
      (u79.match(/to_regprocedure/g) || []).length >= 1
@@ -9333,10 +9349,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const escritores = [...vivasS4.entries()]
     .filter(([, c]) => insertsDeEvento(c).length > 0).map(([n]) => n).sort();
 
-  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas cinco (derivado do repo × lista à mão; um sexto escritor acusa sozinho)',
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas seis (derivado do repo × lista à mão; um sétimo escritor acusa sozinho)',
      escritores,
      ['aprovar_chamado_financeiro',    // S4 — 'Cobrança aprovada: N item(ns).'
       'chamado_registrar_evento',      // u7:353 — aberto / status / atribuído / sprint
+      // U82 — 'Encerramento: N atendimento(s) … foram desmarcados.' Um gatilho
+      // que resolve doze blocos em silêncio é a U78 de novo com outra roupa: o
+      // evento é o que faz o ato do soltador ser LEGÍVEL no app.
+      'chamado_solta_agenda',
       'concluir_chamado_com_cobranca', // u80:514 — 'cobrança lançada: N parcela(s).'
       'decidir_pedido_compra',         // u9:154 — situação do pedido + motivo digitado
       'marcar_chamado_faturado']);     // u7:758 — contagem de cobranças faturadas
@@ -10047,6 +10067,1005 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      selApoios81 !== null, true);
   eq('CRÍTICO: useChamadoApoios pede `*` e NÃO nomeia congelado_em — nomeá-la quebra toda tela de chamado entre o push e a rodada da migration, e de novo no DESFAZER',
      selApoios81 && selApoios81[1], '*');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// U82 — A SEGUNDA MÃO DO CARIMBO (R109/R110/R111)
+// ════════════════════════════════════════════════════════════════════════════
+// O defeito: a U78:1566-1568 prometeu que concluir um chamado marcaria os
+// blocos abertos dele. NUNCA foi construído — a U81 mediu isso e o P25 o
+// registrou. Enquanto isso, toda a proteção do registro de quem esteve no
+// prédio pendia de UM clique OPCIONAL, de UMA mão só.
+//
+// A correção é uma DIVISÃO, e a divisão é o desenho inteiro:
+//   · QUEM AFIRMA É GENTE, e afirma ANTES do status (agenda_campo_afirmar).
+//   · QUEM SOLTA É A MÁQUINA, e ela NÃO AFIRMA NADA (chamado_solta_agenda:
+//     desmarca o que ainda era PLANO FUTURO, e só).
+//
+// As asserções abaixo existem para que essa divisão não possa ser desfeita em
+// silêncio. A que mais importa é o CENSO das colunas que o soltador escreve:
+// `cumprido_em` e `dia` FORA é a costura inteira — no dia em que uma delas
+// entrar, o gatilho passa a afirmar sem evidência e a U81 vira decoração
+// dentro da própria correção.
+{
+  const fs82 = require('fs');
+  const u82file = 'supabase/migrations/20260905090000_u82_a_segunda_mao_do_carimbo.sql';
+  const u82 = fs82.readFileSync(u82file, 'utf8');
+  const M82 = carregar('src/features/programacao/modelo.ts');
+  // O TEXTO VIVO: sem as linhas de comentário. Obrigatório aqui porque o
+  // cabeçalho desta migration CITA quase tudo que as asserções procuram (e o
+  // rodapé DESFAZER é um bloco inteiro comentado). Grep acha comentário — já
+  // rendeu 5+ falsos positivos neste arquivo.
+  const vivo82 = u82.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+
+  /** O corpo de uma função DESTE arquivo, entre `AS $tag$` e `$tag$`. */
+  const corpoDeF82 = (src, nome) => {
+    const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
+    if (i < 0) return null;
+    const m = /AS (\$[A-Za-z_0-9]*\$)/.exec(src.slice(i, i + 1400));
+    if (!m) return null;
+    const ini = i + m.index + m[0].length;
+    const fim = src.indexOf(m[1], ini);
+    return fim < 0 ? null : src.slice(ini, fim);
+  };
+  const solta82 = corpoDeF82(u82, 'chamado_solta_agenda');
+  const afirmar82 = corpoDeF82(u82, 'agenda_campo_afirmar');
+  eq('os dois corpos da U82 foram recortados (se este falhar, tudo abaixo mente)',
+     [solta82 !== null, afirmar82 !== null], [true, true]);
+
+  // ── 1) A LÓGICA PURA, com FIXTURE CONSTANTE ESCRITA À MÃO ────────────────
+  // A regra 4 da casa: uma fixture que aponta para o arquivo vivo EVAPORA
+  // quando o defeito é corrigido. `HOJE82` é uma constante, e os três blocos
+  // também — passado, hoje e futuro, um de cada, escritos aqui.
+  const HOJE82 = '2026-09-05';
+  const bloco82 = (id, dia, inicio, extra) => ({
+    id, chamado_id: 'CH1', dupla_id: 'D1', dia, inicio_min: inicio,
+    servico_min: 120, deslocamento_min: 30,
+    cumprido_em: null, cancelado_em: null, os_externa: null, titulo_externo: null,
+    ...(extra || {}),
+  });
+  const blocos82 = [
+    bloco82('b1', '2026-09-01', 540),   // passado
+    bloco82('b2', '2026-09-05', 600),   // hoje
+    bloco82('b3', '2026-09-08', 540),   // futuro
+  ];
+  const visitas82 = M82.visitasAConfirmar('CH1', blocos82, HOJE82);
+
+  eq('CRÍTICO: visitasAConfirmar classifica passado / hoje / futuro pelo dia, em ordem total, e traz o ordinal (a "2ª ida" da R99)',
+     visitas82.map((v) => [v.id, v.tempo, v.ordinal]),
+     [['b1', 'passado', 1], ['b2', 'hoje', 2], ['b3', 'futuro', 3]]);
+  // A ASSIMETRIA É A REGRA, e ela não é arbitrária: SÓ o futuro é provadamente
+  // falso (o dia não chegou, ninguém esteve lá). O passado é PLAUSÍVEL, e a
+  // decisão do Davi (04/09) proíbe tratar data como critério de recusa.
+  eq('CRÍTICO: SÓ o bloco de dia FUTURO tem `diaFalso` — o passado é plausível e o plano é a melhor prova que existe',
+     visitas82.map((v) => v.diaFalso), [false, false, true]);
+  eq('CRÍTICO: o dia PADRÃO do carimbo — o futuro vem para HOJE (senão o registro grava um dia em que ninguém esteve, e a janela futura da equipe fica presa para sempre); o resto mantém o dia marcado',
+     visitas82.map(M82.diaPadraoDaAfirmacao), ['marcado', 'marcado', 'hoje']);
+  eq('NADA NASCE RESPONDIDO — o silêncio de quem clica não pode virar afirmação (recusa 5 do §5 da U81)',
+     M82.respostaInicial(), 'sem_resposta');
+  // `diaCurto` NÃO constrói `Date`, e é por isso que ele existe:
+  // `new Date('2026-09-05')` é meia-noite UTC e devolveria 04/09 no Brasil — o
+  // erro de um dia que só aparece na leitura, nunca na escrita.
+  eq('diaCurto recorta a string e não constrói Date — e o que não casa o formato volta INTEIRO, em vez de virar "NaN/NaN"',
+     [M82.diaCurto('2026-09-05'), M82.diaCurto('2026-01-31'), M82.diaCurto('sem data'), M82.diaCurto('')],
+     ['05/09', '31/01', 'sem data', '']);
+  eq('diaAfirmado é o gêmeo do COALESCE(f.dia, a.dia) da porta',
+     [M82.diaAfirmado(visitas82[2], 'hoje', HOJE82),
+      M82.diaAfirmado(visitas82[2], 'marcado', HOJE82)],
+     [HOJE82, '2026-09-08']);
+
+  // O RELÓGIO É O DE BRASÍLIA, NÃO O DO NAVEGADOR. 02:30 UTC de 06/09 são
+  // 23:30 de 05/09 em São Paulo: ler pelo fuso local do navegador moveria
+  // "hoje" um dia — e com ele a semana ISO do apoio (a armadilha da U76).
+  eq('CRÍTICO: diaDaOperacao responde no fuso da OPERAÇÃO — 02:30Z de 06/09 ainda é 05/09 em Brasília',
+     M82.diaDaOperacao(new Date('2026-09-06T02:30:00.000Z')), '2026-09-05');
+  eq('…e a virada acontece na hora certa: 03:30Z de 06/09 já é 06/09',
+     M82.diaDaOperacao(new Date('2026-09-06T03:30:00.000Z')), '2026-09-06');
+
+  // O PAYLOAD: quem não foi respondido NÃO ENTRA em lugar nenhum.
+  const pay82 = M82.payloadDaAfirmacao(
+    visitas82,
+    { b1: 'aconteceu', b3: 'aconteceu' },     // b2 fica sem resposta, de propósito
+    {},                                        // dias por omissão -> o padrão
+    HOJE82,
+  );
+  // A ORDEM É METADE DO MECANISMO, e a outra metade é a divisão do UPDATE em
+  // dois statements na porta (§2): sem ela, o bloco sai do conjunto pendente no
+  // mesmo instante em que muda de dia, e ordenar não adianta — o espelho salta
+  // igual. As duas coisas juntas é que fazem o espelho repousar em cada semana.
+  eq('CRÍTICO: payloadDaAfirmacao manda só o que foi RESPONDIDO, e o bloco futuro vai com o dia de HOJE — em ORDEM DE IDA (dia efetivo, hora, id), que junto com a divisão do UPDATE faz o espelho repousar em cada semana e as turmas de apoio serem gravadas',
+     pay82, { feitos: [{ id: 'b1', dia: '2026-09-01' }, { id: 'b3', dia: HOJE82 }],
+              desmarcados: [], movidos: 1 });
+  eq('CRÍTICO: sem resposta NÃO vira nada — nem afirmação, nem desmarcação. A máquina não decide por ninguém',
+     M82.payloadDaAfirmacao(visitas82, {}, {}, HOJE82),
+     { feitos: [], desmarcados: [], movidos: 0 });
+  eq('e "não vai acontecer" vira desmarcação, sem tocar em `feitos`',
+     M82.payloadDaAfirmacao(visitas82, { b3: 'nao_vai_acontecer' }, {}, HOJE82),
+     { feitos: [], desmarcados: ['b3'], movidos: 0 });
+  eq('CRÍTICO: escolher "aconteceu no dia marcado" num bloco futuro NÃO move nada — é a segunda saída da colisão de agenda, e ela tem de existir sem guarda de data nenhuma',
+     M82.payloadDaAfirmacao(visitas82, { b3: 'aconteceu' }, { b3: 'marcado' }, HOJE82),
+     { feitos: [{ id: 'b3', dia: '2026-09-08' }], desmarcados: [], movidos: 0 });
+  // A ordem é do DIA EFETIVO e não do marcado: quem traz o bloco de terça que
+  // vem para hoje está dizendo que ele aconteceu HOJE, e ele passa a vir DEPOIS
+  // do bloco de ontem que continua ontem.
+  eq('CRÍTICO: ordemDaAfirmacao ordena por dia EFETIVO, hora e id — o id no fim é o que a torna determinística quando dois blocos empatam no minuto',
+     M82.ordemDaAfirmacao([
+       { id: 'z', dia: '2026-09-05', inicioMin: 540 },
+       { id: 'a', dia: '2026-09-05', inicioMin: 540 },
+       { id: 'm', dia: '2026-09-01', inicioMin: 900 },
+       { id: 'n', dia: '2026-09-05', inicioMin: 480 },
+     ]).map((x) => x.id),
+     ['m', 'n', 'a', 'z']);
+
+  // O RÓTULO DO BOTÃO — o encerramento passou a ter efeito na agenda, e um
+  // botão que continua dizendo só "Concluir" esconde metade do gesto.
+  eq('o rótulo do encerramento muda a cada clique, e sem visita nenhuma ele é o de sempre',
+     [M82.rotuloDoEncerramento('Concluir', [], {}),
+      M82.rotuloDoEncerramento('Concluir', visitas82, {}),
+      M82.rotuloDoEncerramento('Concluir', visitas82, { b1: 'aconteceu' }),
+      M82.rotuloDoEncerramento('Concluir', visitas82, { b1: 'aconteceu', b3: 'nao_vai_acontecer' })],
+     ['Concluir', 'Concluir · 3 sem resposta', 'Concluir · 1 feito',
+      'Concluir · 1 feito, 1 desmarcado']);
+
+  // ── 2) O GÊMEO PURO DO `WHERE` DO SOLTADOR ───────────────────────────────
+  // O caso `hoje` é o que uma mutação derrubaria primeiro, e é o mais decidido
+  // de todos: bloco marcado para hoje às 16h num chamado concluído às 10h pode
+  // ter acontecido de manhã ou pode não ir acontecer. Nenhuma das duas leituras
+  // é derivável, e o único ato honesto da máquina é NÃO DECIDIR.
+  const dest82 = (b, st) => M82.destinoNoEncerramento(b, st, HOJE82);
+  eq('CRÍTICO: destinoNoEncerramento — concluído solta SÓ o dia que não chegou; passado e HOJE ficam INTOCADOS; cancelado solta tudo; e bloco já afirmado nunca é desmarcado por máquina nenhuma',
+     [dest82(blocos82[0], 'concluido'),
+      dest82(blocos82[1], 'concluido'),
+      dest82(blocos82[2], 'concluido'),
+      dest82(blocos82[0], 'cancelado'),
+      dest82(blocos82[1], 'cancelado'),
+      dest82(blocos82[2], 'cancelado'),
+      dest82({ ...blocos82[2], cumprido_em: '2026-09-05T12:00:00Z' }, 'concluido'),
+      dest82({ ...blocos82[2], cumprido_em: '2026-09-05T12:00:00Z' }, 'cancelado'),
+      dest82({ ...blocos82[2], cancelado_em: '2026-09-05T12:00:00Z' }, 'cancelado'),
+      dest82(blocos82[2], 'em_andamento'),
+      dest82(blocos82[2], 'aberto')],
+     ['intocado', 'intocado', 'solto',
+      'solto', 'solto', 'solto',
+      'intocado', 'intocado', 'intocado',
+      'intocado', 'intocado']);
+
+  // O FURO, EXPRIMÍVEL: é o gêmeo do lado ENCERRADO da conferência 130, e o que
+  // o chip da AgendaDoChamado desenha. Sem ele, os cinco caminhos que encerram
+  // sem perguntar (P34) ficariam invisíveis.
+  eq('CRÍTICO: visitasNaoAfirmadas só existe em chamado ENCERRADO — em chamado aberto um bloco pendente é a fila de trabalho, não um furo',
+     [M82.visitasNaoAfirmadas({ id: 'CH1', status: 'concluido', natureza: 'campo' }, blocos82).map((b) => b.id),
+      M82.visitasNaoAfirmadas({ id: 'CH1', status: 'cancelado', natureza: 'campo' }, blocos82).map((b) => b.id),
+      M82.visitasNaoAfirmadas({ id: 'CH1', status: 'em_andamento', natureza: 'campo' }, blocos82).map((b) => b.id),
+      M82.visitasNaoAfirmadas({ id: 'CH1', status: 'concluido', natureza: 'comercial' }, blocos82).map((b) => b.id),
+      M82.visitasNaoAfirmadas({ id: 'CH2', status: 'concluido', natureza: 'campo' }, blocos82).map((b) => b.id)],
+     [['b1', 'b2', 'b3'], ['b1', 'b2', 'b3'], [], [], []]);
+
+  // ── 3) A RECUSA ANTECIPADA, com FIXTURE DE PAR NEGATIVO À MÃO (regra 4) ──
+  const autz82 = (ehGestor, pode) => ({
+    usuarioId: 'U1', ehGestor, podeEditarChamado: () => pode,
+  });
+  const chamado82 = (status, natureza) => ({ id: 'CH1', natureza, status });
+  eq('CRÍTICO: erroDaAfirmacao antecipa o 42501 de agenda_campo_valida (u78:774-776) — mover o dia de um bloco num chamado JÁ ENCERRADO só a gestão pode. É o caminho do CHIP, e é a recusa que ninguém adivinha. A frase diz a PORTA DE SAÍDA, porque ela está desenhada dois botões acima: sem a meia-linha, quem responde "Aconteceu" num bloco futuro de chamado encerrado leva um muro sem porta',
+     [M82.erroDaAfirmacao(chamado82('concluido', 'campo'), 1, autz82(false, true)),
+      M82.erroDaAfirmacao(chamado82('concluido', 'campo'), 0, autz82(false, true)),
+      M82.erroDaAfirmacao(chamado82('concluido', 'campo'), 1, autz82(true, true)),
+      M82.erroDaAfirmacao(chamado82('em_andamento', 'campo'), 1, autz82(false, true)),
+      M82.erroDaAfirmacao(chamado82('cancelado', 'campo'), 2, autz82(false, true))],
+     [{ code: '42501', frase: 'Este chamado está concluido. Só a gestão remarca trabalho encerrado — ou escolha “Aconteceu no dia marcado”, que não move nada e passa.' },
+      null, null, null,
+      { code: '42501', frase: 'Este chamado está cancelado. Só a gestão remarca trabalho encerrado — ou escolha “Aconteceu no dia marcado”, que não move nada e passa.' }]);
+  eq('…e as duas outras recusas são as frases das RPCs, palavra por palavra (o vínculo primeiro, a natureza depois)',
+     [M82.erroDaAfirmacao(chamado82('aberto', 'campo'), 0, autz82(false, false)),
+      M82.erroDaAfirmacao(chamado82('aberto', 'comercial'), 0, autz82(true, true))],
+     [{ code: '42501', frase: 'Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.' },
+      { code: '55000', frase: 'A agenda de campo não manda em chamado comercial (este é "comercial") — quem desmarca a visita é a própria visita técnica.' }]);
+  // ── 3b) O SQLSTATE NÃO É ENFEITE: ELE ESCOLHE O ROSTO ────────────────────
+  // `classeDoErro` pinta "permissao" (escudo — o gesto não vai acontecer) para
+  // 42501 e "regra" (triângulo — dá para corrigir aqui) para 55000. Enquanto
+  // `erroDaAfirmacao` devolvia SÓ a frase, os três consumidores chutavam um
+  // código: `DetalheCampo` fazia `new Error(...)` (código null -> rosto
+  // "desconhecido") e `PainelDoCiclo`/`AgendaDoChamado` fixavam "42501" — de
+  // modo que a MESMA frase (a de natureza, que a porta levanta como 55000)
+  // ganhava DUAS caras conforme quem a dissesse. Isto aqui é o par negativo
+  // dessa divergência, e ele é constante escrita à mão (regra 4).
+  eq('CRÍTICO: cada recusa antecipada carrega o SQLSTATE que a PORTA usaria para ela — natureza é 55000 (regra, dá para corrigir) e vínculo é 42501 (permissão, o gesto não vai acontecer). É isso que faz o rosto do erro ser o MESMO venha ele da antecipação ou do Postgres',
+     [M82.classeDoErro(M82.erroDaAfirmacao(chamado82('aberto', 'comercial'), 0, autz82(true, true)).code),
+      M82.classeDoErro(M82.erroDaAfirmacao(chamado82('aberto', 'campo'), 0, autz82(false, false)).code),
+      M82.classeDoErro(M82.erroDaAfirmacao(chamado82('concluido', 'campo'), 1, autz82(false, true)).code),
+      M82.classeDoErro('23P01')],
+     ['regra', 'permissao', 'permissao', 'conflito']);
+  // As DUAS frases têm de existir LITERALMENTE no SQL: uma regra com duas
+  // redações é uma regra que o usuário aprende a não ler.
+  eq('CRÍTICO: as frases do modelo puro são as MESMAS do corpo vivo da porta',
+     [afirmar82.includes('Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.'),
+      afirmar82.includes('A agenda de campo não manda em chamado comercial'),
+      afirmar82.includes('Este atendimento já está marcado como feito — desmarcá-lo apagaria o registro de que ele aconteceu.')],
+     [true, true, true]);
+
+  // ── 4) O GATILHO: ancorado em `^`, com flag `m`, e CONTADO ───────────────
+  // A regra 1 da casa: a âncora tem de PROVAR que atingiu o alvo. `includes`
+  // acharia a citação do cabeçalho; sem `^…$` o `-- CREATE TRIGGER` do rodapé
+  // passaria por vivo.
+  const ddlDoGatilho82 = new RegExp(
+    '^CREATE TRIGGER trg_chamado_agenda_solta\\n'
+    + '  AFTER UPDATE OF status ON public\\.chamados\\n'
+    + '  FOR EACH ROW EXECUTE FUNCTION public\\.chamado_solta_agenda\\(\\);$', 'gm');
+  eq('CRÍTICO: o soltador é AFTER UPDATE OF status, de LINHA, e existe UMA vez — em BEFORE o espelho leria o status ANTIGO, passaria no gate de u78:895 e emitiria UPDATE public.chamados na PRÓPRIA linha em atualização (09000, e intermitente)',
+     (u82.match(ddlDoGatilho82) || []).length, 1);
+  eq('CRÍTICO: e ele NÃO tem braço de INSERT — bloco criado DEPOIS num chamado encerrado é ato de gestor (u78:774-776) que DIZ que há mais trabalho; soltá-lo sozinho seria desdizer quem acabou de marcar',
+     /AFTER INSERT[^;]*chamado_solta_agenda/.test(vivo82), false);
+
+  // ── 5) PRESENÇA NÃO VÊ GUARDA DESLIGADA (regra 2) ────────────────────────
+  // `IF false THEN` deixa o nome e a frase no lugar. Aqui as TRÊS saídas
+  // antecipadas do soltador são exigidas INTEIRAS, condição e tudo.
+  eq('CRÍTICO: as três guardas do soltador estão VIVAS e inteiras — natureza, valor terminal e TRANSIÇÃO. Sem a terceira, todo salvamento de um chamado já concluído desmarcaria blocos criados DEPOIS, sem ninguém ter dito nada',
+     [/IF NEW\.natureza IS DISTINCT FROM 'campo' THEN RETURN NULL; END IF;/.test(solta82),
+      /IF NEW\.status IS NULL OR NEW\.status NOT IN \('concluido','cancelado'\) THEN RETURN NULL; END IF;/.test(solta82),
+      /IF OLD\.status IS NOT DISTINCT FROM NEW\.status THEN RETURN NULL; END IF;/.test(solta82)],
+     [true, true, true]);
+
+  // ── 6) O CENSO QUE É A COSTURA INTEIRA ───────────────────────────────────
+  // O soltador escreve DUAS colunas, e são as duas que não afirmam nada.
+  // `cumprido_em` FORA é o que o dispensa de evidência (ele não afirma), de
+  // gate (não concede) e de congelamento (não dispara a U81). `dia` FORA é o
+  // que impede `trg_agenda_campo_valida` (OF chamado_id, dia, inicio_min) de
+  // acordar e devolver 42501 a um técnico concluindo o PRÓPRIO chamado.
+  const setsDoSolta82 = [...solta82.matchAll(/SET\s+([\s\S]*?)\s+WHERE/g)].map((m) => m[1]);
+  const colunasDoSolta82 = [...new Set(
+    setsDoSolta82.flatMap((s) => [...s.matchAll(/([a-z_]+)\s*=/g)].map((m) => m[1])),
+  )].sort();
+  eq('CRÍTICO: CENSO — o soltador escreve EXATAMENTE cancelado_em e cancelado_por. cumprido_em e dia FORA é a costura inteira deste desenho: no dia em que uma delas entrar, o gatilho passa a afirmar sem evidência e a U81 vira decoração dentro da própria correção',
+     colunasDoSolta82, ['cancelado_em', 'cancelado_por']);
+  // E o gêmeo do CATÁLOGO: a conferência 121 mede a MESMA coisa do lado do
+  // banco, lendo `prosrc`. As duas juntas cobrem o arquivo e o que rodou.
+  eq('…e a conferência 121 mede a mesma coisa no CATÁLOGO, no corpo que de fato rodou',
+     /SELECT 121, 'CRÍTICO: o SOLTADOR não escreve cumprido_em nem dia/.test(u82)
+     && /prosrc !~ 'cumprido_em/.test(u82), true);
+
+  // ── 7) CENSO DOS GATILHOS `AFTER UPDATE` DE LINHA EM public.chamados ─────
+  // Derivado do diretório × lista à mão. Cobre a peça que NASCE sem ninguém
+  // pensar nela — e é ele que faz "a ordem é indiferente" continuar sendo uma
+  // afirmação sobre um conjunto conhecido, e não sobre o que a memória lembra.
+  const trigsDeChamados82 = () => {
+    const vivos = new Set();
+    for (const f of fs82.readdirSync('supabase/migrations').sort()) {
+      if (!f.endsWith('.sql')) continue;
+      const t = fs82.readFileSync('supabase/migrations/' + f, 'utf8')
+        .split('\n').filter((l) => !/^\s*--/.test(l)).join('\n').replace(/\s+/g, ' ');
+      for (const m of t.matchAll(/DROP TRIGGER IF EXISTS (\w+) ON public\.chamados;/g)) vivos.delete(m[1]);
+      for (const m of t.matchAll(/CREATE TRIGGER (\w+) AFTER UPDATE(?: OF [a-z_, ]+)? ON public\.chamados FOR EACH ROW/g)) vivos.add(m[1]);
+    }
+    return [...vivos].sort();
+  };
+  const TRIGS_CHAMADOS_82 = [
+    'trg_chamado_agenda_solta',           // U82 — solta o plano futuro no encerramento
+    'trg_chamado_apoio_dupla_upd',        // U76:1129 — a turma da semana
+    'trg_chamado_evento_upd',             // u7:387 — a linha do tempo
+    'trg_chamado_ficha_compra_upd',       // u9:188 — a ficha de compra
+    'trg_chamado_sincronizar_unidades',   // u7:835 — o inventário
+    'trg_notify_chamado_upd',             // u7:451 — os sinos
+  ];
+  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes seis (derivado das migrations × lista à mão). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
+     trigsDeChamados82(), TRIGS_CHAMADOS_82);
+  // E a conferência 120 lê a MESMA ordem do pg_trigger. Se um rename futuro
+  // mudar a ordem alfabética, ela aparece — em vez de mudar em silêncio.
+  eq('CRÍTICO: a conferência 120 espera exatamente a ordem alfabética desse censo — ela é a mesma lista, lida do CATÁLOGO em vez do arquivo',
+     u82.includes("'" + TRIGS_CHAMADOS_82.join(' < ') + "'"), true);
+
+  // ── 8) CENSO NEGATIVO: quem escreve em public.agenda_campo, no banco todo ─
+  const corposVivos82 = () => {
+    const vivo = new Map();
+    for (const f of fs82.readdirSync('supabase/migrations').sort()) {
+      if (!f.endsWith('.sql')) continue;
+      const txt = fs82.readFileSync('supabase/migrations/' + f, 'utf8');
+      const re = /CREATE OR REPLACE FUNCTION public\.([a-z_0-9]+)\s*\(/g;
+      let m;
+      while ((m = re.exec(txt)) !== null) {
+        const mt = /AS (\$[A-Za-z_0-9]*\$)/.exec(txt.slice(m.index, m.index + 1400));
+        if (!mt) continue;
+        const ini = m.index + mt.index + mt[0].length;
+        const fim = txt.indexOf(mt[1], ini);
+        if (fim < 0) continue;
+        vivo.set(m[1], txt.slice(ini, fim));
+      }
+      for (const d of txt.matchAll(/^DROP FUNCTION IF EXISTS public\.([a-z_0-9]+)\s*\(/gm)) vivo.delete(d[1]);
+    }
+    return vivo;
+  };
+  const escrevemAgenda82 = [...corposVivos82().entries()]
+    .filter(([, c]) => /(UPDATE|INSERT INTO|DELETE FROM) public\.agenda_campo\b/
+      .test(c.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n')))
+    .map(([n]) => n).sort();
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem em public.agenda_campo são exatamente estas seis: as QUATRO portas da U78, a QUINTA da U82 (a que afirma) e o SOLTADOR (a que só desmarca). Uma sétima acusa sozinha',
+     escrevemAgenda82,
+     ['agenda_campo_afirmar', 'agenda_campo_cancelar', 'agenda_campo_cumprir',
+      'agenda_campo_marcar', 'chamado_solta_agenda', 'desagendar_chamado']);
+
+  // ── 9) O LAÇO DA PORTA — `[^;]` para o regex não atravessar o `;` ────────
+  // A regra 2, quinta variação: `[\s\S]{0,N}` atravessa o ponto e vírgula e
+  // casa duas instruções diferentes como se fossem uma.
+  eq('CRÍTICO: o laço de ESCRITA da porta ordena por dia EFETIVO, hora e id, DENTRO da mesma instrução. Num UPDATE em conjunto (ou fora de ordem) o espelho SALTA do primeiro bloco ao último e as turmas de apoio de TODAS as semanas do meio nunca são escritas',
+     /FOR r IN[^;]*ORDER BY COALESCE\(f\.dia, a\.dia\), a\.inicio_min, a\.id[^;]*LOOP/.test(afirmar82), true);
+  // clock_timestamp() E NÃO now(): `now()` é o timestamp da TRANSAÇÃO e os N
+  // blocos receberiam UM instante só — o gatilho da U81 gravaria congelado_em
+  // igual para todas as turmas e `idasDoApoio` devolveria UMA ida com as turmas
+  // de todas as semanas juntas. A CONTAGEM é no CORPO VIVO, não no arquivo: no
+  // arquivo o COMMENT também cita a função, e uma âncora que casa comentário é
+  // um sobrevivente falso esperando acontecer.
+  // A ÚLTIMA LINHA MUDOU DE FORMA na rodada de refutação: ela media "não há
+  // `now()` antes do §5", e isso deixou de ser a propriedade certa quando a
+  // porta ganhou `v_hoje := (now() AT TIME ZONE …)::date` no DECLARE (a guarda
+  // que impede MOVER um registro para um dia que não chegou). A propriedade
+  // real nunca foi a POSIÇÃO do `now()`: é que o CARIMBO nunca use o relógio da
+  // transação — com ele, as N idas colapsariam numa só.
+  eq('CRÍTICO: a porta carimba com clock_timestamp() (UMA atribuição, no topo do laço) e os DOIS ramos de escrita usam esse instante — o carimbo NUNCA usa o relógio da TRANSAÇÃO, senão as N idas colapsariam em uma',
+     [(afirmar82.match(/clock_timestamp\(\)/g) || []).length,
+      (afirmar82.match(/cumprido_em = v_agora/g) || []).length,
+      /v_agora := clock_timestamp\(\);/.test(afirmar82),
+      /cumprido_em\s*=\s*(now|transaction_timestamp|statement_timestamp)\(\)/.test(afirmar82)],
+     [1, 2, true, false]);
+  // O RAMO QUE MOVE E O QUE NÃO MOVE SÃO DIFERENTES DE PROPÓSITO: `dia` no SET
+  // acorda `agenda_campo_valida` (AFTER/BEFORE UPDATE OF chamado_id, dia,
+  // inicio_min) mesmo com valor igual — e num chamado que outro caminho já
+  // encerrou isso mataria o caminho "afirmar depois" pelo chip.
+  // Depois que mover e carimbar viraram DOIS statements, a régua é a CONTAGEM:
+  // `dia` entra num SET uma vez só, e é no ramo que move.
+  // A CONTAGEM É DE `SET dia`, QUALQUER VALOR — e essa generalidade é correção
+  // de método: a primeira versão contava `SET dia = r.dia_efetivo` e uma mutação
+  // que punha `SET dia = r.dia_atual` no ramo errado SOBREVIVEU, porque o
+  // literal continuava aparecendo uma vez. Prender o valor em vez da COLUNA é a
+  // regra 2 outra vez: a regex provava que aquela linha existia, não que a
+  // coluna entrava no SET uma vez só.
+  eq('CRÍTICO: só o ramo que MOVE põe `dia` no SET — pôr sempre acordaria agenda_campo_valida à toa e mataria o caminho do chip',
+     [(afirmar82.match(/SET dia = /g) || []).length,
+      /SET dia = r\.dia_efetivo/.test(afirmar82),
+      /SET cumprido_em = v_agora\n\s*WHERE id = r\.id/.test(afirmar82)],
+     [1, true, true]);
+  // O ENSAIO GERAL: TODAS as colisões antes de QUALQUER escrita. Numa passagem
+  // só, o quarto bloco colidindo abortaria depois de três carimbos escritos.
+  eq('CRÍTICO: a porta faz DUAS passagens — o ENSAIO (sem escrita) e o laço de escrita. Uma passagem só deixaria o técnico num estado que ele não consegue explicar depois do ROLLBACK',
+     (afirmar82.match(/FOR r IN/g) || []).length, 2);
+  eq('…e a colisão levanta 23P01 com a frase que NOMEIA o conflitante, oferecendo a saída de manter o dia marcado — nunca uma recusa por data',
+     /USING ERRCODE = '23P01'/.test(afirmar82)
+     && /afirme mantendo o dia que estava marcado/.test(afirmar82), true);
+
+  // ── 10) NENHUMA GUARDA DE DATA (a decisão do Davi, 04/09) ────────────────
+  // "Posso acabar fazendo algo antes da data agendada por diversos motivos e o
+  // sistema não deve barrar isso." A data escolhe o PADRÃO do dia a gravar, e
+  // nada mais. Medido no TEXTO VIVO (o cabeçalho fala de datas o tempo todo).
+  // A FORMA DESTA ASSERÇÃO MUDOU na rodada de refutação, e a mudança é o
+  // achado: `_feitos` é corpo de REST, e `COALESCE(f.dia, a.dia)` aceitava
+  // QUALQUER data. A data escolhe a SEMANA ISO, a semana escolhe a turma, e a
+  // turma congelada é ACESSO PERMANENTE (R108) — um cliente com bug de data
+  // falha igual a um ataque. A guarda que entrou NÃO é guarda de data no
+  // sentido do Davi: ela exige `IS DISTINCT FROM`, então o dia do PRÓPRIO bloco
+  // é sempre aceito ("afirmar mantendo o dia marcado") e "aconteceu HOJE"
+  // também. O que ela recusa é MOVER um registro para um dia que não chegou.
+  // A ASSERÇÃO PRENDE O `IF` INTEIRO, E NÃO O VOCABULÁRIO (regra 2): trocar a
+  // condição por `IF false THEN` deixaria a frase e o nome no lugar.
+  //
+  // A FORMA MUDOU OUTRA VEZ, E A MUDANÇA É O ACHADO DESTA RODADA. A guarda
+  // anterior recusava só `> v_hoje` — e deixava o PASSADO INTEIRO aberto, que é
+  // onde as escalas antigas moram. Com `dia` numa semana de um ano atrás o
+  // espelho anda, a semana muda, `chamado_sincronizar_apoio` roda e o INSERT de
+  // u81:461-469 grava a turma DAQUELA semana JÁ CONGELADA (a semana passou a ter
+  // visita afirmada): gente que nunca esteve no prédio nasce com acesso
+  // permanente de edição (R108). Agora a porta é o gêmeo LITERAL de
+  // `diaAfirmado`, que só sabe produzir DUAS datas.
+  eq('CRÍTICO: a porta aceita EXATAMENTE as duas datas que a tela sabe produzir — o dia do próprio bloco e HOJE — e recusa a terceira, que só chega por REST. Barrar só o FUTURO deixava o PASSADO aberto, e é no passado que moram as escalas antigas cuja turma nasceria congelada (R108)',
+     [/IF r\.dia_efetivo IS DISTINCT FROM r\.dia_atual\n\s*AND r\.dia_efetivo IS DISTINCT FROM v_hoje THEN\n\s*RAISE EXCEPTION 'O dia de um atendimento afirmado é o dia que estava marcado, ou HOJE/.test(afirmar82),
+      /não uma data qualquer\. Recarregue a tela e refaça o gesto\./.test(afirmar82),
+      /v_hoje\s+date := \(now\(\) AT TIME ZONE 'America\/Sao_Paulo'\)::date;/.test(afirmar82),
+      // e nada MAIS recusa por data: nem "o dia já passou", nem "atrasado"
+      /(o dia já passou|data futura|não pode marcar antes|atrasado demais)[^\n]*USING ERRCODE/.test(vivo82),
+      // NENHUMA COMPARAÇÃO DE ORDEM entre o dia de um bloco e o relógio: é a
+      // forma que uma guarda de data teria neste corpo, e é o que a decisão do
+      // Davi (04/09) proíbe. A conferência 122 mede o mesmo no catálogo.
+      /(a\.dia|dia_efetivo)\s*[<>]/.test(afirmar82)],
+     [true, true, true, false, false]);
+  eq('…e `current_date` não aparece em NENHUM corpo de função criado aqui (a conferência 122 mede o mesmo no catálogo; aqui ele só existe na conferência 130, que é uma consulta de referência)',
+     [/current_date/.test(afirmar82), /current_date/.test(solta82),
+      /SELECT 122, 'CRÍTICO: a porta NÃO recusa carimbo por data \(Davi, 04\/09\)/.test(u82)],
+     [false, false, true]);
+  // E A 122 TEM DE TER OS TRÊS TERMOS (regra 7: conferência é asserção de
+  // PRODUTO, e prende-se). O primeiro é quase tautologia — `current_date` é uma
+  // expressão que esta função nunca usaria, porque ela calcula `v_hoje` com
+  // `now() AT TIME ZONE`. O que dá dentes à linha é o TERCEIRO: ele mede a FORMA
+  // REAL que uma guarda de data teria neste corpo — uma comparação de ORDEM
+  // entre o dia de um bloco e o relógio. Sem ele, `AND a.dia > v_hoje` entraria
+  // no corpo vivo e a conferência continuaria dizendo 'ok'.
+  eq('CRÍTICO: a conferência 122 tem TRÊS termos e espera 3 — o segundo prende a guarda das duas datas INTEIRA (as duas metades), e o terceiro é o que a tira de tautologia: nenhuma comparação de ordem entre o dia de um bloco e o relógio sobrevive no catálogo',
+     [u82.includes("position('IF r.dia_efetivo IS DISTINCT FROM r.dia_atual' in pg_get_functiondef(p.oid))>0"),
+      u82.includes("position('AND r.dia_efetivo IS DISTINCT FROM v_hoje THEN' in pg_get_functiondef(p.oid))>0"),
+      u82.includes("position('a.dia >' in pg_get_functiondef(p.oid))=0"),
+      u82.includes("position('a.dia <' in pg_get_functiondef(p.oid))=0"),
+      u82.includes("position('dia_efetivo >' in pg_get_functiondef(p.oid))=0"),
+      u82.includes("position('dia_efetivo <' in pg_get_functiondef(p.oid))=0"),
+      /SELECT 122,[\s\S]{0,2000}?\)\)::text, '3'/.test(u82)],
+     [true, true, true, true, true, true, true]);
+
+  // ── 11) MONOTONICIDADE — nada DESAFIRMA e nada DESCONGELA ────────────────
+  // A U81 já decidiu: desafirmar não desacontece. O `= NULL` só existe no
+  // rodapé DESFAZER, que é comentado linha a linha.
+  eq('CRÍTICO: nenhuma linha VIVA da U82 apaga cumprido_em ou congelado_em — o único lugar em que isso aparece é o DESFAZER comentado, que é freio de emergência e não rotina',
+     /(cumprido_em|congelado_em)\s*=\s*NULL/i.test(vivo82), false);
+
+  // ── 12) O QUE A U82 NÃO REESCREVE ────────────────────────────────────────
+  // Quando uma migration reescreve função de outra, o risco é DELEÇÃO — e a
+  // única asserção com dentes seria um DIFF. A U82 evita o problema inteiro:
+  // ela não reescreve NENHUMA. Aqui isso é medido, não prometido.
+  eq('CRÍTICO: a U82 cria DUAS funções e não reescreve nenhuma função existente — por isso nenhum DIFF é necessário, e a conferência 124 prova pelo catálogo que as cinco vizinhas saem daqui com as marcas da U78/U81 intactas',
+     [...u82.matchAll(/^CREATE OR REPLACE FUNCTION public\.([a-z_0-9]+)/gm)].map((m) => m[1]).sort(),
+     ['agenda_campo_afirmar', 'chamado_solta_agenda']);
+  // ZERO `ALTER TABLE`, E ISSO É A DECISÃO DESTA RODADA, NÃO UM DETALHE.
+  // A U82 tinha DOIS pares DISABLE/ENABLE em volta da carga. Eles saíram junto
+  // com ela, e a recusa é por escrito, por duas razões independentes:
+  //   · a U81 declarou que "gatilho desligado que alguém esquece de religar" é
+  //     cicatriz da casa (U59/U61) — e a conferência que provava o religamento
+  //     só existia porque o risco tinha sido criado ali mesmo;
+  //   · `ALTER TABLE ... DISABLE TRIGGER` pede ShareRowExclusive. A carga já
+  //     segurava RowExclusive sobre public.chamados (o espelho abre a relação
+  //     para UPDATE mesmo casando zero linhas), então pedir o modo mais forte
+  //     DEPOIS é ESCALADA DE LOCK — como nasce deadlock — com toda escrita de
+  //     chamado do app pendurada atrás, na tabela mais quente do sistema.
+  // A asserção mede o CENSO e não a ausência de um nome: qualquer ALTER TABLE
+  // novo aparece aqui, DISABLE ou não.
+  eq('CRÍTICO: a U82 não cria, dropa nem altera policy nenhuma, E NÃO TEM UM ÚNICO `ALTER TABLE` — o `DISABLE TRIGGER` saiu com a carga e não volta (cicatriz da U59/U61, e escalada de lock sobre public.chamados no meio de uma transação que já segura RowExclusive)',
+     [/^(CREATE|DROP|ALTER) POLICY/m.test(u82),
+      [...u82.matchAll(/^ALTER TABLE [^\n]*/gm)].map((m) => m[0]),
+      // e nem indentado: o `^ALTER TABLE` de cima não pegaria um DISABLE dentro
+      // de um bloco DO. (A conferência 128 CITA o DISABLE no rótulo dela, em
+      // literal SQL, para dizer que a U82 não o usa — por isso a âncora tem de
+      // ser a FORMA DO COMANDO e não a palavra solta.)
+      /(^|\n)\s*ALTER TABLE[^\n;]*(DISABLE|ENABLE) TRIGGER/.test(vivo82)],
+     [false, [], false]);
+
+  // ── 13) AS CONFERÊNCIAS, PRESAS (regra 7) ────────────────────────────────
+  // Uma bateria de mutação apagou três conferências da U81 e o verificador não
+  // piscou. A conferência é o ÚNICO canal por onde a migration fala com o Davi:
+  // apagar uma não quebra nada e não deixa rastro — a migration só passa a
+  // provar menos do que diz provar.
+  // O CENSO ENCOLHEU COM A CARGA, e encolheu SEM DEIXAR BURACO: as três linhas
+  // que mediam a carga (o corte de evidência, o corte de atribuição do §4.1 e a
+  // população corrigida pelo §4.3) saíram, e as três que sobravam depois delas
+  // foram renumeradas. Nenhuma conferência pode medir mecanismo que não existe
+  // mais — e um número que some sem a lista encolher junto é uma migration que
+  // passa a provar menos do que diz provar, sem rastro.
+  eq('CRÍTICO: CENSO das conferências — a U82 numera de 118 a 133, sem buraco e sem repetição (derivado do arquivo, não de uma lista à mão que pode encolher junto)',
+     [...u82.matchAll(/^SELECT (\d{3})[ ,]/gm)].map((m) => Number(m[1])),
+     [118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132,
+      133]);
+  const conf82 = {
+    118: 'CRÍTICO: a porta existe com a assinatura EXATA',
+    119: 'CRÍTICO: o soltador é AFTER UPDATE OF status em public.chamados',
+    120: 'CRÍTICO: a ORDEM dos AFTER de linha de public.chamados, do CATÁLOGO',
+    121: 'CRÍTICO: o SOLTADOR não escreve cumprido_em nem dia, E NÃO CHAMA NINGUÉM que escreva por ele',
+    122: 'CRÍTICO: a porta NÃO recusa carimbo por data (Davi, 04/09)',
+    123: 'CRÍTICO: o laço da porta ORDENA por dia EFETIVO, hora e id',
+    124: 'CRÍTICO: as CINCO funções vizinhas saem daqui com as marcas da U78/U81 intactas',
+    125: 'CRÍTICO: esta migration NÃO AFIRMA e NÃO DESMARCA nada',
+    126: 'CRÍTICO: esta migration NÃO CONGELA nenhuma linha de apoio',
+    127: 'referência: blocos PRESOS',
+    128: 'CRÍTICO: os dois gatilhos da cascata do apoio estão LIGADOS',
+    129: 'CRÍTICO: nenhum sino nasceu nesta migration',
+    130: 'referência: a 110/117, PARTIDA',
+    131: 'referência: no BANCO INTEIRO, quantos chamados com apoio congelado sobre escala HERDADA',
+    132: 'referência: chamados com visita AFIRMADA e NENHUMA linha de apoio congelada',
+    133: 'CRÍTICO: esta migration não toca em public.chamado_apoios por caminho nenhum',
+  };
+  eq('CRÍTICO: as dezesseis conferências que carregam a prova estão lá, com o texto que diz o que provam',
+     Object.entries(conf82).filter(([n, txt]) => !u82.includes(`SELECT ${n}` + (n === '118' ? ' AS ordem,\n ' : ', ') + `'${txt}`)).map(([n]) => n),
+     []);
+  // AS TRÊS LINHAS DE DELTA ZERO DEIXARAM DE SER 'referência' — e isso é
+  // consequência direta do corte. Com carga, ninguém sabia prever esses números
+  // e só cabia olhar. SEM carga, esta migration não escreve UMA LINHA DE DADO, o
+  // esperado é conhecido, e um número diferente de zero significa escrita que
+  // ninguém pediu. Uma linha 'referência' nunca acusa; estas três acusam.
+  eq('CRÍTICO: as três linhas que medem ESCRITA viraram CRÍTICO com esperado ZERO — sem a carga, a U82 cria duas funções e um gatilho e mais nada, e delta diferente de zero é efeito colateral',
+     [/SELECT 125,[\s\S]{0,900}?'0 \/ 0'\n/.test(u82),
+      /SELECT 126,[\s\S]{0,900}?congelados_antes FROM u82_foto\)\)::text, '0'\n/.test(u82),
+      /SELECT 133,[\s\S]{0,900}?'0 total \/ 0 dupla'\n/.test(u82),
+      // e o esperado NÃO é '(referência)' em nenhuma das três
+      /SELECT (125|126|133),[\s\S]{0,900}?'\(referência\)'/.test(u82)],
+     [true, true, true, false]);
+  // A 130 é o PORTÃO desta entrega: se o lado ENCERRADO não cair em três
+  // semanas, o desenho falhou — e a resposta seguinte não é o gatilho que
+  // afirma (ele continua impossível de fazer com honestidade), é levar a
+  // pergunta ao arrasto do quadro e ao seletor de status.
+  eq('CRÍTICO: a 130 PARTE a população da 110/117 em ABERTO × ENCERRADO — é o segundo número que decide se este desenho funcionou, e uma contagem única não sabe dizer isso',
+     /count\(\*\) FILTER \(WHERE c\.status NOT IN \('concluido','cancelado'\)\)[\s\S]{0,220}ENCERRADO/.test(u82), true);
+
+  // ── 14) ATOMICIDADE E PRÉ-VOO ────────────────────────────────────────────
+  eq('U82 é atômica — se o pré-voo abortar, não sobra rastro',
+     [/^BEGIN;$/m.test(u82), /^COMMIT;$/m.test(u82)], [true, true]);
+  eq('CRÍTICO: o pré-voo ABORTA se a U81 não rodou — esta migration afirma N blocos numa transação, e sem a trava da U81 no DELETE ela seria uma máquina de apagar registro mais depressa',
+     [/RODE A U81 PRIMEIRO/.test(u82),
+      u82.includes("position('a.congelado_em IS NULL' in COALESCE(v_src,'')) = 0"),
+      u82.includes("position('status NOT IN (''concluido'',''cancelado'')' in COALESCE(v_src,'')) = 0")],
+     [true, true, true]);
+  // E ELE CONFERE TODA FUNÇÃO QUE O CORPO NOVO CHAMA. O validador de plpgsql não
+  // resolve chamadas dentro de um corpo — elas são texto até a primeira
+  // execução. Uma função que sumiu ou trocou de assinatura deixa a migration
+  // CRIAR a porta sem reclamar, e o erro aparece em produção, no meio de um
+  // encerramento. `referencia_semanal` e `dia_da_dupla` entraram no pré-voo
+  // porque as DUAS travas de congelamento do §2 dependem delas.
+  eq('CRÍTICO: o pré-voo confere TODAS as funções que o corpo novo chama — inclusive referencia_semanal e dia_da_dupla, de que as duas travas de congelamento dependem e que o validador de plpgsql não resolve',
+     [...u82.matchAll(/to_regprocedure\('public\.([a-z_0-9]+)\(/g)].map((m) => m[1]).sort(),
+     ['agenda_campo_afirmar', 'agenda_campo_frase_do_conflito', 'agenda_campo_marcar',
+      'dia_da_dupla', 'pode_editar_chamado', 'referencia_semanal']);
+
+  // ── 15) O APP: a afirmação vem ANTES do status, nos três encerramentos ───
+  const det82 = fs82.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  eq('CRÍTICO: o helper que afirma existe e chama a porta com mutateAsync — se ele lançar, o encerramento NÃO acontece, e é isso que faz a colisão de agenda custar uma pergunta em vez de um técnico preso no campo',
+     det82.includes('const r = await afirmar.mutateAsync({ chamadoId: id, ...conf.payload });'), true);
+  // A ORDEM, medida por POSIÇÃO e nos TRÊS caminhos — não por presença. A
+  // afirmação depois do status seria inútil: o espelho casa zero linhas, o gate
+  // de semana da U81 devolve cedo, e o técnico leva 42501 no próprio chamado.
+  const posDepois82 = (marca) => {
+    const i = det82.indexOf('await afirmarAntesDeEncerrar()');
+    const j = det82.indexOf(marca);
+    return i >= 0 && j >= 0 && i < j;
+  };
+  eq('CRÍTICO: a afirmação vem ANTES do status nos TRÊS encerramentos desta tela — concluir, fechar e cancelar',
+     [(det82.match(/await afirmarAntesDeEncerrar\(\)/g) || []).length,
+      posDepois82('await executarChamado('),
+      posDepois82('await concluirChamado('),
+      posDepois82('return cancelarChamado(')],
+     [3, true, true, true]);
+  eq('CRÍTICO: e o encerramento NÃO é derrubado quando a migration ainda não rodou — `useAfirmarVisitas` devolve portaAusente e a tela segue. É a regra 5 da casa (ordem de deploy) como propriedade do CÓDIGO',
+     [/PORTA_INEXISTENTE = \["PGRST202", "42883"\]/.test(fs82.readFileSync('src/features/programacao/data.ts', 'utf8')),
+      /return \{ \.\.\.nada, portaAusente: true \};/.test(fs82.readFileSync('src/features/programacao/data.ts', 'utf8'))],
+     [true, true]);
+  // O CHIP: é ele que alcança os cinco caminhos que não perguntam, porque está
+  // preso ao ESTADO e não ao gesto.
+  const agenda82 = fs82.readFileSync('src/features/programacao/AgendaDoChamado.tsx', 'utf8');
+  eq('CRÍTICO: o chip do furo existe e sai de visitasNaoAfirmadas — sem ele, o chamado encerrado pelo arrasto do quadro ou pelo seletor de status nunca mais é perguntado a ninguém (P34)',
+     [/visitasNaoAfirmadas\(chamado, blocosDoChamado\)/.test(agenda82),
+      /encerrado com \{naoAfirmadas\.length\} atendimento\(s\) que ninguém afirmou/.test(agenda82)],
+     [true, true]);
+  // A SEÇÃO NÃO É UM QUARTO `window.confirm`. Já há três em FormularioDoBloco,
+  // e um `confirm` só sabe dizer SIM ou NÃO — aqui a pergunta é por BLOCO, tem
+  // três respostas, e uma delas tem uma segunda pergunta.
+  // O FILTRO DE `//` É OBRIGATÓRIO: o cabeçalho do arquivo FALA de
+  // `window.confirm` para explicar por que não usa um. Grep acha comentário —
+  // já rendeu 5+ falsos positivos neste verificador, e este teria sido o sexto.
+  const conf82tsx = fs82.readFileSync('src/features/programacao/ConfirmacaoDasVisitas.tsx', 'utf8')
+    .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  eq('CRÍTICO: a seção de confirmação não usa window.confirm — a pergunta é por bloco e tem três respostas, e nenhuma delas nasce marcada',
+     [/window\.confirm/.test(conf82tsx),
+      /respostas\[v\.id\] \?\? respostaInicial\(\)/.test(conf82tsx)],
+     [false, true]);
+
+  // ── 16) O COMENTÁRIO QUE ESTA ENTREGA TORNOU FALSO ──────────────────────
+  // `idasDoApoio` dizia "cada carimbo de 'feito' é uma transação". Com
+  // `agenda_campo_afirmar`, N carimbos passam a caber numa transação — e a
+  // frase ficaria meia-verdadeira sem nada que a prendesse.
+  const mod82 = fs82.readFileSync('src/features/programacao/modelo.ts', 'utf8');
+  eq('CRÍTICO: o docblock de idasDoApoio foi corrigido — a frase velha ("Cada carimbo de \'feito\' é uma transação") deixou de ser verdade quando a U82 abriu a porta que carimba N blocos numa transação só',
+     [/Cada carimbo de "feito" é uma transação/.test(mod82),
+      /Cada carimbo pela GRADE é uma transação/.test(mod82),
+      /clock_timestamp\(\)`, que avança\n \* dentro da transação/.test(mod82)],
+     [false, true, true]);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 17) O QUE A RODADA DE REFUTAÇÃO ACHOU — cada correção presa por asserção
+  // ══════════════════════════════════════════════════════════════════════════
+  // Quatro FATAIS e vários GRAVES foram corrigidos DEPOIS de a entrega estar
+  // pronta e ANTES de ela rodar. Sem asserção, cada um deles é revertido na
+  // próxima semana sem ninguém ver — que é exatamente o que a regra 5 desta
+  // casa existe para impedir. Onde a correção é uma GUARDA, a asserção prende o
+  // `IF`, e não o vocabulário (regra 2): `IF false THEN` deixa nome e frase.
+
+  // ── 17.1 FATAL — afirmar MOVENDO o dia afirmava e NÃO congelava ──────────
+  // O gatilho da U81 é BEFORE (u81:371) e compara referencia_semanal(NEW.dia)
+  // com a semana do ESPELHO, que durante o BEFORE ainda é a de ANTES.
+  //
+  // ── MOVER E CARIMBAR SÃO DOIS STATEMENTS, E ISSO É O MECANISMO ───────────
+  // Num UPDATE só (`SET dia = …, cumprido_em = …`), o bloco deixa de ser
+  // pendente NO MESMO INSTANTE em que muda de dia: quando o AFTER do espelho
+  // roda, o estágio 1 de agenda_campo_espelhar já não o vê e salta para o
+  // PRÓXIMO pendente. O espelho NUNCA REPOUSA na semana em que a visita foi
+  // afirmada — e como a turma de apoio só é escrita quando o espelho repousa
+  // numa semana, a turma de quem esteve no prédio não é escrita por caminho
+  // nenhum. Na variante de semanas diferentes é pior: a turma ANTIGA é APAGADA
+  // e substituída por quem ainda não foi.
+  // Separado, o espelho passa pela semana nova com o bloco ainda PENDENTE (o
+  // sincronizar grava a turma certa) e só então o carimbo acorda o BEFORE da
+  // U81. É o que o caminho de dois passos da grade sempre fez.
+  // A ORDEM é a asserção: `SET dia` sozinho ANTES de `SET cumprido_em` sozinho.
+  eq('CRÍTICO: mover o dia e carimbar são DOIS statements, nessa ordem — juntos, o bloco sai do conjunto pendente antes de o espelho passar pela semana nova, e a turma de quem esteve no prédio não é escrita por caminho nenhum',
+     [/SET dia = r\.dia_efetivo\n\s*WHERE id = r\.id AND cumprido_em IS NULL AND cancelado_em IS NULL;\n\s*UPDATE public\.agenda_campo\n\s*SET cumprido_em = v_agora\n\s*WHERE id = r\.id AND cumprido_em IS NULL AND cancelado_em IS NULL;/.test(afirmar82),
+      // e o UPDATE combinado NÃO existe mais em lugar nenhum
+      /SET dia = r\.dia_efetivo, cumprido_em/.test(afirmar82)],
+     [true, false]);
+  // NÃO EXISTE PRÉ-TRAVA, e a ausência é decisão registrada (P41). Ela cobria
+  // só `responsavel_id IS NULL` — o caminho quase morto — e deixava aberto o
+  // comum (responsável presente com turma vazia na semana). Cobrir o comum
+  // exigiria prever em que semana o espelho vai repousar, que é reconstruir
+  // agenda_campo_espelhar dentro da porta: a mesma maquinaria pela qual o ramo
+  // de reabertura foi cortado. Esta asserção prende a AUSÊNCIA para que ela não
+  // volte sem que alguém releia o argumento.
+  eq('CRÍTICO: não há congelamento ANTES de mover o dia — a pré-trava foi apagada de propósito (P41), porque a condição de disparo dela não é avaliável no instante em que ela rodaria',
+     afirmar82.indexOf('SET congelado_em') > afirmar82.indexOf('SET cumprido_em = v_agora'),
+     true);
+  eq('CRÍTICO: a TERCEIRA METADE DA TRAVA existe, com a régua do §5 da U81 (u81:552-568) restrita a UM chamado, e o instante é o do BLOCO — max(cumprido_em) da semana do espelho, nunca o relógio',
+     [/SET congelado_em = x\.instante\n\s*FROM \(SELECT max\(a\.cumprido_em\) AS instante/.test(afirmar82),
+      /AND ap\.origem = 'dupla'\n\s*AND ap\.congelado_em IS NULL\n\s*AND x\.instante IS NOT NULL;/.test(afirmar82),
+      // ela vem DEPOIS dos desmarcados: o espelho já assentou, inclusive o
+      // efeito deles
+      afirmar82.indexOf('5) O QUE NÃO VAI ACONTECER') < afirmar82.indexOf('SET congelado_em = x.instante')],
+     [true, true, true]);
+  eq('…e ela é a ÚNICA escrita em chamado_apoios da porta — que NUNCA descongela e continua sem tocar em profile_id (inventar linha de apoio é o que a U64 e a U81 recusaram por escrito)',
+     [(afirmar82.match(/UPDATE public\.chamado_apoios/g) || []).length,
+      /(INSERT INTO|DELETE FROM) public\.chamado_apoios/.test(afirmar82),
+      /congelado_em\s*=\s*NULL/i.test(afirmar82)],
+     [1, false, false]);
+
+  // ── 17.2 A CARGA SAIU INTEIRA, E A AUSÊNCIA É A ENTREGA ─────────────────
+  // Três rodadas de refutação acharam QUATRO FATAIS na U82. Todos os quatro
+  // moravam na carga (ou no ramo de reabertura que uma rodada acrescentou ao
+  // §3). O caminho vivo — a porta e o soltador — passou limpo nas três. E a
+  // carga não tinha NÚMERO: escrever contra public.chamados e
+  // public.chamado_apoios sem saber quantas linhas se alcança é escrever às
+  // cegas, e medir antes de escrever é o método da casa.
+  // ESTA ASSERÇÃO É O QUE IMPEDE A CARGA DE VOLTAR SEM OS NÚMEROS. Ela mede o
+  // TEXTO VIVO — o cabeçalho fala da carga de propósito, para explicar o corte.
+  eq('CRÍTICO: a U82 NÃO tem carga retroativa — nenhum UPDATE/INSERT em massa em agenda_campo ou chamado_eventos, nenhum bloco DO de laço, nenhum evento agenda_dia_corrigido. Os quatro FATAIS das rodadas de refutação moravam ali, e ela não volta sem os números de _medir_antes_da_carga_u82.sql',
+     [/^(WITH|UPDATE|INSERT INTO|DELETE FROM)/m.test(vivo82),
+      /DO \$destravar\$/.test(vivo82),
+      /agenda_dia_corrigido/.test(vivo82),
+      /p\.n = 1/.test(vivo82),
+      // e o corpo VIVO tem exatamente três blocos dollar-quoted: o pré-voo e as
+      // duas funções. Um quarto é um laço de carga voltando pela porta dos fundos
+      [...new Set([...vivo82.matchAll(/\$([a-z_0-9]*)\$/g)].map((m) => m[1]))].sort()],
+     [false, false, false, false, ['afirmar', 'preflight', 'q', 'solta']]);
+  // E O ARQUIVO DE MEDIÇÃO EXISTE, É LEITURA PURA E DIZ QUE NÃO É MIGRATION.
+  // Sem ele, "a carga espera número" é uma promessa sem endereço — e a próxima
+  // pessoa reescreve a carga do zero, com os mesmos defeitos.
+  const medir82 = fs82.readFileSync('supabase/migrations/_medir_antes_da_carga_u82.sql', 'utf8');
+  const medirVivo82 = medir82.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  eq('CRÍTICO: o arquivo que MEDE a carga futura existe, é LEITURA PURA (só SELECT — zero escrita, zero transação, zero ALTER) e as seis linhas dele são as que dimensionam a decisão. Ele é citado no cabeçalho da U82 e na dívida',
+     [/(UPDATE|INSERT|DELETE|ALTER|CREATE|DROP|BEGIN;|COMMIT;)/.test(medirVivo82),
+      (medirVivo82.match(/^SELECT '/gm) || []).length,
+      /ISTO NÃO É UMA MIGRATION/.test(medir82),
+      u82.includes('supabase/migrations/_medir_antes_da_carga_u82.sql')],
+     [false, 6, true, true]);
+
+  // ── 17.3 FATAL (app) — o chamado COMERCIAL ficava impossível de encerrar ─
+  // `chamados.$id.tsx` só desvia `interno`, logo COMERCIAL cai em DetalheCampo;
+  // `erroDaAfirmacao` sempre recusa natureza != 'campo'; e a recusa era
+  // levantada INCONDICIONALMENTE nos três caminhos terminais. Quebrava no
+  // instante do PUSH, sem a migration ter rodado — a regra 5 da casa.
+  eq('CRÍTICO: a recusa antecipada SÓ existe quando há GESTO e a autorização já SABE — sem as duas metades, um chamado comercial (que chega a DetalheCampo pela rota) fica impossível de concluir, fechar ou cancelar, e a quebra acontece no PUSH',
+     [/const temGesto = payload\.feitos\.length > 0 \|\| payload\.desmarcados\.length > 0;/.test(conf82tsx),
+      /const recusa =\n\s*temGesto && chamado && autz\.pronta\n\s*\? erroDaAfirmacao\(/.test(conf82tsx),
+      /const \{ feitos, desmarcados \} = conf\.payload;\n\s*if \(feitos\.length === 0 && desmarcados\.length === 0\) return false;/.test(det82)],
+     [true, true, true]);
+  // A ordem das duas linhas em `afirmarAntesDeEncerrar` é o que importa: o
+  // `return false` tem de vir ANTES do `throw`, senão o cinto não segura nada.
+  eq('…e o cinto vem ANTES do throw da recusa, senão ele não segura nada — e a recusa é lançada como `RecusaDaAgenda`, que leva o SQLSTATE junto: com `new Error` o código saía null, `classeDoErro(null)` dava "desconhecido" e a frase aparecia sem cara nenhuma',
+     [det82.indexOf('if (feitos.length === 0 && desmarcados.length === 0) return false;')
+        < det82.indexOf('if (conf.recusa) throw new RecusaDaAgenda(conf.recusa.frase, conf.recusa.code);'),
+      /if \(conf\.recusa\) throw new RecusaDaAgenda\(conf\.recusa\.frase, conf\.recusa\.code\);/.test(det82),
+      /throw new Error\(conf\.recusa\)/.test(det82)],
+     [true, true, false]);
+  // ── 17.4 FATAL (app) — a autorização nascia `false` e recusava o gestor ──
+  const dataProg82 = fs82.readFileSync('src/features/programacao/data.ts', 'utf8');
+  eq('CRÍTICO: `useAutorizacaoDaAgenda` diz quando ela SABE. `ehGestor` nasce false e `apoios` nasce vazio numa cadeia de DUAS idas (sessão -> is_gestor): antecipar recusa nessa janela é dizer "Você não responde por este chamado" ao gestor que abriu o chamado por link direto',
+     [/pronta: !usuarioId \|\| \(gestor\.isSuccess && apoios\.isSuccess\),/.test(dataProg82),
+      /\): AutorizacaoDaAgenda & \{ pronta: boolean \} \{/.test(dataProg82),
+      // `!isPending` NÃO serve, e o par negativo é o que prende isso: consulta
+      // em ERRO tem status 'error', logo isPending é false — a primeira versão
+      // desta linha chamava de "sei" exatamente o estado em que não se sabe, e
+      // a recusa antecipada disparava por queda de rede na consulta de
+      // autorização, depois de a assinatura já ter sido gravada.
+      /!gestor\.isPending|!apoios\.isPending/.test(dataProg82)],
+     [true, true, false]);
+
+  // ── 17.4b GRAVE — a cortesia derrubava o encerramento em QUALQUER erro ──
+  // A degradação foi desenhada para "a migration não rodou". Ela NÃO cobria "a
+  // porta não respondeu": numa queda de rede o postgrest-js devolve `code: ''`,
+  // a lista de exceções não o reconhecia e o erro subia — derrubando
+  // `executarChamado`. O técnico ficava no prédio com a assinatura JÁ GRAVADA e
+  // o chamado em `em_andamento`, que é o pior caso que este desenho existe para
+  // evitar. A lista passou a ser POSITIVA: só o que a porta FALA tem voto.
+  eq('CRÍTICO: só os TRÊS códigos que a porta fala derrubam o encerramento — 42501, 55000 e 23P01. Todo o resto (rede com code vazio, 503, statement timeout) degrada como `portaMuda` e o chamado encerra igual: afirmar é cortesia e não pode prender o técnico em campo com a assinatura na mão',
+     [/export const RECUSAS_DA_PORTA = \["42501", "55000", "23P01"\];/.test(dataProg82),
+      /const code = sqlstateDoErro\(error\) \?\? "";\n\s*if \(RECUSAS_DA_PORTA\.includes\(code\)\) throw error;\n\s*if \(PORTA_INEXISTENTE\.includes\(code\)\) return \{ \.\.\.nada, portaAusente: true \};\n\s*return \{ \.\.\.nada, portaMuda: true \};/.test(dataProg82),
+      // e o `throw error` CRU sem lista positiva não existe mais em lugar nenhum
+      /includes\(sqlstateDoErro\(error\) \?\? ""\)\) \{\n\s*return \{ \.\.\.nada, portaAusente: true \};\n\s*\}\n\s*throw error;/.test(dataProg82),
+      // os TRÊS consumidores tratam o terceiro estado
+      /portaMuda/.test(det82),
+      /portaMuda/.test(fs82.readFileSync('src/features/programacao/PainelDoCiclo.tsx', 'utf8')),
+      /portaMuda/.test(agenda82)],
+     [true, true, false, true, true, true]);
+  // E O AVISO DO `portaMuda` NÃO PODE PROMETER O CHIP. Com a porta muda nada foi
+  // escrito, mas o soltador roda assim mesmo: o atendimento marcado para um dia
+  // que ainda não chegou é DESMARCADO, e `visitasNaoAfirmadas` só enxerga bloco
+  // PENDENTE — ele não aparece em chip nenhum, e ressuscitá-lo é 42501 para quem
+  // não é gestão (u78:774-778). A frase anterior mandava "responder depois pelo
+  // aviso do chamado", e o aviso não ia existir: a visita que aconteceu sumia
+  // em silêncio. Uma mutação que restaurava aquela frase SOBREVIVEU — nada
+  // prendia o texto —, e é por isso que esta asserção existe.
+  eq('CRÍTICO: o aviso de porta MUDA não promete o chip — o bloco de dia futuro é desmarcado pelo soltador e não aparece em chip nenhum, então mandar "responder depois pelo aviso" é mandar a pessoa procurar o que não existe',
+     [/saiu da agenda — se ele aconteceu, peça à gestão para remarcá-lo\./.test(det82),
+      /responda depois pelo aviso do chamado/.test(det82)],
+     [true, false]);
+  // ── 17.4c GRAVE — o 23P01 aparecia SEM as duas saídas no PainelDoCiclo ──
+  // As DUAS SAÍDAS ("escolha 'Aconteceu no dia marcado' aqui mesmo, ou ajuste o
+  // horário na grade") moram DENTRO de `ConfirmacaoDasVisitas`, ao lado dos
+  // botões que as executam, e só renderizam quando o prop `erro` chega. Em
+  // `PainelDoCiclo` ele nunca chegava: o gestor via a frase vermelha do conflito
+  // com a saída desenhada quinze pixels acima e ninguém apontando para ela.
+  const ciclo82 = fs82.readFileSync('src/features/programacao/PainelDoCiclo.tsx', 'utf8');
+  eq('CRÍTICO: o PainelDoCiclo passa o erro CRU para DENTRO do painel de confirmação — é lá que as duas saídas do 23P01 moram, ao lado dos botões que as executam — e a caixa de baixo não repete a frase do conflito',
+     [/<ConfirmacaoDasVisitas estado=\{conf\} isLight=\{isLight\} erro=\{erro\} \/>/.test(ciclo82),
+      /\{erro && classe !== "conflito" && \(/.test(ciclo82),
+      // e o código da recusa antecipada vem do MODELO, não de um "42501" fixo
+      /setErro\(\{ frase: conf\.recusa\.frase, code: conf\.recusa\.code \}\)/.test(ciclo82),
+      /code: "42501" \}\)/.test(ciclo82)],
+     [true, true, true, false]);
+  // E O PAINEL LÊ O CÓDIGO DA RECUSA, não só o do erro do servidor. Sem o
+  // `?? recusa?.code`, todo o trabalho de fazer `erroDaAfirmacao` carregar o
+  // SQLSTATE morre no último metro: a recusa antecipada volta a cair no ramo
+  // "desconhecido" de `classeDoErro` e pinta o rosto errado.
+  eq('CRÍTICO: o rosto do erro no painel sai do código da recusa ANTECIPADA quando não há erro do servidor — e a frase também. Ler só `erro?.code` desperdiça o SQLSTATE que o modelo puro passou a devolver, e a recusa volta a aparecer sem cara nenhuma',
+     [/const classe = classeDoErro\(erro\?\.code \?\? recusa\?\.code\);/.test(conf82tsx),
+      /\{erro\?\.frase \?\? recusa\?\.frase\}/.test(conf82tsx),
+      // e o tipo do estado é a estrutura, não a string: um `recusa: string` de
+      // volta faria `recusa?.code` ser `undefined` em silêncio
+      /recusa: RecusaAntecipada \| null;/.test(conf82tsx)],
+     [true, true, true]);
+
+  // ── 17.5 O `DISABLE TRIGGER` SAIU E NÃO VOLTA ───────────────────────────
+  // O §4.3 movia `dia`, o que acorda o espelho (u78:948-951), o espelho move
+  // data_hora_agendada de chamado ABERTO (u78:888-898), e isso acorda
+  // trg_chamado_apoio_dupla_upd -> chamado_sincronizar_apoio: DELETE das linhas
+  // vivas fora da turma nova, e INSERT da turma nova JÁ CONGELADA. A resposta
+  // era `ALTER TABLE ... DISABLE TRIGGER` em volta do laço — e ela é PIOR que o
+  // problema: a U81 declarou o DISABLE cicatriz da casa (U59/U61), e a lente de
+  // produção mostrou que pedi-lo depois de a transação já segurar RowExclusive
+  // sobre public.chamados é ESCALADA DE LOCK, com risco de deadlock e com toda
+  // escrita de chamado do app pendurada atrás.
+  // A CARGA SAIU, O DISABLE SAIU COM ELA, e a 128 mudou de papel: ela deixou de
+  // provar "os dois voltaram ligados depois de eu os desligar" e passou a ser um
+  // CENSO — se um deles vier desligado, alguém esqueceu, aqui ou em outra carga.
+  eq('CRÍTICO: não existe UM `DISABLE TRIGGER` vivo na U82 — nem `ENABLE`, nem `ALTER TABLE` de espécie nenhuma. A carga que precisava deles saiu, e a recusa está escrita no cabeçalho para que a carga futura não a re-litigue',
+     [/(^|\n)\s*ALTER TABLE[^\n;]*DISABLE TRIGGER/.test(vivo82),
+      /(^|\n)\s*ALTER TABLE[^\n;]*ENABLE TRIGGER/.test(vivo82),
+      /DO \$destravar\$/.test(vivo82),
+      // e o cabeçalho DIZ por que, com as duas razões independentes
+      /O `DISABLE TRIGGER` SAIU E NÃO VOLTA/.test(u82),
+      /ESCALADA DE LOCK/.test(u82)],
+     [false, false, false, true, true]);
+  // A 128 tem de medir OS DOIS gatilhos, e por NOME: a mutação que a fez somar
+  // o MESMO gatilho duas vezes deu '2' e sobreviveu — o esperado sozinho não
+  // prova nada quando as duas parcelas podem ser a mesma.
+  eq('CRÍTICO: a conferência 128 nomeia OS DOIS gatilhos da cascata do apoio, e cada parcela lê a SUA tabela — somar o mesmo duas vezes daria 2 e deixaria um DISABLE esquecido (por esta carga ou por outra) passar despercebido: a cicatriz da U59/U61',
+     [/SELECT 128,[\s\S]{0,900}?tgname='trg_notify_chamado_apoio'\)/.test(u82),
+      /SELECT 128,[\s\S]{0,900}?tgname='trg_chamado_apoio_dupla_upd'\)\)::text, '2'/.test(u82),
+      // e cada parcela lê a SUA tabela: chamado_apoios para o sino, chamados
+      // para o gatilho da turma da dupla
+      /SELECT 128,[\s\S]{0,900}?tgrelid='public\.chamado_apoios'::regclass[\s\S]{0,400}?tgrelid='public\.chamados'::regclass/.test(u82)],
+     [true, true, true]);
+
+  // ── 17.6 GRAVE — a conferência 119 dependia do `search_path` ─────────────
+  // `pg_get_triggerdef` renderiza a tabela por generate_relation_name, que OMITE
+  // o schema quando a relação é visível no search_path — e no SQL Editor do
+  // Supabase `public` está lá. Falso positivo em linha CRÍTICO é pior que linha
+  // nenhuma: ensina a ignorar o '>>> OLHAR <<<'.
+  eq('CRÍTICO: a conferência 119 lê o CATÁLOGO (máscaras de tgtype) e não depende do search_path — o `LIKE` perdeu o schema, que nunca acrescentou garantia e trazia dependência de ambiente',
+     [/SELECT 119[\s\S]{0,900}?LIKE '%UPDATE OF status ON %'/.test(u82),
+      /SELECT 119[\s\S]{0,900}?ON public\.chamados%'/.test(u82),
+      /SELECT 119[\s\S]{0,900}?\(t\.tgtype & 2\)\s+=\s+0/.test(u82)],
+     [true, false, true]);
+
+  // ── 17.7 FATAL — o RAMO DE REABERTURA saiu, e a ausência é a correção ────
+  // Uma rodada anterior pôs no soltador um `PERFORM agenda_campo_espelhar` para
+  // consertar, na reabertura, o espelho que ficou apontando para o bloco que ele
+  // mesmo desmarcou. Foi acrescentar MECANISMO para consertar um MENOR, e o
+  // mecanismo virou FATAL: agenda_campo_espelhar escreve
+  // chamados.data_hora_agendada (u78:891-898), coluna que ESTÁ na lista OF de
+  // trg_chamado_apoio_dupla_upd (u76:1129). Com o chamado JÁ REABERTO o status
+  // não é mais terminal, chamado_apoio_da_dupla não volta cedo (u78:1825), e se
+  // a semana do espelho mudar roda chamado_sincronizar_apoio: DELETE das linhas
+  // origem='dupla' vivas (a lista INTEIRA quando responsavel_id é NULL,
+  // u81:409-416), INSERT da turma nova JÁ CONGELADA (a semana do espelho novo é a
+  // da última visita afirmada, então o max(cumprido_em) de u81:461-469 não é
+  // NULL) e um SINO por linha inserida (u7:502).
+  // O gatilho que o cabeçalho jura que "não afirma nada" passava a CONGELAR,
+  // APAGAR e TOCAR SINO — por efeito colateral, e nada disso é reversível.
+  // O ESPELHO PODRE DEPOIS DE REABRIR É P35, PRÉ-EXISTENTE: encerrar um chamado
+  // com bloco futuro já deixa o espelho pinado hoje, sem esta migration. Virou
+  // dívida declarada, e a saída é a que já existe (rearrastar o bloco na grade).
+  const soltaVivo82 = solta82.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  eq('CRÍTICO: o soltador NÃO tem ramo de reabertura, e não CHAMA função nenhuma — nem PERFORM, nem SELECT de outra função. Consertar o espelho na reabertura fazia o gatilho "que não afirma nada" congelar, apagar linha de apoio e tocar sino pela cascata de u76:1129. É o P35, pré-existente, e agora é dívida declarada',
+     [/PERFORM/.test(soltaVivo82),
+      /agenda_campo_espelhar/.test(soltaVivo82),
+      /OLD\.status IN \('concluido','cancelado'\)/.test(soltaVivo82),
+      // e o arquivo DIZ por que o ramo saiu, no lugar em que ele estava
+      /NÃO HÁ RAMO DE REABERTURA AQUI, E A AUSÊNCIA É DECISÃO ESCRITA/.test(u82),
+      // o COMMENT da função não promete mais o conserto
+      /Na REABERTURA ele não faz NADA: não desfaz e também não conserta o espelho/.test(u82)],
+     [false, false, false, true, true]);
+  // E O CENSO DO ITEM 6 CONTINUA VALENDO: reabrir não afirma, não ressuscita e
+  // não escreve em public.chamados.
+  eq('…e o soltador continua escrevendo EXATAMENTE cancelado_em e cancelado_por, e não escreve em public.chamados',
+     [colunasDoSolta82, /UPDATE public\.chamados/.test(solta82)],
+     [['cancelado_em', 'cancelado_por'], false]);
+  // A CONFERÊNCIA 121 ERA CEGA A ISSO, e agora não é: ela media só o TEXTO da
+  // função ("não escreve cumprido_em nem dia") e a escrita não estava no texto —
+  // estava no NOME que a função chamava. O segundo termo mede a forma.
+  eq('CRÍTICO: a conferência 121 ganhou o termo que faltava — o soltador não DELEGA escrita a ninguém (não tem PERFORM). Medir só o texto da função é cego a uma cascata inteira escondida atrás de um nome',
+     [/SELECT 121, 'CRÍTICO: o SOLTADOR não escreve cumprido_em nem dia, E NÃO CHAMA NINGUÉM que escreva por ele/.test(u82),
+      u82.includes("p.prosrc !~ E'(^|\\n)[ \\t]*PERFORM'"),
+      /SELECT 121,[\s\S]{0,1200}?\)\)::text, '2'/.test(u82)],
+     [true, true, true]);
+
+  // ── 17.8 GRAVE (app) — ["agenda-campo"] nunca era invalidada DEPOIS ──────
+  // O soltador roda AFTER UPDATE OF status, isto é, DEPOIS do encerramento — e
+  // a invalidação de `useAfirmarVisitas` acontece ANTES dele. Sem estas três
+  // linhas, a grade continua desenhando blocos que o banco acabou de soltar, e
+  // arrastar um deles os RESSUSCITA (u78:1399 zera cancelado_em).
+  const dash82 = fs82.readFileSync('src/routes/_authenticated/dashboard.tsx', 'utf8');
+  const painel82 = fs82.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  eq('CRÍTICO: os TRÊS caminhos que encerram sem passar por `invalidar` recarregam ["agenda-campo"] DEPOIS da escrita do status — DetalheCampo, o arrasto do quadro e o seletor de status do painel',
+     [/qc\.invalidateQueries\(\{ queryKey: \["agenda-campo"\] \}\);/.test(det82),
+      /qc\.invalidateQueries\(\{ queryKey: \["agenda-campo"\] \}\);/.test(dash82),
+      /qc\.invalidateQueries\(\{ queryKey: \["agenda-campo"\] \}\);/.test(painel82)],
+     [true, true, true]);
+  eq('CRÍTICO: e `invalidar` recarrega ["autz","apoios-meus"] — ela é a TERCEIRA PERNA do gêmeo cliente de pode_editar_chamado, e a partir da U82 ela decide se a tela ANTECIPA uma recusa do encerramento (staleTime 60 s)',
+     /qc\.invalidateQueries\(\{ queryKey: \["autz", "apoios-meus"\] \}\);/.test(dataProg82), true);
+  eq('CRÍTICO: SILÊNCIO NÃO INVALIDA NADA — sem gesto a mutationFn volta cedo e não houve requisição; invalidar ali refetchava nove chaves ANTES da escrita do status, em TODO encerramento',
+     /onSuccess: \(_d, g\) => \{\n\s*if \(g\.feitos\.length > 0 \|\| g\.desmarcados\.length > 0\) invalidar\(qc, \[g\.chamadoId\]\);\n\s*\},/.test(dataProg82),
+     true);
+  // O `fechar` era o único dos três sem `guardarErroDaVisita`, e por isso o
+  // 23P01 do ensaio virava só um toast: as DUAS saídas que o painel desenha
+  // para `classe === "conflito"` nunca eram vistas.
+  eq('CRÍTICO: os TRÊS encerramentos alimentam o painel com o erro CRU — concluir, fechar e cancelar. O `fechar` era o único sem isso, e era o caminho em que a colisão de agenda mais aparece',
+     (det82.match(/onError: \(e: Error\) => \{ guardarErroDaVisita\(e\); toast\.error\(e\.message\); \},/g) || []).length,
+     3);
+
+  // ── 17.9 O QUE A TELA DEIXOU DE PROMETER ────────────────────────────────
+  // A premissa "o app afirma com o chamado ainda ABERTO" vale para UM dos
+  // quatro pontos de chamada. Nos outros três o espelho está pinado e a turma
+  // das OUTRAS semanas nunca foi sequer escrita — e reconstruí-la seria
+  // INVENTAR registro. Limitação irredutível, declarada no P38: o que se
+  // corrige é a PROMESSA, não a máquina.
+  eq('CRÍTICO: o chip NÃO promete mais que responder guarda o registro de quem esteve no prédio — para visita de outra semana num chamado já encerrado, a turma nunca foi escrita, e inventá-la é o que a U64 e a U81 recusaram por escrito (P38)',
+     [/Sem a resposta, o registro de quem esteve no prédio não é guardado/.test(agenda82),
+      /Responder guarda o registro do atendimento\. Para visita de outra semana, confira/.test(agenda82),
+      /o registro de quem foi pode precisar ser posto à mão/.test(agenda82)],
+     [false, true, true]);
+  // ESTA CAIXA É RENDERIZADA NO FLUXO DE CANCELAR TAMBÉM (DetalheCampo), e a
+  // régua do soltador ali é OUTRA: `NEW.status = 'cancelado' OR a.dia > v_hoje`
+  // — no cancelamento TODO pendente cai, inclusive o de dia PASSADO. A frase
+  // anterior falava só do CONCLUIR e prometia, no painel de cancelar, o
+  // CONTRÁRIO do que a máquina faz: o gestor lia "o de dia passado continua
+  // pendente", deixava sem resposta, e o bloco de ontem sumia do chip para
+  // sempre (`visitasNaoAfirmadas` filtra por pendente, e ressuscitar exige
+  // gestão, u78:774-778). A assimetria concluído × cancelado é decisão
+  // declarada (P39) e NÃO está sendo reaberta — o que se corrige é a PROMESSA.
+  // E ela deixou de PROMETER a desmarcação automática como certa: entre o push
+  // e a migration o gatilho não existe, e quem lê "é desmarcado ao encerrar" não
+  // responde nada — aí o bloco fica lá para sempre, porque o gatilho só dispara
+  // na transição de status, que já passou. Agora a frase PEDE a resposta.
+  // E ELA TEM DE DIZER O QUE CONCLUIR FAZ COM O BLOCO DE DIA FUTURO, que é o
+  // efeito mais caro da caixa. A versão anterior falava do passado ("e já tiver
+  // dia passado continua pendente") e calava sobre o futuro — o contraste
+  // convidava à leitura complementar errada, "então o futuro fica". Um chamado
+  // de três idas concluído depois da primeira desmarcava as outras duas sem que
+  // a tela tivesse dito isso em lugar nenhum, e o técnico não desfaz
+  // (`agenda_campo_marcar` em chamado concluído devolve 42501 a quem não é
+  // gestão, u78:774-778). A correção anterior tinha APAGADO o aviso em vez de
+  // tirar a contradição, e prendido a AUSÊNCIA aqui — trocar uma omissão
+  // permanente por uma verdade temporária de poucas horas.
+  eq('CRÍTICO: a caixa diz os TRÊS lados da régua do soltador — ao CONCLUIR o de dia passado continua pendente E o de dia futuro sai da agenda; ao CANCELAR TODO pendente cai. Calar sobre o futuro é o efeito mais caro dela, e é irreversível para quem não é gestão',
+     [/O que ficar sem resposta continua pendente — a máquina não decide por você/.test(conf82tsx),
+      /Ao CONCLUIR, o que ficar sem resposta e já tiver dia passado continua pendente;/.test(conf82tsx),
+      // O AVISO DO FUTURO, que é o que faltava
+      /o que estiver marcado para um dia que ainda não chegou NÃO conte que continue — encerrar tira esse atendimento da agenda, e depois só a gestão o traz de volta\./.test(conf82tsx),
+      /Ao CANCELAR, TODO atendimento sem resposta é desmarcado, inclusive os de dia já passado\./.test(conf82tsx),
+      // e ela PEDE a resposta em vez de PROMETER a desmarcação automática: na
+      // janela entre o push e a migration a promessa seria falsa
+      /Responda agora: é a única hora em que a resposta é sua\./.test(conf82tsx),
+      /é desmarcado ao encerrar/.test(conf82tsx)],
+     [false, true, true, true, true, false]);
+  // A OPÇÃO "aconteceu no dia marcado" FICA — ela é a única saída de uma
+  // colisão de agenda que não obriga o técnico a ir ajustar a grade antes de
+  // conseguir encerrar. O que não podia ficar é o aviso pela metade: ele citava
+  // UM dos quatro efeitos. Dívida declarada no P39.
+  eq('CRÍTICO: o aviso de "aconteceu no dia marcado" num bloco de dia futuro diz os QUATRO efeitos — horário ocupado, bloco imóvel, não-desmarcável e turma da semana do plano. A opção fica (é a saída da colisão), o aviso pela metade não',
+     [/O registro vai dizer \{diaCurto\(v\.diaMarcado\)\} — um dia que ainda não chegou\./.test(conf82tsx),
+      /o bloco não se move mais, não dá\n\s*mais para desmarcá-lo, e a turma de apoio guardada será a da semana do plano/.test(conf82tsx),
+      /O registro vai dizer \{diaCurto\(v\.diaMarcado\)\}, e o horário daquele dia continua/.test(conf82tsx)],
+     [true, true, false]);
+  // O EVENTO DO SOLTADOR não afirma mais o que ninguém verificou: no
+  // cancelamento ele desmarca bloco de dia PASSADO também, e dizer que ele
+  // "ainda não tinha acontecido" é a máquina deduzindo de "estava pendente".
+  eq('CRÍTICO: o evento do soltador não afirma que os atendimentos "ainda não tinham acontecido" — no cancelamento ele alcança bloco de dia PASSADO, sobre o qual ninguém disse nada (a assimetria em si é decisão declarada, P39)',
+     [/atendimento\(s\) que ainda não tinham acontecido foram desmarcados/.test(solta82),
+      /atendimento\(s\) pendentes foram desmarcados\. Nenhum foi marcado como feito/.test(solta82)],
+     [false, true]);
+
+  // ── 17.10 O CABEÇALHO DEIXOU DE AFIRMAR ALGO FALSO ──────────────────────
+  eq('CRÍTICO: o cabeçalho da U82 declara que "o chamado ainda ABERTO" vale para UM dos quatro pontos de chamada, e não para os quatro — e nomeia a limitação irredutível dos outros três (P38)',
+     [/vale para UM dos quatro pontos de chamada, e não para os\n-- quatro/.test(u82),
+      /ISSO É LIMITAÇÃO IRREDUTÍVEL, NÃO BUG/.test(u82),
+      /P38/.test(u82)],
+     [true, true, true]);
+  // A FRASE "conjuntos DISJUNTOS" voltou a ser VERDADE, e voltou porque o ramo
+  // de reabertura saiu. Enquanto ele existia, o soltador chamava
+  // agenda_campo_espelhar, que escreve chamados.data_hora_agendada — coluna que
+  // ESTÁ na lista OF de trg_chamado_apoio_dupla_upd — e os conjuntos escritos
+  // pelos dois vizinhos deixavam de ser disjuntos, com a justificativa da ordem
+  // dos gatilhos apoiada numa premissa falsa.
+  eq('CRÍTICO: a justificativa de "a ordem entre os gatilhos é indiferente" volta a se apoiar em conjuntos DISJUNTOS de verdade — e o cabeçalho nomeia o ramo que a tornou falsa por uma rodada, para que a próxima pessoa não o reintroduza achando que é inofensivo',
+     [/Conjuntos DISJUNTOS — e a frase é verdadeira nos\n-- DOIS caminhos do gatilho porque ele não tem um terceiro/.test(u82),
+      /Foi um ramo de\n-- REABERTURA que tornou esta frase falsa por uma rodada/.test(u82)],
+     [true, true]);
+  // ── 17.12 A GUARDA DE "SÓ CONGELA QUEM AFIRMOU" ─────────────────────────
+  // A terceira metade da trava só roda quando esta chamada AFIRMOU algo. Sem a
+  // guarda, uma chamada que só DESMARCA (o chip, com "não vai acontecer" e
+  // nenhum "aconteceu") congelava a turma viva com o max(cumprido_em) de uma
+  // visita ANTIGA. Congelar é irreversível e concede acesso permanente de
+  // edição (R108): um gesto que não afirmou nada não pode produzir escrita que
+  // ninguém desfaz. A asserção prende o `IF`, e não o vocabulário — regra 2:
+  // presença não vê guarda desligada.
+  eq('CRÍTICO: a terceira metade da trava só roda quando esta chamada AFIRMOU algo — um gesto que só desmarca não pode congelar turma viva com o instante de uma visita antiga, porque congelar é irreversível e concede acesso (R108)',
+     /IF v_af > 0 THEN\n\s*UPDATE public\.chamado_apoios ap\n\s*SET congelado_em = x\.instante/.test(afirmar82),
+     true);
+
+  // ── 17.11 AS LIMITAÇÕES DECLARADAS, PRESAS NOS DOCS ─────────────────────
+  // Regra da casa: limitação que não está escrita vira folclore, e folclore
+  // vira "isso sempre funcionou assim".
+  const pend82 = fs82.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+  const prod82 = fs82.readFileSync('docs/PRODUTO.md', 'utf8');
+  eq('CRÍTICO: as duas limitações IRREDUTÍVEIS desta entrega estão declaradas com canário — P38 (a turma da outra semana nunca foi escrita, e não se inventa) e P39 (a assimetria concluído × cancelado, e a torneira do "dia marcado")',
+     [/^## P38 —/m.test(pend82), /^## P39 —/m.test(pend82),
+      /referencia_semanal\(a\.dia\)\n\s*IS DISTINCT FROM public\.referencia_semanal/.test(pend82)],
+     [true, true, true]);
+  eq('CRÍTICO: e o R109 diz na regra de produto o que a tela passou a dizer — responder guarda o registro DO ATENDIMENTO, e a lista de quem foi tem a cardinalidade que o R107 já declara (por CHAMADO, não por visita)',
+     /\*\*R109\*\*[\s\S]{0,4000}?a lista de\s+quem foi é por CHAMADO, e não por visita/.test(prod82), true);
+  // ── 17.13 O QUE FOI CORTADO ESTÁ DECLARADO, COM ENDEREÇO ────────────────
+  // Uma carga adiada sem dívida escrita é uma carga esquecida — e a próxima
+  // pessoa a reescreve do zero, com os mesmos quatro FATAIS. A dívida tem de
+  // dizer o QUE faria, o POR QUÊ do adiamento, ONDE estão os números, e as
+  // recusas que já foram tomadas para ela não as re-litigar.
+  eq('CRÍTICO: a carga retroativa adiada está declarada no P40, com o caminho do arquivo de medição e com as três recusas já tomadas (o DISABLE, o corte de atribuição DUPLO e a conferência por IDENTIDADE) — sem isso a próxima pessoa a reescreve do zero com os mesmos FATAIS',
+     [/^## P40 — ALTO · A CARGA RETROATIVA da U82 foi adiada, e espera número/m.test(pend82),
+      pend82.includes('supabase/migrations/_medir_antes_da_carga_u82.sql'),
+      /`ALTER TABLE \.\.\. DISABLE TRIGGER` não volta/.test(pend82),
+      /O corte de atribuição é DUPLO/.test(pend82),
+      /tem de medir IDENTIDADE, não\n\s*contagem/.test(pend82)],
+     [true, true, true, true, true]);
+  // E O P35 GANHOU O CASO NOVO: o espelho depois de REABRIR. É o FATAL que o
+  // ramo de reabertura criava ao tentar consertá-lo — e o defeito em si é
+  // pré-existente, o que é precisamente a razão de ele virar dívida e não
+  // mecanismo.
+  eq('CRÍTICO: o P35 declara o espelho podre depois de REABRIR e explica por que consertá-lo de dentro do soltador era pior que o defeito — a cascata de u76:1129 congela, apaga e toca sino, e nada disso é reversível',
+     [/O caso NOVO que a U82 acrescenta a esta dívida: o espelho depois de REABRIR/.test(pend82),
+      /Ele foi RETIRADO, e a retirada é a\ndecisão/.test(pend82),
+      /rearrastar o bloco na grade/.test(pend82)],
+     [true, true, true]);
+  // E A REGRA DE PRODUTO NÃO PROMETE O RETROATIVO. Uma regra que promete o que
+  // a entrega não faz é pior que regra nenhuma: ela vira a expectativa contra a
+  // qual o sistema é julgado.
+  eq('CRÍTICO: o R109 declara que esta entrega NÃO mexe no passado — a regra vale da entrega para a frente, quem drena o estoque é o aviso um chamado por vez, e a passada retroativa está adiada até termos os números',
+     [/ela não mexe\n  no passado/.test(prod82),
+      /adiada até termos os números/.test(prod82),
+      /P40\s+das pendências técnicas/.test(prod82)],
+     [true, true, true]);
+  // E O MANUAL DIZ AO OPERADOR A COISA QUE MAIS CUSTA CARO: no cancelamento a
+  // régua é outra, e responder é a última chance antes de a pergunta sumir.
+  const man82 = fs82.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+  eq('CRÍTICO: o manual avisa que no CANCELAMENTO todo pendente cai, inclusive o de dia passado, e que responder "Aconteceu" ANTES de cancelar é a última chance de guardar o registro sem passar pela gestão',
+     [/NO CANCELAMENTO A RÉGUA É OUTRA, E ELA MORDE MAIS/.test(man82),
+      /inclusive os de dia já passado/.test(man82),
+      /responda\n> "Aconteceu" ANTES de cancelar/.test(man82),
+      /O que esta entrega NÃO faz: o passado/.test(man82)],
+     [true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

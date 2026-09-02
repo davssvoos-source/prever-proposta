@@ -1957,3 +1957,118 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   mede essa população (conferência 115) e o volume disso decide se a próxima
   entrega precisa abrir uma porta de correção antes de qualquer outra coisa.
   *(U81.)*
+
+- **R109** — **Quem afirma que uma visita aconteceu é gente, e afirma antes de o
+  atendimento fechar.** Encerrar um chamado de campo passa a perguntar, um a um,
+  se os atendimentos que estavam marcados aconteceram. São três respostas por
+  atendimento — *aconteceu*, *não vai acontecer*, e o silêncio — e **nenhuma
+  nasce marcada**: "o dia passou e ninguém disse nada" nunca foi prova de que
+  alguém esteve no prédio, e um formulário pré-marcado transformaria o silêncio
+  de quem clica em afirmação.
+
+  A pergunta vem **antes** de o chamado mudar de status, e a ordem não é
+  detalhe de implementação: só com o chamado ainda aberto o sistema consegue
+  andar de visita em visita e guardar **a turma de cada semana**. Feita depois,
+  a afirmação grava uma turma só e perde as outras — que é exatamente o defeito
+  que o R107 existe para não ter.
+
+  **A máquina nunca afirma no lugar de ninguém.** Um encerramento automático
+  (um card arrastado no quadro, um pedido de compra recusado, a visita técnica
+  que sincroniza) não marca nada como feito. O atendimento fica pendente, e o
+  chamado passa a mostrar um aviso — *"foi encerrado com N atendimentos que
+  ninguém afirmou"* — com o botão de responder ali mesmo. O aviso não vai
+  embora sozinho.
+
+  **O que responder DEPOIS do encerramento guarda, e o que não guarda — e isto
+  está aqui para a tela não prometer o que a máquina não faz.** Responder pelo
+  aviso guarda o registro **do atendimento**: ele deixa de estar pendente e
+  passa a constar como feito, com o instante do carimbo. O que ele **não**
+  consegue guardar é a lista de quem foi numa visita de **outra semana**: com o
+  chamado já encerrado, a data do atendimento no chamado está congelada, e a
+  turma daquela semana nunca chegou a ser escrita. Não a inventamos — a lista de
+  quem foi é por CHAMADO, e não por visita, exatamente como o R107 já declara. O
+  aviso manda conferir o chip de apoio, e pôr a pessoa à mão é um clique.
+
+  **E O QUE ESTA ENTREGA NÃO FAZ, DITO AQUI PARA NINGUÉM ESPERAR: ela não mexe
+  no passado.** A regra vale da entrega para a frente. Os chamados que já foram
+  encerrados sem ninguém responder continuam como estão — nenhum deles é
+  carimbado em massa, nenhum plano antigo é desmarcado em massa. Quem drena esse
+  estoque é o **aviso**, um chamado por vez, com uma pessoa respondendo. Uma
+  passada retroativa foi desenhada e **adiada até termos os números** (quantos
+  chamados, quantas linhas, quanto tempo de bloqueio); ela está descrita no P40
+  das pendências técnicas. Carimbar o passado em massa é a única coisa desta
+  entrega que gravaria afirmação sem uma pessoa por trás, e por isso é a que não
+  se faz sem medir. *(U82.)*
+
+- **R110** — **Afirmar traz o atendimento para o dia em que a afirmação
+  acontece — e só quando o dia marcado ainda não chegou.**
+
+  Vem do Davi (04/09): *"posso acabar fazendo algo antes da data agendada por
+  diversos motivos e o sistema não deve barrar isso"*. **Nenhuma tela e nenhuma
+  porta do sistema recusa um carimbo por causa de data.** A pergunta nunca foi
+  "a data já passou?", e sim "aconteceu?".
+
+  O que a data decide é outra coisa: **qual dia fica gravado**. Se o dia marcado
+  ainda não chegou, ele é *provadamente falso* — ninguém esteve lá, porque o dia
+  não existiu —, então o padrão é trazer o atendimento para hoje. Deixá-lo no
+  futuro faria o sistema afirmar que a equipe esteve no prédio num dia que não
+  aconteceu, travaria aquele horário na agenda da equipe **para sempre** e
+  guardaria a turma da semana errada. Quem quiser manter o dia marcado ainda
+  pode: o botão está ali, ao lado.
+
+  **Fazer DEPOIS do dia marcado é diferente, e a assimetria é deliberada:** o
+  atendimento **fica onde está**. Um dia que já passou é *possível* — o
+  calendário permite, nada foi provado falso, e o plano é a melhor prova que
+  existe. Trocá-lo por "hoje", que é seguramente errado, destruiria um dado
+  plausível para ganhar aparência de precisão.
+
+  **Se trazer para hoje esbarrar em outro compromisso da mesma equipe**, o
+  sistema recusa com o nome do que está no caminho, **nada é gravado e o chamado
+  NÃO é encerrado** — as duas saídas aparecem no mesmo painel (afirmar mantendo
+  o dia marcado, ou ajustar o horário na grade). Conflito de agenda custa uma
+  pergunta; nunca um técnico preso no campo com a assinatura na mão.
+
+  **O dia de um atendimento afirmado é um destes dois: o dia que estava marcado,
+  ou HOJE.** São as duas respostas que a tela sabe dar, e a porta não aceita uma
+  terceira. Isto **não** é uma guarda de data no sentido acima — nada aqui recusa
+  fazer o serviço antes do dia marcado, e as duas respostas continuam sempre
+  disponíveis. É que a data escolhe a **semana**, a semana escolhe **a turma que
+  fica gravada como quem esteve no prédio**, e uma data arbitrária (que só chega
+  por fora da tela, de um erro de programa ou de má-fé) gravaria gente de uma
+  escala de outra época como tendo estado num prédio onde nunca esteve — com o
+  acesso permanente que isso concede (R108). *(U82.)*
+
+- **R111** — **Um atendimento encerrado não deixa plano pendente: o que ainda
+  não aconteceu é desmarcado pela máquina, e a máquina nunca marca nada como
+  feito.**
+
+  Ao encerrar um chamado, o que estava marcado para um dia que **ainda não
+  chegou** é desmarcado automaticamente — o chamado acabou, aquele plano não vai
+  acontecer, e a agenda da equipe fica livre. No **cancelamento** vale para
+  todos os atendimentos pendentes, de qualquer dia.
+
+  **Três coisas que a máquina NÃO faz, e cada uma é decisão:**
+  · não marca nada como feito — afirmar é só de gente (R109);
+  · não toca em atendimento **já marcado como feito**, nunca — desmarcá-lo
+    apagaria o registro de que ele aconteceu;
+  · não toca em atendimento marcado para **hoje**. Um atendimento das 16h num
+    chamado encerrado às 10h pode ter acontecido de manhã ou pode não ir
+    acontecer, e nenhuma das duas leituras se deduz. Ele fica pendente e entra
+    no aviso, para quem sabe responder.
+
+  **No CANCELAMENTO a régua é outra, e a tela diz isso onde ela morde.** Ali todo
+  atendimento sem resposta é desmarcado, **inclusive os de dia já passado** — e
+  depois disso só a gestão consegue remarcá-los. A caixa de perguntas é a mesma
+  no concluir e no cancelar, então ela declara os dois lados: prometer no painel
+  de cancelar que "o de dia passado continua pendente" fazia o gestor deixar sem
+  resposta um atendimento que aconteceu ontem, e o aviso ficava cego justamente
+  sobre o caso que ele existe para pegar.
+
+  Tudo que a máquina desmarca é **reversível**: arrastar o cartão de volta na
+  grade o ressuscita. E **reabrir um chamado não desfaz nada** — coerente com o
+  R107: desafirmar não desacontece, e o que foi desmarcado se remarca. Reabrir
+  também **não conserta a data do chamado**, que pode ter ficado apontando para
+  o atendimento desmarcado: consertá-la de dentro do encerramento faria a lista
+  de quem foi ser apagada e reescrita por efeito colateral, com sino e com acesso
+  concedido a quem ninguém escolheu. Arrastar o bloco na grade recalcula a data
+  pelo caminho normal. *(U82; a limitação está no P35.)*

@@ -64,6 +64,34 @@ com triggers no caminho: `ALTER TABLE ... DISABLE TRIGGER USER` antes,
 - **Assumir a cadeia do inventário com FK direta**: são 3 níveis
   (`cliente_sistemas.cliente_id` → `cliente_equipamentos.cliente_sistema_id`
   → `cliente_equipamento_unidades.cliente_equipamento_id`).
+- **Gatilho na tabela X que escreve na tabela Y cuja cascata volta para X**
+  (U82): em `BEFORE` isso é `09000 triggered_data_change_violation` — *"tuple to
+  be updated was already modified by an operation triggered by the current
+  command"* —, e é **INTERMITENTE**: uma linha passa, duas estouram. Em `AFTER`
+  a cascata não estoura, ela **morre no gate** (a função de Y tipicamente filtra
+  por `status NOT IN (…)`, e depois do UPDATE o status já é o novo), e o efeito
+  some **em silêncio**. As duas pontas são ruins de jeitos diferentes, e a
+  conclusão é uma só: **se o gatilho precisa que a cascata RODE, ele não pode
+  ser gatilho** — o ato tem de acontecer ANTES, de fora, com a linha ainda no
+  estado antigo.
+- **`AFTER UPDATE OF <coluna>` dispara pela PRESENÇA da coluna no `SET`**, mesmo
+  quando o valor não muda (u78:938-947). Um `UPDATE … SET dia = <o mesmo dia>`
+  acorda todo gatilho que lista `dia` — e num chamado encerrado
+  `agenda_campo_valida` devolve `42501` a quem não é gestor. Escreva SÓ as
+  colunas que mudam; dois ramos de `UPDATE` são mais baratos do que um gatilho
+  acordado à toa.
+- **`UPDATE` em conjunto × laço, quando há gatilho `AFTER` de linha** (U82 §2):
+  num `UPDATE` por conjunto os `BEFORE` rodam durante a varredura (todos leem o
+  MESMO estado) e os `AFTER` só disparam **no fim do statement**, quando todas
+  as linhas já mudaram. Um "espelho" que devia andar de linha em linha SALTA da
+  primeira à última e os estados do meio nunca são escritos. Quando o efeito
+  colateral de cada linha importa, o laço não é preguiça: é a semântica.
+- **`now()` não avança dentro de uma transação** — ele é o timestamp da
+  TRANSAÇÃO. Se N linhas escritas na mesma transação precisam de instantes
+  DIFERENTES (porque alguém vai agrupar por eles depois), use
+  `clock_timestamp()`. E se elas precisam do MESMO instante (uma carga, para o
+  DESFAZER ter um alvo exato), `now()` é a escolha certa — mas diga isso por
+  escrito, porque o leitor seguinte vai achar que foi descuido.
 
 ## Checklist para tabela nova
 

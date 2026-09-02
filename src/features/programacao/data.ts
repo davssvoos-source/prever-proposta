@@ -405,10 +405,39 @@ export function useMeusApoiosValidos(userId: string | null | undefined) {
 export function useAutorizacaoDaAgenda(
   usuarioId: string | null,
   chamados: ChamadoParaAutorizacao[],
-): AutorizacaoDaAgenda {
-  const { data: ehGestor = false } = useEhGestor(usuarioId);
-  const { data: apoios = [] } = useMeusApoiosValidos(usuarioId);
-  return montarAutorizacao(usuarioId, ehGestor, chamados, apoios);
+): AutorizacaoDaAgenda & { pronta: boolean } {
+  const gestor = useEhGestor(usuarioId);
+  const apoios = useMeusApoiosValidos(usuarioId);
+  return {
+    ...montarAutorizacao(usuarioId, gestor.data ?? false, chamados, apoios.data ?? []),
+    /**
+     * A AUTORIZAÇÃO DIZ QUANDO ELA SABE — e ANTECIPAR RECUSA COM AUTORIZAÇÃO
+     * NÃO CARREGADA É RECUSAR TODO MUNDO.
+     *
+     * `ehGestor` nasce `false` e `apoios` nasce vazio, e a cadeia é de DUAS
+     * idas em série: `useSessao` resolve o `userId`, e só então `is_gestor`
+     * sai. Nessa janela `usuarioId` já é não-nulo e `podeEditarChamado`
+     * responde `false` para o gestor que não é responsável nem abriu o
+     * chamado — que é exatamente quem o `is_gestor` do servidor aceitaria.
+     * Um clique disponível assim que a página pinta (navegação direta, link de
+     * notificação) levava "Você não responde por este chamado".
+     *
+     * `!usuarioId` conta como PRONTA porque as duas consultas ficam
+     * `enabled: false` sem usuário — e sem usuário `montarAutorizacao` já
+     * devolve o modo "não antecipo nada, o servidor decide".
+     *
+     * `isSuccess`, E NÃO `!isPending`. Em react-query v5, consulta em ERRO tem
+     * `status === 'error'`, logo `isPending` é `false` — e `!isPending` chamava
+     * de "sei" justamente o estado em que não se sabe de nada. Com `data`
+     * `undefined`, o `?? false` acima entrega "não é gestor" e a recusa
+     * antecipada dispara: a janela de CARREGANDO tinha sido fechada e a de
+     * FALHOU continuava aberta. Pior no encerramento, onde o `throw` acontece
+     * DEPOIS de a assinatura já ter sido gravada — o técnico ficava com a
+     * assinatura no chamado e o chamado em `em_andamento`. `isSuccess` é falso
+     * nos dois estados, que é o que "não sei" quer dizer.
+     */
+    pronta: !usuarioId || (gestor.isSuccess && apoios.isSuccess),
+  };
 }
 
 // ── ESCRITA: as quatro portas ───────────────────────────────────────────────
@@ -515,6 +544,13 @@ function invalidar(qc: QueryClient, chamados: string[]) {
     // tela não recarrega. Só não era visível porque `PainelChamado` não fica
     // montado na grade e o `staleTime` dessa query é 0.
     qc.invalidateQueries({ queryKey: ["chamado-apoios", id] });
+    // U82: `["autz","apoios-meus"]` é a TERCEIRA PERNA do gêmeo cliente de
+    // `pode_editar_chamado`, e a partir da U82 ela deixou de ser cosmética —
+    // ela decide se a tela ANTECIPA uma recusa do encerramento. A cascata do
+    // espelho acabou de inserir e apagar linhas de `chamado_apoios`, e o
+    // `staleTime` dessa chave é 60 s: sem esta linha a tela pode recusar por um
+    // minuto um gesto que o servidor aceitaria, ou o contrário.
+    qc.invalidateQueries({ queryKey: ["autz", "apoios-meus"] });
   }
   for (const k of [["home"], ["home-chamados"], ["home-historico"], ["calendario"], ["home-apoios-todos"]]) {
     qc.invalidateQueries({ queryKey: k });
@@ -588,6 +624,123 @@ export function useCumprirBloco() {
       if (error) throw error;
     },
     onSuccess: (_d, v) => invalidar(qc, v.bloco.chamado_id ? [v.bloco.chamado_id] : []),
+  });
+}
+
+// ── A SEGUNDA MÃO DO CARIMBO (U82 §2) ──────────────────────────────────────
+
+/**
+ * OS DOIS CÓDIGOS DE "A PORTA NÃO EXISTE", e eles são a regra 5 da casa
+ * (ordem de deploy) virando propriedade do CÓDIGO.
+ *
+ * O push em `main` publica NA HORA (Lovable); a migration é rodada à mão
+ * DEPOIS. Nessa janela `agenda_campo_afirmar` não existe, e o PostgREST
+ * responde **PGRST202** ("não achei a função com esses argumentos"); se ela for
+ * derrubada pelo DESFAZER com o front no ar, o Postgres responde **42883**
+ * (`undefined_function`). Nos dois casos o certo é o mesmo: NÃO derrubar o
+ * encerramento. Quem afirma é uma cortesia nova; quem encerra é o app de
+ * sempre, e ele tem de continuar funcionando.
+ */
+export const PORTA_INEXISTENTE = ["PGRST202", "42883"];
+
+/**
+ * O QUE A PORTA REALMENTE FALA — e SÓ ISTO tem voto no encerramento.
+ *
+ * `agenda_campo_afirmar` devolve TRÊS códigos e mais nenhum: **42501** (você
+ * não responde por este chamado / só a gestão remarca trabalho encerrado),
+ * **55000** (regra — natureza errada, desmarcar o que já está feito, data que a
+ * tela não sabe produzir) e **23P01** (a equipe já tem outro compromisso naquele
+ * horário). Bloquear nesses três é o desenho: a colisão precisa das DUAS SAÍDAS
+ * antes de o chamado ser encerrado, e a recusa de permissão precisa ser
+ * corrigida e não engolida.
+ *
+ * TUDO O MAIS É "A PORTA NÃO RESPONDEU", e a regra é a mesma de "a porta não
+ * existe": **NÃO DERRUBAR O ENCERRAMENTO.** Uma lista de EXCEÇÕES cobria só
+ * PGRST202/42883 e deixava a queda de rede (o postgrest-js devolve `code: ''`),
+ * o 503 e o statement timeout prenderem o técnico no prédio com a assinatura já
+ * gravada e o chamado em `em_andamento` — que é exatamente o pior caso que este
+ * desenho existe para evitar. Afirmar é cortesia; encerrar não pode ficar refém
+ * dela.
+ */
+export const RECUSAS_DA_PORTA = ["42501", "55000", "23P01"];
+
+export interface GestoDeAfirmar {
+  chamadoId: string;
+  /** já em ORDEM DE IDA — `payloadDaAfirmacao` (modelo puro) é quem ordena */
+  feitos: { id: string; dia: string }[];
+  desmarcados: string[];
+}
+
+export interface ResultadoDaAfirmacao {
+  afirmados: number;
+  movidos: number;
+  desmarcados: number;
+  /** true = a migration ainda não rodou (ou foi desfeita); nada foi afirmado */
+  portaAusente: boolean;
+  /** true = a porta EXISTE e não respondeu (rede, 503, timeout); nada foi afirmado */
+  portaMuda: boolean;
+}
+
+/**
+ * AFIRMAR AS VISITAS DE UM CHAMADO, ANTES DE ENCERRÁ-LO.
+ *
+ * A ORDEM É O DESENHO E NÃO PODE SER INVERTIDA: esta chamada acontece com o
+ * chamado ainda ABERTO. Só assim `agenda_campo_espelhar` passa no próprio WHERE
+ * (u78:895) e o espelho anda bloco a bloco — que é o que faz o congelamento da
+ * U81 pegar a turma de CADA semana ISO —, e só assim `agenda_campo_valida`
+ * (u78:774-776) ainda deixa o TÉCNICO corrigir o dia de um bloco.
+ *
+ * ELA SÓ DERRUBA O ENCERRAMENTO NOS TRÊS CÓDIGOS QUE A PORTA FALA
+ * (`RECUSAS_DA_PORTA`: 42501, 55000, 23P01), e aí o erro sobe CRU, com a frase
+ * em português que a porta escreveu, para `classeDoErro(code)` escolher o rosto.
+ * "A porta não existe" devolve `portaAusente: true`; QUALQUER OUTRA FALHA —
+ * rede, 503, statement timeout — devolve `portaMuda: true`. Nos dois casos quem
+ * chamou segue em frente e encerra o chamado. Ver `RECUSAS_DA_PORTA`.
+ *
+ * `_desmarcados` vai como `null` quando não há nenhum, e não como `[]`: a porta
+ * lê `_desmarcados IS NOT NULL` como "há gesto de desmarcar aqui", e um array
+ * vazio faria a checagem rodar à toa.
+ */
+export function useAfirmarVisitas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (g: GestoDeAfirmar): Promise<ResultadoDaAfirmacao> => {
+      const nada = { afirmados: 0, movidos: 0, desmarcados: 0, portaAusente: false, portaMuda: false };
+      if (g.feitos.length === 0 && g.desmarcados.length === 0) return nada;
+      const { data, error } = await supabase.rpc(
+        "agenda_campo_afirmar" as any,
+        {
+          _chamado: g.chamadoId,
+          _feitos: g.feitos,
+          _desmarcados: g.desmarcados.length > 0 ? g.desmarcados : null,
+        } as any,
+      );
+      if (error) {
+        // A LISTA POSITIVA VEM PRIMEIRO, e a ordem é o desenho: só o que a
+        // porta FALA derruba o gesto. Uma lista de exceções deixava tudo o que
+        // ela NÃO fala (rede com `code` vazio, 503, timeout) derrubar também.
+        const code = sqlstateDoErro(error) ?? "";
+        if (RECUSAS_DA_PORTA.includes(code)) throw error;
+        if (PORTA_INEXISTENTE.includes(code)) return { ...nada, portaAusente: true };
+        return { ...nada, portaMuda: true };
+      }
+      const linha = Array.isArray(data) ? data[0] : data;
+      return {
+        afirmados: Number((linha as any)?.afirmados ?? 0),
+        movidos: Number((linha as any)?.movidos ?? 0),
+        desmarcados: Number((linha as any)?.desmarcados ?? 0),
+        portaAusente: false,
+        portaMuda: false,
+      };
+    },
+    // SILÊNCIO NÃO INVALIDA NADA. Sem gesto a `mutationFn` volta cedo e NÃO
+    // houve requisição nenhuma — invalidar aqui refetchava nove chaves ANTES
+    // da escrita do status, em TODO encerramento, inclusive nos chamados que
+    // não têm bloco. E a primeira rodada fotografava justamente o estado velho:
+    // quem recarrega depois da escrita é o `invalidar` de quem encerrou.
+    onSuccess: (_d, g) => {
+      if (g.feitos.length > 0 || g.desmarcados.length > 0) invalidar(qc, [g.chamadoId]);
+    },
   });
 }
 

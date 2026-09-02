@@ -508,10 +508,151 @@ SELECT count(*) AS linhas, count(DISTINCT chamado_id) AS atendimentos
  WHERE congelado_em IS NOT NULL;
 ```
 
+## Encerrar um chamado passa a perguntar pelas visitas (R109/R110/R111, U82)
+
+### O que mudou, em uma frase
+
+Ao encerrar um chamado de campo, o sistema **pergunta, um a um, se os
+atendimentos que estavam marcados aconteceram** — e o que ficar marcado para um
+dia que ainda não chegou é **desmarcado sozinho**.
+
+### Por que ele pergunta em vez de decidir
+
+Até aqui existia **um único clique** no sistema inteiro capaz de dizer "esta
+visita aconteceu": o botão *Marcar como feito*, no cartão da grade. É esse clique
+que guarda o registro de quem esteve no prédio (R107). Quando ele não acontecia,
+o registro não era guardado — e ninguém via isso.
+
+A saída **não** foi mandar o sistema marcar tudo sozinho ao concluir. "O dia
+passou e ninguém disse nada" nunca foi prova de que alguém esteve lá, e um
+sistema que trata *provavelmente aconteceu* como *aconteceu* passa a escrever
+histórias. Então ele pergunta. E **nada nasce marcado**: três respostas por
+atendimento — *aconteceu*, *não vai acontecer*, e deixar em branco.
+
+**Deixar em branco é uma resposta legítima.** O atendimento fica pendente e o
+chamado passa a mostrar um aviso, que não some sozinho.
+
+### As três respostas, e o que cada uma faz
+
+| Você diz | O sistema faz |
+|---|---|
+| **Aconteceu** | Marca a visita como feita e **guarda quem esteve** naquela ida. |
+| **Não vai acontecer** | Desmarca o atendimento e **libera o horário** da equipe. Nada é afirmado. |
+| *(em branco)* | Nada. O atendimento fica pendente e entra no aviso do chamado. |
+
+### O atendimento marcado para depois, feito hoje
+
+É comum e é legítimo — palavras do Davi (04/09): *"posso acabar fazendo algo
+antes da data agendada por diversos motivos e o sistema não deve barrar isso"*.
+**Nenhuma tela deste sistema recusa um carimbo porque a data ainda não chegou.**
+
+O que ele faz é perguntar **em que dia**, e sugerir o certo:
+
+- **Se o dia marcado ainda NÃO chegou**, o padrão é *"Aconteceu HOJE"*. Deixar o
+  atendimento na terça que vem faria o sistema afirmar que a equipe esteve no
+  prédio num dia que não existiu, **travaria aquele horário da equipe para
+  sempre** e guardaria a turma da semana errada. Quem quiser manter o dia
+  marcado ainda pode — o botão está ao lado, e o aviso embaixo diz o que isso
+  significa.
+- **Se o dia marcado JÁ passou** (o atendimento atrasou), ele **fica onde
+  está**. E a assimetria é de propósito: um dia que já passou é *possível* —
+  nada prova que não aconteceu, e o que estava planejado é a melhor informação
+  que existe. Trocá-lo por "hoje", que é seguramente errado, seria jogar fora um
+  dado bom para ganhar aparência de precisão.
+
+**Se trazer o atendimento para hoje esbarrar em outro compromisso da mesma
+equipe**, o sistema mostra COM O QUÊ, **não grava nada e não encerra o chamado**.
+As duas saídas aparecem na mesma tela: afirmar mantendo o dia marcado, ou sair e
+ajustar o horário na grade. Um conflito de agenda custa uma pergunta — nunca um
+técnico parado no prédio com a assinatura na mão.
+
+### O que a máquina faz sozinha ao encerrar
+
+Só uma coisa, e ela **não afirma nada**: o que estava marcado para um dia que
+ainda não chegou é **desmarcado**. O chamado acabou; aquele plano não vai
+acontecer, e a agenda da equipe fica livre.
+
+**NO CANCELAMENTO A RÉGUA É OUTRA, E ELA MORDE MAIS.** Ao cancelar, **todo**
+atendimento sem resposta é desmarcado — **inclusive os de dia já passado**. E
+esses somem do aviso: o aviso lista atendimento *pendente*, e desmarcado não é
+pendente. Para voltar a marcá-lo é preciso ser gestão.
+
+> **Se a equipe foi ao prédio e depois o cliente desistiu, responda
+> "Aconteceu" ANTES de cancelar.** É a última chance de guardar aquele registro
+> sem passar pela gestão. A caixa de perguntas aparece no fluxo de cancelar
+> justamente para isso.
+
+Três coisas que ela **não** faz:
+
+- não marca nada como feito;
+- não toca em atendimento **já marcado como feito** — desmarcá-lo apagaria o
+  registro de que ele aconteceu;
+- não toca em atendimento marcado para **hoje**. Um atendimento das 16h num
+  chamado encerrado às 10h pode ter acontecido de manhã ou pode não ir
+  acontecer, e o sistema não tem como saber. Ele fica pendente e entra no aviso.
+
+Tudo que a máquina desmarca **volta**: arraste o cartão de novo na grade e ele
+ressuscita. E aparece uma linha na linha do tempo do chamado dizendo quantos
+foram desmarcados — o gesto não é secreto.
+
+### O aviso do chamado encerrado
+
+Há caminhos que encerram um chamado **sem perguntar nada**: arrastar o card no
+quadro da Início, trocar o status no seletor do painel, recusar um pedido de
+compra, a visita comercial que sincroniza. Para esses, o chamado passa a mostrar:
+
+> ⚠ Este chamado foi encerrado com N atendimento(s) que ninguém afirmou.
+
+Com o botão **Afirmar agora** ao lado, que abre a mesma pergunta. **Responder
+depois ainda guarda o registro** — o aviso existe para isso, e ele não some
+sozinho.
+
+Uma ressalva: num chamado **já encerrado**, corrigir o DIA de um atendimento é
+coisa de gestão. Se você não é gestor, a opção "Aconteceu HOJE" vai ser recusada
+ali — mas "Aconteceu no dia marcado" continua funcionando, e é a que guarda o
+registro. Por isso vale responder **antes** de encerrar, e não depois.
+
+### Reabrir não desfaz nada
+
+Reabrir um chamado encerrado **não** tira o "feito" de visita nenhuma e **não**
+remarca o que foi desmarcado. É a mesma regra do R107: desafirmar não
+desacontece. Se o trabalho continua, remarque na grade — o cartão desmarcado
+volta com um arrasto.
+
+Um detalhe que só aparece depois: um chamado reaberto pode ficar mostrando, na
+Início e no calendário, **a data do atendimento que o encerramento desmarcou**.
+Não é dado perdido, é uma data desatualizada. **Arraste o bloco na grade** (nem
+que seja para o mesmo lugar) e ela se corrige sozinha. O sistema não faz isso no
+momento da reabertura de propósito: fazer ali mexeria na lista de quem esteve no
+prédio por tabela, tocando avisos e dando acesso a quem ninguém escolheu.
+
+### O que esta entrega NÃO faz: o passado
+
+A regra vale **da entrega para a frente**. Os chamados que já foram encerrados
+sem ninguém responder **continuam exatamente como estão** — nada foi carimbado em
+massa e nada foi desmarcado em massa. Quem drena o que ficou para trás é o
+**aviso do chamado**, um por vez, com uma pessoa respondendo.
+
+Uma passada retroativa foi desenhada e **ficou para depois, esperando número**:
+carimbar em massa é a única coisa desta entrega que gravaria "aconteceu" sem uma
+pessoa por trás, e isso não se faz no escuro. Se o aviso não estiver dando conta,
+o que decide é a contagem de chamados encerrados sem resposta — a consulta está
+logo abaixo.
+
+**Consulta-canário** — quantos chamados foram encerrados com atendimento sem
+resposta. É o número que diz se a pergunta está sendo respondida:
+
+```sql
+SELECT count(*) AS encerrados_sem_resposta
+  FROM public.agenda_campo a JOIN public.chamados c ON c.id = a.chamado_id
+ WHERE a.cancelado_em IS NULL AND a.cumprido_em IS NULL
+   AND c.status IN ('concluido','cancelado');
+```
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`
 - `src/features/paineis/indicadores.ts` · `painel.operacional.tsx`
 - `docs/SISTEMA_OS.md` (o plano original do sistema de OS)
 - `src/features/duplas/modelo.ts` — a escala semanal e a herança (R96/U76)
-- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R108
+- `docs/PRODUTO.md` — R1, R5–R9, R11–R12, R14–R20, R24–R26, R31, R95–R97, R107–R111

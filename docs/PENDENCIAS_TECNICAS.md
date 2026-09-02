@@ -713,7 +713,31 @@ cliente passa a voltar `null`. É o que a S1 quis; é a mudança que a S1 achou 
 já tinha feito. Vale conferir com o Davi se o lookup global é intencional antes
 de fechar.
 
-## P25 — ALTO · O congelamento da U81 pende de um clique OPCIONAL, e degrada em silêncio (2026-09-04, U81)
+## P25 — ~~ALTO · O congelamento da U81 pende de um clique OPCIONAL, e degrada em silêncio~~ FECHADA EM PARTE (U82, 2026-09-05)
+
+**A segunda mão existe desde a U82**, e ela não é a que a U78 prometeu (o app
+carimbando sozinho "os blocos abertos até hoje" — isso seria afirmar sem
+evidência). São duas peças que não se sobrepõem: `agenda_campo_afirmar`, uma
+PERGUNTA por bloco que o app faz ANTES de escrever o status, e
+`chamado_solta_agenda`, um gatilho que **não afirma nada** — só desmarca o que
+ainda era plano futuro.
+
+**A U82 NÃO MEXE NO PASSADO.** A carga retroativa que afirmaria o passado dos
+chamados já concluídos e destravaria os blocos presos foi **cortada** da
+entrega: era onde estavam os quatro defeitos fatais das duas primeiras rodadas
+de refutação, e ela precisa de números que ninguém mediu ainda. Ver o **P40** e
+o arquivo de medição `supabase/migrations/_medir_antes_da_carga_u82.sql`.
+Portanto o passivo que a U81 herdou continua inteiro: o que a U82 muda é só o
+trabalho **daqui para frente**.
+
+**O que NÃO foi fechado, e virou o P34:** cinco caminhos encerram um chamado sem
+passar por uma linha de tela. Para eles a defesa é o chip
+(`visitasNaoAfirmadas`), que só age quando alguém abre o chamado. O número que
+diz se isso bastou é o lado **ENCERRADO** da conferência 130 da U82.
+
+O texto original fica abaixo, porque ele é o diagnóstico que produziu a U82.
+
+---
 
 A U81 protege o registro de quem foi ao prédio **no instante em que alguém marca
 o atendimento como feito**. Fora desse instante ela não faz nada — e há **um
@@ -883,6 +907,338 @@ primeira rodada é que diz o tamanho disto. Se for grande, a saída provável n�
 desfazer o congelamento (isso reabre o defeito) mas dar ao gestor uma ação
 explícita de "esta pessoa não esteve aqui", que hoje só existe como o X do chip,
 sem nada na tela dizendo que é preciso usá-lo.
+
+## P34 — ALTO · Cinco caminhos encerram um chamado sem perguntar nada (2026-09-05, U82)
+
+A U82 pôs a pergunta ("estes atendimentos aconteceram?") em três lugares:
+`DetalheCampo` (concluir, fechar, cancelar), `PainelDoCiclo` (as três decisões do
+ciclo) e o chip da `AgendaDoChamado`. **Não são todos os caminhos.** Encerram um
+chamado de campo, hoje, sem passar por nenhum deles:
+
+1. **O arrasto do quadro** — `dashboard.tsx:343-345`, `atualizarChamado(id,
+   { status })`. É o encerramento mais barato do app: um gesto de arrumação de
+   kanban vira um chamado concluído.
+2. **O seletor de status do painel** — `PainelChamado.tsx:1116-1119`. Dois
+   cliques, sem laudo, sem pergunta.
+3. **Os chips do chamado interno** — `DetalheInterno.tsx`, mesmo caminho.
+4. **`decidir_pedido_compra`** (`u9:139-151`) — recusar um pedido de compra
+   cancela o chamado por RPC. Nenhuma linha de TypeScript no caminho.
+5. **`sincronizar_chamado_da_visita`** (`u38:68-86`) — o gatilho da visita
+   comercial. Idem.
+
+Para os cinco, o gatilho `chamado_solta_agenda` faz a parte dele (desmarca o
+plano futuro, e o evento `agenda_solta` aparece na linha do tempo), mas
+**ninguém afirma nada** — e afirmar é de gente, por desenho (R109). A defesa é o
+chip: a `AgendaDoChamado` mostra *"encerrado com N atendimentos que ninguém
+afirmou"* com o botão de responder ali mesmo, e ele só some quando alguém
+responde. Mas **exige que alguém abra o chamado.**
+
+**O número que decide:** o lado ENCERRADO da conferência 130 da U82. Se ele não
+cair em três semanas, o chip não bastou — e a resposta **não é** voltar ao
+gatilho que afirma (ele continua mecanicamente impossível de fazer com
+honestidade; ver o teorema no §U82 do `PLANO_UNIFICACAO.md`), é **levar a
+pergunta ao arrasto do quadro e ao seletor de status**, que é onde ela falta.
+
+**Consulta-canário** (o lado que importa):
+
+```sql
+SELECT count(*) AS encerrados_sem_resposta
+  FROM public.agenda_campo a JOIN public.chamados c ON c.id = a.chamado_id
+ WHERE a.cancelado_em IS NULL AND a.cumprido_em IS NULL
+   AND c.status IN ('concluido','cancelado');
+```
+
+## P35 — MÉDIO · O espelho de um chamado encerrado fica na PRIMEIRA visita, e a auditoria não o enxerga (2026-09-05, U82)
+
+`agenda_campo_espelhar` recusa mexer em chamado encerrado (`u78:895`, e a razão é
+boa: mexer no espelho de um encerrado MOVE o mês em que ele é contado no painel).
+Consequência: num chamado que foi encerrado antes de as visitas serem afirmadas,
+`chamados.data_hora_agendada` fica pinada no **primeiro bloco pendente** para
+sempre — mesmo depois de o chip afirmar todas.
+
+E a auditoria §9.0 da U78 (`u78:2097`) **filtra chamados encerrados para fora**,
+então ela nunca acusa esse desencontro. É uma discordância silenciosa entre a
+coluna espelho e os blocos que a produzem.
+
+**Por que não foi corrigido aqui:** recalcular o espelho de um encerrado exigiria
+afrouxar `u78:895`, e isso reabre o defeito que aquela cláusula fecha. O SQL de
+uma correção pontual (por chamado, à mão) é uma consulta simples; o que não
+existe é uma razão para automatizá-la.
+
+### O caso NOVO que a U82 acrescenta a esta dívida: o espelho depois de REABRIR
+
+Quando o soltador desmarca um bloco de plano futuro no encerramento,
+`agenda_campo_espelhar` é chamada (`cancelado_em` está na lista `OF`,
+`u78:948-951`) e **recusa mexer**, porque naquele instante a linha já é terminal.
+O espelho fica apontando para um bloco que não existe mais. Reabrir devolve o
+chamado a um status não-terminal — e é o único instante em que aquele `WHERE`
+voltaria a passar.
+
+**Uma rodada da U82 chegou a pôr um `PERFORM agenda_campo_espelhar(NEW.id)` no
+soltador para consertar isso na reabertura. Ele foi RETIRADO, e a retirada é a
+decisão.** A cadeia que ele abria:
+
+1. `agenda_campo_espelhar` escreve `chamados.data_hora_agendada` (`u78:891-898`);
+2. essa coluna **está** na lista `OF` de `trg_chamado_apoio_dupla_upd`
+   (`u76:1129`);
+3. com o chamado **já reaberto** o status não é mais terminal, então
+   `chamado_apoio_da_dupla` não volta cedo (`u78:1825`): se a semana do espelho
+   mudar, ele chama `chamado_sincronizar_apoio`;
+4. lá dentro, o `DELETE` (`u81:417-434`) apaga as linhas `origem='dupla'` não
+   congeladas — **a lista inteira** quando `responsavel_id` está vazio, porque
+   `v_alvo = '{}'` faz o `NOT` limpar tudo (`u81:409-416`) — e o `INSERT`
+   (`u81:461-469`) grava a turma nova **JÁ CONGELADA**, porque a semana do
+   espelho novo é a da última visita afirmada e o `max(cumprido_em)` não é NULL;
+5. cada linha inserida toca um sino (`trg_notify_chamado_apoio`, `u7:502`).
+
+Ou seja: o gatilho que o cabeçalho da U82 jura que "não afirma nada" passava a
+**congelar, apagar e tocar sino** — por efeito colateral de um clique em
+"Reabrir", sem ninguém decidir, e congelar concede **acesso permanente** de
+edição ao chamado, ao cliente, às fotos e ao pedido de compra (R108).
+
+**O espelho podre depois de reabrir é PRÉ-EXISTENTE**: encerrar um chamado com
+bloco futuro já deixa o espelho pinado hoje, sem a U82. Fechar aquele ramo só
+para o caso perigoso exigiria reconstruir dentro do soltador os dois estágios de
+`agenda_campo_espelhar`, como gêmeo, para saber de antemão se a semana muda — ou
+seja, **maquinaria nova para consertar um defeito que já existia**. Ficou dívida.
+
+**A saída que já existe:** rearrastar o bloco na grade. `agenda_campo_marcar`
+(`u78:1399`) escreve `dia`/`inicio_min`, o espelho é recalculado pelo caminho
+normal, e o chamado reaberto não é mais terminal — logo aquele `WHERE` passa.
+
+## P36 — MÉDIO · Os blocos PRESOS continuam presos: a carga que os destravaria foi adiada (2026-09-05, U82)
+
+Antes da R110, dar "feito" hoje num bloco de dia FUTURO gravava um dia falso **e
+prendia o bloco**: imóvel (`modelo.ts`), não-desmarcável (`u78:1522`) e ocupando
+a janela futura da equipe para sempre, porque o `EXCLUDE` é
+`WHERE (cancelado_em IS NULL)` sem `cumprido_em` (`u78:653-664`). A porta nova
+fecha a torneira; **o estoque continua lá**.
+
+A U82 chegou a ter uma terceira passada de carga que movia `dia` desses blocos
+para `(cumprido_em AT TIME ZONE 'America/Sao_Paulo')::date` — o único dia que o
+banco **prova**. **Ela foi cortada junto com o resto da carga (ver P40)**, e por
+duas razões que não são sobre este defeito: a carga era onde moravam todos os
+FATAIS das rodadas de refutação, e ela não tinha número.
+
+**A conferência 127 da U82 conta quantos são**, e é o mesmo número da linha 3 de
+`supabase/migrations/_medir_antes_da_carga_u82.sql`. Enquanto a carga não vier, o
+conserto é por bloco, à mão: abrir na grade, tirar o "feito", mover, recarimbar
+— três passos que ninguém descobre sozinho.
+
+```sql
+SELECT a.id, a.dia, a.cumprido_em, a.dupla_id, a.inicio_min
+  FROM public.agenda_campo a
+ WHERE a.cumprido_em IS NOT NULL AND a.cancelado_em IS NULL
+   AND a.dia > (a.cumprido_em AT TIME ZONE 'America/Sao_Paulo')::date;
+```
+
+## P37 — MÉDIO · A semana ERRADA que já foi congelada não é desfeita (2026-09-05, U82)
+
+Antes da U82, carimbar hoje um bloco de dia futuro fazia o congelamento da U81
+comparar `referencia_semanal(NEW.dia)` — a semana **do plano**, não a da visita
+— e gravar a turma daquela semana como registro (`u81:330-333`). Desfazer isso
+exigiria **apagar linha de `chamado_apoios`**, e a U81 existe justamente para não
+apagar. A saída é humana e já existe: o X no chip de apoio remove a pessoa, e
+adicionar a certa é um clique. **Não existe "corrigir" um apoio: só remover e pôr
+outro** (R108).
+
+**Enquanto a carga do P40 não rodar, esta população é LISTÁVEL**, e é a mesma da
+conferência 127: `a.dia > (a.cumprido_em AT TIME ZONE 'America/Sao_Paulo')::date`.
+Este é, aliás, um argumento a favor de rodar a carga só depois de olhar o P37 —
+ela é a última coisa que apaga esse identificador, e no dia em que rodar precisa
+gravar a identidade das linhas antes de mover, ou a lista some.
+
+A conferência 131 da U82 diz quantos desses chamados estão sobre escala
+**herdada** (o P26 outra vez).
+
+## P38 — MÉDIO · Afirmar num chamado JÁ ENCERRADO não guarda a turma das OUTRAS semanas (2026-09-05, U82)
+
+**É limitação irredutível, não bug**, e está aqui para que a tela nunca volte a
+prometer o contrário.
+
+A U82 divide o trabalho assim: quem afirma é gente, e afirma **antes** do
+status. Só nessa ordem o espelho (`chamados.data_hora_agendada`) anda bloco a
+bloco e o congelamento da U81 pega a turma de **cada** semana ISO. Dos quatro
+pontos em que o app chama a porta, **um** cumpre essa premissa:
+
+| ponto de chamada | status quando a porta é chamada | o espelho anda? |
+|---|---|---|
+| `DetalheCampo` → *Concluir atendimento* | aberto / agendado / em andamento | **sim** |
+| `DetalheCampo` → *Conferir e fechar* | já `concluido` | não |
+| `PainelDoCiclo` → o disparo do ciclo | já `concluido` | não |
+| o **chip** "encerrado com N atendimentos que ninguém afirmou" | já encerrado | não |
+
+Nos três de baixo, `agenda_campo_espelhar` casa zero linhas (`u78:895`) e
+`chamado_apoio_da_dupla` volta cedo em chamado encerrado sem troca de dono
+(`u78:1825`). O único congelamento possível ali é o do gatilho BEFORE da U81, e
+só para o bloco que cai na semana em que o espelho ficou parado. **Para um bloco
+de outra semana, a turma daquela semana nunca foi sequer escrita em
+`chamado_apoios`** — não há o que congelar.
+
+**Por que não se conserta:** reconstruir aquela turma exigiria mover o espelho
+de um chamado encerrado (o que a U78 recusa por escrito, porque mexeria no mês
+em que o chamado é contado) e chamar `chamado_sincronizar_apoio`, cujo `DELETE`
+reabriria o defeito que a U81 existe para fechar. A alternativa — inserir as
+pessoas direto — é **inventar registro**, que a U64 e a U81 recusaram por
+escrito. É a mesma cardinalidade que o R107 já declara: apoio é por **chamado**,
+não por visita.
+
+**O que foi feito:** o cabeçalho da migration deixou de afirmar o contrário, e o
+texto do chip deixou de prometer que responder guarda o registro de quem esteve
+no prédio. Ele agora diz que responder guarda o registro **do atendimento**, e
+manda conferir o chip de apoio quando a visita é de outra semana.
+
+**Canário — quantos chamados estão nesse estado:**
+
+```sql
+SELECT count(*) FROM public.agenda_campo a JOIN public.chamados c ON c.id=a.chamado_id
+ WHERE c.natureza='campo' AND c.status IN ('concluido','cancelado')
+   AND a.cancelado_em IS NULL AND a.cumprido_em IS NOT NULL
+   AND c.data_hora_agendada IS NOT NULL
+   AND public.referencia_semanal(a.dia)
+     IS DISTINCT FROM public.referencia_semanal(public.dia_da_dupla(c.data_hora_agendada, c.created_at));
+```
+
+Se esse número crescer, a saída não é inventar a turma: é levar a pergunta para
+**antes** do encerramento nos cinco caminhos que não perguntam (P34), que é onde
+ela falta.
+
+## P39 — BAIXO · Duas decisões de produto da U82 que ficaram por confirmar (2026-09-05)
+
+Duas coisas que a refutação da U82 apontou e que **não são bug**: são escolhas
+que continuam de pé e que precisam do Davi para mudar.
+
+**(a) Cancelar um chamado desmarca também os atendimentos de dia PASSADO.** No
+chamado *concluído* o bloco de dia passado fica **pendente**, porque "aconteceu
+de manhã" e "não vai acontecer" não se distinguem. No *cancelado*, todos são
+desmarcados. O argumento a favor da assimetria é que cancelar libera a grade; o
+argumento contra é que o bloco de dia passado não ocupa capacidade futura
+nenhuma, e desmarcá-lo faz a pergunta **desaparecer** — `visitasNaoAfirmadas`
+filtra por bloco pendente, então o chip fica cego exatamente sobre o caso que
+ele existe para pegar. Ressuscitar exige gestor (`u78:774-778`).
+
+O que já foi corrigido: **o texto do evento**, que afirmava que os atendimentos
+"ainda não tinham acontecido" — a máquina deduzia isso de "estava pendente" e
+gravava como fato na linha do tempo. Agora ele diz só o que é verdade.
+
+Canário, para decidir com número na mão:
+
+```sql
+SELECT count(*) FROM public.agenda_campo a JOIN public.chamados c ON c.id=a.chamado_id
+ WHERE c.natureza='campo' AND c.status='cancelado'
+   AND a.cancelado_em IS NULL AND a.cumprido_em IS NULL
+   AND a.dia <= (now() AT TIME ZONE 'America/Sao_Paulo')::date;
+```
+
+**(b) O botão "Aconteceu no dia marcado" num bloco de dia FUTURO continua
+existindo** — e ele produz exatamente o estado PRESO do P36: bloco com
+`cumprido_em` e `dia` no futuro, imóvel, não-desmarcável, ocupando a janela da
+equipe e com a turma congelada da semana do plano. A carga que limparia o estoque
+foi adiada (P40), então esta torneira alimenta uma pilha que ninguém está
+esvaziando — é o que torna a decisão (b) mais cara do que parecia.
+
+**Ele fica porque é a única saída de uma colisão de agenda que não impede o
+técnico de encerrar o chamado.** A afirmação vem antes do status; se ela for
+recusada, o chamado não fecha — e a alternativa seria mandar o técnico ajustar a
+grade com a assinatura na mão, que é o pior caso que o desenho existe para
+evitar. O aviso da tela passou a citar os **quatro** efeitos, e não um. A porta
+aceita **exatamente duas** datas — o dia do próprio bloco e HOJE, que são as duas
+que a tela sabe produzir —, então a torneira é estreita e visível. A conferência
+127 mede o resíduo.
+
+## P40 — ALTO · A CARGA RETROATIVA da U82 foi adiada, e espera número (2026-09-05, U82)
+
+A U82 foi entregue como **caminho vivo apenas**: a porta (`agenda_campo_afirmar`)
+e o soltador (`trg_chamado_agenda_solta`). A carga retroativa — três passadas —
+**foi cortada do arquivo** e vira entrega separada.
+
+**O que ela faria, e continua por fazer:**
+
+| passada | o que faz | dívida que drena |
+|---|---|---|
+| afirmar | carimba o passado dos chamados JÁ CONCLUÍDOS COM LAUDO (diagnóstico **e** serviço executado preenchidos), com **um** pendente e **nenhum** bloco já cumprido | P34 (o estoque de encerrados sem resposta) |
+| soltar | desmarca o plano pendente dos chamados já encerrados — a mesma régua do gatilho, para trás | a grade ocupada por plano que não vai acontecer |
+| destravar | move `dia` dos blocos PRESOS para o dia do carimbo | P36 / P37 |
+
+**POR QUE FOI CORTADA — e não é preguiça, são duas razões independentes:**
+
+1. **É onde moravam TODOS os defeitos.** Três rodadas de refutação acharam quatro
+   FATAIS na U82; os quatro estavam na carga (ou no ramo de reabertura que uma
+   rodada acrescentou ao soltador — ver P35). O caminho vivo passou limpo nas
+   três rodadas.
+2. **Ela não tinha NÚMERO.** Escrever uma carga contra `public.chamados` e
+   `public.chamado_apoios` — as duas tabelas mais quentes do sistema — sem saber
+   quantas linhas ela alcança é escrever às cegas. Medir antes de escrever é o
+   método da casa.
+
+**OS NÚMEROS ESTÃO AQUI:**
+
+```
+supabase/migrations/_medir_antes_da_carga_u82.sql
+```
+
+Seis SELECTs, **leitura pura** (nenhum `UPDATE`, `INSERT`, `DELETE`, `ALTER`,
+`BEGIN` ou `COMMIT`), que rodam a qualquer hora. A **linha 4** é a que decide o
+tamanho do problema: *"blocos presos de chamado ABERTO"* — se ela der `0`, a
+carga não chega perto de `chamado_apoios` por caminho nenhum e fica muito mais
+barata.
+
+**AS TRÊS RECUSAS QUE JÁ ESTÃO TOMADAS, para a carga futura não as re-litigar:**
+
+- **`ALTER TABLE ... DISABLE TRIGGER` não volta.** A U81 declarou por escrito que
+  gatilho desligado que alguém esquece de religar é cicatriz da casa (U59/U61); e
+  pedir `ShareRowExclusive` sobre `public.chamados` numa transação que já segura
+  `RowExclusive` (a cascata do espelho abre a relação para `UPDATE` mesmo casando
+  zero linhas) é **escalada de lock** — é como nasce deadlock, com toda escrita de
+  chamado do app pendurada atrás. Se a carga precisar impedir uma cascata, ela
+  impede pelo **predicado**.
+- **O corte de atribuição é DUPLO.** `p.n = 1` pergunta *"há um único pendente?"*;
+  a pergunta certa é *"o laudo ainda não tem dono?"*. Ida carimbada à mão pela
+  grade + retorno pendente dá **um** pendente, e afirmar o retorno é promover
+  "provavelmente" a "aconteceu" — em massa, e **congelando** (R108). O SELECT 1 do
+  arquivo de medição já traz as duas cláusulas.
+- **A conferência que prova "nada foi apagado" tem de medir IDENTIDADE, não
+  contagem.** `chamado_sincronizar_apoio` não apaga, ele **troca** (`DELETE` por
+  `v_alvo` seguido de `INSERT` de `unnest(v_alvo)`, no mesmo corpo,
+  `u81:417-471`). Turma é par: duas saem, duas entram, e o delta de contagem é
+  **zero** — o freio dizia "ok" no exato caso que ele existia para pegar. Com a
+  carga, aquela linha precisa de uma foto TEMP por `(chamado_id, profile_id)`.
+
+**Enquanto ela não roda:** nada quebra e nada piora. O caminho vivo já impede que
+o estoque cresça (a porta pergunta, o soltador solta), e o chip da
+`AgendaDoChamado` é quem drena o passado, um chamado por vez. **O número que diz
+se isso basta é o lado ENCERRADO da conferência 130** — o mesmo que decide o P34.
+
+## P41 — MÉDIO · Turma vazia na semana em que o espelho repousa apaga a lista de apoio (2026-09-05, U82)
+
+Quando `parceiros_da_dupla(responsável, semana)` devolve conjunto vazio — o
+responsável não está na escala daquela semana, a turma é de uma pessoa só, ou o
+chamado ficou sem responsável — `chamado_sincronizar_apoio` roda com `v_alvo`
+vazio: o `DELETE` da U81 limpa toda linha `origem='dupla'` **não congelada** e o
+`INSERT` é pulado (`u81:437`). A lista de quem esteve no prédio some, sem sino,
+sem evento e sem DESFAZER.
+
+**Não é regressão da U82** — é o comportamento que o caminho de dois passos da
+grade (arrastar, depois carimbar) sempre teve, porque o arrasto move o espelho
+do mesmo jeito. A U82 não piora; ela apenas não conserta.
+
+**Duas versões de uma "pré-trava" foram escritas para isto e as duas foram
+apagadas**, e o registro fica aqui para a terceira pessoa não reescrevê-la:
+`v_alvo` fica vazio por dois caminhos, e a pré-trava só alcançava
+`responsavel_id IS NULL` — que é o caminho quase morto, porque tirar o
+responsável já dispara o sincronizar e já apaga as linhas naquele instante. O
+caminho comum (responsável presente, turma vazia) exigiria saber **em que semana
+o espelho vai repousar**, e a pré-trava roda ANTES do movimento: com outro bloco
+pendente o espelho não vai para o dia efetivo, vai para o próximo pendente.
+Acertar o predicado seria reconstruir os dois estágios de `agenda_campo_espelhar`
+dentro da porta — a mesma maquinaria pela qual o ramo de reabertura foi cortado
+do §3. **Mecanismo cuja condição de disparo ninguém consegue avaliar no instante
+em que ela roda é pior do que a ausência dele.**
+
+**A saída é humana:** repor pelo chip de apoio. **O canário** é a conferência 132
+da U82 (chamados com visita afirmada e nenhuma linha de apoio congelada) — se ela
+SUBIR depois que a porta entrar em uso, ou a trava não está fechando, ou é este
+resíduo aparecendo.
 
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 

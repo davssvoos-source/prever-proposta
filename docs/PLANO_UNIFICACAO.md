@@ -6804,3 +6804,347 @@ bloco. **Auditor propõe; quem decide mede a população dos dois lados.**
   viva dela descrevendo uma cláusula que não existiria mais.
 
 2136 asserções, build ok, tsc em 83.
+
+## U82 — A segunda mão do carimbo (R109/R110/R111 — Fase 1, Passo 1.5)
+
+### O defeito que esta entrega fecha
+
+A U78 escreveu, na linha 1566-1568 do próprio arquivo, que `cumprido_em` teria
+**duas mãos**: o clique no cartão da grade e *"`executarChamado` no app, que ao
+iniciar o atendimento marca os blocos abertos até hoje"*. **A segunda nunca foi
+construída.** Conferido no fonte, não na memória: `executarChamado`
+(`src/features/chamados/data.ts:281-293`) escreve `status`, `finalizada_em`,
+`concluida_em` e `fechada_em` em `chamados`, e nada mais; a **única** escrita de
+`cumprido_em` no `src/` inteiro era o botão de `FormularioDoBloco.tsx:633`.
+
+Consequência: toda a proteção da U81 — o registro de quem esteve no prédio —
+pendia de **um clique opcional, de uma mão só**. O atendimento que aconteceu e
+ninguém carimbou continuava desprotegido, e o P25 registrou isso como ALTO.
+
+E a decisão do Davi (04/09) expôs um segundo defeito, este **vivo**: *"posso
+acabar fazendo algo antes da data agendada por diversos motivos e o sistema não
+deve barrar isso"*. Marcar hoje um bloco de dia FUTURO deixava o bloco **preso**
+e gravava um dia **falso** — imóvel (`modelo.ts`, `erroDeMover`), não
+desmarcável (`u78:1522-1525`), ocupando a janela futura da equipe para sempre (o
+`EXCLUDE` é `WHERE (cancelado_em IS NULL)`, sem `cumprido_em` — `u78:653-664`) e
+fazendo o congelamento da U81 comparar a **semana errada** (`u81:330-333`).
+
+### O teorema que decidiu o desenho
+
+A saída óbvia era um gatilho no encerramento. **Ela é mecanicamente impossível
+de fazer com honestidade**, e a prova não é de gosto:
+
+- Em **BEFORE**, `agenda_campo_espelhar` leria o status ANTIGO, passaria no gate
+  de `u78:895` e emitiria `UPDATE public.chamados` **na própria linha em
+  atualização** → `09000 triggered_data_change_violation`, e **intermitente**:
+  um bloco passa, dois estouram.
+- Em **AFTER**, o status já é terminal: o espelho casa **zero linhas**,
+  `data_hora_agendada` congela no primeiro pendente, o gate de semana da U81
+  (`u81:330-333`) devolve cedo para todo bloco de outra semana ISO, e
+  `chamado_apoio_da_dupla` volta cedo em encerrado sem troca de dono
+  (`u78:1825`). **Afirmar N visitas por gatilho grava UMA turma e perde as
+  demais** — o defeito que a U81 existe para fechar, renascendo dentro da
+  correção.
+- E `dia` é impossível nos dois: pôr `dia` no SET acorda
+  `trg_agenda_campo_valida` (`u78:786`), que num chamado já encerrado devolve
+  `42501` a quem não é gestor (`u78:774-776`). **O técnico deixaria de conseguir
+  concluir o próprio chamado.**
+
+Logo: **a afirmação tem de morar antes do status, e antes do status só o app
+chega.** O simétrico também é verdade: o app nunca alcança todos os caminhos —
+`decidir_pedido_compra` (`u9:139-151`) e `sincronizar_chamado_da_visita`
+(`u38:68-86`) escrevem status sem passar por uma linha de TypeScript.
+
+### A divisão, que é o desenho inteiro
+
+Não é "os dois afirmam". É **dividir por aquilo que cada lado pode dizer sem
+mentir**:
+
+- **O APP AFIRMA** (`agenda_campo_afirmar`, §2). É o único lugar onde há um
+  humano, o dia é corrigível e o espelho anda semana a semana. Ela é chamada com
+  o chamado **ainda aberto**, nos três encerramentos do `DetalheCampo` e no topo
+  do `disparar()` do `PainelDoCiclo`.
+- **O GATILHO NÃO AFIRMA NADA — ELE SÓ SOLTA** (`chamado_solta_agenda`, §3). No
+  encerramento, desmarca o que ainda era **plano futuro** (`dia > hoje`, e tudo
+  no cancelamento). Não precisa de evidência porque não afirma nada.
+
+**Por que a costura não é um terceiro modo de falhar — três provas:**
+
+1. **Os conjuntos são disjuntos por construção.** Os dois escritores filtram
+   `cancelado_em IS NULL AND cumprido_em IS NULL`. O que o humano afirmou já tem
+   `cumprido_em` e o gatilho pula; o que ele desmarcou já tem `cancelado_em` e o
+   gatilho pula. Não há corrida, não há sobrescrita, e **não há ordem a provar
+   entre eles**.
+2. **O gatilho nunca contradiz o humano.** Ele só age sobre bloco sem resposta, e
+   a única coisa que escreve ("este plano não vai acontecer") é mais fraca do que
+   qualquer afirmação.
+3. **Toda escrita do gatilho é REVERSÍVEL** (`agenda_campo_marcar` ressuscita
+   bloco desmarcado, `u78:1399`), e toda escrita irreversível passa por mão
+   humana ou pelo backfill medido. `congelado_em` não volta (`u81:293-297`).
+   Pôr a irreversibilidade só do lado do humano é a propriedade que nenhum dos
+   dois desenhos sozinhos tem.
+
+**Bônus que só o híbrido ganha:** a pergunta "um gatilho `SECURITY DEFINER` abre
+porta?" **evapora**. Um gatilho que não afirma não concede nada, e o caminho de
+gate mais fraco (`decidir_pedido_compra` → `pode_acessar_chamado`, que é
+`pode_editar_chamado` **OR `responsavel_id IS NULL`**, `s2:159-162`) deixa de
+importar.
+
+### As decisões, uma a uma
+
+| Pergunta | Decisão | Razão |
+|---|---|---|
+| Feito **antes** do dia marcado | O bloco **vem para hoje** e é carimbado, no mesmo UPDATE. Padrão da tela: mover. | O dia marcado é **provadamente falso**. Deixá-lo trava a janela futura no `EXCLUDE`, imobiliza o bloco, o torna não-desmarcável e faz o congelamento escolher a semana errada. Só passa porque o chamado ainda está ABERTO na hora da chamada. |
+| Feito **depois** (atrasado) | O bloco **fica onde está**. | Assimetria justificada: um dia passado é **possível** — nada foi provado falso, e o plano é a melhor prova que existe. Mover destruiria um dia plausível para escrever "hoje", que é seguramente errado. |
+| Colisão do `EXCLUDE` ao mover | Ensaio geral (todas as colisões antes de qualquer escrita) → `23P01` com a frase que **nomeia** o conflitante. Nada escrito, chamado **não** encerrado, as duas saídas no mesmo painel. | O `EXCLUDE` não é política: a mesma equipe não esteve em dois prédios ao mesmo tempo. Mas conflito de agenda não pode barrar um encerramento — por isso a afirmação vem **antes**. |
+| Jornada ao mover para hoje | **Não é checada.** | Jornada é política de **planejamento** (`u78:600-604`). O dia em que a equipe trabalhou 9h trabalhou 9h; a ocupação passa de 100% e é honesto. |
+| Bloco de **hoje** mais tarde, chamado concluído às 10h | Tratamento idêntico: a pessoa é perguntada. Sem resposta, o gatilho **não** desmarca e **não** afirma. | Nem "aconteceu" nem "não vai acontecer" é derivável. O único ato honesto da máquina é **não decidir**. |
+| Cancelamento do chamado | Desmarca **todos** os pendentes, de qualquer dia. Afirma **zero**. | Cancelar diz que o trabalho não será feito; não diz nada sobre visita alguma. Quem foi e depois o chamado caiu afirma **antes**, na mesma tela. |
+| Reabertura | **Não desfaz nada — e também não conserta o espelho.** | Coerente com a U81: desafirmar não desacontece. Assimetria **declarada** com `chamado_preencher` (`u7:328-330`), que limpa `concluida_em`/`fechada_em`: os carimbos do chamado são derivados do status e re-deriváveis; uma visita é um evento no mundo. E o bloco desmarcado **ressuscita** por `agenda_campo_marcar`, que de quebra recalcula o espelho pelo caminho normal. O ramo que consertava o espelho aqui dentro foi retirado — ver "o que a TERCEIRA rodada achou". |
+| Backfill | **ADIADO. A U82 é só o caminho vivo.** | Ver abaixo. |
+
+### O BACKFILL FOI CORTADO — e o corte é a entrega
+
+A U82 tinha, até a última rodada, um **§4** com três passadas (afirmar o passado
+dos concluídos com laudo, soltar o plano dos encerrados, destravar os blocos
+presos) e **dois `ALTER TABLE ... DISABLE TRIGGER`**. Saiu inteiro: a migration
+foi de **951 para 847 linhas** e deixou de escrever **uma única linha de dado** —
+ela cria duas funções e um gatilho, e mais nada.
+
+**As duas razões, e nenhuma delas é sobre a qualidade da ideia:**
+
+1. **É onde moravam TODOS os defeitos.** Três rodadas de refutação acharam quatro
+   FATAIS. Os quatro estavam no §4 ou no ramo de reabertura que uma rodada
+   acrescentou ao §3. O caminho vivo — a porta e o soltador — passou limpo nas
+   três rodadas, nas duas primeiras e na de produção.
+2. **Ele não tinha NÚMERO.** As conferências da U81 foram pedidas e não vieram.
+   Escrever uma carga contra `public.chamados` e `public.chamado_apoios` — as
+   duas tabelas mais quentes do sistema — sem saber quantas linhas ela alcança é
+   escrever às cegas. **Medir antes de escrever é o método da casa**, e é o que
+   esta entrega resolveu não abrir exceção para si mesma.
+
+**A medição virou arquivo:** `supabase/migrations/_medir_antes_da_carga_u82.sql`.
+Seis SELECTs, **leitura pura**, que rodam a qualquer hora. Ele carrega os cortes
+que a refutação achou (o corte de evidência, e o corte de atribuição **duplo**),
+para a carga futura não os reescrever pior. A dívida está no **P40**.
+
+**O `DISABLE TRIGGER` foi RECUSADO, e a recusa está escrita no cabeçalho** para
+a carga futura não a re-litigar. Duas razões independentes:
+
+- **A cicatriz.** A U81 declarou por escrito que "gatilho desligado que alguém
+  esquece de religar" é padrão ruim da casa (U59/U61). Note a circularidade que
+  isso criava: a conferência 128 existia para provar que os dois voltaram
+  ligados — uma conferência inteira dedicada a um risco que o próprio arquivo
+  tinha acabado de criar. Cortado o DISABLE, a 128 virou **censo**: se um deles
+  vier desligado, alguém esqueceu, aqui ou em outra carga.
+- **A escalada de lock.** `DISABLE TRIGGER` pede `ShareRowExclusive`. As duas
+  primeiras passadas já tinham feito a transação segurar `RowExclusive` sobre
+  `public.chamados` (a cascata do espelho abre a relação para `UPDATE` mesmo
+  casando zero linhas), e o `ALTER` estava na linha 727 de 951. Pedir o modo mais
+  forte **depois** é escalada de lock: risco de deadlock, com toda escrita de
+  chamado do app pendurada atrás — e a migration morrendo no meio, depois de
+  duas passadas feitas, com um erro que não explica nada.
+
+**O que a carga futura já sabe, e não precisa redescobrir:** o corte de evidência
+(`diagnostico` **E** `servico_executado`, que `executarChamado` e
+`concluir_chamado_com_cobranca` exigem e o arrasto do quadro não); a recusa de
+`finalizada_em` como corte (só `executarChamado` a escreve); e que o corte de
+atribuição precisa das **duas** cláusulas — "há um único pendente?" **e** "o
+laudo ainda não tem dono?", porque ida carimbada à mão + retorno pendente dá um
+pendente e afirmar o retorno é promover "provavelmente" a "aconteceu", em massa
+e congelando (R108).
+
+### O que a verificação pegou
+
+- **Três censos vivos acusaram sozinhos**, e é para isso que eles existem: o das
+  três listas de portas (a quinta porta nasceu), o dos exports do modelo puro
+  sem consumidor, e o das funções que escrevem na linha do tempo (o soltador é a
+  sexta). Nenhum foi escrito nesta entrega — os três já estavam lá.
+- O censo das portas cobrava do arquivo da **U78** um GRANT que nasce na **U82**.
+  A saída não foi afrouxar: a lista das quatro portas da U78 virou constante à
+  mão **pinada** à do modelo puro (`PORTAS_DA_U78 ∪ {agenda_campo_afirmar} ===
+  PORTAS_DA_AGENDA`), e o lado "GRANT" do censo passou a ler os **dois**
+  arquivos. Uma porta nova que ninguém conceder continua caindo ali.
+- A asserção da U81 que dizia *"a segunda mão do carimbo continua NÃO
+  existindo"* passou a dizer outra coisa: `chamados/data.ts` continua sem tocar
+  em bloco — **por mérito**, porque a segunda mão nasceu em `programacao/`.
+- O `window.confirm` do detector de seção **casou o comentário** que explica por
+  que a seção não usa um. Sexto falso positivo da mesma família; o filtro de
+  linhas `//` foi de volta.
+- A asserção de `clock_timestamp()` contava ocorrências **no arquivo**, onde o
+  `COMMENT` também cita a função — uma âncora que casa comentário é um
+  sobrevivente falso esperando acontecer. Passou a contar no **corpo vivo**, e a
+  exigir exatamente 1 atribuição e 2 usos (os dois ramos do laço).
+- Doze mutações rodadas (seis no SQL, seis no TypeScript): pôr `cumprido_em` no
+  SET do soltador, trocar `AFTER` por `BEFORE`, apagar o `ORDER BY` do laço,
+  trocar `clock_timestamp()` por `now()`, desligar a guarda da transição com
+  `IF false`, apagar o texto da conferência 121; e do outro lado marcar o
+  passado como `diaFalso`, soltar o bloco de HOJE no encerramento, fazer a
+  resposta nascer marcada, ler o fuso do navegador, pôr a afirmação DEPOIS do
+  `executarChamado` e desligar a antecipação do 42501. **As doze foram pegas.**
+
+### O que a TERCEIRA rodada achou, e a lição que ficou
+
+A segunda rodada de refutação consertou os MENORES da primeira **acrescentando
+mecanismo** — e um desses acréscimos virou o FATAL da terceira. Vale escrever a
+lição antes dos achados, porque ela é a parte reaproveitável:
+
+> **PREFIRA APAGAR A ACRESCENTAR.** Um MENOR que só se conserta com maquinaria
+> nova é uma **dívida**, não um conserto.
+
+**O ramo de REABERTURA (FATAL).** Para consertar o espelho podre depois de
+reabrir (um MENOR, e um MENOR de um defeito **pré-existente**), a rodada anterior
+pôs um `PERFORM agenda_campo_espelhar(NEW.id)` no soltador. Aquela função escreve
+`chamados.data_hora_agendada`, coluna que está na lista `OF` de
+`trg_chamado_apoio_dupla_upd` (`u76:1129`). Com o chamado já reaberto o status
+não é mais terminal, `chamado_apoio_da_dupla` não volta cedo (`u78:1825`), e se a
+semana mudar roda `chamado_sincronizar_apoio`: **DELETE** das linhas
+`origem='dupla'` vivas (a lista inteira quando `responsavel_id` é NULL), **INSERT
+da turma nova JÁ CONGELADA** (a semana do espelho novo é a da última visita
+afirmada, então `max(cumprido_em)` não é NULL) e **um sino por linha**. O gatilho
+que o cabeçalho jura que "não afirma nada" passava a congelar, apagar e tocar
+sino — por efeito colateral de um clique em "Reabrir", e nada disso é reversível.
+**Retirado.** O espelho podre é P35, pré-existente, e a saída (rearrastar o bloco
+na grade) já existe. De quebra, isso devolve a verdade à frase "conjuntos
+DISJUNTOS" que justifica a indiferença de ordem entre os gatilhos.
+
+**A conferência 121 era CEGA a isso**, e a cegueira é de família: ela media
+`prosrc !~ 'cumprido_em\s*='`, e a escrita não estava no **texto** da função —
+estava no **NOME que ela chamava**. Ganhou o termo que faltava: *o soltador não
+delega escrita a ninguém*, medido como "não tem `PERFORM`".
+
+**A PRÉ-TRAVA foi ESTREITADA e depois APAGADA (GRAVE, duas rodadas).** Na
+primeira versão ela congelava sempre que a semana do dia ATUAL casava a do
+espelho — e esse dia é justamente o que o gesto está movendo **porque ele é
+provadamente falso**: congelava a turma da semana do plano como "esteve no
+prédio", irreversível, e congelava **de graça** em chamado terminal, onde não
+existe DELETE a barrar. Estreitada para "chamado não terminal E sem
+responsável", a rodada seguinte mostrou que ela tinha sido **estreitada pelo lado
+errado**: `v_alvo` fica vazio por dois caminhos, e esse é o quase morto — tirar o
+responsável já dispara o sincronizar e já apaga as linhas naquele instante. O
+caminho comum é responsável presente com turma vazia na semana, e cobri-lo
+exigiria saber **em que semana o espelho vai repousar**, o que a pré-trava não
+pode saber: ela roda ANTES do movimento, e com outro bloco pendente o espelho vai
+para o próximo pendente, não para o dia efetivo. Acertar o predicado seria
+reconstruir `agenda_campo_espelhar` dentro da porta — a maquinaria pela qual o
+ramo de reabertura tinha acabado de ser cortado.
+
+Foi apagada, e o resíduo está no **P41**. O argumento que decide: **não é
+regressão** — o caminho de dois passos da grade (arrastar, depois carimbar)
+sempre teve o mesmo comportamento, porque o arrasto move o espelho igual. A U82
+não piora nada; ela só não conserta isto. **Mecanismo cuja condição de disparo
+ninguém consegue avaliar no instante em que ela roda é pior do que a ausência
+dele**, e a ausência agora está presa por asserção para não voltar sem que
+alguém releia o argumento.
+
+**MOVER E CARIMBAR VIRARAM DOIS STATEMENTS (GRAVE, e é o achado mais importante
+das três rodadas).** Num `UPDATE` só (`SET dia = …, cumprido_em = …`) o bloco
+deixa de ser pendente **no mesmo instante** em que muda de dia: quando o AFTER do
+espelho roda, o estágio 1 já não o vê e salta para o próximo pendente. O espelho
+**nunca repousa na semana em que a visita foi afirmada** — e como a turma de
+apoio só é escrita quando o espelho repousa numa semana, a turma de quem esteve
+no prédio não era escrita por caminho nenhum. Na variante de semanas diferentes
+era pior: a turma antiga era **apagada** e substituída por quem ainda não foi.
+Separando os dois `UPDATE`, o espelho passa pela semana nova com o bloco ainda
+pendente (o sincronizar grava a turma certa) e só então o carimbo acorda o BEFORE
+da U81, que a congela. É exatamente o que o caminho de dois passos sempre fez, e
+que a porta atômica tinha perdido ao fazer tudo de uma vez. **A correção é uma
+divisão de statement — nenhuma maquinaria nova.**
+
+E a asserção que guardava isso tinha um fixture que **escapava por acaso** (os
+dois blocos caíam na mesma semana ISO), afirmando como provado exatamente o que o
+código não fazia. É a regra 2 outra vez, na variante mais traiçoeira: o teste
+passa pelo motivo errado.
+
+**A guarda de dia era de um lado só (GRAVE).** Ela recusava `> v_hoje` e deixava
+o **passado inteiro** aberto — e é no passado que moram as escalas antigas. Com
+`dia` numa semana de um ano atrás, a turma daquela semana nasce **congelada** pelo
+INSERT de `u81:461-469` (a semana passou a ter visita afirmada): gente que nunca
+esteve no prédio com acesso permanente. Agora a porta é o gêmeo literal de
+`diaAfirmado` — **exatamente duas datas**, o dia do bloco ou HOJE.
+
+**A cortesia derrubava o encerramento (GRAVE).** `PORTA_INEXISTENTE` era uma lista
+de **exceções**: tudo o que não fosse PGRST202/42883 subia como `throw`, inclusive
+queda de rede (o postgrest-js devolve `code: ''`). Cenário: técnico no prédio, 3G
+ruim, assinatura **já gravada**, `executarChamado` nunca roda, chamado em
+`em_andamento` e um toast dizendo "Failed to fetch". A lista virou **positiva**:
+`RECUSAS_DA_PORTA = ["42501","55000","23P01"]` — só o que a porta **fala** tem
+voto. Todo o resto degrada como `portaMuda` e o chamado encerra igual.
+
+**O 23P01 aparecia sem as duas saídas (GRAVE).** As duas saídas moram **dentro**
+de `ConfirmacaoDasVisitas`, ao lado dos botões que as executam, e só renderizam
+com o prop `erro`. `PainelDoCiclo` não o passava: o gestor via a frase vermelha
+com a saída desenhada quinze pixels acima e ninguém apontando.
+
+**A recusa antecipada perdia o SQLSTATE (GRAVE).** `erroDaAfirmacao` devolvia só a
+frase, e os três consumidores chutavam um código — `new Error` (código `null` →
+rosto "desconhecido") ou `"42501"` fixo. A recusa de **natureza** é `55000` na
+porta (regra: "dá para corrigir aqui"), e saía antecipada como permissão
+("escudo: o gesto não vai acontecer"). A mesma frase, duas caras, conforme quem a
+dissesse. Agora ela devolve `{ frase, code }`.
+
+**A tela prometia o contrário da máquina no cancelamento (GRAVE).** A caixa de
+perguntas é renderizada também no fluxo de **cancelar**, e dizia "o que ficar sem
+resposta e já tiver dia passado continua pendente". No cancelamento é falso: o
+soltador é `NEW.status = 'cancelado' OR a.dia > v_hoje` — **todo** pendente cai,
+de qualquer dia. O gestor lia aquilo, deixava sem resposta, e o bloco de ontem
+sumia do chip para sempre. **A assimetria (P39) não foi reaberta: corrigiu-se o
+TEXTO**, que é onde estava o defeito.
+
+### O que eu recusei
+
+- **Afirmar por gatilho** — mecanicamente impossível de fazer com honestidade
+  (o teorema acima).
+- **Guarda de data em qualquer forma.** A data escolhe o padrão do dia; nunca
+  nega um gesto. A conferência 122 lê isso do **catálogo** — e ela deixou de ser
+  meia-tautologia: medir a ausência de `current_date` (uma expressão que esta
+  função nunca usaria) não prova nada, então o terceiro termo mede a **forma
+  real** que uma guarda teria aqui: uma comparação de ordem entre o dia de um
+  bloco e o relógio.
+- **`ALTER TABLE ... DISABLE TRIGGER`**, em qualquer carga — cicatriz da casa e
+  escalada de lock. Se uma carga futura precisar impedir uma cascata, ela impede
+  pelo **predicado**.
+- **Consertar o espelho na reabertura** — o FATAL acima. Vira P35.
+- **Construir maquinaria nova para fechar MENOR.** A regra desta rodada, e ela
+  nasceu do estrago da anterior.
+- **Corrigir a hora** — o DIA é o que a semana ISO, a ocupação e o espelho leem.
+- **Checar jornada** na afirmação.
+- **Backfillar chamado sem laudo** — o arrasto é ausência de gesto com outra
+  roupa (medido na linha 5 de `_medir_antes_da_carga_u82.sql`).
+- **Backfillar coisa nenhuma nesta entrega** — sem número, não se escreve carga.
+- **Desafirmar na reabertura.**
+- **Reconstruir as turmas das semanas que ninguém gravou** — exigiria mover o
+  espelho de um chamado encerrado e chamar `chamado_sincronizar_apoio`, cujo
+  DELETE reabriria o defeito da U81 dentro da correção.
+- **Recalcular o espelho do encerrado** — vira P35.
+- **Reescrever `agenda_campo_cumprir`.** O botão da grade continua sendo o que
+  sempre foi; a correção de dia é da porta nova, onde há uma pergunta.
+
+### A objeção que eu não sei responder bem
+
+Os cinco caminhos que não perguntam continuam existindo, e o chip só funciona se
+alguém abrir o chamado. **Se o lado ENCERRADO da conferência 130 não cair em três
+semanas, este desenho falhou** — e a resposta seguinte não é voltar ao gatilho
+que afirma (ele continua impossível), é **levar a pergunta ao arrasto do quadro e
+ao seletor de status**, que é onde ela falta. A 130 é a primeira coisa a olhar
+depois da migration.
+
+### A ordem de execução (não é sugestão)
+
+1. `node scripts/verificar-logica.cjs` → **0 falharam**.
+2. `npx vite build`; `npx tsc --noEmit` → baseline **83**, sem erro novo.
+3. **O Davi roda a U82 no SQL Editor.** Ela é curta e não escreve dado nenhum, e
+   por isso a ordem ficou mais fácil do que era: a tabela de veredito tem de vir
+   com **125 = `0 / 0`**, **126 = `0`**, **129 = `0`**, **133 = `0 total / 0
+   dupla`** — os quatro dizem a mesma coisa por caminhos diferentes: esta
+   migration criou funções e não tocou em dado. E **118-124 e 128** provam que a
+   porta, o soltador e as cinco vizinhas estão como o arquivo diz.
+4. **Só então o push.** Se o push vier antes, nada quebra: `PGRST202` degrada, o
+   encerramento acontece igual e o toast diz a verdade — e agora **qualquer**
+   falha da porta degrada assim, não só "ela não existe".
+5. **Depois, e só depois:** rodar `supabase/migrations/_medir_antes_da_carga_u82.sql`
+   (leitura pura, qualquer hora) e mandar os seis números. **A carga retroativa é
+   escrita a partir deles**, como entrega separada (P40). A **linha 4** é a que
+   decide o tamanho do problema.
+
+2229 asserções, build ok, tsc em 83. Migration de 951 → 847 linhas.

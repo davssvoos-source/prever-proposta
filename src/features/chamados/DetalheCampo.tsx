@@ -38,6 +38,11 @@ import {
 import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
 import { useChecklist, marcarItemChecklist } from "@/features/chamados/checklist";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
+import { useAfirmarVisitas, sqlstateDoErro, RecusaDaAgenda } from "@/features/programacao/data";
+import {
+  ConfirmacaoDasVisitas,
+  useConfirmacaoDasVisitas,
+} from "@/features/programacao/ConfirmacaoDasVisitas";
 import {
   chamadoStatusInfo, situacaoPrazo, textoPrazo,
   TIPO_LABEL, PRIORIDADE_LABEL, PRIORIDADE_CORES,
@@ -91,6 +96,73 @@ export function DetalheCampo({ id }: { id: string }) {
   const [itemEditando, setItemEditando] = useState<string | null>(null);
   const [novoResultado, setNovoResultado] = useState<ResultadoItem>("revisar");
   const [novoValor, setNovoValor] = useState("");
+
+  /**
+   * A SEGUNDA MÃO DO CARIMBO (U82 — R109/R110/R111).
+   *
+   * A afirmação vem ANTES do status, sempre, nos três encerramentos desta tela
+   * (`concluir`, `fechar`, `cancelar`). É a única ordem em que o espelho anda
+   * bloco a bloco (u78:895) — e portanto a única em que o congelamento da U81
+   * pega a turma de CADA semana ISO — e a única em que `agenda_campo_valida`
+   * (u78:774-776) ainda deixa o TÉCNICO corrigir o dia de um bloco.
+   *
+   * E ELA NUNCA DERRUBA O ENCERRAMENTO. Enquanto a migration não rodou, a porta
+   * responde PGRST202 e `useAfirmarVisitas` devolve `portaAusente: true` — o
+   * chamado encerra igual e a frase diz a verdade. É a regra 5 da casa (ordem
+   * de deploy) como propriedade do código, e não como disciplina de commit.
+   */
+  const conf = useConfirmacaoDasVisitas(id);
+  const afirmar = useAfirmarVisitas();
+  const [erroDaVisita, setErroDaVisita] = useState<{ frase: string; code: string | null } | null>(null);
+
+  /**
+   * O passo comum dos TRÊS encerramentos. Se a porta ainda não existe no banco,
+   * ele AVISA e segue — a frase é dita aqui, e não em cada `onSuccess`, para os
+   * três caminhos nunca divergirem sobre o que aconteceu.
+   */
+  async function afirmarAntesDeEncerrar(): Promise<boolean> {
+    setErroDaVisita(null);
+    // O CINTO: SEM GESTO, NÃO HÁ PORTA, E LOGO NÃO HÁ RECUSA A ANTECIPAR.
+    // Esta linha e o `temGesto` de `ConfirmacaoDasVisitas` são a MESMA regra
+    // ditas dos dois lados, de propósito: esta tela recebe todo chamado que não
+    // é `interno` (a rota só desvia esse), inclusive os COMERCIAIS, que não têm
+    // bloco nenhum. Sem ela, a recusa de natureza vinha antes de existir gesto
+    // e o `throw` abaixo tornava o chamado comercial impossível de concluir,
+    // fechar ou cancelar — no instante do push, sem a migration ter rodado.
+    const { feitos, desmarcados } = conf.payload;
+    if (feitos.length === 0 && desmarcados.length === 0) return false;
+    // `RecusaDaAgenda` E NÃO `Error`: ela leva o SQLSTATE junto (data.ts:493),
+    // que é o que faz `classeDoErro` pintar o MESMO rosto para um erro nascido
+    // aqui e para o mesmo erro nascido no Postgres. Com `new Error` o código
+    // saía `null`, `classeDoErro(null)` dava "desconhecido", e a frase aparecia
+    // sem cara nenhuma.
+    if (conf.recusa) throw new RecusaDaAgenda(conf.recusa.frase, conf.recusa.code);
+    const r = await afirmar.mutateAsync({ chamadoId: id, ...conf.payload });
+    if (r.portaAusente) {
+      toast.message(
+        "As visitas não foram marcadas como feitas: a atualização do banco ainda não foi aplicada. Marque-as pela grade.",
+      );
+    } else if (r.portaMuda) {
+      // A PORTA EXISTE E NÃO RESPONDEU (rede, 503, timeout). O encerramento
+      // SEGUE: afirmar é cortesia, e prender o técnico no prédio com a
+      // assinatura já gravada é o pior caso que este desenho existe para evitar.
+      // E O AVISO NÃO PODE PROMETER O CHIP. Com a porta MUDA nada foi escrito,
+      // mas o soltador do §3 roda assim mesmo: atendimento marcado para um dia
+      // que ainda não chegou é DESMARCADO no encerramento, e `visitasNaoAfirmadas`
+      // só enxerga bloco pendente — ele não aparece em chip nenhum. Ressuscitá-lo
+      // é `agenda_campo_marcar` num chamado concluído, que devolve 42501 para
+      // quem não é gestão. A versão anterior desta frase mandava "responder
+      // depois pelo aviso", e o aviso não ia existir.
+      toast.message(
+        "Não consegui gravar a resposta sobre as visitas agora (conexão). O chamado foi encerrado, e o atendimento que ainda estava marcado para um dia que não chegou saiu da agenda — se ele aconteceu, peça à gestão para remarcá-lo.",
+      );
+    }
+    return r.portaAusente || r.portaMuda;
+  }
+
+  function guardarErroDaVisita(e: unknown) {
+    setErroDaVisita({ frase: (e as Error).message, code: sqlstateDoErro(e) });
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -157,6 +229,13 @@ export function DetalheCampo({ id }: { id: string }) {
     qc.invalidateQueries({ queryKey: ["chamados"] });
     qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
     qc.invalidateQueries({ queryKey: ["chamado-fotos", id] });
+    // U82: encerrar DESMARCA blocos por GATILHO (`chamado_solta_agenda`), e
+    // essa escrita acontece DEPOIS desta mutação — a invalidação de
+    // `useAfirmarVisitas` veio ANTES dela e fotografou o estado velho. Sem esta
+    // linha a grade e o chip continuam desenhando blocos que o banco acabou de
+    // soltar, e arrastar um deles o RESSUSCITA (u78:1399 zera `cancelado_em`)
+    // num chamado já encerrado, sem ninguém ter pedido.
+    qc.invalidateQueries({ queryKey: ["agenda-campo"] });
   };
 
   const iniciar = useMutation({
@@ -267,17 +346,23 @@ export function DetalheCampo({ id }: { id: string }) {
         if (!assinanteNome.trim()) throw new Error("Informe o nome de quem assinou.");
         await salvarAssinatura(id, assinaturaData, assinanteNome.trim());
       }
+      // A AFIRMAÇÃO VEM ANTES DO STATUS — ver `afirmarAntesDeEncerrar`.
+      await afirmarAntesDeEncerrar();
       await executarChamado(id, {
         diagnostico: diagnostico.trim(),
         servico_executado: servico.trim(),
       });
     },
-    onSuccess: () => { invalidar(); toast.success("Chamado concluído — enviado para conferência."); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => {
+      invalidar();
+      toast.success("Chamado concluído — enviado para conferência.");
+    },
+    onError: (e: Error) => { guardarErroDaVisita(e); toast.error(e.message); },
   });
 
   const fechar = useMutation({
     mutationFn: async () => {
+      await afirmarAntesDeEncerrar();
       await concluirChamado(id);
       // Implantação concluída alimenta o inventário do cliente (as-built):
       // é o que fecha o ciclo proposta → implantação → corretiva/preventiva.
@@ -297,7 +382,11 @@ export function DetalheCampo({ id }: { id: string }) {
         toast.success("Chamado fechado.");
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    // `guardarErroDaVisita` também AQUI, como em `concluir` e `cancelar`: sem
+    // ele, um 23P01 vindo do ensaio da porta virava só um toast, e as DUAS
+    // saídas que o painel desenha para `classe === "conflito"` nunca eram
+    // vistas — o erro que mais precisa de painel era o único sem painel.
+    onError: (e: Error) => { guardarErroDaVisita(e); toast.error(e.message); },
   });
 
   const marcarItem = useMutation({
@@ -314,12 +403,16 @@ export function DetalheCampo({ id }: { id: string }) {
   });
 
   const cancelar = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!motivoCancel.trim()) throw new Error("Informe o motivo do cancelamento.");
+      // Cancelar NÃO afirma nada por conta própria — mas quem foi ao prédio e
+      // só depois viu o chamado cair ainda pode dizer isso aqui, e é ANTES do
+      // status que essa frase tem valor. Depois, o gatilho desmarca o resto.
+      await afirmarAntesDeEncerrar();
       return cancelarChamado(id, motivoCancel.trim());
     },
     onSuccess: () => { invalidar(); setCancelando(false); toast.success("Chamado cancelado."); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => { guardarErroDaVisita(e); toast.error(e.message); },
   });
 
   const trocarTecnico = useMutation({
@@ -872,13 +965,17 @@ export function DetalheCampo({ id }: { id: string }) {
           ) : null}
 
           {emExecucao && (
+            <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
+          )}
+
+          {emExecucao && (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button style={{ ...btnSec, flex: 1 }} onClick={() => salvarRascunho.mutate()} disabled={salvarRascunho.isPending}>
                 {salvarRascunho.isPending ? "Salvando…" : "Salvar anotações"}
               </button>
-              <button style={{ ...CTA, flex: 2, width: "auto" }} onClick={() => concluir.mutate()} disabled={concluir.isPending}>
+              <button style={{ ...CTA, flex: 2, width: "auto" }} onClick={() => concluir.mutate()} disabled={concluir.isPending || afirmar.isPending}>
                 <CheckCircle2 size={18} />
-                {concluir.isPending ? "Concluindo…" : "Concluir atendimento"}
+                {concluir.isPending ? "Concluindo…" : conf.rotulo("Concluir atendimento")}
               </button>
             </div>
           )}
@@ -1182,6 +1279,11 @@ export function DetalheCampo({ id }: { id: string }) {
           <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
             Revise o diagnóstico, as fotos e a assinatura antes de liberar a cobrança.
           </span>
+          {/* O chamado já está `concluido` aqui: quem chegou a esta caixa vê a
+              pergunta no MODO ATRASADO — foi encerrado por um caminho que não
+              perguntou (o arrasto do quadro, o seletor de status, os chips do
+              interno, `decidir_pedido_compra`, o gatilho da visita — P34). */}
+          <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} modo="atrasado" />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
               Reabrir
@@ -1194,10 +1296,10 @@ export function DetalheCampo({ id }: { id: string }) {
                 boxShadow: "0 4px 20px rgba(5,150,118,0.45)",
               }}
               onClick={() => fechar.mutate()}
-              disabled={fechar.isPending}
+              disabled={fechar.isPending || afirmar.isPending}
             >
               <CheckCircle2 size={18} />
-              {fechar.isPending ? "Fechando…" : "Conferir e fechar"}
+              {fechar.isPending ? "Fechando…" : conf.rotulo("Conferir e fechar")}
             </button>
           </div>
         </div>
@@ -1222,6 +1324,10 @@ export function DetalheCampo({ id }: { id: string }) {
                 onChange={(e) => setMotivoCancel(e.target.value)}
                 placeholder="Motivo do cancelamento"
               />
+              {/* Cancelar não afirma nada sozinho: o gatilho desmarca TODO
+                  pendente, de qualquer dia. Quem foi ao prédio e só depois viu
+                  o chamado cair diz isso AQUI, antes do status. */}
+              <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} />
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={{ ...btnSec, flex: 1 }} onClick={() => setCancelando(false)}>Voltar</button>
                 <button

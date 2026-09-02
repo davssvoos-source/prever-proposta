@@ -326,6 +326,23 @@ export function duracaoTexto(min: number | null | undefined): string {
   return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
 }
 
+/**
+ * '2026-09-05' → '05/09'. A data como ela é LIDA em voz alta, para caber ao lado
+ * da hora numa linha estreita.
+ *
+ * NÃO CONSTRÓI `Date`, e a ausência é o ponto: `new Date('2026-09-05')` é
+ * meia-noite UTC e devolveria 04/09 no Brasil — o erro de um dia que só aparece
+ * na leitura. Aqui a string é recortada, e o que não casa o formato volta
+ * inteiro em vez de virar "NaN/NaN".
+ *
+ * Mora aqui e não no .tsx porque tradução de dados não mora em componente
+ * (regra da casa) — é o mesmo lugar de `horaTexto` e `duracaoTexto`.
+ */
+export function diaCurto(dia: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dia);
+  return m ? `${m[3]}/${m[2]}` : dia;
+}
+
 /** O `—` de `horasTexto`: percentual indefinido não vira zero na tela. */
 export function pctTexto(pct: number | null): string {
   return pct === null ? "—" : `${pct}%`;
@@ -770,10 +787,21 @@ export interface IdaDoApoio {
 /**
  * AS TURMAS EM ORDEM DE IDA — de graça, sem coluna nova.
  *
- * `congelado_em` é gravado com `now()`, que no Postgres é o timestamp da
- * TRANSAÇÃO. Cada carimbo de "feito" é uma transação. Logo as linhas congeladas
- * na ida de terça carregam um instante e as da quinta carregam outro, e agrupar
- * por esse valor devolve as turmas na ordem em que as visitas foram afirmadas.
+ * `congelado_em` é gravado com o `cumprido_em` do bloco carimbado (u81:348), e
+ * é o AGRUPAMENTO por esse instante que devolve as turmas na ordem em que as
+ * visitas foram afirmadas.
+ *
+ * ── DE ONDE VEM O INSTANTE, E POR QUE ISSO IMPORTA (corrigido na U82) ──────
+ * Cada carimbo pela GRADE é uma transação, e `agenda_campo_cumprir` grava
+ * `COALESCE(cumprido_em, now())` — o timestamp da TRANSAÇÃO. Enquanto essa era
+ * a única mão do carimbo, "uma transação por carimbo" era o argumento inteiro.
+ * A U82 abriu a segunda mão (`agenda_campo_afirmar`), que carimba N blocos
+ * DENTRO DE UMA transação — e por isso ela usa `clock_timestamp()`, que avança
+ * dentro da transação, e não `now()`, que não avança. É o que faz N carimbos
+ * numa transação continuarem sendo N idas.
+ * O que continua colapsando em UMA ida é o BACKFILL (U81 §5 e U82 §4.1): ali o
+ * instante é `now()` de propósito, porque ele é a marca de procedência que dá
+ * ao DESFAZER um alvo exato.
  *
  * ── O QUE ELA NÃO SABE, DITO AQUI PARA NÃO VIRAR FOLCLORE ──────────────────
  * · NÃO diz de QUAL BLOCO cada ida é. O instante é do carimbo, não do bloco;
@@ -1251,6 +1279,316 @@ export function erroDaBaixa(
   return null;
 }
 
+// ── A SEGUNDA MÃO DO CARIMBO (R109/R110/R111 — U82) ────────────────────────
+//
+// A U78:1566-1568 prometeu que concluir um chamado marcaria os blocos abertos
+// dele. Nunca foi construído, e por isso a proteção inteira da U81 pendia de UM
+// clique OPCIONAL, de UMA mão só. A U82 divide o trabalho em duas peças que não
+// se sobrepõem, e a divisão é o desenho inteiro:
+//
+//   · QUEM AFIRMA É GENTE, E AFIRMA ANTES DO STATUS. Só com o chamado ainda
+//     ABERTO o espelho anda (u78:895), o congelamento da U81 pega a turma de
+//     CADA semana ISO, e `agenda_campo_valida` (u78:774-776) ainda deixa o
+//     TÉCNICO corrigir o dia. É a porta `agenda_campo_afirmar` (U82 §2).
+//   · QUEM SOLTA É A MÁQUINA, E ELA NÃO AFIRMA NADA. No encerramento, um
+//     gatilho desmarca o que ainda era PLANO FUTURO — e só isso. Ele não
+//     precisa de evidência porque não afirma nada. É `chamado_solta_agenda`
+//     (U82 §3), e `destinoNoEncerramento` é o gêmeo puro do WHERE dele.
+//
+// A DECISÃO DO DAVI (04/09) É REGRA AQUI DENTRO: *"posso acabar fazendo algo
+// antes da data agendada por diversos motivos e o sistema não deve barrar
+// isso"*. Nenhuma função desta seção recusa um gesto por causa de data. A data
+// escolhe o PADRÃO do dia a gravar (`diaPadraoDaAfirmacao`) e nada mais.
+
+/** Uma visita pendente que a tela vai perguntar, já com o que a decide. */
+export interface VisitaAConfirmar {
+  id: string;
+  /** o dia que ESTÁ marcado no bloco — 'AAAA-MM-DD' */
+  diaMarcado: string;
+  inicioMin: number;
+  /** "2ª ida" — derivado da ordem dos blocos do chamado, nunca um status novo */
+  ordinal: number;
+  tempo: "passado" | "hoje" | "futuro";
+  /**
+   * SÓ O FUTURO É PROVADAMENTE FALSO: se o dia não chegou, ninguém esteve lá.
+   * Passado é PLAUSÍVEL — o calendário permite, nada foi provado falso, e o
+   * plano é a melhor prova que existe; trocar um dia plausível por "hoje", que
+   * é seguramente errado, seria destruir dado para ganhar aparência. A regra
+   * não é sobre atraso, é sobre o que o calendário deixa ser verdade.
+   */
+  diaFalso: boolean;
+}
+
+/** A resposta humana sobre UMA visita. `sem_resposta` é o estado inicial. */
+export type RespostaDaVisita = "aconteceu" | "nao_vai_acontecer" | "sem_resposta";
+
+/** Qual dia o carimbo grava: o que estava marcado, ou o dia de hoje. */
+export type DiaDaAfirmacao = "marcado" | "hoje";
+
+/**
+ * O dia de HOJE em horário de Brasília — gêmeo de
+ * `(now() AT TIME ZONE 'America/Sao_Paulo')::date`, que é o que o soltador do
+ * §3 e o §4.2 da U82 usam.
+ *
+ * REUSA `parDoInstante`, o ÚNICO relógio com fuso deste arquivo, e isso não é
+ * economia: `dataIso(new Date())` responde no fuso do NAVEGADOR, e o técnico
+ * que abrir a tela às 22h de outro fuso (ou com o relógio do sistema errado)
+ * veria "hoje" ser outro dia — e com ele mudaria a semana ISO do apoio, que é
+ * exatamente a armadilha que a U76 documenta.
+ */
+export function diaDaOperacao(agora: Date = new Date()): string {
+  return parDoInstante(agora.toISOString())?.dia ?? "";
+}
+
+/**
+ * AS VISITAS QUE PRECISAM DE RESPOSTA. São os blocos PENDENTES do chamado —
+ * nem cancelados, nem já cumpridos —, em ordem total (dia, hora, id).
+ *
+ * `blocos` é a lista do CHAMADO INTEIRO, e não a da semana: o ordinal ("2ª
+ * ida") precisa dos irmãos, e com a janela sozinha um retorno cuja primeira
+ * visita foi na semana passada responderia `1`.
+ */
+export function visitasAConfirmar(
+  chamadoId: string,
+  blocos: BlocoDeAgenda[],
+  hoje: string,
+): VisitaAConfirmar[] {
+  return blocos
+    .filter((b) => b.chamado_id === chamadoId && blocoPendente(b))
+    .sort(comparaBlocos)
+    .map((b) => {
+      const tempo: VisitaAConfirmar["tempo"] =
+        b.dia < hoje ? "passado" : b.dia === hoje ? "hoje" : "futuro";
+      return {
+        id: b.id,
+        diaMarcado: b.dia,
+        inicioMin: b.inicio_min,
+        ordinal: ordinalDoBloco(b, blocos),
+        tempo,
+        diaFalso: tempo === "futuro",
+      };
+    });
+}
+
+/**
+ * NADA NASCE RESPONDIDO. É a recusa 5 do §5 da U81 dita na tela: "o dia passou
+ * e ninguém marcou" não é prova de que aconteceu, e um formulário que chega com
+ * "aconteceu" pré-marcado transforma o silêncio de quem clica em afirmação.
+ */
+export function respostaInicial(): RespostaDaVisita {
+  return "sem_resposta";
+}
+
+/**
+ * O DIA QUE O BOTÃO SUGERE. Bloco de dia FUTURO vem para HOJE por padrão: o dia
+ * marcado é provadamente falso, e deixá-lo trava a janela futura da equipe para
+ * sempre (o EXCLUDE é `WHERE (cancelado_em IS NULL)`, sem `cumprido_em` —
+ * u78:653-664), imobiliza o bloco (`blocoSeMove`), o torna não-desmarcável
+ * (u78:1522-1525) e faz o congelamento da U81 escolher a SEMANA ERRADA.
+ * Bloco de dia passado ou de hoje mantém o dia marcado.
+ */
+export function diaPadraoDaAfirmacao(v: Pick<VisitaAConfirmar, "diaFalso">): DiaDaAfirmacao {
+  return v.diaFalso ? "hoje" : "marcado";
+}
+
+/** O dia que vai para o `_feitos` — gêmeo do `COALESCE(f.dia, a.dia)` da RPC. */
+export function diaAfirmado(
+  v: Pick<VisitaAConfirmar, "diaMarcado">,
+  escolha: DiaDaAfirmacao,
+  hoje: string,
+): string {
+  return escolha === "hoje" ? hoje : v.diaMarcado;
+}
+
+/**
+ * A ORDEM EM QUE AS VISITAS ACONTECERAM — pelo dia EFETIVO (o que vai ser
+ * gravado), a hora e o id. Gêmeo do `ORDER BY COALESCE(f.dia, a.dia),
+ * a.inicio_min, a.id` do laço da porta.
+ *
+ * NÃO É COSMÉTICA. A porta carimba num LAÇO e o espelho anda a cada carimbo;
+ * fora de ordem, o espelho pula semanas e as turmas de apoio das semanas do
+ * meio nunca são gravadas — o defeito que a U81 existe para fechar,
+ * renascendo dentro da correção.
+ */
+export function ordemDaAfirmacao<T extends { id: string; dia: string; inicioMin: number }>(
+  itens: T[],
+): T[] {
+  return [...itens].sort((a, b) => {
+    if (a.dia !== b.dia) return a.dia < b.dia ? -1 : 1;
+    if (a.inicioMin !== b.inicioMin) return a.inicioMin - b.inicioMin;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+}
+
+/** O corpo da chamada a `agenda_campo_afirmar`, montado das respostas. */
+export interface PayloadDaAfirmacao {
+  feitos: { id: string; dia: string }[];
+  desmarcados: string[];
+  /** quantos blocos MUDAM de dia — é o que decide se `agenda_campo_valida` acorda */
+  movidos: number;
+}
+
+/**
+ * AS RESPOSTAS VIRAM O CORPO DA RPC. Quem não foi respondido não entra em lugar
+ * nenhum: `sem_resposta` significa que a máquina NÃO DECIDE, e o bloco fica
+ * pendente para o chip perguntar depois.
+ */
+export function payloadDaAfirmacao(
+  visitas: VisitaAConfirmar[],
+  respostas: Record<string, RespostaDaVisita>,
+  dias: Record<string, DiaDaAfirmacao>,
+  hoje: string,
+): PayloadDaAfirmacao {
+  const resposta = (v: VisitaAConfirmar) => respostas[v.id] ?? respostaInicial();
+  const brutos = visitas
+    .filter((v) => resposta(v) === "aconteceu")
+    .map((v) => {
+      const dia = diaAfirmado(v, dias[v.id] ?? diaPadraoDaAfirmacao(v), hoje);
+      return { id: v.id, dia, inicioMin: v.inicioMin, moveu: dia !== v.diaMarcado };
+    });
+  return {
+    feitos: ordemDaAfirmacao(brutos).map((b) => ({ id: b.id, dia: b.dia })),
+    desmarcados: visitas.filter((v) => resposta(v) === "nao_vai_acontecer").map((v) => v.id),
+    movidos: brutos.filter((b) => b.moveu).length,
+  };
+}
+
+/**
+ * O QUE O BOTÃO DE ENCERRAR DIZ QUE VAI FAZER — e ele muda a cada clique, de
+ * propósito: o encerramento passou a ter um efeito na agenda, e um botão que
+ * continua dizendo só "Concluir" esconde metade do gesto.
+ */
+export function rotuloDoEncerramento(
+  base: string,
+  visitas: VisitaAConfirmar[],
+  respostas: Record<string, RespostaDaVisita>,
+): string {
+  if (visitas.length === 0) return base;
+  const conta = (r: RespostaDaVisita) =>
+    visitas.filter((v) => (respostas[v.id] ?? respostaInicial()) === r).length;
+  const feitos = conta("aconteceu");
+  const soltos = conta("nao_vai_acontecer");
+  const mudos = conta("sem_resposta");
+  const partes: string[] = [];
+  if (feitos > 0) partes.push(`${feitos} feito${feitos > 1 ? "s" : ""}`);
+  if (soltos > 0) partes.push(`${soltos} desmarcado${soltos > 1 ? "s" : ""}`);
+  if (partes.length === 0) return `${base} · ${mudos} sem resposta`;
+  return `${base} · ${partes.join(", ")}`;
+}
+
+/**
+ * A RECUSA ANTECIPADA da porta nova, com as frases das RPCs, palavra por
+ * palavra. Antecipar não é autorizar — quem autoriza é o servidor.
+ *
+ * A TERCEIRA RECUSA É A QUE NINGUÉM ADIVINHA, e ela é a razão de esta função
+ * existir. Afirmar MOVENDO o dia põe `dia` no SET, e `dia` está na lista OF de
+ * `trg_agenda_campo_valida` (u78:786): num chamado JÁ ENCERRADO, aquele gatilho
+ * devolve 42501 a quem não é gestão (u78:774-776). É o caminho do CHIP — o
+ * chamado que outro caminho encerrou sem perguntar. Afirmar MANTENDO o dia
+ * continua passando ali, porque sem `dia` no SET o gatilho nem acorda.
+ *
+ * ELA DEVOLVE FRASE **E CÓDIGO**, E O CÓDIGO NÃO É ENFEITE. `classeDoErro`
+ * escolhe o ROSTO do erro no formulário a partir do SQLSTATE: `42501` é
+ * "permissão" (escudo — peça a quem responde; o gesto não vai acontecer) e
+ * `55000` é "regra" (triângulo — dá para corrigir aqui mesmo). As três recusas
+ * desta função NÃO têm o mesmo código: o vínculo e o "só a gestão remarca" são
+ * 42501, e a natureza é 55000 (a porta a levanta com `USING ERRCODE = '55000'`).
+ * Enquanto ela devolvia só a frase, quem antecipava chutava um código fixo e a
+ * MESMA frase ganhava DUAS caras conforme quem a dissesse — a divergência de
+ * gêmeo que esta casa persegue em todo lugar.
+ */
+export interface RecusaAntecipada {
+  frase: string;
+  /** o SQLSTATE que a PORTA usaria para esta mesma recusa */
+  code: string;
+}
+
+export function erroDaAfirmacao(
+  c: Pick<ChamadoParaGrade, "id" | "natureza" | "status">,
+  movidos: number,
+  autz: AutorizacaoDaAgenda,
+): RecusaAntecipada | null {
+  // 42501 — o gate da porta, gêmeo de agenda_campo_cumprir
+  if (autz.usuarioId && !autz.podeEditarChamado(c.id)) {
+    return {
+      code: "42501",
+      frase: "Você não responde por este chamado. Peça a quem responde por ele, ou à gestão.",
+    };
+  }
+  // 55000 — a porta diz `regra`, e regra tem OUTRA cara: dá para corrigir
+  if (c.natureza !== "campo") {
+    return {
+      code: "55000",
+      frase: `A agenda de campo não manda em chamado comercial (este é "${c.natureza ?? "sem natureza"}") — quem desmarca a visita é a própria visita técnica.`,
+    };
+  }
+  // 42501 — vem de trg_agenda_campo_valida (u78:774-776). E a FRASE diz a porta
+  // de saída, porque ela está desenhada dois botões acima: sem a meia-linha, o
+  // técnico que responde "Aconteceu" num bloco futuro de chamado encerrado leva
+  // um muro sem porta.
+  if (
+    movidos > 0 &&
+    autz.usuarioId &&
+    !autz.ehGestor &&
+    (c.status === "concluido" || c.status === "cancelado")
+  ) {
+    return {
+      code: "42501",
+      frase: `Este chamado está ${c.status}. Só a gestão remarca trabalho encerrado — ou escolha “Aconteceu no dia marcado”, que não move nada e passa.`,
+    };
+  }
+  return null;
+}
+
+/** O que o SOLTADOR faz com um bloco no encerramento. */
+export type DestinoNoEncerramento = "solto" | "intocado";
+
+/**
+ * GÊMEO DO `WHERE` DE `chamado_solta_agenda` (U82 §3), cláusula por cláusula.
+ *
+ * O CASO QUE PARECE FALTAR E É DECISÃO: bloco marcado para HOJE mais tarde, num
+ * chamado concluído às 10h, fica INTOCADO. Ele pode ter acontecido de manhã ou
+ * pode não ir acontecer, e nenhuma das duas leituras é derivável — afirmar
+ * gravaria uma afirmação falsa, desmarcar apagaria um plano que talvez tenha
+ * acontecido. O único ato honesto da máquina é NÃO DECIDIR, e o bloco fica
+ * pendente para o chip perguntar a quem sabe.
+ *
+ * A comparação de dias é de STRING, e ela é a ordem certa: 'AAAA-MM-DD' tem
+ * largura fixa e ordem lexicográfica igual à cronológica — o mesmo raciocínio
+ * de `comparaBlocos`.
+ */
+export function destinoNoEncerramento(
+  b: Pick<BlocoDeAgenda, "cancelado_em" | "cumprido_em" | "dia">,
+  status: string | null,
+  diaDoEncerramento: string,
+): DestinoNoEncerramento {
+  if (status !== "concluido" && status !== "cancelado") return "intocado";
+  // bloco já afirmado NUNCA é desmarcado: é a recusa de agenda_campo_cancelar
+  // (u78:1522-1525) dita do lado de dentro do gatilho
+  if (!blocoPendente(b)) return "intocado";
+  if (status === "cancelado") return "solto";
+  return b.dia > diaDoEncerramento ? "solto" : "intocado";
+}
+
+/**
+ * O FURO, EXPRIMÍVEL: chamado ENCERRADO com visita PENDENTE — ninguém disse se
+ * ela aconteceu, e a máquina não decidiu por ninguém.
+ *
+ * É onde pousam os cinco caminhos de encerramento que a tela não pega (o
+ * arrasto do quadro, o seletor de status do painel, os chips do interno,
+ * `decidir_pedido_compra` e o gatilho da visita — P34), e é o gêmeo do lado
+ * ENCERRADO da conferência 130. A tela está presa ao ESTADO e não ao gesto, e é
+ * isso que faz o chip alcançar o que nenhum `onClick` alcança.
+ */
+export function visitasNaoAfirmadas(
+  c: Pick<ChamadoParaGrade, "id" | "status" | "natureza">,
+  blocos: BlocoDeAgenda[],
+): BlocoDeAgenda[] {
+  if (c.natureza !== "campo") return [];
+  if (c.status !== "concluido" && c.status !== "cancelado") return [];
+  return blocos.filter((b) => b.chamado_id === c.id && blocoPendente(b)).sort(comparaBlocos);
+}
+
 /**
  * O gêmeo de `desagendar_chamado` (U78 §6.4) — o ato deliberado, que é diferente
  * de desmarcar um bloco. Duas recusas, na ordem da RPC: o vínculo e a NATUREZA.
@@ -1281,21 +1619,29 @@ export function erroDoDesagendamento(
 // ── O CONTRATO DAS PORTAS: como um erro do banco vira reação na tela ────────
 
 /**
- * AS QUATRO PORTAS DE ESCRITA DA AGENDA, pelo nome com que a camada de dados vai
- * chamá-las. A lista existe para ter UM lugar, e para a asserção poder ler os
- * `GRANT` do arquivo da U78 e provar o que este arquivo afirma no cabeçalho:
- * hoje elas são concedidas SÓ a `service_role`.
+ * AS PORTAS DE ESCRITA DA AGENDA, pelo nome com que a camada de dados as chama.
+ * A lista existe para ter UM lugar, e para a asserção poder ler os `GRANT` dos
+ * arquivos de migration e provar que ninguém nasceu sem concessão — nem sobrou
+ * concessão sem consumidor.
  *
- * ENQUANTO ISSO FOR VERDADE, `supabase.rpc(<qualquer uma>)` volta 42501 para
- * todo usuário logado. Não é bug e não é falta de permissão do usuário: é a U78
- * sendo inerte de propósito até a migration da TELA rodar os quatro GRANT que
- * ela deixou prontos no rodapé. A camada de dados não pode subir antes disso.
+ * ERAM QUATRO (U78, abertas a `authenticated` pela U79). A QUINTA é
+ * `agenda_campo_afirmar`, da U82: ela afirma N blocos de UM chamado de uma vez,
+ * ANTES de o app escrever o status, e é a "segunda mão" que a U78:1566-1568
+ * prometeu e nunca construiu.
+ *
+ * A QUINTA É A ÚNICA QUE PODE FALTAR NO BANCO, e isso é de propósito: o push
+ * publica na hora e a migration é rodada à mão DEPOIS. Enquanto ela não existe,
+ * `supabase.rpc('agenda_campo_afirmar')` volta **PGRST202** — e
+ * `useAfirmarVisitas` trata isso como "a porta não existe" e SEGUE COM O
+ * ENCERRAMENTO. Nenhuma das outras quatro degrada assim, porque nenhuma delas é
+ * opcional para o gesto que a chama.
  */
 export const PORTAS_DA_AGENDA = [
   "agenda_campo_marcar",
   "agenda_campo_cancelar",
   "agenda_campo_cumprir",
   "desagendar_chamado",
+  "agenda_campo_afirmar",
 ] as const;
 
 /**

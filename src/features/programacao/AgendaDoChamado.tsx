@@ -28,7 +28,8 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { CalendarClock, CalendarPlus, Check, ExternalLink, Pencil } from "lucide-react";
+import { AlertTriangle, CalendarClock, CalendarPlus, Check, ExternalLink, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import { referenciaSemanal } from "@/lib/periodos";
@@ -46,10 +47,18 @@ import {
   horaTexto,
   ordinalDoBloco,
   parDoInstante,
+  visitasNaoAfirmadas,
   type BlocoDeAgenda,
   type ChamadoParaGrade,
 } from "./modelo";
-import { useAutorizacaoDaAgenda, useBlocosDaSemana, useBlocosDoChamado } from "./data";
+import {
+  sqlstateDoErro,
+  useAfirmarVisitas,
+  useAutorizacaoDaAgenda,
+  useBlocosDaSemana,
+  useBlocosDoChamado,
+} from "./data";
+import { ConfirmacaoDasVisitas, useConfirmacaoDasVisitas } from "./ConfirmacaoDasVisitas";
 import { FormularioDoBloco, type AberturaDoFormulario } from "./FormularioDoBloco";
 
 interface Props {
@@ -61,6 +70,24 @@ export function AgendaDoChamado({ chamado }: Props) {
   const navigate = useNavigate();
   const { data: blocosDoChamado = [] } = useBlocosDoChamado(chamado.id);
   const [abertura, setAbertura] = useState<AberturaDoFormulario | null>(null);
+
+  /**
+   * O CHIP DO FURO (U82 — P34). Cinco caminhos encerram um chamado sem passar
+   * por uma linha desta tela: o arrasto do quadro, o seletor de status do
+   * painel, os chips do interno, `decidir_pedido_compra` (u9:139-151) e
+   * `sincronizar_chamado_da_visita` (u38:68-86) — os dois últimos sem uma linha
+   * de TypeScript no caminho. Nenhum `onClick` os alcança.
+   *
+   * Este chip alcança, porque ele está preso ao ESTADO e não ao gesto: chamado
+   * ENCERRADO com visita PENDENTE é uma pergunta que ninguém respondeu, e ela
+   * continua ali até alguém abrir o chamado. É o gêmeo do lado ENCERRADO da
+   * conferência 130, e é o número que decide se este desenho funcionou.
+   */
+  const conf = useConfirmacaoDasVisitas(chamado.id);
+  const afirmar = useAfirmarVisitas();
+  const [afirmando, setAfirmando] = useState(false);
+  const [erroDaVisita, setErroDaVisita] = useState<{ frase: string; code: string | null } | null>(null);
+  const naoAfirmadas = visitasNaoAfirmadas(chamado, blocosDoChamado);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
@@ -114,6 +141,92 @@ export function AgendaDoChamado({ chamado }: Props) {
           Agendado para
         </span>
       </span>
+
+      {naoAfirmadas.length > 0 && (
+        <div
+          style={{
+            ...linha,
+            alignItems: "flex-start",
+            background: isLight ? "rgba(250,132,45,0.07)" : "rgba(250,132,45,0.08)",
+            border: `1px solid ${PRISMA.laranja.border}`,
+          }}
+        >
+          <AlertTriangle
+            size={14}
+            color={isLight ? PRISMA.laranja.light : PRISMA.laranja.dark}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 12, color: textPrimary, lineHeight: 1.5 }}>
+            {/* A TELA NÃO PODE PROMETER O QUE A MÁQUINA NÃO FAZ. A frase antiga
+                dizia que responder GUARDA o registro de quem esteve no prédio —
+                e para visita de OUTRA semana isso é falso: aqui o chamado já
+                está encerrado, o espelho está pinado (u78:895) e a turma daquela
+                semana nunca foi sequer escrita em `chamado_apoios`. Reconstruí-la
+                seria inventar registro, que a U64 e a U81 recusaram por escrito.
+                Limitação declarada no P38, com canário SQL. */}
+            Este chamado foi encerrado com {naoAfirmadas.length} atendimento(s) que ninguém afirmou.
+            <span style={{ color: textSecondary }}>
+              {" "}Responder guarda o registro do atendimento. Para visita de outra semana, confira
+              também o chip de apoio: o registro de quem foi pode precisar ser posto à mão.
+            </span>
+          </span>
+          {!afirmando && (
+            <button style={botao} onClick={() => setAfirmando(true)}>
+              <Check size={13} /> Afirmar agora
+            </button>
+          )}
+        </div>
+      )}
+
+      {afirmando && (
+        <>
+          <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} modo="atrasado" />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button style={botao} onClick={() => { setAfirmando(false); setErroDaVisita(null); }}>
+              Deixar para depois
+            </button>
+            <button
+              style={botao}
+              disabled={afirmar.isPending}
+              onClick={() => {
+                setErroDaVisita(null);
+                // O CÓDIGO VEM DO MODELO PURO, junto com a frase — um "42501"
+                // fixo pintava a recusa de NATUREZA (que a porta levanta como
+                // 55000 = regra) com o rosto de permissão.
+                if (conf.recusa) { setErroDaVisita({ frase: conf.recusa.frase, code: conf.recusa.code }); return; }
+                // O MESMO CINTO DO `DetalheCampo`: sem gesto a mutationFn volta
+                // cedo, o painel fecharia e o toast diria "0 atendimento(s)
+                // marcados como feitos", que é anunciar um gesto que não houve.
+                if (conf.payload.feitos.length === 0 && conf.payload.desmarcados.length === 0) {
+                  setAfirmando(false);
+                  return;
+                }
+                afirmar.mutate(
+                  { chamadoId: chamado.id, ...conf.payload },
+                  {
+                    onSuccess: (r) => {
+                      setAfirmando(false);
+                      // `toast.message` e não `toast.success` quando NADA foi
+                      // gravado: verde para "não fiz nada" é mentira de cor.
+                      if (r.portaAusente) {
+                        toast.message("A atualização do banco ainda não foi aplicada — nada foi marcado.");
+                      } else if (r.portaMuda) {
+                        toast.message("Não consegui gravar as respostas agora (conexão) — nada foi marcado. Tente de novo.");
+                      } else {
+                        toast.success(`${r.afirmados} atendimento(s) marcados como feitos.`);
+                      }
+                    },
+                    onError: (e: unknown) =>
+                      setErroDaVisita({ frase: (e as Error).message, code: sqlstateDoErro(e) }),
+                  },
+                );
+              }}
+            >
+              <Check size={13} /> {conf.rotulo("Gravar as respostas")}
+            </button>
+          </div>
+        </>
+      )}
 
       {classe === "fora_da_programacao" && ativos.length === 0 && (
         <span style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary }}>

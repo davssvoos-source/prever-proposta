@@ -626,6 +626,24 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
       qc.invalidateQueries({ queryKey: ["home-chamados"] });
       qc.invalidateQueries({ queryKey: ["home-historico"] });
       qc.invalidateQueries({ queryKey: ["calendario"] });
+      // U82: o seletor de status deste painel é o encerramento mais rápido do
+      // app, e ele encerra sem perguntar nada (P34). O gatilho
+      // `chamado_solta_agenda` DESMARCA os blocos de plano futuro na MESMA
+      // transação do UPDATE de status, então quando o PATCH volta a desmarcação
+      // já está commitada e o refetch enxerga o estado certo.
+      // DUAS COISAS DEPENDEM DESTA LINHA, e nenhuma delas é "a grade está por
+      // trás" — este painel NUNCA fica por cima da grade, são rotas irmãs e só
+      // uma renderiza (`grep '<PainelChamado' src/` não casa nada em
+      // chamados.programacao.tsx):
+      //   · `AgendaDoChamado` está montado AQUI DENTRO e lê
+      //     ["agenda-campo","chamado",id] — sem isto ele desenharia um bloco
+      //     que o banco acabou de soltar;
+      //   · a grade de /chamados/programacao, que é OUTRA rota: o que esta
+      //     linha faz por ela é marcar a consulta INATIVA como velha, para a
+      //     próxima montagem não servir o retrato de até 30 s do cache
+      //     (staleTime). Arrastar um bloco fantasma dali o RESSUSCITA
+      //     (u78:1399 zera `cancelado_em`).
+      qc.invalidateQueries({ queryKey: ["agenda-campo"] });
       setTimeout(() => setEstados((e) => (e[campo] === "salvo" ? { ...e, [campo]: "parado" } : e)), 1600);
     },
     onError: (err, { campo }) => {

@@ -33,7 +33,8 @@ import {
   FATURAMENTO_LABEL, moeda, useAnaliseChamado, useLancamentoDoChamado,
   type FaturamentoStatus,
 } from "@/features/chamados/cobranca";
-import { useConcluirComCobranca, sqlstateDoErro } from "./data";
+import { useAfirmarVisitas, useConcluirComCobranca, sqlstateDoErro } from "./data";
+import { ConfirmacaoDasVisitas, useConfirmacaoDasVisitas } from "./ConfirmacaoDasVisitas";
 import { classeDoErro, erroDoLancamento, podeConcluirDoCartao, reaisDigitados } from "./modelo";
 
 interface Props {
@@ -49,6 +50,17 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
   const { data: analise = [] } = useAnaliseChamado(chamadoId);
   const { data: temLancamento } = useLancamentoDoChamado(chamadoId);
   const concluir = useConcluirComCobranca();
+  /**
+   * A SEGUNDA MÃO DO CARIMBO (U82). Este painel é o funil das TRÊS decisões do
+   * ciclo, e as três encerram o atendimento — logo a pergunta entra no topo de
+   * `disparar()`, ANTES da porta que escreve o status.
+   *
+   * `concluir_chamado_com_cobranca` continua NÃO marcando `cumprido_em`, e o
+   * COMMENT dela (u80:541-542) continua verdadeiro palavra por palavra: quem
+   * afirma é `agenda_campo_afirmar`, numa chamada separada e anterior.
+   */
+  const conf = useConfirmacaoDasVisitas(chamadoId);
+  const afirmar = useAfirmarVisitas();
 
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
@@ -85,11 +97,34 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
   const erroLocal = erroDoLancamento(candidato);
   const previa = erroLocal ? [] : parcelar(candidato.valorTotal, candidato.parcelas);
 
-  const disparar = (
+  const disparar = async (
     decisao: "conferir_depois" | "nada_a_cobrar" | "lancar",
     extra?: { descricao: string; valorTotal: number; parcelas: number[] },
   ) => {
     setErro(null);
+    // A AFIRMAÇÃO VEM ANTES DO STATUS, e a colisão de agenda custa uma pergunta
+    // — nunca um encerramento perdido: se ela falhar, NADA foi escrito, o
+    // chamado NÃO foi concluído e as duas saídas aparecem no mesmo painel.
+    // O CÓDIGO VEM DO MODELO PURO, junto com a frase. Um `code: "42501"` fixo
+    // pintava de "permissão" (escudo, "o gesto não vai acontecer") até a recusa
+    // de NATUREZA, que a porta levanta como `55000` = regra ("dá para corrigir
+    // aqui"). A mesma frase ganhava duas caras conforme quem a dissesse.
+    if (conf.recusa) { setErro({ frase: conf.recusa.frase, code: conf.recusa.code }); return; }
+    try {
+      const r = await afirmar.mutateAsync({ chamadoId, ...conf.payload });
+      if (r.portaAusente) {
+        toast.message(
+          "As visitas não foram marcadas como feitas: a atualização do banco ainda não foi aplicada. Marque-as pela grade.",
+        );
+      } else if (r.portaMuda) {
+        toast.message(
+          "Não consegui gravar a resposta sobre as visitas agora (conexão). O chamado foi encerrado; responda depois pelo aviso do chamado.",
+        );
+      }
+    } catch (e: unknown) {
+      setErro({ frase: (e as Error).message, code: sqlstateDoErro(e) });
+      return;
+    }
     concluir.mutate(
       { chamadoId, decisao, tipoServico, ...(extra ?? {}) },
       {
@@ -274,6 +309,19 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
               </div>
             )}
 
+            {/* O `erro` VAI PARA DENTRO DO PAINEL, e não só para a caixa
+                vermelha lá embaixo: as DUAS SAÍDAS do 23P01 ("escolha
+                'Aconteceu no dia marcado' aqui mesmo, ou ajuste o horário na
+                grade") moram em `ConfirmacaoDasVisitas`, ao lado dos botões que
+                as executam. Sem esta prop, o gestor via a frase vermelha do
+                conflito e nada mais — com a saída desenhada quinze pixels
+                acima, sem ninguém apontá-la — e concluía que a agenda travou o
+                faturamento. É o erro que mais precisa de painel sendo o único
+                painel sem ele. */}
+            {!recusaDeConcluir && (
+              <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erro} />
+            )}
+
             {!recusaDeConcluir && !veFinanceiro && (
               <span style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, lineHeight: 1.5 }}>
                 Concluir aqui encerra o atendimento e deixa a cobrança para quem responde pelo
@@ -281,7 +329,11 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
               </span>
             )}
 
-            {erro && (
+            {/* E a caixa de baixo NÃO REPETE o conflito: quando
+                `classe === "conflito"` a frase já está dentro do painel, com as
+                duas saídas ao lado. Aqui ela cobre o resto (a recusa do
+                lançamento, o erro de `concluir`). */}
+            {erro && classe !== "conflito" && (
               <div style={{
                 padding: "11px 13px", borderRadius: 12,
                 background: isLight ? "rgba(177,36,46,0.06)" : "rgba(241,120,129,0.08)",
@@ -301,12 +353,12 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
                 {veFinanceiro && !jaDecidido && temLancamento !== true && !temAnalise && (
                   <>
                     <button
-                      disabled={!!erroLocal || concluir.isPending}
-                      onClick={() => disparar("lancar", {
+                      disabled={!!erroLocal || concluir.isPending || afirmar.isPending}
+                      onClick={() => { void disparar("lancar", {
                         descricao: descricao.trim(),
                         valorTotal: candidato.valorTotal,
                         parcelas: previa,
-                      })}
+                      }); }}
                       style={{
                         ...btnSec, border: "none", background: GOLD_GRAD, color: "#08090E",
                         fontWeight: 700, opacity: erroLocal || concluir.isPending ? 0.5 : 1,
@@ -316,8 +368,8 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
                       <CheckCircle2 size={15} /> Concluir e lançar
                     </button>
                     <button
-                      disabled={concluir.isPending}
-                      onClick={() => disparar("nada_a_cobrar")}
+                      disabled={concluir.isPending || afirmar.isPending}
+                      onClick={() => { void disparar("nada_a_cobrar"); }}
                       style={btnSec}
                     >
                       Nada a cobrar
@@ -325,11 +377,11 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
                   </>
                 )}
                 <button
-                  disabled={concluir.isPending}
-                  onClick={() => disparar("conferir_depois")}
+                  disabled={concluir.isPending || afirmar.isPending}
+                  onClick={() => { void disparar("conferir_depois"); }}
                   style={btnSec}
                 >
-                  {concluir.isPending ? "Concluindo…" : "Concluir · conferir depois"}
+                  {concluir.isPending ? "Concluindo…" : conf.rotulo("Concluir · conferir depois")}
                 </button>
               </div>
             )}

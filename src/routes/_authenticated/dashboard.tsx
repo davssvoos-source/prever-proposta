@@ -372,6 +372,16 @@ function Home() {
       qc.invalidateQueries({ queryKey: ["home-chamados"] });
       qc.invalidateQueries({ queryKey: ["chamados"] });
       qc.invalidateQueries({ queryKey: ["home"] });
+      // U82: arrastar um cartão para "concluído"/"cancelado" faz o gatilho
+      // `chamado_solta_agenda` DESMARCAR os blocos de plano futuro. Este quadro
+      // não desenha a grade E A GRADE NÃO ESTÁ MONTADA — /chamados/programacao é
+      // outra ROTA, e só uma renderiza por vez. O que esta linha faz é marcar
+      // ["agenda-campo"] como VELHA no cache, para a próxima abertura da grade
+      // não servir o retrato de até 30 s (staleTime) — porque arrastar um bloco
+      // fantasma ali o RESSUSCITA (u78:1399 zera `cancelado_em`) num chamado que
+      // este gesto acabou de encerrar. A razão importa: é ela que a próxima
+      // pessoa herda.
+      qc.invalidateQueries({ queryKey: ["agenda-campo"] });
     },
   });
 
