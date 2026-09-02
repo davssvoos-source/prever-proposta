@@ -713,6 +713,76 @@ E um aviso que vale para os chamados **internos**: escrever a palavra
 "Manutenção Preventiva". É uma pendência conhecida, e a sugestão é só sugestão
 — troque o tipo à mão se não for isso.
 
+## Trocar a data no formulário move a grade junto (U84)
+
+**Isso é novo, e é a única mudança de comportamento desta entrega.** Quando você
+muda o dia dentro do formulário de horário **para outra semana**, a tela vai
+buscar os atendimentos daquela semana. Você vê a grade atrás andar, e ao fechar o
+formulário é lá que você fica. Trocar de dia **dentro da mesma semana** não move
+nada — a lista já é a mesma.
+
+Isso conserta um problema que já existia: a tela só tinha em mãos os atendimentos
+da semana que estava aberta. Escolher um dia de outra semana fazia o formulário
+**não enxergar** os compromissos daquela equipe naquele dia — ele deixava marcar,
+e o servidor recusava depois, com uma mensagem de conflito que parecia vir do
+nada. Agora as duas pontas olham para o mesmo dia.
+
+## O que o mapa entendeu (e por que ler)
+
+São **quatro** as telas que localizam um endereço:
+ficha do cliente, nova visita, `/gerencial/nova`
+e **edição da visita** — esta última é a que o gestor mais usa, porque é onde se
+corrige endereço já cadastrado. Em todas elas, depois de clicar em
+**Localizar** aparece uma linha:
+
+> O mapa entendeu: **Interlagos, São Paulo, SP** — se não é este o lugar,
+> corrija o endereço e localize de novo.
+
+**Leia essa linha.** O campo de endereço é uma linha de texto livre, e é assim
+que se erra de cidade: "Rua São Paulo, 1200" existe em dezenas de municípios, e
+o mapa escolhe um sozinho, em silêncio. Duas coordenadas na tela não dizem nada
+a ninguém; o nome do bairro e da cidade, sim. Essa coordenada fica **permanente**
+no cadastro, e no dia seguinte não há nada na tela que denuncie o erro — porque
+o rótulo que o sistema imprime é o **nome do prédio**, que está certo.
+
+**Se você corrigir o endereço depois de localizar, a conferência some — e a
+coordenada também.** É de propósito: aquela coordenada é do texto ANTIGO, e a
+frase acima estaria descrevendo um endereço que o campo não contém mais. Localize
+de novo, leia de novo.
+
+**Enquanto a busca está no ar, o campo de endereço fica travado por alguns
+segundos.** Também é de propósito: se desse para editar o texto no meio da
+busca, a resposta do endereço antigo chegaria depois e ficaria descrevendo o
+texto novo.
+
+Se você **não** clicar em Localizar, o cadastro nasce **sem** coordenada. É de
+propósito: ausência é visível e conserta-se com um clique; ponto errado não é
+visível e não se conserta, porque ninguém sabe que ele está errado.
+
+## Trocar o endereço do cliente apaga a coordenada (U84)
+
+No cadastro do cliente, trocar o endereço **apaga a coordenada**. É de propósito
+— a coordenada antiga é o lugar de onde o cliente saiu, e mantê-la faria o mapa
+desenhar o prédio onde ele não fica mais. Depois de trocar o endereço, use o
+botão de buscar no mapa.
+
+Dois detalhes que valem saber:
+
+- **rebuscar pode zerar mesmo assim.** Se o endereço novo cair no mesmo ponto do
+  mapa que o antigo (acontece: boa parte da base foi localizada por CEP, e um
+  CEP cobre a quadra), o sistema não consegue distinguir "não veio coordenada"
+  de "veio a mesma", e apaga. **O conserto é abrir a ficha de novo, clicar em
+  "Localizar no mapa" e salvar** — na segunda vez o endereço já está gravado, o
+  sistema não tem por que apagar nada, e a coordenada fica. *Salvar de novo sem
+  clicar em Localizar não devolve nada:* a ficha reabre sem coordenada e é isso
+  que ela salva.
+- **consolidar um cliente que estava sem endereço** também dispara a mesma
+  regra: ele ganha o endereço da visita e perde a coordenada que tinha. Mesmo
+  conserto — buscar no mapa uma vez.
+
+**E o deslocamento continua sendo digitado à mão.** Calculá-lo automaticamente é
+entrega futura; nada nesta rodada muda o campo **Deslocamento (min)**.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`

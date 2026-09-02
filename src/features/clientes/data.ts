@@ -208,8 +208,9 @@ export interface GrupoConsolidacao {
   telefoneZelador: string | null;
   emailZelador: string | null;
   fotoFachadaUrl: string | null;
-  /** Situação sugerida: ativo só com proposta ACEITA pelo cliente (R4). */
-  situacaoSugerida: SituacaoCliente;
+  // `situacaoSugerida` FOI APAGADA (U84). Ela existia para exprimir a
+  // diferença entre prospecto e ativo — e a R21/R22 apagou `prospecto` do
+  // domínio na U27. Ver o comentário em `consolidarGrupo`.
   visitaIds: string[];
   /** Clientes já referenciados pelas visitas do grupo (candidatos a fundir). */
   clienteIds: string[];
@@ -264,7 +265,6 @@ export function useGruposConsolidacao() {
             telefoneZelador: v.telefone_zelador ?? null,
             emailZelador: v.email_zelador ?? null,
             fotoFachadaUrl: v.foto_fachada_url ?? null,
-            situacaoSugerida: "prospecto",
             visitaIds: [],
             clienteIds: [],
             jaConsolidado: false,
@@ -273,9 +273,6 @@ export function useGruposConsolidacao() {
         }
         g.visitaIds.push(v.id as string);
         if (v.cliente_id && !g.clienteIds.includes(v.cliente_id)) g.clienteIds.push(v.cliente_id);
-        // R4: aprovar a visita é decisão nossa; quem faz do prospecto um
-        // cliente é o aceite DELE. Antes daqui saía "ativo" cedo demais.
-        if (String(v.proposta_resultado ?? "") === "aceita") g.situacaoSugerida = "ativo";
         // completa lacunas com dados de visitas mais antigas
         g.endereco ??= v.endereco ?? null;
         g.complemento ??= v.complemento ?? null;
@@ -341,7 +338,17 @@ export async function consolidarGrupo(g: GrupoConsolidacao): Promise<string> {
     telefone_zelador: g.telefoneZelador,
     email_zelador: g.emailZelador,
     foto_fachada_url: g.fotoFachadaUrl,
-    situacao: g.situacaoSugerida,
+    // A CONSOLIDAÇÃO NÃO DECIDE SITUAÇÃO COMERCIAL, e a ausência conserta um
+    // defeito VIVO. Isto escrevia `situacao: g.situacaoSugerida`, que nascia
+    // `prospecto` — valor que a U27 APAGOU do CHECK (aceita só ativo/inativo,
+    // u27:218). Os DOIS ramos abaixo batiam em 23514 sempre que o grupo não
+    // tinha proposta aceita: o `criarCliente` e o `atualizarCliente`, este
+    // último ainda por cima FORA do `preservar`, o que rebaixaria um cliente
+    // oficial e ativo se o CHECK fosse frouxo. `/clientes/migrar` morria.
+    // O `tsc` já acusava (TS2322), escondido dentro do baseline.
+    // E mesmo com valor legal isto estaria errado: fundir duplicatas é sobre
+    // endereço e contato. Se um dia a consolidação DEVER mexer em situação,
+    // é decisão de produto com regra própria — e não pode usar `prospecto`.
   };
 
   // 1) destino: um cadastro do grupo que não seja compartilhado com outro

@@ -721,7 +721,17 @@ export function MapaClientes({ clientes }: Props) {
           )}
           {semCoordenada > 0 && (
             <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11, color: textSecondary }}>
-              {semCoordenada} sem endereço cadastrado — não entram no mapa
+              {/* O RÓTULO ESTAVA ERRADO, E A U84 O TORNARIA MENTIROSO.
+                  O contador é `c.latitude == null || c.longitude == null` — ele
+                  conta quem não tem COORDENADA, e endereço não tem nada a ver:
+                  a maioria destes tem endereço escrito e completo, só nunca foi
+                  ao mapa. Dizer "sem endereço cadastrado" mandava o gestor
+                  procurar um campo que já estava preenchido.
+                  E a partir do gatilho da U84 a frase viraria o oposto do fato:
+                  trocar o endereço de um cliente ZERA a coordenada dele de
+                  propósito, então quem acabou de cadastrar um endereço NOVO
+                  apareceria aqui como "sem endereço cadastrado". */}
+              {semCoordenada} sem coordenada — não entram no mapa
             </span>
           )}
         </div>

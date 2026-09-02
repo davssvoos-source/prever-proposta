@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -114,12 +114,29 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     prioridade: (initial?.prioridade ?? "normal") as string,
   });
 
+  // `!= null`, e NÃO teste de veracidade: `initial.latitude === 0` é uma
+  // coordenada (o Golfo da Guiné) e cairia como ausente num `&&`. Não há dado
+  // real ali, mas o padrão da casa é distinguir `0` de "não sei" em coordenada,
+  // e o custo de acertar é o mesmo.
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    initial?.latitude && initial?.longitude
+    initial?.latitude != null && initial?.longitude != null
       ? { lat: initial.latitude, lng: initial.longitude }
       : null,
   );
   const [geocoding, setGeocoding] = useState(false);
+  /**
+   * O QUE O MAPA ENTENDEU — U84.
+   *
+   * `geocode()` devolve `bairro/cidade/uf/display_name` desde a U84, para um
+   * humano LER e dizer "não é essa cidade". Esta tela guardava só `{lat,lng}` e
+   * desenhava um mini-mapa — que mostra o ponto, mas não o NOME do lugar, e um
+   * mapa de bairro parece igual em qualquer cidade. A coordenada daqui vira
+   * `clientes.latitude/longitude` por `consolidarGrupo`, ou seja, entra no
+   * CADASTRO MESTRE e vira o lugar do cliente no mapa de clientes — permanente,
+   * e sem nada que a reconfira depois. Nenhuma requisição a mais: o dado já
+   * chegava e estava sendo descartado.
+   */
+  const [resolvido, setResolvido] = useState<string | null>(null);
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -134,8 +151,24 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     setGeocoding(true);
     const g = await geocode(form.endereco);
     setGeocoding(false);
-    if (g) setCoords(g);
-    else toast.error("Endereço não localizado");
+    if (g) {
+      setCoords({ lat: g.lat, lng: g.lng });
+      setResolvido(
+        g.display_name || [g.bairro, g.cidade, g.uf].filter(Boolean).join(", ") || null,
+      );
+    } else {
+      setResolvido(null);
+      toast.error(
+        // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
+        // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
+        // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
+        // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
+        // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
+        // inteira, e "este endereço não existe" é a única frase do sistema que
+        // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
+        "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
+      );
+    }
   }
 
   const step1Valid =
@@ -203,8 +236,16 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
       if (!u.user) throw new Error("Não autenticado");
       if (!dataHoraISO) throw new Error("Data inválida");
 
-      let geo = coords;
-      if (!geo && form.endereco) geo = await geocode(form.endereco);
+      // NADA DE GEOCODIFICAR NA HORA DE GRAVAR (U84). Este `if` era o mesmo
+      // defeito do NovaVisitaDialog, escondido atrás de um botão que existe:
+      // quem NÃO clicasse em "Localizar" recebia, em silêncio, a coordenada da
+      // primeira coisa que o mapa achou para uma linha de texto livre — e a
+      // tela navega embora no sucesso, então não havia instante em que alguém
+      // pudesse dizer "não é esse lugar". Essa coordenada vira
+      // `clientes.latitude/longitude` por `consolidarGrupo`, ou seja, entra no
+      // cadastro MESTRE. Agora a coordenada é a CONFERIDA, ou nenhuma — e
+      // nenhuma é o estado visível.
+      const geo = coords;
 
       const payload = {
         titulo: `${SERVICO_LABEL[form.servico_solicitado] ?? "Visita"} — ${form.nome_predio}`,
@@ -256,10 +297,6 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  useEffect(() => {
-    if (!form.endereco || coords) return;
-  }, [form.endereco, coords]);
 
   const tecnicoSel = tecnicos?.find((t) => t.id === form.tecnico_id);
 
@@ -377,14 +414,58 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
 
           <div>
             <Label>Endereço *</Label>
-            <Input
-              value={form.endereco}
-              onChange={(e) => set("endereco", e.target.value)}
-              onBlur={handleGeocode}
-              placeholder="Rua, número, bairro, cidade"
-            />
+            {/* O `onBlur={handleGeocode}` SAIU DAQUI (U84) — o segundo dos dois
+                — E VIROU BOTÃO, que é o mesmo gesto de que o /gerencial/nova e
+                a ficha do cliente já dispõem. Trocar o efeito colateral por um
+                botão não é perder função: é parar de gastar uma requisição a um
+                serviço público toda vez que o cursor sai do campo, inclusive
+                quando ninguém digitou nada e o Tab só passou por ali. Um gesto
+                humano explícito = no máximo uma requisição. */}
+            {/* E EDITAR O ENDEREÇO LIMPA A CONFERÊNCIA **E** A COORDENADA.
+                Tirar o `onBlur` sem pôr esta limpeza PIOROU o caminho: antes,
+                sair do campo re-geocodificava e a coordenada acompanhava o
+                texto; sem as duas coisas, ela ficava para trás. No modo EDIÇÃO
+                `coords` já nasce carregado do registro, então abrir uma visita,
+                corrigir o endereço e salvar gravava a coordenada VELHA com o
+                endereço NOVO — em `visitas_tecnicas`, que não tem gatilho
+                nenhum, e que vira `clientes.latitude/longitude` por
+                `consolidarGrupo`. O mini-mapa some junto, que é a leitura
+                certa: não há ponto conferido para desenhar. */}
+            <div className="flex gap-2">
+              {/* TRAVADO ENQUANTO A BUSCA ESTÁ NO AR: editar o texto durante a
+                  requisição deixaria a resposta do endereço ANTIGO chegar
+                  depois e reescrever `resolvido`/`coords` por cima do NOVO — a
+                  mesma coordenada errada de sempre, agora por CORRIDA. */}
+              <Input
+                value={form.endereco}
+                disabled={geocoding}
+                onChange={(e) => {
+                  set("endereco", e.target.value);
+                  setResolvido(null);
+                  setCoords(null);
+                }}
+                placeholder="Rua, número, bairro, cidade"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGeocode}
+                disabled={geocoding || !form.endereco.trim()}
+              >
+                Localizar
+              </Button>
+            </div>
             {geocoding && (
               <p className="mt-1 text-xs text-muted-foreground">Localizando endereço…</p>
+            )}
+            {/* O NOME DO LUGAR, ACIMA DO MAPA. O mini-mapa mostra o ponto, e um
+                mapa de bairro parece igual em qualquer cidade do país — quem
+                revela a cidade errada é o texto. */}
+            {resolvido && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                O mapa entendeu: <b>{resolvido}</b> — se não é este o lugar, corrija o endereço
+                (inclua bairro e cidade) e localize de novo.
+              </p>
             )}
             {coords && (
               <div

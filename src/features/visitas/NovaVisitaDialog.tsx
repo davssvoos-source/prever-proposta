@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { geocode } from "@/features/gerencial/data";
 import {
   Dialog,
   DialogContent,
@@ -22,23 +23,30 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-async function geocode(endereco: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
-      endereco,
-    )}`;
-    const r = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
-    const arr = (await r.json()) as Array<{ lat: string; lon: string }>;
-    if (!arr.length) return null;
-    return { lat: Number(arr[0].lat), lng: Number(arr[0].lon) };
-  } catch {
-    return null;
-  }
-}
-
+// A CÓPIA INLINE DE `geocode` FOI APAGADA AQUI (U84) — era a segunda de quatro,
+// byte a byte igual à de features/gerencial/data.ts. Agora importa a única.
+//
+// ── E A CHAMADA SILENCIOSA DENTRO DO SAVE TAMBÉM SAIU ─────────────────────
+// Esta tela geocodificava DENTRO da mutação de gravar: a pessoa digitava o
+// endereço, clicava em "Agendar visita", e uma coordenada que NINGUÉM VIU era
+// escrita em `visitas_tecnicas.latitude/longitude` — que vira
+// `clientes.latitude/longitude` por `consolidarGrupo`, ou seja, entra no
+// CADASTRO MESTRE e passa a ser o lugar do cliente no mapa de clientes. O campo
+// é uma linha de texto livre, e texto livre é como se erra de cidade: a rua
+// homônima de outro município entrava no cadastro sem que existisse um instante
+// em que alguém pudesse dizer "não é esse lugar". O diálogo fecha no sucesso —
+// não havia nem onde mostrar.
+//
+// Agora é o mesmo gesto das outras três telas: um botão "Localizar", o
+// endereço RESOLVIDO impresso para conferência, e a gravação usa o que foi
+// conferido. Sem o clique, a visita nasce SEM coordenada — que é o estado
+// visível (o mapa da ficha não desenha), e não o estado plausível e errado.
 export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [resolvido, setResolvido] = useState<string | null>(null);
+  const [localizando, setLocalizando] = useState(false);
   const [form, setForm] = useState({
     titulo: "",
     cliente_id: "",
@@ -66,7 +74,9 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Não autenticado");
       const dataHora = new Date(`${form.data}T${form.hora || "09:00"}`).toISOString();
-      const geo = await geocode(form.endereco);
+      // NADA DE GEOCODIFICAR AQUI. Ver o comentário no topo: a coordenada é a
+      // que o botão "Localizar" trouxe e a pessoa conferiu, ou nenhuma.
+      const geo = coords;
       const { error } = await supabase.from("visitas_tecnicas").insert({
         titulo: form.titulo,
         cliente_id: form.cliente_id || null,
@@ -86,6 +96,8 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
       toast.success("Visita agendada");
       qc.invalidateQueries({ queryKey: ["visitas"] });
       setOpen(false);
+      setCoords(null);
+      setResolvido(null);
       setForm({
         titulo: "",
         cliente_id: "",
@@ -135,11 +147,69 @@ export function NovaVisitaDialog({ children }: { children?: React.ReactNode }) {
           </div>
           <div>
             <Label>Endereço *</Label>
-            <Input
-              value={form.endereco}
-              onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-              placeholder="Rua, número, bairro, cidade"
-            />
+            <div className="flex gap-2">
+              {/* TRAVADO ENQUANTO A BUSCA ESTÁ NO AR: editar o texto durante a
+                  requisição deixaria a resposta do endereço ANTIGO chegar
+                  depois e reescrever `resolvido`/`coords` por cima do NOVO — a
+                  mesma coordenada errada de sempre, agora por CORRIDA. */}
+              <Input
+                value={form.endereco}
+                disabled={localizando}
+                onChange={(e) => {
+                  setForm({ ...form, endereco: e.target.value });
+                  // Mexeu no endereço, a conferência anterior deixou de valer.
+                  setCoords(null);
+                  setResolvido(null);
+                }}
+                placeholder="Rua, número, bairro, cidade"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={localizando || !form.endereco.trim()}
+                onClick={async () => {
+                  setLocalizando(true);
+                  const g = await geocode(form.endereco.trim());
+                  setLocalizando(false);
+                  if (g) {
+                    setCoords({ lat: g.lat, lng: g.lng });
+                    setResolvido(
+                      g.display_name || [g.bairro, g.cidade, g.uf].filter(Boolean).join(", ") || null,
+                    );
+                  } else {
+                    setResolvido(null);
+                    toast.error(
+                      // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
+                      // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
+                      // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
+                      // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
+                      // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
+                      // inteira, e "este endereço não existe" é a única frase do sistema que
+                      // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
+                      "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
+                    );
+                  }
+                }}
+              >
+                Localizar
+              </Button>
+            </div>
+            {/* O NOME DO LUGAR, NÃO A COORDENADA. É a única rede contra "o mapa
+                achou a rua homônima em outra cidade" — e sem ela a coordenada
+                errada ficava PERMANENTE, porque nada mais no sistema a
+                reconfere. */}
+            {resolvido && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                O mapa entendeu: <b>{resolvido}</b> — se não é este o lugar, corrija o endereço
+                (inclua bairro e cidade) e localize de novo.
+              </p>
+            )}
+            {!resolvido && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sem “Localizar”, a visita nasce sem coordenada — o endereço fica gravado, e o mapa
+                da ficha só aparece depois que alguém conferir o lugar.
+              </p>
+            )}
           </div>
           <div>
             <Label>Complemento</Label>

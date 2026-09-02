@@ -1,14 +1,46 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { geocodificarEndereco, type EnderecoResolvido } from "@/lib/geocodificar.functions";
 
-export async function geocode(endereco: string): Promise<{ lat: number; lng: number } | null> {
+/**
+ * A ÚNICA GEOCODIFICAÇÃO DO SISTEMA — U84.
+ *
+ * Ela era uma das QUATRO: esta, mais três cópias inline (NovaVisitaDialog,
+ * gerencial.nova, visita.$id). As três foram apagadas; esta virou uma casca
+ * fina sobre `geocodificarEndereco` (src/lib/geocodificar.functions.ts), que
+ * roda no SERVIDOR.
+ *
+ * POR QUE SAIU DO NAVEGADOR: a política do Nominatim pede User-Agent
+ * identificável, e o navegador não deixa um `fetch` definir esse cabeçalho —
+ * ele é proibido pela especificação. Enquanto a chamada morasse aqui, cumprir a
+ * política era literalmente impossível, e o repositório estava em violação
+ * havia meses, de quatro lugares ao mesmo tempo. Do lado do servidor o
+ * cabeçalho vale, e o ritmo mínimo entre chamadas tem onde morar.
+ *
+ * O CONTRATO DE QUEM CHAMA NÃO MUDOU: `{ lat, lng } | null`, com o `null`
+ * significando "não achei ou não deu". O retorno é um SUPERCONJUNTO — traz
+ * também o bairro/cidade/UF que o mapa devolveu, para quem quiser CONFERIR o
+ * que foi achado em vez de confiar. As QUATRO telas que chamam isto imprimem
+ * esses campos, e há censo de árvore sobre as quatro.
+ *
+ * O QUE ELA AINDA APAGA, E ESTÁ DECLARADO EM P43: o servidor distingue
+ * `nao_encontrado` de `servico_falhou`, e este `null` colapsa os dois. Enquanto
+ * colapsar, nenhuma das quatro telas pode afirmar que o endereço não existe —
+ * o bloqueio do Nominatim é por IP e cai sobre a operação inteira.
+ *
+ * O RETORNO É O TIPO EXPORTADO PELO SERVIDOR, e não uma cópia da forma escrita
+ * à mão aqui. Duas declarações da mesma forma divergem em silêncio: acrescentar
+ * um campo no servidor deixaria esta assinatura mentindo, e o `tsc` não diria
+ * nada porque as duas continuariam compatíveis.
+ */
+export async function geocode(endereco: string): Promise<EnderecoResolvido | null> {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(endereco)}`;
-    const r = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
-    const arr = (await r.json()) as Array<{ lat: string; lon: string }>;
-    if (!arr.length) return null;
-    return { lat: Number(arr[0].lat), lng: Number(arr[0].lon) };
+    const r = await geocodificarEndereco({ data: { q: endereco } });
+    return r.ok ? r.endereco : null;
   } catch {
+    // A função de servidor pode não estar publicada (janela de deploy) ou a
+    // rede pode ter caído. Nos dois casos o resultado é o mesmo que já era:
+    // não há coordenada, e quem chamou já sabe tratar `null`.
     return null;
   }
 }

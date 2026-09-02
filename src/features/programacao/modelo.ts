@@ -120,8 +120,9 @@ export const CAMPO_MIN = JORNADA_MIN - RESERVA_MIN; // 480 — 8h de campo
  * letras). A constante existe para a grade saber onde desenhar a última linha
  * do eixo do dia, e a asserção que a acompanha pina justamente o fato de ela
  * NÃO ser regra — um bloco das 16:00 com 8h é aceito.
- * GATILHO DE REVISÃO: se a Fase 2 não a consumir na tela, ela sai; constante
- * que só a asserção lê é decoração com cara de regra.
+ * GATILHO DESCARREGADO: ela É consumida na tela (`CelulaDaGrade.tsx`), então o
+ * gatilho já disparou e passou. Se um dia nenhuma tela a consumir, ela sai —
+ * constante que só a asserção lê é decoração com cara de regra.
  */
 export const CAMPO_FECHA_MIN = CAMPO_ABRE_MIN + CAMPO_MIN; // 1020 — 17:00
 export const DIAS_DE_CAMPO = 5; // segunda a sexta

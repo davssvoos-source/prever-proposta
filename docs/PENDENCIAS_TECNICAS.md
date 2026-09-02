@@ -1240,6 +1240,303 @@ da U82 (chamados com visita afirmada e nenhuma linha de apoio congelada) — se 
 SUBIR depois que a porta entrar em uso, ou a trava não está fechando, ou é este
 resíduo aparecendo.
 
+## P42 — MÉDIO · A janela de carregamento continua cega, e a grade anda junto (2026-09-08, U84)
+
+**O que foi consertado.** `FormularioDoBloco` recebe `blocos` de uma consulta de
+UMA SEMANA (`useBlocosDaSemana` / `useBlocosDaGrade`) e tem um `<input
+type="date">` LIVRE. Até esta rodada a consulta era fixada na ABERTURA e **não
+seguia o campo**: trocar a data para outra semana deixava a lista sem um único
+bloco daquele dia, e `blocosDoDia` — que alimenta `erroDoAgendamento` — passava a
+ver zero. O formulário deixava de enxergar o conflito e de somar a jornada
+daquele dia, ou seja, ficava **mais permissivo que a porta**: a tela dizia que
+podia e o EXCLUDE recusava depois, com 23P01. É a pior direção possível para uma
+divergência entre a tela e o banco, e o defeito é **PRÉ-EXISTENTE**.
+
+A correção levantou o dia para o invólucro que faz a consulta (`aoTrocarDia`),
+nas três portas: `AgendaDoChamado` (estado local `diaConsultado`),
+`/chamados/programacao` (o `setDia` que a página já tinha) e o
+`abrirDarHorario`, que abre o formulário no dia do chamado — que pelos "irmãos"
+pode ser de outra semana, sem ninguém ter trocado nada.
+
+**O que NÃO foi consertado, e fica declarado:**
+
+1. **A janela de carregamento.** Entre trocar o dia e a consulta nova voltar, a
+   query key muda, `data` volta a `undefined` e `blocos` fica `[]` (nenhuma das
+   duas consultas usa `placeholderData`; a palavra não aparece uma vez em
+   `src/`). Nesse instante `erroDoAgendamento` vê zero blocos e não recusa nada.
+   Fazê-lo recusar exigiria um estado de carregamento atravessando o modelo puro,
+   e um formulário que se trava sozinho enquanto carrega é pior que a janela de
+   menos de um segundo que ele fecha. **O banco continua sendo a porta** — o
+   EXCLUDE e a RPC não têm janela nenhuma.
+2. **`useBlocosDaGrade` devolve `erro` e a página o DESCARTA**
+   (`chamados.programacao.tsx`: `const { blocos, idsDeChamado } = ...`). Uma
+   consulta de semana que FALHA deixa `blocos = []` indefinidamente, e aí a
+   cegueira do item 1 deixa de ser uma janela de um segundo. Vale uma linha, mas
+   é decisão de desenho (o que a tela faz com o erro), não conserto mecânico.
+3. **A grade anda junto.** Em `/chamados/programacao` o invólucro que consulta é
+   a própria página, então trocar o dia no formulário para outra SEMANA navega a
+   grade. É deliberado (ao fechar, a pessoa cai na semana em que acabou de
+   marcar), está no manual, e é mudança de comportamento visível. Dentro da
+   mesma semana o formulário **não** avisa — a consulta devolveria a mesma lista,
+   e sem essa guarda cada tecla no campo de data seria uma navegação.
+4. **A guarda de semana NÃO cobre o ano digitado dígito a dígito, e isso é
+   escolha, não descuido.** Teclar `2026` num `<input type="date">` produz as
+   datas dos anos `0002`, `0020`, `0202` e `2026`. São **quatro semanas
+   distintas**: a guarda aprova as quatro, e são quatro navegações de página
+   inteira (quatro chaves de `useBlocosDaSemana`, a grade piscando em séculos
+   passados, `equipesDaSemana` esvaziando o `<select>` a cada uma). Antes desta
+   rodada eram zero, porque não havia aviso nenhum — é custo introduzido aqui.
+   **Por que não se pôs um piso** (`v >= "2000-01-01"`): o campo continuaria
+   ACEITANDO o ano parcial, só que sem avisar o invólucro — e aí `blocos` volta
+   a não conter o dia escolhido, que é exatamente a cegueira PRÉ-EXISTENTE que
+   esta prop veio consertar. Trocaríamos três navegações desperdiçadas e
+   **visíveis** por uma checagem de conflito **cega**, que é a direção errada
+   pela doutrina da casa. Os três textos que sugeriam que a guarda cobria isso
+   (o comentário do `FormularioDoBloco`, o do `verificar-logica.cjs` e este item)
+   foram corrigidos nesta rodada — a asserção CRÍTICA justificava-se por um
+   buraco que ela não fecha.
+
+## P43 — MÉDIO · A casca `geocode()` colapsa "não achei" e "o serviço recusou" (2026-09-08, U84)
+
+`geocodificarEndereco` (servidor) **distingue** `nao_encontrado` de
+`servico_falhou`. A casca de `src/features/gerencial/data.ts` faz
+`return r.ok ? r.endereco : null` e apaga a diferença; as quatro telas dizem a
+mesma coisa.
+
+**Por que importa.** O bloqueio do Nominatim é **por IP** e cai sobre a operação
+inteira, e ele manda 429 antes de bloquear. Uma frase que diz "este endereço não
+existe" nesse momento é a única do sistema que **instrui a pessoa a martelar** o
+serviço que acabou de recusá-la: ela corrige o endereço, clica de novo, corrige
+de novo, clica de novo.
+
+**O que foi feito nesta rodada, e o que não foi.** A frase parou de mentir: as
+quatro telas passaram a dizer que pode ser o texto **ou** o serviço, e que
+repetir na mesma hora não adianta. O que **não** foi feito é levar o motivo até
+a tela — isso muda o contrato de `geocode()` e as quatro chamadas. Enquanto não
+for feito, o servidor também não tem o ramo 401/403/429 que devolveria
+`sem_provedor`: pô-lo agora seria código sem leitor.
+
+**A assinatura do caso grave, para quem for diagnosticar.** Se o Nominatim banir
+a identidade (o bloqueio é por IP e vale para a operação inteira), o sintoma em
+produção é **idêntico** ao de um blip de rede — e permanente. O que separa os
+dois é o alcance: *"o Localizar parou de funcionar em todas as telas ao mesmo
+tempo, e continua parado"* é banimento, não falha passageira, e a resposta é
+escrever à OSM — não trocar o texto do endereço. Nada no sistema diz isso hoje;
+está dito aqui.
+
+## P44 — ~~ALTO~~ **CONSERTADO** · `'prospecto'` tinha DOIS escritores, e os dois saíram (2026-09-08, U84)
+
+**Isto não é mais uma pendência. Fica escrito porque a lição vale, e porque a
+conferência 7 da migration da U84 nasceu daqui.**
+
+A U27 (u27:213-218) derrubou `'prospecto'` do CHECK assim que nenhum prospecto
+sobrou: `CHECK (situacao IN ('ativo','inativo'))`. O app já não conhecia o valor
+— `SituacaoCliente` é `"ativo" | "inativo"` — e ainda assim **dois** caminhos o
+gravavam:
+
+1. **`gerencial.nova.tsx`** — `criarCliente({ ...dadosDoCliente, situacao:
+   "prospecto" })` quando a visita não tem cliente vinculado e nenhum
+   equivalente é achado. Todo prédio novo cadastrado por aquela tela batia em
+   `23514`, e como é a **mesma mutação**, a criação da VISITA inteira caía junto.
+2. **`consolidarGrupo`** (`src/features/clientes/data.ts`) — `situacaoSugerida`
+   entrava no `patch`, e no ramo de `UPDATE` ela ficava **fora do `preservar`**.
+   Com o CHECK apertado vivo, `/clientes/migrar` morria; com o frouxo, um
+   cliente **oficial e ativo** era rebaixado a `'prospecto'` porque a visita dele
+   não tinha `proposta_resultado = 'aceita'`.
+
+O segundo era o pior e era o que **não estava declarado** — a versão anterior
+desta pendência nomeava só o primeiro, e o comentário da conferência 7 também:
+um censo que declarava um recorte que ele não tinha (regra 3).
+
+**Correção: deleção pura.** Os dois escritores foram apagados e
+`situacaoSugerida` foi deletada. Não era escolha de produto entre duas saídas: a
+U27 já fechou `'prospecto'` **com argumento**, e `SITUACAO_LABEL['prospecto']` é
+`undefined` em toda tela que renderize o valor. O `INSERT` cai no `DEFAULT
+'ativo'`, aceito pelas duas versões do CHECK. Há asserção com **par negativo**
+nos dois caminhos (o de `consolidarGrupo` recorta o objeto `patch` e pergunta se
+ele NOMEIA a coluna, e não se contém um literal).
+
+### A LIÇÃO, E ELA É A MELHOR DESTA RODADA: baseline de erro de tipo é onde defeito de PRODUÇÃO se esconde
+
+O `tsc` acusava os **dois**, o tempo todo:
+
+```
+src/features/clientes/data.ts(267,13):            error TS2322: Type '"prospecto"' …
+src/routes/_authenticated/gerencial.nova.tsx(350,68): error TS2322: Type '"prospecto"' …
+```
+
+Eles estavam dentro do baseline de **83** erros — o número que a casa vinha
+carregando como "pré-existente, do `types.ts` desatualizado do Supabase" e que
+ninguém lia linha a linha. A conta da queda, com as duas causas separadas:
+
+| de | para | por quê |
+|---|---|---|
+| 83 | 78 | a consolidação das quatro cópias de Nominatim tirou 5 erros de `visita.$id.tsx` |
+| 78 | **59** | os DOIS escritores de `'prospecto'` saíram |
+
+Dezenove erros — quase um quarto do baseline — eram consequência de **dois**
+defeitos de produção, e a máquina apontava o dedo desde sempre.
+
+O critério "não criar erro novo" é barato de verificar e por isso sobreviveu;
+o que ele não faz é **olhar para os que já estão lá**. Um baseline de erro de
+tipo não é ruído de fundo: é uma lista de coisas que o compilador considera
+erradas e que ninguém conferiu. Quando um número desses cai sozinho depois de um
+conserto, é sinal de que havia mais defeito escondido ali — e vale reler a lista
+inteira depois de cada queda. (Baseline vivo: **59**, medido nesta rodada.)
+
+## P45 — BAIXO · O que a U84 mediu e deixou como está (2026-09-08)
+
+- **O Nominatim não tem cache nenhum.** Clicar "Localizar" duas vezes no mesmo
+  texto são duas requisições, serializadas a 1,1 s pelo freio.
+- **O freio é por ISOLATE** (`src/lib/ritmo.ts`): o alvo de deploy é Cloudflare
+  (`vite.config.ts`), e em Workers o isolate é a unidade normal de escala. Dois
+  isolates são dois freios. A defesa distribuída seria reivindicação atômica no
+  Postgres, e ela não se compra para um botão.
+- **`geocodificar.functions.ts` manda `davi@grupoprever.com.br`** no User-Agent.
+  É o que a política do Nominatim pede e está certo; fica dito que é um endereço
+  pessoal indo para um terceiro, e que um `contato@grupoprever.com.br` faria o
+  mesmo trabalho.
+- **A frase de reserva do `ClienteForm`** (*"Coordenada já cadastrada — ninguém
+  conferiu nesta sessão"*) também aparece logo depois de um "Localizar" que
+  FALHOU, porque a falha limpa `resolvido` e deixa `lat/lng` do cadastro. Naquele
+  instante a verdade é "a busca acabou de falhar".
+- **`/gerencial/nova` é a única das quatro telas que não diz nada sobre
+  coordenada NÃO conferida.** Depois de `aplicarCliente` o estado é
+  `geoStatus="ok"` com `resolvido=null`, então o bloco da frase não renderiza e
+  a tela imprime **zero** texto sobre uma coordenada que vai ser gravada.
+  `ClienteForm` tem a frase de reserva para exatamente esse estado
+  (*"Coordenada já cadastrada — ninguém conferiu nesta sessão"*). Uma cópia dela
+  fecharia a assimetria; é acréscimo de tela, e esta rodada foi de limpeza.
+- **A hora proposta é calculada sobre a lista VAZIA e trava lá.**
+  `FormularioDoBloco`: no primeiro render depois de `abrirDarHorario` com
+  `setDia` para outra semana, `blocos = []`, `primeiroInicioPossivel` devolve
+  09:00 + deslocamento, o efeito grava e `jaPropos.current = true` — e nunca
+  recalcula quando a semana chega. O campo abre com uma hora que pode colidir.
+  É **visível** (`erroDoAgendamento` acusa em seguida) e equivalente ao que já
+  acontecia antes desta rodada.
+- **`duplaId` sobrevive à troca de semana sem ninguém recusar.** Trocar o dia
+  para uma semana onde a equipe escolhida não tem composição faz a lista perder
+  a `<option>`; o `<select>` fica em branco e o estado continua com o uuid.
+  `erroDoAgendamento` confere conflito de PESSOA e nunca se a equipe **existe**
+  naquela semana. Esta rodada melhorou (a lista agora acompanha a semana) e com
+  isso tornou a falha visível.
+- **`consolidarGrupo` pode disparar o gatilho da U84** (`clientes/data.ts`):
+  `preservar` mantém a latitude existente e escreve o endereço da visita quando o
+  cliente estava sem endereço — cliente com coordenada e sem `endereco` (existem;
+  `useClientesOrfaos` filtra por `!c.endereco`) perde a coordenada ao ser
+  consolidado. Consistente com a política do gatilho, e está no manual.
+
+## P46 — A ESTIMATIVA DE DESLOCAMENTO: entrega adiada, com o desenho e os defeitos já apurados (2026-09-08, U84)
+
+Esta era a Fase 2. Ela foi **construída, refutada três vezes e retirada inteira
+do repositório** — não deixada dormente, porque código inerte com defeito
+conhecido acorda no dia em que alguém liga a chave, semanas depois, quando
+ninguém lembra dos defeitos. O que se aprendeu fica aqui.
+
+### O que ela precisa ANTES de existir: `ORS_API_KEY`
+
+Ela lê `process.env.ORS_API_KEY` numa função de servidor. Essa variável **nunca
+existiu** neste ambiente: não está no `.env`, não estava na documentação, e
+ninguém pediu ao Davi que a criasse. A entrega roda permanentemente degradada
+sem ela, com uma frase cinza como único sintoma.
+
+**O gesto, quando for a hora:** ler os termos da camada gratuita do
+OpenRouteService (**ninguém deste repositório os conferiu**), gerar a chave, e
+colá-la no painel da **Lovable** como `ORS_API_KEY` — **sem** prefixo `VITE_`,
+porque `VITE_` publica a variável no bundle do navegador e a chave é da empresa.
+
+### O desenho que vale a pena reaproveitar
+
+- **A estimativa NUNCA entra no campo.** O digitado mora numa CAIXA com borda e
+  cursor; a estimativa mora num TEXTO cinza prefixado por `≈`, onde é impossível
+  digitar. A distinção é física, não uma frase que se lê ou não se lê — e por
+  isso as cinco peças de um desenho "escreve no campo e o digitado vence"
+  (`tocou`, `jaTratou`, `origemDoValor`, despertador, prazo de validade) não
+  precisam existir.
+- **Um motivo por caso, com frase própria.** "Não foi possível calcular" é
+  inútil: não diz se falta cadastrar a coordenada de um cliente (conserto de 30
+  segundos), se a sede não foi conferida (conserto de uma vez) ou se o serviço
+  caiu (não é conserto de ninguém). Eram onze motivos e onze frases distintas,
+  com censo exigindo que fossem distintas.
+- **A CHAVE DO PAR.** A resposta guardada carrega a chave do par ordenado de
+  coordenadas que a produziu, e a tela só pinta um número cuja chave é
+  exatamente a do trecho de agora. É o que impede "35 min calculados a partir de
+  ⟨origem nova⟩" sem despertador e sem prazo de validade.
+- **Nunca trava e nunca inventa.** Nenhum caminho de falha devolve minutos. Não
+  há fallback de linha reta — a geodésica é sempre ≤ à rodoviária, logo
+  subestima **sempre**, e o deslocamento é aditivo na jornada e negativo no
+  EXCLUDE: um erro que aponta sempre para "cabe mais" ACUMULA. Não há fator de
+  pico: não existe uma única medição de deslocamento real na operação contra a
+  qual calibrá-lo.
+- **A SEDE NASCE SEM COORDENADA.** O endereço dado foi *"Rua Conde De Linhares,
+  243"*, sem cidade. Existe uma em **São Paulo** e outra em **Belo Horizonte**, a
+  507 km. Adivinhar produziria um número plausível no primeiro atendimento de
+  todos os dias, para sempre, em silêncio. O gesto humano é: geocodificar com
+  `Rua Conde de Linhares, 243 / Interlagos / São Paulo / SP / 04802-130`, **LER o
+  bairro/cidade/UF que voltaram** (não o que foi mandado), e só então colar a
+  coordenada — conferida contra a linha da própria empresa na base da U24
+  (u24:80), num raio de 3 km.
+- **Dois clientes no mesmo ponto ⇒ "não sei", nunca zero.** 46 clientes da base
+  dividem 20 coordenadas (a U24 geocodificou por CEP, e um CEP cobre a quadra).
+  Zero seria afirmar "coladinhos" sobre algo que o mapa não sabe — e não custa
+  nada devolver nada, porque `deslocamento_min` é `NOT NULL DEFAULT 0`.
+
+### OS DEFEITOS JÁ ENCONTRADOS — para não serem redescobertos
+
+Os quatro primeiros passaram **por dentro** de um portão verde de 2406 asserções.
+
+1. **O PISO DA ADOÇÃO USAVA O FIM DO DIA.** A adoção recebia
+   `jornadaDoDia(blocosDaEquipeNoDia(...)).ultimoFimMin` — o `Math.max` de TODOS
+   os blocos do dia, inclusive os que começam DEPOIS do candidato. A origem, ao
+   contrário, era escolhida entre os que começam ANTES. Os dois lados usavam
+   recortes diferentes do mesmo dia. Medido: dia com 09:00–10:00 e 14:00–15:00,
+   candidato às 11:00 que **cabe** (o `erroDoAgendamento` real devolve `null`) —
+   o chip oferecia *"adotar 25 min e mover o início para 15:25"*, habilitado, com
+   o número medido a partir de um cliente que às 15:25 não é mais o anterior. No
+   isento é pior: uma corretiva urgente às 06:00 ia para 15:30.
+   **O conserto certo é deleção:** tentar EM PÉ primeiro e só mover quando o
+   candidato em pé for recusado.
+2. **`diaCarregado` COMPARAVA O DIA PEDIDO COM ELE MESMO.** A guarda derivava de
+   `diaDosBlocos`, que era o dia que a consulta **pediu**, não o que a lista
+   **cobre**. Os dois andavam juntos no mesmo render, então a guarda nunca
+   fechava — e é justamente na janela de carregamento (`blocos = []`) que a
+   origem cai para a SEDE. **O conserto é o invólucro dizer o dia que a resposta
+   EM MÃO cobre** (`diaDosBlocos={isPending ? "" : dia}`), reusando o motivo
+   `dados_incompletos` que já existe.
+3. **Toda abertura pelo PainelChamado media a estrada desde a sede** pela duração
+   de um round-trip do Supabase, e o cache do par tornava isso determinístico:
+   o chip aparecia habilitado, com o endereço da sede por extenso, antes de os
+   blocos chegarem.
+4. **Trocar a data disparava DUAS requisições ao ORS por troca**, e uma era
+   sabidamente errada (a da janela de carregamento). Some com o conserto de (2).
+5. **Um único 429 desligava a estimativa pela sessão inteira**, sem volta e sem
+   frase que dissesse isso (o latch `SEM_PROVEDOR` é de módulo e só um F5 o
+   zera). Não travar está certo; ficar mudo o dia inteiro sem avisar não.
+6. **R54 — a atividade pode ter VÁRIOS locais.** `chamados.cliente_id` é só o
+   local principal; os demais moram em `chamado_locais`. Para uma atividade de
+   três prédios a estimativa media a estrada até UM deles, e o rótulo nomeava um
+   local que **é** um dos locais — a frase lê como verdadeira e o número está
+   errado **para menos**, na direção que enche a grade. Recusar exigiria ler
+   `chamado_locais` por chamado dentro do modal (N+1).
+7. **Adotar apaga a procedência.** Depois do clique o número mora no mesmo
+   `agenda_campo.deslocamento_min` de um valor digitado, e nada distingue os dois.
+   Um bloco encaixado depois deixa o valor obsoleto, somando na jornada e no
+   EXCLUDE, sem lugar onde a discrepância apareça (`bloco_existente` recusa
+   recalcular, por desenho). `deslocamento_calc_min` **não existe**: u78:565-574 a
+   nomeia como decisão da Fase 2.
+8. **A medição "previsto × calculado"** (tabela `trecho_estimado` com
+   reivindicação atômica) é a melhor ideia que apareceu no desenho, e é uma
+   pergunta de MEDIÇÃO, não de agendamento. Ela nasce junto com
+   `deslocamento_calc_min`, quando houver consumidor.
+
+### O que a operação vai sentir quando isto existir
+
+Os minutos de estrada sempre foram reais e nunca foram contados. Quando o
+deslocamento passar a ser preenchido de verdade, um dia de três atendimentos
+deixa de ocupar 300 minutos e passa a ocupar ~390 — e o quarto atendimento de 90
+min **deixa de caber**. A grade não quebrou: ela parou de mentir. Isso precisa
+ser dito à operação **antes** do deploy, não depois da primeira recusa.
+
 ## P13 — Amarelos fora da paleta em telas legadas (2026-08-20)
 
 A auditoria da v7 varreu o sistema e achou amarelos de fora da paleta em telas

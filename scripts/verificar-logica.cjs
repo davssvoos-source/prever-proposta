@@ -4734,8 +4734,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      true);
   eq('CLAUDE.md avisa que migration NUNCA se aplica daqui — o Davi roda no SQL Editor',
      /nunca aplica/i.test(cl) && /SQL Editor/.test(cl), true);
-  eq('CLAUDE.md registra o baseline do tsc — sem ele, a primeira sessão nova "conserta" 85 erros que não são dela',
-     /85 erros/.test(cl), true);
+  // O BASELINE É MEDIDO POR ACORDO ENTRE OS DOIS DOCUMENTOS QUE O CITAM, e não
+  // por um literal escrito aqui. A versão anterior prendia `/85 erros/` — e
+  // quando o baseline caiu para 59, ela manteve o número VELHO vivo no
+  // CLAUDE.md, que é o arquivo que governa o método. Uma asserção que existe
+  // para preservar um número passou a preservar o número errado (regra 10: a
+  // pior asserção é a que fica verde por causa do defeito).
+  // Não dá para conferir contra o `tsc` de verdade daqui (rodá-lo dentro do
+  // verificador custaria mais que o verificador inteiro), então o que se mede é
+  // o que se pode: os DOIS lugares que afirmam o número têm de dizer o MESMO,
+  // e quem mudar um é obrigado a achar o outro.
+  {
+    const dv = fs.readFileSync('docs/manual/desenvolvimento-e-verificacao.md', 'utf8');
+    const nCl = (cl.match(/baseline (\d+); não crie novos/) ?? [])[1] ?? null;
+    const nDv = (dv.match(/\*\*Baseline vivo: (\d+) erros\.\*\*/) ?? [])[1] ?? null;
+    eq('CLAUDE.md registra o baseline do tsc — sem ele, a primeira sessão nova "conserta" erros que não são dela — e o número CONCORDA com o do manual, medido dos dois lados',
+       [nCl !== null, nDv !== null, nCl === nDv], [true, true, true]);
+    // …e a lição fica escrita onde ela é lida antes de qualquer trabalho: o
+    // baseline não é paisagem, é onde dois defeitos de produção estavam.
+    eq('…e o CLAUDE.md diz POR QUE o número importa: dois defeitos de produção estavam escondidos dentro dele (as escritas de situacao=prospecto que o CHECK recusa desde a U27)',
+       /baseline de\s*\n?\s*erro de tipo é onde defeito de PRODUÇÃO se esconde/.test(cl), true);
+  }
   eq('CLAUDE.md carrega as invariantes que só existiam na memória da conta',
      /quem conta é quem filtra/i.test(cl) && /encerra no ENVIO/i.test(cl) && /PGRST201/.test(cl), true);
   eq('ONBOARDING.md existe — o checklist da migração de máquina', fs50.existsSync('ONBOARDING.md'), true);
@@ -11496,6 +11515,872 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const manual83 = fs83.readFileSync('docs/manual/operacao-campo.md', 'utf8');
     eq('o manual de operação de campo explica ao operador a diferença entre Vistoria e a visita técnica COMERCIAL — a colisão que o nome existe para evitar só é evitada se alguém disser isso a quem usa',
        /Vistoria/.test(manual83) && /não é a visita técnica comercial/i.test(manual83), true);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U84 / R114 — A COORDENADA CONFERIDA
+//
+// A entrega ENCOLHEU entre o desenho e o commit: a estimativa de deslocamento
+// calculada foi construída, refutada três vezes e RETIRADA INTEIRA (o desenho e
+// os defeitos apurados estão em docs/PENDENCIAS_TECNICAS.md, P46). Ficaram três
+// peças que funcionam hoje e valem sozinhas: a conferência do mapa (com a
+// consolidação das quatro cópias de Nominatim numa só), a janela que segue o
+// dia, e o gatilho que zera a coordenada quando o endereço muda.
+//
+// A seção 4 é a que prova o CORTE, e ela é censo de árvore por decisão: deleção
+// não se prova por regex de presença (regra 2). Ela também mede o outro lado —
+// os nomes têm de EXISTIR no documento de dívida —, senão ficaria verde com o
+// repositório vazio (regra 10).
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs84 = require('fs');
+
+  // A TIRA DE COMENTÁRIOS, e o par negativo dela escrito à mão (regra 4).
+  //
+  // Ela remove bloco `/* … */` (a forma dos comentários JSX) e remove `//` SÓ
+  // QUANDO ELE ABRE A LINHA. A segunda metade é deliberada: um `//` no meio da
+  // linha quase sempre é `https://`, e uma tira ingênua apagaria a própria URL
+  // do Nominatim que o censo abaixo existe para contar — o detector ficaria
+  // verde por ter cegado a si mesmo, que é a regra 10 dentro do verificador.
+  //
+  // E ela é indispensável nos censos de DELEÇÃO: esta entrega EXPLICA por
+  // escrito o que apagou, então os comentários citam por extenso o código
+  // deletado (`onBlur={geocodificar}`, `", São Paulo, Brasil"`). Um censo de
+  // texto cru não distingue a coisa do relato dela.
+  const semComentarios = (s) =>
+    s.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+  eq('U84: a tira de comentários come o comentário e POUPA a URL — sem isto, os censos de deleção abaixo ficariam verdes por vacuidade em vez de por deleção',
+     [semComentarios('  // onBlur={geocodificar}\nconst a = 1;').trim(),
+      semComentarios('{/* onBlur={geocodificar} */}\nconst b = 2;').trim(),
+      semComentarios('fetch("https://nominatim.openstreetmap.org/search");').trim()],
+     ['const a = 1;', 'const b = 2;', 'fetch("https://nominatim.openstreetmap.org/search");']);
+
+  const varrer = (dir, acc, cru) => {
+    for (const f of fs84.readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${f.name}`;
+      if (f.isDirectory()) varrer(p, acc, cru);
+      else if (/\.(ts|tsx)$/.test(f.name)) {
+        const s = fs84.readFileSync(p, 'utf8');
+        acc.push([p, cru ? s : semComentarios(s)]);
+      }
+    }
+    return acc;
+  };
+  const arvore84 = varrer('src', [], false);
+  const cru84 = varrer('src', [], true);
+  eq('U84: a árvore varrida tem os dois arquivos que as seções abaixo medem, e mais de cem no total — um `readdirSync` que devolvesse lista vazia deixaria TODO censo desta seção verde por vacuidade',
+     [arvore84.length > 100,
+      arvore84.some(([p]) => p === 'src/lib/geocodificar.functions.ts'),
+      arvore84.some(([p]) => p === 'src/features/programacao/FormularioDoBloco.tsx'),
+      arvore84.length === cru84.length],
+     [true, true, true, true]);
+
+  // ── 1) AS QUATRO CÓPIAS DE NOMINATIM VIRARAM UMA ─────────────────────────
+  //
+  // CENSO DE ÁRVORE, e é assim de propósito (regra 2): uma regex que provasse
+  // "a função nova existe" não veria que as quatro velhas continuam lá.
+  // Presença não vê deleção. O que vê deleção é CONTAR.
+  const comNominatim = arvore84.filter(([, s]) => s.includes('nominatim.openstreetmap.org')).map(([p]) => p);
+  eq('CRÍTICO: existe UMA única chamada a Nominatim em src/, e ela mora numa FUNÇÃO DE SERVIDOR — eram QUATRO, todas no navegador, e nenhuma podia mandar User-Agent (o navegador PROÍBE o cabeçalho), ou seja: cumprir a política do serviço era literalmente impossível enquanto elas estivessem no cliente',
+     comNominatim, ['src/lib/geocodificar.functions.ts']);
+  // A CONSTANTE EXISTIR NÃO PROVA QUE O CABEÇALHO VAI (regra 2). A primeira
+  // versão desta linha media `g.includes('User-Agent')` no arquivo cru: apagar
+  // `"User-Agent": USER_AGENT,` do objeto de `headers` deixava a declaração
+  // `const USER_AGENT = …` e os comentários no lugar, e a asserção ficava VERDE
+  // com a política do Nominatim deixando de ser cumprida. Foi um mutante que
+  // sobreviveu. O que se mede agora é o objeto de `headers` do `fetch`, no
+  // corpo VIVO, recortado por âncora contada.
+  eq('CRÍTICO: e ela manda User-Agent identificável com contato NO CABEÇALHO DO FETCH — não numa constante que ninguém usa —, mais `addressdetails=1` e `countrycodes`, que são o que devolve bairro/cidade/UF para um HUMANO CONFERIR e o que mata "achou a rua homônima em Portugal": a peça inteira desta entrega',
+     (() => { const g = semComentarios(fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8'));
+              const iH = g.indexOf('headers: {');
+              const cab = iH < 0 ? '' : g.slice(iH, g.indexOf('}', iH));
+              return [(g.match(/headers: \{/g) ?? []).length,
+                      /"User-Agent": USER_AGENT/.test(cab),
+                      /const USER_AGENT = [^;]*davi@grupoprever\.com\.br/.test(g),
+                      ['addressdetails', 'countrycodes'].every((k) => g.includes(k))]; })(),
+     [1, true, true, true]);
+  // ── A CONSULTA ESTRUTURADA FOI APAGADA, E ESTA ASSERÇÃO É O QUE IMPEDE QUE
+  //    ELA VOLTE SEM CHAMADOR. Ela existia aqui — `street`/`city`/`state`/
+  //    `postalcode` opcionais, com um `.refine` de "um ou outro" — e NUNCA teve
+  //    um preenchedor: o único importador de `geocodificarEndereco` manda
+  //    `{ q: endereco }`, e o único gesto que ia usá-la (a âncora da SEDE) saiu
+  //    no corte. O ramo `if (data.street)` era inalcançável, e a versão
+  //    anterior DESTA seção o mantinha vivo por asserção — regra 10 em pessoa:
+  //    uma asserção verde protegendo um ramo sem consumidor, que reprovaria a
+  //    deleção correta. Mede-se o CORPO VIVO, senão o parágrafo acima, que
+  //    EXPLICA a deleção, deixaria o censo vermelho sobre um arquivo certo.
+  eq('CRÍTICO (o CORTE): a consulta ESTRUTURADA não existe mais no corpo vivo — ela não tinha UM chamador (o único importador manda `{ q }`), o ramo era inalcançável, e uma asserção da rodada anterior a prendia VIVA. O schema aceita `q` e nada mais, e `q` é OBRIGATÓRIO: com ele opcional, um chamador que esquecesse o campo mandaria `q=undefined` ao Nominatim em vez de falhar na validação',
+     (() => { const g = semComentarios(fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8'));
+              // `street` NU NÃO SERVE: `nominatim.openstreetmap.org` contém a
+              // palavra, e a primeira versão desta linha ficou vermelha sobre um
+              // arquivo já correto. Mede-se a forma que o schema e o handler
+              // usariam.
+              return [/data\.street|street: z\.|postalcode|\.refine\(/.test(g),
+                      /q: z\.string\(\)\.min\(3\)\.max\(300\),/.test(g),
+                      /q: z\.string\(\)[^,\n]*\.optional\(\)/.test(g),
+                      /q: data\.q,/.test(g)]; })(),
+     [false, true, false, true]);
+  // O `useEffect` que geocodificava a cada abertura E JOGAVA O RESULTADO FORA.
+  eq('CRÍTICO: nenhum `useEffect` do repositório dispara geocodificação — o de visita.$id.tsx geocodificava A CADA ABERTURA da ficha e guardava o resultado em estado de componente, que morre no desmonte: dez aberturas eram dez requisições para dez respostas idênticas, todas jogadas fora',
+     arvore84.filter(([, s]) => /useEffect\([\s\S]{0,400}geocodificar\(\)/.test(s)).map(([p]) => p), []);
+  eq('CRÍTICO: nenhum `onBlur` dispara geocodificação — eram dois, e um Tab passando pelo formulário gastava uma requisição sem ninguém ter digitado nada. A regra é: um gesto humano explícito = no máximo UMA requisição',
+     arvore84.filter(([, s]) => /onBlur=\{(geocodificar|handleGeocode)\}/.test(s)).map(([p]) => p), []);
+  // E A FUNÇÃO QUE O onBlur CHAMAVA NÃO FICOU ÓRFÃ: virou botão.
+  eq('U84: o `handleGeocode` do VisitaForm virou BOTÃO explícito — tirar o onBlur sem pôr o botão teria matado o mini-mapa de conferência, que é perda de função e não economia',
+     /onClick=\{handleGeocode\}/.test(fs84.readFileSync('src/features/gerencial/VisitaForm.tsx', 'utf8')),
+     true);
+  eq('CRÍTICO: nenhum arquivo gruda ", São Paulo, Brasil" no endereço antes de geocodificar — o /gerencial/nova fazia isso, e reancorava silenciosamente na capital um endereço de Bertioga ou de Porto Seguro (a base tem os dois), gerando a coordenada de uma rua homônima a centenas de km de onde o técnico ia',
+     arvore84.filter(([, s]) => /São Paulo, Brasil/.test(s)).map(([p]) => p), []);
+  eq('U84: e o rótulo do mapa de clientes deixou de dizer "sem endereço cadastrado" para quem só está sem COORDENADA — a partir do gatilho da U84 a frase antiga viraria o oposto do fato, porque quem acabou de cadastrar endereço NOVO aparece sem coordenada de propósito',
+     (() => { const m = fs84.readFileSync('src/features/clientes/MapaClientes.tsx', 'utf8');
+              return [/\{semCoordenada\} sem coordenada — não entram no mapa/.test(m),
+                      /\{semCoordenada\} sem endereço cadastrado/.test(m)]; })(),
+     [true, false]);
+
+  // ASSERÇÃO DE POSIÇÃO, NÃO DE PRESENÇA (regra 2). O `clearTimeout` estava
+  // ENTRE o `fetch` e o `.json()`, ou seja, o AbortController era desarmado
+  // quando os CABEÇALHOS chegavam. Um provedor que responde `200 OK` e para de
+  // mandar bytes — o modo de degradação normal de um serviço gratuito sob carga
+  // — deixaria `r.json()` esperando para sempre. Um `grep` por `clearTimeout`
+  // ficaria verde nas duas versões; o que separa uma da outra é a ORDEM.
+  eq('CRÍTICO: na função de servidor o `clearTimeout` vem DEPOIS da leitura do corpo — o AbortController só corta o que ele ainda arma, e um `clearTimeout` entre o fetch e o `.json()` deixaria a leitura do corpo sem relógio nenhum. É asserção de POSIÇÃO: a de presença fica verde nas duas versões',
+     (() => { const s = semComentarios(fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8'));
+              const iClear = s.indexOf('clearTimeout(t)');
+              const iJson = s.indexOf('await r.json()');
+              return [iClear > 0, iJson > 0, iClear > iJson]; })(),
+     [true, true, true]);
+
+  // O FREIO, QUE ATÉ ESTA ENTREGA NÃO TINHA UMA ÚNICA ASSERÇÃO. Ele vivia
+  // colado ao `setTimeout` que dorme, e o verificador é síncrono:
+  // `INTERVALO_MIN_MS = 0` ou apagar a chamada inteira passava VERDE. A conta
+  // virou módulo puro justamente para ser alcançável daqui.
+  const RIT84 = carregar('src/lib/ritmo.ts');
+  eq('CRÍTICO: o freio SERIALIZA de verdade — três chamadas no mesmo instante saem em 0, intervalo e 2×intervalo, e não as três juntas. A reserva é feita ANTES de dormir (`ultima = agora + espera`), senão as três leriam o mesmo `ultima` e sairiam em rajada',
+     (() => { let u = 0; const t0 = 1_000_000; const saidas = [];
+              for (let i = 0; i < 3; i++) { const e = RIT84.esperaMs(u, t0, 1100); u = t0 + e; saidas.push(e); }
+              return saidas; })(),
+     [0, 1100, 2200]);
+  eq('CRÍTICO: e ele nunca devolve negativo — uma chamada que veio muito depois da anterior não acumula crédito para disparar duas de uma vez',
+     [RIT84.esperaMs(1_000_000, 1_500_000, 1100), RIT84.esperaMs(0, 1_000_000, 1100)],
+     [0, 0]);
+  // Presença da constante não prova o VALOR (conte a coluna), e presença da
+  // função não prova a CHAMADA.
+  eq('CRÍTICO: o serviço externo usa o freio com intervalo ≥ 1000 ms, e a espera acontece ANTES do fetch — o Nominatim não tem conta e o bloqueio dele é por IP, ou seja, cai sobre a operação inteira de uma vez',
+     (() => { const s = semComentarios(fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8'));
+              const mms = s.match(/const INTERVALO_MIN_MS = (\d+);/);
+              return [!!mms && Number(mms[1]) >= 1000,
+                      s.indexOf('esperaMs(') >= 0 && s.indexOf('esperaMs(') < s.indexOf('await fetch(')]; })(),
+     [true, true]);
+
+  // ── 2) A CONFERÊNCIA DO MAPA: LIDA, IMPRESSA, E DESCARTADA AO EDITAR ─────
+  //
+  // `geocodificarEndereco` devolve `bairro/cidade/uf/display_name`, e o docblock
+  // dele diz que eles existem "para um humano LER e dizer: não é essa cidade".
+  // Os quatro chamadores pegavam `lat`/`lng` e DESCARTAVAM o resto: a tela
+  // mostrava dois números e a palavra "ok". Como o campo de endereço é UMA linha
+  // de texto livre, e texto livre é como se erra de cidade, a coordenada da rua
+  // homônima entrava PERMANENTE no cadastro — e nada no sistema a reconfere.
+  //
+  // CENSO, e não asserção-por-caso (regra 3): quem CHAMA `geocode(` tem de LER
+  // o endereço resolvido. Um quinto formulário que apareça amanhã cai aqui.
+  const chamamGeocode84 = arvore84.filter(
+    ([p, s]) => !/gerencial\/data\.ts$/.test(p) && /\bgeocode\(/.test(s),
+  );
+  eq('CRÍTICO: todo chamador de `geocode()` LÊ o endereço resolvido (`display_name`/`bairro`/`cidade`/`uf`) em vez de guardar só a coordenada — dois números não são conferíveis por um humano, e o nome do lugar é a única rede contra "o mapa achou a rua homônima em outra cidade". Nenhuma requisição a mais: o dado já chegava e estava sendo apagado. São QUATRO, e não três: o NovaVisitaDialog geocodificava DENTRO da mutação de gravar, sem um instante em que alguém pudesse ver o resultado',
+     [chamamGeocode84.map(([p]) => p).sort(),
+      chamamGeocode84.filter(([, s]) => /display_name/.test(s) && /setResolvido\(/.test(s)).length],
+     [['src/features/clientes/ClienteForm.tsx',
+       'src/features/gerencial/VisitaForm.tsx',
+       'src/features/visitas/NovaVisitaDialog.tsx',
+       'src/routes/_authenticated/gerencial.nova.tsx'], 4]);
+  eq('CRÍTICO: e os quatro IMPRIMEM o que o mapa entendeu na tela — guardar em estado sem pintar seria o mesmo descarte com um passo a mais',
+     chamamGeocode84.filter(([, s]) => /O mapa entendeu/.test(s)).length, 4);
+  eq('CRÍTICO: nenhum `geocode()` roda dentro de uma mutação de gravar — o gesto que geocodifica e o gesto que grava são DOIS, e entre eles existe o instante em que um humano lê o lugar e diz "não é esse". Sem o clique, a visita nasce sem coordenada: o estado VISÍVEL, não o plausível e errado',
+     arvore84.filter(([, s]) => /mutationFn: async \(\) => \{[\s\S]{0,1500}?\bgeocode\(/.test(s)).map(([p]) => p),
+     []);
+
+  // A METADE QUE FALTAVA, E ELA É A REGRA 2 EM PESSOA: o censo acima prova que
+  // a frase é IMPRESSA, nunca que ela é RETIRADA. Editar o endereço depois de
+  // localizar deixava "O mapa entendeu: …Guarulhos" descrevendo um texto que o
+  // campo não contém mais — e a própria frase MANDA fazer essa edição. Duas das
+  // quatro telas não limpavam nada.
+  //
+  // E O GATILHO DA U84 NÃO ALCANÇA ESTE CASO: ele zera quando o endereço muda E
+  // a coordenada veio IGUAL; aqui a coordenada MUDOU (o botão FOI apertado),
+  // logo a perna 2 é falsa. Em cliente NOVO nem chega perto — é BEFORE UPDATE e
+  // aquilo é um INSERT.
+  const limpamAoEditar84 = [
+    ['src/features/clientes/ClienteForm.tsx', /setEndereco\(e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
+    ['src/features/gerencial/VisitaForm.tsx', /set\("endereco", e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
+    ['src/features/visitas/NovaVisitaDialog.tsx', /endereco: e\.target\.value[\s\S]{0,300}?setResolvido\(null\)/],
+    ['src/routes/_authenticated/gerencial.nova.tsx', /setEndereco\(e\.target\.value\);[\s\S]{0,300}?setResolvido\(null\)/],
+  ];
+  eq('CRÍTICO: as QUATRO telas LIMPAM a conferência no `onChange` do endereço — a frase impressa manda "corrija o endereço e localize de novo", e sem isto ela continua descrevendo o texto ANTIGO enquanto a coordenada de X é gravada com o endereço Y. Presença da frase não vê o valor obsoleto (regra 2); duas das quatro não limpavam nada',
+     limpamAoEditar84.filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
+     []);
+  eq('CRÍTICO: e as QUATRO zeram também a COORDENADA, não só a frase — o gatilho da U84 NÃO pega "apertou o botão e DEPOIS editou o texto" (ali a coordenada MUDOU, e a perna 2 é falsa), e em cliente NOVO nem alcança (é BEFORE UPDATE, e aquilo é um INSERT). Manter a coordenada é gravar o ponto do texto ANTIGO com o endereço NOVO',
+     [['src/features/clientes/ClienteForm.tsx', /setResolvido\(null\);[\s\S]{0,120}?setLat\(null\);[\s\S]{0,60}?setLng\(null\)/],
+      ['src/features/gerencial/VisitaForm.tsx', /setResolvido\(null\);[\s\S]{0,120}?setCoords\(null\)/],
+      ['src/features/visitas/NovaVisitaDialog.tsx', /setCoords\(null\);[\s\S]{0,120}?setResolvido\(null\)/],
+      ['src/routes/_authenticated/gerencial.nova.tsx', /setLat\(null\);[\s\S]{0,120}?setLng\(null\);[\s\S]{0,120}?setResolvido\(null\)/]]
+       .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
+     []);
+  // ── A CORRIDA: O CAMPO TRAVA ENQUANTO A BUSCA ESTÁ NO AR ─────────────────
+  //
+  // O `onChange` acima fecha "editou DEPOIS de localizar". Sobrava "editou
+  // DURANTE": o pedido passa pelo freio de 1,1 s ANTES de o TIMEOUT_MS de 4 s
+  // começar a contar, então a janela é larga. Editar o texto no meio deixava a
+  // resposta do endereço ANTIGO chegar depois e reescrever `resolvido` + a
+  // coordenada por cima do texto NOVO — o MESMO defeito que esta entrega veio
+  // fechar, entrando pela porta da corrida, e invisível do mesmo jeito.
+  //
+  // A correção não é `ref` nem token de requisição: são CINCO atributos sobre
+  // sinalizadores que já existiam. E o `/gerencial/nova` era pior que as outras
+  // três: o BOTÃO não tinha `disabled`, então N cliques impacientes eram N
+  // requisições ao Nominatim, serializadas a 1,1 s pelo freio — e a última
+  // resposta a CHEGAR não é necessariamente a última PEDIDA.
+  //
+  // CENSO PELOS QUATRO ARQUIVOS, e as regexes casam ATRIBUTO no corpo VIVO:
+  // presença da constante de estado não prova que ela trava coisa nenhuma.
+  eq('CRÍTICO: nas QUATRO telas o campo de endereço fica `disabled` enquanto a busca está no ar — sem isso, editar o texto DURANTE a requisição deixa a resposta do endereço ANTIGO chegar depois e reescrever a conferência e a coordenada por cima do texto NOVO. É o defeito desta entrega voltando por CORRIDA, e a janela é larga porque o freio de 1,1 s corre ANTES do timeout de 4 s',
+     [['src/features/clientes/ClienteForm.tsx', /value=\{endereco\}\s*\n\s*disabled=\{geocodificando\}/],
+      ['src/features/gerencial/VisitaForm.tsx', /value=\{form\.endereco\}\s*\n\s*disabled=\{geocoding\}/],
+      ['src/features/visitas/NovaVisitaDialog.tsx', /value=\{form\.endereco\}\s*\n\s*disabled=\{localizando\}/],
+      ['src/routes/_authenticated/gerencial.nova.tsx', /value=\{endereco\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
+       .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
+     []);
+  // E O BOTÃO É OUTRO ELEMENTO. Contar "o arquivo tem um `disabled`" ficava
+  // VERDE com o botão do /gerencial/nova destravado, porque o `disabled` do
+  // CAMPO já estava no mesmo arquivo — um mutante sobreviveu exatamente assim.
+  // O que se mede é o atributo COLADO ao `onClick` que dispara a busca.
+  eq('CRÍTICO: e os QUATRO botões de localizar têm `disabled` — o do /gerencial/nova era o único sem, e ali N cliques impacientes viravam N requisições ao Nominatim, serializadas a 1,1 s pelo freio, de modo que a última resposta a CHEGAR não é a última PEDIDA (as outras três já paravam no primeiro clique)',
+     [['src/features/clientes/ClienteForm.tsx', /onClick=\{buscarCoordenadas\}\s*\n\s*disabled=\{geocodificando\}/],
+      ['src/features/gerencial/VisitaForm.tsx', /onClick=\{handleGeocode\}\s*\n\s*disabled=\{geocoding \|\|/],
+      ['src/features/visitas/NovaVisitaDialog.tsx', /disabled=\{localizando \|\|[^\n]*\}\s*\n\s*onClick=\{async/],
+      ['src/routes/_authenticated/gerencial.nova.tsx', /onClick=\{geocodificar\}\s*\n\s*disabled=\{geoStatus === "loading"\}/]]
+       .filter(([p, re]) => !re.test(semComentarios(fs84.readFileSync(p, 'utf8')))).map(([p]) => p),
+     []);
+  // E EXISTE UMA TERCEIRA PORTA, SÓ NO /gerencial/nova: o SELETOR DE CLIENTE.
+  // Travar o campo e o botão não fecha a corrida ali, porque escolher um
+  // cliente da lista TAMBÉM troca o endereço (`aplicarCliente`) — e a resposta
+  // em voo chega depois, escrevendo a coordenada do endereço ANTIGO sobre o
+  // cliente recém-escolhido, com a frase "O mapa entendeu" descrevendo um lugar
+  // que não é mais o da tela. As outras três telas não têm este caminho, e foi
+  // por isso que a trava delas fechou e a daqui ficou aberta: contar telas
+  // travadas mediu a tela, não as PORTAS dela.
+  eq('CRÍTICO: no /gerencial/nova o seletor de cliente também trava durante a busca — ele é a terceira porta que troca o endereço, e sem ela a coordenada do endereço antigo cai no cliente recém-escolhido',
+     /disabled=\{geoStatus === "loading"\}\s*\n\s*onClick=\{\(\) => aplicarCliente\(c\)\}/
+       .test(semComentarios(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8'))),
+     true);
+  // AS GUARDAS ASSIMÉTRICAS DO `aplicarCliente`: o endereço era SUBSTITUÍDO e a
+  // coordenada só era substituída quando o cliente TINHA uma. Vincular um
+  // cliente sem coordenada depois de buscar o endereço digitado deixava a
+  // coordenada da busca no estado, e `atualizarCliente` a escrevia no cadastro
+  // do cliente vinculado. O gatilho não pega: `NEW.endereco` é igual a
+  // `OLD.endereco` (veio do próprio cliente) e a perna 1 é falsa.
+  eq('CRÍTICO: `aplicarCliente` do /gerencial/nova herda do cliente TAMBÉM a ausência de coordenada — as guardas `if (c.latitude != null)` eram assimétricas com o endereço (que é sempre substituído), e vincular um cliente SEM coordenada depois de uma busca deixava a coordenada da busca ser escrita no cadastro DELE. O gatilho da U84 não pega: o endereço não mudou, veio do próprio cliente',
+     (() => { const g = semComentarios(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8'));
+              return [/setLat\(c\.latitude \?\? null\);/.test(g),
+                      /setLng\(c\.longitude \?\? null\);/.test(g),
+                      /if \(c\.latitude != null\) setLat/.test(g),
+                      /if \(c\.longitude != null\) setLng/.test(g)]; })(),
+     [true, true, false, false]);
+  eq('U84: `VisitaForm` testa a coordenada inicial por `!= null` e não por veracidade — latitude 0 é uma coordenada (o Golfo da Guiné) e cairia como ausente num `&&`',
+     (() => { const v = semComentarios(fs84.readFileSync('src/features/gerencial/VisitaForm.tsx', 'utf8'));
+              return [/initial\?\.latitude != null && initial\?\.longitude != null/.test(v),
+                      /initial\?\.latitude && initial\?\.longitude/.test(v)]; })(),
+     [true, false]);
+  // E O HÁBITO VALE NOS TRÊS, NÃO NUM. A asserção acima existia só para o
+  // `VisitaForm`, e dois `mapUrl` continuavam decidindo por VERACIDADE — a
+  // cicatriz que esta seção descreve em outro lugar ("presença provada num
+  // lugar, ausência não provada nos outros"). Censo de árvore: NENHUM arquivo
+  // pode montar a URL do mapa por `lat && lng`.
+  eq('CRÍTICO: nenhum `mapUrl` do repositório é decidido por `lat && lng` — latitude 0 é uma coordenada (o Golfo da Guiné) e cairia como ausente. A entrega cravou `!= null` em UM arquivo e pinou só ele; os outros dois ficaram, que é a mesma cicatriz de sempre — presença provada num lugar não prova o hábito nos outros',
+     arvore84.filter(([, s]) => /mapUrl =\s*\n?\s*lat && lng/.test(s)).map(([p]) => p), []);
+  eq('U84: …e os dois que faltavam agora decidem por `!= null`',
+     arvore84.filter(([, s]) => /mapUrl =\s*\n?\s*lat != null && lng != null/.test(s)).map(([p]) => p).sort(),
+     ['src/routes/_authenticated/gerencial.nova.tsx', 'src/routes/_authenticated/visita.$id.tsx']);
+  // A FRASE DE FALHA NÃO PODE AFIRMAR QUE O ENDEREÇO NÃO EXISTE. A casca de
+  // `gerencial/data.ts` colapsa `nao_encontrado` e `servico_falhou` num `null`
+  // só (P43), e o bloqueio do Nominatim é POR IP: "este endereço não existe" é a
+  // única frase do sistema que instrui a pessoa a martelar quem a bloqueou.
+  eq('CRÍTICO: nenhuma das quatro telas afirma que o endereço NÃO EXISTE quando a geocodificação falha — a casca colapsa "não achei" e "o serviço recusou" no mesmo `null` (P43), e o bloqueio do Nominatim é por IP e cai sobre a operação inteira. As quatro dizem que pode ser o texto OU o serviço, e que repetir na mesma hora não adianta',
+     [chamamGeocode84.filter(([, s]) => /Não achei este endereço/.test(s)).length,
+      chamamGeocode84.filter(([, s]) => /Endereço não localizado|Endereço não encontrado/.test(s)).map(([p]) => p)],
+     [4, []]);
+  eq('U84: e o SERVIDOR continua distinguindo os dois motivos — a informação existe e está sendo apagada UMA camada acima, que é exatamente o que P43 declara; se ela sumisse do servidor, a dívida deixaria de ser resolvível sem uma entrega nova',
+     (() => { const g = fs84.readFileSync('src/lib/geocodificar.functions.ts', 'utf8');
+              return [/motivo: "nao_encontrado"/.test(g), /motivo: "servico_falhou"/.test(g),
+                      /return r\.ok \? r\.endereco : null;/
+                        .test(fs84.readFileSync('src/features/gerencial/data.ts', 'utf8'))]; })(),
+     [true, true, true]);
+
+  // ── 3) A JANELA SEGUE O CAMPO — censo dos INVÓLUCROS ─────────────────────
+  //
+  // É CENSO DE ÁRVORE porque a pergunta é sobre AUSÊNCIA (regra 2): uma regex
+  // que provasse "AgendaDoChamado passa aoTrocarDia" não veria o terceiro
+  // invólucro que alguém escreva amanhã sem passar. Conta-se quem MONTA o
+  // componente e exige-se que TODOS respondam. `diaDosBlocos` é prop
+  // OBRIGATÓRIA, então o `tsc` cobre o mesmo terreno por outro caminho — e as
+  // duas redes juntas são de propósito, porque o `tsc` não roda aqui.
+  const montamForm84 = arvore84.filter(
+    ([p, s]) => !/FormularioDoBloco\.tsx$/.test(p) && /<FormularioDoBloco/.test(s),
+  );
+  eq('CRÍTICO: TODO invólucro que monta o FormularioDoBloco passa `diaDosBlocos` E `aoTrocarDia` — a lista de blocos é a de UMA SEMANA e o campo de dia é livre; sem a janela seguir o campo, trocar de semana deixa a lista PARCIAL e `erroDoAgendamento` para de ver o conflito daquele dia: o formulário fica MAIS PERMISSIVO QUE A PORTA, e o EXCLUDE recusa depois com 23P01. É defeito PRÉ-EXISTENTE',
+     [montamForm84.map(([p]) => p).sort(),
+      montamForm84.filter(([, s]) => /diaDosBlocos=\{/.test(s) && /aoTrocarDia=\{/.test(s)).length],
+     [['src/features/programacao/AgendaDoChamado.tsx',
+       'src/routes/_authenticated/chamados.programacao.tsx'], 2]);
+  // ── NÃO MANDAR O QUE NÃO SE SABE — a perda de dado que o corte quase deixou ─
+  // `/gerencial/nova` monta `dadosDoCliente` e o manda a `atualizarCliente` no
+  // cadastro MESTRE quando acha um equivalente. `lat`/`lng` nascem `null`, e a
+  // U84 tirou o `onBlur={geocodificar}` do campo de endereço (a geocodificação
+  // virou gesto com conferência). Sem a guarda, quem salva sem clicar em
+  // localizar manda `latitude = NULL` sobre um cliente da planilha oficial da
+  // U24 — cujo endereço NEM MUDOU, porque é isso que faz o equivalente casar.
+  // O gatilho da U84 não salva esse caso: ele zera quando o endereço MUDA, e
+  // aqui ele é idêntico. O portão da migration fica VERDE e o dado morre mesmo
+  // assim, porque o app rompe uma camada ACIMA do gatilho — regra 10.
+  // Uma bateria de mutação mostrou que este conserto não tinha UMA asserção.
+  {
+    const gn84 = fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8');
+    const vivoGn = gn84.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    eq('CRÍTICO: /gerencial/nova só nomeia latitude/longitude no patch do cliente quando TEM as duas — mandá-las sempre apaga a coordenada do cadastro mestre com NULL, em silêncio e para sempre, num cliente cujo endereço não mudou',
+       [/\.\.\.\(lat != null && lng != null \? \{ latitude: lat, longitude: lng \} : \{\}\),/.test(vivoGn),
+        // o par negativo: a forma incondicional não pode voltar ao objeto do
+        // CLIENTE. (O objeto da VISITA, mais abaixo, escreve lat/lng direto e
+        // isso está certo — a visita é dona da coordenada dela.)
+        /complemento: complemento \|\| null,\n\s*latitude: lat,/.test(vivoGn)],
+       [true, false]);
+    // …e o `preservar` da consolidação é a OUTRA metade da mesma promessa: o
+    // valor OFICIAL vence o da visita. Invertê-lo faria a visita sobrescrever
+    // o cadastro, que é a mesma perda por outro caminho.
+    const cd84 = fs84.readFileSync('src/features/clientes/data.ts', 'utf8');
+    eq('CRÍTICO: na consolidação o valor OFICIAL vence o da visita (`oficial ?? daVisita`), e a coordenada está entre os campos preservados — invertido, fundir duplicatas sobrescreveria o cadastro com o que a visita tinha',
+       [/const preservar = <T,>\(oficial: T \| null \| undefined, daVisita: T \| null\): T \| null =>\n\s*oficial \?\? daVisita;/.test(cd84),
+        /latitude:\s*preservar\(o\.latitude, patch\.latitude \?\? null\),/.test(cd84),
+        /longitude:\s*preservar\(o\.longitude, patch\.longitude \?\? null\),/.test(cd84)],
+       [true, true, true]);
+  }
+  // E O INVÓLUCRO TEM DE CONSULTAR O DIA QUE ELE DIZ TER CONSULTADO. Passar o
+  // aviso para um `useState` que a consulta ignora seria a fiação inteira
+  // ficando verde sem fazer nada — presença não vê o fio desligado.
+  const agenda84 = fs84.readFileSync('src/features/programacao/AgendaDoChamado.tsx', 'utf8');
+  eq('CRÍTICO: em AgendaDoChamado a consulta usa o MESMO estado que o `aoTrocarDia` escreve (`diaConsultado`), e NÃO mais `abertura.dia`, que era o defeito: a janela ficava fixada na abertura enquanto o campo de dia lá dentro era livre',
+     (() => { const a = semComentarios(agenda84);
+              return [/useBlocosDaSemana\(diaConsultado\)/.test(a),
+                      /useBlocosDaSemana\(abertura\.dia\)/.test(a),
+                      /aoTrocarDia=\{setDiaConsultado\}/.test(a),
+                      /diaDosBlocos=\{diaConsultado\}/.test(a)]; })(),
+     [true, false, true, true]);
+  // A SEMANA DAS EQUIPES SAI DO MESMO VALOR. Enquanto ela saía de `abertura.dia`
+  // — congelado —, trocar a data movia a consulta e NÃO movia a composição: o
+  // `<select>` imprimia a dupla da semana ERRADA, uma equipe que só existe na
+  // semana de destino não era oferecida, e a frase da divergência degradava para
+  // "outra equipe". `erroDoAgendamento` não pega nada disso.
+  eq('CRÍTICO: a semana que monta a lista de EQUIPES sai do MESMO `diaConsultado` que a consulta de blocos — com `abertura.dia` (congelado) o `<select>` imprimia a composição da semana velha depois de trocar a data, e a equipe que só existe na semana de destino nem era oferecida. `erroDoAgendamento` confere conflito de PESSOA, e nunca se a equipe escolhida existe naquela semana',
+     (() => { const a = semComentarios(agenda84);
+              return [/referenciaSemanal\(dataDoDia\(diaConsultado\) \?\? new Date\(\)\)/.test(a),
+                      /referenciaSemanal\(dataDoDia\(abertura\.dia\) \?\? new Date\(\)\)/.test(a)]; })(),
+     [true, false]);
+  const pg84 = fs84.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
+  eq('CRÍTICO: e no /chamados/programacao o `aoTrocarDia` é o `setDia` da própria página — ali o invólucro que consulta É a página, e `diaDosBlocos` é o mesmo `dia` que alimenta `useBlocosDaGrade`. A última perna é a TERCEIRA porta: um chamado com data em outra semana chega pelos IRMÃOS (`useBlocosDosChamados` traz blocos de fora da semana desenhada) e abriria o formulário num dia que a consulta não cobre — o defeito volta por onde o `aoTrocarDia` não alcança, porque ninguém trocou nada',
+     (() => { const g = semComentarios(pg84);
+              return [/useBlocosDaGrade\(dia\)/.test(g), /aoTrocarDia=\{setDia\}/.test(g),
+                      /diaDosBlocos=\{dia\}/.test(g),
+                      /if \(doChamado !== dia\) setDia\(doChamado\);/.test(g)]; })(),
+     [true, true, true, true]);
+  const form84 = fs84.readFileSync('src/features/programacao/FormularioDoBloco.tsx', 'utf8');
+  // O ONCHANGE CHAMA `aoTrocarDia`, E SÓ QUANDO A SEMANA MUDA. Presença da prop
+  // não prova a chamada; e uma chamada SEM a guarda faz de cada tecla no
+  // `<input type="date">` uma navegação da página inteira, inclusive das que
+  // andam DENTRO da mesma semana (a seta ↑ segurada).
+  //
+  // E O QUE A GUARDA NÃO COBRE, PORQUE UMA ASSERÇÃO NÃO PODE INSINUAR QUE COBRE:
+  // o ANO digitado dígito a dígito. "2026" passa pelos anos 0002, 0020, 0202 e
+  // 2026, que são QUATRO semanas DIFERENTES — a guarda aprova as quatro e são
+  // quatro navegações. Um piso de data fecharia isso e reabriria a cegueira que
+  // esta prop veio consertar (o campo aceitaria o ano parcial sem avisar o
+  // invólucro, e `blocos` deixaria de conter o dia escolhido). Está em P42.
+  // A versão anterior deste comentário dizia que era a AUSÊNCIA da guarda que
+  // produzia "0002, 0020 e 0202" — uma asserção CRÍTICA justificando-se por um
+  // buraco que ela não fecha.
+  eq('CRÍTICO: o `onChange` do campo de dia CHAMA `aoTrocarDia`, com valor não-vazio E só quando a SEMANA muda — a consulta é POR SEMANA, então avisar dentro da mesma semana é uma navegação da página inteira sem trocar uma linha de `blocos`. A guarda usa a mesma `semanaDoDia` que a consulta usa. Presença da prop não prova a chamada, e presença da chamada não prova a guarda',
+     [/setDia\(v\);\s*\n\s*if \(v && semanaDoDia\(v, referenciaSemanal\) !== semanaDosBlocos\) aoTrocarDia\?\.\(v\);/.test(form84),
+      (form84.match(/aoTrocarDia\?\.\(/g) ?? []).length,
+      /const semanaDosBlocos = diaDosBlocos \? semanaDoDia\(diaDosBlocos, referenciaSemanal\) : null;/.test(form84),
+      // E NÃO SOBROU UM SEGUNDO CÁLCULO COM CARA DE FIO. `semanaDoDia_` existia
+      // e o docblock dizia que o `onChange` a usava para decidir o aviso — o
+      // `onChange` RECOMPUTA (linha acima) e nunca a leu; ela só era apelido de
+      // `semanaDoDestino`. Uma variável descrita como sendo o que ela não é vale
+      // menos que nenhuma: o próximo leitor "conserta" o `onChange` para ler o
+      // apelido e trava a comparação num valor de render anterior.
+      // NO CORPO VIVO (regra 2): o docblock reescrito EXPLICA a deleção e cita
+      // o nome, e um censo cru ficaria vermelho sobre um arquivo correto — que
+      // é a mesma armadilha que já mordeu duas asserções desta entrega.
+      /semanaDoDia_/.test(semComentarios(form84)),
+      /const semanaDoDestino = dia \? semanaDoDia\(dia, referenciaSemanal\) : null;/.test(form84)],
+     [true, 1, true, false, true]);
+  eq('U84: `CAMPOS_BLOCO` continua com as ONZE colunas de sempre — esta entrega não pede coluna nova ao banco, e é por isso que não há janela de deploy nos dois sentidos',
+     (fs84.readFileSync('src/features/programacao/data.ts', 'utf8')
+       .match(/export const CAMPOS_BLOCO =\s*\n?\s*"([^;]+)";/) ?? [null, ''])[1]
+       .replace(/"\s*\+\s*\n?\s*"/g, '').split(',').map((s) => s.trim()).filter(Boolean).length,
+     11);
+  // A U80 matou a dupla asserção no route da programação e pinou a ausência
+  // dela — NAQUELE ARQUIVO. A gêmea em AgendaDoChamado.tsx (o caminho do
+  // PainelChamado) continuou viva justamente porque a asserção olhava só para o
+  // outro lado: presença provada num lugar, ausência não provada no outro.
+  eq('CRÍTICO: AgendaDoChamado.tsx NÃO tem mais `as unknown as ChamadoParaGrade[]` — a gêmea da que a U80 matou no route, e ela sobreviveu dois commits porque a asserção da U80 só olhava para o outro arquivo. Com ela, uma coluna que a consulta não traga chega `undefined` em vez de `null`, e o formulário muda de comportamento conforme a PORTA por onde foi aberto',
+     /as unknown as ChamadoParaGrade\[\]/.test(agenda84), false);
+  eq('…e a conversão dos dois caminhos passa pelo MESMO construtor puro, inclusive o `chamado` que chega por prop com um `as any` do PainelChamado',
+     [/chamadosParaGrade\(ordens as unknown as Array<Record<string, unknown>>\)/.test(agenda84),
+      /chamadosParaGrade\(\[chamado as unknown as Record<string, unknown>\]\)/.test(agenda84)],
+     [true, true]);
+
+  // ── 4) O CORTE: A ESTIMATIVA NÃO FICOU DORMENTE ──────────────────────────
+  //
+  // Ela foi construída, refutada três vezes (dois FATAIS sobreviveram a portões
+  // verdes) e RETIRADA. Deixá-la inerte seria pior que tê-la ligada com defeito:
+  // ela acordaria no dia em que alguém puser `ORS_API_KEY` no painel, semanas
+  // depois, quando ninguém lembra dos defeitos.
+  //
+  // DELEÇÃO SE PROVA POR CENSO, NUNCA POR REGEX DE PRESENÇA (regra 2). E o
+  // censo mede OS DOIS LADOS (regra 10): os mesmos nomes têm de EXISTIR no
+  // documento de dívida, senão esta seção ficaria verde com `src/` vazio — ou
+  // com o conhecimento apagado junto com o código, que é o desperdício que a
+  // dívida escrita existe para não cometer.
+  eq('CRÍTICO: os três arquivos que existiam SÓ para a estimativa sumiram do disco — `rota.ts` (o módulo puro), `rota.functions.ts` (o ORS) e `sede.ts` (que só o `rota.ts` importava)',
+     ['src/features/programacao/rota.ts', 'src/lib/rota.functions.ts', 'src/lib/sede.ts']
+       .filter((p) => fs84.existsSync(p)),
+     []);
+  // OS IDENTIFICADORES, VARRIDOS NO TEXTO CRU (comentários inclusive): um
+  // comentário vivo que ainda nomeie `trechoDoBloco` manda o próximo leitor
+  // procurar um mecanismo que não existe, que é o defeito que esta casa já
+  // pagou uma vez (a citação inventada do `COMMENT ON COLUMN`).
+  const NOMES_MORTOS = ['ORS_API_KEY', 'openrouteservice', 'estimarTrecho', 'trechoDoBloco',
+                        'diaCarregado', 'CACHE_DO_PAR', 'SEM_PROVEDOR', 'adocaoDaEstimativa',
+                        'MotivoSemEstimativa', 'respostaPlausivel', 'chaveDoPar', 'mesmoPonto',
+                        'arredondar5', 'sedePorExtenso', 'ANCORA_SEDE', 'sedeConfereComAncora',
+                        'distanciaEmLinhaRetaKm', 'TETO_DE_MINUTOS', 'FRASE_DO_MOTIVO',
+                        'cliente_lat', 'cliente_lng', 'fraseDoMotivo',
+                        // OS CAMINHOS DOS ARQUIVOS APAGADOS. Quatro comentários
+                        // de `src/` ainda apontavam para `src/lib/sede.ts` e
+                        // `rota.functions.ts` depois do corte — um comentário
+                        // que manda o leitor abrir um arquivo inexistente é a
+                        // citação inventada de novo, e o censo de identificador
+                        // não os pegava porque eles citam o CAMINHO, não o nome.
+                        'lib/sede', 'rota.functions', 'programacao/rota',
+                        // ── E AS AFIRMAÇÕES EM PROSA. O RECORTE DECLARA-SE
+                        // (regra 3): esta lista cobre IDENTIFICADORES, CAMINHOS
+                        // e, daqui para baixo, FRASES.
+                        //
+                        // O corte mediu identificador, e o próprio censo dizia
+                        // isso — foi honesto. Mas dez comentários sobreviveram
+                        // descrevendo a estimativa NO PRESENTE, e um deles
+                        // citava o motivo `cliente_sem_coordenada`, que NÃO
+                        // EXISTE em lugar nenhum do repositório: o leitor ia
+                        // procurar o mecanismo, a frase e o campo, e não há
+                        // nada. É a citação inventada de novo, a mesma que a
+                        // casa já pagou com o `COMMENT ON COLUMN`.
+                        //
+                        // 'estimativa' NUA NÃO ENTRA, de propósito:
+                        // `FormularioDoBloco.tsx` a usa legitimamente ("não tem
+                        // nada de estimativa") e a asserção ficaria vermelha
+                        // para sempre sobre um arquivo correto. O que entra é a
+                        // frase inteira. Idem 'minuto de estrada' no SINGULAR:
+                        // `programacao/data.ts` diz "45 minutOS de estrada
+                        // digitados", que é o campo real e fica.
+                        'cliente_sem_coordenada', 'sede_nao_configurada',
+                        'estimativa de deslocamento', 'minuto de estrada',
+                        'MINUTO DE', 'gesto da SEDE', 'sede desta entrega',
+                        'sede é conferida', 'sede verificável'];
+  eq('CRÍTICO (o CORTE): nenhum identificador, caminho OU AFIRMAÇÃO EM PROSA da estimativa sobrevive em src/, nem em código nem em comentário — um comentário vivo que ainda nomeie `trechoDoBloco`, ou que diga "vira minuto de estrada", manda o próximo leitor procurar um mecanismo que não existe, e é esse exato defeito que esta casa já pagou uma vez com a citação inventada do `COMMENT ON COLUMN`. O censo do corte media só identificador e caminho, declarava isso, e ainda assim DEZ comentários passaram — porque prosa não é identificador',
+     NOMES_MORTOS.filter((n) => cru84.some(([, s]) => s.includes(n))), []);
+  // O PAR NEGATIVO DO CENSO DE PROSA, escrito à mão (regra 4). Sem ele, um
+  // `NOMES_MORTOS` que perdesse as entradas de prosa — ou um `.includes` que
+  // deixasse de casar — ficaria verde exatamente como ficou antes desta rodada.
+  eq('CRÍTICO (regra 4): e o censo de prosa PEGA a frase quando ela existe — par negativo escrito à mão, porque a versão anterior desta seção ficou VERDE com dez comentários vivos descrevendo a estimativa no presente',
+     [NOMES_MORTOS.includes('cliente_sem_coordenada'),
+      NOMES_MORTOS.includes('minuto de estrada'),
+      NOMES_MORTOS.filter((n) => '// a coordenada vira minuto de estrada e o motivo cliente_sem_coordenada'.includes(n)).sort(),
+      // e a exceção legítima NÃO é pega: o campo digitado continua sendo dito
+      NOMES_MORTOS.filter((n) => ' * 45 minutos de estrada digitados — encolhendo a janela'.includes(n))],
+     [true, true, ['cliente_sem_coordenada', 'minuto de estrada'], []]);
+  eq('CRÍTICO (regra 10): e o censo acima NÃO está verde por vacuidade — os mesmos nomes que ele proíbe em src/ estão VIVOS no documento de dívida, com o desenho e os defeitos apurados, senão o corte teria jogado fora o conhecimento junto com o código',
+     (() => { const pend = fs84.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+              return ['ORS_API_KEY', 'diaCarregado', 'chamado_locais', 'deslocamento_calc_min']
+                .filter((n) => !pend.includes(n)); })(),
+     []);
+  eq('CRÍTICO: e a chave que a entrega futura precisa está nomeada com o LUGAR onde ela é criada (o painel da Lovable) e com o aviso do prefixo — `VITE_` publicaria a chave da empresa no bundle do navegador. Foi a ausência disto que fez a estimativa nascer permanentemente degradada, com uma frase cinza como único sintoma',
+     (() => { const pend = fs84.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+              const i = pend.indexOf('ORS_API_KEY');
+              const trecho = pend.slice(i - 600, i + 1200);
+              return [/Lovable/.test(trecho), /VITE_/.test(trecho), /P46/.test(pend)]; })(),
+     [true, true, true]);
+  eq('CRÍTICO: e os DOIS FATAIS que sobreviveram a portões verdes estão escritos na dívida com o mecanismo, não só com o nome — o piso da adoção usando o fim do DIA onde a origem usa o bloco ANTERIOR, e a guarda comparando o dia PEDIDO com ele mesmo. Sem o mecanismo escrito, a próxima tentativa os reintroduz',
+     (() => { const pend = fs84.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+              return [/fim do DIA/i.test(pend),
+                      /os que começam DEPOIS do candidato/i.test(pend),
+                      /o dia que a consulta \*\*pediu\*\*/i.test(pend),
+                      /tentar EM PÉ primeiro/i.test(pend)]; })(),
+     [true, true, true, true]);
+
+  // ── 5) A MIGRATION ───────────────────────────────────────────────────────
+  const u84 = fs84.readFileSync('supabase/migrations/20260907090000_u84_zerar_coordenada.sql', 'utf8');
+  // O MESMO CUIDADO DO CENSO DE ÁRVORE, do lado do SQL: esta migration explica
+  // por escrito o que ela faz, então o texto dela CONTÉM as frases que as
+  // asserções procuram. Medir o corpo VIVO é a única leitura honesta.
+  const u84Vivo = u84.replace(/^[ \t]*--.*$/gm, '');
+
+  // ── A MIGRATION TEM DE RODAR, e ela ia ABORTAR ───────────────────────────
+  //
+  // O portão inseria `situacao = 'prospecto'`. A U27 apagou esse valor do CHECK:
+  // o INSERT violaria a constraint, a transação inteira voltaria atrás e o
+  // gatilho NUNCA seria instalado. O esperado NÃO é copiado para cá — a lista de
+  // valores aceitos é lida DO DISCO da U27 (regra 9), e a asserção exige que
+  // TODO literal que o INSERT escreve em coluna com CHECK esteja nela.
+  {
+    const u27 = fs84.readFileSync('supabase/migrations/20260821120000_u27_prospeccao.sql', 'utf8');
+    const m = u27.match(/ADD CONSTRAINT clientes_situacao_check\s*\n?\s*CHECK \(situacao IN \(([^)]+)\)\)/);
+    const aceitos = (m ? m[1] : '').split(',').map((x) => x.trim().replace(/'/g, ''));
+    // A COLUNA DO INSERT, CONTADA — e não o literal procurado (regra 2). Trocar
+    // 'prospecto' por 'ativo' também passaria numa regex de "não tem
+    // prospecto"; o que esta linha mede é que a coluna NÃO É NOMEADA, e que
+    // portanto vale o DEFAULT — que é o único valor aceito pelas DUAS versões
+    // do CHECK que já existiram.
+    const insert84 = (u84Vivo.match(/INSERT INTO public\.clientes \(([^)]*)\)/) ?? [null, ''])[1]
+      .split(',').map((x) => x.trim());
+    const etapa1 = fs84.readFileSync('supabase/migrations/20260817120000_etapa1_clientes.sql', 'utf8');
+    eq('CRÍTICO (a migration ia ABORTAR): o CHECK vivo de `clientes.situacao` é lido DO DISCO da U27 e NÃO aceita `prospecto`; o INSERT do portão não nomeia a coluna `situacao`, logo escreve o DEFAULT — que a etapa1 fixa em `ativo`, valor aceito pelas DUAS versões do CHECK. Antes disto o portão inseria `prospecto`, a transação inteira abortava e o GATILHO NUNCA ERA INSTALADO: a conferência que existia para provar o comportamento era o que impedia a migration de rodar',
+       [aceitos, aceitos.includes('prospecto'), insert84.includes('situacao'),
+        /ADD COLUMN IF NOT EXISTS situacao\s+text NOT NULL DEFAULT 'ativo'/.test(etapa1),
+        aceitos.includes('ativo')],
+       [['ativo', 'inativo'], false, false, true, true]);
+    // E A LISTA DE COLUNAS DO INSERT É EXATAMENTE A ESPERADA. Sem esta perna, a
+    // de cima ficaria verde com um INSERT que nomeasse `tipo_empreendimento`
+    // com um valor fora do CHECK da 0628193244, ou `servicos_prestados` fora do
+    // `<@` da u36 — as outras DUAS colunas com CHECK em public.clientes.
+    eq('CRÍTICO: o INSERT do portão nomeia EXATAMENTE cinco colunas, e nenhuma delas tem CHECK — as outras duas colunas com CHECK de public.clientes (`tipo_empreendimento`, da 0628193244, e `servicos_prestados`, da u36) ficam de fora e caem no default: NULL (que nenhum CHECK viola) e `{}` (que satisfaz o `<@`). Contar a lista é o que impede a próxima coluna de entrar sem ninguém conferir o CHECK dela',
+       [insert84, /clientes_tipo_empreendimento_check/.test(
+          fs84.readFileSync('supabase/migrations/20260628193244_dcc59759-60c9-4ce0-8193-95e8ff9ec603.sql', 'utf8')),
+        /clientes_servicos_check/.test(
+          fs84.readFileSync('supabase/migrations/20260822000000_u36_servicos_prestados.sql', 'utf8'))],
+       [['id', 'nome', 'endereco', 'latitude', 'longitude'], true, true]);
+    // E O PRÉ-VOO NÃO CONFERE MAIS UMA COLUNA QUE ELE NÃO USA. Ele conferia que
+    // `situacao` EXISTE — a metade que não podia falhar — e nunca que o VALOR
+    // era aceito, que era a metade que abortava.
+    // RECORTE PELO BLOCO, e a âncora é contada antes de ser usada (regra 1): o
+    // `clientes.situacao` continua no arquivo DE PROPÓSITO — é a conferência 7
+    // —, então medir o arquivo INTEIRO ficaria vermelho por causa do conserto.
+    const preVoo84 = u84Vivo.slice(u84Vivo.indexOf('DO $preflight$'), u84Vivo.indexOf('$preflight$;'));
+    eq('U84: o pré-voo confere as TRÊS colunas que a condição do gatilho lê, e mais nenhuma — ele conferia também `situacao` (dizendo "o PORTÃO do §3 a preenche"), medindo a metade que não podia falhar enquanto a metade que ABORTAVA a migration passava batido',
+       [(u84Vivo.match(/\$preflight\$/g) ?? []).length,
+        preVoo84.length > 400,
+        /clientes\.endereco/.test(preVoo84), /clientes\.latitude/.test(preVoo84),
+        /clientes\.longitude/.test(preVoo84), /situacao/.test(preVoo84)],
+       [2, true, true, true, true, false]);
+  }
+
+  eq('U84: o delimitador `$fn$` do corpo do gatilho aparece exatamente duas vezes (abre e fecha) — sem isto o recorte abaixo poderia ser o arquivo inteiro',
+     (u84.match(/\$fn\$/g) ?? []).length, 2);
+  const corpoFn84 = u84Vivo.slice(u84Vivo.indexOf('AS $fn$'), u84Vivo.indexOf('$fn$;'));
+  eq('U84: a migration cria UM gatilho e UMA função, e mais nada — zero coluna, zero RPC, zero policy, zero GRANT, zero tabela',
+     [(u84.match(/^CREATE TRIGGER /gm) ?? []).length,
+      (u84.match(/^CREATE OR REPLACE FUNCTION /gm) ?? []).length,
+      /^CREATE TABLE/m.test(u84), /^CREATE POLICY/m.test(u84),
+      /^GRANT /m.test(u84), /ADD COLUMN/.test(u84)],
+     [1, 1, false, false, false, false]);
+  // CONTAR A COLUNA, NÃO O LITERAL (regra 2): o que importa é que as TRÊS
+  // colunas da condição estejam lá com o operador certo. Uma asserção que
+  // procurasse a string inteira não veria `latitude` trocada por `longitude`
+  // nas duas pernas, que é o erro de copiar-e-colar mais provável aqui.
+  eq('CRÍTICO: a condição do gatilho tem as TRÊS pernas, cada uma na SUA coluna — `endereco` com IS DISTINCT FROM, `latitude` e `longitude` com IS NOT DISTINCT FROM. Contar a coluna e não o literal é o que pega o copiar-e-colar que deixaria `latitude` nas duas pernas',
+     [/NEW\.endereco\s+IS DISTINCT\s+FROM OLD\.endereco/.test(corpoFn84),
+      /NEW\.latitude\s+IS NOT DISTINCT FROM OLD\.latitude/.test(corpoFn84),
+      /NEW\.longitude IS NOT DISTINCT FROM OLD\.longitude/.test(corpoFn84),
+      // as duas contagens juntas provam a REPARTIÇÃO: duas pernas de coordenada
+      // com NOT, e UMA só de endereço sem NOT.
+      (corpoFn84.match(/IS NOT DISTINCT\s+FROM/g) ?? []).length,
+      (corpoFn84.match(/IS DISTINCT\s+FROM/g) ?? []).length],
+     [true, true, true, 2, 1]);
+  eq('CRÍTICO: o corpo zera AS DUAS colunas — meia coordenada (lat nula, lng preenchida) é um estado que nenhum leitor deste sistema espera',
+     [/NEW\.latitude\s*:=\s*NULL;/.test(corpoFn84),
+      /NEW\.longitude\s*:=\s*NULL;/.test(corpoFn84)],
+     [true, true]);
+  eq('CRÍTICO: o PORTÃO roda ANTES do COMMIT — é uma verificação de POSIÇÃO, não de presença. Um portão depois do COMMIT escreveria em public.clientes fora de qualquer transação, e uma sessão que morresse no meio deixaria as linhas descartáveis na base VIVA',
+     [u84.indexOf('$portao$') > u84.indexOf('BEGIN;'),
+      u84.indexOf('$portao$') < u84.indexOf('\nCOMMIT;'),
+      u84.indexOf('$preflight$') < u84.indexOf('$portao$')],
+     [true, true, true]);
+  eq('CRÍTICO: o portão exercita as QUATRO pernas e ABORTA em cada uma — comportamento MEDIDO vence texto procurado: uma regex prova que a linha existe, nunca que o gatilho está VIVO, ligado, na tabela certa e com o operador certo. A quarta mede o caso que o comentário do §2 presumia impossível (endereço novo com a MESMA coordenada TAMBÉM zera), e com 46 clientes dividindo 20 coordenadas isso não é hipótese',
+     [(u84.match(/PORTAO U84 \(perna [1234]\)/g) ?? []).length,
+      /perna 1[\s\S]{0,600}coordenada NÃO foi zerada/.test(u84),
+      /perna 2[\s\S]{0,600}coordenada não sobreviveu/.test(u84),
+      /perna 3[\s\S]{0,600}coordenada se mexeu/.test(u84),
+      /perna 4[\s\S]{0,900}MESMA coordenada NÃO zerou/.test(u84),
+      // e a perna 4 planta a MESMA coordenada nos dois updates, senão vira a 2
+      /SET latitude = -23\.7000000, longitude = -46\.7000000 WHERE id = v_b;[\s\S]{0,400}latitude = -23\.7000000, longitude = -46\.7000000/.test(u84)],
+     [4, true, true, true, true, true]);
+  eq('CRÍTICO: o portão usa LINHAS DESCARTÁVEIS com id fixo, e as apaga — exercitar o gatilho contra um cliente REAL passaria sete escritas por uma linha viva, e cada uma acordaria `clientes_set_updated_at`, deixando o `updated_at` daquele cliente carimbado pela migration sem que ninguém o tivesse editado',
+     [/U84 DESCARTAVEL A/.test(u84),
+      (u84.match(/DELETE FROM public\.clientes WHERE id IN \(v_a, v_b\)/g) ?? []).length],
+     [true, 2]);
+  eq('CRÍTICO: o portão NÃO fala de SAVEPOINT — não há nenhum neste arquivo, e um comentário que descreve um mecanismo AUSENTE é pior que nenhum: ele ensina o próximo leitor a confiar numa proteção que não está lá',
+     /SAVEPOINT/i.test(u84), false);
+  eq('CRÍTICO: o portão NÃO tem `CROSS JOIN` atrás de um usuário para preencher owner_id — `clientes.owner_id` é ANULÁVEL desde a etapa1 (ALTER COLUMN owner_id DROP NOT NULL), e com `auth.users` vazia um CROSS JOIN inseriria ZERO linhas e a conferência falharia por causa do andaime, não do alvo',
+     [/CROSS JOIN/i.test(u84),
+      /ALTER COLUMN owner_id DROP NOT NULL/
+        .test(fs84.readFileSync('supabase/migrations/20260817120000_etapa1_clientes.sql', 'utf8'))],
+     [false, true]);
+  eq('CRÍTICO: a conferência 1 mede `tgenabled`, e não só a existência — um `ALTER TABLE ... DISABLE TRIGGER` deixa a linha no catálogo e o gatilho parado, e uma asserção de existência ficaria verde com o gatilho desligado',
+     /tgenabled/.test(u84) && /'O' AS esperado/.test(u84), true);
+  eq('U84: a conferência 2 prova que os DOIS gatilhos BEFORE UPDATE convivem — se o novo tivesse derrubado `clientes_set_updated_at`, todo cliente editado ficaria com `updated_at` congelado, em silêncio',
+     /clientes_set_updated_at, trg_clientes_zerar_coordenada/.test(u84), true);
+  eq('CRÍTICO: a conferência 2 pede os DOIS bits da máscara (BEFORE **e** UPDATE) — `tgtype & 2` sozinho pega BEFORE INSERT também, e no dia em que alguém criar um BEFORE INSERT em clientes esta linha CRÍTICA ficaria vermelha por um motivo sem relação com a U84 (a cicatriz da conferência 119 da U82, por outra porta)',
+     [/\(t\.tgtype & 2\) <> 0 AND \(t\.tgtype & 16\) <> 0/.test(u84),
+      (u84.match(/t\.tgtype & 16/g) ?? []).length],
+     [true, 1]);
+  eq('U84: as conferências saem em SELECT com obtido × esperado × veredito (RAISE NOTICE é INVISÍVEL no editor do Supabase, e uma migration que "confere" por NOTICE não confere nada)',
+     [/AS veredito/.test(u84Vivo), /RAISE NOTICE/.test(u84Vivo)], [true, false]);
+  // O VEREDITO TEM OS TRÊS RAMOS DA CASA. Com um CASE de DOIS ramos
+  // ('OK'/'FALHOU'), as conferências-RETRATO — que têm `esperado = '(anote)'` de
+  // propósito — caem no ELSE e imprimem FALHOU numa execução PERFEITA. É a
+  // cicatriz da U83, e um veredito que reprova o certo ensina a IGNORAR a coluna
+  // inteira. TUDO medido no corpo VIVO: a migration EXPLICA por escrito por que
+  // o veredito tem três ramos, então o texto dela contém o token e a palavra
+  // FALHOU, e um censo cru ficaria verde com o token só no comentário.
+  eq('CRÍTICO: o veredito tem os TRÊS ramos da casa e usa o token que o Davi varre (`>>> OLHAR <<<`) — sem o ramo de referência as conferências-retrato imprimem FALHOU numa execução PERFEITA, e um veredito que reprova o certo ensina a ignorar a coluna inteira. E TODA conferência-retrato usa o literal que o ramo reconhece: um ramo que nenhuma linha aciona é decoração',
+     (() => { const linhas = u84Vivo.match(/^.*AS veredito.*$/gm) ?? [];
+              return [linhas.length,
+                      />>> OLHAR <<</.test(u84Vivo),
+                      /FALHOU/.test(u84Vivo),
+                      /WHEN t\.esperado = '\(anote\)'\s+THEN '— referência'/.test(u84Vivo),
+                      /WHEN t\.obtido IS NOT DISTINCT FROM t\.esperado\s+THEN 'ok'/.test(u84Vivo),
+                      (u84Vivo.match(/^ '\(anote\)'$/gm) ?? []).length,
+                      (u84Vivo.match(/^SELECT \d+,?$/gm) ?? []).length]; })(),
+     [1, true, false, true, true, 4, 6]);
+  eq('CRÍTICO (regra 9): o token do veredito é o MESMO que a U83 usa, lido do disco — não uma string escrita aqui. Duas migrations com tokens diferentes são dois protocolos, e o Davi varre um só',
+     (() => { const u83 = fs84.readFileSync('supabase/migrations/20260906090000_u83_vistoria.sql', 'utf8');
+              const tk = (u83.match(/ELSE '(>>>[^']+<<<)' END AS veredito/) ?? [])[1] ?? null;
+              const linhaU84 = (u84Vivo.match(/ELSE '(>>>[^']+<<<)' END AS veredito/) ?? [])[1] ?? null;
+              return [tk, tk !== null && tk === linhaU84]; })(),
+     ['>>> OLHAR <<<', true]);
+  // A CONFERÊNCIA 7 NASCEU DO DEFEITO QUE IA ABORTAR A MIGRATION, e ela FICA —
+  // mas o que ela pergunta mudou de dono. O defeito que ela media estava VIVO em
+  // DOIS escritores, e os dois foram APAGADOS:
+  //   · `gerencial.nova.tsx` gravava `situacao: "prospecto"` ao criar prédio
+  //     novo — todo cadastro por aquela tela batia em 23514 e derrubava a
+  //     criação da visita inteira, que é a mesma mutação;
+  //   · `consolidarGrupo` levava `situacaoSugerida` (que NASCIA "prospecto")
+  //     para o patch, nos DOIS ramos — e no de UPDATE fora do `preservar`, o
+  //     que rebaixaria um cliente oficial e ativo se o CHECK fosse frouxo.
+  //     `/clientes/migrar` morria sempre que o grupo não tinha proposta aceita.
+  // O `tsc` acusava os DOIS, escondidos dentro do baseline de 83 — que caiu para
+  // 59 quando eles saíram. É a lição desta rodada: baseline de erro de tipo é
+  // onde defeito de PRODUÇÃO se esconde.
+  //
+  // O PAR NEGATIVO É O QUE PRENDE ISSO: o valor não pode VOLTAR por nenhum dos
+  // dois caminhos. A conferência continua imprimindo o CHECK vivo porque saber
+  // qual constraint está de pé vale por si.
+  eq('CRÍTICO: a migration imprime o CHECK vivo de `clientes.situacao` (conferência 7), e NENHUM dos dois escritores de "prospecto" existe mais — nem o de criar prédio novo, nem o da consolidação, que ainda por cima escrevia fora do preservar',
+     [/pg_get_constraintdef/.test(u84Vivo),
+      /clientes_situacao_check/.test(u84Vivo),
+      /situacao: "prospecto"/.test(fs84.readFileSync('src/routes/_authenticated/gerencial.nova.tsx', 'utf8')),
+      // AS DUAS PERNAS DE BAIXO MEDEM LINHA VIVA, e a distinção não é zelo: a
+      // primeira versão delas casou o COMENTÁRIO que explica o conserto
+      // (`Isto escrevia \`situacao: g.situacaoSugerida\``) e ficou vermelha
+      // sobre um arquivo correto. É a regra 2 na variação mais antiga —
+      // "a regex casa a linha comentada" — mordendo a asserção escrita para
+      // ensinar exatamente isso.
+      // A SEGUNDA PERNA RECORTA O OBJETO `patch` E PERGUNTA SE ELE NOMEIA A
+      // COLUNA — não se ele contém um literal. Prender `situacao: g.` deixou
+      // passar uma mutação que escreveu `situacao: (g as any).situacaoSugerida`:
+      // o conceito é "a consolidação não decide situação comercial", e medir a
+      // grafia de uma expressão é medir outra coisa. Mesma família da regra 2.
+      (() => { const vivo = fs84.readFileSync('src/features/clientes/data.ts', 'utf8')
+                 .split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+               const i = vivo.indexOf('const patch: ClientePatch = {');
+               const patch = i < 0 ? null : vivo.slice(i, vivo.indexOf('\n  };', i));
+               return [/situacaoSugerida:/.test(vivo),
+                       patch === null || /(^|\s)situacao:/.test(patch)]; })()],
+     [true, true, false, [false, false]]);
+  eq('CRÍTICO: o COMMENT ON TRIGGER diz que ele não distingue "não veio" de "veio igual", e o COMMENT ON FUNCTION diz que "endereço" é UMA coluna (cep/cidade/uf/complemento não disparam) — um comentário que promete mais do que o mecanismo faz é pior que comentário nenhum',
+     [/não distingue/.test(u84.slice(u84.indexOf('COMMENT ON TRIGGER'))),
+      /ESCOPO: "endereço" aqui é UMA coluna/.test(u84),
+      /perna 4 do PORTÃO/.test(u84)],
+     [true, true, true]);
+  // ── A INSTRUÇÃO DE RECUPERAÇÃO ERA FALSA, E UMA CÓPIA DELA IA PARA O
+  //    CATÁLOGO DO BANCO DE PRODUÇÃO ─────────────────────────────────────────
+  //
+  // Cinco lugares diziam "salve de novo sem tocar no endereço e ela volta".
+  // ELA NÃO VOLTA: `clientes.$id.tsx` faz `setEditando(false)` no `onSuccess`,
+  // o que DESMONTA o `ClienteForm` e joga o estado fora; ao reabrir,
+  // `ClienteForm` inicializa `lat`/`lng` de `inicial?.latitude`, que agora é
+  // `null`, e `submeter()` manda SEMPRE as duas colunas — ou seja, salvar de
+  // novo remanda o mesmo NULL. O gestor segue o manual ao pé da letra, nada
+  // acontece, e ele conclui que a coordenada é irrecuperável.
+  //
+  // O que FUNCIONA é clicar em "Localizar no mapa" de novo: aí
+  // `NEW.endereco IS DISTINCT FROM OLD.endereco` é FALSO (o endereço já foi
+  // gravado na primeira vez), a perna 1 não dispara, e a coordenada sobrevive.
+  //
+  // O PAR NEGATIVO É A METADE QUE IMPORTA: a frase falsa não pode VOLTAR. Um
+  // `COMMENT ON TRIGGER` que descreve um mecanismo ausente é pior que comentário
+  // nenhum — e este é o único texto desta entrega que é gravado em produção,
+  // onde ninguém o revisa.
+  eq('CRÍTICO: a instrução de recuperação da perna 4 é "Localizar no mapa de novo e salvar", e a frase FALSA "salvar de novo sem tocar no endereço" NÃO existe em lugar nenhum — ela não devolve nada (o `onSuccess` desmonta o ClienteForm, ele reabre lendo a coordenada NULA do banco e `submeter()` remanda esse NULL), e uma das cópias dela ia para o COMMENT ON TRIGGER, ou seja, para o catálogo do banco de PRODUÇÃO',
+     (() => { // DUAS ARMADILHAS DE MEDIÇÃO, as duas pegas por mutante:
+              //
+              // (a) A ÂNCORA DO RECORTE. `indexOf('COMMENT ON TRIGGER')` casa
+              //     primeiro a MENÇÃO dentro do comentário do §2 ("escrito no
+              //     COMMENT ON TRIGGER"), não o comando — o recorte engolia o
+              //     §2 inteiro, e apagar a frase certa do comando de verdade
+              //     continuava verde porque a mesma frase estava no §2. A
+              //     âncora é o comando, com o nome do gatilho, e é CONTADA.
+              //
+              // (b) LITERAIS SQL ADJACENTES SÃO UMA STRING SÓ. O Postgres
+              //     concatena `'… sem tocar no '` + `'endereço.'`, e era assim
+              //     que a frase falsa estava escrita: uma regex sobre o arquivo
+              //     cru não a vê atravessar a quebra de linha. Cola-se antes de
+              //     medir.
+              const ALVO = 'COMMENT ON TRIGGER trg_clientes_zerar_coordenada';
+              const iC = u84.indexOf(ALVO);
+              const iF = u84.indexOf('§3) O PORTÃO');
+              const cmt = iC >= 0 && iF > iC ? u84.slice(iC, iF) : '';
+              const colado = (s) => s.replace(/'[ \t]*\r?\n[ \t]*'/g, '');
+              const prod = fs84.readFileSync('docs/PRODUTO.md', 'utf8');
+              const man = fs84.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+              return [(u84.match(/COMMENT ON TRIGGER trg_clientes_zerar_coordenada/g) ?? []).length,
+                      cmt.length > 300,
+                      /sem tocar no endereço|sem tocar em nada/i.test(colado(u84)),
+                      /sem tocar no endereço/i.test(prod + man),
+                      /"Localizar no mapa"/.test(colado(cmt)),
+                      /o endereço já está gravado/i.test(colado(cmt)),
+                      /Localizar no mapa" de novo e salvar/i.test(prod),
+                      /"Localizar no mapa" e salvar/.test(man)]; })(),
+     [1, true, false, false, true, true, true, true]);
+  // ── OS DOIS ESCOPOS, E POR QUE ESTA ASSERÇÃO EXISTE ──────────────────────
+  //
+  // O texto anterior da R114 e do cabeçalho desta migration diziam "quem zera é
+  // o banco, E SÓ O BANCO" — vinte linhas depois de dizer que as quatro telas
+  // apagam a coordenada no `onChange`. A regra se contradizia dentro dela mesma,
+  // e a leitura natural mandava o próximo leitor APAGAR os quatro
+  // `setResolvido(null); setLat(null)` por violarem a doutrina.
+  //
+  // Eles não violam: são ESCOPOS DIFERENTES. O app limpa o estado de UM
+  // formulário, antes de gravar, para a pessoa VER — inclusive em cadastro NOVO,
+  // que é um INSERT, onde um BEFORE UPDATE não alcança nada. O banco cobre todo
+  // caminho de escrita que o formulário não é.
+  eq('CRÍTICO: nem a migration nem a R114 dizem mais "quem zera é o banco, e SÓ o banco" — a frase contradizia, na mesma regra, o item que manda as quatro telas limparem a coordenada, e mandava o próximo leitor apagar esse conserto. As duas camadas são ESCOPOS diferentes (o app limpa estado de formulário e alcança o INSERT; o banco cobre o que não passa por formulário), e as duas o dizem',
+     (() => { const prod = fs84.readFileSync('docs/PRODUTO.md', 'utf8');
+              return [/só o banco/i.test(u84), /e só o banco/i.test(prod),
+                      /ESCOPOS DIFERENTES|escopos diferentes/.test(u84),
+                      /escopos\s*\n?\s*diferentes|escopos diferentes/i.test(prod),
+                      /NÃO APAGUE os `setLat\(null\)`/.test(u84),
+                      /INSERT/.test(prod.slice(prod.indexOf('**R114**')))]; })(),
+     [false, false, true, true, true, true]);
+  // E OS COMENTÁRIOS DO CATÁLOGO NÃO PODEM APONTAR PARA UM ARQUIVO QUE NÃO
+  // EXISTE MAIS. O `COMMENT ON FUNCTION` citava `features/programacao/rota.ts`
+  // como o consumidor da coordenada — em produção, meses depois, alguém leria
+  // isso no catálogo e iria procurar um arquivo apagado.
+  eq('CRÍTICO: nenhum comentário de catálogo (nem o resto da migration) aponta para `features/programacao/rota.ts` — o arquivo foi apagado, e um COMMENT ON FUNCTION que nomeia um arquivo inexistente é a citação inventada de novo, agora dentro do banco de produção, onde ninguém a revisa',
+     [/rota\.ts/.test(u84), /MapaClientes/.test(u84)], [false, true]);
+  // ── A ESTIMATIVA SÓ PODE SER CITADA NO FUTURO, E É AQUI QUE ISSO SE PRENDE ─
+  //
+  // `src/` não pode nomeá-la de jeito nenhum (o censo de prosa, acima). A
+  // MIGRATION pode — duas vezes, e as duas com o marcador de AUSÊNCIA colado:
+  // o cabeçalho ("ela ainda não existe no código") e o COMMENT ON FUNCTION
+  // ("entrega futura"), que é o único destes textos gravado em produção.
+  // Sem esta linha, apagar o marcador deixa duas afirmações em PRESENTE dentro
+  // do catálogo do banco, que é a classe de defeito desta rodada inteira.
+  // Mede-se CADA menção, e não o arquivo: uma delas perder o marcador não pode
+  // ficar verde por causa da outra.
+  eq('CRÍTICO: as duas (e só duas) menções à estimativa na migration vêm com o marcador de AUSÊNCIA colado — "ainda não existe no código" no cabeçalho e "entrega futura" no COMMENT ON FUNCTION, que é gravado no catálogo de produção. Comentário que descreve mecanismo ausente no PRESENTE é pior que comentário nenhum, e este é o único texto desta entrega que ninguém revisa depois',
+     (() => { const mm = [...u84.matchAll(/estimativa/g)]
+                .map((m) => u84.slice(m.index, m.index + 260).replace(/\s+/g, ' '));
+              return [mm.length,
+                      mm.filter((t) => /ainda não existe no código|entrega futura/.test(t)).length]; })(),
+     [2, 2]);
+  eq('U84: a conferência 5 usa a caixa ESTREITA da Grande São Paulo, e NÃO a caixa larga da casa que aceita BH e o Rio',
+     /latitude BETWEEN -24\.1 AND -23\.2 AND longitude BETWEEN -47\.2 AND -46\.2/.test(u84), true);
+  eq('U84: tem DESFAZER comentado, e ele diz o que NÃO alcança (as coordenadas já zeradas — restaurá-las devolveria o dado errado, de um endereço que o cliente não tem mais)',
+     [/DESFAZER/.test(u84), /--   DROP TRIGGER IF EXISTS trg_clientes_zerar_coordenada/.test(u84),
+      /O QUE ESTE RODAPÉ NÃO ALCANÇA/.test(u84)],
+     [true, true, true]);
+
+  // ── 6) DOCUMENTAÇÃO ──────────────────────────────────────────────────────
+  {
+    const prod84 = fs84.readFileSync('docs/PRODUTO.md', 'utf8');
+    eq('R114 está documentado pelo que a entrega FAZ — a coordenada conferida e o gatilho —, e diz explicitamente que o deslocamento continua digitado à mão. Uma regra que descrevesse a estimativa seria a regra descrevendo código que não existe',
+       [/\*\*R114\*\*/.test(prod84),
+        /O mapa entendeu/.test(prod84),
+        /digitado à mão/.test(prod84),
+        /rota\.ts/.test(prod84)],
+       [true, true, true, false]);
+    // ── A R114 NOMEAVA AS QUATRO TELAS ERRADAS, E CONFERÊNCIA É ASSERÇÃO DE
+    //    PRODUTO (regra 7) ────────────────────────────────────────────────
+    //
+    // O texto listava "ficha do cliente, nova visita, /gerencial/nova, e a
+    // FICHA DE VISITA". A ficha de visita (`visita.$id.tsx`) não imprime nada:
+    // a geocodificação dela foi APAGADA e ela não tem botão. Quem imprime é a
+    // EDIÇÃO da visita (`VisitaForm`), que o texto não listava. Ou seja: o
+    // documento contradizia o censo de `geocode(` vinte linhas de código acima,
+    // e quem abrisse a ficha procurando a linha concluiria que quebrou.
+    //
+    // A LISTA ESPERADA NÃO É ESCRITA AQUI (regra 9): ela é o `chamamGeocode84`
+    // medido do disco, e cada arquivo é traduzido para o NOME DE TELA que o
+    // documento usa. Trocar um pelo outro em qualquer um dos dois lados acende.
+    {
+      const nomeDaTela = {
+        'src/features/clientes/ClienteForm.tsx': 'ficha do cliente',
+        'src/features/visitas/NovaVisitaDialog.tsx': 'nova visita',
+        'src/routes/_authenticated/gerencial.nova.tsx': '/gerencial/nova',
+        'src/features/gerencial/VisitaForm.tsx': 'edição da visita',
+      };
+      const iR114 = prod84.indexOf('**R114**');
+      const secaoR114 = iR114 < 0 ? '' : prod84.slice(iR114, iR114 + 4000);
+      eq('CRÍTICO (regra 7): a R114 nomeia as MESMAS quatro telas que o censo de `geocode(` encontra no disco — ela dizia "e a FICHA de visita", que não geocodifica nada (o corte apagou a dela e ela não tem botão), e omitia a EDIÇÃO da visita, que é justamente onde o gestor mexe em endereço já cadastrado. O documento contradizia a asserção, e conferência é asserção de produto',
+         [secaoR114.length > 1000,
+          chamamGeocode84.map(([p]) => nomeDaTela[p] ?? p).sort()
+            .filter((nome) => !secaoR114.includes(nome)),
+          // o par negativo: a tela ERRADA não pode voltar à lista
+          /e a ficha de visita\)/.test(secaoR114),
+          // …e o documento diz o que aconteceu com a ficha, senão quem a abrir
+          // procurando a linha conclui que quebrou
+          /geocodificação automática\s*\n?\s*\*\*saiu\*\*|geocodificação automática \*\*saiu\*\*/.test(secaoR114)],
+         [true, [], false, true]);
+      const man114 = fs84.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+      eq('CRÍTICO: e o manual conta as QUATRO — ele listava três e faltava a edição da visita, que é a tela onde o gestor mais corrige endereço já cadastrado',
+         chamamGeocode84.map(([p]) => nomeDaTela[p] ?? p).sort().filter((n) => !man114.includes(n)),
+         []);
+    }
+    const plano84 = fs84.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+    eq('U84 tem entrada no diário, e ela declara o ENCOLHIMENTO da entrega e o motivo — a chave que nunca existiu e os FATAIS que sobreviveram a portões verdes',
+       [/^## U84 —/m.test(plano84), /ORS_API_KEY/.test(plano84), /encolheu|ENCOLHEU/.test(plano84)],
+       [true, true, true]);
+    const manual84 = fs84.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+    eq('CRÍTICO: o manual conta as mudanças de comportamento desta rodada — a grade anda junto quando a data muda de semana, a linha "O mapa entendeu" tem de ser LIDA (é a única rede contra a cidade errada), editar o endereço apaga a conferência, e rebuscar um endereço que cai no mesmo ponto zera a coordenada (o conserto é salvar de novo). Mudança de comportamento que só o código sabe é a que vira chamado de suporte',
+       [/move a grade junto|MOVE A GRADE JUNTO/i.test(manual84),
+        /O mapa entendeu/.test(manual84),
+        /a conferência some/.test(manual84),
+        /mesmo ponto do\s+mapa que o antigo/.test(manual84),
+        /nasce \*\*sem\*\* coordenada/.test(manual84)],
+       [true, true, true, true, true]);
+    // E O MANUAL NÃO PODE DESCREVER O QUE FOI CORTADO. Um manual que ensina um
+    // botão que não existe é pior que um manual omisso: quem procurar o `≈` na
+    // tela vai concluir que o sistema está quebrado.
+    eq('CRÍTICO: o manual NÃO ensina o chip "adotar" nem a linha `≈` — eles foram cortados, e um manual que descreve um botão inexistente faz quem o procura concluir que o sistema está quebrado',
+       [/adotar \d+ min|chip de adoção/.test(manual84), /≈/.test(manual84)], [false, false]);
+    const pend84 = fs84.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+    eq('CRÍTICO: as dívidas desta rodada estão declaradas em PENDENCIAS_TECNICAS.md — a janela de carregamento que continua aberta (a metade PRÉ-EXISTENTE está consertada, e era a que produzia o formulário MAIS PERMISSIVO QUE A PORTA), o motivo que a casca de `geocode()` apaga, o `prospecto` que o CHECK vivo recusa, e a entrega adiada com os defeitos já apurados',
+       [/^## P42 —/m.test(pend84), /PRÉ-EXISTENTE/.test(pend84),
+        /mais \*\*permissivo que a porta\*\*|mais permissivo que a porta/.test(pend84),
+        /^## P43 —/m.test(pend84), /nao_encontrado/.test(pend84),
+        /^## P44 —/m.test(pend84), /criarCliente/.test(pend84),
+        /^## P45 —/m.test(pend84),
+        /^## P46 —/m.test(pend84)],
+       [true, true, true, true, true, true, true, true, true]);
   }
 }
 

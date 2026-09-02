@@ -2141,3 +2141,68 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   justamente porque ninguém consertava) e passou a ser o **acordo de resposta**:
   os seis casos são exercitados dos dois lados e comparados valor a valor.
   *(U83.)*
+
+- **R114** — **A coordenada de um cliente é um fato CONFERIDO, não um palpite
+  que sobrevive ao endereço.** Uma coordenada errada não produz erro: produz um
+  ponto plausível. O mapa de clientes desenha o prédio onde ele não fica, quem
+  for até lá vai ao lugar errado, e nada na tela denuncia — porque o rótulo que
+  o sistema imprime é o **nome do prédio**, que está certo. Dois defeitos vivos
+  fabricavam esse ponto, e a R114 fecha os dois.
+
+  **(1) O que o mapa entendeu é LIDO, e não descartado.** As **quatro** telas
+  que geocodificam um endereço são a **ficha do cliente** (`ClienteForm`),
+  a **nova visita** (`NovaVisitaDialog`), o **`/gerencial/nova`**
+  e a **edição da visita** (`VisitaForm`).
+  Na *ficha* de visita a geocodificação automática **saiu**: ela não tem botão,
+  e o mapa só desenha se a visita já tiver coordenada gravada.
+  As quatro guardavam `lat`/`lng` e
+  jogavam fora o bairro, a cidade e a UF que o serviço devolvia junto — a tela
+  mostrava dois números e a palavra "ok". O campo de endereço é **uma linha de
+  texto livre**, e texto livre é como se erra de cidade: "Rua São Paulo, 1200"
+  existe em dezenas de municípios e o mapa escolhe um sozinho. Agora as quatro
+  imprimem *"O mapa entendeu: **Interlagos, São Paulo, SP**"* — nenhuma
+  requisição a mais, o dado já chegava. Duas coordenadas não são conferíveis por
+  um humano; o nome do lugar é.
+
+  E a conferência **vale para o texto que foi perguntado**: editar o endereço
+  depois de localizar apaga a frase e a coordenada nas quatro telas. Sem isso, a
+  própria frase — que manda *"corrija o endereço e localize de novo"* — ficava
+  descrevendo um texto que o campo não continha mais, e a coordenada de X era
+  gravada com o endereço Y.
+
+  Sem clicar em Localizar, o cadastro nasce **sem** coordenada. Ausência é
+  visível e conserta-se com um clique; ponto errado não é visível e ninguém
+  conserta o que não sabe que está errado.
+
+  **(2) Trocar o endereço zera a coordenada, e quem zera é o banco.** Um gatilho
+  em `public.clientes`: o endereço mudou e a coordenada não veio junto ⇒ ela vai
+  a `NULL`. A assimetria decide — promessa esquecida no app dá ponto plausível
+  sobre o endereço *anterior* (invisível); gatilho zeloso dá campo vazio
+  (visível).
+
+  **As duas camadas não são a mesma regra escrita duas vezes — são escopos
+  diferentes**, e é por isso que a R113 não se aplica aqui. O app limpa o
+  **estado do formulário** (item 1 acima), antes de gravar, para a pessoa VER a
+  coordenada sumir e poder relocalizar — inclusive em **cadastro novo**, que é um
+  `INSERT`, onde um gatilho `BEFORE UPDATE` não alcança nada. O banco zera em
+  **todo caminho de escrita que o formulário não é**: `consolidarGrupo`, import,
+  `/gerencial/nova`, o próximo chamador que ninguém escreveu ainda — que é
+  exatamente o modo de falha da U82, onde a promessa morava só na tela e só um
+  dos quatro pontos de chamada a cumpria. *Não apague os `setLat(null)` das
+  quatro telas achando que o banco basta.*
+
+  O gatilho **não distingue** "a coordenada não veio" de "veio igual à que já
+  estava" — e nesta base isso acontece: a U24 geocodificou por CEP, um CEP cobre
+  a quadra, e 46 clientes dividem 20 coordenadas. Rebuscar um endereço que cai no
+  mesmo centróide zera a coordenada recém-conferida. É um fato **medido** pelo
+  portão da migration e escrito no `COMMENT ON TRIGGER`, não uma surpresa. **O
+  conserto é clicar em "Localizar no mapa" de novo e salvar**: na segunda vez o
+  endereço já está gravado, a perna 1 do gatilho é falsa e a coordenada
+  sobrevive. Salvar de novo *sem* relocalizar **não** devolve nada — o formulário
+  reabre lendo a coordenada nula do banco e remanda esse mesmo `NULL`.
+
+  **O que a R114 NÃO entrega.** O deslocamento continua **digitado à mão** (U78).
+  Estimá-lo é entrega própria, com desenho e defeitos já apurados escritos em
+  `docs/PENDENCIAS_TECNICAS.md` — e ela depende de uma chave de serviço de rota
+  que ainda não existe no ambiente, ou seja, não poderia ser exercitada de
+  verdade nesta rodada. *(U84.)*

@@ -25,13 +25,30 @@ as três coisas que já derrubaram o app quando ignoradas.
 
 ### `tsc` — funciona, com um baseline
 
-(Atualizado em 2026-08-24.) A nota antiga dizia que `tsc --noEmit` nunca
-completava — era o disco iCloud da máquina de então. Ele completa em
-segundos e reporta **~85 erros PRÉ-EXISTENTES** (o `types.ts` gerado do
-Supabase está desatualizado desde a Etapa 1 do sistema de OS). O critério
-não é zerar: é **não criar erro novo nos arquivos tocados** —
-`npx tsc --noEmit | grep -c "error TS"` tem de continuar no baseline.
-Verificador + vite build continuam obrigatórios.
+(Atualizado em 2026-09-08, U84.) A nota antiga dizia que `tsc --noEmit` nunca
+completava — era o disco iCloud da máquina de então. Ele completa em segundos.
+
+**Baseline vivo: 59 erros.** Ele foi 85, depois 83, e caiu para **59** na U84.
+A maior parte é o `types.ts` gerado do Supabase, desatualizado desde a Etapa 1
+do sistema de OS. O critério não é zerar: é **não criar erro novo nos arquivos
+tocados** — `npx tsc --noEmit | grep -c "error TS"` tem de continuar no
+baseline. Verificador + vite build continuam obrigatórios.
+
+**E o baseline é onde defeito de PRODUÇÃO se esconde — esta é a lição da U84.**
+Os 83 continham **dois** `TS2322` que eram bugs vivos: `situacao: "prospecto"`
+escrito por `gerencial.nova.tsx` e por `consolidarGrupo`, valor que a U27 já
+tinha derrubado do CHECK de `public.clientes`. O primeiro derrubava o cadastro
+de cliente novo (e a visita junto, mesma mutação); o segundo matava
+`/clientes/migrar`. O compilador apontava o dedo o tempo todo, e os dois estavam
+no meio de dezenas de linhas que ninguém lê uma a uma. Apagá-los levou o número
+de 78 a **59** (os 83 tinham virado 78 antes, com a consolidação das quatro
+cópias de Nominatim). Dezenove erros — quase um quarto do baseline — eram
+consequência de dois bugs de produção.
+
+Regra prática que sai daí: **quando o baseline CAI depois de um conserto, releia
+a lista inteira** — a queda é sinal de que havia mais defeito real ali dentro.
+E ao atualizar este número, atualize-o **também** em `docs/PENDENCIAS_TECNICAS.md`
+onde ele for citado; baseline escrito em dois lugares diverge em silêncio.
 
 ## As três regras que já derrubaram o app
 

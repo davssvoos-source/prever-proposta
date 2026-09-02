@@ -40,6 +40,7 @@ import { useDuplas, useEscala } from "@/features/duplas/data";
 import { composicaoDaDupla, montarEscala, rotuloDaComposicao } from "@/features/duplas/modelo";
 import {
   blocoVale,
+  chamadosParaGrade,
   classificarChamado,
   comparaBlocos,
   dataDoDia,
@@ -296,6 +297,11 @@ export function AgendaDoChamado({ chamado }: Props) {
 
       {abertura && (
         <EditorDoBloco
+          // O `diaConsultado` do editor é estado LOCAL dele e segue o campo do
+          // formulário. Abrir OUTRO bloco sem remontar deixaria a consulta na
+          // semana do bloco anterior — a chave garante que cada abertura nasce
+          // consultando o próprio dia.
+          key={`${abertura.bloco?.id ?? "novo"}-${abertura.dia}`}
           abertura={abertura}
           chamado={chamado}
           aoFechar={() => setAbertura(null)}
@@ -327,13 +333,38 @@ function EditorDoBloco({ abertura, chamado, aoFechar }: {
   const { data: pessoas = [] } = usePessoas();
   const { data: duplas = [] } = useDuplas();
   const { data: escala = montarEscala([], []) } = useEscala();
-  const { data: blocosDaSemana = [] } = useBlocosDaSemana(abertura.dia);
+  /**
+   * O DIA DA CONSULTA SEGUE O CAMPO DO FORMULÁRIO — e antes ele não seguia.
+   *
+   * `useBlocosDaSemana(abertura.dia)` fixava a janela na ABERTURA, enquanto o
+   * campo de dia lá dentro é livre. Trocar a data para outra semana deixava
+   * `blocos` sem UM bloco daquele dia, e `erroDoAgendamento` rodava sobre essa
+   * lista: ele deixava de ver o conflito e de somar a jornada daquele dia. O
+   * formulário ficava MAIS PERMISSIVO QUE A PORTA — a tela deixava marcar e o
+   * EXCLUDE recusava depois, com 23P01 —, que é a pior direção possível para
+   * uma divergência entre a tela e o banco.
+   *
+   * É defeito PRÉ-EXISTENTE, e levantar o dia para cá é o conserto inteiro.
+   */
+  const [diaConsultado, setDiaConsultado] = useState(abertura.dia);
+  const { data: blocosDaSemana = [] } = useBlocosDaSemana(diaConsultado);
   const { data: sessao } = useSessao();
   const autz = useAutorizacaoDaAgenda(sessao?.userId ?? null, ordens as any[]);
 
   // `dataDoDia` monta a data pelos COMPONENTES: `new Date('2026-09-01')` seria
   // meia-noite UTC e devolveria 31/08 no Brasil — e a semana ISO iria junto.
-  const semana = referenciaSemanal(dataDoDia(abertura.dia) ?? new Date());
+  //
+  // E A SEMANA DAS EQUIPES SAI DO **MESMO** `diaConsultado` QUE A CONSULTA DE
+  // BLOCOS. Enquanto ela saía de `abertura.dia` — congelado na abertura —,
+  // trocar a data para outra semana movia a consulta e NÃO movia a composição:
+  // o `<select>` imprimia "Equipe A · João e Pedro" quando a escala da semana
+  // escolhida põe João e Carlos, uma equipe que só existe na semana de destino
+  // não era oferecida (o filtro de membros roda contra a semana velha), e a
+  // frase da divergência degradava para "outra equipe" porque `derivada` vem da
+  // semana certa e `equipes`, da errada. `erroDoAgendamento` não pega nada
+  // disso: ele confere conflito de PESSOA na semana certa, e nunca confere se a
+  // equipe escolhida existe naquela semana. Um identificador conserta.
+  const semana = referenciaSemanal(dataDoDia(diaConsultado) ?? new Date());
   const nomePorId = useMemo(
     () => Object.fromEntries(pessoas.map((p: any) => [p.id, p.nome ?? "—"])) as Record<string, string>,
     [pessoas],
@@ -351,9 +382,26 @@ function EditorDoBloco({ abertura, chamado, aoFechar }: {
   // A lista de chamados vai COMPLETA (nunca filtrada): `chamadoOculto` é
   // `chamado_id !== null && !chamado`, e uma lista curta faria o conflitante
   // legítimo se apresentar como "Outro atendimento" na frase da recusa.
+  //
+  // E A CONVERSÃO É UM CONSTRUTOR, NÃO UM `as unknown as` (U84). A dupla
+  // asserção que estava aqui DESLIGAVA o typechecker exatamente neste ponto: a
+  // gêmea dela no `/chamados/programacao` foi morta na U80 e ganhou asserção, e
+  // ESTA sobreviveu porque a asserção olhava só para o outro arquivo — presença
+  // provada num lugar, ausência não provada no outro. Com ela, uma coluna que a
+  // consulta não traga chega `undefined` (e não `null`) ao formulário, sem erro
+  // de tipo e sem censo: o formulário mudaria de comportamento conforme a PORTA
+  // por onde foi aberto, que é o defeito mais difícil de reproduzir que existe.
+  //
+  // E O `chamado` QUE CHEGA POR PROP PASSA PELO MESMO CONSTRUTOR. Ele vem do
+  // PainelChamado com um `as any` (PainelChamado.tsx:1209) — outro typechecker
+  // desligado, do outro lado do mesmo cano. Na prática ele quase sempre já está
+  // dentro de `ordens` e a versão construída vence; "quase sempre" não é
+  // garantia, e o ramo em que ele NÃO está é justamente o ramo raro que ninguém
+  // testa. Convertê-lo custa uma linha e tira o `as any` do caminho dos dados.
   const chamados = useMemo(() => {
-    const lista = ordens as unknown as ChamadoParaGrade[];
-    return lista.some((c) => c.id === chamado.id) ? lista : [...lista, chamado];
+    const lista = chamadosParaGrade(ordens as unknown as Array<Record<string, unknown>>);
+    if (lista.some((c) => c.id === chamado.id)) return lista;
+    return [...lista, ...chamadosParaGrade([chamado as unknown as Record<string, unknown>])];
   }, [ordens, chamado]);
 
   return (
@@ -362,6 +410,8 @@ function EditorDoBloco({ abertura, chamado, aoFechar }: {
       aoFechar={aoFechar}
       aoGravar={aoFechar}
       blocos={blocosDaSemana}
+      diaDosBlocos={diaConsultado}
+      aoTrocarDia={setDiaConsultado}
       chamados={chamados}
       equipes={equipes}
       escala={escala}

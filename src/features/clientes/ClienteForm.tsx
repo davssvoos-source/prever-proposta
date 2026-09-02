@@ -38,6 +38,26 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
   const [lat, setLat] = useState<number | null>(inicial?.latitude ?? null);
   const [lng, setLng] = useState<number | null>(inicial?.longitude ?? null);
   const [geocodificando, setGeocodificando] = useState(false);
+  /**
+   * O QUE O MAPA ENTENDEU — U84, e a ausência disto era o defeito.
+   *
+   * `geocode()` devolve `bairro/cidade/uf/display_name` desde a U84,
+   * explicitamente "para um humano LER e dizer: não é essa cidade". Esta tela
+   * lia `lat`/`lng` e JOGAVA O RESTO FORA: mostrava dois números e a palavra
+   * "Coordenadas encontradas." O campo de endereço é UMA linha de texto livre
+   * (não há campo de cidade nem de UF nesta ficha), e texto livre é COMO SE
+   * ERRA DE CIDADE — "Rua São Paulo, 1200" com `countrycodes=br` e `limit=1`
+   * devolve a homônima de Guarulhos, 26 km fora, sem erro nenhum.
+   *
+   * E NADA MAIS NO SISTEMA RECONFERE. O mapa de clientes desenha o ponto sem
+   * opinar sobre ele, e todo rótulo que o sistema imprime é o NOME DO PRÉDIO,
+   * que está certo — não existe tela onde a cidade errada apareça. O erro fica
+   * PERMANENTE no cadastro e é invisível: quem for até lá vai ao lugar errado.
+   *
+   * A correção não acrescenta mecanismo nenhum e não faz UMA requisição a mais:
+   * ela para de apagar o que já foi buscado.
+   */
+  const [resolvido, setResolvido] = useState<string | null>(null);
   const [nomeSindico, setNomeSindico] = useState(inicial?.nome_sindico ?? "");
   const [telSindico, setTelSindico] = useState(inicial?.telefone_sindico ?? "");
   const [emailSindico, setEmailSindico] = useState(inicial?.email_sindico ?? "");
@@ -125,9 +145,22 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
       if (r) {
         setLat(r.lat);
         setLng(r.lng);
-        toast.success("Coordenadas encontradas.");
+        setResolvido(
+          r.display_name || [r.bairro, r.cidade, r.uf].filter(Boolean).join(", ") || null,
+        );
+        toast.success("Coordenadas encontradas — confira o lugar abaixo.");
       } else {
-        toast.error("Endereço não localizado no mapa.");
+        setResolvido(null);
+        toast.error(
+          // A CASCA `geocode()` COLAPSA "não achei" e "o serviço recusou" no
+          // mesmo `null` — o SERVIDOR distingue os dois (`nao_encontrado` ×
+          // `servico_falhou`) e a casca de gerencial/data.ts apaga a diferença.
+          // Enquanto ela apagar, esta frase NÃO PODE afirmar que o endereço não
+          // existe: o bloqueio do Nominatim é por IP e cai sobre a operação
+          // inteira, e "este endereço não existe" é a única frase do sistema que
+          // instrui a pessoa a martelar o serviço que acabou de bloqueá-la.
+          "Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.",
+        );
       }
     } finally {
       setGeocodificando(false);
@@ -241,7 +274,45 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
         <span style={SEC_LABEL}>Endereço</span>
         <div>
           <label style={LABEL}>Endereço completo</label>
-          <input style={INPUT} value={endereco} onChange={(e) => setEndereco(e.target.value)} placeholder="Rua, número, bairro, cidade" />
+          {/* EDITAR O ENDEREÇO INVALIDA A CONFERÊNCIA E A COORDENADA.
+              A frase impressa abaixo manda, com todas as letras, "corrija o
+              endereço e localize de novo" — e o gestor fazia a primeira metade
+              e esquecia a segunda. Sem esta limpeza, "O mapa entendeu: …
+              Guarulhos" continuava na tela descrevendo um texto que o campo não
+              contém mais, e `submeter()` gravava a coordenada de Guarulhos com
+              o endereço novo.
+
+              E O CAMPO TRAVA ENQUANTO A BUSCA ESTÁ NO AR, pelo mesmo motivo,
+              por outra porta: sem isso, editar o texto DURANTE a requisição
+              deixava a resposta do texto ANTIGO chegar depois e reescrever
+              `resolvido`/`lat`/`lng` por cima do texto NOVO — a mesma frase
+              obsoleta, a mesma coordenada errada, agora por CORRIDA em vez de
+              por esquecimento. A espera é limitada (o freio do Nominatim, 1,1 s,
+              mais o timeout de 4 s), e travar o campo fecha a corrida inteira
+              sem `ref`, sem token de requisição e sem tocar no contrato de
+              `geocode()`.
+
+              E O GATILHO DA U84 NÃO PEGA ESTE CASO. Ele zera quando o endereço
+              muda E a coordenada veio IGUAL; aqui a coordenada MUDOU (o botão
+              foi apertado), a perna 2 é falsa, e ele não age. Num cliente NOVO
+              nem chega perto: ele é BEFORE UPDATE e isto é um INSERT.
+
+              Zerar aqui é a mesma política do gatilho, um passo antes, onde a
+              pessoa ainda vê: o campo passa a dizer "sem coordenadas" e o botão
+              volta a ser o único caminho. É deleção de estado, não mecanismo
+              novo — e é o que `NovaVisitaDialog` e `/gerencial/nova` já fazem. */}
+          <input
+            style={INPUT}
+            value={endereco}
+            disabled={geocodificando}
+            onChange={(e) => {
+              setEndereco(e.target.value);
+              setResolvido(null);
+              setLat(null);
+              setLng(null);
+            }}
+            placeholder="Rua, número, bairro, cidade"
+          />
         </div>
         <div>
           <label style={LABEL}>Complemento</label>
@@ -268,6 +339,22 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
             {lat != null && lng != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "sem coordenadas"}
           </span>
         </div>
+        {/* DOIS NÚMEROS NÃO SÃO CONFERÍVEIS POR UM HUMANO. O nome do lugar é.
+            Esta linha é a única rede que existe contra "o mapa achou a rua
+            homônima na cidade errada": ler o que o mapa RESPONDEU, e não
+            confiar no que foi MANDADO. */}
+        {resolvido && (
+          <span style={{ display: "block", fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+            O mapa entendeu: <b>{resolvido}</b> — se não é este o lugar, corrija o endereço
+            (inclua bairro e cidade) e localize de novo.
+          </span>
+        )}
+        {resolvido === null && lat != null && lng != null && (
+          <span style={{ display: "block", fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+            Coordenada já cadastrada — ninguém conferiu nesta sessão de qual lugar ela é.
+            Se o endereço acima mudou, use “Localizar no mapa” e leia o que o mapa responder.
+          </span>
+        )}
       </div>
 
       {/* Contatos */}

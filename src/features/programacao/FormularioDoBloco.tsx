@@ -125,6 +125,37 @@ interface Props {
   /** o gesto gravou; o pai decide fechar ou avançar para o próximo da fila */
   aoGravar: (valores: BlocoEditavel) => void;
   blocos: BlocoDeAgenda[];
+  /**
+   * O DIA CUJA SEMANA O INVÓLUCRO CONSULTOU para montar `blocos`. Obrigatório.
+   *
+   * `blocos` é sempre a janela de UMA SEMANA (`useBlocosDaSemana` /
+   * `useBlocosDaGrade`), e o campo de dia deste formulário é um `<input
+   * type="date">` LIVRE. Este componente só sabe se precisa pedir OUTRA semana
+   * comparando a semana do campo com a semana desta prop — e é essa comparação
+   * que evita avisar o invólucro a cada tecla dentro da MESMA semana, onde a
+   * consulta devolveria exatamente a mesma lista.
+   *
+   * É prop OBRIGATÓRIA para que o `tsc` force qualquer invólucro futuro a
+   * responder a pergunta em vez de herdar um silêncio por omissão.
+   */
+  diaDosBlocos: string;
+  /**
+   * O invólucro é avisado quando o dia muda de SEMANA, PARA A CONSULTA SEGUIR
+   * O CAMPO.
+   *
+   * O defeito é PRÉ-EXISTENTE e não tem nada de estimativa: `blocos` alimenta
+   * `blocosDoDia`, que alimenta `erroDoAgendamento`. Trocar a data para outra
+   * semana deixava a lista SEM os blocos daquele dia, e a checagem de conflito
+   * e a soma da jornada rodavam sobre uma lista que não continha o dia — o
+   * formulário ficava MAIS PERMISSIVO QUE A PORTA (o EXCLUDE e a RPC recusavam
+   * depois, com 23P01), que é a pior direção da divergência: a tela deixa
+   * marcar e o banco recusa.
+   *
+   * Levantar o dia para o invólucro conserta isso com uma mudança só. O preço é
+   * visível e está no manual: em /chamados/programacao a grade ANDA JUNTO
+   * quando a data do formulário muda de semana.
+   */
+  aoTrocarDia?: (dia: string) => void;
   chamados: ChamadoParaGrade[];
   equipes: { id: string; rotulo: string }[];
   escala: Escala;
@@ -148,7 +179,8 @@ function minutosDaHora(v: string): number | null {
 }
 
 export function FormularioDoBloco({
-  abertura, erroInicial, aoFechar, aoGravar, blocos, chamados, equipes, escala, autz, isLight, rota,
+  abertura, erroInicial, aoFechar, aoGravar, blocos, diaDosBlocos, aoTrocarDia,
+  chamados, equipes, escala, autz, isLight, rota,
 }: Props) {
   const marcar = useMarcarBloco();
   const cancelar = useCancelarBloco();
@@ -184,6 +216,27 @@ export function FormularioDoBloco({
   const chamado = chamadoId ? porId.get(chamadoId) ?? null : null;
   const blocosDoDia = useMemo(() => blocos.filter((b) => b.dia === dia), [blocos, dia]);
   const desloc = numeroOuNulo(deslocamento) ?? 0;
+
+  /**
+   * A SEMANA QUE O INVÓLUCRO CONSULTOU.
+   *
+   * Ela existe para o `onChange` do campo de dia saber SE precisa avisar o
+   * invólucro: a consulta de blocos é POR SEMANA (`gte(dia, segunda) /
+   * lte(dia, domingo)`), então andar de terça para quarta não muda UMA linha de
+   * `blocos` — avisar ali seria uma navegação da página inteira sem nenhum
+   * efeito sobre a lista. O outro lado da comparação o `onChange` calcula na
+   * hora, com o valor que acabou de chegar do campo; ter uma variável para ele
+   * aqui seria um segundo cálculo do mesmo número, e a versão anterior deste
+   * bloco tinha exatamente isso — um `semanaDoDia_` que o `onChange` NÃO lia,
+   * descrito por este docblock como se lesse.
+   *
+   * `semanaDoDia` é a MESMA chave ISO do resto do sistema; o formulário não
+   * reimplementa nenhuma aqui. Dia malformado devolve `null`, e `null` nunca é
+   * comparado com `null` como se fosse igualdade conhecida — quando não se sabe
+   * a semana, o aviso SAI (é o lado seguro: uma consulta a mais, nunca uma
+   * lista parcial a menos).
+   */
+  const semanaDosBlocos = diaDosBlocos ? semanaDoDia(diaDosBlocos, referenciaSemanal) : null;
 
   /**
    * A PROPOSTA DE HORA, e ela é PROPOSTA: `primeiroInicioPossivel` devolve o
@@ -507,9 +560,42 @@ export function FormularioDoBloco({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
             <label style={rotulo}>Dia</label>
+            {/* A JANELA SEGUE O CAMPO — E SÓ QUANDO A SEMANA MUDA.
+                `aoTrocarDia` avisa o invólucro para ele refazer a consulta;
+                sem isso `blocos` fica PARCIAL e `erroDoAgendamento` deixa de
+                ver os conflitos daquele dia — o formulário fica mais permissivo
+                que a porta, e o EXCLUDE recusa depois.
+
+                A GUARDA DE SEMANA NÃO É ENFEITE. Em /chamados/programacao o
+                `aoTrocarDia` É uma navegação da página inteira, e o
+                `<input type="date">` emite um `change` por segmento
+                comprometido — a seta ↑ segurada é um evento por passo. Dentro
+                da MESMA semana a consulta devolveria a mesma lista, então
+                avisar ali é render (e navegação) puro desperdício. A chave da
+                comparação é a mesma `semanaDoDia` que a consulta usa.
+
+                E O QUE A GUARDA **NÃO** COBRE, dito aqui para ninguém supor o
+                contrário: o ANO digitado dígito a dígito. Teclar "2026" produz
+                as datas dos anos 0002, 0020, 0202 e 2026, que são QUATRO
+                semanas distintas — a guarda passa nas quatro e são quatro
+                navegações. Um piso (`v >= "2000-01-01"`) fecharia isso e abriria
+                coisa pior: o campo continuaria ACEITANDO o ano parcial, só que
+                sem avisar o invólucro, e aí `blocos` volta a não conter o dia
+                escolhido — que é exatamente a cegueira PRÉ-EXISTENTE que esta
+                prop veio consertar. Três navegações desperdiçadas e visíveis
+                valem menos que uma checagem de conflito cega. Está declarado em
+                docs/PENDENCIAS_TECNICAS.md, P42.
+
+                O `if (v)` existe porque limpar o campo devolve string vazia, e
+                uma consulta de semana sem dia não tem o que buscar. */}
             <input
               type="date" value={dia}
-              onChange={(e) => { setDia(e.target.value); setErroDoServidor(null); }}
+              onChange={(e) => {
+                const v = e.target.value;
+                setDia(v);
+                if (v && semanaDoDia(v, referenciaSemanal) !== semanaDosBlocos) aoTrocarDia?.(v);
+                setErroDoServidor(null);
+              }}
               style={entrada}
             />
           </div>
@@ -570,7 +656,9 @@ export function FormularioDoBloco({
         {/* A estrada OCUPA a equipe: um dia de quatro visitas espalhadas pela
             cidade apareceria como meio dia livre se o deslocamento não
             contasse, e a grade convidaria a marcar a quinta. Nesta fase ele é
-            DIGITADO — a Fase 2 é que o calcula. */}
+            DIGITADO. Calculá-lo é entrega própria e está descrita em
+            docs/PENDENCIAS_TECNICAS.md — ela precisa de uma chave de serviço de
+            rota que ainda não existe no ambiente. */}
         <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary }}>
           A equipe ocupa {duracaoTexto((numeroOuNulo(servico) ?? 0) + desloc)} do dia: o deslocamento vem ANTES do serviço e conta na jornada.
           {proposta !== null && !bloco && ` Sugestão de início: ${horaTexto(proposta)}.`}

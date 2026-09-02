@@ -7452,3 +7452,133 @@ inofensivo; oferecer é o que grava*. Migration e renderização sobem juntas; a
 entrada em `NAO_OFERECIDOS` sai depois, sozinha, quando o CHECK já aceita o
 valor. É o que fecha a janela de 23514 entre o push (que publica na hora) e a
 migration (rodada à mão).
+
+## U84 — A coordenada conferida (R114 — Fase 2, Passo 2.1)
+
+Esta entrega **encolheu deliberadamente** entre o desenho e o commit. O desenho
+original era a estimativa de deslocamento calculada; ela **saiu inteira** e
+virou entrega própria (`docs/PENDENCIAS_TECNICAS.md`, P46). Fica o que funciona
+hoje, vale sozinho, e conserta defeito vivo.
+
+**Por que a estimativa saiu.** Dois fatos, os dois verificados:
+
+1. `ORS_API_KEY` nunca existiu fora do código — não estava no `.env`, não estava
+   na documentação, e o Davi nunca foi solicitado a criá-la. A estimativa
+   **não podia funcionar em produção**, nem com defeito nem sem, e portanto não
+   podia ser exercitada de verdade por ninguém.
+2. Três rodadas de refutação acharam FATAIS dentro de portões verdes, e os dois
+   últimos eram do mesmo tipo: o piso da adoção usava o fim do **dia** onde a
+   origem usava o bloco **anterior**, e `diaCarregado` comparava o dia pedido com
+   ele mesmo. Código inerte com defeito conhecido acorda no dia em que alguém
+   puser a chave, semanas depois, quando ninguém lembra — então ele não fica
+   dormente: **sai do repositório** e o que se aprendeu fica escrito.
+
+**O que ficou (três peças independentes)**
+
+- **A conferência do mapa.** As quatro telas que geocodificam passam a IMPRIMIR
+  o bairro/cidade/UF que o serviço devolveu, e a APAGAR essa conferência (e a
+  coordenada) quando o endereço é editado depois. Resolve um defeito vivo:
+  coordenada caindo na cidade errada, em silêncio, permanente no cadastro.
+- **A janela segue o campo.** `FormularioDoBloco` avisa o invólucro quando o dia
+  muda de semana, e o invólucro refaz a consulta. Conserta uma cegueira
+  **PRÉ-EXISTENTE**: `blocosDoDia` alimenta `erroDoAgendamento`, e trocar de
+  semana fazia a checagem de conflito e a soma da jornada rodarem sobre uma
+  lista que não continha o dia — formulário **mais permissivo que a porta**.
+- **O gatilho da coordenada (a migration).** Trocar o endereço zera a coordenada,
+  para ela não sobreviver ao endereço que a produziu.
+
+**O que foi APAGADO — e o saldo da entrega é negativo em abuso de terceiro**
+
+Havia **quatro** cópias de Nominatim, todas no navegador, nenhuma com
+User-Agent (o navegador **proíbe** o cabeçalho — cumprir a política era
+literalmente impossível de onde elas estavam). Sobrou **uma**, no servidor
+(`src/lib/geocodificar.functions.ts`), com User-Agent, consulta estruturada,
+`addressdetails=1` e o freio de `src/lib/ritmo.ts`. Saíram junto: o `useEffect`
+de `visita.$id.tsx`, que geocodificava a cada abertura da ficha e **jogava o
+resultado fora**; os **dois `onBlur`** (um Tab pelo formulário gastava
+requisição); e o `", São Paulo, Brasil"` grudado no endereço pelo
+`/gerencial/nova`, que reancorava na capital endereços de Bertioga e Porto
+Seguro — a mesma classe de erro que esta entrega existe para não cometer, já
+dentro do repositório. Essa consolidação também tirou **5 erros** de `tsc` de
+`visita.$id.tsx`.
+
+Também morreu o `as unknown as ChamadoParaGrade[]` de `AgendaDoChamado.tsx`:
+gêmeo do que a U80 matou no route, ele sobreviveu porque a asserção da U80 só
+olhava para o outro arquivo — presença provada num lugar, ausência não provada
+no outro. Com ele, uma coluna que a consulta não traga chega `undefined` em vez
+de `null`, e o formulário muda de comportamento conforme a **porta** por onde
+foi aberto.
+
+**A migration ia ABORTAR, e isso foi pego antes do Davi colar.** O portão do §3
+inseria `situacao = 'prospecto'` em duas linhas descartáveis. A U27 (u27:213-218)
+apagou esse valor do CHECK assim que nenhum prospecto sobrou: a constraint viva é
+`CHECK (situacao IN ('ativo','inativo'))`. O INSERT violaria
+`clientes_situacao_check`, a transação inteira voltaria atrás, e **o gatilho
+nunca seria instalado** — com uma mensagem do Postgres que não nomeia a U84 nem
+diz o que fazer. Corrigido **apagando** a coluna do INSERT: `situacao` é
+`NOT NULL DEFAULT 'ativo'`, aceito pelas duas versões do CHECK que já existiram.
+A conferência 7 da migration passou a **imprimir o CHECK vivo** — não mais como
+pergunta aberta, e sim como retrato de qual versão do CHECK está de pé na base.
+
+**E o `'prospecto'` tinha DOIS escritores, não um — o `tsc` caiu de 83 para 59.**
+A primeira leitura culpou só `criarCliente` do `/gerencial/nova` (todo prédio
+novo batia em `23514`, e como é a mesma mutação, a criação da VISITA caía junto).
+O segundo era pior e não estava declarado: `consolidarGrupo` levava
+`situacaoSugerida` ao `patch`, e no ramo de `UPDATE` **fora do `preservar`** —
+`/clientes/migrar` morria com o CHECK apertado, ou rebaixava um cliente oficial e
+ativo com o frouxo. Os dois foram **apagados** (não é escolha de produto: a U27
+fechou o valor com argumento, e `SITUACAO_LABEL['prospecto']` é `undefined` em
+qualquer tela que o renderize), e `situacaoSugerida` foi deletada junto.
+
+**A lição é sobre o baseline, e é a melhor desta rodada.** Os dois defeitos
+estavam dentro dos 83 erros de `tsc` que a casa carregava como "pré-existentes,
+do `types.ts` do Supabase". O baseline foi de 83 a 78 com a consolidação do
+Nominatim (5 erros de `visita.$id.tsx`), e de 78 a **59** quando os dois
+`'prospecto'` saíram — **dezenove** erros, quase um quarto do baseline, eram
+consequência de dois bugs de produção, e o compilador apontava o dedo desde
+sempre. O critério "não criar erro novo" é barato e por isso sobreviveu; o que
+ele não faz é olhar para os que já estão lá. **Baseline de erro de tipo é onde
+defeito de produção se esconde**, e uma queda no número é sinal para reler a
+lista inteira. Está escrito em `docs/manual/desenvolvimento-e-verificacao.md`.
+
+**A rodada de limpeza que veio depois do corte.** O corte mediu identificadores
+e caminhos; prosa não é identificador, e sobrou uma camada de comentários
+descrevendo a estimativa **no presente** — inclusive um motivo inventado
+(`cliente_sem_coordenada`) que não existe em lugar nenhum do repositório, que é
+a mesma classe de defeito que a casa já pagou com a citação inventada do
+`COMMENT ON COLUMN`. Foram apagados, e `NOMES_MORTOS` passou a cobrir também
+**afirmações em prosa**, não só identificadores e caminhos. Saiu junto a consulta
+ESTRUTURADA de `geocodificar.functions.ts` (`street`/`city`/`state`/`postalcode`)
+— ela nunca teve um preenchedor, o ramo era inalcançável, e **uma asserção verde
+a prendia viva**, que reprovaria a deleção correta: regra 10 dentro do
+verificador.
+
+**E a instrução de recuperação era FALSA, com uma cópia indo para o catálogo do
+banco de produção.** Cinco lugares (o §2 da migration, o `COMMENT ON TRIGGER`, a
+perna 4, a R114 e o manual) diziam *"salve de novo sem tocar no endereço e ela
+volta"*. Não volta: o `onSuccess` desmonta o `ClienteForm`, o formulário reabre
+lendo `inicial?.latitude` — que agora é `null` — e salvar remanda esse mesmo
+`NULL`. O caminho que funciona é **clicar em "Localizar no mapa" de novo e
+salvar**: o endereço já está gravado, a perna 1 é falsa, e a coordenada
+sobrevive. Comentário de catálogo que descreve mecanismo ausente é pior que
+comentário nenhum — ele ensina o próximo leitor a confiar numa proteção que não
+existe.
+
+**A R114 se contradizia dentro dela mesma**, e isso mandava o próximo leitor
+apagar um conserto desta rodada. O item (1) dizia "editar o endereço apaga a
+coordenada nas quatro telas"; o item (2), vinte linhas abaixo, dizia "quem zera é
+o banco, **e só o banco**". As duas camadas não são a mesma regra escrita duas
+vezes: são **escopos diferentes**. O app limpa o estado do FORMULÁRIO, antes de
+gravar, para a pessoa ver e poder relocalizar — inclusive em cadastro novo, que é
+um `INSERT`, onde um `BEFORE UPDATE` não alcança nada. O banco cobre todo caminho
+de escrita que o formulário não é.
+
+**PENDENTE — nada bloqueia o deploy desta entrega.** Não há chave a configurar,
+não há coluna nova, não há RPC nova. `CAMPOS_BLOCO` não mudou e a consulta de
+chamados não mudou. A migration pode rodar antes ou depois do push, e sozinha ela
+já melhora o sistema de hoje.
+
+**Uma mudança de comportamento visível, e o Davi precisa saber antes.** Trocar a
+data dentro do formulário agora **navega a grade** para aquela semana (só quando
+a semana muda). É o preço do conserto — a consulta precisa seguir o campo — e
+está no manual.

@@ -600,6 +600,15 @@ function ProgramacaoPage() {
   const abrirDarHorario = (c: ChamadoDaFila, herdar?: { servicoMin: number | null; deslocamentoMin: number | null }) => {
     setErroDoArrasto(null);
     const doChamado = parDoInstante(c.data_hora_agendada)?.dia ?? dia;
+    // A JANELA SEGUE O DIA JÁ NA ABERTURA, e não só quando alguém troca o
+    // campo. Um chamado com data em OUTRA semana chega aqui pelos "irmãos"
+    // (`useBlocosDosChamados` traz blocos de fora da semana desenhada), e o
+    // formulário abriria num dia que a consulta da grade NÃO cobre: a lista
+    // ficaria parcial e `erroDoAgendamento` deixaria de ver os conflitos
+    // daquele dia — formulário mais permissivo que a porta, e o EXCLUDE
+    // recusando depois. Navegar aqui é o mesmo gesto do `aoTrocarDia`, na porta
+    // que o `aoTrocarDia` não alcança porque ninguém trocou nada.
+    if (doChamado !== dia) setDia(doChamado);
     const restantes = semHorarioDoDia.filter((x) => x.id !== c.id).length;
     setGesto({
       bloco: null, chamadoId: c.id, dia: doChamado,
@@ -1186,6 +1195,19 @@ function ProgramacaoPage() {
             setGesto(null);
           }}
           blocos={blocos}
+          /* A JANELA SEGUE O CAMPO. `blocos` é `useBlocosDaGrade(dia)` — a
+             semana da PÁGINA mais os irmãos —, e o campo de dia do formulário é
+             livre. Trocar a data para outra semana deixava a lista PARCIAL, e
+             `erroDoAgendamento` roda sobre ela: deixava de ver o conflito
+             daquele dia e de somar a jornada, ou seja, o formulário ficava mais
+             permissivo que a PORTA (o EXCLUDE recusava depois, com 23P01).
+             Aqui o invólucro que consulta é a própria página, então
+             `aoTrocarDia` é o `setDia` que ela já tem: a grade atrás do
+             formulário anda junto QUANDO A SEMANA MUDA (o formulário guarda a
+             chamada por semana — dentro da mesma, a consulta devolveria a mesma
+             lista), e ao fechar a pessoa cai na semana em que acabou de marcar. */
+          diaDosBlocos={dia}
+          aoTrocarDia={setDia}
           chamados={paraGrade}
           equipes={equipesDaSemana}
           escala={escala}

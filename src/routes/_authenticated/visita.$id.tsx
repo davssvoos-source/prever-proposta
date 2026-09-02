@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Outlet, useRouterState, useLocation, useRouter } from "@tanstack/react-router";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Copy, ExternalLink, Phone, MessageCircle,
@@ -526,36 +526,31 @@ function VisitaDetail() {
   // exibindo esses casos). O que não existe mais é a chamada: nada nesta tela
   // invoca a RPC de novo — o botão saiu junto com o estado que ele mexia.
 
-  const [geoLat, setGeoLat] = useState<number | null>(null);
-  const [geoLng, setGeoLng] = useState<number | null>(null);
+  // ── A QUARTA CÓPIA DE NOMINATIM E O `useEffect` QUE A CHAMAVA: APAGADOS ──
+  //
+  // Era o pior abuso do repositório, e ele era invisível porque não produzia
+  // nenhum efeito visível de erro. O efeito geocodificava o endereço A CADA
+  // ABERTURA desta ficha e guardava o resultado em ESTADO DE COMPONENTE — que
+  // morre quando a tela desmonta. Nada era gravado. Abrir a mesma visita dez
+  // vezes eram dez requisições a um serviço público, para dez respostas
+  // idênticas que eram jogadas fora dez vezes. Abrir cinco visitas seguidas
+  // estourava o limite de ~1 req/s da política do Nominatim sem que ninguém
+  // tivesse pedido nada — e o bloqueio deles é por IP, ou seja, cairia sobre a
+  // operação inteira de uma vez.
+  //
+  // O MAPA NÃO PIOROU: ele já dependia de `visita.latitude/longitude` no caso
+  // normal (`?? geoLat` era o segundo termo). O que ele perde é o desenho de um
+  // pino para visitas ANTIGAS, criadas antes de a geocodificação passar a
+  // gravar coordenada. Para essas o mapa simplesmente não aparece — que é a
+  // resposta honesta: o sistema não sabe onde elas são. Cadastrar a coordenada
+  // é gesto de quem edita a visita, com botão, uma requisição por clique.
+  const lat = visita?.latitude ?? null;
+  const lng = visita?.longitude ?? null;
 
-  const lat = visita?.latitude ?? geoLat;
-  const lng = visita?.longitude ?? geoLng;
-
-  async function geocodificar() {
-    if (!visita?.endereco) return;
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(visita.endereco)}`;
-      const res = await fetch(url, { headers: { "Accept-Language": "pt-BR" } });
-      const arr = await res.json();
-      if (Array.isArray(arr) && arr[0]) {
-        setGeoLat(parseFloat(arr[0].lat));
-        setGeoLng(parseFloat(arr[0].lon));
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  useEffect(() => {
-    if (visita?.endereco && visita.endereco.trim() && !lat && !lng) {
-      geocodificar();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visita?.endereco]);
-
+  // `!= null`, e não teste de veracidade: latitude 0 é uma coordenada (o Golfo
+  // da Guiné) e cairia como ausente num `&&`. É o mesmo padrão de `VisitaForm`.
   const mapUrl =
-    lat && lng
+    lat != null && lng != null
       ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.003}%2C${lat - 0.003}%2C${lng + 0.003}%2C${lat + 0.003}&layer=mapnik&marker=${lat}%2C${lng}`
       : null;
 
