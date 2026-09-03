@@ -2516,6 +2516,18 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   compilação nenhuma e leva o usuário a uma página vazia depois de uma montagem
   bem-sucedida. Quem mexer nessa função **qualifica os nomes**, não os troca.
 
+  **E há um lugar onde qualificar não resolve: o `ON CONFLICT`.** A lista de
+  inferência de índice (`ON CONFLICT (tipo, referencia)`) **também** passa pela
+  resolução de variável do plpgsql, então ela levanta o mesmo erro de
+  ambiguidade — e não aceita alias, porque a sintaxe ali é de nome de coluna,
+  não de expressão. A saída é **nomear o árbitro**: `ON CONFLICT ON CONSTRAINT
+  fechamentos_unico`, que é um identificador e não uma referência de coluna.
+  Por isso o índice único do período foi promovido a constraint de mesmo nome.
+
+  **A lista de colunas-alvo do `INSERT` continua citando `referencia`, e está
+  certa** — ela é resolvida contra a tabela, sem passar pelo transformador de
+  expressões. Quem mexer ali "por simetria" quebra o que nunca esteve quebrado.
+
   **Montar o mesmo período duas vezes continua sendo seguro** — a segunda vez só
   recolhe o que entrou depois, e não cria um período em dobro. *(U88.)*
 

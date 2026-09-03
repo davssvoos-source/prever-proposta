@@ -14261,6 +14261,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const s4f  = fs88.readFileSync(M88 + '20260903180000_s4_auditoria_de_valor.sql', 'utf8');
   const u5f  = fs88.readFileSync(M88 + '20260818220000_u5_fechamentos.sql', 'utf8');
   const u88f = fs88.readFileSync(M88 + '20260910090000_u88_consertos_de_dinheiro.sql', 'utf8');
+  // O SQL VIVO: sem as linhas de comentário. Presença de string prova que a
+  // linha EXISTE, não que ela está VIVA — e este arquivo tem um DESFAZER
+  // comentado que cita, entre outras coisas, o CREATE UNIQUE INDEX antigo.
+  const u88Vivo = u88f.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
 
   const corpoDeF88 = (src, nome) => {
     const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
@@ -14356,7 +14360,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /'Conferência concluída: nada a cobrar\.'/.test(novoAprovar || '')],
      [true, true, true]);
 
-  // ── DIFF 2: montar_fechamento = corpo VIVO da U5 + 3 qualificações ────────
+  // ── DIFF 2: montar_fechamento = corpo VIVO da U5 + 3 qualificações + 1 ────
+  // A QUARTA MUDANÇA NASCEU DE UM ERRO MEU, e o diff é onde ela fica presa.
+  // A primeira versão da U88 afirmava que `ON CONFLICT (tipo, referencia)` NÃO
+  // podia levantar 42702 — "a lista de inferência de índice não é expressão".
+  // O banco do Davi devolveu exatamente esse 42702 na primeira execução, e a
+  // migration inteira voltou. O mecanismo real: `resolve_unique_index_expr`
+  // embrulha um nome simples num ColumnRef e o passa por `transformExpr`, que é
+  // onde o plpgsql injeta a resolução de variável. A lista PASSA pelo hook.
+  // O conserto não qualifica — ELIMINA a referência de coluna, nomeando o
+  // árbitro (`ON CONFLICT ON CONSTRAINT`). Depois de errar sobre o parser, o
+  // conserto não pode depender de acertar sobre o parser.
   // A base é a U5 porque `montar_fechamento` tem UMA ÚNICA definição em todo o
   // repositório: nenhuma migration entre 18/08 e a U88 a redefine ou dropa.
   //
@@ -14377,25 +14391,193 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     e = troca(e,
       "UPDATE public.fechamentos SET total = v_total WHERE id = v_id;",
       "UPDATE public.fechamentos f SET total = v_total WHERE f.id = v_id;");
+    e = troca(e,
+      "ON CONFLICT (tipo, referencia) DO UPDATE SET updated_at = now()",
+      "ON CONFLICT ON CONSTRAINT fechamentos_unico DO UPDATE SET updated_at = now()");
 
-    eq('CRÍTICO (regra 1): cada uma das 3 âncoras do diff de montar_fechamento casou EXATAMENTE uma vez no corpo vivo da U5',
-       trocas.slice(0, 3), [1, 1, 1]);
+    eq('CRÍTICO (regra 1): cada uma das 4 âncoras do diff de montar_fechamento casou EXATAMENTE uma vez no corpo vivo da U5',
+       trocas.slice(0, 4), [1, 1, 1, 1]);
 
-    eq('CRÍTICO: o corpo da U88 é o VIVO da U5 com TRÊS qualificações e NENHUMA outra mudança — nem a assinatura, nem os nomes do RETURNS TABLE (contrato com fechamentos.ts, lido por `as any` e portanto invisível ao tsc), nem o gate, nem o ON CONFLICT',
+    eq('CRÍTICO: o corpo da U88 é o VIVO da U5 com TRÊS qualificações mais o árbitro NOMEADO, e NENHUMA outra mudança — nem a assinatura, nem os nomes do RETURNS TABLE (contrato com fechamentos.ts, lido por `as any` e portanto invisível ao tsc), nem o gate',
        norm88(novoMontar || ''), e);
   }
 
   // MEDIDO SEM COMENTÁRIO (regra 2): o corpo da U88 EXPLICA, ali mesmo, por que
-  // `ON CONFLICT (tipo, f.referencia)` não compila — e uma asserção que casasse
-  // o comentário acusaria a própria explicação.
+  // a lista de colunas-alvo do INSERT continua citando `referencia` — e uma
+  // asserção que casasse o comentário acusaria a própria explicação.
   const montarSemCom = (novoMontar || '')
     .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n');
-  eq('CRÍTICO: `ON CONFLICT (tipo, referencia)` continua SEM alias — `referencia` também é parâmetro OUT, mas a lista de inferência de índice não é expressão e não passa pelo hook de variável do plpgsql; qualificá-la NÃO COMPILA e mataria a idempotência da função',
-     [/ON CONFLICT \(tipo, referencia\) DO UPDATE/.test(montarSemCom),
-      /ON CONFLICT \([^)]*\w\.referencia/.test(montarSemCom)],
+  eq('CRÍTICO: o árbitro do upsert é NOMEADO e a lista de colunas SUMIU — `referencia` é parâmetro OUT, e a lista de inferência PASSA pelo hook de variável do plpgsql (foi ela que levantou 42702 e abortou a 1a execução). Nomear a constraint não tem ColumnRef nenhum: a ambiguidade fica inexprimível, não apenas evitada',
+     [/ON CONFLICT ON CONSTRAINT fechamentos_unico DO UPDATE/.test(montarSemCom),
+      /ON CONFLICT \(/.test(montarSemCom)],
      [true, false]);
+  eq('CRÍTICO: a lista de colunas-alvo do INSERT CONTINUA citando `referencia`, e isso está certo — ela é resolvida contra a relação alvo sem passar pelo transformador de expressões. "Consertar por simetria" aqui seria mexer no que nunca esteve quebrado',
+     /INSERT INTO public\.fechamentos \(tipo, referencia, inicio, fim, created_by\)/.test(montarSemCom),
+     true);
+  // PRENDE O `IF`, NÃO O VOCABULÁRIO (regra 2 do diário, e ela mordeu aqui).
+  // A primeira versão desta asserção media a FRASE das mensagens de aborto —
+  // e a bateria de mutação trocou `IF NOT v_uniq` por `IF false` deixando a
+  // frase intacta: a guarda desligada passou verde. Presença nunca detecta uma
+  // guarda DESLIGADA.
+  eq('CRÍTICO: o §3a promove o índice fechamentos_unico a constraint com ADD CONSTRAINT ... USING INDEX (adota o índice da U5, não cria um segundo), e as DUAS guardas estão ARMADAS — não existe, e existe mas não é único. Sem árbitro, o ON CONFLICT nomeado vira erro em execução, que é a mesma classe do 42702 que abortou a 1a tentativa',
+     [/ADD CONSTRAINT fechamentos_unico UNIQUE USING INDEX fechamentos_unico;/.test(u88Vivo),
+      /IF v_uniq IS NULL THEN\s*\n\s*RAISE EXCEPTION/.test(u88Vivo),
+      /IF NOT v_uniq THEN\s*\n\s*RAISE EXCEPTION/.test(u88Vivo),
+      /contype  = 'u'/.test(u88Vivo)],
+     [true, true, true, true]);
+
+  // A CONFERÊNCIA 114 É O QUE O DAVI LÊ NO EDITOR, e o `esperado` dela não pode
+  // ser uma string qualquer: tem de ser DERIVADO (regra 12). A derivação
+  // independente vem do CREATE UNIQUE INDEX da U5 — as colunas do índice são o
+  // que a constraint promovida passa a declarar. Uma expectativa afrouxada para
+  // '(referência)' faria a linha nunca dizer '>>> OLHAR <<<', e o Davi
+  // certificaria um árbitro apontando para o índice errado.
+  {
+    const idxU5 = /CREATE UNIQUE INDEX IF NOT EXISTS fechamentos_unico ON public\.fechamentos \(([^)]*)\)/
+      .exec(u5f);
+    const esperado114 = 'u / fechamentos_unico / UNIQUE (' + (idxU5 ? idxU5[1] : '??') + ')';
+    eq('CRÍTICO (regra 12): o `esperado` da conferência 114 é DERIVADO das colunas do índice único da U5, e não digitado à mão — asserção que copia o valor do arquivo que audita certifica o próprio erro',
+       [!!idxU5, u88f.includes("       '" + esperado114 + "'")],
+       [true, true]);
+  }
   eq('CRÍTICO: e o conserto NÃO foi `#variable_conflict use_column` — a diretiva faria o detector da U86 dar `continue` e tiraria a função da vigilância para sempre, esvaziando o censo por ISENÇÃO em vez de por conserto',
      /#variable_conflict/.test(novoMontar || ''), false);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CENSO DA CLASSE NOVA (regra 3): ON CONFLICT (col) × variável plpgsql
+  // ═══════════════════════════════════════════════════════════════════════
+  // A U88 nasceu afirmando que a lista de inferência do ON CONFLICT não passa
+  // pelo hook de variável do plpgsql. Era FALSO, e o banco provou. Se a
+  // afirmação estava errada, ela podia estar protegendo OUTRAS funções mortas
+  // do mesmo jeito — e asserção-por-caso não descobre isso, só censo descobre.
+  //
+  // Varre TODA função plpgsql das migrations e cruza duas listas: as colunas
+  // citadas como NOME SIMPLES numa lista de inferência de ON CONFLICT, e os
+  // nomes de variável em escopo (parâmetro nomeado, OUT de RETURNS TABLE,
+  // DECLARE). Interseção não vazia = 42702 esperando execução.
+  //
+  // Elemento QUALIFICADO ou EXPRESSÃO não entra: só o nome simples é embrulhado
+  // num ColumnRef por `resolve_unique_index_expr`.
+  {
+    const semC89 = (s) => s.split('\n').map((l) => (/^\s*--/.test(l) ? '' : l)).join('\n');
+
+    // MEDE A DEFINIÇÃO **VIVA**, e não todo texto do repositório. As migrations
+    // são um HISTÓRICO: a u5 contém, para sempre, o corpo com o defeito que a
+    // u88 conserta. Um censo sobre o texto inteiro acusaria a u5 até o fim dos
+    // tempos e obrigaria a ignorá-lo — que é como um censo morre. A chave é o
+    // nome da função, e o último arquivo em ordem cronológica ganha, que é a
+    // mesma regra que o Postgres aplica ao rodá-las em ordem.
+    const vivas89 = new Map();
+    for (const arq of fs88.readdirSync(M88).sort()) {
+      if (!arq.endsWith('.sql')) continue;
+      const src = semC89(fs88.readFileSync(M88 + arq, 'utf8'));
+      const reFn = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)\s*\(([\s\S]*?)\)\s*([\s\S]*?)AS\s+(\$\w*\$)([\s\S]*?)\4/gi;
+      let mf;
+      while ((mf = reFn.exec(src))) {
+        if (!/LANGUAGE\s+plpgsql/i.test(mf[3])) continue;   // só plpgsql tem o hook
+        vivas89.set(mf[1], { arq, args: mf[2], entre: mf[3], corpo: mf[5] });
+      }
+    }
+
+    const acusadas = [];
+    let fnsVarridas = 0;
+    {
+      for (const [nome, d] of vivas89) {
+        const args = d.args, entre = d.entre, corpo = d.corpo, arq = d.arq;
+        fnsVarridas += 1;
+        const vars = new Set();
+        for (const p of args.split(',')) {
+          const mm = /^(?:IN|OUT|INOUT|VARIADIC)?\s*([a-zA-Z_]\w*)\s+\S/.exec(p.trim());
+          if (mm) vars.add(mm[1].toLowerCase());
+        }
+        const rt = /RETURNS\s+TABLE\s*\(([\s\S]*?)\)\s*(?:LANGUAGE|AS|SECURITY|STABLE|VOLATILE|IMMUTABLE|SET|\n)/i.exec(entre);
+        if (rt) for (const c of rt[1].split(',')) {
+          const mm = /^\s*([a-zA-Z_]\w*)\s+\S/.exec(c);
+          if (mm) vars.add(mm[1].toLowerCase());
+        }
+        const dec = /\bDECLARE\b([\s\S]*?)\bBEGIN\b/i.exec(corpo);
+        if (dec) for (const linha of dec[1].split(/;|\n/)) {
+          const mm = /^\s*([a-zA-Z_]\w*)\s+(?!ALIAS)\S/.exec(linha);
+          if (mm) vars.add(mm[1].toLowerCase());
+        }
+        const reOc = /ON\s+CONFLICT\s*\(([^)]*(?:\([^)]*\)[^)]*)*)\)/gi;
+        let mo;
+        while ((mo = reOc.exec(corpo))) {
+          for (const el of mo[1].split(',')) {
+            const t = el.trim();
+            if (!/^[a-zA-Z_]\w*$/.test(t)) continue;
+            if (vars.has(t.toLowerCase())) acusadas.push(arq.slice(0, 22) + '::' + nome + '::' + t);
+          }
+        }
+      }
+    }
+    // A FRASE INVENTADA TEM DE ESTAR MORTA, e isso se mede pela AUSÊNCIA.
+    // Uma correção que só ACRESCENTA a verdade e deixa a mentira no arquivo
+    // entrega ao próximo leitor duas afirmações opostas e nenhum critério para
+    // escolher. O parágrafo antigo ainda instruía a NÃO mexer na linha que
+    // derrubou a execução — é a pior forma possível de sobrevivência.
+    // A FRASE FALSA SÓ PODE SOBREVIVER COMO CITAÇÃO SENDO REFUTADA.
+    //
+    // A primeira versão desta asserção exigia AUSÊNCIA total, e estava errada:
+    // a correção precisa CITAR o que afirmou, senão o próximo leitor não sabe o
+    // que procurar. O que não pode existir é a frase solta, longe de qualquer
+    // refutação — porque aí ela volta a ser uma instrução, e a instrução era
+    // "não mexa na linha que derrubou a execução".
+    //
+    // Então a medida é de VIZINHANÇA: toda ocorrência de uma frase da versão
+    // antiga tem de ter um marcador de refutação a até 25 linhas.
+    {
+      // MEDIDO NO TEXTO NORMALIZADO, e não linha a linha. O arquivo é quebrado
+      // em 78 colunas com prefixo `--`, então uma frase de quatro palavras
+      // atravessa a quebra COM o prefixo no meio: procurar `sem passar pelo
+      // hook` linha a linha devolve NADA para um texto que está ali, inteiro,
+      // em duas linhas. Foi o que aconteceu na primeira rodada desta asserção.
+      const norm88f = u88f.split('\n')
+        .map((l) => l.replace(/^\s*--\s?/, '')).join(' ').replace(/\s+/g, ' ');
+
+      // As frases são as que a versão antiga usava, na grafia EXATA em que a
+      // correção as cita. `NÃO É EXPRESSÃO` em versal virou minúscula dentro da
+      // citação, e `Não há 42702 ali` foi substituída pelo mecanismo real —
+      // conferi uma a uma no arquivo em vez de escrevê-las de memória, porque
+      // uma frase que não existe torna a busca vazia e a asserção decorativa.
+      // AS FRASES TÊM DE SER AS DA NEGAÇÃO, e a primeira lista errou nisso:
+      // `hook de variável do plpgsql` sozinho aparece TAMBÉM na explicação
+      // CERTA ("a lista PASSA pelo hook"), e a asserção acusou duas linhas
+      // corretas. O que separa a mentira da verdade aqui é o NÃO: a versão
+      // antiga dizia que a lista NÃO passa pelo hook e NÃO é expressão.
+      const FRASES = ['IndexElem', 'não é expressão', 'QUATRO FALSOS POSITIVOS',
+                      'sem passar pelo hook'];
+      const REFUTA = /ESTAVA ERRADO|FALSIDADE|ESTAVA CERTO E EU O ANULEI|inventad|mecanismo real|MECANISMO REAL|o oposto/i;
+      const orfas = [];
+      for (const f of FRASES) {
+        let de = 0, i;
+        while ((i = norm88f.indexOf(f, de)) >= 0) {
+          const janela = norm88f.slice(Math.max(0, i - 1400), i + 1400);
+          if (!REFUTA.test(janela)) orfas.push(f);
+          de = i + f.length;
+        }
+      }
+      eq('CRÍTICO (regra 7): nenhuma frase da versão FALSA do cabeçalho sobrevive SOLTA — cada ocorrência tem uma refutação por perto. Correção que só acrescenta a verdade e deixa a mentira intacta entrega duas afirmações opostas e nenhum critério para escolher, e a antiga ainda mandava NÃO mexer na linha que derrubou a execução',
+         orfas, []);
+      eq('CRÍTICO: e as QUATRO frases antigas AINDA ESTÃO no arquivo, como citação — apagá-las faria a asserção de cima ficar verde por VACUIDADE (zero ocorrências, zero órfãs), e o próximo leitor não saberia o que se afirmou errado',
+         FRASES.filter((f) => norm88f.includes(f)).length, 4);
+    }
+
+    eq('CRÍTICO (regra 7): o cabeçalho registra que o DETECTOR DA U86 TINHA ACUSADO a linha e foi anulado por um argumento inventado — e a regra que nasce disso: ferramenta que acusa só é absolvida por PROVA EXECUTADA',
+       [/O DETECTOR ESTAVA CERTO E EU O ANULEI/.test(u88f),
+        // `[\s\S]{0,12}` e não `\s+`: o arquivo é quebrado em 78 colunas e a
+        // frase atravessa a linha COM o prefixo `--    ` no meio, que não é
+        // espaço em branco. Uma âncora com `\s+` acusa ausência de um texto
+        // que está lá — e acusou, na primeira rodada desta asserção.
+        /absolvida por PROVA[\s\S]{0,12}EXECUTADA/.test(u88f),
+        /vira DÍVIDA declarada — não absolvição/.test(u88f)],
+       [true, true, true]);
+
+    eq('CRÍTICO CENSO (regra 3): NENHUMA função plpgsql do repositório tem `ON CONFLICT (col)` onde `col` também é variável em escopo. A lista de inferência PASSA pelo hook de variável (a U88 afirmou o contrário e o banco devolveu 42702), então toda ocorrência assim é uma função morta esperando execução — e só o censo pega a que nascer amanhã',
+       acusadas, []);
+    eq('CRÍTICO: e o censo acima varreu o repositório inteiro, não uma amostra — se este número despencar, o extrator de funções quebrou e a linha de cima ficou verde por não ter olhado nada',
+       fnsVarridas >= 85, true);
+  }
   eq('CRÍTICO: os quatro nomes do RETURNS TABLE são exatamente os da U5 — é o que compra o deploy de um passo e o zero push',
      /RETURNS TABLE \(fechamento_id uuid, referencia text, itens integer, total numeric\)/.test(novoMontar || ''),
      true);

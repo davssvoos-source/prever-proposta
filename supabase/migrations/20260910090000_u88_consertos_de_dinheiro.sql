@@ -61,23 +61,46 @@
 --    uma referência nua NOVA acrescentada aqui em 2027 nunca mais seria
 --    acusada. É a regra 10 da casa na versão em que o defeito é o conserto.
 --
--- 2) P50: SÃO SÓ AS DUAS LINHAS. O detector da U86 foi rodado literal sobre as
---    108 migrations. Denominador declarado: 15 declarações `RETURNS TABLE`, das
---    quais 13 em `LANGUAGE plpgsql` (única linguagem onde a classe existe) e 2
---    em `LANGUAGE sql` (imunes por construção); 2 das 13 declaram
---    `#variable_conflict use_column` e são absolvidas. ACUSADA: exatamente UMA,
---    `montar_fechamento`, `fechamento_id x2`. Não há segunda função com a forma,
---    e nada vira dívida nova. O censo do verificador passa a ser medido sobre a
---    definição VIVA de cada função, e não sobre todo texto do repositório —
---    ver o §7 desta migration e o comentário do censo em verificar-logica.cjs.
+-- 2) P50: SÃO TRÊS LUGARES, E EU TINHA ESCRITO "DUAS LINHAS".
+--    O detector da U86 foi rodado literal sobre as 108 migrations. Denominador
+--    declarado: 15 declarações `RETURNS TABLE`, das quais 13 em
+--    `LANGUAGE plpgsql` (única linguagem onde a classe existe) e 2 em
+--    `LANGUAGE sql` (imunes por construção); 2 das 13 declaram
+--    `#variable_conflict use_column` e são absolvidas. Função acusada:
+--    exatamente uma, `montar_fechamento` — e ela é acusada DUAS VEZES:
+--    `fechamento_id x2` (as duas do §3) e `referencia x1` (o ON CONFLICT).
 --
---    QUATRO FALSOS POSITIVOS FICAM REGISTRADOS PARA NINGUÉM "CONSERTÁ-LOS":
+--    ── O ERRO QUE ESTA CORREÇÃO DESFAZ, E ELE É O MAIS CARO DA ENTREGA ────
+--    A versão anterior deste arquivo listava `referencia x1` numa seção
+--    chamada "QUATRO FALSOS POSITIVOS FICAM REGISTRADOS PARA NINGUÉM
+--    CONSERTÁ-LOS", com a justificativa de que a lista de inferência do
+--    ON CONFLICT não passa pelo hook de variável do plpgsql.
+--
+--    **O DETECTOR ESTAVA CERTO E EU O ANULEI.** Ele apontou a linha exata que
+--    derrubou a primeira execução desta migration, e o cabeçalho o absolveu com
+--    um mecanismo inventado — inclusive citando um campo de struct
+--    (`IndexElem.name`) para dar peso de fonte a uma frase que eu não tinha
+--    como verificar. Escrever "falso positivo" ao lado de uma acusação
+--    verdadeira é pior que não ter detector nenhum: um detector sem argumento
+--    faz alguém ir olhar; um detector com um argumento errado ao lado faz todo
+--    mundo parar de olhar.
+--
+--    A REGRA QUE FICA: ferramenta que acusa só é absolvida por PROVA
+--    EXECUTADA, nunca por raciocínio sobre o interior do motor. Quando não dá
+--    para executar, a acusação vira DÍVIDA declarada — não absolvição.
+--
+--    OS FALSOS POSITIVOS QUE CONTINUAM SENDO FALSOS, esses sim verificáveis
+--    por leitura direta do literal:
 --    · `total x1` em aprovar_os_financeiro (u4:198) e nas versões U7/U13/U80 de
 --      aprovar_chamado_financeiro é a palavra dentro do literal ' item(ns),
---      total ' — texto de evento, não referência de coluna. A S4 não aparece
---      porque foi ela que tirou a cifra.
---    · `referencia x1` em montar_fechamento é o `ON CONFLICT (tipo,
---      referencia)` — e ESSA É A ARMADILHA DESTA ENTREGA. Ver o §3.
+--      total ' — texto de evento, não referência de coluna. Dá para conferir
+--      abrindo a linha: está entre aspas. A S4 não aparece porque foi ela que
+--      tirou a cifra.
+--
+--    O censo do verificador passa a ser medido sobre a definição VIVA de cada
+--    função, e não sobre todo texto do repositório — e ganhou um IRMÃO para a
+--    classe do ON CONFLICT, que ninguém estava varrendo. Ver o §7 desta
+--    migration e os dois censos em verificar-logica.cjs.
 --
 -- 3) P19: O DISCRIMINADOR JÁ EXISTE NA LINHA, e chama-se `chamado_peca_id`.
 --    Não é preciso coluna de origem nem carimbo de quem criou (regra 8:
@@ -227,21 +250,73 @@
 -- ║ O QUE ESTA MIGRATION **NÃO** FAZ, e cada "não" tem motivo escrito        ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 --
--- · NÃO qualifica o `ON CONFLICT (tipo, referencia)` de u5:122, e QUALIFICAR
---   ALI QUEBRA. `referencia` é coluna de `public.fechamentos` E parâmetro OUT
---   do RETURNS TABLE — a MESMA forma das duas linhas do P50 —, mas a lista de
---   inferência de índice do ON CONFLICT NÃO É EXPRESSÃO: o parser guarda o nome
---   em `IndexElem.name` e o resolve direto contra a relação alvo, sem passar
---   pelo hook de variável do plpgsql. Não há 42702 ali. E `ON CONFLICT (tipo,
---   f.referencia)` NÃO COMPILA (a inferência não aceita alias), nem
---   `ON CONFLICT ON CONSTRAINT fechamentos_unico` serve, porque
---   `fechamentos_unico` é CREATE UNIQUE INDEX (u5:60) e não constraint.
---   Quem for mexer nas duas linhas do P50 vai ver esta TERCEIRA ocorrência de
---   `referencia` e pode "consertá-la por simetria", quebrando o upsert que é o
---   que torna `montar_fechamento` idempotente. ESTÁ ESCRITO AQUI E DENTRO DA
---   FUNÇÃO. E o PORTÃO chama a função DUAS VEZES no mesmo período de propósito:
---   a primeira exercita o ramo do INSERT, a segunda o ramo do DO UPDATE. Se o
---   ON CONFLICT fosse ambíguo, esta migration ABORTA e nada é commitado.
+-- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║ CORREÇÃO DE 03/09 — A PRIMEIRA VERSÃO DESTE ARQUIVO AFIRMOU UMA FALSIDADE ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+-- A versão anterior tinha, exatamente aqui, um parágrafo dizendo que
+-- `ON CONFLICT (tipo, referencia)` NÃO PODE levantar 42702 — "a lista de
+-- inferência de índice não é expressão: o parser guarda o nome em
+-- `IndexElem.name` e o resolve direto contra a relação alvo, sem passar pelo
+-- hook de variável do plpgsql".
+--
+-- ISSO ESTAVA ERRADO, e o banco do Davi provou na primeira execução:
+--
+--     ERROR: 42702: column reference "referencia" is ambiguous
+--     DETAIL: It could refer to either a PL/pgSQL variable or a table column.
+--     QUERY: INSERT INTO public.fechamentos (tipo, referencia, inicio, fim, created_by)
+--
+-- O MECANISMO REAL: em `resolve_unique_index_expr` (parse_clause.c), um
+-- elemento de inferência que é um NOME SIMPLES é embrulhado num `ColumnRef`
+-- construído na hora e passado por `transformExpr`. É `transformColumnRef` que
+-- chama os hooks `pre/post_column_ref` — e é neles que o plpgsql injeta a
+-- resolução de variável. Só o elemento que já vem como EXPRESSÃO pula esse
+-- caminho. Ou seja: a lista de inferência passa pelo hook exatamente como
+-- qualquer outra referência de coluna, e `referencia` — que é parâmetro OUT do
+-- RETURNS TABLE — colide ali como colidia nas outras duas linhas.
+--
+-- ONDE A AMBIGUIDADE **NÃO** ESTÁ, por eliminação: a lista de colunas-alvo do
+-- INSERT (`(tipo, referencia, inicio, fim, created_by)`) é resolvida por
+-- `checkInsertTargets` contra a relação alvo, sem passar por `transformExpr` —
+-- e o `RETURNING id, status` cita nomes que não são variáveis desta função.
+-- Sobra um único `referencia` capaz de alcançar o hook: o do ON CONFLICT.
+--
+-- ── O QUE SE FAZ AGORA, E POR QUE ESTA ESCOLHA E NÃO OUTRA ────────────────
+-- Depois de errar sobre o parser, o conserto NÃO PODE depender de eu acertar
+-- sobre o parser na segunda tentativa. Então não se qualifica nada: **elimina-
+-- se a referência de coluna**. O §3a promove o índice único `fechamentos_unico`
+-- (u5:60) a CONSTRAINT de mesmo nome — `ADD CONSTRAINT ... UNIQUE USING INDEX`,
+-- que reaproveita o índice existente sem reconstruí-lo — e o upsert passa a
+-- dizer `ON CONFLICT ON CONSTRAINT fechamentos_unico`. Ali não há ColumnRef
+-- nenhum: é um identificador procurado em `pg_constraint`. A classe deixa de
+-- ser resolvida por disciplina e passa a ser INEXPRIMÍVEL, que é o critério da
+-- U87.
+--
+-- AS TRÊS SAÍDAS RECUSADAS, escritas para ninguém as repropor:
+--   · `ON CONFLICT (tipo, (fechamentos.referencia))` — talvez funcione, e
+--     "talvez" é exatamente o que não serve depois de um erro deste tipo.
+--   · `#variable_conflict use_column` — resolveria numa linha, e o argumento
+--     contra continua valendo por inteiro: ela ISENTA a função do detector da
+--     U86 PARA SEMPRE (verificar-logica.cjs:13884-13888 pula quem a declara),
+--     trocando conserto por cegueira.
+--   · renomear o parâmetro OUT `referencia` — é contrato com fechamentos.ts:95,
+--     lido por `as any`, então o tsc não acusaria e o deploy viraria três
+--     passos. É o mesmo motivo da resposta 1 acima.
+--
+-- ── E O PORTÃO FEZ O TRABALHO DELE ────────────────────────────────────────
+-- O parágrafo antigo terminava assim, e esta parte estava CERTA: "o PORTÃO
+-- chama a função DUAS VEZES no mesmo período de propósito; se o ON CONFLICT
+-- fosse ambíguo, esta migration ABORTA e nada é commitado". Foi o que
+-- aconteceu. O 42702 estourou na PROVA 1, a transação inteira voltou, e o banco
+-- do Davi ficou exatamente como estava. Um portão que só lesse o texto das
+-- funções teria dado COMMIT com a função tão quebrada quanto antes.
+--
+-- ── E UM CENSO, PORQUE A AFIRMAÇÃO FALSA PODIA ESTAR PROTEGENDO OUTRAS ────
+-- Se a lista de inferência passa pelo hook, toda função plpgsql com
+-- `ON CONFLICT (col)` onde `col` também é variável está morta do mesmo jeito.
+-- Varredura das 108 migrations, 89 funções plpgsql: ACUSADA exatamente UMA,
+-- `montar_fechamento`, `referencia`. Não há segunda. O censo virou asserção
+-- permanente no verificador, para que a próxima função que nascer com a forma
+-- seja acusada antes de chegar ao banco.
 --
 -- · NÃO muda `marcar_chamado_faturado` (u7:747, definição viva). Ela tem a MESMA
 --   forma incondicional do P19 — `UPDATE public.cobrancas SET status='faturada'
@@ -552,14 +627,65 @@ COMMENT ON FUNCTION public.aprovar_chamado_financeiro(uuid) IS
 -- definição em todo o repositório — nenhuma migration posterior a redefine ou
 -- dropa, confirmado por grep ancorado — e o §0 confere isso no catálogo.
 --
--- AS TRÊS MUDANÇAS, E NENHUMA A MAIS: as três referências de `public.cobrancas`
--- e `public.fechamentos` ganham alias, e os nomes ficam QUALIFICADOS. Nada mais
--- muda: nem a assinatura, nem os nomes das colunas do RETURNS TABLE (que são
--- contrato com fechamentos.ts:95-97), nem o ON CONFLICT, nem a ACL.
+-- AS QUATRO MUDANÇAS, E NENHUMA A MAIS:
+--   (a,b,c) as três referências de `public.cobrancas` e `public.fechamentos`
+--           ganham alias, e os nomes ficam QUALIFICADOS;
+--   (d)     o `ON CONFLICT (tipo, referencia)` vira `ON CONFLICT ON CONSTRAINT
+--           fechamentos_unico`. Esta quarta nasceu do 42702 que o banco do Davi
+--           devolveu em 03/09 — ver a caixa "A PRIMEIRA VERSÃO DESTE ARQUIVO
+--           AFIRMOU UMA FALSIDADE", no cabeçalho.
+-- Nada mais muda: nem a assinatura, nem os nomes das colunas do RETURNS TABLE
+-- (que são contrato com fechamentos.ts:95-97), nem a ACL, nem a semântica do
+-- upsert — `fechamentos_unico` é o MESMO índice de antes, agora com nome no
+-- catálogo de constraints.
 --
 -- O ALVO DO `SET` FICA NU, E TEM DE FICAR: `SET c.fechamento_id` não compila.
 -- Ali o nome nu É a coluna, sem ambiguidade possível — é por isso que o
 -- detector da U86 apaga a cláusula SET antes de medir.
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- §3a) O ÍNDICE VIRA CONSTRAINT — é o que torna a ambiguidade INEXPRIMÍVEL
+-- ═══════════════════════════════════════════════════════════════════════════
+-- `ADD CONSTRAINT ... UNIQUE USING INDEX` ADOTA o índice que já existe: não
+-- reconstrói, não bloqueia por muito tempo, não muda o plano de nenhuma
+-- consulta. `fechamentos_unico` (u5:60) é btree, único, não-parcial e sem
+-- expressão — as quatro condições que a forma `USING INDEX` exige. O nome da
+-- constraint é o MESMO do índice, então nem renomeação há.
+--
+-- ESTA É A ÚNICA DDL DA MIGRATION, e ela é aditiva: nenhuma coluna nasce,
+-- nenhuma morre, nenhum dado se move. O que muda é que o upsert do §3 passa a
+-- poder NOMEAR o árbitro em vez de inferi-lo por lista de colunas — e nomear é
+-- o que elimina o ColumnRef.
+DO $promover$
+DECLARE v_uniq boolean;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conrelid = 'public.fechamentos'::regclass
+                AND conname  = 'fechamentos_unico'
+                AND contype  = 'u') THEN
+    RAISE NOTICE 'U88 §3a: fechamentos_unico já é constraint (2a rodada). Nada a fazer.';
+    RETURN;
+  END IF;
+
+  SELECT x.indisunique INTO v_uniq
+    FROM pg_class i
+    JOIN pg_index x ON x.indexrelid = i.oid
+    JOIN pg_namespace n ON n.oid = i.relnamespace
+   WHERE n.nspname = 'public' AND i.relname = 'fechamentos_unico';
+
+  IF v_uniq IS NULL THEN
+    RAISE EXCEPTION E'ABORTADO — nada foi alterado (ROLLBACK).\nO índice `fechamentos_unico` NÃO existe em public.fechamentos, e o §3 vai citá-lo por nome no ON CONFLICT.\nEle nasce em u5:60. Descubra quem o removeu antes de rodar: sem ele, montar_fechamento deixa de ser idempotente e um período pode ganhar DOIS fechamentos.';
+  END IF;
+  IF NOT v_uniq THEN
+    RAISE EXCEPTION E'ABORTADO — nada foi alterado (ROLLBACK).\n`fechamentos_unico` existe mas NÃO é único. `ADD CONSTRAINT ... USING INDEX` recusaria, e o ON CONFLICT do §3 não teria árbitro.';
+  END IF;
+
+  ALTER TABLE public.fechamentos
+    ADD CONSTRAINT fechamentos_unico UNIQUE USING INDEX fechamentos_unico;
+  RAISE NOTICE 'U88 §3a: fechamentos_unico promovido de índice a constraint (mesmo índice, sem reconstrução).';
+END
+$promover$;
+
 CREATE OR REPLACE FUNCTION public.montar_fechamento(_tipo text, _data_base date DEFAULT NULL)
 RETURNS TABLE (fechamento_id uuid, referencia text, itens integer, total numeric)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -592,17 +718,30 @@ BEGIN
     v_fim := (date_trunc('month', v_base) + interval '1 month - 1 day')::date;
   END IF;
 
-  -- NÃO QUALIFIQUE `referencia` NO ON CONFLICT. Ela é coluna de
-  -- public.fechamentos E parâmetro OUT desta função — a MESMA forma das duas
-  -- linhas que esta migration conserta —, mas a lista de inferência de índice
-  -- NÃO É EXPRESSÃO: o parser guarda o nome em IndexElem e resolve direto
-  -- contra a relação alvo, sem passar pelo hook de variável do plpgsql. Não há
-  -- 42702 aqui, e `ON CONFLICT (tipo, f.referencia)` NÃO COMPILA. Trocar por
-  -- ON CONSTRAINT também não serve: fechamentos_unico é CREATE UNIQUE INDEX
-  -- (u5:60), não constraint. Este upsert é o que torna a função idempotente.
+  -- O ÁRBITRO É NOMEADO, E NÃO INFERIDO POR LISTA DE COLUNAS.
+  -- `ON CONFLICT (tipo, referencia)` — a forma da U5 — levanta
+  -- 42702 "column reference referencia is ambiguous" EM EXECUÇÃO: `referencia`
+  -- é coluna de public.fechamentos E parâmetro OUT desta função, e a lista de
+  -- inferência PASSA pelo hook de variável do plpgsql (um nome simples vira um
+  -- ColumnRef em `resolve_unique_index_expr` e é transformado como qualquer
+  -- outra referência de coluna). Foi esse erro, e não os dois do P50, que
+  -- abortou a primeira execução desta migration.
+  --
+  -- `ON CONFLICT ON CONSTRAINT <nome>` não tem ColumnRef nenhum: é um
+  -- identificador procurado em pg_constraint. A ambiguidade fica INEXPRIMÍVEL
+  -- aqui, e não apenas evitada — que é o critério da U87. O §3a é quem promove
+  -- o índice de u5:60 a constraint de mesmo nome.
+  --
+  -- A LISTA DE COLUNAS-ALVO DO INSERT, LOGO ABAIXO, CONTINUA CITANDO
+  -- `referencia` E ISSO ESTÁ CERTO: ela é resolvida por `checkInsertTargets`
+  -- contra a relação alvo, sem passar por `transformExpr` — logo, sem hook e
+  -- sem ambiguidade. Não "conserte por simetria".
+  --
+  -- Este upsert é o que torna a função idempotente: montar o mesmo período
+  -- duas vezes recolhe só o que entrou depois, e não cria período em dobro.
   INSERT INTO public.fechamentos (tipo, referencia, inicio, fim, created_by)
   VALUES (_tipo, v_ref, v_inicio, v_fim, auth.uid())
-  ON CONFLICT (tipo, referencia) DO UPDATE SET updated_at = now()
+  ON CONFLICT ON CONSTRAINT fechamentos_unico DO UPDATE SET updated_at = now()
   RETURNING id, status INTO v_id, v_status;
 
   IF v_status = 'fechado' THEN
@@ -641,8 +780,12 @@ COMMENT ON FUNCTION public.montar_fechamento(text, date) IS
   'As referências a cobrancas.fechamento_id são QUALIFICADAS por alias: nuas, '
   'elas colidem com o parâmetro OUT de mesmo nome e levantam 42702 em EXECUÇÃO '
   '— o defeito que manteve este botão morto de 18/08 a 10/09 (U88/P50). '
-  'NÃO qualifique `referencia` no ON CONFLICT: a lista de inferência de índice '
-  'não aceita alias e não passa pelo hook de variável do plpgsql.';
+  'O árbitro do upsert é NOMEADO (ON CONFLICT ON CONSTRAINT fechamentos_unico) '
+  'e não inferido por lista de colunas: a lista de inferência TAMBÉM passa pelo '
+  'hook de variável do plpgsql, e `ON CONFLICT (tipo, referencia)` levantava o '
+  'mesmo 42702 — foi ele que abortou a primeira execução da U88. Já a lista de '
+  'colunas-alvo do INSERT cita `referencia` e está CERTA assim: ela é resolvida '
+  'contra a relação alvo sem passar pelo transformador de expressões.';
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- §4) A ASSIMETRIA DECLARADA — `marcar_chamado_faturado` FICA COMO ESTÁ
@@ -1082,13 +1225,18 @@ SELECT 103, 'CRÍTICO: e as DUAS referências qualificadas (c.fechamento_id) est
        '2'
 
 UNION ALL
--- ══ 104: O ON CONFLICT CONTINUA NU, E ISSO É O CERTO ═════════════════════
-SELECT 104, 'CRÍTICO: `ON CONFLICT (tipo, referencia)` continua SEM alias no corpo vivo — a lista de inferência de índice não aceita alias, e qualificá-la não compilaria',
-       (SELECT CASE WHEN p.prosrc LIKE '%ON CONFLICT (tipo, referencia) DO UPDATE%'
-                    THEN 'nu' ELSE 'MEXERAM' END
+-- ══ 104: O ÁRBITRO DO UPSERT É NOMEADO, E A LISTA DE COLUNAS SUMIU ═══════
+-- As duas metades são um par. Só a primeira ficaria verde se alguém tivesse
+-- apagado o ON CONFLICT inteiro (e aí a função perderia a idempotência); só a
+-- segunda ficaria verde num corpo que não tem ON CONFLICT nenhum.
+SELECT 104, 'CRÍTICO: o upsert usa ON CONFLICT ON CONSTRAINT (árbitro NOMEADO) e NÃO tem mais lista de colunas — a lista passa pelo hook de variável do plpgsql e `referencia` é parâmetro OUT: era ela que levantava 42702 e abortou a 1a execução da U88',
+       (SELECT CASE WHEN p.prosrc LIKE '%ON CONFLICT ON CONSTRAINT fechamentos_unico DO UPDATE%'
+                    THEN 'nomeado' ELSE 'AUSENTE' END
+            || ' / ' ||
+               CASE WHEN p.prosrc LIKE '%ON CONFLICT (%' THEN 'AINDA TEM LISTA' ELSE 'sem lista' END
           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'public' AND p.proname = 'montar_fechamento'),
-       'nu'
+       'nomeado / sem lista'
 
 UNION ALL
 -- ══ 105: O CONTRATO COM O FRONT — OS NOMES DO RETURNS TABLE ══════════════
@@ -1186,6 +1334,21 @@ SELECT 113, 'CRÍTICO: a personificação do portão foi desfeita — auth.uid()
        COALESCE(auth.uid()::text, 'nulo'),
        'nulo'
 
+UNION ALL
+-- ══ 114: O ÁRBITRO NOMEADO EXISTE, E É O MESMO ÍNDICE DE SEMPRE ══════════
+-- A 104 mede o TEXTO da função; esta mede o ALVO dele. Um `ON CONFLICT ON
+-- CONSTRAINT` cujo nome não existe é erro em EXECUÇÃO — a mesma classe do 42702
+-- que abortou a primeira tentativa, e igualmente invisível na leitura.
+-- `conindid` provando ser o índice de (tipo, referencia) é o que garante que a
+-- promoção do §3a ADOTOU o índice da U5 em vez de criar um segundo.
+SELECT 114, 'CRÍTICO: a constraint fechamentos_unico existe, é UNIQUE, e o índice por trás dela é o de (tipo, referencia) — é o árbitro que o §3 cita pelo nome',
+       (SELECT c.contype || ' / ' || i.relname || ' / ' ||
+               pg_get_constraintdef(c.oid)
+          FROM pg_constraint c JOIN pg_class i ON i.oid = c.conindid
+         WHERE c.conrelid = 'public.fechamentos'::regclass
+           AND c.conname  = 'fechamentos_unico'),
+       'u / fechamentos_unico / UNIQUE (tipo, referencia)'
+
   ) t
  ORDER BY t.ordem;
 
@@ -1198,6 +1361,17 @@ COMMIT;
 -- apaga as próprias fixtures dentro da transação, e as conferências 112 e 113
 -- medem que não sobrou nada. Não há coluna a dropar nem linha a ressuscitar:
 -- desfazer é reinstalar os dois corpos anteriores.
+--
+-- A ÚNICA DDL — a promoção de `fechamentos_unico` a constraint (§3a) — NÃO
+-- PRECISA SER DESFEITA, e é melhor que não seja. Ela é aditiva: o índice é o
+-- mesmo objeto de antes, com uma linha a mais em pg_constraint. Reverter o
+-- corpo da função para o da U5 (que infere o árbitro por lista de colunas)
+-- volta a funcionar exatamente como funcionava — isto é, volta a levantar
+-- 42702, que é o que "desfazer" significa aqui. E se alguém QUISER desfazê-la
+-- mesmo assim, `ALTER TABLE public.fechamentos DROP CONSTRAINT fechamentos_unico`
+-- DERRUBA O ÍNDICE JUNTO (ele passou a pertencer à constraint), e aí um período
+-- pode ganhar dois fechamentos. Nesse caso recrie-o antes de qualquer outra
+-- coisa:  CREATE UNIQUE INDEX fechamentos_unico ON public.fechamentos (tipo, referencia);
 --
 -- O QUE VOLTA JUNTO, e é por isso que este rodapé é um freio e não uma opção:
 --   · o botão de montar fechamento volta a levantar 42702 em TODA chamada, e a

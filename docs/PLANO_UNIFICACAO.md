@@ -8307,6 +8307,117 @@ na outra porta cobriria metade do par.
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline, sem erro
 novo. **O repositório NUNCA aplica migration: o Davi roda à mão.**
 
+
+### A PRIMEIRA EXECUÇÃO ABORTOU, E O ERRO FOI MEU (03/09)
+
+O Davi rodou, e o banco devolveu:
+
+```
+ERROR: 42702: column reference "referencia" is ambiguous
+DETAIL: It could refer to either a PL/pgSQL variable or a table column.
+QUERY: INSERT INTO public.fechamentos (tipo, referencia, inicio, fim, created_by)
+```
+
+**Um terceiro 42702 na mesma função** — e num lugar que este arquivo afirmava,
+por escrito e com ênfase, ser imune.
+
+#### O que a versão anterior dizia, e por que era pior que um erro comum
+
+O cabeçalho tinha um parágrafo inteiro sob "O QUE ESTA MIGRATION **NÃO** FAZ"
+explicando que `ON CONFLICT (tipo, referencia)` não pode levantar 42702, porque
+*"a lista de inferência de índice do ON CONFLICT NÃO É EXPRESSÃO: o parser
+guarda o nome em `IndexElem.name` e o resolve direto contra a relação alvo, sem
+passar pelo hook de variável do plpgsql"*. E o parágrafo ainda instruía o
+próximo leitor a **não** mexer ali.
+
+Três coisas erradas de uma vez:
+
+1. **O mecanismo é o oposto.** Em `resolve_unique_index_expr`, um elemento de
+   inferência que é nome simples é embrulhado num `ColumnRef` construído na hora
+   e passado por `transformExpr` — que é exatamente onde o plpgsql injeta a
+   resolução de variável. A lista **passa** pelo hook.
+2. **A citação de `IndexElem.name` dava peso de fonte a uma frase inventada.**
+   Detalhe interno preciso é o que faz um argumento errado parecer verificado.
+3. **O detector da U86 TINHA ACUSADO essa linha** — `montar_fechamento ::
+   referencia x1` — e este arquivo a listou entre "QUATRO FALSOS POSITIVOS
+   FICAM REGISTRADOS PARA NINGUÉM CONSERTÁ-LOS". A ferramenta apontou o defeito
+   que derrubou a execução, e o cabeçalho a anulou.
+
+O terceiro é o caro. Um detector sem argumento ao lado faz alguém ir olhar; um
+detector com um argumento errado ao lado faz todo mundo **parar** de olhar.
+
+**A regra que fica: ferramenta que acusa só é absolvida por PROVA EXECUTADA,
+nunca por raciocínio sobre o interior do motor. Sem execução possível, a
+acusação vira dívida declarada — não absolvição.**
+
+#### O portão fez exatamente o que tinha de fazer
+
+O 42702 estourou na PROVA 1, dentro da transação, e **nada foi commitado**. O
+banco do Davi ficou idêntico ao que era. O cabeçalho antigo terminava aquele
+mesmo parágrafo com *"se o ON CONFLICT fosse ambíguo, esta migration ABORTA e
+nada é commitado"* — essa parte estava certa, e foi ela que segurou o estrago.
+
+Vale reter o contraste: **um portão que lesse o texto das funções teria dado
+COMMIT com a função tão quebrada quanto antes**, porque o plpgsql só resolve a
+expressão na primeira EXECUÇÃO daquela instrução. Foi o portão que chamou a
+função de verdade — duas vezes, de propósito — que descobriu.
+
+#### O conserto: eliminar a referência, não qualificá-la
+
+Depois de errar sobre o parser, o conserto não podia depender de acertar sobre o
+parser na segunda tentativa. Então nada foi qualificado:
+
+- **§3a** promove o índice `fechamentos_unico` (u5:60) a **constraint de mesmo
+  nome**, com `ADD CONSTRAINT … UNIQUE USING INDEX`, que **adota** o índice
+  existente em vez de construir outro;
+- o upsert passa a dizer `ON CONFLICT ON CONSTRAINT fechamentos_unico`. Ali não
+  há `ColumnRef` nenhum — é um identificador procurado em `pg_constraint`. A
+  ambiguidade fica **inexprimível**, e não apenas evitada, que é o critério que
+  a U87 estabeleceu.
+
+**A lista de colunas-alvo do INSERT continua citando `referencia`, e está
+certa assim**: ela é resolvida por `checkInsertTargets` contra a relação alvo,
+sem passar pelo transformador de expressões. Foi por eliminação que o culpado
+ficou identificado — e o arquivo agora avisa, na própria linha, para ninguém
+"consertar por simetria".
+
+**Três saídas recusadas:** `ON CONFLICT (tipo, (fechamentos.referencia))`
+(talvez funcione, e "talvez" é o que não serve aqui); `#variable_conflict
+use_column` (isenta a função do detector da U86 para sempre — troca conserto por
+cegueira); renomear o parâmetro OUT (é contrato com `fechamentos.ts:95`, lido
+por `as any`, e o tsc não acusaria).
+
+#### O censo que faltava
+
+Se a afirmação estava errada, ela podia estar protegendo **outras** funções
+mortas do mesmo jeito. Varredura das 108 migrations, **89 funções plpgsql**,
+cruzando as colunas citadas como nome simples em lista de inferência de
+`ON CONFLICT` contra os nomes de variável em escopo (parâmetro, OUT de
+`RETURNS TABLE`, `DECLARE`): **acusada exatamente uma**, `montar_fechamento ::
+referencia`. Não há segunda.
+
+O censo virou asserção permanente, medida sobre a **definição viva** de cada
+função — a primeira versão dela media todo o texto do repositório e acusava a
+própria u5, que é o arquivo histórico que esta migration substitui. Censo que
+acusa o passado para sempre é censo que se aprende a ignorar.
+
+#### E a bateria de mutação mordeu a regra 2 outra vez
+
+A asserção nova do §3a prendia a **frase** das mensagens de aborto. A mutação
+trocou `IF NOT v_uniq THEN` por `IF false THEN` — guarda desligada, frase
+intacta, verificador **verde**. É a regra 2 do diário, escrita por mim, aplicada
+contra mim: *presença nunca detecta uma guarda DESLIGADA; prenda o `IF`, não o
+vocabulário.* Corrigido, mais o `esperado` da conferência 114, que passou a ser
+**derivado** das colunas do índice da U5 em vez de digitado.
+
+### Números da rodada de correção
+
+`node scripts/verificar-logica.cjs` → **2589 passaram, 0 falharam**.
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
+**Bateria de mutação do conserto: 5 mortas, 0 sobreviventes.** Dollar-quote,
+`CASE` nu em `IF` e o detector de 42702 por `RETURNS TABLE`: limpos.
+**Nenhum arquivo de `src/` mudou — o "zero push" continua de pé.**
+
 ---
 
 ## U89 — A implantação ganha período, e sai do SLA que nunca foi dela (R120 — Fase 4, passo 1 de 2)
