@@ -2638,3 +2638,49 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   fechamento. Um aumento permanente de mensalidade só passa a significar
   dinheiro no dia em que existir um motor de mensalidade recorrente — e esse é
   outro projeto, não um passo desta fase. *(U90.)*
+
+- **R122** — **O plantão tem painel, e ele fica ao lado da escala.** A escala
+  (R116) guarda o **plano**: quem deveria estar de sobreaviso. O atendimento
+  (R117) guarda o **registro**: quem de fato atendeu, a que horas e o quê. Até
+  a U91 os dois nunca se encontravam numa tela, e comparar um com o outro era
+  trabalho de memória.
+
+  **A regra que fica: o painel mora na tela do sobreaviso, embaixo da grade, com
+  as mesmas colunas de dia.** Não é tela nova nem permissão nova — é a mesma
+  rolagem, e é isso que deixa ver "teve chamada num dia que estava descoberto".
+
+  **A divergência entre escala e registro tem TRÊS estados, nunca dois.** Na
+  escala; **fora** dela (o dia tem horas lançadas, de outra pessoa); e **sem
+  escala** (ninguém lançou nada para aquele dia). Colapsar os dois últimos
+  acusaria o plantonista de furar uma escala que não existe — acusação sobre o
+  trabalho de outro. Quem decide os três estados é a MESMA função que o cartão
+  do plantonista usa; o painel conta os vereditos dela, não os recalcula.
+
+  **As faixas do dia saem da régua do sobreaviso, não de números soltos:**
+  madrugada é 00h–08h, expediente é 08h–18h, noite é 18h–24h — as mesmas bordas
+  que definem quanta cobertura um dia precisa. E **a hora é lida em São Paulo**,
+  não no fuso do aparelho: um painel que classifica não pode mudar de número
+  conforme quem abriu a tela. (Na lista do plantonista a hora continua sendo a
+  do aparelho, e isso é certo lá — ali a lista e o campo de edição precisam
+  concordar.)
+
+  **Atendimento no expediente de um dia útil é contado à parte.** Não é erro —
+  o plantonista pode atender às 10h de uma terça. Mas é a faixa em que a equipe
+  deveria estar respondendo, e um número alto ali é conversa de operação.
+
+  **O vazio é vazio, e o erro é erro.** Consulta recusada não vira "0
+  atendimentos": são três telas distintas, e a de erro vem antes de qualquer
+  número. Mês sem registro não tem "dia mais pesado" — devolver o dia 1 com zero
+  seria o painel inventando um fato.
+
+  **Ranking cortado diz que cortou**, e a ordem é total (empate desempatado por
+  nome e depois por chave): um ranking que dança entre dois renders sem o dado
+  mudar ensina a não confiar nele. Atendimento sem plantonista vira linha
+  própria em vez de sumir. Cliente digitado à mão é normalizado — "Padaria X" e
+  "padaria x " são uma visita só.
+
+  **O que a R122 NÃO entrega.** Não há filtro por pessoa nem por período livre:
+  o recorte é o mês que a tela já está mostrando. Não há exportação do painel —
+  o PDF do sobreaviso continua sendo só a escala. E o painel de **atendimento**
+  (chamados de campo) já existia no Painel Operacional; esta regra é sobre
+  plantão. *(U91.)*

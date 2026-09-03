@@ -981,6 +981,57 @@ período e podem ser faturadas. Se um dia a Prever precisar de aumento permanent
 de mensalidade cobrado pelo sistema, isso pede um motor de mensalidade
 recorrente — que é outra entrega.
 
+
+## O que aconteceu no plantão do mês (R122, U91)
+
+Embaixo da grade de sobreaviso há uma seção nova: **o mês em números**. A grade
+diz quem *deveria* estar; esta seção diz o que *foi atendido*.
+
+**Os números do topo**, todos do mês que a tela está mostrando:
+
+- **Atendimentos** — o total, com a divisão remoto × presencial;
+- **Madrugada** (00h–08h) e **Noite** (18h–24h) — as duas faixas em que o
+  plantão existe;
+- **No expediente** — atendimentos entre 08h e 18h de um **dia útil**. Não é
+  erro, mas é a faixa em que a equipe deveria estar respondendo. Aparece em
+  âmbar quando é maior que zero, porque um número alto ali é conversa de
+  operação, não de escala;
+- **Fora da escala** — e ele tem duas partes, que **não se misturam**: *"de
+  outro"* é o dia que tinha escala lançada para outra pessoa, e *"sem escala"* é
+  o dia em que ninguém lançou nada. Somar os dois acusaria o plantonista de
+  furar uma escala que não existe;
+- **Com chamado** — quantos atendimentos ficaram pendurados num chamado.
+
+**O gráfico** empilha os atendimentos por faixa, dia a dia, com **todos** os
+dias do mês — inclusive os zerados, senão o eixo comprime e três chamadas em
+três dias seguidos ficam iguais a três chamadas espalhadas pelo mês. A linha
+verde por trás são as **horas de sobreaviso lançadas** naquele dia: é ela que
+deixa ver chamada caindo em dia descoberto.
+
+**Os dois rankings** — por plantonista e por cliente — mostram o topo 6 e
+**dizem quantos ficaram de fora**. No de plantonista, o balão mostra quantos
+daqueles atendimentos estavam na escala.
+
+### Detalhes que evitam susto
+
+- **A hora é sempre a de São Paulo.** Na lista de "últimos atendimentos" a hora
+  é a do seu aparelho (para bater com o campo de edição); aqui, num painel que
+  soma, ela é fixa — senão o mesmo mês daria números diferentes para pessoas em
+  lugares diferentes.
+- **"Nenhum atendimento" e "não consegui ler" são coisas diferentes**, e a tela
+  diz qual das duas é. Um painel que mostra zero numa consulta recusada é
+  indistinguível de um mês tranquilo.
+- **Cliente digitado à mão é agrupado sem ligar para maiúscula e espaço** —
+  "Padaria X" e "padaria x " são uma visita só.
+- **Atendimento sem plantonista aparece como linha própria**, em vez de sumir do
+  ranking.
+
+### O que esta seção não faz
+
+Não filtra por pessoa nem por período livre — o recorte é o mês que a tela já
+está mostrando. E não entra no PDF: o relatório do sobreaviso continua sendo só
+a escala.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`

@@ -19,6 +19,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { diasDoMes } from "@/features/sobreaviso/modelo";
+import type { AtendimentoParaPainel } from "./painel";
 import {
   corpoDoAtendimento,
   ordenarAtendimentos,
@@ -34,6 +36,45 @@ import {
  */
 const CAMPOS =
   "id, hora, dia, plantonista_id, tipo, descricao, cliente_id, cliente_informado, chamado_id";
+
+/**
+ * OS ATENDIMENTOS DE UMA COMPETÊNCIA — a matéria-prima do painel (U91).
+ *
+ * Filtra por `dia`, que é a projeção do GATILHO em America/Sao_Paulo (U87), e
+ * NÃO por `hora`. É a mesma razão que a U87 escreveu para a lista ser por
+ * recência: o cliente não sabe o `dia`, e um filtro por `hora::date` calculado
+ * aqui daria uma segunda resposta para "de que dia foi esse plantão" — as duas
+ * discordariam na madrugada, que é justamente quando o plantão acontece.
+ *
+ * O RECORTE DE QUEM APARECE É DA POLICY, não daqui: o plantonista lê as linhas
+ * dele, quem responde pela operação lê as de todos. O painel vive numa tela
+ * que já é de gestor, então na prática ele vê o mês inteiro — mas se um dia a
+ * tela abrir para mais gente, o número encolhe sozinho em vez de vazar.
+ */
+export function useAtendimentosDoMes(competencia: string) {
+  const dias = diasDoMes(competencia);
+  const de = dias[0];
+  const ate = dias[dias.length - 1];
+  return useQuery({
+    queryKey: ["plantao", "mes", competencia],
+    enabled: !!de && !!ate,
+    queryFn: async (): Promise<AtendimentoParaPainel[]> => {
+      const { data, error } = await (supabase as any)
+        .from("atendimentos_plantao")
+        .select(CAMPOS)
+        .gte("dia", de)
+        .lte("dia", ate)
+        .order("dia");
+      // A MENSAGEM DO SERVIDOR CHEGA, e o erro NÃO vira lista vazia. Um painel
+      // que mostra "0 atendimentos" numa consulta RECUSADA é indistinguível de
+      // um mês tranquilo — foi exatamente assim que a grade de sobreaviso da
+      // U86 chegou a exportar um PDF dizendo "31 dias descobertos".
+      if (error) throw new Error(error.message);
+      return (data ?? []) as AtendimentoParaPainel[];
+    },
+    staleTime: 30_000,
+  });
+}
 
 /** Quantos atendimentos a lista do painel mostra. */
 export const TETO_DA_LISTA = 20;

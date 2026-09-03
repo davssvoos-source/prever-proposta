@@ -8759,3 +8759,94 @@ ramo e a âncora pegou o vocabulário.
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
 **Bateria de mutação: 8 mortas, 0 sobreviventes, 0 inválidas.**
 Sem migration: nada a rodar à mão, e o push publica.
+
+---
+
+## U91 — O painel do plantão (R122 — Fase 5, primeira metade)
+
+**Arquivos:** `src/features/plantao/painel.ts` (novo, puro),
+`src/features/plantao/PainelDoPlantao.tsx` (novo),
+`src/features/plantao/data.ts` (uma consulta),
+`src/routes/_authenticated/sobreaviso.tsx` (duas linhas),
+`scripts/verificar-logica.cjs`, `docs/PRODUTO.md` (R122),
+`docs/manual/operacao-campo.md`.
+**NENHUMA MIGRATION** e nenhuma permissão nova: as duas tabelas existem (U86 e
+U87) e a tela já é de gestor.
+
+### O levantamento, de novo, mudou o alvo
+
+A Fase 5 pede "dashboards de atendimento e plantão". Medido antes de escrever:
+o **painel de atendimento já existe** — `painel.operacional.tsx` tem os quatro
+KPIs, rankings em barra deitada, linha e rosca, tudo saindo de
+`features/paineis/indicadores.ts`.
+
+O que **não existia em lugar nenhum** era o plantão num painel: zero ocorrências
+de `atendimentos_plantao` em qualquer rota de painel. A entrega é essa metade.
+
+### Onde ele mora, e por que não é tela nova
+
+Na tela do **sobreaviso**, embaixo da grade. A escala é o plano e o atendimento
+é o registro; separá-los obrigaria a comparar de memória. As colunas de dia são
+as mesmas dos dois lados — o mesmo `diasDoMes` gera a grade e a série —, e por
+isso dá para ler "teve chamada num dia que estava descoberto" sem sair do lugar.
+
+Rota nova exigiria chave em `permissoes_tela`, migration e uma decisão de
+acesso. Nada disso é necessário para responder a pergunta.
+
+### O que ele NÃO reinventa
+
+A pergunta "esta pessoa estava na escala?" já tinha resposta, e ela tem **três**
+estados: `avisoDaEscala` distingue `ok`, `fora` e `sem_escala`, com a razão
+escrita na U87 — colapsar os dois últimos acusaria o plantonista de furar uma
+escala que ninguém lançou.
+
+O painel **chama aquela função e conta os vereditos dela**. Um contador próprio
+seria a segunda resposta para a mesma pergunta, e as duas discordariam no dia em
+que a doutrina mudasse num lugar só.
+
+As faixas do dia também não são números novos: 8 e 18 são as bordas do
+expediente que o sobreaviso já declara (`HORAS_EXPEDIENTE`, `HORAS_MADRUGADA`).
+
+### A divergência deliberada com `horaCurta`
+
+`horaCurta` formata no fuso **do aparelho**, e está certa: a lista é lida pelo
+próprio plantonista, no mesmo aparelho em que digitou, e fuso fixo faria a lista
+e o campo de edição mostrarem horas diferentes no mesmo cartão.
+
+Um painel **classifica**, e a classificação não pode depender de onde está quem
+abriu a tela. `horaEmSaoPaulo` lê `America/Sao_Paulo`, o mesmo fuso em que o
+gatilho projeta o `dia`. A divergência está escrita nos dois arquivos, para não
+ser "unificada" depois por quem só vir as duas funções lado a lado.
+
+### O que a bateria de mutação achou — três sobreviventes, três lições
+
+**1. O fuso não podia ser testado por valor.** Removi
+`timeZone: "America/Sao_Paulo"` e **tudo ficou verde**: o verificador roda na
+máquina do Davi, que ESTÁ em São Paulo. Nenhum teste de valor pega isso aqui —
+o ambiente é o próprio fuso. O alvo passou a ser preso no TEXTO, que é o que
+existe, com a limitação escrita ao lado da asserção.
+
+**2. O colapso dos três estados sobreviveu ao censo inteiro.** A lei de
+conservação (`naEscala + fora + semEscala === total`) **não pega** o colapso:
+com `semEscala` sempre zero e `fora` absorvendo, a soma continua fechando. Leis
+de conservação cobrem classes, e esta classe passa por baixo delas. Precisou de
+uma asserção de contagem POR ESTADO, com fixture dos três.
+
+**3. Um mutante equivalente.** Trocar o `: null` de `horaEmSaoPaulo` por `0` não
+quebrou nada — `formatToParts` sempre devolve dígitos, e o ramo é inalcançável.
+Não é buraco de teste: é guarda defensiva. Ficou no código com a razão escrita
+(se um dia chegar, `0` viraria meia-noite e o painel inventaria um horário), e a
+mutação saiu da bateria com o motivo anotado.
+
+### O censo
+
+60 conjuntos, e em cada um: as quatro partições de KPI fecham exatas (tipo,
+chamado, faixa, escala), a série cobre os 31 dias sem perder nem duplicar
+atendimento, os rankings somam o total, e **a ordem não muda quando a entrada é
+embaralhada**.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2624 passaram, 0 falharam**.
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
+**Bateria de mutação: 11 mortas, 0 sobreviventes.**

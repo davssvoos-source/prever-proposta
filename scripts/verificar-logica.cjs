@@ -13811,9 +13811,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // O par negativo é o que prende: o `throw` cru não pode voltar.
     const dataPl87 = semComTs87(fs87.readFileSync('src/features/plantao/data.ts', 'utf8'));
     eq('CRÍTICO: os erros do PostgREST são embrulhados em `new Error(...)` na fronteira de dados — sem isso `e instanceof Error` é FALSO nas duas telas e as 14 frases da migration viram "não consegui registrar"',
+       // 4 → 5 na U91: `useAtendimentosDoMes` é a quinta consulta do arquivo, e
+       // ela precisa do embrulho pelo mesmo motivo agravado — no painel, um
+       // erro engolido não vira "não consegui", vira "0 atendimentos", que é
+       // indistinguível de um mês tranquilo. O censo subiu de propósito: ele
+       // existe para que nenhuma consulta nova entre sem alguém olhar esta
+       // linha (regra 3).
        [(dataPl87.match(/if \(error\) throw new Error\(error\.message\);/g) ?? []).length,
         /if \(error\) throw error;/.test(dataPl87)],
-       [4, false]);
+       [5, false]);
 
     // ── O PAINEL DE REGISTRO MOSTRA OS *MEUS* ────────────────────────────
     // A policy é `plantonista_id = auth.uid() OR is_gestor(auth.uid())` e está
@@ -15504,6 +15510,242 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /resto vai na primeira parcela/i.test(man90b)],
        [true, true, true, true]);
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U91 / R122 — O PAINEL DO PLANTÃO (Fase 5)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const PN = carregar('src/features/plantao/painel.ts');
+
+  // ── A HORA É DE SÃO PAULO, E AS BORDAS SÃO EXATAS ───────────────────────
+  // Medidos com Intl antes de escrever, e não deduzidos: o Brasil não tem
+  // horário de verão desde 2019, então janeiro e julho dão o mesmo desvio —
+  // as duas linhas de baixo provam isso, e ficam vermelhas no dia em que ele
+  // voltar (aí as faixas do painel mudam e alguém precisa olhar).
+  eq('U91/R122: `horaEmSaoPaulo` lê o fuso de SÃO PAULO e não o do aparelho — as quatro bordas, medidas com Intl antes de escrever',
+     ['2026-03-15T03:00:00Z', '2026-03-15T02:59:00Z',
+      '2026-03-15T11:00:00Z', '2026-03-15T20:59:00Z'].map(PN.horaEmSaoPaulo),
+     [0, 23, 8, 17]);
+
+  eq('U91/R122: e sem horário de verão — janeiro e julho dão o mesmo desvio. Se esta linha ficar vermelha, o Brasil o restabeleceu e as faixas do painel mudaram',
+     [PN.horaEmSaoPaulo('2026-01-15T03:00:00Z'), PN.horaEmSaoPaulo('2026-07-15T03:00:00Z')],
+     [0, 0]);
+
+  eq('U91/R122: instante ilegível devolve null, e não zero — zero é meia-noite, e um atendimento sem hora contado como madrugada inventaria um fato',
+     [PN.horaEmSaoPaulo('nao é data'), PN.faixaDaHora('nao é data')],
+     [null, null]);
+
+  // ── O FUSO PRECISA SER PRESO NO TEXTO, E A RAZÃO É CONSTRANGEDORA ───────
+  // As asserções de valor acima NÃO distinguem "lê São Paulo" de "lê o fuso do
+  // aparelho": o verificador roda na máquina do Davi, que ESTÁ em São Paulo.
+  // A bateria de mutação removeu `timeZone: "America/Sao_Paulo"` e tudo ficou
+  // verde. Nenhum teste de valor pode pegar isso aqui — o ambiente é o próprio
+  // fuso —, então o alvo se prende no texto, que é o que existe.
+  eq('U91/R122 CRÍTICO: `horaEmSaoPaulo` passa `timeZone: "America/Sao_Paulo"` ao Intl. Os testes de valor acima NÃO pegam a ausência disso, porque o verificador roda em São Paulo — o painel mudaria de número conforme o fuso de quem abrisse a tela, e ninguém veria',
+     [/timeZone: "America\/Sao_Paulo"/.test(
+        require('fs').readFileSync('src/features/plantao/painel.ts', 'utf8')),
+      /horaCurta/.test(require('fs').readFileSync('src/features/plantao/painel.ts', 'utf8'))],
+     [true, true]);
+
+  // AS BORDAS DA FAIXA SÃO AS DO EXPEDIENTE que o sobreaviso já declara:
+  // 08:00 abre, 18:00 fecha. Não são números soltos deste arquivo.
+  eq('U91/R122: as bordas das faixas são as do expediente do sobreaviso — 07h59 ainda é madrugada, 08h já é expediente, 17h59 ainda é expediente, 18h já é noite',
+     ['2026-03-15T10:59:00Z', '2026-03-15T11:00:00Z',
+      '2026-03-15T20:59:00Z', '2026-03-15T21:00:00Z'].map(PN.faixaDaHora),
+     ['madrugada', 'expediente', 'expediente', 'noite']);
+
+  // ── O CRUZAMENTO DELEGA, NÃO REPETE (regra 13) ──────────────────────────
+  // Os TRÊS estados vêm de `avisoDaEscala`, e a distinção entre "fora" e
+  // "sem_escala" é doutrina escrita: colapsá-los acusaria o plantonista de
+  // furar uma escala que ninguém lançou.
+  {
+    const A = (id, dia, pessoa, hora) => ({
+      id, dia, hora, plantonista_id: pessoa, tipo: 'remoto',
+      cliente_id: null, cliente_informado: 'X', chamado_id: null,
+    });
+    const escala = [
+      { dia: '2026-03-16', pessoa_id: 'p1', horas: 14 },
+      { dia: '2026-03-17', pessoa_id: 'p2', horas: 14 },
+    ];
+    const tres = [
+      A('a', '2026-03-16', 'p1', '2026-03-16T05:00:00Z'),   // na escala
+      A('b', '2026-03-17', 'p1', '2026-03-17T05:00:00Z'),   // o dia é de outro
+      A('c', '2026-03-18', 'p1', '2026-03-18T05:00:00Z'),   // dia sem escala
+    ];
+    eq('U91/R122 CRÍTICO: os três estados da escala são os de `avisoDaEscala` — na escala, FORA da escala (o dia é de outro) e SEM escala lançada. Os dois últimos não se colapsam: acusar alguém de furar uma escala que ninguém lançou é acusação sobre o trabalho de outro',
+       tres.map((a) => PN.tomDoAtendimento(a, escala)),
+       ['ok', 'fora', 'sem_escala']);
+
+    // E OS TRÊS TÊM DE CHEGAR SEPARADOS AO KPI. A lei de conservação do censo
+    // (`naEscala + fora + semEscala === total`) NÃO pega o colapso: com
+    // `semEscala` sempre zero e `fora` absorvendo, a soma continua fechando.
+    // A bateria de mutação provou isso — o colapso sobreviveu ao censo inteiro.
+    eq('U91/R122 CRÍTICO: e os três estados chegam SEPARADOS ao KPI. A lei de conservação não pega o colapso (a soma fecha do mesmo jeito, com `semEscala` zerado) — só a contagem por estado pega',
+       (() => { const k = PN.kpisDoPlantao(tres, escala);
+                return [k.naEscala, k.foraDaEscala, k.semEscala]; })(),
+       [1, 1, 1]);
+  }
+
+  // ── AS LEIS DE CONSERVAÇÃO DOS KPIs ─────────────────────────────────────
+  // A asserção mais forte deste bloco: nenhum atendimento pode sumir de uma
+  // partição nem ser contado duas vezes. Pega classes inteiras de defeito que
+  // asserção-por-caso não pega.
+  {
+    const falhas91 = [];
+    const TIPOS = ['remoto', 'presencial'];
+    const escala = [
+      { dia: '2026-03-02', pessoa_id: 'p1', horas: 14 },
+      { dia: '2026-03-05', pessoa_id: 'p2', horas: 24 },
+      { dia: '2026-03-09', pessoa_id: 'p1', horas: 6 },
+    ];
+    for (let n = 0; n < 60; n += 1) {
+      const ats = [];
+      for (let i = 0; i <= n % 9; i += 1) {
+        const dia = '2026-03-' + String(((n + i) % 28) + 1).padStart(2, '0');
+        // varre as 24 horas ao longo do censo, para as três faixas aparecerem
+        const hUtc = String((((n * 7 + i * 5) % 24))).padStart(2, '0');
+        ats.push({
+          id: `a${n}-${i}`, dia, hora: `${dia}T${hUtc}:30:00Z`,
+          plantonista_id: (i % 3 === 0) ? null : `p${(i % 2) + 1}`,
+          tipo: TIPOS[i % 2],
+          cliente_id: i % 4 === 0 ? `c${i % 3}` : null,
+          cliente_informado: i % 4 === 0 ? null : (i % 5 === 0 ? '  Padaria X ' : 'padaria x'),
+          chamado_id: i % 3 === 0 ? `ch${i}` : null,
+        });
+      }
+      const k = PN.kpisDoPlantao(ats, escala);
+      if (k.total !== ats.length) falhas91.push([n, 'total']);
+      if (k.remoto + k.presencial !== k.total) falhas91.push([n, 'tipo não particiona']);
+      if (k.comChamado + k.semChamado !== k.total) falhas91.push([n, 'chamado não particiona']);
+      if (k.madrugada + k.expediente + k.noite + k.semHora !== k.total) falhas91.push([n, 'faixa não particiona']);
+      if (k.naEscala + k.foraDaEscala + k.semEscala !== k.total) falhas91.push([n, 'escala não particiona']);
+      if (k.emHorarioDeEquipe > k.expediente) falhas91.push([n, 'horário de equipe maior que o expediente']);
+
+      // a série cobre o mês inteiro e não perde nem duplica atendimento
+      const serie = PN.serieDoMes('2026-03', ats, escala);
+      if (serie.length !== 31) falhas91.push([n, 'série com ' + serie.length + ' dias']);
+      const somaSerie = serie.reduce((t, p) => t + p.total, 0);
+      if (somaSerie !== ats.length) falhas91.push([n, 'série soma ' + somaSerie + ' de ' + ats.length]);
+      for (const p of serie) {
+        if (p.madrugada + p.expediente + p.noite > p.total) falhas91.push([n, p.iso + ' faixas > total']);
+      }
+
+      // os rankings somam o mesmo total, sempre
+      const rp = PN.porPlantonista(ats, escala, {});
+      const rc = PN.porCliente(ats, {});
+      if (rp.reduce((t, l) => t + l.total, 0) !== ats.length) falhas91.push([n, 'ranking de plantonista perdeu linha']);
+      if (rc.reduce((t, l) => t + l.total, 0) !== ats.length) falhas91.push([n, 'ranking de cliente perdeu linha']);
+      for (const l of rp) if ((l.naEscala ?? 0) > l.total) falhas91.push([n, 'naEscala > total']);
+
+      // ordenação TOTAL: rodar de novo dá exatamente a mesma ordem
+      const rp2 = PN.porPlantonista([...ats].reverse(), escala, {});
+      if (rp.map((l) => l.chave).join('|') !== rp2.map((l) => l.chave).join('|')) {
+        falhas91.push([n, 'ranking dança quando a entrada é embaralhada']);
+      }
+    }
+    eq('U91/R122 CENSO: em 60 conjuntos, as QUATRO partições de KPI fecham exatas (tipo, chamado, faixa, escala), a série cobre os 31 dias sem perder nem duplicar atendimento, os rankings somam o total, e a ordem NÃO muda quando a entrada é embaralhada — um ranking que dança sem o dado mudar ensina a não confiar nele',
+       falhas91, []);
+  }
+
+  // ── O CLIENTE INFORMADO À MÃO NÃO VIRA DUAS LINHAS ──────────────────────
+  eq('U91/R122: "  Padaria X " e "padaria x" são o MESMO cliente informado — uma visita só não pode virar duas linhas do ranking por causa de espaço e maiúscula',
+     (() => {
+       const base = { dia: '2026-03-02', hora: '2026-03-02T05:00:00Z', plantonista_id: 'p1',
+                      tipo: 'remoto', cliente_id: null, chamado_id: null };
+       const r = PN.porCliente([
+         { ...base, id: '1', cliente_informado: '  Padaria X ' },
+         { ...base, id: '2', cliente_informado: 'padaria x' },
+       ], {});
+       return [r.length, r[0].total];
+     })(), [1, 2]);
+
+  eq('U91/R122: atendimento SEM plantonista aparece como linha própria no ranking, em vez de sumir dele — um atendimento sem dono no ranking é melhor que um atendimento que some',
+     (() => {
+       const r = PN.porPlantonista([{
+         id: '1', dia: '2026-03-02', hora: '2026-03-02T05:00:00Z', plantonista_id: null,
+         tipo: 'remoto', cliente_id: null, cliente_informado: 'X', chamado_id: null,
+       }], [], {});
+       return [r.length, r[0].rotulo, r[0].total];
+     })(), [1, 'Sem plantonista', 1]);
+
+  // ── O VAZIO É VAZIO, E NÃO UM FATO INVENTADO ────────────────────────────
+  eq('U91/R122: mês sem atendimento nenhum não tem "dia mais pesado" — devolve null em vez de apontar o dia 1 com zero, que seria o painel inventando um fato',
+     [PN.diaMaisPesado(PN.serieDoMes('2026-03', [], [])),
+      PN.serieDoMes('2026-03', [], []).length],
+     [null, 31]);
+
+  // ── A TELA: TRÊS ESTADOS DE LEITURA, E NENHUMA CONTA ────────────────────
+  {
+    const fs91 = require('fs');
+    const pnl = fs91.readFileSync('src/features/plantao/PainelDoPlantao.tsx', 'utf8');
+    const sob = fs91.readFileSync('src/routes/_authenticated/sobreaviso.tsx', 'utf8');
+    const vivoPnl = pnl.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+    eq('U91/R122: o painel está montado na tela do sobreaviso — a escala (o plano) e o atendimento (o registro) na mesma rolagem, com as mesmas colunas de dia',
+       [/<PainelDoPlantao mes=\{mes\} isLight=\{isLight\} \/>/.test(sob),
+        /from "@\/features\/plantao\/PainelDoPlantao"/.test(sob)],
+       [true, true]);
+
+    // A LIÇÃO DA U86, PRESA: erro, carregando e vazio são TRÊS telas. Uma
+    // consulta recusada que vira "0 atendimentos" é indistinguível de um mês
+    // tranquilo — foi assim que a grade chegou a exportar um PDF dizendo "31
+    // dias descobertos".
+    eq('U91/R122 CRÍTICO (lição da U86): erro, carregando e vazio são três telas distintas, e o ERRO vem antes de qualquer número — consulta recusada não pode virar "0 atendimentos", que é indistinguível de um mês tranquilo',
+       [/if \(atendimentos\.isError\) \{/.test(vivoPnl),
+        /if \(atendimentos\.isLoading\) \{/.test(vivoPnl),
+        /kpis\.total === 0 \?/.test(vivoPnl),
+        // o erro tem de ser avaliado ANTES do vazio, senão o vazio o engole
+        vivoPnl.indexOf('atendimentos.isError') < vivoPnl.indexOf('kpis.total === 0')],
+       [true, true, true, true]);
+
+    eq('U91/R122 CRÍTICO: o componente NÃO calcula — as cinco funções vêm de ./painel, e não há laço de contagem sobre atendimentos dentro do JSX',
+       [/kpisDoPlantao, porPlantonista, porCliente, serieDoMes, diaMaisPesado,/.test(vivoPnl),
+        /from "\.\/painel"/.test(vivoPnl),
+        /linhas\.filter\(|linhas\.reduce\(/.test(vivoPnl)],
+       [true, true, false]);
+
+    eq('U91/R122: o teto do ranking é DECLARADO na tela — um ranking cortado sem dizer que cortou lê-se como a lista inteira',
+       [/\+ \{restante\} fora do topo \{TETO_RANKING\}/.test(vivoPnl),
+        /restante > 0/.test(vivoPnl)],
+       [true, true]);
+
+    eq('U91/R122: o atendimento sem hora legível aparece à PARTE, e não somado a uma faixa — somá-lo à madrugada faria o painel inventar um horário',
+       [/kpis\.semHora > 0 && \(/.test(vivoPnl),
+        /sem hora legível/.test(pnl)],
+       [true, true]);
+
+    // ── OS TRÊS DOCUMENTOS (regra 7) ─────────────────────────────────────
+    const prod91 = fs91.readFileSync('docs/PRODUTO.md', 'utf8');
+    const plan91 = fs91.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+    const man91 = fs91.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+    eq('U91/R122 (regra 7): a regra, o diário e o manual existem, e a numeração segue a R121 sem colidir',
+       [/^- \*\*R122\*\* —/m.test(prod91),
+        /^## U91 — O painel do plantão/m.test(plan91),
+        /^## O que aconteceu no plantão do mês \(R122, U91\)/m.test(man91),
+        /^- \*\*R121\*\* —/m.test(prod91)],
+       [true, true, true, true]);
+
+    eq('U91/R122 (regra 7): os três documentos registram que `fora` e `sem escala` NÃO se somam, e o manual explica a razão para quem lê o número — sem isso alguém "simplifica" os dois num só na próxima entrega',
+       [/não se misturam/.test(man91),
+        /furar uma escala que não existe/.test(man91),
+        /TRÊS estados, nunca dois|três\s+estados/.test(prod91),
+        /não pega\*\* o colapso|não pega o colapso/.test(plan91)],
+       [true, true, true, true]);
+
+    eq('U91/R122 (regra 7): o diário registra a limitação do teste de fuso — o verificador roda EM São Paulo, então nenhum teste de valor distingue "lê SP" de "lê o aparelho". Quem for mexer nisso precisa saber que a rede ali é textual',
+       [/o verificador roda na\s+máquina do Davi, que ESTÁ em São Paulo|roda na máquina do Davi/.test(plan91),
+        /mutante equivalente|EQUIVALENTE/i.test(plan91)],
+       [true, true]);
+  }
+
+  eq('U91/R122: e a série traz as horas de escala do dia mesmo sem atendimento nenhum — é o que deixa ver "havia gente de sobreaviso e não entrou chamada"',
+     (() => {
+       const s = PN.serieDoMes('2026-03', [], [{ dia: '2026-03-05', pessoa_id: 'p1', horas: 24 }]);
+       const d5 = s.find((p) => p.iso === '2026-03-05');
+       return [d5.total, d5.horasDeEscala];
+     })(), [0, 24]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

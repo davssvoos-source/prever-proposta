@@ -49,6 +49,7 @@ import {
 } from "@/features/sobreaviso/data";
 import { GradeMes } from "@/features/sobreaviso/GradeMes";
 import { gerarPdfSobreaviso } from "@/features/sobreaviso/pdf";
+import { PainelDoPlantao } from "@/features/plantao/PainelDoPlantao";
 
 export const Route = createFileRoute("/_authenticated/sobreaviso")({
   beforeLoad: async () => {
@@ -383,6 +384,13 @@ function SobreavisoPage() {
           </div>
         ) : null}
       </div>
+
+      {/* ── O QUE ACONTECEU: o painel do plantão (R122, U91) ───────────────
+          Fica DEPOIS da grade nas duas larguras, e não numa tela própria: a
+          escala é o PLANO e o atendimento é o REGISTRO, e separá-los obrigaria
+          a comparar de memória. As colunas de dia são as mesmas dos dois lados
+          — o mesmo `diasDoMes` gera a grade e a série. */}
+      <PainelDoPlantao mes={mes} isLight={isLight} />
 
       {/* ── CELULAR: quem está de plantão no dia ───────────────────────── */}
       <div className="so-celular" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
