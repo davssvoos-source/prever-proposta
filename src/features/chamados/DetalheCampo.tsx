@@ -39,7 +39,14 @@ import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
 import { useChecklist, marcarItemChecklist } from "@/features/chamados/checklist";
 import { CronogramaObra } from "@/features/implantacao/CronogramaObra";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
-import { useAfirmarVisitas, sqlstateDoErro, RecusaDaAgenda } from "@/features/programacao/data";
+import {
+  useAfirmarVisitas, useConcluirComCobranca, sqlstateDoErro, RecusaDaAgenda,
+} from "@/features/programacao/data";
+import { erroDoLancamento, reaisDigitados } from "@/features/programacao/modelo";
+import { parcelar } from "@/lib/periodos";
+
+/** As três decisões de `concluir_chamado_com_cobranca` (U80), na conferência. */
+type DecisaoDoFechamento = "conferir_depois" | "nada_a_cobrar" | "lancar";
 import {
   ConfirmacaoDasVisitas,
   useConfirmacaoDasVisitas,
@@ -80,6 +87,37 @@ export function DetalheCampo({ id }: { id: string }) {
   const [novaQtd, setNovaQtd] = useState("1");
   // conferência de cobrança — Etapa U4
   const { data: analise = [] } = useAnaliseChamado(id);
+
+  // ── A DECISÃO DE COBRANÇA NA CONFERÊNCIA (R121, U90) ─────────────────────
+  // A CONTA NÃO MORA AQUI. `erroDoLancamento` e `parcelar` são os MESMOS que o
+  // painel da programação usa — importados, não recriados. Duas telas que
+  // dividissem R$ 100 em 3 cada uma do seu jeito dariam 99,99 numa e 100,00 na
+  // outra, e o cliente pagaria a menos numa delas para sempre. O que se repete
+  // abaixo é só o JSX; a aritmética tem um dono só.
+  const [lancDescricao, setLancDescricao] = useState("");
+  const [lancValor, setLancValor] = useState("");
+  const [lancParcelas, setLancParcelas] = useState("1");
+
+  const candidatoDoLancamento = {
+    descricao: lancDescricao,
+    valorTotal: (() => { const n = reaisDigitados(lancValor); return Number.isFinite(n) ? n : 0; })(),
+    parcelas: (() => { const n = Number(lancParcelas); return Number.isFinite(n) ? n : 0; })(),
+    tipoServico: (os?.tipo_servico ?? "manutencao") as "instalacao" | "manutencao",
+  };
+  const erroDoLanc = erroDoLancamento(candidatoDoLancamento);
+  const previaDasParcelas = erroDoLanc
+    ? []
+    : parcelar(candidatoDoLancamento.valorTotal, candidatoDoLancamento.parcelas);
+
+  /**
+   * A CONDIÇÃO MORA NUM LUGAR SÓ, e isso não é economia de linha.
+   * Ela decide DUAS coisas: o que o botão FAZ e o que o botão DIZ. Escrita
+   * duas vezes, uma pode ganhar um termo que a outra não ganha — e aí o botão
+   * anuncia "Conferir e fechar" e lança uma cobrança, ou anuncia o lançamento
+   * e não lança. Um const torna a divergência inexprimível.
+   */
+  const podeDecidirValor = veFinanceiro && os?.natureza === "campo" && analise.length === 0;
+  const vaiLancar = podeDecidirValor && lancDescricao.trim() !== "" && !erroDoLanc;
   const { data: cobrancasOs = [] } = useCobrancasDoChamado(id);
   /**
    * O RECORTE, VINDO DE UM LUGAR SÓ (U80). `cancelada` NÃO conta como
@@ -361,10 +399,55 @@ export function DetalheCampo({ id }: { id: string }) {
     onError: (e: Error) => { guardarErroDaVisita(e); toast.error(e.message); },
   });
 
+  /**
+   * A CONFERÊNCIA PASSA A DECIDIR O DINHEIRO (R121, U90).
+   *
+   * ── O QUE ESTE BOTÃO FAZIA, E POR QUE ERA POUCO ─────────────────────────
+   * `concluirChamado` é um UPDATE puro: status (que já era 'concluido' desde
+   * `executarChamado`), os carimbos, e `fechado_por`. Ele NÃO tocava em
+   * `faturamento_status` — e como a caixa de conferência só aparece enquanto
+   * esse campo é 'a_analisar', **"Conferir e fechar" não fechava nada**: o
+   * chamado ficava na fila até alguém agir pelo cartão de cobrança.
+   *
+   * A porta que decide na MESMA transação já existia desde a U80
+   * (`concluir_chamado_com_cobranca`), e vivia só no painel da programação.
+   * Encerrar pela página do próprio chamado pulava a pergunta do dinheiro em
+   * silêncio. Agora não pula.
+   *
+   * ── O TÉCNICO NÃO É AFETADO ─────────────────────────────────────────────
+   * O botão dele é outro (`concluir`, que é `executarChamado`). Esta caixa é
+   * do gestor. E dentro dela, quem NÃO vê valores (o SAC — R13) continua com
+   * exatamente um botão, que dispara `conferir_depois`: mesma escrita de
+   * antes, mais um evento na linha do tempo.
+   *
+   * ── A GUARDA DE NATUREZA, E ELA É A LIÇÃO DA U82 ────────────────────────
+   * `chamados.$id.tsx:37` manda TUDO que não é `interno` para cá — inclusive
+   * o COMERCIAL. A U82 tornou chamado comercial impossível de encerrar por
+   * exatamente esse caminho. A RPC é de ciclo de CAMPO (tipo de serviço,
+   * parcelas, competência), então o comercial continua pelo caminho antigo.
+   * Não é cautela decorativa: é o defeito que já aconteceu, uma vez.
+   */
+  const concluirComCobranca = useConcluirComCobranca();
+
   const fechar = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (decisao: DecisaoDoFechamento = "conferir_depois") => {
       await afirmarAntesDeEncerrar();
-      await concluirChamado(id);
+      if (os?.natureza === "campo") {
+        await concluirComCobranca.mutateAsync({
+          chamadoId: id,
+          decisao,
+          tipoServico: (os.tipo_servico ?? "manutencao") as "instalacao" | "manutencao",
+          ...(decisao === "lancar"
+            ? {
+                descricao: lancDescricao.trim(),
+                valorTotal: candidatoDoLancamento.valorTotal,
+                parcelas: previaDasParcelas,
+              }
+            : {}),
+        });
+      } else {
+        await concluirChamado(id);
+      }
       // Implantação concluída alimenta o inventário do cliente (as-built):
       // é o que fecha o ciclo proposta → implantação → corretiva/preventiva.
       if (os?.tipo === "implantacao" && os.visita_id) {
@@ -372,15 +455,19 @@ export function DetalheCampo({ id }: { id: string }) {
       }
       return null;
     },
-    onSuccess: (derivado) => {
+    onSuccess: (derivado, decisao) => {
       invalidar();
+      const oQueFoiDecidido =
+        decisao === "lancar" ? "Cobrança lançada."
+        : decisao === "nada_a_cobrar" ? "Sem cobrança."
+        : "A cobrança fica para a conferência.";
       if (derivado && derivado.sistemas > 0) {
         qc.invalidateQueries({ queryKey: ["cliente-inventario", os?.cliente_id] });
         toast.success(
-          `Chamado fechado. Inventário do cliente atualizado: ${derivado.sistemas} sistema(s), ${derivado.equipamentos} equipamento(s).`,
+          `Chamado fechado. ${oQueFoiDecidido} Inventário do cliente atualizado: ${derivado.sistemas} sistema(s), ${derivado.equipamentos} equipamento(s).`,
         );
       } else {
-        toast.success("Chamado fechado.");
+        toast.success(`Chamado fechado. ${oQueFoiDecidido}`);
       }
     },
     // `guardarErroDaVisita` também AQUI, como em `concluir` e `cancelar`: sem
@@ -1303,10 +1390,76 @@ export function DetalheCampo({ id }: { id: string }) {
               perguntou (o arrasto do quadro, o seletor de status, os chips do
               interno, `decidir_pedido_compra`, o gatilho da visita — P34). */}
           <ConfirmacaoDasVisitas estado={conf} isLight={isLight} erro={erroDaVisita} modo="atrasado" />
+
+          {/* A DECISÃO DE COBRANÇA — só para quem responde pelo financeiro.
+              O SAC é gestor e NÃO vê valores (R13): para ele esta seção não
+              existe, e o botão de fechar dispara `conferir_depois`, que é
+              exatamente a escrita que este botão já fazia antes da U90.
+              Nada de campo de valor desabilitado: um campo cinza ensina que
+              existe um número ali que ele não pode ver. */}
+          {veFinanceiro && os.natureza === "campo" && (
+            analise.length > 0 ? (
+              /* OS DOIS CAMINHOS SÃO DISJUNTOS (u80:406-410): onde houve
+                 análise item a item, a cobrança sai da APROVAÇÃO, com o
+                 bloqueio de `revisar`. A porta RECUSA `lancar` aqui — então a
+                 tela não oferece, em vez de oferecer e colher um 55000. */
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary }}>
+                Este atendimento foi analisado item a item — a cobrança sai da
+                conferência do cartão de peças, e não de um valor digitado aqui.
+              </span>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={LABEL}>Lançar cobrança ao fechar (opcional)</label>
+                <input
+                  style={INPUT} placeholder="O que está sendo cobrado"
+                  value={lancDescricao} onChange={(e) => setLancDescricao(e.target.value)}
+                />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    style={{ ...INPUT, flex: 2 }} inputMode="decimal" placeholder="Valor total"
+                    value={lancValor} onChange={(e) => setLancValor(e.target.value)}
+                  />
+                  <input
+                    style={{ ...INPUT, flex: 1 }} inputMode="numeric" placeholder="parcelas"
+                    aria-label="Número de parcelas"
+                    value={lancParcelas} onChange={(e) => setLancParcelas(e.target.value)}
+                  />
+                </div>
+                {/* A PRÉVIA É O QUE IMPEDE A SURPRESA. `parcelar` põe o resto na
+                    PRIMEIRA parcela, então 100 em 3 é 33,34 + 33,33 + 33,33 —
+                    e quem lança precisa ver isso ANTES, não descobrir no boleto. */}
+                {previaDasParcelas.length > 0 && (
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
+                    {previaDasParcelas.length}× — primeira de{" "}
+                    {previaDasParcelas[0].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {previaDasParcelas.length > 1 && previaDasParcelas[1] !== previaDasParcelas[0]
+                      ? `, demais de ${previaDasParcelas[1].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                      : ""}
+                    {candidatoDoLancamento.tipoServico === "instalacao" ? " · instalação, até 60×" : " · manutenção, até 12×"}
+                  </span>
+                )}
+                {lancDescricao.trim() !== "" && erroDoLanc && (
+                  <span style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: isLight ? "#8A5A00" : "#F0B429" }}>
+                    {erroDoLanc}
+                  </span>
+                )}
+              </div>
+            )
+          )}
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button style={{ ...btnSec, flex: 1 }} onClick={() => reabrir.mutate()} disabled={reabrir.isPending}>
               Reabrir
             </button>
+            {podeDecidirValor && (
+              <button
+                style={{ ...btnSec, flex: 1 }}
+                onClick={() => fechar.mutate("nada_a_cobrar")}
+                disabled={fechar.isPending || afirmar.isPending}
+              >
+                Nada a cobrar
+              </button>
+            )}
             <button
               style={{
                 ...CTA, flex: 2, width: "auto",
@@ -1314,11 +1467,17 @@ export function DetalheCampo({ id }: { id: string }) {
                 color: "#FFFFFF",
                 boxShadow: "0 4px 20px rgba(5,150,118,0.45)",
               }}
-              onClick={() => fechar.mutate()}
+              /* O BOTÃO GRANDE MUDA DE DECISÃO, NÃO DE LUGAR. Com o formulário
+                 preenchido e válido ele LANÇA; vazio, ele faz o que sempre fez.
+                 Dois botões grandes concorrentes fariam a pessoa escolher entre
+                 dois verbos parecidos com o dedo em cima do mais próximo. */
+              onClick={() => fechar.mutate(vaiLancar ? "lancar" : "conferir_depois")}
               disabled={fechar.isPending || afirmar.isPending}
             >
               <CheckCircle2 size={18} />
-              {fechar.isPending ? "Fechando…" : conf.rotulo("Conferir e fechar")}
+              {fechar.isPending
+                ? "Fechando…"
+                : conf.rotulo(vaiLancar ? `Fechar e lançar ${previaDasParcelas.length}×` : "Conferir e fechar")}
             </button>
           </div>
         </div>

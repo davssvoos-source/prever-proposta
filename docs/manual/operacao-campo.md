@@ -911,6 +911,76 @@ está declarado como dívida.
   preventiva e nos demais tipos, escalar a prioridade continua apertando o
   prazo como sempre.
 
+
+## Conferir e fechar agora decide a cobrança (R121, U90)
+
+A caixa verde de **Conferência**, no detalhe do chamado, mudou. Antes ela tinha
+um botão que carimbava quem conferiu e **deixava o chamado na fila** — o chamado
+só saía dela quando alguém agisse pelo cartão de cobrança. Agora o gesto que
+encerra é o gesto que decide.
+
+### O que você vê, e depende de quem você é
+
+**Se você responde pelo financeiro** (admin ou comercial), a caixa mostra um
+formulário opcional — o que está sendo cobrado, o valor total e o número de
+parcelas — e três saídas:
+
+- **Conferir e fechar** (formulário vazio): fecha e deixa a cobrança para a
+  conferência do cartão de peças. É o comportamento antigo.
+- **Nada a cobrar**: fecha dizendo que não há o que cobrar neste atendimento.
+- **Fechar e lançar N×**: o botão grande **muda de nome sozinho** quando o
+  formulário está preenchido e válido. Ele fecha e lança a cobrança na mesma
+  transação.
+
+**Se você é do SAC**, a caixa continua exatamente como era: um botão, que fecha
+e deixa a cobrança para a conferência. O SAC é gestor e não vê valores — então
+aqui não há campo de valor nenhum, nem cinza nem desabilitado.
+
+**Se você é técnico**, nada mudou: o seu botão é *Concluir atendimento*, e ele
+registra a execução. A conferência é do gestor.
+
+### A prévia das parcelas, e por que ela importa
+
+Ao digitar valor e parcelas, aparece uma linha como:
+
+> `3× — primeira de R$ 33,34, demais de R$ 33,33 · manutenção, até 12×`
+
+**O resto vai na primeira parcela, sempre.** R$ 100 em 3 não é 33,33 três vezes
+— isso somaria R$ 99,99 e o cliente pagaria um centavo a menos, para sempre. A
+prévia mostra a divisão real ANTES de lançar, não depois, no boleto.
+
+O teto também aparece ali: **instalação vai até 60 parcelas, manutenção até 12**.
+Implantação é instalação automaticamente, então uma obra pode ser parcelada em
+até 60×.
+
+### Quando a tela NÃO oferece lançar
+
+**Chamado com análise item a item.** Se o atendimento teve peças analisadas uma
+a uma, a cobrança sai da conferência do cartão de peças — com o bloqueio de
+itens em revisão, que existe porque cobrança indevida custa mais caro que uma
+conferência. A caixa avisa isso em vez de oferecer um campo que seria recusado.
+
+**Chamado que já teve a cobrança decidida.** A caixa de conferência some quando
+o chamado sai da fila; se ela ainda estiver aberta numa aba velha, a porta
+recusa com a frase certa e pede para recarregar.
+
+**Chamado comercial.** A decisão de cobrança é do ciclo de campo. Chamado
+comercial fecha como sempre fechou.
+
+### O que NÃO existe, e é bom saber
+
+**Não dá para somar o valor da obra à mensalidade do contrato.** O plano previa
+isso, e não foi construído porque **não cobraria nada**: o sistema não gera
+cobrança mensal automática — toda cobrança nasce de um gesto humano. O
+`valor_mensal` do contrato é documentação (o que o contrato diz), não um motor
+de faturamento. Aumentar aquele número não produziria nenhuma cobrança e ainda
+apagaria o valor que veio do PDF.
+
+**A obra se cobra em PARCELAS**, que são linhas reais, entram no fechamento do
+período e podem ser faturadas. Se um dia a Prever precisar de aumento permanente
+de mensalidade cobrado pelo sistema, isso pede um motor de mensalidade
+recorrente — que é outra entrega.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`

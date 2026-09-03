@@ -2592,3 +2592,49 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   cronograma **não conversa com a agenda de campo**: as fases não geram blocos
   em `agenda_campo`, então a obra continua sendo programada dia a dia como
   qualquer chamado. *(U89.)*
+
+- **R121** — **Conferir e fechar decide a cobrança, e "fechar" passa a fechar
+  de verdade.** Até a U90, o botão *Conferir e fechar* do detalhe do chamado
+  fazia um UPDATE que não tocava em `faturamento_status` — e como a caixa de
+  conferência só existe enquanto esse campo é `a_analisar`, **o botão não tirava
+  o chamado da fila**. Encerrar pela página do próprio chamado pulava a pergunta
+  do dinheiro em silêncio; a decisão só existia no painel da programação.
+
+  **A regra que fica: o gesto que encerra é o gesto que decide.** Na conferência,
+  quem responde pelo financeiro escolhe entre três saídas — deixar para a
+  conferência do cartão, dizer que não há nada a cobrar, ou lançar a cobrança
+  ali mesmo, com valor e parcelas. As três encerram na MESMA transação
+  (`concluir_chamado_com_cobranca`, U80): não existe estado intermediário de
+  chamado fechado com dinheiro indefinido.
+
+  **O SAC é gestor e não vê valores (R13).** Para ele a seção de valor não
+  existe — não é um campo cinza, é ausência: campo desabilitado ensina que há um
+  número ali que ele não pode ver. O botão dele dispara *deixar para a
+  conferência*, que é exatamente a escrita que esse botão já fazia.
+
+  **O técnico não é afetado.** O botão dele é outro (*Concluir atendimento*, que
+  registra a execução). A conferência é do gestor.
+
+  **A conta tem um dono só.** A divisão em parcelas e a validação são as MESMAS
+  do painel da programação, importadas e não recriadas. Duas telas dividindo
+  R$ 100 em 3 cada uma do seu jeito dariam 99,99 numa e 100,00 na outra, e o
+  cliente pagaria a menos numa delas para sempre. O que a tela mostra antes de
+  lançar é a divisão REAL: o resto vai na primeira parcela.
+
+  **Onde houve análise item a item, esta tela não oferece lançar** — a cobrança
+  sai da conferência do cartão de peças, com o bloqueio de itens em revisão. Os
+  dois caminhos são disjuntos por construção, e a tela não oferece o que a porta
+  recusaria.
+
+  **O que a R121 NÃO entrega, e é mudança de plano declarada:** o **acréscimo
+  mensal ao contrato**. O plano previa somar o valor da obra ao `valor_mensal`
+  do contrato "dali em diante". **Isso não cobraria nada.** Não existe geração
+  recorrente neste sistema: toda cobrança nasce de um gesto humano explícito, e
+  `valor_mensal` é documentação do contrato — aparece em cinco telas, todas de
+  exibição ou edição, e nenhuma fatura a partir dele. Somar ali produziria zero
+  cobranças e ainda sobrescreveria o valor que veio do PDF, num campo sem
+  histórico que a extração por IA pode reescrever por cima. **Decisão do Davi
+  (03/09): a obra é cobrada em PARCELAS**, que são linhas reais e entram no
+  fechamento. Um aumento permanente de mensalidade só passa a significar
+  dinheiro no dia em que existir um motor de mensalidade recorrente — e esse é
+  outro projeto, não um passo desta fase. *(U90.)*

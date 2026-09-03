@@ -8649,3 +8649,113 @@ corrigidas e a origem de cada número está anotada.
 `npx tsc --noEmit` em **59** (baseline mantido) · os três checadores de sintaxe
 plpgsql limpos (dollar-quote, `CASE` nu em `IF`, ambiguidade 42702) ·
 **bateria de mutação: 12 mortas, 0 sobreviventes, 0 inválidas**.
+
+---
+
+## U90 — A conferência decide a cobrança (R121 — Fase 4, passo 2 e último)
+
+**Arquivos:** `src/features/chamados/DetalheCampo.tsx`,
+`scripts/verificar-logica.cjs`, `docs/PRODUTO.md` (R121),
+`docs/manual/operacao-campo.md`, `docs/PLANO_UNIFICACAO.md`.
+**NENHUMA MIGRATION.** A porta que faltava já existia desde a U80 — o que
+faltava era chamá-la de onde o chamado é fechado.
+
+### O levantamento mudou o que esta fase era
+
+O plano dizia: *"Cobrança disparada na conclusão: parcelada (usa `parcelar()`
+que já existe) ou como acréscimo mensal ao contrato — soma no `valor_mensal` de
+`cliente_contratos` dali em diante. Vínculo trava lançamento duplicado."*
+
+Três itens, três vereditos medidos:
+
+| Item do plano | Veredito |
+|---|---|
+| Parcelada, usando `parcelar()` | **Já existia** — U80, modo `lancar` |
+| Vínculo trava lançamento duplicado | **Já existia**, em duas camadas |
+| Acréscimo mensal ao `valor_mensal` | **Não pode funcionar** |
+
+**A parcelada já estava pronta.** `concluir_chamado_com_cobranca` recebe as
+parcelas, confere que a soma fecha, aplica o teto (60 instalação / 12
+manutenção) e insere uma cobrança por mês — com a aritmética de mês feita em
+SQL, porque `d.setMonth(d.getMonth() + 1)` sobre 31/01 cai em **março** e a
+competência de fevereiro fica sem linha.
+
+**A trava também.** A recusa `já tem N lançamento(s), não lanço em cima` mais o
+índice único parcial `cobrancas_avulsa_unica_por_chamado_idx`.
+
+### O acréscimo mensal não cobraria nada, e isso é um achado
+
+`valor_mensal` aparece em **cinco lugares** do `src/`, e os cinco são exibição
+ou edição: o card do cliente, a lista de contratos, a tela do contrato, a
+criação e o tipo. **Nenhum fatura a partir dele.**
+
+E não existe geração recorrente: varredura de `INSERT INTO public.cobrancas` em
+todas as migrations — todos vêm de um gesto humano explícito (aprovação da
+conferência, conclusão com lançamento, avulso pela tela de fechamentos). Não há
+`pg_cron`, não há job.
+
+Somar R$ 300 no `valor_mensal` produziria **zero cobranças, para sempre** — e
+sobrescreveria o valor que veio do PDF do contrato, num campo sem histórico que
+a extração por IA pode reescrever por cima depois. Seria uma tela que parece
+cuidar do dinheiro e não cobra nada.
+
+**Decisão do Davi (03/09): "Parcelar, e só."** O acréscimo permanente sai do
+plano. Ele só passa a significar dinheiro quando existir um motor de mensalidade
+recorrente, e isso é entrega própria — não um passo desta fase. Fica registrado
+em R121 com o motivo, para ninguém o repropor lendo o plano velho.
+
+### O buraco que sobrou, e esse era meu
+
+`concluirChamado` — o que o botão *Conferir e fechar* chamava — é um UPDATE
+puro: status (que já era `concluido` desde `executarChamado`), os carimbos e
+`fechado_por`. **Ele não tocava em `faturamento_status`.**
+
+E a caixa de conferência só aparece enquanto `faturamento_status = 'a_analisar'`.
+Logo **o botão não fechava nada**: o chamado ficava na fila até alguém agir pelo
+cartão de cobrança. Quem encerrasse pela página do chamado nunca era perguntado
+sobre o dinheiro.
+
+**Decisão do Davi: corrigir para TODO chamado de campo**, e não só implantação.
+
+### O que foi feito, e o que NÃO foi tocado
+
+O `fechar` passa a rotear: **campo → a RPC que decide; qualquer outra natureza →
+`concluirChamado`, como antes.**
+
+**Essa guarda é a lição da U82, e ela já custou caro uma vez.**
+`chamados/$id.tsx:37` manda tudo que não é `interno` para o `DetalheCampo`,
+COMERCIAL incluído — e a U82 tornou chamado comercial impossível de encerrar por
+exatamente este caminho. A RPC é de ciclo de campo (tipo de serviço, parcelas,
+competência); o comercial continua pelo caminho antigo.
+
+**O técnico não é afetado**: o botão dele é `executarChamado`, outro gesto. **O
+SAC não é afetado**: ele é gestor (`is_gestor` inclui `sac`, desde a U6a) e passa
+o gate da porta, mas não vê valores (R13) — para ele a seção de dinheiro não
+existe e o botão dispara `conferir_depois`, que é a mesma escrita de antes.
+
+**A conta é importada, não recriada.** `parcelar` e `erroDoLancamento` vêm dos
+mesmos módulos que o painel da programação usa. O que se repete é só o JSX.
+
+### O que as lentes e a mutação acharam
+
+**A condição que decide LANÇAR estava escrita DUAS vezes** — uma no `onClick`,
+outra no rótulo do botão. Se uma ganhasse um termo que a outra não ganhasse, o
+botão anunciaria *"Conferir e fechar"* e lançaria uma cobrança. Consertado por
+construção: um `const vaiLancar`, usado nos dois lugares. A divergência ficou
+inexprimível em vez de vigiada.
+
+**E a bateria pegou a asserção mais importante em falso.** A que guarda a lição
+da U82 procurava a string `os?.natureza === "campo"` em qualquer lugar do
+arquivo — e ela também aparece em `podeDecidirValor`. A mutação trocou o `if` do
+roteamento por `if (true)`, o comercial passou a ir para a RPC de ciclo de campo,
+**e o verificador ficou verde**. A âncora foi reescrita para prender o `if`
+JUNTO com a chamada que ele guarda. É a regra 1 do diário — *a mutação tem de
+provar que atingiu o alvo* —, e foi a terceira vez nesta semana que o alvo era o
+ramo e a âncora pegou o vocabulário.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2604 passaram, 0 falharam**.
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
+**Bateria de mutação: 8 mortas, 0 sobreviventes, 0 inválidas.**
+Sem migration: nada a rodar à mão, e o push publica.

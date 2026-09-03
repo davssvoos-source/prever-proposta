@@ -15364,5 +15364,147 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      arquivos >= 108, true);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U90 / R121 — A CONFERÊNCIA DECIDE A COBRANÇA, ONDE O CHAMADO É FECHADO
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs90 = require('fs');
+  const det90 = fs90.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
+  // O JSX/TS VIVO: sem as linhas de comentário. Este arquivo EXPLICA, em
+  // comentário, o defeito que conserta — uma âncora crua casaria a explicação
+  // e a asserção certificaria a prosa em vez do código (regra 2).
+  const vivo90 = det90.split('\n')
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+  // ── A GUARDA DE NATUREZA — É A LIÇÃO DA U82, E ELA JÁ CUSTOU CARO ───────
+  // `chamados/$id.tsx:37` manda TUDO que não é `interno` para o DetalheCampo,
+  // COMERCIAL incluído. A U82 tornou chamado comercial impossível de encerrar
+  // por exatamente este caminho, e o defeito só apareceu numa leitura
+  // adversarial — nenhum portão o viu. A RPC é de ciclo de CAMPO; o comercial
+  // continua pelo `concluirChamado`, e as DUAS metades são medidas.
+  eq('U90/R121 CRÍTICO (lição da U82): o fechamento roteia por natureza — campo vai para a RPC que decide a cobrança, e TUDO QUE NÃO É CAMPO continua pelo `concluirChamado`. O DetalheCampo recebe o comercial também, e foi por aqui que a U82 tornou chamado comercial impossível de encerrar',
+     // A ÂNCORA PRENDE O `if` JUNTO COM A CHAMADA QUE ELE GUARDA.
+     // A primeira versão procurava a string `os?.natureza === "campo"` em
+     // qualquer lugar do arquivo — e ela também aparece em `podeDecidirValor`.
+     // A bateria trocou o `if` do roteamento por `if (true)` e a asserção ficou
+     // VERDE, com o comercial indo para a RPC de ciclo de campo. É a regra 1 do
+     // diário: a mutação tem de provar que atingiu o alvo, e o alvo aqui é o
+     // ramo, não o vocabulário.
+     [/if \(os\?\.natureza === "campo"\) \{\s*\n\s*await concluirComCobranca\.mutateAsync\(/.test(vivo90),
+      /concluirComCobranca\.mutateAsync\(/.test(vivo90),
+      /\} else \{\s*\n\s*await concluirChamado\(id\);\s*\n\s*\}/.test(vivo90)],
+     [true, true, true]);
+
+  // ── A AFIRMAÇÃO VEM ANTES DO STATUS (U82) ──────────────────────────────
+  // Medido por POSIÇÃO, não por presença: a chamada existir depois da porta
+  // que escreve o status seria pior que não existir — o chamado ficaria
+  // encerrado e a pergunta das visitas perdida.
+  eq('U90/R121 CRÍTICO: `afirmarAntesDeEncerrar()` continua sendo a PRIMEIRA coisa do fechamento, ANTES da porta que escreve o status — se ela falhar, nada foi escrito e o chamado NÃO foi encerrado (U82)',
+     (() => {
+       const corpo = vivo90.slice(vivo90.indexOf('const fechar = useMutation'),
+                                 vivo90.indexOf('const marcarItem = useMutation'));
+       const iAfirma = corpo.indexOf('afirmarAntesDeEncerrar()');
+       const iPorta  = corpo.indexOf('concluirComCobranca.mutateAsync');
+       return iAfirma > 0 && iPorta > 0 && iAfirma < iPorta;
+     })(), true);
+
+  // ── A ARITMÉTICA TEM UM DONO SÓ (a regra que evita duas verdades) ───────
+  // Duas telas que dividissem R$ 100 em 3 cada uma do seu jeito dariam 99,99
+  // numa e 100,00 na outra. `erroDoLancamento` e `parcelar` são IMPORTADOS do
+  // mesmo lugar que o painel da programação usa; o que se repete é só o JSX.
+  eq('U90/R121 CRÍTICO: a conta é IMPORTADA, não recriada — `parcelar` e `erroDoLancamento` vêm dos módulos compartilhados, e o DetalheCampo não tem divisão de parcela nem teto próprios (duas divisões independentes fariam o cliente pagar a menos numa das telas, para sempre)',
+     [/import \{ parcelar \} from "@\/lib\/periodos"/.test(vivo90),
+      /erroDoLancamento, reaisDigitados \} from "@\/features\/programacao\/modelo"/.test(vivo90),
+      // nenhuma aritmética de parcela LOCAL: nem divisão por centavos, nem os
+      // tetos 60/12 escritos à mão neste arquivo.
+      /Math\.floor\(centavos/.test(vivo90),
+      /=== "instalacao" \? 60 : 12/.test(vivo90)],
+     [true, true, false, false]);
+
+  // ── A CONDIÇÃO É UMA SÓ, E É POR CONSTRUÇÃO ────────────────────────────
+  // Ela decide o que o botão FAZ e o que o botão DIZ. Escrita duas vezes, uma
+  // pode ganhar um termo que a outra não ganha — e o botão anuncia "Conferir e
+  // fechar" enquanto lança uma cobrança. O `const` torna isso inexprimível.
+  {
+    const usos = (vivo90.match(/vaiLancar/g) || []).length;
+    eq('U90/R121 CRÍTICO: a condição que decide LANÇAR mora num const só (`vaiLancar`), usado no onClick E no rótulo — se as duas fossem escritas à parte, o botão poderia dizer uma coisa e fazer outra',
+       [usos >= 3,                                        // 1 definição + 2 usos
+        /fechar\.mutate\(vaiLancar \? "lancar" : "conferir_depois"\)/.test(vivo90),
+        /conf\.rotulo\(vaiLancar \?/.test(vivo90)],
+       [true, true, true]);
+  }
+
+  // ── O SAC É GESTOR E NÃO VÊ VALORES (R13) ──────────────────────────────
+  // Ele passa por `isGerente` e vê a caixa de conferência. O que ele NÃO pode
+  // ver é dinheiro. A seção inteira é fechada por `veFinanceiro` — e não um
+  // campo desabilitado, que ensinaria que existe um número ali.
+  eq('U90/R121 CRÍTICO (R13): o formulário de valor e o botão "Nada a cobrar" são fechados por `veFinanceiro`; o SAC vê a caixa de conferência e exatamente um botão, que dispara `conferir_depois` — a mesma escrita que este botão já fazia antes da U90',
+     [/const podeDecidirValor = veFinanceiro && os\?\.natureza === "campo" && analise\.length === 0;/.test(vivo90),
+      /const vaiLancar = podeDecidirValor &&/.test(vivo90),
+      /\{podeDecidirValor && \(/.test(vivo90)],
+     [true, true, true]);
+
+  // ── OS DOIS CAMINHOS SÃO DISJUNTOS (u80:406-410) ───────────────────────
+  // Onde houve análise item a item, a porta RECUSA `lancar` com 55000. A tela
+  // NÃO oferece, em vez de oferecer e colher a recusa: `analise.length === 0`
+  // está dentro do próprio `podeDecidirValor`.
+  eq('U90/R121: com análise item a item, a tela não oferece lançar — ela diz que a cobrança sai da conferência do cartão de peças. Oferecer e colher o 55000 da porta seria ensinar o usuário a bater numa parede',
+     [/analise\.length === 0/.test(vivo90),
+      /analisado item a item/.test(det90)],
+     [true, true]);
+
+  // ── O QUE NÃO PODE TER SUMIDO NO CAMINHO ───────────────────────────────
+  eq('U90/R121: a derivação do inventário as-built da implantação sobreviveu ao roteamento — é ela que fecha o ciclo proposta → implantação → corretiva',
+     /if \(os\?\.tipo === "implantacao" && os\.visita_id\) \{\s*\n\s*return derivarInventarioDaVisita\(os\.cliente_id, os\.visita_id\);/.test(vivo90),
+     true);
+
+  eq('U90/R121: nenhuma chamada de `fechar.mutate()` sem decisão explícita — o padrão do parâmetro existe como rede, não como caminho',
+     (det90.match(/fechar\.mutate\(\s*\)/g) || []).length, 0);
+
+  // ── E A CONTA QUE A TELA MOSTRA É A QUE A PORTA RECEBE ─────────────────
+  // A prévia diz "primeira de X, demais de Y". Se `parcelar` mudasse a
+  // política do resto, a frase da tela passaria a mentir sem que ninguém
+  // tocasse no DetalheCampo. Esta asserção prende a política, não a frase.
+  eq('U90/R121: a prévia da tela ("primeira de X, demais de Y") descreve a política REAL de `parcelar` — o resto vai na PRIMEIRA parcela, e a soma fecha exata',
+     [P.parcelar(100, 3)[0] > P.parcelar(100, 3)[1],
+      P.parcelar(100, 3).reduce((a, b) => a + b, 0),
+      P.parcelar(90, 3)[0] === P.parcelar(90, 3)[1]],
+     [true, 100, true]);
+
+  // ── A MUDANÇA DE PLANO FICA REGISTRADA COM O MOTIVO (regra 7) ──────────
+  // O plano da Fase 4 manda somar o valor da obra ao `valor_mensal` do
+  // contrato. Isso não cobraria NADA — não há geração recorrente, e
+  // `valor_mensal` é documentação. Quem ler o plano velho daqui a seis meses
+  // vai propor de novo, a não ser que o motivo esteja escrito onde se procura.
+  {
+    const prod90 = fs90.readFileSync('docs/PRODUTO.md', 'utf8');
+    const plan90 = fs90.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+    const man90b = fs90.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+
+    eq('U90/R121 (regra 7): a regra, o diário e o manual existem, e a numeração não colide com a U89 (R120)',
+       [/^- \*\*R121\*\* —/m.test(prod90),
+        /^## U90 — A conferência decide a cobrança/m.test(plan90),
+        /^## Conferir e fechar agora decide a cobrança \(R121, U90\)/m.test(man90b),
+        /^- \*\*R120\*\* —/m.test(prod90)],
+       [true, true, true, true]);
+
+    eq('U90/R121 CRÍTICO (regra 7): o acréscimo mensal ao contrato está declarado como RECUSADO nos três documentos, sempre com o motivo — que ele não geraria cobrança nenhuma, porque não existe faturamento recorrente e `valor_mensal` é documentação. Sem o motivo escrito, o plano velho o repropõe',
+       [/acréscimo\s+mensal ao contrato|acréscimo mensal ao contrato/.test(prod90),
+        /não cobraria nada|não cobraria\s+nada/i.test(prod90),
+        /zero cobranças/.test(plan90),
+        /não existe geração recorrente|Não existe geração\s+recorrente/i.test(prod90 + plan90),
+        /motor de mensalidade\s+recorrente|motor de mensalidade recorrente/.test(man90b)],
+       [true, true, true, true, true]);
+
+    eq('U90/R121 (regra 7): o manual diz o que MUDOU para cada papel — o técnico não é afetado, o SAC continua com um botão só, e quem vê valores ganhou as três saídas',
+       [/o seu botão é \*Concluir atendimento\*/.test(man90b),
+        /o SAC.{0,120}um botão/s.test(man90b),
+        /Fechar e lançar N×/.test(man90b),
+        /resto vai na primeira parcela/i.test(man90b)],
+       [true, true, true, true]);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
