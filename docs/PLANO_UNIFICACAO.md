@@ -7875,3 +7875,223 @@ apagado; e a confirmação do gesto em massa agora **diz** quando a escala mudou
 entre a prévia e a gravação — post-hoc e declarado como tal, porque a trava
 otimista é mecanismo novo e a regra 8 manda o contrário enquanto o segundo gestor
 não apareceu.
+
+## U87 — O atendimento de plantão (R117 — Fase 3, Passo 3 e último)
+
+**A ordem de deploy INVERTE: esta migration PRIMEIRO, o push DEPOIS.** É a
+regra 5 da casa — a ordem é propriedade do CÓDIGO, e não do gosto de quem
+entrega. O cliente NOMEIA objeto que não existe: `from("atendimentos_plantao")`,
+`rpc("plantao_salvar")` e `rpc("plantao_apagar")` estão em
+`src/features/plantao/data.ts`. Subir o push antes abre o painel com **PGRST205**
+para todo mundo. E não é a dança de dois commits da U83: nenhum valor novo entra
+em CHECK de tabela que já existe — o que é **consequência** de a marca ser
+satélite, e não coincidência. As duas metades (o registro e o gancho do texto do
+dia) vão num commit só, com uma ordem só.
+
+### O fato que não tinha casa
+
+`às 02:30 de 30/08 o Igor atendeu a Padaria X, remoto, e isto foi o que ele fez`.
+A escala (U86) guarda o **plano** — quem *deveria* estar —, e na segunda de
+virada nem isso: `plantaoDoDia` devolve dois nomes e nada no dado diz quem cobre
+qual metade, porque a convenção de `semanaPadrao` **não é gravada** (`origem`
+sequer chega a `plantaoDoDia`). O chamado, quando existe, guarda **o quê** —
+nunca a que horas se atendeu, nunca que aquilo foi plantão.
+
+### A pergunta que decidiu o desenho, e o teste de forma que saiu dela
+
+Havia dois desenhos na mesa e eles respondiam a perguntas diferentes. Um
+perguntava *"onde este trabalho mora no sistema?"* e respondia "num chamado";
+o outro perguntava *"que fato não tem casa hoje?"*. Só o segundo responde ao que
+foi pedido — mas o **teste de forma** do primeiro foi adotado, porque ele
+generaliza o que a casa já vinha fazendo por instinto, e virou a R117:
+
+> **valor num CHECK** quando a coisa responde a MESMA pergunta com resposta nova
+> (`vistoria`, R112) · **função pura** quando ela já está gravada noutras
+> colunas (`emergencial`, R99) · **satélite** quando ela traz perguntas que a
+> tabela não faz.
+
+É esse teste que recusa `natureza='plantao'` e `tipo='plantao'` sem depender de
+gosto. E ele recusa também o desenho do "um chamado por telefonema atendido",
+por cinco custos medidos: 480 linhas/ano na tabela mais quente (537 chamados
+importados); kanban, numeração CH-, SLA, Painel Operacional (R95) e fila de
+conferência herdados; a tela do técnico exige **assinatura** para concluir
+(`DetalheCampo.tsx:345`) — o objeto não serve para o caso; o cliente que o
+plantonista não enxerga (`pode_ver_cliente`, u71:333-370) iria para dentro do
+**título**; e às 2h da manhã seriam três textos obrigatórios.
+
+**E o argumento que sustentava aquele desenho é FALSO, medido.** Diziam que um
+chamado nascido `concluido` não dispararia o aviso ao financeiro. O ramo que
+manda *"aguarda sua conferência"* é `NEW.status = 'executado'` (u7:415-422), e
+`'executado'` está **proibido pelo CHECK desde a U13** (u13:60-63): é código
+morto. A fila do financeiro é derivada em consulta, por `aConferir`
+(`atividades/modelo.ts:485-486`), e funciona igual. Foi a única vez nesta rodada
+em que o desenho perdedor perdeu por um fato do repositório, e não por
+preferência.
+
+**Uma correção de proveniência, e ela é a regra 9 acontecendo duas vezes.** Os
+dois desenhos apoiavam o "pior caso" numa frase de `PENDENCIAS_TECNICAS.md`
+(P19) que diz que *"a linha 107 da conferência da U80 conta as cobranças presas
+a chamado que não vieram de peça"*. É falso: `u80:105-108` é o **pré-voo** e
+conta duplicatas; a **conferência 107** (`u80:694`) diz "nenhuma duplicata viva
+sobrou". Nenhuma conferência da U80 mede a população de avulso vinculado; a mais
+próxima é a **111** (`u80:731`), e ela conta outra coisa. A frase do P19 foi
+reescrita nesta entrega para apontar o arame certo e dizer que ele mede outra
+coisa — em vez de inventar um número.
+
+### As seis decisões
+
+**1. Plantonista GRAVADO, não derivado.** `plantonista_id NOT NULL REFERENCES
+profiles(id) ON DELETE RESTRICT`. Mesma doutrina de "apoio é gravado, dupla é
+derivada" (U47 × U64, U81). **Custo declarado:** escala e registro podem divergir
+e nenhuma TELA avisa. O aviso é o que a porta devolve no ato — e nada mais. Sem
+tela de divergência, sem selo, sem tabela de reconciliação (regra 8).
+
+**O enxerto que responde ao custo, e ele veio do desenho perdedor.** A porta
+devolve, junto com a linha gravada, **as horas de sobreaviso desta pessoa
+naquele dia** e **as horas do dia inteiro** — dois números, nenhum booleano. Um
+`escalado boolean` sozinho colapsaria "furou a escala" com "não há escala
+nenhuma lançada", que é acusação sobre o trabalho de outro. Com os dois números,
+`avisoDaEscala` tem **três** estados, e o portão prova os três.
+
+**2. Quem escreve.** A tabela é **só-leitura no navegador por privilégio** —
+`REVOKE ALL … FROM PUBLIC, anon, authenticated`, `GRANT SELECT` —, o desenho de
+`agenda_campo` (u78:805-834) com o argumento dele: *"não escrevi um GRANT" não é
+o mesmo que "não há GRANT"*. Toda escrita passa por `plantao_salvar` /
+`plantao_apagar`, gate em duas metades: **vínculo** (`ativo` e não
+`pendente_aprovacao`, ao lado de `is_gestor` porque ela não olha `ativo` — P51)
+e **procuração** (`_plantonista = auth.uid()` OU `is_gestor`). Qualquer pessoa
+da casa registra **para si**; lançar por outro é de quem responde pela operação.
+Um gate de gestor impediria a única pessoa que estava lá; um gate aberto deixaria
+qualquer um lançar em nome de outro.
+
+**O gate inteiro sob `IF v_eu IS NOT NULL`**, e sem isso o PORTÃO não roda:
+`auth.uid()` é NULL na migration, e uma porta que começasse por
+`IF NOT EXISTS (… WHERE p.id = auth.uid())` levantaria 42501 **contra si mesma**.
+É o idioma de u86:326-331, e foi por perdê-lo que um dos desenhos tinha quatro
+portões que abortavam.
+
+**Leitura:** vínculo **e** (dono da linha **ou** gestor). **Não**
+`pode_acessar_chamado`: o ramo `responsavel_id IS NULL` daquela função não tem
+filtro de status (s2:152-155), e um plantão pendurado em chamado da fila aberta
+ficaria legível por qualquer autenticado ativo. É a mesma recusa da U80 §3.
+
+**3. O vínculo com chamado é opcional, e o atendimento NUNCA cria chamado.**
+Ligar o chamado amanhã **é correção**, e passa pela mesma porta com `_id`
+preenchido — não há segunda porta. `chamados` não ganha coluna: a pergunta
+reversa sai de um índice parcial. Nenhum evento em `chamado_eventos`.
+**Cobrança: nenhuma**, e a razão está escrita — pelo caminho do chamado arma o
+P19; por uma coluna nova em `cobrancas` nenhum dos dois índices únicos da U80 a
+cobre (u80:152-154, :171-176); e os dois se apoiam num `montar_fechamento` que
+hoje levanta 42702 (P50). O cliente é `cliente_id` **XOR** `cliente_informado`,
+com `num_nonnulls(...) = 1` — o idioma vivo de `chamado_locais_uma_forma`
+(u71:156-157). **Custo load-bearing:** enquanto for texto, o atendimento não é
+cobrável, porque `cobrancas.cliente_id` é NOT NULL (u4:29).
+
+**4. remoto × presencial não muda NADA além do rótulo e do filtro**, e isso está
+no `COMMENT ON COLUMN`, na R117 e no `TIPO_NOTA` do modelo puro — nos três
+lugares onde a próxima pessoa vai procurar antes de supor que muda.
+
+**5. A hora que atravessa a meia-noite.** `hora timestamptz` é o fato; `dia date`
+é a projeção, escrita por gatilho BEFORE **incondicional**. Não pode ser
+`GENERATED` nem índice funcional: `AT TIME ZONE` é STABLE. **02:30 de domingo é
+o plantão de DOMINGO** — a madrugada pertence ao próprio dia de calendário, que
+é o que `coberturaDoDia` já diz ao descontar o expediente *daquele* dia. **Não
+existe** `dia_do_sobreaviso`: gravar a frase humana criaria as duas datas que
+divergiriam no primeiro dia `curto`.
+
+**O gatilho lê o relógio de parede UMA VEZ.** `v_local := date_trunc('minute',
+NEW.hora AT TIME ZONE 'America/Sao_Paulo')`, e daí saem `hora` **e** `dia`. Duas
+leituras poderiam divergir; uma não pode. E truncar em UTC seria errado de um
+jeito que só apareceria no portão: em 1900 o fuso de São Paulo é LMT
+(**-03:06:28**, com segundos), e o minuto local não sairia redondo.
+
+**A tela NÃO calcula o `dia`.** Ela mostra o que voltou do servidor. Calcular no
+aparelho daria uma segunda resposta, no fuso do celular, e as duas divergiriam
+justamente na madrugada.
+
+**6. O gancho do "compartilhar o dia", preenchido.** `textoDoPlantonista` em
+`sobreaviso/modelo.ts`, e o rótulo passou a **`Plantonista de hoje:`**. É do
+**DIA**: `textoDoDia` é texto de um dia, e "o plantonista da semana" não tem
+resposta única — `segundaDaSemana('2026-08-24')` devolve a própria segunda,
+enquanto a semana operacional dela começou às 18:00 de 17/08. Quatro decisões:
+mês não carregado → `null`; ninguém escalado → `null`; **cobertura curta** → a
+frase da escala furada **sem nome**; caso normal → os nomes **ordenados por
+nome**, nunca `quem[0]` (que na virada é quem **sai**).
+
+A terceira é onde divergi dos dois desenhos: um imprimia o nome com ressalva, o
+outro calava. Nomear responde *"chame o Bruno"* a quem pergunta *"quem eu chamo
+hoje à noite"* num dia em que as 8h do Bruno são a madrugada que já passou;
+calar perde a informação de que a escala está furada. Só a terceira forma é
+verdadeira.
+
+### O que a verificação pegou
+
+**O compilador pegou uma colisão de nome que teria sido um defeito vivo.**
+`chamados.programacao.tsx` já tinha uma constante local `gradeDoMes` — a régua do
+modo mensal. Importar `gradeDoMes` do sobreaviso sem apelido fazia a chamada
+resolver para um `useMemo` de células de calendário. Entrou com apelido
+(`gradeDoSobreaviso`), e há asserção impedindo a volta. É a lição da U84 outra
+vez: o `tsc` estava dizendo, e o número 59 é onde isso se esconde.
+
+**A asserção do gancho foi virada, e virada em duas direções.** A que existia
+casava `/Plantonista/` e **ficaria verde com o rótulo trocado** — que é
+exatamente o que esta entrega fez. Agora ela mede o rótulo palavra por palavra e
+prova, com DIFF, que o `plantonista: null` **saiu** da tela (regra 2: presença
+não detecta deleção).
+
+**O censo da P51 acendeu sozinho**, como foi desenhado para acender: +1 arquivo,
++11 ocorrências de `is_gestor`, +1 policy. Cada uma delas vem acompanhada do
+teste de dois eixos escrito ao lado, e o número foi atualizado com o motivo.
+
+**O comentário de `telas.ts:61` estava errado**, e foi corrigido com asserção:
+ele afirmava `sobreaviso_select USING (true)`, e a policy viva é o teste de dois
+eixos. Importa porque é esse comentário que alguém copia ao escrever a policy da
+próxima tela.
+
+### O portão, e o que ele recusou provar
+
+Oito provas de **comportamento** dentro da transação: a virada da meia-noite
+(com o par que mostra que o caso **atinge o alvo** — em UTC a data é outra), a
+madrugada de domingo, a truncagem ao minuto **junto com** o duplo toque que ela
+torna visível **e** o par negativo (descrição diferente no mesmo minuto passa),
+o XOR do cliente pelos dois caminhos (a porta e o CHECK), tipo e descrição, os
+**três** estados da escala, a correção pelo mesmo `id`, e o apagar idempotente.
+
+**Nenhuma prova depende do relógio.** Não há `now()` construindo caso: uma prova
+que comparasse `now() - interval '30 minutes'` com a data corrente de Brasília
+abortaria a migration entre 00:00 e 00:30, que é falha por hora do dia.
+
+**E não há prova de `alterado_em` monotônico, de propósito.** Ela é
+**inassertável** aqui: `now()` é `transaction_timestamp()`, constante dentro da
+transação, e um INSERT seguido de UPDATE no mesmo `BEGIN` grava o **mesmo**
+instante. Uma asserção de "avançou" abortaria num banco perfeitamente sadio. Um
+dos desenhos a trazia, e ela sozinha teria matado a migration inteira. A recusa
+está **escrita** na migration, e não só ausente — e há asserção medindo que ela
+está escrita.
+
+**O pré-voo exige DUAS pessoas**, e a exigência é do portão: o terceiro estado do
+aviso da escala ("o dia tem escala, e não é sua") precisa de uma segunda pessoa
+escalada. Com uma só, esse ramo nunca rodaria — e ramo não exercitado dentro de
+um portão é conforto falso.
+
+### O que NÃO entrou, e por quê
+
+**Não há rota nova, nem chave em `permissoes_tela`.** A porta é a **terceira
+opção do "+" da Início** (R91), que já existe no celular de propósito — zero item
+novo na barra (R7). `telas.ts` diz que "uma tela existe quando existe rota", e
+uma chave sem rota seria órfã nos dois sentidos da asserção que compara catálogo
+e semente. Por isso esta migration **não** entra em `ARQUIVOS_SEMENTE`, e a
+decisão é **medida** (conferência 217 no banco, asserção no verificador) em vez
+de ficar como omissão.
+
+**Não há híbrido.** A costura óbvia seria "grava o satélite e, se o usuário
+quiser, cria o chamado na mesma porta". Isso é um terceiro modo de falhar: a
+porta passaria a ter dois caminhos de escrita com invariantes diferentes, e a
+metade que quase nunca é exercitada é a que quebra às 2h da manhã — que é
+exatamente a forma do P50, vivo hoje em `montar_fechamento`.
+
+**Não há lápide** quando um atendimento é apagado (P53), **não há relatório
+mensal de plantão**, e **não há tela de listagem própria** — a lista mora dentro
+do painel, é dos últimos atendimentos e é por **recência**, não por dia, porque
+o cliente não sabe o `dia` e calculá-lo seria a segunda verdade que a decisão 5
+existe para não ter.

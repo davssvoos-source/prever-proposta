@@ -878,9 +878,64 @@ O celular mostra **quem está de sobreaviso no dia**, com as setas para andar
 dia a dia. É a mesma conta da grade, projetada num dia — o total do mês não vira
 o total do dia. A grade completa e a edição são do desktop.
 
-### O que esta tela AINDA NÃO faz
+### O que esta tela faz, e o que é da tela ao lado
 
 Ela registra **quem está de plantão**, não **o que aconteceu no plantão**. O
 registro do atendimento (hora, cliente, plantonista, remoto ou presencial,
-vínculo com o chamado, cobrança) é entrega própria e ainda não existe — não
-procure o botão.
+vínculo com o chamado) existe desde a **U87** e **não fica aqui** — fica no "+"
+da Início, terceira opção. Ver a seção seguinte. A **cobrança** do plantão
+continua não existindo.
+
+## Registrar um atendimento de plantão (U87)
+
+**Onde:** na **Início**, no botão **"+"** ao lado do alternador entre lista e
+quadro — o mesmo que abre "Nova atividade". A terceira opção de *O que é* é
+**Plantão**. Não há tela nova, não há item novo no menu, e no celular o botão
+está exatamente onde já estava.
+
+**O que se preenche:** a **hora**, **quem atendeu**, **remoto ou presencial**, o
+**cliente** e **o que foi feito**. O vínculo com um **chamado** é opcional — e
+pode ser ligado depois, reabrindo o mesmo atendimento.
+
+### As coisas que costumam surpreender
+
+**02:30 de domingo é o plantão de DOMINGO.** A madrugada pertence ao próprio dia
+de calendário — é a mesma regra que a grade do sobreaviso usa para dizer que um
+dia útil precisa de 14h de cobertura (as 8h de madrugada mais as 6h de noite). O
+**dia** não é digitado nem calculado pelo aparelho: ele vem do servidor, e é o
+que aparece na confirmação e na lista.
+
+**Depois de registrar, o sistema diz se você estava na escala.** Três respostas,
+e as três querem dizer coisas diferentes:
+
+| o que aparece | o que quer dizer |
+|---|---|
+| *"na escala (8h)"* | você tinha horas de sobreaviso naquele dia |
+| *"FORA da escala: o dia tem 24h lançadas para outra pessoa"* | o dia tem escala, e não é a sua |
+| *"não há escala lançada para este dia"* | ninguém foi escalado naquele dia |
+
+Isso **não impede nada**: quem atendeu foi quem atendeu. O aviso existe porque a
+escala é o **plano** e o registro é o **fato**, e eles divergem de verdade —
+troca de última hora, o colega que pegou porque o outro não acordou. Se a
+divergência não era para existir, o lugar de consertar é a **/sobreaviso**.
+
+**O cliente pode ser da lista OU escrito à mão, nunca os dois.** A opção de
+escrever existe para o cliente que você não enxerga na lista — e ela tem um
+preço, dito na própria tela: enquanto for texto, o atendimento **não é
+cobrável**, porque cobrança exige cliente cadastrado.
+
+**Isto NÃO vira chamado.** Não ganha número CH-, não entra no kanban, não entra
+na fila de conferência do financeiro e não gera cobrança. Se o atendimento
+precisar virar trabalho de campo, abra o chamado normalmente e depois **ligue** o
+atendimento a ele, reabrindo o registro.
+
+**Lançar em nome de outro é de quem responde pela operação.** Qualquer pessoa da
+casa registra para si; escolher outro plantonista no campo *"quem atendeu"* só
+funciona para admin, comercial e SAC.
+
+### O que esta entrega AINDA NÃO faz
+
+Não há **tela de listagem** nem **relatório mensal de plantão** — a lista dentro
+do painel mostra os últimos atendimentos, por recência. O vínculo com o chamado
+**não aparece** na página do chamado. E **apagar não deixa rastro**: o
+atendimento some. Está registrado em `docs/PENDENCIAS_TECNICAS.md` (P53, P54).

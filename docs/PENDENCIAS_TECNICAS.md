@@ -483,9 +483,29 @@ estado em que o botão "Aprovar cobrança" (`DetalheCampo.tsx:1095`) não render
 Sobra um POST direto à RPC com papel financeiro, ou um ponto de entrada futuro
 que alguém escreva sem ler isto.
 
-**A linha 107 da conferência da U80 é o arame:** ela conta as cobranças presas a
-chamado que NÃO vieram de peça (`chamado_id IS NOT NULL AND chamado_peca_id IS
-NULL`). Hoje é 0. No dia em que deixar de ser, este defeito passa a ter alcance.
+**CORREÇÃO DE PROVENIÊNCIA (2026-09-09, U87).** Este parágrafo dizia, até hoje,
+que *"a linha 107 da conferência da U80 conta as cobranças presas a chamado que
+NÃO vieram de peça; hoje é 0"*. **É falso, e a frase foi copiada daqui para dois
+desenhos de entrega antes de alguém conferir** — a regra 9 acontecendo em cima
+da regra 9. O que existe de verdade:
+
+- `20260903090000_u80_ciclo_financeiro_no_card.sql:105-108` é o **PRÉ-VOO**, não
+  uma conferência, e ele conta **duplicatas** (`GROUP BY 1,2,3 HAVING count(*) >
+  1`), não a população;
+- a **conferência 107** está em `u80:694` e diz *"nenhuma duplicata viva
+  sobrou"*;
+- **nenhuma conferência da U80 mede o total de avulso vinculado.** A mais
+  próxima é a **111** (`u80:731`), e ela conta **outra coisa**: cobranças vivas
+  em chamado marcado `sem_cobranca`.
+
+**O arame que existe, então, é a 111 — e ele mede outra coisa.** Ele é um
+indicador *lateral* deste defeito (uma cobrança viva presa a um chamado que o
+sistema declara sem cobrança é um dos rastros que o DELETE + `sem_cobranca`
+deixaria), e não a população de risco. **A conferência que faltaria** — e que
+nenhuma migration tem — é `count(*) FROM cobrancas WHERE chamado_id IS NOT NULL
+AND chamado_peca_id IS NULL AND status <> 'cancelada'`. Ela não foi acrescentada
+aqui porque a U80 já rodou e o repo não edita migration aplicada; fica escrita,
+com a consulta pronta, para a próxima migration que tocar no financeiro.
 
 **O conserto é uma linha, e é mexer no motor** — que este passo declarou não
 fazer:
@@ -1761,9 +1781,16 @@ comentário, em `supabase/migrations/*.sql`):
 
 | medida | valor |
 |---|---|
-| arquivos de migration que a mencionam | **27** |
-| ocorrências vivas | **110** |
-| *statements* `CREATE POLICY` que a usam (replays de DROP/CREATE incluídos) | **40** |
+| arquivos de migration que a mencionam | **28** |
+| ocorrências vivas | **121** |
+| *statements* `CREATE POLICY` que a usam (replays de DROP/CREATE incluídos) | **41** |
+
+*(Era 27 / 110 / 40 na U86. A U87 acrescentou um arquivo, onze ocorrências e uma
+policy — o gate de procuração das duas portas do plantão e a policy de leitura
+de `atendimentos_plantao`. **O número sobe a cada entrega, e é essa a questão:**
+enquanto a decisão não é tomada, a superfície que o conserto vai ter de
+atravessar cresce. Cada uma das onze vem com o teste de vínculo escrito ao lado,
+justamente porque `is_gestor` sozinha não segura.)*
 
 Trocar a função é trocar o comportamento de **dezenas de policies de uma vez**,
 em telas que ninguém exercitou nesta rodada. Por isso **não foi consertada de
@@ -1825,3 +1852,57 @@ embutir uma fonte UTF-8 via `addFileToVFS` + `addFont` — o que muda o tamanho 
 todos os PDFs e é decisão, não reflexo. A asserção da U86 já mede que o defeito
 **existe** em `relatorio.ts`, para o dia em que alguém o consertar não ficar sem
 saber que ele existia.
+
+## P53 — BAIXO · Atendimento de plantão apagado não deixa lápide (2026-09-09, U87)
+
+`plantao_apagar` faz `DELETE` e não escreve nada em lugar nenhum. Um atendimento
+de plantão registrado e depois apagado **some sem rastro**: não há coluna
+`apagado_em`, não há tabela de eventos, e `chamado_eventos` não é tocado (o
+atendimento não é chamado, e pendurar um evento na linha do tempo de um chamado
+alheio seria pior).
+
+**Por que ficou assim, e não é descuido.** Hoje o atendimento não carrega
+dinheiro nenhum, não alimenta fechamento, não alimenta folha e não é lido por
+objeto nenhum do banco — a tabela é folha. O único dano de um apagar indevido é
+perder o registro de que alguém trabalhou de madrugada, e quem pode apagar é o
+próprio plantonista ou quem responde pela operação. Uma lápide (coluna
+`apagado_em` + filtro em toda leitura, ou uma tabela `atendimentos_plantao_lixo`)
+é **mecanismo novo para consertar menor** — e mecanismo novo para consertar menor
+já virou fatal duas vezes neste projeto (regra 8). O carimbo que existe é
+`alterado_por`/`alterado_em`, e ele cobre a CORREÇÃO, não a remoção.
+
+**A CONDIÇÃO PARA REABRIR, escrita para não virar discussão depois:** no dia em
+que o plantão passar a ser **cobrável**. A partir daí, apagar um atendimento
+passa a ser apagar a origem de um valor, e a assimetria da U80 vale aqui também
+— *"cancelar é UPDATE status, NUNCA DELETE: um fechamento pode já ter recolhido
+a linha, e apagá-la deixaria um período com total que não bate"*
+(`u80:110`, mensagem do pré-voo). Quando isso acontecer, o desenho certo é o
+mesmo da cobrança: **status**, e não DELETE.
+
+**Alcançabilidade hoje: total pela UI** (o botão de lixeira na lista do painel),
+e **dano hoje: nenhum além da perda do próprio registro.**
+
+## P54 — BAIXO · O plantão não tem leitura fora do painel que o registra (2026-09-09, U87)
+
+`atendimentos_plantao` só é lida num lugar: a lista dos últimos 20, dentro do
+próprio painel do "+" da Início. Não há **tela de listagem**, não há **filtro por
+período ou por pessoa**, não há **relatório mensal de plantão** e o vínculo com
+chamado **não aparece na página do chamado** — a pergunta reversa tem índice
+(`atendimentos_plantao_chamado_idx`) e não tem tela.
+
+**Por que ficou assim.** Esta entrega respondeu *"que fato não tem casa hoje?"*.
+O fato ganhou casa, porta, gate e portão. As telas de LEITURA são outra entrega,
+com outras perguntas de produto — quem precisa ver o quê, por que recorte, e com
+qual gate (o SAC é gestor e **não** vê valores, R13; aqui não há valores, então a
+régua pode ser outra). Adivinhá-las agora seria construir a superfície antes de
+saber a pergunta.
+
+**A lista que existe é por RECÊNCIA e não por dia**, e a escolha é técnica: o
+cliente **não sabe** o `dia`, que é projetado pelo gatilho em `America/Sao_Paulo`.
+Filtrar por um dia calculado no aparelho criaria a segunda verdade que a decisão
+5 da R117 existe para não ter — e ela divergiria justamente na madrugada.
+
+**A condição para reabrir:** quando o Davi pedir o fechamento mensal de plantão,
+ou quando o vínculo com chamado precisar aparecer na página do chamado. As duas
+são leitura pura sobre uma tabela que já existe, já tem índice nos dois eixos
+(dia e pessoa) e já tem policy.

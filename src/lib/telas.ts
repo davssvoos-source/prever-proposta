@@ -57,11 +57,23 @@ export const TELAS: Tela[] = [
   T("calendario", "Calendário", "/calendario", "Trabalho", [true, true, true], {
     nota: "o técnico vê só o que é dele, por RLS",
   }),
-  // U86/R116. Os três nascem TRUE porque a LEITURA é aberta na policy
-  // (`sobreaviso_select USING (true)`): esconder o menu de quem pode ler a
-  // página por `curl` seria o pior dos dois mundos. Quem EDITA é `is_gestor()`,
-  // que a policy decide — `permissoes_tela` esconde o menu, não protege dado
+  // U86/R116. Os três nascem TRUE porque a LEITURA é de TODO MUNDO QUE
+  // TRABALHA AQUI: a policy viva é o teste de DOIS EIXOS — linha `ativo` e
+  // `status <> 'pendente_aprovacao'` em profiles (u86:229-234) —, e não
+  // `USING (true)`, como esta nota dizia até a U87. A correção importa porque é
+  // ESTE comentário que alguém copiaria ao escrever a policy da próxima tela:
+  // `true` não é "todo mundo que trabalha aqui", é todo mundo que consegue
+  // LOGAR, e isso inclui o convite pendente e o ex-funcionário cujo login nada
+  // no repositório revoga. Esconder o menu de quem PODE ler a página por `curl`
+  // continua sendo o pior dos dois mundos, e é por isso que os três são TRUE.
+  // Quem EDITA é `is_gestor()` mais o mesmo vínculo, e quem decide é a policy —
+  // `permissoes_tela` esconde o menu, não protege dado
   // (docs/manual/seguranca.md:62).
+  //
+  // E o ATENDIMENTO de plantão (R117/U87) NÃO tem chave aqui, de propósito:
+  // não há rota. Ele entra pela terceira opção do "+" da Início (R91), e este
+  // catálogo é o mapa de ROTAS — uma chave sem rota seria órfã nos dois
+  // sentidos da asserção que compara catálogo e semente.
   T("sobreaviso", "Sobreaviso", "/sobreaviso", "Trabalho", [true, true, true], {
     nota: "todos VEEM a escala (cobertura não é dinheiro); quem edita é gestor, e gestor inclui o SAC",
   }),

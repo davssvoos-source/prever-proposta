@@ -90,6 +90,14 @@ import {
   useLancamentosDosChamados, useMarcarBloco, sqlstateDoErro,
 } from "@/features/programacao/data";
 import { useVeFinanceiro } from "@/features/gerencial/data";
+import { usePessoasDoSobreaviso, useSobreaviso } from "@/features/sobreaviso/data";
+// `gradeDoMes` chega com APELIDO: esta tela já tem uma constante local com esse
+// nome (a régua do modo mensal, mais abaixo), e importar sem apelido faria a
+// chamada resolver para ela — um `useMemo` de células de calendário no lugar da
+// grade da escala. O compilador pegou; o apelido é o conserto.
+import {
+  gradeDoMes as gradeDoSobreaviso, plantaoDoDia, textoDoPlantonista,
+} from "@/features/sobreaviso/modelo";
 import { GradeSemana, type RotulosDaEquipe } from "@/features/programacao/GradeSemana";
 import { BotoesDeCompartilhar, ColunaDoDia } from "@/features/programacao/ColunaDoDia";
 import { SELO_LABEL } from "@/features/programacao/CelulaDaGrade";
@@ -484,6 +492,35 @@ function ProgramacaoPage() {
    * O BOTÃO É DE GESTOR, e o argumento é do próprio texto: para um não-gestor o
    * dia sai cheio de "Outro atendimento" — honesto e inútil.
    */
+  /**
+   * QUEM ESTÁ DE PLANTÃO NESTE DIA (R117/U87) — o gancho que a U79 deixou vazio.
+   *
+   * A grade do sobreaviso é montada com a MESMA função que a tela /sobreaviso
+   * usa (`gradeDoMes`, aqui com apelido), e a leitura do dia é a MESMA projeção do celular
+   * (`plantaoDoDia`). "Quem conta é quem filtra": se um dia a escala mudar de
+   * regra, esta linha muda junto, porque não há uma segunda conta aqui.
+   *
+   * CUSTO DECLARADO: são duas consultas a mais nesta tela, para todo mundo (os
+   * hooks não podem ser condicionais). São pequenas — a janela do sobreaviso é
+   * de três meses de (dia, pessoa, horas) — e a alternativa seria um `enabled`
+   * novo em dois hooks da U86 para poupar quem não é gestor, que é mecanismo
+   * novo para consertar menor (regra 8).
+   *
+   * E A DEGRADAÇÃO É SILENCIOSA E CORRETA: se a consulta da escala falhar, a
+   * grade vem vazia, `plantaoDoDia` devolve `quem: []`, `textoDoPlantonista`
+   * devolve `null` e o texto sai SEM a linha do plantonista — nunca com um nome
+   * errado, nunca com "Plantonista: —".
+   */
+  const competenciaDoDia = dia.slice(0, 7);
+  const { data: pessoasDoSobreaviso = [] } = usePessoasDoSobreaviso();
+  const { data: linhasDoSobreaviso = [] } = useSobreaviso(competenciaDoDia);
+  const plantonistaDoDia = useMemo(
+    () => textoDoPlantonista(
+      plantaoDoDia(gradeDoSobreaviso(competenciaDoDia, pessoasDoSobreaviso, linhasDoSobreaviso), dia),
+    ),
+    [competenciaDoDia, pessoasDoSobreaviso, linhasDoSobreaviso, dia],
+  );
+
   const detalhePorChamado = useMemo(() => {
     const m = new Map<string, { cliente: string | null; endereco: string | null; descricao: string | null }>();
     for (const c of ordens as any[]) {
@@ -504,12 +541,16 @@ function ProgramacaoPage() {
       veiculoDaEquipe: (id) => duplaPorId.get(id)?.veiculo ?? null,
       membrosDaEquipe: (id) => composicaoDaDupla(id, semanaAberta, escala).map(nomeDeTecnico),
       detalheDe: (id) => detalhePorChamado.get(id) ?? null,
-      // GANCHO VAZIO — o plantonista da semana é FASE 3. `null` não produz uma
-      // linha sequer, e há asserção pinando exatamente isso.
-      plantonista: null,
+      // O GANCHO, PREENCHIDO (R117/U87). Quem decide o que sai daqui é
+      // `textoDoPlantonista`, no modelo puro do sobreaviso: ele devolve `null`
+      // quando o mês não foi carregado ou ninguém está escalado (e `null` não
+      // produz uma linha sequer), a frase da escala furada SEM NOME quando a
+      // cobertura é curta, e os nomes ordenados POR NOME no caso normal —
+      // nunca `quem[0]`, que na segunda de virada é quem SAI.
+      plantonista: plantonistaDoDia,
     };
     return textoDoDia(linhasVisiveis, dia, ctx, new Date());
-  }, [autz.ehGestor, linhasVisiveis, dia, detalhePorChamado, duplaPorId, semanaAberta, escala, nomePorTecnico]);
+  }, [autz.ehGestor, linhasVisiveis, dia, detalhePorChamado, duplaPorId, semanaAberta, escala, nomePorTecnico, plantonistaDoDia]);
 
   /**
    * RETORNOS PENDENTES (R106) — visita cumprida, atendimento aberto, nada

@@ -35,10 +35,26 @@ import {
   type ChamadoPrioridade, type ChamadoTipo, type Natureza,
 } from "@/lib/chamado-status";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import { PainelDePlantao } from "@/features/plantao/PainelDePlantao";
 
-const NATUREZAS: { v: Natureza; t: string; nota: string }[] = [
+// ── A TERCEIRA OPÇÃO, E POR QUE ELA NÃO É UMA NATUREZA (R117, U87) ─────────
+// O atendimento de PLANTÃO entra por aqui — este botão já existe no celular de
+// propósito (R91), e quem registra é o plantonista às 2h da manhã. Zero item
+// novo na barra (R7), zero rota nova.
+//
+// MAS ELE NÃO É `natureza = 'plantao'`, e a distinção é a R117: `natureza`
+// responde "de que espécie é este trabalho", e o CHECK vivo é
+// ('campo','interno','comercial') — um quarto valor arrastaria kanban,
+// numeração CH-, SLA, Painel Operacional e fila de conferência. O plantão traz
+// perguntas que `chamados` não faz (a que HORAS se atendeu, remoto ou
+// presencial, quem estava de sobreaviso), então ele é SATÉLITE: tabela própria,
+// porta própria, e este seletor é de MODO, não de natureza.
+type ModoDaNova = Natureza | "plantao";
+
+const MODOS: { v: ModoDaNova; t: string; nota: string }[] = [
   { v: "campo", t: "De campo", nota: "alguém se desloca" },
   { v: "interno", t: "Interna", nota: "trabalho de mesa" },
+  { v: "plantao", t: "Plantão", nota: "atendimento fora do expediente — não vira chamado" },
 ];
 
 export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoFechar: () => void }) {
@@ -50,7 +66,9 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [natureza, setNatureza] = useState<Natureza>("interno");
+  const [modo, setModo] = useState<ModoDaNova>("interno");
+  const natureza: Natureza = modo === "plantao" ? "interno" : modo;
+  const [euId, setEuId] = useState<string | null>(null);
   const [tipo, setTipo] = useState<ChamadoTipo | "">("");
   const [equipe, setEquipe] = useState<Equipe>("ti");
   const [prioridade, setPrioridade] = useState<ChamadoPrioridade>("normal");
@@ -69,6 +87,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     supabase.auth.getUser().then(({ data }) => {
       const eu = (pessoas as any[]).find((p) => p.id === data.user?.id);
       if (!eu) return;
+      setEuId(eu.id);
       setResponsavelId((v) => v ?? eu.id);
       if (eu.equipe && (EQUIPES as string[]).includes(eu.equipe)) setEquipe(eu.equipe as Equipe);
     });
@@ -172,10 +191,15 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
           <ListPlus size={17} color={gold} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15.5, color: textPrimary }}>
-              Nova atividade
+              {modo === "plantao" ? "Atendimento de plantão" : "Nova atividade"}
             </div>
+            {/* O subtítulo segue o MODO: no plantão, "o local vai na etiqueta,
+                não no título" seria conselho sobre um campo que aquele corpo
+                nem tem. */}
             <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
-              O que precisa ser feito. O local vai na etiqueta, não no título.
+              {modo === "plantao"
+                ? "O que aconteceu fora do expediente. Isto não vira chamado."
+                : "O que precisa ser feito. O local vai na etiqueta, não no título."}
             </div>
           </div>
           <button
@@ -192,6 +216,30 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
           </button>
         </div>
 
+        {/* O SELETOR DE MODO VEM PRIMEIRO, e não no meio do formulário: ele
+            troca o CORPO inteiro do diálogo, e um seletor que muda tudo abaixo
+            dele não pode estar embaixo de dois campos que talvez não sirvam. */}
+        <div>
+          <label style={rotulo}>O que é</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {MODOS.map((n) => (
+              <button
+                key={n.v}
+                type="button"
+                style={bt(modo === n.v, PRISMA.azul)}
+                onClick={() => setModo(n.v)}
+                title={n.nota}
+              >
+                {n.t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {modo === "plantao" ? (
+          <PainelDePlantao euId={euId} opcoesPessoas={opcoesPessoas} aoFechar={aoFechar} />
+        ) : (
+        <>
         <div>
           <label style={rotulo} htmlFor="nova-titulo">Título</label>
           <input
@@ -214,23 +262,6 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Contexto, o que já se sabe, links…"
           />
-        </div>
-
-        <div>
-          <label style={rotulo}>Natureza</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {NATUREZAS.map((n) => (
-              <button
-                key={n.v}
-                type="button"
-                style={bt(natureza === n.v, PRISMA.azul)}
-                onClick={() => setNatureza(n.v)}
-                title={n.nota}
-              >
-                {n.t}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div>
@@ -339,6 +370,8 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
             {salvando ? "Criando…" : "Criar atividade"}
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

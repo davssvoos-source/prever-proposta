@@ -2370,3 +2370,106 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   dia — e a faixa de cobertura valida o plano inteiro sem um único atendimento
   registrado, porque 14/24 é derivado do calendário e não da soma que o app fez.
   A dependência é na direção contrária. *(U86.)*
+
+- **R117** — **O atendimento de plantão é um REGISTRO próprio: hora, quem
+  atendeu, cliente, remoto ou presencial, o que foi feito, e um vínculo
+  opcional com chamado.** *(Davi, plano da Fase 3: "registro dos atendimentos
+  de plantão — hora, cliente, plantonista, tipo (remoto/presencial),
+  descrição, vínculo opcional com chamado".)*
+
+  **O fato que não tinha casa.** `às 02:30 de 30/08 o Igor atendeu a Padaria X,
+  remoto, e isto foi o que ele fez`. A **escala** (R116) guarda o *plano* — quem
+  **deveria** estar —, e na segunda de virada nem isso: ela tem dois nomes e
+  nada no dado diz quem cobre qual metade. O **chamado**, quando existe, guarda
+  *o quê* — nunca a que horas se atendeu, nunca que aquilo foi plantão.
+
+  **A REGRA DE FORMA (e ela vale para tudo o que vier depois).** Quando uma
+  coisa nova chega ao sistema, há três lugares possíveis, e o que decide é a
+  PERGUNTA:
+  · **valor num CHECK**, quando ela responde a **mesma** pergunta que a coluna
+    já faz, com uma resposta nova — foi o caso de `vistoria` (R112);
+  · **função pura**, quando ela **já está gravada** noutras colunas e só
+    precisava de nome — foi o caso de `emergencial` (R99);
+  · **satélite** (tabela própria), quando ela traz **perguntas que a tabela não
+    faz**.
+  O plantão é o terceiro caso: a que **horas** se atendeu, **remoto ou
+  presencial**, e **quem estava de sobreaviso** são perguntas que `chamados` não
+  faz e não deveria passar a fazer.
+
+  **Por isso ele NÃO é `natureza = 'plantao'`, NÃO é `tipo = 'plantao'` e NÃO é
+  um chamado por telefonema atendido.** A terceira recusa é a mais cara de
+  explicar, e os cinco custos foram medidos: 480 linhas por ano na tabela mais
+  quente do sistema; kanban, numeração CH-, SLA, Painel Operacional e fila de
+  conferência herdados sem ninguém pedir; a tela do técnico exige **assinatura**
+  para concluir, e o objeto não serve para o caso; o cliente que o plantonista
+  não enxerga iria para dentro do **título**; e às 2h da manhã seriam três
+  textos obrigatórios em vez de um. O argumento a favor que se costuma dar — "um
+  chamado nascido concluído não avisaria o financeiro" — é **falso**: o ramo que
+  avisa é `status = 'executado'`, valor que o CHECK proíbe **desde a U13**. É
+  código morto, e a fila do financeiro é derivada em consulta.
+
+  **Quem atendeu é GRAVADO, não derivado da escala.** Mesma doutrina de "apoio é
+  gravado, dupla é derivada" (U47 × U64): a escala responde *quem deveria*; o
+  registro responde **quem esteve**. Os dois divergem — troca de última hora, o
+  colega que pegou porque o outro não acordou. **Custo declarado:** escala e
+  registro podem divergir e **nenhuma tela avisa**. O aviso é o que a porta
+  devolve **no ato de gravar**, e ele tem **três estados, não dois**: *na
+  escala*, *fora da escala do dia* e *não há escala lançada para este dia* —
+  colapsar os dois últimos acusaria o plantonista de furar uma escala que
+  ninguém lançou. Não há tela de divergência, selo de divergência nem tabela de
+  reconciliação.
+
+  **Quem registra:** **qualquer pessoa da casa, para si**; lançar **por outro** é
+  de quem responde pela operação. Um gate de gestor impediria a única pessoa que
+  estava lá, às 2h da manhã, de registrar — e o SAC, que é gestor, não estava. O
+  gate é **vínculo** (linha ativa e não pendente de aprovação, ao lado de
+  `is_gestor()` porque ela não olha `ativo`) **mais procuração**. **Quem lê:** o
+  dono da linha e quem responde pela operação — e não a régua do chamado
+  vinculado, que abriria a fila sem dono para qualquer autenticado.
+
+  **A hora atravessa a meia-noite, e o dia é DERIVADO dela.** A hora é o fato; o
+  **dia** é a projeção em `America/Sao_Paulo`, escrita pelo banco,
+  incondicionalmente. **02:30 de domingo é o plantão de DOMINGO** — a madrugada
+  pertence ao próprio dia de calendário, que é o que a R116 já diz ao descontar
+  o expediente *daquele* dia. **Não existe** uma segunda data com a frase humana
+  ("isto é do sobreaviso de sábado"): ela divergiria da primeira no primeiro dia
+  de cobertura curta. A tela **não calcula o dia** — mostra o que voltou do
+  servidor.
+
+  **`remoto` × `presencial` não muda nada além do rótulo e do filtro.** Não muda
+  deslocamento (que é digitado à mão, na agenda de campo), não muda cobrança,
+  não muda quem vê nem quem escreve. Está escrito assim porque a próxima pessoa
+  vai supor que muda.
+
+  **O vínculo com chamado é opcional, e o atendimento NUNCA cria chamado.** Ele
+  se liga a um que já existe — na hora ou dias depois, pela **mesma porta**,
+  porque ligar o chamado amanhã **é correção**. `chamados` não ganha coluna e
+  nenhum evento é gravado na linha do tempo dele.
+
+  **E o plantão NÃO é cobrável nesta entrega**, com a razão escrita: pelo
+  caminho do chamado, uma cobrança avulsa vinculada arma um defeito conhecido
+  (P19); por uma coluna nova em `cobrancas`, nenhum dos índices únicos que
+  protegem a tabela cobriria a forma nova; e os dois se apoiam numa função de
+  fechamento que hoje levanta erro (P50). O cliente pode ser **da lista ou
+  escrito à mão** — e enquanto for texto o atendimento não é cobrável de jeito
+  nenhum, porque a cobrança exige um cliente cadastrado.
+
+  **Onde se registra:** na **terceira opção do "+" da Início** — o botão que já
+  existe no celular de propósito. **Zero item novo na barra, zero rota nova,
+  zero chave de permissão de tela.**
+
+  **E o texto de "compartilhar o dia" ganhou a linha do plantonista** — o gancho
+  que a R105 deixou vazio. Ele é do **DIA**, e não da semana: uma segunda-feira
+  pertence a duas semanas operacionais, e "o plantonista da semana" não tem
+  resposta única. São quatro decisões, e nenhuma delas inventa: mês não
+  carregado → **nenhuma linha**; ninguém escalado → **nenhuma linha**; cobertura
+  **curta** → *"escala incompleta (8h de 14h) — confira /sobreaviso"*, **sem
+  nome** (nomear responderia "chame o Bruno" a quem pergunta quem chamar à
+  noite, num dia em que as 8h do Bruno são a madrugada que já passou; e calar
+  perderia a informação de que a escala está furada); caso normal → os nomes,
+  **ordenados por nome**.
+
+  **O que a R117 NÃO entrega.** Não há **cobrança**, não há **tela de listagem
+  própria** (a lista mora dentro do painel, e é dos últimos atendimentos), não
+  há **lápide** quando um atendimento é apagado, e não há **relatório mensal de
+  plantão**. *(U87.)*

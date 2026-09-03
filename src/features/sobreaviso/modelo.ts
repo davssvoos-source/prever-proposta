@@ -443,6 +443,54 @@ export function plantaoDoDia(
   return { coluna, quem };
 }
 
+/**
+ * QUEM ANUNCIAR NO TEXTO DO DIA (R117/U87) — o gancho que a U79 deixou vazio.
+ *
+ * ── É DO DIA, E NÃO DA SEMANA ─────────────────────────────────────────────
+ * O comentário do gancho em `programacao/modelo.ts` dizia "o plantonista da
+ * SEMANA". A escala é por DIA, e "o plantonista da semana" não tem resposta
+ * única: `segundaDaSemana('2026-08-24')` devolve a própria segunda, enquanto a
+ * semana OPERACIONAL daquela segunda-feira começou às 18:00 de 17/08 — uma
+ * segunda pertence a duas semanas. E o consumidor é `textoDoDia`, que é texto
+ * de UM DIA. Então a divergência resolve-se pelo lado do consumidor: quem o
+ * texto do dia 03/09 anuncia é quem está de plantão em 03/09, e o rótulo passa
+ * a dizer isso ("Plantonista de hoje:").
+ *
+ * ── AS QUATRO DECISÕES, E NENHUM MECANISMO NOVO ───────────────────────────
+ * Todos os sinais já existem em `ColunaDoMes`; esta função só os lê.
+ *
+ *  1. `coluna === null` → `null`. É "olhei no mês errado", e não "ninguém
+ *     escalado": hoje os dois casos entregam `quem: []`, e afirmar sobre um mês
+ *     que não foi carregado é inventar.
+ *  2. `quem.length === 0` → `null`. O gancho não produz linha. Uma linha
+ *     "Plantonista: —" é meia mentira, que é a razão de o gancho ter nascido
+ *     vazio.
+ *  3. `veredito === 'curto'` → a FRASE DA ESCALA FURADA, **sem nome**. Aqui
+ *     nomear seria responder "chame o Bruno" a quem pergunta "quem eu chamo
+ *     hoje à noite" num dia em que as 8h do Bruno são a MADRUGADA que já
+ *     passou; e calar perderia a informação de que a escala está furada. Só a
+ *     terceira forma é verdadeira: diz que falta cobertura, diz quanto falta e
+ *     manda para a tela onde se conserta.
+ *  4. Caso contrário → os nomes ordenados POR NOME, unidos por " · ".
+ *
+ * NUNCA `quem[0]`: `plantaoDoDia` ordena por `horas DESC` (`:442`), e na
+ * segunda de virada o primeiro da lista é justamente quem SAI.
+ */
+export function textoDoPlantonista(
+  plantao: { coluna: ColunaDoMes | null; quem: { pessoa: PessoaDaGrade; horas: number }[] },
+): string | null {
+  const { coluna, quem } = plantao;
+  if (coluna === null) return null;
+  if (quem.length === 0) return null;
+  if (coluna.veredito === "curto") {
+    return `escala incompleta (${coluna.somado}h de ${coluna.cobertura}h) — confira /sobreaviso`;
+  }
+  return quem
+    .map((q) => q.pessoa.nome)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"))
+    .join(" · ");
+}
+
 /** "2026-08" → "agosto de 2026". (`rotuloReferencia` diz "agosto/2026"; a barra do mês é frase.) */
 export function rotuloDaCompetencia(competencia: string): string {
   const nomes = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",

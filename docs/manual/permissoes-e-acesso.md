@@ -170,3 +170,54 @@ Quem impede escrita é a *policy*, e só ela — todo usuário fala com o Postgr
 usando a mesma chave publicável. Se o Davi decidir que o SAC não edita a escala,
 o lugar da mudança é o par de listas de papéis que já existe, não um predicado
 novo e não a matriz de telas.
+
+
+## Atendimento de plantão (SEM chave de tela, U87)
+
+**Esta é a primeira superfície do sistema que não tem chave em
+`permissoes_tela`, e a ausência é decisão.** O catálogo `src/lib/telas.ts` é o
+mapa de **rotas** — "uma tela existe quando existe rota" —, e o registro do
+atendimento de plantão **não tem rota**: ele é a terceira opção do botão "+" da
+Início (R91), que já existe no celular. Uma chave sem rota seria órfã nos dois
+sentidos da asserção que compara catálogo e semente, e por isso a migration da
+U87 **não** entra em `ARQUIVOS_SEMENTE` no verificador. A decisão é **medida** —
+conferência 217 da migration conta `0` chaves `plantao` no banco, e há asserção
+no verificador contando `0` INSERTs em `permissoes_tela` no arquivo.
+
+**Quem escreve: qualquer pessoa da casa, PARA SI.** O gate das duas portas
+(`plantao_salvar`, `plantao_apagar`) tem duas metades:
+
+- **vínculo** — linha `ativo` e `status <> 'pendente_aprovacao'` em `profiles`,
+  escrita **ao lado** de `is_gestor()` e não dentro dela, porque `is_gestor()`
+  **não olha `ativo`** (P51);
+- **procuração** — `_plantonista = auth.uid()` **OU** `is_gestor(auth.uid())`.
+
+Um gate de gestor impediria a **única pessoa que estava lá** de registrar: às 2h
+da manhã quem atendeu foi o plantonista, e o SAC — que é gestor — estava
+dormindo. Um gate aberto deixaria qualquer um lançar atendimento **em nome de
+outro**, num registro que é de pessoal. A procuração é o meio-termo, e ela é a
+única razão de `is_gestor` aparecer aqui.
+
+**Quem lê: o dono da linha, e quem responde pela operação.** A policy é
+`vínculo AND (plantonista_id = auth.uid() OR is_gestor(auth.uid()))`.
+
+> **A régua que foi RECUSADA, e o motivo importa para a próxima tabela com
+> `chamado_id`:** a escolha "óbvia" seria `USING (pode_acessar_chamado(chamado_id))`.
+> Aquela função tem o ramo `c.responsavel_id IS NULL` **sem filtro de status**
+> (`s2:152-155`) — chamado sem dono é de quem pegar, e isso é decisão de produto
+> correta *para chamados*. Aplicada aqui, um plantão pendurado num chamado da
+> fila aberta ficaria legível por **qualquer autenticado ativo**. É a mesma
+> recusa que a U80 §3 já tinha feito, pelo mesmo motivo.
+
+**A tabela é só-leitura no navegador, por privilégio.** `REVOKE ALL … FROM
+PUBLIC, anon, authenticated` vem **antes** do `GRANT SELECT` — o desenho de
+`agenda_campo` (u78), com o argumento dele: *"não escrevi um GRANT" não é o mesmo
+que "não há GRANT"*, porque o bootstrap de um projeto Supabase pode conceder tudo
+a `authenticated` por `ALTER DEFAULT PRIVILEGES`. A conferência 208 mede o
+privilégio **efetivo**: `insert=false | update=false | delete=false | select=true`.
+
+**Nenhum valor em reais passa por aqui.** A tabela não tem coluna de dinheiro —
+medido pelo catálogo, por tipo (`numeric`/`money`) **e** por nome, na conferência
+202 —, a migration não toca `cobrancas`, não reescreve `chamados_com_lancamento`
+e não cria selo nenhum. O selo do plantão é mudo porque **não existe**. A R13
+(o SAC não vê valores) não é atravessada aqui por não haver valor a ver.

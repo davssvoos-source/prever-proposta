@@ -2895,9 +2895,19 @@ export interface ContextoDoTexto {
   membrosDaEquipe: (duplaId: string) => string[];
   detalheDe: (chamadoId: string) => DetalheParaTexto | null;
   /**
-   * GANCHO VAZIO — o plantonista da semana é FASE 3. `null` não produz UMA
-   * LINHA sequer, e há asserção pinando exatamente isso: uma linha
-   * "Plantonista: —" seria um gancho entregando meia mentira.
+   * QUEM ESTÁ DE PLANTÃO NESTE DIA — o gancho que a Fase 3 preencheu (U87).
+   *
+   * Nasceu vazio de propósito e continua ACEITANDO `null`: `null` não produz
+   * UMA LINHA sequer, e há asserção pinando exatamente isso. As três razões
+   * pelas quais ele volta a ser `null` estão em `textoDoPlantonista`
+   * (`sobreaviso/modelo.ts`) — mês não carregado, ninguém escalado, e é ela
+   * quem decide. Uma linha "Plantonista: —" seria meia mentira.
+   *
+   * É do DIA e não da semana, e o rótulo diz isso. O comentário original falava
+   * do "plantonista da semana"; a escala é por dia, uma segunda pertence a duas
+   * semanas operacionais, e o consumidor é o texto de UM dia. A divergência
+   * resolveu-se pelo lado do consumidor — ver o docblock de
+   * `textoDoPlantonista`.
    */
   plantonista: string | null;
 }
@@ -2989,11 +2999,13 @@ export function textoDoDia(
     L.push(`  ${duracaoTexto(cel.jornada.ocupadoMin)} marcadas`);
   }
 
-  // O GANCHO VAZIO. `null` não produz linha nenhuma — a Fase 3 só preenche o
-  // argumento, e nada mais neste arquivo muda.
+  // O GANCHO. `null` continua não produzindo linha nenhuma — a Fase 3 (U87) só
+  // preencheu o argumento, e nada mais neste arquivo mudou além do RÓTULO, que
+  // passou de "da semana" para "de hoje" porque a escala é por DIA e o texto é
+  // de um dia. Ver `textoDoPlantonista` em `sobreaviso/modelo.ts`.
   if (ctx.plantonista) {
     L.push("");
-    L.push(`Plantonista da semana: ${ctx.plantonista}`);
+    L.push(`Plantonista de hoje: ${ctx.plantonista}`);
   }
 
   return L.join("\n");

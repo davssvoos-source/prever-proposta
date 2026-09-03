@@ -8712,15 +8712,27 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [/CANARIO_CLIENTE/.test(visivel), /CANARIO_ENDERECO/.test(visivel), /CANARIO_DESCRICAO/.test(visivel)],
        [true, true, true]);
 
-    // MUTAÇÃO 4 — o GANCHO VAZIO. Uma linha "Plantonista: —" seria meia
-    // mentira: a Fase 3 é quem preenche o argumento, e até lá não há
-    // plantonista nenhum a anunciar.
-    eq('CRÍTICO (MUTAÇÃO): `plantonista: null` não produz UMA LINHA sequer — o gancho da Fase 3 é vazio de verdade',
+    // MUTAÇÃO 4 — o GANCHO, JÁ PREENCHIDO (U87), e o `null` que CONTINUA sendo
+    // ausência de linha. A U79 escreveu esta asserção dizendo que ela viraria
+    // na Fase 3, e é isto que ela virou: o `null` continua pinado (é ele que
+    // sustenta as três recusas de `textoDoPlantonista` — mês não carregado,
+    // ninguém escalado, e a degradação silenciosa quando a consulta da escala
+    // falha), e o RÓTULO passou a ser medido palavra por palavra.
+    eq('CRÍTICO (MUTAÇÃO): `plantonista: null` não produz UMA LINHA sequer — e agora que o gancho está PREENCHIDO isso vale mais, não menos: é assim que "não consegui ler a escala" e "ninguém escalado" saem do texto sem virar um nome errado',
        visivel.split('\n').some((l) => /plant/i.test(l)), false);
-    eq('…e com plantonista ele aparece, uma vez (é o que prova que o gancho está ligado, e não morto)',
-       M80.textoDoDia([linhaVisivel], '2026-09-03', { ...ctxBase, plantonista: 'Igor' }, agora)
-         .split('\n').filter((l) => /Plantonista/.test(l)).length,
-       1);
+    // O RÓTULO É MEDIDO, e não a palavra "Plantonista". A asserção antiga casava
+    // /Plantonista/ e ficaria VERDE com o rótulo trocado — e ele MUDOU nesta
+    // entrega ("da semana" -> "de hoje"), porque a escala é por DIA e uma
+    // segunda-feira pertence a duas semanas operacionais. Medir a palavra teria
+    // deixado passar exatamente a mudança que esta entrega fez de propósito.
+    eq('CRÍTICO: com plantonista a linha aparece UMA vez e o rótulo é "Plantonista de hoje:" — do DIA, e não da semana. O texto é de um dia; "o plantonista da semana" não tem resposta única, porque `segundaDaSemana` de uma segunda devolve ela mesma enquanto a semana operacional dela começou sete dias antes',
+       (() => {
+         const t = M80.textoDoDia([linhaVisivel], '2026-09-03', { ...ctxBase, plantonista: 'Igor' }, agora);
+         return [t.split('\n').filter((l) => /Plantonista/.test(l)).length,
+                 /^Plantonista de hoje: Igor$/m.test(t),
+                 /Plantonista da semana/.test(t)];
+       })(),
+       [1, true, false]);
 
     eq('CRÍTICO: o texto carrega a HORA em que foi gerado — ele SOBREVIVE à grade, e sem carimbo o WhatsApp vira uma segunda verdade com validade indefinida',
        /gerado em 08:12/.test(visivel), true);
@@ -13248,7 +13260,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [/cargo IN \('admin', 'comercial', 'sac'\)/.test(corpo),
         /\bativo\b/.test(corpo),
         arquivos.size, ocorrencias, policies],
-       [true, false, 27, 110, 40]);
+       // U87 (+1 arquivo, +11 ocorrências, +1 policy): a metade PROCURAÇÃO do
+       // gate de `plantao_salvar`/`plantao_apagar` e a policy de leitura de
+       // `atendimentos_plantao`. Cada uma delas vem ACOMPANHADA do teste de
+       // vínculo (`p.ativo AND p.status <> 'pendente_aprovacao'`) escrito ao
+       // lado, e é exatamente por causa desta dívida: enquanto a P51 estiver de
+       // pé, `is_gestor` sozinho deixaria um ex-funcionário com login vivo ler
+       // e lançar plantão em nome de qualquer um.
+       [true, false, 28, 121, 41]);
   }
 }
 
@@ -13354,6 +13373,474 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
           .split('').some((ch) => ch.codePointAt(0) > 0xff),
         /\\u[0-9a-f]{4}/.test(rel)],
        [true, false]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U87 — O ATENDIMENTO DE PLANTÃO (R117)
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs87 = require('fs');
+  const PL = carregar('src/features/plantao/modelo.ts');
+  const SB = carregar('src/features/sobreaviso/modelo.ts');
+  const u87cru = fs87.readFileSync('supabase/migrations/20260909090000_u87_atendimento_de_plantao.sql', 'utf8');
+  const semCom87 = (s) => s.split('\n').map((l) => (/^\s*--/.test(l) ? '' : l)).join('\n');
+  const u87 = semCom87(u87cru);
+  const semComTs87 = (s) => s.split('\n').map((l) => (/^\s*(\/\/|\*|\/\*)/.test(l) ? '' : l)).join('\n');
+
+  // ── 1) O GÊMEO PURO DA PORTA: AS MESMAS PALAVRAS, NOS DOIS LADOS ─────────
+  // Regra 10: mede ACORDO DE VALOR, exercitando os dois lados. O TypeScript é
+  // EXECUTADO (as frases saem da função, não do fonte) e o SQL é lido; se
+  // alguém mudar a frase de um lado só, esta linha acende. Uma asserção que
+  // copiasse o literal do arquivo que audita não auditaria nada (regra 9).
+  {
+    const bom = {
+      hora: '2026-08-30T02:30',
+      plantonistaId: 'p1',
+      tipo: 'remoto',
+      descricao: 'Alarme do setor 3',
+      clienteId: 'c1',
+      clienteInformado: '',
+      chamadoId: null,
+    };
+    const frases = [
+      PL.erroDoAtendimento(bom),
+      PL.erroDoAtendimento({ ...bom, hora: '' }),
+      PL.erroDoAtendimento({ ...bom, hora: '30/08/2026 02:30' }),
+      PL.erroDoAtendimento({ ...bom, plantonistaId: null }),
+      PL.erroDoAtendimento({ ...bom, tipo: '' }),
+      PL.erroDoAtendimento({ ...bom, tipo: 'hibrido' }),
+      PL.erroDoAtendimento({ ...bom, descricao: '   ' }),
+      PL.erroDoAtendimento({ ...bom, clienteInformado: 'Padaria X' }),
+      PL.erroDoAtendimento({ ...bom, clienteId: null }),
+      PL.erroDoAtendimento({ ...bom, clienteId: null, clienteInformado: '   ' }),
+    ];
+    eq('CRÍTICO: `erroDoAtendimento` recusa o que a porta recusa, e nesta ORDEM — hora, quem, tipo, descrição, e só então o XOR do cliente',
+       frases,
+       [null,
+        'Informe a hora do atendimento.',
+        'Informe a hora do atendimento.',
+        'Informe quem atendeu.',
+        'Diga se o atendimento foi remoto ou presencial.',
+        'Diga se o atendimento foi remoto ou presencial.',
+        'Descreva o que foi feito no atendimento.',
+        'Escolha o cliente da lista OU escreva o nome, não os dois.',
+        'Informe o cliente — escolha da lista ou escreva o nome.',
+        'Informe o cliente — escolha da lista ou escreva o nome.']);
+
+    // O OUTRO LADO: cada frase EXECUTADA acima existe, literalmente, na
+    // migration. Não é "o arquivo cita a frase": as frases vêm da função.
+    const distintas = [...new Set(frases.filter((f) => f !== null))];
+    eq('CRÍTICO (acordo dos DOIS lados): cada frase que o modelo puro produz está escrita, palavra por palavra, na porta `plantao_salvar` — a porta é a fronteira de verdade, e o gêmeo existe para o botão poder recusar sem ida ao servidor',
+       distintas.filter((f) => !u87.includes(f)),
+       []);
+    eq('…e são SEIS frases distintas, contadas: uma a menos aqui é um caminho de recusa que perdeu o gêmeo em silêncio',
+       distintas.length, 6);
+  }
+
+  // ── 2) REGRA 11: O VALOR CERTO, E A GRAVAÇÃO RECUSADA ───────────────────
+  // A U86 teve os dois defeitos espelhados: digitar "24" gravava 4, e o
+  // conserto passou a deixar na tela um número que o banco recusou. Aqui os
+  // campos digitáveis são a hora, a descrição e o nome do cliente escrito à
+  // mão, e os dois lados têm asserção de COMPORTAMENTO.
+  {
+    const r = {
+      hora: '2026-08-30T02:30',
+      plantonistaId: 'p1',
+      tipo: 'presencial',
+      descricao: '  Alarme do setor 3  ',
+      clienteId: null,
+      clienteInformado: '  Padaria X  ',
+      chamadoId: 'ch1',
+    };
+    const corpo = PL.corpoDoAtendimento(r);
+    eq('CRÍTICO (regra 11, lado A — o VALOR CERTO): o que o usuário digitou chega à porta aparado nas pontas e INTEIRO no miolo. O `btrim` é o mesmo dos dois lados de propósito: o índice do duplo toque é md5(lower(btrim(descricao))), e um texto com espaço a mais viraria um toque "diferente"',
+       [corpo._descricao, corpo._cliente_informado, corpo._cliente, corpo._chamado, corpo._tipo, corpo._id],
+       ['Alarme do setor 3', 'Padaria X', null, 'ch1', 'presencial', null]);
+
+    eq('CRÍTICO (regra 11, lado B — a GRAVAÇÃO RECUSADA): rascunho que não passa NÃO vira corpo de requisição. `corpoDoAtendimento` devolve `null`, a camada de dados rejeita antes de sair do aparelho, e o que a pessoa digitou fica na tela',
+       [PL.corpoDoAtendimento({ ...r, descricao: '   ' }),
+        PL.corpoDoAtendimento({ ...r, clienteId: 'c1' }),
+        PL.corpoDoAtendimento({ ...r, hora: 'ontem à noite' })],
+       [null, null, null]);
+
+    // …e o lado B, na TELA: o rascunho só é zerado no caminho de sucesso. Se
+    // `setRascunho(RASCUNHO_VAZIO)` estivesse no `catch` ou no `finally`, uma
+    // recusa apagaria o que a pessoa acabou de escrever às 2h da manhã.
+    const painel = semComTs87(fs87.readFileSync('src/features/plantao/PainelDePlantao.tsx', 'utf8'));
+    const posSucesso = painel.indexOf('await salvar.mutateAsync');
+    const posCatch = painel.indexOf('} catch (e) {', posSucesso);
+    eq('CRÍTICO (regra 11, lado B na TELA): o rascunho é zerado SÓ depois do `await` que deu certo — não há `setRascunho(RASCUNHO_VAZIO)` no catch nem finally, e não há `finally` nenhum neste caminho',
+       [painel.indexOf('...RASCUNHO_VAZIO,') > posSucesso,
+        painel.indexOf('...RASCUNHO_VAZIO,') < posCatch,
+        /\}\s*finally\s*\{/.test(painel.slice(posSucesso, posSucesso + 1200))],
+       [true, true, false]);
+  }
+
+  // ── 3) O RELÓGIO DE PAREDE E O INSTANTE, IDA E VOLTA ────────────────────
+  // Independente do fuso da máquina que roda o verificador: as duas funções
+  // usam o MESMO fuso local, então a ida e a volta têm de fechar. É isso que
+  // garante que reabrir um atendimento no formulário mostre a hora que a pessoa
+  // digitou, e não uma hora deslocada.
+  {
+    const casos = ['2026-08-30T02:30', '2026-01-01T00:00', '2026-12-31T23:59'];
+    eq('CRÍTICO: `instanteDoLocal` e `localDoInstante` são inversas — o relógio de parede que a pessoa digitou volta igual ao reabrir o atendimento',
+       casos.map((c) => PL.localDoInstante(PL.instanteDoLocal(c))),
+       casos);
+    eq('…e entrada que não é hora devolve `null` em vez de Invalid Date, que estouraria lá na frente, longe de onde nasceu',
+       [PL.instanteDoLocal('ontem'), PL.instanteDoLocal(''), PL.instanteDoLocal('2026-13-45T99:99')],
+       [null, null, null]);
+  }
+
+  // ── 4) OS TRÊS ESTADOS DO AVISO DA ESCALA ───────────────────────────────
+  // É a resposta ao custo de gravar o plantonista em vez de derivá-lo. Dois
+  // estados não bastam: "fora da escala" num dia SEM escala nenhuma acusaria a
+  // pessoa de furar uma escala que ninguém lançou.
+  {
+    const base = { atendimento_id: 'a1', dia_do_plantao: '2026-08-30', hora_gravada: '2026-08-30T05:30:00.000Z' };
+    eq('CRÍTICO: `avisoDaEscala` tem TRÊS estados — na escala, fora da escala do dia, e "não há escala lançada". Colapsar os dois últimos acusaria o plantonista de furar uma escala inexistente',
+       [PL.avisoDaEscala({ ...base, horas_escaladas: 8, horas_do_dia: 14 }),
+        PL.avisoDaEscala({ ...base, horas_escaladas: 0, horas_do_dia: 24 }),
+        PL.avisoDaEscala({ ...base, horas_escaladas: 0, horas_do_dia: 0 })],
+       [{ tom: 'ok', texto: 'Plantão de 30/08 — na escala (8h).' },
+        { tom: 'fora', texto: 'Plantão de 30/08 — FORA da escala: o dia tem 24h lançadas para outra pessoa.' },
+        { tom: 'sem_escala', texto: 'Plantão de 30/08 — não há escala lançada para este dia.' }]);
+
+    // A PORTA DEVOLVE OS DOIS NÚMEROS, e não um booleano `escalado`. Um
+    // booleano sozinho não sabe distinguir os estados 2 e 3 — e o verificador
+    // mede que a coluna existe no `RETURNS TABLE`, não que o comentário promete.
+    eq('CRÍTICO: a porta devolve DOIS números (horas desta pessoa, horas do dia) e nenhum booleano `escalado` — é a forma que permite os três estados, e ela é medida no RETURNS TABLE, não na promessa do cabeçalho',
+       [/horas_escaladas smallint,/.test(u87), /horas_do_dia    smallint/.test(u87),
+        /\bescalado\s+boolean/.test(u87)],
+       [true, true, false]);
+  }
+
+  // ── 5) NENHUM REAL PASSA POR AQUI, E O CAMINHO É MEDIDO ─────────────────
+  // Não basta dizer "não há dinheiro": mede-se (a) que a tabela não tem coluna
+  // de valor, (b) que nada nesta entrega toca `cobrancas`, `chamados_com_
+  // lancamento` ou o selo do ciclo, e (c) que a conferência 202 existe para
+  // medir isso NO BANCO, e não só no arquivo.
+  {
+    const bloco = u87.slice(u87.indexOf('CREATE TABLE IF NOT EXISTS public.atendimentos_plantao'),
+                            u87.indexOf('CREATE INDEX IF NOT EXISTS atendimentos_plantao_dia_idx'));
+    eq('CRÍTICO: ZERO coluna de dinheiro na definição da tabela — nem por nome (valor/preco/custo/total/reais) nem por tipo (numeric/money). Comentário filtrado antes de medir: o cabeçalho FALA de cobranças para explicar por que não há nenhuma',
+       [/\b(valor|preco|custo|total|reais)\b/i.test(bloco), /\bnumeric\b|\bmoney\b/i.test(bloco)],
+       [false, false]);
+
+    eq('CRÍTICO: esta migration NÃO escreve em `cobrancas`, NÃO reescreve `chamados_com_lancamento` e NÃO cria selo. O selo do plantão é MUDO porque não existe — e é assim que "nenhum real chega a quem não pode ver" deixa de ser promessa: não há valor a vazar',
+       [/INSERT INTO public\.cobrancas|UPDATE public\.cobrancas|ALTER TABLE public\.cobrancas/.test(u87),
+        /FUNCTION public\.chamados_com_lancamento/.test(u87),
+        /seloDoCiclo|SELOS_DO_CICLO/.test(u87)],
+       [false, false, false]);
+
+    // O caminho do dinheiro que JÁ EXISTE continua sendo o único, e ele continua
+    // gateado: quem não é gestor recebe ZERO LINHAS de `chamados_com_lancamento`
+    // (u80), e o modelo puro lê ausência como "não sei". Esta entrega não
+    // acrescenta um segundo caminho — e é isso que se mede.
+    const dataProg = semComTs87(fs87.readFileSync('src/features/programacao/data.ts', 'utf8'));
+    const dataPl = semComTs87(fs87.readFileSync('src/features/plantao/data.ts', 'utf8'));
+    eq('CRÍTICO: o selo de cobrança continua vindo do BATELADO de programacao/data.ts (a RPC de UM BIT, gateada em is_gestor), e a camada de dados do plantão não chama RPC de dinheiro nenhuma nem lê `cobrancas`',
+       [/rpc\(\s*\n?\s*"chamados_com_lancamento"/.test(dataProg),
+        /chamados_com_lancamento|cobrancas|valor/.test(dataPl)],
+       [true, false]);
+
+    eq('CRÍTICO: a conferência 202 mede a ausência de dinheiro NO CATÁLOGO do banco (tipo E nome), e não no arquivo — um ALTER TABLE futuro que acrescente uma coluna de valor acende a linha na próxima execução',
+       [/SELECT 202,/.test(u87),
+        /ty\.typname IN \('numeric','money'\)/.test(u87),
+        /a\.attname ~ '\(valor\|preco\|custo\|total\|reais\)'/.test(u87)],
+       [true, true, true]);
+  }
+
+  // ── 6) A PORTA: O GATE QUE NÃO SE RECUSA A SI MESMO ─────────────────────
+  // O idioma de u86:326-331. Sem o curto-circuito `IF auth.uid() IS NOT NULL`,
+  // a porta levantaria 42501 dentro da própria migration (auth.uid() é NULL sem
+  // JWT) e o PORTÃO — o único lugar onde se prova que ela roda — nunca rodaria.
+  eq('CRÍTICO: as duas portas gateiam sob `IF v_eu IS NOT NULL`, com v_eu := auth.uid(). Sem o curto-circuito, a porta se recusaria a si mesma dentro da migration e o portão inteiro abortaria',
+     [(u87.match(/v_eu\s+uuid\s*:=\s*auth\.uid\(\);/g) ?? []).length,
+      (u87.match(/IF v_eu IS NOT NULL THEN/g) ?? []).length,
+      /IF NOT EXISTS \(SELECT 1 FROM public\.profiles p\s*\n\s*WHERE p\.id = auth\.uid\(\)/.test(u87)],
+     [2, 2, false]);
+
+  eq('CRÍTICO: o gate é VÍNCULO + PROCURAÇÃO, e não PAPEL. `is_gestor` aparece ao LADO do teste de dois eixos (ela não olha `ativo` — P51), e a procuração é `_plantonista = v_eu OR is_gestor(v_eu)` — qualquer pessoa da casa registra PARA SI, e às 2h da manhã quem estava lá não era o gestor',
+     [/_plantonista = v_eu OR public\.is_gestor\(v_eu\)/.test(u87),
+      // TRÊS: a policy de leitura e as DUAS portas. O pré-voo tem o mesmo teste
+      // numa linha só e não entra nesta conta de propósito — ele checa a
+      // POPULAÇÃO (há alguém escalável?), e não a identidade de quem chamou.
+      (u87.match(/p\.ativo\s*\n\s*AND p\.status <> 'pendente_aprovacao'/g) ?? []).length],
+     [true, 3]);
+
+  eq('CRÍTICO: o vínculo com CHAMADO carrega a régua de LEITURA do chamado (a lição da S4 em chamado_eventos) — sem isso a porta viraria um oráculo que confirma a existência de um uuid de chamado alheio',
+     /IF _chamado IS NOT NULL AND NOT public\.pode_acessar_chamado\(_chamado\) THEN/.test(u87),
+     true);
+
+  // ── 7) A POLICY DE LEITURA, E A RÉGUA QUE ELA RECUSA ────────────────────
+  eq('CRÍTICO: a leitura é DONO + GESTOR, os dois com vínculo vivo — e NÃO é `pode_acessar_chamado`, cujo ramo `responsavel_id IS NULL` (sem filtro de status) abriria um plantão pendurado em chamado da fila aberta para QUALQUER autenticado ativo',
+     [/USING \(EXISTS \(SELECT 1 FROM public\.profiles p[\s\S]{0,260}?AND \(plantonista_id = auth\.uid\(\) OR public\.is_gestor\(auth\.uid\(\)\)\)\)/.test(u87),
+      /CREATE POLICY[\s\S]{0,400}?pode_acessar_chamado/.test(u87),
+      /USING \(true\)/.test(u87)],
+     [true, false, false]);
+
+  eq('CRÍTICO: a tabela é SÓ-LEITURA no navegador por PRIVILÉGIO, e o REVOKE vem ANTES do GRANT — "não escrevi um GRANT" não é o mesmo que "não há GRANT" (o bootstrap de um projeto Supabase pode conceder tudo a authenticated por ALTER DEFAULT PRIVILEGES)',
+     [u87.indexOf('REVOKE ALL   ON public.atendimentos_plantao FROM PUBLIC, anon, authenticated;')
+        < u87.indexOf('GRANT SELECT ON public.atendimentos_plantao TO authenticated;'),
+      /GRANT SELECT ON public\.atendimentos_plantao TO authenticated;/.test(u87),
+      /GRANT (INSERT|UPDATE|DELETE)[^\n]*atendimentos_plantao TO authenticated/.test(u87),
+      /'delete=false \| insert=false \| select=true \| update=false'/.test(u87)],
+     [true, true, false, true]);
+
+  // ── 8) O `dia` TEM UM ESCRITOR SÓ, E O RELÓGIO É LIDO UMA VEZ ───────────
+  // Se o gatilho lesse o relógio de parede duas vezes (uma para truncar, outra
+  // para projetar), `hora` e `dia` poderiam sair de leituras diferentes. Uma
+  // leitura só é o que faz os dois serem a MESMA verdade.
+  {
+    const gat = u87.slice(u87.indexOf('CREATE OR REPLACE FUNCTION public.atendimento_plantao_carimbo'),
+                          u87.indexOf('DROP TRIGGER IF EXISTS trg_atendimento_plantao_carimbo'));
+    eq('CRÍTICO: o gatilho lê o relógio de parede UMA VEZ (v_local) e tira dele a hora E o dia — não há segunda leitura, logo não há como as duas divergirem. E ele é INCONDICIONAL: não existe `IF NEW.dia IS NULL`, que aceitaria um dia vindo de fora',
+       [/v_local := date_trunc\('minute', NEW\.hora AT TIME ZONE 'America\/Sao_Paulo'\);/.test(gat),
+        /NEW\.hora := v_local AT TIME ZONE 'America\/Sao_Paulo';/.test(gat),
+        /NEW\.dia  := v_local::date;/.test(gat),
+        /IF NEW\.dia IS NULL/.test(gat),
+        /SECURITY DEFINER/.test(gat)],
+       [true, true, true, false, false]);
+
+    eq('CRÍTICO: a porta NÃO passa `dia` na lista de colunas do INSERT — o gatilho BEFORE é o único escritor da projeção, e o NOT NULL é verificado depois dele. Passar um valor ali seria inventar um segundo escritor',
+       [/INSERT INTO public\.atendimentos_plantao\s*\n\s*\(hora, plantonista_id, tipo, descricao, cliente_id, cliente_informado, chamado_id, registrado_por\)/.test(u87),
+        /INSERT INTO public\.atendimentos_plantao\s*\n?\s*\([^)]*\bdia\b/.test(u87)],
+       [true, false]);
+  }
+
+  // ── 9) O DUPLO TOQUE, E A CONDIÇÃO QUE O FAZ FUNCIONAR ─────────────────
+  // O índice sozinho não pega nada: dois toques a 40 ms mandam instantes
+  // diferentes. É a truncagem ao minuto que o torna eficaz, e as duas coisas
+  // são medidas JUNTAS — aqui e no portão.
+  eq('CRÍTICO: o índice único do duplo toque é (plantonista_id, hora, md5(lower(btrim(descricao)))) E existe a truncagem ao minuto que o torna eficaz. Sem a truncagem ele teria a forma de uma proteção e a eficácia de zero',
+     [/CREATE UNIQUE INDEX IF NOT EXISTS atendimentos_plantao_sem_duplo_toque\s*\n\s*ON public\.atendimentos_plantao \(plantonista_id, hora, md5\(lower\(btrim\(descricao\)\)\)\);/.test(u87),
+      /date_trunc\('minute'/.test(u87)],
+     [true, true]);
+
+  // ── 10) O PORTÃO EXERCITA COMPORTAMENTO, E NÃO EXISTÊNCIA ──────────────
+  eq('CRÍTICO: o portão prova as OITO coisas que só se provam rodando — a virada da meia-noite (com o par que mostra que o caso atinge o alvo), a madrugada de domingo, a truncagem + o duplo toque + o par negativo, o XOR do cliente pelos dois caminhos, tipo e descrição, os TRÊS estados da escala, a correção pelo mesmo id, e o apagar idempotente',
+     ['U87 PORTÃO 1:', 'U87 PORTÃO 2:', 'U87 PORTÃO 3:', 'U87 PORTÃO 4:',
+      'U87 PORTÃO 5:', 'U87 PORTÃO 6a:', 'U87 PORTÃO 6b:', 'U87 PORTÃO 6c:',
+      'U87 PORTÃO 7:', 'U87 PORTÃO 8:'].filter((p) => !u87.includes(p)),
+     []);
+
+  eq('CRÍTICO: NENHUMA prova do portão depende do relógio — não há `now()` construindo caso. Uma prova que comparasse `now() - interval` com a data corrente de Brasília abortaria a migration entre 00:00 e 00:30, que é falha por HORA DO DIA',
+     [/now\(\) - interval/.test(u87),
+      (u87.slice(u87.indexOf('DO $portao$'), u87.indexOf('$portao$;')).match(/now\(\)/g) ?? []).length],
+     [false, 0]);
+
+  eq('CRÍTICO: e NÃO há asserção de `alterado_em` monotônico, que é INASSERTÁVEL dentro da transação — `now()` é transaction_timestamp(), constante no BEGIN, e INSERT e UPDATE gravam o mesmo instante. Uma prova de "avançou" abortaria num banco sadio. A recusa está escrita, não só ausente',
+     [/alterado_em não avançou|alterada_em não avançou/.test(u87cru),
+      /transaction_timestamp\(\)`, constante/.test(u87cru)],
+     [false, true]);
+
+  // ── 11) A ORDEM DE DEPLOY É PROPRIEDADE DO CÓDIGO (regra 5) ────────────
+  // Ela INVERTE porque o código NOMEIA objeto novo. E a asserção mede o CÓDIGO,
+  // e não o comentário: são os `rpc("plantao_salvar")` e `from("atendimentos_
+  // plantao")` do cliente que tornam a ordem obrigatória.
+  {
+    const dataPl = semComTs87(fs87.readFileSync('src/features/plantao/data.ts', 'utf8'));
+    eq('CRÍTICO (regra 5): a ordem de deploy INVERTE, e a razão está no CÓDIGO — o cliente nomeia a tabela e as duas RPCs, então push antes da migration abre o painel com PGRST205 para todo mundo',
+       [/from\("atendimentos_plantao"\)/.test(dataPl),
+        /rpc\("plantao_salvar"/.test(dataPl),
+        /rpc\("plantao_apagar"/.test(dataPl),
+        /ESTA MIGRATION PRIMEIRO\. O PUSH DEPOIS\./.test(u87cru),
+        /PGRST205/.test(u87cru)],
+       [true, true, true, true, true]);
+  }
+
+  // ── 12) NÃO HÁ ROTA, LOGO NÃO HÁ CHAVE DE TELA ─────────────────────────
+  // A migration NÃO entra em ARQUIVOS_SEMENTE, e a razão é medida em vez de
+  // ficar como omissão: ela não insere chave nenhuma em `permissoes_tela`. Se
+  // um dia inserir, esta linha acende ANTES de a asserção de órfãs acusar.
+  eq('CRÍTICO: a U87 não semeia chave em permissoes_tela — não há rota nova (a porta é a terceira opção do "+" da Início), e por isso ela NÃO está em ARQUIVOS_SEMENTE. A conferência 217 mede a mesma coisa no banco',
+     [/INSERT INTO public\.permissoes_tela/.test(u87),
+      ARQUIVOS_SEMENTE.includes('supabase/migrations/20260909090000_u87_atendimento_de_plantao.sql'),
+      /SELECT 217,/.test(u87)],
+     [false, false, true]);
+
+  // ── 13) `chamados` NÃO GANHOU UMA QUARTA NATUREZA ──────────────────────
+  // E a conferência 214 extrai o CONJUNTO do CHECK vivo, e não a string
+  // renderizada: `natureza` é `text` (u7:88), e o deparse de uma coluna
+  // `varchar` é OUTRO — uma conferência que pinasse a renderização de varchar
+  // ficaria VERMELHA num banco perfeitamente correto.
+  {
+    const u29 = fs87.readFileSync('supabase/migrations/20260821160000_u29_proposta_e_chamado.sql', 'utf8');
+    eq('CRÍTICO: o CHECK VIVO de `chamados.natureza` é o da U29 e tem TRÊS valores; a U87 não o toca, e a conferência 214 extrai o CONJUNTO em vez de pinar a renderização (que depende de o tipo ser text ou varchar)',
+       [/CHECK \(natureza IN \('campo', 'interno', 'comercial'\)\)/.test(u29),
+        /ALTER TABLE public\.chamados/.test(u87),
+        /'campo,comercial,interno'/.test(u87),
+        /character varying/.test(u87)],
+       [true, false, true, false]);
+  }
+
+  // ── 14) O GANCHO: `textoDoPlantonista`, AS QUATRO DECISÕES ─────────────
+  // Nenhum mecanismo novo — todos os sinais já existem em `ColunaDoMes`. E
+  // NUNCA `quem[0]`: `plantaoDoDia` ordena por horas DESC, e na segunda de
+  // virada o primeiro da lista é quem SAI.
+  {
+    const pessoa = (nome) => ({ id: nome, nome, historico: false });
+    const coluna = (veredito, somado, cobertura) => ({
+      dia: '2026-08-24', numero: 24, diaDaSemana: 1, fimDeSemana: false, feriado: false,
+      util: true, rotulo: null, cobertura, somado, veredito,
+    });
+    eq('CRÍTICO: `textoDoPlantonista` — mês não carregado e ninguém escalado devolvem `null` (e `null` não produz UMA LINHA); cobertura CURTA devolve a frase da escala furada SEM NOME; e o caso normal devolve os nomes ORDENADOS POR NOME',
+       [SB.textoDoPlantonista({ coluna: null, quem: [] }),
+        SB.textoDoPlantonista({ coluna: coluna('vazio', 0, 14), quem: [] }),
+        SB.textoDoPlantonista({ coluna: coluna('curto', 8, 14), quem: [{ pessoa: pessoa('Bruno'), horas: 8 }] }),
+        SB.textoDoPlantonista({ coluna: coluna('ok', 14, 14), quem: [{ pessoa: pessoa('Igor'), horas: 14 }] }),
+        SB.textoDoPlantonista({
+          coluna: coluna('ok', 14, 14),
+          quem: [{ pessoa: pessoa('Zeca'), horas: 8 }, { pessoa: pessoa('Ana'), horas: 6 }],
+        })],
+       [null,
+        null,
+        'escala incompleta (8h de 14h) — confira /sobreaviso',
+        'Igor',
+        'Ana · Zeca']);
+
+    // MUTAÇÃO / PAR NEGATIVO: a ordem de ENTRADA é a de `plantaoDoDia` (horas
+    // DESC), e o Zeca chega primeiro. Se a função usasse `quem[0]` ou
+    // preservasse a ordem recebida, a linha acima diria "Zeca · Ana" — e num dia
+    // de virada anunciaria como plantonista de hoje quem já SAIU.
+    eq('CRÍTICO (par negativo): a ordem de ENTRADA é a de `plantaoDoDia` (horas DESC) e NÃO é a de saída. Na segunda de virada o primeiro da lista é quem SAI, e anunciá-lo seria mandar ligar para quem já foi dormir',
+       (() => {
+         const g = SB.gradeDoMes('2026-08',
+           [{ id: 'u1', nome: 'Zeca', ativo: true, status: 'ativo', cargo: null },
+            { id: 'u2', nome: 'Ana', ativo: true, status: 'ativo', cargo: null }],
+           [{ dia: '2026-08-24', pessoa_id: 'u1', horas: 8, origem: 'padrao' },
+            { dia: '2026-08-24', pessoa_id: 'u2', horas: 6, origem: 'padrao' }]);
+         const p = SB.plantaoDoDia(g, '2026-08-24');
+         return [p.quem[0].pessoa.nome, SB.textoDoPlantonista(p)];
+       })(),
+       ['Zeca', 'Ana · Zeca']);
+
+    // A frase da escala furada NÃO nomeia ninguém — nomear responderia "chame o
+    // Bruno" a quem pergunta quem chamar à noite, num dia em que as 8h do Bruno
+    // são a madrugada que já passou.
+    eq('CRÍTICO: no dia CURTO a frase não carrega nome nenhum, e carrega os DOIS números (o que há e o que falta) mais o caminho da tela onde se conserta',
+       (() => {
+         const t = SB.textoDoPlantonista({
+           coluna: coluna('curto', 8, 14),
+           quem: [{ pessoa: pessoa('Bruno'), horas: 8 }],
+         });
+         return [/Bruno/.test(t), /8h de 14h/.test(t), /\/sobreaviso/.test(t)];
+       })(),
+       [false, true, true]);
+  }
+
+  // ── 15) A TELA INJETA O GANCHO, E O `null` SAIU DE LÁ (regra 2: DIFF) ──
+  // Presença não detecta DELEÇÃO. O que muda a tela é o `plantonista: null` ter
+  // DEIXADO de existir — e é isso que se mede, junto com o que entrou no lugar.
+  {
+    const rota = semComTs87(fs87.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8'));
+    eq('CRÍTICO (regra 2, DIFF): o `plantonista: null` SAIU da tela da programação e no lugar entrou `plantonista: plantonistaDoDia`, calculado por `textoDoPlantonista(plantaoDoDia(...))` — a tela injeta, não calcula',
+       [/plantonista: null/.test(rota),
+        /plantonista: plantonistaDoDia/.test(rota),
+        /textoDoPlantonista\(\s*\n?\s*plantaoDoDia\(gradeDoSobreaviso\(/.test(rota)],
+       [false, true, true]);
+
+    eq('CRÍTICO: `gradeDoMes` chega à tela com APELIDO — ela JÁ tem uma constante local com esse nome (a régua do modo mensal), e importar sem apelido faria a chamada resolver para um `useMemo` de células de calendário. O compilador pegou; a asserção impede a volta',
+       [/gradeDoMes as gradeDoSobreaviso/.test(rota),
+        /const gradeDoMes = useMemo/.test(rota)],
+       [true, true]);
+  }
+
+  // ── 15b) O CENSO DO DINHEIRO NA FEATURE INTEIRA (regra 3) ─────────────
+  // Recorte declarado: TODO arquivo de `src/features/plantao/`, com comentário
+  // filtrado. Não é "a tela não mostra valor" — é que a feature inteira não
+  // tem por onde. Se alguém acrescentar a leitura de `cobrancas`, o selo do
+  // ciclo ou um `R$` na tela, esta linha acende ANTES de o dado vazar.
+  {
+    const dir87 = 'src/features/plantao';
+    const achados = [];
+    for (const f of fs87.readdirSync(dir87).sort()) {
+      const txt = semComTs87(fs87.readFileSync(`${dir87}/${f}`, 'utf8'));
+      if (/cobranca|cobrancas|faturamento|R\$|valor_total|pode_ver_financeiro|chamados_com_lancamento|seloDoCiclo/i.test(txt)) {
+        achados.push(f);
+      }
+    }
+    eq('CRÍTICO (regra 3, censo com recorte declarado): NENHUM arquivo de src/features/plantao lê cobrança, faturamento, selo do ciclo ou `pode_ver_financeiro` — e não imprime R$. O caminho do dinheiro não passa por aqui, e isso é medido no diretório inteiro, não prometido no cabeçalho',
+       achados, []);
+
+    // PAR NEGATIVO: o detector ACHA quando o texto existe, senão a linha acima
+    // é decoração para sempre.
+    eq('…e o detector acha de verdade: um arquivo que lesse `cobrancas` ou imprimisse R$ entraria na lista',
+       [/cobranca|cobrancas|faturamento|R\$|valor_total|pode_ver_financeiro|chamados_com_lancamento|seloDoCiclo/i
+          .test('const x = supabase.from("cobrancas")'),
+        /cobranca|cobrancas|faturamento|R\$|valor_total|pode_ver_financeiro|chamados_com_lancamento|seloDoCiclo/i
+          .test('return `R$ ${v}`;'),
+        /cobranca|cobrancas|faturamento|R\$|valor_total|pode_ver_financeiro|chamados_com_lancamento|seloDoCiclo/i
+          .test('const x = 1;')],
+       [true, true, false]);
+  }
+
+  // ── 15c) A LISTA DISTINGUE OS TRÊS ESTADOS (regra 12) ─────────────────
+  // "carregando", "falhou" e "não há" são coisas diferentes. Uma lista que os
+  // colapsasse diria "nenhum atendimento" quando a consulta caiu — e alguém
+  // registraria o mesmo plantão de novo em cima da mentira.
+  {
+    const painel = semComTs87(fs87.readFileSync('src/features/plantao/PainelDePlantao.tsx', 'utf8'));
+    eq('CRÍTICO (regra 12): a lista de atendimentos distingue CARREGANDO, FALHOU e VAZIO — e o estado de falha diz, por escrito, que ele NÃO quer dizer "não há nenhum"',
+       [/lista\.isLoading \?/.test(painel),
+        /lista\.isError \?/.test(painel),
+        /\(lista\.data \?\? \[\]\)\.length === 0 \?/.test(painel),
+        /isto NÃO quer dizer que não há nenhum/.test(painel)],
+       [true, true, true, true]);
+
+    eq('CRÍTICO: e o campo de CHAMADO também distingue falha de vazio — se a lista de chamados não carregar, a tela manda registrar assim mesmo e ligar depois, em vez de mostrar um seletor vazio que parece "não há chamado nenhum"',
+       [/chamados\.isError \?/.test(painel),
+        /ligue o chamado depois — é a mesma porta/.test(painel)],
+       [true, true]);
+
+    // ── A FRASE DO SERVIDOR TEM DE SOBREVIVER À FRONTEIRA ─────────────────
+    // As duas telas fazem `e instanceof Error ? e.message : "não consegui…"`, e
+    // o PostgREST NÃO lança: sem `shouldThrowOnError` ele devolve o objeto do
+    // `JSON.parse`, que não é `Error`. Sem o embrulho, as CATORZE frases que a
+    // migration escreveu à mão — a procuração, o acesso ao chamado, o duplo
+    // toque, as sete de validação — chegavam ao plantonista como a MESMA frase
+    // genérica, às 2h da manhã, sem dizer o que consertar.
+    // O par negativo é o que prende: o `throw` cru não pode voltar.
+    const dataPl87 = semComTs87(fs87.readFileSync('src/features/plantao/data.ts', 'utf8'));
+    eq('CRÍTICO: os erros do PostgREST são embrulhados em `new Error(...)` na fronteira de dados — sem isso `e instanceof Error` é FALSO nas duas telas e as 14 frases da migration viram "não consegui registrar"',
+       [(dataPl87.match(/if \(error\) throw new Error\(error\.message\);/g) ?? []).length,
+        /if \(error\) throw error;/.test(dataPl87)],
+       [4, false]);
+
+    // ── O PAINEL DE REGISTRO MOSTRA OS *MEUS* ────────────────────────────
+    // A policy é `plantonista_id = auth.uid() OR is_gestor(auth.uid())` e está
+    // certa (o gestor precisa conferir). Mas ESTE painel diz "não sai do seu
+    // registro" e tem uma lixeira em cada linha — sem o recorte, um gestor (e
+    // **o SAC é gestor**, R13) via os vinte últimos da empresa inteira, SEM
+    // NOME, e apagava o atendimento de outro achando que era duplicata sua.
+    // O recorte é do PAINEL, não da policy: a tela de gestão sobre plantão de
+    // todo mundo é outra tela, e a R117 diz que ela não existe nesta entrega.
+    eq('CRÍTICO: a lista do painel de registro é recortada por `plantonista_id = eu`, e a chave de cache carrega o dono — sem o recorte o gestor via os de TODOS sem nome, com lixeira em cada linha; sem o dono na chave, um usuário via o cache do outro',
+       [/\.eq\("plantonista_id", euId\)/.test(dataPl87),
+        /queryKey: \["plantao", "recentes", euId\]/.test(dataPl87),
+        /enabled: !!euId,/.test(dataPl87),
+        /useMeusAtendimentos\(euId\)/.test(painel),
+        // par negativo: a forma sem dono não pode voltar
+        /useMeusAtendimentos\(true\)/.test(painel)],
+       [true, true, true, true, false]);
+  }
+
+  // ── 16) O COMENTÁRIO DE `telas.ts` QUE ESTAVA ERRADO ───────────────────
+  // Ele afirmava `sobreaviso_select USING (true)`, e a policy viva é o teste de
+  // dois eixos. Importa porque é ESTE comentário que alguém copia ao escrever a
+  // policy da próxima tela — e foi de um comentário copiado que nasceu a S3.
+  {
+    const telasCru = fs87.readFileSync('src/lib/telas.ts', 'utf8');
+    const u86 = fs87.readFileSync('supabase/migrations/20260908090000_u86_sobreaviso.sql', 'utf8');
+    eq('CRÍTICO: o comentário de `telas.ts` deixou de afirmar `sobreaviso_select USING (true)` — a policy viva é o teste de DOIS EIXOS (ativo e não pendente), e a nota errada era o molde que a próxima policy copiaria',
+       [/sobreaviso_select USING \(true\)/.test(telasCru),
+        /teste de DOIS EIXOS/.test(telasCru),
+        /pendente_aprovacao/.test(telasCru),
+        // e o outro lado: a policy VIVA na migration, para os dois não poderem
+        // divergir de novo em silêncio
+        /CREATE POLICY "sobreaviso_select"[\s\S]{0,260}?p\.status <> 'pendente_aprovacao'/.test(semCom87(u86))],
+       [false, true, true, true]);
   }
 }
 
@@ -13567,10 +14054,56 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // PAR NEGATIVO do manual: ele NÃO pode descrever o registro de atendimento de
   // plantão, que é entrega PRÓPRIA e não foi construída. Manual que ensina um
   // botão inexistente faz quem o procura concluir que o sistema quebrou.
-  eq('CRÍTICO (par negativo): o manual NÃO descreve o registro de atendimento de plantão (hora, cliente, plantonista, selo de cobrança) — ele é entrega própria e NÃO foi construído nesta rodada. Manual que ensina botão inexistente faz quem procura concluir que o sistema está quebrado',
-     [/atendimentos_plantao/.test(manual),
-      /registrar o atendimento do plantão|selo de cobrança do plantão/i.test(manual)],
-     [false, false]);
+  // ESTA ASSERÇÃO VIROU (U87). Ela nasceu como PAR NEGATIVO na U86 — "o manual
+  // não pode ensinar um botão que não existe" — e a metade que faltava foi
+  // construída. Agora ela mede o contrário, com o mesmo cuidado: o manual
+  // ENSINA o registro, diz ONDE fica (o "+" da Início, e não a tela do
+  // sobreaviso), e continua NÃO prometendo a cobrança, que segue não existindo.
+  eq('CRÍTICO (regra 7, asserção VIRADA): o manual ensina o registro do atendimento de plantão, diz que ele fica no "+" da Início (e não na tela do sobreaviso), e a seção do sobreaviso aponta para lá em vez de continuar dizendo "não procure o botão"',
+     [/## Registrar um atendimento de plantão \(U87\)/.test(manual),
+      /botão \*\*"\+"\*\*/.test(manual),
+      /não procure o botão/.test(manual),
+      /existe desde a \*\*U87\*\* e \*\*não fica aqui\*\*/.test(manual)],
+     [true, true, false, true]);
+
+  eq('CRÍTICO: o manual ensina as três coisas que surpreendem — que 02:30 de domingo é o plantão de DOMINGO, que o dia vem do SERVIDOR, e os TRÊS estados do aviso da escala. E continua dizendo que a COBRANÇA não existe',
+     [/02:30 de domingo é o plantão de DOMINGO/.test(manual),
+      /vem do servidor/.test(manual),
+      /não há escala lançada para este dia/.test(manual),
+      /não gera cobrança/.test(manual),
+      /A \*\*cobrança\*\* do plantão\s*\n?continua não existindo/.test(manual)],
+     [true, true, true, true, true]);
+
+  eq('CRÍTICO (regra 7): a R117 está no PRODUTO com as seis decisões e com a REGRA DE FORMA que as generaliza (CHECK × função pura × satélite), e o diário da U87 declara a ORDEM DE DEPLOY invertida e a razão dela',
+     [/\*\*R117\*\*/.test(prod),
+      /valor num CHECK\*\*, quando ela responde a \*\*mesma\*\* pergunta/.test(prod),
+      /\*\*satélite\*\* \(tabela própria\)/.test(prod),
+      /^## U87 —/m.test(plano),
+      /esta migration PRIMEIRO, o push DEPOIS/.test(plano.slice(plano.indexOf('## U87'))),
+      /PGRST205/.test(plano.slice(plano.indexOf('## U87')))],
+     [true, true, true, true, true, true]);
+
+  eq('CRÍTICO (regra 7): as duas dívidas NOVAS estão declaradas com a CONDIÇÃO de reabrir escrita — P53 (apagar não deixa lápide) reabre no dia em que o plantão virar cobrável; P54 (não há leitura fora do painel) reabre no fechamento mensal',
+     [/^## P53 —/m.test(pend), /^## P54 —/m.test(pend),
+      /passar a ser \*\*cobrável\*\*/.test(pend.slice(pend.indexOf('## P53'))),
+      /fechamento mensal de plantão/.test(pend.slice(pend.indexOf('## P54')))],
+     [true, true, true, true]);
+
+  eq('CRÍTICO (regra 9): a frase do P19 que apontava para uma conferência que NÃO EXISTE foi reescrita — ela dizia que a "linha 107" conta o avulso vinculado (é o PRÉ-VOO, e conta duplicatas), e agora nomeia o arame certo (a 111) DIZENDO que ele mede outra coisa, em vez de inventar um número',
+     [/A linha 107 da conferência da U80 é o arame/.test(pend),
+      /CORREÇÃO DE PROVENIÊNCIA \(2026-09-09, U87\)/.test(pend),
+      /próxima é a \*\*111\*\*/.test(pend),
+      /A conferência que faltaria/.test(pend)],
+     [false, true, true, true]);
+
+  eq('CRÍTICO: o manual de permissões documenta a primeira superfície SEM chave de tela, e diz por quê (não há rota) e o que foi RECUSADO como régua de leitura (pode_acessar_chamado, que abre a fila sem dono)',
+     (() => {
+       const i = perm.indexOf('## Atendimento de plantão (SEM chave de tela, U87)');
+       const s = i < 0 ? '' : perm.slice(i);
+       return [i > 0, /pode_acessar_chamado/.test(s), /ARQUIVOS_SEMENTE/.test(s),
+               /procuração/i.test(s), /P51/.test(s)];
+     })(),
+     [true, true, true, true, true]);
 
   eq('CRÍTICO: a chave de permissão nova está no manual de permissões, com a distinção que importa — ver é de todo mundo que TRABALHA aqui (e o manual NOMEIA os dois grupos que ficam de fora), editar é de gestor, e gestor INCLUI o SAC',
      // A seção do sobreaviso, recortada: o documento inteiro fala de
@@ -13588,13 +14121,21 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // REGRA 7 sobre as duas dívidas que esta rodada destapou. A do `is_gestor` é
   // decisão do Davi e precisa do ALCANCE no documento, não de um adjetivo.
-  eq('CRÍTICO (regra 7): P51 e P52 estão declaradas, e a P51 traz o alcance MEDIDO — 27 arquivos, 110 ocorrências vivas e 40 CREATE POLICY. "is_gestor não olha ativo" sem o número é um adjetivo; com o número é uma decisão que o Davi pode tomar',
+  // O NÚMERO DO DOCUMENTO É O MESMO DO CENSO, e a igualdade é medida. Sem isto,
+  // o censo do verificador subiria a cada entrega e o documento continuaria
+  // dizendo 27 — o Davi tomaria a decisão com um número velho na frente, que é
+  // pior do que sem número nenhum. Foi 27/110/40 na U86; é 28/121/41 na U87.
+  eq('CRÍTICO (regra 7): P51 e P52 estão declaradas, e a P51 traz o alcance MEDIDO — 28 arquivos, 121 ocorrências vivas e 41 CREATE POLICY, os MESMOS números do censo acima. "is_gestor não olha ativo" sem o número é um adjetivo; com um número VELHO é pior, porque parece medida',
      [/^## P51 —/m.test(pend), /^## P52 —/m.test(pend),
-      /\*\*27\*\*/.test(pend.slice(pend.indexOf('## P51'))),
-      /\*\*110\*\*/.test(pend.slice(pend.indexOf('## P51'))),
-      /\*\*40\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /\*\*28\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /\*\*121\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      /\*\*41\*\*/.test(pend.slice(pend.indexOf('## P51'))),
+      // e o documento DIZ que o número subiu, com a entrega que o subiu: um
+      // número trocado em silêncio apagaria a única coisa que ele mostra, que é
+      // a superfície CRESCENDO enquanto a decisão não é tomada
+      /Era 27 \/ 110 \/ 40 na U86/.test(pend.slice(pend.indexOf('## P51'))),
       /relatorio\.ts/.test(pend.slice(pend.indexOf('## P52')))],
-     [true, true, true, true, true, true]);
+     [true, true, true, true, true, true, true]);
 
   eq('CRÍTICO (regra 7): a P47 registra que o PISO desceu de 2007 para 2025 e POR QUE — `conferido()` afirma um ato humano, não a existência de uma norma —, e diz a ordem de subir o piso: primeiro a asserção do decreto, depois a constante',
      [/2021/.test(pend.slice(pend.indexOf('## P47'), pend.indexOf('## P48'))),
