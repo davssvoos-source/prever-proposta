@@ -2518,3 +2518,65 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
 
   **Montar o mesmo período duas vezes continua sendo seguro** — a segunda vez só
   recolhe o que entrou depois, e não cria um período em dobro. *(U88.)*
+
+- **R120** — **A implantação tem PERÍODO, e o prazo dela é o fim previsto — não
+  o SLA de 72 horas.** Uma obra não é uma corretiva de fôlego curto, e até a
+  U89 o sistema tratava as duas com a mesma régua: `chamado_preencher()`
+  aplicava o SLA por prioridade a **todo** chamado de campo, sem exceção de
+  tipo. Uma implantação `normal` nascia com prazo de **72 horas** e, do quarto
+  dia em diante, era "estourada" — no KPI de atrasados, na coluna Atrasados do
+  painel e, ao concluir, como **descumprimento permanente** no percentual de
+  prazo. **Toda implantação nascia atrasada**, e o número que dizia se a
+  operação estava em dia misturava obra de dois meses com chamado de três dias.
+
+  **A regra que fica.** A implantação **sai do SLA por prioridade** — no
+  nascimento e também ao escalar a prioridade, que antes recalculava o prazo e
+  agora não toca em obra. No lugar dele entra o **período** (`início ↔ fim
+  previstos`), e `prazo_limite` passa a ser um **espelho do fim**: a meia-noite
+  do dia seguinte ao fim previsto, em São Paulo — a obra está no prazo até o
+  último minuto do dia planejado.
+
+  **Por que espelho e não isenção.** Isentar seria mais barato e mentiria por
+  omissão: uma obra 40 dias atrasada apareceria como "sem prazo". Com o
+  espelho, **as sete máquinas de prazo que já existem passam a funcionar para
+  obra sem que nenhuma delas mude uma linha** — o KPI, a coluna, o percentual,
+  o alerta de véspera, a cor do card, a ordenação que põe atrasado primeiro.
+  Nenhuma delas sabe que implantação existe, e nenhuma precisa saber.
+
+  **Implantação sem período fica sem prazo, e isso é a verdade** — ninguém
+  disse quando a obra acaba. As implantações antigas foram zeradas na U89, o
+  que **reescreve o percentual de prazo do passado, para mais**: o número
+  anterior media obra contra régua de corretiva.
+
+  **O período é tudo ou nada, e só na implantação.** O banco recusa período em
+  chamado de outro tipo, recusa só o início sem o fim (meio período seria uma
+  obra sem prazo se fingindo de obra com prazo) e recusa fim anterior ao início.
+
+  **O cronograma são quatro FASES** — infraestrutura, instalação, configuração,
+  acabamento — e a palavra é `fase`, **nunca `etapa`**: `etapa` já significa o
+  momento da foto (`antes`/`depois`/`outra`) no mesmo domínio, e repeti-la seria
+  a sexta colisão de vocabulário do projeto, depois de "equipe", "modalidade",
+  "visita técnica" e "operacional".
+
+  A divisão é feita em **dias úteis** — feriado e fim de semana não contam, e
+  ponto facultativo conta (R115) —, em partes iguais, com o resto indo para as
+  **primeiras** fases: não se configura o que ainda não se instalou. Quando há
+  menos de quatro dias úteis, as fases **compartilham o último dia**, que é o
+  que de fato acontece numa instalação pequena. A **ordem de execução é
+  constante**, não coluna: gravá-la abriria a porta para duas linhas dizerem
+  `ordem = 2`.
+
+  **O cronograma é PLANO, e o sistema não barra.** Buraco entre fases,
+  sobreposição e fase fora do período viram **aviso**, nunca recusa — um vão de
+  três dias pode ser a espera de um equipamento, e recusá-lo obrigaria a mentir
+  na data para conseguir salvar. É a mesma decisão do bloco isento (R100) e do
+  atendimento antecipado. O que o banco recusa é **forma**: fase fora da lista,
+  fim antes do início, fase repetida.
+
+  **O que a R120 NÃO entrega.** A **cobrança na conclusão da obra** — parcelada
+  ou como acréscimo mensal ao contrato — é o passo 2 da Fase 4 e não existe
+  ainda. O técnico **não marca fase como concluída**: a escrita é de gestor, e
+  abrir isso exigiria política por responsável (dívida declarada). E o
+  cronograma **não conversa com a agenda de campo**: as fases não geram blocos
+  em `agenda_campo`, então a obra continua sendo programada dia a dia como
+  qualquer chamado. *(U89.)*

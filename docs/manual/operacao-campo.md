@@ -783,6 +783,134 @@ Dois detalhes que valem saber:
 **E o deslocamento continua sendo digitado à mão.** Calculá-lo automaticamente é
 entrega futura; nada nesta rodada muda o campo **Deslocamento (min)**.
 
+
+## Implantação: o período e o cronograma da obra (R120, U89)
+
+Chamado do tipo **Implantação** ganhou um cartão próprio no detalhe, logo acima
+de "Iniciar atendimento". Ele responde duas coisas: **quando a obra começa e
+acaba**, e **como esse tempo se divide em quatro fases**.
+
+### Antes de tudo: a implantação não tem mais prazo de 72 horas
+
+Isto muda um número que você já olhava, então vale ler.
+
+Até 11/09, toda implantação recebia o **mesmo prazo de uma corretiva** —
+prioridade `normal` significa 72 horas, e o sistema aplicava isso a obra
+também. Do quarto dia em diante a implantação aparecia como **prazo estourado**:
+no KPI de atrasados, na coluna Atrasados do painel, e contando como
+descumprimento no **percentual de prazo**. Toda implantação nascia atrasada.
+
+Agora:
+
+- **implantação não recebe mais prazo por prioridade** — nem ao nascer, nem ao
+  escalar a prioridade depois;
+- **o prazo da obra é o fim previsto do período**. Você tem até o **fim do dia**
+  planejado, não até a manhã dele;
+- **implantação sem período fica sem prazo** — e isso é a verdade, porque
+  ninguém disse quando a obra acaba. As implantações antigas foram zeradas.
+
+**Consequência que você vai ver:** o percentual de prazo dos meses passados
+**subiu**. Não é maquiagem — o número anterior media obra de dois meses contra
+régua de chamado de três dias.
+
+### Definir o período
+
+Dois campos de data e um botão **Salvar período**. Regras:
+
+- **os dois juntos, ou nenhum.** Só o início não é aceito — meio período seria
+  uma obra sem prazo se fingindo de obra com prazo;
+- **o fim não pode ser antes do início**;
+- **período só existe em implantação.** Em qualquer outro tipo o sistema recusa.
+
+Enquanto o que está digitado for diferente do que está salvo, o cartão avisa em
+âmbar: **"Período digitado e ainda não salvo"**. Ele só passa a valer como
+prazo da obra depois que você clica em Salvar.
+
+Salvar mostra `X dias úteis de Y corridos`. **Feriado e fim de semana não são
+dia útil; ponto facultativo é** (a Prever é empresa privada — é a mesma regra
+do sobreaviso, R115).
+
+Apagar as duas datas e salvar **apaga o período e o prazo junto**.
+
+### As quatro fases
+
+Com o período salvo, o botão **Gerar as quatro fases** divide o tempo em
+**Infraestrutura → Instalação → Configuração → Acabamento**.
+
+A divisão é por **dia útil**, em partes iguais. Quando não divide certo, os dias
+que sobram vão para as **primeiras** fases — não se configura o que ainda não
+se instalou. Quando a obra tem menos de quatro dias úteis, as fases
+**compartilham o último dia**, que é o que acontece de verdade numa instalação
+pequena.
+
+Cada fase tem:
+
+- **Ajustar** — muda as datas e permite escrever uma observação. É edição
+  explícita, com Salvar e Cancelar: nada é gravado enquanto você digita;
+- **a caixa de marcar** — carimba a fase como concluída, com a hora do clique.
+  O carimbo é o **registro** do que aconteceu; a data planejada é o **plano**, e
+  os dois podem não bater. Acabar antes é normal e o sistema não impede;
+- **Refazer a divisão** — apaga as quatro e recria a partir do período. **Todo
+  ajuste de data e toda observação se perdem**, e o sistema pergunta antes.
+
+### Os avisos em âmbar não impedem nada
+
+O cartão aponta buraco entre fases, sobreposição, fase fora do período e fase
+faltando. **São avisos, e você pode salvar do mesmo jeito.**
+
+É deliberado: um vão de três dias entre a instalação e a configuração pode ser
+a espera de um equipamento, e recusá-lo obrigaria a mentir na data para
+conseguir salvar. Mesma lógica do bloco isento de jornada e do atendimento
+feito antes da data agendada.
+
+**Fim de semana e feriado entre duas fases não são buraco.** O vão é contado em
+dias úteis, justamente para que o aviso signifique alguma coisa.
+
+O que o sistema **recusa** é forma: fim antes do início, e duas linhas da mesma
+fase.
+
+### O PDF
+
+**Baixar cronograma (PDF)** gera uma folha A4 paisagem com:
+
+- cabeçalho: OS, cliente, período, dias úteis e corridos;
+- legenda das quatro fases, com o **dígito** (1 a 4), a cor e as datas de cada
+  uma. O dígito existe porque impressora monocromática transforma quatro cores
+  em quatro cinzas iguais — a cor é conforto, o dígito é a informação;
+- o calendário mês a mês, dois meses por linha, com cada dia pintado pela fase
+  que o ocupa. Fim de semana e feriado aparecem em cinza, **sem sumir da
+  folha** — o cliente precisa ver que aquele dia existe e não é de trabalho;
+- **a lista dos feriados do período, com nome**. A grade mostra que o dia está
+  fora; ela não diz por quê. Quem recebe o cronograma e vê a obra parada numa
+  quinta-feira pergunta, e a resposta tem de estar na própria folha.
+
+Se o período cair fora de 2025–2026, o rodapé avisa que os feriados daquele ano
+não foram conferidos à mão. **As datas continuam calculadas** (a Páscoa é
+algorítmica, as fixas não mudam) — o que falta é a checagem contra as leis do
+ano. Planejar obra para 2027 é legítimo; confira as datas antes de imprimir.
+
+### Quem pode mexer
+
+**Ler:** qualquer pessoa ativa, inclusive o técnico que executa a obra — não há
+valor em dinheiro neste cartão.
+**Escrever** (período, gerar, ajustar, marcar concluída, apagar): admin,
+comercial e SAC.
+
+**Ainda não existe:** o técnico marcar a fase como concluída pelo celular. A
+escrita é de gestor, e abrir isso exige uma regra de acesso por responsável —
+está declarado como dívida.
+
+### O que este cartão NÃO faz
+
+- **não gera blocos na programação da equipe.** As fases são o plano da obra; a
+  agenda de campo continua sendo montada dia a dia como em qualquer chamado;
+- **não dispara cobrança na conclusão** — parcelada ou como acréscimo mensal ao
+  contrato. É a segunda metade da Fase 4 e ainda não existe;
+- **mudar a prioridade de uma implantação não mexe mais no prazo dela.** Isso é
+  intencional: quem manda no prazo da obra é o fim previsto. Em corretiva,
+  preventiva e nos demais tipos, escalar a prioridade continua apertando o
+  prazo como sempre.
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`

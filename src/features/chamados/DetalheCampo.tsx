@@ -37,6 +37,7 @@ import {
 } from "@/features/chamados/cobranca";
 import { analisarCobrancaChamado } from "@/lib/cobranca.functions";
 import { useChecklist, marcarItemChecklist } from "@/features/chamados/checklist";
+import { CronogramaObra } from "@/features/implantacao/CronogramaObra";
 import { derivarInventarioDaVisita } from "@/features/clientes/inventario";
 import { useAfirmarVisitas, sqlstateDoErro, RecusaDaAgenda } from "@/features/programacao/data";
 import {
@@ -710,6 +711,24 @@ export function DetalheCampo({ id }: { id: string }) {
             ));
           })()}
         </div>
+      )}
+
+      {/* Cronograma da obra — só na implantação (R120, U89).
+          Fica ANTES de "Iniciar atendimento" de propósito: o cronograma é o
+          plano, e o plano se lê antes de executar. E não some quando a obra é
+          concluída — é ele que documenta o que foi entregue. */}
+      {os.tipo === "implantacao" && (
+        <CronogramaObra
+          chamadoId={os.id}
+          isLight={isLight}
+          podeEditar={!!isGerente}
+          dadosDoPdf={{
+            numero: os.numero ?? null,
+            titulo: os.titulo ?? null,
+            cliente: os.cliente?.nome ?? os.cliente_origem_nome ?? null,
+            endereco: os.cliente?.endereco ?? null,
+          }}
+        />
       )}
 
       {/* Iniciar atendimento */}

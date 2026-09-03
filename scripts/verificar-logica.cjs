@@ -13267,7 +13267,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // lado, e é exatamente por causa desta dívida: enquanto a P51 estiver de
        // pé, `is_gestor` sozinho deixaria um ex-funcionário com login vivo ler
        // e lançar plantão em nome de qualquer um.
-       [true, false, 28, 121, 41]);
+       // U89 moveu 28→29, 121→123 e 41→42: a política de escrita de
+       // `implantacao_cronograma` cita `is_gestor(auth.uid())` duas vezes
+       // (USING e WITH CHECK) num CREATE POLICY, num arquivo novo. E ela
+       // segue a mesma defesa das anteriores — `p.ativo AND p.status <>
+       // 'pendente_aprovacao'` escrito ao lado —, então a P51 NÃO a alcança.
+       // O censo subiu de propósito: ele existe para que nenhuma política
+       // nova entre sem alguém olhar esta linha (regra 3).
+       [true, false, 29, 123, 42]);
   }
 }
 
@@ -14599,6 +14606,470 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /nada foi perdido/.test(man88),
         /Montar o mesmo período duas vezes é seguro/.test(man88)],
        [true, true, true, true, true]);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U89 / R120 — A IMPLANTAÇÃO GANHA PERÍODO, E SAI DO SLA QUE NUNCA FOI DELA
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fsU89 = require('fs');
+  const IMP = carregar('src/features/implantacao/modelo.ts');
+  const FER = carregar('src/lib/feriados.ts');
+  const ARQ_U89 = 'supabase/migrations/20260911090000_u89_implantacao_com_periodo.sql';
+  const u89 = fsU89.readFileSync(ARQ_U89, 'utf8');
+
+  // O SQL VIVO: sem as linhas de comentário. Presença de string prova que a
+  // linha EXISTE, não que ela está VIVA — e este arquivo tem um DESFAZER
+  // inteiro comentado que contém, entre outras coisas, um CREATE TRIGGER com a
+  // lista de colunas ANTIGA. Medir o arquivo cru diria que a entrega está
+  // errada. (Regra 2 do diário, quinta variação.)
+  const vivo89 = u89.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+
+  // ── O calendário destas asserções, fixado À MÃO ─────────────────────────
+  // Nada aqui é derivado do módulo sob teste. São fatos do calendário de 2026,
+  // conferidos um a um antes de escrever (regra 4: fixture é constante escrita
+  // à mão, nunca leitura do artefato auditado).
+  //   2026-10-03 sábado · 2026-10-04 domingo
+  //   2026-10-05 segunda · 2026-10-09 sexta   (semana cheia, sem feriado)
+  //   2026-10-12 segunda — Nossa Senhora Aparecida, feriado nacional
+  eq('U89/R120: os fatos de calendário que ancoram este bloco (se um mudar, as asserções abaixo param de significar o que dizem)',
+     ['2026-10-03', '2026-10-04', '2026-10-05', '2026-10-09', '2026-10-12'].map(FER.ehDiaUtil),
+     [false, false, true, true, false]);
+
+  // ── A DIVISÃO ───────────────────────────────────────────────────────────
+  const so = (fs) => fs.map((f) => [f.fase, f.inicio, f.fim, f.diasUteis]);
+
+  // 5 dias úteis: piso(5/4)=1 para cada, e o resto 1 vai para a PRIMEIRA.
+  // Esperado derivado da regra, não do código: [2,1,1,1].
+  eq('U89/R120: cinco dias úteis viram 2+1+1+1 — o resto vai para infraestrutura, e não para acabamento (não se configura o que ainda não se instalou)',
+     so(IMP.dividirEmFases('2026-10-05', '2026-10-09')),
+     [['infraestrutura', '2026-10-05', '2026-10-06', 2],
+      ['instalacao',     '2026-10-07', '2026-10-07', 1],
+      ['configuracao',   '2026-10-08', '2026-10-08', 1],
+      ['acabamento',     '2026-10-09', '2026-10-09', 1]]);
+
+  // 08/10 (qui) a 13/10 (ter). Dias CORRIDOS: 6. Dias ÚTEIS: 3 — o sábado, o
+  // domingo e o FERIADO de 12/10 saem. É a asserção que prova que a divisão
+  // pula feriado: se 12/10 contasse, a configuração cairia no dia 12.
+  eq('U89/R120: a divisão pula o feriado — 08 a 13/10 são 6 dias corridos e só 3 úteis, e a configuração cai em 13 e não em 12 (Nossa Senhora Aparecida)',
+     so(IMP.dividirEmFases('2026-10-08', '2026-10-13')),
+     [['infraestrutura', '2026-10-08', '2026-10-08', 1],
+      ['instalacao',     '2026-10-09', '2026-10-09', 1],
+      ['configuracao',   '2026-10-13', '2026-10-13', 1],
+      ['acabamento',     '2026-10-13', '2026-10-13', 0]]);
+
+  eq('U89/R120: um período de 6 dias corridos com 3 úteis conta as duas coisas separadas',
+     [IMP.contarDiasCorridos('2026-10-08', '2026-10-13'),
+      IMP.contarDiasUteis('2026-10-08', '2026-10-13')],
+     [6, 3]);
+
+  // Obra de UM dia: as quatro fases empilham no mesmo dia, e é a verdade da
+  // instalação pequena. O que NÃO pode acontecer é fase sumir, ou nascer com
+  // fim anterior ao início (o CHECK do banco recusaria a linha).
+  eq('U89/R120: obra de um dia útil tem as QUATRO fases, todas no mesmo dia — nenhuma some e nenhuma nasce invertida',
+     so(IMP.dividirEmFases('2026-10-05', '2026-10-05')),
+     [['infraestrutura', '2026-10-05', '2026-10-05', 1],
+      ['instalacao',     '2026-10-05', '2026-10-05', 0],
+      ['configuracao',   '2026-10-05', '2026-10-05', 0],
+      ['acabamento',     '2026-10-05', '2026-10-05', 0]]);
+
+  eq('U89/R120: um fim de semana inteiro não tem obra a planejar — devolve lista vazia em vez de desenhar quatro fases sobre nada',
+     IMP.dividirEmFases('2026-10-03', '2026-10-04'), []);
+
+  eq('U89/R120: fim antes do início devolve vazio, e não lança — a tela precisa exibir um campo de data em digitação, não capturar exceção a cada tecla',
+     [IMP.dividirEmFases('2026-10-09', '2026-10-05'),
+      IMP.diasUteis('2026-10-09', '2026-10-05'),
+      IMP.contarDiasCorridos('2026-10-09', '2026-10-05')],
+     [[], [], 0]);
+
+  // ── CENSO (regra 3): a divisão COBRE o período e não se sobrepõe ────────
+  // Asserção-por-caso cobre os casos que alguém pensou. O censo cobre o caso
+  // que nasce sem ninguém pensar nele: aqui, 120 períodos seguidos, e para
+  // cada um a pergunta "a união dos dias das quatro fases é EXATAMENTE o
+  // conjunto de dias úteis do período, sem repetir nenhum?".
+  {
+    const falhas89 = [];
+    for (let d = 0; d < 120; d += 1) {
+      const ini = FER.somarDias('2026-01-05', d);
+      const fim = FER.somarDias(ini, (d % 47) + 1);
+      const uteis = IMP.diasUteis(ini, fim);
+      const fases = IMP.dividirEmFases(ini, fim);
+      if (uteis.length === 0) {
+        if (fases.length !== 0) falhas89.push([ini, fim, 'sem dia útil mas gerou fase']);
+        continue;
+      }
+      if (fases.length !== 4) { falhas89.push([ini, fim, 'não gerou 4 fases']); continue; }
+      // dias PRÓPRIOS (as fases de diasUteis 0 dividem dia com a vizinha e não
+      // entram na cobertura — senão o censo acusaria repetição na obra curta)
+      const proprios = [];
+      for (const f of fases) {
+        if (f.fim < f.inicio) falhas89.push([ini, fim, f.fase + ' invertida']);
+        if (f.inicio < ini || f.fim > fim) falhas89.push([ini, fim, f.fase + ' fora do período']);
+        if (f.diasUteis > 0) proprios.push(...IMP.diasUteis(f.inicio, f.fim));
+      }
+      if (proprios.join(',') !== uteis.join(',')) {
+        falhas89.push([ini, fim, 'cobertura: ' + proprios.length + ' de ' + uteis.length]);
+      }
+      const tamanhos = fases.map((f) => f.diasUteis).filter((n) => n > 0);
+      if (Math.max(...tamanhos) - Math.min(...tamanhos) > 1) {
+        falhas89.push([ini, fim, 'desequilíbrio ' + tamanhos.join('/')]);
+      }
+      // IDA E VOLTA: o cronograma que a própria máquina acabou de gerar tem de
+      // passar limpo pela própria conferência. Sem esta pergunta, o Vinicius
+      // clicaria em "gerar" e veria a tela reclamar do que ela mesma escreveu —
+      // e o aviso que aparece sempre é o aviso que ninguém mais lê.
+      const ps = IMP.conferirCronograma(
+        fases.map((f) => ({ fase: f.fase, inicio: f.inicio, fim: f.fim })), ini, fim);
+      if (ps.length > 0) falhas89.push([ini, fim, 'a própria divisão gera aviso: ' + ps.map((p) => p.tipo).join(',')]);
+
+      // E o calendário do PDF: as SEMANAS têm sete colunas, cada dia cai na
+      // coluna do seu dia da semana, e nenhum dia se perde na quebra.
+      const cal = IMP.calendarioDoPeriodo(ini, fim, fases.map((f) => ({ fase: f.fase, inicio: f.inicio, fim: f.fim })));
+      let vistos = 0;
+      for (const mes of cal) {
+        for (const semana of IMP.semanasDoMes(mes)) {
+          if (semana.length !== 7) falhas89.push([ini, fim, 'semana com ' + semana.length + ' colunas']);
+          for (let c = 0; c < 7; c += 1) {
+            if (semana[c] && semana[c].diaDaSemana !== c) {
+              falhas89.push([ini, fim, semana[c].iso + ' na coluna errada']);
+            }
+            if (semana[c]) vistos += 1;
+          }
+        }
+      }
+      if (vistos !== IMP.contarDiasCorridos(ini, fim)) {
+        falhas89.push([ini, fim, 'a grade perdeu dias: ' + vistos + ' de ' + IMP.contarDiasCorridos(ini, fim)]);
+      }
+    }
+    eq('U89/R120 CENSO: em 120 períodos: a união dos dias próprios das quatro fases é EXATAMENTE o conjunto de dias úteis (sem buraco, sem repetição, sem fase fora, sem desequilíbrio maior que um dia), o cronograma gerado passa limpo pela PRÓPRIA conferência, e a grade do PDF põe cada dia na coluna do seu dia da semana sem perder nenhum',
+       falhas89, []);
+  }
+
+  // ── A CONFERÊNCIA — o que o CHECK do banco não enxerga ──────────────────
+  const L = (fase, inicio, fim) => ({ fase, inicio, fim });
+  const tipos = (ps) => ps.map((p) => p.tipo).sort();
+
+  eq('U89/R120: um cronograma que a própria divisão gerou não tem problema nenhum',
+     IMP.conferirCronograma(IMP.dividirEmFases('2026-10-05', '2026-10-30'), '2026-10-05', '2026-10-30'),
+     []);
+
+  eq('U89/R120: quatro fases no MESMO dia (obra curta) não são sobreposição — recusá-las obrigaria a mentir na data para conseguir salvar',
+     IMP.conferirCronograma(IMP.dividirEmFases('2026-10-05', '2026-10-05'), '2026-10-05', '2026-10-05'),
+     []);
+
+  // O buraco é medido em dias ÚTEIS: 09/10 é sexta e 12/10 é feriado, então
+  // uma fase que acaba em 09 e outra que começa em 13 NÃO têm buraco nenhum.
+  // Avisar aqui treinaria o Vinicius a ignorar os avisos.
+  eq('U89/R120: fim de semana e feriado entre duas fases NÃO são buraco — o vão é medido em dias úteis',
+     IMP.conferirCronograma(
+       [L('infraestrutura', '2026-10-05', '2026-10-08'), L('instalacao', '2026-10-09', '2026-10-09'),
+        L('configuracao', '2026-10-13', '2026-10-14'), L('acabamento', '2026-10-15', '2026-10-16')],
+       '2026-10-05', '2026-10-16'),
+     []);
+
+  eq('U89/R120: o vão entre duas fases é contado em dias ÚTEIS e vira aviso com o número — de 07 a 13/10 há CINCO dias no meio e só DOIS úteis, com o número de dias',
+     IMP.conferirCronograma(
+       [L('infraestrutura', '2026-10-05', '2026-10-06'), L('instalacao', '2026-10-07', '2026-10-07'),
+        L('configuracao', '2026-10-13', '2026-10-13'), L('acabamento', '2026-10-14', '2026-10-14')],
+       '2026-10-05', '2026-10-14'),
+     [{ tipo: 'buraco', fase: 'configuracao', anterior: 'instalacao', diasUteis: 2 }]);
+
+  eq('U89/R120: a configuração começando antes de a instalação acabar é sobreposição',
+     tipos(IMP.conferirCronograma(
+       [L('infraestrutura', '2026-10-05', '2026-10-05'), L('instalacao', '2026-10-06', '2026-10-09'),
+        L('configuracao', '2026-10-07', '2026-10-13'), L('acabamento', '2026-10-14', '2026-10-14')],
+       '2026-10-05', '2026-10-14')),
+     ['sobreposicao']);
+
+  eq('U89/R120: uma fase que cai fora do período da obra é apontada pelo nome',
+     IMP.conferirCronograma(
+       [L('infraestrutura', '2026-10-05', '2026-10-06'), L('instalacao', '2026-10-07', '2026-10-08'),
+        L('configuracao', '2026-10-09', '2026-10-09'), L('acabamento', '2026-11-30', '2026-11-30')],
+       '2026-10-05', '2026-10-09'),
+     [{ tipo: 'fora_do_periodo', fase: 'acabamento' },
+      { tipo: 'buraco', fase: 'acabamento', anterior: 'configuracao', diasUteis: 32 }]);
+
+  eq('U89/R120: fase ausente é apontada — o índice único do banco garante que não haja DUAS, mas nada no banco garante que haja QUATRO',
+     tipos(IMP.conferirCronograma(
+       [L('infraestrutura', '2026-10-05', '2026-10-06'), L('instalacao', '2026-10-07', '2026-10-09')],
+       '2026-10-05', '2026-10-09')),
+     ['faltando', 'faltando']);
+
+  eq('U89/R120: um período só de fim de semana é apontado como sem dia útil',
+     tipos(IMP.conferirCronograma([], '2026-10-03', '2026-10-04')).slice(0, 1),
+     ['faltando']);
+  eq('U89/R120: ... e o aviso `sem_dia_util` está entre os problemas desse período',
+     IMP.conferirCronograma([], '2026-10-03', '2026-10-04').some((p) => p.tipo === 'sem_dia_util'),
+     true);
+
+  // A ORDEM DE CHEGADA NÃO PODE IMPORTAR. O array vem do PostgREST sem ORDER
+  // BY garantido; conferir sequência na ordem de chegada acusaria "fora de
+  // ordem" numa obra perfeita, e o Vinicius veria erro em cronograma correto.
+  {
+    const certo = IMP.dividirEmFases('2026-10-05', '2026-10-30').map((f) => L(f.fase, f.inicio, f.fim));
+    eq('U89/R120: conferir o MESMO cronograma embaralhado dá o mesmo resultado — a ordem canônica é a das FASES, nunca a ordem em que as linhas chegaram do banco',
+       [IMP.conferirCronograma(certo, '2026-10-05', '2026-10-30'),
+        IMP.conferirCronograma([...certo].reverse(), '2026-10-05', '2026-10-30'),
+        IMP.conferirCronograma([certo[2], certo[0], certo[3], certo[1]], '2026-10-05', '2026-10-30')],
+       [[], [], []]);
+  }
+
+  // ── O RESUMO ────────────────────────────────────────────────────────────
+  eq('U89/R120: o percentual concluído tem por denominador as fases PLANEJADAS, não a constante 4 — três de três é 100%, e mostrar 75% faria procurar uma quarta fase que ninguém planejou',
+     [IMP.resumirObra('2026-10-05', '2026-10-09',
+        [L('infraestrutura', '2026-10-05', '2026-10-06'), L('instalacao', '2026-10-07', '2026-10-07'),
+         L('configuracao', '2026-10-08', '2026-10-09')].map((l, i) => ({ ...l, concluida_em: i < 3 ? '2026-10-09T12:00:00Z' : null }))).pctConcluido,
+      IMP.resumirObra('2026-10-05', '2026-10-09', []).pctConcluido],
+     [100, null]);
+
+  eq('U89/R120: o resumo separa dias corridos de dias úteis, e conta os meses do calendário',
+     (() => { const r = IMP.resumirObra('2026-10-05', '2026-11-30', []);
+              return [r.diasCorridos, r.diasUteis, r.meses]; })(),
+     [57, 38, 2]);
+
+  // ── O CALENDÁRIO DO PDF ─────────────────────────────────────────────────
+  {
+    const cal = IMP.calendarioDoPeriodo('2026-10-05', '2026-10-30',
+      IMP.dividirEmFases('2026-10-05', '2026-10-30').map((f) => L(f.fase, f.inicio, f.fim)));
+    const todos = cal.flatMap((m) => m.dias);
+    eq('U89/R120: o calendário cobre TODOS os dias corridos do período (o PDF desenha o mês inteiro, e o fim de semana aparece marcado como não-útil em vez de sumir)',
+       [cal.length, todos.length, todos.filter((d) => d.util).length],
+       [1, 26, 19]);
+    eq('U89/R120: o feriado de 12/10 aparece no calendário como dia NÃO-útil e sem fase — some do trabalho, não da folha',
+       (() => { const d = todos.find((x) => x.iso === '2026-10-12'); return [d.util, d.fase]; })(),
+       [false, null]);
+    eq('U89/R120: todo dia útil dentro do período tem uma fase — um dia útil em branco no PDF seria uma pergunta sem resposta',
+       todos.filter((d) => d.util && d.fase === null).map((d) => d.iso), []);
+  }
+
+  // `semanasDoMes` é EXPORTADA, e o contrato dela não é "funciona para o que
+  // calendarioDoPeriodo entrega hoje". Uma grade só de dias ÚTEIS (sexta,
+  // depois segunda) é a entrada que a próxima variação do PDF vai passar, e é
+  // exatamente a que separa "o dia da semana andou para trás" de "o dia é
+  // domingo": sem domingo na lista, a segunda cairia na MESMA semana da sexta,
+  // uma coluna à esquerda dela. Mês montado à mão, porque nenhuma função do
+  // módulo produz esta forma — e é esse o ponto.
+  {
+    const d = (iso, dds) => ({ iso, diaDaSemana: dds, util: true, fase: null, fases: [] });
+    const semanas = IMP.semanasDoMes({
+      referencia: '2026-10', ano: 2026, mes: 10,
+      // 08 qui · 09 sex · 12 seg · 13 ter — o fim de semana NÃO está na lista
+      dias: [d('2026-10-08', 4), d('2026-10-09', 5), d('2026-10-12', 1), d('2026-10-13', 2)],
+    });
+    eq('U89/R120: numa grade só de dias úteis, a segunda-feira começa uma SEMANA NOVA — o corte é "o dia da semana andou para trás", não "o dia é domingo", e a diferença só aparece quando o domingo não está na lista',
+       semanas.map((s) => s.map((x) => (x ? x.iso.slice(8) : '.')).join(' ')),
+       ['. . . . 08 09 .', '. 12 13 . . . .']);
+  }
+
+  eq('U89/R120: um período que atravessa a virada do ano é quebrado em meses, na ordem',
+     IMP.calendarioDoPeriodo('2026-12-28', '2027-01-04', []).map((m) => m.referencia),
+     ['2026-12', '2027-01']);
+
+  eq('U89/R120: planejar obra fora da janela de feriados conferidos AVISA, nunca recusa — a Páscoa continua sendo calculada, o que falta é a checagem humana das leis daquele ano',
+     [IMP.periodoConferido('2026-10-05', '2026-10-30'),
+      IMP.periodoConferido('2028-03-01', '2028-04-01'),
+      IMP.avisoDeAnoNaoConferido('2026-10-05', '2026-10-30'),
+      IMP.dividirEmFases('2028-03-06', '2028-03-10').length],
+     [true, false, null, 4]);
+
+  // ── O VOCABULÁRIO: `fase` NÃO É `etapa` (§0b da migration) ──────────────
+  eq('U89/R120: a palavra `etapa` não aparece no módulo do cronograma a não ser explicando por que ela NÃO é usada — `etapa` é o momento da foto (antes/depois/outra) e continua sendo só isso',
+     (() => {
+       const mod = fsU89.readFileSync('src/features/implantacao/modelo.ts', 'utf8');
+       const codigo = mod.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+       return /\betapa\b/i.test(codigo);
+     })(), false);
+
+  // ── ACORDO DE VALOR ENTRE OS DOIS ARTEFATOS (regra 13) ──────────────────
+  // O TypeScript e o CHECK do banco TÊM de aceitar exatamente as mesmas quatro
+  // palavras. Medir a existência de um deles não detectaria divergência — foi
+  // assim que o classificador SQL passou dois meses gravando `pedido_compra`
+  // onde a tela dizia "Operacional". Aqui os dois lados são EXTRAÍDOS e
+  // comparados como conjunto.
+  {
+    const doCheck = (u89.match(/CHECK \(fase IN \(([^)]*)\)\)/) || [, ''])[1]
+      .split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean).sort();
+    eq('U89/R120 (regra 13): as quatro fases do TypeScript e as quatro do CHECK do banco são o MESMO conjunto — não a existência de cada lado, o acordo de VALOR entre eles',
+       [doCheck, [...IMP.FASES].sort()],
+       [['acabamento', 'configuracao', 'infraestrutura', 'instalacao'],
+        ['acabamento', 'configuracao', 'infraestrutura', 'instalacao']]);
+
+    // E a conferência 310, que o Davi vai LER no SQL Editor, tem de esperar
+    // esse mesmo conjunto. Uma conferência cujo `esperado` foi digitado errado
+    // certifica o defeito (regra 12 — foi o que aconteceu na U83).
+    // A ÂNCORA TEM DE ATINGIR O ALVO (regra 1). A primeira versão desta
+    // asserção procurava /'(acabamento[^']*)'/ e casava com o `'acabamento'`
+    // da LISTA do CHECK, dezenas de linhas antes — devolvia "acabamento" e
+    // acusava a conferência 310 de estar errada quando ela estava certa.
+    // Agora a âncora prende a linha 310 pelo número dela.
+    const esperado310 = (u89.match(
+      /310, 'os quatro valores aceitos em fase'[\s\S]*?\n\s*'([a-z,]+)'/) || [, ''])[1];
+    eq('U89/R120 (regra 12): o `esperado` da conferência 310 é o conjunto ordenado das fases, DERIVADO do módulo — e não uma string colada à mão que certificaria o próprio erro',
+       esperado310, [...IMP.FASES].sort().join(','));
+  }
+
+  // ── A MIGRATION: o que tem de estar VIVO nela ───────────────────────────
+  {
+    const corpo = (vivo89.match(/CREATE OR REPLACE FUNCTION public\.chamado_preencher\(\)[\s\S]*?\n\$\$;/) || [''])[0];
+    const conta = (h, n) => (h.length - h.split(n).join('').length) / n.length;
+    eq('U89/R120 CRÍTICO: a isenção do SLA aparece DUAS vezes no corpo vivo — uma no ramo de INSERT (a obra nasce sem SLA) e outra no de UPDATE (escalar a prioridade não ressuscita o SLA). Uma só deixaria o defeito voltar pelo caminho que ninguém olhou',
+       conta(corpo, "NEW.tipo IS DISTINCT FROM 'implantacao'"), 2);
+    eq('U89/R120 CRÍTICO: o espelho `implantacao_fim → prazo_limite` está vivo no corpo, uma vez',
+       conta(corpo, 'NEW.implantacao_fim IS DISTINCT FROM OLD.implantacao_fim'), 1);
+    eq('U89/R120: o corpo do §4 REPRODUZ os ramos da U7 que não mudam — CREATE OR REPLACE não aplica diferença, e omitir um ramo aqui o apagaria em silêncio',
+       [/NEW\.numero := public\.proximo_numero_chamado\(\)/.test(corpo),
+        /NEW\.tipo_servico := CASE WHEN NEW\.tipo = 'implantacao'/.test(corpo),
+        /NEW\.contrato_id := public\.contrato_vigente\(NEW\.cliente_id\)/.test(corpo),
+        /IF NEW\.sprint IS NULL THEN NEW\.sprint := 'este_mes'/.test(corpo),
+        /ELSIF OLD\.status = 'concluido' THEN/.test(corpo)],
+       [true, true, true, true, true]);
+  }
+
+  eq('U89/R120 CRÍTICO (§0c): o gatilho VIVO escuta `implantacao_fim` — sem esta coluna na lista, escrever o período não acordaria a função e o espelho do prazo nunca seria escrito. Perfeito em toda leitura, morto em execução',
+     /CREATE TRIGGER trg_chamado_preencher_upd\s*\n?\s*BEFORE UPDATE OF status, prioridade, implantacao_fim ON public\.chamados/.test(vivo89),
+     true);
+
+  eq('U89/R120: não há DISABLE TRIGGER nesta migration — e não é coragem: nenhum gatilho de `chamados` escuta `prazo_limite`, então o UPDATE do §5 é silencioso por construção (o PORTÃO 7 mede isso contando notificações dos dois lados)',
+     [/DISABLE TRIGGER/.test(vivo89), /PORTÃO 7/.test(u89), /v_notif1 <> v_notif0/.test(vivo89)],
+     [false, true, true]);
+
+  eq('U89/R120: o CHECK do período exige TUDO OU NADA e amarra ao tipo — período em chamado que não é implantação, ou só o início sem o fim, são recusados pelo banco',
+     [/chamados_implantacao_periodo_check/.test(vivo89),
+      /tipo = 'implantacao'\s*\n\s*AND implantacao_inicio IS NOT NULL/.test(vivo89),
+      /implantacao_fim >= implantacao_inicio/.test(vivo89)],
+     [true, true, true]);
+
+  eq('U89/R120: o §5 zera o prazo herdado do SLA SÓ nas implantações sem período, e é idempotente — a segunda rodada não encontra linha',
+     /UPDATE public\.chamados\s*\n\s*SET prazo_limite = NULL\s*\n\s*WHERE tipo = 'implantacao'[\s\S]{0,200}?implantacao_fim IS NULL;/.test(vivo89),
+     true);
+
+  eq('U89/R120 (regra da U88): o pré-voo aceita as DUAS formas conhecidas de chamado_preencher — a da U7 e a desta migration —, senão a segunda rodada abortaria acusando um sabotador que é a própria migration',
+     [/position\('IS DISTINCT FROM ''implantacao'''/.test(vivo89),
+      /position\('IF NEW\.natureza = ''campo'' AND NEW\.prazo_limite IS NULL THEN'/.test(vivo89),
+      /NÃO está na forma da U7 nem na desta migration/.test(u89)],
+     [true, true, true]);
+
+  eq('U89/R120: a migration tem pré-voo que ABORTA, PORTÃO que exercita comportamento, conferências com veredito e DESFAZER no rodapé',
+     [/PRÉ-VOO U89 — nada foi alterado \(ROLLBACK\)/.test(u89),
+      /DO \$portao\$/.test(vivo89),
+      />>> OLHAR <<</.test(u89),
+      /DESFAZER/.test(u89),
+      /ESTA MIGRATION PRIMEIRO\. O PUSH DEPOIS\./.test(u89)],
+     [true, true, true, true, true]);
+
+  // O PORTÃO tem de perguntar dos DOIS lados. Um portão que só verificasse
+  // "a implantação nasce sem prazo" ficaria verde num sistema que perdeu o SLA
+  // INTEIRO — zero implantação com prazo é também o que a ausência total de
+  // prazo produz (regra 13: a pior asserção é a que fica verde por causa do
+  // defeito).
+  eq('U89/R120 CRÍTICO: o PORTÃO pergunta dos dois lados — que a implantação perde o SLA E que a corretiva o mantém, no INSERT e no UPDATE. Só o primeiro lado ficaria verde num sistema que perdeu o SLA inteiro',
+     [/PORTÃO 1:/.test(u89), /PORTÃO 2:/.test(u89),
+      /PORTÃO 4:/.test(u89), /PORTÃO 4b:/.test(u89),
+      /a CORRETIVA nasceu SEM prazo/.test(u89),
+      /escalar a CORRETIVA para urgente apagou o prazo dela/.test(u89)],
+     [true, true, true, true, true, true]);
+
+  eq('U89/R120: a conferência 308 mede o OUTRO lado da moeda no banco do Davi — campo aberto não-implantação com prioridade que tem horas no SLA TEM de ter prazo. Sem ela, a 306 zerada seria indistinguível de um sistema sem prazo nenhum',
+     [/308, 'campo aberto não-implantação COM prazo · SEM prazo'/.test(u89),
+      /JOIN public\.chamado_sla s ON s\.prioridade = c\.prioridade/.test(vivo89)],
+     [true, true]);
+
+  eq('U89/R120: a conferência 303 CONTA as ocorrências em vez de procurar presença — `position` acha a primeira e para, e uma isenção pela metade passaria verde',
+     [/length\(replace\(p\.prosrc, 'NEW\.tipo IS DISTINCT FROM ''implantacao''', ''\)\)/.test(vivo89),
+      /'2 · 1'/.test(vivo89)],
+     [true, true]);
+
+  // ── O CENSO QUE SUSTENTA O §0c (regra 3) ────────────────────────────────
+  // A U89 dispensa `DISABLE TRIGGER` apoiada num FATO sobre o banco inteiro:
+  // TODO gatilho de UPDATE em `public.chamados` tem cláusula `UPDATE OF`, e
+  // nenhuma dessas listas contém `prazo_limite`. Enquanto isso for verdade, o
+  // §5 e o passo 4 do DESFAZER escrevem prazo em silêncio.
+  //
+  // O dia em que alguém criar um gatilho sem cláusula OF, essa dispensa vira
+  // FALSA — e o sintoma seria o sino de todo mundo tocando numa carga que
+  // ninguém associou à causa. Asserção-por-caso não pega isso: só o censo
+  // pega, porque o gatilho novo nasce sem ninguém pensar nesta linha.
+  {
+    const DIR89 = 'supabase/migrations';
+    const vivos89 = new Map();
+    for (const f of fsU89.readdirSync(DIR89).sort()) {
+      if (!f.endsWith('.sql')) continue;
+      const src = fsU89.readFileSync(require('path').join(DIR89, f), 'utf8')
+        .split('\n').map((l) => (/^\s*--/.test(l) ? '' : l)).join('\n');
+      const re = /CREATE\s+(?:CONSTRAINT\s+)?TRIGGER\s+(\w+)([\s\S]*?);/gi;
+      let m;
+      while ((m = re.exec(src))) {
+        if (!/ON\s+public\.chamados\b/i.test(m[0])) continue;
+        vivos89.set(m[1], m[0].replace(/\s+/g, ' ').trim());
+      }
+    }
+    const semLista = [];
+    const escutamPrazo = [];
+    for (const [nome, corpo] of vivos89) {
+      const soInsert = /(?:AFTER|BEFORE)\s+INSERT/i.test(corpo) && !/UPDATE/i.test(corpo);
+      const of = /UPDATE\s+OF\s+([\w,\s]+?)\s+ON/i.exec(corpo);
+      if (!of && !soInsert) semLista.push(nome);
+      if (of && /\bprazo_limite\b/.test(of[1])) escutamPrazo.push(nome);
+    }
+    eq('U89/R120 CENSO (§0c): entre TODOS os gatilhos vivos de public.chamados, nenhum de UPDATE dispensa a cláusula `UPDATE OF` e nenhuma dessas listas contém `prazo_limite`. É este fato — e não coragem — que permite a U89 escrever prazo sem DISABLE TRIGGER. Se esta linha ficar vermelha, o §5 e o passo 4 do DESFAZER passaram a tocar o sino',
+       [semLista, escutamPrazo, vivos89.size >= 13],
+       [[], [], true]);
+  }
+
+  eq('U89/R120 CRÍTICO: os dois chamados do PORTÃO nascem com `numero` escrito à mão — deixá-los passar por proximo_numero_chamado() faria o COMMIT persistir dois incrementos em chamado_contadores e abrir um buraco PERMANENTE na numeração das OS, além de trancar a abertura de chamados enquanto a migration roda. O passo 8 confere que o contador não andou',
+     [/INSERT INTO public\.chamados \(numero, titulo, natureza, tipo, prioridade, cliente_id, status\)/.test(vivo89),
+      /'U89-PORTAO-OBRA'/.test(vivo89), /'U89-PORTAO-CORR'/.test(vivo89),
+      /v_cont1 IS DISTINCT FROM v_cont0/.test(vivo89),
+      /PORTÃO 8:/.test(u89)],
+     [true, true, true, true, true]);
+
+  eq('U89/R120: a limpeza do PORTÃO apaga a notificação pelos ids dos dois chamados de teste, e NÃO por janela de tempo — uma limpeza por minuto apagaria notificação de gente de verdade que chegou junto',
+     [/DELETE FROM public\.notificacoes WHERE chamado_id IN \(v_obra, v_corr\);/.test(vivo89),
+      /created_at >= now\(\) - interval '1 minute'/.test(vivo89)],
+     [true, false]);
+
+  // ── OS TRÊS DOCUMENTOS (regra 7) ────────────────────────────────────────
+  {
+    const prod89 = fsU89.readFileSync('docs/PRODUTO.md', 'utf8');
+    const plan89 = fsU89.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+    const man89 = fsU89.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+
+    eq('U89/R120 (regra 7): a regra existe em PRODUTO.md, o diário em PLANO_UNIFICACAO.md e o segmento no manual de campo — e a numeração NÃO colide com a U88, que já tomou R118 e R119',
+       [/^- \*\*R120\*\* —/m.test(prod89),
+        /^## U89 — /m.test(plan89),
+        /^## Implantação: o período e o cronograma da obra \(R120, U89\)/m.test(man89),
+        /^- \*\*R118\*\* —/m.test(prod89), /^- \*\*R119\*\* —/m.test(prod89)],
+       [true, true, true, true, true]);
+
+    // O manual TEM de contar o que mudou num número que o Davi já olhava. Uma
+    // entrega que conserta indicador e não avisa faz o leitor comparar
+    // relatórios de meses diferentes sem saber que a régua mudou no meio.
+    eq('U89/R120 (regra 7): o manual avisa que o percentual de prazo dos meses PASSADOS mudou, e diz por quê — indicador corrigido sem aviso vira comparação errada de mês contra mês',
+       [/percentual de prazo dos meses passados/i.test(man89),
+        /subiu/.test(man89),
+        // `\s+` e não um espaço: o manual é quebrado em 80 colunas e a frase
+        // atravessa a linha. Regex que pressupõe espaço único acusa ausência
+        // de um texto que está lá — foi o que aconteceu na primeira rodada.
+        /obra de dois meses contra\s+régua de chamado de três dias/.test(man89),
+        /implantação nascia atrasada/i.test(man89)],
+       [true, true, true, true]);
+
+    eq('U89/R120 (regra 7): o manual diz o que a entrega NÃO faz — não gera bloco na programação, não dispara cobrança, e mudar a prioridade deixou de mexer no prazo da obra',
+       [/não gera blocos na programação/.test(man89),
+        /não dispara cobrança na conclusão/.test(man89),
+        /mudar a prioridade de uma implantação não mexe mais no prazo/i.test(man89)],
+       [true, true, true]);
+
+    // O diário guarda o achado do contador — é o tipo de coisa que alguém
+    // "limpa" do portão numa entrega futura sem saber o que estava segurando.
+    eq('U89/R120 (regra 7): o diário registra POR QUE o portão escreve `numero` à mão — o contador de OS não é sequência, e o COMMIT persistiria o incremento abrindo buraco permanente na numeração',
+       [/proximo_numero_chamado\(\)\*\* \*\*não é sequência\*\*|não é sequência/.test(plan89),
+        /chamado_contadores/.test(plan89),
+        /buraco na\s*\n?numeração|buraco na numeração/.test(plan89),
+        /tranca a\s*\n?linha do ano|tranca a linha do ano/.test(plan89)],
+       [true, true, true, true]);
   }
 }
 

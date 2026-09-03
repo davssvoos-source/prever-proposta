@@ -8306,3 +8306,159 @@ na outra porta cobriria metade do par.
 `node scripts/verificar-logica.cjs` → **2530 passaram, 0 falharam** (eram 2500).
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline, sem erro
 novo. **O repositório NUNCA aplica migration: o Davi roda à mão.**
+
+---
+
+## U89 — A implantação ganha período, e sai do SLA que nunca foi dela (R120 — Fase 4, passo 1 de 2)
+
+**Arquivos:** `supabase/migrations/20260911090000_u89_implantacao_com_periodo.sql`,
+`src/features/implantacao/{modelo,data,pdf}.ts`,
+`src/features/implantacao/CronogramaObra.tsx`,
+`src/features/chamados/DetalheCampo.tsx` (duas linhas: o import e o card),
+`scripts/verificar-logica.cjs`, `docs/PRODUTO.md` (R120),
+`docs/manual/operacao-campo.md`.
+
+**Ordem de deploy: MIGRATION PRIMEIRO, PUSH DEPOIS.** O código nomeia a tabela
+`implantacao_cronograma` e as duas colunas novas. Mas o estrago de inverter a
+ordem foi **desenhado para ficar contido** — ver "a consulta própria", abaixo.
+
+### O achado: toda implantação nascia atrasada, em produção
+
+Isto não era funcionalidade faltando. Era defeito **vivo**, encontrado enquanto
+se levantava a Fase 4.
+
+`chamado_preencher()` (u7:301-306) aplica o SLA a todo chamado de campo, sem
+exceção de tipo. `chamado_sla` diz, desde etapa3:30-35: urgente 4h, alta 24h,
+**normal 72h**, baixa NULL. Uma implantação `normal` recebia prazo de 72 horas
+contadas da abertura e, do quarto dia em diante, era "estourada".
+
+O estrago não ficava na cor do card:
+
+- entrava no KPI "Prazo estourado" (`indicadores.ts:145`) e no total de
+  `atrasados` (linha 217) — o número que responde "a operação está em dia?";
+- caía na coluna "Atrasados" do painel (linha 348), onde ficava para sempre;
+- e, ao concluir, contava como **descumprimento permanente** em `pctNoPrazo`
+  (linhas 168-170, 226), porque lá o filtro é `finalizada_em && prazo_limite` e
+  a obra tem os dois.
+
+O repositório já sabia que implantação é outra coisa — u7:310 decide
+`tipo_servico := 'instalacao'` só para ela. O SLA não foi avisado.
+
+### A correção é um ESPELHO, e a escolha foi econômica
+
+Duas saídas: **isentar** (prazo sempre NULL) ou **espelhar** (o prazo da obra é
+o fim previsto do período). Isentar era mais barato e mentiria por omissão —
+uma obra 40 dias atrasada apareceria como "sem prazo".
+
+Com o espelho, **as sete máquinas de prazo que já existem passam a funcionar
+para obra sem que nenhuma delas mude uma linha**: KPI, coluna, `pctNoPrazo`,
+alerta de véspera de `alertas_chamados()` (u7:876), cor do card, ordenação da
+R66. Nenhuma sabe que implantação existe, e nenhuma precisa saber.
+
+A isenção sobrevive dentro do espelho como o caso de borda certo: obra **sem**
+período fica sem prazo, e aí "sem prazo" é a verdade.
+
+### A armadilha que teria matado a entrega em silêncio
+
+**Todo gatilho de UPDATE em `public.chamados` é `UPDATE OF <colunas>`** — e o
+`trg_chamado_preencher_upd` (u7:349) escutava `status, prioridade` **apenas**.
+
+Escrever `implantacao_fim` **não acordaria o gatilho**. A função estaria
+perfeita, a coluna populada, o cronograma na tela — e `prazo_limite`
+continuaria NULL para sempre. Verde em toda leitura, morto em execução. O §4
+recria o gatilho com a coluna na lista, e a conferência 304 lê a **lista do
+gatilho vivo**, não a existência dele.
+
+**O mesmo fato paga um dividendo:** como nenhum gatilho escuta `prazo_limite`,
+o UPDATE de limpeza do §5 não acorda nada — nem o sino, nem a linha do tempo,
+nem o apoio, nem o espelho da agenda, nem a ficha de compra. **Não há
+`DISABLE TRIGGER` nesta migration**, e não é coragem: é a lista de colunas.
+Um censo no verificador varre as 108 migrations e prende esse fato, porque o
+gatilho que alguém criar amanhã sem cláusula `OF` torna a dispensa falsa — e o
+sintoma seria o sino de todo mundo tocando numa carga que ninguém associou à
+causa.
+
+### A sexta colisão de vocabulário, evitada por uma palavra
+
+O plano chamava as quatro divisões de "etapas". A palavra já está ocupada:
+`chamado_fotos.etapa` com CHECK `('antes','depois','outra')` (etapa3:203,
+213-214, renomeada pela u7:572), mais dois `RETURNS TABLE (etapa text, …)`
+(u8:180, s1:247). "Etapa" ali significa **momento da foto**.
+
+A coluna chama-se `fase`, e a palavra foi verificada **livre** — zero
+ocorrências como coluna, como CHECK e como campo de TypeScript. Foi a colisão
+mais barata de evitar que este projeto já teve. As anteriores: "equipe"
+(departamento × turma de campo), "modalidade" (natureza do contrato × tipo da
+atividade), "visita técnica" (resolvida na U83 criando `vistoria`) e
+"operacional" (aba × tipo de chamado).
+
+### A consulta própria — ordem de deploy resolvida por desenho
+
+`features/chamados/data.ts` monta o SELECT **nomeando cada coluna à mão**
+(`CAMPOS`, linha 76). Acrescentar `implantacao_inicio, implantacao_fim` ali
+amarraria o sistema inteiro a esta migration: enquanto ela não rodasse, o
+PostgREST devolveria **42703 para a consulta toda** — que é o detalhe do
+chamado, a lista, a Início e o painel. Uma coluna inexistente derrubaria telas
+que nada têm a ver com obra.
+
+O período é lido por `usePeriodoDaObra`, consulta própria do card. A mesma
+falha fica **contida**: o card mostra o erro e o resto do app continua de pé.
+É a regra 6 do diário aplicada pelo lado do desenho — ordem de deploy é
+propriedade do código, e código que limita o próprio estrago não depende de
+ninguém lembrar da ordem.
+
+### O que as lentes acharam, e não era o conserto
+
+**O PORTÃO queimaria dois números de OS, para sempre.**
+`proximo_numero_chamado()` **não é sequência**: faz
+`INSERT … ON CONFLICT DO UPDATE SET ultimo = ultimo + 1` em
+`chamado_contadores` (u7:228-230). Os dois chamados de teste do portão avançam
+o contador duas vezes, o DELETE do fim os apaga — e o **COMMIT persiste o
+incremento**. As duas próximas OS de verdade nasceriam com um buraco na
+numeração (CH-2026-0247 pulando para CH-2026-0250), e número de OS é o que a
+operação lê em voz alta no telefone. Pior: o `ON CONFLICT DO UPDATE` **tranca a
+linha do ano até o COMMIT**, então enquanto a migration rodasse ninguém
+conseguiria abrir chamado.
+
+O conserto foi por **subtração**: o portão escreve `numero` à mão, e
+`chamado_preencher` só chama o contador quando o número chega vazio. Zero
+maquinaria de restauração. O passo 8 do portão confere que o contador não
+andou.
+
+**Uma medição morta.** O portão capturava a contagem de notificações antes e
+depois e **nunca comparava** — parecia verificação e não era. Agora o gesto
+medido é o do §5 (prazo\_limite sozinho, com valor real, não NULL sobre NULL) e
+a diferença é afirmada.
+
+**Uma conferência que ficaria verde por nada.** A 303 usava `position`, que
+acha a primeira ocorrência e para. A isenção precisa existir **duas** vezes —
+INSERT e UPDATE —, e uma migration que esquecesse a segunda passaria verde
+enquanto o defeito voltava pelo caminho que ninguém olhou. Agora ela **conta**.
+
+**Um DELETE largo demais.** A limpeza do portão apagava notificações por janela
+de tempo (`created_at >= now() - interval '1 minute'`), o que levaria junto
+notificação de gente de verdade que chegasse no mesmo minuto. Agora é pelos
+dois ids.
+
+**Uma afirmação falsa num comentário.** O corte de semana em `semanasDoMes`
+usa "o dia da semana andou para trás", e o comentário dizia que `=== 0`
+quebraria quando o período começasse num domingo. **Não quebraria** — a guarda
+`anterior >= 0` já cobre o primeiro dia, e para dias consecutivos as duas
+condições são idênticas. A bateria de mutação trocou uma pela outra e o
+verificador ficou verde, como tinha de ficar. O comentário foi corrigido para
+dizer a verdade (a diferença só aparece com entrada **não** consecutiva, e é
+por isso que `<= anterior` é a escolha certa para uma função exportada), e uma
+asserção com mês montado à mão passou a exercitar esse caso.
+
+**Quatro números meus errados nas asserções.** As expectativas de dias úteis
+foram escritas à mão e três delas estavam erradas — novembro/2026 tem **três**
+feriados nacionais (Finados, Proclamação, Consciência Negra) e eu contei como
+se tivesse um. O módulo estava certo; as asserções é que mentiam. Ficaram
+corrigidas e a origem de cada número está anotada.
+
+### Verificação
+
+`2580 verificações passaram, 0 falharam` · `npx vite build` completa ·
+`npx tsc --noEmit` em **59** (baseline mantido) · os três checadores de sintaxe
+plpgsql limpos (dollar-quote, `CASE` nu em `IF`, ambiguidade 42702) ·
+**bateria de mutação: 12 mortas, 0 sobreviventes, 0 inválidas**.
