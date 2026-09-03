@@ -94,8 +94,8 @@ a sidebar é recolhível (`src/lib/sidebar-recolhida.ts`):
 - Início · Calendário · Clientes · Prospecção
 - **Operacional** (`/painel/operacional`) — indicadores de campo NA entrada
 - **Comercial** (`/gerencial`) — a própria lista de visitas/propostas (R32)
-- **Administrativo** (`/painel/administrativo`) — gente, permissão, contrato,
-  apuração (na prática, só admin)
+- **Administrativo** (`/painel/administrativo`) — abas Usuários · Permissões ·
+  APIs, com Catálogo e Fechamentos como atalhos (R131; na prática, só admin)
 - Perfil
 
 **Barra inferior (celular)** — 5 vagas: Início · Calendário · Clientes ·
@@ -111,9 +111,9 @@ cima dessas listas: tela bloqueada some do menu.
 | Fila e detalhe | `/dashboard` · `/chamados/$id` · `/chamados/novo(-campo,-interno)` · `/chamados/painel` · `/chamados/programacao` · `/chamados/importar` |
 | Comercial | `/gerencial` (+`/nova`, `/visita/$id/editar`) · `/visita/$id` e todo o wizard `/visita/$id/orcamento/*` · `/prospeccao` · `/mapa` · `/historico` |
 | Clientes | `/clientes` · `/clientes/$id` |
-| Financeiro | `/contratos(/novo, /$id)` · `/fechamentos(/$id)` |
+| Financeiro | `/contratos/novo` e `/contratos/$id` pela ficha do cliente (`/contratos` redireciona, R132) · `/fechamentos(/$id)` |
 | Painéis | `/painel/operacional` · `/painel/administrativo` (·`/painel/comercial` = redirect) |
-| Conta/Admin | `/perfil` · `/gerencial/usuarios` · `/gerencial/permissoes` · `/admin` |
+| Conta/Admin | `/perfil` · `/painel/administrativo?aba=usuarios` · `?aba=permissoes` · `?aba=apis` · `/admin` (Catálogo) |
 
 `src/routeTree.gen.ts` é **gerado** pelo build — nunca editar à mão (ver
 `desenvolvimento-e-verificacao.md`).

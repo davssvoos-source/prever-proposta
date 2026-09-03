@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-03 (R130). O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-03 (R133). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -2892,3 +2892,70 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   um campo para Lançar cobrança, opção de parcelar, Descrição da cobrança (Vem
   com sugestão do sistema), e aí terão as opções: CONCLUIR E LANÇAR COBRANÇA
   ou então CONCLUIR SEM COBRAR.")*
+
+- **R131** — **O Administrativo TEM o conteúdo, em vez de apontar para ele.**
+  A página deixou de ser uma porta com cinco atalhos e passou a ter três abas
+  — **Usuários**, **Permissões** e **APIs** —, com a lista de usuários (convite,
+  aprovação, cargo, equipe, desativar) e a matriz de acessos por papel morando
+  **nela**. As rotas `/gerencial/usuarios` e `/gerencial/permissoes` só
+  **redirecionam** para a aba, e as duas chaves saíram da matriz de permissões
+  (a U94 apaga as linhas órfãs). **Catálogo** e **Fechamentos** continuam sendo
+  telas próprias, como atalhos no topo — têm trabalho demais para virar aba.
+  O atalho **Contratos saiu** (R132). A aba mora na URL (`?aba=`), como a
+  prospecção morou no Comercial (R38): o número "esperando aprovação" é um
+  link para a aba certa.
+
+  **A aba APIs hoje LISTA e diz a verdade**: quais integrações o sistema usa
+  (Claude, Nominatim, e-mail de convite), se a chave de cada uma está no
+  servidor — um booleano, nunca o valor — e o que é plano: o **QAP ERP,
+  planejado, só leitura** (R129), com o que falta para ligar (Q7). Ela não
+  configura nada ainda: configurar é a Fase E, e um campo de chave sem lugar
+  seguro para gravá-la seria promessa. O que ela já garante é o **lugar**.
+
+  Quem edita usuários e permissões continua sendo o **cargo admin**, não uma
+  linha da matriz — senão uma linha errada tornaria a correção impossível pelo
+  app. *(Davi, 2026-09-03: "eu acho que a tela 'Administrativo' pode ser melhor
+  desenvolvida. A parte de configuração de APIs pode ter um botão na página
+  Administrativa. Os usuários podem ser listados diretamente nesta página e as
+  permissões estarem junto. O Catálogo já faz mais sentido manter.")*
+
+- **R132** — **Os contratos vivem na ficha do cliente; a página de lista
+  `/contratos` não existe mais.** Contrato é atributo do cliente, não uma
+  coleção à parte: ele se vê, se cadastra e se abre na seção Contratos de
+  `/clientes/$id` (que já era o único lugar em que fazia sentido, R128). O
+  endereço exato `/contratos` redireciona para a base de clientes, como o
+  tronco `/chamados` faz desde a R31; `/contratos/novo` e `/contratos/$id`
+  continuam existindo como filhas, e a chave `contratos` da matriz passa a
+  gatear **as duas** (R13: o SAC não vê valores).
+
+  Três consequências no fluxo: o botão **Novo** da ficha chega no cadastro com
+  o cliente **já preenchido** (`?cliente=`), em vez de escolher de novo numa
+  lista de cento e noventa; **voltar** e **excluir** levam à ficha do cliente,
+  não a uma lista que não existe; e o atalho Contratos saiu do Administrativo
+  (R131). *(Davi, 2026-09-03: "no painel Administrativo a página 'Contratos'
+  na verdade não precisa existir. Os contratos estarão na página de cada
+  cliente.")*
+
+- **R133** — **O Calendário tem duas visões, Mensal e Semanal, e a escolha
+  fica.** A **mensal** é a de sempre: varrer o mês pede pouco por dia — o
+  título e o rosto de quem toca. A **semanal** é a visão de quem **gere o
+  dia**: sete colunas, **segunda a domingo** (a semana ISO, a mesma da
+  programação e dos fechamentos), e em cada item a **hora** (ou "prazo", para
+  o que entrou pela data de vencimento), o **tipo**, o **título**, o
+  **cliente**, o **status** (atrasado em vermelho), o **número** do chamado e
+  quem toca. É a visão que o Vinicius vai usar para gerir os chamados.
+
+  **As duas leem a mesma lista de eventos e passam pelos mesmos filtros**
+  (pessoa, tipo de demanda, setor). O que muda é a **janela consultada** — o
+  mês, ou exatamente os sete dias, porque uma semana pode cruzar dois meses e
+  a semanal não pode depender da consulta do mês. Não há rolagem por coluna: a
+  página rola, uma vez só, como na mensal. No **celular** a semana vira uma
+  lista, um dia embaixo do outro.
+
+  **A visão é PREFERÊNCIA, não pergunta do momento**: fica no navegador
+  (`localStorage`, como a lista/quadro da Início), e quem escolheu a semanal
+  reabre na semanal. Mês e semana andam com os mesmos botões; "Hoje" volta os
+  dois. *(Davi, 2026-09-03: "A página calendário deve ter duas opções de
+  layout: Mensal e Semanal. Assim o Vinicius principalmente utilizará a página
+  de calendário na versão semanal para fazer a gestão dos chamados, com mais
+  detalhes em cada dia.")*

@@ -103,6 +103,7 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 |---|---|
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
 | `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |
+| `docs/REVISAO_2026-09-03.md` | a revisão tela a tela (veredito por rota, achados transversais, perguntas Q11–Q17) |
 | `docs/PRODUTO.md` | TODAS as regras de produto (R-série) |
 | `docs/PLANO_UNIFICACAO.md` | diário de implementação (U-série) |
 | `docs/DASHBOARD.md` | receita obrigatória de dashboards |

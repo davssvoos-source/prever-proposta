@@ -9084,3 +9084,139 @@ lê (`implantacao_inicio/fim`, `implantacao_cronograma`) são da U89, já rodada
 sete antigas mudaram de alvo com a R125/R126 — nenhuma regra foi afrouxada).
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
 Última regra: **R130**. Sem migration a rodar.
+
+## U94 — A revisão completa: o Administrativo com conteúdo, os contratos na ficha, o calendário semanal (R131–R133)
+
+**Arquivos:** `docs/REVISAO_2026-09-03.md` (novo), `docs/PRODUTO.md`
+(R131–R133), `src/features/administrativo/{Usuarios,Permissoes,Integracoes}.tsx`
+(novos — os dois primeiros extraídos das rotas), `src/lib/integracoes.functions.ts`
+(novo), `src/routes/_authenticated/painel.administrativo.tsx` (reescrito),
+`gerencial.usuarios.tsx` e `gerencial.permissoes.tsx` (viraram redirect),
+`contratos.tsx` (virou tronco), `contratos.novo.tsx`, `contratos.$id.tsx`,
+`clientes.$id.tsx`, `calendario.tsx` (a visão semanal), `historico.tsx` e
+`mapa.tsx` e `calendario.tsx` (ganharam guarda), `novo.tsx` (ganhou cabeçalho), `src/lib/telas.ts`,
+`src/styles.css`, `scripts/verificar-logica.cjs`, o manual.
+**Migration:** `20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql`
+— apaga da matriz as duas chaves que deixaram de ter tela. Ordem de deploy
+indiferente: linha órfã não bloqueia nada.
+
+### A revisão, antes do código
+
+O Davi pediu uma revisão completa "agora que você sabe mais sobre os nossos
+processos", e deu quatro exemplos do que queria: Contratos fora do
+Administrativo, o Administrativo "melhor desenvolvido" com usuários e
+permissões dentro dele e um botão de APIs, o Catálogo mantido, e o Calendário
+com visão semanal para o Vinicius gerir o dia.
+
+Um agente varreu as trinta e poucas rotas em paralelo enquanto eu lia a fundo
+as que iam mudar. O resultado está em `docs/REVISAO_2026-09-03.md`: uma tabela
+tela a tela com veredito (fica / mudou hoje / decidir / matar), oito achados
+transversais e sete perguntas novas (Q11–Q17). Dois achados eram defeito de
+segurança pequeno e sem custo de decisão — chaves de permissão que existiam na
+matriz mas que nenhuma guarda lia (`historico`, `mapa`, `calendario`) — e foram corrigidos
+aqui. Os outros mudam comportamento de alguém (o técnico na triagem, valores
+na visita, legado a matar) e ficaram como pergunta: **fazer a matriz valer
+onde ela já era "sim" para todos não muda o acesso de ninguém; fazê-la valer
+onde ela nega ao técnico muda — e essa é decisão do Davi.**
+
+### R131 — o Administrativo passa a TER o conteúdo
+
+A página era uma porta com cinco atalhos. Virou três abas — Usuários,
+Permissões, APIs — com o conteúdo morando nela. Os dois corpos (1026 e 283
+linhas) foram **extraídos** das rotas para `features/administrativo/`, com
+exatamente a mesma lógica: as mesmas consultas, as mesmas mutações e as mesmas
+invalidações que fazem o usuário novo aparecer na hora nas listas que montam
+equipe e responsável. As asserções da U29 que liam a rota passaram a ler o
+componente — mudou o arquivo, não a regra. As rotas antigas redirecionam para
+a aba (`?aba=`), e a aba mora na URL pelo mesmo motivo da prospecção na R38.
+
+**A aba APIs diz a verdade, e só ela.** Uma server function devolve, para
+cada integração, SE a chave está no servidor — um booleano. Nunca o valor: a
+única coisa que a tela ganha em saber é "está ligado?", para o admin não
+descobrir a chave que falta pelo erro de produção. O QAP entra como
+**planejado**, com o que falta (Q7) — listá-lo é o que faz a aba ser o lugar
+certo quando o conector da Fase E existir. Não há campo de chave: um campo sem
+lugar seguro para gravar seria promessa.
+
+**O que saiu da matriz saiu por migration.** As chaves `gerencial.usuarios` e
+`gerencial.permissoes` deixaram de ter tela; ficar no catálogo seria chave sem
+rota (o que o próprio catálogo chama de órfã), e ficar no banco seria lixo. A
+U94 apaga as seis linhas — o mesmo gesto da U34 com `prospeccao` — e a lista de
+arquivos que o verificador usa para montar a semente efetiva ganhou o arquivo.
+Nenhum acesso muda: as duas eram negadas aos três papéis e do admin por regra
+de sistema, e o admin continua entrando pelo painel.
+
+**O Catálogo continua sendo tela** (decisão do Davi), com a chave `admin`
+renomeada para o que ela é. Fechamentos idem: tem trabalho demais para virar
+aba, e continua como atalho — sem número de dinheiro na porta (R13, a
+asserção da U28 continua verde).
+
+### R132 — a lista de contratos morre, o tronco fica
+
+Contrato é atributo do cliente. A lista `/contratos` duplicava a seção
+Contratos da ficha e obrigava a escolher o cliente de novo numa lista de cento
+e noventa. Morreu como `/chamados` morreu na R31: o tronco fica, o exato
+redireciona para Clientes, e as filhas (`/novo`, `/$id`) entram pelo Outlet —
+com a guarda `contratos` ainda valendo para elas, porque contrato é dado
+financeiro e a RLS já barra, mas mandar o técnico para uma tela vazia seria
+pior que não mostrar a tela.
+
+Três costuras pequenas fecharam o caminho: o botão Novo da ficha manda
+`?cliente=` e o cadastro nasce com o cliente preenchido; voltar e excluir no
+detalhe levam à ficha do cliente (`contrato.cliente_id`), e não a uma lista
+que não existe.
+
+### R133 — o calendário ganha a semana
+
+A mensal já existia e é boa para varrer o mês — pouco por dia, de propósito.
+O Vinicius precisa do contrário: **gerir o dia**, e isso pede hora, tipo,
+cliente, status, número e quem toca, em cada item. A semanal mostra isso em
+sete colunas, **segunda a domingo** — a semana ISO, a mesma da programação e
+dos fechamentos, não a semana de domingo do calendário de parede.
+
+**As duas visões leem a mesma lista e passam pelos mesmos filtros.** O que
+muda é a JANELA consultada: o mês, ou exatamente os sete dias — uma semana
+pode cruzar dois meses, então a semanal não pode depender da consulta do mês.
+A chave da consulta carrega as duas pontas da janela, e é isso que impede mês
+e semana de se contaminarem no cache. `Evento` ganhou quatro campos (rótulo
+de status, rótulo de tipo, cliente, número) calculados no mesmo `useMemo` que
+já calculava a cor — a mensal não os mostra, a semanal sim.
+
+**A visão é preferência, não pergunta do momento.** Fica no `localStorage`,
+como a lista/quadro da Início (`CHAVE_VISAO`), e quem escolheu a semanal
+reabre na semanal. Sem rolagem por coluna — a página rola, uma vez só —, e no
+celular a semana vira uma lista de dias (classe `.cal-semana`, uma coluna
+abaixo de 1024px). Toda a grade mensal continua byte a byte onde estava: as
+dezoito asserções da U12–U55 que a leem seguem verdes.
+
+### O que eu recusei
+
+- **Não gateei a triagem.** A chave `chamados.novo` nega ao técnico e a rota
+  não lê a chave — mas a R25 diz que qualquer usuário abre chamado. Fazer a
+  matriz valer ali muda o que o técnico consegue fazer, e é o Davi quem
+  decide (Q11). Fiz valer só onde ela já dizia "sim" para todos.
+- **Não construí o conector do QAP na aba APIs.** Sem documentação e sem
+  credencial (Q7), a aba lista e diz o que falta. Um formulário de chave sem
+  Vault por trás seria pior que a ausência.
+- **Não apaguei `projeto.$id` nem `visita.$id.pendente`.** São legado claro,
+  mas a tabela `projetos` pode ter dado que alguém ainda consulta (Q13).
+
+### O que a verificação pegou
+
+- A primeira versão do script de ajustes nem chegou a rodar: um escape de
+  crase fora de string, e o Node recusou o arquivo inteiro — o que é o
+  comportamento certo, e a razão de todo patch deste projeto ser ancorado e
+  abortar em vez de aplicar pela metade.
+- O `tsc` apontou uma comparação impossível no calendário
+  (`cargo === "comercial"` contra um tipo que não a inclui). Ela já existia
+  antes desta entrega e está no baseline de 59 — `useUserCargo` devolve "admin"
+  para o comercial. Fica registrada; não é desta rodada.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2702 passaram, 0 falharam** (26 novas,
+entre elas o CENSO que acusa a próxima chave de permissão sem guarda).
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline (o
+`cargo === "comercial"` do calendário já estava nele).
+Última regra: **R133**. **Migration a rodar: U94** (apaga as duas chaves
+órfãs; ordem de deploy indiferente).

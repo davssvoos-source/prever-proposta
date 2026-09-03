@@ -345,7 +345,7 @@ function ClienteDetalhePage() {
                 <FileText size={15} color={gold} />
                 <span style={SEC_LABEL}>Contratos</span>
                 <button
-                  onClick={() => navigate({ to: "/contratos/novo" })}
+                  onClick={() => navigate({ to: "/contratos/novo", search: { cliente: id } as any })}
                   style={{
                     marginLeft: "auto", padding: "6px 10px", borderRadius: 10, cursor: "pointer",
                     background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",

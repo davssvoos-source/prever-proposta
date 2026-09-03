@@ -1,4 +1,4 @@
-// Calendário — a agenda do mês, tela cheia.
+// Calendário — a agenda do mês E da semana, tela cheia (R133).
 //
 // O DEFEITO QUE ELE TINHA: a consulta de chamados pedia a coluna `tecnico_id`,
 // que deixou de existir na fusão U7 (virou `responsavel_id`). O PostgREST
@@ -15,11 +15,27 @@
 //   · visita e chamado de campo → a hora agendada (é quando a dupla sai)
 //   · chamado interno           → o prazo (é quando tem que estar pronto)
 // A célula distingue os dois: hora para o que é agendado, "vence" para prazo.
+//
+// ── R133 (U94): DUAS VISÕES, MENSAL E SEMANAL ─────────────────────────────
+// Davi, 03/09/2026: "A página calendário deve ter duas opções de layout:
+// Mensal e Semanal. Assim o Vinicius principalmente utilizará a página de
+// calendário na versão semanal para fazer a gestão dos chamados, com mais
+// detalhes em cada dia."
+//
+// As duas visões leem a MESMA lista de eventos e passam pelos MESMOS filtros —
+// o que muda é a janela consultada (o mês, ou a semana ISO de segunda a
+// domingo, a mesma semana da programação) e o que cabe na célula: na mensal, o
+// título e o rosto (varrer o mês pede pouco por dia); na semanal, hora, tipo,
+// cliente, status, número e quem toca — porque gerir o dia pede o detalhe. A
+// escolha da visão é PREFERÊNCIA, não pergunta do momento: fica no
+// localStorage, como a lista/quadro da Início, e quem escolheu a semanal
+// reabre na semanal.
 
-import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
-import { useState, useMemo, type CSSProperties } from "react";
+import { createFileRoute, useNavigate, useLocation, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
+import { useState, useMemo, useEffect, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, LayoutGrid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -27,6 +43,7 @@ import { FONT } from "@/lib/ui";
 import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
 import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
 import { PRISMA } from "@/lib/paleta";
+import { inicioSemana, fimSemana, referenciaSemanal } from "@/lib/periodos";
 import { usePessoas } from "@/features/chamados/data";
 import {
   useClientes, SERVICO_ORDEM, SERVICO_LABEL, type ServicoCliente,
@@ -37,14 +54,29 @@ import { visitaRouteFor } from "@/lib/visita-route";
 import { MenuFiltro } from "@/features/home/MenuFiltro";
 
 export const Route = createFileRoute("/_authenticated/calendario")({
+  // Revisão de 03/09/2026: a chave "calendario" existia na matriz e nenhuma
+  // guarda a lia — era decorativa. Nasce liberada para os três papéis (o
+  // técnico vê só o que é dele, por RLS), então ninguém perde acesso; a caixa
+  // só passa a valer.
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("calendario");
+    if (!ok) throw redirect({ to: destinoNegado("calendario") as any });
+  },
   component: CalendarioPage,
 });
 
+/** A grade MENSAL começa no domingo, como todo calendário de parede. */
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+/** A grade SEMANAL é a semana ISO — segunda a domingo, a mesma da programação. */
+const DIAS_SEMANA_ISO = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
+
+type Visao = "mes" | "semana";
+/** Preferência de layout — a pessoa escolhe uma vez e espera que fique. */
+const CHAVE_VISAO = "prever:calendario-visao";
 
 /** Um item do calendário, já normalizado. */
 interface Evento {
@@ -52,8 +84,15 @@ interface Evento {
   id: string;
   titulo: string;
   status: string;
+  /** o rótulo humano do status — o vocabulário certo para cada espécie */
+  statusLabel: string;
   tipo: string;
+  tipoLabel: string;
   natureza: string | null;
+  /** o cliente, quando há um e ele não é o próprio título */
+  cliente: string | null;
+  /** CH-… do chamado; a visita não tem número */
+  numero: string | null;
   /** quem toca — responsável primeiro, apoios depois */
   pessoas: string[];
   quando: string;
@@ -79,6 +118,12 @@ interface Evento {
 const chaveDia = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+const ddmm = (d: Date) =>
+  `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+const horaCurta = (iso: string) =>
+  new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
 function CalendarioPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +144,18 @@ function CalendarioPage() {
   const linha = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
 
   const hoje = new Date();
+  const [visao, setVisao] = useState<Visao>(() => {
+    try {
+      return localStorage.getItem(CHAVE_VISAO) === "semana" ? "semana" : "mes";
+    } catch { return "mes"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(CHAVE_VISAO, visao); } catch { /* modo privado */ }
+  }, [visao]);
+
   const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  /** a SEGUNDA-FEIRA da semana mostrada — `inicioSemana` de periodos.ts, a mesma da programação */
+  const [semana, setSemana] = useState(() => inicioSemana(new Date()));
   const [painelId, setPainelId] = useState<string | null>(null);
 
   const { data: cargo } = useUserCargo();
@@ -129,9 +185,20 @@ function CalendarioPage() {
 
   const inicioMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth(), 1), [mes]);
   const fimMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59), [mes]);
+  const inicioSem = useMemo(() => inicioSemana(semana), [semana]);
+  const fimSem = useMemo(() => fimSemana(semana), [semana]);
+
+  /**
+   * A JANELA CONSULTADA depende da visão: o mês, ou a semana. Uma semana pode
+   * cruzar dois meses, então a semanal NÃO reaproveita a consulta do mês — ela
+   * pede exatamente os sete dias. A chave da consulta carrega as duas pontas,
+   * e é isso que faz mês e semana não se contaminarem no cache.
+   */
+  const janela = visao === "mes" ? { de: inicioMes, ate: fimMes } : { de: inicioSem, ate: fimSem };
+  const chaveJanela = `${chaveDia(janela.de)}_${chaveDia(janela.ate)}`;
 
   const { data: visitas = [], isLoading: carregandoVisitas } = useQuery({
-    queryKey: ["calendario", "visitas", mes.getFullYear(), mes.getMonth(), isGestor],
+    queryKey: ["calendario", "visitas", chaveJanela, isGestor],
     queryFn: async () => {
       let q = supabase
         .from("visitas_tecnicas")
@@ -140,8 +207,8 @@ function CalendarioPage() {
         // ainda não é cliente não presta serviço nenhum.
         .select("id, status, data_hora_agendada, titulo, nome_predio, tecnico_id, cliente_id")
         .not("data_hora_agendada", "is", null)
-        .gte("data_hora_agendada", inicioMes.toISOString())
-        .lte("data_hora_agendada", fimMes.toISOString());
+        .gte("data_hora_agendada", janela.de.toISOString())
+        .lte("data_hora_agendada", janela.ate.toISOString());
       if (!isGestor) {
         const { data: u } = await supabase.auth.getUser();
         if (u.user) q = q.eq("tecnico_id", u.user.id);
@@ -153,15 +220,15 @@ function CalendarioPage() {
   });
 
   /**
-   * Chamados do mês por DOIS caminhos: hora agendada ou prazo. O PostgREST
+   * Chamados da janela por DOIS caminhos: hora agendada ou prazo. O PostgREST
    * junta os dois com `or(...)`, senão seriam duas consultas para depois
    * misturar na mão — e a segunda esqueceria um filtro em algum refactor.
    */
   const { data: chamados = [], isLoading: carregandoChamados } = useQuery({
-    queryKey: ["calendario", "chamados", mes.getFullYear(), mes.getMonth()],
+    queryKey: ["calendario", "chamados", chaveJanela],
     queryFn: async () => {
-      const de = inicioMes.toISOString();
-      const ate = fimMes.toISOString();
+      const de = janela.de.toISOString();
+      const ate = janela.ate.toISOString();
       const { data, error } = await supabase
         .from("chamados" as any)
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
@@ -174,9 +241,9 @@ function CalendarioPage() {
     },
   });
 
-  /** Apoios de todos os chamados do mês — para a pilha de avatares. */
+  /** Apoios de todos os chamados da janela — para a pilha de avatares. */
   const { data: apoios = {} } = useQuery({
-    queryKey: ["calendario", "apoios", mes.getFullYear(), mes.getMonth()],
+    queryKey: ["calendario", "apoios", chaveJanela],
     enabled: chamados.length > 0,
     queryFn: async () => {
       const ids = (chamados as any[]).map((c) => c.id);
@@ -194,7 +261,7 @@ function CalendarioPage() {
   });
 
   /**
-   * Os LOCAIS de cada chamado do mês (U71), para o filtro de setor.
+   * Os LOCAIS de cada chamado da janela (U71), para o filtro de setor.
    *
    * Consulta crua, sem embed do PostgREST, de propósito: `chamado_locais` tem
    * duas FKs chegando em tabelas diferentes, e o embed ambíguo é o PGRST201
@@ -202,7 +269,7 @@ function CalendarioPage() {
    * de `setor` e `cliente_id` — nenhum join é necessário.
    */
   const { data: locais = {} } = useQuery({
-    queryKey: ["calendario", "locais", mes.getFullYear(), mes.getMonth()],
+    queryKey: ["calendario", "locais", chaveJanela],
     enabled: chamados.length > 0,
     queryFn: async () => {
       const ids = (chamados as any[]).map((c) => c.id);
@@ -221,7 +288,7 @@ function CalendarioPage() {
 
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
 
-  // TODOS os eventos do mês, SEM filtro nenhum — é desta lista que os
+  // TODOS os eventos da janela, SEM filtro nenhum — é desta lista que os
   // seletores de Pessoa/Tipo tiram suas opções (ver `tiposPresentes` abaixo).
   // A cor de cada caixa também nasce aqui, calculada uma vez só: cada evento
   // já sai do useMemo sabendo sua própria cor, em vez de recalculá-la a cada
@@ -246,8 +313,13 @@ function CalendarioPage() {
         id: v.id,
         titulo: v.nome_predio ?? v.titulo ?? "Visita técnica",
         status: v.status,
+        statusLabel: info.label,
         tipo: "visita",
+        tipoLabel: "Visita técnica",
         natureza: "comercial",
+        // o título JÁ É o prédio: repetir na linha de cliente seria eco
+        cliente: null,
+        numero: null,
         pessoas: v.tecnico_id ? [v.tecnico_id] : [],
         quando: v.data_hora_agendada,
         porPrazo: false,
@@ -268,8 +340,12 @@ function CalendarioPage() {
         // O cliente vira o complemento, quando existe.
         titulo: c.titulo ?? c.cliente?.nome ?? "Chamado",
         status: c.status,
+        statusLabel: info.label,
         tipo: c.tipo ?? "—",
+        tipoLabel: TIPO_LABEL[c.tipo as keyof typeof TIPO_LABEL] ?? c.tipo ?? "—",
         natureza: c.natureza ?? null,
+        cliente: c.cliente?.nome ?? null,
+        numero: c.numero ?? null,
         pessoas: Array.from(new Set([
           ...(c.responsavel_id ? [c.responsavel_id] : []),
           ...((apoios as Record<string, string[]>)[c.id] ?? []),
@@ -311,7 +387,7 @@ function CalendarioPage() {
   }, [eventos]);
 
   /**
-   * As opções do filtro de Tipo vêm de TODOS os eventos do mês — NUNCA do
+   * As opções do filtro de Tipo vêm de TODOS os eventos da janela — NUNCA do
    * conjunto já filtrado por pessoa.
    *
    * O BUG QUE ISSO CORRIGE: antes, `tiposPresentes` nascia de `eventos` (o
@@ -329,7 +405,7 @@ function CalendarioPage() {
     [todosEventos],
   );
 
-  /** Os setores com pelo menos um evento no mês — mesma regra do Tipo. */
+  /** Os setores com pelo menos um evento na janela — mesma regra do Tipo. */
   const setoresPresentes = useMemo(
     () => SERVICO_ORDEM.filter((s) => todosEventos.some((e) => e.setores.includes(s))) as string[],
     [todosEventos],
@@ -358,6 +434,16 @@ function CalendarioPage() {
     return dias;
   }, [mes]);
 
+  /** Os sete dias da semana mostrada, de segunda a domingo. */
+  const diasDaSemana = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(inicioSem);
+      d.setDate(inicioSem.getDate() + i);
+      return d;
+    }),
+    [inicioSem],
+  );
+
   const carregando = carregandoVisitas || carregandoChamados;
 
   function abrir(e: Evento) {
@@ -367,6 +453,21 @@ function CalendarioPage() {
     } else {
       setPainelId(e.id);
     }
+  }
+
+  /** Anda um passo na visão ativa: um mês, ou uma semana. */
+  function andar(passo: -1 | 1) {
+    if (visao === "mes") {
+      setMes(new Date(mes.getFullYear(), mes.getMonth() + passo, 1));
+    } else {
+      const d = new Date(inicioSem);
+      d.setDate(d.getDate() + passo * 7);
+      setSemana(d);
+    }
+  }
+  function irParaHoje() {
+    setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    setSemana(inicioSemana(hoje));
   }
 
   const navBtn: CSSProperties = {
@@ -382,6 +483,18 @@ function CalendarioPage() {
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     borderRadius: 10, padding: "7px 10px", cursor: "pointer",
   };
+  const botaoVisao = (ativa: boolean): CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 5,
+    height: 30, padding: "0 11px", borderRadius: 15, cursor: "pointer",
+    border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
+    background: ativa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+    color: ativa ? "#08090E" : textPrimary,
+    fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+  });
+
+  const tituloDaJanela = visao === "mes"
+    ? `${MESES[mes.getMonth()]} de ${mes.getFullYear()}`
+    : `${ddmm(inicioSem)} a ${ddmm(fimSem)} · semana ${Number(referenciaSemanal(inicioSem).slice(6))} de ${inicioSem.getFullYear()}`;
 
   return (
     <>
@@ -410,22 +523,33 @@ function CalendarioPage() {
             fontFamily: FONT, fontWeight: 600, fontSize: 19, margin: 0,
             minWidth: 190,
           }}>
-            {MESES[mes.getMonth()]} de {mes.getFullYear()}
+            {tituloDaJanela}
           </h1>
-          <button style={navBtn} aria-label="Mês anterior"
-            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}>
+          <button style={navBtn} aria-label={visao === "mes" ? "Mês anterior" : "Semana anterior"}
+            onClick={() => andar(-1)}>
             <ChevronLeft size={17} />
           </button>
-          <button style={navBtn} aria-label="Próximo mês"
-            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}>
+          <button style={navBtn} aria-label={visao === "mes" ? "Próximo mês" : "Próxima semana"}
+            onClick={() => andar(1)}>
             <ChevronRight size={17} />
           </button>
           <button
             style={{ ...seletor, fontWeight: 600 }}
-            onClick={() => setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1))}
+            onClick={irParaHoje}
           >
             Hoje
           </button>
+
+          {/* R133 — a visão. Dois botões, não um <select>: é uma escolha de
+              dois valores, e a escolhida fica visível sem abrir nada. */}
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={() => setVisao("mes")} aria-pressed={visao === "mes"} style={botaoVisao(visao === "mes")}>
+              <LayoutGrid size={13} /> Mensal
+            </button>
+            <button onClick={() => setVisao("semana")} aria-pressed={visao === "semana"} style={botaoVisao(visao === "semana")}>
+              <CalendarRange size={13} /> Semanal
+            </button>
+          </div>
 
           <div style={{ flex: 1 }} />
 
@@ -443,7 +567,7 @@ function CalendarioPage() {
               onMudar={(v) => setPessoaFiltro(v[0] ?? "todos")}
             />
           )}
-          {/* U73: o botão passou a aparecer SEMPRE que há tipo no mês. Antes
+          {/* U73: o botão passou a aparecer SEMPRE que há tipo na janela. Antes
               exigia `> 1`, e num mês de um tipo só ele sumia — o filtro
               existia e ninguém via. O rótulo virou "Tipo de demanda", que é
               como o resto do app chama esse campo. */}
@@ -476,14 +600,14 @@ function CalendarioPage() {
               opcoes={setoresPresentes.map((s) => ({
                 valor: s,
                 label: SERVICO_LABEL[s as ServicoCliente] ?? s,
-                nota: `${todosEventos.filter((e) => e.setores.includes(s)).length} no mês`,
+                nota: `${todosEventos.filter((e) => e.setores.includes(s)).length} no período`,
               }))}
               selecionados={setorFiltro === "todos" ? [] : [setorFiltro]}
               onMudar={(v) => setSetorFiltro(v[0] ?? "todos")}
             />
           )}
           <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
-            {eventos.length} no mês
+            {eventos.length} {visao === "mes" ? "no mês" : "na semana"}
             {/* Escolher setor esconde quem não tem setor nenhum. Sem este
                 aviso, "12 no mês" num mês de 40 pareceria dado sumido. */}
             {setorFiltro !== "todos" && semSetor > 0 && (
@@ -492,122 +616,249 @@ function CalendarioPage() {
           </span>
         </div>
 
-        {/* Cabeçalho dos dias da semana */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 1, flexShrink: 0,
-        }}>
-          {DIAS_SEMANA.map((d) => (
-            <div key={d} style={{
-              fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
-              letterSpacing: "0.1em", textTransform: "uppercase",
-              color: textSecondary, textAlign: "center", padding: "6px 0",
-            }}>
-              {d}
-            </div>
-          ))}
-        </div>
-
-        {/* A GRADE — a linha CRESCE com o dia mais cheio dela (pedido do Davi:
-            sem rolagem por dia).
-            `minmax(120px, auto)`: 120px é o piso, para um mês vazio ainda
-            parecer um calendário; daí para cima a linha acompanha o conteúdo.
-            Quem rola é a PÁGINA, uma vez só — antes eram 42 áreas de rolagem
-            independentes, e um item escondido dentro de uma delas era um item
-            que ninguém via. */}
-        <div style={{
-          // "1 0 auto": CRESCE para preencher a tela quando o mês é vazio, e
-          // NÃO ENCOLHE quando é cheio. Um `flex: 1` puro (base 0) espremeria
-          // a grade de volta à altura do contêiner e traria a rolagem cortada
-          // de volta pela porta dos fundos.
-          flex: "1 0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gridAutoRows: "minmax(120px, auto)",
-          gap: 1,
-          background: linha,
-          border: `1px solid ${linha}`,
-          borderRadius: 12,
-          overflow: "hidden",
-        }}>
-          {celulas.map((d) => {
-            const doMes = d.getMonth() === mes.getMonth();
-            const eDeHoje = chaveDia(d) === chaveDia(hoje);
-            const itens = porDia[chaveDia(d)] ?? [];
-            return (
-              <div
-                key={d.toISOString()}
-                style={{
-                  background: doMes ? superficie : foraDoMes,
-                  padding: "5px 5px 7px",
-                  display: "flex", flexDirection: "column", gap: 3,
-                  opacity: doMes ? 1 : 0.45,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                  <span style={{
-                    fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
-                    color: eDeHoje ? "#08090E" : textPrimary,
-                    // o amarelo da marca, igual nos dois temas: `gold` é token
-                    // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
-                    // número de 11px abaixo do contraste mínimo.
-                    background: eDeHoje ? "#F8C811" : "transparent",
-                    borderRadius: 999, minWidth: 19, height: 19,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    padding: eDeHoje ? "0 5px" : 0,
-                  }}>
-                    {d.getDate()}
-                  </span>
-                  {itens.length > 2 && (
-                    <span style={{ fontFamily: FONT, fontSize: 9, color: textSecondary }}>
-                      {itens.length}
+        {visao === "semana" ? (
+          /* ══ A SEMANA (R133) — sete colunas, cada dia com o detalhe ══════════
+             O que a mensal esconde de propósito (hora, tipo, cliente, status,
+             número), a semanal mostra: é a visão de quem GERE o dia. Sem
+             rolagem por coluna — a página rola, uma vez só, como na mensal.
+             No celular as colunas viram uma lista, um dia embaixo do outro
+             (classe .cal-semana em styles.css). */
+          <div
+            className="cal-semana"
+            style={{
+              flex: "1 0 auto",
+              background: linha, border: `1px solid ${linha}`,
+              borderRadius: 12, overflow: "hidden",
+            }}
+          >
+            {diasDaSemana.map((d, i) => {
+              const eDeHoje = chaveDia(d) === chaveDia(hoje);
+              const itens = porDia[chaveDia(d)] ?? [];
+              const fimDeSemana = i >= 5;
+              return (
+                <div
+                  key={chaveDia(d)}
+                  style={{
+                    background: fimDeSemana ? foraDoMes : superficie,
+                    padding: "8px 7px 12px", minHeight: 180,
+                    display: "flex", flexDirection: "column", gap: 6,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, paddingBottom: 4, borderBottom: `1px solid ${linha}` }}>
+                    <span style={{
+                      fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
+                      letterSpacing: "0.1em", textTransform: "uppercase", color: textSecondary,
+                    }}>
+                      {DIAS_SEMANA_ISO[i]}
                     </span>
-                  )}
-                </div>
+                    <span style={{
+                      fontFamily: FONT, fontWeight: eDeHoje ? 700 : 600, fontSize: 12,
+                      color: eDeHoje ? "#08090E" : textPrimary,
+                      background: eDeHoje ? "#F8C811" : "transparent",
+                      borderRadius: 999, minWidth: 21, height: 21,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: eDeHoje ? "0 6px" : 0,
+                    }}>
+                      {d.getDate()}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontFamily: FONT, fontSize: 10, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
+                      {itens.length > 0 ? itens.length : ""}
+                    </span>
+                  </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                  {itens.map((e) => {
-                    return (
-                      <button
-                        key={`${e.kind}-${e.id}`}
-                        onClick={() => abrir(e)}
-                        // a hora e o "vence" saíram da célula (pedido do Davi):
-                        // varrendo o mês, o que se procura é O QUE é, não a que
-                        // horas. O detalhe fica no título do navegador e no
-                        // painel, a um clique.
-                        title={`${e.titulo}${e.porPrazo
-                          ? " · vence neste dia"
-                          : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
-                        style={{
-                          textAlign: "left", cursor: "pointer", width: "100%",
-                          border: "none", borderLeft: `2.5px solid ${e.cor}`,
-                          borderRadius: 5, padding: "4px 6px",
-                          background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
-                          display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
-                        }}
-                      >
+                  {itens.length === 0 ? (
+                    <span style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary, opacity: 0.7, padding: "6px 2px" }}>
+                      nada marcado
+                    </span>
+                  ) : itens.map((e) => (
+                    <button
+                      key={`${e.kind}-${e.id}`}
+                      onClick={() => abrir(e)}
+                      className="elevavel"
+                      title={`${e.tipoLabel} · ${e.statusLabel}${e.numero ? ` · ${e.numero}` : ""}`}
+                      style={{
+                        textAlign: "left", cursor: "pointer", width: "100%",
+                        border: "none", borderLeft: `3px solid ${e.cor}`,
+                        borderRadius: 8, padding: "7px 8px",
+                        background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
+                        display: "flex", flexDirection: "column", gap: 4, minWidth: 0, color: textPrimary,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{
-                          flex: 1, minWidth: 0,
-                          fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                          color: textPrimary, lineHeight: 1.3,
-                          display: "-webkit-box", WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical", overflow: "hidden",
+                          fontFamily: FONT, fontWeight: 700, fontSize: 11,
+                          color: e.atrasado ? vermelho : textPrimary, fontVariantNumeric: "tabular-nums", flexShrink: 0,
                         }}>
-                          {e.titulo}
+                          {e.porPrazo ? "prazo" : horaCurta(e.quando)}
                         </span>
-                        {/* o(s) responsável(eis) — o rosto de quem toca, agora
-                            ao lado do título em vez de numa segunda linha */}
-                        {e.pessoas.length > 0 && (
-                          <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
+                        <span style={{
+                          fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.06em",
+                          textTransform: "uppercase", color: textSecondary,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {e.tipoLabel}
+                        </span>
+                      </div>
+                      <span style={{
+                        fontFamily: FONT, fontWeight: 600, fontSize: 11.5, lineHeight: 1.3,
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                      }}>
+                        {e.titulo}
+                      </span>
+                      {e.cliente && e.cliente !== e.titulo && (
+                        <span style={{
+                          fontFamily: FONT, fontSize: 10.5, color: textSecondary,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {e.cliente}
+                        </span>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                        <span style={{
+                          padding: "1px 6px", borderRadius: 999, flexShrink: 0,
+                          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.08)",
+                          color: e.cor, fontFamily: FONT, fontWeight: 700, fontSize: 8.5,
+                          letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap",
+                        }}>
+                          {e.atrasado ? "Atrasado" : e.statusLabel}
+                        </span>
+                        {e.numero && (
+                          <span style={{ fontFamily: FONT, fontSize: 9.5, color: textSecondary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {e.numero}
+                          </span>
                         )}
-                      </button>
-                    );
-                  })}
+                        <span style={{ marginLeft: "auto", flexShrink: 0 }}>
+                          {e.pessoas.length > 0 && (
+                            <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={3} tamanho={18} />
+                          )}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            {/* Cabeçalho dos dias da semana */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 1, flexShrink: 0,
+            }}>
+              {DIAS_SEMANA.map((d) => (
+                <div key={d} style={{
+                  fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: textSecondary, textAlign: "center", padding: "6px 0",
+                }}>
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* A GRADE — a linha CRESCE com o dia mais cheio dela (pedido do Davi:
+                sem rolagem por dia).
+                `minmax(120px, auto)`: 120px é o piso, para um mês vazio ainda
+                parecer um calendário; daí para cima a linha acompanha o conteúdo.
+                Quem rola é a PÁGINA, uma vez só — antes eram 42 áreas de rolagem
+                independentes, e um item escondido dentro de uma delas era um item
+                que ninguém via. */}
+            <div style={{
+              // "1 0 auto": CRESCE para preencher a tela quando o mês é vazio, e
+              // NÃO ENCOLHE quando é cheio. Um `flex: 1` puro (base 0) espremeria
+              // a grade de volta à altura do contêiner e traria a rolagem cortada
+              // de volta pela porta dos fundos.
+              flex: "1 0 auto",
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gridAutoRows: "minmax(120px, auto)",
+              gap: 1,
+              background: linha,
+              border: `1px solid ${linha}`,
+              borderRadius: 12,
+              overflow: "hidden",
+            }}>
+              {celulas.map((d) => {
+                const doMes = d.getMonth() === mes.getMonth();
+                const eDeHoje = chaveDia(d) === chaveDia(hoje);
+                const itens = porDia[chaveDia(d)] ?? [];
+                return (
+                  <div
+                    key={d.toISOString()}
+                    style={{
+                      background: doMes ? superficie : foraDoMes,
+                      padding: "5px 5px 7px",
+                      display: "flex", flexDirection: "column", gap: 3,
+                      opacity: doMes ? 1 : 0.45,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                      <span style={{
+                        fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
+                        color: eDeHoje ? "#08090E" : textPrimary,
+                        // o amarelo da marca, igual nos dois temas: `gold` é token
+                        // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
+                        // número de 11px abaixo do contraste mínimo.
+                        background: eDeHoje ? "#F8C811" : "transparent",
+                        borderRadius: 999, minWidth: 19, height: 19,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        padding: eDeHoje ? "0 5px" : 0,
+                      }}>
+                        {d.getDate()}
+                      </span>
+                      {itens.length > 2 && (
+                        <span style={{ fontFamily: FONT, fontSize: 9, color: textSecondary }}>
+                          {itens.length}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      {itens.map((e) => {
+                        return (
+                          <button
+                            key={`${e.kind}-${e.id}`}
+                            onClick={() => abrir(e)}
+                            // a hora e o "vence" saíram da célula (pedido do Davi):
+                            // varrendo o mês, o que se procura é O QUE é, não a que
+                            // horas. O detalhe fica no título do navegador e no
+                            // painel, a um clique — e na visão SEMANAL (R133).
+                            title={`${e.titulo}${e.porPrazo
+                              ? " · vence neste dia"
+                              : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
+                            style={{
+                              textAlign: "left", cursor: "pointer", width: "100%",
+                              border: "none", borderLeft: `2.5px solid ${e.cor}`,
+                              borderRadius: 5, padding: "4px 6px",
+                              background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
+                              display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
+                            }}
+                          >
+                            <span style={{
+                              flex: 1, minWidth: 0,
+                              fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                              color: textPrimary, lineHeight: 1.3,
+                              display: "-webkit-box", WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical", overflow: "hidden",
+                            }}>
+                              {e.titulo}
+                            </span>
+                            {/* o(s) responsável(eis) — o rosto de quem toca, agora
+                                ao lado do título em vez de numa segunda linha */}
+                            {e.pessoas.length > 0 && (
+                              <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {carregando && (
           <div style={{

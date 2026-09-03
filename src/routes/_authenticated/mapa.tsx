@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import L from "leaflet";
@@ -24,6 +25,12 @@ function escapar(t: unknown): string {
 }
 
 export const Route = createFileRoute("/_authenticated/mapa")({
+  // Revisão de 03/09/2026: a chave "mapa" existia na matriz e nenhuma guarda
+  // a lia — era decorativa. Agora a matriz manda.
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("mapa");
+    if (!ok) throw redirect({ to: destinoNegado("mapa") as any });
+  },
   component: MapaPage,
 });
 

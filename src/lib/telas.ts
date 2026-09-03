@@ -102,7 +102,7 @@ export const TELAS: Tela[] = [
   // lista de visitas e propostas (R32) — a chave viva é "gerencial", abaixo.
   // /painel/comercial só redireciona; a U30 apaga a linha órfã no banco.
   T("painel.administrativo", "Painel Administrativo", "/painel/administrativo", "Painéis", [false, false, false], {
-    nota: "gente, permissão e financeiro — na prática, só o admin",
+    nota: "usuários, permissões e APIs em abas (R131); catálogo e fechamentos como atalhos — na prática, só o admin",
   }),
 
   // ── Comercial ─────────────────────────────────────────────────────────────
@@ -136,8 +136,11 @@ export const TELAS: Tela[] = [
   }),
 
   // ── Financeiro ────────────────────────────────────────────────────────────
-  T("contratos", "Contratos", "/contratos", "Financeiro", [false, true, false], {
-    nota: "R13: o SAC não vê valores",
+  // R132/U94: a LISTA /contratos morreu — o contrato se vê e se cadastra na
+  // ficha do cliente. A chave fica porque gateia as filhas que sobraram
+  // (/contratos/novo e /contratos/$id), que entram pelo tronco.
+  T("contratos", "Contrato do cliente (novo e detalhe)", "/contratos", "Financeiro", [false, true, false], {
+    nota: "R132: a lista saiu; abre-se pela ficha do cliente. R13: o SAC não vê valores",
   }),
   T("fechamentos", "Fechamentos", "/fechamentos", "Financeiro", [false, true, false], {
     nota: "R13: o SAC não vê valores",
@@ -150,9 +153,12 @@ export const TELAS: Tela[] = [
   }),
 
   // ── Administração ─────────────────────────────────────────────────────────
-  T("gerencial.usuarios", "Usuários", "/gerencial/usuarios", "Administração", [false, false, false]),
-  T("gerencial.permissoes", "Permissões", "/gerencial/permissoes", "Administração", [false, false, false]),
-  T("admin", "Painel admin", "/admin", "Administração", [false, false, false]),
+  // R131/U94: "gerencial.usuarios" e "gerencial.permissoes" SAÍRAM — as duas
+  // viraram abas do Painel Administrativo (a chave dele é a que vale), e as
+  // rotas antigas só redirecionam. A U94 apaga as linhas órfãs no banco.
+  T("admin", "Catálogo", "/admin", "Administração", [false, false, false], {
+    nota: "equipamentos, blocos e serviços de referência — a rota exige o papel admin",
+  }),
 ];
 
 export const GRUPOS: string[] = Array.from(new Set(TELAS.map((t) => t.grupo)));

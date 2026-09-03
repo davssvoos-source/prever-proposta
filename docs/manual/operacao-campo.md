@@ -111,6 +111,19 @@ sistema novo** do cliente ali; sem título digitado, o chamado se chama
 da programação, com as mesmas recusas; o chamado criado desliza no painel
 lateral.
 
+## O calendário tem duas visões — Mensal e Semanal (R133, U94)
+
+O botão **Mensal | Semanal** no cabeçalho do Calendário troca o desenho, não a
+lista: as duas visões leem os mesmos eventos (visitas e chamados, por hora
+marcada ou por prazo) e passam pelos mesmos filtros de pessoa, tipo e setor.
+A **mensal** mostra só o título e o rosto — é para varrer o mês. A **semanal**
+é a visão de quem gere o dia (o Vinicius): sete colunas de **segunda a
+domingo** (a semana ISO, a mesma da programação), e em cada item a hora (ou
+"prazo"), o tipo, o título, o cliente, o status — atrasado em vermelho —, o
+número do chamado e quem toca. Clicar abre o mesmo painel lateral. A visão
+escolhida fica gravada no navegador; "Hoje" volta mês e semana. No celular a
+semana vira uma lista, um dia embaixo do outro.
+
 ## Equipe de campo: a composição tem SEMANA (R96/R97, U76)
 
 **"Equipe" sem adjetivo é DEPARTAMENTO** (técnica, T.I., comercial, controle

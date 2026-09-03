@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useLocation, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, XCircle, Archive, CalendarDays, MapPin, Clock, Play } from "lucide-react";
@@ -7,6 +8,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { card } from "@/lib/ui";
 
 export const Route = createFileRoute("/_authenticated/historico")({
+  // Revisão de 03/09/2026: a chave "historico" existia na matriz e nenhuma
+  // guarda a lia — desmarcar a caixa não fazia nada. Agora faz.
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("historico");
+    if (!ok) throw redirect({ to: destinoNegado("historico") as any });
+  },
   component: VisitasPage,
 });
 

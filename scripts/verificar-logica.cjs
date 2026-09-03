@@ -342,6 +342,9 @@ const ARQUIVOS_SEMENTE = [
   // têm as mesmas telas" acusaria a chave nova como órfã — e o remédio errado
   // (tirar a chave do catálogo) deixaria a tela sem linha em permissoes_tela.
   'supabase/migrations/20260908090000_u86_sobreaviso.sql',
+  // U94: as chaves 'gerencial.usuarios' e 'gerencial.permissoes' saem — as
+  // telas viraram abas do Administrativo (R131), e o DELETE participa da semente.
+  'supabase/migrations/20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -3140,7 +3143,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a função devolve emailEnviado para a tela poder avisar que o convite não saiu',
      /return \{ success: true, user_id: userId, emailEnviado \};/.test(conv), true);
   {
-    const usr = fs29.readFileSync('src/routes/_authenticated/gerencial.usuarios.tsx', 'utf8');
+    // R131/U94: a gestão de usuários mudou de arquivo (virou seção do Administrativo)
+    const usr = fs29.readFileSync('src/features/administrativo/Usuarios.tsx', 'utf8');
     eq('a tela avisa quando a conta foi criada mas o e-mail não saiu (não deixa o admin esperando um e-mail que não vem)',
        /if \(r\?\.emailEnviado === false\)/.test(usr), true);
     eq('cadastrar um usuário invalida as listas que montam dupla/programação/responsável — ele aparece na hora',
@@ -16094,6 +16098,164 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /CONTEXTO_OPERACAO_TECNICA\.md/.test(claude93), /PLANO_V0\.1\.md/.test(claude93)],
      [true, true, true, true]);
   eq('U93/R129: o §6 do PRODUTO.md registra que o QAP só é LIDO', /o app só recebe/.test(prod93), true);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U94 — R131–R133: o Administrativo com conteúdo, os contratos na ficha, o
+// calendário semanal — e a revisão de 03/09/2026 (docs/REVISAO_2026-09-03.md).
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs94 = require('fs');
+  const TL94 = carregar('src/lib/telas.ts');
+  const ler94 = (a) => fs94.readFileSync(a, 'utf8');
+  const semCom94 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+
+  // ── R131: o Administrativo TEM o conteúdo ───────────────────────────────
+  const adm94 = ler94('src/routes/_authenticated/painel.administrativo.tsx');
+  eq('U94/R131: o painel tem as três abas e renderiza os três componentes — usuários e permissões moram AQUI, não numa rota',
+     [/const ABAS = \["usuarios", "permissoes", "apis"\] as const;/.test(adm94),
+      /<GestaoDeUsuarios \/>/.test(adm94), /<MatrizDePermissoes \/>/.test(adm94), /<Integracoes \/>/.test(adm94),
+      /validateSearch: \(s: Record<string, unknown>\) => \(\{\s*\n\s*aba: ABAS\.includes/.test(adm94)],
+     [true, true, true, true, true]);
+  eq('U94/R131: Catálogo e Fechamentos continuam como atalhos; o atalho de Contratos SAIU (R132)',
+     [/para: "\/admin"/.test(adm94), /para: "\/fechamentos"/.test(adm94), /para: "\/contratos"/.test(semCom94(adm94))],
+     [true, true, false]);
+  eq('U94/R131 CRÍTICO: usuários e permissões só para o CARGO admin — regra de cargo, nunca linha da matriz (uma linha errada tornaria a correção impossível pelo app)',
+     /: !isAdmin \? \(/.test(adm94) && /const isAdmin = cargo === "admin";/.test(adm94), true);
+  for (const [arq, aba] of [['gerencial.usuarios.tsx', 'usuarios'], ['gerencial.permissoes.tsx', 'permissoes']]) {
+    const r = ler94(`src/routes/_authenticated/${arq}`);
+    eq(`U94/R131: ${arq} só redireciona para a aba "${aba}" — sem consulta, sem conteúdo próprio`,
+       [new RegExp(`redirect\\(\\{ to: "/painel/administrativo", search: \\{ aba: "${aba}" \\} as any \\}\\)`).test(r),
+        /useQuery|supabase\.from|useMutation/.test(semCom94(r))],
+       [true, false]);
+  }
+  eq('U94/R131: as duas chaves saíram do catálogo; "admin" virou Catálogo; "contratos" ficou (gateia as filhas)',
+     [TL94.TELAS.some((t) => t.chave === 'gerencial.usuarios'), TL94.TELAS.some((t) => t.chave === 'gerencial.permissoes'),
+      TL94.TELAS.find((t) => t.chave === 'admin')?.label, TL94.TELAS.some((t) => t.chave === 'contratos')],
+     [false, false, 'Catálogo', true]);
+  {
+    const mig = ler94('supabase/migrations/20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql');
+    eq('U94/R131: a migration apaga EXATAMENTE as duas chaves órfãs, confere, e traz o DESFAZER',
+       [/^DELETE FROM public\.permissoes_tela WHERE tela IN \('gerencial\.usuarios', 'gerencial\.permissoes'\);$/m.test(mig),
+        /esperado 0/.test(mig), /DESFAZER/.test(mig)],
+       [true, true, true]);
+  }
+  // A extração não mudou a regra: as asserções da U29 sobre a tela de usuários
+  // agora leem o componente — e continuam verdes (ver o bloco da U29).
+  const usr94 = ler94('src/features/administrativo/Usuarios.tsx');
+  eq('U94/R131: o componente extraído invalida os números do painel quando um usuário muda — o "3 esperando aprovação" não pode ficar velho na mesma tela',
+     (usr94.match(/queryKey: \["painel-admin-numeros"\]/g) ?? []).length >= 4, true);
+
+  // ── A aba APIs: presença, nunca valor ───────────────────────────────────
+  {
+    const fn = ler94('src/lib/integracoes.functions.ts');
+    const usos = [...fn.matchAll(/(!!)?process\.env\.[A-Z_]+/g)];
+    eq('U94/R131 CRÍTICO: a server function só lê a PRESENÇA das chaves (todo process.env vem com `!!`) — o valor nunca sai do servidor',
+       [usos.length > 0, usos.every((m) => m[1] === '!!'), /\.middleware\(\[requireSupabaseAuth\]\)/.test(fn)],
+       [true, true, true]);
+    eq('U94/R129: o QAP entra como PLANEJADO e só leitura — a aba diz a verdade sobre o que ainda não existe',
+       /chave: "qap"[\s\S]{0,400}situacao: "planejada"/.test(fn) && /SÓ RECEBE/.test(fn), true);
+  }
+
+  // ── R132: os contratos vivem na ficha ───────────────────────────────────
+  {
+    const tronco = ler94('src/routes/_authenticated/contratos.tsx');
+    eq('U94/R132: /contratos é TRONCO — o exato redireciona para Clientes, as filhas entram pelo Outlet, a guarda "contratos" continua',
+       [/location\.pathname\.replace\(\/\\\/\+\$\/, ""\) === "\/contratos"/.test(tronco),
+        /throw redirect\(\{ to: "\/clientes" \}\)/.test(tronco),
+        /component: \(\) => <Outlet \/>/.test(tronco),
+        /guardaDeTela\("contratos"\)/.test(tronco),
+        /useContratos|<input|Buscar por cliente/.test(semCom94(tronco))],
+       [true, true, true, true, false]);
+    const novo = ler94('src/routes/_authenticated/contratos.novo.tsx');
+    eq('U94/R132: o cadastro nasce com o cliente da ficha (`?cliente=`) e volta para ela',
+       [/cliente: typeof s\.cliente === "string" && s\.cliente \? s\.cliente : undefined,/.test(novo),
+        /useState\(busca\.cliente \?\? ""\)/.test(novo),
+        /to: "\/clientes\/\$id", params: \{ id: \(clienteId \|\| busca\.cliente\) as string \}/.test(novo)],
+       [true, true, true]);
+    const det = ler94('src/routes/_authenticated/contratos.$id.tsx');
+    eq('U94/R132: no detalhe, voltar e excluir levam à ficha do cliente — nenhum caminho aponta para a lista morta',
+       [/navigate\(\{ to: "\/contratos" \}\)/.test(det),
+        (det.match(/to: "\/clientes\/\$id", params: \{ id: contrato\??\.cliente_id \}/g) ?? []).length],
+       [false, 2]);
+    eq('U94/R132: o botão Novo da ficha leva o cliente junto',
+       /to: "\/contratos\/novo", search: \{ cliente: id \} as any/.test(ler94('src/routes/_authenticated/clientes.$id.tsx')), true);
+  }
+
+  // ── R133: o calendário semanal ──────────────────────────────────────────
+  {
+    const cal = ler94('src/routes/_authenticated/calendario.tsx');
+    eq('U94/R133: a visão é PREFERÊNCIA — lida e gravada no localStorage, como a lista/quadro da Início',
+       [/const CHAVE_VISAO = "prever:calendario-visao";/.test(cal),
+        /localStorage\.getItem\(CHAVE_VISAO\) === "semana" \? "semana" : "mes"/.test(cal),
+        /localStorage\.setItem\(CHAVE_VISAO, visao\)/.test(cal)],
+       [true, true, true]);
+    eq('U94/R133 CRÍTICO: a semana é a ISO (segunda a domingo) de periodos.ts — a MESMA da programação e dos fechamentos',
+       [/const inicioSem = useMemo\(\(\) => inicioSemana\(semana\), \[semana\]\);/.test(cal),
+        /const fimSem = useMemo\(\(\) => fimSemana\(semana\), \[semana\]\);/.test(cal),
+        /const DIAS_SEMANA_ISO = \["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"\];/.test(cal)],
+       [true, true, true]);
+    eq('U94/R133 CRÍTICO: a JANELA consultada segue a visão e entra na chave das consultas — mês e semana não se contaminam no cache',
+       [/const janela = visao === "mes" \? \{ de: inicioMes, ate: fimMes \} : \{ de: inicioSem, ate: fimSem \};/.test(cal),
+        /queryKey: \["calendario", "visitas", chaveJanela, isGestor\]/.test(cal),
+        /queryKey: \["calendario", "chamados", chaveJanela\]/.test(cal),
+        /queryKey: \["calendario", "apoios", chaveJanela\]/.test(cal),
+        /queryKey: \["calendario", "locais", chaveJanela\]/.test(cal)],
+       [true, true, true, true, true]);
+    eq('U94/R133: as duas visões leem o MESMO `porDia` (uma lista, dois desenhos) e os mesmos filtros',
+       [(cal.match(/const porDia = useMemo/g) ?? []).length, (cal.match(/porDia\[chaveDia\(d\)\] \?\? \[\]/g) ?? []).length],
+       [1, 2]);
+    eq('U94/R133: a semanal mostra o detalhe que a mensal esconde — hora ou "prazo", tipo, cliente, status, número e quem toca',
+       [/\{e\.porPrazo \? "prazo" : horaCurta\(e\.quando\)\}/.test(cal), /\{e\.tipoLabel\}/.test(cal),
+        /\{e\.cliente && e\.cliente !== e\.titulo && \(/.test(cal), /\{e\.atrasado \? "Atrasado" : e\.statusLabel\}/.test(cal),
+        /\{e\.numero\}/.test(cal), /max=\{3\} tamanho=\{18\}/.test(cal)],
+       [true, true, true, true, true, true]);
+    eq('U94/R133: sem rolagem por coluna — a página rola (a asserção da U13 continua: nenhum overflowY auto) — e no celular a semana vira lista',
+       [/overflowY: "auto"/.test(cal), /className="cal-semana"/.test(cal),
+        /\.cal-semana \{ display: grid; grid-template-columns: 1fr; gap: 1px; \}/.test(ler94('src/styles.css')),
+        /@media \(min-width: 1024px\) \{\s*\n\s*\.cal-semana \{ grid-template-columns: repeat\(7, minmax\(0, 1fr\)\); \}/.test(ler94('src/styles.css'))],
+       [false, true, true, true]);
+    eq('U94/R133: os botões da visão são <button aria-pressed>, e "Hoje" volta mês E semana',
+       [/aria-pressed=\{visao === "mes"\}/.test(cal), /aria-pressed=\{visao === "semana"\}/.test(cal),
+        /setMes\(new Date\(hoje\.getFullYear\(\), hoje\.getMonth\(\), 1\)\);\s*\n\s*setSemana\(inicioSemana\(hoje\)\);/.test(cal)],
+       [true, true, true]);
+  }
+
+  // ── A revisão: as chaves decorativas passaram a valer ──────────────────
+  for (const [arq, chave] of [['historico.tsx', 'historico'], ['mapa.tsx', 'mapa'], ['calendario.tsx', 'calendario']]) {
+    const r = ler94(`src/routes/_authenticated/${arq}`);
+    eq(`U94 (revisão): ${arq} lê a chave "${chave}" da matriz — a caixa deixou de ser decorativa`,
+       new RegExp(`guardaDeTela\\("${chave}"\\)`).test(r) && new RegExp(`destinoNegado\\("${chave}"\\)`).test(r), true);
+  }
+  eq('U94 (revisão): TODA chave do catálogo com rota própria é lida por alguma guarda — chave que ninguém lê é decorativa',
+     (() => {
+       // A guarda pode ser LITERAL (`guardaDeTela("mapa")`) ou por chave DINÂMICA —
+       // gerencial.tsx decide entre "gerencial" e "gerencial.nova" pelo caminho.
+       // Conta como lida a chave citada entre aspas num arquivo que chama guardaDeTela(.
+       const comGuarda = fs94.readdirSync('src/routes/_authenticated').filter((a) => a.endsWith('.tsx'))
+         .map((a) => ler94(`src/routes/_authenticated/${a}`)).filter((s) => /guardaDeTela\(/.test(s)).join('\n');
+       // as que se sabe que NÃO gateiam (e por quê): dashboard/perfil são `sempre`;
+       // clientes.novo/migrar são redirects desativados (R21); chamados.novo e a
+       // triagem estão na Q11, decisão do Davi; sobreaviso já gateia; admin decide
+       // por user_roles (Q15) — declaradas aqui para a lista de exceções ser VISÍVEL
+       const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar', 'chamados.novo', 'admin']);
+       return TL94.TELAS.filter((t) => !excecoes.has(t.chave) && !comGuarda.includes(`"${t.chave}"`))
+         .map((t) => t.chave);
+     })(), []);
+
+  // ── Os documentos (regra 7) ─────────────────────────────────────────────
+  const prod94 = ler94('docs/PRODUTO.md');
+  const plan94 = ler94('docs/PLANO_UNIFICACAO.md');
+  eq('U94 (regra 7): R131–R133 existem; a U94 está no diário; a revisão existe e o CLAUDE.md aponta para ela; o manual fala da visão semanal e do Administrativo com abas',
+     [['R131', 'R132', 'R133'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod94)),
+      /^## U94 — /m.test(plan94),
+      fs94.existsSync('docs/REVISAO_2026-09-03.md'),
+      /REVISAO_2026-09-03\.md/.test(ler94('CLAUDE.md')),
+      /Semanal/.test(ler94('docs/manual/operacao-campo.md')),
+      /abas/.test(ler94('docs/manual/permissoes-e-acesso.md')),
+      /ficha do cliente/.test(ler94('docs/manual/financeiro.md'))],
+     [true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

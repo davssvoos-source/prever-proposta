@@ -116,7 +116,10 @@ function ContratoDetalhePage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contratos"] });
       toast.success("Contrato excluído.");
-      navigate({ to: "/contratos" });
+      // R132: a lista morreu — quem exclui volta para a ficha do cliente
+      navigate(contrato?.cliente_id
+        ? { to: "/clientes/$id", params: { id: contrato.cliente_id } }
+        : { to: "/clientes" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir."),
   });
@@ -137,7 +140,9 @@ function ContratoDetalhePage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/contratos" })}
+          onClick={() => navigate(contrato.cliente_id
+            ? { to: "/clientes/$id", params: { id: contrato.cliente_id } }
+            : { to: "/clientes" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

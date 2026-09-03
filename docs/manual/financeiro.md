@@ -56,7 +56,7 @@ exercitado com dados reais de produção.
 
 ## Procedimentos
 
-**Criar contrato:** `/contratos` → "+" → escolher cliente da base → cobertura
+**Criar contrato:** ficha do cliente (`/clientes/$id`) → Contratos → **Novo** (chega com o cliente preenchido, R132) → cobertura
 e preços. (Tela `contratos` exige cargo comercial/admin.)
 
 **Apurar um fechamento:** `/fechamentos` → novo período → o sistema reúne o
@@ -233,3 +233,12 @@ porque é sintoma.
 - `src/routes/_authenticated/contratos*.tsx` · `fechamentos*.tsx`
 - `src/features/contratos/` · `src/features/financeiro/`
 - `docs/PLANO_UNIFICACAO.md` §U2/U5 · `docs/PRODUTO.md` — R13
+
+## Onde o contrato mora (R132, U94)
+
+A lista `/contratos` **não existe mais**: o endereço redireciona para a base de
+clientes. O contrato se vê, se cadastra e se abre na seção **Contratos** da
+ficha do cliente — só para quem vê valores (R13). `/contratos/novo` e
+`/contratos/$id` continuam existindo como filhas do tronco, gateadas pela chave
+`contratos`; voltar e excluir levam de volta à ficha. O atalho Contratos saiu do
+painel Administrativo (R131).

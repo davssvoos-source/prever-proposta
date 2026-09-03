@@ -221,3 +221,19 @@ medido pelo catálogo, por tipo (`numeric`/`money`) **e** por nome, na conferên
 202 —, a migration não toca `cobrancas`, não reescreve `chamados_com_lancamento`
 e não cria selo nenhum. O selo do plantão é mudo porque **não existe**. A R13
 (o SAC não vê valores) não é atravessada aqui por não haver valor a ver.
+
+## Onde se edita (R131, U94)
+
+Usuários (convite, aprovação, cargo, equipe, desativar) e a matriz de acessos
+por papel são **abas do painel Administrativo** (`/painel/administrativo?aba=usuarios`
+e `?aba=permissoes`); as rotas antigas `/gerencial/usuarios` e
+`/gerencial/permissoes` só redirecionam, e as duas chaves saíram da matriz
+(migration U94). Quem edita continua sendo o **cargo admin** — regra de cargo,
+não linha da matriz. A terceira aba, **APIs**, lista as integrações com
+terceiros e se a chave de cada uma está no servidor (nunca o valor).
+
+Chave que existe na matriz mas que nenhuma rota lê é **decorativa**: a revisão
+de 03/09/2026 achou três (`historico`, `mapa`, `calendario`) e as ligou; a asserção da U94
+passou a exigir que toda chave com rota própria tenha guarda — as exceções
+conhecidas (`dashboard` e `perfil` são "sempre"; `chamados.novo` é a Q11;
+`admin` é a Q15) estão listadas no próprio verificador.

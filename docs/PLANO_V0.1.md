@@ -239,3 +239,13 @@ prontas e do export.
 - [ ] Fase E — APIs e QAP
 - [ ] Fase F — preventiva por sistema
 - [ ] Fase G — corte do Gestor OS
+
+## 7. A revisão de telas (03/09, à tarde)
+
+A revisão completa está em `REVISAO_2026-09-03.md`: veredito por rota, oito
+achados transversais e as perguntas **Q11–Q17** (a triagem e o técnico, valores
+na visita, legado a matar, o nome de "Histórico", a guarda do Catálogo, blocos
+editáveis, o importador do Notion). O que o Davi já decidiu virou **R131–R133**
+e foi entregue na U94: Administrativo com abas, contratos na ficha, calendário
+semanal. As respostas às Q11–Q17 entram como passos curtos da Fase D ou como
+limpeza antes da Fase G.

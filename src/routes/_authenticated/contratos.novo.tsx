@@ -20,6 +20,11 @@ import {
 } from "@/features/contratos/data";
 
 export const Route = createFileRoute("/_authenticated/contratos/novo")({
+  // R132: o botão "Novo" da ficha do cliente chega com `?cliente=` — o
+  // contrato nasce com o cliente certo, sem escolher de novo numa lista de 190.
+  validateSearch: (s: Record<string, unknown>) => ({
+    cliente: typeof s.cliente === "string" && s.cliente ? s.cliente : undefined,
+  }),
   component: NovoContratoPage,
 });
 
@@ -30,7 +35,8 @@ function NovoContratoPage() {
   const { data: clientes = [] } = useClientes();
   const extrair = useServerFn(extrairContrato);
 
-  const [clienteId, setClienteId] = useState("");
+  const busca = Route.useSearch();
+  const [clienteId, setClienteId] = useState(busca.cliente ?? "");
   const [numero, setNumero] = useState("");
   const [titulo, setTitulo] = useState("");
   const [modalidade, setModalidade] = useState<ModalidadeContrato>("manutencao");
@@ -189,7 +195,12 @@ function NovoContratoPage() {
     <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
-          onClick={() => navigate({ to: "/contratos" })}
+          // R132: volta para a ficha do cliente de onde veio; sem cliente, para a base
+          onClick={() => navigate(
+            (clienteId || busca.cliente)
+              ? { to: "/clientes/$id", params: { id: (clienteId || busca.cliente) as string } }
+              : { to: "/clientes" },
+          )}
           style={{
             width: 40, height: 40, borderRadius: 12,
             background: isLight ? "#ffffff" : "#191921",

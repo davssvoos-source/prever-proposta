@@ -1139,3 +1139,11 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 .ferramenta-botao:active {
   transform: scale(0.94);
 }
+
+/* ── Calendário semanal (R133) ─────────────────────────────────────────────
+   Sete colunas no desktop; no celular vira uma lista, um dia embaixo do outro.
+   Sem rolagem por coluna — a página rola, como na grade mensal. */
+.cal-semana { display: grid; grid-template-columns: 1fr; gap: 1px; }
+@media (min-width: 1024px) {
+  .cal-semana { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
