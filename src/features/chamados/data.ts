@@ -360,6 +360,26 @@ export async function comentarChamado(chamadoId: string, texto: string): Promise
   if (error) throw error;
 }
 
+/**
+ * Apagar um comentário — só o AUTOR (R135, U95). A policy
+ * `chamado_eventos_delete_autor` é quem decide: `tipo = 'comentario' AND
+ * user_id = auth.uid()`. Sem a migration U95 rodada, o DELETE não apaga linha
+ * nenhuma — e isto vira erro na tela em vez de um "apaguei" falso, porque zero
+ * linhas afetadas NÃO é sucesso.
+ */
+export async function excluirComentario(eventoId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("chamado_eventos" as any)
+    .delete()
+    .eq("id", eventoId)
+    .eq("tipo", "comentario")
+    .select("id");
+  if (error) throw error;
+  if (!data || (data as any[]).length === 0) {
+    throw new Error("Só quem escreveu o comentário pode apagá-lo.");
+  }
+}
+
 // ── Apoio ───────────────────────────────────────────────────────────────────
 
 /**

@@ -92,6 +92,22 @@ sugere um. Ao criar, o chamado abre no painel lateral (R33).
 componente); um chamado aberto pelo "+" com equipe e horário aparece na grade
 da programação e no gráfico por equipe.
 
+### Fase B2 — A Início do técnico, no celular (R134) — *1–2 sessões*
+
+**O mapa de aparelhos (R134):** quem não é da área técnica usa o sistema no
+computador; o técnico de campo usa no celular (e depois o aplicativo). O
+técnico tem três telas: Perfil, Calendário e uma **Início própria** — "Bom
+dia, você tem X chamados hoje" e, abaixo, os cards dos chamados em que ele é
+responsável ou apoio. Sem dashboard, sem nada das outras áreas. Clicar no card
+leva ao **fluxo** daquele chamado (implantação, corretiva, preventiva, visita
+técnica — cada um o seu).
+
+**Entregas.** Uma rota/visão de Início para o cargo técnico (a atual R7/R11 já
+dá o banner e a fila; falta tirar os painéis e o quadro, e desenhar o card
+para o polegar); os quatro fluxos abrindo a partir do card (o de campo já
+existe em DetalheCampo; a visita já tem o seu). Toda tela nova declara para
+que aparelho nasceu. **Sem migration.**
+
 ### Fase C — A atividade de validação do gestor (R130) — *2 sessões*
 
 **Entregas.**
@@ -234,6 +250,7 @@ prontas e do export.
 
 - [x] Fase A — dashboard (U93)
 - [x] Fase B — o "+" (U93)
+- [ ] Fase B2 — a Início do técnico no celular (R134)
 - [ ] Fase C — validação do gestor
 - [ ] Fase D — ficha do cliente
 - [ ] Fase E — APIs e QAP

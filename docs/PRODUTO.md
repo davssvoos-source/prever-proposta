@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-03 (R133). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-03 (R135). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -2959,3 +2959,74 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   layout: Mensal e Semanal. Assim o Vinicius principalmente utilizará a página
   de calendário na versão semanal para fazer a gestão dos chamados, com mais
   detalhes em cada dia.")*
+
+- **R134** — **Quem usa o sistema em que aparelho — e a Início do técnico é
+  outra.** Todo mundo que não é da área técnica (T.I., Controle Patrimonial,
+  SAC, comercial, gestão) usa o sistema **no computador**. Os **técnicos de
+  campo** usam **no celular** — e depois vem o aplicativo. Toda tela tem de
+  saber para qual dos dois nasceu.
+
+  O técnico tem acesso a **três coisas**: **Perfil**, **Calendário**, e uma
+  **Início própria**, diferente da atual: "Bom dia, você tem X chamados hoje" e,
+  abaixo, os **cards de cada chamado**. Sem dashboard, sem nada das outras
+  áreas — só o que é da área técnica **em que ele participa**, como responsável
+  ou como apoio. Clicar no card leva ao **fluxo daquele chamado**: implantação
+  é um fluxo, corretiva é outro, preventiva é outro, e a visita técnica para
+  proposta comercial (que já existe) é o quarto. O restante do sistema é do
+  computador. *(Isto reafirma a R7 e a R11 e fecha a forma: a Início do técnico
+  não é a Início do gestor com menos coisas — é uma tela própria, sem painéis.
+  É a Fase B2 do `PLANO_V0.1.md`.)* *(Davi, 2026-09-03: "Todos que são do T.I,
+  Controle Patrimonial, SAC, qualquer setor que não seja a área técnica, irão
+  utilizar o sistema no computador. A área técnica, ou seja, os técnicos de
+  campo, irão utilizar o sistema no celular. […] uma página de INICIO, que é
+  diferente da atual que temos, é uma página onde fica escrito 'Bom dia, você
+  tem X chamados hoje', e abaixo tem os cards de cada chamado.")*
+
+- **R135** — **A tela da atividade, no computador: cada propriedade é UM
+  seletor que abre a lista; o texto é a maior caixa, com ferramentas de UI
+  própria e menção.** Vale para a página da atividade (`/chamados/$id`, o
+  exemplo do Davi foi "Croqui demonstrativo para projeto de Portaria Remota")
+  e para o painel de propriedades (R33), que usam os **mesmos componentes**.
+
+  **Os seletores.** Status, Classificação, Prioridade, Equipe e Sprint deixaram
+  de ser fileiras de botões (uma por opção — cinco status, sete equipes, seis
+  tipos) e viraram **um botão cada**, pintado pela **cor da coisa escolhida**
+  (a R87 continua valendo, no botão único), que ao clicar abre a lista no
+  popover do design system, com a cor de cada opção como um ponto ao lado do
+  nome. Um `<button>` com `listbox`, teclado incluído.
+
+  **Duas colunas no desktop.** A coluna larga é o **texto** — a descrição num
+  editor de blocos e a conversa embaixo; a estreita são as propriedades, as
+  pessoas, o cliente e os equipamentos. No celular empilha.
+
+  **O editor.** A descrição continua **Markdown puro no banco** (nenhuma das
+  telas que a leem muda), mas o editor a mostra em **blocos**: um item de
+  checklist é a **caixa de marcar do design system**, não "[ ]"; um item de
+  lista é um ponto, não "- "; negrito e itálico existem; a linha que não está
+  em edição é pintada rica, e a linha em edição é texto cru. Enter cria a linha
+  seguinte herdando o tipo; Enter numa lista vazia sai da lista; Backspace no
+  começo tira o marcador. Grava sozinho (R90).
+
+  **A menção.** Digitar `@` em qualquer caixa de texto (descrição e comentário)
+  abre a lista de pessoas; escolher grava o token `@[Nome](user:id)` — o nome
+  para o texto continuar legível onde é mostrado cru, o id porque é ele que
+  avisa. **Toda menção, em qualquer lugar, notifica a pessoa** — quem avisa é o
+  banco (U95): no comentário, ao inserir; na descrição, **só as menções novas**
+  (o autosave grava dezenas de vezes e a pessoa recebe um sino). Quem foi
+  mencionado num comentário recebe "Você foi mencionado" e não também "Novo
+  comentário".
+
+  **Comentário se apaga por quem escreveu.** Só o autor vê a lixeira, e só a
+  policy do banco apaga — e só comentário: a linha do tempo é registro de
+  gatilho. Gestor **não** apaga fala alheia; abrir isso pede pedido explícito.
+
+  **Responsável e apoio mostram o rosto** também na página (o painel já
+  mostrava). *(Davi, 2026-09-03: "agrupe as opções de cada item, então por
+  exemplo STATUS deve ser uma opção que ao clicar abre a lista de seleção. […]
+  a maior caixa deverá ser um espaço grande para texto […] ferramentas com UI
+  personalizado que ao adicionar por exemplo uma lista de seleção, não fique os
+  ícones '[ ]' e sim uma caixa personalizada de acordo com o nosso design
+  System. […] deve poder mencionar outros usuários, lembrando que sempre que
+  alguém é mencionado em qualquer lugar, o usuário recebe notificação. […] nos
+  comentários das atividades, deve ter a opção de excluir comentário (por quem
+  escreveu). No campo de responsável e apoio, adicione ícones dos usuários.")*

@@ -47,6 +47,22 @@ Dois fatos que estruturam tudo:
 > claro para você. Ou seja, o T.I também pode fazer atividade EM CAMPO, porém
 > não entra nesta conta, no Operacional Técnica são EQUIP. TECNICA."*
 
+## 1b. Em que aparelho cada um trabalha (R134)
+
+Quem **não** é da área técnica — T.I., Controle Patrimonial, SAC, comercial,
+gestão — usa o sistema **no computador**. Os **técnicos de campo** usam **no
+celular** (e depois no aplicativo). O técnico tem três telas: **Perfil**,
+**Calendário** e uma **Início própria**, sem dashboard: "Bom dia, você tem X
+chamados hoje" e os cards dos chamados em que ele participa (responsável ou
+apoio). Clicar no card abre o **fluxo** daquele chamado. Toda tela tem de saber
+para qual dos dois aparelhos nasceu — a tela da atividade interna (R135), por
+exemplo, é do computador.
+
+> Davi, 03/09/2026: *"Todos que são do T.I, Controle Patrimonial, SAC, qualquer
+> setor que não seja a área técnica, irão utilizar o sistema no computador. A
+> área técnica, ou seja, os técnicos de campo, irão utilizar o sistema no
+> celular. Posteriormente vamos lançar o aplicativo para celular."*
+
 ## 2. As três atividades do técnico de campo
 
 Cada técnico tem **três possíveis atividades**, e **cada uma tem fluxo

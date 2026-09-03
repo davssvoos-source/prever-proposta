@@ -36,10 +36,10 @@ Todo o repo (nomes, comentários, docs) é em **português**.
    (unidade real); `.tsx` só por regex no fonte — e grep acha comentário,
    filtre linhas que começam com `//` (já rendeu 5+ falsos positivos).
 4. **Build** — `npx vite build` (também regenera `src/routeTree.gen.ts`;
-   commite o gerado). `npx tsc --noEmit` funciona e tem **59 erros
+   commite o gerado). `npx tsc --noEmit` funciona e tem **57 erros
    pré-existentes** (types.ts do Supabase desatualizado) — o critério é não
    criar erro NOVO nos arquivos tocados. O número JÁ CAIU DUAS VEZES por
-   conserto de verdade (85 → 83 → 78 → 59), e a U84 é a lição: **baseline de
+   conserto de verdade (85 → 83 → 78 → 59 → 57), e a U84 é a lição: **baseline de
    erro de tipo é onde defeito de PRODUÇÃO se esconde.** Dois dos que saíram
    eram escritas de `situacao: 'prospecto'`, valor que o CHECK recusa desde a
    U27 — cadastrar prédio novo e consolidar duplicata estavam QUEBRADOS, e o
@@ -120,5 +120,5 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 ```bash
 node scripts/verificar-logica.cjs   # tem de terminar "0 falharam"
 npx vite build                      # tem de completar
-npx tsc --noEmit | grep -c "error TS"   # baseline 59; não crie novos
+npx tsc --noEmit | grep -c "error TS"   # baseline 57; não crie novos
 ```

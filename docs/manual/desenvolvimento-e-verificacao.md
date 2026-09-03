@@ -28,7 +28,7 @@ as três coisas que já derrubaram o app quando ignoradas.
 (Atualizado em 2026-09-08, U84.) A nota antiga dizia que `tsc --noEmit` nunca
 completava — era o disco iCloud da máquina de então. Ele completa em segundos.
 
-**Baseline vivo: 59 erros.** Ele foi 85, depois 83, e caiu para **59** na U84.
+**Baseline vivo: 57 erros.** Ele foi 85, depois 83, caiu para **59** na U84 e para **57** na U95 (a reescrita da página da atividade tirou dois erros antigos, um deles um `sp === "atrasada"` que comparava com um valor que `situacaoPrazo` nunca devolve).
 A maior parte é o `types.ts` gerado do Supabase, desatualizado desde a Etapa 1
 do sistema de OS. O critério não é zerar: é **não criar erro novo nos arquivos
 tocados** — `npx tsc --noEmit | grep -c "error TS"` tem de continuar no

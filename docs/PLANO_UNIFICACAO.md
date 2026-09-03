@@ -9220,3 +9220,116 @@ entre elas o CENSO que acusa a próxima chave de permissão sem guarda).
 `cargo === "comercial"` do calendário já estava nele).
 Última regra: **R133**. **Migration a rodar: U94** (apaga as duas chaves
 órfãs; ordem de deploy indiferente).
+
+## U95 — A tela da atividade: o seletor que abre a lista, o editor de blocos com menção, o autor que apaga (R134/R135)
+
+**Arquivos:** `src/lib/texto-rico.ts` (novo — a lógica pura),
+`src/components/SeletorDeOpcao.tsx` (novo), `src/components/EditorDeDescricao.tsx`
+(novo), `src/components/TextoComChecklist.tsx` (leitura rica),
+`src/features/chamados/DetalheInterno.tsx` (duas colunas),
+`src/features/chamados/PainelChamado.tsx` (os mesmos componentes),
+`src/features/chamados/data.ts` (`excluirComentario`), `src/styles.css`,
+`docs/PRODUTO.md` (R134/R135), `docs/PLANO_V0.1.md` (Fase B2), o manual,
+`scripts/verificar-logica.cjs`.
+**Migration:** `20260913090000_u95_mencoes_e_comentario_do_autor.sql` —
+aditiva: sem ela a menção é texto e o botão de apagar recusa; com ela os dois
+funcionam. Ordem de deploy indiferente.
+
+### O que o Davi pediu, e o que era antes
+
+O print da página "Croqui demonstrativo para projeto de Portaria Remota"
+mostrava, no computador, seis status em fila, sete equipes em fila, seis tipos
+em fila — vinte botões coloridos para dizer três coisas —, um `<select>` nativo
+para o responsável, a descrição em texto só de leitura e nenhum rosto. O
+pedido foi em cinco frases: cada propriedade vira UMA opção que abre a lista;
+a maior caixa é o texto; as ferramentas do texto têm UI própria (caixa de
+marcar, não "[ ]"); dá para mencionar gente, e menção avisa; comentário se
+apaga por quem escreveu; responsável e apoio com o rosto.
+
+E antes disso, o mapa de aparelhos (R134): quem não é da técnica usa o
+computador; o técnico de campo usa o celular e tem uma Início própria — "Bom
+dia, você tem X chamados hoje" e os cards. Registrado como regra e como a
+Fase B2 do plano; não foi construído nesta entrega, que é sobre a tela do
+computador.
+
+### As decisões
+
+**O texto continua Markdown puro, e isso é a decisão central.** A tentação era
+um editor rico "de verdade" (HTML ou JSON). Ele quebraria de uma vez as telas
+que leem `descricao_problema` cru (DetalheCampo, a prévia da importação, o PDF)
+e trocaria um formato que qualquer pessoa reconhece por um que só o editor
+lê. O que o Davi pediu é apresentação: que a caixa de marcar seja uma caixa e
+não "[ ]". Então `texto-rico.ts` lê o texto em BLOCOS (uma linha = um bloco) e
+o editor desenha cada bloco com a UI certa — só a linha em edição é um textarea
+cru; as outras são pintadas ricas, e clicar numa delas a põe em edição. É o
+"live preview" do Obsidian, sem dependência nova.
+
+**A menção é um token com nome e id.** `@[Nome](user:id)`: o nome para o texto
+continuar legível onde é mostrado cru (as três telas que leem a descrição
+passam a pintá-lo como chip, mas o PDF e a prévia mostram o token — legível);
+o id porque é ele que avisa. Casar por nome traria homônimo e quebraria quando
+alguém mudasse o cadastro.
+
+**Quem avisa é o banco, e avisa uma vez.** O editor grava a cada 700 ms parado.
+Um gatilho ingênuo no UPDATE da descrição tocaria o sino a cada tecla depois
+da menção. O gatilho da U95 compara as menções de ANTES e de DEPOIS e avisa só
+as novas (`EXCEPT`). No comentário, o gatilho que já existia ("Novo
+comentário") passou a PULAR quem foi mencionado — a pessoa recebe o aviso mais
+específico, e não os dois. E `mencoes_em()` em SQL usa a MESMA forma de uuid do
+TypeScript; a asserção compara as duas strings, porque divergir aqui é sino que
+não toca sem ninguém notar.
+
+**Só o autor apaga, e só comentário.** A policy diz `tipo = 'comentario' AND
+user_id = auth.uid()`. Gestor não apaga fala alheia — o pedido foi "por quem
+escreveu", e abrir mais que isso pede pedido explícito. E `excluirComentario`
+trata ZERO linhas afetadas como recusa: sem a migration rodada, o DELETE não
+apaga nada, e "apaguei" sem apagar seria a mentira que a policy produziria em
+silêncio.
+
+**Um seletor, dois lugares.** `SeletorDeOpcao` é o `botaoSelecao` da R87
+(pintado pela cor da coisa escolhida) que abre um `listbox` em portal, com a
+mecânica de posicionamento do MenuFiltro. A página e o painel usam o mesmo; a
+`Escolha` do painel só trocou o miolo — as asserções que a cercam (peça de
+módulo, patch por campo) seguem verdes. O `<select>` nativo que sobrou no
+painel é um só: o atalho "+ setor", que é ação, não propriedade.
+
+**Duas colunas no desktop, uma no celular** (`.detalhe-grid`). O técnico de
+campo não vive nesta tela — o fluxo dele é o do chamado de campo —, mas a
+classe empilha porque a página é da atividade interna e o gestor também abre
+no celular.
+
+### O que eu recusei
+
+- **Não construí a Início do técnico.** É regra (R134) e fase (B2) — a entrega
+  de hoje é a tela do computador, e uma Início de celular merece o desenho
+  próprio, não um corte da atual.
+- **Não dei ao gestor o poder de apagar comentário alheio.** Pedido explícito
+  ou nada.
+- **Não troquei o formato do texto.** Ver acima.
+- **Não coloquei a menção em portal.** A lista de pessoas abre embaixo da
+  própria linha, no fluxo — dentro de um painel deslizante e de um textarea que
+  cresce, um popover fixo perseguindo o cursor é o tipo de coisa que descola.
+
+### O que a verificação pegou
+
+- A asserção da barra de ferramentas pedia `width: 44, height: 44,` com
+  vírgula, e o editor nasceu com `}` depois do 44. Ganhou um `flexShrink: 0` —
+  que ele precisava mesmo — e a vírgula veio junto.
+- O primeiro CSS da lista de sugestão usava um token que não existe
+  (`--vidro-bg`). Virou `--bg-elevated`, que tem par nos dois temas
+  (anti-padrão nº 9).
+- Três asserções antigas descreviam o que mudou de propósito (a fileira de
+  chips da R87, a barra de ferramentas dentro do painel, o `TextoComChecklist`
+  editável na página) e passaram a descrever o novo — mudou o alvo, não a
+  regra.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2730 passaram, 0 falharam** (28 novas,
+entre elas a paridade da regex de menção entre o SQL e o TypeScript).
+`npx vite build` → completa. `npx tsc --noEmit` → **57** — o baseline CAIU de
+59: a reescrita da página tirou dois erros antigos, um deles `sp === "atrasada"`,
+uma comparação com um valor que `situacaoPrazo` nunca devolveu (o certo é
+`estourado`) — ou seja, a cor de atraso do prazo na página interna nunca acendia.
+Última regra: **R135**. **Migration a rodar: U95** (aditiva; sem ela a menção não
+avisa e apagar comentário recusa).

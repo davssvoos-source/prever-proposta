@@ -118,6 +118,26 @@ cima dessas listas: tela bloqueada some do menu.
 `src/routeTree.gen.ts` é **gerado** pelo build — nunca editar à mão (ver
 `desenvolvimento-e-verificacao.md`).
 
+## Em que aparelho (R134)
+
+Computador para todo mundo que não é da área técnica; celular para o técnico de
+campo, que tem Perfil, Calendário e uma Início própria ("Bom dia, você tem X
+chamados hoje" + cards) — a Fase B2 do plano. Toda tela nova diz para qual
+aparelho nasceu.
+
+## A tela da atividade (R135)
+
+A página `/chamados/$id` de uma atividade interna (e o painel lateral, que usa
+os mesmos componentes) tem, no computador, duas colunas: o **texto** na larga —
+a descrição num editor de blocos e a conversa — e as **propriedades** na
+estreita. Cada propriedade (Status, Classificação, Prioridade, Equipe, Sprint) é
+um **seletor**: um botão pintado pela cor da coisa escolhida que abre a lista
+(`SeletorDeOpcao`). No editor, um item de checklist é a caixa de marcar do
+design system e não "[ ]"; digitar `@` abre a lista de pessoas, e a **menção**
+avisa a pessoa (uma vez, mesmo com o autosave). Só quem escreveu um comentário
+pode apagá-lo. Responsável e apoio mostram o rosto. O texto continua Markdown
+puro no banco — o que muda é a apresentação.
+
 ## O que ainda não existe (não confundir com defeito)
 
 - **Sincronizar com o QAP** — bloqueado na API do QAP; a base de clientes está

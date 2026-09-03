@@ -2388,8 +2388,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // wired nas duas telas de detalhe: painel interno (editável) e campo (leitura)
   const di2 = fs23.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
-  eq('DetalheInterno usa TextoComChecklist na Descrição, com aoMudar (editável)',
-     /<TextoComChecklist[\s\S]{0,120}aoMudar=\{podeEditar/.test(di2), true);
+  // R135/U95: a Descrição da página virou o EDITOR de blocos; a leitura rica
+  // (TextoComChecklist) ficou para os comentários. `somenteLeitura` segue podeEditar.
+  eq('DetalheInterno usa o EditorDeDescricao na Descrição, travado por podeEditar (R135)',
+     /<EditorDeDescricao[\s\S]{0,400}somenteLeitura=\{!podeEditar\}/.test(di2), true);
   const dc2 = fs23.readFileSync('src/features/chamados/DetalheCampo.tsx', 'utf8');
   eq('DetalheCampo usa TextoComChecklist no Problema relatado',
      /<TextoComChecklist texto=\{os\.descricao_problema\}/.test(dc2), true);
@@ -2403,6 +2405,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a tela: os pedidos do Davi, cada um travado por asserção ────────────
   const pc4 = fs23.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
+  // R135/U95: a barra de ferramentas da descrição saiu do painel para o
+  // EditorDeDescricao (compartilhado com a página da atividade) — as asserções
+  // da barra passaram a ler o editor.
+  const ed95 = fs23.readFileSync('src/components/EditorDeDescricao.tsx', 'utf8');
   const soCodigoPc4 = pc4.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
   // 1. sigla fora do título
@@ -2450,16 +2456,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // 4. a barra de ferramentas: negrito, itálico, checklist, lista
   eq('a descrição tem barra de ferramentas com os 4 botões básicos',
-     /Icon: Bold/.test(pc4) && /Icon: Italic/.test(pc4)
-     && /Icon: ListChecks/.test(pc4) && /Icon: List\b/.test(pc4), true);
+     /Icon: Bold/.test(ed95) && /Icon: Italic/.test(ed95)
+     && /Icon: ListChecks/.test(ed95) && /Icon: List\b/.test(ed95), true);
   eq('os botões usam mousedown (o click chegaria depois do blur, tarde demais)',
-     /onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); aplicar\(f\); \}\}/.test(pc4), true);
+     /onMouseDown=\{\(e\) => \{ e\.preventDefault\(\); aplicar\(f\); \}\}/.test(ed95), true);
 
   // ── achados da revisão adversarial de U40 (2026-08-21) ──────────────────
   eq('aplicar() não arma seleção pendente quando o valor NÃO mudou (idempotente) — senão a seleção fica presa e desloca o cursor na próxima tecla real',
-     /if \(r\.valor === v\) return;/.test(pc4), true);
+     /if \(r\.valor === v\) return;/.test(ed95), true);
   eq('os botões da barra têm 44x44 (alvo mínimo de toque), não 30x30',
-     /width: 44, height: 44,/.test(pc4), true);
+     /width: 44, height: 44,/.test(ed95), true);
 
   // ── v2 do painel (2026-08-22, Davi: "a caixa de descrição não me
   //    agradou... um botão UI com design... de acordo com o Design System") ──
@@ -2468,13 +2474,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o título da atividade no cabeçalho ficou maior e em negrito (era 19/600)',
      /fontSize: 22, fontWeight: 700, minHeight: 0,/.test(pc4), true);
   eq('os botões da barra de ferramentas usam a classe .ferramenta-botao (chapa e borda, não ícone flutuando)',
-     /className="ferramenta-botao"/.test(pc4), true);
-  eq('um divisor separa negrito/itálico de checklist/lista na barra (dois grupos, não 4 botões soltos)',
-     /\{i === 2 && \(/.test(pc4), true);
-  eq('a Descrição cresce com o texto: sem resize manual e sem scroll interno',
-     /resize: "none",\s*\n\s*overflow: "hidden", minHeight: 132,/.test(pc4), true);
+     /className="ferramenta-botao"/.test(ed95), true);
+  eq('dois divisores separam negrito/itálico, checklist/lista e a menção na barra (três grupos, não cinco botões soltos) — no EditorDeDescricao (R135)',
+     /\{\(i === 2 \|\| i === 4\) && \(/.test(ed95), true);
+  eq('a Descrição cresce com o texto: sem resize manual e sem scroll interno — a linha em edição do EditorDeDescricao (R135)',
+     /resize: "none", overflow: "hidden",/.test(ed95), true);
   eq('useLayoutEffect mede e aplica scrollHeight a cada mudança de valor — cresce ANTES da pintura, sem flash',
-     /useLayoutEffect\(\(\) => \{\s*\n\s*const el = ref\.current;\s*\n\s*if \(!el\) return;\s*\n\s*el\.style\.height = "auto";\s*\n\s*el\.style\.height = `\$\{el\.scrollHeight\}px`;/.test(pc4),
+     /useLayoutEffect\(\(\) => \{\s*\n\s*const el = focado === null \? null : areas\.current\[focado\];\s*\n\s*if \(!el\) return;\s*\n\s*el\.style\.height = "auto";\s*\n\s*el\.style\.height = `\$\{el\.scrollHeight\}px`;/.test(ed95),
      true);
 
   eq('.ferramenta-botao existe com borda/fundo/hover dourado, lendo os tokens de tema (não isLight em JS)',
@@ -2492,9 +2498,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o pop de escala respeita prefers-reduced-motion',
      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,200}\.checklist-input:checked \+ \.checklist-check svg \{ transform: none; \}/.test(cssChecklist),
      true);
-  eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra',
-     /id="painel-descricao-texto"/.test(pc4), true
-       && /<Campo titulo="Descrição" estado=\{estado\} idAlvo="painel-descricao-texto">/.test(pc4));
+  eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra (o id agora passa pelo EditorDeDescricao, R135)',
+     [/idAlvo="painel-descricao-texto"/.test(pc4), /id=\{i === 0 \? idAlvo : undefined\}/.test(ed95),
+      /<Campo titulo="Descrição" estado=\{estado\} idAlvo="painel-descricao-texto">/.test(pc4)],
+     [true, true, true]);
   eq('Campo usa htmlFor=idAlvo no <label> (explícito vence a associação implícita ao primeiro labelable)',
      /<label htmlFor=\{idAlvo\}/.test(pc4), true);
   eq('Enter no campo de comentário respeita enviar.isPending (senão Enter duplo grava o comentário duas vezes)',
@@ -5192,8 +5199,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('trocar de atividade grava o pendente ANTES de descartar o rascunho',
      /return \(\) => \{ gravarAgora\(\); \};/.test(hook), true);
   const pc6 = fs54.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
-  eq('o painel usa o rascunho que se salva sozinho nos dois campos de texto',
-     (pc6.match(/useRascunhoSalvo\(/g) ?? []).length >= 2, true);
+  eq('o painel usa o rascunho que se salva sozinho nos dois campos de texto — o título aqui, a descrição no EditorDeDescricao (R135)',
+     (pc6.match(/useRascunhoSalvo\(/g) ?? []).length >= 1
+     && (fs54.readFileSync('src/components/EditorDeDescricao.tsx', 'utf8').match(/useRascunhoSalvo\(/g) ?? []).length >= 1, true);
   eq('CRÍTICO: o título ganhou selo de estado — com autosave não há mais clique que confirme, e ele era o único campo que gravava calado',
      /estado=\{estados\.titulo\}/.test(pc6), true);
 
@@ -5212,10 +5220,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO (R87): o botão de escolha deixou de ser dourado para tudo — agora recebe a cor da coisa',
      /const chip = \(ativo: boolean, cor\?: Cores \| null\)[\s\S]{0,220}botaoSelecao\(ativo, isLight, cor/.test(di3),
      true);
-  eq('…e cada um recebe a cor da SUA escala',
-     /chip\(chamado\.status === s, \(\(\) => \{/.test(di3)
-     && /chip\(chamado\.equipe === e, equipeCores\(e\)/.test(di3)
-     && /chip\(chamado\.tipo === t, TIPO_CORES\[t\]/.test(di3), true);
+  // R135/U95: as fileiras de botões viraram UM seletor por propriedade; a cor
+  // da coisa (R87) continua — agora em cada OPÇÃO do seletor e no botão fechado.
+  eq('…e cada um recebe a cor da SUA escala — agora nas opções do SeletorDeOpcao (R135)',
+     /cor: \{ dark: i\.color, light: i\.colorLight, bg: i\.bg, border: i\.border \}/.test(di3)
+     && /valor: e, rotulo: EQUIPE_LABEL\[e\], cor: equipeCores\(e\)/.test(di3)
+     && /valor: t, rotulo: TIPO_LABEL\[t\], cor: TIPO_CORES\[t\] \?\? null/.test(di3), true);
   eq('a cor de status já era a hierarquia que o Davi descreveu: início azul, andamento amarelo, stand-by laranja',
      [CS4.chamadoStatusInfo('aberto').color,
       CS4.chamadoStatusInfo('em_andamento').color,
@@ -9659,8 +9669,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   {
     const dataS4 = fsS4.readFileSync('src/features/chamados/data.ts', 'utf8');
     const selects = [...dataS4.matchAll(/\.from\("chamado_eventos" as any\)/g)];
+    // U95/R135: o TERCEIRO `.from` é o DELETE do autor — por id de evento, nunca
+    // uma listagem; o SELECT continua sendo um só e por UM chamado.
     eq('CRÍTICO: existe UM ÚNICO SELECT de `chamado_eventos` no app e ele é sempre por UM chamado — é o que faz `pode_acessar_chamado` não quebrar nenhuma tela (nenhum feed agregado, nenhuma listagem entre chamados)',
-       [selects.length, /\.eq\("chamado_id", chamadoId\)/.test(dataS4)], [2, true]);
+       [selects.length, /\.eq\("chamado_id", chamadoId\)/.test(dataS4),
+        /\.from\("chamado_eventos" as any\)\s*\n\s*\.delete\(\)\s*\n\s*\.eq\("id", eventoId\)/.test(dataS4)], [3, true, true]);
     eq('…e o segundo `.from` é o INSERT do comentário, que continua mandando só `user_id` e `tipo=comentario` — o WITH CHECK novo pede vínculo, e quem comenta parte de um chamado já aberto',
        /\.insert\(\{[\s\S]{0,200}tipo: "comentario"/.test(dataS4), true);
   }
@@ -10461,8 +10474,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     'trg_chamado_sincronizar_unidades',   // u7:835 — o inventário
     'trg_notify_chamado_upd',             // u7:451 — os sinos
   ];
-  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes seis (derivado das migrations × lista à mão). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
-     trigsDeChamados82(), TRIGS_CHAMADOS_82);
+  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes sete (derivado das migrations × lista à mão; o sétimo é a menção, U95). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
+     // U95/R135: o sétimo é o aviso de MENÇÃO na descrição. Ele só INSERE em
+     // notificacoes — conjunto escrito disjunto de todos os outros, então "a
+     // ordem é indiferente" continua verdadeira. TRIGS_CHAMADOS_82 fica como a
+     // lista da ÉPOCA, porque a conferência 120 da U82 (abaixo) foi escrita com ela.
+     trigsDeChamados82(), [...TRIGS_CHAMADOS_82, 'trg_notify_mencao_descricao'].sort());
   // E a conferência 120 lê a MESMA ordem do pg_trigger. Se um rename futuro
   // mudar a ordem alfabética, ela aparece — em vez de mudar em silêncio.
   eq('CRÍTICO: a conferência 120 espera exatamente a ordem alfabética desse censo — ela é a mesma lista, lida do CATÁLOGO em vez do arquivo',
@@ -16256,6 +16273,145 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /abas/.test(ler94('docs/manual/permissoes-e-acesso.md')),
       /ficha do cliente/.test(ler94('docs/manual/financeiro.md'))],
      [true, true, true, true, true, true, true]);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U95 — R134/R135: quem usa o quê em que aparelho, e a tela da atividade — o
+// seletor que abre a lista, o editor de blocos com menção, o autor que apaga.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs95 = require('fs');
+  const TR = carregar('src/lib/texto-rico.ts');
+  const ler95 = (a) => fs95.readFileSync(a, 'utf8');
+  const semCom95 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+
+  // ── texto-rico: blocos ──────────────────────────────────────────────────
+  eq('U95/R135: linha ↔ bloco é ida e volta EXATA para os três tipos (o que o editor mostra é o que o banco grava)',
+     ['- [ ] pendente', '- [x] feito', '- item', 'parágrafo', ''].map((l) => TR.blocoParaLinha(TR.linhaParaBloco(l))),
+     ['- [ ] pendente', '- [x] feito', '- item', 'parágrafo', '']);
+  eq('U95/R135: a leitura de cada linha — tipo, texto sem marcador, marcado',
+     [TR.linhaParaBloco('- [X] Feito'), TR.linhaParaBloco('- só lista'), TR.linhaParaBloco('texto')],
+     [{ tipo: 'checklist', texto: 'Feito', marcado: true }, { tipo: 'lista', texto: 'só lista', marcado: false }, { tipo: 'paragrafo', texto: 'texto', marcado: false }]);
+  eq('U95/R135: texto vazio vira UM parágrafo vazio (um editor sem linha não tem onde o cursor entrar)',
+     TR.textoParaBlocos(''), [{ tipo: 'paragrafo', texto: '', marcado: false }]);
+  eq('U95/R135: alternarTipo troca; pedir o tipo que já tem volta ao parágrafo; virar checklist nasce desmarcado',
+     [TR.alternarTipo({ tipo: 'paragrafo', texto: 'a', marcado: false }, 'lista'),
+      TR.alternarTipo({ tipo: 'lista', texto: 'a', marcado: false }, 'lista'),
+      TR.alternarTipo({ tipo: 'checklist', texto: 'a', marcado: true }, 'lista')],
+     [{ tipo: 'lista', texto: 'a', marcado: false }, { tipo: 'paragrafo', texto: 'a', marcado: false }, { tipo: 'lista', texto: 'a', marcado: false }]);
+  eq('U95/R135: Enter no meio herda o tipo; Enter numa lista VAZIA sai da lista',
+     [TR.dividirBloco({ tipo: 'checklist', texto: 'abcd', marcado: true }, 2),
+      TR.dividirBloco({ tipo: 'lista', texto: '', marcado: false }, 0)],
+     [{ antes: { tipo: 'checklist', texto: 'ab', marcado: true }, depois: { tipo: 'checklist', texto: 'cd', marcado: false } },
+      { antes: { tipo: 'paragrafo', texto: '', marcado: false }, depois: { tipo: 'paragrafo', texto: '', marcado: false } }]);
+
+  // ── texto-rico: menção ──────────────────────────────────────────────────
+  const ID_A = '11111111-1111-1111-1111-111111111111';
+  const ID_B = '22222222-2222-2222-2222-222222222222';
+  eq('U95/R135: o token da menção carrega nome E id — e colchete no nome não quebra o token',
+     [TR.tokenDeMencao('Davi Voos', ID_A), TR.tokenDeMencao('A[b]', ID_A)],
+     [`@[Davi Voos](user:${ID_A})`, `@[A(b(](user:${ID_A})`]);
+  eq('U95/R135 CRÍTICO: extrairMencoes acha os ids, sem repetir, em minúsculas, e ignora e-mail e "@" solto',
+     TR.extrairMencoes(`oi @[Ana](user:${ID_A}) e @[Bia](user:${ID_B.toUpperCase()}) e @[Ana](user:${ID_A}) e-mail@x e @ solto`),
+     [ID_A, ID_B]);
+  eq('U95/R135: segmentar pinta negrito, itálico e menção, e o resto é texto',
+     TR.segmentar(`a **b** c *d* e @[Eva](user:${ID_A}) f`),
+     [{ tipo: 'texto', texto: 'a ' }, { tipo: 'negrito', texto: 'b' }, { tipo: 'texto', texto: ' c ' },
+      { tipo: 'italico', texto: 'd' }, { tipo: 'texto', texto: ' e ' }, { tipo: 'mencao', texto: 'Eva', userId: ID_A },
+      { tipo: 'texto', texto: ' f' }]);
+  eq('U95/R135: mencaoEmCurso só abre com "@" no começo ou depois de espaço, e devolve o que já foi digitado',
+     [TR.mencaoEmCurso('oi @da', 6), TR.mencaoEmCurso('@', 1), TR.mencaoEmCurso('e-mail@x', 8), TR.mencaoEmCurso('oi @da e', 8)],
+     [{ inicio: 3, consulta: 'da' }, { inicio: 0, consulta: '' }, null, null]);
+  eq('U95/R135: completarMencao troca o "@consulta" pelo token e deixa o cursor depois do espaço',
+     TR.completarMencao('oi @da tudo', 6, 'Davi', ID_A),
+     { texto: `oi @[Davi](user:${ID_A})  tudo`, cursor: 3 + `@[Davi](user:${ID_A}) `.length });
+  eq('U95/R135: o filtro do "@" ignora acento e caixa, e corta no teto',
+     [TR.filtrarPessoasParaMencao([{ nome: 'Rúbia' }, { nome: 'Rubens' }, { nome: 'Ana' }], 'rub').map((p) => p.nome),
+      TR.filtrarPessoasParaMencao([{ nome: 'a' }, { nome: 'b' }, { nome: 'c' }], '', 2).length],
+     [['Rúbia', 'Rubens'], 2]);
+
+  // ── a migration: a mesma regex nos dois lados, o diff, a policy ─────────
+  {
+    const mig = ler95('supabase/migrations/20260913090000_u95_mencoes_e_comentario_do_autor.sql');
+    const tr = ler95('src/lib/texto-rico.ts');
+    const UUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+    eq('U95/R135 CRÍTICO: o banco e o TypeScript leem a menção com a MESMA forma de uuid — divergir aqui é sino que não toca',
+       [mig.includes(UUID), tr.includes(UUID), /@\\\[\[\^\\\]\\n\]\+\\\]\\\(user:/.test(mig)],
+       [true, true, true]);
+    eq('U95/R135 CRÍTICO: a descrição só avisa as menções NOVAS (EXCEPT entre antes e depois) — o autosave grava dezenas de vezes',
+       /v_novas\s*:= ARRAY\(SELECT unnest\(v_depois\) EXCEPT SELECT unnest\(v_antes\)\)/.test(mig)
+       && /AFTER UPDATE OF descricao_problema ON public\.chamados/.test(mig), true);
+    eq('U95/R135: quem foi mencionado no comentário recebe "Você foi mencionado" e NÃO também "Novo comentário"',
+       /AND NOT \(alvo = ANY \(v_mencionados\)\)/.test(mig) && /'Você foi mencionado'/.test(mig), true);
+    eq('U95/R135 CRÍTICO: só o AUTOR apaga, e só COMENTÁRIO — a policy diz as duas coisas',
+       /CREATE POLICY "chamado_eventos_delete_autor" ON public\.chamado_eventos\s*\n\s*FOR DELETE TO authenticated\s*\n\s*USING \(tipo = 'comentario' AND user_id = auth\.uid\(\)\)/.test(mig)
+       && /GRANT DELETE ON public\.chamado_eventos TO authenticated;/.test(mig), true);
+    eq('U95/R135: a migration é idempotente, confere e traz o DESFAZER',
+       [/CREATE OR REPLACE FUNCTION public\.mencoes_em/.test(mig), /DROP POLICY IF EXISTS "chamado_eventos_delete_autor"/.test(mig),
+        (mig.match(/esperado/g) ?? []).length >= 6, /DESFAZER/.test(mig)],
+       [true, true, true, true]);
+  }
+
+  // ── o SeletorDeOpcao e as duas telas ────────────────────────────────────
+  const sel = ler95('src/components/SeletorDeOpcao.tsx');
+  eq('U95/R135: o seletor é o botaoSelecao da R87 (pintado pela coisa escolhida) que abre um listbox em portal',
+     [/botaoSelecao\(!!atual, isLight, atual\?\.cor \?\? null\)/.test(sel), /createPortal\(/.test(sel),
+      /role="listbox"/.test(sel), /role="option"/.test(sel), /aria-haspopup="listbox"/.test(sel)],
+     [true, true, true, true, true]);
+  const di = ler95('src/features/chamados/DetalheInterno.tsx');
+  const diCod = semCom95(di);
+  eq('U95/R135 CRÍTICO: na página da atividade, Status, Classificação, Prioridade, Equipe e Sprint são SELETORES — nenhuma fileira de chips sobrou',
+     [(di.match(/<SeletorDeOpcao/g) ?? []).length, /chip\(chamado\.status === s/.test(diCod), /chip\(chamado\.equipe === e/.test(diCod), /chip\(chamado\.tipo === t/.test(diCod)],
+     [5, false, false, false]);
+  eq('U95/R135: a página tem duas colunas (.detalhe-grid) — o texto na larga, as propriedades na estreita',
+     [/className="detalhe-grid"/.test(di),
+      di.indexOf('<EditorDeDescricao') < di.indexOf('<span style={SEC}>Propriedades</span>'),
+      /\.detalhe-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(300px, 2fr\); \}/.test(ler95('src/styles.css'))],
+     [true, true, true]);
+  eq('U95/R135: responsável e apoio mostram o ROSTO (AvatarCirculo) na página, como no painel',
+     [/iconeEsquerda=\{\(esc\) => esc[\s\S]{0,40}<AvatarCirculo id=\{esc\.valor\}/.test(di),
+      /<AvatarCirculo id=\{pid\} nome=\{nomeDe\(pid\)\}/.test(di)],
+     [true, true]);
+  eq('U95/R135: o autor apaga o próprio comentário nas DUAS telas — a lixeira só aparece para ele, e a exclusão passa por excluirComentario',
+     [/c\.user_id && c\.user_id === userId && \(/.test(di), /excluirComentario\(eventoId\)/.test(di),
+      /c\.user_id && c\.user_id === euId && \(/.test(ler95('src/features/chamados/PainelChamado.tsx')),
+      /excluirComentario\(eventoId\)/.test(ler95('src/features/chamados/PainelChamado.tsx'))],
+     [true, true, true, true]);
+  eq('U95/R135: excluirComentario trata ZERO linhas como recusa — "apaguei" sem apagar seria a mentira que a policy produziria em silêncio',
+     /export async function excluirComentario[\s\S]{0,500}throw new Error\("Só quem escreveu o comentário pode apagá-lo\."\)/.test(ler95('src/features/chamados/data.ts')), true);
+
+  // ── o painel: o <select> nativo saiu das propriedades; o editor entrou ──
+  const pc = ler95('src/features/chamados/PainelChamado.tsx');
+  eq('U95/R135: no painel, Escolha renderiza o SeletorDeOpcao, e o único <select> que sobra é o atalho "+ setor"',
+     [/function Escolha\([\s\S]{0,700}<SeletorDeOpcao/.test(pc), (semCom95(pc).match(/<select/g) ?? []).length],
+     [true, 1]);
+  eq('U95/R135: o painel usa o MESMO editor da página (um componente, não dois) e passa as pessoas para o "@"',
+     [/<EditorDeDescricao/.test(pc), /pessoas=\{pessoasMencao\}/.test(pc), /<TextareaComMencoes/.test(pc)],
+     [true, true, true]);
+
+  // ── o editor ────────────────────────────────────────────────────────────
+  const ed = ler95('src/components/EditorDeDescricao.tsx');
+  eq('U95/R135: o editor NUNCA escreve "[ ]" na tela — o marcador é a caixa do design system (.checklist-check) e o ponto (.lista-ponto)',
+     [/\[ \]/.test(semCom95(ed).replace(/\/\*[\s\S]*?\*\//g, '')), /className="checklist-check"/.test(ed), /className="lista-ponto"/.test(ed)],
+     [false, true, true]);
+  eq('U95/R135: a barra tem o botão de menção, e o editor grava pelo rascunho automático (R90)',
+     [/Icon: AtSign, titulo: "Mencionar alguém", mencao: true/.test(ed), /useRascunhoSalvo\(valor, aoSalvar, chaveReset\)/.test(ed),
+      /export function TextareaComMencoes/.test(ed), /export function SugestoesDeMencao/.test(ed)],
+     [true, true, true, true]);
+  eq('U95/R135: a leitura (TextoComChecklist) pinta menção como chip e lista com ponto — as telas que só leem mostram o mesmo que o editor',
+     [/className="mencao-chip"/.test(ler95('src/components/TextoComChecklist.tsx')), /export function LinhaRica/.test(ler95('src/components/TextoComChecklist.tsx')),
+      /\.mencao-chip \{/.test(ler95('src/styles.css')), /\.lista-ponto \{/.test(ler95('src/styles.css'))],
+     [true, true, true, true]);
+
+  // ── os documentos (regra 7) ─────────────────────────────────────────────
+  const prod95 = ler95('docs/PRODUTO.md');
+  eq('U95 (regra 7): R134 e R135 existem; a U95 está no diário; o plano tem a Início do técnico; o manual fala do seletor e da menção',
+     [['R134', 'R135'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod95)),
+      /^## U95 — /m.test(ler95('docs/PLANO_UNIFICACAO.md')),
+      /Início do técnico/.test(ler95('docs/PLANO_V0.1.md')),
+      /menção/.test(ler95('docs/manual/visao-geral.md')) && /SeletorDeOpcao|seletor/.test(ler95('docs/manual/visao-geral.md'))],
+     [true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

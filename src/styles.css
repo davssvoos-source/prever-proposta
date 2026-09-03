@@ -1147,3 +1147,32 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 @media (min-width: 1024px) {
   .cal-semana { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
+
+/* ── O editor da descrição e a menção (R135, U95) ──────────────────────────
+   Chip de menção, ponto da lista e a linha do editor. As cores vêm dos tokens
+   do tema (--gold-primary / --gold-glow / --text-muted), como o checklist. */
+.mencao-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 7px 1px 5px; border-radius: 999px;
+  background: var(--gold-glow); color: var(--gold-primary);
+  font-weight: 600; line-height: 1.4; vertical-align: baseline; white-space: nowrap;
+}
+.lista-ponto {
+  display: inline-block; width: 6px; height: 6px; border-radius: 3px;
+  background: var(--gold-primary); margin-top: 0.62em; flex-shrink: 0;
+}
+.editor-linha { display: flex; align-items: flex-start; gap: 9px; }
+.editor-linha-vista { cursor: text; min-height: 1.55em; white-space: pre-wrap; word-break: break-word; }
+.mencao-lista {
+  margin: 2px 0 4px; padding: 4px; border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+}
+
+/* ── A página da atividade em duas colunas (R135) ──────────────────────────
+   No desktop o texto ocupa a coluna larga e as propriedades a estreita; no
+   celular empilha — o técnico lê no celular, o gestor edita no computador. */
+.detalhe-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (min-width: 1024px) {
+  .detalhe-grid { grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); }
+}

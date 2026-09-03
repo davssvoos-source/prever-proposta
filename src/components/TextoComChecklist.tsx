@@ -7,16 +7,52 @@
 // Continua TEXTO PURO por baixo: clicar chama `aoMudar` com o texto INTEIRO
 // já com `[ ]`/`[x]` trocado na linha certa — quem grava é quem já grava
 // `descricao_problema` hoje (atualizarChamado). Sem `aoMudar`, é só leitura.
+//
+// R135 (U95): a linha passou a ser pintada por SEGMENTOS (lib/texto-rico.ts):
+// `**negrito**`, `*itálico*` e a MENÇÃO `@[Nome](user:id)` viram negrito,
+// itálico e um chip com o nome — em vez do token cru. A linha de lista
+// (`- item`) ganhou o ponto. É a mesma leitura do editor quando a linha não
+// está em edição, e é o que faz as três telas que leem a descrição (o painel,
+// a página interna e a de campo) mostrarem a mesma coisa.
 
 import { type CSSProperties } from "react";
+import { AtSign } from "lucide-react";
 import {
   ehLinhaChecklist, checklistMarcado, checklistTexto, alternarLinhaChecklist,
 } from "@/lib/edicao-texto";
+import { segmentar, type Segmento } from "@/lib/texto-rico";
 
 interface Props {
   texto: string;
   aoMudar?: (novoTexto: string) => void;
   estilo?: CSSProperties;
+}
+
+/** Os segmentos de uma linha pintados — usado aqui e no editor (linha fora de edição). */
+export function LinhaRica({ texto, tamanhoChip = 12 }: { texto: string; tamanhoChip?: number }) {
+  const segs: Segmento[] = segmentar(texto);
+  return (
+    <>
+      {segs.map((s, i) => {
+        if (s.tipo === "negrito") return <strong key={i} style={{ fontWeight: 700 }}>{s.texto}</strong>;
+        if (s.tipo === "italico") return <em key={i}>{s.texto}</em>;
+        if (s.tipo === "mencao") {
+          return (
+            <span
+              key={i}
+              className="mencao-chip"
+              title={`Menção a ${s.texto}`}
+              style={{ fontSize: tamanhoChip }}
+            >
+              <AtSign size={Math.max(9, tamanhoChip - 2)} />
+              {s.texto}
+            </span>
+          );
+        }
+        return <span key={i}>{s.texto}</span>;
+      })}
+    </>
+  );
 }
 
 export function TextoComChecklist({ texto, aoMudar, estilo }: Props) {
@@ -29,9 +65,17 @@ export function TextoComChecklist({ texto, aoMudar, estilo }: Props) {
     }}>
       {linhas.map((linha, i) => {
         if (!ehLinhaChecklist(linha)) {
-          return linha === ""
-            ? <div key={i} style={{ height: "0.9em" }} />
-            : <div key={i} style={{ whiteSpace: "pre-wrap" }}>{linha}</div>;
+          if (linha === "") return <div key={i} style={{ height: "0.9em" }} />;
+          const item = linha.match(/^- (.*)$/);
+          if (item) {
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 9, whiteSpace: "pre-wrap" }}>
+                <span className="lista-ponto" aria-hidden="true" />
+                <span style={{ flex: 1, minWidth: 0 }}><LinhaRica texto={item[1]} /></span>
+              </div>
+            );
+          }
+          return <div key={i} style={{ whiteSpace: "pre-wrap" }}><LinhaRica texto={linha} /></div>;
         }
         const marcado = checklistMarcado(linha);
         return (
@@ -62,7 +106,7 @@ export function TextoComChecklist({ texto, aoMudar, estilo }: Props) {
               textDecoration: marcado ? "line-through" : "none",
               opacity: marcado ? 0.6 : 1,
             }}>
-              {checklistTexto(linha)}
+              <LinhaRica texto={checklistTexto(linha)} />
             </span>
           </label>
         );

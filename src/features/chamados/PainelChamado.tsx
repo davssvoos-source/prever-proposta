@@ -46,15 +46,9 @@
 // componente, desmontaria e remontaria — e o texto sendo digitado sumiria no
 // meio da frase quando qualquer consulta de fundo voltasse.
 
-import {
-  Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState,
-  type CSSProperties, type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare,
-  Bold, Italic, ListChecks, List, Layers,
-} from "lucide-react";
+import { Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare, Layers, Trash2 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
@@ -62,7 +56,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import { codigoDeErro } from "@/lib/erros";
-import { envolverSelecao, prefixarLinhas } from "@/lib/edicao-texto";
+import { SeletorDeOpcao, type CorDaOpcao } from "@/components/SeletorDeOpcao";
+import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
+import { TextoComChecklist } from "@/components/TextoComChecklist";
+import { supabase } from "@/integrations/supabase/client";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 import { useRascunhoSalvo } from "@/hooks/useRascunhoSalvo";
 import {
@@ -70,7 +67,7 @@ import {
   atualizarChamado, adicionarApoio, removerApoio,
   adicionarClienteChamado, removerClienteChamado,
   adicionarSetorChamado, removerLocalChamado,
-  comentarChamado, mapaDePessoas,
+  comentarChamado, excluirComentario, mapaDePessoas,
   type ChamadoPatch,
 } from "@/features/chamados/data";
 import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
@@ -217,28 +214,23 @@ function Campo({ titulo, estado, children, idAlvo }: {
  * coloridas lado a lado brigariam entre si e com as etiquetas do cabeçalho,
  * que são as que devem ser vistas primeiro.
  */
-function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio, cor }: {
+function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio }: {
   titulo: string; estado?: EstadoCampo; valor: string | null;
-  opcoes: { v: string; t: string }[];
+  opcoes: { v: string; t: string; cor?: CorDaOpcao | null }[];
   aoMudar: (v: string | null) => void;
   vazio?: string;
-  cor?: string;
 }) {
-  const { entrada, textPrimary } = useEstiloCampo();
+  // R135 (U95): era um <select> nativo. Virou o SeletorDeOpcao — um botão
+  // pintado pela cor da coisa escolhida que abre a lista no popover do design
+  // system, o mesmo da página da atividade. Cada opção leva a própria cor.
   return (
     <Campo titulo={titulo} estado={estado}>
-      <select
-        value={valor ?? ""}
-        onChange={(ev) => aoMudar(ev.target.value || null)}
-        style={{
-          ...entrada, cursor: "pointer",
-          color: cor && valor ? cor : textPrimary,
-          fontWeight: cor && valor ? 600 : 500,
-        }}
-      >
-        {vazio !== undefined && <option value="">{vazio}</option>}
-        {opcoes.map((o) => <option key={o.v} value={o.v}>{o.t}</option>)}
-      </select>
+      <SeletorDeOpcao
+        valor={valor}
+        vazio={vazio}
+        opcoes={opcoes.map((o) => ({ valor: o.v, rotulo: o.t, cor: o.cor ?? null }))}
+        aoMudar={aoMudar}
+      />
     </Campo>
   );
 }
@@ -299,152 +291,30 @@ function Etiqueta({ texto, cor, forte }: { texto: string; cor: { dark: string; l
   );
 }
 
-// ── Descrição, com ferramentas básicas de texto ─────────────────────────────
-
-interface BotaoFerramenta {
-  Icon: typeof Bold;
-  titulo: string;
-  aplicar: (valor: string, ini: number, fim: number) => { valor: string; selecaoInicio: number; selecaoFim: number };
-}
-
-const FERRAMENTAS: BotaoFerramenta[] = [
-  { Icon: Bold, titulo: "Negrito",
-    aplicar: (v, i, f) => envolverSelecao(v, i, f, "**", "negrito") },
-  { Icon: Italic, titulo: "Itálico",
-    aplicar: (v, i, f) => envolverSelecao(v, i, f, "*", "itálico") },
-  { Icon: ListChecks, titulo: "Checklist",
-    aplicar: (v, i, f) => prefixarLinhas(v, i, f, "- [ ] ") },
-  { Icon: List, titulo: "Lista",
-    aplicar: (v, i, f) => prefixarLinhas(v, i, f, "- ") },
-];
+// ── Descrição — o editor de blocos (R135) ───────────────────────────────────
 
 /**
- * A descrição com barra de ferramentas — negrito, itálico, checklist, lista
- * (2026-08-22, Davi: "edições básicas de texto").
- *
- * MARKDOWN EM TEXTO PURO, não um editor rico: ver o cabeçalho de
- * lib/edicao-texto.ts. Os botões escrevem `**assim**`/`- [ ] assim` dentro do
- * `<textarea>` de sempre — é sintaxe que qualquer pessoa já reconhece
- * (GitHub, WhatsApp, Notion), e continua sendo texto puro em toda tela que já
- * lê `descricao_problema` hoje.
+ * A descrição com o EDITOR DE BLOCOS (R135, U95): caixa de marcar de verdade
+ * em vez de "[ ]", ponto de lista, negrito/itálico e menção com "@". O
+ * componente mora em components/EditorDeDescricao.tsx — é o MESMO da página da
+ * atividade —, grava sozinho (R90) e o texto continua Markdown puro
+ * (lib/texto-rico.ts): nenhuma tela que lê a descrição hoje muda.
  */
-function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
+function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset, pessoas }: {
   estado?: EstadoCampo; valor: string; aoSalvar: (v: string) => void; chaveReset?: string | null;
+  pessoas: PessoaParaMencao[];
 }) {
-  const est = useEstiloCampo();
-  // U72: autosave com guarda de foco (ver useRascunhoSalvo).
-  const r0 = useRascunhoSalvo(valor, aoSalvar, chaveReset);
-  const v = r0.valor;
-  const setV = r0.mudar;
-  const ref = useRef<HTMLTextAreaElement>(null);
-  // seleção a restaurar DEPOIS do próximo render — o clique no botão muda o
-  // valor controlado, e só depois de o React repintar dá para reposicionar
-  // o cursor no DOM novo
-  const selecaoPendente = useRef<{ inicio: number; fim: number } | null>(null);
-
-  useEffect(() => {
-    if (!selecaoPendente.current || !ref.current) return;
-    const { inicio, fim } = selecaoPendente.current;
-    ref.current.focus();
-    ref.current.setSelectionRange(inicio, fim);
-    selecaoPendente.current = null;
-  }, [v]);
-
-  // caixa que CRESCE com o texto, sem scroll interno (Davi, 2026-08-22:
-  // "remova o scroll interno da caixa de texto"). `useLayoutEffect`, não
-  // `useEffect`: precisa medir e aplicar a altura ANTES da pintura, senão o
-  // usuário vê um flash com a caixa no tamanho antigo. Zera para "auto"
-  // primeiro — sem isso, `scrollHeight` de uma caixa que ENCOLHEU (por
-  // exemplo, apagou um parágrafo) ainda leria a altura antiga, porque
-  // scrollHeight nunca é menor que a altura já aplicada.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [v]);
-
-  function aplicar(f: BotaoFerramenta) {
-    const el = ref.current;
-    if (!el) return;
-    const r = f.aplicar(v, el.selectionStart ?? v.length, el.selectionEnd ?? v.length);
-    // idempotente (clicar Checklist numa linha que já é checklist, por
-    // exemplo) devolve o MESMO valor — se armasse a seleção pendente mesmo
-    // assim, o valor idêntico faria o React pular o re-render (bail-out), o
-    // useEffect ligado a [v] nunca rodaria, e a seleção ficaria PRESA aqui
-    // até a próxima tecla real — que então teria o cursor puxado de volta
-    // pra este ponto velho, digitando fora de ordem sem aviso nenhum
-    // (achado da revisão adversarial de U40, 2026-08-21).
-    if (r.valor === v) return;
-    selecaoPendente.current = { inicio: r.selecaoInicio, fim: r.selecaoFim };
-    setV(r.valor);
-  }
-
   return (
     <Campo titulo="Descrição" estado={estado} idAlvo="painel-descricao-texto">
-      <div style={{
-        border: est.borda, borderRadius: 12, overflow: "hidden", background: est.campoBg,
-      }}>
-        {/* a barra fica DENTRO da borda do campo — lê como parte dele, não
-            como uma fileira de botões soltos acima. Cada botão tem chapa e
-            borda de verdade agora (.ferramenta-botao, styles.css) — Davi,
-            2026-08-22: "um botão de virar checklist ou lista que seja um
-            botão UI com design", não um ícone flutuando sem contorno. O
-            divisor separa formatação de texto (negrito/itálico) de
-            formatação de linha (checklist/lista) — dois grupos, não quatro
-            botões soltos. */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 5, padding: "7px 8px",
-          borderBottom: est.borda,
-        }}>
-          {FERRAMENTAS.map((f, i) => (
-            <Fragment key={f.titulo}>
-              {i === 2 && (
-                <span style={{ width: 1, height: 22, background: "var(--border-color)", flexShrink: 0 }} />
-              )}
-              <button
-                type="button"
-                title={f.titulo}
-                aria-label={f.titulo}
-                className="ferramenta-botao"
-                // mousedown, não click: click chega DEPOIS do blur do
-                // textarea, que já teria apagado selectionStart/End
-                onMouseDown={(e) => { e.preventDefault(); aplicar(f); }}
-                style={{
-                  // 44px, não 30: o alvo de toque mínimo que o resto do painel
-                  // já segue (useEstiloCampo, linha ~87) — o painel abre no
-                  // celular também (achado da revisão adversarial de U40).
-                  width: 44, height: 44,
-                }}
-              >
-                <f.Icon size={16} />
-              </button>
-            </Fragment>
-          ))}
-        </div>
-        <textarea
-          id="painel-descricao-texto"
-          ref={ref}
-          value={v}
-          placeholder="O que precisa ser feito, o que já se sabe…"
-          onChange={(e) => setV(e.target.value)}
-          onFocus={r0.aoFocar}
-          onBlur={r0.aoDesfocar}
-          style={{
-            width: "100%", boxSizing: "border-box", display: "block",
-            fontFamily: FONT, fontSize: 14, fontWeight: 500, color: est.textPrimary,
-            background: "transparent", border: "none", outline: "none",
-            // a caixa cresce com o texto (useLayoutEffect acima) — por isso
-            // `resize: none` (arrastar bugaria contra o auto-ajuste no
-            // próximo caractere) e `overflow: hidden` (sem isso o navegador
-            // ainda mostra a barra de rolagem interna por 1 frame antes do
-            // JS medir). minHeight seguindo o piso visual de 5 linhas que a
-            // caixa sempre teve — encolher além disso pareceria um bug.
-            padding: "11px 13px", lineHeight: 1.55, resize: "none",
-            overflow: "hidden", minHeight: 132,
-          }}
-        />
-      </div>
+      <EditorDeDescricao
+        idAlvo="painel-descricao-texto"
+        valor={valor}
+        aoSalvar={aoSalvar}
+        chaveReset={chaveReset}
+        pessoas={pessoas}
+        minAltura={160}
+        placeholder="O que precisa ser feito, o que já se sabe… Digite @ para mencionar alguém."
+      />
     </Campo>
   );
 }
@@ -459,8 +329,10 @@ function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset }: {
  * Ordem ANTIGO → NOVO, com o campo de escrever no FIM — é como se lê uma
  * conversa, e é o padrão que a própria tela de detalhe já usava.
  */
-function Comentarios({ chamadoId, pessoasPorId }: {
-  chamadoId: string; pessoasPorId: Record<string, { nome: string; avatar_url: string | null }>;
+function Comentarios({ chamadoId, pessoasPorId, pessoas }: {
+  chamadoId: string;
+  pessoasPorId: Record<string, { nome: string; avatar_url: string | null }>;
+  pessoas: PessoaParaMencao[];
 }) {
   const est = useEstiloCampo();
   const qc = useQueryClient();
@@ -468,6 +340,12 @@ function Comentarios({ chamadoId, pessoasPorId }: {
   const comentarios = useMemo(() => eventos.filter((e) => e.tipo === "comentario"), [eventos]);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  // quem sou eu — só para mostrar a lixeira nos MEUS comentários (R135); quem
+  // decide de verdade é a policy de DELETE do banco
+  const [euId, setEuId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEuId(data.user?.id ?? null));
+  }, []);
 
   const enviar = useMutation({
     mutationFn: async () => {
@@ -481,6 +359,12 @@ function Comentarios({ chamadoId, pessoasPorId }: {
       qc.invalidateQueries({ queryKey: ["chamado-eventos", chamadoId] });
     },
     onError: (e: Error) => setErro(codigoDeErro(e, "/dashboard")),
+  });
+
+  const apagar = useMutation({
+    mutationFn: async (eventoId: string) => excluirComentario(eventoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chamado-eventos", chamadoId] }),
+    onError: (e: Error) => setErro(e.message),
   });
 
   return (
@@ -516,18 +400,34 @@ function Comentarios({ chamadoId, pessoasPorId }: {
                   )}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: est.textPrimary }}>
-                    {c.user_id ? pessoasPorId[c.user_id]?.nome ?? "Alguém" : "Alguém"}
-                    <span style={{ fontWeight: 400, color: est.textSecondary }}>
-                      {" · "}{tempoRelativo(c.created_at)}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 11.5, color: est.textPrimary }}>
+                      {c.user_id ? pessoasPorId[c.user_id]?.nome ?? "Alguém" : "Alguém"}
+                      <span style={{ fontWeight: 400, color: est.textSecondary }}>
+                        {" · "}{tempoRelativo(c.created_at)}
+                      </span>
                     </span>
+                    {/* R135: só quem escreveu vê a lixeira — e só a policy apaga */}
+                    {c.user_id && c.user_id === euId && (
+                      <button
+                        onClick={() => { if (confirm("Apagar este comentário?")) apagar.mutate(c.id); }}
+                        disabled={apagar.isPending}
+                        title="Apagar meu comentário"
+                        aria-label="Apagar meu comentário"
+                        style={{
+                          marginLeft: "auto", background: "transparent", border: "none", cursor: "pointer",
+                          color: est.textSecondary, display: "flex", padding: 2,
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
-                  <div style={{
-                    fontFamily: FONT, fontWeight: 400, fontSize: 13.5, color: est.textPrimary,
-                    lineHeight: 1.55, whiteSpace: "pre-wrap", marginTop: 2,
-                  }}>
-                    {c.descricao}
-                  </div>
+                  {/* o texto pintado: menção vira chip, negrito é negrito */}
+                  <TextoComChecklist
+                    texto={c.descricao ?? ""}
+                    estilo={{ fontSize: 13.5, color: est.textPrimary, lineHeight: 1.55, marginTop: 2, gap: 2 }}
+                  />
                 </div>
               </div>
             ))}
@@ -536,9 +436,11 @@ function Comentarios({ chamadoId, pessoasPorId }: {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 44px", gap: 8, alignItems: "start" }}>
           <div>
-            <textarea
-              value={texto}
-              onChange={(e) => { setTexto(e.target.value); setErro(null); }}
+            <TextareaComMencoes
+              valor={texto}
+              aoMudar={(v) => { setTexto(v); setErro(null); }}
+              pessoas={pessoas}
+              rows={2}
               onKeyDown={(e) => {
                 // Enter envia, Shift+Enter quebra linha — o padrão de
                 // qualquer campo de comentário/chat
@@ -552,9 +454,8 @@ function Comentarios({ chamadoId, pessoasPorId }: {
                   enviar.mutate();
                 }
               }}
-              placeholder="Escrever um comentário… (Enter envia)"
-              rows={2}
-              style={{ ...est.entrada, resize: "vertical", lineHeight: 1.5, minHeight: 44 }}
+              placeholder="Escrever um comentário… (@ menciona, Enter envia)"
+              estilo={{ ...est.entrada, resize: "vertical", lineHeight: 1.5, minHeight: 44 }}
             />
             {erro && (
               <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: est.vermelho }}>
@@ -732,6 +633,11 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     [pessoas],
   );
   const pessoasPorId = useMemo(() => mapaDePessoas(pessoas as any[]), [pessoas]);
+  // R135: quem pode ser mencionado com "@" — todo mundo ativo, em ordem
+  const pessoasMencao = useMemo<PessoaParaMencao[]>(
+    () => pessoasOrdenadas.map((p) => ({ id: p.id, nome: p.nome, avatar_url: p.avatar_url ?? null })),
+    [pessoasOrdenadas],
+  );
   const clientesOrdenados = useMemo(
     () => [...clientes].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
     [clientes],
@@ -1102,6 +1008,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
               <DescricaoComFerramentas
                 estado={estados.descricao_problema}
                 chaveReset={chamadoId}
+                pessoas={pessoasMencao}
                 valor={chamado.descricao_problema ?? ""}
                 aoSalvar={(v) => salvar.mutate({
                   campo: "descricao_problema", patch: { descricao_problema: v || null },
@@ -1126,36 +1033,31 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   vazio="— sem tipo —"
                   // os tipos seguem a natureza: oferecer "corretiva" num chamado
                   // interno criaria um registro que nenhuma tela sabe ler
-                  opcoes={tiposDaNatureza(natureza).map((t) => ({ v: t, t: TIPO_LABEL[t] }))}
-                  cor={tipo && TIPO_CORES[tipo] ? (isLight ? TIPO_CORES[tipo].light : TIPO_CORES[tipo].dark) : undefined}
+                  opcoes={tiposDaNatureza(natureza).map((t) => ({ v: t, t: TIPO_LABEL[t], cor: TIPO_CORES[t] ?? null }))}
                   aoMudar={(v) => salvar.mutate({ campo: "tipo", patch: { tipo: v as any } })}
                 />
                 <Escolha
                   titulo="Status" estado={estados.status} valor={chamado.status ?? null}
-                  opcoes={statusDaNatureza(natureza).map((s) => ({ v: s, t: chamadoStatusInfo(s).label }))}
-                  cor={info ? (isLight ? info.colorLight : info.color) : undefined}
+                  opcoes={statusDaNatureza(natureza).map((s) => {
+                    const i = chamadoStatusInfo(s);
+                    return { v: s, t: i.label, cor: { dark: i.color, light: i.colorLight, bg: i.bg, border: i.border } };
+                  })}
                   aoMudar={(v) => salvar.mutate({ campo: "status", patch: { status: v as any } })}
                 />
                 <Escolha
                   titulo="Prioridade" estado={estados.prioridade} valor={chamado.prioridade ?? null}
                   vazio="— sem prioridade —"
                   opcoes={(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[])
-                    .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p] }))}
-                  cor={prio && PRIORIDADE_CORES[prio] ? (isLight ? PRIORIDADE_CORES[prio].light : PRIORIDADE_CORES[prio].dark) : undefined}
+                    .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null }))}
                   aoMudar={(v) => salvar.mutate({ campo: "prioridade", patch: { prioridade: v as any } })}
                 />
                 <Escolha
                   titulo="Equipe" estado={estados.equipe} valor={chamado.equipe ?? null}
                   vazio="— sem equipe —"
                   opcoes={(Object.keys(EQUIPE_LABEL) as Equipe[])
-                    .map((e) => ({ v: e, t: EQUIPE_LABEL[e] }))}
-                  // U72: a equipe era o único seletor sem cor, mesmo com
-                  // EQUIPE_CORES pronto desde sempre — ficava cinza ao lado de
-                  // status, tipo e prioridade coloridos, como se não fosse da
-                  // mesma família de escolha.
-                  cor={chamado.equipe
-                    ? (isLight ? equipeCores(chamado.equipe).light : equipeCores(chamado.equipe).dark)
-                    : undefined}
+                    // U72: a equipe era o único seletor sem cor — agora cada
+                    // opção leva a cor da própria equipe (EQUIPE_CORES)
+                    .map((e) => ({ v: e, t: EQUIPE_LABEL[e], cor: equipeCores(e) }))}
                   aoMudar={(v) => salvar.mutate({ campo: "equipe", patch: { equipe: v as any } })}
                 />
               </div>
@@ -1231,7 +1133,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
 
               {/* COMENTÁRIOS — depois do último campo (2026-08-22, Davi):
                   discussão SOBRE o chamado, não uma propriedade dele. */}
-              <Comentarios chamadoId={chamado.id} pessoasPorId={pessoasPorId} />
+              <Comentarios chamadoId={chamado.id} pessoasPorId={pessoasPorId} pessoas={pessoasMencao} />
             </div>
           </div>
         )}
