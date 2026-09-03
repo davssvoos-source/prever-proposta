@@ -128,6 +128,33 @@ export const PRISMA = {
 } as const;
 
 /**
+ * Mistura `hex` com `alvo` (branco ou preto) por um peso 0–1. Existe só para
+ * o degradê da borda dos cards de atividade (R136) — clarear ou escurecer UMA
+ * cor, sem precisar de uma rampa tonal inteira para cada uma (o azul da
+ * PRISMA não tem uma — ver a nota "fora da identidade", acima).
+ */
+export function misturar(hex: string, alvo: string, peso: number): string {
+  const canais = (h: string): [number, number, number] => {
+    const s = h.replace('#', '');
+    return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+  };
+  const [r1, g1, b1] = canais(hex);
+  const [r2, g2, b2] = canais(alvo);
+  const m = (a: number, b: number) => Math.round(a + (b - a) * peso).toString(16).padStart(2, '0');
+  return `#${m(r1, r2)}${m(g1, g2)}${m(b1, b2)}`;
+}
+
+/**
+ * Borda em degradê claro→escuro da MESMA cor estratégica (R136, Davi: "as
+ * bordas deverão ser da cor mais clara para a mais escura em degradê"). Três
+ * paradas — clara, a cor pura, escura —, no mesmo ângulo do degradê da marca
+ * (135deg, `GRAD_PRIMARIA`).
+ */
+export function degradeDeBorda(hex: string): string {
+  return `linear-gradient(135deg, ${misturar(hex, '#ffffff', 0.5)}, ${hex}, ${misturar(hex, '#000000', 0.32)})`;
+}
+
+/**
  * A RAMPA — o degradê amostrado em 9 passos, que é o que os gráficos usam.
  *
  * v7 (2026-08-20): a faixa de 40% é ANCORADA nos amarelos do botão da marca —

@@ -5,15 +5,23 @@
 // __root.tsx), então texto pequeno demais não tem conserto do lado do usuário —
 // e quem lê isto está no sol, com luva, brilho reduzido pelo calor.
 //
-// COR DE FUNDO = PRAZO (2026-08-20). O card inteiro responde "quando vence?"
-// antes de a pessoa ler uma palavra: amarelo esta semana, azul dali em diante,
-// vermelho em atraso. As três cores saem do PRISMA, a paleta do degradê.
+// COR ESTRATÉGICA SÓ NA BORDA (R136, 2026-09-03 — revoga a v2026-08-20 desta
+// mesma tela, que pintava o FUNDO inteiro). Davi, sobre a página Início: "os
+// cards devem ter o fundo escuro no tema escuro e claro no tema claro, com
+// SOMENTE a borda na cor estratégica (vermelho, amarelo, azul ou verde), e as
+// bordas deverão ser da cor mais clara para a mais escura em degradê, além de
+// ter um glow levíssimo no contorno". O fundo volta a ser a superfície neutra
+// de `card()`; é a BORDA que responde "quando vence?" — vermelho em atraso,
+// amarelo esta semana, azul dali em diante — e ganhou um quarto estado: verde
+// quando a coluna é "concluído", o mesmo tom oficial de "terminado com
+// sucesso" que o resto do app já usa (PRISMA.verde). Sem faixa de prazo e sem
+// conclusão, a borda fica neutra.
 
 import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA } from "@/lib/paleta";
+import { PRISMA, degradeDeBorda } from "@/lib/paleta";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
   BOLA_LABEL, ALERTA_LABEL, faixaPrazo,
@@ -23,12 +31,13 @@ import {
 export const PISO_TIPO = 11;
 
 /**
- * Chip de rótulo. `sobreFaixa` troca o véu colorido por um cinza translúcido:
- * num card amarelo, um chip amarelo some, e um chip azul briga. A cor da
- * categoria sobrevive no TEXTO, que é onde ela precisa estar — o fundo do chip
- * volta a ser só um suporte de leitura.
+ * Chip de rótulo — cor própria sempre, texto sobre o véu (`bg`) da categoria.
+ * Até a R136 o fundo do card podia levar um véu colorido de prazo, e um chip
+ * da mesma cor sumia nele ali dentro; o card agora é sempre a superfície
+ * neutra (R136), então o chip não precisa mais fingir cinza para não brigar
+ * com o fundo.
  */
-export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSProperties {
+export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
   return {
     padding: "3px 9px",
     borderRadius: 999,
@@ -37,9 +46,7 @@ export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSPr
     fontSize: PISO_TIPO,
     letterSpacing: "0.04em",
     color: isLight ? c.light : c.dark,
-    background: sobreFaixa
-      ? (isLight ? "rgba(255,255,255,0.62)" : "rgba(0,0,0,0.24)")
-      : c.bg,
+    background: c.bg,
     whiteSpace: "nowrap",
   };
 }
@@ -55,23 +62,26 @@ export function chipStyle(c: Cores, isLight: boolean, sobreFaixa = false): CSSPr
 const LOCAIS_NO_CARD = 2;
 
 /**
- * A pintura de cada faixa. O véu do tema claro é mais forte no amarelo e mais
- * fraco no vermelho e no azul de propósito: sobre branco, amarelo em 8% não
- * aparece, e vermelho em 16% vira alarme. O `glow` é uma sombra na própria cor
- * — é o que faz as três faixas se lerem de longe, varrendo o quadro.
+ * A cor estratégica de cada card — sempre uma amostra literal do PRISMA:
+ * vermelho, amarelo e azul são as pontas e o meio do degradê da marca (v6); o
+ * quarto estado, verde, é o tom oficial de "terminado com sucesso" que 17+
+ * telas do app já usam (ver o comentário de PRISMA.verde em paleta.ts). Nunca
+ * duas fontes ao mesmo tempo — prazo vence conclusão, e as duas vencem o
+ * neutro.
  */
-const FAIXA: Record<Exclude<FaixaPrazo, null>, {
-  rgb: string; bgDark: number; bgLight: number; brDark: number; brLight: number;
-}> = {
-  // As três cores são LITERALMENTE as pontas e o meio do degradê (v6), não
-  // aproximações dele: PRISMA.vermelho, PRISMA.amarelo e PRISMA.azul. O
-  // vermelho é o mesmo dos botões do sistema.
-  atraso:      { rgb: "241,120,129", bgDark: 0.16, bgLight: 0.075, brDark: 0.34, brLight: 0.22 },
-  // o amarelo — 40% do degradê, o principal, e a faixa que decide o dia
-  esta_semana: { rgb: "248,200,17",  bgDark: 0.15, bgLight: 0.20,  brDark: 0.32, brLight: 0.34 },
-  // o azul da ponta fria: presente, mas sem pressa
-  adiante:     { rgb: "79,148,233",  bgDark: 0.17, bgLight: 0.10,  brDark: 0.34, brLight: 0.22 },
+type CorEstrategica = "atraso" | "esta_semana" | "adiante" | "concluido";
+
+const PRISMA_DA_COR: Record<CorEstrategica, keyof typeof PRISMA> = {
+  atraso: "vermelho",
+  esta_semana: "amarelo",
+  adiante: "azul",
+  concluido: "verde",
 };
+
+function corEstrategicaDe(a: Atividade, faixa: FaixaPrazo): CorEstrategica | null {
+  if (faixa) return faixa;
+  return a.coluna === "concluido" ? "concluido" : null;
+}
 
 interface Props {
   a: Atividade;
@@ -90,30 +100,45 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const ambar = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
 
   const faixa = faixaPrazo(a);
-  const f = faixa ? FAIXA[faixa] : null;
+  const corChave = corEstrategicaDe(a, faixa);
+  const p = corChave ? PRISMA[PRISMA_DA_COR[corChave]] : null;
+  const corBase = p ? (isLight ? p.light : p.dark) : null;
 
-  // v4 neo-minimalista: superfície sólida, canto redondo, sombra leve. Sobre
-  // ela, quando há prazo, o véu da faixa + um halo na mesma cor.
-  const CARD: CSSProperties = {
-    ...card(isLight),
-    ...(f ? {
-      background: `rgba(${f.rgb},${isLight ? f.bgLight : f.bgDark})`,
-      border: `1px solid rgba(${f.rgb},${isLight ? f.brLight : f.brDark})`,
-      boxShadow: isLight
-        ? `0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(${f.rgb},0.16)`
-        : `0 1px 2px rgba(0,0,0,0.50), 0 8px 26px rgba(${f.rgb},0.14)`,
-    } : {}),
-    borderRadius: 16,
-    padding: "12px 14px",
-    width: "100%",
-    textAlign: "left",
-    cursor: "pointer",
-    display: "block",
-    // alvo confortável mesmo com luva
-    minHeight: 76,
-  };
-
-  const emFaixa = !!f;
+  // v5 (R136): o fundo é sempre a superfície neutra de `card()` — escura no
+  // tema escuro, clara no tema claro. Só a BORDA carrega a cor estratégica, em
+  // degradê claro→escuro (`degradeDeBorda`), com um glow levíssimo por fora
+  // (blur largo, o `bg` do próprio PRISMA — já é um véu de 14%, não precisou
+  // de um número novo). O truque de duas camadas de `background` (uma sólida
+  // em padding-box, o degradê em border-box) é o único jeito de um `border`
+  // ter gradiente em CSS puro — por isso não dá para só espalhar
+  // `card(isLight)` quando há cor: o `background` sólido dele tomaria o lugar
+  // das duas camadas.
+  const cardBase = card(isLight);
+  const CARD: CSSProperties = corBase && p
+    ? {
+        backgroundImage: `linear-gradient(${cardBase.background}, ${cardBase.background}), ${degradeDeBorda(corBase)}`,
+        backgroundOrigin: "border-box",
+        backgroundClip: "padding-box, border-box",
+        border: "1.5px solid transparent",
+        borderRadius: 16,
+        boxShadow: `${cardBase.boxShadow}, 0 0 16px ${p.bg}`,
+        padding: "12px 14px",
+        width: "100%",
+        textAlign: "left",
+        cursor: "pointer",
+        display: "block",
+        minHeight: 76,
+      }
+    : {
+        ...cardBase,
+        borderRadius: 16,
+        padding: "12px 14px",
+        width: "100%",
+        textAlign: "left",
+        cursor: "pointer",
+        display: "block",
+        minHeight: 76,
+      };
 
   // `div role="button"` e NÃO `<button>` (U72). O card do quadro fica dentro
   // de um wrapper `draggable`, e Firefox e Safari não iniciam o arrasto do
@@ -148,7 +173,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           </div>
         </div>
         {mostrarStatus && (
-          <span style={{ ...chipStyle(a.statusCor, isLight, emFaixa), flexShrink: 0 }}>
+          <span style={{ ...chipStyle(a.statusCor, isLight), flexShrink: 0 }}>
             {a.statusLabel}
           </span>
         )}
@@ -169,7 +194,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
         {/* categoria com cor própria — o "strategic color" das referências */}
         {a.tipoLabel && a.tipoCor && (
-          <span style={chipStyle(a.tipoCor, isLight, emFaixa)}>{a.tipoLabel}</span>
+          <span style={chipStyle(a.tipoCor, isLight)}>{a.tipoLabel}</span>
         )}
         {/* A etiqueta "Visita técnica" que existia aqui saiu (2026-08-22,
             Davi): era redundante com o chip de tipo logo acima — toda visita
@@ -182,9 +207,9 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
             No quadro, "de qual prédio é isto?" é a segunda pergunta depois de
             "o que é isto?" — e a resposta precisa ter o mesmo peso visual das
             outras etiquetas para ser encontrada varrendo a coluna. O chip usa
-            o cinza translúcido do `sobreFaixa` sempre: a cor aqui identifica
-            categoria e prioridade, e um terceiro tom colorido brigaria com as
-            duas sem acrescentar significado. */}
+            sempre um cinza translúcido próprio (não `chipStyle`): a cor aqui
+            identifica categoria e prioridade, e um terceiro tom colorido
+            brigaria com as duas sem acrescentar significado. */}
         {/* U71: virou LISTA. Davi, 2026-08-26: "cada card deve conter do(s)
             local(is) referente(s) a aquela atividade". O teto de LOCAIS_NO_CARD
             existe porque a coluna tem 260px — uma atividade de dez prédios
@@ -227,11 +252,11 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         )}
 
         {a.prioridadeLabel && a.prioridadeCor && (
-          <span style={chipStyle(a.prioridadeCor, isLight, emFaixa)}>{a.prioridadeLabel}</span>
+          <span style={chipStyle(a.prioridadeCor, isLight)}>{a.prioridadeLabel}</span>
         )}
 
         {a.compra && (
-          <span style={chipStyle(PRISMA.pessego, isLight, emFaixa)}>
+          <span style={chipStyle(PRISMA.pessego, isLight)}>
             {a.compra.situacaoLabel}
           </span>
         )}

@@ -43,11 +43,13 @@ Timestamps que os indicadores usam: `created_at` (abriu), `iniciada_em`
 
 Kanban + lista na `/dashboard`, modelo único em
 `src/features/atividades/modelo.ts` — chamados de campo, demandas internas e
-propostas juntos, com prioridade, número e cor de fundo por **faixa de prazo**
-(`faixaPrazo()`): amarelo = vence nesta semana, azul = semana seguinte em
-diante, vermelho = atrasado. O corte da faixa é o **fim da semana corrente**,
-não "daqui a 7 dias" — errar isso pinta de azul card que vence amanhã (há
-asserção cobrindo).
+propostas juntos, com prioridade, número e cor de BORDA (fundo é sempre a
+superfície neutra do tema — R136) por **faixa de prazo** (`faixaPrazo()`):
+amarelo = vence nesta semana, azul = semana seguinte em diante, vermelho =
+atrasado, verde = coluna Concluído. O corte da faixa é o **fim da semana
+corrente**, não "daqui a 7 dias" — errar isso pinta de azul card que vence
+amanhã (há asserção cobrindo). A borda é um degradê claro→escuro da mesma cor,
+com um glow levíssimo no contorno (`degradeDeBorda`, em `lib/paleta.ts`).
 
 A antiga lista `/chamados` morreu (R31). O detalhe continua em
 `/chamados/$id` (corpo de campo ou interno conforme a natureza).

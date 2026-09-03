@@ -9333,3 +9333,98 @@ uma comparação com um valor que `situacaoPrazo` nunca devolveu (o certo é
 `estourado`) — ou seja, a cor de atraso do prazo na página interna nunca acendia.
 Última regra: **R135**. **Migration a rodar: U95** (aditiva; sem ela a menção não
 avisa e apagar comentário recusa).
+
+## U96 — A borda em degradê da Início: a cor estratégica sai do fundo (R136)
+
+Davi, depois de rodar a U95, olhando a página Início: "quero uma alteracao no
+design dos cards da pagina INICIO do sistema, os cards devem ter o fundo
+escuro no tema escuro e claro no tema claro, com SOMENTE a borda na cor
+estrategica (vermelho, amarelo, azul ou verde), e as bordas deverao ser da cor
+mais clara para a mais escura em degrade, alem de ter um glow levissimo no
+contorno das atividades." Depois confirmou a régua, sem eu perguntar:
+"vermelho para atividades atrasadas, azul para atividades no prazo para depois
+dessa semana, amarelo para prazo essa semana, verde para concluidas." É a
+R136, e o alvo é um só: `CardAtividade.tsx` — o card que `Quadro.tsx` desenha
+por status na Início; `Quadro.tsx` em si não tem estilo de card próprio, só
+empilha o componente, então mexer num arquivo bastou.
+
+**O que saiu.** Desde 2026-08-20 o card respondia "quando vence?" com um véu
+de cor no FUNDO inteiro — amarelo, azul ou vermelho translúcido sobre a
+superfície. Saiu por completo. O fundo volta a ser `card(isLight)` puro:
+`#141416` no escuro, branco no claro — o mesmo de qualquer outro card do
+sistema.
+
+**O que entrou.** A cor estratégica — a mesma informação de antes, prazo —
+mora só na BORDA agora, e não é mais um tom sólido: é um degradê de três
+paradas (clara → a cor pura → escura), no mesmo ângulo do degradê da marca
+(135deg, `GRAD_PRIMARIA`). Não existe gradiente em `border` em CSS puro — o
+jeito é o truque de duas camadas de `background` (uma sólida em padding-box,
+o degradê em border-box, com `border: 1.5px solid transparent`), que é o que
+`CardAtividade` monta agora quando há cor. Por fora, um glow: `box-shadow` com
+blur largo na MESMA cor, reaproveitando o `.bg` que a `cor()` de `paleta.ts`
+já calcula (14% de alfa) — não precisou de um número novo, e o próprio blur
+já dilui isso a ponto de ficar "levíssimo", como pedido.
+
+**A quarta cor veio de graça.** O Davi pediu quatro — vermelho, amarelo, azul,
+verde —, e o código só tinha três (`faixaPrazo`: atraso/esta-semana/adiante).
+O verde não foi invenção: é o mesmo tom que `PRISMA.verde` já documenta como
+"o tom oficial da casa para terminado com sucesso", o mesmo que
+`chamadoStatusInfo('concluido').color` usa na bolinha de status e no
+cabeçalho da coluna Concluído do próprio quadro (era só ligar os pontos). O
+card ganhou um quarto estado — `corEstrategicaDe`, local em
+`CardAtividade.tsx` — que só olha `a.coluna === "concluido"` quando NÃO há
+faixa de prazo: prazo sempre vence conclusão, as duas cores nunca competem
+pelo mesmo card. `faixaPrazo()` em si **não mudou uma linha** — ela é sobre
+"quando vence", tem os próprios testes, e só é consumida aqui; misturar
+conclusão nela teria corrompido o que o nome já promete a quem a lê noutro
+lugar do código (não achei outro consumidor hoje, mas o nome pararia de dizer
+a verdade amanhã).
+
+**`misturar`/`degradeDeBorda`, novas em `paleta.ts`.** Clarear ou escurecer
+UMA cor por mistura com branco/preto — sem precisar de uma rampa tonal
+inteira por cor, porque o azul da PRISMA não tem uma (a nota do arquivo já
+explica: "fora da identidade"). É lógica pura, com teste de verdade via
+`carregar()` — a aritmética pinada em três pesos (0, 1 e o cinza médio exato
+de preto↔branco a 0.5) e o formato do degradê pinado por composição (as
+mesmas duas chamadas a `misturar`, na mesma ordem).
+
+**O chip perdeu o disfarce.** `chipStyle` tinha um `sobreFaixa` que trocava o
+fundo colorido do chip por cinza translúcido quando o card por baixo também
+era colorido — para o chip não desaparecer dentro do próprio fundo. Sem fundo
+colorido, a razão de existir sumiu: o parâmetro saiu inteiro (não só ficou sem
+uso), e os quatro chips do card (status, tipo, prioridade, compra) voltam a
+usar a cor própria sempre, como já faziam antes de 20/08.
+
+**Visto antes de mexer no código.** Gerei um preview estático fora do app —
+carregando o `paleta.ts` de verdade com a mesma técnica do `carregar()` do
+verificador, só que num script descartável — para olhar os cinco estados (as
+quatro cores e o neutro) nos dois temas antes de considerar pronto. O degradê
+e o glow aparecem, discretos, exatamente como pedido.
+
+### O que eu recusei
+
+- **Não toquei em `Quadro.tsx` nem no cabeçalho das colunas.** O pedido foi
+  sobre os cards, não sobre a bolinha e o rótulo de cada coluna — que já eram
+  coloridos e não fazem parte desta mudança.
+- **Não criei uma quinta cor.** O Davi listou quatro; "cancelado" e qualquer
+  outro estado sem prazo e sem conclusão continuam na borda neutra de sempre,
+  como já ficavam sem faixa antes da R136.
+- **Não usei `color-mix()` do CSS.** Resolveria o mesmo problema com menos
+  código, mas é uma função que este repositório ainda não usa em lugar
+  nenhum; `misturar` é aritmética simples, testável de verdade por
+  `carregar()`, sem depender de o navegador entender uma sintaxe nova.
+
+### O que a verificação pegou
+
+Nada no código — as 15 asserções novas sobre `paleta.ts` e `CardAtividade.tsx`
+passaram de primeira. A única que falhou na primeira rodada foi a própria
+"regra 7" (o documento existe): eu ainda não tinha escrito ESTA entrada do
+diário quando rodei a primeira vez — o verificador cobra a própria disciplina
+do processo, não só o código.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2746 passaram, 0 falharam** (16
+novas). `npx vite build` → completa. `npx tsc --noEmit` → **57**, sem mudança
+(R136 é CSS e uma função pura, nenhum tipo novo em jogo). Última regra:
+**R136**. Sem migration — R136 não toca o banco.

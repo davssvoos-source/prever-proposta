@@ -16414,5 +16414,72 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true]);
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U96 — R136: nos cards da Início, a cor estratégica sai do fundo e vai para
+// a borda — degradê claro→escuro, glow levíssimo, quarto estado (concluído).
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs96 = require('fs');
+  const PAL96 = carregar('src/lib/paleta.ts');
+  const ler96 = (a) => fs96.readFileSync(a, 'utf8');
+
+  // ── misturar: a aritmética pura ──────────────────────────────────────────
+  eq('U96/R136: misturar com peso 0 devolve a cor original (minúscula)',
+     PAL96.misturar('#4F94E9', '#ffffff', 0), '#4f94e9');
+  eq('U96/R136: misturar com peso 1 devolve o alvo inteiro',
+     PAL96.misturar('#4F94E9', '#ffffff', 1), '#ffffff');
+  eq('U96/R136: misturar preto↔branco a 0.5 é o cinza médio exato (127.5 arredonda para cima)',
+     PAL96.misturar('#000000', '#ffffff', 0.5), '#808080');
+  eq('U96/R136: as 4 cores estratégicas (vermelho/amarelo/azul/verde) existem de verdade no PRISMA',
+     ['vermelho', 'amarelo', 'azul', 'verde'].every((k) => !!PAL96.PRISMA[k]), true);
+
+  // ── degradeDeBorda: clara→cor→escura, 135deg, as mesmas duas chamadas a misturar ──
+  eq('U96/R136: degradeDeBorda é um degradê de 3 paradas — clara (branco 50%), a cor pura, escura (preto 32%) — no ângulo do GRAD_PRIMARIA',
+     PAL96.degradeDeBorda('#4F94E9'),
+     `linear-gradient(135deg, ${PAL96.misturar('#4F94E9', '#ffffff', 0.5)}, #4F94E9, ${PAL96.misturar('#4F94E9', '#000000', 0.32)})`);
+
+  // ── CardAtividade: fundo neutro sempre, cor só na borda ──────────────────
+  const ca96 = ler96('src/features/home/CardAtividade.tsx');
+  eq('CRÍTICO (R136): o card não pinta mais o FUNDO por prazo — o padrão antigo (background: rgba com f.rgb) sumiu do arquivo',
+     /background: `rgba\(\$\{f\.rgb\}/.test(ca96), false);
+  eq('U96/R136: quando há cor estratégica, o fundo continua a superfície NEUTRA do tema (card(isLight).background) — é a BORDA que leva o degradê',
+     /backgroundImage: `linear-gradient\(\$\{cardBase\.background\}, \$\{cardBase\.background\}\), \$\{degradeDeBorda\(corBase\)\}`,/.test(ca96), true);
+  eq('U96/R136: o truque de borda em degradê usa duas camadas de background (padding-box sólido, border-box com o degradê) — único jeito de gradiente em `border` sem SVG/border-image',
+     [/backgroundOrigin: "border-box"/.test(ca96), /backgroundClip: "padding-box, border-box"/.test(ca96), /border: "1\.5px solid transparent"/.test(ca96)],
+     [true, true, true]);
+  eq('U96/R136: o glow reaproveita o `.bg` que a PRISMA já calcula (14% de alfa) — nenhum alfa novo inventado, e por isso fica "levíssimo"',
+     /boxShadow: `\$\{cardBase\.boxShadow\}, 0 0 16px \$\{p\.bg\}`,/.test(ca96), true);
+  eq('U96/R136: sem cor estratégica, o card cai de volta no card(isLight) puro — nada de borda transparente sobrando',
+     /: \{\s*\n\s*\.\.\.cardBase,\s*\n\s*borderRadius: 16,/.test(ca96), true);
+
+  // ── o quarto estado: concluído é verde, e prazo sempre vence conclusão ───
+  eq('CRÍTICO (R136): a cor estratégica tem exatamente as 4 chaves que o Davi citou, cada uma na amostra certa do PRISMA',
+     /const PRISMA_DA_COR: Record<CorEstrategica, keyof typeof PRISMA> = \{\s*\n\s*atraso: "vermelho",\s*\n\s*esta_semana: "amarelo",\s*\n\s*adiante: "azul",\s*\n\s*concluido: "verde",\s*\n\s*\};/.test(ca96), true);
+  eq('U96/R136: concluído só entra quando NÃO há faixa de prazo — prazo vence conclusão, nunca as duas cores ao mesmo tempo',
+     /function corEstrategicaDe\(a: Atividade, faixa: FaixaPrazo\): CorEstrategica \| null \{\s*\n\s*if \(faixa\) return faixa;\s*\n\s*return a\.coluna === "concluido" \? "concluido" : null;\s*\n\s*\}/.test(ca96), true);
+  const modelo96 = ler96('src/features/atividades/modelo.ts');
+  eq('U96/R136: `faixaPrazo` em si NÃO mudou — continua só "quando vence", sem saber de conclusão; o quarto estado mora em CardAtividade.tsx',
+     /export function faixaPrazo\(a: Atividade, agora: Date = new Date\(\)\): FaixaPrazo \{\s*\n\s*if \(!a\.emAberto\) return null;\s*\n\s*if \(a\.prazoEstourado\) return "atraso";/.test(modelo96), true);
+
+  // ── o chip perdeu o disfarce (sobreFaixa não existe mais) ────────────────
+  eq('CRÍTICO: `sobreFaixa`/`emFaixa`/o antigo `FAIXA` saíram de vez — sem fundo colorido no card, o chip nunca mais precisa fingir cinza',
+     [/sobreFaixa/.test(ca96), /emFaixa/.test(ca96), /const FAIXA:/.test(ca96)],
+     [false, false, false]);
+  eq('U96/R136: os 4 chips do card (status, tipo, prioridade, compra) chamam chipStyle só com (cor, isLight)',
+     [ca96.includes('...chipStyle(a.statusCor, isLight), flexShrink: 0'),
+      ca96.includes('chipStyle(a.tipoCor, isLight)'),
+      ca96.includes('chipStyle(a.prioridadeCor, isLight)'),
+      ca96.includes('chipStyle(PRISMA.pessego, isLight)')],
+     [true, true, true, true]);
+
+  // ── os documentos (regra 7) ───────────────────────────────────────────────
+  eq('U96 (regra 7): R136 existe em PRODUTO.md, a U96 está no diário, e o manual de campo fala em cor de BORDA (não mais só "fundo")',
+     [/^- \*\*R136\*\* —/m.test(ler96('docs/PRODUTO.md')),
+      /^## U96 — /m.test(ler96('docs/PLANO_UNIFICACAO.md')),
+      /cor de BORDA/.test(ler96('docs/manual/operacao-campo.md'))],
+     [true, true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

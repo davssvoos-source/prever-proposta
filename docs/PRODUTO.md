@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-03 (R135). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-03 (R136). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3030,3 +3030,20 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   alguém é mencionado em qualquer lugar, o usuário recebe notificação. […] nos
   comentários das atividades, deve ter a opção de excluir comentário (por quem
   escreveu). No campo de responsável e apoio, adicione ícones dos usuários.")*
+
+- **R136** — **Nos cards da Início, a cor estratégica mora só na borda, não no
+  fundo.** Vale para `CardAtividade` — o card do quadro por status na página
+  Início (`/dashboard`), o mesmo que a R89 já descrevia arrastável entre
+  colunas. O fundo volta a ser a superfície neutra do design system: escuro no
+  tema escuro, claro no tema claro. Quem responde "quando vence?" é a BORDA —
+  vermelho em atraso, amarelo nesta semana, azul dali em diante — em um
+  **degradê da cor mais clara para a mais escura**, com um **glow levíssimo**
+  contornando o card. Ganhou um quarto estado, que a R135 (na verdade a cor
+  raiz, PRISMA.verde) já batizava de "terminado com sucesso": card na coluna
+  Concluído fica com a borda **verde**. Sem prazo por perto e sem conclusão, a
+  borda é a neutra de sempre — nem toda atividade precisa gritar uma cor.
+  *(Davi, 2026-09-03, sobre a página Início: "os cards devem ter o fundo
+  escuro no tema escuro e claro no tema claro, com SOMENTE a borda na cor
+  estratégica (vermelho, amarelo, azul ou verde), e as bordas deverão ser da
+  cor mais clara para a mais escura em degrade, além de ter um glow levíssimo
+  no contorno das atividades.")*
