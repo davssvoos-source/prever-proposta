@@ -2473,3 +2473,48 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   própria** (a lista mora dentro do painel, e é dos últimos atendimentos), não
   há **lápide** quando um atendimento é apagado, e não há **relatório mensal de
   plantão**. *(U87.)*
+
+- **R118** — **Aprovar a cobrança de um chamado NÃO apaga o lançamento avulso
+  que alguém pendurou naquele chamado.** A limpeza que a aprovação faz antes de
+  regravar é do **rascunho dela mesma** — as linhas que nasceram da análise de
+  peça —, e não de tudo que tem aquele número de chamado.
+
+  **A distinção é de ORIGEM, e ela já está gravada na linha:** cobrança que veio
+  da aprovação tem `chamado_peca_id` preenchido (o INSERT da aprovação sempre
+  seleciona a peça, e peça tem id); cobrança **avulsa vinculada** — a que o
+  cartão do chamado cria quando o técnico conclui e o gestor lança um valor —
+  tem `chamado_peca_id` **nulo**. Não é heurística nem coluna nova: é a mesma
+  divisão que os dois índices únicos do sistema já usavam desde a U80.
+
+  **E o selo do chamado passa a dizer a verdade sobre o chamado, não sobre a
+  operação.** `sem cobrança` é afirmação sobre o ATENDIMENTO — *não há o que
+  cobrar aqui* — e por isso ele só aparece quando **não sobrou nenhuma cobrança
+  viva** no chamado, e não quando "esta aprovação não criou nenhuma". Um chamado
+  com um lançamento avulso vivo e nenhuma peça faturável fica **aprovada**, e a
+  linha do tempo escreve *"Conferência concluída: nenhuma peça a faturar; N
+  lançamento(s) vinculado(s) permanece(m)."* A frase *"nada a cobrar"* fica
+  reservada para quando não há mesmo nada.
+
+  **O que continua igual, e é o outro lado:** reaprovar continua apagando e
+  regravando o rascunho das peças, com o preço novo. Sem isso, a segunda
+  aprovação bateria no índice que garante *uma peça, uma cobrança*.
+
+  **A assimetria com "marcar como faturada" é deliberada.** Faturar o chamado
+  fatura **tudo** que está pendurado nele, inclusive o avulso vinculado — ali
+  varrer tudo é o certo, porque o gesto não apaga nada e um avulso que ficasse
+  "aberta" depois de o chamado ser faturado seria dinheiro esquecido. *(U88.)*
+
+- **R119** — **Montar fechamento volta a funcionar, e o número que a tela usa
+  para abrir o período é contrato.** O botão de montar fechamento esteve
+  **quebrado de 18/08 a 10/09**: toda chamada morria com "referência de coluna
+  ambígua", e como a falha desfazia a própria transação, **não sobrava rastro
+  nenhum no banco** — a tabela de fechamentos vazia parecia "ninguém usou".
+
+  A regra que fica: **o identificador que a montagem devolve (`fechamento_id`) e
+  a referência do período (`referencia`) são contrato com a tela** — é com eles
+  que o sistema abre o fechamento recém-montado. Renomeá-los não quebra
+  compilação nenhuma e leva o usuário a uma página vazia depois de uma montagem
+  bem-sucedida. Quem mexer nessa função **qualifica os nomes**, não os troca.
+
+  **Montar o mesmo período duas vezes continua sendo seguro** — a segunda vez só
+  recolhe o que entrou depois, e não cria um período em dobro. *(U88.)*

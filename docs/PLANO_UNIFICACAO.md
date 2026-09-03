@@ -8095,3 +8095,214 @@ mensal de plantão**, e **não há tela de listagem própria** — a lista mora 
 do painel, é dos últimos atendimentos e é por **recência**, não por dia, porque
 o cliente não sabe o `dia` e calculá-lo seria a segunda verdade que a decisão 5
 existe para não ter.
+
+## U88 — Os dois consertos de dinheiro (R118/R119 — pré-requisito da Fase 4)
+
+Esta entrega vem **antes** da Fase 4 porque a metade financeira dela (cobrança
+disparada na conclusão da implantação) senta em cima de duas dívidas ALTO que
+foram confirmadas **vivas** por medição, não por memória.
+
+**Arquivos:** `supabase/migrations/20260910090000_u88_consertos_de_dinheiro.sql`,
+`scripts/verificar-logica.cjs`, `docs/PRODUTO.md` (R118/R119),
+`docs/manual/financeiro.md`, `docs/PENDENCIAS_TECNICAS.md`.
+**Nenhum arquivo de `src/` mudou** — e isso é o argumento da ordem de deploy, não
+uma economia.
+
+### P50 — o botão de montar fechamento estava morto desde 18/08
+
+`montar_fechamento` (U5) declarava `fechamento_id` como coluna do `RETURNS TABLE`
+e usava o nome **nu** duas vezes contra `public.cobrancas`, que tem coluna com
+esse nome. Com o `plpgsql.variable_conflict = error` padrão isso é **42702 em
+EXECUÇÃO** — não na leitura, e não no `CREATE`.
+
+**A função inteira morria, não um ramo:** as duas linhas estão no caminho comum,
+depois do `IF` semanal × mensal. E o erro estoura **depois** do INSERT em
+`fechamentos` — como a RPC é uma instrução só, tudo volta e **nenhum rastro fica
+no banco**. É por isso que a tabela vazia não distinguia "ninguém usou" de "todo
+mundo tentou e falhou", e é por isso que ninguém relatou em três semanas.
+Achado pelo detector de classe que nasceu na U86, não por relato.
+
+**Qualificar, e não renomear.** A U87 escolheu nomear diferente para tornar a
+classe *inexprimível*, e o argumento continua correto — mas ele é **grátis no
+nascimento** de uma função e caro depois. `fechamentos.ts:95` lê
+`(l as any)?.fechamento_id` e `fechamentos.tsx:76` usa o valor em
+`navigate({ params: { id: r.id } })`: os dois lados passam por `as any`, então
+renomear **não geraria erro de compilação** — o `tsc` ficaria no baseline e o
+usuário cairia em `/fechamentos/undefined` depois de montar o fechamento com
+sucesso. Compra-se contrato intacto e deploy de um passo; paga-se a classe
+continuar exprimível ali, com o censo do verificador como guarda. Preço escrito.
+
+**E não foi `#variable_conflict use_column`**, que resolveria tudo numa linha: o
+detector da U86 dá `continue` em quem declara a diretiva. Ela esvaziaria o censo
+por **isenção**, não por conserto, e tiraria a função da vigilância para sempre.
+Regra 10 na versão em que o defeito é o próprio conserto.
+
+**Censo, com o número na frente.** O detector foi rodado literal sobre as 108
+migrations. Denominador declarado: **15** declarações `RETURNS TABLE`, das quais
+**13** em `LANGUAGE plpgsql` (única onde a classe existe) e 2 em `LANGUAGE sql`
+(imunes); 2 das 13 declaram a diretiva e são absolvidas. **Acusada: exatamente
+uma.** Não há segunda função com a forma, e nada virou dívida nova.
+
+**A armadilha que fica escrita: `ON CONFLICT (tipo, referencia)`.** É a MESMA
+forma — `referencia` também é parâmetro OUT — e **não é defeito**: a lista de
+inferência de índice não é expressão, o parser guarda o nome em `IndexElem` e o
+resolve direto contra a relação, sem passar pelo hook de variável do plpgsql.
+Qualificá-la **não compila**, e `ON CONSTRAINT` não serve porque
+`fechamentos_unico` é `CREATE UNIQUE INDEX`, não constraint. Quem for consertar
+por simetria mata o upsert que torna a função idempotente. Está dito no corpo da
+função, no cabeçalho da migration, na conferência 104 e no verificador.
+
+### P19 — o DELETE comia a cobrança avulsa vinculada
+
+O discriminador **já existia na linha**: `chamado_peca_id`. Censo de todos os
+escritores de `public.cobrancas` no repositório — os cinco INSERTs de aprovação
+selecionam `p.id` (PK, nunca nula); `concluir_chamado_com_cobranca` grava NULL
+literal com `chamado_id` preenchido; `lancarCobrancaAvulsa` nem manda
+`chamado_id`. Logo `chamado_id NOT NULL AND chamado_peca_id IS NULL` é
+**assinatura de origem**, e não heurística. **A premissa de que a origem das
+linhas existentes seria indecidível é falsa** — e por isso não há dívida
+retroativa. Melhor: a U80 já cravou esse recorte em índice único vivo
+(`cobrancas_avulsa_unica_por_chamado_idx`), com o COMMENT nomeando a forma.
+
+**Recusadas, medidas:** `fechamento_id IS NULL` é ciclo de vida e não
+proveniência (e discordaria de um índice vivo); a ausência de análise é
+propriedade do CHAMADO e não da LINHA; `criada_por` é o mesmo usuário nos dois
+casos. As três recusas ficaram escritas no cabeçalho da migration.
+
+**Uma linha era insuficiente, e a S4 já tinha dito.** Com o DELETE estreitado,
+`v_itens = 0` cravaria `sem_cobranca` com dinheiro vivo na tabela e gravaria
+"nada a cobrar" na linha do tempo. São **três edições**: o predicado do DELETE, a
+decisão de `faturamento_status` (que passa a contar o que EXISTE vivo) e o texto
+do evento.
+
+**O recorte de "viva", declarado:** a decisão de status usa `<> 'cancelada'`
+(existência ao longo da vida do atendimento — é o mesmo recorte de
+`montar_fechamento` e dos dois índices da U80), e o `v_total` fica em
+`= 'aberta'` (saldo agora). **Duas perguntas diferentes, dois recortes, ambos
+corretos** — escrito para não ser "limpado" depois.
+
+**Efeito colateral declarado:** `v_total` já somava DEPOIS do DELETE. Hoje ele
+excluía a avulsa porque ela tinha sido apagada; com o DELETE estreitado ele passa
+a incluí-la, **sem que esta migration toque naquela linha**. O número que a tela
+pinta muda sozinho, e muda para melhor.
+
+**O P19 não era prospectivo.** A U80 está no ar desde 03/09 e produz exatamente a
+forma que o DELETE comia. A disjunção do passo 6 dela é de mão única: recusa
+`lancar` sobre chamado analisado, mas nada impede APROVAR sobre chamado lançado.
+Alcançável hoje por uma **aba desatualizada** de um segundo gestor — a trava que
+esconde o botão é de tela, e nada em `aprovar_chamado_financeiro` olhava
+`faturamento_status`.
+
+### A ordem de deploy, e ela é o inverso da intuitiva
+
+**Uma migration, uma transação, zero push.** As duas funções são
+`CREATE OR REPLACE` com a mesma assinatura e os mesmos nomes de coluna: PostgREST
+não precisa de recarga e nenhum arquivo de `src/` muda. **A ausência de push é
+comprada com a preservação dos nomes.**
+
+**Os dois não podem viajar separados, e a razão é composição.**
+`montar_fechamento` recolhe carimbando `fechamento_id` mas **deixa
+`status = 'aberta'`** — quem muda para 'fechada' é `fechar_periodo`. Logo uma
+parcela recolhida para um fechamento **aberto** continuava casando com o DELETE,
+que a apagaria de **dentro** do período; e `fechamentos.total` foi gravado na
+montagem e só é recalculado em `fechar_periodo`. A lista pinta o total
+armazenado e o PDF soma as linhas: os dois discordariam em silêncio.
+**Hoje o 42702 era, sem querer, a trava que segurava o P19** — consertar o P50
+sozinho destravaria exatamente isso. O portão prova a composição (prova 5).
+
+**Nenhuma das duas tem chamador dentro do banco** — sem trigger, sem cron, sem
+`PERFORM` em migration alguma. Por isso a análise de ordem se esgota no `src/`.
+
+### O portão, e por que ele é o mais perigoso da casa
+
+Ele **chama** as duas funções. Provar que o 42702 morreu por leitura de texto não
+prova nada: o `CREATE OR REPLACE` aplica verde com a função tão quebrada quanto
+antes, porque o plpgsql só resolve a expressão na primeira execução.
+
+**`montar_fechamento` não é read-only** — ela dá UPDATE em `public.cobrancas`. Um
+portão com data-base do mês corrente **re-arquivaria a produção inteira** dentro
+de um fechamento de teste. Por isso todas as janelas são de **1900**, o portão
+**afirma** que recolheu exatamente 1 linha (provando que não pegou mais nada), e
+o pré-voo **aborta** se já existir qualquer linha anterior a 1990.
+
+**E ele personifica, senão fica verde POR CAUSA do defeito.** As duas funções
+começam por `pode_ver_financeiro(auth.uid())`, e no SQL Editor não há JWT:
+`auth.uid()` é NULL e a chamada morreria em **42501 antes** de tocar nas linhas
+ambíguas. Um portão que só verificasse "não levantou 42702" passaria com a função
+intacta no defeito. A personificação é feita com `set_config(..., true)` e
+**conferida** — se não pegar, a migration aborta em vez de "pular" as provas. A
+saída da U87 (curto-circuito no gate) não servia: o gate da U5 é contrato vivo e
+não se afrouxa uma trava de papel para o teste rodar.
+
+**Sete provas:** montar de verdade (o INSERT do upsert), montar de novo (o ramo
+`DO UPDATE`, que é a única prova de que o `ON CONFLICT` não é ambíguo), o P19
+pelos **dois lados** (a avulsa sobrevive **e** o rascunho continua sendo apagado
+e reprecificado por 200,00 em vez do 1998,00 velho), o buraco que a S4 anunciou
+(avulsa viva e zero peças → `aprovada`, e o evento **não** diz "nada a cobrar"),
+o **par negativo** (chamado sem nada continua virando `sem_cobranca` com a frase
+exata — sem ele, apagar o carimbo deixaria as outras provas verdes), e a
+composição.
+
+### As réguas, e a cicatriz que as impôs
+
+**A U80 §4b reescreveu `aprovar_chamado_financeiro` a partir do corpo ERRADO** —
+copiou a U7 em vez da U13 viva — e teria revertido em silêncio o gate de papel,
+os nomes de coluna, a trava de status e o `sem_cobranca`. A asserção que
+guardava a promessa checava **presença** de três coisas, e **presença nunca
+detecta deleção**.
+
+As duas asserções centrais desta entrega são **DIFFs**: o corpo novo tem de ser
+igual ao corpo **vivo** (a S4 para uma, a U5 para a outra) com as mudanças
+**escritas à mão** no verificador, e nada mais. Cada âncora do diff **conta** —
+uma troca que não casa viraria no-op silencioso e faria o "esperado" ser o corpo
+antigo. E o pré-voo confere os literais contra `pg_proc.prosrc`, no **banco**: o
+repositório é evidência do que foi escrito, não do que foi aplicado.
+
+**O censo passou a modelar VITALIDADE.** O repositório nunca edita migration
+aplicada, então o corpo quebrado da U5 fica no arquivo para sempre. Sem o filtro,
+o censo mediria texto morto e nunca mais poderia ficar vazio — ou seria "ajustado
+à mão", que é pior. Agora há **três** asserções: o censo vivo (vazio), o censo
+**bruto** (que ainda acusa o cadáver da U5, provando que o detector não emudeceu)
+e a premissa do filtro (a U88 é a última a definir a função). O par negativo do
+filtro é constante escrita à mão. **Alcance declarado:** ele não modela
+`DROP FUNCTION` — hoje isso não produz falso negativo, e vira dívida no dia em
+que produzir.
+
+### Bateria de mutação
+
+14 mutações, cada uma provando que atingiu o alvo (conta a âncora): **14 pegas.**
+Duas escaparam na primeira rodada e as duas eram a **mesma** classe — asserção
+casando a MENSAGEM do `RAISE` enquanto a mutação desligava o `IF` (`IF false
+THEN`). Regra 2 em estado puro: regex não vê guarda desligada. As asserções
+foram reescritas para casar a **condição**, e mais três guardas do pré-voo e do
+portão foram endurecidas do mesmo jeito antes de alguém pedir.
+
+Os três detectores de sintaxe também foram exercitados contra este arquivo: o
+delimitador de dollar-quote em comentário de bloco vivo (pego, nas duas formas),
+o `CASE` nu em condição de `IF` (pego) e o de **42702** (pego, tanto por
+desqualificar uma referência quanto por trocar o conserto pela diretiva).
+
+### O que NÃO entrou, e por quê
+
+**`marcar_chamado_faturado` fica como está**, e a decisão foi para o CATÁLOGO
+(`COMMENT ON FUNCTION`), não só para um comentário de arquivo. Ela tem a mesma
+forma incondicional, mas **não é destrutiva** — muda status, não apaga linha — e
+varrer tudo é o comportamento desejado: um avulso vinculado que ficasse "aberta"
+depois de o chamado ser faturado seria dinheiro esquecido, o defeito oposto e
+pior. Sem essa linha escrita, ficaria a assimetria não declarada de o DELETE
+distinguir origem e o UPDATE não.
+
+**Não se acrescentou `AND fechamento_id IS NULL` ao DELETE.** Isso trocaria uma
+corrupção silenciosa por um 23505 duro na reaprovação de um chamado cujo período
+já foi montado — talvez seja o certo, e é **decisão de produto**, não conserto de
+defeito. Fica como P55.
+
+**Não se reescreveu `concluir_chamado_com_cobranca`.** A disjunção dela é de mão
+única, e a trava certa para esse par é no motor de aprovação — uma segunda recusa
+na outra porta cobriria metade do par.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2530 passaram, 0 falharam** (eram 2500).
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline, sem erro
+novo. **O repositório NUNCA aplica migration: o Davi roda à mão.**

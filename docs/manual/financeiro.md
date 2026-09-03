@@ -164,6 +164,62 @@ SELECT count(*) FROM public.chamados
   função concedida a `authenticated` por causa do ciclo. O `status` conta que
   alguém cancelou; a contagem conta o volume de peças faturáveis.
 
+## Aprovar cobrança não apaga o lançamento avulso (R118 — U88)
+
+**A cobrança de um chamado pode nascer por duas portas**, e elas se distinguem:
+
+| Porta | O que é | Como se reconhece |
+|---|---|---|
+| **Conferência de peças** | o financeiro analisa item a item e aprova | a linha aponta para uma **peça** |
+| **Cartão do chamado** | o gestor conclui e lança um valor (com parcelas) | a linha **não** aponta para peça nenhuma |
+
+**Aprovar a cobrança limpa e regrava só o que veio da conferência de peças.** O
+lançamento feito pelo cartão **fica**, com o valor e a competência que tinha —
+inclusive quando ele já foi recolhido para um fechamento.
+
+**O selo do chamado diz a verdade sobre o chamado.** `sem cobrança` só aparece
+quando **não sobrou nenhuma cobrança viva** ali. Um chamado com lançamento avulso
+e sem peça faturável fica **aprovada**, e a linha do tempo escreve *"Conferência
+concluída: nenhuma peça a faturar; N lançamento(s) vinculado(s) permanece(m)."*
+A frase *"nada a cobrar"* ficou reservada para quando não há mesmo nada.
+
+**O total que a tela mostra depois de aprovar** é o que o chamado tem **em
+aberto** — soma o que a conferência acabou de gravar **e** o lançamento avulso
+que continua vivo. Antes da U88 esse número vinha menor, porque o avulso tinha
+sido apagado.
+
+**"Marcar como faturada" continua varrendo TUDO** que está pendurado no chamado,
+inclusive o avulso vinculado. Não é esquecimento: ali o gesto não apaga nada, e
+deixar o avulso "aberta" depois de o chamado ser faturado seria dinheiro
+esquecido.
+
+**Antes da U88 (18/08 a 10/09):** aprovar a cobrança de um chamado que tinha
+lançamento avulso **apagava o lançamento**, carimbava `sem cobrança` por cima e
+gravava *"nada a cobrar"* na linha do tempo — o dinheiro sumia e o registro
+confirmava que não havia dinheiro. Se você suspeita de um chamado assim no
+período, procure chamados marcados `sem cobrança` que deviam ter valor.
+
+## Montar fechamento (R119 — U88)
+
+**O botão de montar fechamento esteve quebrado de 18/08 a 10/09.** Toda tentativa
+falhava com um erro de banco, e — porque a falha desfazia a própria operação —
+**não sobrava rastro**: a lista de fechamentos vazia parecia "ninguém usou". Se
+alguém tentou montar um período nesse intervalo e desistiu, **nada foi perdido**;
+basta montar de novo agora.
+
+**Montar o mesmo período duas vezes é seguro.** A segunda vez só recolhe o que
+entrou depois, e não cria um período em dobro.
+
+**O que a montagem recolhe:** cobrança **aberta**, ainda **sem período**, com
+data de referência dentro da janela. O que já está em outro fechamento, ou já foi
+faturado, fica onde está.
+
+**Atenção ao total do período.** Ele é gravado no momento da montagem e só é
+recalculado quando o período é **fechado** (ou quando o fechamento é excluído). A
+lista de fechamentos mostra esse total gravado; o PDF e o CSV somam as linhas na
+hora. Se os dois discordarem, feche e reabra o período para recalcular — e avise,
+porque é sintoma.
+
 ## Anti-práticas
 
 - Expor valor (R$) em tela, painel ou notificação acessível ao SAC (R13) —

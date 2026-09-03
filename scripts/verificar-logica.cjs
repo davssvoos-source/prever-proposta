@@ -13869,6 +13869,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     let m;
     while ((m = re.exec(sql))) {
       const cols = [...m[1].matchAll(/(?:^|,)\s*([a-z_][a-z0-9_]*)\s+/gi)].map((x) => x[1].toLowerCase());
+      // DE QUEM É ESTE `RETURNS TABLE`. A U88 precisou do nome para separar a
+      // definição VIVA do CADÁVER: o repositório nunca edita migration já
+      // aplicada, então o corpo quebrado da U5 fica no arquivo PARA SEMPRE
+      // depois que uma migration nova o substitui. Sem o nome, o censo mediria
+      // texto morto e nunca mais poderia ficar vazio.
+      const antes = [...sql.slice(0, m.index)
+        .matchAll(/CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi)];
+      const fn = antes.length ? antes[antes.length - 1][1].toLowerCase() : '(sem nome)';
       const depois = sql.slice(m.index);
       // O DELIMITADOR PODE TER DÍGITO — `$u80a$`, `$u78b$`. A primeira versão
       // deste detector aceitava só letras, não casava esses, e ia procurar o
@@ -13897,18 +13905,48 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         // conta as OCORRÊNCIAS, e não a primeira: duas no mesmo corpo são dois
         // pontos de falha, e um censo que mostrasse só a primeira ficaria verde
         // depois de alguém consertar metade.
-        if (hits) achados.push(`${c} x${hits.length}`);
+        if (hits) achados.push({ fn, achado: `${c} x${hits.length}` });
       }
     }
     return achados;
   };
 
-  const quebradasQ = [];
-  for (const f of fsQ.readdirSync(DIR_Q).sort()) {
-    if (!f.endsWith('.sql')) continue;
-    const ps = naoQualificados(semComentarioQ(fsQ.readFileSync(pathQ.join(DIR_Q, f), 'utf8')));
-    if (ps.length) quebradasQ.push(`${f}: ${ps.join('; ')}`);
-  }
+  // ── QUEM É A DEFINIÇÃO VIVA (U88) ─────────────────────────────────────────
+  // `CREATE OR REPLACE` é a última palavra: a função que o banco executa é a da
+  // ÚLTIMA migration que a definiu, e não a da primeira. Esta é a mesma régua
+  // que o repositório aplica à mão desde a U84 ("confira o literal contra a
+  // definição VIVA"), agora escrita uma vez.
+  //
+  // NOTA DE ALCANCE, para o censo não mentir por omissão: a lista é montada
+  // sobre o texto SEM COMENTÁRIO, senão o `-- CREATE OR REPLACE FUNCTION …` de
+  // um rodapé de DESFAZER elegeria um cadáver como vivo. E ela NÃO modela
+  // `DROP FUNCTION`: uma função dropada e não recriada continuaria contando
+  // como viva. Hoje isso não produz falso negativo (nenhuma das acusadas foi
+  // dropada), e vira dívida no dia em que produzir.
+  const arquivosQ = fsQ.readdirSync(DIR_Q).sort()
+    .filter((f) => f.endsWith('.sql'))
+    .map((f) => ({ nome: f, sql: semComentarioQ(fsQ.readFileSync(pathQ.join(DIR_Q, f), 'utf8')) }));
+
+  const censo = (arquivos, sofrerCadaver) => {
+    const ultimoDefinidor = new Map();
+    for (const a of arquivos) {
+      const rf = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi;
+      let x;
+      while ((x = rf.exec(a.sql))) ultimoDefinidor.set(x[1].toLowerCase(), a.nome);
+    }
+    const fora = [];
+    for (const a of arquivos) {
+      for (const p of naoQualificados(a.sql)) {
+        const vivo = ultimoDefinidor.get(p.fn) === a.nome;
+        if (!vivo && !sofrerCadaver) continue;
+        fora.push(`${a.nome}: ${p.fn} :: ${p.achado}`);
+      }
+    }
+    return fora;
+  };
+
+  const quebradasQ = censo(arquivosQ, false);
+  const quebradasBrutoQ = censo(arquivosQ, true);
   // ── CENSO, E ELE JÁ NASCEU COM UM ACHADO ─────────────────────────────────
   // Não é "zero ocorrências": é O CONJUNTO das ocorrências vivas, cada uma com
   // motivo escrito ao lado — o mesmo idioma do censo de policies permissivas
@@ -13916,19 +13954,46 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // consertar metade das duas de `montar_fechamento` também acende (o censo
   // conta as ocorrências, não a primeira).
   //
-  // O ACHADO: `public.montar_fechamento` (U5) declara `fechamento_id` como
-  // coluna do RETURNS TABLE e depois o usa NU duas vezes contra
-  // `public.cobrancas`, que tem uma coluna com esse nome — `AND fechamento_id
-  // IS NULL` (u5:134) e `WHERE fechamento_id = v_id` (u5:139). Com o
-  // `plpgsql.variable_conflict = error` padrão, isso é 42702 em execução, e
-  // quem chama é `src/features/financeiro/fechamentos.ts:88`, ou seja, o botão
-  // de montar fechamento. NÃO foi consertado nesta rodada de propósito: a U5 já
-  // rodou (o repo nunca edita migration aplicada), o conserto é uma migration
-  // nova sobre a função mais cara do financeiro, e ela não pode ser exercitada
-  // aqui. Está escrito, datado e com o remédio, em PENDENCIAS_TECNICAS.md P50.
-  eq('CRÍTICO: CENSO — as comparações com nome NU de coluna do próprio RETURNS TABLE vivas no repositório são EXATAMENTE estas, e cada uma tem motivo escrito ao lado. Em PL/pgSQL isso é 42702 em EXECUÇÃO (não na leitura), e NADA pegava esta classe até a U86',
+  // O ACHADO ORIGINAL, e o que aconteceu com ele: `public.montar_fechamento`
+  // (U5) declarava `fechamento_id` como coluna do RETURNS TABLE e depois o usava
+  // NU duas vezes contra `public.cobrancas`, que tem uma coluna com esse nome —
+  // `AND fechamento_id IS NULL` (u5:134) e `WHERE fechamento_id = v_id`
+  // (u5:139). Com o `plpgsql.variable_conflict = error` padrão isso é 42702 em
+  // EXECUÇÃO, e quem chama é `src/features/financeiro/fechamentos.ts:88`, o
+  // botão de montar fechamento. A U86 o achou e o deixou escrito (P50); A U88
+  // O CONSERTOU, qualificando as duas referências.
+  //
+  // A LISTA ESVAZIOU POR CONSERTO, E ISSO PRECISA SER DEMONSTRÁVEL — senão ela
+  // é a regra 10 em pessoa. As TRÊS asserções abaixo, juntas, é que dizem isso:
+  //   · o censo VIVO está vazio;
+  //   · o censo BRUTO ainda mostra o cadáver da U5, com o nome do arquivo —
+  //     prova de que o detector continua enxergando aquele texto, e que o vazio
+  //     acima vem do filtro de vitalidade e não de o detector ter emudecido;
+  //   · a U88 é mesmo a última a definir `montar_fechamento`, que é a premissa
+  //     do filtro.
+  // E o conserto NÃO foi `#variable_conflict use_column`: essa diretiva faz o
+  // detector dar `continue` (linha ~13884) e tiraria a função da vigilância
+  // PARA SEMPRE — esvaziaria o censo por ISENÇÃO, e a próxima referência nua
+  // acrescentada ali nunca mais seria acusada.
+  eq('CRÍTICO: CENSO VIVO — as comparações com nome NU de coluna do próprio RETURNS TABLE nas definições VIVAS do repositório. Em PL/pgSQL isso é 42702 em EXECUÇÃO (não na leitura); a U86 achou a única que havia e a U88 a consertou QUALIFICANDO. Uma ocorrência nova entra aqui sozinha',
      quebradasQ,
-     ['20260818220000_u5_fechamentos.sql: fechamento_id x2']);
+     []);
+
+  eq('CRÍTICO: …e o censo BRUTO ainda acusa o CADÁVER da U5, porque o repositório nunca edita migration aplicada. É esta linha que prova que o vazio de cima veio do filtro de vitalidade e não de o detector ter parado de morder',
+     quebradasBrutoQ,
+     ['20260818220000_u5_fechamentos.sql: montar_fechamento :: fechamento_id x2']);
+
+  {
+    const ultimoDefinidorQ = new Map();
+    for (const a of arquivosQ) {
+      const rf = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi;
+      let x;
+      while ((x = rf.exec(a.sql))) ultimoDefinidorQ.set(x[1].toLowerCase(), a.nome);
+    }
+    eq('CRÍTICO: a premissa do filtro, medida — a U88 é a ÚLTIMA migration a definir `montar_fechamento`, e a S4 continua sendo a última a definir `aprovar_chamado_financeiro` (a U88 a redefine DEPOIS dela, e é por isso que a U88 aparece nas duas)',
+       [ultimoDefinidorQ.get('montar_fechamento'), ultimoDefinidorQ.get('aprovar_chamado_financeiro')],
+       ['20260910090000_u88_consertos_de_dinheiro.sql', '20260910090000_u88_consertos_de_dinheiro.sql']);
+  }
 
   // PAR NEGATIVO: o detector precisa ACHAR o defeito quando ele existe, senão a
   // asserção acima é decoração. Este é o defeito real que a revisão pegou no
@@ -13948,6 +14013,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('…e o detector realmente acusa o defeito e absolve a correção: `WHERE acao = …` num corpo cujo RETURNS TABLE tem uma coluna `acao` é pego, e `WHERE c2.acao = …` passa',
        [naoQualificados(defeito).length > 0, naoQualificados(bom).length],
        [true, 0]);
+
+    // PAR NEGATIVO DO FILTRO DE VITALIDADE (U88). O filtro é código NOVO entre o
+    // detector e o veredito, e um filtro guloso demais engoliria acusação viva
+    // em silêncio — que é exatamente o modo de falha que a asserção do censo não
+    // enxergaria. As fixtures são CONSTANTES escritas à mão (regra 4).
+    const arq = (nome, sql) => ({ nome, sql });
+    const morto = [arq('001_nasce.sql', defeito), arq('002_conserta.sql', bom)];
+    const vivo  = [arq('001_nasce.sql', bom),     arq('002_quebra.sql', defeito)];
+    const soUm  = [arq('001_nasce.sql', defeito)];
+    eq('CRÍTICO: o filtro de vitalidade absolve o CADÁVER e continua acusando o VIVO — redefinir `f` já consertada silencia a acusação do arquivo velho; redefini-la QUEBRADA depois de uma boa acusa o arquivo novo; e sem redefinição nenhuma a acusação fica de pé',
+       [censo(morto, false).length, censo(vivo, false).length, censo(soUm, false).length,
+        censo(morto, true).length],
+       [0, 1, 1, 1]);
   }
 }
 
@@ -14155,6 +14233,373 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/^## P47 —/m.test(pend), /^## P48 —/m.test(pend), /^## P49 —/m.test(pend),
       /ANO_CONFERIDO_ATE/.test(pend), /handover/i.test(pend), /alterada_em/.test(pend)],
      [true, true, true, true, true, true]);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// U88 — OS DOIS CONSERTOS DE DINHEIRO (P50 e P19)
+// ════════════════════════════════════════════════════════════════════════════
+// A U88 reescreve DUAS funções que o código publicado chama. A U80 §4b já provou
+// o que acontece quando se reescreve a partir do corpo errado: ela copiou o
+// corpo da U7 em vez do corpo VIVO da U13 e teria revertido em silêncio o gate
+// `pode_ver_financeiro`, os nomes de coluna, a trava de status e o
+// `sem_cobranca` — e a asserção que guardava a promessa checava PRESENÇA de
+// três coisas. PRESENÇA NUNCA DETECTA DELEÇÃO.
+//
+// Por isso as duas asserções centrais desta seção são DIFFs: o corpo novo tem de
+// ser IGUAL ao corpo vivo com as mudanças esperadas ESCRITAS À MÃO aqui, e nada
+// mais. Qualquer linha que suma sem estar nesta lista fica vermelha.
+{
+  const fs88 = require('fs');
+  const M88 = 'supabase/migrations/';
+  const s4f  = fs88.readFileSync(M88 + '20260903180000_s4_auditoria_de_valor.sql', 'utf8');
+  const u5f  = fs88.readFileSync(M88 + '20260818220000_u5_fechamentos.sql', 'utf8');
+  const u88f = fs88.readFileSync(M88 + '20260910090000_u88_consertos_de_dinheiro.sql', 'utf8');
+
+  const corpoDeF88 = (src, nome) => {
+    const i = src.indexOf('CREATE OR REPLACE FUNCTION public.' + nome);
+    if (i < 0) return null;
+    const m = /AS (\$[A-Za-z_0-9]*\$)/.exec(src.slice(i, i + 400));
+    if (!m) return null;
+    const j = src.indexOf('\n' + m[1] + ';', i);
+    return j < 0 ? null : src.slice(i, j);
+  };
+  const norm88 = (s) => s
+    .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n')
+    .replace(/AS \$[A-Za-z_0-9]*\$/, 'AS $Q$')
+    .replace(/\s+/g, ' ').trim();
+
+  // Aplica uma troca EXIGINDO que a âncora exista e seja única. Sem isto, uma
+  // troca que não casa vira no-op silencioso e o "esperado" passa a ser o corpo
+  // ANTIGO — que é a regra 10 outra vez, agora dentro da própria régua.
+  const trocas = [];
+  const troca = (txt, de, para) => {
+    const n = txt.split(de).length - 1;
+    trocas.push(n);
+    return txt.split(de).join(para);
+  };
+
+  const vivoAprovar = corpoDeF88(s4f, 'aprovar_chamado_financeiro');
+  const novoAprovar = corpoDeF88(u88f, 'aprovar_chamado_financeiro');
+  const vivoMontar  = corpoDeF88(u5f, 'montar_fechamento');
+  const novoMontar  = corpoDeF88(u88f, 'montar_fechamento');
+  eq('os quatro corpos foram recortados (se este falhar, todos os diffs abaixo mentem)',
+     [vivoAprovar !== null, novoAprovar !== null, vivoMontar !== null, novoMontar !== null],
+     [true, true, true, true]);
+
+  // ── DIFF 1: aprovar_chamado_financeiro = corpo VIVO da S4 + 4 mudanças ────
+  // A base é a S4 (20260903180000), e não a U13 nem a U80: a S4 é a ÚLTIMA a
+  // definir esta função antes da U88, e `CREATE OR REPLACE` é a última palavra.
+  //
+  // (a) `v_vivas` no DECLARE;
+  // (b) o DELETE ganha `AND chamado_peca_id IS NOT NULL` — a assinatura de
+  //     ORIGEM que separa o rascunho da própria aprovação (todo INSERT de
+  //     aprovação grava `p.id`, PK, nunca nulo) da cobrança AVULSA VINCULADA
+  //     que `concluir_chamado_com_cobranca` cria com NULL literal;
+  // (c) `v_vivas` é contado DEPOIS do INSERT, com recorte `<> 'cancelada'` —
+  //     existência ao longo da vida do atendimento, e não saldo do período;
+  // (d) `faturamento_status` e o texto do evento passam a olhar `v_vivas` em vez
+  //     de `v_itens`. Sem (d), a S4 já avisara (s4:128-134): o dinheiro fica e
+  //     o status mente — `sem_cobranca` com lançamento vivo na tabela, e
+  //     'nada a cobrar' gravado na linha do tempo.
+  // São QUATRO mudanças em CINCO substituições, porque (d) toca dois lugares.
+  {
+    let e = norm88(vivoAprovar || '');
+    e = troca(e,
+      "v_total numeric := 0; BEGIN",
+      "v_total numeric := 0; v_vivas int := 0; BEGIN");
+    e = troca(e,
+      "DELETE FROM public.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta';",
+      "DELETE FROM public.cobrancas WHERE chamado_id = _chamado_id AND status = 'aberta' AND chamado_peca_id IS NOT NULL;");
+    e = troca(e,
+      "AND status = 'aberta'; UPDATE public.chamados",
+      "AND status = 'aberta'; SELECT count(*) INTO v_vivas FROM public.cobrancas WHERE chamado_id = _chamado_id AND status <> 'cancelada'; UPDATE public.chamados");
+    e = troca(e,
+      "SET faturamento_status = CASE WHEN v_itens = 0 THEN 'sem_cobranca'",
+      "SET faturamento_status = CASE WHEN v_vivas = 0 THEN 'sem_cobranca'");
+    e = troca(e,
+      "CASE WHEN v_itens = 0 THEN 'Conferência concluída: nada a cobrar.' ELSE 'Cobrança aprovada: ' || v_itens || ' item(ns).' END, auth.uid());",
+      "CASE WHEN v_itens > 0 THEN 'Cobrança aprovada: ' || v_itens || ' item(ns).'"
+      + " WHEN v_vivas > 0 THEN 'Conferência concluída: nenhuma peça a faturar; ' || v_vivas || ' lançamento(s) vinculado(s) permanece(m).'"
+      + " ELSE 'Conferência concluída: nada a cobrar.' END, auth.uid());");
+
+    eq('CRÍTICO (regra 1): cada uma das 5 âncoras do diff de aprovar_chamado_financeiro casou EXATAMENTE uma vez no corpo vivo da S4 — uma troca que não casa vira no-op e faria o "esperado" ser o corpo ANTIGO',
+       trocas.slice(0, 5), [1, 1, 1, 1, 1]);
+
+    eq('CRÍTICO: o corpo da U88 é o VIVO da S4 com QUATRO mudanças e NENHUMA A MAIS — o DELETE que distingue origem, o v_vivas contado depois do INSERT, e as duas decisões (status e evento) que passam a olhar o que existe vivo. É um DIFF e não presença: a U80 §4b apagou o gate de papel e a asserção de presença não viu',
+       norm88(novoAprovar || ''), e);
+  }
+
+  // As garantias que a U80 §4b tirou em silêncio, ditas por extenso — para o dia
+  // em que alguém achar o diff exagerado e o encurtar. Nenhuma delas está na
+  // lista de mudanças acima, então o diff já as cobre; existem em separado
+  // porque é o que a cicatriz custou.
+  eq('CRÍTICO: o gate de papel continua no corpo da U88, e é a PRIMEIRA instrução executável — sem ele qualquer autenticado aprova cobrança e recebe o total de volta',
+     /AS \$u88a\$\s*DECLARE[\s\S]*?BEGIN\s*IF NOT public\.pode_ver_financeiro\(auth\.uid\(\)\) THEN\s*\n\s*RAISE EXCEPTION[^;]{0,180}42501/.test(novoAprovar || ''),
+     true);
+  eq('CRÍTICO: e as colunas são as que EXISTEM (a.resultado / a.valor_calculado), o fuso de Brasília ficou, e a cifra NÃO voltou para o evento',
+     [/a\.resultado/.test(novoAprovar || ''),
+      /a\.valor_calculado/.test(novoAprovar || ''),
+      /a\.decisao|valor_cobravel/.test(novoAprovar || ''),
+      /AT TIME ZONE 'America\/Sao_Paulo'/.test(novoAprovar || ''),
+      /to_char\(v_total/.test(novoAprovar || '')],
+     [true, true, false, true, false]);
+  eq("CRÍTICO: a trava de status continua lá — aprovar só chamado 'concluido' —, e o carimbo sem_cobranca continua existindo (o conserto do P19 não podia apagá-lo, senão um chamado sem nada nunca mais seria carimbado)",
+     [/v_ch\.status <> 'concluido'/.test(novoAprovar || ''),
+      /'sem_cobranca'/.test(novoAprovar || ''),
+      /'Conferência concluída: nada a cobrar\.'/.test(novoAprovar || '')],
+     [true, true, true]);
+
+  // ── DIFF 2: montar_fechamento = corpo VIVO da U5 + 3 qualificações ────────
+  // A base é a U5 porque `montar_fechamento` tem UMA ÚNICA definição em todo o
+  // repositório: nenhuma migration entre 18/08 e a U88 a redefine ou dropa.
+  //
+  // As três mudanças são só ALIAS. Nada mais pode mudar, e em especial NÃO pode
+  // mudar o nome das colunas do RETURNS TABLE — `fechamentos.ts:95-97` lê
+  // `fechamento_id` e `referencia` por `(l as any)?.`, então um rename NÃO
+  // acusaria no `tsc` e o usuário cairia em /fechamentos/undefined depois de
+  // montar o fechamento com sucesso. É esse fato que compra o "zero push".
+  {
+    trocas.length = 0;
+    let e = norm88(vivoMontar || '');
+    e = troca(e,
+      "UPDATE public.cobrancas SET fechamento_id = v_id WHERE status = 'aberta' AND fechamento_id IS NULL AND data_referencia BETWEEN v_inicio AND v_fim;",
+      "UPDATE public.cobrancas c SET fechamento_id = v_id WHERE c.status = 'aberta' AND c.fechamento_id IS NULL AND c.data_referencia BETWEEN v_inicio AND v_fim;");
+    e = troca(e,
+      "SELECT COALESCE(sum(valor), 0) INTO v_total FROM public.cobrancas WHERE fechamento_id = v_id AND status <> 'cancelada';",
+      "SELECT COALESCE(sum(c.valor), 0) INTO v_total FROM public.cobrancas c WHERE c.fechamento_id = v_id AND c.status <> 'cancelada';");
+    e = troca(e,
+      "UPDATE public.fechamentos SET total = v_total WHERE id = v_id;",
+      "UPDATE public.fechamentos f SET total = v_total WHERE f.id = v_id;");
+
+    eq('CRÍTICO (regra 1): cada uma das 3 âncoras do diff de montar_fechamento casou EXATAMENTE uma vez no corpo vivo da U5',
+       trocas.slice(0, 3), [1, 1, 1]);
+
+    eq('CRÍTICO: o corpo da U88 é o VIVO da U5 com TRÊS qualificações e NENHUMA outra mudança — nem a assinatura, nem os nomes do RETURNS TABLE (contrato com fechamentos.ts, lido por `as any` e portanto invisível ao tsc), nem o gate, nem o ON CONFLICT',
+       norm88(novoMontar || ''), e);
+  }
+
+  // MEDIDO SEM COMENTÁRIO (regra 2): o corpo da U88 EXPLICA, ali mesmo, por que
+  // `ON CONFLICT (tipo, f.referencia)` não compila — e uma asserção que casasse
+  // o comentário acusaria a própria explicação.
+  const montarSemCom = (novoMontar || '')
+    .split('\n').map((l) => l.replace(/--.*$/, '')).join('\n');
+  eq('CRÍTICO: `ON CONFLICT (tipo, referencia)` continua SEM alias — `referencia` também é parâmetro OUT, mas a lista de inferência de índice não é expressão e não passa pelo hook de variável do plpgsql; qualificá-la NÃO COMPILA e mataria a idempotência da função',
+     [/ON CONFLICT \(tipo, referencia\) DO UPDATE/.test(montarSemCom),
+      /ON CONFLICT \([^)]*\w\.referencia/.test(montarSemCom)],
+     [true, false]);
+  eq('CRÍTICO: e o conserto NÃO foi `#variable_conflict use_column` — a diretiva faria o detector da U86 dar `continue` e tiraria a função da vigilância para sempre, esvaziando o censo por ISENÇÃO em vez de por conserto',
+     /#variable_conflict/.test(novoMontar || ''), false);
+  eq('CRÍTICO: os quatro nomes do RETURNS TABLE são exatamente os da U5 — é o que compra o deploy de um passo e o zero push',
+     /RETURNS TABLE \(fechamento_id uuid, referencia text, itens integer, total numeric\)/.test(novoMontar || ''),
+     true);
+
+  // ── O PORTÃO TEM DE EXERCITAR O COMPORTAMENTO, E NÃO O TEXTO ──────────────
+  // Um 42702 só existe em EXECUÇÃO: o `CREATE OR REPLACE` aplica VERDE com a
+  // função tão quebrada quanto antes, porque o plpgsql só resolve a expressão na
+  // primeira execução daquela instrução. Um portão que conferisse `prosrc` não
+  // provaria nada.
+  {
+    const portao = u88f.slice(u88f.indexOf('DO $portao$'), u88f.indexOf('$portao$;'));
+    eq('CRÍTICO: o PORTÃO da U88 CHAMA montar_fechamento de verdade, duas vezes no mesmo período — a 1ª exercita o ramo do INSERT do upsert e a 2ª o do DO UPDATE, e juntas são a única prova de que nem as duas referências nem o ON CONFLICT levantam 42702',
+       (portao.match(/FROM public\.montar_fechamento\(/g) || []).length >= 3, true);
+    eq('CRÍTICO: e ele chama aprovar_chamado_financeiro de verdade, em CADA um dos quatro cenários (avulsa+peça, avulsa sozinha, nada, e avulsa já recolhida num fechamento)',
+       (portao.match(/public\.aprovar_chamado_financeiro\(/g) || []).length >= 4, true);
+
+    // A prova dos DOIS LADOS do P19. Só a sobrevivência da avulsa deixaria
+    // passar um §2 que tivesse simplesmente APAGADO o DELETE.
+    // AS CONDIÇÕES, E NÃO AS FRASES. Uma bateria de mutação trocou o `IF` de
+    // duas destas provas por `IF false THEN` deixando o RAISE intacto: as
+    // versões que casavam só a mensagem ficaram verdes com a prova DESLIGADA.
+    // Regra 2: regex não vê guarda desligada — então case a guarda.
+    eq('CRÍTICO: o portão prova o P19 pelos DOIS lados — a avulsa vinculada SOBREVIVE à aprovação, E o rascunho da peça continua sendo apagado e REPRECIFICADO (sem o segundo lado, apagar o DELETE inteiro ficaria verde). Medido nas CONDIÇÕES',
+       [portao.includes("IF NOT EXISTS (SELECT 1 FROM public.cobrancas b\n                  WHERE b.id = v_avulsa AND b.status = 'aberta' AND b.valor = 500.00) THEN"),
+        portao.includes('IF EXISTS (SELECT 1 FROM public.cobrancas b WHERE b.id = v_rasc) THEN'),
+        portao.includes('IF v_n <> 1 THEN'),
+        portao.includes('AND b.valor = 200.00) THEN'),
+        /PORTÃO 2a: a cobrança AVULSA VINCULADA foi comida/.test(portao),
+        /PORTÃO 2b: o rascunho VELHO da peça sobreviveu/.test(portao)],
+       [true, true, true, true, true, true]);
+
+    eq('CRÍTICO: o portão prova o buraco que a S4 anunciou — com avulsa viva e zero peças, faturamento_status é "aprovada" e a linha do tempo NÃO diz "nada a cobrar"',
+       [portao.includes("IF v_st <> 'aprovada' THEN"),
+        portao.includes("IF v_txt LIKE '%nada a cobrar%' THEN"),
+        portao.includes("IF v_txt NOT LIKE '%lançamento(s) vinculado(s) permanece(m)%' THEN"),
+        /PORTÃO 3: com 400 reais vivos no chamado, faturamento_status NÃO pode ser/.test(portao)],
+       [true, true, true, true]);
+
+    eq('CRÍTICO: …e o PAR NEGATIVO — um chamado sem cobrança nenhuma continua sendo carimbado sem_cobranca com a frase exata. Sem esta prova, apagar o carimbo deixaria as provas 2 e 3 verdes',
+       [portao.includes("IF v_st <> 'sem_cobranca' THEN"),
+        portao.includes("IF v_txt <> 'Conferência concluída: nada a cobrar.' THEN"),
+        /PORTÃO 4/.test(portao)],
+       [true, true, true]);
+
+    // O BURACO MAIS BARATO DE UM PORTÃO EM PLPGSQL, e ele quase entrou aqui:
+    // `SELECT … INTO` põe NULL quando não acha linha, e um `IF` sobre NULL NÃO
+    // DISPARA. Se o INSERT do evento sumisse, `v_txt LIKE …`, `v_txt NOT LIKE …`
+    // e `v_txt <> …` valeriam NULL e as TRÊS provas de texto passariam caladas —
+    // verdes por causa do defeito. As duas leituras de evento têm guarda de nulo.
+    eq('CRÍTICO: as duas leituras de evento do portão têm guarda de NULO antes das comparações de texto — `SELECT … INTO` sem linha dá NULL, e IF sobre NULL não dispara: sem o guarda, apagar o INSERT do evento deixaria as três provas de texto VERDES',
+       (portao.match(/IF v_txt IS NULL THEN/g) || []).length, 2);
+
+    eq('CRÍTICO: o portão prova a COMPOSIÇÃO dos dois consertos — a linha já recolhida num fechamento aberto sobrevive à aprovação, e fechamentos.total continua batendo com a soma das linhas. É a razão de os dois não poderem viajar separados',
+       [portao.includes('WHERE b.id = v_av3 AND b.fechamento_id = v_fech5 AND b.valor = 250.00) THEN'),
+        portao.includes('IF v_tot <> v_tot2 THEN'),
+        /a aprovação tirou a linha de DENTRO do fechamento/.test(portao),
+        /discorda da soma das linhas/.test(portao)],
+       [true, true, true, true]);
+
+    // A prova de que o portão NÃO fica verde por causa do defeito.
+    // MEDE O GESTO, E NÃO A MENSAGEM. Uma bateria de mutação derrubou a versão
+    // anterior desta asserção: ela casava `set_config('request.jwt.claims'` — e
+    // a DESPERSONIFICAÇÃO do fim do portão também casa. Apagar a personificação
+    // deixava a asserção verde com o portão morrendo em 42501, que é a regra 10
+    // exata. O que identifica a PERSONIFICAÇÃO é o `sub` sendo posto.
+    eq('CRÍTICO: o portão PERSONIFICA (põe o `sub` do usuário no JWT) e CONFERE que a personificação pegou — as duas funções começam por pode_ver_financeiro(auth.uid()), e sem JWT auth.uid() é NULL: um portão ingênuo morreria em 42501 ANTES de tocar no defeito e ficaria verde com a função quebrada',
+       [/json_build_object\('sub', v_user::text/.test(portao),
+        /set_config\('request\.jwt\.claim\.sub', v_user::text, true\)/.test(portao),
+        /IF v_quem IS DISTINCT FROM v_user THEN/.test(portao),
+        /a personificação NÃO pegou/.test(portao),
+        /set_config\('request\.jwt\.claims', '', true\)/.test(portao)],
+       [true, true, true, true, true]);
+
+    // O portão desta migration ESCREVE na tabela de dinheiro — é o único da casa
+    // que faz isso. As janelas de 1900 e a afirmação de v_itens = 1 é o que
+    // impede que ele re-arquive a produção dentro de um fechamento de teste.
+    eq('CRÍTICO: todas as janelas do portão são de 1900, ele AFIRMA que recolheu exatamente 1 linha (senão teria pegado dado que não é dele) e prova a própria limpeza — este é o único portão da casa que dá UPDATE em public.cobrancas',
+       [/DATE '1900-01-15'/.test(portao),
+        /recolher EXATAMENTE a 1 cobrança da fixture/.test(portao),
+        /sobraram % cobranças de teste anteriores a 1990/.test(portao),
+        /now\(\)/.test(portao)],
+       [true, true, true, false]);
+  }
+
+  // ── O PRÉ-VOO ABORTA, E CONFERE O LITERAL CONTRA A DEFINIÇÃO VIVA ─────────
+  // O repositório é evidência do que foi ESCRITO, não do que foi APLICADO. A U84
+  // ia abortar exatamente por não medir o catálogo.
+  {
+    const preVoo = u88f.slice(u88f.indexOf('DO $preVoo$'), u88f.indexOf('$preVoo$;'));
+    eq('CRÍTICO: o PRÉ-VOO da U88 lê pg_proc.prosrc e ABORTA se o corpo vivo de aprovar_chamado_financeiro não for o da S4 (gate, fuso, colunas certas e evento sem cifra) — reescrever a partir do corpo errado é a cicatriz da U80 §4b',
+       [/pg_proc/.test(preVoo),
+        /pode_ver_financeiro\(auth\.uid\(\)\)/.test(preVoo),
+        /America\/Sao_Paulo/.test(preVoo),
+        /valor_cobravel/.test(preVoo),
+        /to_char\(v_total/.test(preVoo),
+        /ABORTADO/.test(preVoo)],
+       [true, true, true, true, true, true]);
+    // MEDE A CONDIÇÃO, E NÃO A MENSAGEM (regra 2: regex não vê guarda
+    // DESLIGADA). A bateria de mutação trocou o `IF` destes dois guardas por
+    // `IF false THEN` deixando o texto do RAISE intacto — e a versão anterior
+    // desta asserção, que casava só a frase, ficou verde com o pré-voo morto.
+    // O PRÉ-VOO ACEITA **DUAS** FORMAS DE CADA CORPO, e a segunda é a que esta
+    // migration escreve. Exigir só a forma do DEFEITO fazia a SEGUNDA execução
+    // abortar acusando "alguém já mexeu nesta função fora do repositório" — e
+    // o sabotador seria esta própria migration. O cabeçalho promete
+    // idempotência e a U86/U87 cumprem; aqui a promessa quebrava no pré-voo.
+    // O par negativo prende isso: a forma de UMA condição só não pode voltar.
+    eq('CRÍTICO: o pré-voo aceita a forma do DEFEITO **e** a forma já CORRIGIDA, e aborta só na terceira — sem isso a segunda execução acusa um sabotador que é a própria migration, e o Davi vai caçar fantasma',
+       [/NOT LIKE '%DELETE FROM public\.cobrancas WHERE chamado_id = _chamado_id AND status = ''aberta'';%'\s*\n\s*AND v_src NOT LIKE '%chamado_id = _chamado_id AND status = ''aberta''%AND chamado_peca_id IS NOT NULL;%'/.test(preVoo),
+        /AND \(v_src NOT LIKE '%AND c\.fechamento_id IS NULL%' OR v_src NOT LIKE '%WHERE c\.fechamento_id = v_id%'\)/.test(preVoo),
+        /não está nem na forma da S4 \(defeito P19 vivo\) nem na da U88/.test(preVoo),
+        /não está nem na forma NUA da U5 \(defeito P50 vivo\) nem na QUALIFICADA da U88/.test(preVoo),
+        // par negativo: a condição de uma forma só não pode voltar
+        preVoo.includes("IF v_src NOT LIKE '%AND fechamento_id IS NULL%' OR v_src NOT LIKE '%WHERE fechamento_id = v_id%' THEN")],
+       [true, true, true, true, false]);
+    // ── A ASSINATURA DE ORIGEM É DO NASCIMENTO, E A FK A APAGA DEPOIS ──────
+    // `cobrancas.chamado_peca_id` é `ON DELETE SET NULL` desde u4:31-32, com o
+    // comentário dizendo por quê. Apagar a peça transforma uma cobrança
+    // NASCIDA DE APROVAÇÃO na forma que o §2 passou a proteger — e a partir daí
+    // as duas são idênticas no dado. Antes desta migration a órfã morria no
+    // DELETE incondicional; depois dela ela sobrevive. O cabeçalho afirmava o
+    // contrário ("nenhum caminho de aprovação jamais produziu essa forma"), e
+    // uma afirmação categórica que o catálogo desmente é pior que nenhuma.
+    eq('CRÍTICO: o cabeçalho diz que a assinatura de origem vale NO NASCIMENTO e que a FK ON DELETE SET NULL a apaga depois — e a conferência 101 desdobra a contagem para não misturar o avulso legítimo com a órfã da FK',
+       [/ASSINATURA DE\n--\s*ORIGEM \*\*NO NASCIMENTO\*\*/.test(u88f),
+        /ON DELETE SET NULL` desde u4:31-32/.test(u88f),
+        /EXISTS \(SELECT 1 FROM public\.chamado_pecas p\s*\n\s*WHERE p\.chamado_id = b\.chamado_id\)/.test(u88f),
+        // par negativo: a frase categórica que o catálogo desmente não volta
+        /nenhum caminho de aprovação jamais produziu essa\s*\n--\s*forma/.test(u88f)],
+       [true, true, true, false]);
+    eq('CRÍTICO: …e ABORTA se já houver dado anterior a 1990 em cobrancas ou fechamentos, porque a LIMPEZA do portão apaga tudo que é anterior a 1990 e comeria linha que não é dela. A CONTAGEM e o GUARDA, os dois medidos',
+       [/data_referencia < DATE '1990-01-01'/.test(preVoo),
+        /inicio < DATE '1990-01-01'/.test(preVoo),
+        (preVoo.match(/IF v_n > 0 THEN/g) || []).length,
+        /A limpeza do PORTÃO apaga tudo que é anterior a 1990/.test(preVoo)],
+       [true, true, 3, true]);
+    eq('CRÍTICO: …e ABORTA se não houver ninguém para quem pode_ver_financeiro seja verdadeiro — sem personificação o portão vira teatro',
+       [/IF v_user IS NULL THEN/.test(preVoo),
+        /Não há NENHUM usuário para quem `pode_ver_financeiro` seja verdadeiro/.test(preVoo)],
+       [true, true]);
+  }
+
+  // ── A MEDIÇÃO DA POPULAÇÃO (pergunta 4) É PARTE DA MIGRATION ─────────────
+  eq('CRÍTICO: a U88 MEDE a população do P19 antes de qualquer escrita e a repete na conferência final — o recorte é declarado (chamado vinculado, SEM peça, não cancelada), e o número vai para o diário em vez de ser suposto',
+     [/chamado_peca_id IS NULL/.test(u88f),
+      /na_mira_do_delete|na mira do DELETE/.test(u88f),
+      /ja_recolhidos_em_fechamento|já recolhidos em fechamento/.test(u88f),
+      /POPULAÇÃO P19/.test(u88f)],
+     [true, true, true, true]);
+
+  // ── A ASSIMETRIA DECLARADA ────────────────────────────────────────────────
+  eq('CRÍTICO: `marcar_chamado_faturado` fica como está E o motivo está escrito no CATÁLOGO (COMMENT), não só num comentário de arquivo — senão fica a assimetria não declarada de o DELETE distinguir origem e o UPDATE não',
+     [/COMMENT ON FUNCTION public\.marcar_chamado_faturado\(uuid\)/.test(u88f),
+      /A assimetria com aprovar_chamado_financeiro/.test(u88f),
+      /CREATE OR REPLACE FUNCTION public\.marcar_chamado_faturado/.test(u88f)],
+     [true, true, false]);
+
+  // ── A ORDEM DE DEPLOY É PROPRIEDADE DO CÓDIGO (regra 5) ──────────────────
+  // "Zero push" não é promessa: é consequência de nenhuma assinatura e nenhum
+  // nome de coluna mudarem. Esta asserção mede os DOIS lados — o SQL preservou
+  // os nomes, e o front continua lendo exatamente esses.
+  {
+    const fech = fs88.readFileSync('src/features/financeiro/fechamentos.ts', 'utf8');
+    eq('CRÍTICO (regra 5): o "zero push" é propriedade do código — o front continua lendo `fechamento_id` e `referencia` do retorno da RPC, e a U88 preservou os dois nomes. Se um dia forem renomeados, o `as any` faz o tsc ficar VERDE e o usuário cai em /fechamentos/undefined',
+       [/fechamento_id/.test(fech),
+        /referencia/.test(fech),
+        /RETURNS TABLE \(fechamento_id uuid, referencia text, itens integer, total numeric\)/.test(u88f)],
+       [true, true, true]);
+    eq('CRÍTICO: a U88 é UMA transação — BEGIN e COMMIT — e os dois consertos vão juntos. Separá-los em duas migrations abriria a janela em que o P50 consertado deixa o P19 apagar dinheiro de DENTRO de um fechamento montado',
+       [/^BEGIN;$/m.test(u88f), /^COMMIT;$/m.test(u88f),
+        (u88f.match(/^BEGIN;$/gm) || []).length],
+       [true, true, 1]);
+  }
+
+  // ── REGRA 7: A CONFERÊNCIA É ASSERÇÃO DE PRODUTO ─────────────────────────
+  // As duas mudanças de comportamento têm regra numerada, a dívida que a U88
+  // recusou tomar está declarada, e o manual conta ao Davi o que aconteceu com
+  // o dinheiro no intervalo em que os dois defeitos estiveram vivos.
+  {
+    const prod88 = fs88.readFileSync('docs/PRODUTO.md', 'utf8');
+    const pend88 = fs88.readFileSync('docs/PENDENCIAS_TECNICAS.md', 'utf8');
+    const man88  = fs88.readFileSync('docs/manual/financeiro.md', 'utf8');
+
+    eq('CRÍTICO (regra 7): as duas mudanças de comportamento viraram regra numerada — a R118 diz que aprovar NÃO apaga o lançamento avulso e que `sem cobrança` é afirmação sobre o ATENDIMENTO, e a R119 declara que os nomes que a montagem devolve são CONTRATO com a tela',
+       [/\*\*R118\*\*/.test(prod88), /\*\*R119\*\*/.test(prod88),
+        /chamado_peca_id/.test(prod88.slice(prod88.indexOf('**R118**'))),
+        /assimetria com "marcar como faturada" é deliberada/.test(prod88.slice(prod88.indexOf('**R118**'))),
+        /contrato/.test(prod88.slice(prod88.indexOf('**R119**')))],
+       [true, true, true, true, true]);
+
+    eq('CRÍTICO (regra 7): P19 e P50 estão marcadas RESOLVIDAS pela U88 no ledger, com a data — uma dívida que continua ALTO depois de consertada faz o próximo leitor consertá-la de novo',
+       [/^## P19 — RESOLVIDO em 2026-09-10 pela U88/m.test(pend88),
+        /^## P50 — RESOLVIDO em 2026-09-10 pela U88/m.test(pend88),
+        /^## P19 — ALTO/m.test(pend88),
+        /^## P50 — ALTO/m.test(pend88)],
+       [true, true, false, false]);
+
+    eq('CRÍTICO (regra 7): a P55 declara a dívida que a U88 RECUSOU tomar — o DELETE ignora `fechamento_id`, e o conserto óbvio troca corrupção silenciosa por 23505. É decisão de produto, e o registro traz as três saídas em vez de um adjetivo',
+       [/^## P55 —/m.test(pend88),
+        /fechamento_id/.test(pend88.slice(pend88.indexOf('## P55'), pend88.indexOf('## P51'))),
+        /23505/.test(pend88.slice(pend88.indexOf('## P55'), pend88.indexOf('## P51'))),
+        /fechamentos\.total/.test(pend88.slice(pend88.indexOf('## P55'), pend88.indexOf('## P51')))],
+       [true, true, true, true]);
+
+    eq('CRÍTICO (regra 7): o manual do financeiro conta o que aconteceu com o DINHEIRO no intervalo em que os defeitos estiveram vivos — não basta dizer que agora funciona; quem usa precisa saber onde procurar o estrago',
+       [/R118/.test(man88), /R119/.test(man88),
+        /18\/08 a 10\/09/.test(man88),
+        /nada foi perdido/.test(man88),
+        /Montar o mesmo período duas vezes é seguro/.test(man88)],
+       [true, true, true, true, true]);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

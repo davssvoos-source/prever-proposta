@@ -462,7 +462,45 @@ quem hoje depende de ler evento de chamado alheio.
 
 </details>
 
-## P19 — ALTO · O DELETE de `aprovar_chamado_financeiro` come o avulso vinculado (2026-09-01, U80)
+## P19 — RESOLVIDO em 2026-09-10 pela U88 · O DELETE de `aprovar_chamado_financeiro` comia o avulso vinculado (2026-09-01, U80)
+
+**RESOLVIDO PELA U88** (`20260910090000_u88_consertos_de_dinheiro.sql` §2).
+O conserto foi o predicado que este registro propunha **mais as duas edições que
+a S4 exigiu por escrito**, e a S4 estava certa: a linha sozinha era insuficiente.
+
+- o DELETE ganhou `AND chamado_peca_id IS NOT NULL`;
+- `faturamento_status` passou a decidir por `v_vivas` — a contagem do que
+  EXISTE vivo no chamado (`status <> 'cancelada'`) — em vez de `v_itens`, que
+  é o ROW_COUNT do próprio INSERT;
+- o evento da linha do tempo ganhou um terceiro ramo: com lançamento vinculado
+  vivo e zero peças, ele diz *"Conferência concluída: nenhuma peça a faturar; N
+  lançamento(s) vinculado(s) permanece(m)."*, e não *"nada a cobrar"*.
+
+**A premissa "não há como saber a origem retroativamente" era FALSA**, e isso é
+o que dispensou coluna nova. Censo de todos os escritores de `public.cobrancas`:
+os cinco INSERTs de aprovação selecionam `p.id` (PK, nunca nula), logo 100% das
+linhas de aprovação têm `chamado_peca_id` preenchido; `concluir_chamado_com_cobranca`
+grava NULL literal com `chamado_id` preenchido; `lancarCobrancaAvulsa` nem manda
+`chamado_id`. E a U80 já tinha cravado esse mesmo recorte em índice único vivo
+(`cobrancas_avulsa_unica_por_chamado_idx`), com COMMENT nomeando a forma.
+
+**A consulta que este registro dizia faltar EXISTE agora** — ela é o §1 da U88
+(pré-voo, em NOTICE) e a **conferência 101** da tabela final, com o recorte
+declarado e as seis colunas: vivos, na mira do DELETE, chamados expostos, reais
+na mira, aprovável hoje e já recolhidos em fechamento.
+
+**A alcançabilidade era MAIOR do que este registro dizia.** A frase "nenhuma pela
+UI" subestimava: basta uma **aba desatualizada** de um segundo gestor, aberta
+antes do lançamento pelo cartão, que ainda mostra `a_analisar` e cujo clique
+chega ao motor. Não precisava de POST direto.
+
+**O portão da U88 prova os dois lados** — a avulsa sobrevive E o rascunho da peça
+continua sendo apagado e reprecificado —, mais o par negativo (`sem_cobranca`
+continua existindo) e a composição com o fechamento montado.
+
+---
+
+### Registro original (2026-09-01), preservado
 
 `aprovar_chamado_financeiro` faz, incondicionalmente
 (`20260820100000_u13_executado_vira_concluido.sql:95`):
@@ -1727,7 +1765,53 @@ U78 recusou no `sobreposicao_ok`
 a alteração pós-fechamento **encontrável**. Se um dia a trava dura for
 necessária, o lugar dela é o **fechamento**, que já existe e já sabe travar.
 
-## P50 — ALTO · `montar_fechamento` usa `fechamento_id` NU e levanta 42702 (2026-09-08, achado pela U86)
+## P50 — RESOLVIDO em 2026-09-10 pela U88 · `montar_fechamento` usava `fechamento_id` NU e levantava 42702 (2026-09-08, achado pela U86)
+
+**RESOLVIDO PELA U88** (`20260910090000_u88_consertos_de_dinheiro.sql` §3), com
+o remédio exatamente como este registro o escreveu: alias nos dois pontos, e o
+alvo do `SET` deixado nu.
+
+**Três coisas que este registro NÃO previa e que a U88 mediu:**
+
+1. **A função inteira morria, não um ramo.** As duas linhas estão no caminho
+   comum, depois do `IF` semanal × mensal, e o erro estoura DEPOIS do INSERT em
+   `fechamentos`. Como a RPC é uma instrução só, tudo volta: **nenhum rastro
+   fica no banco**. A tabela de fechamentos vazia não distinguia "ninguém usou"
+   de "todo mundo tentou e falhou".
+
+2. **`ON CONFLICT (tipo, referencia)` tem a MESMA forma e NÃO é defeito.** A
+   lista de inferência de índice não é expressão: o parser guarda o nome em
+   `IndexElem` e o resolve direto contra a relação, sem passar pelo hook de
+   variável do plpgsql. **Qualificá-la não compila**, e `ON CONSTRAINT` não
+   serve porque `fechamentos_unico` é `CREATE UNIQUE INDEX`. Quem "consertar
+   por simetria" mata o upsert que torna a função idempotente. A advertência
+   ficou no corpo da função, no cabeçalho da migration, na conferência 104 e no
+   verificador.
+
+3. **Renomear o parâmetro OUT (o caminho da U87) custaria caro e em silêncio.**
+   `fechamentos.ts:95` lê `(l as any)?.fechamento_id` e `fechamentos.tsx:76`
+   usa o valor em `navigate({ params: { id: r.id } })`. Os dois lados passam por
+   `as any`: o `tsc` **não acusaria** e o usuário cairia em
+   `/fechamentos/undefined` depois de montar o fechamento com sucesso.
+
+**"Exercite o botão antes de subir" virou PORTÃO.** A U88 chama
+`montar_fechamento` de verdade, duas vezes no mesmo período (a 1ª exercita o
+ramo do INSERT do upsert, a 2ª o do `DO UPDATE`), com fixture descartável de
+1900 que ela mesma cria e apaga dentro da transação — e **personificando**, senão
+a chamada morreria em 42501 antes de tocar no defeito e o portão ficaria verde
+com a função quebrada.
+
+**A guarda permanente MUDOU DE FORMA.** O censo do verificador passou a modelar
+**vitalidade**: ele mede só a ÚLTIMA definição de cada função, porque o
+repositório nunca edita migration aplicada e o corpo quebrado da U5 fica no
+arquivo para sempre. O censo vivo é `[]`; o censo **bruto** continua acusando o
+cadáver da U5 (é essa segunda asserção que prova que o detector não emudeceu); e
+uma terceira mede a premissa do filtro. **Alcance declarado:** o filtro não
+modela `DROP FUNCTION`.
+
+---
+
+### Registro original (2026-09-08), preservado
 
 **Achado pelo detector de classe que nasceu na U86**, não por relato de uso.
 
@@ -1765,6 +1849,47 @@ se hoje ele já devolve 42702, o conserto é visível na primeira tentativa.
 **A guarda permanente:** o censo em `scripts/verificar-logica.cjs` declara esta
 ocorrência (`fechamento_id x2`) e **conta** as ocorrências, não a primeira —
 uma nova acende, e consertar só metade das duas também acende.
+
+---
+
+## P55 — MÉDIO · O DELETE da aprovação ignora `fechamento_id`: reaprovar mexe DENTRO de um período já montado (2026-09-10, declarado pela U88)
+
+**Não é defeito de conserto pendente: é decisão de produto que a U88 recusou
+tomar sozinha.**
+
+`montar_fechamento` recolhe carimbando `fechamento_id` mas **deixa
+`status = 'aberta'`** — quem muda para `'fechada'` é `fechar_periodo`
+(`u5:163`). Logo uma cobrança **já recolhida** para um fechamento **aberto**
+continua casando com o DELETE de `aprovar_chamado_financeiro`, que é
+`status = 'aberta'`. Depois da U88 isso não apaga mais o avulso vinculado — mas
+**ainda apaga e regrava o rascunho da peça** que já estava dentro do período.
+
+**O que dói:** `fechamentos.total` é gravado no momento da montagem
+(`u5:141`) e só é recalculado em `fechar_periodo` (`u5:169`) ou
+`excluir_fechamento`. **Nada o recalcula depois de um DELETE.** A lista de
+fechamentos pinta o total ARMAZENADO (`fechamentos.tsx:273`) e o PDF/CSV somam
+as LINHAS (`consolidar()`): os dois discordam em silêncio se o valor da peça
+mudar numa reaprovação.
+
+**O conserto óbvio — acrescentar `AND fechamento_id IS NULL` ao DELETE — TROCA
+o defeito, não o resolve.** Com ele, a reaprovação de um chamado cujo período já
+foi montado bate em `cobrancas_uma_por_peca_idx` com **23505**: uma corrupção
+silenciosa vira uma recusa dura. Talvez seja o certo (recusar é melhor do que
+mentir), mas é o Davi que decide se o financeiro pode ou não reaprovar dentro de
+um período aberto — e, se não puder, a mensagem tem de dizer "reabra o período"
+em vez de mostrar um código de erro.
+
+**As três saídas, para quando for a hora:**
+1. `AND fechamento_id IS NULL` no DELETE, com `RAISE` traduzido: *"esta
+   cobrança já está no fechamento X; reabra o período antes de reaprovar"*;
+2. recalcular `fechamentos.total` por gatilho em `cobrancas` — mata a
+   divergência lista × PDF de uma vez, e é a única que conserta o sintoma para
+   TODOS os caminhos (inclusive `marcar_chamado_faturado` e cancelamento);
+3. fazer a lista somar as linhas em vez de ler o total armazenado — mais barato,
+   mas deixa a coluna `total` como um segundo número que ninguém confere.
+
+**A U88 recusou porque isso é motor + produto, e ela já era motor em duas
+funções.** Ficou escrito no cabeçalho dela, no "o que esta migration NÃO faz".
 
 ---
 
