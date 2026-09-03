@@ -8410,13 +8410,89 @@ contra mim: *presença nunca detecta uma guarda DESLIGADA; prenda o `IF`, não o
 vocabulário.* Corrigido, mais o `esperado` da conferência 114, que passou a ser
 **derivado** das colunas do índice da U5 em vez de digitado.
 
-### Números da rodada de correção
+### A SEGUNDA EXECUÇÃO CHEGOU ATÉ A ÚLTIMA LINHA (03/09)
 
-`node scripts/verificar-logica.cjs` → **2589 passaram, 0 falharam**.
+```
+ERROR: 42725: operator is not unique: "char" || unknown
+LINE 1345: (SELECT c.contype || ' / ' || i.relname || ' / ' ||
+HINT: Could not choose a best candidate operator.
+```
+
+A linha 1345 é a **conferência 114** — a última do arquivo, escrita na rodada
+anterior justamente para provar o conserto do ON CONFLICT.
+
+#### O que este aborto PROVA, e é muita coisa
+
+O erro está no SELECT final. Tudo que vem antes dele **rodou**:
+
+- o pré-voo aceitou o terreno;
+- as duas funções foram reescritas;
+- o **§3a promoveu o índice a constraint** — `ADD CONSTRAINT … UNIQUE USING
+  INDEX` funcionou;
+- **`montar_fechamento` RODOU**: o `ON CONFLICT ON CONSTRAINT` resolveu o 42702
+  da rodada anterior, e as provas 1 e 1b (ramo do INSERT e ramo do DO UPDATE)
+  passaram;
+- **as sete provas do PORTÃO passaram**, inclusive a 5, que é a composição dos
+  dois consertos: o dinheiro não sumiu de dentro de um fechamento montado;
+- a limpeza do portão devolveu a base ao estado de antes.
+
+Ou seja: **a entrega funciona. O que estava quebrado era o relatório dela.**
+E, de novo, a transação inteira voltou — o banco ficou idêntico.
+
+#### O defeito
+
+`pg_constraint.contype` é do tipo interno `"char"` (um byte). Concatená-lo com
+um literal deixa o Postgres com mais de um caminho de conversão possível, e ele
+se recusa a escolher. Erro de **tipo**, não de sintaxe nem de resolução de nome
+— e nenhum dos checadores que existiam enxerga tipo.
+
+Corrigido com `::text` em cada operando. E a 114 deixou de comparar
+`pg_get_constraintdef`: o deparse é uma RENDERIZAÇÃO que muda entre versões do
+Postgres (`NULLS DISTINCT` entrou na 15), e comparar a string bruta diria
+`>>> OLHAR <<<` numa execução perfeita — é a lição da conferência 203 da U87.
+As colunas agora saem de `conkey`, com `WITH ORDINALITY` para preservar a ordem.
+
+#### Dois detectores novos, e um deles calibrado por EXECUÇÃO
+
+**A) Coluna de catálogo do tipo `"char"` concatenada sem `::text`.** Varredura
+das 108 migrations: zero, depois do conserto. Provado por mutação — tirar o
+`::text` da 114 deixa a asserção vermelha.
+
+**B) `RAISE` com mais marcadores `%` do que argumentos** ("too few parameters
+specified for RAISE"), que também só aparece em execução e, numa migration,
+estoura depois de metade do trabalho feito. Zero.
+
+O detector A nasceu ESTRITO, acusando `name` além de `"char"` — e apontou três
+linhas da **U87**: `c.conname || '='`, `a.attname || '='`, `i.relname || '='`.
+Mas a U87 **rodou no banco do Davi** com as 19 conferências `ok`, essas três
+incluídas. Logo `name || unknown` resolve e `"char" || unknown` não.
+
+**A lista de tipos perigosos foi calibrada por duas execuções reais, e não pelo
+meu raciocínio sobre o motor.** Depois de errar duas vezes seguidas raciocinando
+sobre o parser sem poder executar, é a única calibragem que vale.
+
+
+### Números, depois das três rodadas
+
+`node scripts/verificar-logica.cjs` → **2595 passaram, 0 falharam**.
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
-**Bateria de mutação do conserto: 5 mortas, 0 sobreviventes.** Dollar-quote,
-`CASE` nu em `IF` e o detector de 42702 por `RETURNS TABLE`: limpos.
-**Nenhum arquivo de `src/` mudou — o "zero push" continua de pé.**
+**Bateria de mutação: 9 mortas, 0 sobreviventes, 0 inválidas.**
+
+Os **seis** checadores estáticos, todos limpos: dollar-quote dentro de bloco
+vivo; `CASE` nu dentro de `IF`; 42702 por parâmetro OUT de `RETURNS TABLE`;
+42702 por lista de inferência do `ON CONFLICT` (nasceu na rodada 2); 42725 por
+coluna `"char"` concatenada sem `::text` (nasceu na rodada 3); e `RAISE` com
+mais `%` do que argumentos (idem).
+
+**Nenhum arquivo de `src/` mudou em nenhuma das três rodadas — o "zero push"
+continua de pé.**
+
+**O placar honesto desta entrega: três tentativas, e as duas primeiras caíram
+por erro meu.** A primeira num mecanismo do parser que eu afirmei sem poder
+verificar, contra um detector que já tinha acusado a linha certa. A segunda num
+tipo de catálogo, dentro do SELECT que eu tinha escrito para provar o conserto
+da primeira. As duas abortaram inteiras, sem tocar no banco — que é o que o
+desenho promete e cumpriu. E as duas viraram detector.
 
 ---
 

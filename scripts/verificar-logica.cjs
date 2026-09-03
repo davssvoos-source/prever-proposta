@@ -14435,7 +14435,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   {
     const idxU5 = /CREATE UNIQUE INDEX IF NOT EXISTS fechamentos_unico ON public\.fechamentos \(([^)]*)\)/
       .exec(u5f);
-    const esperado114 = 'u / fechamentos_unico / UNIQUE (' + (idxU5 ? idxU5[1] : '??') + ')';
+    // Sem espaços: a conferência 114 monta a lista com `string_agg(…, ',')`,
+    // e não pela renderização do `pg_get_constraintdef`. A derivação
+    // independente continua sendo o CREATE UNIQUE INDEX da U5.
+    const colsU5 = (idxU5 ? idxU5[1] : '??').replace(/\s+/g, '');
+    const esperado114 = 'u / fechamentos_unico / ' + colsU5;
     eq('CRÍTICO (regra 12): o `esperado` da conferência 114 é DERIVADO das colunas do índice único da U5, e não digitado à mão — asserção que copia o valor do arquivo que audita certifica o próprio erro',
        [!!idxU5, u88f.includes("       '" + esperado114 + "'")],
        [true, true]);
@@ -15253,6 +15257,111 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /tranca a\s*\n?linha do ano|tranca a linha do ano/.test(plan89)],
        [true, true, true, true]);
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SANIDADE DE TIPO NO SQL — os dois detectores que nasceram do 42725 da U88
+// ═══════════════════════════════════════════════════════════════════════════
+// Os checadores que já existiam cobrem SINTAXE (dollar-quote, `CASE` nu dentro
+// de `IF`) e RESOLUÇÃO DE NOME (42702 por parâmetro OUT, lista de inferência do
+// ON CONFLICT). Nenhum deles enxerga TIPO — e foi um erro de tipo que abortou a
+// segunda tentativa da U88, num SELECT de conferência escrito para provar o
+// conserto da primeira:
+//
+//     ERROR: 42725: operator is not unique: "char" || unknown
+//     LINE 1345: (SELECT c.contype || ' / ' || i.relname || ' / ' ||
+//
+// `pg_constraint.contype` é do tipo interno `"char"` (um byte). Concatená-lo
+// com um literal deixa o Postgres com mais de um caminho de conversão possível,
+// e ele se recusa a escolher. Erro de EXECUÇÃO, invisível na leitura.
+{
+  const fsSan = require('fs'), pathSan = require('path');
+  const DIR_SAN = 'supabase/migrations';
+
+  // Colunas de catálogo do tipo interno `"char"`.
+  //
+  // `name` NÃO ESTÁ NESTA LISTA, e a razão é EVIDÊNCIA DE EXECUÇÃO e não
+  // raciocínio: a primeira versão deste detector também acusava `name`, e
+  // apontou três linhas da U87 (`c.conname || '='`, `a.attname || '='`,
+  // `i.relname || '='`). A U87 RODOU no banco do Davi com as 19 conferências
+  // `ok`, essas três incluídas. Logo `name || unknown` resolve e `"char" ||
+  // unknown` não. Duas execuções reais calibraram esta lista — que é a única
+  // calibragem que vale depois de dois erros de raciocínio sobre o motor.
+  const CHAR_COLS = [
+    'contype', 'confupdtype', 'confdeltype', 'confmatchtype',
+    'relkind', 'relpersistence', 'relreplident',
+    'prokind', 'provolatile', 'proparallel',
+    'typtype', 'typcategory', 'typalign', 'typstorage', 'typdelim',
+    'attidentity', 'attgenerated', 'attalign', 'attstorage',
+    'tgenabled', 'amtype', 'castcontext', 'castmethod', 'collprovider',
+    'deptype', 'polcmd', 'ev_type', 'ev_enabled',
+  ];
+  const SUSP = new Set(CHAR_COLS);
+
+  const semComSan = (s) => s.split('\n')
+    .map((l) => (/^\s*--/.test(l) ? '' : l.replace(/\s--.*$/, ''))).join('\n');
+
+  const semCast = [], raiseTorto = [];
+  let arquivos = 0;
+
+  for (const f of fsSan.readdirSync(DIR_SAN).sort()) {
+    if (!f.endsWith('.sql')) continue;
+    arquivos += 1;
+    const src = semComSan(fsSan.readFileSync(pathSan.join(DIR_SAN, f), 'utf8'));
+
+    // ── A) operando de `||` que é coluna `"char"` sem cast ────────────────
+    // Medido no texto ACHATADO: a concatenação atravessa a quebra de linha o
+    // tempo todo, e um detector linha a linha não veria o operando da direita.
+    const plano = src.replace(/\s+/g, ' ');
+    const reOp = /(?:(\w+)\.)?(\w+)\s*(::\s*\w+)?\s*\|\||\|\|\s*(?:(\w+)\.)?(\w+)\s*(::\s*\w+)?/g;
+    let mo;
+    while ((mo = reOp.exec(plano))) {
+      const col = mo[2] || mo[5];
+      const cast = mo[3] || mo[6];
+      if (!col || !SUSP.has(col.toLowerCase()) || cast) continue;
+      semCast.push(f.slice(0, 22) + '::' + col);
+    }
+
+    // ── B) RAISE com mais `%` no formato do que argumentos depois dele ────
+    // "too few parameters specified for RAISE" — também só em execução.
+    const linhas = src.split('\n');
+    linhas.forEach((linha, i) => {
+      const mr = /\bRAISE\s+(EXCEPTION|NOTICE|WARNING|INFO|LOG|DEBUG)\s+(E?)'/i.exec(linha);
+      if (!mr) return;
+      const bloco = linhas.slice(i, i + 12).join('\n');
+      const ini = bloco.indexOf("'", bloco.toUpperCase().indexOf('RAISE'));
+      let j = ini + 1, fmt = '';
+      while (j < bloco.length) {
+        if (bloco[j] === "'" && bloco[j + 1] === "'") { fmt += "''"; j += 2; continue; }
+        if (bloco[j] === '\\' && mr[2]) { fmt += bloco.slice(j, j + 2); j += 2; continue; }
+        if (bloco[j] === "'") break;
+        fmt += bloco[j]; j += 1;
+      }
+      if (j >= bloco.length) return;                 // literal não fechou na janela
+      const marcadores = (fmt.replace(/%%/g, '').match(/%/g) || []).length;
+      let resto = bloco.slice(j + 1);
+      const fim = resto.indexOf(';');
+      resto = (fim >= 0 ? resto.slice(0, fim) : resto).replace(/\bUSING\b[\s\S]*$/i, '');
+      let nivel = 0, virgulas = 0;
+      for (const ch of resto) {
+        if (ch === '(') nivel += 1;
+        else if (ch === ')') nivel -= 1;
+        else if (ch === ',' && nivel === 0) virgulas += 1;
+      }
+      const nArgs = /^\s*,/.test(resto) ? virgulas : 0;
+      if (marcadores > nArgs) raiseTorto.push(f.slice(0, 22) + ':' + (i + 1));
+    });
+  }
+
+  eq('CRÍTICO (regra 3): NENHUMA coluna de catálogo do tipo `"char"` é concatenada com `||` sem `::text` em migration alguma. `"char" || unknown` é 42725 "operator is not unique" em EXECUÇÃO — foi ele que abortou a 2a tentativa da U88, num SELECT de conferência escrito para provar o conserto da 1a. Os checadores de sintaxe não enxergam tipo; este enxerga',
+     semCast, []);
+
+  eq('CRÍTICO (regra 3): nenhum RAISE tem mais marcadores `%` do que argumentos depois do formato — "too few parameters specified for RAISE" também só aparece em execução, e numa migration ele estoura DEPOIS de metade do trabalho feito',
+     raiseTorto, []);
+
+  eq('CRÍTICO: e os dois censos acima varreram TODAS as migrations, não uma amostra — se este número despencar, o leitor de arquivos quebrou e as duas linhas de cima ficaram verdes por não ter olhado nada',
+     arquivos >= 108, true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

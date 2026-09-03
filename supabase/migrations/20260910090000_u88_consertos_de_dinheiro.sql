@@ -1342,12 +1342,29 @@ UNION ALL
 -- `conindid` provando ser o índice de (tipo, referencia) é o que garante que a
 -- promoção do §3a ADOTOU o índice da U5 em vez de criar um segundo.
 SELECT 114, 'CRÍTICO: a constraint fechamentos_unico existe, é UNIQUE, e o índice por trás dela é o de (tipo, referencia) — é o árbitro que o §3 cita pelo nome',
-       (SELECT c.contype || ' / ' || i.relname || ' / ' ||
-               pg_get_constraintdef(c.oid)
+       -- `::text` EM CADA OPERANDO, e não por preciosismo.
+       -- `pg_constraint.contype` é do tipo interno `"char"` (um byte), e
+       -- `"char" || unknown` é 42725 "operator is not unique": o Postgres acha
+       -- mais de um caminho de conversão e se recusa a escolher. `relname` é
+       -- `name`, mesma história. Foi assim que a SEGUNDA tentativa desta
+       -- migration abortou — num SELECT de conferência que eu escrevi para
+       -- provar o conserto da primeira.
+       -- E AS COLUNAS SAEM DE `conkey`, NÃO DE `pg_get_constraintdef`.
+       -- O deparse é uma RENDERIZAÇÃO: o Postgres reescreve a parentização e
+       -- acrescenta cláusulas conforme a versão (`NULLS DISTINCT` entrou na 15).
+       -- Uma conferência que comparasse a string bruta diria '>>> OLHAR <<<'
+       -- numa execução PERFEITA — é a lição da conferência 203 da U87, e vale
+       -- igual aqui. `WITH ORDINALITY` preserva a ordem de conkey, que é a
+       -- ordem das colunas na constraint e não a ordem de attnum.
+       (SELECT c.contype::text || ' / ' || i.relname::text || ' / ' ||
+               (SELECT string_agg(a.attname::text, ',' ORDER BY k.ord)
+                  FROM unnest(c.conkey) WITH ORDINALITY AS k(attnum, ord)
+                  JOIN pg_attribute a ON a.attrelid = c.conrelid
+                                     AND a.attnum   = k.attnum)
           FROM pg_constraint c JOIN pg_class i ON i.oid = c.conindid
          WHERE c.conrelid = 'public.fechamentos'::regclass
            AND c.conname  = 'fechamentos_unico'),
-       'u / fechamentos_unico / UNIQUE (tipo, referencia)'
+       'u / fechamentos_unico / tipo,referencia'
 
   ) t
  ORDER BY t.ordem;
