@@ -248,3 +248,70 @@ export function useApagarCronograma(chamadoId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: chaveCronograma(chamadoId) }),
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AS OBRAS EM ANDAMENTO, DE UMA VEZ — para o painel da Operacional Técnica
+// (R125). Mesma decisão de `usePeriodoDaObra`: as colunas de período NÃO
+// entram no `CAMPOS` de chamados/data.ts, então o painel lê daqui e a falha
+// fica contida no card — o resto da tela não depende desta consulta.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ResumoDaObra {
+  chamado_id: string;
+  inicio: string | null;
+  fim: string | null;
+  fases: { fase: Fase; concluida_em: string | null }[];
+}
+
+/** A chave ordena os ids: a mesma lista em outra ordem é a MESMA consulta. */
+export const chaveObras = (ids: string[]) => ["implantacao", "obras", [...ids].sort().join(",")];
+
+/**
+ * Duas consultas em paralelo (período e fases), um mapa por chamado.
+ *
+ * Obras em andamento são poucas — dezenas, não centenas —, então `.in()` numa
+ * lista só basta. Se um dia passarem de ~200, vale fatiar como
+ * `emFatias()` faz em programacao/data.ts; o teto está declarado aqui para
+ * ninguém o descobrir pelo erro.
+ */
+export function useObrasEmAndamento(ids: string[]) {
+  return useQuery({
+    queryKey: chaveObras(ids),
+    enabled: ids.length > 0,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Record<string, ResumoDaObra>> => {
+      const [periodos, fases] = await Promise.all([
+        (supabase as any)
+          .from("chamados")
+          .select("id, implantacao_inicio, implantacao_fim")
+          .in("id", ids),
+        (supabase as any)
+          .from("implantacao_cronograma")
+          .select("chamado_id, fase, concluida_em")
+          .in("chamado_id", ids),
+      ]);
+      // A mensagem do servidor CHEGA (lição da U87): `error` do PostgREST não
+      // é instância de Error, e engoli-lo mostraria "erro desconhecido".
+      if (periodos.error) throw new Error(periodos.error.message);
+      if (fases.error) throw new Error(fases.error.message);
+
+      const mapa: Record<string, ResumoDaObra> = {};
+      for (const p of (periodos.data ?? []) as any[]) {
+        mapa[p.id] = {
+          chamado_id: p.id,
+          inicio: (p.implantacao_inicio as string | null) ?? null,
+          fim: (p.implantacao_fim as string | null) ?? null,
+          fases: [],
+        };
+      }
+      for (const f of (fases.data ?? []) as any[]) {
+        const r = mapa[f.chamado_id];
+        if (r) r.fases.push({ fase: f.fase as Fase, concluida_em: (f.concluida_em as string | null) ?? null });
+      }
+      for (const r of Object.values(mapa)) {
+        r.fases.sort((a, b) => FASES.indexOf(a.fase) - FASES.indexOf(b.fase));
+      }
+      return mapa;
+    },
+  });
+}

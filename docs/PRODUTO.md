@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-08-18.
+Última atualização: 2026-09-03 (R130). O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -230,6 +230,11 @@ fica centralizado no app.
 | Contratos, OS, chamados, demandas, cobranças, fechamentos | **App** | nasce e vive aqui |
 | Catálogo comercial (preço/markup) | planilha (ETL) | como hoje |
 | Movimentação física | registrada no app (`os_pecas`) → lançada no QAP | relatório para o Gilleno até a escrita via API existir |
+
+> **R129 (Davi, 2026-09-03):** o sentido da API é **único — o app só recebe**.
+> A escrita no QAP via API **saiu do plano**; a linha "movimentação física →
+> lançada no QAP" continua valendo como **relatório humano** para o Gilleno.
+> Os conectores moram na aba **APIs** do Administrativo.
 
 ## 7. Regras ditadas (log numerado)
 
@@ -2730,3 +2735,160 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   **O que a R123 NÃO entrega.** A rosca não guarda o corte escolhido entre
   visitas — é pergunta do momento, não preferência. E a lista de plantão da
   ficha mostra os 20 mais recentes, dizendo que mostra. *(U92.)*
+
+- **R124** — **A Operacional Técnica centraliza os trabalhos dos técnicos DE
+  CAMPO da EQUIPE TÉCNICA — e só deles.** O T.I. também faz atividade em campo,
+  e ela **não entra nesta conta**: o recorte da tela é por **equipe =
+  técnica** (como a R95 já fazia), nunca por "natureza = campo". E o Vinicius,
+  que gere essa equipe, **não é só técnico, é gestor**: as atividades dele são
+  demandas gerais como as de Davi, Erik, Gilleno, Nicholas e Rubia, e vivem na
+  **Início** — a Operacional Técnica é a tela da equipe, não a fila pessoal
+  dele. O contexto inteiro está em `docs/CONTEXTO_OPERACAO_TECNICA.md`.
+  *(Davi, 2026-09-03: "na tela Operacional Técnica estará centralizado tudo o
+  que se refere aos trabalhos dos técnicos DE CAMPO. Isso precisa estar bem
+  claro para você. Ou seja, o T.I também pode fazer atividade EM CAMPO, porém
+  não entra nesta conta, no Operacional Técnica são EQUIP. TECNICA.")*
+
+- **R125** — **O dashboard da Operacional Técnica responde às três perguntas
+  do Vinicius: o que cada equipe faz, como está cada implantação, quanto vai
+  ser cobrado no mês.** Para isso ele foi reorganizado:
+
+  **Saem** "Fluxo e ritmo" e "Em aberto por técnico". Os indicadores que eles
+  mostravam (entradas, saídas, saldo, tempo até começar, execução, % no prazo,
+  carga por pessoa) **continuam calculados e cobertos por asserção** em
+  `indicadores.ts` — saíram da tela, não da biblioteca, como já aconteceu com
+  backlog e reincidência na R68.
+
+  **Encolhem**: "Atividades por equipe" passa de **12 para 8 semanas**; a
+  rosca "Fila por status / por tipo" estreita.
+
+  **Muda de lado**: "Abertos por cliente" vai para a **esquerda**, com a altura
+  das duas faixas (a R69 o tinha posto à direita; o painel alto continua sendo
+  ele — e agora há um segundo painel alto, o de implantações, na direita).
+
+  **Entram**, no espaço que sobrou:
+  - **"A cobrar este mês"** — a soma das cobranças da **competência
+    corrente**, exceto canceladas, com quantas ainda estão em aberto. **Só para
+    quem vê valores** (R13): para o SAC o painel **não existe** — não fica
+    zerado, porque zero e "escondido" são coisas diferentes e a tela não pode
+    confundi-las. Clicar leva aos Fechamentos.
+  - **"Aguardando conferência"** — chamados técnicos **concluídos** cuja
+    decisão de cobrança ainda não foi tomada (`a_analisar` ou
+    `em_conferencia`). É **clicável e filtra a lista**: o número e a lista saem
+    da MESMA função (`chamadosDoKpi`), a invariante de sempre.
+  - **"Implantações em andamento"** — uma **barra de progresso por obra
+    aberta**. O preenchimento é o **real**: fases concluídas pelo gestor
+    (R120). A marca fina é o **plano**: dias úteis decorridos do período.
+    Obra sem cronograma mostra o plano e diz que é plano ("62% do período");
+    obra sem período diz "sem período" — nunca uma barra vazia fingindo zero.
+    Passou do fim previsto sem terminar: o prazo pinta de vermelho. Clicar
+    abre o chamado no painel lateral. Lista cortada diz que cortou.
+
+  **A altura total do dashboard não muda** (2 × 168 + 14), então a lista
+  continua abrindo acima da metade da tela (R68) — o verificador refaz a
+  conta. *(Davi, 2026-09-03: "Remova os campos do dashboard de 'FLUXO E
+  RITMO' e 'EM ABERTO POR TÉCNICO'. Os campos que continuam no dashboard
+  deverão estar mais compactados, então reduza ATIVIDADES POR EQUIPE de 12
+  semanas para 8 semanas. Fila por Status ou fila por Tipo você também pode
+  reduzir a largura. Mova o campo ABERTOS POR CLIENTE para a esquerda, e com
+  o espaço que sobrar, vamos criar: 'A cobrar este mês', 'Ordens de serviço
+  aguardando conferência', e o principal que quero adicionar: Um campo com
+  uma barra de progresso para cada item, e cada item será uma implantação que
+  estamos em andamento.")*
+
+- **R126** — **A Operacional Técnica tem um botão "+", e ele abre um chamado
+  técnico sem sair da tela.** É um pop-up com o **mesmo formulário** de
+  `/chamados/novo-campo` — extraído para um componente e usado nos dois
+  lugares, nunca copiado: um formulário só, um caminho de escrita só
+  (`abrirChamado` + `agenda_campo_marcar`), as mesmas recusas e a mesma frase
+  "o chamado foi aberto; o horário não entrou".
+
+  O que o Davi pediu e o formulário passa a fazer:
+  - **Responsável: equipe de campo OU técnico solo.** Escolher a equipe sem
+    escolher técnico **propõe o primeiro da escala da semana** como
+    responsável — é isso que faz o chamado contar para a equipe no gráfico e
+    receber o apoio automático (R75/R96). Quem quiser outro, troca.
+  - **Problema se for manutenção, sistema se for implantação.** Na
+    implantação o campo se chama "sistema a implantar" e oferece **cadastrar
+    um sistema novo do cliente na hora** (tipo + nome); o chamado nasce
+    ligado a ele.
+  - **Data do agendamento**, com hora, duração e deslocamento, pela porta da
+    programação.
+  - **Sem título digitado, o sistema sugere** "Tipo — Sistema" (ou "Tipo —
+    Cliente"): o Vinicius abre dez chamados por dia, e o título raramente diz
+    mais que isso.
+
+  Ao criar, o chamado abre no **painel lateral** (R33), sem trocar de página.
+  *(Davi, 2026-09-03: "Na tela de Operacional Técnica deverá ter um botão de
+  '+' que o Vinicius poderá abrir um chamado técnico, atribuindo o responsável
+  (equipe ou técnico solo), cliente, problema se for manutenção, sistema se
+  for implantação, data do agendamento, enfim, ele terá a opção de abrir um
+  chamado técnico!")*
+
+- **R127** — **O técnico de campo tem TRÊS atividades, cada uma com fluxo
+  próprio: manutenção corretiva, manutenção preventiva e implantação.** A
+  corretiva parte de um **problema relatado** e tem SLA; a preventiva parte
+  dos **sistemas cadastrados no cliente** — é sobre eles que se faz a rotina;
+  a implantação parte de um **sistema a implantar**, tem período e quatro
+  fases (R120). Os outros dois valores de `tipo` continuam existindo mas não
+  são "a quarta atividade": `operacional` é a tarefa miúda de campo (R5) e a
+  **vistoria é atividade do GESTOR** — o Vinicius indo validar o trabalho dos
+  técnicos (a reconciliação com o texto da R112 é a Q2 do `PLANO_V0.1.md`).
+  *(Davi, 2026-09-03: "Cada técnico tem 3 possíveis atividades. Manutenção
+  Corretiva, manutenção preventiva e implantação. Cada item tem um fluxo
+  próprio. A Manutenção preventiva vai depender dos sistemas cadastrados em
+  cada cliente.")*
+
+- **R128** — **A página do cliente é o centro de tudo o que se refere ao
+  cliente.** Quatro coisas de origens diferentes moram nela, e a origem é
+  regra: o **cadastro** (CNPJ, endereço, razão social, nome fantasia) vem do
+  **QAP ERP**; os **sistemas instalados** (eclusa de pedestres, porta de vidro
+  com acesso ao hall, CFTV, alarme…) são **imputados manualmente no app**; os
+  **equipamentos** vêm do **QAP ERP** — o app **só recebe, não envia**; o
+  **contrato** é **upload** no app, e o sistema o lê para saber o que está em
+  **comodato com doação**, o que é **locação** e quais **manutenções estão
+  inclusas**. As **cobranças extras** que o Vinicius lança aparecem na ficha
+  **e** na Operacional Técnica. Sistema não é equipamento: sistema é o
+  conjunto funcional (base da preventiva); equipamento é a peça com número de
+  série (base da cobrança). *(Davi, 2026-09-03: "Tudo isso que se refere ao
+  cliente em si deverá ser feito através da página do cliente. Além disso, as
+  cobranças extras que o Vinicius lança deverão estar disponíveis na página do
+  cliente também — além do painel operacional técnica.")*
+
+- **R129** — **O Administrativo ganha uma aba de APIs, e o QAP ERP só é
+  lido.** A aba é onde se conecta com terceiros; o primeiro conector é o QAP,
+  de onde o app **puxa** clientes e equipamentos por cliente. **O app não
+  escreve no QAP.** Isto corrige o §6 deste documento: a "movimentação física
+  lançada no QAP via API" **sai do plano** — a ponte para o Gilleno lançar a
+  movimentação continua sendo o relatório humano, por decisão e não por
+  pendência. *(Davi, 2026-09-03: "teremos uma aba dentro da janela
+  'Administrativo' que terá as APIs para conectarmos com terceiros. E aí eu
+  vou conectar com a API do QAP ERP, onde o nosso software vai puxar todos os
+  equipamentos registrados em cada cliente… Nosso sistema só recebe, não
+  envia.")*
+
+- **R130** — **Quando um técnico finaliza um chamado, nasce uma atividade de
+  VALIDAÇÃO para o gestor da equipe técnica, na Início.** Ela segue um fluxo
+  diferente do chamado: **tudo já está escrito** — equipamentos fornecidos,
+  equipamentos retirados, diagnóstico, fotos do executado, data de início e de
+  fim, técnico(s), cliente. O gestor **valida** e **decide a cobrança**: campo
+  para lançar, opção de **parcelar**, **descrição sugerida pelo sistema**, e
+  duas saídas — **CONCLUIR E LANÇAR COBRANÇA** ou **CONCLUIR SEM COBRAR**. É o
+  Vinicius quem cuida das cobranças extras (manutenção fora do contrato,
+  equipamento novo não incluso), e a cobrança lançada aparece na ficha do
+  cliente e no painel.
+
+  **O que já existe e o que falta.** A porta que conclui e decide na mesma
+  transação existe (`concluir_chamado_com_cobranca`, R104/R121), com parcelas
+  em centavos e a régua do SAC sem valores (R13); a caixa "Conferência" do
+  detalhe já oferece as três saídas. **Falta a ATIVIDADE**: o card na Início
+  do gestor, a vista única do que o técnico registrou, a descrição sugerida e o
+  aviso. É a Fase C do `PLANO_V0.1.md`; a forma (card derivado do estado do
+  chamado × chamado criado por gatilho) é a Q1, com recomendação pelo
+  derivado. *(Davi, 2026-09-03: "toda vez que um técnico finaliza determinado
+  chamado, o sistema deverá criar uma atividade para o Vinicius, que será uma
+  atividade de validação. Essa atividade estará disponível na tela INICIO —
+  pois lembre-se, o Vinicius não é só um técnico, ele é Gestor. […] deverá ter
+  um campo para Lançar cobrança, opção de parcelar, Descrição da cobrança (Vem
+  com sugestão do sistema), e aí terão as opções: CONCLUIR E LANÇAR COBRANÇA
+  ou então CONCLUIR SEM COBRAR.")*

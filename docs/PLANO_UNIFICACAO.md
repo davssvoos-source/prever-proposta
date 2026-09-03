@@ -8926,3 +8926,161 @@ POSIÇÃO e não de presença.
 Com isto a **Fase 5 está fechada**. Resta a Fase 2 pela metade (a estimativa de
 rota espera a `ORS_API_KEY`) e a Fase 6 (migração do Gestor OS com data de
 corte), que depende do export do Vinicius.
+
+## U93 — O contexto do Davi, o plano da v0.1, e a Operacional Técnica do Vinicius (R124–R130)
+
+**Arquivos:** `docs/CONTEXTO_OPERACAO_TECNICA.md` (novo), `docs/PLANO_V0.1.md`
+(novo), `docs/PRODUTO.md` (R124–R130 + nota no §6), `CLAUDE.md` (mapa),
+`docs/manual/operacao-campo.md`, `src/features/paineis/indicadores.ts`,
+`src/features/implantacao/modelo.ts`, `src/features/implantacao/data.ts`,
+`src/features/chamados/cobranca.ts`, `src/features/chamados/abertura.ts` (novo),
+`src/features/chamados/FormularioChamadoTecnico.tsx` (novo, extraído),
+`src/features/chamados/NovoChamadoTecnicoDialog.tsx` (novo),
+`src/routes/_authenticated/chamados.novo-campo.tsx` (virou moldura),
+`src/routes/_authenticated/painel.operacional.tsx`, `scripts/verificar-logica.cjs`.
+**Sem migration.**
+
+### Dois passos para trás, primeiro
+
+O Davi pediu para recuar antes de avançar: a união com o sistema do Vinicius
+tinha sido feita a partir de um documento escrito pelo **Claude dele**, e aquele
+documento trazia a leitura dele — não a do Davi. Esta entrada começa, então, por
+escrever a leitura do Davi num lugar só: `CONTEXTO_OPERACAO_TECNICA.md`. Quem é
+quem (o Vinicius é GESTOR, não só técnico; as atividades dele são demandas
+gerais na Início), as três atividades do técnico de campo com fluxo próprio, a
+página do cliente como centro (cadastro e equipamentos do QAP, sistemas à mão,
+contrato por upload, cobranças extras), as integrações no Administrativo com o
+QAP **só lido**, e a atividade de validação que nasce quando o técnico conclui.
+
+O §8 daquele documento lista o que a leitura de fora errou. Dois pontos mudam
+regra escrita: o app **não escreve no QAP** (o §6 do PRODUTO previa o contrário
+— ganhou uma nota, R129), e os **equipamentos vêm do QAP**, não do técnico em
+campo (a decisão de 15/08 dizia o oposto; R128). Um terceiro ponto ficou como
+pergunta em vez de virar regra: a **vistoria** — a R112 a descreveu como "ir ao
+cliente só para olhar", o Davi a descreveu como "validar o trabalho dos
+técnicos". Não reescrevi a R112 por conta própria: é a Q2 do plano.
+
+### O plano, e por que ele substitui o anterior
+
+O plano da absorção do Gestor OS (U75) ficou fora do repo, e era um plano de
+portar telas. `PLANO_V0.1.md` é outro tipo de plano: a **definição de pronto** é
+"um mês inteiro da equipe técnica passa só pelo app", e as fases saem das
+prioridades que o Davi ditou (A: o dashboard; B: o "+"; C: a validação do
+gestor; D: a ficha do cliente; E: APIs e QAP; F: preventiva por sistema; G: o
+corte do Gestor OS). O §2 é um inventário do que JÁ EXISTE — porque o risco
+real deste projeto, a U92 mostrou, é reconstruir o que está pronto lendo um
+plano antigo. E o §4 são dez perguntas para o Davi, cada uma com a hipótese
+que esta entrega assumiu para não travar.
+
+### Fase A — o dashboard
+
+**O que saiu e para onde foi.** "Fluxo e ritmo" e "Em aberto por técnico"
+saíram da tela. Os números deles continuam em `indicadores.ts` — o verificador
+passou a prender exatamente isso: a asserção nova calcula `saidasMes`,
+`horasAteComecar` e `horasDeExecucao` num lote e confere que a biblioteca ainda
+responde. É a mesma história de backlog e reincidência na R68: a biblioteca é
+maior que a tela, de propósito.
+
+**O orçamento de largura virou constante e asserção.** A R69 tinha travado
+"244 + 210 + 216 + 28 ≤ 700" como número. Com três colunas, a conta mudou de
+natureza: as três têm de caber em **1134px** (1366 de viewport com a sidebar
+aberta), e a coluna do meio tem de ter EXATAMENTE a largura que a faixa 1 pede,
+senão a faixa quebra por dentro e as alturas descolam dos painéis altos. Então
+`BASE_MEIO` é DERIVADA (`LARGURA_KPIS + LARGURA_FILA + LARGURA_TILES + 2·GAP` =
+590), e a asserção lê as seis constantes e refaz as duas contas — 590, e
+236 + 590 + 262 + 28 = 1116 ≤ 1134.
+
+**Três decisões nos painéis novos:**
+
+1. **"A cobrar este mês" não existe para o SAC.** Não é um campo cinza nem um
+   zero: é ausência. A consulta nem dispara sem `veFinanceiro` — e a hook nova
+   (`useCobrancasDaCompetencia`) deixa o erro SUBIR, ao contrário das irmãs do
+   mesmo arquivo, porque quem chegou a chamá-la pode ler a tabela, e "[]" viraria
+   "R$ 0,00" diante de uma consulta que falhou. Erro, carregando e valor são
+   três telas, com o erro primeiro (lição da U86).
+2. **"Aguardando conferência" é o quinto recorte de `chamadosDoKpi`, fora do
+   2×2.** Ele não é subconjunto de "em aberto" — são chamados CONCLUÍDOS — e por
+   isso não entra em `KPI_OPERACIONAL_ORDEM` (a asserção antiga dos quatro
+   continua verde). Mas o número e a lista saem da mesma função, que é a
+   invariante da casa. E a lista dele ordena por HISTÓRICO, não por urgência de
+   prazo: prazo não tem urgência depois de encerrado. Conta `a_analisar` E
+   `em_conferencia`, porque o cartão da grade já conta os dois como pendentes e
+   a conferência 113 da U80 mostrou o segundo como o chamado parado há dias.
+   A regra do campo ausente é estrita: linha sem `faturamento_status` não conta
+   — "não sei" nunca vira "sim".
+3. **A barra da implantação tem duas medidas que não se misturam.** O
+   preenchimento é o REAL (fases com `concluida_em` — a escrita é do gestor,
+   R120); a marca fina é o PLANO (dias úteis decorridos, pelo mesmo
+   `contarDiasUteis` do cronograma). Uma barra que somasse as duas diria "60%"
+   sem ninguém saber se a obra andou ou se o mês passou. Sem cronograma, pinta o
+   plano e o rótulo diz "% do período" — é plano, e diz que é. Sem período, diz
+   "sem período" e não inventa. Antes do início o plano é 0 (não null — null é
+   "não há período"); depois do fim é 100 e `atrasada` diz o resto. O período e
+   as fases vêm de uma consulta PRÓPRIA (`useObrasEmAndamento`), pela regra de
+   deploy da U89: se ela falhar, falha o progresso — a lista de obras continua,
+   com "—" e o motivo no rodapé.
+
+**Uma correção de vocabulário na tela.** O painel de conferência chama-se
+"Aguardando conferência" e não "Ordens de serviço aguardando conferência", como
+o Davi escreveu: o tile tem 128px, e "ordem de serviço" é o nome do SIGMA — no
+app a coisa se chama chamado desde a U7.
+
+### Fase B — o "+", e o formulário que virou um só
+
+O Davi pediu um "+" que abre chamado técnico com equipe ou técnico solo,
+cliente, problema ou sistema, e agendamento. `/chamados/novo-campo` já fazia
+tudo isso em 626 linhas. Copiar para um pop-up criaria o segundo caminho de
+escrita; navegar para a página perderia a tela. Então **o corpo do formulário
+virou componente** (`FormularioChamadoTecnico`), a rota virou moldura de página
+(guarda, cabeçalho, destino) e o pop-up virou moldura de diálogo (a mesma do
+`DialogoDuplas`). Quem chama decide para onde ir ao terminar: a página navega,
+o pop-up abre o painel lateral (R33). As asserções da U79 e da U83 que liam a
+rota passaram a ler o componente — o formulário mudou de arquivo, não de
+conteúdo.
+
+**O que o formulário ganhou (R126), e onde mora a regra.** Três funções puras
+em `abertura.ts`, assertadas pelo `carregar()`:
+- `responsavelProposto` — técnico vence; sem técnico, o PRIMEIRO da escala da
+  equipe; sem os dois, ninguém. A escala já chega ordenada por `ordem`, então
+  "primeiro" é quem o gestor pôs primeiro (o líder, R14), não sorteio. É o que
+  faz o chamado contar para a equipe no gráfico e receber o apoio automático.
+  A tela DIZ a proposta antes de gravar.
+- `sugerirTitulo` — "Tipo — Sistema", senão "Tipo — Cliente". O que a pessoa lê
+  no placeholder é exatamente o que o banco recebe se ela não digitar.
+- `rotuloDoSistema` / `secaoDoProblema` / `podeCriarSistema` — "problema se for
+  manutenção, sistema se for implantação": a seção existe em todo tipo, mas a
+  pergunta muda; e só a implantação oferece CRIAR o sistema do cliente ali,
+  porque só nela o sistema ainda não existe. O sistema nasce ANTES do chamado
+  (para o chamado já apontar para ele), e a asserção compara as posições das
+  duas chamadas no fonte.
+
+**O que eu recusei.** Não criei `situacao = em_implantacao` no sistema do
+cliente: `cliente_sistemas.ativo` é booleano e o CHECK está no banco — é
+migration, e é a Fase D (a preventiva "vazio = todos ativos" incluiria um
+sistema ainda não instalado; está registrado lá). Também não fiz o "+" ser
+permissão nova: ele obedece `chamados.novo`, a chave que a página já tinha.
+
+### O que a verificação pegou
+
+- O primeiro `moedaCurta` compararia "R$ 850,00" com espaço comum, e o ICU
+  do Node emite espaço INSEPARÁVEL depois do "R$". A asserção normaliza —
+  senão passaria numa máquina e falharia noutra.
+- O caso de teste do progresso caía em 7 de setembro (feriado nacional) e o
+  número esperado estava errado por um dia útil. O período do teste mudou para
+  14–25/09, sem feriado — e a lição é a de sempre: dia útil não é dia corrido,
+  e o `feriados.ts` está certo mesmo quando o teste está errado.
+- Duas asserções antigas precisaram mudar de alvo, não de regra: "quatro
+  gráficos com prefixo próprio" virou três (o `op-tec` saiu com o ranking), e
+  "dois rankings do mesmo componente" virou um.
+
+### A ordem de deploy
+
+Zero migration; o push pode ir a qualquer hora. As colunas que o painel de obras
+lê (`implantacao_inicio/fim`, `implantacao_cronograma`) são da U89, já rodada.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2676 passaram, 0 falharam** (40 novas;
+sete antigas mudaram de alvo com a R125/R126 — nenhuma regra foi afrouxada).
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
+Última regra: **R130**. Sem migration a rodar.

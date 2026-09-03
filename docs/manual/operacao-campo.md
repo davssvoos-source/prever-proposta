@@ -67,6 +67,50 @@ A antiga lista `/chamados` morreu (R31). O detalhe continua em
   apagaria a linha de permissão de cada papel); no celular o menu mostra
   "Técnica", porque o nome inteiro não cabe na barra.
 
+## O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)
+
+A tela é do **gestor da equipe técnica**, e o recorte é por **equipe =
+técnica** (R124): o T.I. em campo não entra. O dashboard foi reorganizado em
+03/09/2026 para responder, nesta ordem, o que o Vinicius pergunta ao abrir a
+tela:
+
+| Coluna | Painel | O que responde |
+|---|---|---|
+| Esquerda (altura dupla) | **Abertos por cliente** | quem está pedindo mais — só clientes COM chamado aberto; a soma das barras é o KPI "em aberto" |
+| Meio, faixa 1 | **4 KPIs** (em aberto · sem responsável · urgentes · prazo estourado) | os números de cabeça; clicar filtra a lista |
+| Meio, faixa 1 | **Fila por status / por tipo** (rosca) | como a fila em aberto se divide; o miolo não muda ao trocar o corte |
+| Meio, faixa 1 | **A cobrar este mês** | a soma das cobranças da competência corrente (exceto canceladas) e quantas ainda estão fora de fechamento. **Só para quem vê valores** (R13): o SAC não vê o painel — não vê um zero |
+| Meio, faixa 1 | **Aguardando conferência** | chamados técnicos **concluídos** cuja decisão de cobrança ainda não foi tomada (`a_analisar` ou `em_conferencia`). Clicar filtra a lista: o número e a lista saem da mesma função |
+| Meio, faixa 2 | **Atividades por equipe · 8 semanas** | quem fez o quê, semana a semana (era 12 semanas; encurtou na R125). O botão **Equipes** cadastra e escala |
+| Direita (altura dupla) | **Implantações em andamento** | uma barra por obra aberta |
+
+**Como ler a barra da implantação.** O preenchimento é o **real**: as fases
+que o gestor marcou como concluídas no cronograma (R120). A marca fina em pé
+é o **plano**: quanto do período já passou, em dias úteis. Barra atrás da
+marca = a obra está atrasada em relação ao calendário. Obra **sem
+cronograma** mostra o plano e o rótulo diz "62% do período" — é plano, e diz
+que é. Obra **sem período** diz "sem período": ninguém afirmou quando ela
+acaba, e a tela não inventa. Passou do fim previsto sem terminar: o prazo
+pinta de vermelho. Clicar abre o chamado no painel lateral; a lista mostra até
+8 obras e diz quando cortou.
+
+**O que saiu.** "Fluxo e ritmo" e "Em aberto por técnico" deixaram a tela na
+R125. Os números deles (entradas, saídas, saldo, tempo até começar, execução,
+% no prazo, carga por pessoa) continuam calculados em
+`features/paineis/indicadores.ts`, cobertos por asserção — saíram do layout,
+não da biblioteca.
+
+**O "+" (R126).** Ao lado do alternador Lista/Quadro há um botão "+" que abre
+um chamado técnico **sem sair da tela**. É o mesmo formulário de
+`/chamados/novo-campo` (um componente só, usado nos dois lugares), com o que o
+Davi pediu: escolher a **equipe de campo** sem técnico propõe o **primeiro da
+escala da semana** como responsável (e a tela diz quem, antes de gravar); na
+**implantação** o campo vira "sistema a implantar" e oferece **cadastrar um
+sistema novo** do cliente ali; sem título digitado, o chamado se chama
+"Tipo — Sistema" (ou "Tipo — Cliente"). O agendamento passa pela mesma porta
+da programação, com as mesmas recusas; o chamado criado desliza no painel
+lateral.
+
 ## Equipe de campo: a composição tem SEMANA (R96/R97, U76)
 
 **"Equipe" sem adjetivo é DEPARTAMENTO** (técnica, T.I., comercial, controle

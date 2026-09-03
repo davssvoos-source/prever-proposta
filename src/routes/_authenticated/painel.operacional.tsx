@@ -1,4 +1,7 @@
-// Painel Operacional — R27, na anatomia da Início (R67) e no degradê dela (R68).
+// Painel Operacional Técnica — R27, na anatomia da Início (R67), no degradê
+// dela (R68), recortado pela equipe técnica (R95) e reorganizado para as três
+// perguntas do Vinicius (R125): o que cada equipe faz, como está cada
+// implantação, quanto vai ser cobrado no mês.
 //
 // A TELA TEM DUAS PARTES, e só duas: o dashboard em cima, a lista no resto.
 // Não há título nem subtítulo (R68) — o nome da tela já está aceso no menu à
@@ -15,24 +18,32 @@
 //   · A INVARIANTE (§7.2): o número de um KPI e a lista que ele abre saem da
 //     MESMA função pura — `chamadosDoKpi`, em indicadores.ts.
 //
-// O DEGRADÊ É O MESMO DA INÍCIO, agora também aqui (R68, pedido do Davi:
-// "quero ver o degradê igualzinho o do início em tudo"). Lá as barras são
-// <div> com `gradienteBarra()` em CSS e a rosca é SVG à mão; aqui tudo passa
-// pelo recharts, que pinta em SVG — `linear-gradient()` de CSS não vale em
-// `fill`. Daí `paradasBarra()` (paleta.ts): a irmã SVG de `gradienteBarra`,
-// com a MESMA regra da costura — o par que cruza a emenda da rampa ganha a
-// parada acromática no meio, senão o miolo da peça fica verde.
+// O ARRANJO DA R125 (Davi, 03/09/2026), em três colunas:
 //
-// A REGRA DA RAMPA, igual à da Início: a peça i vai de ESPECTRO[i] a
-// ESPECTRO[i+1]. O pé direito de uma emenda no pé esquerdo da próxima, e a
-// série inteira — barras, fatias da rosca, linhas — lê como um degradê só.
-// Máximo de 8 peças (§9 do DESIGN_SYSTEM); "Sem técnico"/"Sem cliente"
-// continuam NEUTROS, fora da rampa: são ausência de identidade, não mais uma
-// identidade.
+//   [ Abertos por cliente ] [ KPIs 2×2 | Fila | A cobrar / Aguardando ] [ Implantações ]
+//   [   (duas faixas)     ] [ Atividades por equipe · 8 semanas         ] [ em andamento ]
 //
-// Só natureza "campo": a proposta comercial (U29) é funil, e as demandas
-// internas têm sprint, não SLA — misturá-las faria o tempo de atendimento
-// somar relógios diferentes.
+//   · "Fluxo e ritmo" e "Em aberto por técnico" SAÍRAM da tela. Os números
+//     deles continuam em indicadores.ts, puros e assertados — saíram do
+//     layout, não da biblioteca (é a mesma história de backlog/reincidência).
+//   · "Abertos por cliente" foi para a ESQUERDA (era a coluna da direita na
+//     R69) e continua com a altura das duas faixas.
+//   · A coluna da direita é NOVA: as implantações em andamento, uma barra por
+//     obra — o painel que o Davi chamou de "o principal".
+//   · Entre os KPIs e o gráfico das equipes, a coluna dos dois quadrados de
+//     dinheiro e conferência.
+//
+// O DEGRADÊ É O MESMO DA INÍCIO (R68). Lá as barras são <div> com
+// `gradienteBarra()` em CSS e a rosca é SVG à mão; aqui tudo passa pelo
+// recharts, que pinta em SVG — `linear-gradient()` de CSS não vale em `fill`.
+// Daí `paradasBarra()` (paleta.ts): a irmã SVG de `gradienteBarra`, com a MESMA
+// regra da costura. A REGRA DA RAMPA: a peça i vai de ESPECTRO[i] a
+// ESPECTRO[i+1]. Máximo de 8 peças (§9 do DESIGN_SYSTEM); "Sem cliente"
+// continua NEUTRO, fora da rampa: é ausência de identidade, não mais uma.
+//
+// Só natureza "campo" E equipe "tecnica" (R95/R124): a proposta comercial (U29)
+// é funil, as demandas internas são do quadro, e o T.I. em campo é de outra
+// equipe.
 
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
@@ -41,12 +52,14 @@ import {
   PieChart, Pie, Cell, Tooltip as RTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend,
 } from "recharts";
-import { Users, LayoutGrid, List } from "lucide-react";
+import { Users, LayoutGrid, List, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
-import { useUserCargo, useTecnicos } from "@/features/gerencial/data";
+import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
+import { useUserCargo, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { useChamadosPorNatureza, usePessoas, mapaDePessoas } from "@/features/chamados/data";
 import { PainelChamado } from "@/features/chamados/PainelChamado";
+import { NovoChamadoTecnicoDialog } from "@/features/chamados/NovoChamadoTecnicoDialog";
+import { moeda, useCobrancasDaCompetencia } from "@/features/chamados/cobranca";
 import { useApoiosDeTodos } from "@/features/home/data";
 import { TabelaAtividades } from "@/features/home/TabelaAtividades";
 import { atividadeDoChamado, type Atividade } from "@/features/atividades/modelo";
@@ -56,20 +69,23 @@ import {
   serieAtividadesPorEscala, foraDeEscala, duplasNaJanela, composicaoDaDupla,
   montarEscala, rotuloDaComposicao, type SemanaDoGrafico,
 } from "@/features/duplas/modelo";
+import { useObrasEmAndamento } from "@/features/implantacao/data";
+import { progressoDaObra, rotuloDoProgresso, preenchimentoDaBarra } from "@/features/implantacao/modelo";
 import { chamadoStatusInfo, textoPrazo, TIPO_LABEL, type ChamadoTipo } from "@/lib/chamado-status";
-import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
+import { referenciaSemanal, inicioSemana, competencia, dataIso } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
+import { FONT, card, goldButton } from "@/lib/ui";
 import {
   PRISMA, paradasBarra, gradienteBarra, espectro, espectroTexto, PECAS_ESPECTRO,
   GRAD_PRIMARIA, SOBRE_PRIMARIA,
 } from "@/lib/paleta";
 import {
-  calcularIndicadores, horasTexto,
+  calcularIndicadores,
   chamadosDoKpi, KPI_OPERACIONAL_ORDEM, KPI_OPERACIONAL_LABEL, type ChaveKpiOperacional,
   abertosPorCliente, abertosPorTipo, ordenarChamados, ordenarHistorico,
   chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
   agruparPorColuna, COLUNA_OP_ORDEM, COLUNA_OP_LABEL, type ColunaOperacional,
+  implantacoesEmAndamento, totalACobrar, moedaCurta,
 } from "@/features/paineis/indicadores";
 import { PainelBase, type AtalhoPainel } from "@/features/paineis/PainelBase";
 
@@ -91,7 +107,7 @@ const ATALHOS: AtalhoPainel[] = [];
  * A altura única de TODO painel das duas faixas (DASHBOARD.md §4).
  *
  * 168 e não os 252 da Início: lá são quatro painéis numa faixa só. Aqui são
- * seis em duas, e o contrato desta tela (R68) é a LISTA COMEÇAR NO MÁXIMO NA
+ * mais, em duas, e o contrato desta tela (R68) é a LISTA COMEÇAR NO MÁXIMO NA
  * METADE DA TELA. A conta que fixou o número, e que o verificador refaz:
  * 2×168 + 14 de gap + 6 de respiro + os 24 de `--topo` = 380px — o cabeçalho
  * da lista abre aí, acima da metade (384) mesmo num notebook de 768px de
@@ -103,7 +119,8 @@ const ALTURA = 168;
 const GAP = 14;
 
 /**
- * A altura de um painel que ocupa AS DUAS FAIXAS — o "Abertos por cliente".
+ * A altura de um painel que ocupa AS DUAS FAIXAS — "Abertos por cliente" e
+ * "Implantações em andamento".
  *
  * Derivada, nunca digitada: ele precisa terminar exatamente onde a segunda
  * faixa termina, e um 350 solto aqui se descolaria de `ALTURA`/`GAP` na
@@ -111,8 +128,8 @@ const GAP = 14;
  */
 const ALTURA_DUPLA = ALTURA * 2 + GAP;
 
-/** Quantas semanas o gráfico de atividades por dupla mostra. */
-const SEMANAS_NO_GRAFICO = 12;
+/** Quantas semanas o gráfico de atividades por equipe mostra (R125: era 12). */
+const SEMANAS_NO_GRAFICO = 8;
 
 /** Quantas barras cabem num ranking de uma faixa sem espremer o rótulo. */
 const TETO_BARRAS = 5;
@@ -120,8 +137,34 @@ const TETO_BARRAS = 5;
 /** …e num de duas faixas, que tem o dobro de altura para gastar. */
 const TETO_BARRAS_ALTO = 12;
 
+/** Quantas obras cabem no painel de implantações (duas linhas por obra). */
+const TETO_OBRAS = 8;
+
 /** Teto da tabela — o mesmo da Início. */
 const TETO_TABELA = 200;
+
+/**
+ * O ORÇAMENTO DE LARGURA — a conta que o verificador refaz.
+ *
+ * As três colunas têm de caber numa linha no menor desktop em que esta tela é
+ * usada: 1366px de viewport com a sidebar aberta (232px de `--rail`) = 1134px
+ * de coluna. Acima disso o flex distribui a folga; abaixo, o `flexWrap` joga a
+ * coluna da DIREITA para baixo — e é ela que quebra, de propósito, porque as
+ * faixas do meio não podem descolar do painel alto da esquerda.
+ *
+ *   coluna esquerda  236 (Abertos por cliente)
+ *   coluna do meio   244 (KPIs) + 190 (fila) + 128 (dinheiro/conferência) + 2×14 = 590
+ *   coluna direita   262 (implantações)
+ *   dois gaps         28
+ *   ────────────────────
+ *                   1116 ≤ 1134
+ */
+const LARGURA_KPIS = 244;
+const LARGURA_FILA = 190;
+const LARGURA_TILES = 128;
+const BASE_CLIENTES = 236;
+const BASE_MEIO = LARGURA_KPIS + LARGURA_FILA + LARGURA_TILES + 2 * GAP;
+const BASE_OBRAS = 262;
 
 /**
  * Os `<linearGradient>` de uma série pintada na rampa: um por peça, i → i+1.
@@ -170,15 +213,18 @@ function gradientesEspectro(
 function PainelOperacional() {
   const navigate = useNavigate();
   const { data: cargo } = useUserCargo();
+  const { data: veFinanceiro = false } = useVeFinanceiro();
+  const { podeVer } = usePermissoes();
   const { data: chamadosDeCampo = [] } = useChamadosPorNatureza("campo");
   /**
-   * R95/U75: este painel é da equipe TÉCNICA, não de todo chamado de campo.
+   * R95/R124: este painel é da equipe TÉCNICA, não de todo chamado de campo.
    *
-   * Até aqui a tela lia `natureza="campo"` e pronto — e acertava por
+   * Até a U75 a tela lia `natureza="campo"` e pronto — e acertava por
    * COINCIDÊNCIA: todo chamado de campo nasce com `equipe: "tecnica"`
    * (chamados/data.ts). Nada no banco impede um chamado de campo de outra
-   * equipe, e no dia em que existir um ele apareceria aqui sem ninguém pedir.
-   * Agora o recorte é explícito, e é o que faz este ser o painel do Vinicius.
+   * equipe (o T.I. em campo, por exemplo), e no dia em que existir um ele
+   * apareceria aqui sem ninguém pedir. O recorte é explícito, e é o que faz
+   * este ser o painel do Vinicius.
    */
   const chamados = useMemo(
     () => chamadosDeCampo.filter((c) => c.equipe === "tecnica"),
@@ -191,9 +237,11 @@ function PainelOperacional() {
   const { data: apoiosDoChamado } = useApoiosDeTodos();
   const { isLight } = useTheme();
   const [duplasAberto, setDuplasAberto] = useState(false);
+  const [novoAberto, setNovoAberto] = useState(false);
   const [painelId, setPainelId] = useState<string | null>(null);
   // qual quadrado de KPI está filtrando a lista agora — null = nenhum, e a
-  // lista mostra a lente inteira
+  // lista mostra a lente inteira. "aguardando_conferencia" também mora aqui
+  // (R125): é o quinto recorte, fora do 2×2 mas na mesma função.
   const [kpiAtivo, setKpiAtivo] = useState<ChaveKpiOperacional | null>(null);
   // R73: a lente da lista. "Em aberto" é o padrão (esta é a tela de quem
   // coordena o dia); "Concluídos" e "Todos" existem porque o histórico —
@@ -219,15 +267,43 @@ function PainelOperacional() {
   // limite do prazo poderia contar diferente em duas peças da mesma tela
   const agora = useMemo(() => new Date(), [chamados]);
   const ind = useMemo(() => calcularIndicadores(chamados as any[], agora), [chamados, agora]);
+  /** 'AAAA-MM-DD' de hoje, para o progresso das obras — texto, não Date (fuso). */
+  const hoje = useMemo(() => dataIso(agora), [agora]);
+  const competenciaAtual = useMemo(() => competencia(agora), [agora]);
+
+  // ── "A cobrar este mês" (R125) — SÓ para quem vê valores (R13) ───────────
+  // A consulta nem é disparada para o SAC: o painel não existe para ele, e
+  // uma consulta que a RLS filtraria para "[]" viraria "R$ 0,00" — zero e
+  // "escondido" não podem ser a mesma coisa.
+  const cobrancasMes = useCobrancasDaCompetencia(competenciaAtual, veFinanceiro);
+  const aCobrar = useMemo(
+    () => totalACobrar(cobrancasMes.data ?? [], competenciaAtual),
+    [cobrancasMes.data, competenciaAtual],
+  );
+
+  // ── "Aguardando conferência" (R125) — o quinto recorte de chamadosDoKpi ──
+  const aguardandoConferencia = useMemo(
+    () => chamadosDoKpi("aguardando_conferencia", chamados as any[], agora).length,
+    [chamados, agora],
+  );
+
+  // ── "Implantações em andamento" (R125) ───────────────────────────────────
+  // A lista vem dos chamados já carregados; o PERÍODO e as FASES vêm de uma
+  // consulta própria (implantacao/data.ts), pela razão de deploy da U89: se
+  // ela falhar, falha o progresso — não a tela.
+  const obras = useMemo(() => implantacoesEmAndamento(chamados as any[]), [chamados]);
+  const idsDasObras = useMemo(() => obras.map((o) => o.id), [obras]);
+  const resumoDasObras = useObrasEmAndamento(idsDasObras);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
-  const azul = isLight ? PRISMA.azul.light : PRISMA.azul.dark;
+  const pessego = isLight ? PRISMA.pessego.light : PRISMA.pessego.dark;
   const superficie = isLight ? "#ffffff" : "#101016";
   const neutro = isLight ? PRISMA.neutro.light : PRISMA.neutro.dark;
+  const trilho = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)";
   // As cores das colunas do quadro (R76) seguem o vocabulário de ESTADO do
   // sistema (lib/chamado-status): azul = ainda não começou, amarelo = está
   // em curso, vermelho = atraso, verde = terminado. Não é a rampa do
@@ -276,26 +352,17 @@ function PainelOperacional() {
   // laranja/vermelho aqui é escala de SEVERIDADE, não série de dados.
   const kpis = useMemo(() => {
     const corDe = (par: { dark: string; light: string }) => (isLight ? par.light : par.dark);
-    const CORES_KPI: Record<ChaveKpiOperacional, { dark: string; light: string }> = {
+    const CORES_KPI: Record<Exclude<ChaveKpiOperacional, "aguardando_conferencia">, { dark: string; light: string }> = {
       abertos: PRISMA.azul, sem_responsavel: PRISMA.amarelo,
       urgentes: PRISMA.laranja, atrasados: PRISMA.vermelho,
     };
     return KPI_OPERACIONAL_ORDEM.map((chave) => ({
       chave,
       rotulo: KPI_OPERACIONAL_LABEL[chave],
-      cor: corDe(CORES_KPI[chave]),
+      cor: corDe(CORES_KPI[chave as keyof typeof CORES_KPI]),
       valor: chamadosDoKpi(chave, chamados, agora).length,
     }));
   }, [chamados, agora, isLight]);
-
-  const cargaComNome = useMemo(
-    () => ind.cargaPorPessoa.map((c) => ({
-      nome: c.pessoaId ? nomeTecnico.get(c.pessoaId) ?? "Técnico" : "Sem técnico",
-      valor: c.total,
-      semDono: !c.pessoaId,
-    })),
-    [ind, nomeTecnico],
-  );
 
   // R68 — no lugar de "Backlog por idade" e "Reincidência 30d". O Map de
   // `abertosPorCliente` só tem chave de cliente que apareceu: quem não tem
@@ -325,13 +392,9 @@ function PainelOperacional() {
   /**
    * QUAL CORTE A ROSCA MOSTRA. Estado LOCAL e não persistido: é pergunta do
    * momento ("como a fila se divide?"), não preferência de quem abre a tela.
-   *
-   * UM PAINEL NOVO NÃO CABIA. As duas faixas têm altura contratada
-   * (ALTURA/ALTURA_DUPLA) e o verificador trava a conta que faz a lista abrir
-   * acima da metade da tela; um quarto card na faixa 1 quebraria isso na
-   * primeira largura intermediária. E a rosca já responde exatamente esta
-   * pergunta — "como a fila EM ABERTO se divide" —, só que por um eixo. Dar a
-   * ela o segundo eixo custa dois botões e zero pixel de layout.
+   * A rosca já responde exatamente esta pergunta — "como a fila EM ABERTO se
+   * divide" —, só que por um eixo. Dar a ela o segundo eixo custa dois botões
+   * e zero pixel de layout.
    */
   const [corteDaRosca, setCorteDaRosca] = useState<"status" | "tipo">("status");
 
@@ -349,7 +412,7 @@ function PainelOperacional() {
   // do meio da rosca não muda quando o eixo muda, e é isso que deixa comparar.
   const roscaComRotulo = corteDaRosca === "status" ? filaComRotulo : tiposComRotulo;
 
-  // ── Atividades por equipe de campo ao longo do tempo (R58/R96) ───────────
+  // ── Atividades por equipe de campo ao longo do tempo (R58/R96/R125) ──────
   const semanas = useMemo<SemanaDoGrafico[]>(() => {
     const segundaDestaSemana = inicioSemana(new Date());
     return Array.from({ length: SEMANAS_NO_GRAFICO }, (_, i) => {
@@ -386,10 +449,12 @@ function PainelOperacional() {
 
   // ── A lista ───────────────────────────────────────────────────────────────
   // A LENTE manda; um KPI ativo estreita dentro de "em aberto" (os quatro são
-  // subconjuntos dele por construção). Ordem: em aberto por urgência de
-  // prazo; histórico pelo mais recente — encerrado não tem urgência, e os
-  // importados nem prazo têm, então empatariam todos.
+  // subconjuntos dele por construção). "Aguardando conferência" é a exceção:
+  // são chamados CONCLUÍDOS, e histórico se ordena pelo mais recente — prazo
+  // não tem urgência depois de encerrado. Ordem: em aberto por urgência de
+  // prazo; histórico pelo mais recente.
   const listaChamados = useMemo(() => {
+    if (kpiAtivo === "aguardando_conferencia") return ordenarHistorico(chamadosDoKpi(kpiAtivo, chamados, agora));
     if (kpiAtivo) return ordenarChamados(chamadosDoKpi(kpiAtivo, chamados, agora), agora);
     const daLente = chamadosDaLente(lente, chamados, agora);
     return lente === "abertos" ? ordenarChamados(daLente, agora) : ordenarHistorico(daLente);
@@ -427,31 +492,63 @@ function PainelOperacional() {
     </div>
   );
 
-  /** Micro-número do painel de fluxo/ritmo. */
-  const Micro = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor: string }) => (
-    <div style={{ minWidth: 0 }}>
-      <div style={{
-        fontFamily: FONT, fontWeight: 700, fontSize: 17, color: cor,
-        fontVariantNumeric: "tabular-nums", lineHeight: 1.1,
-      }}>
-        {valor}
-      </div>
-      <div style={{
-        fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
-        textTransform: "uppercase", color: textSecondary, marginTop: 2, lineHeight: 1.2,
-      }}>
-        {rotulo}
-      </div>
-    </div>
-  );
+  /**
+   * O quadrado pequeno — irmão dos tiles do 2×2, na coluna de dinheiro e
+   * conferência (R125). `ativo` desenha o anel na própria cor (§7.1); quem
+   * não filtra nada (o de dinheiro) não recebe `aoClicar` de drill-down, e o
+   * clique dele navega. Número grande para contagem, menor para moeda — "R$
+   * 12,3 mil" a 26px não cabe em 128px.
+   */
+  const Tile = ({ rotulo, valor, sub, cor, ativo = false, aoClicar, title, compacto = false }: {
+    rotulo: string; valor: string; sub?: string; cor: string;
+    ativo?: boolean; aoClicar?: () => void; title?: string; compacto?: boolean;
+  }) => {
+    const base = card(isLight);
+    return (
+      <button
+        onClick={aoClicar}
+        aria-pressed={ativo}
+        title={title}
+        className="elevavel kpi-tile ruido"
+        style={{
+          ...base, borderRadius: 14, padding: "6px 8px",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 3,
+          boxSizing: "border-box", minWidth: 0,
+          border: ativo ? `1.5px solid ${cor}` : base.border,
+          boxShadow: ativo ? `0 0 0 3px ${cor}2E` : base.boxShadow,
+          cursor: aoClicar ? "pointer" : "default", font: "inherit", textAlign: "center",
+        }}
+      >
+        <div className="kpi-num" style={{
+          fontFamily: FONT, fontWeight: 700, fontSize: compacto ? 17 : 26, color: cor,
+          textShadow: `0 0 14px ${cor}59`, whiteSpace: "nowrap",
+          fontVariantNumeric: "tabular-nums", lineHeight: 1,
+        }}>
+          {valor}
+        </div>
+        <div style={{
+          fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+          textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
+        }}>
+          {rotulo}
+        </div>
+        {sub && (
+          <div style={{ fontFamily: FONT, fontSize: 8.5, color: textSecondary, lineHeight: 1.2, whiteSpace: "nowrap" }}>
+            {sub}
+          </div>
+        )}
+      </button>
+    );
+  };
 
   /**
-   * Painel de ranking: barras DEITADAS na rampa — carga por técnico e
-   * chamados abertos por cliente.
+   * Painel de ranking: barras DEITADAS na rampa — chamados abertos por
+   * cliente (e o que mais precisar de um ranking de uma ou duas faixas).
    *
-   * `semDono` (sem técnico / sem cliente) pinta NEUTRO e fica fora da rampa:
-   * é ausência de identidade, não mais uma identidade. É a mesma regra do
-   * "Outros" no §9 do DESIGN_SYSTEM.
+   * `semDono` (sem cliente) pinta NEUTRO e fica fora da rampa: é ausência de
+   * identidade, não mais uma identidade. É a mesma regra do "Outros" no §9 do
+   * DESIGN_SYSTEM.
    */
   const Ranking = ({ titulo, prefixo, dados, sufixo, vazio, altura = ALTURA, teto = TETO_BARRAS, estilo }: {
     titulo: string;
@@ -511,26 +608,148 @@ function PainelOperacional() {
     );
   };
 
+  /**
+   * IMPLANTAÇÕES EM ANDAMENTO (R125) — uma barra por obra, duas linhas por
+   * barra: quem (cliente) e quanto (o rótulo do progresso), e o prazo.
+   *
+   * O PREENCHIMENTO é o REAL (fases concluídas, R120); a MARCA fina é o
+   * PLANO (dias úteis decorridos). Sem cronograma a barra mostra o plano e o
+   * rótulo diz "% do período" — é plano, e diz que é. Sem período, "sem
+   * período" e barra vazia: ninguém afirmou quando a obra acaba, e a tela não
+   * inventa. A conta inteira é `progressoDaObra` (implantacao/modelo.ts).
+   *
+   * TRÊS ESTADOS DA CONSULTA DE PROGRESSO, e o erro vem antes do vazio (lição
+   * da U86): a LISTA de obras vem dos chamados já carregados e aparece sempre;
+   * o que a consulta própria pode não trazer é o progresso — e aí a linha
+   * mostra "—" e o rodapé diz por quê, em vez de uma barra vazia fingindo zero.
+   */
+  const PainelObras = () => {
+    const visiveis = obras.slice(0, TETO_OBRAS);
+    return (
+      <div
+        className="elevavel"
+        style={{ ...PAINEL, height: ALTURA_DUPLA, flex: `2 1 ${BASE_OBRAS}px`, minWidth: 250 }}
+      >
+        <Cabeca
+          titulo="Implantações em andamento"
+          direita={obras.length > TETO_OBRAS ? (
+            <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, whiteSpace: "nowrap" }}>
+              top {TETO_OBRAS} de {obras.length}
+            </span>
+          ) : undefined}
+        />
+        {visiveis.length === 0 ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, color: verde, lineHeight: 1.45 }}>
+            Nenhuma implantação em andamento.
+          </div>
+        ) : (
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 6, overflow: "hidden" }}>
+            {visiveis.map((c: any, i) => {
+              const resumo = resumoDasObras.data?.[c.id];
+              const progresso = resumo
+                ? progressoDaObra({ inicio: resumo.inicio, fim: resumo.fim }, resumo.fases, hoje)
+                : null;
+              const pct = progresso ? preenchimentoDaBarra(progresso) : null;
+              const passo = i % PECAS_ESPECTRO;
+              const atrasada = progresso?.atrasada ?? false;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setPainelId(c.id)}
+                  className="hover-suave"
+                  title={`${c.titulo}${c.numero ? ` · ${c.numero}` : ""} — clique para abrir`}
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 3, padding: "4px 6px",
+                    borderRadius: 8, border: "none", background: "transparent", cursor: "pointer",
+                    textAlign: "left", color: textPrimary, font: "inherit", minWidth: 0, flexShrink: 0,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                    <span style={{
+                      flex: 1, minWidth: 0, fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {c.cliente?.nome ?? c.cliente_origem_nome ?? c.titulo}
+                    </span>
+                    {c.prazo_limite && (
+                      <span style={{ fontFamily: FONT, fontSize: 10, whiteSpace: "nowrap", color: atrasada ? vermelho : textSecondary }}>
+                        {textoPrazo(c.prazo_limite, agora)}
+                      </span>
+                    )}
+                    <span style={{
+                      fontFamily: FONT, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap",
+                      color: espectroTexto(passo, isLight), fontVariantNumeric: "tabular-nums",
+                    }}>
+                      {resumoDasObras.isError ? "—" : progresso ? rotuloDoProgresso(progresso) : "…"}
+                    </span>
+                  </div>
+                  <div style={{ position: "relative", height: 6, borderRadius: 3, overflow: "hidden", background: trilho }}>
+                    {pct !== null && (
+                      <div style={{
+                        width: `${pct}%`, height: "100%",
+                        background: gradienteBarra(espectro(passo, isLight), espectro(passo + 1, isLight), isLight),
+                      }} />
+                    )}
+                    {/* a marca do PLANO só aparece quando a barra pinta o REAL —
+                        sobre o próprio plano ela seria o fim da barra */}
+                    {progresso && progresso.pctReal !== null && progresso.pctPlano !== null && (
+                      <div
+                        title={`plano: ${progresso.pctPlano}% do período`}
+                        style={{
+                          position: "absolute", top: 0, bottom: 0, width: 2,
+                          left: `calc(${progresso.pctPlano}% - 1px)`,
+                          background: textPrimary, opacity: 0.7,
+                        }}
+                      />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+            {resumoDasObras.isError && (
+              <span style={{ fontFamily: FONT, fontSize: 10, color: vermelho, lineHeight: 1.3 }}>
+                Progresso indisponível: {(resumoDasObras.error as Error).message}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <PainelBase numeros={[]} atalhos={ATALHOS} isAdmin={cargo === "admin"}>
       {/* ══ O DASHBOARD ═══════════════════════════════════════════════════
-          Duas colunas: à esquerda as duas faixas empilhadas, à direita o
-          "Abertos por cliente" ocupando AS DUAS (R69). O painel alto é o que
-          mais ganha com altura — cada cliente é uma barra, e com o dobro do
-          espaço ele passa de 5 para 12 sem espremer nome.
-
-          A coluna esquerda tem base 700px: é o mínimo em que a faixa 1
-          (KPIs 244 + fila 210 + fluxo 216 + gaps) cabe numa linha só. Abaixo
-          disso o painel da direita quebra para baixo — e é ele que quebra,
-          não as faixas, porque quebrar as faixas descolaria as alturas. */}
+          Três colunas (R125): "Abertos por cliente" à ESQUERDA com as duas
+          faixas de altura; as duas faixas no MEIO; "Implantações em
+          andamento" à DIREITA, também com as duas faixas. As bases de largura
+          somam 1116 ≤ 1134 (o orçamento lá em cima); abaixo disso quebra a
+          coluna da direita — e é ela que quebra, não as faixas, porque quebrar
+          as faixas descolaria as alturas dos dois painéis altos. */}
       <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
-        <div style={{ flex: "4 1 700px", minWidth: 0, display: "flex", flexDirection: "column", gap: GAP }}>
+        {/* R68/R125 — quem está pedindo mais. Só clientes COM chamado aberto
+            entram — é o Map de `abertosPorCliente` que garante isso, sem
+            precisar cruzar com a lista de clientes. Altura derivada de
+            ALTURA/GAP, nunca digitada: ele tem de terminar exatamente onde a
+            faixa 2 termina. */}
+        <Ranking
+          titulo="Abertos por cliente"
+          prefixo="op-cli"
+          dados={clientesComAberto}
+          sufixo="em aberto"
+          altura={ALTURA_DUPLA}
+          teto={TETO_BARRAS_ALTO}
+          estilo={{ flex: `0 1 ${BASE_CLIENTES}px`, minWidth: BASE_CLIENTES }}
+          vazio={<span style={{ color: verde }}>Nenhum chamado em aberto.</span>}
+        />
 
-        {/* ══ FAIXA 1 — os números de cabeça e o estado da fila ══════════════ */}
+        <div style={{ flex: `3 1 ${BASE_MEIO}px`, minWidth: 0, display: "flex", flexDirection: "column", gap: GAP }}>
+
+        {/* ══ FAIXA 1 — os números de cabeça, o estado da fila, dinheiro e conferência ══ */}
         <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
           {/* os 4 KPIs em 2 colunas de 2, clicáveis */}
           <div style={{
-            width: 244, flexShrink: 0, height: ALTURA, display: "grid",
+            width: LARGURA_KPIS, flexShrink: 0, height: ALTURA, display: "grid",
             gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, boxSizing: "border-box",
           }}>
             {kpis.map((k) => {
@@ -583,8 +802,10 @@ function PainelOperacional() {
               barras da Início. Legenda ao lado (metade da altura da legenda
               embaixo) — e o quadradinho dela carrega o MESMO degradê da fatia,
               em CSS, senão a legenda apontaria para uma cor que não existe no
-              gráfico. Identidade nunca só pela cor. */}
-          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 210 }}>
+              gráfico. Identidade nunca só pela cor. R125: mais estreita — o
+              arco encolheu de 118 para 100px e a legenda corta com reticências
+              (o nome inteiro está no tooltip do arco). */}
+          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: LARGURA_FILA }}>
             <Cabeca
               titulo={corteDaRosca === "status" ? "Fila por status" : "Fila por tipo"}
               direita={
@@ -620,13 +841,13 @@ function PainelOperacional() {
               </div>
             ) : (
               <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
+                <div style={{ position: "relative", width: 100, height: "100%", flexShrink: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <defs>{gradientesEspectro("op-fila", roscaComRotulo.length, isLight)}</defs>
                       <Pie
                         data={roscaComRotulo} dataKey="valor" nameKey="nome"
-                        innerRadius={33} outerRadius={51}
+                        innerRadius={29} outerRadius={45}
                         stroke={superficie} strokeWidth={2} isAnimationActive={false}
                       >
                         {roscaComRotulo.map((f, i) => (
@@ -647,25 +868,25 @@ function PainelOperacional() {
                     alignItems: "center", justifyContent: "center", pointerEvents: "none",
                   }}>
                     <span style={{
-                      fontFamily: FONT, fontWeight: 700, fontSize: 18,
+                      fontFamily: FONT, fontWeight: 700, fontSize: 16,
                       fontVariantNumeric: "tabular-nums", color: textPrimary, lineHeight: 1,
                     }}>
                       {ind.abertos}
                     </span>
-                    <span style={{ ...MICRO, fontSize: 7.5, color: textSecondary, marginTop: 2 }}>em aberto</span>
+                    <span style={{ ...MICRO, fontSize: 7, color: textSecondary, marginTop: 2 }}>em aberto</span>
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                   {roscaComRotulo.map((f, i) => {
                     const passo = i % PECAS_ESPECTRO;
                     return (
-                      <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 5 }} title={`${f.nome} · ${f.valor}`}>
                         <span style={{
                           width: 9, height: 9, borderRadius: 2.5, flexShrink: 0,
                           background: gradienteBarra(espectro(passo, isLight), espectro(passo + 1, isLight), isLight),
                         }} />
                         <span style={{
-                          flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 10.5, color: textPrimary,
+                          flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 10, color: textPrimary,
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {f.nome}
@@ -673,7 +894,7 @@ function PainelOperacional() {
                         {/* o número na rampa de TEXTO, não na de preenchimento:
                             o miolo amarelo claro não passa de 4.5:1 sobre branco */}
                         <span style={{
-                          fontFamily: FONT, fontSize: 10.5, fontWeight: 700,
+                          fontFamily: FONT, fontSize: 10, fontWeight: 700,
                           color: espectroTexto(passo, isLight), fontVariantNumeric: "tabular-nums",
                         }}>
                           {f.valor}
@@ -686,69 +907,59 @@ function PainelOperacional() {
             )}
           </div>
 
-          {/* Fluxo e ritmo — os TRÊS cards antigos (fluxo do mês, ritmo,
-              cumprimento de prazo) num painel só: seis micro-números e a barra
-              de prazo no pé. */}
-          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 216 }}>
-            <Cabeca
-              titulo="Fluxo e ritmo"
-              direita={
-                <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary }}>
-                  mês · medianas
-                </span>
-              }
-            />
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, alignContent: "center" }}>
-              <Micro rotulo="Entraram" valor={String(ind.entradasMes)} cor={azul} />
-              <Micro rotulo="Concluídos" valor={String(ind.saidasMes)} cor={verde} />
-              {/* saldo positivo = a fila cresceu: é o número quente do painel */}
-              <Micro
-                rotulo="Saldo da fila"
-                valor={ind.saldoMes > 0 ? `+${ind.saldoMes}` : String(ind.saldoMes)}
-                cor={ind.saldoMes > 0 ? vermelho : verde}
+          {/* R125 — a coluna de DINHEIRO e CONFERÊNCIA: dois quadrados
+              empilhados, irmãos dos tiles do 2×2. O de dinheiro só existe
+              para quem vê valores (R13) — para o SAC a coluna tem um quadrado
+              só, e o de conferência ocupa a altura inteira. */}
+          <div style={{
+            width: LARGURA_TILES, flexShrink: 0, height: ALTURA, display: "grid",
+            gridTemplateRows: veFinanceiro ? "1fr 1fr" : "1fr", gap: 10, boxSizing: "border-box",
+          }}>
+            {veFinanceiro && (
+              <Tile
+                rotulo="A cobrar este mês"
+                compacto
+                valor={cobrancasMes.isError ? "—" : cobrancasMes.isLoading ? "…" : moedaCurta(aCobrar.total)}
+                sub={cobrancasMes.isError
+                  ? "erro ao ler"
+                  : cobrancasMes.isLoading
+                    ? undefined
+                    : `${aCobrar.quantidade} lanç. · ${aCobrar.emAberto} em aberto`}
+                cor={verde}
+                title={cobrancasMes.isError
+                  ? `Não consegui ler as cobranças: ${(cobrancasMes.error as Error).message}`
+                  : `${moeda(aCobrar.total)} na competência ${competenciaAtual} (exceto canceladas) · ${moeda(aCobrar.totalEmAberto)} ainda fora de fechamento — clique para ir aos Fechamentos`}
+                aoClicar={() => navigate({ to: "/fechamentos" })}
               />
-              <Micro rotulo="Até começar" valor={horasTexto(ind.horasAteComecar)} cor={gold} />
-              <Micro rotulo="Executando" valor={horasTexto(ind.horasDeExecucao)} cor={azul} />
-              {/* só entre os que TINHAM prazo — o módulo não deixa o número se
-                  elogiar sozinho */}
-              <Micro
-                rotulo="No prazo"
-                valor={ind.pctNoPrazo === null ? "—" : `${ind.pctNoPrazo}%`}
-                cor={ind.pctNoPrazo === null ? textSecondary
-                  : ind.pctNoPrazo >= 80 ? verde : ind.pctNoPrazo >= 50 ? gold : vermelho}
-              />
-            </div>
-            {ind.pctNoPrazo !== null && (
-              <div
-                title={`${ind.pctNoPrazo}% dos chamados concluídos que tinham prazo terminaram dentro dele`}
-                style={{
-                  height: 5, borderRadius: 3, marginTop: 6, overflow: "hidden", flexShrink: 0,
-                  background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)",
-                }}
-              >
-                {/* mesma cor e mesmos limiares do Micro "No prazo" logo acima:
-                    barra e número falam do mesmo número, então não podem
-                    discordar. Sólido do PRISMA por tema — o degradê fixo
-                    abria no tom do tema escuro e sumia no trilho claro. */}
-                <div style={{
-                  width: `${ind.pctNoPrazo}%`, height: "100%",
-                  background: ind.pctNoPrazo >= 80 ? verde : ind.pctNoPrazo >= 50 ? gold : vermelho,
-                }} />
-              </div>
             )}
+            <Tile
+              rotulo="Aguardando conferência"
+              valor={String(aguardandoConferencia)}
+              sub="concluídos sem decisão"
+              cor={pessego}
+              ativo={kpiAtivo === "aguardando_conferencia"}
+              title={`${aguardandoConferencia} — clique para filtrar a lista abaixo`}
+              aoClicar={() => {
+                // não é subconjunto de "em aberto" — a lente não importa aqui,
+                // mas a visão tem de ser a LISTA (o quadro não tem esta coluna)
+                setVisao("lista");
+                setKpiAtivo(kpiAtivo === "aguardando_conferencia" ? null : "aguardando_conferencia");
+              }}
+            />
           </div>
         </div>
 
-        {/* ══ FAIXA 2 — quem faz e quem carrega ══════════════════════════════ */}
+        {/* ══ FAIXA 2 — quem faz o quê, semana a semana ═══════════════════════ */}
         <div style={{ display: "flex", gap: GAP, alignItems: "stretch", flexWrap: "wrap" }}>
-          {/* Atividades por dupla ao longo do tempo — Davi, 2026-08-22: "cada
-              item vertical é uma semana. Deve ser um gráfico de linhas".
+          {/* Atividades por equipe de campo ao longo do tempo — Davi, 2026-08-22:
+              "cada item vertical é uma semana. Deve ser um gráfico de linhas".
+              R125: oito semanas, não doze.
 
-              As linhas correm na RAMPA (R68): cada dupla ganha um passo do
+              As linhas correm na RAMPA (R68): cada equipe ganha um passo do
               degradê, e o traço dela vai da sua cor à da seguinte. O botão que
-              CADASTRA dupla mora aqui, no cabeçalho do gráfico que mostra
-              duplas — botão de manutenção pertence à peça que ele mantém. */}
-          <div className="elevavel" style={{ ...PAINEL, flex: 2, minWidth: 396 }}>
+              CADASTRA equipe mora aqui, no cabeçalho do gráfico que mostra
+              equipes — botão de manutenção pertence à peça que ele mantém. */}
+          <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 396 }}>
             <Cabeca
               titulo={`Atividades por equipe · ${SEMANAS_NO_GRAFICO} semanas`}
               direita={
@@ -831,34 +1042,12 @@ function PainelOperacional() {
               </div>
             )}
           </div>
-
-          <Ranking
-            titulo="Em aberto por técnico"
-            prefixo="op-tec"
-            dados={cargaComNome}
-            sufixo="em aberto"
-            vazio={<span style={{ color: textSecondary }}>Nada em aberto atribuído.</span>}
-          />
         </div>
         </div>
 
-        {/* R68 — no lugar de "Backlog por idade" e "Reincidência 30d": quem
-            está pedindo mais. Só clientes COM chamado aberto entram — é o Map
-            de `abertosPorCliente` que garante isso, sem precisar cruzar com a
-            lista de clientes.
-
-            R69: ocupa AS DUAS FAIXAS. Altura derivada de ALTURA/GAP, nunca
-            digitada — ele tem de terminar exatamente onde a faixa 2 termina. */}
-        <Ranking
-          titulo="Abertos por cliente"
-          prefixo="op-cli"
-          dados={clientesComAberto}
-          sufixo="em aberto"
-          altura={ALTURA_DUPLA}
-          teto={TETO_BARRAS_ALTO}
-          estilo={{ flex: "1 1 280px", minWidth: 264 }}
-          vazio={<span style={{ color: verde }}>Nenhum chamado em aberto.</span>}
-        />
+        {/* R125 — "o principal": as implantações em andamento, uma barra por
+            obra, com a altura das duas faixas. */}
+        <PainelObras />
       </div>
 
       {semDados && (
@@ -906,6 +1095,24 @@ function PainelOperacional() {
               );
             })}
           </div>
+
+          {/* R126 — o "+": abre chamado técnico sem sair da tela. Ao lado do
+              alternador, como na Início (R91). Some para quem não pode abrir
+              chamado (a matriz de permissões manda; botão para porta trancada
+              é armadilha). */}
+          {podeVer("chamados.novo") !== false && (
+            <button
+              onClick={() => setNovoAberto(true)}
+              title="Abrir chamado técnico"
+              aria-label="Abrir chamado técnico"
+              style={{
+                ...goldButton(), width: 28, height: 28, borderRadius: 14, padding: 0, flexShrink: 0,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Plus size={15} />
+            </button>
+          )}
 
           {/* R73 — as três lentes. Sem elas, chamado ENCERRADO não tinha onde
               ser visto no sistema inteiro: esta tela listava só o que está em
@@ -1084,6 +1291,14 @@ function PainelOperacional() {
       </div>
 
       <DialogoDuplas aberto={duplasAberto} aoFechar={() => setDuplasAberto(false)} />
+
+      {/* R126 — o chamado nasce aqui e desliza no painel lateral (R33): quem
+          abriu dez chamados continua olhando a mesma fila. */}
+      <NovoChamadoTecnicoDialog
+        aberto={novoAberto}
+        aoFechar={() => setNovoAberto(false)}
+        aoCriar={(id) => { setNovoAberto(false); setPainelId(id); }}
+      />
 
       <PainelChamado
         chamadoId={painelId}

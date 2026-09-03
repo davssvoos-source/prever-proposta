@@ -3082,7 +3082,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /serieAtividadesPorEscala\(chamados as any\[\], duplas, semanas, escala, referenciaSemanal\)/.test(pop),
      true);
   eq('cada item do eixo X é uma SEMANA',
-     /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 12/.test(pop), true);
+     /<XAxis dataKey="semana"/.test(pop) && /SEMANAS_NO_GRAFICO = 8/.test(pop), true);   // R125: 8, não 12
   eq('a legenda mostra o nome da equipe, não o uuid que é o dataKey',
      /rotuloDaComposicao\(d, composicaoDaDupla\(d\.id, semanaDaLegenda, escala\), nomeDeTecnico\)/.test(pop),
      true);
@@ -3941,10 +3941,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /height: \d{3,}/.test(op3), false);
 
   // ── o que encolheu para o dashboard caber no topo ────────────────────────
-  eq('Fluxo do mês + Ritmo + Cumprimento de prazo viraram UM painel de micro-números',
-     /titulo="Fluxo e ritmo"/.test(op3)
-     && ['Entraram', 'Concluídos', 'Saldo da fila', 'Até começar', 'Executando', 'No prazo']
-          .every((r) => new RegExp(`rotulo="${r}"`).test(op3)), true);
+  // R125 (U93): "Fluxo e ritmo" SAIU da tela — os seis micro-números continuam
+  // em indicadores.ts (a U93 prende isso lá embaixo). Aqui só se prende a saída.
+  eq('R125: "Fluxo e ritmo" saiu do painel (o que ele mostrava segue na biblioteca de indicadores)',
+     /titulo="Fluxo e ritmo"/.test(op3), false);
   // só as linhas de CÓDIGO: o comentário do topo cita o card "Duplas de
   // campo" de propósito, explicando por que ele NÃO está mais ali
   const op3cod = op3.split('\n').filter((l) => !/^\s*(\/\/|\*|\{\/\*)/.test(l)).join('\n');
@@ -3954,8 +3954,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /setDuplasAberto\(true\)/.test(op3) && /<DialogoDuplas aberto=\{duplasAberto\}/.test(op3), true);
   eq('a legenda da rosca foi para o LADO do arco (metade da altura, mesma informação)',
      /display: "flex", alignItems: "center", gap: 6 \}\}>[\s\S]{0,400}<PieChart>/.test(op3), true);
-  eq('os dois rankings (carga por técnico e reincidência) saem do MESMO componente — não duas barras horizontais copiadas',
-     (op3.match(/<Ranking\s/g) ?? []).length, 2);
+  eq('R125: sobrou UM ranking na tela (Abertos por cliente) — "Em aberto por técnico" saiu; o componente continua único',
+     (op3.match(/<Ranking\s/g) ?? []).length, 1);
   eq('ranking corta no topo N e DIZ que cortou (nº silenciosamente truncado lê como "é só isso")',
      /top \{teto\} de \{dados\.length\}/.test(op3), true);
 
@@ -4034,9 +4034,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a função devolve os <linearGradient>, não o <defs> — todo <defs> do código é literal, no gráfico',
      (op4cod.match(/<defs>/g) ?? []).length,
      (op4cod.match(/<defs>\{gradientesEspectro\(/g) ?? []).length);
-  eq('os quatro gráficos têm prefixo de id próprio (dois <defs> com o mesmo id fariam o 2º herdar as cores do 1º)',
+  eq('os três gráficos têm prefixo de id próprio (dois <defs> com o mesmo id fariam o 2º herdar as cores do 1º) — op-tec saiu com o ranking por técnico (R125)',
      ['op-fila', 'op-dupla'].every((p) => op4.includes(`gradientesEspectro("${p}"`))
-     && ['op-tec', 'op-cli'].every((p) => op4.includes(`prefixo="${p}"`)), true);
+     && op4.includes('prefixo="op-cli"') && !op4.includes('prefixo="op-tec"'), true);
   eq('CRÍTICO: a LINHA usa userSpaceOnUse — linha toda no zero tem caixa de altura zero, e o SVG não desenha degradê sobre caixa de área nula (a linha sumiria justo na semana sem trabalho)',
      /gradientesEspectro\("op-dupla", duplasDoGrafico\.length, isLight, true\)/.test(op4)
      && /gradientUnits=\{userSpace \? "userSpaceOnUse" : undefined\}/.test(op4), true);
@@ -4067,8 +4067,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /titulo="Abertos por cliente"/.test(op4) && /dados=\{clientesComAberto\}/.test(op4), true);
   eq('o painel novo é barra HORIZONTAL (layout="vertical" no recharts é a barra deitada)',
      /<BarChart data=\{visiveis\} layout="vertical"/.test(op4), true);
-  eq('a faixa 2 tem os dois rankings do MESMO componente (técnico e cliente)',
-     (op4.match(/<Ranking\s/g) ?? []).length, 2);
+  eq('R125: o ranking que sobrou (Abertos por cliente) sai do MESMO componente — o de técnico saiu da tela, o componente não virou cópia',
+     (op4.match(/<Ranking\s/g) ?? []).length, 1);
 
   // ── o dashboard subiu e encolheu ─────────────────────────────────────────
   eq('o título e o subtítulo saíram da tela',
@@ -4103,8 +4103,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        const g = Number(op5.match(/const GAP = (\d+);/)[1]);
        return a * 2 + g;
      })(), 350);
-  eq('o dashboard virou duas colunas: as faixas à esquerda, o painel alto à direita',
-     /flex: "4 1 700px", minWidth: 0, display: "flex", flexDirection: "column", gap: GAP/.test(op5), true);
+  eq('R125: o dashboard virou TRÊS colunas — clientes à esquerda, as faixas no meio (base derivada das larguras), implantações à direita',
+     /flex: `3 1 \$\{BASE_MEIO\}px`, minWidth: 0, display: "flex", flexDirection: "column", gap: GAP/.test(op5), true);
   eq('"Abertos por cliente" é quem recebe a altura dupla (e só ele)',
      /titulo="Abertos por cliente"[\s\S]{0,220}altura=\{ALTURA_DUPLA\}/.test(op5)
      && (op5.match(/altura=\{ALTURA_DUPLA\}/g) ?? []).length, 1);
@@ -4114,12 +4114,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         > Number(op5.match(/const TETO_BARRAS = (\d+);/)[1]), true);
   eq('o Ranking aceita altura e teto, com o padrão de UMA faixa — quem não pede, continua como estava',
      /altura = ALTURA, teto = TETO_BARRAS/.test(op5), true);
-  eq('"Fila por status" e "Fluxo e ritmo" estreitaram para abrir a coluna da direita',
-     /\.\.\.PAINEL, flex: 1, minWidth: 210 \}\}/.test(op5)     // fila
-     && /\.\.\.PAINEL, flex: 1, minWidth: 216 \}\}/.test(op5),  // fluxo
-     true);
-  eq('a base da coluna esquerda comporta a faixa 1 numa linha só (KPIs 244 + fila 210 + fluxo 216 + 2 gaps = 698 ≤ 700) — senão as faixas quebrariam e as alturas se descolariam do painel alto',
-     244 + 210 + 216 + 2 * 14 <= 700, true);
+  eq('R125: a rosca estreitou de novo (minWidth LARGURA_FILA) e "Fluxo e ritmo" não existe mais para estreitar',
+     /\.\.\.PAINEL, flex: 1, minWidth: LARGURA_FILA \}\}/.test(op5), true);
+  // o orçamento de largura das TRÊS colunas é refeito na U93, mais abaixo
 
   const produto15 = fs40.readFileSync('docs/PRODUTO.md', 'utf8');
   eq('R69 está documentado', /\*\*R69\*\*/.test(produto15), true);
@@ -7773,7 +7770,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const CAMINHO79 = 'supabase/migrations/20260902090000_u79_a_tela_da_grade.sql';
   const u79 = fs79.readFileSync(CAMINHO79, 'utf8');
   const tela79 = fs79.readFileSync('src/routes/_authenticated/chamados.programacao.tsx', 'utf8');
-  const novoCampo79 = fs79.readFileSync('src/routes/_authenticated/chamados.novo-campo.tsx', 'utf8');
+  // R126/U93: o corpo do formulário saiu da rota para features/chamados/FormularioChamadoTecnico.tsx
+  const novoCampo79 = fs79.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8');
   const painel79 = fs79.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
   const dadosChamados79 = fs79.readFileSync('src/features/chamados/data.ts', 'utf8');
   const dados79 = fs79.readFileSync('src/features/programacao/data.ts', 'utf8');
@@ -8192,6 +8190,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     ...varrer79('src/features/programacao').filter((a) => !a.endsWith('modelo.ts')),
     'src/routes/_authenticated/chamados.programacao.tsx',
     'src/routes/_authenticated/chamados.novo-campo.tsx',
+    'src/features/chamados/FormularioChamadoTecnico.tsx',   // R126: o formulário mora aqui
     'src/features/chamados/PainelChamado.tsx',
     'scripts/verificar-logica.cjs',
   ].map((a) => fs79.readFileSync(a, 'utf8')).join('\n');
@@ -11282,7 +11281,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── 4) A DESDUPLICAÇÃO, LUGAR POR LUGAR (o que a regra 3 chama de "os que eu
   //      conheço" — o censo abaixo é o que pega os que eu não conheço) ──────
   {
-    const novoCampo83 = fs83.readFileSync('src/routes/_authenticated/chamados.novo-campo.tsx', 'utf8');
+    const novoCampo83 = fs83.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8');   // R126: o formulário mora aqui
     eq('U83: o seletor de novo chamado de campo DERIVA de tiposDaNatureza("campo") — era uma cópia com `as ChamadoTipo[]`, e é um caminho de ESCRITA (por isso deriva da lista de OFERTA)',
        /\{tiposDaNatureza\("campo"\)\.map\(\(t\) => \(/.test(novoCampo83), true);
 
@@ -15890,6 +15889,211 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
          return [/\.eq\("cliente_id", clienteId\)/.test(fn), /cliente_informado/.test(fn)];
        })(), [true, false]);
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U93 — R124–R130: a Operacional Técnica do Vinicius, o "+", e o contexto
+// ditado pelo Davi em 03/09/2026 (docs/CONTEXTO_OPERACAO_TECNICA.md).
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs93 = require('fs');
+  const IND93 = carregar('src/features/paineis/indicadores.ts');
+  const OBRA93 = carregar('src/features/implantacao/modelo.ts');
+  const AB93 = carregar('src/features/chamados/abertura.ts');
+  const CS93 = carregar('src/lib/chamado-status.ts');
+  const pop93 = fs93.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+  // asserções NEGATIVAS só sobre CÓDIGO: o cabeçalho cita os painéis que saíram
+  const semCom93 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const popCod93 = semCom93(pop93);
+  const semNbsp = (s) => s.replace(/ /g, ' ');
+
+  // ── R125: o que SAIU saiu do layout, não da biblioteca ──────────────────
+  eq('U93/R125: "Fluxo e ritmo" e "Em aberto por técnico" saíram da TELA (código, não comentário)',
+     [/Fluxo e ritmo/.test(popCod93), /Em aberto por técnico/.test(popCod93), /prefixo="op-tec"/.test(popCod93)],
+     [false, false, false]);
+  eq('U93/R125: …e os indicadores que eles mostravam continuam CALCULADOS na biblioteca',
+     (() => {
+       const r = IND93.calcularIndicadores(
+         [{ id: 'a', status: 'concluido', created_at: '2026-09-01T10:00:00Z', iniciada_em: '2026-09-01T12:00:00Z', finalizada_em: '2026-09-01T14:00:00Z', responsavel_id: 'p1' }],
+         new Date('2026-09-03T12:00:00Z'),
+       );
+       return [r.saidasMes, r.horasAteComecar, r.horasDeExecucao, Array.isArray(r.cargaPorPessoa)];
+     })(), [1, 2, 2, true]);
+  eq('U93/R125: 8 semanas, não 12', /const SEMANAS_NO_GRAFICO = 8;/.test(pop93), true);
+  eq('U93/R125: "Abertos por cliente" está à ESQUERDA — vem ANTES da coluna do meio no JSX',
+     pop93.indexOf('titulo="Abertos por cliente"') > 0
+     && pop93.indexOf('titulo="Abertos por cliente"') < pop93.indexOf('flex: `3 1 ${BASE_MEIO}px`'), true);
+  eq('U93/R125: dois painéis altos, e só dois — Abertos por cliente (pela prop do Ranking) e Implantações (height: ALTURA_DUPLA)',
+     [(pop93.match(/altura=\{ALTURA_DUPLA\}/g) ?? []).length, (pop93.match(/height: ALTURA_DUPLA/g) ?? []).length],
+     [1, 1]);
+  eq('U93/R125 CRÍTICO: o orçamento de largura — as três colunas cabem em 1134px (1366 − sidebar 232), e a coluna do meio soma o que as faixas pedem',
+     (() => {
+       const n = (re) => Number(pop93.match(re)[1]);
+       const kpis = n(/const LARGURA_KPIS = (\d+);/), fila = n(/const LARGURA_FILA = (\d+);/);
+       const tiles = n(/const LARGURA_TILES = (\d+);/), cli = n(/const BASE_CLIENTES = (\d+);/);
+       const obras = n(/const BASE_OBRAS = (\d+);/), gap = n(/const GAP = (\d+);/);
+       const meio = kpis + fila + tiles + 2 * gap;
+       return [meio, cli + meio + obras + 2 * gap <= 1366 - 232,
+               /const BASE_MEIO = LARGURA_KPIS \+ LARGURA_FILA \+ LARGURA_TILES \+ 2 \* GAP;/.test(pop93)];
+     })(), [590, true, true]);
+  eq('U93/R125: a rosca estreitou (LARGURA_FILA = 190; era 210) e o arco encolheu de 118 para 100',
+     [/const LARGURA_FILA = 190;/.test(pop93),
+      /width: 100, height: "100%", flexShrink: 0/.test(pop93),
+      /innerRadius=\{29\} outerRadius=\{45\}/.test(pop93)],
+     [true, true, true]);
+  eq('U93/R125: o dashboard NÃO ganhou altura — 2×ALTURA + GAP continua 350, e a lista segue abrindo acima da metade (R68)',
+     (() => {
+       const a = Number(pop93.match(/const ALTURA = (\d+);/)[1]);
+       const g = Number(pop93.match(/const GAP = (\d+);/)[1]);
+       return a * 2 + g;
+     })(), 350);
+
+  // ── "A cobrar este mês" ─────────────────────────────────────────────────
+  eq('U93/R125 CRÍTICO (R13): "A cobrar este mês" só existe para quem vê valores — o tile está dentro de `veFinanceiro &&`, e a consulta nem dispara sem ele',
+     [/\{veFinanceiro && \(\s*<Tile\s*\n\s*rotulo="A cobrar este mês"/.test(pop93),
+      /useCobrancasDaCompetencia\(competenciaAtual, veFinanceiro\)/.test(pop93)],
+     [true, true]);
+  eq('U93/R125: totalACobrar soma só a competência pedida, ignora canceladas, e fecha em CENTAVOS (3 × 33,33 + 0,01 = 100,00)',
+     IND93.totalACobrar([
+       { valor: 33.33, competencia: '2026-09', status: 'aberta' },
+       { valor: 33.33, competencia: '2026-09', status: 'fechada' },
+       { valor: 33.34, competencia: '2026-09', status: 'aberta' },
+       { valor: 999, competencia: '2026-09', status: 'cancelada' },
+       { valor: 50, competencia: '2026-08', status: 'aberta' },
+     ], '2026-09'),
+     { total: 100, quantidade: 3, emAberto: 2, totalEmAberto: 66.67 });
+  eq('U93/R125: moedaCurta encurta acima de mil e mantém o exato abaixo',
+     [IND93.moedaCurta(850), IND93.moedaCurta(12345.67), IND93.moedaCurta(1300000)].map(semNbsp),
+     ['R$ 850,00', 'R$ 12,3 mil', 'R$ 1,3 mi']);
+  eq('U93/R125: o tile de dinheiro LEVA aos Fechamentos — não é drill-down da lista',
+     /aoClicar=\{\(\) => navigate\(\{ to: "\/fechamentos" \}\)\}/.test(pop93), true);
+  eq('U93/R125: erro, carregando e valor são três telas no tile de dinheiro, e o erro vem primeiro',
+     /cobrancasMes\.isError \? "—" : cobrancasMes\.isLoading \? "…" : moedaCurta\(aCobrar\.total\)/.test(pop93), true);
+  eq('U93/R125: a consulta da competência deixa o erro SUBIR (o painel é gateado, "[]" seria "R$ 0,00" mentiroso)',
+     (() => {
+       const c = fs93.readFileSync('src/features/chamados/cobranca.ts', 'utf8');
+       const fn = c.slice(c.indexOf('export function useCobrancasDaCompetencia'));
+       return [/throw new Error\(error\.message\)/.test(fn), /if \(error\) return \[\]/.test(fn)];
+     })(), [true, false]);
+
+  // ── "Aguardando conferência" ────────────────────────────────────────────
+  const lote93 = [
+    { id: 'c1', status: 'concluido', faturamento_status: 'a_analisar', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c2', status: 'concluido', faturamento_status: 'em_conferencia', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c3', status: 'concluido', faturamento_status: 'aprovada', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c4', status: 'concluido', faturamento_status: 'sem_cobranca', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c5', status: 'em_andamento', faturamento_status: 'a_analisar', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c6', status: 'concluido', natureza: 'comercial', faturamento_status: 'a_analisar', created_at: '2026-09-01T00:00:00Z' },
+    { id: 'c7', status: 'concluido', created_at: '2026-09-01T00:00:00Z' },
+  ];
+  eq('U93/R125 CRÍTICO: aguardandoConferencia = concluído + decisão pendente (a_analisar OU em_conferencia); aberto, decidido, comercial e linha SEM o campo ficam fora',
+     IND93.aguardandoConferencia(lote93).map((c) => c.id), ['c1', 'c2']);
+  eq('U93/R125 CRÍTICO ("quem conta é quem filtra"): chamadosDoKpi("aguardando_conferencia") É aguardandoConferencia',
+     IND93.chamadosDoKpi('aguardando_conferencia', lote93).map((c) => c.id),
+     IND93.aguardandoConferencia(lote93).map((c) => c.id));
+  eq('U93/R125: o quinto recorte NÃO entra no 2×2 — KPI_OPERACIONAL_ORDEM continua com os quatro de severidade',
+     IND93.KPI_OPERACIONAL_ORDEM.includes('aguardando_conferencia'), false);
+  eq('U93/R125: …e tem rótulo, para a faixa "Mostrando:" não imprimir a chave',
+     IND93.KPI_OPERACIONAL_LABEL.aguardando_conferencia, 'Aguardando conferência');
+  eq('U93/R125: na tela, número e lista do tile saem da MESMA função, e a lista de concluídos ordena por HISTÓRICO (prazo não tem urgência depois de encerrado)',
+     [/chamadosDoKpi\("aguardando_conferencia", chamados as any\[\], agora\)\.length/.test(pop93),
+      /setKpiAtivo\(kpiAtivo === "aguardando_conferencia" \? null : "aguardando_conferencia"\)/.test(pop93),
+      /if \(kpiAtivo === "aguardando_conferencia"\) return ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\);/.test(pop93)],
+     [true, true, true]);
+  eq('U93/R125: a consulta de chamados TRAZ faturamento_status — sem a coluna o recorte não conta ninguém, e o tile diria zero',
+     /faturamento_status/.test(fs93.readFileSync('src/features/chamados/data.ts', 'utf8').match(/const CAMPOS =[\s\S]*?;/)[0]), true);
+
+  // ── "Implantações em andamento" ─────────────────────────────────────────
+  eq('U93/R125: implantacoesEmAndamento = implantação EM ABERTO, por fim previsto (sem prazo por último), depois pela abertura; corretiva e concluída ficam fora',
+     IND93.implantacoesEmAndamento([
+       { id: 'i1', tipo: 'implantacao', status: 'em_andamento', prazo_limite: '2026-10-01T03:00:00Z', created_at: '2026-08-01T00:00:00Z' },
+       { id: 'i2', tipo: 'implantacao', status: 'aberto', prazo_limite: null, created_at: '2026-07-01T00:00:00Z' },
+       { id: 'i3', tipo: 'implantacao', status: 'agendado', prazo_limite: '2026-09-15T03:00:00Z', created_at: '2026-08-15T00:00:00Z' },
+       { id: 'i4', tipo: 'implantacao', status: 'concluido', prazo_limite: '2026-09-01T03:00:00Z', created_at: '2026-08-01T00:00:00Z' },
+       { id: 'i5', tipo: 'corretiva', status: 'aberto', prazo_limite: '2026-09-10T03:00:00Z', created_at: '2026-08-01T00:00:00Z' },
+     ]).map((c) => c.id), ['i3', 'i1', 'i2']);
+  // 14/09/2026 (segunda) a 25/09/2026 (sexta): dez dias úteis, sem feriado.
+  eq('U93/R125: progressoDaObra — o REAL são as fases concluídas, o PLANO são os dias úteis decorridos',
+     (() => {
+       const p = OBRA93.progressoDaObra({ inicio: '2026-09-14', fim: '2026-09-25' },
+         [{ concluida_em: 'x' }, { concluida_em: null }, { concluida_em: null }, { concluida_em: null }], '2026-09-18');
+       return [p.pctReal, p.pctPlano, p.diasUteisTotal, p.diasUteisDecorridos, p.atrasada];
+     })(), [25, 50, 10, 5, false]);
+  eq('U93/R125: sem período, plano null (não zero) e "sem período"; sem cronograma, real null e o rótulo diz o plano DIZENDO que é plano',
+     (() => {
+       const a = OBRA93.progressoDaObra({ inicio: null, fim: null }, [], '2026-09-18');
+       const b = OBRA93.progressoDaObra({ inicio: '2026-09-14', fim: '2026-09-25' }, [], '2026-09-18');
+       return [a.pctPlano, a.pctReal, OBRA93.rotuloDoProgresso(a), b.pctReal, OBRA93.rotuloDoProgresso(b), OBRA93.preenchimentoDaBarra(b)];
+     })(), [null, null, 'sem período', null, '50% do período', 50]);
+  eq('U93/R125: antes do início o plano é 0 (obra planejada); depois do fim é 100 e, sem terminar, ATRASADA; terminada não é',
+     (() => {
+       const per = { inicio: '2026-09-14', fim: '2026-09-25' };
+       const antes = OBRA93.progressoDaObra(per, [], '2026-09-01');
+       const depois = OBRA93.progressoDaObra(per, [{ concluida_em: 'x' }, { concluida_em: null }], '2026-10-05');
+       const pronta = OBRA93.progressoDaObra(per, [{ concluida_em: 'x' }, { concluida_em: 'y' }], '2026-10-05');
+       return [antes.pctPlano, antes.atrasada, depois.pctPlano, depois.atrasada, pronta.atrasada];
+     })(), [0, false, 100, true, false]);
+  eq('U93/R125: o painel de obras lê período e fases por consulta PRÓPRIA (a regra de deploy da U89) e o erro dela fica CONTIDO no card',
+     [/useObrasEmAndamento\(idsDasObras\)/.test(pop93), /resumoDasObras\.isError/.test(pop93), /Progresso indisponível/.test(pop93),
+      /\.select\("id, implantacao_inicio, implantacao_fim"\)/.test(fs93.readFileSync('src/features/implantacao/data.ts', 'utf8'))],
+     [true, true, true, true]);
+  eq('U93/R125: a barra pinta o REAL e MARCA o plano — a marca só aparece quando há real (sobre o plano ela seria o fim da barra)',
+     /progresso && progresso\.pctReal !== null && progresso\.pctPlano !== null && \(/.test(pop93), true);
+  eq('U93/R125: lista de obras cortada DIZ que cortou, e a obra abre no painel lateral',
+     [/top \{TETO_OBRAS\} de \{obras\.length\}/.test(pop93), /onClick=\{\(\) => setPainelId\(c\.id\)\}/.test(pop93)], [true, true]);
+
+  // ── R126: o "+" e o formulário ÚNICO ────────────────────────────────────
+  const form93 = fs93.readFileSync('src/features/chamados/FormularioChamadoTecnico.tsx', 'utf8');
+  const rota93 = fs93.readFileSync('src/routes/_authenticated/chamados.novo-campo.tsx', 'utf8');
+  const dialogo93 = fs93.readFileSync('src/features/chamados/NovoChamadoTecnicoDialog.tsx', 'utf8');
+  eq('U93/R126 CRÍTICO: UM formulário — a rota e o pop-up importam o MESMO componente; a rota não tem mais escrita própria; a escrita mora no componente',
+     [/<FormularioChamadoTecnico/.test(rota93), /<FormularioChamadoTecnico/.test(dialogo93),
+      /abrirChamado|useMarcarBloco/.test(semCom93(rota93)),
+      /abrirChamado\(\{/.test(form93) && /useMarcarBloco\(\)/.test(form93)],
+     [true, true, false, true]);
+  eq('U93/R126: o "+" do painel só aparece para quem pode abrir chamado, e o chamado criado abre no painel lateral (R33)',
+     [/podeVer\("chamados\.novo"\) !== false && \(/.test(pop93),
+      /aoCriar=\{\(id\) => \{ setNovoAberto\(false\); setPainelId\(id\); \}\}/.test(pop93)],
+     [true, true]);
+  eq('U93/R126: responsavelProposto — técnico vence; sem técnico, o PRIMEIRO da escala; sem os dois, ninguém',
+     [AB93.responsavelProposto('t1', ['a', 'b']), AB93.responsavelProposto('', ['a', 'b']),
+      AB93.responsavelProposto(null, ['a', 'b']), AB93.responsavelProposto(null, [])],
+     ['t1', 'a', 'a', null]);
+  eq('U93/R126: sugerirTitulo — sistema vence cliente, cliente vence nada, e o separador é o travessão',
+     [AB93.sugerirTitulo('implantacao', 'CFTV', 'Vila Lagos'),
+      AB93.sugerirTitulo('corretiva', null, 'Vila Lagos'),
+      AB93.sugerirTitulo('corretiva', '  ', '')],
+     [`${CS93.TIPO_LABEL.implantacao} — CFTV`, `${CS93.TIPO_LABEL.corretiva} — Vila Lagos`, CS93.TIPO_LABEL.corretiva]);
+  eq('U93/R126: só a implantação CRIA sistema; o rótulo do campo muda por tipo',
+     [AB93.podeCriarSistema('implantacao'), AB93.podeCriarSistema('corretiva'), AB93.podeCriarSistema('preventiva'),
+      AB93.rotuloDoSistema('implantacao'), AB93.rotuloDoSistema('preventiva'), AB93.rotuloDoSistema('corretiva')],
+     [true, false, false, 'Sistema a implantar', 'Sistema a revisar (vazio = todos)', 'Sistema afetado (opcional)']);
+  eq('U93/R126: a seção de problema pergunta conforme o tipo ("problema se for manutenção, sistema se for implantação")',
+     [AB93.secaoDoProblema('corretiva').titulo, AB93.secaoDoProblema('implantacao').titulo,
+      AB93.secaoDoProblema('preventiva').titulo, AB93.secaoDoProblema('operacional').titulo],
+     ['Problema relatado', 'Escopo da implantação', 'Roteiro da preventiva', 'Problema relatado']);
+  eq('U93/R126: o formulário GRAVA o responsável efetivo e o título sugerido — não a variável crua — e o sistema novo nasce ANTES do chamado',
+     [/responsavel_id: responsavelEfetivo,/.test(form93), /titulo: titulo\.trim\(\) \|\| tituloSugerido,/.test(form93),
+      form93.indexOf('await criarSistema(') > 0 && form93.indexOf('await criarSistema(') < form93.indexOf('await abrirChamado(')],
+     [true, true, true]);
+  eq('U93/R126: a proposta de responsável é DITA antes de gravar',
+     /Responsável proposto:/.test(form93), true);
+
+  // ── Os documentos (regra 7) ─────────────────────────────────────────────
+  const prod93 = fs93.readFileSync('docs/PRODUTO.md', 'utf8');
+  const plan93 = fs93.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+  const man93 = fs93.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+  const claude93 = fs93.readFileSync('CLAUDE.md', 'utf8');
+  eq('U93 (regra 7): R124–R130 existem; o diário tem a U93; o manual fala dos painéis novos',
+     [['R124', 'R125', 'R126', 'R127', 'R128', 'R129', 'R130'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod93)),
+      /^## U93 — /m.test(plan93), /Implantações em andamento/.test(man93), /Aguardando conferência/.test(man93)],
+     [true, true, true, true]);
+  eq('U93: os dois documentos de contexto existem e o CLAUDE.md aponta para eles',
+     [fs93.existsSync('docs/CONTEXTO_OPERACAO_TECNICA.md'), fs93.existsSync('docs/PLANO_V0.1.md'),
+      /CONTEXTO_OPERACAO_TECNICA\.md/.test(claude93), /PLANO_V0\.1\.md/.test(claude93)],
+     [true, true, true, true]);
+  eq('U93/R129: o §6 do PRODUTO.md registra que o QAP só é LIDO', /o app só recebe/.test(prod93), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

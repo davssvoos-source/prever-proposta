@@ -240,3 +240,30 @@ export function totalFaturavel(
 
 export const moeda = (v: number | null | undefined): string =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+/**
+ * AS COBRANÇAS DE UMA COMPETÊNCIA — "A cobrar este mês" (R125).
+ *
+ * Aqui o erro SOBE, ao contrário dos hooks de cima: o painel que consome é
+ * gateado por `veFinanceiro`, então quem chegou a chamar isto PODE ler a
+ * tabela, e uma recusa é defeito a mostrar — não "[]". Devolver lista vazia
+ * faria o painel dizer "R$ 0,00 a cobrar" para um comercial diante de uma
+ * consulta que falhou, e zero é a pior mentira que um painel de dinheiro pode
+ * contar (lição da U86: erro, carregando e vazio são três telas).
+ */
+export function useCobrancasDaCompetencia(competencia: string, habilitado = true) {
+  return useQuery({
+    queryKey: ["cobrancas-competencia", competencia],
+    enabled: habilitado && !!competencia,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Cobranca[]> => {
+      const { data, error } = await supabase
+        .from("cobrancas" as any)
+        .select(CAMPOS_COBRANCA)
+        .eq("competencia", competencia)
+        .order("data_referencia");
+      if (error) throw new Error(error.message);
+      return ((data as any[]) ?? []) as Cobranca[];
+    },
+  });
+}

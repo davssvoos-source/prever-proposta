@@ -47,6 +47,8 @@ export interface ChamadoParaIndicador {
   finalizada_em?: string | null;
   fechada_em?: string | null;
   natureza?: string | null;
+  /** R125: a decisão de cobrança — é o que separa "concluído" de "conferido". */
+  faturamento_status?: string | null;
 }
 
 export interface Indicadores {
@@ -109,7 +111,14 @@ export function abertosDeCampo<T extends ChamadoParaIndicador>(chamados: T[]): T
   return naturezaCampo(chamados).filter((c) => chamadoEmAberto(c.status));
 }
 
-export type ChaveKpiOperacional = "abertos" | "sem_responsavel" | "urgentes" | "atrasados";
+export type ChaveKpiOperacional =
+  | "abertos" | "sem_responsavel" | "urgentes" | "atrasados"
+  // R125: o quinto recorte NÃO entra no 2×2 (KPI_OPERACIONAL_ORDEM) — ele é
+  // o painel "Aguardando conferência", e mora aqui porque o número dele e a
+  // lista que o clique abre têm de sair da MESMA função (chamadosDoKpi),
+  // como os outros quatro. Não é subconjunto de "em aberto": são chamados
+  // CONCLUÍDOS cuja decisão de dinheiro ainda não foi tomada.
+  | "aguardando_conferencia";
 
 // A ordem de leitura do 2×2 (R66): azul → amarelo → laranja → vermelho, a
 // MESMA rampa de severidade do PRISMA (DASHBOARD.md §5) — top-left é o mais
@@ -122,6 +131,7 @@ export const KPI_OPERACIONAL_LABEL: Record<ChaveKpiOperacional, string> = {
   sem_responsavel: "Sem responsável",
   urgentes: "Urgentes",
   atrasados: "Prazo estourado",
+  aguardando_conferencia: "Aguardando conferência",
 };
 
 /**
@@ -143,6 +153,7 @@ export function chamadosDoKpi<T extends ChamadoParaIndicador>(
     case "sem_responsavel": return abertos.filter((c) => !c.responsavel_id);
     case "urgentes": return abertos.filter((c) => c.prioridade === "urgente");
     case "atrasados": return abertos.filter((c) => situacaoPrazo(c.prazo_limite, c.status, agora) === "estourado");
+    case "aguardando_conferencia": return aguardandoConferencia(chamados);
   }
 }
 
@@ -450,4 +461,117 @@ export function horasTexto(h: number | null): string {
   const d = Math.floor(h / 24);
   const r = h % 24;
   return r ? `${d}d ${r}h` : `${d}d`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// R125 — OS TRÊS PAINÉIS NOVOS DA OPERACIONAL TÉCNICA
+//
+// "Aguardando conferência", "A cobrar este mês" e "Implantações em andamento"
+// respondem às perguntas do Vinicius (docs/CONTEXTO_OPERACAO_TECNICA.md §6).
+// Como tudo neste módulo: recebem linhas, devolvem números e listas, sem
+// React e sem consulta — para cada um ser travado por asserção.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A decisão de cobrança ainda PENDENTE. `a_analisar` é "ninguém olhou";
+ * `em_conferencia` é "a I.A. analisou, ninguém aprovou nem dispensou" — e o
+ * cartão da grade já conta os dois como pendentes (programacao/modelo.ts,
+ * caso `em_conferencia`). Contar só o primeiro esconderia o segundo, que é
+ * justamente o chamado parado há dias (conferência 113 da U80).
+ */
+export const FATURAMENTO_PENDENTE: readonly string[] = ["a_analisar", "em_conferencia"];
+
+/**
+ * Chamados técnicos CONCLUÍDOS cuja decisão de cobrança ainda não foi tomada
+ * — a fila de validação do gestor (R130), em número.
+ *
+ * `faturamento_status` tem de vir NA LINHA: uma linha sem o campo não conta,
+ * em vez de ser tratada como pendente. A coluna é NOT NULL no banco, então
+ * toda consulta que nomeia a coluna a traz; quem não a nomeou não tem como
+ * responder a pergunta, e "não sei" nunca vira "sim".
+ */
+export function aguardandoConferencia<T extends ChamadoParaIndicador>(chamados: T[]): T[] {
+  return naturezaCampo(chamados).filter(
+    (c) =>
+      c.status === "concluido"
+      && typeof c.faturamento_status === "string"
+      && FATURAMENTO_PENDENTE.includes(c.faturamento_status),
+  );
+}
+
+/**
+ * As obras EM ANDAMENTO: implantação em aberto (aberto, agendado, em
+ * andamento, stand-by, aguardando aprovação). Ordem: fim previsto mais
+ * próximo primeiro — `prazo_limite` é o espelho do fim (R120) —, sem período
+ * por último, e a mais antiga primeiro no empate. Ordem TOTAL, pela mesma
+ * razão de `abertosPorTipo`: ranking que dança sem o dado mudar ensina a não
+ * confiar nele.
+ */
+export function implantacoesEmAndamento<T extends ChamadoParaIndicador>(chamados: T[]): T[] {
+  return naturezaCampo(chamados)
+    .filter((c) => c.tipo === "implantacao" && chamadoEmAberto(c.status))
+    .sort((a, b) => {
+      const pa = a.prazo_limite ? new Date(a.prazo_limite).getTime() : Infinity;
+      const pb = b.prazo_limite ? new Date(b.prazo_limite).getTime() : Infinity;
+      if (pa !== pb) return pa - pb;
+      const ca = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return ca !== 0 ? ca : a.id.localeCompare(b.id);
+    });
+}
+
+/** O mínimo que "A cobrar este mês" precisa de cada cobrança. */
+export interface CobrancaParaIndicador {
+  valor: number | string | null;
+  competencia: string | null;
+  status: string | null;
+}
+
+/**
+ * As cobranças VIVAS de uma competência: `cancelada` fica de fora — é o mesmo
+ * recorte de `temLancamento` (cobranca.ts) e de `montar_fechamento` (U5), e
+ * ter três recortes diferentes de "cobrança existe" foi um defeito real (U80).
+ */
+export function cobrancasDaCompetencia<T extends CobrancaParaIndicador>(
+  cobrancas: T[],
+  competencia: string,
+): T[] {
+  return cobrancas.filter((c) => c.competencia === competencia && c.status !== "cancelada");
+}
+
+export interface ACobrar {
+  /** soma de tudo que não foi cancelado na competência */
+  total: number;
+  quantidade: number;
+  /** as que ainda não entraram em fechamento nenhum */
+  emAberto: number;
+  totalEmAberto: number;
+}
+
+/** Soma em CENTAVOS e divide no fim — a lição de `parcelar()`: 3 × 33,33 em float dá 99,99. */
+const centavos = (v: number | string | null | undefined): number => Math.round(Number(v ?? 0) * 100);
+
+export function totalACobrar<T extends CobrancaParaIndicador>(cobrancas: T[], competencia: string): ACobrar {
+  const vivas = cobrancasDaCompetencia(cobrancas, competencia);
+  const abertas = vivas.filter((c) => c.status === "aberta");
+  const soma = (lista: T[]) => lista.reduce((s, c) => s + centavos(c.valor), 0) / 100;
+  return {
+    total: soma(vivas),
+    quantidade: vivas.length,
+    emAberto: abertas.length,
+    totalEmAberto: soma(abertas),
+  };
+}
+
+/**
+ * Dinheiro em quadrado pequeno: "R$ 850,00" · "R$ 12,3 mil" · "R$ 1,2 mi".
+ * O valor exato vai no `title` e na linha de baixo do painel — este é o que
+ * cabe em 26px de fonte numa coluna de 128px sem quebrar. Abaixo de mil não
+ * há o que encurtar.
+ */
+export function moedaCurta(v: number): string {
+  const abs = Math.abs(v);
+  if (abs < 1000) return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const um = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+  if (abs < 1_000_000) return `R$ ${um(v / 1000)} mil`;
+  return `R$ ${um(v / 1_000_000)} mi`;
 }

@@ -521,3 +521,76 @@ export function resumirObra(
     pctConcluido: total > 0 ? Math.round((concluidas / total) * 100) : null,
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O PROGRESSO DA OBRA — a barra do painel da Operacional Técnica (R125)
+//
+// DUAS MEDIDAS, E ELAS NÃO SE MISTURAM: o REAL é o que o gestor marcou como
+// concluído (fases com `concluida_em`, R120 — a escrita é dele); o PLANO é o
+// calendário andando (dias úteis decorridos do período). Uma barra que
+// somasse as duas diria "60%" sem ninguém saber se a obra andou ou se só o
+// mês passou. A tela pinta o real e marca o plano — e quando não há
+// cronograma, mostra o plano DIZENDO que é plano.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ProgressoDaObra {
+  /** % do período já decorrido, em DIAS ÚTEIS; null quando não há período. */
+  pctPlano: number | null;
+  /** % de fases concluídas; null quando não há cronograma. */
+  pctReal: number | null;
+  diasUteisTotal: number;
+  diasUteisDecorridos: number;
+  fasesConcluidas: number;
+  fasesTotal: number;
+  /** hoje já passou do fim previsto e a obra não terminou. */
+  atrasada: boolean;
+}
+
+/**
+ * `hoje` chega como 'AAAA-MM-DD' (ver `dataIso` em lib/periodos.ts), pelo
+ * mesmo motivo de todo este módulo: `new Date('2026-09-03')` é UTC e vira
+ * 02/09 no Brasil. Comparação de texto em ISO é comparação de data.
+ *
+ * Antes do início o plano é 0% (obra planejada, não começada) — e não null,
+ * que quer dizer "não há período". Depois do fim é 100%, e `atrasada` diz o
+ * resto.
+ */
+export function progressoDaObra(
+  periodo: { inicio: string | null; fim: string | null },
+  fases: { concluida_em: string | null }[],
+  hoje: string,
+): ProgressoDaObra {
+  const inicio = periodo.inicio ?? null;
+  const fim = periodo.fim ?? null;
+  const temPeriodo = !!inicio && !!fim && fim >= inicio;
+
+  const diasUteisTotal = temPeriodo ? contarDiasUteis(inicio as string, fim as string) : 0;
+  const diasUteisDecorridos =
+    temPeriodo && hoje >= (inicio as string)
+      ? contarDiasUteis(inicio as string, hoje < (fim as string) ? hoje : (fim as string))
+      : 0;
+  const pctPlano =
+    temPeriodo && diasUteisTotal > 0
+      ? Math.min(100, Math.round((diasUteisDecorridos / diasUteisTotal) * 100))
+      : null;
+
+  const fasesTotal = fases.length;
+  const fasesConcluidas = fases.filter((f) => !!f.concluida_em).length;
+  const pctReal = fasesTotal > 0 ? Math.round((fasesConcluidas / fasesTotal) * 100) : null;
+
+  const atrasada = temPeriodo && hoje > (fim as string) && (pctReal ?? 0) < 100;
+
+  return { pctPlano, pctReal, diasUteisTotal, diasUteisDecorridos, fasesConcluidas, fasesTotal, atrasada };
+}
+
+/** O que a barra diz ao lado: "2/4 fases" · "62% do período" · "sem período". */
+export function rotuloDoProgresso(p: ProgressoDaObra): string {
+  if (p.pctReal !== null) return `${p.fasesConcluidas}/${p.fasesTotal} fases`;
+  if (p.pctPlano !== null) return `${p.pctPlano}% do período`;
+  return "sem período";
+}
+
+/** O que a barra PINTA: o real quando existe, senão o plano, senão nada. */
+export function preenchimentoDaBarra(p: ProgressoDaObra): number | null {
+  return p.pctReal ?? p.pctPlano;
+}
