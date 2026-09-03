@@ -385,7 +385,7 @@ const divergem = TL.TELAS.filter((t) =>
   ['tecnico', 'comercial', 'sac'].some((c) => semente[t.chave]?.[c] !== t.padrao[c]));
 eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t.chave), []);
 
-// ── Faixa de prazo: a cor de fundo do card (2026-08-20) ────────────────────
+// ── Faixa de prazo: a cor do card (fundo em 2026-08-20; só a BORDA desde a R136) ──
 // Esta regra é visual, mas é lógica: errar a faixa pinta de azul um card que
 // vence amanhã. O corte é o FIM da semana corrente, não "daqui a 7 dias".
 {
@@ -16479,6 +16479,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## U96 — /m.test(ler96('docs/PLANO_UNIFICACAO.md')),
       /cor de BORDA/.test(ler96('docs/manual/operacao-campo.md'))],
      [true, true, true]);
+  // O DESIGN_SYSTEM.md é exportado para outros sistemas (Davi, 2026-09-03):
+  // a receita precisa estar lá inteira, com os valores resolvidos, sem depender
+  // do código. E o título antigo ("cor de fundo do card") não pode sobreviver.
+  const ds96 = ler96('DESIGN_SYSTEM.md');
+  eq('U96/R136 (regra 7): o DESIGN_SYSTEM traz a §6.12 do card com a receita das duas camadas, os 8 valores resolvidos, e a §11.3 fala de BORDA — o título "cor de fundo do card" morreu',
+     [/^### 6\.12 Card de atividade — a cor hierárquica só na borda/m.test(ds96),
+      /backgroundClip: "padding-box, border-box"/.test(ds96),
+      ['#f8bcc0', '#a45258', '#fce488', '#a9880c', '#a7caf4', '#36659e', '#96e9d2', '#1f8f70'].every((h) => ds96.includes(h)),
+      /^### 11\.3 Prazo → cor da BORDA do card/m.test(ds96),
+      /cor de fundo do card/.test(ds96),
+      /sombra colorida \| inline \| cards com faixa de prazo/.test(ds96)],
+     [true, true, true, true, false, false]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

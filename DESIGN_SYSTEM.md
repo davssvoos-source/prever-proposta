@@ -510,6 +510,86 @@ Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escu
 
 ---
 
+### 6.12 Card de atividade — a cor hierárquica só na borda (v8 — 2026-09-03)
+
+É o card do quadro por status da Início (`CardAtividade.tsx`), regra R136.
+Até 2026-09-03 o fundo inteiro levava um véu da cor do prazo. A partir da
+R136, **o fundo é sempre a superfície neutra do tema** — `#141416` no escuro,
+`#ffffff` no claro, o mesmo de qualquer card — e **só a borda reage à cor
+hierárquica**: um degradê do tom claro ao tom escuro da MESMA cor, contornado
+por um glow externo bem fraco. Nada no fundo, nada nos chips.
+
+Cinco estados: quatro cores (a §11.3 diz qual cor em qual situação) e o
+neutro.
+
+```jsx
+// A superfície neutra do tema — a mesma de qualquer card (ui.ts: card()).
+const FUNDO  = isLight ? "#ffffff" : "#141416";
+const SOMBRA = isLight
+  ? "0 1px 2px rgba(0,0,0,0.04), 0 10px 30px rgba(0,0,0,0.07)"
+  : "0 1px 2px rgba(0,0,0,0.50), 0 10px 30px rgba(0,0,0,0.30)";
+
+// COM cor hierárquica — `base`, `clara`, `escura` e `glow` vêm da tabela abaixo.
+const CARD_COM_COR = {
+  backgroundImage:
+    `linear-gradient(${FUNDO}, ${FUNDO}), ` +                // 1ª camada: o miolo, sólido
+    `linear-gradient(135deg, ${clara}, ${base}, ${escura})`,  // 2ª camada: só a borda
+  backgroundOrigin: "border-box",
+  backgroundClip: "padding-box, border-box",
+  border: "1.5px solid transparent",
+  borderRadius: 16,
+  boxShadow: `${SOMBRA}, 0 0 16px ${glow}`,   // glow: a cor a 14%, blur 16px, sem spread
+  padding: "12px 14px",
+  minHeight: 76,
+};
+
+// SEM cor (sem prazo por perto e não concluído): o card normal, sem truque.
+const CARD_NEUTRO = {
+  background: FUNDO,
+  border: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.06)",
+  borderRadius: 16, boxShadow: SOMBRA, padding: "12px 14px", minHeight: 76,
+};
+```
+
+**Por que duas camadas de `background`.** CSS não tem gradiente em `border`, e
+`border-image` descarta o `border-radius`. A camada sólida em `padding-box`
+cobre o miolo; a de degradê em `border-box` só aparece na faixa de 1,5px que
+a borda transparente deixa. Por isso o card com cor **não** usa o atalho
+`background` — ele apagaria as duas camadas de uma vez.
+
+**Os tons do degradê** saem de uma função só, `misturar(hex, alvo, peso)`
+(`paleta.ts`): mistura linear canal a canal entre `hex` e `alvo`, com
+arredondamento. Três paradas, sempre nesta ordem e neste ângulo:
+
+- `clara`  = misturar(base, `#ffffff`, **0.5**)
+- `base`   = o tom da cor **no tema** (escuro usa o tom claro da escala, claro
+  usa o escuro — a regra de §2.1)
+- `escura` = misturar(base, `#000000`, **0.32**)
+- ângulo **135°** — o mesmo do degradê da marca (`GRAD_PRIMARIA`, §6.3)
+
+Valores resolvidos, para quem reproduz sem a função:
+
+| cor | tema | base | clara | escura | glow (`bg` do PRISMA) |
+|---|---|---|---|---|---|
+| vermelho | escuro | `#F17881` | `#f8bcc0` | `#a45258` | `rgba(241,120,129,0.14)` |
+| vermelho | claro | `#B1242E` | `#d89297` | `#78181f` | `rgba(241,120,129,0.14)` |
+| amarelo | escuro | `#F8C811` | `#fce488` | `#a9880c` | `rgba(248,200,17,0.14)` |
+| amarelo | claro | `#A06108` | `#d0b084` | `#6d4205` | `rgba(248,200,17,0.14)` |
+| azul | escuro | `#4F94E9` | `#a7caf4` | `#36659e` | `rgba(79,148,233,0.14)` |
+| azul | claro | `#236FC7` | `#91b7e3` | `#184b87` | `rgba(79,148,233,0.14)` |
+| verde | escuro | `#2DD2A5` | `#96e9d2` | `#1f8f70` | `rgba(45,210,165,0.14)` |
+| verde | claro | `#047862` | `#82bcb1` | `#035243` | `rgba(45,210,165,0.14)` |
+
+**O glow** é o véu (`bg`) que o PRISMA já define para cada cor — 14% de alfa
+—, aplicado como `box-shadow` de blur 16px e spread 0, somado à sombra normal
+do card. Não há alfa novo: o blur é o que dilui a cor até ficar "levíssimo".
+O glow é o mesmo nos dois temas (é a cor saturada a 14%, não o tom do tema).
+
+**O que NÃO muda com a cor:** o fundo, o raio, o padding, a tipografia e os
+chips. Os chips de tipo, prioridade, status e compra usam **sempre** a cor
+própria (`chipStyle`, §6.6). O disfarce cinza que eles vestiam sobre o fundo
+colorido (`sobreFaixa`) saiu junto com o fundo colorido.
+
 ## 7. Arquitetura de tema
 
 Um contexto simples com persistência em `localStorage` e atributo no `<html>`:
@@ -625,6 +705,7 @@ Regras:
 - [ ] Toda seção aberta por micro-label maiúsculo espaçado
 - [ ] CTA principal = pílula dourada 56px com texto escuro maiúsculo espaçado
 - [ ] Cards com gradiente (160° escuro / 135° claro), raio 16–18px
+- [ ] Card de atividade: fundo neutro do tema, cor hierárquica SÓ na borda (degradê 135°, clara → base → escura) e glow a 14% com blur 16px (§6.12)
 - [ ] Nenhuma cor fixa fora de branch de tema (rodar os `grep` da §8)
 - [ ] Todo token do `:root` com par no `[data-theme="light"]` (§8.9)
 - [ ] Dourado escurecido para `#A06108` em todo texto/ícone do tema claro
@@ -736,20 +817,33 @@ diziam "adiante = vermelho".
 A rosca e o painel "Abrir chamado" seguem a ordem original — são a identidade
 do degradê, não uma escala de tempo.
 
-### 11.3 Prazo → cor de fundo do card
+### 11.3 Prazo → cor da BORDA do card (v8 — 2026-09-03, R136)
 
-A regra mais visível do sistema. `faixaPrazo()` (em `atividades/modelo.ts`)
-responde, e o card inteiro se pinta:
+A regra mais visível do sistema. Até 2026-09-03 o card inteiro se pintava
+com a cor do prazo; a partir da R136 **só a borda leva a cor** — em degradê,
+com glow — e o fundo fica na superfície neutra do tema. A receita de CSS está
+em §6.12; aqui fica a semântica, que é o que o card comunica:
 
-| faixa | cor | quando |
+| estado | cor | quando |
 |---|---|---|
-| `atraso` | vermelho `#F17881` | prazo já passou |
-| `esta_semana` | **amarelo `#F8C811`** | vence até domingo 23:59 da semana corrente |
-| `adiante` | azul `#4885DF` | vence da segunda seguinte em diante |
+| `atraso` | vermelho `#F17881` / `#B1242E` | prazo já passou |
+| `esta_semana` | **amarelo `#F8C811` / `#A06108`** | vence até domingo 23:59 da semana corrente |
+| `adiante` | azul `#4F94E9` / `#236FC7` | vence da segunda seguinte em diante |
+| `concluido` | verde `#2DD2A5` / `#047862` | está na coluna Concluído |
+| — | nenhuma (borda neutra) | sem prazo por perto e não concluído — cancelado incluído |
 
-As três são literalmente as pontas e o miolo do degradê, não aproximações
-dele — é o que faz o quadro e os gráficos parecerem a mesma peça.
-| `null` | nenhuma | sem prazo, ou já encerrado |
+O primeiro hex é o tom do tema escuro, o segundo o do claro (§2.1). Vermelho,
+amarelo e azul são literalmente as pontas e o miolo do degradê, não
+aproximações dele — é o que faz o quadro e os gráficos parecerem a mesma
+peça. O verde não está na rampa (§11.1 explica por quê), mas é o mesmo verde
+de "terminado com sucesso" que cobrança, contratos e o checklist de campo já
+usam — a coluna Concluído do quadro e a bolinha de status já eram desta cor;
+a borda só passou a concordar com elas.
+
+**Prazo vence conclusão.** `faixaPrazo()` (em `atividades/modelo.ts`) decide
+primeiro, e continua sabendo só de prazo — atraso / esta semana / adiante /
+nada. Só quando ela não devolve faixa o card olha a coluna; se for Concluído,
+verde. As duas cores nunca competem pelo mesmo card.
 
 Dois detalhes que custaram decisão:
 
@@ -757,13 +851,10 @@ Dois detalhes que custaram decisão:
   semana" precisa querer dizer dois dias. Sete dias corridos jogariam a terça
   que vem no amarelo e apagariam a fronteira que o quadro existe para mostrar.
   Travado em `verificar-logica.cjs` (10 asserções).
-- **Sobre card pintado, os chips perdem o véu colorido** e ganham um cinza
-  translúcido (`chipStyle(..., sobreFaixa)`). Num card amarelo, um chip amarelo
-  some e um chip azul briga. A cor da categoria sobrevive no texto, que é onde
-  ela precisa estar.
-
-O véu do tema claro não é o mesmo do escuro: amarelo a 8% sobre branco não
-aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
+- **Os chips não mudam com a cor do card.** Com o fundo neutro, tipo,
+  prioridade, status e compra usam sempre a cor própria (§6.6). O disfarce
+  cinza que eles vestiam sobre o fundo colorido (`sobreFaixa`) saiu — sem
+  fundo colorido, não havia mais com o que brigar.
 
 ### 11.4 Os efeitos, e quando cada um cabe
 
@@ -772,7 +863,7 @@ aparece (vai a 20%), vermelho a 17% sobre branco vira alarme (cai a 7,5%).
 | especular + granulado | `.textura` | barras do gráfico | superfícies grandes |
 | granulado só | `.ruido` | ícones, pastilhas, avatares | **linhas curvas finas** |
 | halo de cor | `feDropShadow` | arco da rosca | texto |
-| sombra colorida | inline | cards com faixa de prazo | cards neutros |
+| glow de contorno | inline (`box-shadow`, cor a 14%, blur 16px) | borda dos cards com cor hierárquica (§6.12) | cards neutros, fundo, texto |
 
 A linha do "onde NÃO" do granulado é uma correção do Davi: sobre o arco de 14px
 da rosca ele serrilhou a borda em vez de dar textura. Granulado quer área.

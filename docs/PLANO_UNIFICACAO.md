@@ -9395,6 +9395,20 @@ colorido, a razão de existir sumiu: o parâmetro saiu inteiro (não só ficou s
 uso), e os quatro chips do card (status, tipo, prioridade, compra) voltam a
 usar a cor própria sempre, como já faziam antes de 20/08.
 
+**O DESIGN_SYSTEM.md acompanhou, porque vai ser exportado.** Davi, na
+sequência: "Atualize o arquivo .md do Design System […] quero seja mencionado
+o estilo dos cards que criamos, onde somente as bordas reagem as cores
+hierarquicas, com degrade no contorno, glow out bem fraco […] Vou exporta-lo
+para outro sistema." Como o documento se declara autossuficiente ("sem
+depender do código original"), a §6.12 nova traz a receita inteira — as duas
+camadas de `background`, o porquê delas, a fórmula de `misturar` e os oito
+valores já resolvidos (clara/escura por cor e por tema) para quem não tiver a
+função. A §11.3 deixou de se chamar "cor de fundo do card" e passou a dizer a
+semântica com o quarto estado; a linha "sombra colorida" da §11.4 virou "glow
+de contorno"; o checklist da §10 ganhou o item. A asserção de regra 7 cobra
+os valores resolvidos no documento — se `misturar` mudar de peso, o documento
+exportado ficaria mentindo, e é isso que ela impede.
+
 **Visto antes de mexer no código.** Gerei um preview estático fora do app —
 carregando o `paleta.ts` de verdade com a mesma técnica do `carregar()` do
 verificador, só que num script descartável — para olhar os cinco estados (as
@@ -9424,7 +9438,8 @@ do processo, não só o código.
 
 ### Números
 
-`node scripts/verificar-logica.cjs` → **2746 passaram, 0 falharam** (16
-novas). `npx vite build` → completa. `npx tsc --noEmit` → **57**, sem mudança
+`node scripts/verificar-logica.cjs` → **2747 passaram, 0 falharam** (17
+novas, a última cobrando o DESIGN_SYSTEM exportável). `npx vite build` →
+completa. `npx tsc --noEmit` → **57**, sem mudança
 (R136 é CSS e uma função pura, nenhum tipo novo em jogo). Última regra:
 **R136**. Sem migration — R136 não toca o banco.
