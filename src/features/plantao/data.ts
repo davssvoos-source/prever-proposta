@@ -76,6 +76,39 @@ export function useAtendimentosDoMes(competencia: string) {
   });
 }
 
+/**
+ * OS ATENDIMENTOS DE PLANTÃO DE UM CLIENTE — o pedaço que faltava no histórico
+ * dele (R123, U92).
+ *
+ * A ficha do cliente mostrava contratos, chamados e visitas. O plantão nasceu
+ * na U87 e nunca chegou lá: um cliente atendido às 3h da manhã não tinha esse
+ * fato em lugar nenhum da própria ficha, e "histórico completo" era o nome de
+ * algo incompleto.
+ *
+ * SÓ O CLIENTE CADASTRADO. `cliente_informado` (texto livre) não entra: casar
+ * por nome traria o atendimento de "Padaria X" para a ficha de outra padaria
+ * homônima, e uma ficha que mostra o atendimento do vizinho é pior que uma
+ * ficha que mostra de menos. Quem digitou o nome à mão aparece no painel do
+ * mês, que agrupa por texto e não afirma identidade.
+ */
+export function useAtendimentosDoCliente(clienteId: string | undefined) {
+  return useQuery({
+    queryKey: ["plantao", "cliente", clienteId],
+    enabled: !!clienteId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<AtendimentoDePlantao[]> => {
+      const { data, error } = await (supabase as any)
+        .from("atendimentos_plantao")
+        .select(CAMPOS)
+        .eq("cliente_id", clienteId)
+        .order("hora", { ascending: false })
+        .limit(TETO_DA_LISTA);
+      if (error) throw new Error(error.message);
+      return ordenarAtendimentos(((data as any[]) ?? []) as AtendimentoDePlantao[]);
+    },
+  });
+}
+
 /** Quantos atendimentos a lista do painel mostra. */
 export const TETO_DA_LISTA = 20;
 

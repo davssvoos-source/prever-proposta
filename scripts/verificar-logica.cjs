@@ -13811,15 +13811,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // O par negativo é o que prende: o `throw` cru não pode voltar.
     const dataPl87 = semComTs87(fs87.readFileSync('src/features/plantao/data.ts', 'utf8'));
     eq('CRÍTICO: os erros do PostgREST são embrulhados em `new Error(...)` na fronteira de dados — sem isso `e instanceof Error` é FALSO nas duas telas e as 14 frases da migration viram "não consegui registrar"',
-       // 4 → 5 na U91: `useAtendimentosDoMes` é a quinta consulta do arquivo, e
-       // ela precisa do embrulho pelo mesmo motivo agravado — no painel, um
-       // erro engolido não vira "não consegui", vira "0 atendimentos", que é
-       // indistinguível de um mês tranquilo. O censo subiu de propósito: ele
-       // existe para que nenhuma consulta nova entre sem alguém olhar esta
-       // linha (regra 3).
+       // 4 → 5 (U91) → 6 (U92): `useAtendimentosDoMes` e
+       // `useAtendimentosDoCliente`. As duas precisam do embrulho pelo mesmo
+       // motivo agravado — num painel e numa ficha, erro engolido não vira
+       // "não consegui", vira "0 atendimentos", que é indistinguível de um mês
+       // tranquilo ou de um cliente que nunca ligou de madrugada. O censo sobe
+       // de propósito: ele existe para que nenhuma consulta nova entre sem
+       // alguém olhar esta linha (regra 3).
        [(dataPl87.match(/if \(error\) throw new Error\(error\.message\);/g) ?? []).length,
         /if \(error\) throw error;/.test(dataPl87)],
-       [5, false]);
+       [6, false]);
 
     // ── O PAINEL DE REGISTRO MOSTRA OS *MEUS* ────────────────────────────
     // A policy é `plantonista_id = auth.uid() OR is_gestor(auth.uid())` e está
@@ -15746,6 +15747,149 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        const d5 = s.find((p) => p.iso === '2026-03-05');
        return [d5.total, d5.horasDeEscala];
      })(), [0, 24]);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U92 / R123 — O QUE FALTAVA DA FASE 5: o corte por tipo e o plantão na ficha
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs92 = require('fs');
+  const IND = carregar('src/features/paineis/indicadores.ts');
+
+  // ── A LEI DE CONSERVAÇÃO: a soma das fatias É o número do meio da rosca ──
+  // Os dois cortes saem de `abertosDeCampo`, então trocar o eixo NÃO pode
+  // mudar o total. Se mudasse, o número no miolo da rosca contradiria as
+  // fatias ao redor dele — na mesma imagem, ao mesmo tempo.
+  {
+    const falhas92 = [];
+    const TIPOS = ['corretiva', 'preventiva', 'implantacao', 'vistoria', null];
+    const STATUS = ['aberto', 'agendado', 'em_andamento', 'concluido', 'cancelado'];
+    for (let n = 0; n < 40; n += 1) {
+      const chamados = [];
+      for (let i = 0; i <= n % 11; i += 1) {
+        chamados.push({
+          id: `c${n}-${i}`,
+          status: STATUS[(n + i) % STATUS.length],
+          natureza: (n + i) % 7 === 0 ? 'comercial' : 'campo',
+          tipo: TIPOS[(n * 3 + i) % TIPOS.length],
+          cliente_id: i % 3 === 0 ? null : `cli${i % 4}`,
+          created_at: '2026-03-01T12:00:00Z',
+        });
+      }
+      const ind = IND.calcularIndicadores(chamados, new Date('2026-03-20T12:00:00Z'));
+      const porTipo = IND.abertosPorTipo(chamados);
+      const porCli = IND.abertosPorCliente(chamados);
+      const somaTipo = porTipo.reduce((t, x) => t + x.total, 0);
+      const somaCli = porCli.reduce((t, x) => t + x.total, 0);
+      if (somaTipo !== ind.abertos) falhas92.push([n, `tipo soma ${somaTipo}, abertos ${ind.abertos}`]);
+      if (somaTipo !== somaCli) falhas92.push([n, `os dois cortes discordam: ${somaTipo} × ${somaCli}`]);
+      // ordenação TOTAL: embaralhar a entrada não pode mudar a ordem da saída
+      const outra = IND.abertosPorTipo([...chamados].reverse());
+      if (porTipo.map((x) => x.tipo).join('|') !== outra.map((x) => x.tipo).join('|')) {
+        falhas92.push([n, 'o ranking por tipo dança quando a entrada é embaralhada']);
+      }
+      // decrescente de verdade
+      for (let k = 1; k < porTipo.length; k += 1) {
+        if (porTipo[k].total > porTipo[k - 1].total) falhas92.push([n, 'fora de ordem']);
+      }
+    }
+    eq('U92/R123 CENSO: em 40 conjuntos, a soma das fatias de "por tipo" é EXATAMENTE `indicadores.abertos` e bate com a de "por cliente" — os dois cortes saem da mesma base, senão o número no miolo da rosca contradiria as fatias ao redor dele na mesma imagem. E a ordem não muda quando a entrada é embaralhada',
+       falhas92, []);
+  }
+
+  eq('U92/R123: chamado SEM tipo vira um balde próprio e não some — some quebraria a soma justamente no caso estranho, que é onde o defeito se esconde',
+     (() => {
+       const r = IND.abertosPorTipo([
+         { id: '1', status: 'aberto', natureza: 'campo', tipo: null, created_at: '2026-03-01T12:00:00Z' },
+         { id: '2', status: 'aberto', natureza: 'campo', tipo: 'corretiva', created_at: '2026-03-01T12:00:00Z' },
+       ]);
+       return [r.length, r.reduce((t, x) => t + x.total, 0), r.some((x) => x.tipo === null)];
+     })(), [2, 2, true]);
+
+  // ── O VOCABULÁRIO: É "TIPO", NUNCA "MODALIDADE" ─────────────────────────
+  // O plano pedia "ranking por modalidade". `cliente_contratos.modalidade` já
+  // é outra coisa (locação/manutenção/comodato/venda), e a decisão da Fase 1
+  // fechou a colisão. Trazer a palavra de volta na interface a reabriria.
+  {
+    const pop = fs92.readFileSync('src/routes/_authenticated/painel.operacional.tsx', 'utf8');
+    const vivoPop = pop.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+    eq('U92/R123 CRÍTICO: a rosca tem DOIS cortes e as duas leituras saem do MESMO `roscaComRotulo` — se o rótulo lesse um e o gráfico outro, o título diria "por status" sobre fatias de tipo',
+       [/const \[corteDaRosca, setCorteDaRosca\] = useState<"status" \| "tipo">\("status"\);/.test(vivoPop),
+        /const roscaComRotulo = corteDaRosca === "status" \? filaComRotulo : tiposComRotulo;/.test(vivoPop),
+        /titulo=\{corteDaRosca === "status" \? "Fila por status" : "Fila por tipo"\}/.test(vivoPop),
+        // e NENHUMA leitura solta de filaComRotulo sobrou dentro do desenho
+        (vivoPop.match(/filaComRotulo/g) || []).length],
+       [true, true, true, 2]);   // 1 na definição do memo + 1 no ternário
+
+    eq('U92/R123 CRÍTICO (vocabulário): a interface diz TIPO e nunca "modalidade" — `cliente_contratos.modalidade` já significa locação/manutenção/comodato/venda, e trazer a palavra de volta reabriria a colisão que a Fase 1 fechou',
+       [/Fila por tipo/.test(vivoPop),
+        /modalidade/i.test(vivoPop)],
+       [true, false]);
+  }
+
+  // ── O PLANTÃO NA FICHA DO CLIENTE ───────────────────────────────────────
+  {
+    const fic = fs92.readFileSync('src/routes/_authenticated/clientes.$id.tsx', 'utf8');
+    const vivoFic = fic.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+
+    eq('U92/R123: a ficha do cliente passou a mostrar o plantão — ele nasceu na U87 e nunca chegou lá, então "histórico completo" era o nome de algo incompleto',
+       [/useAtendimentosDoCliente/.test(vivoFic),
+        /<span style=\{SEC_LABEL\}>Plantão<\/span>/.test(vivoFic)],
+       [true, true]);
+
+    eq('U92/R123 CRÍTICO: a seção é fechada por `isGerente`. A policy de atendimentos_plantao é "dono OU gestor" — aberta, ela mostraria ao técnico só os atendimentos DELE com cara de histórico inteiro do cliente, e uma lista parcial disfarçada de completa é pior que seção nenhuma',
+       /\{isGerente && \(\s*\n\s*<div style=\{CARD\}>\s*\n\s*<span style=\{SEC_LABEL\}>Plantão<\/span>/.test(vivoFic),
+       true);
+
+    eq('U92/R123 CRÍTICO (lição da U86): erro, carregando e vazio são três telas, e o erro vem PRIMEIRO — "nenhum atendimento" numa consulta recusada é indistinguível de um cliente que nunca ligou de madrugada',
+       [/plantao\.isError \?/.test(vivoFic),
+        /plantao\.isLoading \?/.test(vivoFic),
+        /\(plantao\.data \?\? \[\]\)\.length === 0 \?/.test(vivoFic),
+        vivoFic.indexOf('plantao.isError') < vivoFic.indexOf('plantao.data ?? []).length === 0')],
+       [true, true, true, true]);
+
+    eq('U92/R123: o teto da lista é DECLARADO na tela — uma lista cortada em silêncio lê-se como o histórico inteiro',
+       [/=== TETO_PLANTAO &&/.test(vivoFic),
+        /Mostrando os \{TETO_PLANTAO\} mais recentes/.test(vivoFic)],
+       [true, true]);
+
+    // SÓ O CLIENTE CADASTRADO. Casar por `cliente_informado` traria o
+    // atendimento de uma padaria homônima para a ficha de outra.
+    // ── OS TRÊS DOCUMENTOS (regra 7) ─────────────────────────────────────
+    {
+      const prod92 = fs92.readFileSync('docs/PRODUTO.md', 'utf8');
+      const plan92 = fs92.readFileSync('docs/PLANO_UNIFICACAO.md', 'utf8');
+      const man92 = fs92.readFileSync('docs/manual/operacao-campo.md', 'utf8');
+      eq('U92/R123 (regra 7): a regra, o diário e o manual existem, e a numeração segue a R122',
+         [/^- \*\*R123\*\* —/m.test(prod92),
+          /^## U92 — O corte por tipo e o plantão na ficha/m.test(plan92),
+          /R123, U92/.test(man92),
+          /^- \*\*R122\*\* —/m.test(prod92)],
+         [true, true, true, true]);
+
+      eq('U92/R123 (regra 7): o diário registra o que a MEDIÇÃO encontrou — que ranking por cliente e busca de cliente JÁ EXISTIAM, e só dois itens da Fase 5 estavam abertos. Sem isso alguém reconstrói o que já está pronto lendo o plano',
+         [/Já existia/.test(plan92),
+          /Abertos por cliente/.test(plan92),
+          /Dois buracos pequenos/.test(plan92)],
+         [true, true, true]);
+
+      eq('U92/R123 (regra 7): o manual explica ao usuário por que o número do meio da rosca NÃO muda ao trocar o corte, e por que a seção de plantão da ficha é de gestor',
+         [/não muda quando você troca o corte/.test(man92),
+          /seção é de gestor/.test(man92),
+          /homônimo/.test(man92)],
+         [true, true, true]);
+    }
+
+    eq('U92/R123 CRÍTICO: a consulta da ficha filtra por `cliente_id`, e NUNCA por `cliente_informado` — casar por nome livre traria para esta ficha o atendimento de um homônimo, e mostrar o histórico do vizinho é pior que mostrar de menos',
+       (() => {
+         const d = fs92.readFileSync('src/features/plantao/data.ts', 'utf8');
+         const fn = d.slice(d.indexOf('export function useAtendimentosDoCliente'),
+                            d.indexOf('export const TETO_DA_LISTA'));
+         return [/\.eq\("cliente_id", clienteId\)/.test(fn), /cliente_informado/.test(fn)];
+       })(), [true, false]);
+  }
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

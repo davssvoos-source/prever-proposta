@@ -266,6 +266,41 @@ export function abertosPorCliente<T extends ChamadoParaIndicador>(
 }
 
 /**
+ * EM ABERTO POR TIPO — a "modalidade" do plano, e ela não é coluna nova (R123).
+ *
+ * O plano da absorção pedia um ranking "por modalidade". A palavra é
+ * traiçoeira aqui e o próprio plano avisa: `cliente_contratos.modalidade` já é
+ * OUTRA coisa (locação/manutenção/comodato/venda), e a modalidade da ATIVIDADE
+ * "é o nosso `chamados.tipo`". Este ranking é sobre `tipo`, e o rótulo da tela
+ * diz "tipo" — repetir "modalidade" na interface reabriria a colisão que a
+ * decisão de vocabulário fechou.
+ *
+ * MESMA BASE DOS QUATRO KPIs (`abertosDeCampo`), como `abertosPorCliente`: a
+ * soma das barras é exatamente `indicadores.abertos`, e isso é travado por
+ * asserção. Duas bases diferentes fariam dois rankings da mesma tela somarem
+ * números diferentes, e quem lê não teria como saber qual está certo.
+ *
+ * `tipo` nulo vira `null` e não some: um chamado sem tipo é raro (o gatilho
+ * preenche no INSERT) mas se existir tem de aparecer, senão a soma quebra e o
+ * defeito fica invisível justamente no caso estranho.
+ */
+export function abertosPorTipo<T extends ChamadoParaIndicador>(
+  chamados: T[],
+): { tipo: string | null; total: number }[] {
+  const porTipo = new Map<string | null, number>();
+  for (const c of abertosDeCampo(chamados)) {
+    const k = c.tipo ?? null;
+    porTipo.set(k, (porTipo.get(k) ?? 0) + 1);
+  }
+  return Array.from(porTipo, ([tipo, total]) => ({ tipo, total }))
+    // ORDENAÇÃO TOTAL: empate desempatado pelo NOME do tipo. Sem isso duas
+    // modalidades com a mesma contagem trocam de lugar entre renders, e um
+    // ranking que dança sem o dado mudar ensina a não confiar nele. É a mesma
+    // razão de `ordenarRanking` no painel do plantão (U91).
+    .sort((a, b) => b.total - a.total || (a.tipo ?? "").localeCompare(b.tipo ?? "", "pt-BR"));
+}
+
+/**
  * A LENTE da lista de chamados (R73).
  *
  * Nasceu de um defeito real: as 227 OS retroativas entraram concluídas, e a

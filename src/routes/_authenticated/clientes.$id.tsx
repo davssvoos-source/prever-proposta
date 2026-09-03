@@ -15,6 +15,8 @@ import { visitaRouteFor } from "@/lib/visita-route";
 import { ClienteForm } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
 import { useChamadosDoCliente } from "@/features/chamados/data";
+import { useAtendimentosDoCliente, TETO_DA_LISTA as TETO_PLANTAO } from "@/features/plantao/data";
+import { diaCurto, horaCurta, TIPO_LABEL as PLANTAO_TIPO_LABEL } from "@/features/plantao/modelo";
 import { chamadoStatusInfo } from "@/lib/chamado-status";
 import {
   useContratosDoCliente, contratoVigente,
@@ -47,6 +49,7 @@ function ClienteDetalhePage() {
   const { data: cliente, isLoading } = useCliente(id);
   const { data: visitas = [] } = useVisitasDoCliente(id);
   const { data: ordens = [] } = useChamadosDoCliente(id);
+  const plantao = useAtendimentosDoCliente(id);
   const { data: contratos = [] } = useContratosDoCliente(id);
   const [editando, setEditando] = useState(false);
 
@@ -474,6 +477,74 @@ function ClienteDetalhePage() {
               </div>
             )}
           </div>
+
+          {/* Plantão — o pedaço que faltava no histórico (R123, U92).
+              A ficha mostrava contratos, chamados e visitas; o plantão nasceu
+              na U87 e nunca chegou aqui. Um cliente atendido às 3h da manhã
+              não tinha esse fato em lugar nenhum da própria ficha.
+
+              FECHADO POR `isGerente`, e não deixado aberto: a policy de
+              `atendimentos_plantao` é "dono OU gestor", então para o técnico
+              a lista viria PARCIAL — só os atendimentos dele — parecendo o
+              histórico inteiro do cliente. Uma lista que mostra um pedaço com
+              cara de tudo é pior que uma seção ausente. É a mesma razão pela
+              qual Contratos é fechado por `veFinanceiro`. */}
+          {isGerente && (
+            <div style={CARD}>
+              <span style={SEC_LABEL}>Plantão</span>
+              {plantao.isError ? (
+                /* Erro NÃO vira "nenhum atendimento" — a lição da U86. */
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: isLight ? "#B42318" : "#FF6B6B", paddingTop: 10 }}>
+                  Não foi possível ler os atendimentos de plantão: {(plantao.error as Error)?.message}
+                </div>
+              ) : plantao.isLoading ? (
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+                  Carregando…
+                </div>
+              ) : (plantao.data ?? []).length === 0 ? (
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 10 }}>
+                  Nenhum atendimento de plantão registrado para este cliente.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  {(plantao.data ?? []).map((a) => (
+                    <div key={a.id} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 12px", borderRadius: 12,
+                      background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
+                      border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <span style={{
+                        fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 700,
+                        color: gold, fontVariantNumeric: "tabular-nums", flexShrink: 0,
+                      }}>
+                        {diaCurto(a.dia)} · {horaCurta(a.hora)}
+                      </span>
+                      <span style={{
+                        fontFamily: "var(--fonte)", fontSize: 12.5, color: textPrimary,
+                        flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {a.descricao}
+                      </span>
+                      <span style={{
+                        fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 700, flexShrink: 0,
+                        letterSpacing: "0.08em", textTransform: "uppercase", color: textSecondary,
+                      }}>
+                        {PLANTAO_TIPO_LABEL[a.tipo as "remoto" | "presencial"] ?? a.tipo}
+                      </span>
+                    </div>
+                  ))}
+                  {(plantao.data ?? []).length === TETO_PLANTAO && (
+                    /* O TETO É DECLARADO: uma lista cortada em silêncio
+                       lê-se como o histórico inteiro. */
+                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+                      Mostrando os {TETO_PLANTAO} mais recentes.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Histórico de visitas */}
           <div style={CARD}>

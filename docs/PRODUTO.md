@@ -2684,3 +2684,49 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   o PDF do sobreaviso continua sendo só a escala. E o painel de **atendimento**
   (chamados de campo) já existia no Painel Operacional; esta regra é sobre
   plantão. *(U91.)*
+
+- **R123** — **A fila em aberto tem dois cortes, e o histórico do cliente
+  inclui o plantão.** Dois buracos pequenos que fechavam a Fase 5.
+
+  **A rosca do Painel Operacional mostra "por status" ou "por tipo".** O plano
+  pedia um ranking "por modalidade" — e a palavra fica de fora da interface:
+  `cliente_contratos.modalidade` já significa locação/manutenção/comodato/venda,
+  e trazê-la de volta reabriria a colisão de vocabulário que a Fase 1 fechou. O
+  que a operação chama de modalidade da atividade **é o `tipo` do chamado**, e é
+  esse o rótulo da tela.
+
+  **Os dois cortes saem da MESMA base** (`abertosDeCampo`, a dos quatro KPIs).
+  Trocar o eixo não muda o total: o número no miolo da rosca continua sendo o
+  mesmo, e é isso que deixa comparar um corte com o outro. Bases diferentes
+  fariam o miolo contradizer as fatias ao redor dele, na mesma imagem.
+
+  **Chamado sem tipo vira um balde próprio**, em vez de sumir — sumir quebraria
+  a soma justamente no caso estranho, que é onde defeito se esconde. E a ordem
+  é total (empate desempatado pelo nome): ranking que dança entre dois renders
+  sem o dado mudar ensina a não confiar nele.
+
+  **Não nasceu painel novo.** As duas faixas do dashboard têm altura contratada
+  e o verificador trava a conta que faz a lista abrir acima da metade da tela;
+  um quarto card quebraria isso na primeira largura intermediária. A rosca já
+  respondia "como a fila em aberto se divide" — ganhou o segundo eixo por dois
+  botões e zero pixel de layout.
+
+  **A ficha do cliente passou a mostrar o plantão.** Ela tinha contratos,
+  chamados e visitas; o atendimento de plantão nasceu na R117 e nunca chegou
+  lá — um cliente atendido às 3h da manhã não tinha esse fato em lugar nenhum
+  da própria ficha, e "histórico completo" era o nome de algo incompleto.
+
+  **A seção é de gestor.** A regra de acesso do plantão é "o dono da linha ou
+  quem responde pela operação": aberta, ela mostraria ao técnico apenas os
+  atendimentos DELE, com cara de histórico inteiro do cliente. Lista parcial
+  disfarçada de completa é pior que seção ausente — a mesma razão pela qual
+  Contratos é fechado por quem enxerga valores.
+
+  **Só o cliente CADASTRADO entra.** Atendimento com o nome digitado à mão não
+  é casado por texto: traria para esta ficha o atendimento de um homônimo, e
+  mostrar o histórico do vizinho é pior que mostrar de menos. Quem digitou o
+  nome aparece no painel do mês, que agrupa por texto sem afirmar identidade.
+
+  **O que a R123 NÃO entrega.** A rosca não guarda o corte escolhido entre
+  visitas — é pergunta do momento, não preferência. E a lista de plantão da
+  ficha mostra os 20 mais recentes, dizendo que mostra. *(U92.)*

@@ -8850,3 +8850,79 @@ embaralhada**.
 `node scripts/verificar-logica.cjs` → **2624 passaram, 0 falharam**.
 `npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
 **Bateria de mutação: 11 mortas, 0 sobreviventes.**
+
+---
+
+## U92 — O corte por tipo e o plantão na ficha (R123 — Fase 5 fechada)
+
+**Arquivos:** `src/features/paineis/indicadores.ts` (uma função pura),
+`src/routes/_authenticated/painel.operacional.tsx`,
+`src/routes/_authenticated/clientes.$id.tsx`,
+`src/features/plantao/data.ts` (uma consulta), `scripts/verificar-logica.cjs`,
+`docs/PRODUTO.md` (R123), `docs/manual/operacao-campo.md`.
+**Sem migration.**
+
+### O que a medição encontrou
+
+Restavam dois itens da Fase 5 no plano: "rankings por cliente / modalidade" e
+"busca por cliente com histórico completo". Medidos antes de escrever:
+
+| Item | Estado |
+|---|---|
+| Ranking por cliente | **Já existia** — "Abertos por cliente", painel operacional |
+| Busca de cliente | **Já existia** — `clientes.tsx`, com filtro e paginação |
+| Histórico do cliente | Existia, mas **sem o plantão** |
+| Ranking por modalidade | **Não existia** — a rosca mostra "Fila por status" |
+
+Dois buracos pequenos, os dois reais.
+
+### "Modalidade" não entra na interface
+
+O plano pede "por modalidade", e a palavra é armadilha:
+`cliente_contratos.modalidade` já é locação/manutenção/comodato/venda. A decisão
+da Fase 1 fechou essa colisão dizendo que a modalidade da atividade **é o
+`chamados.tipo`**. O rótulo da tela diz **tipo**, e uma asserção prende a
+ausência da outra palavra — trazê-la de volta reabriria a colisão em silêncio.
+
+### Por que não nasceu painel novo
+
+As duas faixas do dashboard têm altura contratada (`ALTURA`, `ALTURA_DUPLA`), e
+o verificador trava a conta que faz a lista abrir acima da metade da tela. Um
+quarto card na faixa 1 quebraria isso na primeira largura intermediária.
+
+A rosca já respondia exatamente esta pergunta — "como a fila EM ABERTO se
+divide" — só que por um eixo. Dar-lhe o segundo custou dois botões e **zero
+pixel de layout**. E os dois cortes saem de `abertosDeCampo`, a mesma base dos
+KPIs: o número no miolo da rosca não muda quando o eixo muda, e a asserção de
+conservação prende isso em 40 conjuntos.
+
+### O plantão que sumira do histórico
+
+A ficha do cliente mostrava contratos, chamados e visitas. `atendimentos_plantao`
+nasceu na U87 com `cliente_id` e **nunca chegou lá**: zero ocorrências de
+"plantão" no arquivo inteiro. Um cliente atendido às 3h da manhã não tinha esse
+fato na própria ficha.
+
+**Duas decisões de recorte, as duas para não mentir:**
+
+1. **Fechada por `isGerente`.** A policy é "dono OU gestor". Aberta, a seção
+   mostraria ao técnico só os atendimentos DELE com cara de histórico inteiro
+   do cliente — lista parcial disfarçada de completa é pior que seção ausente.
+   É o mesmo desenho de Contratos, fechado por quem enxerga valores.
+2. **Só o cliente cadastrado.** `cliente_informado` é texto livre; casar por
+   nome traria o atendimento de uma padaria homônima para a ficha de outra.
+   Mostrar o histórico do vizinho é pior que mostrar de menos.
+
+E os três estados de leitura de novo separados — erro, carregando, vazio —, com
+o erro avaliado ANTES do vazio. É a lição da U86, agora presa por asserção de
+POSIÇÃO e não de presença.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2636 passaram, 0 falharam**.
+`npx vite build` → completa. `npx tsc --noEmit` → **59**, o baseline.
+**Bateria de mutação: 8 mortas, 0 sobreviventes.**
+
+Com isto a **Fase 5 está fechada**. Resta a Fase 2 pela metade (a estimativa de
+rota espera a `ORS_API_KEY`) e a Fase 6 (migração do Gestor OS com data de
+corte), que depende do export do Vinicius.

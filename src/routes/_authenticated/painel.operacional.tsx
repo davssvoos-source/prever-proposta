@@ -56,7 +56,7 @@ import {
   serieAtividadesPorEscala, foraDeEscala, duplasNaJanela, composicaoDaDupla,
   montarEscala, rotuloDaComposicao, type SemanaDoGrafico,
 } from "@/features/duplas/modelo";
-import { chamadoStatusInfo, textoPrazo } from "@/lib/chamado-status";
+import { chamadoStatusInfo, textoPrazo, TIPO_LABEL, type ChamadoTipo } from "@/lib/chamado-status";
 import { referenciaSemanal, inicioSemana } from "@/lib/periodos";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
@@ -67,7 +67,7 @@ import {
 import {
   calcularIndicadores, horasTexto,
   chamadosDoKpi, KPI_OPERACIONAL_ORDEM, KPI_OPERACIONAL_LABEL, type ChaveKpiOperacional,
-  abertosPorCliente, ordenarChamados, ordenarHistorico,
+  abertosPorCliente, abertosPorTipo, ordenarChamados, ordenarHistorico,
   chamadosDaLente, LENTE_ORDEM, LENTE_LABEL, type LenteLista,
   agruparPorColuna, COLUNA_OP_ORDEM, COLUNA_OP_LABEL, type ColunaOperacional,
 } from "@/features/paineis/indicadores";
@@ -314,6 +314,41 @@ function PainelOperacional() {
     [ind],
   );
 
+  // ── Em aberto por TIPO (R123) ────────────────────────────────────────────
+  // O plano chamava isto de "ranking por modalidade". O rótulo da tela diz
+  // TIPO, e não modalidade, de propósito: `cliente_contratos.modalidade` já é
+  // outra coisa (locação/manutenção/comodato/venda), e repetir a palavra aqui
+  // reabriria a colisão de vocabulário que a decisão da Fase 1 fechou.
+  //
+  // MESMA BASE dos KPIs e do ranking de cliente — a soma das três listas é o
+  // mesmo `abertos`, e o verificador trava isso.
+  /**
+   * QUAL CORTE A ROSCA MOSTRA. Estado LOCAL e não persistido: é pergunta do
+   * momento ("como a fila se divide?"), não preferência de quem abre a tela.
+   *
+   * UM PAINEL NOVO NÃO CABIA. As duas faixas têm altura contratada
+   * (ALTURA/ALTURA_DUPLA) e o verificador trava a conta que faz a lista abrir
+   * acima da metade da tela; um quarto card na faixa 1 quebraria isso na
+   * primeira largura intermediária. E a rosca já responde exatamente esta
+   * pergunta — "como a fila EM ABERTO se divide" —, só que por um eixo. Dar a
+   * ela o segundo eixo custa dois botões e zero pixel de layout.
+   */
+  const [corteDaRosca, setCorteDaRosca] = useState<"status" | "tipo">("status");
+
+  const tiposComRotulo = useMemo(
+    () => abertosPorTipo(chamados).map((t) => ({
+      nome: t.tipo ? (TIPO_LABEL[t.tipo as ChamadoTipo] ?? t.tipo) : "Sem tipo",
+      valor: t.total,
+      semDono: !t.tipo,
+    })),
+    [chamados],
+  );
+
+  // A SÉRIE DA ROSCA, derivada do corte. As duas saem de `abertosDeCampo`,
+  // então a soma das fatias é o MESMO `ind.abertos` nos dois cortes — o número
+  // do meio da rosca não muda quando o eixo muda, e é isso que deixa comparar.
+  const roscaComRotulo = corteDaRosca === "status" ? filaComRotulo : tiposComRotulo;
+
   // ── Atividades por equipe de campo ao longo do tempo (R58/R96) ───────────
   const semanas = useMemo<SemanaDoGrafico[]>(() => {
     const segundaDestaSemana = inicioSemana(new Date());
@@ -550,8 +585,36 @@ function PainelOperacional() {
               em CSS, senão a legenda apontaria para uma cor que não existe no
               gráfico. Identidade nunca só pela cor. */}
           <div className="elevavel" style={{ ...PAINEL, flex: 1, minWidth: 210 }}>
-            <Cabeca titulo="Fila por status" />
-            {filaComRotulo.length === 0 ? (
+            <Cabeca
+              titulo={corteDaRosca === "status" ? "Fila por status" : "Fila por tipo"}
+              direita={
+                <span style={{ display: "flex", gap: 4 }}>
+                  {(["status", "tipo"] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCorteDaRosca(c)}
+                      aria-pressed={corteDaRosca === c}
+                      className="hover-suave"
+                      style={{
+                        height: 20, padding: "0 8px", borderRadius: 10, cursor: "pointer",
+                        fontFamily: FONT, fontSize: 9.5, fontWeight: 700,
+                        letterSpacing: "0.08em", textTransform: "uppercase",
+                        background: corteDaRosca === c
+                          ? (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)")
+                          : "transparent",
+                        color: corteDaRosca === c ? textPrimary : textSecondary,
+                        border: corteDaRosca === c
+                          ? `1px solid ${isLight ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.18)"}`
+                          : "1px solid transparent",
+                      }}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </span>
+              }
+            />
+            {roscaComRotulo.length === 0 ? (
               <div style={{ flex: 1, display: "flex", alignItems: "center", fontFamily: FONT, fontSize: 11.5, color: verde }}>
                 Nenhum chamado em aberto.
               </div>
@@ -560,13 +623,13 @@ function PainelOperacional() {
                 <div style={{ position: "relative", width: 118, height: "100%", flexShrink: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <defs>{gradientesEspectro("op-fila", filaComRotulo.length, isLight)}</defs>
+                      <defs>{gradientesEspectro("op-fila", roscaComRotulo.length, isLight)}</defs>
                       <Pie
-                        data={filaComRotulo} dataKey="valor" nameKey="nome"
+                        data={roscaComRotulo} dataKey="valor" nameKey="nome"
                         innerRadius={33} outerRadius={51}
                         stroke={superficie} strokeWidth={2} isAnimationActive={false}
                       >
-                        {filaComRotulo.map((f, i) => (
+                        {roscaComRotulo.map((f, i) => (
                           <Cell key={f.nome} fill={`url(#op-fila-${i % PECAS_ESPECTRO})`} />
                         ))}
                       </Pie>
@@ -593,7 +656,7 @@ function PainelOperacional() {
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                  {filaComRotulo.map((f, i) => {
+                  {roscaComRotulo.map((f, i) => {
                     const passo = i % PECAS_ESPECTRO;
                     return (
                       <div key={f.nome} style={{ display: "flex", alignItems: "center", gap: 6 }}>

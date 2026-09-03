@@ -1032,6 +1032,44 @@ Não filtra por pessoa nem por período livre — o recorte é o mês que a tela
 está mostrando. E não entra no PDF: o relatório do sobreaviso continua sendo só
 a escala.
 
+
+## A rosca do painel tem dois cortes, e a ficha do cliente ganhou o plantão (R123, U92)
+
+### "Fila por status" agora vira "Fila por tipo" com um clique
+
+No Painel Operacional, a rosca ganhou dois botõezinhos no cabeçalho: **status**
+e **tipo**. O primeiro é o de sempre; o segundo divide os mesmos chamados em
+aberto por Corretiva, Preventiva, Implantação, Vistoria e os demais.
+
+**O número no meio da rosca não muda quando você troca o corte** — é o mesmo
+total em aberto, dividido de outro jeito. Se ele mudasse, um dos dois cortes
+estaria mentindo.
+
+O botão escolhido **não fica guardado**: ao voltar para a tela ela abre em
+"status". É pergunta do momento, não preferência.
+
+**Por que "tipo" e não "modalidade":** modalidade já significa outra coisa no
+sistema — é a natureza do contrato (locação, manutenção, comodato, venda). Usar
+a palavra aqui faria duas coisas diferentes terem o mesmo nome.
+
+### A ficha do cliente mostra os atendimentos de plantão
+
+Na página do cliente, entre Chamados e Histórico de visitas, há agora a seção
+**Plantão**: os atendimentos de madrugada e de fim de semana feitos para aquele
+cliente, com dia, hora, o que foi feito e se foi remoto ou presencial.
+
+Detalhes que valem saber:
+
+- **A seção é de gestor.** O técnico não a vê, e isso é de propósito: ele só
+  poderia ler os atendimentos dele, e a lista apareceria pela metade com cara de
+  histórico completo do cliente.
+- **Só entra o atendimento com o cliente CADASTRADO.** Quando o plantonista
+  digita o nome à mão, o atendimento não é puxado para nenhuma ficha — puxar
+  pelo texto traria o atendimento de um cliente homônimo. Esses aparecem no
+  painel do mês, na tela de sobreaviso.
+- **Mostra os 20 mais recentes, e diz que mostra.**
+- **"Nenhum atendimento" e "não consegui ler" são telas diferentes.**
+
 ## Referências
 
 - `src/lib/chamado-status.ts` · `src/features/atividades/modelo.ts`
