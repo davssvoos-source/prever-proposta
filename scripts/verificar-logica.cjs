@@ -16549,8 +16549,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U96/R136: o truque de borda em degradê usa duas camadas de background (padding-box sólido, border-box com o degradê) — único jeito de gradiente em `border` sem SVG/border-image',
      [/backgroundOrigin: "border-box"/.test(ca96), /backgroundClip: "padding-box, border-box"/.test(ca96), /border: "1\.5px solid transparent"/.test(ca96)],
      [true, true, true]);
-  eq('U96/R136: o glow reaproveita o `.bg` que a PRISMA já calcula (14% de alfa) — nenhum alfa novo inventado, e por isso fica "levíssimo"',
-     /boxShadow: `\$\{cardBase\.boxShadow\}, 0 0 16px \$\{p\.bg\}`,/.test(ca96), true);
+  eq('U96/R136 (revisto 2026-09-04): o glow deriva do `.bg` da PRISMA por `esmaecer` (fator < 1) — mais fraco que o alfa puro, sem hex novo por cor',
+     [/boxShadow: `\$\{cardBase\.boxShadow\}, 0 0 \$\{GLOW_BLUR_PX\}px \$\{esmaecer\(p\.bg, FATOR_GLOW\)\}`,/.test(ca96),
+      /const FATOR_GLOW = 0\.25;/.test(ca96), /const GLOW_BLUR_PX = 6;/.test(ca96)],
+     [true, true, true]);
+  eq('esmaecer: multiplica só o alfa de um rgba(...), preservando r/g/b — 14% × 0.25 = 3,5%',
+     [PAL96.esmaecer('rgba(45,210,165,0.14)', 0.25), PAL96.esmaecer('rgba(1,2,3,0.5)', 1), PAL96.esmaecer('não é rgba', 0.5)],
+     ['rgba(45,210,165,0.035)', 'rgba(1,2,3,0.5)', 'não é rgba']);
   eq('U96/R136: sem cor estratégica, o card cai de volta no card(isLight) puro — nada de borda transparente sobrando',
      /: \{\s*\n\s*\.\.\.cardBase,\s*\n\s*borderRadius: 16,/.test(ca96), true);
 

@@ -510,7 +510,7 @@ Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escu
 
 ---
 
-### 6.12 Card de atividade — a cor hierárquica só na borda (v8 — 2026-09-03)
+### 6.12 Card de atividade — a cor hierárquica só na borda (v9 — 2026-09-04)
 
 É o card do quadro por status da Início (`CardAtividade.tsx`), regra R136.
 Até 2026-09-03 o fundo inteiro levava um véu da cor do prazo. A partir da
@@ -538,7 +538,7 @@ const CARD_COM_COR = {
   backgroundClip: "padding-box, border-box",
   border: "1.5px solid transparent",
   borderRadius: 16,
-  boxShadow: `${SOMBRA}, 0 0 16px ${glow}`,   // glow: a cor a 14%, blur 16px, sem spread
+  boxShadow: `${SOMBRA}, 0 0 6px ${glow}`,   // glow: a cor a 3,5%, blur 6px, sem spread
   padding: "12px 14px",
   minHeight: 76,
 };
@@ -569,21 +569,27 @@ arredondamento. Três paradas, sempre nesta ordem e neste ângulo:
 
 Valores resolvidos, para quem reproduz sem a função:
 
-| cor | tema | base | clara | escura | glow (`bg` do PRISMA) |
+| cor | tema | base | clara | escura | glow (`esmaecer(bg, 0.25)`) |
 |---|---|---|---|---|---|
-| vermelho | escuro | `#F17881` | `#f8bcc0` | `#a45258` | `rgba(241,120,129,0.14)` |
-| vermelho | claro | `#B1242E` | `#d89297` | `#78181f` | `rgba(241,120,129,0.14)` |
-| amarelo | escuro | `#F8C811` | `#fce488` | `#a9880c` | `rgba(248,200,17,0.14)` |
-| amarelo | claro | `#A06108` | `#d0b084` | `#6d4205` | `rgba(248,200,17,0.14)` |
-| azul | escuro | `#4F94E9` | `#a7caf4` | `#36659e` | `rgba(79,148,233,0.14)` |
-| azul | claro | `#236FC7` | `#91b7e3` | `#184b87` | `rgba(79,148,233,0.14)` |
-| verde | escuro | `#2DD2A5` | `#96e9d2` | `#1f8f70` | `rgba(45,210,165,0.14)` |
-| verde | claro | `#047862` | `#82bcb1` | `#035243` | `rgba(45,210,165,0.14)` |
+| vermelho | escuro | `#F17881` | `#f8bcc0` | `#a45258` | `rgba(241,120,129,0.035)` |
+| vermelho | claro | `#B1242E` | `#d89297` | `#78181f` | `rgba(241,120,129,0.035)` |
+| amarelo | escuro | `#F8C811` | `#fce488` | `#a9880c` | `rgba(248,200,17,0.035)` |
+| amarelo | claro | `#A06108` | `#d0b084` | `#6d4205` | `rgba(248,200,17,0.035)` |
+| azul | escuro | `#4F94E9` | `#a7caf4` | `#36659e` | `rgba(79,148,233,0.035)` |
+| azul | claro | `#236FC7` | `#91b7e3` | `#184b87` | `rgba(79,148,233,0.035)` |
+| verde | escuro | `#2DD2A5` | `#96e9d2` | `#1f8f70` | `rgba(45,210,165,0.035)` |
+| verde | claro | `#047862` | `#82bcb1` | `#035243` | `rgba(45,210,165,0.035)` |
 
-**O glow** é o véu (`bg`) que o PRISMA já define para cada cor — 14% de alfa
-—, aplicado como `box-shadow` de blur 16px e spread 0, somado à sombra normal
-do card. Não há alfa novo: o blur é o que dilui a cor até ficar "levíssimo".
-O glow é o mesmo nos dois temas (é a cor saturada a 14%, não o tom do tema).
+**O glow** (v9, 2026-09-04 — Davi: "diminua mais o glow do contorno […] pode
+diminuir bastante") é o véu (`bg`) que o PRISMA já define para cada cor — 14%
+de alfa —, mas **enfraquecido**: `esmaecer(bg, 0.25)` (`paleta.ts`) multiplica
+só o alfa, preservando o RGB, e o resultado (3,5%) é o que entra no
+`box-shadow`, com blur reduzido de 16px para **6px** — sem spread, somado à
+sombra normal do card. A primeira versão (v8) usava o `.bg` puro com blur
+16px; ficou grande demais para "levíssimo". Ainda não é um alfa novo por
+cor: é o mesmo token, encolhido por uma função — os dois números que valem a
+força (`FATOR_GLOW`, `GLOW_BLUR_PX`) moram em `CardAtividade.tsx`. O glow é o
+mesmo nos dois temas (é a cor saturada, não o tom do tema).
 
 **O que NÃO muda com a cor:** o fundo, o raio, o padding, a tipografia e os
 chips. Os chips de tipo, prioridade (campo), impacto operacional (interno) e
@@ -730,7 +736,7 @@ Regras:
 - [ ] Toda seção aberta por micro-label maiúsculo espaçado
 - [ ] CTA principal = pílula dourada 56px com texto escuro maiúsculo espaçado
 - [ ] Cards com gradiente (160° escuro / 135° claro), raio 16–18px
-- [ ] Card de atividade: fundo neutro do tema, cor hierárquica SÓ na borda (degradê 135°, clara → base → escura) e glow a 14% com blur 16px (§6.12)
+- [ ] Card de atividade: fundo neutro do tema, cor hierárquica SÓ na borda (degradê 135°, clara → base → escura) e glow bem fraco (véu do PRISMA esmaecido, blur 6px) (§6.12)
 - [ ] Nenhuma cor fixa fora de branch de tema (rodar os `grep` da §8)
 - [ ] Todo token do `:root` com par no `[data-theme="light"]` (§8.9)
 - [ ] Dourado escurecido para `#A06108` em todo texto/ícone do tema claro
@@ -888,7 +894,7 @@ Dois detalhes que custaram decisão:
 | especular + granulado | `.textura` | barras do gráfico | superfícies grandes |
 | granulado só | `.ruido` | ícones, pastilhas, avatares | **linhas curvas finas** |
 | halo de cor | `feDropShadow` | arco da rosca | texto |
-| glow de contorno | inline (`box-shadow`, cor a 14%, blur 16px) | borda dos cards com cor hierárquica (§6.12) | cards neutros, fundo, texto |
+| glow de contorno | inline (`box-shadow`, cor esmaecida a ~3,5%, blur 6px) | borda dos cards com cor hierárquica (§6.12) | cards neutros, fundo, texto |
 
 A linha do "onde NÃO" do granulado é uma correção do Davi: sobre o arco de 14px
 da rosca ele serrilhou a borda em vez de dar textura. Granulado quer área.

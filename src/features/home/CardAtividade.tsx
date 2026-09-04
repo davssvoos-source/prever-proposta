@@ -21,7 +21,7 @@ import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
-import { PRISMA, degradeDeBorda } from "@/lib/paleta";
+import { PRISMA, degradeDeBorda, esmaecer } from "@/lib/paleta";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
   BOLA_LABEL, ALERTA_LABEL, faixaPrazo,
@@ -60,6 +60,17 @@ export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
  * listando todos.
  */
 const LOCAIS_NO_CARD = 2;
+
+/**
+ * A força do glow do contorno (R136, Davi 2026-09-04: "diminua mais o glow do
+ * contorno […] pode diminuir bastante"). Dois números, não um alfa novo por
+ * cor: `FATOR_GLOW` encolhe o `.bg` do PRISMA (14% → ~3,5%), `GLOW_BLUR_PX`
+ * encurta o raio para o halo não sangrar longe do card. Primeira versão era
+ * `esmaecer(p.bg, 1)` (o `.bg` puro) com blur de 16px — grande demais para
+ * "levíssimo".
+ */
+const FATOR_GLOW = 0.25;
+const GLOW_BLUR_PX = 6;
 
 /**
  * A cor estratégica de cada card — sempre uma amostra literal do PRISMA:
@@ -104,15 +115,17 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const p = corChave ? PRISMA[PRISMA_DA_COR[corChave]] : null;
   const corBase = p ? (isLight ? p.light : p.dark) : null;
 
-  // v5 (R136): o fundo é sempre a superfície neutra de `card()` — escura no
-  // tema escuro, clara no tema claro. Só a BORDA carrega a cor estratégica, em
-  // degradê claro→escuro (`degradeDeBorda`), com um glow levíssimo por fora
-  // (blur largo, o `bg` do próprio PRISMA — já é um véu de 14%, não precisou
-  // de um número novo). O truque de duas camadas de `background` (uma sólida
-  // em padding-box, o degradê em border-box) é o único jeito de um `border`
-  // ter gradiente em CSS puro — por isso não dá para só espalhar
-  // `card(isLight)` quando há cor: o `background` sólido dele tomaria o lugar
-  // das duas camadas.
+  // v5 (R136, glow revisto por pedido do Davi em 2026-09-04): o fundo é
+  // sempre a superfície neutra de `card()` — escura no tema escuro, clara no
+  // tema claro. Só a BORDA carrega a cor estratégica, em degradê claro→escuro
+  // (`degradeDeBorda`), com um glow bem fraco por fora. O `.bg` do PRISMA
+  // (14%) lido puro era grande demais para "levíssimo" — `esmaecer` deriva um
+  // alfa mais fraco do MESMO token (não um hex novo por cor), e o blur ficou
+  // curto (6px) para o halo não sangrar para fora do card. O truque de duas
+  // camadas de `background` (uma sólida em padding-box, o degradê em
+  // border-box) é o único jeito de um `border` ter gradiente em CSS puro —
+  // por isso não dá para só espalhar `card(isLight)` quando há cor: o
+  // `background` sólido dele tomaria o lugar das duas camadas.
   const cardBase = card(isLight);
   const CARD: CSSProperties = corBase && p
     ? {
@@ -121,7 +134,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
         backgroundClip: "padding-box, border-box",
         border: "1.5px solid transparent",
         borderRadius: 16,
-        boxShadow: `${cardBase.boxShadow}, 0 0 16px ${p.bg}`,
+        boxShadow: `${cardBase.boxShadow}, 0 0 ${GLOW_BLUR_PX}px ${esmaecer(p.bg, FATOR_GLOW)}`,
         padding: "12px 14px",
         width: "100%",
         textAlign: "left",

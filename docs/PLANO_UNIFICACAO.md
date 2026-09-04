@@ -9625,3 +9625,38 @@ leituras têm fallback e nenhuma tela cai. Um arquivo apagado: `compra.ts`.
 Nada verificado no navegador autenticado (o login pede senha, que eu não
 digito); o que se vê nesta entrega está preso por asserção estrutural, tipo e
 build — e o Davi vai ver ao abrir.
+
+## U96b — O glow do contorno, mais fraco (revisão de R136, 2026-09-04)
+
+Davi: "Diminua mais o glow do contorno dos cards da tela INICIO. Pode diminuir
+bastante. Me refiro aos cards das atividades, o glow da borda." A v8 usava o
+`.bg` do PRISMA puro (14% de alfa) com blur de 16px — o mesmo raciocínio de
+"não inventar um número novo" que documentei na R136, mas o resultado ficou
+grande demais para "levíssimo".
+
+Em vez de hardcodar um alfa novo por cor (quatro números soltos, um por
+estado), escrevi `esmaecer(rgba, fator)` em `paleta.ts`: pega um `rgba(...)`
+que já existe e multiplica só o alfa, preservando o RGB. A força inteira do
+efeito fica em dois números nomeados em `CardAtividade.tsx` —
+`FATOR_GLOW = 0.25` (14% → 3,5%) e `GLOW_BLUR_PX = 6` (era 16) — então ajustar
+de novo, se o Davi pedir, é mudar dois números num lugar só, não recalcular
+oito hex.
+
+Testei visualmente antes de mexer no app de verdade: o mesmo script
+descartável da R136 (carrega `paleta.ts` de verdade, monta um HTML fora do
+projeto) comparando o glow velho e o novo lado a lado, nos dois temas. A
+diferença é nítida — sobrou a borda em degradê, o halo praticamente sumiu.
+
+### O que a verificação pegou
+
+Nada de errado no código; a asserção antiga fixava o boxShadow literal com
+`p.bg` puro e precisou ser reescrita para a nova composição (`esmaecer`) —
+mudou o alvo, não a regra. Acrescentei uma assertion nova para `esmaecer` em
+si (multiplica só o alfa; devolve a entrada intacta quando não é um `rgba(...)`
+reconhecível).
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2801 passaram, 0 falharam** (1 nova).
+`npx vite build` → completa. `npx tsc --noEmit` → **57**, sem mudança. Última
+regra: ainda R136 (revisão de valor, não regra nova). Sem migration.

@@ -155,6 +155,22 @@ export function degradeDeBorda(hex: string): string {
 }
 
 /**
+ * Esmaece um `rgba(r,g,b,a)` multiplicando o alfa por `fator` (0–1) — mesma
+ * cor, mais fraca. Existe para o glow do contorno dos cards de atividade
+ * (R136, revisto por pedido do Davi, 2026-09-04: "diminua mais o glow […]
+ * pode diminuir bastante"): o `.bg` do PRISMA (14%) já pintava um véu grande
+ * demais para "levíssimo" — em vez de inventar um alfa novo solto na tela,
+ * esta função deriva um mais fraco do mesmo token, then a decisão de força é
+ * um número só (`FATOR_GLOW`, em CardAtividade.tsx), não um hex novo por cor.
+ */
+export function esmaecer(rgba: string, fator: number): string {
+  const m = rgba.match(/^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/);
+  if (!m) return rgba;
+  const alfa = (parseFloat(m[4]) * fator).toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  return `rgba(${m[1]},${m[2]},${m[3]},${alfa})`;
+}
+
+/**
  * A RAMPA — o degradê amostrado em 9 passos, que é o que os gráficos usam.
  *
  * v7 (2026-08-20): a faixa de 40% é ANCORADA nos amarelos do botão da marca —
