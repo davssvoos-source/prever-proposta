@@ -122,7 +122,7 @@ export const botaoSelecao = (
   }
   return {
     background: cor ? cor.bg : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)"),
-    color: cor ? (isLight ? cor.light : cor.dark) : (isLight ? "#0a0b0e" : "#ffffff"),
+    color: cor ? (isLight ? cor.light : cor.dark) : (isLight ? "#1e2229" : "#ffffff"),
     border: `1px solid ${cor ? cor.border : (isLight ? "rgba(0,0,0,0.12)" : "rgba(252,222,72,0.16)")}`,
     fontFamily: FONT, fontWeight: 600, cursor: "pointer",
   };
@@ -132,5 +132,5 @@ export const botaoSelecao = (
 export const title = (isLight: boolean): React.CSSProperties => ({
   fontFamily: FONT,
   fontWeight: 600,
-  color: isLight ? "#0a0b0e" : "#ffffff",
+  color: isLight ? "#1e2229" : "#ffffff",
 });

@@ -41,9 +41,9 @@ const L = {
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#0a0b0e",
+  text: "#1e2229",
   textSub: "#4a5060",
-  textMuted: "#8a909e",
+  textMuted: "#7d8391",
   // MAHOGANY 700 — os vermelhos claros (red-300/400) somem sobre o card branco
   erro: "#B1242E",
   gold: "#A06108",

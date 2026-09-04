@@ -46,7 +46,7 @@ export function TelaDeErro({ erro, pathname, aoTentarDeNovo }: Props) {
   const cor = corDaClasse(classe, isLight);
 
   const fundo = isLight ? "#f5f6f8" : "#08090E";
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.60)";
   const superficie = isLight ? "#ffffff" : "#14141b";
   const borda = isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)";

@@ -9660,3 +9660,103 @@ reconhecível).
 `node scripts/verificar-logica.cjs` → **2801 passaram, 0 falharam** (1 nova).
 `npx vite build` → completa. `npx tsc --noEmit` → **57**, sem mudança. Última
 regra: ainda R136 (revisão de valor, não regra nova). Sem migration.
+
+
+## U97 — mais de um cliente por atividade, arrastar no calendário, o card da semana enxuto, o tema claro v10 (2026-09-04)
+
+Um pedido do Davi em cinco frases, quatro frentes: "adicione a possibilidade
+de atribuir mais de um cliente na mesma atividade"; "no calendário, o usuário
+deve poder arrastar a atividade (caso não esteja concluída) e, ao arrastar
+para outro dia, altera a data do prazo automaticamente"; "no calendário
+semanal deve aparecer no card: Responsável e Apoio (ícones), Título, Cliente
+e Tipo de demanda — mais nenhuma informação"; e "faça uma revisão geral do
+modo claro" com o diagnóstico dele (fundo mais escuro, cards mais claros,
+texto cinza bem escuro, menos glow, degradê do gráfico mais claro, bordas da
+Início mais claras). Viraram R151–R154.
+
+### R151 — mais de um cliente
+
+O banco e o painel lateral já sabiam (R54, `chamado_locais`); o que faltava
+eram as duas portas por onde se cria e se edita a atividade interna — o
+pop-up (U96) e a página. No pop-up o campo Cliente virou uma lista de chips
+no mesmo desenho do Apoio: cada escolha acrescenta (cliente ou grupo, R143),
+o campo volta vazio, o chip remove. Na gravação o primeiro cliente é o
+principal (`cliente_id`) e os outros entram por `adicionarClienteChamado`,
+cada um falhando sozinho como o resto do "aditivo" já fazia. Na página, o
+card Cliente ganhou o X em cada linha e o "+ cliente ou grupo" para quem pode
+editar, chamando exatamente as funções do painel — inclusive o checklist do
+grupo na descrição (R143). Recusei promover um extra a principal quando o
+principal é removido: o cabeçalho da U45 já explica por quê (seria uma
+decisão silenciosa sobre QUAL extra), e a R54 diz que ficar sem principal é
+estado válido.
+
+### R152 — arrastar muda o prazo
+
+A decisão que precisou ser tomada: **quem** se arrasta. Davi disse "caso não
+esteja concluída"; a implementação restringe mais — só o chamado em aberto
+que está no calendário **pelo prazo**. O chamado de campo com hora marcada
+entra pela hora (R101), e mover o prazo dele não o tiraria do dia: o arrasto
+pareceria não ter funcionado, e a agenda é da programação (U78 fechou a porta
+de `data_hora_agendada` de propósito). A visita não é chamado. Registrei no
+cabeçalho do arquivo e na R152.
+
+HTML5 drag-and-drop puro, sem biblioteca: `draggable` no card, `onDragOver` /
+`onDrop` na célula — os mesmos ganchos nas duas grades (semana e mês), o
+mesmo realce dourado na célula-alvo. A escrita é otimista no cache da
+consulta da janela (o card pula de coluna na hora) e volta no erro, com o
+mesmo padrão da R89. A hora do prazo é preservada por `moverPrazoParaODia`
+(`chamado-status.ts`), função pura com quatro asserções de unidade — quem
+tinha 23:59:59 (o padrão do input) continua com 23:59:59. Toque não dispara
+drag-and-drop nativo; no celular o prazo muda pelo painel, e está escrito.
+
+### R153 — o card da semana
+
+Removi hora/"prazo"/"concluído", status e número do card e deixei quatro
+coisas, na ordem do Davi: avatares (responsável e apoios), título, cliente,
+tipo. O que saiu foi para `dicaDoEvento` — a dica do navegador — para a
+informação não sumir, e a asserção da R133 que fixava o card antigo foi
+reescrita (mudou o alvo, não a regra). A cor da borda esquerda fica: Davi
+falou de informação, e cor não é texto. Escrevi a asserção nova sobre a
+REGIÃO do card, com o título fora dela, para "nada mais" ser verificável.
+
+### R154 — o tema claro
+
+O diagnóstico do Davi estava certo e os números mostraram por quê: a página
+começava em `#ffffff` e o card era `#ffffff` — 1,09:1, o card não existia. A
+página foi para `#e9ebef` (1,19:1 com o card). O texto primário saiu do
+quase-preto `#0a0b0e` para `#1e2229`, "cinza bem escuro" com 16:1 sobre o
+card e 13:1 sobre a página; `text-muted` subiu de 3,2:1 para 3,9:1 porque a
+página escureceu embaixo dele. A troca foi uma varredura completa em `src`
+(206 trocas em 81 arquivos) com uma exceção declarada e verificada: a tinta
+da assinatura no canvas continua preta — não é texto de tema.
+
+Na Início, três coisas. A borda dos cards passou a usar o tom **saturado** da
+cor nos dois temas (`degradeDeBorda(hex, isLight)`, pontas a 30%/28% no
+claro): o tom rebaixado existe para texto passar de 4,5:1, e numa borda de
+1,5px `#A06108` é marrom. O glow caiu onde o Davi apontou (halo do KPI,
+arco da rosca, painel de IA). E a rampa clareou um degrau, misturando a v7
+com branco — 20% nas pontas, 12% nos amarelos.
+
+Aqui houve um preço, e está registrado em vez de escondido: o **preenchimento**
+claro desce de 3:1 para um piso de 2,5:1 sobre branco. Aceitei porque barra e
+arco nunca carregam a informação sozinhos — o número ao lado é
+`ESPECTRO_TEXTO`, que não mudou e segue ≥ 4,5:1; abaixo de 2,5 a barra sumiria
+no card, e por isso o piso não é zero. A asserção do verificador ganhou dois
+pisos (3 escuro, 2,5 claro) e todas as outras invariantes da rampa (verde,
+cinza, L média, costura) continuam travadas. Testei os valores com um script
+descartável carregando `paleta.ts` de verdade antes de escrever um hex.
+
+### O que a verificação pegou
+
+Nada de errado no código: as quatro asserções que fixavam o comportamento
+anterior (card antigo da R133, "a célula diz concluído" da R145, a chamada
+de `degradeDeBorda` com um argumento, o piso 3:1 no claro) foram reapontadas
+com o motivo escrito ao lado. O bloco novo da U97 cobre as quatro regras,
+incluindo a varredura de hex (nenhum `#0a0b0e`/`#f4f5f7`/`#8a909e` sobrou em
+`src` fora da assinatura) e a regra 7 (docs, manual, diário).
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2835 passaram, 0 falharam** (34 novas, 5 reapontadas com o motivo ao lado). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R154**.
+Sem migration.

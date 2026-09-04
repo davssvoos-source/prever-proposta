@@ -82,7 +82,7 @@ function ReagendarPage() {
   const nomeCliente: string | undefined =
     visita?.nome_predio ?? visita?.clientes?.nome ?? visita?.titulo ?? undefined;
 
-  const textPrimary = isLight ? "#0a0b0e" : "#FFFFFF";
+  const textPrimary = isLight ? "#1e2229" : "#FFFFFF";
   const textSub = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const CARD: React.CSSProperties = {
     background: isLight
@@ -154,7 +154,7 @@ function ReagendarPage() {
               borderRadius: 10,
               border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.18)",
               background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-              color: isLight ? "#0a0b0e" : "#FFFFFF",
+              color: isLight ? "#1e2229" : "#FFFFFF",
               fontSize: 15,
               outline: "none",
               boxSizing: "border-box",

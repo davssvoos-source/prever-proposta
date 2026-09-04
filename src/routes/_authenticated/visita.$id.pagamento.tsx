@@ -299,14 +299,14 @@ function PagamentoPage() {
   // ── Estilos ─────────────────────────────────────────────────────────────────
   const PAGE: React.CSSProperties = {
     padding: "12px 16px 48px", display: "flex", flexDirection: "column", gap: 16,
-    color: isLight ? "#0a0b0e" : "#fff",
+    color: isLight ? "#1e2229" : "#fff",
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12 };
   const BACK_BTN: React.CSSProperties = {
     background: isLight ? "#ffffff" : "#191921",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center",
-    justifyContent: "center", cursor: "pointer", color: isLight ? "#0a0b0e" : "#fff",
+    justifyContent: "center", cursor: "pointer", color: isLight ? "#1e2229" : "#fff",
   };
   const CARD: React.CSSProperties = {
     background: isLight ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
@@ -415,9 +415,9 @@ function PagamentoPage() {
                     borderRadius: 10,
                     fontFamily: "var(--fonte)",
                     fontSize: 12,
-                    color: isLight ? "#0a0b0e" : "#fff",
+                    color: isLight ? "#1e2229" : "#fff",
                   }}
-                  itemStyle={{ color: isLight ? "#0a0b0e" : "#fff" }}
+                  itemStyle={{ color: isLight ? "#1e2229" : "#fff" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -626,7 +626,7 @@ function PagamentoPage() {
                 style={{
                   width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
                   background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-                  color: isLight ? "#0a0b0e" : "#fff",
+                  color: isLight ? "#1e2229" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
@@ -652,7 +652,7 @@ function PagamentoPage() {
                       background: selected
                         ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                         : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                      color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                      color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
                       cursor: "pointer",
                       transition: "all 0.15s",
                     }}
@@ -687,7 +687,7 @@ function PagamentoPage() {
                           background: selected
                             ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                             : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                          color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                          color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
                           cursor: "pointer",
                           transition: "all 0.15s",
                           textAlign: "center",
@@ -729,7 +729,7 @@ function PagamentoPage() {
                           background: selected
                             ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
                             : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                          color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+                          color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
                           cursor: "pointer",
                           transition: "all 0.15s",
                           textAlign: "center",
@@ -762,7 +762,7 @@ function PagamentoPage() {
                     fontSize: 14,
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                     background: isLight ? "#ffffff" : "#16161d",
-                    color: isLight ? "#0a0b0e" : "#fff",
+                    color: isLight ? "#1e2229" : "#fff",
                     outline: "none",
                     marginBottom: 18,
                     colorScheme: isLight ? "light" : "dark",
@@ -791,7 +791,7 @@ function PagamentoPage() {
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                 background: isLight ? "#ffffff" : "#16161d",
-                color: isLight ? "#0a0b0e" : "#fff",
+                color: isLight ? "#1e2229" : "#fff",
                 outline: "none",
                 marginBottom: 6,
               }}
@@ -821,7 +821,7 @@ function PagamentoPage() {
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                 background: isLight ? "#ffffff" : "#16161d",
-                color: isLight ? "#0a0b0e" : "#fff",
+                color: isLight ? "#1e2229" : "#fff",
                 outline: "none",
                 marginBottom: 18,
               }}

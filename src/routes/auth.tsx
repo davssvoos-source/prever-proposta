@@ -114,7 +114,7 @@ function AuthPage() {
 
 
 
-  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textPrimary = isLight ? "#1e2229" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
   const goldDark = isLight ? "#A06108" : "rgba(248,200,17,0.65)";
   const CARD: CSSProperties = {
@@ -213,7 +213,7 @@ function AuthPage() {
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
+              color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
             }}
           >
             SISTEMA DE PROJETOS ELETRÔNICOS
@@ -325,7 +325,7 @@ function AuthPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 17,
-                    color: isLight ? "#0a0b0e" : "#fff",
+                    color: isLight ? "#1e2229" : "#fff",
                     marginBottom: 6,
                   }}
                 >
@@ -372,7 +372,7 @@ function AuthPage() {
               >
                 <ArrowLeft size={14} /> Voltar para o login
               </button>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#0a0b0e" : "#fff" }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#1e2229" : "#fff" }}>
                 Criar conta
               </div>
               <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>

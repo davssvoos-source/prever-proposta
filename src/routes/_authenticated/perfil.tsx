@@ -25,7 +25,7 @@ function PerfilPage() {
   const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textPrimary = isLight ? "#1e2229" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
   const goldDark = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = {
@@ -324,7 +324,7 @@ function PerfilPage() {
               height: 30,
               borderRadius: "50%",
               background: "linear-gradient(135deg,#FCDE48,#F8C811)",
-              border: isLight ? "2px solid #f4f5f7" : "2px solid #08090E",
+              border: isLight ? "2px solid #e9ebef" : "2px solid #08090E",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -546,7 +546,7 @@ function PerfilPage() {
                       fontFamily: "var(--fonte)",
                       fontWeight: 400,
                       fontSize: 13,
-                      color: isLight ? "#0a0b0e" : "#fff",
+                      color: isLight ? "#1e2229" : "#fff",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -643,7 +643,7 @@ function PerfilPage() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 11,
-                color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
+                color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
               }}
             >
               E-mail e cargo não podem ser alterados por aqui — fale com um administrador.
@@ -762,7 +762,7 @@ function PerfilPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: n.lida ? 400 : 600,
                     fontSize: 12,
-                    color: isLight ? "#0a0b0e" : "#FFFFFF",
+                    color: isLight ? "#1e2229" : "#FFFFFF",
                   }}
                 >
                   {n.titulo}
@@ -772,7 +772,7 @@ function PerfilPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 10,
-                    color: isLight ? "#8a909e" : "rgba(255,255,255,0.40)",
+                    color: isLight ? "#7d8391" : "rgba(255,255,255,0.40)",
                     marginTop: 3,
                     letterSpacing: "0.06em",
                   }}
@@ -843,7 +843,7 @@ const inputStyle = (isLight: boolean): CSSProperties => ({
   background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
-  color: isLight ? "#0a0b0e" : "#fff",
+  color: isLight ? "#1e2229" : "#fff",
   fontFamily: "var(--fonte)",
   fontWeight: 400,
   fontSize: 14,
@@ -947,7 +947,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "var(--fonte)",
           fontWeight: 400,
           fontSize: 12,
-          color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#0a0b0e" : "#FFFFFF"),
+          color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#1e2229" : "#FFFFFF"),
         }}
       >
         {value}

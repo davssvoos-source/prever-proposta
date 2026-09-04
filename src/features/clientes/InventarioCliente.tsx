@@ -46,7 +46,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
     | { tipo: "equipamento"; sistema: SistemaInstalado } | { tipo: "bloco"; sistema: SistemaInstalado }
   >(null);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
@@ -380,7 +380,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 // do resto da ficha do cliente, e ninguém pediu uma segunda linguagem visual
 export function useModalEstilos() {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   return {
     isLight,
     textPrimary,
@@ -426,7 +426,7 @@ export function BotaoFechar({ onClick }: { onClick: () => void }) {
       style={{
         width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
         background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-        color: isLight ? "#0a0b0e" : "#fff",
+        color: isLight ? "#1e2229" : "#fff",
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}
     >

@@ -66,7 +66,7 @@ const CIRCLE_BTN = (isLight: boolean): React.CSSProperties => ({
   borderRadius: "50%",
   border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.2)",
   background: "transparent",
-  color: isLight ? "#0a0b0e" : "#fff",
+  color: isLight ? "#1e2229" : "#fff",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -324,8 +324,8 @@ export function BlocoItensEditor({
           borderTop: idx > 0 ? (isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)") : "none",
         }}
       >
-        <span style={{ fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff", flexShrink: 0 }}>{qtd}×</span>
-        <span style={{ color: isLight ? "#0a0b0e" : "#fff", flex: 1, minWidth: 0 }}>
+        <span style={{ fontWeight: 700, color: isLight ? "#1e2229" : "#fff", flexShrink: 0 }}>{qtd}×</span>
+        <span style={{ color: isLight ? "#1e2229" : "#fff", flex: 1, minWidth: 0 }}>
           {nome}
           {modelo && <span style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}> — {modelo}</span>}
         </span>
@@ -389,7 +389,7 @@ export function BlocoItensEditor({
         return (
           <div key={it.id} style={CARD(isLight)}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#1e2229" : "#fff" }}>
                 {nome}
               </div>
               {sub && (
@@ -442,7 +442,7 @@ export function BlocoItensEditor({
             return (
               <div key={it.id} style={CARD(isLight)}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#1e2229" : "#fff" }}>
                     {nome}
                   </div>
                   <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginTop: 2 }}>
@@ -485,7 +485,7 @@ export function BlocoItensEditor({
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>TOTAL MENSAL</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>
               R$ {totalMensal.toFixed(2)}/mês
             </span>
           </div>
@@ -531,7 +531,7 @@ export function BlocoItensEditor({
           placeholder={buscaPor === "nome" ? "Buscar por nome (ex.: Leitora Facial)" : "Buscar por modelo (ex.: DS-KAB6)"}
           style={{
             padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(0,0,0,0.12)",
-            background: isLight ? "#fff" : "#191921", color: isLight ? "#0a0b0e" : "#fff",
+            background: isLight ? "#fff" : "#191921", color: isLight ? "#1e2229" : "#fff",
             fontSize: 13,
           }}
         />
@@ -571,7 +571,7 @@ export function BlocoItensEditor({
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#0a0b0e" : "#fff" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: isLight ? "#1e2229" : "#fff" }}>
                       {eq.nome}
                     </div>
                     {eq.modelo && (
@@ -608,7 +608,7 @@ export function BlocoItensEditor({
             fontFamily: "var(--fonte)",
             border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
             background: isLight ? "#ffffff" : "#16161d",
-            color: isLight ? "#0a0b0e" : "#fff",
+            color: isLight ? "#1e2229" : "#fff",
             outline: "none",
           }}
         />
@@ -621,7 +621,7 @@ export function BlocoItensEditor({
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em", color: "#A06108" }}>SUBTOTAL</span>
-          <span style={{ fontSize: 16, fontWeight: 700, color: isLight ? "#0a0b0e" : "#fff" }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>
             R$ {total.toFixed(2)}
           </span>
         </div>

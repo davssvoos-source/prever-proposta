@@ -30,17 +30,17 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { FileText, ListPlus, Paperclip, X } from "lucide-react";
+import { FileText, ListPlus, Paperclip, X, Building2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import {
-  abrirChamado, usePessoas, adicionarApoio, adicionarSetorChamado, anexarFoto,
+  abrirChamado, usePessoas, adicionarApoio, adicionarSetorChamado, adicionarClienteChamado, anexarFoto,
   usePropostasEnviadas, equipeDaPessoa,
 } from "@/features/chamados/data";
-import { useClientes } from "@/features/clientes/data";
+import { useClientes, type ServicoCliente } from "@/features/clientes/data";
 import { SERVICO_ORDEM } from "@/features/clientes/data";
 import {
   checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
@@ -78,8 +78,13 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   // ── o corpo da atividade fora da técnica ───────────────────────────────
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  /** id de cliente, `setor:<grupo>` (R143) ou null = interno, na Prever */
-  const [clienteValor, setClienteValor] = useState<string | null>(null);
+  /**
+   * R151: os LOCAIS da atividade — ids de cliente e/ou `setor:<grupo>` (R143),
+   * na ordem em que foram escolhidos. Vazio = interno, na Prever. O primeiro
+   * cliente é o principal (chamados.cliente_id); os demais e os grupos vão
+   * para chamado_locais, exatamente como o painel lateral já fazia.
+   */
+  const [locais, setLocais] = useState<string[]>([]);
   const [impacto, setImpacto] = useState<ImpactoOperacional | null>(null);
   const [prazo, setPrazo] = useState("");
   const [apoios, setApoios] = useState<string[]>([]);
@@ -88,7 +93,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   const [salvando, setSalvando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
@@ -113,6 +118,11 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     [pessoas],
   );
   const pessoasPorId = useMemo(() => Object.fromEntries((pessoas as any[]).map((p) => [p.id, p])), [pessoas]);
+  const clientesPorId = useMemo(() => Object.fromEntries(clientes.map((c) => [c.id, c])), [clientes]);
+  const rotuloDoLocal = (v: string) => {
+    const setor = setorDoValor(v);
+    return setor ? rotuloDoGrupo(setor) : (clientesPorId[v]?.nome ?? "Cliente");
+  };
   const opcoesPessoas: OpcaoBusca[] = useMemo(
     () => pessoasOrdenadas.map((p) => ({
       valor: p.id as string,
@@ -142,9 +152,11 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     [propostas],
   );
 
+  // R151: cada escolha ACRESCENTA um local (o campo fica vazio para a próxima);
   // R143: escolher um GRUPO põe o checklist dos clientes dele na descrição
   function escolherCliente(v: string | null) {
-    setClienteValor(v);
+    if (!v) return;
+    setLocais((l) => (l.includes(v) ? l : [...l, v]));
     const setor = setorDoValor(v);
     if (setor) {
       setDescricao((d) => acrescentarChecklist(d, checklistDoGrupo(clientes, setor), `Clientes de ${rotuloDoGrupo(setor).replace(/^Clientes de /, "")}:`));
@@ -163,7 +175,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   }, [tipo]);
 
   function limpar() {
-    setTipo(null); setTitulo(""); setDescricao(""); setClienteValor(null);
+    setTipo(null); setTitulo(""); setDescricao(""); setLocais([]);
     setImpacto(null); setPrazo(""); setApoios([]); setPropostaId(null); setArquivos([]);
     setModoPlantao(false);
   }
@@ -174,7 +186,10 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
     if (!titulo.trim()) { toast.error("Escreva o título da atividade."); return; }
     setSalvando(true);
     try {
-      const setor = setorDoValor(clienteValor);
+      // R151: o primeiro cliente é o PRINCIPAL; os outros e os grupos entram
+      // depois, em chamado_locais, cada um falhando sozinho
+      const clientesIds = locais.filter((v) => !setorDoValor(v));
+      const setores = locais.map(setorDoValor).filter((x): x is ServicoCliente => !!x);
       const id = await abrirChamado({
         natureza: "interno",
         tipo,
@@ -184,7 +199,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
         // R139: a coluna do banco recebe a equipe do responsável; a etiqueta
         // da tela sai das pessoas. Sem equipe no cadastro, o balde de sempre.
         equipe: equipeDoResponsavel ?? "outras",
-        cliente_id: setor ? null : clienteValor,
+        cliente_id: clientesIds[0] ?? null,
         prazo_limite: prazo ? dataParaPrazo(prazo) : null,
         impacto_operacional: temImpacto(tipo) ? impacto : null,
         proposta_id: tipo === "implantacao" ? propostaId : null,
@@ -194,7 +209,8 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
       const tentar = async (o: string, f: () => Promise<unknown>) => {
         try { await f(); } catch { pendencias.push(o); }
       };
-      if (setor) await tentar("grupo de clientes", () => adicionarSetorChamado(id, setor));
+      for (const cid of clientesIds.slice(1)) await tentar("cliente", () => adicionarClienteChamado(id, clientesIds[0], cid));
+      for (const st of setores) await tentar("grupo de clientes", () => adicionarSetorChamado(id, st));
       for (const p of apoios) await tentar("apoio", () => adicionarApoio(id, p));
       for (const f of arquivos) await tentar(`arquivo ${f.name}`, () => anexarFoto(id, f, "outra"));
 
@@ -464,15 +480,42 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
                   {/* coluna estreita: as propriedades */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
                     <div>
-                      <label style={rotulo}>Cliente</label>
-                      <CampoComBusca
-                        id="nova-cliente"
-                        opcoes={opcoesClientes}
-                        valor={clienteValor}
-                        aoMudar={escolherCliente}
-                        vazio="Interno — Prever"
-                        placeholder="Um cliente, um grupo, ou interno"
-                      />
+                      <label style={rotulo}>Cliente <span style={{ fontWeight: 400 }}>(um ou mais)</span></label>
+                      {/* R151: mais de um cliente na mesma atividade — chips, como o
+                          Apoio. O primeiro é o principal; um grupo entra como etiqueta
+                          e traz o checklist (R143). Nada escolhido = interno. */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        {locais.length === 0 && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: FONT, fontSize: 12, color: textSecondary }}>
+                            <Building2 size={13} /> Interno — Prever
+                          </span>
+                        )}
+                        {locais.map((v) => (
+                          <span key={v} style={{ ...chipPessoa, paddingLeft: 8 }}>
+                            {setorDoValor(v) ? <Layers size={13} /> : <Building2 size={13} />}
+                            {rotuloDoLocal(v)}
+                            <button
+                              type="button"
+                              onClick={() => setLocais((l) => l.filter((x) => x !== v))}
+                              aria-label={`Remover ${rotuloDoLocal(v)}`}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, padding: 2, display: "flex" }}
+                            >
+                              <X size={13} />
+                            </button>
+                          </span>
+                        ))}
+                        <div style={{ minWidth: 180, flex: 1 }}>
+                          <CampoComBusca
+                            id="nova-cliente"
+                            compacto
+                            limpavel={false}
+                            opcoes={opcoesClientes.filter((o) => !locais.includes(o.valor))}
+                            valor={null}
+                            aoMudar={escolherCliente}
+                            placeholder={locais.length === 0 ? "+ cliente ou grupo (ou deixe interno)" : "+ outro cliente ou grupo"}
+                          />
+                        </div>
+                      </div>
                     </div>
                     {temImpacto(tipo) && (
                       <div>

@@ -52,9 +52,11 @@ import {
   usePessoas, mapaDePessoas, equipeDaPessoa, atualizarChamado, comentarChamado, excluirComentario, excluirChamado,
   adicionarApoio, removerApoio, adicionarEquipamentoChamado, removerEquipamentoChamado,
   anexarFoto, excluirFoto,
+  adicionarClienteChamado, removerClienteChamado, adicionarSetorChamado, removerLocalChamado,
   type ChamadoPatch,
 } from "@/features/chamados/data";
-import { useClientes, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
+import { useClientes, SERVICO_LABEL, SERVICO_CORES, SERVICO_ORDEM, type ServicoCliente } from "@/features/clientes/data";
+import { checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor } from "@/features/chamados/grupos";
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
   prazoParaData, dataParaPrazo,
@@ -121,9 +123,23 @@ export function DetalheInterno({ id }: { id: string }) {
     [propostas],
   );
   const clientesPorId = useMemo(() => Object.fromEntries(clientes.map((c) => [c.id, c])), [clientes]);
+  // R151: o que ainda pode entrar como local — grupos no topo, depois os
+  // clientes, menos quem já está (principal, extras, etiquetas)
+  const opcoesLocais: OpcaoBusca[] = useMemo(() => {
+    const usados = new Set<string>([
+      ...(chamado?.cliente_id ? [chamado.cliente_id] : []),
+      ...locais.map((l) => l.cliente_id ?? (l.setor ? valorDoGrupo(l.setor as ServicoCliente) : "")).filter(Boolean),
+    ]);
+    return [
+      ...SERVICO_ORDEM.map((g) => ({ valor: valorDoGrupo(g), rotulo: rotuloDoGrupo(g), secundario: "grupo de clientes" })),
+      ...[...clientes]
+        .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
+        .map((c) => ({ valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined })),
+    ].filter((o) => !usados.has(o.valor));
+  }, [clientes, locais, chamado?.cliente_id]);
   const nomeDe = (pid: string) => pessoasPorId[pid]?.nome ?? "Alguém";
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
@@ -194,6 +210,45 @@ export function DetalheInterno({ id }: { id: string }) {
       qc.invalidateQueries({ queryKey: ["home-apoios-todos"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível alterar o apoio."),
+  });
+
+  // R151 (e R143): mais de um cliente na mesma atividade — a MESMA porta do
+  // painel lateral: adicionarClienteChamado/removerClienteChamado (o primeiro
+  // cliente é o principal, os demais vão para chamado_locais) e a etiqueta do
+  // grupo. Escolher um grupo põe o checklist dos clientes dele na descrição.
+  const mexerLocal = useMutation({
+    mutationFn: async (acao: { valor: string; remover: boolean }) => {
+      const setor = setorDoValor(acao.valor);
+      if (setor) {
+        if (acao.remover) {
+          const linha = locais.find((l) => l.setor === setor);
+          if (linha) await removerLocalChamado(linha.id);
+        } else {
+          await adicionarSetorChamado(id, setor);
+          const lista = checklistDoGrupo(clientes, setor);
+          if (lista) {
+            await atualizarChamado(id, {
+              descricao_problema: acrescentarChecklist(
+                chamado?.descricao_problema ?? "", lista, `Clientes de ${SERVICO_LABEL[setor]}:`,
+              ),
+            });
+          }
+        }
+      } else if (acao.remover) {
+        await removerClienteChamado(id, chamado?.cliente_id ?? null, acao.valor);
+      } else {
+        await adicionarClienteChamado(id, chamado?.cliente_id ?? null, acao.valor);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["chamado", id] });
+      qc.invalidateQueries({ queryKey: ["chamado-locais", id] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["home"] });
+      qc.invalidateQueries({ queryKey: ["home-locais-todos"] });
+      qc.invalidateQueries({ queryKey: ["calendario"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível alterar o cliente."),
   });
 
   const mexerEquip = useMutation({
@@ -470,7 +525,7 @@ export function DetalheInterno({ id }: { id: string }) {
                           aria-label="Remover arquivo"
                           style={{
                             position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                            background: "#0a0b0e", color: "#fff", border: "none", cursor: "pointer",
+                            background: "#1e2229", color: "#fff", border: "none", cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
                         >
@@ -754,45 +809,86 @@ export function DetalheInterno({ id }: { id: string }) {
             </div>
           </div>
 
-          {/* R143: cliente, GRUPO de clientes ou interno */}
+          {/* R143/R151: cliente(s), GRUPO(s) de clientes ou interno — mais de um
+              cliente na mesma atividade, aqui como no painel lateral */}
           <div style={CARD}>
             <span style={SEC}>Cliente</span>
-            {ehInterno ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
-                <Building2 size={14} color={gold} /> Interno — Prever
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {chamado.cliente && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
-                    <Building2 size={14} color={gold} /> {chamado.cliente.nome}
-                  </div>
-                )}
-                {clientesExtras.map((cid) => (
-                  <div key={cid} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
-                    <Building2 size={14} color={textSecondary} /> {clientesPorId[cid]?.nome ?? "Cliente"}
-                  </div>
-                ))}
-                {setoresDoChamado.map((s) => {
-                  const cor = SERVICO_CORES[s as ServicoCliente];
-                  return (
-                    <span key={s} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
-                      padding: "4px 9px", borderRadius: 999,
-                      background: cor?.bg, color: isLight ? cor?.light : cor?.dark,
-                      fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
-                    }}>
-                      <Layers size={12} /> Clientes de {SERVICO_LABEL[s as ServicoCliente] ?? s}
-                    </span>
-                  );
-                })}
-                {setoresDoChamado.length > 0 && (
-                  <span style={LINHA_INFO}>
-                    Uma atividade só; conta no histórico de cada cliente do grupo.
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {ehInterno && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
+                  <Building2 size={14} color={gold} /> Interno — Prever
+                </div>
+              )}
+              {chamado.cliente && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                  <Building2 size={14} color={gold} /> <span style={{ flex: 1, minWidth: 0 }}>{chamado.cliente.nome}</span>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      onClick={() => mexerLocal.mutate({ valor: chamado.cliente_id as string, remover: true })}
+                      aria-label={`Remover ${chamado.cliente.nome}`}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, padding: 2, display: "flex" }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              )}
+              {clientesExtras.map((cid) => (
+                <div key={cid} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                  <Building2 size={14} color={textSecondary} /> <span style={{ flex: 1, minWidth: 0 }}>{clientesPorId[cid]?.nome ?? "Cliente"}</span>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      onClick={() => mexerLocal.mutate({ valor: cid, remover: true })}
+                      aria-label={`Remover ${clientesPorId[cid]?.nome ?? "cliente"}`}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, padding: 2, display: "flex" }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {setoresDoChamado.map((s) => {
+                const cor = SERVICO_CORES[s as ServicoCliente];
+                return (
+                  <span key={s} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+                    padding: "4px 9px", borderRadius: 999,
+                    background: cor?.bg, color: isLight ? cor?.light : cor?.dark,
+                    fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
+                  }}>
+                    <Layers size={12} /> Clientes de {SERVICO_LABEL[s as ServicoCliente] ?? s}
+                    {podeEditar && (
+                      <button
+                        type="button"
+                        onClick={() => mexerLocal.mutate({ valor: valorDoGrupo(s as ServicoCliente), remover: true })}
+                        aria-label={`Remover o grupo ${SERVICO_LABEL[s as ServicoCliente] ?? s}`}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0, display: "flex" }}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </span>
-                )}
-              </div>
-            )}
+                );
+              })}
+              {setoresDoChamado.length > 0 && (
+                <span style={LINHA_INFO}>
+                  Uma atividade só; conta no histórico de cada cliente do grupo.
+                </span>
+              )}
+              {podeEditar && (
+                <CampoComBusca
+                  id="detalhe-local"
+                  compacto
+                  limpavel={false}
+                  opcoes={opcoesLocais}
+                  valor={null}
+                  aoMudar={(v) => { if (v) mexerLocal.mutate({ valor: v, remover: false }); }}
+                  placeholder={ehInterno ? "+ cliente ou grupo" : "+ outro cliente ou grupo"}
+                />
+              )}
+            </div>
           </div>
 
           {/* Equipamentos envolvidos — a lacuna do Notion */}

@@ -116,7 +116,7 @@ function ClientesPage() {
     setServicos((v) => (v.includes(k) ? v.filter((x) => x !== k) : [...v, k]));
   }
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
@@ -573,7 +573,7 @@ function Paginacao({ pagina, totalPaginas, totalItens, itensPorPagina, isLight, 
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const fundo = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
 
   const botaoSeta = (desabilitado: boolean): CSSProperties => ({
     width: 32, height: 32, borderRadius: 9, border: borda,

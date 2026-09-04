@@ -37,7 +37,7 @@ export function Integracoes() {
     queryFn: async () => consultar(),
   });
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const corDa = (s: SituacaoIntegracao) => {

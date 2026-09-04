@@ -262,7 +262,7 @@ function Home() {
   );
   const proxima = useMemo(() => proximaVisitaDe(visitas, s.userId), [visitas, s.userId]);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
@@ -470,7 +470,7 @@ function Home() {
               justamente onde a frase cai — texto branco ali some. */}
           <div style={{
             fontFamily: FONT, fontWeight: 600, fontSize: 24, lineHeight: 1.2,
-            color: isLight ? "#0a0b0e" : "#FFFFFF",
+            color: isLight ? "#1e2229" : "#FFFFFF",
             textShadow: isLight
               ? "0 1px 8px rgba(255,255,255,0.65)"
               : "0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)",

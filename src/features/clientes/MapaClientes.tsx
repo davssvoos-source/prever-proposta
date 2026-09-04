@@ -102,7 +102,7 @@ function BotaoMapa({ Icon, rotulo, isLight, desabilitado, aoClicar }: {
         width: 44, height: 44, border: "none", background: "transparent",
         color: desabilitado
           ? (isLight ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)")
-          : (isLight ? "#0a0b0e" : "#ffffff"),
+          : (isLight ? "#1e2229" : "#ffffff"),
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: desabilitado ? "default" : "pointer",
       }}
@@ -638,7 +638,7 @@ export function MapaClientes({ clientes }: Props) {
                 border: `1px solid ${alvo.cor}`,
                 boxShadow: `0 4px 14px ${alvo.cor}40`,
                 fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
-                color: isLight ? "#0a0b0e" : "#ffffff",
+                color: isLight ? "#1e2229" : "#ffffff",
                 whiteSpace: "nowrap",
                 pointerEvents: "none",
                 zIndex: 3,
@@ -707,7 +707,7 @@ export function MapaClientes({ clientes }: Props) {
           {foraDaCidade > 0 && (
             <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
               Quantidade de clientes fora de São Paulo:{" "}
-              <strong style={{ fontWeight: 700, color: isLight ? "#0a0b0e" : "#ffffff" }}>
+              <strong style={{ fontWeight: 700, color: isLight ? "#1e2229" : "#ffffff" }}>
                 {foraDaCidade}
               </strong>
             </span>

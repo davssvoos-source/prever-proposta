@@ -109,7 +109,7 @@ andamento), lilás `#A78BFA/#6d28d9` (pedido de compra), teal `#2DD4BF/#0f766e`
 
 | Token | Escuro | Claro |
 |---|---|---|
-| `bg-base` (página) | `#08090E` | `#f4f5f7` |
+| `bg-base` (página) | `#08090E` | `#e9ebef` |
 | `bg-elevated` (card) | `#0F111A` | `#ffffff` |
 | `bg-overlay` (popover/modal) | `#161926` | `#e8eaee` |
 | `card-gradient` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)` |
@@ -118,18 +118,31 @@ andamento), lilás `#A78BFA/#6d28d9` (pedido de compra), teal `#2DD4BF/#0f766e`
 | `input-bg` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `#ffffff` |
 | `input-border` | `1px solid rgba(255,255,255,0.10)` | `1px solid rgba(0,0,0,0.12)` |
 
+**v10 (2026-09-04, R154) — o claro desceu.** Até a v9 a página clara começava
+em `#ffffff` e o card era `#ffffff`: 1.09:1 entre os dois, o card sumia. Davi:
+"o fundo deveria ser um branco mais escuro e os cards um branco mais claro".
+Agora a **página é `#e9ebef`** (degradê `#eef0f3 → #e9ebef → #e2e5ea`, §5) e o
+**card segue `#ffffff`** — 1.19:1, o card lê como superfície. Popover/modal
+(`bg-overlay`) não mudou.
+
 ### 2.3 Texto e ícone
 
 | Token | Escuro | Claro |
 |---|---|---|
-| `text-primary` | `#ffffff` | `#0a0b0e` |
+| `text-primary` | `#ffffff` | `#1e2229` |
 | `text-secondary` | `rgba(255,255,255,0.55)` | `#4a5060` |
-| `text-muted` | `rgba(255,255,255,0.40)` | `#8a909e` |
+| `text-muted` | `rgba(255,255,255,0.40)` | `#7d8391` |
 | `text-on-gold` | `#08090E` | `#08090E` |
 | `label-caps` (micro-label) | `rgba(248,200,17,0.65)` | `rgba(0,0,0,0.55)` |
 | `border-subtle` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.07)` |
 | `divider` | `rgba(255,255,255,0.06)` | `rgba(0,0,0,0.07)` |
 | `placeholder` | herda `text-muted` | `rgba(0,0,0,0.35)` |
+
+**v10 (R154):** o texto primário claro era `#0a0b0e`, quase preto; Davi pediu
+"um cinza bem escuro". `#1e2229` dá 16:1 sobre o card e 13:1 sobre a página
+nova. `text-muted` subiu de `#8a909e` (3,2:1) para `#7d8391` (3,9:1) para não
+perder leitura na página mais escura. `text-secondary` (`#4a5060`, 6,7:1 sobre
+a página) não mudou.
 
 ### 2.4 Status semântico
 
@@ -229,27 +242,31 @@ body::before {
 
 ---
 
-## 5. Fundos de página (v3 — Yellow Glow, importado do claude.design)
+## 5. Fundos de página (v4 minimalista · v10 no claro)
 
-O fundo oficial é o **Yellow Glow Background** (claude.design, projeto
-`5e4850a6`, arquivo `Yellow Glow Background - Export.dc.html`), traduzido de
-DC para React em `GlowBackground.tsx`. Quatro camadas, na ordem:
+O fundo é um **degradê vertical puro**, sem camadas (`GlowBackground.tsx`,
+v4 — 2026-08-20): no minimalismo apple-like o fundo é silêncio, e a
+profundidade vem da sombra dos cards e do vidro dos painéis.
 
-1. **palco** — quase-preto quente, `oklch(0.075 0.013 98)` (matiz 98 = o
-   amarelo da marca);
-2. **deriva** — duas manchas de luz amarela (`oklch(0.72 0.17 84)` e
-   `oklch(0.62 0.16 94)`) com `blur(80px)`, animadas em 34s
-   (`@keyframes deriva-glow`, escala até 1.08) — é o glow que o vidro dos
-   cards desfoca;
-3. **grade** — linhas de 40px em `rgba(0,0,0,0.34)` mascaradas num oval
-   central;
-4. **granulado** — ruído SVG em `mix-blend-mode: overlay`, opacidade 0.4.
+| tema | degradê (180deg) |
+|---|---|
+| escuro | `#131315 0%` → `#0a0a0b 45%` → `#030303 100%` |
+| claro (v10) | `#eef0f3 0%` → `#e9ebef 55%` → `#e2e5ea 100%` |
 
-O tema claro é derivação: palco `oklch(0.97 0.008 98)`, manchas mais suaves
-(`0.87/0.12` e `0.90/0.09`), grade a 0.08 e granulado a 0.22.
+O claro **desceu na v10** (2026-09-04, R154): até então ia de `#ffffff` a
+`#ebebee`, e o card branco (§6.1) sumia na página (1.09:1). Com a página em
+`#e9ebef` o card é o branco mais claro da tela (1.19:1) — Davi: "o fundo
+deveria ser um branco mais escuro e os cards um branco mais claro".
 
-As telas públicas (login, redefinir senha) mantiveram os fundos da v1 por
-enquanto — trocar é decisão à parte, o login tem identidade própria.
+Por cima do degradê o `body::before` põe um granulado SVG a 2,5% de
+opacidade, igual nos dois temas. A cor de base do `body` (`--bg-base`) é o que
+aparece no overscroll e antes do React: `#08090E` / `#e9ebef`.
+
+**História.** A v3 (Yellow Glow, importado do claude.design) tinha quatro
+camadas — palco, duas manchas de luz amarela animadas, grade e granulado. Saiu
+na v4: sobre um degradê quase liso, o glow virava ruído. As telas públicas
+(login, redefinir senha) mantêm os fundos da v1 — o login tem identidade
+própria.
 
 ---
 
@@ -401,7 +418,7 @@ diferentes.
   width: "100%", height: 52, borderRadius: 14, padding: "0 16px",
   background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-  color: isLight ? "#0a0b0e" : "#fff",
+  color: isLight ? "#1e2229" : "#fff",
   fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
   outline: "none", boxSizing: "border-box",
   colorScheme: isLight ? "light" : "dark",   // obrigatório em date/time
@@ -427,7 +444,7 @@ diferentes.
   width: 40, height: 40, borderRadius: 12,
   background: isLight ? "#ffffff" : "#191921",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-  color: isLight ? "#0a0b0e" : "#fff",
+  color: isLight ? "#1e2229" : "#fff",
   display: "flex", alignItems: "center", justifyContent: "center",
   boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
   cursor: "pointer",
@@ -510,7 +527,7 @@ Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escu
 
 ---
 
-### 6.12 Card de atividade — a cor hierárquica só na borda (v9 — 2026-09-04)
+### 6.12 Card de atividade — a cor hierárquica só na borda (v10 — 2026-09-04)
 
 É o card do quadro por status da Início (`CardAtividade.tsx`), regra R136.
 Até 2026-09-03 o fundo inteiro levava um véu da cor do prazo. A partir da
@@ -561,24 +578,35 @@ a borda transparente deixa. Por isso o card com cor **não** usa o atalho
 (`paleta.ts`): mistura linear canal a canal entre `hex` e `alvo`, com
 arredondamento. Três paradas, sempre nesta ordem e neste ângulo:
 
-- `clara`  = misturar(base, `#ffffff`, **0.5**)
-- `base`   = o tom da cor **no tema** (escuro usa o tom claro da escala, claro
-  usa o escuro — a regra de §2.1)
-- `escura` = misturar(base, `#000000`, **0.32**)
+- `base`   = o tom **saturado** da cor — o `.dark` da escala (§2.1) — **nos
+  dois temas** (v10; até a v9 o claro usava o tom rebaixado, `#A06108` etc.,
+  que existe para texto passar de 4.5:1 e numa borda virava marrom/vinho)
+- `clara`  = misturar(base, `#ffffff`, **0.5** no escuro · **0.30** no claro)
+- `escura` = misturar(base, `#000000`, **0.32** no escuro · **0.28** no claro)
 - ângulo **135°** — o mesmo do degradê da marca (`GRAD_PRIMARIA`, §6.3)
+
+No claro as pontas se afastam menos da base: a borda é um filete de 1,5px
+sobre branco e já é a única cor do card — não precisa de peso, precisa de cor.
+Em código: `degradeDeBorda(hex, isLight)` (`paleta.ts`), com `hex` sempre o
+tom saturado.
 
 Valores resolvidos, para quem reproduz sem a função:
 
 | cor | tema | base | clara | escura | glow (`esmaecer(bg, 0.25)`) |
 |---|---|---|---|---|---|
 | vermelho | escuro | `#F17881` | `#f8bcc0` | `#a45258` | `rgba(241,120,129,0.035)` |
-| vermelho | claro | `#B1242E` | `#d89297` | `#78181f` | `rgba(241,120,129,0.035)` |
+| vermelho | claro | `#F17881` | `#f5a1a7` | `#ae565d` | `rgba(241,120,129,0.035)` |
 | amarelo | escuro | `#F8C811` | `#fce488` | `#a9880c` | `rgba(248,200,17,0.035)` |
-| amarelo | claro | `#A06108` | `#d0b084` | `#6d4205` | `rgba(248,200,17,0.035)` |
+| amarelo | claro | `#F8C811` | `#fad958` | `#b3900c` | `rgba(248,200,17,0.035)` |
 | azul | escuro | `#4F94E9` | `#a7caf4` | `#36659e` | `rgba(79,148,233,0.035)` |
-| azul | claro | `#236FC7` | `#91b7e3` | `#184b87` | `rgba(79,148,233,0.035)` |
+| azul | claro | `#4F94E9` | `#84b4f0` | `#396ba8` | `rgba(79,148,233,0.035)` |
 | verde | escuro | `#2DD2A5` | `#96e9d2` | `#1f8f70` | `rgba(45,210,165,0.035)` |
-| verde | claro | `#047862` | `#82bcb1` | `#035243` | `rgba(45,210,165,0.035)` |
+| verde | claro | `#2DD2A5` | `#6ce0c0` | `#209777` | `rgba(45,210,165,0.035)` |
+
+As linhas "claro" são da v10 (2026-09-04, R154 — Davi: "as bordas dos cards da
+tela Início podem estar mais claras"). Na v9 eram `#B1242E`/`#d89297`/`#78181f`,
+`#A06108`/`#d0b084`/`#6d4205`, `#236FC7`/`#91b7e3`/`#184b87` e
+`#047862`/`#82bcb1`/`#035243` — pesadas demais para um filete.
 
 **O glow** (v9, 2026-09-04 — Davi: "diminua mais o glow do contorno […] pode
 diminuir bastante") é o véu (`bg`) que o PRISMA já define para cada cor — 14%
@@ -650,8 +678,8 @@ precisam ser calculados em JS.
   --gold-primary: #F8C811;
 }
 [data-theme="light"] {
-  --bg-base: #f4f5f7;   --text-primary: #0a0b0e;
-  --text-secondary: #4a5060;   --text-muted: #8a909e;
+  --bg-base: #e9ebef;   --text-primary: #1e2229;
+  --text-secondary: #4a5060;   --text-muted: #7d8391;
   --border-color: rgba(0,0,0,0.10);
   --gold-primary: #A06108;
 }
@@ -730,6 +758,11 @@ Regras:
 ---
 
 ## 10. Checklist de conformidade
+
+- [ ] No tema claro, a página é `#e9ebef` e o card `#ffffff` — o card tem de
+      ser o branco mais claro da tela, nunca o mesmo branco da página (v10).
+- [ ] Texto primário claro é `#1e2229` (cinza bem escuro), não `#000` nem o
+      quase-preto `#0a0b0e` (v10).
 
 - [ ] Montserrat carregada com pesos 300/400/600/700
 - [ ] Fundo radial + textura de ruído aplicados no `body`
@@ -826,6 +859,35 @@ A v6 deixou a rampa clara em L .40–.56 — barro sobre branco. A v7 subiu para
 L .54–.72. Uma asserção impede que ela volte a afundar (L média > 0.60) e outra
 garante que ela siga mais escura que a rampa do tema escuro, que é o que a faz
 ler no branco.
+
+#### v10 — o claro subiu de novo (2026-09-04, R154)
+
+Davi: "deixa as cores do gráfico (o degradê) num tom mais claro de cada cor, o
+dashboard em si está escuro". Cada amostra da v7 foi misturada com branco —
+**20%** nas pontas (azul, laranja, vermelho), **18%** na costura, **12%** nos
+amarelos, que já estavam no piso:
+
+```
+ESPECTRO.light (v10)
+#4F8CD2 #54AACF #B3A01F #C09C1F #C7981F #D48E29 #E18133 #DE7761 #D9747E
+(v7: #236FC7 #2E97C5 #A99300 #B78E00 #BF8A00 #CC7900 #D96200 #D65539 #CF515E)
+
+ESPECTRO_STOPS.light (v10)
+#4F8CD2 0% · #42A3D5 10% · #84B9C6 18% · #ABC1BE 20.5% · #B2A11F 23% ·
+#B89E1F 29% · #C39A1F 42% · #C8971F 52% · #D19229 60% · #DF8833 70% ·
+#E27B33 80% · #DD7669 90% · #D9747E 100%
+
+COSTURA.light = #ABC1BE
+```
+
+O preço, assumido: o **preenchimento** claro desce de 3:1 para um piso de
+**2,5:1** sobre branco (mínimo real 2,62). É aceitável porque barra e arco
+nunca carregam a informação sozinhos — o número ao lado é a rampa de TEXTO,
+que **não mudou** e segue ≥ 4,5:1. Não é aceitável para texto; é exatamente
+por isso que as duas rampas existem separadas. A asserção do verificador
+passou a ter dois pisos (3 no escuro, 2,5 no claro), e as demais invariantes
+(nenhuma amostra verde, nenhuma emenda cinza, L média entre 0,60 e a do
+escuro) continuam valendo.
 
 #### Duas rampas, e por quê
 

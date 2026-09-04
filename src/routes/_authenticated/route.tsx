@@ -80,7 +80,7 @@ function AuthenticatedLayout() {
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
-            <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 22, color: isLight ? "#0a0b0e" : "#fff", marginBottom: 12 }}>
+            <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 22, color: isLight ? "#1e2229" : "#fff", marginBottom: 12 }}>
               Aguardando aprovação
             </div>
             <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
@@ -199,7 +199,7 @@ function AuthenticatedLayout() {
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 13,
-                  color: isLight ? "#0a0b0e" : "#FFFFFF",
+                  color: isLight ? "#1e2229" : "#FFFFFF",
                   textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                   lineHeight: 1.2,
                 }}

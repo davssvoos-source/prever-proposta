@@ -6,7 +6,11 @@
 import { useTheme } from "@/contexts/ThemeContext";
 
 const ESCURO = "linear-gradient(180deg, #131315 0%, #0a0a0b 45%, #030303 100%)";
-const CLARO = "linear-gradient(180deg, #ffffff 0%, #f6f6f7 55%, #ebebee 100%)";
+// v10 (2026-09-04, R154 — Davi: "o fundo deveria ser um branco mais escuro e
+// os cards um branco mais claro"): a página desce para o cinza-claro e o card
+// (#ffffff, ui.ts) fica sendo o branco mais claro da tela — 1.19:1 entre os
+// dois, contra 1.09:1 quando a página começava em #ffffff e o card sumia nela.
+const CLARO = "linear-gradient(180deg, #eef0f3 0%, #e9ebef 55%, #e2e5ea 100%)";
 
 export function GlowBackground() {
   const { isLight } = useTheme();

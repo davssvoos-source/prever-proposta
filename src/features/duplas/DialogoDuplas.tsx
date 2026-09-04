@@ -59,7 +59,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
   const [editandoEscala, setEditandoEscala] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState<string[]>([]);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 

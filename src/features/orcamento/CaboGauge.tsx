@@ -5,7 +5,7 @@
 
 import { useRef, useState } from "react";
 
-const L = { text: "#0a0b0e", textSub: "#4a5060", gold: "#A06108" };
+const L = { text: "#1e2229", textSub: "#4a5060", gold: "#A06108" };
 
 export function CaboGauge({
   value,

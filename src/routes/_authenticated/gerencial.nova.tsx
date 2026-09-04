@@ -33,9 +33,9 @@ const L = {
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#0a0b0e",
+  text: "#1e2229",
   textSub: "#4a5060",
-  textMuted: "#8a909e",
+  textMuted: "#7d8391",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
   goldBorder: "1px solid rgba(160,97,8,0.22)",
@@ -642,7 +642,7 @@ function NovaVisitaPage() {
                     )}
                   </div>
                 )}
-                <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
+                <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
                   Deixe em branco para cadastrar um cliente novo com os dados desta visita.
                 </div>
               </>

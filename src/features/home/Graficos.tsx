@@ -72,7 +72,7 @@ function useCoresBase() {
   const { isLight } = useTheme();
   return {
     isLight,
-    textPrimary: isLight ? "#0a0b0e" : "#ffffff",
+    textPrimary: isLight ? "#1e2229" : "#ffffff",
     textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
     // um amarelo só na Início: o do degradê. O dourado da marca fica nos
     // botões e no logotipo, onde ele é gradiente e lê como coisa própria.
@@ -264,7 +264,7 @@ export function GraficoMeta({ atividades, ativa = false, onSelecionar }: PropsMe
                 <filter id="glow-meta" x="-30%" y="-30%" width="160%" height="160%">
                   <feDropShadow dx="0" dy="0" stdDeviation="7"
                     floodColor={isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark}
-                    floodOpacity={isLight ? 0.30 : 0.55} />
+                    floodOpacity={isLight ? 0.16 : 0.55} />
                 </filter>
               </defs>
               <circle
@@ -358,7 +358,9 @@ export function PainelKpis({ atividades, ativo = null, onSelecionar }: PainelKpi
               // PRÓPRIA cor do número em alfa baixo (~35%): cada indicador
               // brilha no seu tom em vez de todos ganharem o mesmo véu branco.
               fontFamily: FONT, fontWeight: 700, fontSize: 40, color: k.cor,
-              textShadow: `0 0 14px ${k.cor}59`,
+              // v10 (R154): no claro o halo cai para ~18% — sobre branco, o
+              // mesmo 35% do escuro lia como borrão em volta do número.
+              textShadow: `0 0 14px ${k.cor}${isLight ? "2E" : "59"}`,
               fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
               {k.valor}
             </div>

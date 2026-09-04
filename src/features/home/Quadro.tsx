@@ -64,7 +64,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
   const [alvoArrasto, setAlvoArrasto] = useState<ColunaQuadro | null>(null);
   const arrastadaRef = useRef<Atividade | null>(null);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   // v4: a coluna perdeu a caixa — os cards flutuam direto no fundo e a coluna
   // é só o cabeçalho + a pilha. Menos linha, mais espaço em branco (a regra

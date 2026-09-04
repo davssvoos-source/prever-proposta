@@ -159,7 +159,11 @@
    escuro embutido". A regra daqui em diante: TODO token declarado no
    `:root` tem par aqui. */
 [data-theme="light"] {
-  --bg-base:        #f4f5f7;
+  /* v10 (2026-09-04, R154): a página é um cinza-claro (#e9ebef) e o card é o
+     branco (#ffffff) — antes os dois eram quase o mesmo branco (1.09:1) e o
+     card não se destacava. O texto primário é um cinza bem escuro (#1e2229,
+     16:1 sobre o card, 13:1 sobre a página), não o quase-preto #1e2229. */
+  --bg-base:        #e9ebef;
   --bg-elevated:    #ffffff;
   --bg-overlay:     #e8eaee;
 
@@ -169,12 +173,12 @@
   --gold-glow:      rgba(160,97,8, 0.14);
   --gold-glow-hv:   rgba(160,97,8, 0.24);
 
-  --background:     #f4f5f7;
-  --foreground:     #0a0b0e;
+  --background:     #e9ebef;
+  --foreground:     #1e2229;
   --card:           #ffffff;
-  --card-foreground:#0a0b0e;
+  --card-foreground:#1e2229;
   --popover:        #ffffff;
-  --popover-foreground: #0a0b0e;
+  --popover-foreground: #1e2229;
 
   /* `--primary` é FUNDO (o botão da marca), e o dourado vivo sobre o
      quase-preto do `--primary-foreground` é justamente o botão da casa —
@@ -184,7 +188,7 @@
   --primary-foreground: #08090E;
 
   --secondary:      #eef0f4;
-  --secondary-foreground: #0a0b0e;
+  --secondary-foreground: #1e2229;
 
   --muted:          #eef0f4;
   --muted-foreground: #5a6172;   /* 5.6:1 sobre branco (era 3.2:1) */
@@ -215,7 +219,7 @@
   --chart-5: #B1242E;
 
   --sidebar:        #ffffff;
-  --sidebar-foreground: #0a0b0e;
+  --sidebar-foreground: #1e2229;
   --sidebar-primary: #A06108;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #eef0f4;
@@ -223,10 +227,10 @@
   --sidebar-border: rgba(0,0,0,0.10);
   --sidebar-ring:   #A06108;
 
-  --text-primary:   #0a0b0e;
+  --text-primary:   #1e2229;
   --text-secondary: #4a5060;
-  --text-muted:     #8a909e;
-  --icon-color:     #0a0b0e;
+  --text-muted:     #7d8391;
+  --icon-color:     #1e2229;
   --border-color:   rgba(0,0,0,0.10);
   --card-bg:        rgba(255,255,255,0.70);
 }
@@ -804,7 +808,8 @@ input::placeholder, textarea::placeholder {
   transform-origin: center;
   transition: transform .45s cubic-bezier(0.22, 1, 0.36, 1);
 }
-html[data-theme="light"] .campo-degrade .campo-degrade-fundo { opacity: 0.42; }
+/* v10 (R154): 0.42 → 0.30 no claro — Davi: "diminuir mais o glow do dashboard". */
+html[data-theme="light"] .campo-degrade .campo-degrade-fundo { opacity: 0.30; }
 .campo-degrade::after {
   content: "";
   position: absolute;

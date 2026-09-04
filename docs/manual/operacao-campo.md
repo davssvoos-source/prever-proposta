@@ -120,11 +120,21 @@ lista: as duas visões leem os mesmos eventos (visitas e chamados, por hora
 marcada ou por prazo) e passam pelos mesmos filtros de pessoa, tipo e setor.
 A **mensal** mostra só o título e o rosto — é para varrer o mês. A **semanal**
 é a visão de quem gere o dia (o Vinicius): sete colunas de **segunda a
-domingo** (a semana ISO, a mesma da programação), e em cada item a hora (ou
-"prazo"), o tipo, o título, o cliente, o status — atrasado em vermelho —, o
-número do chamado e quem toca. Clicar abre o mesmo painel lateral. A visão
-escolhida fica gravada no navegador; "Hoje" volta mês e semana. No celular a
-semana vira uma lista, um dia embaixo do outro.
+domingo** (a semana ISO, a mesma da programação), e em cada card **quatro
+coisas** (R153): quem toca (responsável e apoios, como avatares), o título, o
+cliente e o tipo de demanda. Hora, status e número ficaram na dica que aparece
+ao passar o mouse — e no painel, a um clique. A borda esquerda continua na cor
+do status (atrasado em vermelho). A visão escolhida fica gravada no navegador;
+"Hoje" volta mês e semana. No celular a semana vira uma lista, um dia embaixo
+do outro.
+
+**Arrastar muda o prazo (R152).** Nas duas visões, a atividade **em aberto que
+está no calendário pelo prazo** pode ser arrastada para outro dia — o prazo
+passa a ser aquele dia (a hora é preservada), o card muda de coluna na hora e
+volta sozinho se o banco recusar (só responsável ou gestor alteram). O que
+tem hora marcada não se arrasta: a agenda muda pela programação. Concluído e
+cancelado não se arrastam. Arrastar é gesto de mouse — no celular o prazo
+muda pelo painel.
 
 ## Equipe de campo: a composição tem SEMANA (R96/R97, U76)
 

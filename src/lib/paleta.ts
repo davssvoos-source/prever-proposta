@@ -150,8 +150,17 @@ export function misturar(hex: string, alvo: string, peso: number): string {
  * paradas — clara, a cor pura, escura —, no mesmo ângulo do degradê da marca
  * (135deg, `GRAD_PRIMARIA`).
  */
-export function degradeDeBorda(hex: string): string {
-  return `linear-gradient(135deg, ${misturar(hex, '#ffffff', 0.5)}, ${hex}, ${misturar(hex, '#000000', 0.32)})`;
+export function degradeDeBorda(hex: string, isLight = false): string {
+  // v10 (2026-09-04, R154 — Davi: "no modo claro as bordas dos cards da tela
+  // Início podem estar mais claras"): no claro a base é o tom SATURADO da cor
+  // (o mesmo do escuro — quem chama passa `PRISMA.x.dark`), não o tom
+  // rebaixado para texto (`#A06108` é marrom numa borda), e as duas pontas
+  // se afastam menos da base: 30% de branco e 28% de preto, contra 50%/32%.
+  // O tom rebaixado existe para TEXTO passar de 4.5:1 sobre branco; uma borda
+  // de 1,5px não é texto, e pintá-la com ele deixava o card pesado.
+  return isLight
+    ? `linear-gradient(135deg, ${misturar(hex, '#ffffff', 0.30)}, ${hex}, ${misturar(hex, '#000000', 0.28)})`
+    : `linear-gradient(135deg, ${misturar(hex, '#ffffff', 0.5)}, ${hex}, ${misturar(hex, '#000000', 0.32)})`;
 }
 
 /**
@@ -182,6 +191,16 @@ export function esmaecer(rgba: string, fator: number): string {
  * degradê virar barro sobre branco. Ele usa os mesmos matizes com a
  * luminosidade rebaixada — o padrão da paleta.
  *
+ * v10 (2026-09-04, R154): o claro subiu DE NOVO, um degrau — Davi: "deixa as
+ * cores do gráfico (o degradê) num tom mais claro de cada cor, o dashboard em
+ * si está escuro". Cada amostra da v7 foi misturada com branco: 20% nas
+ * pontas (azul, laranja, vermelho), 12% nos amarelos, que já estavam no piso.
+ * O preço, assumido e registrado: o PREENCHIMENTO desce de 3:1 para um piso
+ * de 2,5:1 sobre branco (mínimo 2,62). É aceitável porque barra e arco não
+ * carregam informação sozinhos — o número que os acompanha é a rampa de
+ * TEXTO (abaixo), que NÃO mudou e segue ≥4.5:1. Não é aceitável para texto,
+ * e por isso as duas rampas existem separadas.
+ *
  * Nove e não oito porque cada barra vai da sua cor à da seguinte: a última
  * precisa de um passo além do fim.
  *
@@ -195,7 +214,10 @@ export const ESPECTRO = {
   dark:  ["#4F94E9", "#6CC2ED", "#F6E057", "#FAD029", "#EBB509", "#F49E00", "#FF872E", "#F87A5E", "#F17881"],
   // miolo amarelo rebaixado a ≥3:1 sobre branco (mínimo WCAG de não-texto):
   // no primeiro corte da v7 ele estava em 2.45:1 e as barras sumiam no card.
-  light: ["#236FC7", "#2E97C5", "#A99300", "#B78E00", "#BF8A00", "#CC7900", "#D96200", "#D65539", "#CF515E"],
+  // v10: a v7 misturada com branco (20% / 18% / 12% ×3 / 16% / 20% ×3) — o
+  // que era ["#236FC7", "#2E97C5", "#A99300", "#B78E00", "#BF8A00", "#CC7900",
+  // "#D96200", "#D65539", "#CF515E"]. Piso de preenchimento: 2,5:1 (é 2,62).
+  light: ["#4F8CD2", "#54AACF", "#B3A01F", "#C09C1F", "#C7981F", "#D48E29", "#E18133", "#DE7761", "#D9747E"],
 } as const;
 
 /**
@@ -231,9 +253,12 @@ export const ESPECTRO_STOPS = {
   dark: ["#4F94E9 0%", "#57B5F1 10%", "#A7D9E5 18%", "#D7EBE9 20.5%", "#F4E15E 23%",
          "#FCDE48 29%", "#F8C811 42%", "#E8B00A 52%", "#F0A300 60%", "#FE8F20 70%",
          "#FF7E3B 80%", "#F47967 90%", "#F17881 100%"],
-  light: ["#236FC7 0%", "#138CCB 10%", "#69AAB9 18%", "#98B3B0 20.5%", "#A79400 23%",
-          "#AE9100 29%", "#BB8C00 42%", "#C08900 52%", "#C87D00 60%", "#D76A00 70%",
-          "#DB5A00 80%", "#D45443 90%", "#CF515E 100%"],
+  // v10: as paradas da v7 misturadas com branco com os MESMOS pesos por faixa
+  // da rampa acima (azul 20%, costura 18%, amarelos 12%, laranja 16→20%,
+  // vermelho 20%) — para a rosca, o painel de IA e as barras clarearem juntos.
+  light: ["#4F8CD2 0%", "#42A3D5 10%", "#84B9C6 18%", "#ABC1BE 20.5%", "#B2A11F 23%",
+          "#B89E1F 29%", "#C39A1F 42%", "#C8971F 52%", "#D19229 60%", "#DF8833 70%",
+          "#E27B33 80%", "#DD7669 90%", "#D9747E 100%"],
 } as const;
 
 /** Cor n da rampa (preenchimento), com laço. */
@@ -259,7 +284,7 @@ export function degradePrisma(isLight: boolean, angulo = "90deg"): string {
  * vizinhas da emenda (azul claro ↔ amarelo claro) em sRGB passa pelo VERDE.
  * Quem desenha um gradiente entre amostras vizinhas precisa passar por aqui.
  */
-export const COSTURA: ParTema = { dark: "#D7EBE9", light: "#98B3B0" };
+export const COSTURA: ParTema = { dark: "#D7EBE9", light: "#ABC1BE" };
 
 /** Par de amostras que ladeia a costura (nos dois sentidos). */
 const PAR_EMENDA: Record<"dark" | "light", [string, string]> = {

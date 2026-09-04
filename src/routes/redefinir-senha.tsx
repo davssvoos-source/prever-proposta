@@ -90,7 +90,7 @@ function RedefinirSenhaPage() {
     background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
-    color: isLight ? "#0a0b0e" : "#fff",
+    color: isLight ? "#1e2229" : "#fff",
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 14,
@@ -196,7 +196,7 @@ function RedefinirSenhaPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 17,
-                    color: isLight ? "#0a0b0e" : "#fff",
+                    color: isLight ? "#1e2229" : "#fff",
                     marginBottom: 6,
                   }}
                 >

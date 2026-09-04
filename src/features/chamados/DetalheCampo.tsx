@@ -214,7 +214,7 @@ export function DetalheCampo({ id }: { id: string }) {
     setAssinanteNome(os.assinatura_nome ?? "");
   }, [os?.id, os?.diagnostico, os?.servico_executado, os?.assinatura_nome]);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
@@ -853,7 +853,7 @@ export function DetalheCampo({ id }: { id: string }) {
                           onClick={() => removerFoto.mutate({ fotoId: f.id, path: f.storage_path })}
                           style={{
                             position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                            background: "#0a0b0e", color: "#fff", border: "none", cursor: "pointer",
+                            background: "#1e2229", color: "#fff", border: "none", cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
                         >

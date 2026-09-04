@@ -124,7 +124,7 @@ function mensagemDoErro(e: unknown): string {
  */
 function useEstiloCampo() {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
   const campoBg = isLight ? "#ffffff" : "rgba(255,255,255,0.055)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.14)" : "1px solid rgba(255,255,255,0.14)";

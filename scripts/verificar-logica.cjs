@@ -489,14 +489,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // 2.5:1 sobre branco. É o espelho do problema que o escuro tinha na v5.1.
     const fracos = P.ESPECTRO_TEXTO[chave].filter((h) => contraste(h, fundo) < 4.5);
     eq(`${tema}: a rampa de TEXTO passa de 4.5:1`, fracos, []);
-    // preenchimento (barra, arco) precisa de 3:1 — o mínimo WCAG de não-texto.
+    // preenchimento (barra, arco): 3:1 no escuro — o mínimo WCAG de não-texto.
     // Na v7 o miolo amarelo claro caiu a 2.45:1 e as barras sumiam no card.
-    const palidos = P.ESPECTRO[chave].filter((h) => contraste(h, fundo) < 3);
-    eq(`${tema}: a rampa de PREENCHIMENTO passa de 3:1`, palidos, []);
+    // v10 (U97, R154): no CLARO o piso desce a 2.5:1 por pedido do Davi ("deixa
+    // as cores do gráfico num tom mais claro de cada cor, o dashboard em si
+    // está escuro"). É aceitável porque barra e arco nunca carregam a
+    // informação sozinhos — o número ao lado é a rampa de TEXTO, que segue em
+    // 4.5:1 (a asserção acima NÃO mudou). Abaixo de 2.5 a barra some no card.
+    const piso = chave === 'light' ? 2.5 : 3;
+    const palidos = P.ESPECTRO[chave].filter((h) => contraste(h, fundo) < piso);
+    eq(`${tema}: a rampa de PREENCHIMENTO passa de ${piso}:1`, palidos, []);
     const paradasPalidas = P.ESPECTRO_STOPS[chave]
       .map((p2) => p2.split(' ')[0])
-      .filter((h, i2) => i2 >= 4 && contraste(h, fundo) < 3); // costura (0-3) é fundo, não figura
-    eq(`${tema}: paradas do miolo em diante passam de 3:1`, paradasPalidas, []);
+      .filter((h, i2) => i2 >= 4 && contraste(h, fundo) < piso); // costura (0-3) é fundo, não figura
+    eq(`${tema}: paradas do miolo em diante passam de ${piso}:1`, paradasPalidas, []);
     // emenda entre barras vizinhas não pode passar pelo cinza
     const lavadas = r.slice(0, -1)
       .map((h, i) => [i, oklch(meio(h, r[i + 1])).C])
@@ -16320,11 +16326,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('U94/R133: as duas visões leem o MESMO `porDia` (uma lista, dois desenhos) e os mesmos filtros',
        [(cal.match(/const porDia = useMemo/g) ?? []).length, (cal.match(/porDia\[chaveDia\(d\)\] \?\? \[\]/g) ?? []).length],
        [1, 2]);
-    eq('U94/R133: a semanal mostra o detalhe que a mensal esconde — hora, "prazo" ou "concluído" (R145), tipo, cliente, status, número e quem toca',
-       [/\{e\.porConclusao \? "concluído" : e\.porPrazo \? "prazo" : horaCurta\(e\.quando\)\}/.test(cal), /\{e\.tipoLabel\}/.test(cal),
-        /\{e\.cliente && e\.cliente !== e\.titulo && \(/.test(cal), /\{e\.atrasado \? "Atrasado" : e\.statusLabel\}/.test(cal),
-        /\{e\.numero\}/.test(cal), /max=\{3\} tamanho=\{18\}/.test(cal)],
-       [true, true, true, true, true, true]);
+    // até a U97 a semanal mostrava hora/"prazo"/"concluído", status e número;
+    // a R153 (U97) reduziu o card a quatro coisas — a asserção detalhada está
+    // no bloco da U97. Aqui fica só o que a R133 ainda promete: que a semanal
+    // mostra cliente e tipo, que a mensal esconde.
+    eq('U94/R133: a semanal mostra o cliente e o tipo, que a mensal esconde (o resto da R133 foi revisto pela R153)',
+       [/\{e\.tipoLabel\}/.test(cal), /\{e\.cliente && e\.cliente !== e\.titulo && \(/.test(cal)],
+       [true, true]);
     eq('U94/R133: sem rolagem por coluna — a página rola (a asserção da U13 continua: nenhum overflowY auto) — e no celular a semana vira lista',
        [/overflowY: "auto"/.test(cal), /className="cal-semana"/.test(cal),
         /\.cal-semana \{ display: grid; grid-template-columns: 1fr; gap: 1px; \}/.test(ler94('src/styles.css')),
@@ -16536,7 +16544,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      ['vermelho', 'amarelo', 'azul', 'verde'].every((k) => !!PAL96.PRISMA[k]), true);
 
   // ── degradeDeBorda: clara→cor→escura, 135deg, as mesmas duas chamadas a misturar ──
-  eq('U96/R136: degradeDeBorda é um degradê de 3 paradas — clara (branco 50%), a cor pura, escura (preto 32%) — no ângulo do GRAD_PRIMARIA',
+  eq('U96/R136: degradeDeBorda (tema escuro, o padrão) é um degradê de 3 paradas — clara (branco 50%), a cor pura, escura (preto 32%) — no ângulo do GRAD_PRIMARIA',
      PAL96.degradeDeBorda('#4F94E9'),
      `linear-gradient(135deg, ${PAL96.misturar('#4F94E9', '#ffffff', 0.5)}, #4F94E9, ${PAL96.misturar('#4F94E9', '#000000', 0.32)})`);
 
@@ -16545,7 +16553,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO (R136): o card não pinta mais o FUNDO por prazo — o padrão antigo (background: rgba com f.rgb) sumiu do arquivo',
      /background: `rgba\(\$\{f\.rgb\}/.test(ca96), false);
   eq('U96/R136: quando há cor estratégica, o fundo continua a superfície NEUTRA do tema (card(isLight).background) — é a BORDA que leva o degradê',
-     /backgroundImage: `linear-gradient\(\$\{cardBase\.background\}, \$\{cardBase\.background\}\), \$\{degradeDeBorda\(corBase\)\}`,/.test(ca96), true);
+     /backgroundImage: `linear-gradient\(\$\{cardBase\.background\}, \$\{cardBase\.background\}\), \$\{degradeDeBorda\(corBase, isLight\)\}`,/.test(ca96), true);
   eq('U96/R136: o truque de borda em degradê usa duas camadas de background (padding-box sólido, border-box com o degradê) — único jeito de gradiente em `border` sem SVG/border-image',
      [/backgroundOrigin: "border-box"/.test(ca96), /backgroundClip: "padding-box, border-box"/.test(ca96), /border: "1\.5px solid transparent"/.test(ca96)],
      [true, true, true]);
@@ -16704,7 +16712,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/and\(status\.eq\.concluido,concluida_em\.gte\./.test(cal96), /and\(status\.neq\.concluido,data_hora_agendada\.gte\./.test(cal96),
       /and\(status\.neq\.concluido,data_hora_agendada\.is\.null,prazo_limite\.gte\./.test(cal96)],
      [true, true, true]);
-  eq('R145: quem decide o dia é `quando` — a conclusão vence a hora agendada e o prazo; a célula diz "concluído"',
+  eq('R145: quem decide o dia é `quando` — a conclusão vence a hora agendada e o prazo (desde a R153 a palavra "concluído" mora na dica, não na célula)',
      [/const porConclusao = c\.status === "concluido" && !!c\.concluida_em;/.test(cal96),
       /const quando = porConclusao \? c\.concluida_em : \(c\.data_hora_agendada \?\? c\.prazo_limite\);/.test(cal96),
       /porPrazo: !porConclusao && !c\.data_hora_agendada,/.test(cal96)],
@@ -16743,7 +16751,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, false]);
   const nad96 = ler96('src/features/home/NovaAtividadeDialog.tsx');
   eq('R143/R150 (diálogo): o grupo grava a etiqueta de setor; os arquivos sobem como fotos do chamado já criado',
-     [/adicionarSetorChamado\(id, setor\)/.test(nad96), /anexarFoto\(id, f, "outra"\)/.test(nad96), /await abrirChamado\(\{\s*\n\s*natureza: "interno",/.test(nad96)],
+     [/adicionarSetorChamado\(id, st\)/.test(nad96) /* R151 (U97): num laço, um por grupo */, /anexarFoto\(id, f, "outra"\)/.test(nad96), /await abrirChamado\(\{\s*\n\s*natureza: "interno",/.test(nad96)],
      [true, true, true]);
   eq('R138: o formulário de campo aceita tipo e técnico iniciais (as duas respostas do pop-up)',
      [/tipoInicial\?: ChamadoTipo;/.test(ler96('src/features/chamados/FormularioChamadoTecnico.tsx')),
@@ -16839,6 +16847,188 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /### 6\.13 Card de cliente — a fachada sobreposta/.test(ler96('DESIGN_SYSTEM.md')),
       /R146, U96/.test(ler96('docs/manual/clientes-qap.md'))],
      [true, true, true, true, true, true]);
+}
+
+// ── U97 — R151–R154: mais de um cliente por atividade, arrastar no calendário
+// muda o prazo, o card da semana com quatro coisas, o tema claro v10 (2026-09-04)
+{
+  const fs97 = require('fs');
+  const path97 = require('path');
+  const ler97 = (p) => fs97.readFileSync(p, 'utf8');
+  // grep acha comentário: filtra linhas que começam com // ou * (regra 3 do CLAUDE.md)
+  const codigo97 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const PAL97 = carregar('src/lib/paleta.ts');
+  const CS97 = carregar('src/lib/chamado-status.ts');
+  const fi97 = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum97 = (hex) => { const n = parseInt(hex.slice(1), 16);
+    const [r, g, b2] = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255].map(fi97);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2; };
+  const contraste97 = (a2, b2) => { const [x, y] = [lum97(a2), lum97(b2)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
+  // ── R152: o helper puro do arrasto ───────────────────────────────────────
+  const dia97 = new Date(2026, 8, 10);
+  eq('R152: moverPrazoParaODia preserva a HORA do prazo e muda só o dia',
+     CS97.moverPrazoParaODia(new Date(2026, 8, 3, 15, 30, 0).toISOString(), dia97),
+     new Date(2026, 8, 10, 15, 30, 0).toISOString());
+  eq('R152: sem prazo anterior nasce como o input nasceria — o fim do dia',
+     CS97.moverPrazoParaODia(null, dia97), CS97.dataParaPrazo('2026-09-10'));
+  eq('R152: no mesmo dia devolve o MESMO instante (quem chama pula a escrita)',
+     CS97.moverPrazoParaODia(new Date(2026, 8, 10, 23, 59, 59).toISOString(), dia97),
+     new Date(2026, 8, 10, 23, 59, 59).toISOString());
+  eq('R152: prazo ilegível cai no fim do dia, não em NaN',
+     CS97.moverPrazoParaODia('isso não é data', dia97), CS97.dataParaPrazo('2026-09-10'));
+
+  const cal97 = ler97('src/routes/_authenticated/calendario.tsx');
+  const cal97c = codigo97(cal97);
+  eq('R152 CRÍTICO: só se arrasta o chamado EM ABERTO que está no calendário pelo PRAZO — visita nunca, concluído nunca, hora marcada nunca',
+     [/arrastavel: !final && !porConclusao && !c\.data_hora_agendada,/.test(cal97),
+      /porConclusao: false,\n\s*arrastavel: false,/.test(cal97)],
+     [true, true]);
+  eq('R152: soltar num dia escreve prazo_limite por atualizarChamado, com moverPrazoParaODia, e pula a escrita se o dia é o mesmo',
+     [/const novo = moverPrazoParaODia\(c\.prazo_limite, dia\);/.test(cal97),
+      /if \(novo === c\.prazo_limite\) return null;/.test(cal97),
+      /await atualizarChamado\(id, \{ prazo_limite: novo \}\);/.test(cal97)],
+     [true, true, true]);
+  eq('R152: a escrita é OTIMISTA e volta no erro — cancela a consulta, guarda o antes, troca, restaura',
+     [/await qc\.cancelQueries\(\{ queryKey: chave \}\);/.test(cal97),
+      /const antes = qc\.getQueryData<any\[\]>\(chave\);/.test(cal97),
+      /if \(ctx\) qc\.setQueryData\(ctx\.chave, ctx\.antes\);/.test(cal97)],
+     [true, true, true]);
+  eq('R152: as DUAS grades recebem o solto, os DOIS cards se arrastam e as duas células realçam (semana e mês)',
+     [(cal97c.match(/\{\.\.\.ganchosDeSoltar\(d\)\}/g) ?? []).length,
+      (cal97c.match(/\{\.\.\.ganchosDeArrastar\(e\)\}/g) ?? []).length,
+      (cal97c.match(/\.\.\.realceDeAlvo\(d\),/g) ?? []).length],
+     [2, 2, 2]);
+  eq('R152: quem não se arrasta não ganha draggable (o objeto vazio)',
+     /if \(!e\.arrastavel\) return \{\};/.test(cal97), true);
+  eq('R152: depois da escrita invalida quem lê prazo — calendário, listas, Início',
+     /onSettled: \(\) => \{\s*\n\s*qc\.invalidateQueries\(\{ queryKey: \["calendario"\] \}\);\s*\n\s*qc\.invalidateQueries\(\{ queryKey: \["chamados"\] \}\);\s*\n\s*qc\.invalidateQueries\(\{ queryKey: \["home-chamados"\] \}\);/.test(cal97),
+     true);
+
+  // ── R153: o card da semana — a REGIÃO da semanal, sem comentários ─────────
+  const sem97 = cal97c.slice(cal97c.indexOf('className="cal-semana"'), cal97c.indexOf('/* Cabeçalho dos dias da semana */'));
+  eq('R153 CRÍTICO: o card da semana mostra quem toca (avatares), título, cliente e tipo…',
+     [/<AvatarPilha ids=\{e\.pessoas\} pessoas=\{mapaPessoas\} max=\{4\} tamanho=\{20\} \/>/.test(sem97),
+      /\{e\.titulo\}/.test(sem97), /\{e\.cliente\}/.test(sem97), /\{e\.tipoLabel\}/.test(sem97)],
+     [true, true, true, true]);
+  eq('R153 CRÍTICO: …e NADA mais — sem número, sem status, sem hora, sem "prazo", sem "concluído", sem "Atrasado"',
+     [/\{e\.numero\}/.test(sem97), /statusLabel/.test(sem97), /horaCurta\(/.test(sem97),
+      /"prazo"/.test(sem97), /"concluído"/.test(sem97), /Atrasado/.test(sem97)],
+     [false, false, false, false, false, false]);
+  eq('R153: o que saiu do card ficou na dica do navegador — tipo, status (atrasado primeiro), número, hora/vence/concluído',
+     [/title=\{dicaDoEvento\(e\)\}/.test(sem97),
+      /const quando = e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\);/.test(cal97),
+      /\[e\.tipoLabel, e\.atrasado \? "Atrasado" : e\.statusLabel, e\.numero, quando\]/.test(cal97)],
+     [true, true, true]);
+  eq('R153: a cor da borda esquerda (o status) fica — é cor, não texto',
+     /borderLeft: `3px solid \$\{e\.cor\}`,/.test(sem97), true);
+
+  // ── R151: mais de um cliente ─────────────────────────────────────────────
+  const nd97 = ler97('src/features/home/NovaAtividadeDialog.tsx');
+  eq('R151 CRÍTICO (pop-up): os locais são uma LISTA; o primeiro cliente é o principal, os demais entram por adicionarClienteChamado, os grupos por adicionarSetorChamado',
+     [/const \[locais, setLocais\] = useState<string\[\]>\(\[\]\);/.test(nd97),
+      /cliente_id: clientesIds\[0\] \?\? null,/.test(nd97),
+      /for \(const cid of clientesIds\.slice\(1\)\) await tentar\("cliente", \(\) => adicionarClienteChamado\(id, clientesIds\[0\], cid\)\);/.test(nd97),
+      /for \(const st of setores\) await tentar\("grupo de clientes", \(\) => adicionarSetorChamado\(id, st\)\);/.test(nd97)],
+     [true, true, true, true]);
+  eq('R151 (pop-up): escolher acrescenta sem repetir, o campo volta vazio e não oferece quem já está, o chip remove; o campo único morreu',
+     [/setLocais\(\(l\) => \(l\.includes\(v\) \? l : \[\.\.\.l, v\]\)\);/.test(nd97),
+      /opcoes=\{opcoesClientes\.filter\(\(o\) => !locais\.includes\(o\.valor\)\)\}/.test(nd97),
+      /onClick=\{\(\) => setLocais\(\(l\) => l\.filter\(\(x\) => x !== v\)\)\}/.test(nd97),
+      /clienteValor/.test(nd97)],
+     [true, true, true, false]);
+  eq('R151 (pop-up): o grupo continua trazendo o checklist (R143) ao ser escolhido',
+     /if \(!v\) return;\s*\n\s*setLocais\(/.test(nd97) && /acrescentarChecklist\(d, checklistDoGrupo\(clientes, setor\)/.test(nd97), true);
+  const di97 = ler97('src/features/chamados/DetalheInterno.tsx');
+  eq('R151 CRÍTICO (página): adiciona e remove cliente e grupo pela MESMA porta do painel lateral',
+     [/await removerClienteChamado\(id, chamado\?\.cliente_id \?\? null, acao\.valor\);/.test(di97),
+      /await adicionarClienteChamado\(id, chamado\?\.cliente_id \?\? null, acao\.valor\);/.test(di97),
+      /await adicionarSetorChamado\(id, setor\);/.test(di97),
+      /if \(linha\) await removerLocalChamado\(linha\.id\);/.test(di97)],
+     [true, true, true, true]);
+  eq('R151 (página): o grupo traz o checklist (R143), o campo só aparece para quem pode editar, e quem já está não é oferecido de novo',
+     [/chamado\?\.descricao_problema \?\? "", lista, `Clientes de \$\{SERVICO_LABEL\[setor\]\}:`,/.test(di97),
+      /\{podeEditar && \(\s*\n\s*<CampoComBusca\s*\n\s*id="detalhe-local"/.test(di97),
+      /\]\.filter\(\(o\) => !usados\.has\(o\.valor\)\);/.test(di97)],
+     [true, true, true]);
+  eq('R151 (página): remover o principal só limpa o slot — a promoção silenciosa de um extra continua recusada (R54/U45)',
+     /if \(clienteId === clienteIdAtual\) \{\s*\n\s*await atualizarChamado\(chamadoId, \{ cliente_id: null \}\);/.test(ler97('src/features/chamados/data.ts')), true);
+
+  // ── R154: o tema claro v10 ───────────────────────────────────────────────
+  const css97 = ler97('src/styles.css');
+  eq('R154 CRÍTICO: a página clara é #e9ebef e o texto primário #1e2229 — nos tokens do [data-theme="light"]',
+     [/--bg-base:\s+#e9ebef;/.test(css97), /--background:\s+#e9ebef;/.test(css97),
+      /--text-primary:\s+#1e2229;/.test(css97), /--foreground:\s+#1e2229;/.test(css97),
+      /--text-muted:\s+#7d8391;/.test(css97)],
+     [true, true, true, true, true]);
+  eq('R154: o card continua o branco mais claro da tela (ui.ts) e a página desce no GlowBackground',
+     [/background: isLight \? "#ffffff" : "#141416",/.test(ler97('src/lib/ui.ts')),
+      /const CLARO = "linear-gradient\(180deg, #eef0f3 0%, #e9ebef 55%, #e2e5ea 100%\)";/.test(ler97('src/components/GlowBackground.tsx'))],
+     [true, true]);
+  eq('R154: os números do par novo — texto > 12:1 sobre a página e > 15:1 sobre o card; card × página > 1.15 (era 1.09); apagado > 3.5:1',
+     [contraste97('#1e2229', '#e9ebef') > 12, contraste97('#1e2229', '#ffffff') > 15,
+      contraste97('#ffffff', '#e9ebef') > 1.15, contraste97('#7d8391', '#ffffff') > 3.5],
+     [true, true, true, true]);
+  {
+    const sobras = [];
+    (function anda(dir) {
+      for (const n of fs97.readdirSync(dir)) {
+        const p = path97.join(dir, n);
+        if (fs97.statSync(p).isDirectory()) { anda(p); continue; }
+        if (!/\.(tsx?|css)$/.test(n)) continue;
+        const rel = p.replace(/\\/g, '/');
+        if (rel.endsWith('AssinaturaCanvas.tsx')) continue;
+        if (/#0a0b0e|#f4f5f7|#8a909e/i.test(fs97.readFileSync(p, 'utf8'))) sobras.push(rel);
+      }
+    })('src');
+    eq('R154 CRÍTICO: a varredura foi completa — nenhum #0a0b0e/#f4f5f7/#8a909e sobrou em src (a tinta da assinatura é a exceção declarada)',
+       sobras, []);
+  }
+  eq('R154: a tinta da assinatura continua preta — não é texto de tema',
+     /strokeStyle = "#0a0b0e"/.test(ler97('src/features/chamados/AssinaturaCanvas.tsx')), true);
+  // a rampa: cada amostra v10 é mais clara que a v7 correspondente; o TEXTO não mudou
+  const v7 = ['#236FC7', '#2E97C5', '#A99300', '#B78E00', '#BF8A00', '#CC7900', '#D96200', '#D65539', '#CF515E'];
+  eq('R154 CRÍTICO: a rampa clara v10 é a v7 clareada amostra a amostra, e a rampa de TEXTO não mudou (é ela que lê)',
+     [PAL97.ESPECTRO.light.every((h, i) => lum97(h) > lum97(v7[i])),
+      PAL97.ESPECTRO.light[0], PAL97.ESPECTRO.light[2], PAL97.ESPECTRO.light[8],
+      PAL97.ESPECTRO_TEXTO.light[2], PAL97.ESPECTRO_TEXTO.light[0]],
+     [true, '#4F8CD2', '#B3A01F', '#D9747E', '#867000', '#236FC7']);
+  eq('R154: a costura clara acompanhou a rampa e é a parada de 20.5% (senão gradienteBarra costura com a cor errada)',
+     [PAL97.COSTURA.light, PAL97.ESPECTRO_STOPS.light[3]], ['#ABC1BE', '#ABC1BE 20.5%']);
+  eq('R154: o piso do preenchimento claro é 2.5:1 — e não menos (abaixo disso a barra some no card)',
+     Math.min(...PAL97.ESPECTRO.light.map((h) => contraste97(h, '#ffffff'))) >= 2.5, true);
+  eq('R154: degradeDeBorda no claro — base saturada, 30% de branco, 28% de preto; o escuro não mudou',
+     [PAL97.degradeDeBorda('#F8C811', true), PAL97.degradeDeBorda('#F8C811', false) === PAL97.degradeDeBorda('#F8C811')],
+     [`linear-gradient(135deg, ${PAL97.misturar('#F8C811', '#ffffff', 0.30)}, #F8C811, ${PAL97.misturar('#F8C811', '#000000', 0.28)})`, true]);
+  const ca97 = ler97('src/features/home/CardAtividade.tsx');
+  eq('R154 CRÍTICO: a borda do card da Início usa o tom SATURADO nos dois temas e passa o tema ao degradê',
+     [/const corBase = p \? p\.dark : null;/.test(ca97), /degradeDeBorda\(corBase, isLight\)/.test(ca97)],
+     [true, true]);
+  const gr97 = ler97('src/features/home/Graficos.tsx');
+  eq('R154: menos glow no claro — halo do KPI a 18%, arco da rosca a 0.16, painel de IA a 0.30',
+     [/textShadow: `0 0 14px \$\{k\.cor\}\$\{isLight \? "2E" : "59"\}`,/.test(gr97),
+      /floodOpacity=\{isLight \? 0\.16 : 0\.55\}/.test(gr97),
+      /html\[data-theme="light"\] \.campo-degrade \.campo-degrade-fundo \{ opacity: 0\.30; \}/.test(css97)],
+     [true, true, true]);
+
+  // ── regra 7: as regras, o diário, o design system, o manual ──────────────
+  const prod97 = ler97('docs/PRODUTO.md');
+  const ds97 = ler97('DESIGN_SYSTEM.md');
+  eq('U97 (regra 7): R151–R154 existem e a última atualização aponta para a R154; a U97 está no diário',
+     [['R151', 'R152', 'R153', 'R154'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97)),
+      /Última atualização: 2026-09-04 \(R154\)/.test(prod97),
+      /^## U97 /m.test(ler97('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true]);
+  eq('U97 (regra 7): o DESIGN_SYSTEM traz os tokens v10, as oito bordas claras resolvidas, a rampa v10 com o piso de 2,5:1, e o fundo v4/v10 — e o quase-preto só aparece como história',
+     [/#e9ebef/.test(ds97) && /#1e2229/.test(ds97) && /#7d8391/.test(ds97),
+      ['#f5a1a7', '#ae565d', '#fad958', '#b3900c', '#84b4f0', '#396ba8', '#6ce0c0', '#209777'].every((h) => ds97.includes(h)),
+      /#4F8CD2/.test(ds97) && /2,5:1/.test(ds97) && /COSTURA\.light = #ABC1BE/.test(ds97),
+      /^## 5\. Fundos de página \(v4 minimalista · v10 no claro\)/m.test(ds97),
+      /#0a0b0e/.test(ds97.replace(/quase-preto `#0a0b0e`|era `#0a0b0e`/g, ''))],
+     [true, true, true, true, false]);
+  eq('U97 (regra 7): o manual fala do card de quatro coisas e do arrasto que muda o prazo',
+     [/quatro\s+coisas/.test(ler97('docs/manual/operacao-campo.md')), /Arrastar muda o prazo \(R152\)/.test(ler97('docs/manual/operacao-campo.md'))],
+     [true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

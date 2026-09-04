@@ -62,7 +62,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     fontFamily: FONT,
     fontWeight: 400,
     fontSize: 14,
-    color: isLight ? "#0a0b0e" : "#ffffff",
+    color: isLight ? "#1e2229" : "#ffffff",
   };
 
   const botao: CSSProperties = {

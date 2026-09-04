@@ -138,7 +138,7 @@ const L = {
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#0a0b0e",
+  text: "#1e2229",
   textSub: "#4a5060",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
@@ -283,9 +283,9 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
           const goldText = isLight ? "#A06108" : "#F8C811";
           const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
           const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
-          const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
+          const futureText = isLight ? "#7d8391" : "rgba(200,200,200,0.4)";
           const completedLabel = goldText;
-          const currentLabel = isLight ? "#0a0b0e" : "#fff";
+          const currentLabel = isLight ? "#1e2229" : "#fff";
           const lineColor = isCompleted
             ? (isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.4)")
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
@@ -392,8 +392,8 @@ function MacroStepIndicator({
   const goldText = isLight ? "#A06108" : "#F8C811";
   const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
-  const futureText = isLight ? "#8a909e" : "rgba(200,200,200,0.4)";
-  const currentLabel = isLight ? "#0a0b0e" : "#fff";
+  const futureText = isLight ? "#7d8391" : "rgba(200,200,200,0.4)";
+  const currentLabel = isLight ? "#1e2229" : "#fff";
 
   const visibleMacros = macros.filter((m) => !m.hidden);
 

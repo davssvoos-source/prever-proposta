@@ -65,7 +65,7 @@ export function BotoesDeCompartilhar({
   /** o aviso ("Programação copiada.") é da tela que chamou, não daqui */
   aoCopiar?: () => void;
 }) {
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const estilo = {
     display: "inline-flex", alignItems: "center", gap: 6,
     padding: compacto ? "6px 10px" : "8px 12px",

@@ -65,7 +65,7 @@ export function CriarRapido() {
   const [enviando, setEnviando] = useState(false);
   const arquivoRef = useRef<HTMLInputElement>(null);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   // sobre o degradê o cinza de 55% afundava; aqui o secundário é mais claro
   const textSecondary = isLight ? "#3a4152" : "rgba(255,255,255,0.80)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;

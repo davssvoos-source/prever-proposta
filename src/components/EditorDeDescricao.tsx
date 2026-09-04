@@ -58,7 +58,7 @@ export function SugestoesDeMencao({ pessoas, marcada, aoEscolher, aoMarcar }: {
   aoMarcar: (i: number) => void;
 }) {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   if (pessoas.length === 0) {
     return (
@@ -241,7 +241,7 @@ export function EditorDeDescricao({
   const pendente = useRef<{ i: number; cursor: number; fim?: number } | null>(null);
   const men = useMencao(pessoas);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
   const campoBg = isLight ? "#ffffff" : "rgba(255,255,255,0.055)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.14)" : "1px solid rgba(255,255,255,0.14)";

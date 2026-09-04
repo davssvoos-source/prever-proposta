@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-03 (R150). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R154). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3201,3 +3201,55 @@ trabalho".
   mesma tabela e o mesmo bucket do chamado de campo (`chamado_fotos`,
   `fotos-os`), na página da atividade e no pop-up de criação (imagem e PDF).
   *(Davi: "Campo para fotografias de registro ou arquivos (Opcional)".)*
+
+- **R151** — **Uma atividade pode ter mais de um cliente — e isso se faz no
+  pop-up de criação e na página, não só no painel lateral.** O campo Cliente é
+  uma lista de chips (clientes e grupos, R143): o primeiro cliente escolhido é
+  o principal (`chamados.cliente_id`), os demais e os grupos entram em
+  `chamado_locais` — o mesmo desenho aditivo da R54, pela mesma porta
+  (`adicionarClienteChamado` / `adicionarSetorChamado`). Na página da
+  atividade quem pode editar acrescenta e remove; remover o principal só
+  limpa o slot (R54). Nada escolhido continua sendo "Interno — Prever".
+  *(Davi, 04/09/2026: "Adicione a possibilidade de atribuir mais de um cliente
+  na mesma atividade.")*
+
+- **R152** — **Arrastar a atividade no calendário para outro dia muda o
+  prazo.** Vale para o chamado **em aberto que está no calendário pelo prazo**
+  (sem hora marcada). O que entrou pela hora agendada não se arrasta — a
+  agenda é da programação (R101) e mover o prazo não o tiraria do dia. O
+  concluído e o cancelado não se arrastam (é fato, não promessa); a visita não
+  é chamado. Só a **data** muda: a hora do prazo é preservada. A escrita é
+  otimista — o card muda de coluna na hora e volta se o banco recusar (RLS:
+  responsável ou gestor). Toque não arrasta: no celular o prazo muda pelo
+  painel. *(Davi, 04/09/2026: "o usuário deve poder arrastar a atividade (caso
+  não esteja concluída), e ao arrastar para outro dia, altera a data do prazo
+  automaticamente.")*
+
+- **R153** — **O card da semana no calendário tem quatro coisas, e só:** quem
+  toca (responsável e apoios, como avatares), o título, o cliente e o tipo de
+  demanda. Sem número, sem status, sem hora e sem as palavras "prazo" ou
+  "concluído" — isso ficou na dica do navegador e no painel, a um clique. A
+  cor da borda esquerda (status; atrasado em vermelho) fica: é cor, não texto.
+  Revisa a R133, que listava hora, status e número. *(Davi, 04/09/2026: "No
+  calendário semanal, deve aparecer no card: Responsável e Apoio (ícones dos
+  usuários), Título da atividade, Cliente e Tipo de demanda — mais nenhuma
+  informação deve aparecer no card! Remova o código da atividade, remova a
+  palavra prazo ou a palavra concluído".)*
+
+- **R154** — **Tema claro v10: a página é um branco mais escuro, o card é o
+  branco mais claro, o texto é um cinza bem escuro.** Página `#e9ebef`
+  (degradê `#eef0f3 → #e9ebef → #e2e5ea`), card `#ffffff`, texto primário
+  `#1e2229` (16:1 sobre o card, 13:1 sobre a página), texto apagado
+  `#7d8391` (3,9:1). Na Início: as bordas coloridas dos cards usam o tom
+  **saturado** da cor nos dois temas (o tom rebaixado é para texto, e numa
+  borda virava marrom/vinho); o glow do dashboard cai (halo do KPI 35% → 18%,
+  arco da rosca 0,30 → 0,16, painel de IA 0,42 → 0,30); e a rampa do gráfico
+  (`ESPECTRO.light`, paradas e costura) clareia um degrau — o preenchimento
+  desce ao piso de **2,5:1** sobre branco, aceito porque barra e arco nunca
+  carregam a informação sozinhos: o número ao lado é a rampa de TEXTO, que
+  não mudou e segue ≥ 4,5:1. *(Davi, 04/09/2026: "o fundo deveria ser um
+  branco mais escuro e os cards um branco mais claro e os textos um cinza bem
+  escuro, e tomar cuidado para o contraste não dificultar a leitura […]
+  diminuir mais o glow do dashboard, deixa as cores do gráfico (o degradê) num
+  tom mais claro de cada cor […] as bordas dos cards da tela Início podem
+  estar mais claras.")*

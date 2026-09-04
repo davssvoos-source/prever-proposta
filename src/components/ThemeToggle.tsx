@@ -37,7 +37,7 @@ export function ThemeToggle() {
     fontWeight: 700,
     fontSize: 11.5,
     letterSpacing: "0.02em",
-    color: isLight ? "#0a0b0e" : "#ffffff",
+    color: isLight ? "#1e2229" : "#ffffff",
     opacity: ativo ? 1 : 0.45,
     transition: "opacity .3s",
     userSelect: "none",

@@ -26,6 +26,27 @@
 // uma promessa em vez do fato. Para o que está em aberto a regra de sempre
 // continua: hora agendada quando há (é quando a dupla sai), prazo quando não.
 //
+// ── R152 (U97): ARRASTAR PARA OUTRO DIA MUDA O PRAZO ───────────────────────
+// Davi, 2026-09-04: "o usuário deve poder arrastar a atividade (caso não
+// esteja concluída), e ao arrastar para outro dia, altera a data do prazo
+// automaticamente." Só quem está NO CALENDÁRIO PELO PRAZO se arrasta — a
+// atividade em aberto sem hora marcada. O que entrou pela hora agendada
+// (campo) não: a agenda é da programação (R101/U78), e mover o prazo não o
+// moveria de dia — o arrasto pareceria não ter funcionado. Concluído e
+// cancelado não se arrastam (é fato, não promessa). Visita não é chamado.
+// A escrita é otimista: o card muda de coluna na hora e volta se o banco
+// recusar. A hora do prazo é preservada (moverPrazoParaODia, chamado-status).
+// HTML5 drag-and-drop não dispara no toque — no celular o prazo muda pelo
+// painel, como sempre.
+//
+// ── R153 (U97): O CARD DA SEMANA TEM QUATRO COISAS ──────────────────────────
+// Davi, 2026-09-04: "No calendário semanal, deve aparecer no card:
+// Responsável e Apoio (ícones dos usuários), Título da atividade, Cliente e
+// Tipo de demanda — mais nenhuma informação deve aparecer no card! Remova o
+// código da atividade, remova a palavra prazo ou a palavra concluído."
+// Hora/prazo/conclusão, status e número foram para a dica do navegador
+// (dicaDoEvento) e continuam no painel. A cor da borda esquerda fica: é cor.
+//
 // ── R133 (U94): DUAS VISÕES, MENSAL E SEMANAL ─────────────────────────────
 // Davi, 03/09/2026: "A página calendário deve ter duas opções de layout:
 // Mensal e Semanal. Assim o Vinicius principalmente utilizará a página de
@@ -35,26 +56,27 @@
 // As duas visões leem a MESMA lista de eventos e passam pelos MESMOS filtros —
 // o que muda é a janela consultada (o mês, ou a semana ISO de segunda a
 // domingo, a mesma semana da programação) e o que cabe na célula: na mensal, o
-// título e o rosto (varrer o mês pede pouco por dia); na semanal, hora, tipo,
-// cliente, status, número e quem toca — porque gerir o dia pede o detalhe. A
+// título e o rosto (varrer o mês pede pouco por dia); na semanal, quem toca,
+// título, cliente e tipo (R153 — até a U97 também hora, status e número). A
 // escolha da visão é PREFERÊNCIA, não pergunta do momento: fica no
 // localStorage, como a lista/quadro da Início, e quem escolheu a semanal
 // reabre na semanal.
 
 import { createFileRoute, useNavigate, useLocation, redirect } from "@tanstack/react-router";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
-import { useState, useMemo, useEffect, type CSSProperties } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect, type CSSProperties, type DragEvent } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, LayoutGrid } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserCargo } from "@/features/gerencial/data";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
-import { chamadoStatusInfo, TIPO_LABEL } from "@/lib/chamado-status";
+import { chamadoStatusInfo, TIPO_LABEL, moverPrazoParaODia } from "@/lib/chamado-status";
 import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
 import { PRISMA } from "@/lib/paleta";
 import { inicioSemana, fimSemana, referenciaSemanal } from "@/lib/periodos";
-import { usePessoas } from "@/features/chamados/data";
+import { usePessoas, atualizarChamado } from "@/features/chamados/data";
 import {
   useClientes, SERVICO_ORDEM, SERVICO_LABEL, type ServicoCliente,
 } from "@/features/clientes/data";
@@ -110,6 +132,8 @@ interface Evento {
   porPrazo: boolean;
   /** true = entrou pela data de CONCLUSÃO (R145) — já foi, não vence nem sai */
   porConclusao: boolean;
+  /** true = pode ser arrastado para outro dia (R152): chamado em aberto que está aqui pelo PRAZO */
+  arrastavel: boolean;
   /** true = já passou da data e não chegou a um estado final — pinta vermelho */
   atrasado: boolean;
   cor: string;
@@ -136,12 +160,23 @@ const ddmm = (d: Date) =>
 const horaCurta = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+/**
+ * A dica do navegador do card da semana (R153): tudo o que SAIU do card —
+ * tipo, status (atrasado em primeiro), número, e a hora/"vence"/"concluído" —
+ * continua a um hover de distância. Quem se arrasta diz que se arrasta.
+ */
+const dicaDoEvento = (e: Evento) => {
+  const quando = e.porConclusao ? "concluído neste dia" : e.porPrazo ? "vence neste dia" : horaCurta(e.quando);
+  const partes = [e.tipoLabel, e.atrasado ? "Atrasado" : e.statusLabel, e.numero, quando].filter(Boolean);
+  return partes.join(" · ") + (e.arrastavel ? " — arraste para outro dia para mudar o prazo" : "");
+};
+
 function CalendarioPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isLight } = useTheme();
 
-  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textPrimary = isLight ? "#1e2229" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
   const gold = isLight ? "#A06108" : "#F8C811";
   // SÓLIDA, não um véu translúcido de branco (era `rgba(255,255,255,0.03)`,
@@ -169,6 +204,10 @@ function CalendarioPage() {
   /** a SEGUNDA-FEIRA da semana mostrada — `inicioSemana` de periodos.ts, a mesma da programação */
   const [semana, setSemana] = useState(() => inicioSemana(new Date()));
   const [painelId, setPainelId] = useState<string | null>(null);
+  const qc = useQueryClient();
+  /** R152: o chamado sendo arrastado e o dia sob o cursor */
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [alvoDia, setAlvoDia] = useState<string | null>(null);
 
   const { data: cargo } = useUserCargo();
   // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26)
@@ -305,6 +344,80 @@ function CalendarioPage() {
     },
   });
 
+  /**
+   * R152 — soltar num dia muda o PRAZO. Otimista: a lista em cache troca o
+   * prazo_limite na hora (o card pula de coluna), e se o banco recusar
+   * (RLS: não é responsável nem gestor) a lista volta e o erro aparece.
+   * `onSettled` invalida tudo o que lê prazo — calendário, Início, listas.
+   */
+  const moverPrazo = useMutation({
+    mutationFn: async ({ id, dia }: { id: string; dia: Date }) => {
+      const c = (chamados as any[]).find((x) => x.id === id);
+      if (!c) throw new Error("A atividade não está mais nesta janela.");
+      const novo = moverPrazoParaODia(c.prazo_limite, dia);
+      if (novo === c.prazo_limite) return null;
+      await atualizarChamado(id, { prazo_limite: novo });
+      return novo;
+    },
+    onMutate: async ({ id, dia }) => {
+      const chave = ["calendario", "chamados", chaveJanela];
+      await qc.cancelQueries({ queryKey: chave });
+      const antes = qc.getQueryData<any[]>(chave);
+      qc.setQueryData<any[]>(chave, (velho) =>
+        (velho ?? []).map((c) => (c.id === id ? { ...c, prazo_limite: moverPrazoParaODia(c.prazo_limite, dia) } : c)));
+      return { antes, chave };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx) qc.setQueryData(ctx.chave, ctx.antes);
+      toast.error((err as Error)?.message ?? "Não foi possível mover o prazo.");
+    },
+    onSuccess: (novo) => {
+      if (novo) toast.success(`Prazo movido para ${new Date(novo).toLocaleDateString("pt-BR")}.`);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["calendario"] });
+      qc.invalidateQueries({ queryKey: ["chamados"] });
+      qc.invalidateQueries({ queryKey: ["home-chamados"] });
+      qc.invalidateQueries({ queryKey: ["home"] });
+    },
+  });
+
+  /** os ganchos de SOLTAR de uma célula de dia — os mesmos na semana e no mês */
+  function ganchosDeSoltar(d: Date) {
+    const chave = chaveDia(d);
+    return {
+      onDragOver: (ev: DragEvent) => {
+        if (!arrastando) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
+        if (alvoDia !== chave) setAlvoDia(chave);
+      },
+      onDrop: (ev: DragEvent) => {
+        ev.preventDefault();
+        const id = ev.dataTransfer.getData("text/plain") || arrastando;
+        setArrastando(null);
+        setAlvoDia(null);
+        if (id) moverPrazo.mutate({ id, dia: d });
+      },
+    };
+  }
+  /** os ganchos de ARRASTAR de um card — vazio para quem não se arrasta */
+  function ganchosDeArrastar(e: Evento) {
+    if (!e.arrastavel) return {};
+    return {
+      draggable: true,
+      onDragStart: (ev: DragEvent) => {
+        ev.dataTransfer.setData("text/plain", e.id);
+        ev.dataTransfer.effectAllowed = "move";
+        setArrastando(e.id);
+      },
+      onDragEnd: () => { setArrastando(null); setAlvoDia(null); },
+    };
+  }
+  /** o realce da célula que vai receber o card */
+  const realceDeAlvo = (d: Date): CSSProperties =>
+    (arrastando && alvoDia === chaveDia(d)) ? { boxShadow: `inset 0 0 0 2px ${gold}` } : {};
+
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
 
   // TODOS os eventos da janela, SEM filtro nenhum — é desta lista que os
@@ -343,6 +456,7 @@ function CalendarioPage() {
         quando: v.data_hora_agendada,
         porPrazo: false,
         porConclusao: false,
+        arrastavel: false,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         setores: v.cliente_id ? (servicosPorCliente[v.cliente_id] ?? []) : [],
@@ -375,6 +489,8 @@ function CalendarioPage() {
         quando,
         porPrazo: !porConclusao && !c.data_hora_agendada,
         porConclusao,
+        // R152: em aberto e aqui pelo prazo — hora agendada é da programação
+        arrastavel: !final && !porConclusao && !c.data_hora_agendada,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         // etiqueta explícita + serviço do cliente principal + serviço de cada
@@ -661,10 +777,12 @@ function CalendarioPage() {
               return (
                 <div
                   key={chaveDia(d)}
+                  {...ganchosDeSoltar(d)}
                   style={{
                     background: fimDeSemana ? foraDoMes : superficie,
                     padding: "8px 7px 12px", minHeight: 180,
                     display: "flex", flexDirection: "column", gap: 6,
+                    ...realceDeAlvo(d),
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, paddingBottom: 4, borderBottom: `1px solid ${linha}` }}>
@@ -694,34 +812,32 @@ function CalendarioPage() {
                       nada marcado
                     </span>
                   ) : itens.map((e) => (
+                    /* R153 — o card da semana tem QUATRO coisas: quem toca
+                       (responsável e apoios), o título, o cliente e o tipo de
+                       demanda. Hora/prazo/conclusão, status e número ficaram
+                       na dica do navegador (dicaDoEvento) e no painel, a um
+                       clique. A cor da borda esquerda continua sendo o status
+                       (atrasado = vermelho): é cor, não texto. */
                     <button
                       key={`${e.kind}-${e.id}`}
                       onClick={() => abrir(e)}
                       className="elevavel"
-                      title={`${e.tipoLabel} · ${e.statusLabel}${e.numero ? ` · ${e.numero}` : ""}`}
+                      title={dicaDoEvento(e)}
+                      {...ganchosDeArrastar(e)}
                       style={{
-                        textAlign: "left", cursor: "pointer", width: "100%",
+                        textAlign: "left", cursor: e.arrastavel ? "grab" : "pointer", width: "100%",
                         border: "none", borderLeft: `3px solid ${e.cor}`,
                         borderRadius: 8, padding: "7px 8px",
                         background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
-                        display: "flex", flexDirection: "column", gap: 4, minWidth: 0, color: textPrimary,
+                        display: "flex", flexDirection: "column", gap: 5, minWidth: 0, color: textPrimary,
+                        opacity: arrastando === e.id ? 0.45 : 1,
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{
-                          fontFamily: FONT, fontWeight: 700, fontSize: 11,
-                          color: e.atrasado ? vermelho : textPrimary, fontVariantNumeric: "tabular-nums", flexShrink: 0,
-                        }}>
-                          {e.porConclusao ? "concluído" : e.porPrazo ? "prazo" : horaCurta(e.quando)}
-                        </span>
-                        <span style={{
-                          fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.06em",
-                          textTransform: "uppercase", color: textSecondary,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}>
-                          {e.tipoLabel}
-                        </span>
-                      </div>
+                      {e.pessoas.length > 0 && (
+                        <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+                          <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={4} tamanho={20} />
+                        </div>
+                      )}
                       <span style={{
                         fontFamily: FONT, fontWeight: 600, fontSize: 11.5, lineHeight: 1.3,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
@@ -736,26 +852,13 @@ function CalendarioPage() {
                           {e.cliente}
                         </span>
                       )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <span style={{
-                          padding: "1px 6px", borderRadius: 999, flexShrink: 0,
-                          background: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.08)",
-                          color: e.cor, fontFamily: FONT, fontWeight: 700, fontSize: 8.5,
-                          letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap",
-                        }}>
-                          {e.atrasado ? "Atrasado" : e.statusLabel}
-                        </span>
-                        {e.numero && (
-                          <span style={{ fontFamily: FONT, fontSize: 9.5, color: textSecondary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {e.numero}
-                          </span>
-                        )}
-                        <span style={{ marginLeft: "auto", flexShrink: 0 }}>
-                          {e.pessoas.length > 0 && (
-                            <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={3} tamanho={18} />
-                          )}
-                        </span>
-                      </div>
+                      <span style={{
+                        fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.06em",
+                        textTransform: "uppercase", color: textSecondary,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {e.tipoLabel}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -809,11 +912,13 @@ function CalendarioPage() {
                 return (
                   <div
                     key={d.toISOString()}
+                    {...ganchosDeSoltar(d)}
                     style={{
                       background: doMes ? superficie : foraDoMes,
                       padding: "5px 5px 7px",
                       display: "flex", flexDirection: "column", gap: 3,
                       opacity: doMes ? 1 : 0.45,
+                      ...realceDeAlvo(d),
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
@@ -843,6 +948,7 @@ function CalendarioPage() {
                           <button
                             key={`${e.kind}-${e.id}`}
                             onClick={() => abrir(e)}
+                            {...ganchosDeArrastar(e)}
                             // a hora e o "vence" saíram da célula (pedido do Davi):
                             // varrendo o mês, o que se procura é O QUE é, não a que
                             // horas. O detalhe fica no título do navegador e no
@@ -853,7 +959,8 @@ function CalendarioPage() {
                                 ? " · vence neste dia"
                                 : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
                             style={{
-                              textAlign: "left", cursor: "pointer", width: "100%",
+                              textAlign: "left", cursor: e.arrastavel ? "grab" : "pointer", width: "100%",
+                              opacity: arrastando === e.id ? 0.45 : 1,
                               border: "none", borderLeft: `2.5px solid ${e.cor}`,
                               borderRadius: 5, padding: "4px 6px",
                               background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",

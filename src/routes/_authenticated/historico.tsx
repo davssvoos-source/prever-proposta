@@ -44,7 +44,7 @@ function VisitasPage() {
   const { isLight } = useTheme();
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
-  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textPrimary = isLight ? "#1e2229" : "#fff";
   const textSub = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
   const textMuted = isLight ? "#6b7280" : "rgba(255,255,255,0.4)";
   const gold = isLight ? "#A06108" : "#F8C811";

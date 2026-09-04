@@ -43,7 +43,7 @@ export function MatrizDePermissoes() {
     setTocado(false);
   }, [doBanco, isLoading]);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const linhaBorda = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)";
@@ -146,7 +146,7 @@ export function MatrizDePermissoes() {
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 0", borderBottom: linhaBorda,
               position: "sticky", top: 0, zIndex: 2,
-              background: isLight ? "#f4f5f7" : "#08090e",
+              background: isLight ? "#e9ebef" : "#08090e",
             }}>
               <span style={{
                 width: 210, flexShrink: 0,

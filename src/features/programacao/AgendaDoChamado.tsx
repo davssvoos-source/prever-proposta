@@ -90,7 +90,7 @@ export function AgendaDoChamado({ chamado }: Props) {
   const [erroDaVisita, setErroDaVisita] = useState<{ frase: string; code: string | null } | null>(null);
   const naoAfirmadas = visitasNaoAfirmadas(chamado, blocosDoChamado);
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 

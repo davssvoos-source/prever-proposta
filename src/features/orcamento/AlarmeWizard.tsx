@@ -106,14 +106,14 @@ export function AlarmeWizard({
   // ── Estilos (padrão do app) ────────────────────────────────────────────────
   const PAGE: React.CSSProperties = {
     padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16,
-    color: isLight ? "#0a0b0e" : "#fff",
+    color: isLight ? "#1e2229" : "#fff",
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
   const BACK_BTN: React.CSSProperties = {
     background: isLight ? "#ffffff" : "#191921",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center",
-    justifyContent: "center", cursor: "pointer", color: isLight ? "#0a0b0e" : "#fff",
+    justifyContent: "center", cursor: "pointer", color: isLight ? "#1e2229" : "#fff",
   };
   const QUESTION: React.CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14,
@@ -130,7 +130,7 @@ export function AlarmeWizard({
     width: 40, height: 40, borderRadius: "50%",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.28)",
     background: isLight ? "#ffffff" : "#16161d",
-    color: isLight ? "#0a0b0e" : "#fff",
+    color: isLight ? "#1e2229" : "#fff",
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
   };
 
@@ -147,7 +147,7 @@ export function AlarmeWizard({
                 width: 26, height: 26, borderRadius: "50%",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 background: i <= atual ? "#F59E0B" : isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)",
-                color: i <= atual ? "#0A0A0A" : isLight ? "#8a909e" : "rgba(200,200,200,0.4)",
+                color: i <= atual ? "#0A0A0A" : isLight ? "#7d8391" : "rgba(200,200,200,0.4)",
                 fontSize: 12, fontWeight: 700, fontFamily: "var(--fonte)",
               }}
             >
@@ -157,7 +157,7 @@ export function AlarmeWizard({
               style={{
                 fontFamily: "var(--fonte)", fontSize: 12,
                 fontWeight: i === atual ? 700 : 400,
-                color: i === atual ? (isLight ? "#0a0b0e" : "#fff") : isLight ? "#8a909e" : "rgba(200,200,200,0.5)",
+                color: i === atual ? (isLight ? "#1e2229" : "#fff") : isLight ? "#7d8391" : "rgba(200,200,200,0.5)",
               }}
             >
               {p}
@@ -266,7 +266,7 @@ export function AlarmeWizard({
                   minHeight: 56, borderRadius: 14, padding: "10px 8px",
                   border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: selected ? GOLD_GRAD : isLight ? "#f5f6f8" : DARK_CARD,
-                  color: selected ? "#0A0A0A" : isLight ? "#0a0b0e" : "#fff",
+                  color: selected ? "#0A0A0A" : isLight ? "#1e2229" : "#fff",
                   fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
                   lineHeight: 1.25, cursor: "pointer",
                   boxShadow: selected ? "0 4px 14px rgba(248,200,17,0.35)" : undefined,

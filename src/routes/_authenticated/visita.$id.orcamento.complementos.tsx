@@ -128,7 +128,7 @@ function ComplementosPage() {
     background: selected
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    color: selected ? "#08090E" : isLight ? "#0a0b0e" : "#fff",
+    color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
     boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
     fontFamily: "var(--fonte)",
     fontWeight: 600,
@@ -171,7 +171,7 @@ function ComplementosPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: isLight ? "#0a0b0e" : "#fff",
+            color: isLight ? "#1e2229" : "#fff",
           }}
         >
           <ArrowLeft size={18} />
@@ -182,7 +182,7 @@ function ComplementosPage() {
               fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
-              color: isLight ? "#0a0b0e" : "#fff",
+              color: isLight ? "#1e2229" : "#fff",
               letterSpacing: "0.02em",
             }}
           >

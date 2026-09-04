@@ -261,7 +261,7 @@ function PreEnvioPage() {
                 boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
               }}
             >
-              <ArrowLeft size={18} color={isLight ? "#0a0b0e" : "#FFFFFF"} />
+              <ArrowLeft size={18} color={isLight ? "#1e2229" : "#FFFFFF"} />
             </button>
             {/* Nome do local na borda inferior */}
             <div
@@ -319,13 +319,13 @@ function PreEnvioPage() {
                 boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
               }}
             >
-              <ArrowLeft size={24} color={isLight ? "#0a0b0e" : "#FFFFFF"} />
+              <ArrowLeft size={24} color={isLight ? "#1e2229" : "#FFFFFF"} />
             </button>
             <div style={{ minWidth: 0 }}>
               <p style={{ color: isLight ? "#4a5060" : "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
               <p
                 style={{
-                  color: isLight ? "#0a0b0e" : "#FFFFFF",
+                  color: isLight ? "#1e2229" : "#FFFFFF",
                   fontSize: 17,
                   fontWeight: 600,
                   margin: 0,
@@ -353,7 +353,7 @@ function PreEnvioPage() {
         }}
       >
         <SectionCard icon={<MapPin size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="LOCAL" isLight={isLight}>
-          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
+          <div style={{ color: isLight ? "#1e2229" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {endereco}
           </div>
           <div
@@ -418,7 +418,7 @@ function PreEnvioPage() {
           titulo="DATA E HORÁRIO DA VISITA"
           isLight={isLight}
         >
-          <div style={{ color: isLight ? "#0a0b0e" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
+          <div style={{ color: isLight ? "#1e2229" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {dataFmt}
           </div>
         </SectionCard>

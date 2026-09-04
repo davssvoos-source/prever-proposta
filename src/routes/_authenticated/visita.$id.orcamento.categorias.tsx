@@ -33,7 +33,7 @@ function CategoriasPage() {
 
   const { isLight } = useTheme();
   const iconColor = isLight ? "#A06108" : "#F8C811";
-  const textPrimary = isLight ? "#0a0b0e" : "#fff";
+  const textPrimary = isLight ? "#1e2229" : "#fff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
   const CATEGORIAS_T = [
     { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={iconColor} />, desc: "Portas, cancelas e leitores de pedestre" },

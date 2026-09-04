@@ -585,6 +585,26 @@ export function dataParaPrazo(data: string | null | undefined): string | null {
   return new Date(a, (m ?? 1) - 1, d ?? 1, 23, 59, 59).toISOString();
 }
 
+/**
+ * O prazo movido para OUTRO DIA (R152 — arrastar a atividade no calendário).
+ * Davi, 2026-09-04: "ao arrastar para outro dia, altera a data do prazo
+ * automaticamente". Muda só a DATA: a hora do prazo atual é preservada (quem
+ * tinha 23:59:59, o padrão do input, continua com 23:59:59; quem tinha uma
+ * hora específica não a perde por ter sido arrastado). Sem prazo anterior,
+ * nasce como o input nasceria — o fim do dia.
+ *
+ * Devolve o MESMO ISO se o dia já é aquele — quem chama pode pular a escrita.
+ */
+export function moverPrazoParaODia(prazoAtual: string | null | undefined, dia: Date): string {
+  const base = prazoAtual ? new Date(prazoAtual) : null;
+  if (!base || Number.isNaN(base.getTime())) {
+    return dataParaPrazo(`${dia.getFullYear()}-${dia.getMonth() + 1}-${dia.getDate()}`) as string;
+  }
+  const novo = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(),
+    base.getHours(), base.getMinutes(), base.getSeconds(), base.getMilliseconds());
+  return novo.getTime() === base.getTime() ? base.toISOString() : novo.toISOString();
+}
+
 // ── Classificação sugerida ──────────────────────────────────────────────────
 
 /**

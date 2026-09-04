@@ -101,7 +101,7 @@ export function NotificationPanel() {
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          color: isLight ? "#0a0b0e" : "rgba(255,255,255,0.85)",
+          color: isLight ? "#1e2229" : "rgba(255,255,255,0.85)",
         }}
       >
         <Bell size={18} />
@@ -173,7 +173,7 @@ export function NotificationPanel() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 600,
                 fontSize: 13,
-                color: isLight ? "#0a0b0e" : "#fff",
+                color: isLight ? "#1e2229" : "#fff",
               }}
             >
               Notificações
@@ -203,7 +203,7 @@ export function NotificationPanel() {
                 style={{
                   padding: "36px 16px",
                   textAlign: "center",
-                  color: isLight ? "#8a909e" : "rgba(255,255,255,0.35)",
+                  color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 12,
@@ -341,7 +341,7 @@ function NotifItem({
                 fontWeight: n.lida ? 400 : 600,
                 fontSize: 13,
                 color: isLight
-                  ? (n.lida ? "#4a5060" : "#0a0b0e")
+                  ? (n.lida ? "#4a5060" : "#1e2229")
                   : (n.lida ? "rgba(255,255,255,0.65)" : "#fff"),
                 lineHeight: 1.4,
               }}

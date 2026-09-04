@@ -76,7 +76,7 @@ export function FaixaSemHorario({
 }: PropsFaixa) {
   if (todos.length === 0) return null;
 
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const azul = isLight ? PRISMA.azul.light : PRISMA.azul.dark;
   const total = comHorario + todos.length;
@@ -251,7 +251,7 @@ function CartaoDaFila({ c, isLight, mostrarData, acao, onAcao, onAbrir }: {
   c: ChamadoDaFila; isLight: boolean; mostrarData: boolean;
   acao: string; onAcao: () => void; onAbrir: () => void;
 }) {
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const atrasado = situacaoPrazo(c.prazo_limite ?? null, c.status) === "estourado";
   // SÓ A DATA, nunca a hora: 12:00 sentinela e 12:00 de verdade são

@@ -105,7 +105,7 @@ interface Props {
 
 export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Props) {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
+  const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   const ambar = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
@@ -113,7 +113,12 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const faixa = faixaPrazo(a);
   const corChave = corEstrategicaDe(a, faixa);
   const p = corChave ? PRISMA[PRISMA_DA_COR[corChave]] : null;
-  const corBase = p ? (isLight ? p.light : p.dark) : null;
+  // v10 (R154): a BORDA usa o tom saturado nos DOIS temas — o tom rebaixado
+  // (`p.light`) existe para TEXTO passar de 4.5:1 sobre branco, e numa borda
+  // de 1,5px ele virava marrom/vinho pesado (Davi: "as bordas dos cards da
+  // tela Início podem estar mais claras"). degradeDeBorda() decide os pesos
+  // das pontas por tema.
+  const corBase = p ? p.dark : null;
 
   // v5 (R136, glow revisto por pedido do Davi em 2026-09-04): o fundo é
   // sempre a superfície neutra de `card()` — escura no tema escuro, clara no
@@ -129,7 +134,7 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
   const cardBase = card(isLight);
   const CARD: CSSProperties = corBase && p
     ? {
-        backgroundImage: `linear-gradient(${cardBase.background}, ${cardBase.background}), ${degradeDeBorda(corBase)}`,
+        backgroundImage: `linear-gradient(${cardBase.background}, ${cardBase.background}), ${degradeDeBorda(corBase, isLight)}`,
         backgroundOrigin: "border-box",
         backgroundClip: "padding-box, border-box",
         border: "1.5px solid transparent",
