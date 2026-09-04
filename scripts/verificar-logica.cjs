@@ -11557,7 +11557,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         u83Mesmo.includes([...CS83.TIPOS, 'pedido_compra', 'proposta_comercial'].sort().join(','))],
        [true, true]);
     eq('U96: a conferência 4 também compara a LISTA INTEIRA do catálogo (COLLATE "C", a mesma ordem do sort() de JS) — e ela é o union do TS',
-       [/string_agg\(v, ',' ORDER BY v COLLATE "C"\)/.test(u83), u83.includes([...CS83.TIPOS].sort().join(','))],
+       // `m.grupo[1]`, não `v`: regexp_matches devolve text[], e agregar a coluna
+       // inteira é 42883 — a primeira rodada da U96 no editor do Supabase caiu
+       // exatamente nesta conferência, sem aplicar nada (transação única).
+       [/string_agg\(m\.grupo\[1\], ',' ORDER BY m\.grupo\[1\] COLLATE "C"\)/.test(u83), u83.includes([...CS83.TIPOS].sort().join(','))],
        [true, true]);
     eq('U83: e ela confere `convalidated` — uma constraint NOT VALID passa por todas as outras conferências sem proteger uma linha',
        /convalidated/.test(u83Mesmo), true);

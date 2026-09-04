@@ -187,10 +187,13 @@ UNION ALL
 -- a LISTA INTEIRA extraída do catálogo, não um LIKE: presença do valor novo não
 -- vê a remoção de um antigo (regra 2 da U83)
 SELECT 4, 'o CHECK vivo de tipo é EXATAMENTE a lista da U96 (sem pedido_compra nem proposta_comercial)',
-       -- COLLATE "C": a mesma ordem do sort() de JS — o verificador compara os dois lados
-       (SELECT string_agg(v, ',' ORDER BY v COLLATE "C")
+       -- COLLATE "C": a mesma ordem do sort() de JS — o verificador compara os dois lados.
+       -- `regexp_matches` devolve text[] (um array por casamento): o valor é o
+       -- primeiro grupo, `m.grupo[1]` — agregar `m` inteiro é 42883 (a primeira
+       -- rodada desta migration caiu exatamente aqui, sem aplicar nada).
+       (SELECT string_agg(m.grupo[1], ',' ORDER BY m.grupo[1] COLLATE "C")
           FROM pg_constraint c,
-               regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g') AS m(v)
+               regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g') AS m(grupo)
          WHERE c.conrelid = 'public.chamados'::regclass AND c.conname = 'chamados_tipo_check'),
        'corretiva,implantacao,melhoria,operacional,preventiva,prospeccao,vistoria'
 UNION ALL

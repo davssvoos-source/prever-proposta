@@ -9598,6 +9598,16 @@ direita). O plantão (R117) continua entrando por aqui, como modo à parte.
 - Vinte e oito asserções descreviam o que mudou de propósito (compra, sprint,
   equipe como campo, "Prospecção", "Proposta enviada", o `<select>` "+ setor")
   e passaram a descrever o novo — mudou o alvo, não a regra.
+- **A primeira rodada da migration no editor do Supabase caiu** (o Davi rodou e
+  mandou o print): `42883: function string_agg(text[], unknown) does not
+  exist`, na conferência 4. `regexp_matches` devolve `text[]` por casamento, e
+  eu agregava a coluna inteira em vez do primeiro grupo (`m.grupo[1]`, como a
+  U83 já fazia — copiar o padrão dela teria evitado). Como a falha foi na
+  última instrução e o editor roda o script numa transação só, **nada foi
+  aplicado**; corrigido NO LUGAR (regra das migrations: a que abortou sem
+  aplicar não ganha uma segunda), e o verificador passou a pinar a forma
+  certa. O que este erro ensina: a conferência final também é SQL que precisa
+  compilar — e o verificador lê o texto dela, não a executa.
 
 ### Números
 
