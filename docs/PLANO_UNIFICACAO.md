@@ -9443,3 +9443,175 @@ novas, a última cobrando o DESIGN_SYSTEM exportável). `npx vite build` →
 completa. `npx tsc --noEmit` → **57**, sem mudança
 (R136 é CSS e uma função pura, nenhum tipo novo em jogo). Última regra:
 **R136**. Sem migration — R136 não toca o banco.
+
+## U96 — A estrutura das atividades: seis tipos, duas perguntas, equipe das pessoas, impacto, grupos, fachada (R137–R150)
+
+O Davi mandou um documento inteiro — "Documento IMPORTANTE sobre a estrutura
+das atividades" — e encerrou com "Estruture e protagonize tudo […] Caso não
+restem dúvidas, pode fazer o push, eu confio no seu trabalho". O texto está
+transcrito na íntegra em `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md`, e é para lá
+que vão as decisões (D1–D9) e as perguntas (Q18–Q22). Aqui fica o raciocínio
+da implementação.
+
+**O que o documento muda de fundamento.** Até hoje a estrutura de uma atividade
+saía da `natureza` (campo · interno · comercial) — quem decidia campos era o
+modo de execução. O Davi virou o eixo: quem decide é **o tipo de demanda e o
+responsável**, e a natureza vira consequência (responsável da Técnica → campo;
+Proposta Comercial → o fluxo da visita; o resto → interno). Não reescrevi a
+coluna `natureza` nem o que a lê — ela continua sendo a resposta a "como se
+executa", que ainda é útil para RLS, ciclo de status e telas. O que mudou é
+quem a PREENCHE: o pop-up, a partir das duas perguntas.
+
+**Seis tipos, um endereço.** A lista dos seis (`TIPOS_DE_DEMANDA`) mora em
+`chamado-status.ts`, e só lá — a regra da U83. Ela quase nasceu dentro do
+diálogo: o censo do verificador pegou a cópia na primeira rodada (duas listas
+literais com tipos de campo em `NovaAtividadeDialog.tsx`) e o corte foi uma
+importação. É exatamente o que aquele censo existe para fazer.
+
+**Equipe deixou de ser campo (R139) — e a coluna ficou.** A etiqueta sai das
+PESSOAS (responsável e apoios, pelo cadastro), em `equipesDePessoas`, e é
+derivada na leitura pelo modelo com um mapa pessoa → equipe no contexto. Mas
+`chamados.equipe` é NOT NULL e é lida pela Operacional Técnica e por policies
+— então ela continua sendo ESCRITA, com a equipe do responsável, em toda
+criação e em toda troca de responsável. Ninguém a escolhe; ela acompanha. A
+alternativa (derrubar a coluna) mexeria em RLS de carona numa entrega que já
+era grande. O filtro "Equipe" da Início passou a casar com `a.equipes`, em
+qualquer natureza — antes só o interno tinha equipe e o filtro escondia campo
+e comercial por definição. `chamado_equipes` deixou de ser lida e escrita; a
+"equipe do assunto" que a IA classificava (R82) saiu do prompt e do schema.
+
+**O pedido de compra saiu por inteiro (R140), sem destruir dado.** O tipo saiu
+do union, do rótulo, da cor, do CHECK e de toda tela; `compra.ts` foi apagado;
+a tradução da ficha em coluna do quadro (onze asserções) morreu. Os chamados
+que eram pedido de compra viram `operacional` na migration — é o que a R48 já
+mandava abrir no lugar dele desde agosto —, com os gatilhos de usuário
+desligados durante o remap (a lição de sempre: dado histórico com gatilho
+ligado rende sinos). A tabela `chamado_compra` fica como arquivo, a RPC perde
+o EXECUTE de `authenticated`, o job de "pedido parado" é desagendado. Apagar
+a tabela é a Q21. O DESFAZER é possível justamente porque quem tinha ficha ERA
+pedido de compra — a ficha é o rastro que faz o remap ser reversível.
+
+**Sprint saiu como campo, ficou como cálculo (R141).** O seletor saiu das três
+telas e do patch; `Atividade.sprint` passou a ser `sprintDoPrazo(prazo)` no
+interno — a meta do mês (`metricas.ts`) continua funcionando e fica mais
+verdadeira, porque a etiqueta envelhecida do Notion deixou de contar. A coluna
+`chamados.sprint` está morta (P56); o gatilho ainda a preenche com um valor que
+ninguém lê, e derrubá-la é leva de limpeza de schema.
+
+**Impacto operacional (R142) é coluna nova, e o interno já não tinha
+prioridade.** O modelo zerava a prioridade no interno desde a U7 — o card
+nunca a mostrou. Então a troca foi limpa: `impacto_operacional` nasce para o
+interno, com a mesma rampa de cores da prioridade (é a mesma pergunta com
+outro vocabulário) e `prioridadeRank` vira uma régua só para quem ordena. Só
+corretiva e operacional o têm. A preventiva ficou SEM por decisão minha (D1):
+a lista de campos dela cita impacto, a frase de fechamento do Davi diz que ela
+não tem "por isso não tem o campo" — a frase tem a razão junto, e a lista da
+preventiva repete a da operacional item a item, com "comentários" duas vezes.
+Está na Q19.
+
+**Grupos de clientes (R143) sobre o mecanismo que já existia.** A R85 já tinha a
+etiqueta de setor em `chamado_locais` e a R54 já dizia que grupo é marcação de
+serviço. O que faltava: os grupos na MESMA lista do cliente (o "+ setor" à
+parte morreu), o checklist automático na descrição (`grupos.ts`, puro:
+alfabético, idempotente, não duplica linha já marcada) e a CONTAGEM por
+cliente — a ficha lia só `cliente_id`, então uma atividade de "Clientes de
+Portaria Remota" não aparecia em nenhum cliente. `useChamadosDoCliente` passou
+a fazer duas consultas (PostgREST não faz subquery): os ids de `chamado_locais`
+onde o cliente é local extra ou onde o setor casa com `servicos_prestados`
+dele, e depois `cliente_id.eq OR id.in`. A linha diz "pelo grupo de clientes
+ou como local extra" para a pessoa não estranhar.
+
+**A ordem de deploy virou código (regra 5).** O push publica na hora; a
+migration o Davi roda depois. Pedir `impacto_operacional` antes de a coluna
+existir é 42703 e a Início inteira fica em branco. Então toda leitura de
+`chamados` passa por `comFallbackDaU96`: tenta com as colunas novas, repete
+sem elas em 42703. O INSERT do pop-up faz o mesmo; o UPDATE dos dois campos
+novos explica "a migration U96 precisa ser rodada" em vez do inglês do driver.
+Depois da migration o segundo caminho nunca mais roda. É o desenho da U81
+(`*` em `chamado_apoios`), com lista explícita porque a Início não pode
+carregar a descrição de setecentos chamados para ler um impacto.
+
+**O calendário (R145) ganhou uma terceira perna.** Concluído entra pela data
+de conclusão; em aberto entra pela hora agendada quando há, senão pelo prazo
+(D6 — o Davi disse "prazo", e a hora agendada é o compromisso da dupla; para o
+interno, que não tem hora, o efeito é literalmente o pedido). A consulta tem
+três `and(...)` no `or`, e `quando` prefere a conclusão. A célula diz
+"concluído".
+
+**A proposta (R147) e a implantação (R148).** O rótulo do tipo voltou a
+"Proposta Comercial" (a R48 o chamava "Prospecção"; o valor `prospeccao` não
+mudou). As quatro etapas ganharam o vocabulário do Davi em `etapas.ts`. O
+título do card é "Proposta Comercial" — e "Visita Técnica" para o técnico
+responsável pela visita (D5): um registro, dois papéis, decidido por quem olha;
+a alternativa seria um segundo registro por proposta, mais cards para a mesma
+coisa. Ao escolher um cliente como Local, a foto da fachada do cliente vem
+junto COMO ARQUIVO (`baixarFachadaComoArquivo`) e segue pelo mesmo upload da
+foto tirada na hora — sem segundo formato. A implantação ganhou `proposta_id`
+(FK para a visita com proposta enviada) no pop-up e na página; a leitura do
+PDF pela IA é lembrete registrado.
+
+**A ficha do cliente (R146).** Os seis campos de síndico e zelador existiam
+desde a Etapa 1 — faltava chamar o telefone de WhatsApp e fazê-lo abrir o
+WhatsApp. `foto_fachada_url` era coluna órfã: passou a guardar o CAMINHO no
+bucket privado `clientes-fachadas` (URL assinada com cache de uma semana;
+valores antigos com `http` continuam valendo). A ficha virou duas colunas na
+mesma `.detalhe-grid` da página da atividade; o card da lista recebe a foto
+como camada absoluta pela direita, com máscara para a esquerda e classe
+`.pronta` no `onLoad` — sem ela não há transição, há salto. O histórico da
+ficha deixou de cortar em 8 em silêncio: teto declarado, "ver todas".
+
+**O pop-up (R138).** Pequeno enquanto pergunta, largo quando responde. Três
+corpos: proposta → botão para o fluxo da visita; técnico → o
+`FormularioChamadoTecnico` da R126, que ganhou `tipoInicial`/`tecnicoInicial`
+para não perguntar de novo o que acabou de ser respondido; o resto → a
+estrutura do tipo, na mesma `.detalhe-grid` (texto à esquerda, propriedades à
+direita). O plantão (R117) continua entrando por aqui, como modo à parte.
+
+### O que eu recusei
+
+- **Não reabri `data_hora_agendada` para o interno.** O Davi lista "Data
+  Agendada (opcional)" em toda atividade; a coluna é espelho da agenda de
+  campo (R101) e a U78 gastou uma migration inteira para fechar as duas
+  verdades. Ficou a Q18 (uma coluna própria, se ele quiser) e a P57.
+- **Não apaguei `chamado_compra` nem `chamado_equipes`.** Histórico. Q21/P55.
+- **Não construí o mini-calendário do técnico na proposta.** Ele lê a agenda
+  por dupla e a escala da semana, e a pergunta "a visita comercial vira bloco
+  na programação do Vinicius?" muda o desenho (Q22). É a H.1 do plano.
+- **Não inventei uma quinta cor de impacto nem um impacto para a preventiva.**
+- **Não toquei na estrutura do técnico de campo.** O Davi vai ditá-la; o
+  lembrete está guardado.
+
+### O que a verificação pegou
+
+- O censo da U83 pegou a lista dos seis tipos escrita dentro do diálogo (e uma
+  segunda, de quatro tipos de campo). Virou `TIPOS_DE_DEMANDA` no arquivo
+  autorizado e `tiposDaNatureza("campo")`.
+- O censo de `NovoChamadoInput` pegou dois parâmetros de uma função que eu
+  tinha posto logo depois da interface (`equipeDaPessoa`), lidos como chaves
+  da interface. A função mudou de lugar; o censo continua estreito, como deve.
+- O censo de gatilhos AFTER UPDATE de `chamados` enxergou o DROP do gatilho
+  da ficha de compra na migration nova e cobrou a lista — seis, não sete.
+- O censo banco × código do CHECK de tipo passou a apontar para a U96 e cobrou
+  dela o que cobrava da U83: pré-voo que aborta, conferência da lista inteira
+  com `COLLATE "C"`, `convalidated`, veredito em SELECT. A migration ganhou os
+  quatro; as asserções sobre o DESENHO da U83 passaram a ler a U83 por nome.
+- Vinte e oito asserções descreviam o que mudou de propósito (compra, sprint,
+  equipe como campo, "Prospecção", "Proposta enviada", o `<select>` "+ setor")
+  e passaram a descrever o novo — mudou o alvo, não a regra.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2800 passaram, 0 falharam** (50 novas
+nesta entrega — a lógica pura de grupos, impacto e equipes das pessoas; o
+fallback da ordem de deploy; as três pernas do calendário; as telas; a
+migration; os documentos — mais 28 repontadas). `npx vite build` → completa.
+`npx tsc --noEmit` → **57**, sem mudança: os quatro arquivos com erro são os do
+baseline (visita.$id, DetalheCampo, calendario, cobranca.functions), nenhum dos
+vinte e cinco tocados. Última regra: **R150**. **Migration a rodar: U96**
+(`20260914090000_u96_estrutura_das_atividades.sql`) — sem ela, impacto e
+proposta não gravam (a tela avisa), a fachada não sobe (o bucket não existe),
+pedido_compra continua no CHECK e a ficha antiga continua com os gatilhos; as
+leituras têm fallback e nenhuma tela cai. Um arquivo apagado: `compra.ts`.
+Nada verificado no navegador autenticado (o login pede senha, que eu não
+digito); o que se vê nesta entrega está preso por asserção estrutural, tipo e
+build — e o Davi vai ver ao abrir.

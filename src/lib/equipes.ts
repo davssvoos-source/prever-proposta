@@ -51,6 +51,33 @@ export const EQUIPE_CORES: Record<Equipe, { dark: string; light: string; bg: str
   outras:        { dark: "#9AA6B2", light: "#5a6172", bg: "rgba(154,166,178,0.12)", border: "rgba(154,166,178,0.30)" },
 };
 
+/**
+ * AS EQUIPES DE UMA ATIVIDADE SÃO AS DAS PESSOAS NELA (R139, U96).
+ *
+ * Davi, 2026-09-03: "remova o campo de inserção da equipe, pois vamos associar
+ * a equipe diretamente ao(s) usuário(s) envolvido(s) na atividade. E aí
+ * conforme for adicionando o responsável e o(s) apoio(s), adicione a etiqueta
+ * da(s) equipe(s) envolvida(s)."
+ *
+ * Responsável primeiro, apoios depois, sem repetir e sem vazio. Quem não tem
+ * equipe no cadastro não contribui — e a atividade sem nenhuma pessoa com
+ * equipe fica SEM etiqueta, não com "Outras": "Outras" era o balde de quando a
+ * equipe se escolhia à mão (R81); agora a ausência é informação ("ninguém com
+ * equipe cadastrada está nesta atividade"), e um balde a esconderia.
+ */
+export function equipesDePessoas(
+  ids: readonly (string | null | undefined)[],
+  equipeDe: (id: string) => string | null | undefined,
+): Equipe[] {
+  const fora: Equipe[] = [];
+  for (const id of ids) {
+    if (!id) continue;
+    const e = equipeDe(id);
+    if (e && (EQUIPES as string[]).includes(e) && !fora.includes(e as Equipe)) fora.push(e as Equipe);
+  }
+  return fora;
+}
+
 export function equipeLabel(e: string | null | undefined): string {
   if (!e) return "Sem equipe";
   return EQUIPE_LABEL[e as Equipe] ?? e;

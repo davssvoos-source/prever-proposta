@@ -10,8 +10,7 @@
 // conta no app. A decisão semântica é dela; a decisão de identidade é daqui.
 
 import { normalizarTexto } from "@/lib/normalizar";
-import type { Equipe } from "@/lib/equipes";
-import { EQUIPES } from "@/lib/equipes";
+import { equipesDePessoas, type Equipe } from "@/lib/equipes";
 import type { ServicoCliente } from "@/features/clientes/data";
 import { SERVICO_ORDEM } from "@/features/clientes/data";
 
@@ -113,54 +112,27 @@ export function resolverPessoas(
 
 // ── Equipes ─────────────────────────────────────────────────────────────────
 
-function ehEquipe(v: string | null | undefined): v is Equipe {
-  return !!v && (EQUIPES as string[]).includes(v);
-}
-
 /**
- * As equipes de uma atividade — mais de uma, por decisão do Davi (R83):
+ * As equipes de uma atividade — as das PESSOAS que estão nela (R139, U96).
  *
- *   "Vamos considerar que mais de uma equipe pode fazer parte da mesma
- *    atividade. Em uma atividade de 'Proposta Comercial' por exemplo, o técnico
- *    é responsável pela visita técnica, enquanto a equipe comercial é
- *    responsável pela proposta em si."
+ * Até a U96 somavam-se duas fontes: o ASSUNTO que a IA classificava (R82) e
+ * quem participa (R83). Davi, 2026-09-03: "vamos associar a equipe diretamente
+ * ao(s) usuário(s) envolvido(s) na atividade". Sobrou uma fonte só — e é a
+ * mesma regra que `atividades/modelo.ts` aplica ao ler: a equipe de quem
+ * entra na atividade entra junto, e sai quando a pessoa sai. Isto NÃO está
+ * escrito como `if (nome === "Nicholas")` de propósito — vale para o próximo
+ * contratado sem tocar em código, e a manutenção acontece no cadastro.
  *
- * Duas fontes se somam:
- *
- * 1. **O assunto**, que a IA classifica (R82: material visual, comunicação e
- *    proposta comercial são da equipe comercial).
- * 2. **Quem participa.** Davi: "Sempre que for o Nicholas ou o Erik
- *    participando, você deve considerar a equipe de T.I." Isto NÃO está
- *    escrito como `if (nome === "Nicholas")` de propósito — a regra real por
- *    trás da frase é que a equipe de quem entra na atividade entra junto.
- *    Assim ela vale para o próximo contratado sem tocar em código, e a
- *    manutenção acontece onde deve: no cadastro do usuário. A contrapartida é
- *    que o cadastro precisa estar certo — se o Nicholas não estiver como T.I.
- *    em /gerencial/usuarios, a regra não dispara.
- *
- * A PRIMEIRA da lista é a principal (vai para `chamados.equipe`); o resto vai
- * para `chamado_equipes`. A ordem preserva a intenção: o assunto manda, porque
- * é do que a atividade trata; as equipes das pessoas entram depois.
+ * A PRIMEIRA da lista é a do responsável (vai para `chamados.equipe`, a coluna
+ * que ainda existe para quem a lê). Sem nenhuma pessoa com equipe, a lista sai
+ * VAZIA — "Outras" era o balde de quando a equipe se escolhia à mão (R81).
  */
 export function equipesDaAtividade(args: {
-  doAssunto?: string | null;
   participantes?: string[] | null;
   pessoas?: PessoaTriagem[] | null;
 }): Equipe[] {
-  const fora: Equipe[] = [];
-  const põe = (e: string | null | undefined) => {
-    if (ehEquipe(e) && !fora.includes(e)) fora.push(e);
-  };
-
-  põe(args.doAssunto);
-
   const porId = new Map((args.pessoas ?? []).map((p) => [p.id, p]));
-  for (const id of args.participantes ?? []) põe(porId.get(id)?.equipe);
-
-  // Atividade sem nenhuma pista de equipe não fica órfã: "Outras" é o balde
-  // declarado (R81), e é uma resposta melhor do que um campo vazio que some
-  // de todo filtro.
-  return fora.length ? fora : ["outras"];
+  return equipesDePessoas(args.participantes ?? [], (id) => porId.get(id)?.equipe);
 }
 
 // ── Locais ──────────────────────────────────────────────────────────────────

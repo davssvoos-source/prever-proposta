@@ -19,10 +19,10 @@
 // chamado. O banco continua mandando — o trigger chamado_preencher carimba
 // iniciada_em/concluida_em na transição, e a RLS pode recusar (técnico não
 // conclui chamado de campo); a recusa vira toast e o card volta. Quem NÃO
-// arrasta: visita (o status dela é outro vocabulário) e pedido de compra
-// (a coluna dele vem da situação da compra, que anda pela ficha). HTML5 DnD
-// não dispara em toque — no celular o quadro segue só de leitura, e mover é
-// pela página do chamado.
+// arrasta: a visita (o status dela é outro vocabulário). O pedido de compra
+// também não arrastava; ele saiu do sistema na R140/U96. HTML5 DnD não
+// dispara em toque — no celular o quadro segue só de leitura, e mover é pela
+// página do chamado.
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -51,7 +51,7 @@ interface Props {
 }
 
 function podeArrastar(a: Atividade): boolean {
-  return a.fonte === "chamado" && !a.compra && a.coluna !== "sem_status";
+  return a.fonte === "chamado" && a.coluna !== "sem_status";
 }
 
 export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {

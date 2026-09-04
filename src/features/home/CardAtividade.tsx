@@ -251,14 +251,13 @@ export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Pro
           </span>
         )}
 
+        {/* a régua de urgência: prioridade no campo, IMPACTO OPERACIONAL no
+            interno (R142, U96) — nunca as duas no mesmo card */}
         {a.prioridadeLabel && a.prioridadeCor && (
           <span style={chipStyle(a.prioridadeCor, isLight)}>{a.prioridadeLabel}</span>
         )}
-
-        {a.compra && (
-          <span style={chipStyle(PRISMA.pessego, isLight)}>
-            {a.compra.situacaoLabel}
-          </span>
+        {a.impactoLabel && a.impactoCor && (
+          <span style={chipStyle(a.impactoCor, isLight)}>{a.impactoLabel}</span>
         )}
 
         {a.alerta && (

@@ -1,13 +1,7 @@
 // Home — as consultas que alimentam lista e quadro. Ver docs/PRODUTO.md §9.
 //
-// Três cuidados que valem mais que o código:
-//
-// 1. VALOR DE COMPRA NÃO É BUSCADO. `chamado_compra` tem valor_estimado e
-//    valor_final, e a policy dela é pode_acessar_chamado() — que devolve true
-//    quando responsavel_id IS NULL. Ou seja, o valor de um pedido recém-aberto
-//    é legível por qualquer autenticado. Em vez de buscar e esconder no
-//    cliente (um spread de distância do vazamento), a Home simplesmente não
-//    pede as colunas. Defesa por construção, não por disciplina.
+// Dois cuidados que valem mais que o código (o primeiro da lista original —
+// "valor de compra não é buscado" — morreu com o pedido de compra, R140/U96):
 //
 // 2. AS CHAVES CARREGAM O USUÁRIO. As três consultas de chamado da Home antiga
 //    tinham chave estática, então ao trocar de conta o React Query servia o
@@ -23,17 +17,24 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   atividadeDoChamado, atividadeDaVisita,
-  type Atividade, type BrutoChamado, type BrutoVisita, type FichaCompra,
+  type Atividade, type BrutoChamado, type BrutoVisita,
 } from "@/features/atividades/modelo";
-import type { SituacaoCompra } from "@/features/chamados/compra";
+import { comFallbackDaU96, usePessoas } from "@/features/chamados/data";
 import { SERVICO_LABEL, type ServicoCliente } from "@/features/clientes/data";
 import { inicioSemana } from "@/lib/periodos";
 
 /** Encerrados mais velhos que isto não entram na Home. */
 export const DIAS_ENCERRADO = 7;
 
-const CAMPOS_CHAMADO =
-  "id, numero, titulo, status, natureza, tipo, prioridade, equipe, sprint, " +
+/**
+ * As colunas da Início. `sprint` saiu (R141: é cálculo sobre o prazo) e
+ * `impacto_operacional` entrou (R142) — pela porta do fallback da U96, ver
+ * `comFallbackDaU96` em chamados/data.ts: enquanto a migration não roda, a
+ * consulta repete sem a coluna nova em vez de deixar a Início em branco.
+ */
+const camposDaHome = (comU96: boolean) =>
+  "id, numero, titulo, status, natureza, tipo, prioridade, equipe, " +
+  (comU96 ? "impacto_operacional, " : "") +
   "prazo_limite, data_hora_agendada, responsavel_id, aberto_por, " +
   "concluida_em, fechada_em, faturamento_status, created_at, updated_at, " +
   // `!cliente_id` DESAMBIGUA o vínculo (U45/R54): desde que `chamado_clientes`
@@ -85,9 +86,9 @@ export function useChamadosDaHome(s: Sessao) {
     queryFn: async (): Promise<BrutoChamado[]> => {
       // corte grosso no servidor por updated_at; o refino por data de
       // encerramento é no cliente, porque PostgREST não tem coalesce.
-      const { data, error } = await supabase
+      const data = await comFallbackDaU96<any[]>((u96) => supabase
         .from("chamados" as any)
-        .select(CAMPOS_CHAMADO)
+        .select(camposDaHome(u96))
         // A CAPA DA PROPOSTA FICA DE FORA — a visita já a representa.
         //
         // Desde a U29 toda visita tem um chamado com o MESMO id do lado. Os
@@ -99,9 +100,8 @@ export function useChamadosDaHome(s: Sessao) {
         // U29 já carrega o número CH- vindo da capa pelo join.
         .neq("natureza", "comercial")
         .or(`status.not.in.(concluido,cancelado),updated_at.gte.${corte}`)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return ((data as any[]) ?? []) as BrutoChamado[];
+        .order("created_at", { ascending: false }));
+      return (data ?? []) as BrutoChamado[];
     },
   });
 }
@@ -193,27 +193,9 @@ export function useLocaisDeTodos() {
   });
 }
 
-/** Todas as equipes extras (R83, U71) — chamado_id para as equipes além da principal. */
-export function useEquipesDeTodos() {
-  return useQuery({
-    queryKey: ["home-equipes-todos"],
-    staleTime: 60_000,
-    queryFn: async (): Promise<Map<string, string[]>> => {
-      const m = new Map<string, string[]>();
-      const { data, error } = await supabase
-        .from("chamado_equipes" as any)
-        .select("chamado_id, equipe")
-        .limit(4000);
-      if (error) return m;
-      for (const r of ((data as any[]) ?? [])) {
-        const lista = m.get(r.chamado_id as string) ?? [];
-        lista.push(r.equipe as string);
-        m.set(r.chamado_id as string, lista);
-      }
-      return m;
-    },
-  });
-}
+// `useEquipesDeTodos` (R83, U71) MORREU AQUI (R139, U96): a equipe da atividade
+// é a das pessoas nela, e `chamado_equipes` deixou de ser lida — e de ser
+// escrita. A tabela fica no banco como histórico.
 
 /** Chamados onde entrei como apoio — não dá para join, a RLS não devolveria. */
 export function useMeusApoios(s: Sessao) {
@@ -228,29 +210,6 @@ export function useMeusApoios(s: Sessao) {
         .eq("profile_id", s.userId as string);
       if (error) return [];
       return ((data as any[]) ?? []).map((r) => r.chamado_id as string);
-    },
-  });
-}
-
-/**
- * Situação das compras — SEM as colunas de valor, de propósito (ver cabeçalho).
- * Quando um pedido volta sem ficha a causa é acesso, não legado: a U9 garante
- * ficha para 100% dos pedidos por trigger e backfill.
- */
-export function useFichasDeCompra(ids: string[], userId: string | null) {
-  const chave = ids.slice().sort().join(",");
-  return useQuery({
-    queryKey: ["home-compras-situacao", userId, chave],
-    enabled: ids.length > 0,
-    queryFn: async (): Promise<Record<string, SituacaoCompra>> => {
-      const { data, error } = await supabase
-        .from("chamado_compra" as any)
-        .select("chamado_id, situacao")
-        .in("chamado_id", ids);
-      if (error) return {};
-      const m: Record<string, SituacaoCompra> = {};
-      for (const r of ((data as any[]) ?? [])) m[r.chamado_id as string] = r.situacao as SituacaoCompra;
-      return m;
     },
   });
 }
@@ -290,26 +249,23 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
   const apoios = useMeusApoios(s);
   const apoiosDeTodos = useApoiosDeTodos();
   const locaisDeTodos = useLocaisDeTodos();
-  const equipesDeTodos = useEquipesDeTodos();
   const visitas = useVisitasDaHome(s, tecnicoFiltro);
   const historicoBruto = useHistoricoAmplo(s);
-
-  const idsCompra = useMemo(
-    () => (chamados.data ?? []).filter((c) => c.tipo === "pedido_compra").map((c) => c.id),
-    [chamados.data],
+  // R139: a equipe de cada atividade sai do cadastro das PESSOAS nela. Os
+  // perfis já estão em cache (a Início inteira os usa para os avatares).
+  const { data: pessoas = [] } = usePessoas();
+  const equipeDePessoa = useMemo(
+    () => new Map<string, string | null>(pessoas.map((p) => [p.id, p.equipe ?? null])),
+    [pessoas],
   );
-  const fichas = useFichasDeCompra(idsCompra, s.userId);
 
   const atividades = useMemo<Atividade[]>(() => {
     const ctx = {
       userId: s.userId,
       apoios: new Set(apoios.data ?? []),
-      fichas: new Map<string, FichaCompra>(
-        Object.entries(fichas.data ?? {}).map(([k, v]) => [k, { situacao: v }]),
-      ),
       apoiosDoChamado: apoiosDeTodos.data,
       locaisDoChamado: locaisDeTodos.data,
-      equipesDoChamado: equipesDeTodos.data,
+      equipeDePessoa,
     };
     const corte = agora.getTime() - DIAS_ENCERRADO * 864e5;
     const lista: Atividade[] = [];
@@ -335,7 +291,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     return lista;
     // `agora` entra nas dependências de propósito: sem isso o "atrasado"
     // calculado na montagem nunca mais muda enquanto a tela fica aberta
-  }, [chamados.data, visitas.data, apoios.data, apoiosDeTodos.data, fichas.data, s.userId, s.cargo, agora]);
+  }, [chamados.data, visitas.data, apoios.data, apoiosDeTodos.data, locaisDeTodos.data, equipeDePessoa, s.userId, s.cargo, agora]);
 
   /**
    * O histórico, montado com o MESMO contexto — só para os painéis do topo.
@@ -352,10 +308,9 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
     const ctx = {
       userId: s.userId,
       apoios: new Set(apoios.data ?? []),
-      fichas: new Map<string, FichaCompra>(),
       apoiosDoChamado: apoiosDeTodos.data,
       locaisDoChamado: locaisDeTodos.data,
-      equipesDoChamado: equipesDeTodos.data,
+      equipeDePessoa,
     };
     const soMeus = s.cargo === "tecnico";
     const lista: Atividade[] = [];
@@ -365,7 +320,7 @@ export function useAtividades(s: Sessao, tecnicoFiltro: string, agora: Date): At
       lista.push(a);
     }
     return lista;
-  }, [historicoBruto.data, apoios.data, apoiosDeTodos.data, s.userId, s.cargo]);
+  }, [historicoBruto.data, apoios.data, apoiosDeTodos.data, locaisDeTodos.data, equipeDePessoa, s.userId, s.cargo]);
 
   return {
     atividades,
@@ -423,9 +378,9 @@ export function useHistoricoAmplo(s: Sessao) {
       // de fechamento. Encerrado sem nenhuma das duas fica de fora — não dá
       // para colocar numa semana o que não tem data, e a Home já o mostra
       // enquanto for recente.
-      const { data, error } = await supabase
+      const data = await comFallbackDaU96<any[]>((u96) => supabase
         .from("chamados" as any)
-        .select(CAMPOS_CHAMADO)
+        .select(camposDaHome(u96))
         // mesma razão da consulta da Home: a capa da proposta duplicaria a
         // visita, e aqui o efeito é uma barra do gráfico contando dobrado
         .neq("natureza", "comercial")
@@ -433,9 +388,8 @@ export function useHistoricoAmplo(s: Sessao) {
         .or(`concluida_em.gte.${desde},fechada_em.gte.${desde}`)
         // rede de segurança: se algum dia a janela crescer, é melhor faltar
         // barra do que a resposta ser cortada sem avisar
-        .limit(2000);
-      if (error) throw error;
-      return ((data as any[]) ?? []) as BrutoChamado[];
+        .limit(2000));
+      return (data ?? []) as BrutoChamado[];
     },
   });
 }

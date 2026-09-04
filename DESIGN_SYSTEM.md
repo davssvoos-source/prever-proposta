@@ -586,9 +586,34 @@ do card. Não há alfa novo: o blur é o que dilui a cor até ficar "levíssimo"
 O glow é o mesmo nos dois temas (é a cor saturada a 14%, não o tom do tema).
 
 **O que NÃO muda com a cor:** o fundo, o raio, o padding, a tipografia e os
-chips. Os chips de tipo, prioridade, status e compra usam **sempre** a cor
-própria (`chipStyle`, §6.6). O disfarce cinza que eles vestiam sobre o fundo
-colorido (`sobreFaixa`) saiu junto com o fundo colorido.
+chips. Os chips de tipo, prioridade (campo), impacto operacional (interno) e
+status usam **sempre** a cor própria (`chipStyle`, §6.6). O disfarce cinza que
+eles vestiam sobre o fundo colorido (`sobreFaixa`) saiu junto com o fundo
+colorido.
+
+### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
+
+R146. O card da lista de clientes recebe a **foto da fachada** como camada
+absoluta pela DIREITA, atrás do texto, entrando com transição de opacidade
+quando a imagem carrega. Uma máscara some para a esquerda, onde está o texto —
+a foto identifica o prédio de relance, não disputa a leitura.
+
+```css
+.fachada-card {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 58%;
+  height: 100%; object-fit: cover; pointer-events: none;
+  opacity: 0; transition: opacity .45s ease;
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.85) 45%, #000 100%);
+}
+.fachada-card.pronta { opacity: 0.55; }              /* tema escuro */
+[data-theme="light"] .fachada-card.pronta { opacity: 0.45; }
+```
+
+O card precisa de `position: relative` e `overflow: hidden`; o conteúdo fica
+com `position: relative; z-index: 1`. A classe `.pronta` entra no `onLoad` da
+imagem — sem ela a foto não aparece, e é isso que faz a entrada ser uma
+transição e não um salto. A opacidade final é menor no claro, onde a foto
+competiria com o texto escuro sobre branco.
 
 ## 7. Arquitetura de tema
 

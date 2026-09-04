@@ -71,10 +71,10 @@ const TIPO_IA_DESCRICAO: Record<ChamadoTipo, string> = {
   conserta nem instala nada nessa ida; se sair serviço, ele vira outro chamado.
   Se há defeito relatado esperando conserto, é corretiva, não vistoria. Se é
   roteiro de manutenção programada de um sistema que já é nosso, é preventiva.`,
-  // Nunca chegam ao modelo (não estão em TIPOS_IA); as linhas existem porque o
-  // Record é exaustivo, e dizem por que não estão lá.
+  // Nunca chega ao modelo (não está em TIPOS_IA); a linha existe porque o
+  // Record é exaustivo, e diz por que não está lá. ("pedido_compra" tinha uma
+  // linha destas até a R140/U96, quando saiu do vocabulário.)
   prospeccao: "(não oferecido) visita comercial de proposta — quem cuida dela é o fluxo comercial.",
-  pedido_compra: "(não oferecido, R48) aposentado — compra e cotação são operacional.",
 };
 
 const LINHAS_DE_TIPO = TIPOS_IA.map((t) => `- ${t}: ${TIPO_IA_DESCRICAO[t]}`).join("\n");
@@ -96,9 +96,10 @@ export interface ChamadoInterpretado {
   /** R86: descreve O QUE FAZER. O local NÃO entra aqui — vai na etiqueta. */
   titulo: string;
   descricao: string;
+  /** No campo é a prioridade do SLA; no interno vira IMPACTO (R142) ao gravar. */
   prioridade: "baixa" | "normal" | "alta" | "urgente";
-  /** A equipe do ASSUNTO (R82). As equipes das pessoas se somam no triagem.ts. */
-  equipe: "ti" | "patrimonio" | "tecnica" | "comercial" | "sac" | "monitoramento" | "outras";
+  // `equipe` SAIU (R139, U96): a equipe é a das pessoas, derivada em triagem.ts
+  // e no modelo — a IA não classifica mais "equipe do assunto" (R82 revogada).
   /** Quem VAI FAZER — nome como aparece no texto, geralmente só o primeiro. */
   responsavel_citado: string | null;
   /** Quem vai AJUDAR quem faz (R80). */
@@ -113,7 +114,7 @@ const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: [
-    "natureza", "tipo", "titulo", "descricao", "prioridade", "equipe",
+    "natureza", "tipo", "titulo", "descricao", "prioridade",
     "responsavel_citado", "apoios_citados", "locais_citados", "setores_citados",
   ],
   properties: {
@@ -122,10 +123,6 @@ const SCHEMA = {
     titulo: { type: "string" },
     descricao: { type: "string" },
     prioridade: { type: "string", enum: ["baixa", "normal", "alta", "urgente"] },
-    equipe: {
-      type: "string",
-      enum: ["ti", "patrimonio", "tecnica", "comercial", "sac", "monitoramento", "outras"],
-    },
     responsavel_citado: { type: ["string", "null"] },
     apoios_citados: { type: "array", items: { type: "string" } },
     locais_citados: { type: "array", items: { type: "string" } },
@@ -176,24 +173,14 @@ NATUREZA:
 TIPO:
 ${LINHAS_DE_TIPO}
 
-PRIORIDADE (só faz diferença no campo):
+PRIORIDADE (no campo é o SLA; no interno vira o impacto operacional):
 - urgente: risco, cliente sem segurança, palavra "urgente"/"agora"/"parado".
 - alta: incomoda muito ou tem data apertada.
 - normal: o padrão quando nada indica pressa.
 - baixa: explicitamente sem pressa.
 
-EQUIPE — a equipe do ASSUNTO, uma só. Outras equipes podem ser acrescentadas
-depois pelo sistema, a partir de quem participa; não é problema seu.
-- comercial: proposta comercial, orçamento, cliente novo, e TAMBÉM tudo que é
-  criação de material visual e comunicação — arte, folder, vídeo, apresentação,
-  impresso, post, campanha, identidade visual.
-- ti: sistemas, software, rede, acessos, câmeras off-line, integração.
-- patrimonio: compras, estoque, equipamentos, patrimônio.
-- tecnica: trabalho técnico de campo.
-- sac: atendimento ao cliente.
-- monitoramento: central, portaria remota, monitoramento de alarmes.
-- outras: administrativo, RH, financeiro, jurídico, processo interno — e
-  qualquer coisa que não caiba nas de cima. Não force uma equipe nomeada.
+(A EQUIPE não é sua: ela é a das pessoas que entram na atividade, e o sistema
+a deriva sozinho do cadastro de cada uma.)
 
 PESSOAS — o time se trata pelo PRIMEIRO NOME. Devolva o nome como está escrito;
 não invente sobrenome e não corrija grafia.

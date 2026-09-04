@@ -32,6 +32,7 @@ import { MapaClientes } from "@/features/clientes/MapaClientes";
 import { gradienteDoCliente } from "@/features/clientes/cores";
 import {
   useClientes,
+  useFachadaUrl,
   SITUACAO_LABEL,
   SITUACAO_CORES,
   SERVICO_ORDEM,
@@ -402,15 +403,23 @@ function ClientesPage() {
                     display: "flex", gap: 10, alignItems: "center", width: "100%",
                     // o cartão preenche a linha do grid; o miolo se vira
                     minWidth: 0, minHeight: 0, overflow: "hidden",
+                    // R146: a fachada é uma camada absoluta atrás do texto
+                    position: "relative",
                   }}
                 >
+                  {/* R146 (U96): a FOTO DA FACHADA sobrepõe o card pela direita,
+                      entrando com a opacidade (Davi: "sobrepondo-o com transição
+                      suave da opacidade"). A máscara some para a esquerda, onde
+                      está o texto — a foto identifica, não disputa a leitura. */}
+                  {c.foto_fachada_url && <FachadaDoCard referencia={c.foto_fachada_url} nome={c.nome} />}
                   {/* a bolinha do cliente — o MESMO degradê do ponto dele no
                       mapa. R71: sem contorno e sem glow, "somente a bolinha". */}
                   <span aria-hidden style={{
                     width: 10, height: 10, borderRadius: 5, flexShrink: 0,
                     background: gradienteDoCliente(c.id, isLight),
+                    position: "relative", zIndex: 1,
                   }} />
-                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, position: "relative", zIndex: 1 }}>
                     {/* nowrap: a linha das etiquetas não pode quebrar e
                         empurrar a altura — o nome encolhe com reticências e
                         as etiquetas seguem à direita dele */}
@@ -505,6 +514,28 @@ function ClientesPage() {
         <MapaClientes clientes={lista} />
       </div>
     </div>
+  );
+}
+
+/**
+ * A fachada do cliente como camada do card da lista (R146, U96). Resolve a URL
+ * assinada do bucket privado (cache de uma semana no react-query) e só aparece
+ * quando a imagem CARREGOU — a classe `.pronta` liga a transição de opacidade
+ * (styles.css, .fachada-card). Sem foto, o componente nem é montado.
+ */
+function FachadaDoCard({ referencia, nome }: { referencia: string; nome: string }) {
+  const { data: url } = useFachadaUrl(referencia);
+  const [pronta, setPronta] = useState(false);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      aria-hidden
+      title={`Fachada de ${nome}`}
+      className={`fachada-card${pronta ? " pronta" : ""}`}
+      onLoad={() => setPronta(true)}
+    />
   );
 }
 

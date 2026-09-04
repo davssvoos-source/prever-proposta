@@ -1,61 +1,65 @@
-// O pop-up de nova atividade (R91, U72) — Davi, 2026-08-26: "Adicione um
-// botão de '+' ao lado direito do botão de alternar entre kanban e lista na
-// tela de início. Este botão de + deve abrir um pop Up de um campo onde o
-// usuário pode criar uma nova atividade manualmente."
+// O pop-up de nova atividade (R91, U72) — reescrito na U96 pela ESTRUTURA DAS
+// ATIVIDADES (R137/R138, Davi, 2026-09-03):
 //
-// É o par MANUAL do campo de I.A. que fica no painel de cima. Os dois criam
-// pela mesma porta — `abrirChamado()` —, então passam pelos mesmos triggers
-// (número CH-, prazo do SLA, classificação) e pelas mesmas policies. Não
-// existe um segundo caminho de escrita para manter.
+//   "quando o usuário cria uma nova atividade, o campo que surge em pop up no
+//    meio da tela deve começar com duas perguntas iniciais: QUAL O TIPO DE
+//    DEMANDA? […] e também QUEM É O RESPONSÁVEL? Pois é a partir dessas 2
+//    perguntas que nós vamos saber […] qual dos 6 tipos de demanda […] e
+//    consequentemente os campos mudam, e também vamos saber se o responsável é
+//    da equipe TÉCNICA […] para cada opção, o campo se expande para tela
+//    inteira porém com os campos da maneira condizente com o que foi passado."
 //
-// Por que um diálogo e não a rota /chamados/novo-interno que já existe: aquela
-// tela é um formulário longo (compra, fornecedor, link do produto) e tira a
-// pessoa da Início. Aqui o ponto é não sair do quadro — abre, escreve, fecha,
-// e o card aparece na coluna. Quem precisa do formulário completo continua
-// tendo o atalho no fim do diálogo.
+// Então o diálogo tem DOIS momentos. Antes das duas respostas ele é pequeno e
+// só pergunta. Depois ele cresce e mostra o corpo certo:
+//   · tipo "Proposta Comercial" → o fluxo da visita (/gerencial/nova), que já
+//     tem local, tipo de local, síndico/proprietário, técnico e data (R147);
+//   · responsável da equipe TÉCNICA → o formulário de campo (R126), que já
+//     sabe de cliente, sistema, dupla e agenda — a estrutura da área técnica
+//     ainda vai ser ditada pelo Davi, e até lá é este o fluxo;
+//   · os demais → a estrutura da atividade FORA da técnica (R137): título,
+//     cliente (um cliente, um GRUPO ou interno), descrição, impacto
+//     operacional (só corretiva e operacional, R142), prazo, apoio, a proposta
+//     de origem (implantação, R148) e arquivos.
 //
-// Segue a moldura do DialogoDuplas: overlay que fecha no clique de fora,
-// `card()` no miolo, cabeçalho com ícone dourado e botão de fechar.
+// O que NÃO se pergunta mais: equipe (R139 — é a das pessoas), prioridade no
+// interno (R142 — virou impacto) e sprint (R141 — é cálculo sobre o prazo).
+//
+// Continua a MESMA porta de escrita (`abrirChamado`) do campo de IA, e o
+// atendimento de PLANTÃO (R117) continua entrando por aqui, como modo à parte.
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ListPlus, X } from "lucide-react";
+import { FileText, ListPlus, Paperclip, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
-import { abrirChamado, usePessoas } from "@/features/chamados/data";
-import { useClientes } from "@/features/clientes/data";
-import { CampoComBusca } from "@/components/CampoComBusca";
 import {
-  tiposDaNatureza, TIPO_LABEL, TIPO_CORES,
-  PRIORIDADE_LABEL, PRIORIDADE_CORES, dataParaPrazo,
-  type ChamadoPrioridade, type ChamadoTipo, type Natureza,
+  abrirChamado, usePessoas, adicionarApoio, adicionarSetorChamado, anexarFoto,
+  usePropostasEnviadas, equipeDaPessoa,
+} from "@/features/chamados/data";
+import { useClientes } from "@/features/clientes/data";
+import { SERVICO_ORDEM } from "@/features/clientes/data";
+import {
+  checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
+} from "@/features/chamados/grupos";
+import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
+import { AvatarCirculo } from "@/components/PessoaComFoto";
+import {
+  TIPO_LABEL, TIPO_CORES, IMPACTO_ORDEM, IMPACTO_LABEL, IMPACTO_CORES, temImpacto, dataParaPrazo,
+  TIPOS_DE_DEMANDA, tiposDaNatureza,
+  type ChamadoTipo, type ImpactoOperacional,
 } from "@/lib/chamado-status";
-import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import { FormularioChamadoTecnico } from "@/features/chamados/FormularioChamadoTecnico";
 import { PainelDePlantao } from "@/features/plantao/PainelDePlantao";
 
-// ── A TERCEIRA OPÇÃO, E POR QUE ELA NÃO É UMA NATUREZA (R117, U87) ─────────
-// O atendimento de PLANTÃO entra por aqui — este botão já existe no celular de
-// propósito (R91), e quem registra é o plantonista às 2h da manhã. Zero item
-// novo na barra (R7), zero rota nova.
-//
-// MAS ELE NÃO É `natureza = 'plantao'`, e a distinção é a R117: `natureza`
-// responde "de que espécie é este trabalho", e o CHECK vivo é
-// ('campo','interno','comercial') — um quarto valor arrastaria kanban,
-// numeração CH-, SLA, Painel Operacional e fila de conferência. O plantão traz
-// perguntas que `chamados` não faz (a que HORAS se atendeu, remoto ou
-// presencial, quem estava de sobreaviso), então ele é SATÉLITE: tabela própria,
-// porta própria, e este seletor é de MODO, não de natureza.
-type ModoDaNova = Natureza | "plantao";
-
-const MODOS: { v: ModoDaNova; t: string; nota: string }[] = [
-  { v: "campo", t: "De campo", nota: "alguém se desloca" },
-  { v: "interno", t: "Interna", nota: "trabalho de mesa" },
-  { v: "plantao", t: "Plantão", nota: "atendimento fora do expediente — não vira chamado" },
-];
+// A lista dos SEIS tipos de demanda (R137) mora em chamado-status.ts
+// (`TIPOS_DE_DEMANDA`) — o único endereço autorizado para uma lista de tipos
+// (U83). A pergunta é feita antes de a natureza existir: é a resposta, com o
+// responsável, que decide qual corpo abre.
 
 export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoFechar: () => void }) {
   const { isLight } = useTheme();
@@ -63,25 +67,32 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   const qc = useQueryClient();
   const { data: pessoas = [] } = usePessoas();
   const { data: clientes = [] } = useClientes();
+  const { data: propostas = [] } = usePropostasEnviadas();
 
+  // ── as duas perguntas ──────────────────────────────────────────────────
+  const [tipo, setTipo] = useState<ChamadoTipo | null>(null);
+  const [responsavelId, setResponsavelId] = useState<string | null>(null);
+  const [euId, setEuId] = useState<string | null>(null);
+  const [modoPlantao, setModoPlantao] = useState(false);
+
+  // ── o corpo da atividade fora da técnica ───────────────────────────────
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [modo, setModo] = useState<ModoDaNova>("interno");
-  const natureza: Natureza = modo === "plantao" ? "interno" : modo;
-  const [euId, setEuId] = useState<string | null>(null);
-  const [tipo, setTipo] = useState<ChamadoTipo | "">("");
-  const [equipe, setEquipe] = useState<Equipe>("ti");
-  const [prioridade, setPrioridade] = useState<ChamadoPrioridade>("normal");
-  const [responsavelId, setResponsavelId] = useState<string | null>(null);
-  const [clienteId, setClienteId] = useState<string | null>(null);
+  /** id de cliente, `setor:<grupo>` (R143) ou null = interno, na Prever */
+  const [clienteValor, setClienteValor] = useState<string | null>(null);
+  const [impacto, setImpacto] = useState<ImpactoOperacional | null>(null);
   const [prazo, setPrazo] = useState("");
+  const [apoios, setApoios] = useState<string[]>([]);
+  const [propostaId, setPropostaId] = useState<string | null>(null);
+  const [arquivos, setArquivos] = useState<File[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement>(null);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
-  // Abre já com quem está registrando: é quem mais cria atividade para si.
+  // quem está registrando costuma ser o responsável — proposto, não imposto
   useEffect(() => {
     if (!aberto) return;
     supabase.auth.getUser().then(({ data }) => {
@@ -89,44 +100,112 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
       if (!eu) return;
       setEuId(eu.id);
       setResponsavelId((v) => v ?? eu.id);
-      if (eu.equipe && (EQUIPES as string[]).includes(eu.equipe)) setEquipe(eu.equipe as Equipe);
     });
   }, [aberto, pessoas]);
 
-  // Trocar de natureza pode invalidar o tipo escolhido — um tipo que a nova
-  // natureza não oferece ficaria selecionado e invisível, e iria para o banco.
-  useEffect(() => {
-    if (tipo && !(tiposDaNatureza(natureza) as string[]).includes(tipo)) setTipo("");
-  }, [natureza, tipo]);
+  const equipeDoResponsavel = equipeDaPessoa(pessoas, responsavelId);
+  const ehTecnico = equipeDoResponsavel === "tecnica";
+  const ehProposta = tipo === "prospeccao";
+  const pronto = !!tipo && !!responsavelId;
 
-  function limpar() {
-    setTitulo(""); setDescricao(""); setTipo(""); setPrazo("");
-    setPrioridade("normal"); setClienteId(null);
+  const pessoasOrdenadas = useMemo(
+    () => [...(pessoas as any[])].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
+    [pessoas],
+  );
+  const pessoasPorId = useMemo(() => Object.fromEntries((pessoas as any[]).map((p) => [p.id, p])), [pessoas]);
+  const opcoesPessoas: OpcaoBusca[] = useMemo(
+    () => pessoasOrdenadas.map((p) => ({
+      valor: p.id as string,
+      rotulo: (p.nome ?? "Sem nome") as string,
+      secundario: p.equipe ? EQUIPE_LABEL[p.equipe as Equipe] : undefined,
+    })),
+    [pessoasOrdenadas],
+  );
+  // R143: os GRUPOS entram na MESMA lista do cliente, no topo — Davi: "Adicione
+  // as opções mencionadas na lista de clientes que expande no campo de seleção
+  // CLIENTE". O vazio é "Interno — Prever" (manutenção interna, sem cliente).
+  const opcoesClientes: OpcaoBusca[] = useMemo(
+    () => [
+      ...SERVICO_ORDEM.map((s) => ({ valor: valorDoGrupo(s), rotulo: rotuloDoGrupo(s), secundario: "grupo de clientes" })),
+      ...[...clientes]
+        .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
+        .map((c) => ({ valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined })),
+    ],
+    [clientes],
+  );
+  const opcoesPropostas: OpcaoBusca[] = useMemo(
+    () => propostas.map((p) => ({
+      valor: p.id,
+      rotulo: p.cliente_nome ?? p.nome_predio ?? p.titulo ?? "Proposta",
+      secundario: `enviada em ${new Date(p.proposta_enviada_em).toLocaleDateString("pt-BR")}`,
+    })),
+    [propostas],
+  );
+
+  // R143: escolher um GRUPO põe o checklist dos clientes dele na descrição
+  function escolherCliente(v: string | null) {
+    setClienteValor(v);
+    const setor = setorDoValor(v);
+    if (setor) {
+      setDescricao((d) => acrescentarChecklist(d, checklistDoGrupo(clientes, setor), `Clientes de ${rotuloDoGrupo(setor).replace(/^Clientes de /, "")}:`));
+    }
   }
 
+  // a mesma pessoa nunca é responsável e apoio; trocar o responsável tira o
+  // nome dele do apoio se estava lá
+  useEffect(() => {
+    setApoios((a) => a.filter((id) => id !== responsavelId));
+  }, [responsavelId]);
+  // o impacto só existe em corretiva/operacional — trocar o tipo limpa
+  useEffect(() => {
+    if (!temImpacto(tipo)) setImpacto(null);
+    if (tipo !== "implantacao") setPropostaId(null);
+  }, [tipo]);
+
+  function limpar() {
+    setTipo(null); setTitulo(""); setDescricao(""); setClienteValor(null);
+    setImpacto(null); setPrazo(""); setApoios([]); setPropostaId(null); setArquivos([]);
+    setModoPlantao(false);
+  }
+  function fechar() { limpar(); aoFechar(); }
+
   async function criar() {
-    if (!titulo.trim()) { toast.error("Escreva o que precisa ser feito."); return; }
+    if (!tipo || !responsavelId) return;
+    if (!titulo.trim()) { toast.error("Escreva o título da atividade."); return; }
     setSalvando(true);
     try {
+      const setor = setorDoValor(clienteValor);
       const id = await abrirChamado({
-        natureza,
+        natureza: "interno",
+        tipo,
         titulo: titulo.trim(),
         descricao_problema: descricao.trim() || null,
-        // vazio = deixa o banco classificar pelo título (trigger), igual ao
-        // formulário completo
-        tipo: (tipo || null) as ChamadoTipo | null,
-        equipe,
-        prioridade,
         responsavel_id: responsavelId,
-        cliente_id: clienteId,
+        // R139: a coluna do banco recebe a equipe do responsável; a etiqueta
+        // da tela sai das pessoas. Sem equipe no cadastro, o balde de sempre.
+        equipe: equipeDoResponsavel ?? "outras",
+        cliente_id: setor ? null : clienteValor,
         prazo_limite: prazo ? dataParaPrazo(prazo) : null,
+        impacto_operacional: temImpacto(tipo) ? impacto : null,
+        proposta_id: tipo === "implantacao" ? propostaId : null,
       });
+      // o resto é aditivo e cada peça falha sozinha (o chamado JÁ existe)
+      const pendencias: string[] = [];
+      const tentar = async (o: string, f: () => Promise<unknown>) => {
+        try { await f(); } catch { pendencias.push(o); }
+      };
+      if (setor) await tentar("grupo de clientes", () => adicionarSetorChamado(id, setor));
+      for (const p of apoios) await tentar("apoio", () => adicionarApoio(id, p));
+      for (const f of arquivos) await tentar(`arquivo ${f.name}`, () => anexarFoto(id, f, "outra"));
+
       qc.invalidateQueries({ queryKey: ["chamados"] });
       qc.invalidateQueries({ queryKey: ["home-chamados"] });
       qc.invalidateQueries({ queryKey: ["home"] });
-      toast.success("Atividade criada.");
-      limpar();
-      aoFechar();
+      qc.invalidateQueries({ queryKey: ["home-locais-todos"] });
+      qc.invalidateQueries({ queryKey: ["home-apoios-todos"] });
+      if (pendencias.length) toast.warning(`Atividade criada, mas não entrou: ${[...new Set(pendencias)].join(", ")}.`);
+      else toast.success("Atividade criada.");
+      fechar();
       navigate({ to: "/chamados/$id", params: { id } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não consegui criar a atividade.");
@@ -134,19 +213,6 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
       setSalvando(false);
     }
   }
-
-  const opcoesPessoas = useMemo(
-    () => [...(pessoas as any[])]
-      .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
-      .map((p) => ({ valor: p.id as string, rotulo: (p.nome ?? "Sem nome") as string })),
-    [pessoas],
-  );
-  const opcoesClientes = useMemo(
-    () => [...clientes]
-      .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
-      .map((c) => ({ valor: c.id, rotulo: c.nome })),
-    [clientes],
-  );
 
   if (!aberto) return null;
 
@@ -163,12 +229,29 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   };
   const bt = (ativo: boolean, cor?: any): CSSProperties => ({
     ...botaoSelecao(ativo, isLight, cor),
-    padding: "8px 12px", borderRadius: 10, fontSize: 11.5,
+    padding: "9px 13px", borderRadius: 10, fontSize: 12,
   });
+  const chipPessoa: CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "4px 8px 4px 5px", borderRadius: 999,
+    background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
+    fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: textPrimary,
+  };
+  const nomeDe = (id: string) => pessoasPorId[id]?.nome ?? "Alguém";
+
+  const subtitulo = modoPlantao
+    ? "O que aconteceu fora do expediente. Isto não vira chamado."
+    : !pronto
+      ? "Duas perguntas decidem o resto: o tipo de demanda e quem é o responsável."
+      : ehProposta
+        ? "A proposta comercial tem fluxo próprio: local, técnico e data da visita."
+        : ehTecnico
+          ? "Responsável da equipe Técnica — o chamado é de campo, com cliente, sistema e agenda."
+          : `${TIPO_LABEL[tipo!]} · ${equipeDoResponsavel ? EQUIPE_LABEL[equipeDoResponsavel] : "sem equipe no cadastro"}`;
 
   return (
     <div
-      onClick={aoFechar}
+      onClick={fechar}
       role="dialog"
       aria-modal="true"
       aria-label="Nova atividade"
@@ -182,28 +265,27 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          ...card(isLight), padding: 18, width: "100%", maxWidth: 560,
-          maxHeight: "88vh", overflowY: "auto",
+          ...card(isLight), padding: 18, width: "100%",
+          // R138: "o campo se expande para tela inteira" — pequeno enquanto só
+          // pergunta, largo quando o corpo entra
+          maxWidth: pronto || modoPlantao ? "min(1120px, 96vw)" : 620,
+          maxHeight: "92vh", overflowY: "auto",
           display: "flex", flexDirection: "column", gap: 14,
+          transition: "max-width .25s ease",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <ListPlus size={17} color={gold} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15.5, color: textPrimary }}>
-              {modo === "plantao" ? "Atendimento de plantão" : "Nova atividade"}
+              {modoPlantao ? "Atendimento de plantão" : "Nova atividade"}
             </div>
-            {/* O subtítulo segue o MODO: no plantão, "o local vai na etiqueta,
-                não no título" seria conselho sobre um campo que aquele corpo
-                nem tem. */}
             <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary }}>
-              {modo === "plantao"
-                ? "O que aconteceu fora do expediente. Isto não vira chamado."
-                : "O que precisa ser feito. O local vai na etiqueta, não no título."}
+              {subtitulo}
             </div>
           </div>
           <button
-            onClick={aoFechar}
+            onClick={fechar}
             aria-label="Fechar"
             style={{
               width: 32, height: 32, borderRadius: 9, flexShrink: 0, cursor: "pointer",
@@ -216,161 +298,281 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
           </button>
         </div>
 
-        {/* O SELETOR DE MODO VEM PRIMEIRO, e não no meio do formulário: ele
-            troca o CORPO inteiro do diálogo, e um seletor que muda tudo abaixo
-            dele não pode estar embaixo de dois campos que talvez não sirvam. */}
-        <div>
-          <label style={rotulo}>O que é</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {MODOS.map((n) => (
-              <button
-                key={n.v}
-                type="button"
-                style={bt(modo === n.v, PRISMA.azul)}
-                onClick={() => setModo(n.v)}
-                title={n.nota}
-              >
-                {n.t}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {modo === "plantao" ? (
-          <PainelDePlantao euId={euId} opcoesPessoas={opcoesPessoas} aoFechar={aoFechar} />
+        {modoPlantao ? (
+          <PainelDePlantao euId={euId} opcoesPessoas={opcoesPessoas} aoFechar={fechar} />
         ) : (
-        <>
-        <div>
-          <label style={rotulo} htmlFor="nova-titulo">Título</label>
-          <input
-            id="nova-titulo"
-            autoFocus
-            style={entrada}
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !salvando) criar(); }}
-            placeholder="Ex.: Revisar cadastro de moradores do Bloco C"
-          />
-        </div>
-
-        <div>
-          <label style={rotulo} htmlFor="nova-descricao">Descrição</label>
-          <textarea
-            id="nova-descricao"
-            style={{ ...entrada, height: 84, padding: "11px 13px", resize: "vertical" }}
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Contexto, o que já se sabe, links…"
-          />
-        </div>
-
-        <div>
-          <label style={rotulo}>Classificação</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {tiposDaNatureza(natureza).map((t) => (
-              <button
-                key={t}
-                type="button"
-                style={bt(tipo === t, TIPO_CORES[t])}
-                onClick={() => setTipo(tipo === t ? "" : t)}
-              >
-                {TIPO_LABEL[t]}
-              </button>
-            ))}
-          </div>
-          {!tipo && (
-            <div style={{ fontFamily: FONT, fontSize: 11, color: textSecondary, marginTop: 6 }}>
-              Sem escolha, o sistema classifica pelo título.
+          <>
+            {/* ── AS DUAS PERGUNTAS (R138) ─────────────────────────────────── */}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
+              <div>
+                <label style={rotulo}>Qual o tipo de demanda?</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {TIPOS_DE_DEMANDA.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      aria-pressed={tipo === t}
+                      style={bt(tipo === t, TIPO_CORES[t])}
+                      onClick={() => setTipo(t)}
+                    >
+                      {TIPO_LABEL[t]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={rotulo}>Quem é o responsável?</label>
+                <CampoComBusca
+                  id="nova-responsavel"
+                  opcoes={opcoesPessoas}
+                  valor={responsavelId}
+                  aoMudar={setResponsavelId}
+                  placeholder="Quem faz"
+                  iconeEsquerda={(esc) => esc
+                    ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
+                    : null}
+                />
+                {responsavelId && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>Equipe:</span>
+                    {equipeDoResponsavel ? (
+                      <span style={{
+                        padding: "2px 8px", borderRadius: 999,
+                        fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                        color: isLight ? equipeCores(equipeDoResponsavel).light : equipeCores(equipeDoResponsavel).dark,
+                        background: equipeCores(equipeDoResponsavel).bg,
+                      }}>
+                        {EQUIPE_LABEL[equipeDoResponsavel]}
+                      </span>
+                    ) : (
+                      <span style={{ fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+                        sem equipe no cadastro
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        <div>
-          <label style={rotulo}>Equipe</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {EQUIPES.map((e) => (
-              <button key={e} type="button" style={bt(equipe === e, equipeCores(e))} onClick={() => setEquipe(e)}>
-                {EQUIPE_LABEL[e]}
-              </button>
-            ))}
-          </div>
-        </div>
+            {/* ── O CORPO, decidido pelas duas respostas ───────────────────── */}
+            {pronto && ehProposta && (
+              <div style={{
+                display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", borderRadius: 14,
+                background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+              }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, color: textPrimary, lineHeight: 1.5 }}>
+                  A <strong>Proposta Comercial</strong> nasce no fluxo da visita: o local (cliente ou prédio
+                  que ainda não é cliente), o tipo de local, o síndico ou proprietário, os serviços propostos,
+                  o técnico responsável pela visita e a data. O card aparece na Início como "Proposta Comercial".
+                </span>
+                <button
+                  onClick={() => { fechar(); navigate({ to: "/gerencial/nova" }); }}
+                  style={{ ...goldButton(), padding: "11px 20px", borderRadius: 12, fontSize: 12.5, alignSelf: "flex-start" }}
+                >
+                  Abrir o fluxo da proposta
+                </button>
+              </div>
+            )}
 
-        <div>
-          <label style={rotulo}>Prioridade</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                style={bt(prioridade === p, PRIORIDADE_CORES[p])}
-                onClick={() => setPrioridade(p)}
-              >
-                {PRIORIDADE_LABEL[p]}
-              </button>
-            ))}
-          </div>
-        </div>
+            {pronto && !ehProposta && ehTecnico && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {!(tiposDaNatureza("campo") as string[]).includes(tipo!) && (
+                  <span style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, lineHeight: 1.5 }}>
+                    "{TIPO_LABEL[tipo!]}" não é um tipo de chamado de campo — o formulário abre como corretiva; troque ali se for outro.
+                  </span>
+                )}
+                <FormularioChamadoTecnico
+                  tipoInicial={tipo!}
+                  tecnicoInicial={responsavelId}
+                  aoConcluir={(id) => { fechar(); navigate({ to: "/chamados/$id", params: { id } }); }}
+                />
+              </div>
+            )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-          <div>
-            <label style={rotulo}>Responsável</label>
-            <CampoComBusca
-              id="nova-responsavel"
-              opcoes={opcoesPessoas}
-              valor={responsavelId}
-              aoMudar={setResponsavelId}
-              placeholder="Quem faz"
-            />
-          </div>
-          <div>
-            <label style={rotulo}>Local</label>
-            <CampoComBusca
-              id="nova-local"
-              opcoes={opcoesClientes}
-              valor={clienteId}
-              aoMudar={setClienteId}
-              placeholder="Onde acontece"
-            />
-          </div>
-          <div>
-            <label style={rotulo} htmlFor="nova-prazo">Prazo</label>
-            <input
-              id="nova-prazo"
-              type="date"
-              style={entrada}
-              value={prazo}
-              onChange={(e) => setPrazo(e.target.value)}
-            />
-          </div>
-        </div>
+            {pronto && !ehProposta && !ehTecnico && (
+              <>
+                <div className="detalhe-grid">
+                  {/* coluna larga: o texto */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+                    <div>
+                      <label style={rotulo} htmlFor="nova-titulo">Título</label>
+                      <input
+                        id="nova-titulo"
+                        autoFocus
+                        style={entrada}
+                        value={titulo}
+                        onChange={(e) => setTitulo(e.target.value)}
+                        placeholder={tipo === "corretiva" ? "O problema apresentado" : "O que precisa ser feito"}
+                      />
+                      {/* R86: o título descreve o trabalho; o lugar tem campo próprio */}
+                      <span style={{ display: "block", marginTop: 5, fontFamily: FONT, fontSize: 11, color: textSecondary }}>
+                        O local vai na etiqueta, não no título.
+                      </span>
+                    </div>
+                    <div>
+                      <label style={rotulo} htmlFor="nova-descricao">
+                        {tipo === "corretiva" ? "Descrição do problema detectado" : "Descrição"}
+                        {tipo !== "corretiva" && <span style={{ fontWeight: 400 }}> (opcional)</span>}
+                      </label>
+                      <textarea
+                        id="nova-descricao"
+                        style={{ ...entrada, height: 220, padding: "11px 13px", resize: "vertical", lineHeight: 1.5 }}
+                        value={descricao}
+                        onChange={(e) => setDescricao(e.target.value)}
+                        placeholder="Contexto, o que já se sabe, links… Um grupo de clientes traz o checklist para cá."
+                      />
+                    </div>
+                    <div>
+                      <label style={rotulo}>Fotos e arquivos <span style={{ fontWeight: 400 }}>(opcional)</span></label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        {arquivos.map((f, i) => (
+                          <span key={`${f.name}-${i}`} style={{ ...chipPessoa, gap: 5 }}>
+                            <FileText size={12} color={gold} />
+                            <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                            <button
+                              onClick={() => setArquivos((l) => l.filter((_, j) => j !== i))}
+                              aria-label={`Remover ${f.name}`}
+                              style={{ border: "none", background: "transparent", cursor: "pointer", color: textSecondary, padding: 0, display: "flex" }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          ref={arquivoRef}
+                          type="file"
+                          multiple
+                          accept="image/*,application/pdf"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const novos = Array.from(e.target.files ?? []);
+                            if (novos.length) setArquivos((l) => [...l, ...novos].slice(0, 10));
+                            e.target.value = "";
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => arquivoRef.current?.click()}
+                          style={{ ...bt(false), display: "inline-flex", alignItems: "center", gap: 6 }}
+                        >
+                          <Paperclip size={13} /> Anexar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-          <button
-            onClick={() => { aoFechar(); navigate({ to: "/chamados/novo" }); }}
-            style={{
-              background: "transparent", border: "none", cursor: "pointer",
-              fontFamily: FONT, fontSize: 11.5, color: textSecondary, textDecoration: "underline",
-              padding: 0,
-            }}
-          >
-            Abrir o formulário completo
-          </button>
-          <div style={{ flex: 1 }} />
-          <button
-            onClick={criar}
-            disabled={salvando || !titulo.trim()}
-            style={{
-              ...goldButton(),
-              padding: "11px 20px", borderRadius: 12, fontSize: 12.5,
-              opacity: salvando || !titulo.trim() ? 0.55 : 1,
-              cursor: salvando || !titulo.trim() ? "default" : "pointer",
-            }}
-          >
-            {salvando ? "Criando…" : "Criar atividade"}
-          </button>
-        </div>
-        </>
+                  {/* coluna estreita: as propriedades */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+                    <div>
+                      <label style={rotulo}>Cliente</label>
+                      <CampoComBusca
+                        id="nova-cliente"
+                        opcoes={opcoesClientes}
+                        valor={clienteValor}
+                        aoMudar={escolherCliente}
+                        vazio="Interno — Prever"
+                        placeholder="Um cliente, um grupo, ou interno"
+                      />
+                    </div>
+                    {temImpacto(tipo) && (
+                      <div>
+                        <label style={rotulo}>Impacto operacional</label>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {IMPACTO_ORDEM.map((i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              aria-pressed={impacto === i}
+                              style={bt(impacto === i, IMPACTO_CORES[i])}
+                              onClick={() => setImpacto(impacto === i ? null : i)}
+                            >
+                              {IMPACTO_LABEL[i]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label style={rotulo} htmlFor="nova-prazo">Prazo <span style={{ fontWeight: 400 }}>(opcional)</span></label>
+                      <input id="nova-prazo" type="date" style={entrada} value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={rotulo}>Apoio <span style={{ fontWeight: 400 }}>(opcional)</span></label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        {apoios.map((pid) => (
+                          <span key={pid} style={chipPessoa}>
+                            <AvatarCirculo id={pid} nome={nomeDe(pid)} pessoa={pessoasPorId[pid]} tamanho={18} />
+                            {nomeDe(pid)}
+                            <button
+                              onClick={() => setApoios((a) => a.filter((x) => x !== pid))}
+                              aria-label={`Remover ${nomeDe(pid)} do apoio`}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: textSecondary, padding: 2, display: "flex" }}
+                            >
+                              <X size={13} />
+                            </button>
+                          </span>
+                        ))}
+                        <div style={{ minWidth: 160, flex: 1 }}>
+                          <CampoComBusca
+                            id="nova-apoio"
+                            compacto
+                            limpavel={false}
+                            placeholder="+ adicionar apoio"
+                            opcoes={opcoesPessoas.filter((o) => o.valor !== responsavelId && !apoios.includes(o.valor))}
+                            valor={null}
+                            aoMudar={(v) => { if (v) setApoios((a) => [...a, v]); }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {tipo === "implantacao" && (
+                      <div>
+                        <label style={rotulo}>Proposta comercial aprovada</label>
+                        <CampoComBusca
+                          id="nova-proposta"
+                          opcoes={opcoesPropostas}
+                          valor={propostaId}
+                          aoMudar={setPropostaId}
+                          vazio="— nenhuma vinculada —"
+                          placeholder="A proposta que origina esta implantação"
+                        />
+                        <span style={{ display: "block", marginTop: 5, fontFamily: FONT, fontSize: 11, color: textSecondary, lineHeight: 1.4 }}>
+                          Só as propostas já enviadas aparecem. A leitura da proposta para montar as atividades vem depois.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={criar}
+                    disabled={salvando || !titulo.trim()}
+                    style={{
+                      ...goldButton(),
+                      padding: "11px 20px", borderRadius: 12, fontSize: 12.5,
+                      opacity: salvando || !titulo.trim() ? 0.55 : 1,
+                      cursor: salvando || !titulo.trim() ? "default" : "pointer",
+                    }}
+                  >
+                    {salvando ? "Criando…" : "Criar atividade"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* o plantão (R117) continua entrando por aqui — é registro, não chamado */}
+            <button
+              onClick={() => setModoPlantao(true)}
+              style={{
+                alignSelf: "flex-start", background: "transparent", border: "none", cursor: "pointer",
+                fontFamily: FONT, fontSize: 11.5, color: textSecondary, textDecoration: "underline", padding: 0,
+              }}
+            >
+              Registrar um atendimento de plantão
+            </button>
+          </>
         )}
       </div>
     </div>

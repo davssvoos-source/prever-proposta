@@ -102,6 +102,7 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 | Onde | O quê |
 |---|---|
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
+| `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os seis tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
 | `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |
 | `docs/REVISAO_2026-09-03.md` | a revisão tela a tela (veredito por rota, achados transversais, perguntas Q11–Q17) |
 | `docs/PRODUTO.md` | TODAS as regras de produto (R-série) |

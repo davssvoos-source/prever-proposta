@@ -12,53 +12,64 @@
 //
 // Então: a coluna LARGA é o texto — a descrição num editor de blocos (caixa de
 // marcar de verdade, menção com "@") e a conversa embaixo; a coluna ESTREITA
-// são as propriedades, cada uma num SELETOR que abre a lista (não mais uma
-// fileira de cinco a sete botões por propriedade), pintado pela cor da coisa
-// escolhida (a R87 continua valendo — no botão único). Responsável e apoio
-// mostram o rosto. Quem escreveu um comentário pode apagá-lo. No celular as
-// duas colunas empilham (classe .detalhe-grid) — mas o técnico de campo não
-// vive nesta tela: o fluxo dele é o do chamado de campo (DetalheCampo).
+// são as propriedades, cada uma num SELETOR que abre a lista, pintado pela cor
+// da coisa escolhida (R87 no botão único). Responsável e apoio mostram o
+// rosto. Quem escreveu um comentário pode apagá-lo. No celular as duas colunas
+// empilham (classe .detalhe-grid) — mas o técnico de campo não vive nesta
+// tela: o fluxo dele é o do chamado de campo (DetalheCampo).
+//
+// ── U96 (R137–R150): A ESTRUTURA DAS ATIVIDADES ─────────────────────────────
+// O documento do Davi (docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md) ditou o que uma
+// atividade FORA da área técnica tem — e o que não tem mais:
+//   · SAÍRAM: Prioridade (virou impacto, R142), Equipe (é a das pessoas, R139),
+//     Sprint (é cálculo sobre o prazo, R141) e o pedido de compra (R140).
+//   · ENTRARAM: Impacto operacional (só corretiva e operacional); as etiquetas
+//     das equipes ENVOLVIDAS, derivadas de responsável + apoios; o Recebimento
+//     (quem criou, quando — R144), início e conclusão; a "Solução aplicada" da
+//     corretiva (R149, em `servico_executado`); a proposta comercial de origem
+//     na implantação (R148); fotos e arquivos (R150); e o Cliente como cliente,
+//     GRUPO de clientes ou "interno — Prever" (R143).
 
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Building2, CalendarClock, ExternalLink, Plus, Send, Trash2, Wrench, X,
+  ArrowLeft, Building2, CalendarClock, FileText, Layers, Paperclip, Plus, Send, Trash2, Wrench, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card, botaoSelecao } from "@/lib/ui";
+import { card } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { SeletorDeOpcao, type OpcaoDoSeletor } from "@/components/SeletorDeOpcao";
 import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
-import { useIsGerente, useVeFinanceiro } from "@/features/gerencial/data";
+import { useIsGerente } from "@/features/gerencial/data";
 import {
-  useChamado, useChamadoEventos, useChamadoApoios, useChamadoEquipamentos,
-  usePessoas, mapaDePessoas, atualizarChamado, comentarChamado, excluirComentario, excluirChamado,
+  useChamado, useChamadoEventos, useChamadoApoios, useChamadoEquipamentos, useChamadoLocais,
+  useChamadoFotos, usePropostasEnviadas,
+  usePessoas, mapaDePessoas, equipeDaPessoa, atualizarChamado, comentarChamado, excluirComentario, excluirChamado,
   adicionarApoio, removerApoio, adicionarEquipamentoChamado, removerEquipamentoChamado,
+  anexarFoto, excluirFoto,
   type ChamadoPatch,
 } from "@/features/chamados/data";
+import { useClientes, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
-  SPRINT_ORDEM, SPRINT_LABEL, prazoParaData, dataParaPrazo,
+  prazoParaData, dataParaPrazo,
   statusDaNatureza, tiposDaNatureza, TIPO_LABEL, TIPO_CORES,
-  PRIORIDADE_LABEL, PRIORIDADE_CORES,
-  type ChamadoPrioridade, type ChamadoSprint, type ChamadoStatus, type ChamadoTipo,
+  IMPACTO_ORDEM, IMPACTO_LABEL, IMPACTO_CORES, temImpacto,
+  type ChamadoStatus, type ImpactoOperacional,
 } from "@/lib/chamado-status";
-import type { Cores } from "@/features/atividades/modelo";
 import { especieDoApoio } from "@/features/programacao/modelo";
-import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
-import {
-  useCompra, salvarCompra, decidirCompra, proximasSituacoes,
-  SITUACAO_LABEL, SITUACAO_CORES, SITUACOES_DE_DECISAO, moedaBR,
-  type SituacaoCompra,
-} from "@/features/chamados/compra";
+import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { tempoRelativo } from "@/hooks/useNotificacoes";
 
-const PRIORIDADES: ChamadoPrioridade[] = ["baixa", "normal", "alta", "urgente"];
+const EXT_IMAGEM = /\.(jpe?g|png|webp|gif|heic|heif|bmp)$/i;
+
+const dataHora = (iso: string) =>
+  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export function DetalheInterno({ id }: { id: string }) {
   const navigate = useNavigate();
@@ -69,18 +80,18 @@ export function DetalheInterno({ id }: { id: string }) {
   const { data: eventos = [] } = useChamadoEventos(id, "asc");
   const { data: apoios = [] } = useChamadoApoios(id);
   const { data: equipamentos = [] } = useChamadoEquipamentos(id);
+  const { data: locais = [] } = useChamadoLocais(id);
+  const { data: fotos = [] } = useChamadoFotos(id);
   const { data: pessoas = [] } = usePessoas();
-  // R6/Q6: pedido de compra tem ficha própria — só carrega quando é o caso
-  const ehCompra = chamado?.tipo === "pedido_compra";
-  const { data: compra } = useCompra(id, ehCompra);
-  const { data: veFinanceiro = false } = useVeFinanceiro();
+  const { data: clientes = [] } = useClientes();
+  const { data: propostas = [] } = usePropostasEnviadas();
 
   const [comentario, setComentario] = useState("");
   const [novoEquip, setNovoEquip] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
-  const [motivoRecusaCompra, setMotivoRecusaCompra] = useState("");
-  const [pedindoRecusa, setPedindoRecusa] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [enviandoArquivo, setEnviandoArquivo] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
@@ -101,6 +112,15 @@ export function DetalheInterno({ id }: { id: string }) {
     () => pessoasOrdenadas.map((p) => ({ id: p.id, nome: p.nome, avatar_url: p.avatar_url ?? null })),
     [pessoasOrdenadas],
   );
+  const opcoesPropostas: OpcaoBusca[] = useMemo(
+    () => propostas.map((p) => ({
+      valor: p.id,
+      rotulo: p.cliente_nome ?? p.nome_predio ?? p.titulo ?? "Proposta",
+      secundario: `enviada em ${new Date(p.proposta_enviada_em).toLocaleDateString("pt-BR")}`,
+    })),
+    [propostas],
+  );
+  const clientesPorId = useMemo(() => Object.fromEntries(clientes.map((c) => [c.id, c])), [clientes]);
   const nomeDe = (pid: string) => pessoasPorId[pid]?.nome ?? "Alguém";
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
@@ -131,6 +151,9 @@ export function DetalheInterno({ id }: { id: string }) {
     color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
+  const LINHA_INFO: CSSProperties = {
+    fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, lineHeight: 1.5,
+  };
 
   const salvar = useMutation({
     mutationFn: async (patch: ChamadoPatch) => atualizarChamado(id, patch),
@@ -141,27 +164,6 @@ export function DetalheInterno({ id }: { id: string }) {
     },
     onError: (e: any) =>
       toast.error(e?.message ?? "Não foi possível salvar. Confira se você é responsável ou gestor."),
-  });
-
-  const salvarFichaCompra = useMutation({
-    mutationFn: async (patch: Parameters<typeof salvarCompra>[1]) => salvarCompra(id, patch),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["chamado-compra", id] }),
-    onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar o pedido."),
-  });
-
-  const andarCompra = useMutation({
-    mutationFn: async ({ situacao, motivo }: { situacao: SituacaoCompra; motivo?: string }) =>
-      decidirCompra(id, situacao, motivo),
-    onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ["chamado-compra", id] });
-      qc.invalidateQueries({ queryKey: ["chamado", id] });
-      qc.invalidateQueries({ queryKey: ["chamado-eventos", id] });
-      qc.invalidateQueries({ queryKey: ["chamados"] });
-      setPedindoRecusa(false);
-      setMotivoRecusaCompra("");
-      toast.success(`Pedido marcado como "${SITUACAO_LABEL[v.situacao]}".`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Não foi possível mover o pedido."),
   });
 
   const enviarComentario = useMutation({
@@ -189,6 +191,7 @@ export function DetalheInterno({ id }: { id: string }) {
       entrar ? adicionarApoio(id, profileId) : removerApoio(id, profileId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["chamado-apoios", id] });
+      qc.invalidateQueries({ queryKey: ["home-apoios-todos"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Não foi possível alterar o apoio."),
   });
@@ -209,6 +212,27 @@ export function DetalheInterno({ id }: { id: string }) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // R150: fotos e arquivos — a MESMA tabela e o MESMO bucket do chamado de
+  // campo (`chamado_fotos`, `fotos-os`), com etapa "outra". Nada novo no banco.
+  const removerArquivo = useMutation({
+    mutationFn: async ({ fotoId, path }: { fotoId: string; path: string | null }) => excluirFoto(fotoId, path),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chamado-fotos", id] }),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível remover o arquivo."),
+  });
+  async function anexarArquivos(lista: FileList | null) {
+    const arquivos = Array.from(lista ?? []);
+    if (!arquivos.length) return;
+    setEnviandoArquivo(true);
+    try {
+      for (const f of arquivos) await anexarFoto(id, f, "outra");
+      qc.invalidateQueries({ queryKey: ["chamado-fotos", id] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Não consegui anexar o arquivo.");
+    } finally {
+      setEnviandoArquivo(false);
+    }
+  }
 
   const excluir = useMutation({
     mutationFn: async () => excluirChamado(id),
@@ -236,7 +260,6 @@ export function DetalheInterno({ id }: { id: string }) {
   }
 
   const st = chamadoStatusInfo(chamado.status);
-  const eqc = equipeCores(chamado.equipe);
   const sp = situacaoPrazo(chamado.prazo_limite, chamado.status);
   const comentarios = eventos.filter((e) => e.tipo === "comentario");
   const timeline = eventos.filter((e) => e.tipo !== "comentario");
@@ -253,16 +276,18 @@ export function DetalheInterno({ id }: { id: string }) {
     // de carona numa entrega que prometeu não tocar em nenhuma.
     apoios.some((a) => a.profile_id === (userId ?? ""));
 
-  /**
-   * O botão de opção COLORIDO PELA COISA (R87, U72) — hoje só nos passos do
-   * pedido de compra; as propriedades da atividade viraram seletores (R135),
-   * que usam o mesmo `botaoSelecao` por dentro.
-   */
-  const chip = (ativo: boolean, cor?: Cores | null): CSSProperties => ({
-    ...botaoSelecao(ativo, isLight, cor as any),
-    padding: "8px 12px", borderRadius: 10, fontSize: 11.5,
-    cursor: podeEditar ? "pointer" : "default", opacity: podeEditar ? 1 : 0.6,
-  });
+  // R139: as equipes ENVOLVIDAS — a do responsável e a de cada apoio, pelo
+  // cadastro. Não há campo para escolher; troca a pessoa, troca a etiqueta.
+  const equipesEnvolvidas = equipesDePessoas(
+    [chamado.responsavel_id, ...apoios.map((a) => a.profile_id)],
+    (pid) => pessoasPorId[pid]?.equipe,
+  );
+  // R143: o cliente da atividade — um cliente, os grupos (setores) ou interno
+  const setoresDoChamado = locais.map((l) => l.setor).filter((s): s is string => !!s);
+  const clientesExtras = locais
+    .map((l) => l.cliente_id)
+    .filter((cid): cid is string => !!cid && cid !== chamado.cliente_id);
+  const ehInterno = !chamado.cliente && setoresDoChamado.length === 0 && clientesExtras.length === 0;
 
   // ── as opções de cada seletor, com a cor da coisa (R87 no botão único) ───
   const opcoesStatus: OpcaoDoSeletor[] = statusDaNatureza("interno").map((s) => {
@@ -272,19 +297,24 @@ export function DetalheInterno({ id }: { id: string }) {
   const opcoesTipo: OpcaoDoSeletor[] = tiposDaNatureza("interno").map((t) => ({
     valor: t, rotulo: TIPO_LABEL[t], cor: TIPO_CORES[t] ?? null,
   }));
-  const opcoesPrioridade: OpcaoDoSeletor[] = PRIORIDADES.map((p) => ({
-    valor: p, rotulo: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null,
+  const opcoesImpacto: OpcaoDoSeletor[] = IMPACTO_ORDEM.map((i) => ({
+    valor: i, rotulo: IMPACTO_LABEL[i], cor: IMPACTO_CORES[i],
   }));
-  const opcoesEquipe: OpcaoDoSeletor[] = EQUIPES.map((e) => ({
-    valor: e, rotulo: EQUIPE_LABEL[e], cor: equipeCores(e),
-  }));
-  const opcoesSprint: OpcaoDoSeletor[] = SPRINT_ORDEM.map((s) => ({ valor: s, rotulo: SPRINT_LABEL[s] }));
 
   const chipPessoa: CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 6,
     padding: "4px 8px 4px 5px", borderRadius: 999,
     background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
     fontFamily: "var(--fonte)", fontSize: 12.5, fontWeight: 600, color: textPrimary,
+  };
+  const chipEquipe = (e: string): CSSProperties => {
+    const c = equipeCores(e);
+    return {
+      padding: "3px 8px", borderRadius: 999,
+      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
+      letterSpacing: "0.06em", textTransform: "uppercase",
+      color: isLight ? c.light : c.dark, background: c.bg, border: `1px solid ${c.border}`,
+    };
   };
 
   return (
@@ -330,191 +360,129 @@ export function DetalheInterno({ id }: { id: string }) {
         {/* ══ COLUNA LARGA — o texto e a conversa ═══════════════════════════ */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
           {/* Descrição — o editor de blocos (R135): caixa de marcar de verdade,
-              ponto de lista, negrito/itálico, menção com "@". Grava sozinho. */}
+              ponto de lista, negrito/itálico, menção com "@". Grava sozinho.
+              Na corretiva ela é a "descrição do problema detectado" (R149). */}
           <div style={CARD}>
-            <span style={SEC}>Descrição</span>
+            <span style={SEC}>{chamado.tipo === "corretiva" ? "Problema detectado" : "Descrição"}</span>
             <EditorDeDescricao
               valor={chamado.descricao_problema ?? ""}
               chaveReset={id}
               pessoas={pessoasMencao}
               somenteLeitura={!podeEditar}
-              minAltura={320}
-              placeholder="O que precisa ser feito, o que já se sabe… Digite @ para mencionar alguém."
+              minAltura={chamado.tipo === "corretiva" ? 220 : 320}
+              placeholder={chamado.tipo === "corretiva"
+                ? "O que foi detectado, onde, desde quando… Digite @ para mencionar alguém."
+                : "O que precisa ser feito, o que já se sabe… Digite @ para mencionar alguém."}
               aoSalvar={(v) => salvar.mutate({ descricao_problema: v || null })}
             />
           </div>
 
-          {/* Pedido de compra (R6/Q6) — o que é, quanto custa, de quem, quem liberou */}
-          {ehCompra && compra && (() => {
-            const cor = SITUACAO_CORES[compra.situacao];
-            const passos = proximasSituacoes(compra.situacao);
-            const podeAndar = (p: SituacaoCompra) =>
-              !SITUACOES_DE_DECISAO.includes(p) || veFinanceiro;
-            const editavel = podeEditar && !["recebido", "recusado"].includes(compra.situacao);
-            return (
-              <div style={CARD}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span style={{ ...SEC, marginBottom: 0 }}>Pedido de compra</span>
-                  <span style={{
-                    padding: "3px 9px", borderRadius: 999,
-                    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
-                    letterSpacing: "0.08em", textTransform: "uppercase",
-                    color: isLight ? cor.light : cor.dark,
-                    background: cor.bg, border: `1px solid ${cor.border}`,
-                  }}>
-                    {SITUACAO_LABEL[compra.situacao]}
-                  </span>
-                </div>
+          {/* R149: a corretiva tem DOIS textos — o problema e a solução aplicada.
+              A solução mora em `servico_executado`, a mesma coluna que o chamado
+              de campo já usa para "o que foi feito para resolver". */}
+          {chamado.tipo === "corretiva" && (
+            <div style={CARD}>
+              <span style={SEC}>Solução aplicada</span>
+              <EditorDeDescricao
+                valor={chamado.servico_executado ?? ""}
+                chaveReset={`${id}-solucao`}
+                pessoas={pessoasMencao}
+                somenteLeitura={!podeEditar}
+                minAltura={160}
+                placeholder="O que foi feito para resolver. Digite @ para mencionar alguém."
+                aoSalvar={(v) => salvar.mutate({ servico_executado: v || null })}
+              />
+            </div>
+          )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
-                      Quantidade
-                    </span>
-                    <input
-                      type="number" min="0" step="1" defaultValue={compra.quantidade}
-                      disabled={!editavel}
-                      onBlur={(e) => {
-                        const q = Number(e.target.value);
-                        if (q > 0 && q !== compra.quantidade) salvarFichaCompra.mutate({ quantidade: q });
-                      }}
-                      style={INPUT}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
-                      Valor estimado (R$)
-                    </span>
-                    <input
-                      type="number" min="0" step="0.01"
-                      defaultValue={compra.valor_estimado ?? ""}
-                      disabled={!editavel}
-                      onBlur={(e) => {
-                        const v = e.target.value === "" ? null : Number(e.target.value);
-                        if (v !== compra.valor_estimado) salvarFichaCompra.mutate({ valor_estimado: v });
-                      }}
-                      style={INPUT}
-                    />
-                  </label>
-                </div>
-
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
-                    Fornecedor sugerido
-                  </span>
+          {/* R150: fotos de registro e arquivos */}
+          <div style={CARD}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={SEC}>Fotos e arquivos</span>
+              <span style={{ flex: 1 }} />
+              {podeEditar && (
+                <>
                   <input
-                    defaultValue={compra.fornecedor_sugerido ?? ""}
-                    placeholder="De quem costumamos comprar isso?"
-                    disabled={!editavel}
-                    onBlur={(e) => {
-                      const v = e.target.value.trim() || null;
-                      if (v !== compra.fornecedor_sugerido) salvarFichaCompra.mutate({ fornecedor_sugerido: v });
-                    }}
-                    style={INPUT}
+                    ref={arquivoRef}
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf"
+                    style={{ display: "none" }}
+                    onChange={(e) => { void anexarArquivos(e.target.files); e.currentTarget.value = ""; }}
                   />
-                </label>
-
-                <label style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 10.5, color: textSecondary }}>
-                    Link do produto
-                  </span>
-                  <input
-                    defaultValue={compra.link_produto ?? ""}
-                    placeholder="https://…"
-                    disabled={!editavel}
-                    onBlur={(e) => {
-                      const v = e.target.value.trim() || null;
-                      if (v !== compra.link_produto) salvarFichaCompra.mutate({ link_produto: v });
-                    }}
-                    style={INPUT}
-                  />
-                </label>
-
-                {compra.link_produto && (
-                  <a
-                    href={compra.link_produto} target="_blank" rel="noopener noreferrer"
+                  <button
+                    onClick={() => arquivoRef.current?.click()}
+                    disabled={enviandoArquivo}
                     style={{
-                      marginTop: 6, fontFamily: "var(--fonte)", fontSize: 11.5,
-                      color: gold, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
+                      display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 11px",
+                      borderRadius: 10, cursor: enviandoArquivo ? "wait" : "pointer",
+                      background: isLight ? "#ffffff" : "#191921",
+                      border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
+                      color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
                     }}
                   >
-                    Abrir o produto <ExternalLink size={11} />
-                  </a>
-                )}
-
-                {compra.valor_final != null && (
-                  <div style={{ marginTop: 10, fontFamily: "var(--fonte)", fontSize: 12.5, color: textPrimary }}>
-                    Valor pago: <strong>{moedaBR(compra.valor_final)}</strong>
-                  </div>
-                )}
-
-                {compra.situacao === "recusado" && compra.motivo_recusa && (
-                  <div style={{
-                    marginTop: 10, padding: "9px 11px", borderRadius: 10,
-                    background: SITUACAO_CORES.recusado.bg,
-                    border: `1px solid ${SITUACAO_CORES.recusado.border}`,
-                    fontFamily: "var(--fonte)", fontSize: 12,
-                    color: isLight ? SITUACAO_CORES.recusado.light : SITUACAO_CORES.recusado.dark,
-                    lineHeight: 1.5,
-                  }}>
-                    Motivo: {compra.motivo_recusa}
-                  </div>
-                )}
-
-                {/* Próximo passo. Aprovar e recusar só aparecem para quem responde
-                    pelo dinheiro — o banco recusa de qualquer jeito, mas botão que
-                    sempre dá erro é armadilha. */}
-                {passos.length > 0 && podeEditar && !pedindoRecusa && (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                    {passos.filter(podeAndar).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() =>
-                          p === "recusado"
-                            ? setPedindoRecusa(true)
-                            : andarCompra.mutate({ situacao: p })
-                        }
-                        disabled={andarCompra.isPending}
-                        style={chip(false)}
-                      >
-                        {p === "solicitado" ? "Reabrir" : SITUACAO_LABEL[p]}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {pedindoRecusa && (
-                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <textarea
-                      value={motivoRecusaCompra}
-                      onChange={(e) => setMotivoRecusaCompra(e.target.value)}
-                      placeholder="Por que a compra não foi autorizada?"
-                      rows={2}
-                      style={{ ...INPUT, height: "auto", padding: "10px 12px", resize: "vertical" }}
-                    />
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        onClick={() => andarCompra.mutate({
-                          situacao: "recusado",
-                          motivo: motivoRecusaCompra.trim() || undefined,
-                        })}
-                        disabled={andarCompra.isPending}
-                        style={chip(false)}
-                      >
-                        Registrar recusa
-                      </button>
-                      <button
-                        onClick={() => { setPedindoRecusa(false); setMotivoRecusaCompra(""); }}
-                        style={chip(false)}
-                      >
-                        Cancelar
-                      </button>
+                    <Paperclip size={13} color={gold} /> {enviandoArquivo ? "Enviando…" : "Anexar"}
+                  </button>
+                </>
+              )}
+            </div>
+            {fotos.length === 0 ? (
+              <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                Nenhum arquivo ainda.
+              </span>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {fotos.map((f) => {
+                  const ehImagem = EXT_IMAGEM.test(f.storage_path ?? f.url ?? "");
+                  return (
+                    <div key={f.id} style={{ position: "relative" }}>
+                      {ehImagem && f.signedUrl ? (
+                        <a href={f.signedUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={f.signedUrl}
+                            alt={f.legenda ?? "arquivo"}
+                            style={{ width: 92, height: 92, objectFit: "cover", borderRadius: 12, display: "block" }}
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={f.signedUrl ?? undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={f.storage_path ?? undefined}
+                          style={{
+                            width: 92, height: 92, borderRadius: 12, display: "flex", flexDirection: "column",
+                            alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none",
+                            background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+                            border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
+                            color: textSecondary, fontFamily: "var(--fonte)", fontSize: 10,
+                          }}
+                        >
+                          <FileText size={20} color={gold} />
+                          <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {(f.storage_path ?? "").split("/").pop()?.replace(/^\d+-/, "") ?? "arquivo"}
+                          </span>
+                        </a>
+                      )}
+                      {podeEditar && (
+                        <button
+                          onClick={() => { if (confirm("Remover este arquivo?")) removerArquivo.mutate({ fotoId: f.id, path: f.storage_path }); }}
+                          aria-label="Remover arquivo"
+                          style={{
+                            position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
+                            background: "#0a0b0e", color: "#fff", border: "none", cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            );
-          })()}
+            )}
+          </div>
 
           {/* Feed — a conversa sobre a atividade. Quem escreveu apaga (R135). */}
           <div style={CARD}>
@@ -625,14 +593,9 @@ export function DetalheInterno({ id }: { id: string }) {
                 desabilitado={!podeEditar || salvar.isPending}
                 aoMudar={(v) => v && salvar.mutate({ status: v as ChamadoStatus })}
               />
-              {chamado.concluida_em && (
-                <div style={{ fontFamily: "var(--fonte)", fontSize: 11.5, color: textSecondary, marginTop: 6 }}>
-                  Concluído {tempoRelativo(chamado.concluida_em)}.
-                </div>
-              )}
             </div>
             <div>
-              <label style={LABEL}>Classificação</label>
+              <label style={LABEL}>Tipo de demanda</label>
               <SeletorDeOpcao
                 id="det-tipo"
                 valor={chamado.tipo ?? null}
@@ -642,59 +605,65 @@ export function DetalheInterno({ id }: { id: string }) {
                 aoMudar={(v) => salvar.mutate({ tipo: v as any })}
               />
             </div>
-            <div>
-              <label style={LABEL}>Prioridade</label>
-              <SeletorDeOpcao
-                id="det-prioridade"
-                valor={chamado.prioridade ?? null}
-                opcoes={opcoesPrioridade}
-                vazio="— sem prioridade —"
-                desabilitado={!podeEditar}
-                aoMudar={(v) => salvar.mutate({ prioridade: v as any })}
-              />
-            </div>
-            <div>
-              <label style={LABEL}>Equipe</label>
-              <SeletorDeOpcao
-                id="det-equipe"
-                valor={chamado.equipe ?? null}
-                opcoes={opcoesEquipe}
-                desabilitado={!podeEditar}
-                aoMudar={(v) => v && salvar.mutate({ equipe: v as Equipe })}
-              />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {/* R142: impacto operacional só em corretiva e operacional —
+                implantação, preventiva, melhoria e proposta não têm grau de
+                urgência (Davi). Prioridade NÃO aparece aqui: é do campo. */}
+            {temImpacto(chamado.tipo) && (
               <div>
-                <label style={LABEL}>Prazo</label>
-                <input
-                  style={INPUT}
-                  type="date"
-                  disabled={!podeEditar}
-                  value={prazoParaData(chamado.prazo_limite)}
-                  onChange={(e) => salvar.mutate({ prazo_limite: dataParaPrazo(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label style={LABEL}>Sprint</label>
+                <label style={LABEL}>Impacto operacional</label>
                 <SeletorDeOpcao
-                  id="det-sprint"
-                  valor={chamado.sprint ?? null}
-                  opcoes={opcoesSprint}
-                  vazio="— sem sprint —"
+                  id="det-impacto"
+                  valor={chamado.impacto_operacional ?? null}
+                  opcoes={opcoesImpacto}
+                  vazio="— sem impacto definido —"
                   desabilitado={!podeEditar}
-                  aoMudar={(v) => salvar.mutate({ sprint: (v ?? null) as ChamadoSprint | null })}
+                  aoMudar={(v) => salvar.mutate({ impacto_operacional: (v ?? null) as ImpactoOperacional | null })}
                 />
-              </div>
-            </div>
-            {chamado.prazo_limite && chamadoEmAberto(chamado.status) && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                fontFamily: "var(--fonte)", fontSize: 11,
-                color: sp === "estourado" ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
-              }}>
-                <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
               </div>
             )}
+            <div>
+              <label style={LABEL}>Prazo</label>
+              <input
+                style={INPUT}
+                type="date"
+                disabled={!podeEditar}
+                value={prazoParaData(chamado.prazo_limite)}
+                onChange={(e) => salvar.mutate({ prazo_limite: dataParaPrazo(e.target.value) })}
+              />
+              {chamado.prazo_limite && chamadoEmAberto(chamado.status) && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 5, marginTop: 6,
+                  fontFamily: "var(--fonte)", fontSize: 11,
+                  color: sp === "estourado" ? (isLight ? "#B1242E" : "#F17881") : textSecondary,
+                }}>
+                  <CalendarClock size={12} /> {textoPrazo(chamado.prazo_limite)}
+                </div>
+              )}
+            </div>
+            {/* R148: a proposta comercial que origina a implantação */}
+            {chamado.tipo === "implantacao" && (
+              <div>
+                <label style={LABEL}>Proposta comercial aprovada</label>
+                <CampoComBusca
+                  id="det-proposta"
+                  opcoes={opcoesPropostas}
+                  valor={chamado.proposta_id ?? null}
+                  vazio="— nenhuma vinculada —"
+                  aoMudar={(v) => { if (podeEditar) salvar.mutate({ proposta_id: v }); }}
+                />
+              </div>
+            )}
+
+            {/* R144: o RECEBIMENTO — quem criou e quando; início e conclusão
+                são os carimbos do banco (em andamento / concluído). */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingTop: 4, borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)" }}>
+              <span style={LINHA_INFO}>
+                Recebido{chamado.aberto_por ? ` de ${nomeDe(chamado.aberto_por)}` : ""} em {dataHora(chamado.created_at)}
+                {chamado.origem && chamado.origem !== "app" ? ` · via ${chamado.origem}` : ""}
+              </span>
+              {chamado.iniciada_em && <span style={LINHA_INFO}>Iniciado em {dataHora(chamado.iniciada_em)}</span>}
+              {chamado.concluida_em && <span style={LINHA_INFO}>Concluído em {dataHora(chamado.concluida_em)}</span>}
+            </div>
           </div>
 
           <div style={CARD}>
@@ -706,7 +675,12 @@ export function DetalheInterno({ id }: { id: string }) {
                 opcoes={opcoesPessoas}
                 valor={chamado.responsavel_id ?? null}
                 vazio="— sem responsável —"
-                aoMudar={(v) => { if (podeEditar) salvar.mutate({ responsavel_id: v }); }}
+                aoMudar={(v) => {
+                  if (!podeEditar) return;
+                  // R139: a coluna `equipe` acompanha o responsável
+                  const eq = equipeDaPessoa(pessoas, v);
+                  salvar.mutate({ responsavel_id: v, ...(eq ? { equipe: eq } : {}) });
+                }}
                 iconeEsquerda={(esc) => esc
                   ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
                   : null}
@@ -718,10 +692,6 @@ export function DetalheInterno({ id }: { id: string }) {
                 {apoios.map(({ profile_id: pid, origem, congelado_em }) => (
                   <span
                     key={pid}
-                    // U81: borda mais forte quando a linha é REGISTRO (alguém
-                    // carimbou "feito" no bloco daquela semana). Em chamado
-                    // interno ela nunca aparece hoje — fica porque o campo é o
-                    // mesmo componente conceitual do painel.
                     title={especieDoApoio({ origem, congelado_em }) === "registro"
                       ? "Esteve num atendimento que já aconteceu — o sistema não troca mais este nome sozinho."
                       : undefined}
@@ -767,24 +737,63 @@ export function DetalheInterno({ id }: { id: string }) {
                 )}
               </div>
             </div>
-            <span style={{
-              alignSelf: "flex-start", padding: "3px 8px", borderRadius: 999,
-              fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
-              letterSpacing: "0.06em", textTransform: "uppercase",
-              color: isLight ? eqc.light : eqc.dark, background: eqc.bg, border: `1px solid ${eqc.border}`,
-            }}>
-              {EQUIPE_LABEL[chamado.equipe] ?? chamado.equipe}
-            </span>
+            {/* R139: as equipes ENVOLVIDAS — derivadas, não escolhidas */}
+            <div>
+              <label style={LABEL}>Equipes envolvidas</label>
+              {equipesEnvolvidas.length === 0 ? (
+                <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
+                  ninguém com equipe no cadastro
+                </span>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {equipesEnvolvidas.map((e) => (
+                    <span key={e} style={chipEquipe(e)}>{EQUIPE_LABEL[e] ?? e}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {chamado.cliente && (
-            <div style={CARD}>
-              <span style={SEC}>Cliente</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
-                <Building2 size={14} color={gold} /> {chamado.cliente.nome}
+          {/* R143: cliente, GRUPO de clientes ou interno */}
+          <div style={CARD}>
+            <span style={SEC}>Cliente</span>
+            {ehInterno ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
+                <Building2 size={14} color={gold} /> Interno — Prever
               </div>
-            </div>
-          )}
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {chamado.cliente && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                    <Building2 size={14} color={gold} /> {chamado.cliente.nome}
+                  </div>
+                )}
+                {clientesExtras.map((cid) => (
+                  <div key={cid} style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--fonte)", fontSize: 13, color: textPrimary }}>
+                    <Building2 size={14} color={textSecondary} /> {clientesPorId[cid]?.nome ?? "Cliente"}
+                  </div>
+                ))}
+                {setoresDoChamado.map((s) => {
+                  const cor = SERVICO_CORES[s as ServicoCliente];
+                  return (
+                    <span key={s} style={{
+                      display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+                      padding: "4px 9px", borderRadius: 999,
+                      background: cor?.bg, color: isLight ? cor?.light : cor?.dark,
+                      fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
+                    }}>
+                      <Layers size={12} /> Clientes de {SERVICO_LABEL[s as ServicoCliente] ?? s}
+                    </span>
+                  );
+                })}
+                {setoresDoChamado.length > 0 && (
+                  <span style={LINHA_INFO}>
+                    Uma atividade só; conta no histórico de cada cliente do grupo.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Equipamentos envolvidos — a lacuna do Notion */}
           <div style={CARD}>

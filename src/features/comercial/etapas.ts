@@ -29,11 +29,18 @@ export const ETAPA_ORDEM: EtapaComercial[] = [
   "visita_pendente", "aguardando_aprovacao", "falta_proposta", "enviada", "cancelada",
 ];
 
+// R147 (U96) — o vocabulário do Davi para a etiqueta que se atualiza sozinha
+// na Proposta Comercial (2026-09-03): "Visita técnica pendente; Aguardando
+// revisão; Visita técnica aprovada; Proposta comercial enviada". "Aguardando
+// revisão" é a revisão INTERNA do orçamento pelo comercial (R4: aprovação é
+// interna, nunca "negócio fechado"); "Visita técnica aprovada" é o estágio em
+// que falta gerar e enviar a proposta. "Cancelada" continua: é a saída do
+// funil, não um estágio dele, e sem ela a linha sumiria da lista.
 export const ETAPA_LABEL: Record<EtapaComercial, string> = {
-  visita_pendente: "Visita pendente",
-  aguardando_aprovacao: "Aguardando aprovação",
-  falta_proposta: "Falta enviar proposta",
-  enviada: "Proposta enviada",
+  visita_pendente: "Visita técnica pendente",
+  aguardando_aprovacao: "Aguardando revisão",
+  falta_proposta: "Visita técnica aprovada",
+  enviada: "Proposta comercial enviada",
   cancelada: "Cancelada",
 };
 

@@ -54,16 +54,39 @@ export type ChamadoTipo =
   // — e a pior das quatro, porque as outras três (equipe, modalidade, bloco)
   // pelo menos moram em telas diferentes; estas duas dividiriam a MESMA lista
   // de tipos de chamado.
-  | "vistoria"
-  // R48/U41: aposentado da SELEÇÃO (não do vocabulário) — ver o comentário
-  // de `tiposDaNatureza`. Fica no union e em todo o resto do arquivo para os
-  // chamados antigos continuarem legíveis.
-  | "pedido_compra";
+  | "vistoria";
+// "pedido_compra" SAIU DO VOCABULÁRIO (R140, U96). Davi, 2026-09-03: "Note
+// também que eu não mencionei o tipo de demanda 'Pedido de compra', remova
+// isso do nosso sistema." A R48 já o tinha tirado da SELEÇÃO; a U96 tira do
+// union, do rótulo, da cor e do CHECK do banco — os chamados que eram pedido
+// de compra viram 'operacional' na migration (é o que a própria R48 já mandava
+// abrir no lugar), e a ficha (`chamado_compra`) fica arquivada no banco.
 
 export type ChamadoPrioridade = "baixa" | "normal" | "alta" | "urgente";
+/**
+ * O sprint continua existindo como CÁLCULO (`sprintDoPrazo`, R40) — é o que o
+ * filtro de Prazo da Início e a meta do mês leem. O que MORREU foi o campo
+ * (R141, U96): a coluna `chamados.sprint` não é mais escrita nem oferecida.
+ * Davi, 2026-09-03: "o prazo ou a data de agendamento dirão se a atividade
+ * deverá ser concluída este mês, esta semana, ou qualquer outro sprint. Por
+ * isso, delete o campo para selecionar o SPRINT."
+ */
 export type ChamadoSprint =
   | "essa_semana" | "semana_que_vem"
   | "este_mes" | "mes_que_vem" | "mes_passado" | "backlog";
+
+/**
+ * IMPACTO OPERACIONAL (R142, U96) — a régua de urgência das atividades FORA da
+ * área técnica. Davi, 2026-09-03: "por enquanto o usuário deverá escolher entre
+ * 'Sem impacto, Baixo, Moderado ou Crítico', que será o maior grau de urgência.
+ * Uma implantação, manutenção preventiva e uma proposta comercial não têm grau
+ * de urgência, por isso não têm o campo de impacto operacional."
+ *
+ * Substitui a PRIORIDADE no chamado interno (o modelo já a zerava lá desde a
+ * U7). No campo a prioridade continua — o SLA é indexado por ela (R112) e a
+ * estrutura da área técnica ainda vai ser ditada.
+ */
+export type ImpactoOperacional = "sem_impacto" | "baixo" | "moderado" | "critico";
 
 import { PRISMA, type CorPrisma } from "@/lib/paleta";
 
@@ -186,7 +209,10 @@ export const NATUREZA_LABEL: Record<Natureza, string> = {
 // ── Tipos ───────────────────────────────────────────────────────────────────
 
 export const TIPO_LABEL: Record<ChamadoTipo, string> = {
-  prospeccao: "Prospecção",
+  // R147 (U96): o tipo de demanda chama-se "Proposta Comercial" — é o nome
+  // que o Davi usou na estrutura das atividades (2026-09-03). A R48 tinha
+  // trocado para "Prospecção"; o VALOR gravado continua 'prospeccao'.
+  prospeccao: "Proposta Comercial",
   // R48: rótulo só, o valor gravado continua "corretiva"/"preventiva" — Davi
   // só quis mais explícito no texto, não um tipo novo.
   corretiva: "Manutenção Corretiva",
@@ -197,7 +223,6 @@ export const TIPO_LABEL: Record<ChamadoTipo, string> = {
   // fluxo (o comercial) e não pode voltar a aparecer numa lista de tipos.
   vistoria: "Vistoria",
   melhoria: "Melhoria",
-  pedido_compra: "Pedido de compra",
 };
 
 // ── A FONTE ÚNICA DE "QUE TIPOS EXISTEM EM CADA NATUREZA" ───────────────────
@@ -232,11 +257,9 @@ export const TIPOS_DA_NATUREZA: Record<Natureza, ChamadoTipo[]> = {
  * cada linha diz por quê — é aqui que se liga e se desliga um tipo.
  */
 const NAO_OFERECIDOS: ChamadoTipo[] = [
-  // R48/U41 (2026-08-21, Davi): "na prática, vou usar o Operacional no lugar".
-  // Não sai do union nem de TIPO_LABEL/TIPO_CORES/TIPOS/CHECK: os pedidos de
-  // compra já abertos continuam com ficha própria (chamado_compra), filtro no
-  // painel e tudo mais funcionando — só não é opção para um chamado NOVO.
-  "pedido_compra",
+  // VAZIA desde a U96 — e fica, porque é o MECANISMO do próximo tipo. Morava
+  // aqui "pedido_compra" (R48: fora da seleção, dentro do vocabulário); a R140
+  // o tirou do vocabulário inteiro, então não há mais o que segurar.
   // ═════════════════════════════════════════════════════════════════════════
   // AQUI ESTAVA `"vistoria"`, E ELA SAIU NO COMMIT B (a U83 rodou em 02/09).
   // O registro do mecanismo fica, porque ele vale para o PRÓXIMO tipo:
@@ -265,6 +288,22 @@ const NAO_OFERECIDOS: ChamadoTipo[] = [
 export function tiposDaNatureza(natureza: Natureza): ChamadoTipo[] {
   return TIPOS_DA_NATUREZA[natureza].filter((t) => !NAO_OFERECIDOS.includes(t));
 }
+
+/**
+ * OS SEIS TIPOS DE DEMANDA (R137/R138, U96), na ordem em que o Davi os ditou
+ * (2026-09-03): Manutenção Corretiva, Manutenção Preventiva, Operacional,
+ * Proposta Comercial, Implantação, Melhoria. É a lista da PRIMEIRA PERGUNTA do
+ * pop-up de nova atividade — antes de a natureza existir (ela sai desta
+ * resposta mais o responsável), por isso não é `tiposDaNatureza`. A vistoria
+ * (R112) fica de fora de propósito: é uma demanda da programação de campo, e a
+ * estrutura da área técnica ainda vai ser ditada.
+ *
+ * Mora aqui e não na tela pela regra da U83: este arquivo é o ÚNICO endereço
+ * autorizado para uma lista literal de tipos.
+ */
+export const TIPOS_DE_DEMANDA: ChamadoTipo[] = [
+  "corretiva", "preventiva", "operacional", "prospeccao", "implantacao", "melhoria",
+];
 
 /**
  * O que um TÉCNICO DE CAMPO pode ter como tipo de demanda (R57, Davi
@@ -328,7 +367,6 @@ export const TIPO_CORES: Record<ChamadoTipo, CorPrisma> = {
   //     repouso, e não dentro dele.
   vistoria:      PRISMA.laranja,
   melhoria:      PRISMA.rosa,       // amarração pedida pelo Davi
-  pedido_compra: PRISMA.pessego,    // dinheiro, mas sem urgência própria — legado
 };
 
 // ── Prioridade ──────────────────────────────────────────────────────────────
@@ -349,6 +387,61 @@ export const PRIORIDADE_CORES: Record<ChamadoPrioridade, CorPrisma> = {
   alta:    PRISMA.laranja,
   urgente: PRISMA.vermelho,
 };
+
+// ── Impacto operacional (R142) ──────────────────────────────────────────────
+
+/** Do mais frio ao mais quente — a ordem de leitura e a ordem dos menus. */
+export const IMPACTO_ORDEM: ImpactoOperacional[] = ["sem_impacto", "baixo", "moderado", "critico"];
+
+export const IMPACTO_LABEL: Record<ImpactoOperacional, string> = {
+  sem_impacto: "Sem impacto",
+  baixo: "Baixo",
+  moderado: "Moderado",
+  critico: "Crítico",
+};
+
+// A mesma rampa da prioridade, de propósito: é a MESMA pergunta ("quão
+// urgente?") com outro vocabulário, e o olho já aprendeu que vermelho é o
+// topo. Sem impacto é neutro porque não é um grau — é a ausência dele.
+export const IMPACTO_CORES: Record<ImpactoOperacional, CorPrisma> = {
+  sem_impacto: PRISMA.neutro,
+  baixo:       PRISMA.azul,
+  moderado:    PRISMA.laranja,
+  critico:     PRISMA.vermelho,
+};
+
+/** crítico 0 … sem impacto 3 — quem ordena por urgência lê isto. */
+export const IMPACTO_RANK: Record<ImpactoOperacional, number> = {
+  critico: 0, moderado: 1, baixo: 2, sem_impacto: 3,
+};
+
+/**
+ * Quais tipos de demanda TÊM impacto operacional. Davi: implantação,
+ * preventiva e proposta comercial não têm grau de urgência; melhoria também
+ * não o lista. Sobram corretiva e operacional — o que quebrou e o dia a dia.
+ * (A lista de campos da preventiva no documento do Davi cita "impacto
+ * operacional", mas a frase de fechamento diz que ela NÃO tem — a frase tem
+ * a razão junto, e por isso venceu. Está anotado como pergunta Q19.)
+ */
+export const TIPOS_COM_IMPACTO: ChamadoTipo[] = ["corretiva", "operacional"];
+
+export function temImpacto(tipo: string | null | undefined): boolean {
+  return !!tipo && (TIPOS_COM_IMPACTO as string[]).includes(tipo);
+}
+
+/**
+ * Prioridade → impacto, para o que chega pela IA de criação rápida (que fala
+ * em prioridade) e cai numa atividade interna. Um-para-um, na mesma ordem.
+ */
+export function impactoDaPrioridade(p: ChamadoPrioridade | null | undefined): ImpactoOperacional | null {
+  switch (p) {
+    case "urgente": return "critico";
+    case "alta": return "moderado";
+    case "normal": return "baixo";
+    case "baixa": return "sem_impacto";
+    default: return null;
+  }
+}
 
 // ── Sprint (organiza a fila do trabalho interno) ────────────────────────────
 

@@ -166,6 +166,90 @@ export async function atualizarCliente(id: string, patch: ClientePatch): Promise
   if (error) throw error;
 }
 
+// ── A foto da fachada (R146, U96) ───────────────────────────────────────────
+//
+// Davi, 2026-09-03: "vamos adicionar a foto da fachada de cada cliente, crie o
+// botão para adicionar a foto da fachada na página de configuração do cliente,
+// e ela deve ficar visível no card […] na lista de clientes".
+//
+// A coluna `foto_fachada_url` existe desde a Etapa 1 e nunca teve quem a
+// escrevesse pela ficha — só herdava a foto da visita (URL pública do bucket
+// `visita-fotos`). Agora ela guarda o CAMINHO no bucket privado
+// `clientes-fachadas` (migration U96), e a leitura resolve uma URL assinada.
+// Os dois formatos convivem: valor que começa com http é URL e vale como está;
+// o resto é caminho. Bucket privado porque a S1 fechou todos os buckets, e a
+// fachada de um cliente não é menos dele do que a foto de um chamado.
+
+export const BUCKET_FACHADAS = "clientes-fachadas";
+/** Uma semana: a lista de clientes cacheia a URL no react-query; renovar é barato. */
+const SEGUNDOS_URL_FACHADA = 7 * 24 * 3600;
+
+export function ehUrlAbsoluta(v: string | null | undefined): boolean {
+  return !!v && /^https?:\/\//i.test(v);
+}
+
+/** URL exibível da fachada — a própria, se já for URL; assinada, se for caminho. */
+export async function urlDaFachada(ref: string | null | undefined): Promise<string | null> {
+  if (!ref) return null;
+  if (ehUrlAbsoluta(ref)) return ref;
+  const { data } = await supabase.storage.from(BUCKET_FACHADAS).createSignedUrl(ref, SEGUNDOS_URL_FACHADA);
+  return data?.signedUrl ?? null;
+}
+
+export function useFachadaUrl(ref: string | null | undefined) {
+  return useQuery({
+    queryKey: ["fachada-url", ref ?? ""],
+    enabled: !!ref,
+    staleTime: (SEGUNDOS_URL_FACHADA - 3600) * 1000,
+    queryFn: () => urlDaFachada(ref),
+  });
+}
+
+/**
+ * Sobe a foto e grava o caminho no cliente. A anterior sai do bucket quando
+ * era caminho nosso (URL herdada da visita fica — não é deste bucket).
+ */
+export async function subirFachada(cliente: Pick<Cliente, "id" | "foto_fachada_url">, arquivo: File): Promise<string> {
+  const ext = (arquivo.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${cliente.id}/fachada-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from(BUCKET_FACHADAS).upload(path, arquivo, { upsert: false });
+  if (error) throw error;
+  await atualizarCliente(cliente.id, { foto_fachada_url: path });
+  const anterior = cliente.foto_fachada_url;
+  if (anterior && !ehUrlAbsoluta(anterior)) {
+    await supabase.storage.from(BUCKET_FACHADAS).remove([anterior]);
+  }
+  return path;
+}
+
+export async function removerFachada(cliente: Pick<Cliente, "id" | "foto_fachada_url">): Promise<void> {
+  const ref = cliente.foto_fachada_url;
+  await atualizarCliente(cliente.id, { foto_fachada_url: null });
+  if (ref && !ehUrlAbsoluta(ref)) {
+    await supabase.storage.from(BUCKET_FACHADAS).remove([ref]);
+  }
+}
+
+/**
+ * A fachada do cliente como ARQUIVO — para a proposta comercial herdá-la
+ * (R147: "Foto da fachada deverá ser preenchida automaticamente caso seja um
+ * cliente atual"). O formulário da visita já sabe subir um File para o bucket
+ * dela; dar-lhe o mesmo File é o caminho que não cria segundo formato.
+ */
+export async function baixarFachadaComoArquivo(ref: string | null | undefined): Promise<File | null> {
+  const url = await urlDaFachada(ref);
+  if (!url) return null;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const ext = blob.type.split("/")[1] || "jpg";
+    return new File([blob], `fachada.${ext}`, { type: blob.type || "image/jpeg" });
+  } catch {
+    return null;
+  }
+}
+
 // ── Consolidação assistida (tela /clientes/migrar) ──────────────────────────
 // Antes da Etapa 1 o app criava um cliente novo a cada visita, com o nome do
 // síndico e sem endereço. Aqui as visitas são agrupadas pelo local para o

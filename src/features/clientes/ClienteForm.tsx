@@ -360,14 +360,18 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
       {/* Contatos */}
       <div style={CARD}>
         <span style={SEC_LABEL}>Contatos</span>
+        {/* R146 (U96): nome, WHATSAPP e e-mail do síndico e do zelador — o
+            telefone sempre foi o WhatsApp na prática; agora a ficha diz isso e
+            abre o WhatsApp ao clicar. Residência e galpão trocam os rótulos por
+            proprietário / encarregado(a), como no formulário da proposta. */}
         <div>
-          <label style={LABEL}>Síndico / responsável</label>
+          <label style={LABEL}>{tipoLocal === "residencia" || tipoLocal === "empresa" ? "Proprietário" : "Síndico"}</label>
           <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <label style={LABEL}>Telefone</label>
-            <input style={INPUT} value={telSindico} onChange={(e) => setTelSindico(e.target.value)} inputMode="tel" />
+            <label style={LABEL}>WhatsApp</label>
+            <input style={INPUT} value={telSindico} onChange={(e) => setTelSindico(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
           </div>
           <div>
             <label style={LABEL}>E-mail</label>
@@ -375,13 +379,13 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
           </div>
         </div>
         <div>
-          <label style={LABEL}>Zelador / encarregado</label>
+          <label style={LABEL}>{tipoLocal === "residencia" || tipoLocal === "empresa" ? "Encarregado(a)" : "Zelador(a)"}</label>
           <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <label style={LABEL}>Telefone</label>
-            <input style={INPUT} value={telZelador} onChange={(e) => setTelZelador(e.target.value)} inputMode="tel" />
+            <label style={LABEL}>WhatsApp</label>
+            <input style={INPUT} value={telZelador} onChange={(e) => setTelZelador(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
           </div>
           <div>
             <label style={LABEL}>E-mail</label>

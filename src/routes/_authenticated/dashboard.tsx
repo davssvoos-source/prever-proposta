@@ -398,10 +398,6 @@ function Home() {
       toast.error("A proposta comercial muda de etapa pelo fluxo da visita, não pelo quadro.");
       return;
     }
-    if (a.compra) {
-      toast.error("O pedido de compra segue a situação da ficha de compra, não o status.");
-      return;
-    }
     const natureza = a.natureza ?? "campo";
     if (!statusDaNatureza(natureza).includes(para as any)) {
       toast.error(`${NATUREZA_LABEL[natureza] ?? "Esta atividade"} não usa o status "${chamadoStatusInfo(para).label}".`);

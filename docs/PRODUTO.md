@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-03 (R136). A revisão tela a tela está em `REVISAO_2026-09-03.md`. O contexto da operação técnica ditado pelo Davi está em `CONTEXTO_OPERACAO_TECNICA.md`; o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-03 (R150). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3047,3 +3047,157 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   estratégica (vermelho, amarelo, azul ou verde), e as bordas deverão ser da
   cor mais clara para a mais escura em degrade, além de ter um glow levíssimo
   no contorno das atividades.")*
+
+## 21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)
+
+O documento inteiro do Davi está transcrito em
+`docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md`, com a leitura estruturada, o
+glossário das palavras que colidem, as decisões tomadas (D1–D9) e as perguntas
+abertas (Q18–Q22). As regras abaixo são o que dele virou lei; o Davi encerrou
+com "Estruture e protagonize tudo […] pode fazer o push, eu confio no seu
+trabalho".
+
+- **R137** — **Fora da área técnica, uma atividade é de um de SEIS tipos de
+  demanda, e cada tipo tem os seus campos.** Manutenção Corretiva, Manutenção
+  Preventiva, Operacional, Proposta Comercial, Implantação e Melhoria — nesta
+  ordem. A matriz de campos (título, responsável, apoio, prazo, data agendada,
+  cliente, status, impacto, descrição, solução, arquivos, comentários,
+  timeline, recebimento) está na §2.1 do documento de contexto. **Não se aplica
+  à área técnica**: o chamado do técnico de campo continua com o fluxo de campo
+  até o Davi ditar a estrutura dele. *(Davi: "Tipos de demanda e suas
+  características (NÃO SE APLICA PARA A ÁREA TÉCNICA)".)*
+
+- **R138** — **A criação começa com DUAS perguntas — qual o tipo de demanda e
+  quem é o responsável — e são elas que decidem o formulário.** O pop-up da
+  Início é pequeno enquanto pergunta e cresce quando as duas estão
+  respondidas. Proposta Comercial abre o fluxo da visita; responsável da equipe
+  Técnica abre o formulário de campo (R126) já com tipo e técnico; o resto abre
+  a estrutura da R137 para aquele tipo. Tudo pela mesma porta de escrita. *(Davi:
+  "o campo que surge em pop up no meio da tela deve começar com duas perguntas
+  iniciais: QUAL O TIPO DE DEMANDA? […] e também QUEM É O RESPONSÁVEL? […] para
+  cada opção, o campo se expande para tela inteira porém com os campos da
+  maneira condizente".)*
+
+- **R139** — **Equipe não é campo: as equipes de uma atividade são as das
+  PESSOAS nela.** A do responsável primeiro, depois a de cada apoio, pelo
+  cadastro (`profiles.equipe`), sem repetir; aparecem como etiquetas e
+  alimentam o filtro "Equipe" da Início em qualquer natureza. Ninguém escolhe
+  equipe em lugar nenhum. A coluna `chamados.equipe` continua existindo e recebe
+  a equipe do responsável (a Operacional Técnica e policies a leem);
+  `chamado_equipes` deixou de ser lida e escrita. **Revoga** o campo Equipe da
+  R60, a "equipe do assunto" da R82 e as equipes extras da R83 como fontes.
+  *(Davi: "remova o campo de inserção da equipe, pois vamos associar a equipe
+  diretamente ao(s) usuário(s) envolvido na atividade. E aí conforme for
+  adicionando o responsável e o(s) apoio(s), adicione a etiqueta da(s)
+  equipe(s) envolvida(s).")*
+
+- **R140** — **O pedido de compra saiu do sistema.** O tipo saiu do vocabulário,
+  do CHECK do banco e de toda tela; os chamados que eram pedido de compra
+  viraram Operacional (o que a R48 já mandava abrir no lugar dele); os gatilhos
+  da ficha caíram e o alerta de "pedido parado" foi desagendado. A tabela
+  `chamado_compra` fica no banco como arquivo, com a RPC de decidir revogada —
+  apagá-la pede pedido explícito (Q21). Demanda do Controle Patrimonial é uma
+  atividade Operacional. **Revoga** o tipo da R6, a tradução da compra em
+  coluna da R89 e o aviso de compra recusada da R109. *(Davi: "Note também que
+  eu não mencionei o tipo de demanda 'Pedido de compra', remova isso do nosso
+  sistema.")*
+
+- **R141** — **Sprint deixou de ser campo.** O seletor saiu de todas as telas e
+  a coluna `chamados.sprint` não é mais escrita. O que fica é o CÁLCULO da R40
+  (`sprintDoPrazo`): a semana e o mês saem do prazo, onde quer que sejam lidos
+  (filtro de Prazo da Início, meta do mês). *(Davi: "o prazo ou a data de
+  agendamento dirão se a atividade deverá ser concluída este mês, esta semana,
+  ou qualquer outro sprint. Por isso, delete o campo para selecionar o SPRINT no
+  sistema — o sistema já entende isso por conta".)*
+
+- **R142** — **Impacto operacional é a régua de urgência fora da área técnica:
+  Sem impacto · Baixo · Moderado · Crítico.** Só Manutenção Corretiva e
+  Operacional o têm; Implantação, Preventiva, Melhoria e Proposta não. No campo
+  continua valendo a prioridade (o SLA é indexado por ela, R112). Por enquanto
+  quem cria escolhe; o Davi vai mandar a relação "tipo de atividade → impacto"
+  para virar automático. A preventiva ficou sem impacto pela frase de
+  fechamento do Davi, que venceu a lista de campos (decisão D1, pergunta Q19).
+  *(Davi: "por enquanto o usuário deverá escolher entre 'Sem impacto, Baixo,
+  moderado ou Crítico', que será o maior grau de urgência. Uma implantação,
+  manutenção preventiva e uma proposta comercial não têm grau de urgência, por
+  isso não têm o campo de impacto operacional.")*
+
+- **R143** — **O Cliente de uma atividade é um cliente, um GRUPO de clientes ou
+  interno (Prever).** Os grupos ("Clientes de Portaria Remota", "Clientes de
+  Monitoramento de Alarmes") aparecem na MESMA lista do cliente, no topo. Um
+  grupo é UMA atividade e UM card (a etiqueta de setor da R85); ela **conta no
+  histórico de cada cliente do grupo** — a ficha do cliente lista as
+  atividades em que ele é o principal, em que é local extra e as do grupo a que
+  pertence. Escolher o grupo põe automaticamente na descrição um **checklist**
+  com todos os clientes dele. *(Davi: "o sistema contabiliza uma atividade para
+  cada cliente daquele grupo […] deverá aparecer individualmente no relatório
+  de atividades executadas em cada cliente, mas não deverá criar um card para
+  cada cliente […] deverá automaticamente ter um checklist no campo DESCRICAO
+  […] contendo todos os clientes daquele grupo".)*
+
+- **R144** — **Toda atividade mapeia recebimento, início e conclusão.**
+  Recebimento é quem criou e quando (`aberto_por`, `created_at`; a tela mostra
+  "Recebido de X em …"); início é quando o status vai a "em andamento"
+  (`iniciada_em`, carimbado pelo banco); conclusão é quando vai a "concluído"
+  (`concluida_em`). Para a área técnica o início virá do botão "INICIAR
+  ATENDIMENTO" no fluxo de celular, a construir. *(Davi: "O sistema deve mapear
+  sempre data de recebimento da demanda, data de inicio (Para os outros setores
+  […] a partir do momento em que uma atividade é movida para 'em andamento')
+  […] também deverá mapear a data de conclusão".)*
+
+- **R145** — **No calendário, a atividade concluída fica no dia da CONCLUSÃO; a
+  em aberto fica na hora agendada quando há, senão no PRAZO.** A célula diz
+  qual dos três é (hora, "prazo", "concluído"). *(Davi: "O Calendário deverá ter
+  as atividades na data de CONCLUSÃO para as atividades que já foram
+  concluídas, bem como deverão estar na data do PRAZO caso ainda não tenham
+  sido concluídas.")*
+
+- **R146** — **A ficha do cliente é tela de computador, em duas colunas, e tem
+  síndico e zelador (nome, WhatsApp, e-mail), o tipo de local e a foto da
+  fachada.** Tipo de local: Cond. Vertical, Cond. Horizontal, Galpão,
+  Residência. Residência e galpão chamam os contatos de proprietário e
+  encarregado(a). A foto sobe por um botão da ficha (bucket privado
+  `clientes-fachadas`) e aparece no card da lista de clientes **sobreposta pela
+  direita, entrando com transição de opacidade**, com máscara que preserva o
+  texto. O histórico de atividades da ficha declara o teto e abre inteiro.
+  *(Davi: "deverá ter um campo para preencher o nome, WhatsApp e e-mail do
+  síndico e do zelador; deverá ter também o tipo de local […] adapte a tela
+  para um layout otimizado para desktop/notebook […] crie o botão para
+  adicionar a foto da fachada […] e ela deve ficar visível no card,
+  sobrepondo-o com transição suave da opacidade".)*
+
+- **R147** — **A Proposta Comercial é o fluxo da visita, com o vocabulário do
+  Davi.** O tipo chama-se "Proposta Comercial" (o valor gravado continua
+  `prospeccao`; a R48 o rotulava "Prospecção"). A etiqueta de etapa, que se
+  atualiza sozinha, é **Visita técnica pendente → Aguardando revisão → Visita
+  técnica aprovada → Proposta comercial enviada** (mais "Cancelada", a saída
+  do funil). O card na Início chama-se sempre "Proposta Comercial" — e, para o
+  técnico responsável pela visita, "Visita Técnica" (um registro, dois papéis;
+  decisão D5, pergunta Q20). Escolher um cliente como Local herda tipo de
+  local, endereço, síndico/proprietário, zelador e a foto da fachada;
+  residência e galpão usam proprietário/encarregado(a), e o zelador só aparece
+  em condomínio. O **mini-calendário semanal do técnico** para agendar a visita
+  é a Fase H do plano (pergunta Q22). *(Davi: "Status — não é um campo para
+  alterar, é uma etiqueta que atualiza sozinho […] O Título da atividade no
+  painel de atividades da tela INICIO deverá ser sempre 'Proposta Comercial'. E
+  o título da atividade de uma visita técnica para fluxo de montagem de
+  orçamentos […] deverá ser 'Visita Técnica'".)*
+
+- **R148** — **A Implantação tem o campo "Proposta comercial aprovada".** Aponta
+  para uma proposta já enviada (`chamados.proposta_id → visitas_tecnicas`),
+  no pop-up e na página. Por enquanto é o vínculo; a leitura do PDF da
+  proposta pela IA para criar as atividades da implantação é pendência
+  registrada. *(Davi: "deverá ter um campo para inserir a proposta comercial
+  aprovada — futuramente […] o sistema cria automaticamente as atividades, por
+  enquanto crie somente o campo".)*
+
+- **R149** — **A Manutenção Corretiva tem dois textos: o problema detectado e a
+  solução aplicada.** O problema é a descrição de sempre; a solução mora em
+  `servico_executado`, a mesma coluna que o chamado de campo já usa para "o que
+  foi feito para resolver" — não há segundo formato. *(Davi: "i. Campo de
+  descrição do problema detectado; j. Campo de descrição da solução aplicada".)*
+
+- **R150** — **Toda atividade interna aceita fotos de registro e arquivos.** A
+  mesma tabela e o mesmo bucket do chamado de campo (`chamado_fotos`,
+  `fotos-os`), na página da atividade e no pop-up de criação (imagem e PDF).
+  *(Davi: "Campo para fotografias de registro ou arquivos (Opcional)".)*

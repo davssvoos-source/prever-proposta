@@ -1,7 +1,13 @@
-// Novo chamado INTERNO — o formulário do trabalho que não sai da mesa.
-// A classificação (tipo) é sugerida pelo título enquanto se digita; quem grava
-// de verdade é o banco, no trigger. Quando o tipo é pedido de compra, os campos
-// da compra entram junto (Q6). Ver docs/PLANO_UNIFICACAO.md §6 e §12.
+// Nova atividade INTERNA — o formulário em página inteira do trabalho que não
+// sai da mesa. A classificação (tipo) é sugerida pelo título enquanto se
+// digita; quem grava de verdade é o banco, no trigger.
+//
+// U96 (R137–R142): o pop-up da Início (NovaAtividadeDialog) passou a ser o
+// caminho principal; esta página é a versão longa que a triagem /chamados/novo
+// ainda abre. Ela perdeu o que a estrutura das atividades tirou do sistema —
+// Equipe (R139: é a do responsável), Sprint (R141: é cálculo) e o pedido de
+// compra (R140) — e ganhou o impacto operacional (R142), só em corretiva e
+// operacional.
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -11,18 +17,19 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useClientes } from "@/features/clientes/data";
-import { abrirChamado, usePessoas } from "@/features/chamados/data";
+import { abrirChamado, usePessoas, equipeDaPessoa } from "@/features/chamados/data";
 import {
-  sugerirTipoChamado, SPRINT_ORDEM, SPRINT_LABEL, tiposDaNatureza, TIPO_LABEL, dataParaPrazo,
-  type ChamadoSprint, type ChamadoTipo,
+  sugerirTipoChamado, tiposDaNatureza, TIPO_LABEL, dataParaPrazo,
+  IMPACTO_ORDEM, IMPACTO_LABEL, temImpacto,
+  type ChamadoTipo, type ImpactoOperacional,
 } from "@/lib/chamado-status";
-import { EQUIPES, EQUIPE_LABEL, type Equipe } from "@/lib/equipes";
+import { EQUIPE_LABEL } from "@/lib/equipes";
 import { card } from "@/lib/ui";
-import { salvarCompra } from "@/features/chamados/compra";
 
 export const Route = createFileRoute("/_authenticated/chamados/novo-interno")({
   // a triagem (/chamados/novo) chega aqui com o trilho já escolhido:
-  // ?equipe=ti | ?equipe=patrimonio&tipo=pedido_compra
+  // ?equipe=ti | ?equipe=patrimonio&tipo=operacional. A `equipe` da URL só
+  // serve de rótulo — a equipe gravada é a do responsável (R139).
   validateSearch: (s: Record<string, unknown>) => ({
     equipe: typeof s.equipe === "string" ? s.equipe : undefined,
     tipo: typeof s.tipo === "string" ? s.tipo : undefined,
@@ -38,41 +45,25 @@ function NovaChamadoPage() {
   const { data: clientes = [] } = useClientes();
   const { data: pessoas = [] } = usePessoas();
 
-  const equipeInicial = (EQUIPES as string[]).includes(busca.equipe ?? "")
-    ? (busca.equipe as Equipe)
-    : null;
   const tipoInicial = (tiposDaNatureza("interno") as string[]).includes(busca.tipo ?? "")
     ? (busca.tipo as ChamadoTipo)
     : "";
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [equipe, setEquipe] = useState<Equipe>(equipeInicial ?? "ti");
   const [responsavelId, setResponsavelId] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [prazo_limite, setPrazo] = useState("");
-  const [sprint, setSprint] = useState<ChamadoSprint>("este_mes");
+  const [impacto, setImpacto] = useState<ImpactoOperacional | "">("");
   const [tipo, setTipo] = useState<ChamadoTipo | "">(tipoInicial);
-  // Pedido de compra (Q6): quem pede geralmente já sabe o que quer e de quem.
-  // O resto da ficha (cotação, aprovação, recebimento) vive na página do chamado.
-  const [qtd, setQtd] = useState("1");
-  const [fornecedor, setFornecedor] = useState("");
-  const [valorEstimado, setValorEstimado] = useState("");
-  const [linkProduto, setLinkProduto] = useState("");
 
-  // pré-carrega equipe e responsável com quem está registrando — sem
-  // atropelar o trilho que a triagem já escolheu
+  // pré-carrega o responsável com quem está registrando
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const eu = pessoas.find((p) => p.id === data.user?.id);
-      if (eu) {
-        setResponsavelId((v) => v || eu.id);
-        if (eu.equipe && !equipeInicial) {
-          setEquipe((v) => (v === "ti" ? (eu.equipe as Equipe) : v));
-        }
-      }
+      if (eu) setResponsavelId((v) => v || eu.id);
     });
-  }, [pessoas, equipeInicial]);
+  }, [pessoas]);
 
   const sugestao = useMemo(
     () => (titulo.trim() ? sugerirTipoChamado(titulo, descricao) : null),
@@ -81,14 +72,12 @@ function NovaChamadoPage() {
 
   // sem tipo escolhido, vale a sugestão — é o que o banco vai gravar
   const tipoEfetivo = tipo || sugestao;
-  const ehCompra = tipoEfetivo === "pedido_compra";
+  const equipeDoResponsavel = equipeDaPessoa(pessoas, responsavelId || null);
 
   const textPrimary = isLight ? "#0a0b0e" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
-  // card(isLight) de lib/ui: as telas irmãs do fluxo de chamados usam a mesma
-  // superfície, e o card v3 inline daqui destoava delas no tema claro
   const CARD: CSSProperties = {
     ...card(isLight),
     padding: "18px 16px",
@@ -121,34 +110,24 @@ function NovaChamadoPage() {
 
   const criar = useMutation({
     mutationFn: async () => {
-      if (!titulo.trim()) throw new Error("Informe o título do chamado.");
-      const novoId = await abrirChamado({
+      if (!titulo.trim()) throw new Error("Informe o título da atividade.");
+      return abrirChamado({
         natureza: "interno",
         titulo: titulo.trim(),
         descricao_problema: descricao.trim() || null,
-        equipe,
+        // R139: a coluna recebe a equipe do responsável; ninguém escolhe
+        equipe: equipeDoResponsavel ?? "outras",
         responsavel_id: responsavelId || null,
         cliente_id: clienteId || null,
         prazo_limite: dataParaPrazo(prazo_limite),
-        sprint,
         // vazio = deixa o banco sugerir (mesma heurística da pré-visualização)
         tipo: (tipo || null) as ChamadoTipo | null,
+        impacto_operacional: temImpacto(tipoEfetivo) && impacto ? impacto : null,
       });
-      // a ficha de compra nasce por trigger; aqui só preenchemos o que o
-      // solicitante já informou
-      if (ehCompra) {
-        await salvarCompra(novoId, {
-          quantidade: Number(qtd) > 0 ? Number(qtd) : 1,
-          fornecedor_sugerido: fornecedor.trim() || null,
-          valor_estimado: valorEstimado === "" ? null : Number(valorEstimado),
-          link_produto: linkProduto.trim() || null,
-        });
-      }
-      return novoId;
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["chamados"] });
-      toast.success("Chamado registrado.");
+      toast.success("Atividade registrada.");
       navigate({ to: "/chamados/$id", params: { id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -170,7 +149,7 @@ function NovaChamadoPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 20 }}>
-          Nova demanda
+          Nova atividade
         </div>
       </div>
 
@@ -197,7 +176,7 @@ function NovaChamadoPage() {
 
         {/* Classificação sugerida */}
         <div>
-          <label style={LABEL}>Classificação</label>
+          <label style={LABEL}>Tipo de demanda</label>
           {sugestao && !tipo && (
             <div style={{
               display: "flex", alignItems: "center", gap: 6, marginBottom: 8,
@@ -220,56 +199,23 @@ function NovaChamadoPage() {
             ))}
           </div>
         </div>
+
+        {/* R142: impacto só em corretiva e operacional */}
+        {temImpacto(tipoEfetivo) && (
+          <div>
+            <label style={LABEL}>Impacto operacional</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {IMPACTO_ORDEM.map((i) => (
+                <button key={i} type="button" style={chip(impacto === i)} onClick={() => setImpacto(impacto === i ? "" : i)}>
+                  {IMPACTO_LABEL[i]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Pedido de compra (Q6): o que dá para responder já na abertura. Cotação,
-          aprovação e recebimento acontecem depois, na página do chamado. */}
-      {ehCompra && (
-        <div style={CARD}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={LABEL}>Quantidade</label>
-              <input
-                style={INPUT} type="number" min="1" step="1"
-                value={qtd} onChange={(e) => setQtd(e.target.value)}
-              />
-            </div>
-            <div>
-              <label style={LABEL}>Valor estimado (R$)</label>
-              <input
-                style={INPUT} type="number" min="0" step="0.01" placeholder="opcional"
-                value={valorEstimado} onChange={(e) => setValorEstimado(e.target.value)}
-              />
-            </div>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={LABEL}>Fornecedor sugerido</label>
-            <input
-              style={INPUT} placeholder="De quem costumamos comprar isso?"
-              value={fornecedor} onChange={(e) => setFornecedor(e.target.value)}
-            />
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <label style={LABEL}>Link do produto</label>
-            <input
-              style={INPUT} placeholder="https://…"
-              value={linkProduto} onChange={(e) => setLinkProduto(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
-
       <div style={CARD}>
-        <div>
-          <label style={LABEL}>Equipe</label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {EQUIPES.map((e) => (
-              <button key={e} type="button" style={chip(equipe === e)} onClick={() => setEquipe(e)}>
-                {EQUIPE_LABEL[e]}
-              </button>
-            ))}
-          </div>
-        </div>
         <div>
           <label style={LABEL}>Responsável</label>
           <select style={INPUT} value={responsavelId} onChange={(e) => setResponsavelId(e.target.value)}>
@@ -278,33 +224,24 @@ function NovaChamadoPage() {
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
+          {/* R139: a equipe é a do responsável — mostrada, não escolhida */}
+          <span style={{ display: "block", marginTop: 6, fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
+            Equipe: {equipeDoResponsavel ? EQUIPE_LABEL[equipeDoResponsavel] : "a do responsável, pelo cadastro"}
+            {busca.equipe && !equipeDoResponsavel ? ` (trilho: ${EQUIPE_LABEL[busca.equipe as keyof typeof EQUIPE_LABEL] ?? busca.equipe})` : ""}
+          </span>
         </div>
         <div>
           <label style={LABEL}>Cliente (opcional)</label>
           <select style={INPUT} value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
-            <option value="">Chamado interna, sem cliente</option>
+            <option value="">Interno — Prever, sem cliente</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <label style={LABEL}>Prazo</label>
-            <input style={INPUT} type="date" value={prazo_limite} onChange={(e) => setPrazo(e.target.value)} />
-          </div>
-          <div>
-            <label style={LABEL}>Sprint</label>
-            <select
-              style={INPUT}
-              value={sprint}
-              onChange={(e) => setSprint(e.target.value as ChamadoSprint)}
-            >
-              {SPRINT_ORDEM.map((s) => (
-                <option key={s} value={s}>{SPRINT_LABEL[s]}</option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label style={LABEL}>Prazo (opcional)</label>
+          <input style={INPUT} type="date" value={prazo_limite} onChange={(e) => setPrazo(e.target.value)} />
         </div>
       </div>
 
@@ -323,7 +260,7 @@ function NovaChamadoPage() {
           boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
         }}
       >
-        {criar.isPending ? "Registrando…" : "Registrar demanda"}
+        {criar.isPending ? "Registrando…" : "Registrar atividade"}
       </button>
     </div>
   );

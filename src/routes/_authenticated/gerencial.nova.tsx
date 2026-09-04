@@ -17,6 +17,7 @@ import {
   criarCliente,
   atualizarCliente,
   acharClienteEquivalente,
+  baixarFachadaComoArquivo,
   type Cliente,
 } from "@/features/clientes/data";
 import { geocode } from "@/features/gerencial/data";
@@ -239,6 +240,16 @@ function NovaVisitaPage() {
     if (c.nome_zelador) setNomeZelador(c.nome_zelador);
     if (c.telefone_zelador) setTelefoneZelador(c.telefone_zelador);
     if (c.email_zelador) setEmailZelador(c.email_zelador);
+    // R147 (U96): a fachada do cliente vem junto — como ARQUIVO, para seguir
+    // pelo mesmo caminho de upload da foto tirada na hora. Quem já escolheu
+    // uma foto não a perde: só preenche o que está vazio.
+    if (c.foto_fachada_url && !fotoFile) {
+      void baixarFachadaComoArquivo(c.foto_fachada_url).then((f) => {
+        if (!f) return;
+        setFotoFile(f);
+        setFotoPreview(URL.createObjectURL(f));
+      });
+    }
   }
 
   const { data: tecnicos = [] } = useQuery({

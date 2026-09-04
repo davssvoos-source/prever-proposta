@@ -161,23 +161,15 @@ eq('e é marcado como desconhecido',
 eq('aberto sem responsavel é sinalizado',
    A.colunaDoChamado(chamado('aberto', { responsavel_id: null }), null, false).alerta, 'sem_responsavel');
 
-// compra: as 6 situações têm destino, e o terminal do chamado tem precedência
-const compra = (situacao, st = 'em_andamento') => A.colunaDoChamado(chamado(st), { situacao }, true);
-eq('compra solicitada → Aberto', compra('solicitado').coluna, 'aberto');
-eq('compra em cotação → Em andamento', compra('em_cotacao').coluna, 'em_andamento');
-eq('compra aprovada → Em andamento', compra('aprovado').coluna, 'em_andamento');
-eq('comprado esperando entrega → Stand-by', compra('comprado').coluna, 'stand_by');
-eq('compra recebida → Concluído', compra('recebido').coluna, 'concluido');
-eq('e o quadro a mostra na coluna Concluído', A.colunaVisivel(compra('recebido').coluna), 'concluido');
-eq('compra recusada → Cancelado', compra('recusado').coluna, 'cancelado');
-eq('chamado terminal manda mesmo com compra andando',
-   compra('em_cotacao', 'cancelado').coluna, 'cancelado');
-eq('gasto em mesa aparece como espera de decisão',
-   compra('solicitado', 'aguardando_aprovacao').coluna, 'aguardando_aprovacao');
-eq('e a bola fica com o financeiro',
-   compra('solicitado', 'aguardando_aprovacao').bolaCom, 'financeiro');
-eq('ficha ausente é falta de ACESSO, não de dado',
-   A.colunaDoChamado(chamado('aberto'), null, true).alerta, 'sem_acesso_ficha');
+// R140 (U96): o pedido de compra SAIU do sistema. Aqui moravam onze asserções
+// sobre a tradução da ficha de compra em coluna (solicitado → aberto, comprado
+// → stand-by…). A tradução não existe mais — e o verificador cobra isso.
+eq('R140: colunaDoChamado tem UM argumento — a ficha de compra saiu da tradução',
+   A.colunaDoChamado.length, 1);
+eq('R140: nenhuma coluna especial sobrou — em_andamento é em_andamento, sem ficha por cima',
+   A.colunaDoChamado(chamado('em_andamento')).coluna, 'em_andamento');
+eq('R140: "com o financeiro" saiu da bola (só a compra a usava)', 'financeiro' in A.BOLA_LABEL, false);
+eq('R140: "ficha da compra sem acesso" saiu dos alertas', 'sem_acesso_ficha' in A.ALERTA_LABEL, false);
 
 // visita: cada status cru tem destino — o CHECK foi derrubado, é texto livre
 eq('visita pendente com data → Agendado',
@@ -238,13 +230,40 @@ eq('encerrado não entra no banner',
 // O SPRINT continua zerado fora do interno — aquilo é ritmo de planejamento
 // interno, e não foi o que mudou. As duas metades desta invariante deixaram de
 // andar juntas, e é por isso que as asserções agora estão separadas.
+// R139 (U96): a equipe é a das PESSOAS da atividade — a coluna `chamados.equipe`
+// deixou de ser a fonte. Sem o mapa de pessoas no contexto, NINGUÉM tem equipe,
+// e é assim que se prova que a coluna não vaza: o fixture traz equipe 'ti' e
+// 'tecnica' na coluna, e a atividade sai sem nenhuma.
 const interno = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', equipe: 'ti', sprint: 'este_mes' }), ctxVazio);
 const campo = A.atividadeDoChamado(chamado('aberto', { natureza: 'campo', equipe: 'tecnica', sprint: 'este_mes' }), ctxVazio);
-eq('interno mantém equipe', interno.equipe, 'ti');
-eq('CRÍTICO (R83): campo TAMBÉM carrega equipe agora — zerar escondia do filtro o trabalho de campo', campo.equipe, 'tecnica');
-eq('a lista de equipes começa pela principal', campo.equipes[0], 'tecnica');
-eq('sem equipes extras a lista tem só a principal', campo.equipes.length, 1);
+eq('R139: sem o mapa de pessoas a atividade fica SEM equipe — a coluna do banco não é mais a fonte',
+   [interno.equipe, campo.equipe, campo.equipes.length], [null, null, 0]);
+const ctxComEquipe = {
+  ...ctxVazio,
+  equipeDePessoa: new Map([['u1', 'tecnica'], ['u2', 'ti'], ['u3', 'ti']]),
+  apoiosDoChamado: new Map([['x', ['u2', 'u3']]]),
+};
+const comPessoas = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', equipe: 'sac' }), ctxComEquipe);
+eq('CRÍTICO (R139): as equipes são a do responsável e as dos apoios, nesta ordem e sem repetir — e a coluna do banco (sac) NÃO entra',
+   comPessoas.equipes, ['tecnica', 'ti']);
+eq('R139: `equipe` (a singular) é a primeira da lista — a do responsável', comPessoas.equipe, 'tecnica');
+eq('R139: vale em qualquer natureza — o campo também carrega a equipe das pessoas',
+   A.atividadeDoChamado(chamado('aberto', { natureza: 'campo' }), ctxComEquipe).equipes, ['tecnica', 'ti']);
+// R141 (U96): o sprint é CÁLCULO sobre o prazo. O fixture traz 'este_mes' na
+// coluna e nenhum prazo: sai null. Com prazo, sai o balde de sprintDoPrazo.
+eq('R141: o sprint do interno sai do PRAZO, não do banco — sem prazo, null (a coluna trazia este_mes)', interno.sprint, null);
+eq('R141: com prazo vencido, o interno cai em essa_semana (R40), qualquer que fosse a coluna',
+   A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', prazo_limite: '2020-01-01T23:59:59Z' }), ctxVazio).sprint, 'essa_semana');
 eq('campo NÃO carrega sprint', campo.sprint, null);
+// R142 (U96): o impacto operacional só existe no interno, e só em valor do vocabulário
+eq('R142: impacto crítico no interno → rank 0, rótulo e cor do PRISMA',
+   (() => { const a = A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', impacto_operacional: 'critico' }), ctxVazio);
+            return [a.impacto, a.prioridadeRank, a.impactoLabel, !!a.impactoCor]; })(),
+   ['critico', 0, 'Crítico', true]);
+eq('R142: impacto no CAMPO é ignorado — lá a régua é a prioridade',
+   A.atividadeDoChamado(chamado('aberto', { natureza: 'campo', impacto_operacional: 'critico', prioridade: 'baixa' }), ctxVazio).impacto, null);
+eq('R142: valor fora do vocabulário (ou coluna ainda inexistente) vira null, nunca quebra',
+   A.atividadeDoChamado(chamado('aberto', { natureza: 'interno', impacto_operacional: 'altíssimo' }), ctxVazio).impacto, null);
 eq('interno não entra na fila por prioridade', interno.prioridadeRank, 4);
 
 // ── regressões que a revisão adversarial pegou (U10) ────────────────────────
@@ -1008,7 +1027,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // continua com o nome antigo de propósito: é o que o arquivo gravava
   // NAQUELE momento, e migration já publicada não se edita.
   eq('o tipo prospeccao existe', CS.TIPOS.includes('prospeccao'), true);
-  eq('prospeccao tem rótulo "Prospecção"', CS.TIPO_LABEL.prospeccao, 'Prospecção');
+  eq('prospeccao tem rótulo "Proposta Comercial" (R147/U96 — era "Prospecção" da R48 à U95; o valor gravado não mudou)', CS.TIPO_LABEL.prospeccao, 'Proposta Comercial');
   eq('prospeccao tem cor da paleta', !!CS.TIPO_CORES.prospeccao, true);
   eq('a natureza comercial existe', !!CS.NATUREZA_LABEL.comercial, true);
   // um seletor de chamado de campo não pode oferecer "prospecção"
@@ -1453,16 +1472,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a data de criação não é editável',
      /patch: \{ created_at/.test(painel) || /name="created_at"/.test(painel), false);
   // "Recebido em" (U33) — o mesmo vocabulário da coluna da tabela
-  eq('a data de criação aparece como informação',
-     /Recebido em[\s\S]{0,120}chamado\.created_at/.test(painel), true);
-  // as propriedades que o Davi listou
+  // R144 (U96): o RECEBIMENTO diz DE QUEM veio a demanda, além de quando
+  eq('a data de criação aparece como informação — e com quem abriu (R144)',
+     /Recebido\{chamado\.aberto_por \? ` de \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\} em[\s\S]{0,160}chamado\.created_at/.test(painel), true);
+  // as propriedades que o Davi listou — menos equipe (R139: é a das pessoas) e
+  // sprint (R141: é cálculo), mais o impacto operacional (R142)
   for (const campo of ['responsavel_id', 'tipo', 'status', 'prioridade',
-                       'equipe', 'sprint', 'titulo', 'descricao_problema']) {
+                       'impacto_operacional', 'titulo', 'descricao_problema']) {
     eq(`o painel edita ${campo}`, new RegExp(`patch: \\{ ${campo}`).test(painel), true);
   }
-  // o prazo entra num patch que pode levar o sprint junto (R40), então o
-  // formato não é o literal simples dos outros
-  eq('o painel edita prazo_limite', /prazo_limite: prazo/.test(painel), true);
+  eq('R139/R141: o painel NÃO edita equipe nem sprint como campo',
+     [/patch: \{ equipe:/.test(painel), /patch: \{ sprint/.test(painel)], [false, false]);
+  // R141: o prazo vai sozinho no patch — o sprint deixou de ser gravado
+  eq('o painel edita prazo_limite', /patch: \{ prazo_limite: dataParaPrazo\(/.test(painel), true);
   eq('o painel edita apoio (vários)', /adicionarApoio[\s\S]*removerApoio/.test(painel), true);
   // cliente_id saiu do patch direto (R54, U45): virou campo de VÁRIOS
   // valores, igual a apoio — mesmo cliente_id continuando o principal por
@@ -1726,8 +1748,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // o Davi pediu só os títulos na célula
   eq('a célula não mostra hora nem "vence" como texto',
      /vence<\/|Flag size|Clock size/.test(cal), false);
-  eq('mas a hora continua no title do navegador (a informação não sumiu)',
-     /title=\{`\$\{e\.titulo\}\$\{e\.porPrazo/.test(cal), true);
+  eq('mas a hora continua no title do navegador (a informação não sumiu) — e desde a R145 o title começa pela conclusão',
+     /title=\{`\$\{e\.titulo\}\$\{e\.porConclusao/.test(cal) && /concluído neste dia/.test(cal), true);
   eq('o rosto do responsável continua na célula', /AvatarPilha/.test(cal), true);
 }
 
@@ -1852,9 +1874,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // a tela grava prazo e sprint no MESMO patch: dois patches poderiam deixar
   // o prazo novo com o sprint velho se o segundo falhasse
   const pn3 = fs15.readFileSync('src/features/chamados/PainelChamado.tsx', 'utf8');
-  eq('o painel deriva o sprint ao mudar o prazo', /sprintDoPrazo\(prazo\)/.test(pn3), true);
-  eq('prazo e sprint vão no mesmo patch',
-     /patch: sprint \? \{ prazo_limite: prazo, sprint \}/.test(pn3), true);
+  // R141 (U96): o sprint deixou de ser GRAVADO — é cálculo sobre o prazo onde
+  // quer que seja lido (modelo, lentes, meta do mês). O painel grava só o prazo.
+  eq('R141: o painel NÃO grava mais sprint — o prazo vai sozinho no patch',
+     [/sprintDoPrazo\(/.test(pn3), /patch: \{ prazo_limite: dataParaPrazo\(/.test(pn3)], [false, true]);
 
   // o banco precisa aceitar os valores novos, senão toda troca de data volta
   // com erro de constraint na cara do usuário
@@ -2135,7 +2158,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     proposta_enviada_em: '2026-08-20T10:00:00',
     clientes: { nome: 'Um Cliente Real Ltda' },
   }), ctxV);
-  eq('título é SEMPRE "Proposta Comercial", nunca o nome do prédio', a1.titulo, 'Proposta Comercial');
+  // R147 (U96): UM registro, dois papéis — "Visita Técnica" para o técnico
+  // responsável pela visita (ctxV.userId = t1 = tecnico_id), "Proposta
+  // Comercial" para todo o resto. Nunca o nome do prédio.
+  eq('título é "Visita Técnica" para o TÉCNICO responsável pela visita (R147)', a1.titulo, 'Visita Técnica');
+  eq('e "Proposta Comercial" para quem não é o técnico — nunca o nome do prédio',
+     M3.atividadeDaVisita(visita({ proposta_enviada_em: '2026-08-20T10:00:00', clientes: { nome: 'Um Cliente Real Ltda' } }),
+                          { ...ctxV, userId: 'alguem-do-comercial' }).titulo,
+     'Proposta Comercial');
   eq('a etiqueta de local usa nome_predio MESMO quando há cliente vinculado (R23)',
      a1.cliente, 'Condomínio Merit');
   eq('sem prédio nem título, cai no cliente como último recurso',
@@ -2519,12 +2549,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   //    adversarial de U40 achou que auto-fit(150px) quebrava em 3+1 (Equipe
   //    órfão) numa faixa comum de largura, pior que a quebra 2+2 de antes.
   const blocoClassificacao = pc4.split('<Secao titulo="Classificação"')[1]?.split('<Secao titulo="Quando"')[0] ?? '';
-  eq('a grade de Classificação usa 4 colunas FIXAS (não auto-fit — nunca quebra)',
-     /gridTemplateColumns: "repeat\(4, minmax\(0, 1fr\)\)"/.test(blocoClassificacao), true);
-  eq('e tem os 4 campos: Tipo, Status, Prioridade, Equipe',
-     /titulo="Tipo de demanda"/.test(blocoClassificacao) && /titulo="Status"/.test(blocoClassificacao)
-     && /titulo="Prioridade"/.test(blocoClassificacao) && /titulo="Equipe"/.test(blocoClassificacao),
-     true);
+  // U96: eram 4 colunas fixas (tipo, status, prioridade, equipe). A Equipe saiu
+  // (R139) e a régua de urgência é UMA (R142: prioridade no campo, impacto no
+  // interno) — 3 colunas com régua, 2 sem. Continuam FIXAS: auto-fit quebrava.
+  eq('a grade de Classificação usa colunas FIXAS (não auto-fit) — 3 com régua de urgência, 2 sem (R139/R142)',
+     /gridTemplateColumns: `repeat\(\$\{natureza === "campo" \|\| \(natureza === "interno" && temImpacto\(chamado\.tipo\)\) \? 3 : 2\}, minmax\(0, 1fr\)\)`/.test(blocoClassificacao), true);
+  eq('e tem os campos: Tipo, Status, Prioridade (só campo) e Impacto operacional (só interno) — Equipe SAIU (R139)',
+     [/titulo="Tipo de demanda"/.test(blocoClassificacao), /titulo="Status"/.test(blocoClassificacao),
+      /natureza === "campo" && \(\s*\n\s*<Escolha\s*\n\s*titulo="Prioridade"/.test(blocoClassificacao),
+      /natureza === "interno" && temImpacto\(chamado\.tipo\) && \(\s*\n\s*<Escolha\s*\n\s*titulo="Impacto operacional"/.test(blocoClassificacao),
+      /titulo="Equipe"/.test(blocoClassificacao)],
+     [true, true, true, true, false]);
 
   // 6. Comentários: depois do ÚLTIMO campo, reaproveitando a infra existente
   eq('Comentários é a ÚLTIMA coisa renderizada no painel',
@@ -2558,13 +2593,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('preventiva ganhou o rótulo "Manutenção Preventiva"',
      CS3.TIPO_LABEL.preventiva, 'Manutenção Preventiva');
 
-  // pedido_compra sai só da SELEÇÃO — continua em todo o resto do vocabulário
+  // R48 tirou pedido_compra da SELEÇÃO; a R140 (U96) tirou do sistema inteiro
   eq('pedido_compra NÃO é mais oferecido para abrir chamado interno novo',
      CS3.tiposDaNatureza('interno').includes('pedido_compra'), false);
-  eq('mas pedido_compra continua no union/TIPOS (histórico legível)',
-     CS3.TIPOS.includes('pedido_compra'), true);
-  eq('e continua com rótulo e cor (quem já tem um pedido de compra aberto precisa ver)',
-     !!CS3.TIPO_LABEL.pedido_compra && !!CS3.TIPO_CORES.pedido_compra, true);
+  eq('R140 (U96): pedido_compra SAIU do vocabulário inteiro — TIPOS, rótulo e cor (o histórico virou operacional na migration)',
+     [CS3.TIPOS.includes('pedido_compra'), 'pedido_compra' in CS3.TIPO_LABEL, 'pedido_compra' in CS3.TIPO_CORES],
+     [false, false, false]);
 
   // o classificador de texto livre (Notion, criação rápida por IA) não pode
   // sugerir um tipo que o seletor visual já não oferece mais
@@ -2875,10 +2909,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('clientesDoChamadoIds junta o principal (cliente_id) com os locais, sem duplicar',
      /const clientesDoChamadoIds = useMemo\(\(\) => \{\s*\n\s*const principal = chamado\?\.cliente_id \?\? null;\s*\n\s*const extras = locais/.test(pc5),
      true);
-  eq('o seletor de setor lista SERVICO_ORDEM (hoje Portaria Remota e Monitoramento de Alarmes)',
-     /<option value="">\+ setor<\/option>[\s\S]{0,140}SERVICO_ORDEM\.filter/.test(pc5), true);
-  eq('o seletor de setor não reoferece setor já marcado (senão a etiqueta duplicaria)',
-     /SERVICO_ORDEM\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(pc5), true);
+  // R143 (U96): os GRUPOS ("Clientes de Portaria Remota"…) entram na MESMA
+  // lista do cliente, no topo; o <select> "+ setor" à parte morreu.
+  eq('R143: os grupos estão na lista do cliente ("Clientes de …"), e o <select> "+ setor" saiu',
+     [/<option value="">\+ setor<\/option>/.test(pc5), /valorDoGrupo\(s\), rotulo: rotuloDoGrupo\(s\)/.test(pc5),
+      /const setor = setorDoValor\(v\);/.test(pc5)],
+     [false, true, true]);
+  eq('o grupo já marcado não é reoferecido (senão a etiqueta duplicaria)',
+     /SERVICO_ORDEM\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(pc5), true);
   eq('a busca de "+ adicionar" cliente exclui quem já está na atividade (senão ofereceria chave repetida)',
      /opcoes=\{opcoesClientes\.filter\(\(o\) => !clientesDoChamadoIds\.includes\(o\.valor\)\)\}/.test(pc5),
      true);
@@ -3192,11 +3230,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const chdata = fs30.readFileSync('src/features/chamados/data.ts', 'utf8');
   const cal = fs30.readFileSync('src/routes/_authenticated/calendario.tsx', 'utf8');
 
+  // U96: `CAMPOS_CHAMADO` virou `camposDaHome()` e `CAMPOS` virou
+  // `CAMPOS_BASE` + `EMBEDS` (o fallback da ordem de deploy, R142) — o embed
+  // do cliente mora nos dois lugares novos, e a dica continua sendo cobrada.
   const alvos = [
-    ['CAMPOS_CHAMADO (a Home — foi esta que caiu)',
-     recorte(home, 'const CAMPOS_CHAMADO =', ';')],
-    ['CAMPOS de chamados/data.ts',
-     recorte(chdata, 'const CAMPOS =', ';')],
+    ['camposDaHome (a Home — foi esta que caiu)',
+     recorte(home, 'const camposDaHome =', ';')],
+    ['EMBEDS de chamados/data.ts',
+     recorte(chdata, 'const EMBEDS =', ';')],
     ['a consulta de chamados do Calendário',
      recorte(cal, '.select("id, numero, status, tipo, natureza', ')')],
   ];
@@ -3297,9 +3338,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /rotulo="Equipe"[\s\S]{0,200}opcoes=\{EQUIPES\.map/.test(dash2), true);
   {
     const ctxR60 = { agora: new Date(2026, 7, 21) };
+    // R139 (U96): a lente lê `equipes` (as das pessoas), não mais `equipe`
     const daEquipe = (eq_) => ({
       emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
-      responsavelId: null, equipe: eq_, sprint: null, quando: null, coluna: 'aberto',
+      responsavelId: null, equipe: eq_, equipes: eq_ ? [eq_] : [], sprint: null, quando: null, coluna: 'aberto',
     });
     eq('Equipe "todas" (o padrão) não filtra nada',
        L2.aplicarLentes([daEquipe('tecnica'), daEquipe(null)], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length,
@@ -3308,7 +3350,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        L2.aplicarLentes([daEquipe('tecnica'), daEquipe('comercial')],
                         { ...L2.FILTROS_INICIAIS, equipe: 'tecnica' }, ctxR60, (x) => x).length,
        1);
-    eq('CRÍTICO: quem não tem equipe (campo/comercial, invariante do modelo) some quando uma equipe é escolhida — não é bug, é a definição',
+    eq('CRÍTICO: quem não tem equipe (ninguém com equipe no cadastro entre responsável e apoios) some quando uma equipe é escolhida — não é bug, é a definição',
        L2.aplicarLentes([daEquipe(null)], { ...L2.FILTROS_INICIAIS, equipe: 'tecnica' }, ctxR60, (x) => x).length,
        0);
   }
@@ -3660,8 +3702,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        const c = ET2.ETAPA_CORES[e];
        return !!c.dark && !!c.light && /rgba\(/.test(c.bg) && /rgba\(/.test(c.border);
      }), true);
-  eq('a etapa terminal se chama "Proposta enviada" — o rótulo do fim do ciclo',
-     ET2.ETAPA_LABEL.enviada, 'Proposta enviada');
+  // R147 (U96): o vocabulário das quatro etapas é o do Davi
+  eq('a etapa terminal se chama "Proposta comercial enviada" — o rótulo do fim do ciclo (R147)',
+     ET2.ETAPA_LABEL.enviada, 'Proposta comercial enviada');
+  eq('R147: as quatro etapas têm o nome que o Davi ditou, e Cancelada continua como saída do funil',
+     ET2.ETAPA_ORDEM.map((e) => ET2.ETAPA_LABEL[e]),
+     ['Visita técnica pendente', 'Aguardando revisão', 'Visita técnica aprovada', 'Proposta comercial enviada', 'Cancelada']);
 
   // ── a página ────────────────────────────────────────────────────────────
   eq('R64: o botão Histórico saiu do Painel Comercial (terceira porta para a mesma lista)',
@@ -4943,20 +4989,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a lista de apoios descarta o que não casou e não repete',
      T.resolverPessoas(['Nicholas', 'Fulano', 'Nicholas'], idx1), ['p-nick']);
 
-  // ── equipes da atividade ─────────────────────────────────────────────────
-  eq('R82: a equipe do assunto entra',
-     T.equipesDaAtividade({ doAssunto: 'comercial' }), ['comercial']);
-  eq('CRÍTICO (R83): a equipe de QUEM PARTICIPA se soma à do assunto — é assim que "o Nicholas participou" vira T.I. sem nome no código',
-     T.equipesDaAtividade({ doAssunto: 'comercial', participantes: ['p-nick'], pessoas: equipe1 }),
-     ['comercial', 'ti']);
-  eq('a primeira da lista é a PRINCIPAL, e é o assunto que manda',
-     T.equipesDaAtividade({ doAssunto: 'tecnica', participantes: ['p-nick'], pessoas: equipe1 })[0], 'tecnica');
-  eq('sem repetição quando assunto e pessoa são da mesma equipe',
-     T.equipesDaAtividade({ doAssunto: 'ti', participantes: ['p-nick', 'p-erik'], pessoas: equipe1 }), ['ti']);
-  eq('atividade sem pista nenhuma cai em "outras", não em vazio (vazio some de todo filtro)',
-     T.equipesDaAtividade({}), ['outras']);
-  eq('equipe que não existe mais no vocabulário é ignorada',
-     T.equipesDaAtividade({ doAssunto: 'audiovisual' }), ['outras']);
+  // ── equipes da atividade — R139 (U96): SÓ as das pessoas ────────────────
+  // A R82 ("a equipe do assunto entra") e o balde "outras" da R81 morreram
+  // aqui: a equipe é a de quem está na atividade, e mais nada.
+  eq('CRÍTICO (R139): a equipe de QUEM PARTICIPA é a equipe da atividade — é assim que "o Nicholas participou" vira T.I. sem nome no código',
+     T.equipesDaAtividade({ participantes: ['p-nick'], pessoas: equipe1 }), ['ti']);
+  eq('R139: a primeira da lista é a do RESPONSÁVEL (o primeiro participante); os apoios vêm depois, sem repetir',
+     T.equipesDaAtividade({ participantes: ['p-gil', 'p-nick', 'p-erik'], pessoas: equipe1 }), ['tecnica', 'ti']);
+  eq('R139: atividade sem pessoa com equipe fica SEM equipe — "outras" era o balde de quando a equipe se escolhia à mão',
+     T.equipesDaAtividade({}), []);
+  eq('R139: equipe fora do vocabulário no cadastro é ignorada (não vira etiqueta estranha)',
+     T.equipesDaAtividade({ participantes: ['p-x'], pessoas: [{ id: 'p-x', nome: 'X', equipe: 'audiovisual' }] }), []);
+  eq('R139: a função não aceita mais "equipe do assunto" — passar doAssunto não tem efeito',
+     T.equipesDaAtividade({ doAssunto: 'comercial', participantes: ['p-nick'], pessoas: equipe1 }), ['ti']);
 
   // ── locais ───────────────────────────────────────────────────────────────
   const base = [
@@ -5032,8 +5077,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('…e os tetos são aplicados no código, que é onde eles podem existir',
      /\.slice\(0, TETO_APOIOS\)/.test(ia) && /\.slice\(0, TETO_LOCAIS\)/.test(ia)
      && /cortar\(bruto\.titulo, TETO_TITULO\)/.test(ia), true);
-  eq('R82: o prompt manda material visual e comunicação para o comercial',
-     /comercial:[\s\S]{0,240}material visual e comunica/.test(ia), true);
+  // R139 (U96): a IA NÃO classifica mais equipe — a seção EQUIPE do prompt saiu,
+  // e o prompt diz por quê. (A R82 — material visual é do comercial — deixou de
+  // ter onde morar: a equipe é a das pessoas.)
+  eq('R139: o prompt não pede mais equipe do assunto, e diz que ela é das pessoas',
+     [/comercial:[\s\S]{0,240}material visual e comunica/.test(ia), /A EQUIPE não é sua/.test(ia), /"equipe"/.test(ia.split('const SCHEMA')[1]?.split('// ── Por que NÃO há limite')[0] ?? 'x')],
+     [false, true, false]);
   eq('R80: o prompt distingue responsável de apoio, com exemplos de linguagem de ajuda',
      /dar uma força/.test(ia) && /com apoio do/.test(ia), true);
   eq('a IA devolve MENÇÃO, nunca id — quem casa identidade é o triagem.ts',
@@ -5217,14 +5266,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // O dourado literal AINDA aparece no arquivo, nos botões de AÇÃO (salvar,
   // abrir) — e deve mesmo: ação continua sendo território da marca (§6.3). O
   // que mudou é só o botão de ESCOLHA, que é o `chip()`.
-  eq('CRÍTICO (R87): o botão de escolha deixou de ser dourado para tudo — agora recebe a cor da coisa',
-     /const chip = \(ativo: boolean, cor\?: Cores \| null\)[\s\S]{0,220}botaoSelecao\(ativo, isLight, cor/.test(di3),
-     true);
+  // U96: o `chip()` local morreu com o pedido de compra (era o último uso). A
+  // R87 continua inteira — no SeletorDeOpcao, que é botaoSelecao por dentro.
+  eq('CRÍTICO (R87): nenhum botão de escolha dourado-para-tudo sobrou na página — o chip() saiu com a compra, e a cor da coisa mora nos seletores',
+     [/const chip = \(ativo: boolean/.test(di3), (di3.match(/<SeletorDeOpcao/g) ?? []).length >= 3],
+     [false, true]);
   // R135/U95: as fileiras de botões viraram UM seletor por propriedade; a cor
   // da coisa (R87) continua — agora em cada OPÇÃO do seletor e no botão fechado.
-  eq('…e cada um recebe a cor da SUA escala — agora nas opções do SeletorDeOpcao (R135)',
+  // U96: a opção de EQUIPE saiu (R139); entrou a do IMPACTO (R142).
+  eq('…e cada um recebe a cor da SUA escala — agora nas opções do SeletorDeOpcao (R135): status, tipo e impacto',
      /cor: \{ dark: i\.color, light: i\.colorLight, bg: i\.bg, border: i\.border \}/.test(di3)
-     && /valor: e, rotulo: EQUIPE_LABEL\[e\], cor: equipeCores\(e\)/.test(di3)
+     && /valor: i, rotulo: IMPACTO_LABEL\[i\], cor: IMPACTO_CORES\[i\]/.test(di3)
      && /valor: t, rotulo: TIPO_LABEL\[t\], cor: TIPO_CORES\[t\] \?\? null/.test(di3), true);
   eq('a cor de status já era a hierarquia que o Davi descreveu: início azul, andamento amarelo, stand-by laranja',
      [CS4.chamadoStatusInfo('aberto').color,
@@ -5245,8 +5297,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const nad = fs54.readFileSync('src/features/home/NovaAtividadeDialog.tsx', 'utf8');
   eq('CRÍTICO: o diálogo cria pela MESMA porta do resto (abrirChamado) — nada de um segundo caminho de escrita',
      /await abrirChamado\(\{/.test(nad) && !/\.from\("chamados"/.test(nad), true);
-  eq('trocar de natureza limpa o tipo que a nova natureza não oferece (senão iria escondido para o banco)',
-     /if \(tipo && !\(tiposDaNatureza\(natureza\) as string\[\]\)\.includes\(tipo\)\) setTipo\(""\)/.test(nad), true);
+  // R138 (U96): o seletor de natureza saiu; o diálogo começa pelas DUAS perguntas
+  // e a natureza é consequência (tipo + equipe do responsável)
+  eq('R138: o diálogo começa por "Qual o tipo de demanda?" e "Quem é o responsável?", e a lista dos tipos vem do vocabulário (TIPOS_DE_DEMANDA)',
+     [/Qual o tipo de demanda\?/.test(nad), /Quem é o responsável\?/.test(nad), /TIPOS_DE_DEMANDA\.map/.test(nad),
+      /const ehTecnico = equipeDoResponsavel === "tecnica"/.test(nad), /const ehProposta = tipo === "prospeccao"/.test(nad)],
+     [true, true, true, true, true]);
+  eq('R138: técnico responsável abre o formulário de campo já com tipo e técnico; proposta abre o fluxo da visita',
+     [/<FormularioChamadoTecnico\s*\n\s*tipoInicial=\{tipo!\}\s*\n\s*tecnicoInicial=\{responsavelId\}/.test(nad),
+      /navigate\(\{ to: "\/gerencial\/nova" \}\)/.test(nad)],
+     [true, true]);
+  eq('R142/R148: trocar o tipo limpa o impacto (só corretiva/operacional têm) e a proposta (só implantação tem) — nada vai escondido para o banco',
+     /if \(!temImpacto\(tipo\)\) setImpacto\(null\);\s*\n\s*if \(tipo !== "implantacao"\) setPropostaId\(null\);/.test(nad), true);
+  eq('R143: escolher um GRUPO no diálogo põe o checklist dos clientes dele na descrição',
+     /const setor = setorDoValor\(v\);\s*\n\s*if \(setor\) \{\s*\n\s*setDescricao\(\(d\) => acrescentarChecklist\(d, checklistDoGrupo\(clientes, setor\)/.test(nad), true);
+  eq('R139: o diálogo NÃO pergunta equipe nem sprint, e grava a equipe do responsável na coluna',
+     [/EQUIPES\.map/.test(nad), /SPRINT_ORDEM/.test(nad), /equipe: equipeDoResponsavel \?\? "outras"/.test(nad)],
+     [false, false, true]);
   eq('o diálogo diz que o local não vai no título (R86)',
      /O local vai na etiqueta, não no título/.test(nad), true);
 
@@ -7906,8 +7973,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const chavesNovoChamado = [...corpoNovoChamado.matchAll(/^\s{2}([a-z_0-9]+)\??:/gm)].map((m) => m[1]).sort();
   eq('CRÍTICO: `NovoChamadoInput` não tem mais `data_hora_agendada` — abrir chamado deixou de saber marcar hora, e quem marca é agenda_campo_marcar',
      chavesNovoChamado,
-     ['cliente_id', 'cliente_sistema_id', 'descricao_problema', 'equipe', 'natureza',
-      'prazo_limite', 'prioridade', 'responsavel_id', 'sprint', 'tipo', 'titulo',
+     // U96: `sprint` saiu (R141); `impacto_operacional` (R142) e `proposta_id`
+     // (R148) entraram. `data_hora_agendada` continua FORA — é o ponto.
+     ['cliente_id', 'cliente_sistema_id', 'descricao_problema', 'equipe', 'impacto_operacional', 'natureza',
+      'prazo_limite', 'prioridade', 'proposta_id', 'responsavel_id', 'tipo', 'titulo',
       'visita_id'].sort());
 
   const corpoPatch = dadosChamados79.slice(
@@ -7917,11 +7986,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const membrosPatch = [...corpoPatch.matchAll(/"([a-z_0-9]+)"/g)].map((m) => m[1]).sort();
   eq('CRÍTICO: `ChamadoPatch` não tem mais `data_hora_agendada` — a coluna é ESPELHO derivado (R101), e nenhuma tela a escreve por patch',
      membrosPatch,
+     // U96: `sprint` saiu do patch (R141); `impacto_operacional` e `proposta_id` entraram
      ['assinatura_nome', 'assinatura_url', 'cliente_id', 'cliente_sistema_id',
       'concluida_em', 'descricao_problema', 'diagnostico', 'equipe', 'fechada_em',
-      'fechado_por', 'finalizada_em', 'iniciada_em', 'motivo_cancelamento',
-      'pecas_texto', 'prazo_limite', 'prioridade', 'responsavel_id',
-      'servico_executado', 'sprint', 'status', 'tipo', 'titulo'].sort());
+      'fechado_por', 'finalizada_em', 'impacto_operacional', 'iniciada_em', 'motivo_cancelamento',
+      'pecas_texto', 'prazo_limite', 'prioridade', 'proposta_id', 'responsavel_id',
+      'servico_executado', 'status', 'tipo', 'titulo'].sort());
 
   eq('CRÍTICO: e a derivação de status saiu de abrirChamado — quem faz `aberto -> agendado` é o passo 8 de agenda_campo_marcar, num lugar só',
      /input\.natureza === "campo" && input\.responsavel_id && input\.data_hora_agendada/.test(dadosChamados79),
@@ -10474,12 +10544,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     'trg_chamado_sincronizar_unidades',   // u7:835 — o inventário
     'trg_notify_chamado_upd',             // u7:451 — os sinos
   ];
-  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes sete (derivado das migrations × lista à mão; o sétimo é a menção, U95). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
+  eq('CRÍTICO: CENSO — os gatilhos AFTER UPDATE de LINHA de public.chamados são exatamente estes seis (derivado das migrations × lista à mão; a menção entrou na U95, a ficha de compra saiu na U96). A ordem entre eles é indiferente porque os conjuntos escritos são DISJUNTOS, e este censo é o que faz essa frase continuar sendo sobre um conjunto conhecido',
      // U95/R135: o sétimo é o aviso de MENÇÃO na descrição. Ele só INSERE em
      // notificacoes — conjunto escrito disjunto de todos os outros, então "a
      // ordem é indiferente" continua verdadeira. TRIGS_CHAMADOS_82 fica como a
      // lista da ÉPOCA, porque a conferência 120 da U82 (abaixo) foi escrita com ela.
-     trigsDeChamados82(), [...TRIGS_CHAMADOS_82, 'trg_notify_mencao_descricao'].sort());
+     // U96/R140: o gatilho da ficha de compra CAIU (DROP TRIGGER na migration
+     // U96, que o censo enxerga) — a lista da época o cita, e ele sai daqui.
+     trigsDeChamados82(),
+     [...TRIGS_CHAMADOS_82.filter((t) => t !== 'trg_chamado_ficha_compra_upd'), 'trg_notify_mencao_descricao'].sort());
   // E a conferência 120 lê a MESMA ordem do pg_trigger. Se um rename futuro
   // mudar a ordem alfabética, ela aparece — em vez de mudar em silêncio.
   eq('CRÍTICO: a conferência 120 espera exatamente a ordem alfabética desse censo — ela é a mesma lista, lida do CATÁLOGO em vez do arquivo',
@@ -11263,13 +11336,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const vivo83 = fonte83.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
     // O COMMIT B saiu: 'vistoria' NÃO está mais em NAO_OFERECIDOS, e o par
     // negativo prende isso — se alguém a repuser, o tipo some dos seletores
-    // sem nenhum outro sinal. A lista continua existindo (o corte do R48 para
-    // 'pedido_compra' é permanente) e continua com UM consumidor só.
-    eq('U83: o gate continua sendo UMA lista com UM consumidor, e `vistoria` já NÃO está nela — o commit B saiu',
+    // sem nenhum outro sinal. A lista continua existindo, VAZIA desde a U96
+    // ('pedido_compra' saiu do vocabulário inteiro, R140) — é o MECANISMO do
+    // próximo tipo, e continua com UM consumidor só.
+    eq('U83: o gate continua sendo UMA lista com UM consumidor, `vistoria` NÃO está nela (commit B) e `pedido_compra` também não (R140 — saiu do vocabulário)',
        [/const NAO_OFERECIDOS: ChamadoTipo\[\] = \[[\s\S]{0,400}?"vistoria",/.test(vivo83),
-        /"pedido_compra",/.test(vivo83),
+        /"pedido_compra"/.test(vivo83),
         (vivo83.match(/NAO_OFERECIDOS/g) || []).length],
-       [false, true, 2]);
+       [false, false, 2]);
     // O MECANISMO fica escrito mesmo depois de usado: ele vale para o PRÓXIMO
     // tipo, e um comentário que some com o uso é conhecimento que se perde.
     eq('U83: e o mecanismo dos dois commits continua explicado no código — renderizar é aditivo, OFERECER é o que grava',
@@ -11419,10 +11493,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const DIR83 = 'supabase/migrations';
     const comCheck = fs83.readdirSync(DIR83).filter((f) => f.endsWith('.sql')).sort()
       .filter((f) => /ADD CONSTRAINT chamados_tipo_check/.test(fs83.readFileSync(`${DIR83}/${f}`, 'utf8')));
-    eq('U83: a última migration que reescreve chamados_tipo_check é a U83 (por timestamp, que é a ordem em que o Davi roda)',
-       comCheck[comCheck.length - 1], '20260906090000_u83_vistoria.sql');
+    // U96 (R140) reescreveu o CHECK de novo — tirou pedido_compra e proposta_comercial
+    eq('a última migration que reescreve chamados_tipo_check é a U96 (por timestamp, que é a ordem em que o Davi roda)',
+       comCheck[comCheck.length - 1], '20260914090000_u96_estrutura_das_atividades.sql');
 
+    // `u83` é o nome histórico da variável: é a ÚLTIMA migration que reescreve
+    // o CHECK (hoje a U96). As asserções sobre o DESENHO da U83 leem a U83 por
+    // nome (`u83Mesmo`).
     const u83 = fs83.readFileSync(`${DIR83}/${comCheck[comCheck.length - 1]}`, 'utf8');
+    const u83Mesmo = fs83.readFileSync(`${DIR83}/20260906090000_u83_vistoria.sql`, 'utf8');
     // O corpo VIVO: o rodapé DESFAZER traz de propósito a lista ANTIGA (é para
     // onde se volta), e medir o arquivo inteiro seria medir o desfazer junto.
     // Foi assim que a S4 quase mediu o próprio defeito.
@@ -11432,16 +11511,23 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const noCheck = (trecho.match(/'([a-z_]+)'/g) || []).map((s) => s.slice(1, -1)).sort();
     eq('CRÍTICO: o corpo VIVO da U83 foi encontrado (sem isto tudo abaixo mede string vazia e passa de graça)',
        iAdd > 0 && noCheck.length > 0, true);
-    eq('CRÍTICO (CENSO banco × código): o CHECK vivo aceita EXATAMENTE o union do TS mais "proposta_comercial" (legado da U41, renomeado para prospeccao e mantido só para o histórico continuar legível). Tipo acrescentado de um lado só é 23514 em produção',
-       noCheck, [...CS83.TIPOS, 'proposta_comercial'].sort());
-    eq('…e nenhum dos oito valores da U41 foi perdido no DROP/ADD — o CHECK que estreita trava UPDATE em linha que já existe',
-       ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria',
-        'pedido_compra', 'proposta_comercial', 'prospeccao'].filter((t) => !noCheck.includes(t)),
-       []);
+    eq('CRÍTICO (CENSO banco × código): o CHECK vivo aceita EXATAMENTE o union do TS — desde a U96 sem "proposta_comercial" (morto desde a U41) nem "pedido_compra" (R140). Tipo acrescentado de um lado só é 23514 em produção',
+       noCheck, [...CS83.TIPOS].sort());
+    // A U83 preservou os oito da U41; a U96 tirou DOIS de propósito — e só pôde
+    // porque REMAPEIA as linhas antes (pedido_compra → operacional,
+    // proposta_comercial → prospeccao) e tem pré-voo que aborta se sobrar linha.
+    eq('R140: os dois valores que a U96 tirou do CHECK são exatamente pedido_compra e proposta_comercial — e a migration remapeia as linhas antes de apertar',
+       [['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria',
+         'pedido_compra', 'proposta_comercial', 'prospeccao'].filter((t) => !noCheck.includes(t)).sort(),
+        /SET tipo = 'operacional' WHERE tipo = 'pedido_compra'/.test(u83),
+        /SET tipo = 'prospeccao'  WHERE tipo = 'proposta_comercial'/.test(u83),
+        /PRÉ-VOO U96 — nada foi alterado \(ROLLBACK\)/.test(u83),
+        /fora da lista nova mesmo depois do remap/.test(u83)],
+       [['pedido_compra', 'proposta_comercial'], true, true, true, true]);
 
     // O pré-voo ABORTA, e o desfazer existe — as duas exigências da casa.
     eq('U83: a migration tem pré-voo que ABORTA quando o CHECK vivo não é o da U41, e quando existe linha com tipo fora da lista nova',
-       [/DO \$preflight\$/.test(u83),
+       [/DO \$preflight\$/.test(u83Mesmo),
         // A GUARDA É COMPARAÇÃO DE CONJUNTO, nas DUAS direções, e fora de
         // qualquer `ELSE`. `@>` pega REMOÇÃO de um dos oito; `<@` pega ADIÇÃO
         // de um nono que o §3 apagaria em silêncio. A versão anterior eram oito
@@ -11449,12 +11535,14 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         // adição, e DESLIGADA inteira na segunda rodada — justamente onde a
         // adição é mais provável. O `v_vals IS NULL` fecha o buraco booleano
         // (`NOT (NULL AND …)` é NULL, e o IF não dispararia).
-        /IF v_vals IS NULL\n\s*OR NOT \(v_vals @> ARRAY\[[\s\S]{0,400}?AND v_vals <@ ARRAY\[/.test(u83)
-        && /não é a versão da U41 nem a desta migration/.test(u83),
-        /o ADD CONSTRAINT do §3 valida a tabela inteira/.test(u83)],
+        /IF v_vals IS NULL\n\s*OR NOT \(v_vals @> ARRAY\[[\s\S]{0,400}?AND v_vals <@ ARRAY\[/.test(u83Mesmo)
+        && /não é a versão da U41 nem a desta migration/.test(u83Mesmo),
+        /o ADD CONSTRAINT do §3 valida a tabela inteira/.test(u83Mesmo)],
        [true, true, true]);
     eq('U83: e a conferência final é obtido × esperado × veredito em SELECT (RAISE NOTICE é invisível no editor do Supabase)',
-       /AS veredito/.test(u83) && />>> OLHAR <<</.test(u83), true);
+       /AS veredito/.test(u83Mesmo) && />>> OLHAR <<</.test(u83Mesmo), true);
+    eq('U96: a conferência final também é obtido × esperado × veredito em SELECT, e confere convalidated',
+       [/AS veredito/.test(u83), />>> OLHAR <<</.test(u83), /convalidated/.test(u83)], [true, true, true]);
     // A ORDEM ESPERADA É DERIVADA, NÃO COPIADA. A primeira versão desta linha
     // colou a mesma string que estava no SQL — e a string estava ERRADA
     // (`prospeccao` antes de `proposta_comercial`; elas divergem na quarta
@@ -11465,14 +11553,17 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     // Postgres — por isso o SQL foi obrigado a declarar a collation: os dois
     // lados passam a derivar a ordem da MESMA regra.
     eq('U83: a conferência 101 compara a LISTA INTEIRA extraída do catálogo, não um LIKE "%vistoria%" — presença do valor novo não vê a remoção de um antigo (regra 2)',
-       [/string_agg\(m\.grupo\[1\], ',' ORDER BY m\.grupo\[1\] COLLATE "C"\)/.test(u83),
-        u83.includes([...CS83.TIPOS, 'proposta_comercial'].sort().join(','))],
+       [/string_agg\(m\.grupo\[1\], ',' ORDER BY m\.grupo\[1\] COLLATE "C"\)/.test(u83Mesmo),
+        u83Mesmo.includes([...CS83.TIPOS, 'pedido_compra', 'proposta_comercial'].sort().join(','))],
+       [true, true]);
+    eq('U96: a conferência 4 também compara a LISTA INTEIRA do catálogo (COLLATE "C", a mesma ordem do sort() de JS) — e ela é o union do TS',
+       [/string_agg\(v, ',' ORDER BY v COLLATE "C"\)/.test(u83), u83.includes([...CS83.TIPOS].sort().join(','))],
        [true, true]);
     eq('U83: e ela confere `convalidated` — uma constraint NOT VALID passa por todas as outras conferências sem proteger uma linha',
-       /convalidated/.test(u83), true);
+       /convalidated/.test(u83Mesmo), true);
     eq('U83 traz o DESFAZER comentado, com o aviso de que ele só funciona enquanto não houver vistoria gravada',
-       /DESFAZER — volta o CHECK ao estado da U41/.test(u83)
-       && /SÓ FUNCIONA ENQUANTO NÃO EXISTIR NENHUM CHAMADO com tipo='vistoria'/.test(u83), true);
+       /DESFAZER — volta o CHECK ao estado da U41/.test(u83Mesmo)
+       && /SÓ FUNCIONA ENQUANTO NÃO EXISTIR NENHUM CHAMADO com tipo='vistoria'/.test(u83Mesmo), true);
   }
 
   // ── 8) O QUE ESTA ENTREGA NÃO FAZ, PRESO POR ASSERÇÃO ────────────────────
@@ -13280,6 +13371,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        [/cargo IN \('admin', 'comercial', 'sac'\)/.test(corpo),
         /\bativo\b/.test(corpo),
         arquivos.size, ocorrencias, policies],
+       // U96 (+1 arquivo, +3 ocorrências, +3 policies): as três policies de
+       // ESCRITA do bucket clientes-fachadas (insert/update/delete de gestor) —
+       // a leitura é de qualquer autenticado e não passa por is_gestor.
        // U87 (+1 arquivo, +11 ocorrências, +1 policy): a metade PROCURAÇÃO do
        // gate de `plantao_salvar`/`plantao_apagar` e a policy de leitura de
        // `atendimentos_plantao`. Cada uma delas vem ACOMPANHADA do teste de
@@ -13294,7 +13388,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // 'pendente_aprovacao'` escrito ao lado —, então a P51 NÃO a alcança.
        // O censo subiu de propósito: ele existe para que nenhuma política
        // nova entre sem alguém olhar esta linha (regra 3).
-       [true, false, 29, 123, 42]);
+       [true, false, 30, 126, 45]);
   }
 }
 
@@ -16023,7 +16117,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /if \(kpiAtivo === "aguardando_conferencia"\) return ordenarHistorico\(chamadosDoKpi\(kpiAtivo, chamados, agora\)\);/.test(pop93)],
      [true, true, true]);
   eq('U93/R125: a consulta de chamados TRAZ faturamento_status — sem a coluna o recorte não conta ninguém, e o tile diria zero',
-     /faturamento_status/.test(fs93.readFileSync('src/features/chamados/data.ts', 'utf8').match(/const CAMPOS =[\s\S]*?;/)[0]), true);
+     /faturamento_status/.test(fs93.readFileSync('src/features/chamados/data.ts', 'utf8').match(/const CAMPOS_BASE =[\s\S]*?;/)[0]), true);
 
   // ── "Implantações em andamento" ─────────────────────────────────────────
   eq('U93/R125: implantacoesEmAndamento = implantação EM ABERTO, por fim previsto (sem prazo por último), depois pela abertura; corretiva e concluída ficam fora',
@@ -16223,8 +16317,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('U94/R133: as duas visões leem o MESMO `porDia` (uma lista, dois desenhos) e os mesmos filtros',
        [(cal.match(/const porDia = useMemo/g) ?? []).length, (cal.match(/porDia\[chaveDia\(d\)\] \?\? \[\]/g) ?? []).length],
        [1, 2]);
-    eq('U94/R133: a semanal mostra o detalhe que a mensal esconde — hora ou "prazo", tipo, cliente, status, número e quem toca',
-       [/\{e\.porPrazo \? "prazo" : horaCurta\(e\.quando\)\}/.test(cal), /\{e\.tipoLabel\}/.test(cal),
+    eq('U94/R133: a semanal mostra o detalhe que a mensal esconde — hora, "prazo" ou "concluído" (R145), tipo, cliente, status, número e quem toca',
+       [/\{e\.porConclusao \? "concluído" : e\.porPrazo \? "prazo" : horaCurta\(e\.quando\)\}/.test(cal), /\{e\.tipoLabel\}/.test(cal),
         /\{e\.cliente && e\.cliente !== e\.titulo && \(/.test(cal), /\{e\.atrasado \? "Atrasado" : e\.statusLabel\}/.test(cal),
         /\{e\.numero\}/.test(cal), /max=\{3\} tamanho=\{18\}/.test(cal)],
        [true, true, true, true, true, true]);
@@ -16361,9 +16455,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true]);
   const di = ler95('src/features/chamados/DetalheInterno.tsx');
   const diCod = semCom95(di);
-  eq('U95/R135 CRÍTICO: na página da atividade, Status, Classificação, Prioridade, Equipe e Sprint são SELETORES — nenhuma fileira de chips sobrou',
-     [(di.match(/<SeletorDeOpcao/g) ?? []).length, /chip\(chamado\.status === s/.test(diCod), /chip\(chamado\.equipe === e/.test(diCod), /chip\(chamado\.tipo === t/.test(diCod)],
-     [5, false, false, false]);
+  // U96: dos cinco seletores da U95 sobraram três — Status, Tipo de demanda e
+  // Impacto operacional (R142). Prioridade (campo), Equipe (R139) e Sprint
+  // (R141) saíram da página. Nenhuma fileira de chips voltou.
+  eq('U95/R135 CRÍTICO: na página da atividade, Status, Tipo de demanda e Impacto são SELETORES — nenhuma fileira de chips sobrou (Prioridade, Equipe e Sprint saíram na U96)',
+     [(di.match(/<SeletorDeOpcao/g) ?? []).length, /chip\(chamado\.status === s/.test(diCod), /chip\(chamado\.equipe === e/.test(diCod), /chip\(chamado\.tipo === t/.test(diCod),
+      /id="det-impacto"/.test(di), /id="det-sprint"/.test(di), /id="det-equipe"/.test(di), /id="det-prioridade"/.test(di)],
+     [3, false, false, false, true, false, false, false]);
   eq('U95/R135: a página tem duas colunas (.detalhe-grid) — o texto na larga, as propriedades na estreita',
      [/className="detalhe-grid"/.test(di),
       di.indexOf('<EditorDeDescricao') < di.indexOf('<span style={SEC}>Propriedades</span>'),
@@ -16383,9 +16481,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── o painel: o <select> nativo saiu das propriedades; o editor entrou ──
   const pc = ler95('src/features/chamados/PainelChamado.tsx');
-  eq('U95/R135: no painel, Escolha renderiza o SeletorDeOpcao, e o único <select> que sobra é o atalho "+ setor"',
+  eq('U95/R135: no painel, Escolha renderiza o SeletorDeOpcao, e NENHUM <select> nativo sobrou (o "+ setor" virou opção da lista do cliente, R143/U96)',
      [/function Escolha\([\s\S]{0,700}<SeletorDeOpcao/.test(pc), (semCom95(pc).match(/<select/g) ?? []).length],
-     [true, 1]);
+     [true, 0]);
   eq('U95/R135: o painel usa o MESMO editor da página (um componente, não dois) e passa as pessoas para o "@"',
      [/<EditorDeDescricao/.test(pc), /pessoas=\{pessoasMencao\}/.test(pc), /<TextareaComMencoes/.test(pc)],
      [true, true, true]);
@@ -16466,12 +16564,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('CRÍTICO: `sobreFaixa`/`emFaixa`/o antigo `FAIXA` saíram de vez — sem fundo colorido no card, o chip nunca mais precisa fingir cinza',
      [/sobreFaixa/.test(ca96), /emFaixa/.test(ca96), /const FAIXA:/.test(ca96)],
      [false, false, false]);
-  eq('U96/R136: os 4 chips do card (status, tipo, prioridade, compra) chamam chipStyle só com (cor, isLight)',
+  eq('U96/R136: os 4 chips do card (status, tipo, prioridade no campo, impacto no interno) chamam chipStyle só com (cor, isLight) — o chip de compra morreu com a R140',
      [ca96.includes('...chipStyle(a.statusCor, isLight), flexShrink: 0'),
       ca96.includes('chipStyle(a.tipoCor, isLight)'),
       ca96.includes('chipStyle(a.prioridadeCor, isLight)'),
-      ca96.includes('chipStyle(PRISMA.pessego, isLight)')],
-     [true, true, true, true]);
+      ca96.includes('chipStyle(a.impactoCor, isLight)'),
+      /PRISMA\.pessego/.test(ca96)],
+     [true, true, true, true, false]);
 
   // ── os documentos (regra 7) ───────────────────────────────────────────────
   eq('U96 (regra 7): R136 existe em PRODUTO.md, a U96 está no diário, e o manual de campo fala em cor de BORDA (não mais só "fundo")',
@@ -16491,6 +16590,247 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /cor de fundo do card/.test(ds96),
       /sombra colorida \| inline \| cards com faixa de prazo/.test(ds96)],
      [true, true, true, true, false, false]);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// U96 — R137–R150: A ESTRUTURA DAS ATIVIDADES (Davi, 2026-09-03). Seis tipos e
+// a matriz de campos; duas perguntas na criação; equipe das pessoas; pedido de
+// compra e sprint fora; impacto operacional; grupos de clientes; recebimento;
+// calendário por conclusão; ficha do cliente com fachada; proposta e implantação.
+// ═══════════════════════════════════════════════════════════════════════════
+{
+  const fs96 = require('fs');
+  const pth96 = require('path');
+  const ler96 = (a) => fs96.readFileSync(a, 'utf8');
+  const codigo96 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const CS96 = carregar('src/lib/chamado-status.ts');
+  const EQ96 = carregar('src/lib/equipes.ts');
+  const G96 = carregar('src/features/chamados/grupos.ts');
+
+  // ── R137/R138: os seis tipos, no único endereço autorizado ───────────────
+  eq('R137: os SEIS tipos de demanda, na ordem do Davi, moram em chamado-status.ts (TIPOS_DE_DEMANDA)',
+     CS96.TIPOS_DE_DEMANDA, ['corretiva', 'preventiva', 'operacional', 'prospeccao', 'implantacao', 'melhoria']);
+  eq('R137: todos os seis existem no vocabulário — e a vistoria (R112) fica de fora da pergunta de propósito',
+     [CS96.TIPOS_DE_DEMANDA.every((t) => CS96.TIPOS.includes(t)), CS96.TIPOS_DE_DEMANDA.includes('vistoria')], [true, false]);
+
+  // ── R142: o impacto operacional, a lógica pura ───────────────────────────
+  eq('R142: a régua é Sem impacto · Baixo · Moderado · Crítico, nesta ordem, com rótulo e cor do PRISMA',
+     [CS96.IMPACTO_ORDEM, CS96.IMPACTO_ORDEM.map((i) => CS96.IMPACTO_LABEL[i]), CS96.IMPACTO_ORDEM.every((i) => !!CS96.IMPACTO_CORES[i]?.dark && !!CS96.IMPACTO_CORES[i]?.light)],
+     [['sem_impacto', 'baixo', 'moderado', 'critico'], ['Sem impacto', 'Baixo', 'Moderado', 'Crítico'], true]);
+  eq('R142 CRÍTICO: só corretiva e operacional têm impacto — implantação, preventiva (D1), melhoria e proposta não',
+     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria', 'prospeccao', 'vistoria', null].map((t) => CS96.temImpacto(t)),
+     [true, false, true, false, false, false, false, false]);
+  eq('R142: o rank do impacto é crítico 0 … sem impacto 3 (a mesma régua da prioridade, para quem ordena)',
+     CS96.IMPACTO_ORDEM.map((i) => CS96.IMPACTO_RANK[i]), [3, 2, 1, 0]);
+  eq('D9: prioridade → impacto é um-para-um, na mesma ordem (urgente → crítico … baixa → sem impacto), e nada → null',
+     ['urgente', 'alta', 'normal', 'baixa', null].map((p) => CS96.impactoDaPrioridade(p)),
+     ['critico', 'moderado', 'baixo', 'sem_impacto', null]);
+
+  // ── R139: as equipes das pessoas, a lógica pura ──────────────────────────
+  const equipeDe96 = (id) => ({ a: 'ti', b: 'tecnica', c: 'ti', d: 'audiovisual' })[id];
+  eq('R139: equipesDePessoas — responsável primeiro, apoios depois, sem repetir, sem vazio, sem equipe fora do vocabulário',
+     EQ96.equipesDePessoas(['a', null, 'b', 'c', 'd', undefined, 'zz'], equipeDe96), ['ti', 'tecnica']);
+  eq('R139: ninguém com equipe → lista VAZIA (não "outras")', EQ96.equipesDePessoas(['zz', 'd'], equipeDe96), []);
+
+  // ── R143: grupos de clientes, a lógica pura ──────────────────────────────
+  const clientes96 = [
+    { nome: 'Bravo', servicos_prestados: ['portaria_remota'] },
+    { nome: 'Alfa', servicos_prestados: ['portaria_remota', 'monitoramento_alarmes'] },
+    { nome: 'Charlie', servicos_prestados: [] },
+    { nome: '  ', servicos_prestados: ['portaria_remota'] },
+  ];
+  eq('R143: o grupo aparece como "Clientes de …" e o valor leva o prefixo setor:',
+     [G96.rotuloDoGrupo('portaria_remota'), G96.valorDoGrupo('monitoramento_alarmes')],
+     ['Clientes de Portaria Remota', 'setor:monitoramento_alarmes']);
+  eq('R143: setorDoValor distingue grupo de cliente — e não aceita setor fora do vocabulário',
+     [G96.setorDoValor('setor:portaria_remota'), G96.setorDoValor('7f1a-uuid-de-cliente'), G96.setorDoValor('setor:inventado'), G96.setorDoValor(null)],
+     ['portaria_remota', null, null, null]);
+  eq('R143 CRÍTICO: o checklist do grupo é a lista dos clientes que prestam o serviço, em ordem alfabética, uma caixa por linha — e sem nome vazio',
+     [G96.checklistDoGrupo(clientes96, 'portaria_remota'), G96.checklistDoGrupo(clientes96, 'monitoramento_alarmes')],
+     ['- [ ] Alfa\n- [ ] Bravo', '- [ ] Alfa']);
+  const lista96 = G96.checklistDoGrupo(clientes96, 'portaria_remota');
+  const uma96 = G96.acrescentarChecklist('Revisar relatórios.', lista96, 'Clientes de Portaria Remota:');
+  eq('R143: o checklist entra depois de uma linha em branco e de um título, quando já há texto',
+     uma96, 'Revisar relatórios.\n\nClientes de Portaria Remota:\n- [ ] Alfa\n- [ ] Bravo');
+  eq('R143 CRÍTICO: acrescentar de novo NÃO duplica — nem a linha já marcada [x]',
+     [G96.acrescentarChecklist(uma96, lista96, 'Clientes de Portaria Remota:'),
+      G96.acrescentarChecklist('- [x] Alfa\n- [ ] Bravo', lista96)],
+     [uma96, '- [x] Alfa\n- [ ] Bravo']);
+  eq('R143: descrição vazia recebe só o checklist (sem título e sem linha em branco na frente)',
+     G96.acrescentarChecklist('', lista96), lista96);
+
+  // ── a camada de dados: o fallback da ordem de deploy e os grupos no histórico ─
+  const dados96 = ler96('src/features/chamados/data.ts');
+  eq('U96 CRÍTICO (regra 5): toda leitura de chamados passa por comFallbackDaU96 — pede as colunas novas e, em 42703, repete sem elas; a tela não fica em branco antes da migration',
+     [/export const COLUNAS_DA_U96 = "impacto_operacional, proposta_id";/.test(dados96),
+      /if \(r\.error && r\.error\.code === "42703"\) r = await consulta\(false\);/.test(dados96),
+      (codigo96(dados96).match(/comFallbackDaU96<any/g) ?? []).length >= 4,
+      /\.select\(CAMPOS\)/.test(codigo96(dados96))],
+     [true, true, true, false]);
+  eq('U96 (regra 5): abrirChamado repete o INSERT sem as duas colunas novas em 42703, e atualizarChamado explica que a migration U96 precisa rodar',
+     [/delete linha\.impacto_operacional;\s*\n\s*delete linha\.proposta_id;/.test(dados96),
+      /a migration U96 precisa ser rodada/.test(dados96)],
+     [true, true]);
+  eq('R143 CRÍTICO: o histórico do cliente inclui as atividades de GRUPO (setor.in) e de local extra (chamado_locais.cliente_id), e não só cliente_id',
+     [/export function useChamadosDoCliente\(clienteId: string \| undefined, servicosPrestados\?: string\[\] \| null\)/.test(dados96),
+      /setor\.in\.\(\$\{setores\.join\(","\)\}\)/.test(dados96),
+      /\.from\("chamado_locais" as any\)\s*\n\s*\.select\("chamado_id"\)\s*\n\s*\.or\(filtroLocais\)/.test(dados96),
+      /id\.in\.\(\$\{ids\.join\(","\)\}\)/.test(dados96)],
+     [true, true, true, true]);
+  eq('R148: usePropostasEnviadas lista só propostas com proposta_enviada_em — a implantação aponta para uma proposta que existe',
+     /export function usePropostasEnviadas\(\)[\s\S]{0,600}\.not\("proposta_enviada_em", "is", null\)/.test(dados96), true);
+  eq('R141/R140: o tipo Chamado não tem mais sprint; nenhuma chave de compra no realtime',
+     [/^\s+sprint:/m.test(codigo96(dados96)), /chamado-compra|home-compras-situacao/.test(codigo96(dados96)), /equipeDaPessoa/.test(dados96)],
+     [false, false, true]);
+  const home96 = ler96('src/features/home/data.ts');
+  eq('R139/R140 (Início): o contexto leva o mapa pessoa → equipe; fichas de compra e chamado_equipes saíram da leitura',
+     [/equipeDePessoa,/.test(home96), /useFichasDeCompra|chamado_compra|useEquipesDeTodos\(\)/.test(codigo96(home96)), /camposDaHome\(u96\)/.test(home96)],
+     [true, false, true]);
+  eq('R139 (lentes): o filtro Equipe casa com as equipes das PESSOAS (a.equipes), em qualquer natureza',
+     /return equipe === "todas" \|\| a\.equipes\.includes\(equipe\);/.test(ler96('src/features/home/lentes.ts')), true);
+
+  // ── R145: o calendário ───────────────────────────────────────────────────
+  const cal96 = ler96('src/routes/_authenticated/calendario.tsx');
+  eq('R145 CRÍTICO: a consulta do calendário tem TRÊS pernas — concluído pela conclusão, em aberto pela hora agendada, em aberto pelo prazo',
+     [/and\(status\.eq\.concluido,concluida_em\.gte\./.test(cal96), /and\(status\.neq\.concluido,data_hora_agendada\.gte\./.test(cal96),
+      /and\(status\.neq\.concluido,data_hora_agendada\.is\.null,prazo_limite\.gte\./.test(cal96)],
+     [true, true, true]);
+  eq('R145: quem decide o dia é `quando` — a conclusão vence a hora agendada e o prazo; a célula diz "concluído"',
+     [/const porConclusao = c\.status === "concluido" && !!c\.concluida_em;/.test(cal96),
+      /const quando = porConclusao \? c\.concluida_em : \(c\.data_hora_agendada \?\? c\.prazo_limite\);/.test(cal96),
+      /porPrazo: !porConclusao && !c\.data_hora_agendada,/.test(cal96)],
+     [true, true, true]);
+
+  // ── as telas da atividade ────────────────────────────────────────────────
+  const di96 = ler96('src/features/chamados/DetalheInterno.tsx');
+  const di96c = codigo96(di96);
+  eq('R144: a página mostra o RECEBIMENTO (de quem, quando), o início e a conclusão',
+     [/Recebido\{chamado\.aberto_por \? ` de \$\{nomeDe\(chamado\.aberto_por\)\}` : ""\} em \{dataHora\(chamado\.created_at\)\}/.test(di96),
+      /Iniciado em \{dataHora\(chamado\.iniciada_em\)\}/.test(di96), /Concluído em \{dataHora\(chamado\.concluida_em\)\}/.test(di96)],
+     [true, true, true]);
+  eq('R149: a corretiva tem "Problema detectado" e "Solução aplicada" — a solução grava em servico_executado, a coluna que o campo já usa',
+     [/chamado\.tipo === "corretiva" \? "Problema detectado" : "Descrição"/.test(di96),
+      /<span style=\{SEC\}>Solução aplicada<\/span>/.test(di96), /salvar\.mutate\(\{ servico_executado: v \|\| null \}\)/.test(di96)],
+     [true, true, true]);
+  eq('R150: fotos e arquivos na página — a MESMA tabela e o MESMO bucket do campo (anexarFoto, etapa "outra"; excluirFoto)',
+     [/<span style=\{SEC\}>Fotos e arquivos<\/span>/.test(di96), /await anexarFoto\(id, f, "outra"\)/.test(di96), /excluirFoto\(fotoId, path\)/.test(di96),
+      /accept="image\/\*,application\/pdf"/.test(di96)],
+     [true, true, true, true]);
+  eq('R148: a implantação tem o campo "Proposta comercial aprovada" na página, gravando proposta_id',
+     /chamado\.tipo === "implantacao" && \([\s\S]{0,200}Proposta comercial aprovada[\s\S]{0,400}salvar\.mutate\(\{ proposta_id: v \}\)/.test(di96), true);
+  eq('R139: a página mostra as EQUIPES ENVOLVIDAS derivadas das pessoas, e troca a coluna equipe junto com o responsável',
+     [/const equipesEnvolvidas = equipesDePessoas\(\s*\n\s*\[chamado\.responsavel_id, \.\.\.apoios\.map\(\(a\) => a\.profile_id\)\],/.test(di96),
+      /<label style=\{LABEL\}>Equipes envolvidas<\/label>/.test(di96),
+      /const eq = equipeDaPessoa\(pessoas, v\);\s*\n\s*salvar\.mutate\(\{ responsavel_id: v, \.\.\.\(eq \? \{ equipe: eq \} : \{\}\) \}\);/.test(di96)],
+     [true, true, true]);
+  eq('R143: a página diz "Interno — Prever" sem cliente, e mostra o grupo como "Clientes de …"',
+     [/Interno — Prever/.test(di96), /Clientes de \{SERVICO_LABEL\[s as ServicoCliente\] \?\? s\}/.test(di96)], [true, true]);
+  eq('R139/R140/R141 CRÍTICO: nem equipe, nem sprint, nem compra sobraram na página da atividade',
+     [/EQUIPES\.map|opcoesEquipe|id="det-equipe"/.test(di96c), /SPRINT|sprint/.test(di96c), /useCompra|salvarCompra|SITUACAO_LABEL/.test(di96c)],
+     [false, false, false]);
+  const pc96 = ler96('src/features/chamados/PainelChamado.tsx');
+  eq('R139/R143 (painel): etiquetas das equipes das pessoas no cabeçalho; escolher o grupo acrescenta o checklist à descrição',
+     [/equipesEnvolvidas\.map\(\(e\) => \(/.test(pc96), /descricao_problema: acrescentarChecklist\(/.test(pc96), /sprintDoPrazo/.test(codigo96(pc96))],
+     [true, true, false]);
+  const nad96 = ler96('src/features/home/NovaAtividadeDialog.tsx');
+  eq('R143/R150 (diálogo): o grupo grava a etiqueta de setor; os arquivos sobem como fotos do chamado já criado',
+     [/adicionarSetorChamado\(id, setor\)/.test(nad96), /anexarFoto\(id, f, "outra"\)/.test(nad96), /await abrirChamado\(\{\s*\n\s*natureza: "interno",/.test(nad96)],
+     [true, true, true]);
+  eq('R138: o formulário de campo aceita tipo e técnico iniciais (as duas respostas do pop-up)',
+     [/tipoInicial\?: ChamadoTipo;/.test(ler96('src/features/chamados/FormularioChamadoTecnico.tsx')),
+      /tecnicoInicial\?: string \| null;/.test(ler96('src/features/chamados/FormularioChamadoTecnico.tsx'))],
+     [true, true]);
+  const cr96 = ler96('src/features/home/CriarRapido.tsx');
+  eq('R139/R142 (IA): a criação rápida não grava equipe extra; o impacto do interno sai da prioridade da IA',
+     [/adicionarEquipeChamado/.test(codigo96(cr96)), /impacto_operacional: c\.natureza === "interno" && temImpacto\(c\.tipo\)/.test(cr96)],
+     [false, true]);
+  const ni96 = codigo96(ler96('src/routes/_authenticated/chamados.novo-interno.tsx'));
+  eq('R139/R140/R141/R142 (novo-interno): sem equipe, sem sprint, sem compra; com impacto e equipe do responsável',
+     [/SPRINT_ORDEM|salvarCompra|EQUIPES\.map/.test(ni96), /temImpacto\(tipoEfetivo\)/.test(ni96), /equipe: equipeDoResponsavel \?\? "outras"/.test(ni96)],
+     [false, true, true]);
+  eq('R140: o trilho da triagem chama-se "Controle Patrimonial" e abre Operacional',
+     /titulo: "Controle Patrimonial",[\s\S]{0,600}equipe: "patrimonio", tipo: "operacional"/.test(ler96('src/routes/_authenticated/chamados.novo.tsx')), true);
+
+  // ── R140 CENSO: pedido_compra e compra.ts sumiram do código ──────────────
+  const arquivosTs96 = (dir, acc = []) => {
+    for (const e of fs96.readdirSync(dir, { withFileTypes: true })) {
+      const p = pth96.join(dir, e.name).replace(/\\/g, '/');
+      if (e.isDirectory()) arquivosTs96(p, acc);
+      else if (/\.tsx?$/.test(e.name)) acc.push(p);
+    }
+    return acc;
+  };
+  const comCompra96 = arquivosTs96('src').filter((a) => /["']pedido_compra["']/.test(codigo96(ler96(a))) || /features\/chamados\/compra"/.test(ler96(a)));
+  eq('R140 CRÍTICO (CENSO): nenhum arquivo de src/ escreve "pedido_compra" em linha de código nem importa o módulo compra.ts — que foi apagado',
+     [comCompra96, fs96.existsSync('src/features/chamados/compra.ts')], [[], false]);
+  const escrevemSprint96 = ['src/features/chamados/DetalheInterno.tsx', 'src/features/chamados/PainelChamado.tsx',
+    'src/features/home/NovaAtividadeDialog.tsx', 'src/routes/_authenticated/chamados.novo-interno.tsx', 'src/features/home/CriarRapido.tsx']
+    .filter((a) => /\bsprint\b/.test(codigo96(ler96(a))));
+  eq('R141 CRÍTICO (CENSO): nenhuma das cinco telas de atividade fala em sprint em linha de código',
+     escrevemSprint96, []);
+
+  // ── R146: a ficha do cliente e a fachada ─────────────────────────────────
+  const cd96 = ler96('src/features/clientes/data.ts');
+  eq('R146: a fachada tem bucket privado próprio, URL assinada com cache, upload que grava o caminho e o download como arquivo para a proposta herdar',
+     [/export const BUCKET_FACHADAS = "clientes-fachadas";/.test(cd96), /export function useFachadaUrl/.test(cd96),
+      /export async function subirFachada/.test(cd96), /export async function removerFachada/.test(cd96),
+      /export async function baixarFachadaComoArquivo/.test(cd96), /await atualizarCliente\(cliente\.id, \{ foto_fachada_url: path \}\);/.test(cd96)],
+     [true, true, true, true, true, true]);
+  const fc96 = ler96('src/routes/_authenticated/clientes.$id.tsx');
+  eq('R146 CRÍTICO: a ficha é duas colunas (.detalhe-grid), o WhatsApp abre o WhatsApp, a fachada sobe pela ficha, e o histórico inclui o grupo (servicos_prestados) com teto declarado',
+     [/className="detalhe-grid"/.test(fc96), /href=\{whatsappLink\(whatsapp\)\}/.test(fc96),
+      /useChamadosDoCliente\(id, cliente\?\.servicos_prestados\)/.test(fc96), /const TETO_CHAMADOS = 12;/.test(fc96),
+      /subirFachada\(cliente, arquivo\)/.test(fc96), /Adicionar foto da fachada/.test(fc96), /ordens\.slice\(0, 8\)/.test(fc96)],
+     [true, true, true, true, true, true, false]);
+  eq('R146: os contatos viram Proprietário / Encarregado(a) em residência e galpão — o mesmo vocabulário da proposta',
+     /const semSindico = cliente\.tipo_local === "residencia" \|\| cliente\.tipo_local === "empresa";/.test(fc96), true);
+  const lc96 = ler96('src/routes/_authenticated/clientes.tsx');
+  eq('R146: o card da lista recebe a fachada como camada (FachadaDoCard) que entra com a classe .pronta no onLoad',
+     [/function FachadaDoCard\(/.test(lc96), /className=\{`fachada-card\$\{pronta \? " pronta" : ""\}`\}/.test(lc96), /onLoad=\{\(\) => setPronta\(true\)\}/.test(lc96)],
+     [true, true, true]);
+  const css96 = ler96('src/styles.css');
+  eq('R146: a transição de opacidade da fachada mora no CSS, com máscara para a esquerda e opacidade menor no claro',
+     [/\.fachada-card \{[\s\S]{0,400}transition: opacity \.45s ease;/.test(css96), /mask-image: linear-gradient\(to right, transparent 0%/.test(css96),
+      /\.fachada-card\.pronta \{ opacity: 0\.55; \}/.test(css96), /\[data-theme="light"\] \.fachada-card\.pronta \{ opacity: 0\.45; \}/.test(css96)],
+     [true, true, true, true]);
+  eq('R146: o formulário do cliente chama o telefone de WhatsApp (síndico e zelador)',
+     (ler96('src/features/clientes/ClienteForm.tsx').match(/<label style=\{LABEL\}>WhatsApp<\/label>/g) ?? []).length, 2);
+  eq('R147: escolher o cliente na proposta herda a fachada como arquivo (o mesmo caminho de upload da foto tirada na hora)',
+     /baixarFachadaComoArquivo\(c\.foto_fachada_url\)/.test(ler96('src/routes/_authenticated/gerencial.nova.tsx')), true);
+
+  // ── a migration U96 ──────────────────────────────────────────────────────
+  const mig96 = ler96('supabase/migrations/20260914090000_u96_estrutura_das_atividades.sql');
+  eq('U96 migration: impacto (com CHECK), proposta_id (FK), gatilhos da compra caem, remap com gatilhos de usuário desligados, job desagendado, bucket privado com 4 policies, RPC revogada',
+     [/ADD COLUMN IF NOT EXISTS impacto_operacional text;/.test(mig96), /chamados_impacto_operacional_check/.test(mig96),
+      /ADD COLUMN IF NOT EXISTS proposta_id uuid\s*\n\s*REFERENCES public\.visitas_tecnicas\(id\) ON DELETE SET NULL;/.test(mig96),
+      /DROP TRIGGER IF EXISTS trg_chamado_ficha_compra_ins ON public\.chamados;/.test(mig96),
+      (mig96.match(/ENABLE TRIGGER USER/g) ?? []).length, /DISABLE TRIGGER USER/.test(mig96),
+      /cron\.unschedule\('alertas-compras'\)/.test(mig96),
+      /VALUES \('clientes-fachadas','clientes-fachadas',false\)/.test(mig96), (mig96.match(/CREATE POLICY "clientes_fachadas_/g) ?? []).length,
+      /REVOKE EXECUTE ON FUNCTION public\.decidir_pedido_compra/.test(mig96)],
+     [true, true, true, true, 2, true, true, true, 4, true]);
+  eq('U96 migration CRÍTICO: NÃO apaga tabela nenhuma (chamado_compra e chamado_equipes ficam como arquivo — apagar pede pedido explícito, Q21)',
+     /DROP TABLE/.test(codigo96(mig96).split('\n').filter((l) => !/^\s*--/.test(l)).join('\n')), false);
+
+  // ── os documentos (regra 7) ───────────────────────────────────────────────
+  const prod96 = ler96('docs/PRODUTO.md');
+  eq('U96 (regra 7): R137 a R150 existem em PRODUTO.md, cada uma como regra numerada',
+     ['R137', 'R138', 'R139', 'R140', 'R141', 'R142', 'R143', 'R144', 'R145', 'R146', 'R147', 'R148', 'R149', 'R150']
+       .filter((r) => !new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod96)), []);
+  eq('U96 (regra 7): o contexto ditado pelo Davi existe, com o texto na íntegra, as decisões D1–D9 e as perguntas Q18–Q22 — e está no mapa do CLAUDE.md',
+     [fs96.existsSync('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md'),
+      /## 1\. O documento do Davi, na íntegra/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')),
+      /D9 —/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')), /Q22 —/.test(ler96('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')),
+      /CONTEXTO_ESTRUTURA_ATIVIDADES\.md/.test(ler96('CLAUDE.md'))],
+     [true, true, true, true, true]);
+  eq('U96 (regra 7): a U96 está no diário, a Fase H no plano, a estrutura no manual, as dívidas P55–P57 e a §6.13 do design system',
+     [/^## U96 — /m.test(ler96('docs/PLANO_UNIFICACAO.md')), /### Fase H — A estrutura das atividades/.test(ler96('docs/PLANO_V0.1.md')),
+      /## A estrutura das atividades \(R137–R150\)/.test(ler96('docs/manual/visao-geral.md')),
+      /## P55 —/.test(ler96('docs/PENDENCIAS_TECNICAS.md')) && /## P57 —/.test(ler96('docs/PENDENCIAS_TECNICAS.md')),
+      /### 6\.13 Card de cliente — a fachada sobreposta/.test(ler96('DESIGN_SYSTEM.md')),
+      /R146, U96/.test(ler96('docs/manual/clientes-qap.md'))],
+     [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

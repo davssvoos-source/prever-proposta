@@ -190,6 +190,37 @@ cobranças e fechamentos históricos preservando referência e status, com
 combinada com o Vinicius; a partir dela, nada novo lá. **Depende de** A–D
 prontas e do export.
 
+### Fase H — A estrutura das atividades (R137–R150) — *iniciada na U96; 2–3 sessões para fechar*
+
+O documento do Davi de 03/09 (`CONTEXTO_ESTRUTURA_ATIVIDADES.md`) reescreveu o
+que uma atividade fora da área técnica É. A **U96** entregou o núcleo: os seis
+tipos e a matriz de campos, o pop-up das duas perguntas, equipe derivada das
+pessoas, pedido de compra e sprint fora, impacto operacional, grupos de
+clientes com checklist e contagem por cliente, recebimento/início/conclusão, o
+calendário por conclusão, a ficha do cliente em duas colunas com a fachada, o
+vocabulário da proposta e o vínculo da implantação com a proposta. **Migration
+U96** (impacto, proposta_id, remap da compra, bucket das fachadas).
+
+O que falta, por ordem:
+
+- **H.1 — O mini-calendário semanal do técnico na proposta** (R147). Lê a
+  agenda da dupla do técnico na semana (`agenda_campo`) e a escala
+  (`duplas_escala`), para o comercial marcar a visita onde há janela. Decisão
+  em aberto: a visita comercial vira bloco na programação do Vinicius, ou só se
+  desenha sobre ela? (**Q22**.)
+- **H.2 — "Data agendada" nas atividades internas** (**Q18**). Hoje só o prazo:
+  `data_hora_agendada` é espelho da agenda de campo (R101). Se o Davi quiser,
+  nasce uma coluna própria (data, sem hora) e o calendário a lê.
+- **H.3 — A estrutura da área TÉCNICA**, que o Davi vai ditar. Até lá o chamado
+  de campo é o de sempre; o "INICIAR ATENDIMENTO" (R144) nasce junto com ela e
+  com a Início do técnico (B2).
+- **H.4 — Impacto automático por tipo de atividade**, com a relação que o Davi
+  vai mandar (R142).
+- **H.5 — A importação dos equipamentos do ERP** por documento exportado, e
+  depois pela API (o Davi manda os arquivos).
+- **H.6 — A leitura da proposta aprovada pela IA** para criar as atividades da
+  implantação (R148).
+
 ### Transversal
 
 - Manual (`docs/manual/operacao-campo.md`, `financeiro.md`, `clientes-qap.md`)
@@ -256,6 +287,10 @@ prontas e do export.
 - [ ] Fase E — APIs e QAP
 - [ ] Fase F — preventiva por sistema
 - [ ] Fase G — corte do Gestor OS
+- [x] Fase H — a estrutura das atividades: núcleo (U96, R137–R150)
+- [ ] Fase H.1–H.6 — mini-calendário do técnico, data agendada interna (Q18), estrutura da técnica, impacto automático, equipamentos do ERP, IA da proposta
+
+As perguntas Q18–Q22 desta fase estão na §6 de `CONTEXTO_ESTRUTURA_ATIVIDADES.md`.
 
 ## 7. A revisão de telas (03/09, à tarde)
 

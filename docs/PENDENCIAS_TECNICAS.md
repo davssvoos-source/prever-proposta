@@ -2031,3 +2031,31 @@ Filtrar por um dia calculado no aparelho criaria a segunda verdade que a decisã
 ou quando o vínculo com chamado precisar aparecer na página do chamado. As duas
 são leitura pura sobre uma tabela que já existe, já tem índice nos dois eixos
 (dia e pessoa) e já tem policy.
+
+## P55 — BAIXO · `chamado_compra` e `chamado_equipes` ficaram no banco como arquivo (2026-09-03, U96)
+
+A R140 tirou o pedido de compra do sistema e a R139 tirou a equipe como campo.
+As duas tabelas (`chamado_compra`, `chamado_equipes`) **não são mais lidas nem
+escritas** por nenhuma tela; a RPC `decidir_pedido_compra` perdeu o EXECUTE de
+`authenticated`, e os gatilhos que criavam a ficha caíram. As tabelas ficaram
+de propósito: apagá-las destruiria histórico sem o Davi pedir (pergunta **Q21**
+em `CONTEXTO_ESTRUTURA_ATIVIDADES.md`). **Dano hoje: nenhum.** Quando o Davi
+decidir, é um `DROP TABLE` cada, com DESFAZER impossível — por isso não foi.
+
+## P56 — BAIXO · A coluna `chamados.sprint` está morta, e o gatilho ainda a preenche (2026-09-03, U96)
+
+A R141 tirou o sprint como campo: ninguém mais escreve nem lê
+`chamados.sprint` (o sprint é cálculo sobre o prazo, `sprintDoPrazo`). Mas
+`chamado_preencher` (u7/u89) continua gravando `sprint := 'este_mes'` no
+INSERT interno — um valor que nenhuma tela mostra. **Dano: nenhum** (é uma
+coluna inerte). Limpar é uma migration que tira a linha do gatilho e derruba a
+coluna e o CHECK; fica para uma leva de limpeza de schema, junto com P55.
+
+## P57 — MÉDIO · "Data agendada" das atividades internas não existe (2026-09-03, U96)
+
+O documento do Davi lista "Data Agendada (opcional)" em toda atividade fora da
+técnica. A coluna `data_hora_agendada` é ESPELHO da agenda de campo (R101) e
+reabri-la para o interno reabriria as duas verdades que a U78 fechou. Hoje a
+atividade interna tem só o prazo; o calendário a coloca nele. Depende da
+resposta à **Q18**: se o Davi quiser a data agendada interna, nasce uma coluna
+própria (`agendada_para date`), com o calendário lendo-a antes do prazo.

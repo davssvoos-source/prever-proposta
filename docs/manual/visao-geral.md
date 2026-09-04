@@ -138,6 +138,32 @@ avisa a pessoa (uma vez, mesmo com o autosave). Só quem escreveu um comentário
 pode apagá-lo. Responsável e apoio mostram o rosto. O texto continua Markdown
 puro no banco — o que muda é a apresentação.
 
+## A estrutura das atividades (R137–R150)
+
+Ditada pelo Davi em 03/09/2026 e transcrita em
+`docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md`. O essencial, para quem opera:
+
+- **Seis tipos de demanda** fora da área técnica: Manutenção Corretiva,
+  Manutenção Preventiva, Operacional, Proposta Comercial, Implantação e
+  Melhoria. Cada um tem os seus campos (a matriz está no documento).
+- **Criar uma atividade** começa com duas perguntas — o tipo de demanda e o
+  responsável. Proposta Comercial abre o fluxo da visita; responsável da equipe
+  Técnica abre o chamado de campo; o resto abre o formulário do tipo.
+- **Equipe não se escolhe**: a etiqueta é a das pessoas na atividade
+  (responsável e apoios), pelo cadastro. **Sprint não existe mais**: o prazo diz
+  a semana e o mês. **Pedido de compra não existe mais**: demanda do
+  Patrimônio é Operacional.
+- **Impacto operacional** (Sem impacto · Baixo · Moderado · Crítico) é a
+  urgência de Corretiva e Operacional. No campo continua a prioridade.
+- **Cliente** pode ser um cliente, um **grupo** ("Clientes de Portaria Remota")
+  ou interno. O grupo é um card só, conta no histórico de cada cliente e põe um
+  checklist dos clientes na descrição.
+- **Recebimento, início e conclusão** ficam registrados; o **calendário**
+  mostra a concluída no dia da conclusão e a em aberto na hora agendada ou no
+  prazo.
+- **Ficha do cliente**: duas colunas no computador, síndico e zelador com
+  WhatsApp, tipo de local e a foto da fachada (que aparece no card da lista).
+
 ## O que ainda não existe (não confundir com defeito)
 
 - **Sincronizar com o QAP** — bloqueado na API do QAP; a base de clientes está

@@ -7,25 +7,26 @@
 //                       aguardando_aprovacao · executado · concluido · cancelado
 //   visitas_tecnicas    pendente · em_andamento · aguardando_aprovacao ·
 //                       aprovada · reprovada  (+ legados; o CHECK foi derrubado)
-//   chamado_compra      solicitado · em_cotacao · aprovado · comprado ·
-//                       recebido · recusado
 //
-// O quadro é por STATUS DO CHAMADO — decisão do Davi. Então visita e compra
-// precisam de tradução, e a tradução é `colunaDaAtividade()`: função total,
-// com precedência ordenada, que NUNCA descarta um item em silêncio.
+// O quadro é por STATUS DO CHAMADO — decisão do Davi. Então a visita precisa
+// de tradução, e a tradução é `colunaDaVisita()`: função total, com
+// precedência ordenada, que NUNCA descarta um item em silêncio. (A tradução
+// do pedido de compra morava aqui também; saiu com a R140/U96.)
 //
 // Este arquivo é o dono do vocabulário. Ordem e rótulo das colunas vêm daqui e
 // de lib/chamado-status; visibilidade, colapso e teto de render são estado da
 // tela e não entram aqui — senão o módulo limpo começa a carregar estado de UI.
 
 import {
-  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
+  chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo, sprintDoPrazo,
   TIPO_LABEL, TIPO_CORES, PRIORIDADE_LABEL, PRIORIDADE_CORES, STATUS_ORDEM,
+  IMPACTO_LABEL, IMPACTO_CORES, IMPACTO_RANK,
   type ChamadoStatus, type ChamadoPrioridade, type ChamadoTipo, type Natureza,
+  type ImpactoOperacional,
 } from "@/lib/chamado-status";
 import { fimSemana } from "@/lib/periodos";
 import { getStatusInfo, statusBucket } from "@/lib/visita-status";
-import { SITUACAO_LABEL, type SituacaoCompra } from "@/features/chamados/compra";
+import { equipesDePessoas } from "@/lib/equipes";
 
 export type FonteAtividade = "chamado" | "visita";
 
@@ -45,7 +46,7 @@ export interface Cores {
  * está na sala) e proposta esperando o cliente (semanas, fora do nosso
  * controle). Sem este campo a contagem da coluna soma peras com maçãs.
  */
-export type BolaCom = "voce" | "gestor" | "comercial" | "cliente" | "financeiro" | null;
+export type BolaCom = "voce" | "gestor" | "comercial" | "cliente" | null;
 
 export interface Atividade {
   id: string;                 // "ch-<uuid>" | "vis-<uuid>" — prefixo evita colisão
@@ -84,16 +85,34 @@ export interface Atividade {
   souApoio: boolean;
   souAutor: boolean;
 
+  /** Só no CAMPO (o SLA é indexado por ela, R112). No interno é null. */
   prioridade: ChamadoPrioridade | null;
-  prioridadeRank: number;     // urgente 0 … baixa 3; visita e interno = 4
+  /**
+   * urgente 0 … baixa 3 no campo; crítico 0 … sem impacto 3 no interno (R142);
+   * visita e quem não tem nem uma nem outra = 4. É a régua única de "quão
+   * urgente" para quem ordena, seja qual for o vocabulário do registro.
+   */
+  prioridadeRank: number;
   prioridadeLabel: string | null;
   prioridadeCor: Cores | null;
+  /** Só no INTERNO, e só nos tipos que têm (R142: corretiva e operacional). */
+  impacto: ImpactoOperacional | null;
+  impactoLabel: string | null;
+  impactoCor: Cores | null;
 
-  /** A equipe PRINCIPAL. Desde a U71 vale em qualquer natureza (R83). */
+  /**
+   * R139 (U96): as equipes são as das PESSOAS da atividade — a do responsável
+   * primeiro, depois a de cada apoio, sem repetir. Não há mais campo de equipe
+   * para escolher. `equipe` é a primeira da lista (a do responsável), para as
+   * telas que ainda leem uma só.
+   */
   equipe: string | null;
-  /** [principal, ...extras] — mais de uma equipe por atividade (R83, U71). */
   equipes: string[];
-  sprint: string | null;      // zerado fora do interno — invariante do modelo
+  /**
+   * R141 (U96): DERIVADO do prazo (`sprintDoPrazo`, R40) — nunca mais lido do
+   * banco. Só no interno, que é onde a meta do mês o consome.
+   */
+  sprint: string | null;
 
   prazoLimite: string | null;
   prazoTexto: string | null;
@@ -122,9 +141,8 @@ export interface Atividade {
    */
   encerradoEm: string | null;
 
-  compra: { situacao: SituacaoCompra; situacaoLabel: string } | null;
   /** Marcador âmbar: o que está esquisito neste registro, se algo estiver. */
-  alerta: "sem_responsavel" | "sem_acesso_ficha" | "status_desconhecido" | "reagendar" | null;
+  alerta: "sem_responsavel" | "status_desconhecido" | "reagendar" | null;
 }
 
 // ── Faixa de prazo ──────────────────────────────────────────────────────────
@@ -204,8 +222,10 @@ export interface BrutoChamado {
   natureza: string | null;
   tipo: string | null;
   prioridade: string | null;
+  /** R142 — chega null enquanto a migration U96 não rodou, e o modelo tolera. */
+  impacto_operacional?: string | null;
+  /** Ainda lido (é a coluna do banco), mas a etiqueta sai das pessoas (R139). */
   equipe: string | null;
-  sprint: string | null;
   prazo_limite: string | null;
   data_hora_agendada: string | null;
   responsavel_id: string | null;
@@ -241,10 +261,6 @@ export interface BrutoVisita {
   prioridade?: string | null;
 }
 
-export interface FichaCompra {
-  situacao: SituacaoCompra;
-}
-
 interface Traduzido {
   coluna: ColunaQuadro;
   rotuloNativo: string | null;
@@ -256,54 +272,18 @@ const STATUS_VALIDOS = new Set<string>(STATUS_ORDEM);
 
 /**
  * Coluna de um CHAMADO. Precedência:
- *   1. terminal (concluído/cancelado) manda, mesmo em pedido de compra — protege
- *      contra descompasso entre o chamado e a ficha da compra;
- *   2. pedido de compra com ficha → a situação da compra decide;
- *   3. identidade do status;
- *   4. valor fora do CHECK → "sem_status", nunca sumir.
+ *   1. terminal (concluído/cancelado) manda;
+ *   2. identidade do status;
+ *   3. valor fora do CHECK → "sem_status", nunca sumir.
+ *
+ * Até a U96 havia um passo entre 1 e 2: o pedido de compra com ficha, cuja
+ * situação (cotação, aprovado, comprado…) decidia a coluna. Saiu com a R140.
  */
-export function colunaDoChamado(
-  c: BrutoChamado,
-  ficha: FichaCompra | null | undefined,
-  ehPedidoCompra: boolean,
-): Traduzido {
+export function colunaDoChamado(c: BrutoChamado): Traduzido {
   const st = c.status ?? "";
 
   if (st === "concluido") return { coluna: "concluido", rotuloNativo: null, bolaCom: null, alerta: null };
   if (st === "cancelado") return { coluna: "cancelado", rotuloNativo: null, bolaCom: null, alerta: null };
-
-  if (ehPedidoCompra) {
-    if (!ficha) {
-      // A U9 garante ficha para 100% dos pedidos (trigger de insert, trigger de
-      // update do tipo, e backfill). Se ela não veio, a causa é ACESSO, não
-      // dado: chamados_select entrega todo chamado interno a qualquer
-      // autenticado, mas chamado_compra_select passa por pode_acessar_chamado.
-      return {
-        coluna: STATUS_VALIDOS.has(st) ? (st as ChamadoStatus) : "sem_status",
-        rotuloNativo: null, bolaCom: null, alerta: "sem_acesso_ficha",
-      };
-    }
-    switch (ficha.situacao) {
-      case "solicitado":
-        // O chamado em aguardando_aprovacao é o único sinal de que alguém pôs
-        // o gasto em mesa — a compra não tem situação para isso.
-        return st === "aguardando_aprovacao"
-          ? { coluna: "aguardando_aprovacao", rotuloNativo: "Compra esperando decisão", bolaCom: "financeiro", alerta: null }
-          : { coluna: "aberto", rotuloNativo: "Pedido a cotar", bolaCom: null, alerta: null };
-      case "em_cotacao":
-        return st === "aguardando_aprovacao"
-          ? { coluna: "aguardando_aprovacao", rotuloNativo: "Compra esperando decisão", bolaCom: "financeiro", alerta: null }
-          : { coluna: "em_andamento", rotuloNativo: "Em cotação", bolaCom: null, alerta: null };
-      case "aprovado":
-        return { coluna: "em_andamento", rotuloNativo: "Aprovado — falta comprar", bolaCom: null, alerta: null };
-      case "comprado":
-        return { coluna: "stand_by", rotuloNativo: "Comprado — aguardando entrega", bolaCom: null, alerta: null };
-      case "recebido":
-        return { coluna: "concluido", rotuloNativo: "Recebido", bolaCom: null, alerta: null };
-      case "recusado":
-        return { coluna: "cancelado", rotuloNativo: "Compra recusada", bolaCom: null, alerta: null };
-    }
-  }
 
   if (STATUS_VALIDOS.has(st)) {
     const col = st as ChamadoStatus;
@@ -375,13 +355,16 @@ export function colunaDaVisita(v: BrutoVisita): Traduzido {
 export interface ContextoMontagem {
   userId: string | null;
   apoios: Set<string>;          // ids de chamado onde EU sou apoio
-  fichas: Map<string, FichaCompra>;
   /** chamado_id → perfis de apoio — alimenta a pilha de avatares do card. */
   apoiosDoChamado?: Map<string, string[]>;
   /** chamado_id → rótulos de LOCAL além do principal (R84/R85, U71). */
   locaisDoChamado?: Map<string, string[]>;
-  /** chamado_id → equipes além da principal (R83, U71). */
-  equipesDoChamado?: Map<string, string[]>;
+  /**
+   * perfil → equipe do cadastro (R139, U96). É daqui que saem as etiquetas de
+   * equipe da atividade: a de cada pessoa que está nela. Sem o mapa, a
+   * atividade fica sem equipe — nunca com a coluna antiga do banco.
+   */
+  equipeDePessoa?: Map<string, string | null>;
 }
 
 /**
@@ -401,29 +384,38 @@ export function rotulosDeLocal(
   return fora;
 }
 
-/** [principal, ...extras], sem repetição e sem vazio. */
-export function equipesDoChamado(
-  principal: string | null | undefined,
-  extras: string[],
+/**
+ * As equipes de uma atividade a partir de quem está nela (R139). Wrapper fino
+ * sobre `equipesDePessoas` de lib/equipes — mora ali porque é vocabulário de
+ * equipe, não de atividade; fica exportado aqui porque é aqui que o verificador
+ * e as telas procuram.
+ */
+export function equipesDaAtividade(
+  participantes: readonly string[],
+  equipeDePessoa: Map<string, string | null> | undefined,
 ): string[] {
-  const fora: string[] = [];
-  for (const e of [principal, ...extras]) {
-    if (e && !fora.includes(e)) fora.push(e);
-  }
-  return fora;
+  return equipesDePessoas(participantes, (id) => equipeDePessoa?.get(id));
 }
 
 export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Atividade {
-  const ehCompra = c.tipo === "pedido_compra";
-  const t = colunaDoChamado(c, ctx.fichas.get(c.id), ehCompra);
+  const t = colunaDoChamado(c);
   const interno = c.natureza === "interno";
   const info = chamadoStatusInfo(c.status);
   const pri = (c.prioridade ?? null) as ChamadoPrioridade | null;
   const tipo = (c.tipo ?? null) as ChamadoTipo | null;
-  const ficha = ctx.fichas.get(c.id);
+  // R142: o impacto só vale no interno, e só quando o valor é do vocabulário —
+  // a coluna pode nem existir ainda (migration pendente), e aí é null.
+  const imp = interno && c.impacto_operacional && c.impacto_operacional in IMPACTO_RANK
+    ? (c.impacto_operacional as ImpactoOperacional)
+    : null;
   // status fora do vocabulário conta como aberto: a coluna "Sem status" seria
   // inalcançável se o filtro padrão o cortasse
   const emAberto = t.coluna === "sem_status" ? true : chamadoEmAberto(c.status);
+  const participantes = Array.from(new Set([
+    ...(c.responsavel_id ? [c.responsavel_id] : []),
+    ...(ctx.apoiosDoChamado?.get(c.id) ?? []),
+  ]));
+  const equipes = equipesDaAtividade(participantes, ctx.equipeDePessoa);
 
   return {
     id: `ch-${c.id}`,
@@ -453,29 +445,30 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
       ctx.locaisDoChamado?.get(c.id) ?? [],
     ),
     responsavelId: c.responsavel_id,
-    participantes: Array.from(new Set([
-      ...(c.responsavel_id ? [c.responsavel_id] : []),
-      ...(ctx.apoiosDoChamado?.get(c.id) ?? []),
-    ])),
+    participantes,
     souResponsavel: !!ctx.userId && c.responsavel_id === ctx.userId,
     souApoio: ctx.apoios.has(c.id),
     souAutor: !!ctx.userId && c.aberto_por === ctx.userId,
     prioridade: interno ? null : pri,
-    // no interno a fila é pelo prazo combinado, não por prioridade
-    prioridadeRank: interno ? 4 : PRI_RANK[c.prioridade ?? ""] ?? 4,
+    // uma régua só de urgência: prioridade no campo, impacto no interno
+    // (R142). Quem não tem nenhuma das duas fica no fim (4).
+    prioridadeRank: interno
+      ? (imp ? IMPACTO_RANK[imp] : 4)
+      : PRI_RANK[c.prioridade ?? ""] ?? 4,
     prioridadeLabel: interno || !pri ? null : PRIORIDADE_LABEL[pri] ?? null,
     prioridadeCor: interno || !pri ? null : PRIORIDADE_CORES[pri] ?? null,
-    // U71 (R83) mudou a invariante que morava aqui. Ela era "campo não tem
-    // equipe nem sprint", e o `equipe` saía null fora do interno. Davi,
-    // 2026-08-26: "Em uma atividade de 'Proposta Comercial' por exemplo, o
-    // técnico é responsável pela visita técnica, enquanto a equipe comercial é
-    // responsável pela proposta em si." Ou seja, é justamente FORA do interno
-    // que mais de uma equipe faz sentido — zerar ali escondia a informação que
-    // ele quer ver. O SPRINT continua só no interno: aquilo é ritmo de
-    // planejamento interno, e não foi o que mudou.
-    equipe: c.equipe ?? null,
-    equipes: equipesDoChamado(c.equipe, ctx.equipesDoChamado?.get(c.id) ?? []),
-    sprint: interno ? c.sprint : null,
+    impacto: imp,
+    impactoLabel: imp ? IMPACTO_LABEL[imp] : null,
+    impactoCor: imp ? IMPACTO_CORES[imp] : null,
+    // R139 (U96): a equipe vem das PESSOAS, não mais de `chamados.equipe` nem
+    // de `chamado_equipes`. A coluna do banco continua sendo escrita (é a
+    // equipe do responsável, para quem ainda a lê), mas o que o card e o filtro
+    // mostram é o que está nas pessoas HOJE — troca o responsável, troca a
+    // etiqueta, sem ninguém precisar lembrar de trocar um campo à parte.
+    equipe: equipes[0] ?? null,
+    equipes,
+    // R141 (U96): o sprint SAI DO PRAZO, sempre — a coluna morreu.
+    sprint: interno ? sprintDoPrazo(c.prazo_limite) : null,
     prazoLimite: c.prazo_limite,
     prazoTexto: c.prazo_limite && chamadoEmAberto(c.status) ? textoPrazo(c.prazo_limite) : null,
     prazoEstourado: situacaoPrazo(c.prazo_limite, c.status) === "estourado",
@@ -489,7 +482,6 @@ export function atividadeDoChamado(c: BrutoChamado, ctx: ContextoMontagem): Ativ
     encerradoEm: emAberto
       ? null
       : (c.concluida_em ?? c.fechada_em ?? c.updated_at ?? c.created_at),
-    compra: ficha ? { situacao: ficha.situacao, situacaoLabel: SITUACAO_LABEL[ficha.situacao] } : null,
     alerta: t.alerta,
   };
 }
@@ -520,7 +512,15 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     // Título FIXO — nunca o nome do prédio (2026-08-22, Davi). O card antigo
     // repetia o condomínio no título E na etiqueta de local, uma redundância
     // que também escondia o que a atividade realmente É: uma proposta.
-    titulo: "Proposta Comercial",
+    //
+    // R147 (U96), Davi: "O Título da atividade no painel de atividades da tela
+    // INICIO deverá ser sempre 'Proposta Comercial'. E o título da atividade de
+    // uma visita técnica para fluxo de montagem de orçamentos deverá ser
+    // 'Visita Técnica'." É UM registro com dois papéis: para o comercial, que
+    // toca a proposta, o card é a proposta; para o TÉCNICO RESPONSÁVEL pela
+    // visita, o trabalho dele é a visita — e é o que o card dele diz. Quem
+    // decide é quem está olhando (`ctx.userId`), não uma segunda linha.
+    titulo: !!ctx.userId && v.tecnico_id === ctx.userId ? "Visita Técnica" : "Proposta Comercial",
     // o número vem do chamado-capa (U29); null enquanto o join não trouxer
     numero: v.chamado?.numero ?? null,
     // LOCAL, não "cliente" (2026-08-22, Davi): o prédio da visita raramente é
@@ -553,11 +553,14 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     prioridadeRank: 4,
     prioridadeLabel: null,
     prioridadeCor: null,
-    // A visita não tem equipe própria no banco (não é linha de `chamados`), e
-    // a U71 não muda isso: o que ela mudou foi parar de ZERAR a equipe do
-    // chamado fora do interno. Aqui não há o que zerar.
-    equipe: null,
-    equipes: [],
+    impacto: null,
+    impactoLabel: null,
+    impactoCor: null,
+    // R139: a equipe da visita é a do técnico responsável por ela — a mesma
+    // regra das pessoas que vale para o chamado. (Antes era null porque a
+    // visita não tem coluna de equipe; agora a coluna não é mais a fonte.)
+    equipe: equipesDaAtividade(v.tecnico_id ? [v.tecnico_id] : [], ctx.equipeDePessoa)[0] ?? null,
+    equipes: equipesDaAtividade(v.tecnico_id ? [v.tecnico_id] : [], ctx.equipeDePessoa),
     sprint: null,
     prazoLimite: null,
     // a visita não tem prazo, tem hora marcada — sem isto o card não dizia
@@ -590,7 +593,6 @@ export function atividadeDaVisita(v: BrutoVisita, ctx: ContextoMontagem): Ativid
     encerradoEm: (t.coluna !== "concluido" && t.coluna !== "cancelado")
       ? null
       : ((v as any).proposta_resultado_em ?? v.proposta_enviada_em ?? v.created_at),
-    compra: null,
     alerta: t.alerta,
   };
 }
@@ -602,12 +604,10 @@ export const BOLA_LABEL: Record<Exclude<BolaCom, null>, string> = {
   gestor: "com o gestor",
   comercial: "com o comercial",
   cliente: "com o cliente",
-  financeiro: "com o financeiro",
 };
 
 export const ALERTA_LABEL: Record<Exclude<Atividade["alerta"], null>, string> = {
   sem_responsavel: "sem responsável",
-  sem_acesso_ficha: "ficha da compra sem acesso",
   status_desconhecido: "status desconhecido",
   reagendar: "reagendar",
 };

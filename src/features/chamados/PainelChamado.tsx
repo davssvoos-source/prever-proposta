@@ -64,7 +64,7 @@ import { tempoRelativo } from "@/hooks/useNotificacoes";
 import { useRascunhoSalvo } from "@/hooks/useRascunhoSalvo";
 import {
   useChamado, usePessoas, useChamadoApoios, useChamadoLocais, useChamadoEventos,
-  atualizarChamado, adicionarApoio, removerApoio,
+  atualizarChamado, adicionarApoio, removerApoio, equipeDaPessoa,
   adicionarClienteChamado, removerClienteChamado,
   adicionarSetorChamado, removerLocalChamado,
   comentarChamado, excluirComentario, mapaDePessoas,
@@ -72,12 +72,16 @@ import {
 } from "@/features/chamados/data";
 import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
 import {
-  PRIORIDADE_LABEL, PRIORIDADE_CORES, SPRINT_LABEL, SPRINT_ORDEM, TIPO_LABEL, TIPO_CORES,
+  checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
+} from "@/features/chamados/grupos";
+import {
+  PRIORIDADE_LABEL, PRIORIDADE_CORES, TIPO_LABEL, TIPO_CORES,
+  IMPACTO_ORDEM, IMPACTO_LABEL, IMPACTO_CORES, temImpacto,
   chamadoStatusInfo, statusDaNatureza, tiposDaNatureza,
-  prazoParaData, dataParaPrazo, situacaoPrazo, sprintDoPrazo,
-  type ChamadoPrioridade, type ChamadoTipo, type Natureza,
+  prazoParaData, dataParaPrazo, situacaoPrazo,
+  type ChamadoPrioridade, type ChamadoTipo, type ImpactoOperacional, type Natureza,
 } from "@/lib/chamado-status";
-import { EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
+import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 import { especieDoApoio } from "@/features/programacao/modelo";
 
@@ -611,6 +615,16 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
         if (linha) await removerLocalChamado(linha.id);
       } else {
         await adicionarSetorChamado(chamadoId, setor);
+        // R143 (U96): escolher o GRUPO põe o checklist dos clientes dele na
+        // descrição — a lista de trabalho, riscável, do dia em que se escolheu
+        const lista = checklistDoGrupo(clientes, setor);
+        if (lista) {
+          await atualizarChamado(chamadoId, {
+            descricao_problema: acrescentarChecklist(
+              chamado?.descricao_problema ?? "", lista, `Clientes de ${SERVICO_LABEL[setor]}:`,
+            ),
+          });
+        }
       }
     },
     onMutate: () => setEstados((e) => ({ ...e, cliente_id: "salvando" })),
@@ -671,12 +685,29 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
     ? situacaoPrazo(chamado.prazo_limite, chamado.status) === "estourado"
     : false;
 
-  // opções de cliente/pessoa no formato que CampoComBusca espera
+  // opções de cliente/pessoa no formato que CampoComBusca espera. R143 (U96):
+  // os GRUPOS ("Clientes de Portaria Remota", "Clientes de Monitoramento…")
+  // entram na MESMA lista, no topo — Davi: "Adicione as opções mencionadas na
+  // lista de clientes que expande no campo de seleção CLIENTE". O "+ setor" à
+  // parte morreu com isso.
   const opcoesClientes: OpcaoBusca[] = useMemo(
-    () => clientesOrdenados.map((c) => ({
-      valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined,
-    })),
-    [clientesOrdenados],
+    () => [
+      ...SERVICO_ORDEM
+        .filter((s) => !setoresDoChamado.includes(s))
+        .map((s) => ({ valor: valorDoGrupo(s), rotulo: rotuloDoGrupo(s), secundario: "grupo de clientes" })),
+      ...clientesOrdenados.map((c) => ({
+        valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined,
+      })),
+    ],
+    [clientesOrdenados, setoresDoChamado],
+  );
+  // R139: as equipes ENVOLVIDAS — a do responsável e a de cada apoio, pelo cadastro
+  const equipesEnvolvidas = useMemo(
+    () => equipesDePessoas(
+      [chamado?.responsavel_id ?? null, ...apoios.map((a) => a.profile_id)],
+      (pid) => pessoasPorId[pid]?.equipe,
+    ),
+    [chamado?.responsavel_id, apoios, pessoasPorId],
   );
   const opcoesPessoas: OpcaoBusca[] = useMemo(
     () => pessoasOrdenadas.map((p) => ({
@@ -767,16 +798,24 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                 {tipo && TIPO_CORES[tipo] && (
                   <Etiqueta texto={TIPO_LABEL[tipo]} cor={TIPO_CORES[tipo]} />
                 )}
-                {prio && PRIORIDADE_CORES[prio] && (
+                {/* R142: prioridade é do CAMPO; no interno a régua é o impacto */}
+                {natureza === "campo" && prio && PRIORIDADE_CORES[prio] && (
                   <Etiqueta texto={PRIORIDADE_LABEL[prio]} cor={PRIORIDADE_CORES[prio]} />
                 )}
+                {natureza === "interno" && chamado.impacto_operacional && IMPACTO_CORES[chamado.impacto_operacional] && (
+                  <Etiqueta texto={IMPACTO_LABEL[chamado.impacto_operacional]} cor={IMPACTO_CORES[chamado.impacto_operacional]} />
+                )}
+                {/* R139: as equipes das pessoas — derivadas, não escolhidas */}
+                {equipesEnvolvidas.map((e) => (
+                  <Etiqueta key={e} texto={EQUIPE_LABEL[e] ?? e} cor={equipeCores(e)} />
+                ))}
                 {atrasado && (
                   <Etiqueta texto="Atrasado" cor={PRISMA.vermelho} forte />
                 )}
                 <span style={{ flex: 1 }} />
-                {/* a data de criação é INFORMAÇÃO, não campo (ver cabeçalho) */}
+                {/* R144: o RECEBIMENTO — quem criou e quando. Informação, não campo. */}
                 <span style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary }}>
-                  Recebido em{" "}
+                  Recebido{chamado.aberto_por ? ` de ${nomeDe(chamado.aberto_por)}` : ""} em{" "}
                   {new Date(chamado.created_at).toLocaleString("pt-BR", {
                     day: "2-digit", month: "2-digit", year: "numeric",
                     hour: "2-digit", minute: "2-digit",
@@ -852,32 +891,21 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                         id="painel-cliente"
                         compacto
                         limpavel={false}
-                        placeholder="+ adicionar"
+                        placeholder={clientesDoChamadoIds.length || setoresDoChamado.length ? "+ adicionar" : "Interno — Prever · + adicionar"}
                         // quem já está na atividade sai da lista: oferecer de
-                        // novo quem já foi adicionado só produz chave repetida
+                        // novo quem já foi adicionado só produz chave repetida.
+                        // Um GRUPO (R143) vira etiqueta de setor; um cliente,
+                        // local — a mesma lista decide pelo valor.
                         opcoes={opcoesClientes.filter((o) => !clientesDoChamadoIds.includes(o.valor))}
                         valor={null}
-                        aoMudar={(v) => { if (v) mexerCliente.mutate({ id: v, remover: false }); }}
+                        aoMudar={(v) => {
+                          if (!v) return;
+                          const setor = setorDoValor(v);
+                          if (setor) mexerSetor.mutate({ setor, remover: false });
+                          else mexerCliente.mutate({ id: v, remover: false });
+                        }}
                       />
                     </div>
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) mexerSetor.mutate({ setor: e.target.value as ServicoCliente, remover: false });
-                      }}
-                      aria-label="Marcar um setor inteiro como local desta atividade"
-                      title="Marcar o setor inteiro (todos os clientes daquele serviço)"
-                      style={{
-                        height: 30, borderRadius: 8, border: est.borda, background: est.campoBg,
-                        color: est.textSecondary, fontFamily: FONT, fontSize: 11, fontWeight: 600,
-                        padding: "0 5px", cursor: "pointer", flexShrink: 0, outline: "none",
-                      }}
-                    >
-                      <option value="">+ setor</option>
-                      {SERVICO_ORDEM.filter((s) => !setoresDoChamado.includes(s)).map((s) => (
-                        <option key={s} value={s}>{SERVICO_LABEL[s]}</option>
-                      ))}
-                    </select>
                   </div>
 
                   {/* As etiquetas de SETOR ficam numa fileira própria, e com a
@@ -898,7 +926,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                             fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
                           }}>
                             <Layers size={11} style={{ flexShrink: 0 }} />
-                            {SERVICO_LABEL[s as ServicoCliente] ?? s}
+                            {rotuloDoGrupo(s as ServicoCliente)}
                             <button
                               onClick={() => mexerSetor.mutate({ setor: s as ServicoCliente, remover: true })}
                               aria-label={`Remover o setor ${SERVICO_LABEL[s as ServicoCliente] ?? s} da atividade`}
@@ -934,7 +962,11 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     opcoes={opcoesPessoas}
                     valor={chamado.responsavel_id ?? null}
                     vazio="— sem responsável —"
-                    aoMudar={(v) => salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v } })}
+                    aoMudar={(v) => {
+                      // R139: a coluna `equipe` do banco acompanha o responsável
+                      const eq = equipeDaPessoa(pessoas as any[], v);
+                      salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v, ...(eq ? { equipe: eq } : {}) } });
+                    }}
                     iconeEsquerda={(esc) => esc
                       ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
                       : null}
@@ -1017,17 +1049,18 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
 
               <Secao titulo="Classificação" />
 
-              {/* Os 4 itens NA MESMA LINHA (2026-08-22, Davi).
-                  4 COLUNAS FIXAS, não auto-fit/minmax(150px): o piso de
-                  150px só garantia 4-numa-linha no TETO de 880px do painel —
-                  numa faixa comum abaixo disso (~522–686px de painel, ex.
-                  janela de ~900px) o auto-fit resolvia 3 colunas, e Equipe
-                  sobrava sozinho numa 2ª linha com 2/3 do espaço vazio ao
-                  lado — pior que a quebra 2+2 balanceada de antes da
-                  mudança (achado da revisão adversarial de U40, 2026-08-21).
-                  Fixo nunca quebra — fica estreito em painel pequeno, mas
-                  continua "mesma linha", que foi o pedido. */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
+              {/* Os itens NA MESMA LINHA (2026-08-22, Davi), em colunas FIXAS —
+                  auto-fit quebrava em painel estreito (revisão da U40).
+                  U96: eram quatro (tipo, status, prioridade, equipe). A EQUIPE
+                  saiu (R139: é a das pessoas, e aparece como etiqueta no
+                  cabeçalho); a régua de urgência é UMA — prioridade no campo,
+                  impacto operacional no interno, e só nos tipos que têm (R142).
+                  Três colunas quando há régua, duas quando não. */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${natureza === "campo" || (natureza === "interno" && temImpacto(chamado.tipo)) ? 3 : 2}, minmax(0, 1fr))`,
+                gap: 14,
+              }}>
                 <Escolha
                   titulo="Tipo de demanda" estado={estados.tipo} valor={chamado.tipo ?? null}
                   vazio="— sem tipo —"
@@ -1044,22 +1077,23 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   })}
                   aoMudar={(v) => salvar.mutate({ campo: "status", patch: { status: v as any } })}
                 />
-                <Escolha
-                  titulo="Prioridade" estado={estados.prioridade} valor={chamado.prioridade ?? null}
-                  vazio="— sem prioridade —"
-                  opcoes={(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[])
-                    .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null }))}
-                  aoMudar={(v) => salvar.mutate({ campo: "prioridade", patch: { prioridade: v as any } })}
-                />
-                <Escolha
-                  titulo="Equipe" estado={estados.equipe} valor={chamado.equipe ?? null}
-                  vazio="— sem equipe —"
-                  opcoes={(Object.keys(EQUIPE_LABEL) as Equipe[])
-                    // U72: a equipe era o único seletor sem cor — agora cada
-                    // opção leva a cor da própria equipe (EQUIPE_CORES)
-                    .map((e) => ({ v: e, t: EQUIPE_LABEL[e], cor: equipeCores(e) }))}
-                  aoMudar={(v) => salvar.mutate({ campo: "equipe", patch: { equipe: v as any } })}
-                />
+                {natureza === "campo" && (
+                  <Escolha
+                    titulo="Prioridade" estado={estados.prioridade} valor={chamado.prioridade ?? null}
+                    vazio="— sem prioridade —"
+                    opcoes={(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[])
+                      .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null }))}
+                    aoMudar={(v) => salvar.mutate({ campo: "prioridade", patch: { prioridade: v as any } })}
+                  />
+                )}
+                {natureza === "interno" && temImpacto(chamado.tipo) && (
+                  <Escolha
+                    titulo="Impacto operacional" estado={estados.impacto_operacional} valor={chamado.impacto_operacional ?? null}
+                    vazio="— sem impacto definido —"
+                    opcoes={IMPACTO_ORDEM.map((i) => ({ v: i, t: IMPACTO_LABEL[i], cor: IMPACTO_CORES[i] }))}
+                    aoMudar={(v) => salvar.mutate({ campo: "impacto_operacional", patch: { impacto_operacional: (v ?? null) as ImpactoOperacional | null } })}
+                  />
+                )}
               </div>
 
               <Secao titulo="Quando" />
@@ -1070,16 +1104,9 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     type="date"
                     value={prazoParaData(chamado.prazo_limite)}
                     onChange={(e) => {
-                      const prazo = dataParaPrazo(e.target.value || null);
-                      // R40: o sprint SAI do prazo. Vai no MESMO patch, não em
-                      // dois — duas gravações poderiam deixar o prazo novo com
-                      // o sprint velho se a segunda falhasse, que é justamente
-                      // a divergência que esta regra existe para acabar.
-                      const sprint = sprintDoPrazo(prazo);
-                      salvar.mutate({
-                        campo: "prazo_limite",
-                        patch: sprint ? { prazo_limite: prazo, sprint } : { prazo_limite: prazo },
-                      });
+                      // R141 (U96): o sprint não é mais gravado — ele é
+                      // cálculo sobre este prazo (R40), onde quer que seja lido
+                      salvar.mutate({ campo: "prazo_limite", patch: { prazo_limite: dataParaPrazo(e.target.value || null) } });
                     }}
                     style={{
                       ...est.entrada,
@@ -1091,17 +1118,10 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     }}
                   />
                 </Campo>
-                {/* O sprint continua editável à mão: a derivação cobre o caso
-                    comum, e ainda existe o planejamento que não sai da data
-                    (algo sem prazo que se quer puxar para esta semana). */}
-                <Escolha
-                  titulo="Sprint" estado={estados.sprint} valor={chamado.sprint ?? null}
-                  vazio="— sem sprint —"
-                  opcoes={SPRINT_ORDEM.map((s) => ({ v: s, t: SPRINT_LABEL[s] }))}
-                  aoMudar={(v) => salvar.mutate({ campo: "sprint", patch: { sprint: v as any } })}
-                />
+                {/* O seletor de SPRINT morava aqui e saiu (R141, U96): o prazo
+                    diz a semana e o mês sozinho. */}
                 {/* Agendamento só faz sentido em campo: é a hora de a dupla
-                    sair. No chamado interno o que organiza é a sprint.
+                    sair. No chamado interno o que organiza é o prazo.
                     U79: o `datetime-local` que escrevia `data_hora_agendada`
                     direto virou LEITURA DOS BLOCOS + gestos nomeados. A coluna
                     é espelho derivado (R101), e um campo só não sabe

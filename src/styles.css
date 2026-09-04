@@ -1176,3 +1176,19 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 @media (min-width: 1024px) {
   .detalhe-grid { grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); }
 }
+
+/* R146 (U96): a foto da fachada sobreposta ao card da lista de clientes.
+   Camada absoluta pela DIREITA, com máscara que some para a esquerda (onde
+   está o texto), e que só aparece depois de carregar — a classe .pronta liga a
+   transição de opacidade (Davi: "sobrepondo-o com transição suave da
+   opacidade"). A opacidade final é menor no claro, onde a foto competiria com
+   o texto escuro sobre branco. */
+.fachada-card {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 58%;
+  height: 100%; object-fit: cover; pointer-events: none;
+  opacity: 0; transition: opacity .45s ease;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.85) 45%, #000 100%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.85) 45%, #000 100%);
+}
+.fachada-card.pronta { opacity: 0.55; }
+[data-theme="light"] .fachada-card.pronta { opacity: 0.45; }

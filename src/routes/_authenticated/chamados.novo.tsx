@@ -50,11 +50,13 @@ function NovoChamadoPage() {
     },
     {
       icone: ShoppingCart,
-      titulo: "Pedido de compra",
-      descricao: "Material ou equipamento para o Controle Patrimonial cotar e comprar.",
+      titulo: "Controle Patrimonial",
+      descricao: "Material, equipamento ou tarefa do Controle Patrimonial — abre como atividade Operacional.",
       exemplos: "Ex.: 10 controles remotos · nobreak novo para a guarita · licença de software",
       // R48/U41 (2026-08-21, Davi): "pedido_compra" saiu da seleção — o pedido
-      // novo abre como "Operacional" no Controle Patrimonial, no lugar dele.
+      // novo abre como "Operacional" no Controle Patrimonial. R140 (U96) tirou
+      // o pedido de compra do sistema inteiro; este trilho é o que sobrou dele:
+      // a demanda do Patrimônio, com o nome do setor e não do tipo morto.
       ir: (n) => n({ to: "/chamados/novo-interno", search: { equipe: "patrimonio", tipo: "operacional" } as any }),
     },
     {

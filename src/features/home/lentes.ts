@@ -166,8 +166,8 @@ export interface Filtros {
   prazo: Prazo;
   pessoa: string;           // "todos" | uid
   /** R60: departamento (Equipe, lib/equipes.ts). "todas" | valor de Equipe.
-   *  Vazio fora do interno por definição — ver `Atividade.equipe`, e é por
-   *  isso que este filtro naturalmente esconde campo/comercial quando ligado. */
+   *  R139 (U96): casa com as equipes das PESSOAS da atividade (`a.equipes`),
+   *  em qualquer natureza — não mais com a coluna do chamado interno. */
   equipe: string;
   busca: string;
   /**
@@ -228,12 +228,12 @@ function casaVinculo(a: Atividade, v: Vinculo[]): boolean {
     || (v.includes("autor") && a.souAutor);
 }
 
-/** R60: fora do natureza='interno', `a.equipe` é sempre null (invariante do
- *  modelo — ver o comentário em atividades/modelo.ts) — então escolher uma
- *  equipe naturalmente restringe a lista ao interno daquela equipe, sem
- *  precisar de um caso especial para campo/comercial. */
+/** R139 (U96): a equipe da atividade é a das PESSOAS nela — escolher "Técnica"
+ *  traz toda atividade em que alguém da técnica é responsável ou apoio, seja
+ *  de campo, interna ou proposta. (Até a U96 só o interno tinha equipe, e o
+ *  filtro escondia campo/comercial por definição; isso acabou.) */
 function casaEquipe(a: Atividade, equipe: string): boolean {
-  return equipe === "todas" || a.equipe === equipe;
+  return equipe === "todas" || a.equipes.includes(equipe);
 }
 
 /**

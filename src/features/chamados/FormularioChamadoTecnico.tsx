@@ -76,16 +76,26 @@ interface Props {
    * chama decide o destino: a página navega, o pop-up abre o painel lateral.
    */
   aoConcluir: (id: string) => void;
+  /**
+   * R138 (U96): o pop-up de nova atividade da Início faz DUAS perguntas antes
+   * de qualquer formulário — o tipo de demanda e o responsável — e, quando o
+   * responsável é da equipe Técnica, cai aqui. As duas respostas chegam
+   * prontas para a pessoa não escolher de novo o que acabou de escolher.
+   */
+  tipoInicial?: ChamadoTipo;
+  tecnicoInicial?: string | null;
 }
 
-export function FormularioChamadoTecnico({ aoConcluir }: Props) {
+export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInicial }: Props) {
   const qc = useQueryClient();
   const { isLight } = useTheme();
   const { data: clientes = [] } = useClientes();
   const { data: tecnicos = [] } = useTecnicos();
   const { data: sla = {} } = useSla();
 
-  const [tipo, setTipo] = useState<ChamadoTipo>("corretiva");
+  const [tipo, setTipo] = useState<ChamadoTipo>(
+    tipoInicial && (tiposDaNatureza("campo") as string[]).includes(tipoInicial) ? tipoInicial : "corretiva",
+  );
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [buscaCliente, setBuscaCliente] = useState("");
   const [sistemaId, setSistemaId] = useState<string | null>(null);
@@ -96,7 +106,7 @@ export function FormularioChamadoTecnico({ aoConcluir }: Props) {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [prioridade, setPrioridade] = useState<ChamadoPrioridade>("normal");
-  const [tecnicoId, setTecnicoId] = useState("");
+  const [tecnicoId, setTecnicoId] = useState(tecnicoInicial ?? "");
   const [data, setData] = useState("");
   // 09:00 é `CAMPO_ABRE_MIN`: a equipe SAI às 09h, então este default já passa
   // no `v_inicio - v_desloc < 540` da jornada. Não é um chute — é a política.

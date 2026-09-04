@@ -138,3 +138,22 @@ RLS para `authenticated`.
 
 - `docs/PRODUTO.md` — R10, R21, R22 · `docs/PENDENCIAS_TECNICAS.md` — S9
 - `src/features/clientes/` · `supabase/migrations/20260820150000_u24_base_clientes.sql`
+
+## A ficha em duas colunas, a fachada e o WhatsApp (R146, U96)
+
+A ficha do cliente (`/clientes/$id`) é tela de computador: a coluna larga tem o
+histórico (inventário, contratos, atividades, plantão, visitas) e a estreita a
+identidade — a **foto da fachada** no topo, o **tipo de local** (Cond. Vertical,
+Cond. Horizontal, Galpão, Residência), endereço, serviços prestados e os
+contatos. Síndico e zelador têm nome, **WhatsApp** (abre o WhatsApp ao clicar)
+e e-mail; residência e galpão chamam-nos de proprietário e encarregado(a).
+
+A foto sobe pelo botão da própria ficha (gestor), para o bucket privado
+`clientes-fachadas` (migration U96); a coluna `clientes.foto_fachada_url`
+guarda o caminho (valores antigos com `http` continuam valendo como URL). Na
+lista de clientes ela aparece sobreposta ao card pela direita, com transição de
+opacidade. Ao escolher o cliente numa proposta comercial, a foto é herdada.
+
+A seção **Atividades** da ficha passou a incluir as atividades de **grupo**
+("Clientes de Portaria Remota") a que o cliente pertence e as em que ele é
+local extra (R143) — marcadas como tal —, com teto declarado e "ver todas".

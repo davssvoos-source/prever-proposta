@@ -14,7 +14,17 @@
 // Por isso cada item entra pela data que REALMENTE o coloca num dia:
 //   · visita e chamado de campo → a hora agendada (é quando a dupla sai)
 //   · chamado interno           → o prazo (é quando tem que estar pronto)
-// A célula distingue os dois: hora para o que é agendado, "vence" para prazo.
+//   · chamado CONCLUÍDO         → a data da conclusão (R145, U96)
+// A célula distingue os três: hora para o que é agendado, "prazo" para o que
+// vence, "concluído" para o que já foi.
+//
+// ── R145 (U96): O CONCLUÍDO FICA NO DIA EM QUE FOI CONCLUÍDO ────────────────
+// Davi, 2026-09-03: "O Calendário deverá ter as atividades na data de
+// CONCLUSÃO para as atividades que já foram concluídas, bem como deverão estar
+// na data do PRAZO caso ainda não tenham sido concluídas." Antes, um chamado
+// concluído com atraso ficava preso no dia do prazo — o calendário contava
+// uma promessa em vez do fato. Para o que está em aberto a regra de sempre
+// continua: hora agendada quando há (é quando a dupla sai), prazo quando não.
 //
 // ── R133 (U94): DUAS VISÕES, MENSAL E SEMANAL ─────────────────────────────
 // Davi, 03/09/2026: "A página calendário deve ter duas opções de layout:
@@ -98,6 +108,8 @@ interface Evento {
   quando: string;
   /** true = entrou pelo PRAZO, não por hora marcada */
   porPrazo: boolean;
+  /** true = entrou pela data de CONCLUSÃO (R145) — já foi, não vence nem sai */
+  porConclusao: boolean;
   /** true = já passou da data e não chegou a um estado final — pinta vermelho */
   atrasado: boolean;
   cor: string;
@@ -220,9 +232,12 @@ function CalendarioPage() {
   });
 
   /**
-   * Chamados da janela por DOIS caminhos: hora agendada ou prazo. O PostgREST
-   * junta os dois com `or(...)`, senão seriam duas consultas para depois
-   * misturar na mão — e a segunda esqueceria um filtro em algum refactor.
+   * Chamados da janela por TRÊS caminhos: a data de conclusão (concluídos,
+   * R145), a hora agendada ou o prazo (em aberto). O PostgREST junta os três
+   * com `or(...)`, senão seriam consultas para depois misturar na mão — e a
+   * segunda esqueceria um filtro em algum refactor. Um concluído que também
+   * tem hora na janela entra pelas duas pernas e é a MESMA linha; quem decide
+   * o dia é `quando`, no useMemo abaixo, e ele prefere a conclusão.
    */
   const { data: chamados = [], isLoading: carregandoChamados } = useQuery({
     queryKey: ["calendario", "chamados", chaveJanela],
@@ -234,8 +249,12 @@ function CalendarioPage() {
         // responsavel_id, NÃO tecnico_id: a coluna mudou de nome na U7 e o
         // nome velho derrubava a consulta inteira (42703).
         // `!cliente_id`: desambigua o embed — ver features/home/data.ts (U45).
-        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, responsavel_id, cliente_id, cliente:clientes!cliente_id(nome)")
-        .or(`and(data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),and(data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`);
+        .select("id, numero, status, tipo, natureza, titulo, data_hora_agendada, prazo_limite, concluida_em, responsavel_id, cliente_id, cliente:clientes!cliente_id(nome)")
+        .or(
+          `and(status.eq.concluido,concluida_em.gte.${de},concluida_em.lte.${ate}),`
+          + `and(status.neq.concluido,data_hora_agendada.gte.${de},data_hora_agendada.lte.${ate}),`
+          + `and(status.neq.concluido,data_hora_agendada.is.null,prazo_limite.gte.${de},prazo_limite.lte.${ate})`,
+        );
       if (error) throw error;
       return (data as any[]) ?? [];
     },
@@ -323,6 +342,7 @@ function CalendarioPage() {
         pessoas: v.tecnico_id ? [v.tecnico_id] : [],
         quando: v.data_hora_agendada,
         porPrazo: false,
+        porConclusao: false,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         setores: v.cliente_id ? (servicosPorCliente[v.cliente_id] ?? []) : [],
@@ -331,7 +351,9 @@ function CalendarioPage() {
     const deChamados: Evento[] = (chamados as any[]).map((c) => {
       const info = chamadoStatusInfo(c.status);
       const final = c.status === "concluido" || c.status === "cancelado";
-      const quando = c.data_hora_agendada ?? c.prazo_limite;
+      // R145: concluído fica no dia da conclusão; em aberto, hora marcada ou prazo
+      const porConclusao = c.status === "concluido" && !!c.concluida_em;
+      const quando = porConclusao ? c.concluida_em : (c.data_hora_agendada ?? c.prazo_limite);
       const atrasado = !final && !!quando && new Date(quando).getTime() < hoje.getTime();
       return {
         kind: "chamado" as const,
@@ -351,7 +373,8 @@ function CalendarioPage() {
           ...((apoios as Record<string, string[]>)[c.id] ?? []),
         ])),
         quando,
-        porPrazo: !c.data_hora_agendada,
+        porPrazo: !porConclusao && !c.data_hora_agendada,
+        porConclusao,
         atrasado,
         cor: atrasado ? vermelho : (isLight ? info.colorLight : info.color),
         // etiqueta explícita + serviço do cliente principal + serviço de cada
@@ -689,7 +712,7 @@ function CalendarioPage() {
                           fontFamily: FONT, fontWeight: 700, fontSize: 11,
                           color: e.atrasado ? vermelho : textPrimary, fontVariantNumeric: "tabular-nums", flexShrink: 0,
                         }}>
-                          {e.porPrazo ? "prazo" : horaCurta(e.quando)}
+                          {e.porConclusao ? "concluído" : e.porPrazo ? "prazo" : horaCurta(e.quando)}
                         </span>
                         <span style={{
                           fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.06em",
@@ -824,9 +847,11 @@ function CalendarioPage() {
                             // varrendo o mês, o que se procura é O QUE é, não a que
                             // horas. O detalhe fica no título do navegador e no
                             // painel, a um clique — e na visão SEMANAL (R133).
-                            title={`${e.titulo}${e.porPrazo
-                              ? " · vence neste dia"
-                              : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
+                            title={`${e.titulo}${e.porConclusao
+                              ? " · concluído neste dia"
+                              : e.porPrazo
+                                ? " · vence neste dia"
+                                : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
                             style={{
                               textAlign: "left", cursor: "pointer", width: "100%",
                               border: "none", borderLeft: `2.5px solid ${e.cor}`,

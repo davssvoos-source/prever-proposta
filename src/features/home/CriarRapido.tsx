@@ -35,9 +35,10 @@ import { GRAD_PRIMARIA, SOBRE_PRIMARIA, PRISMA, degradePrisma } from "@/lib/pale
 import { interpretarChamado } from "@/lib/chamado-rapido.functions";
 import {
   abrirChamado, anexarFoto, usePessoas, adicionarApoio,
-  adicionarEquipeChamado, adicionarClienteChamado,
+  adicionarClienteChamado,
   adicionarSetorChamado, adicionarProspeccaoChamado,
 } from "@/features/chamados/data";
+import { temImpacto, impactoDaPrioridade } from "@/lib/chamado-status";
 import { useClientes } from "@/features/clientes/data";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -95,8 +96,9 @@ export function CriarRapido() {
         indiceClientes: indiceClientes(clientes as any[]),
       });
 
+      // R139: a equipe é a das PESSOAS — a IA não classifica mais "equipe do
+      // assunto". A primeira (a do responsável) vai para a coluna do banco.
       const equipes = equipesDaAtividade({
-        doAssunto: c.equipe,
         participantes: [responsavelId, ...apoioIds].filter(Boolean) as string[],
         pessoas: pessoas as any[],
       });
@@ -115,11 +117,17 @@ export function CriarRapido() {
         titulo,
         descricao_problema: c.descricao,
         prioridade: c.prioridade,
+        // R142: no interno a urgência é o IMPACTO; a IA fala em prioridade, e
+        // o mapa é um-para-um (urgente → crítico … baixa → sem impacto). Só
+        // nos tipos que têm impacto — o resto nasce sem.
+        impacto_operacional: c.natureza === "interno" && temImpacto(c.tipo)
+          ? impactoDaPrioridade(c.prioridade)
+          : null,
         responsavel_id: responsavelId,
         cliente_id: primeiroCliente?.forma === "cliente" ? primeiroCliente.clienteId : null,
-        // a equipe do banco é NOT NULL e o campo default é "tecnica"; a
-        // principal é a primeira da lista derivada
-        equipe: equipes[0],
+        // a equipe do banco é NOT NULL: a do responsável (R139); sem ninguém
+        // com equipe, o default de sempre de cada natureza
+        equipe: equipes[0] ?? (c.natureza === "campo" ? "tecnica" : "outras"),
       });
 
       // O resto é aditivo, e cada peça falha sozinha: um apoio que não entrou
@@ -131,7 +139,8 @@ export function CriarRapido() {
       };
 
       for (const p of apoioIds) await tentar("apoio", () => adicionarApoio(id, p));
-      for (const e of equipes.slice(1)) await tentar("equipe", () => adicionarEquipeChamado(id, equipes[0], e));
+      // as demais equipes NÃO são gravadas em lugar nenhum (R139): elas são as
+      // dos apoios, e o modelo as deriva das pessoas ao ler
 
       for (const l of locais) {
         if (l.forma === "cliente") {
