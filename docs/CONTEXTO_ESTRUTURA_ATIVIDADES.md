@@ -461,6 +461,10 @@ B2, R134).
 - **Q20 — "Visita Técnica" × "Proposta Comercial".** Um registro com o título
   dependendo de quem olha (D5), ou dois registros — um do comercial e um do
   técnico?
+  → *Encaminhada em 04/09/2026 pela resposta à Q1 (R155): um fluxo em duas
+  fases — a Visita Técnica é do técnico; feita a visita, a atividade passa ao
+  Davi (aprovar e enviar), com card na Início dele. Falta só confirmar se é um
+  registro cujo responsável muda ou dois cards do mesmo registro.*
 - **Q21 — A tabela `chamado_compra`.** Ficou arquivada. Pode ser apagada de
   vez, ou fica?
 - **Q22 — O mini-calendário semanal do técnico na proposta.** Lê a agenda da

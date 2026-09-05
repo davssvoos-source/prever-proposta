@@ -234,18 +234,28 @@ O que falta, por ordem:
   chamado (recomendado) ou chamado interno criado por gatilho? E **quem
   recebe**: todo admin/gestor com `equipe = tecnica`, ou uma configuração
   "gestor responsável pela equipe técnica"?
+  → **Respondida em 04/09/2026 (R155):** card na Início do Vinicius, como
+  atividade dele (conferir + lançar cobrança). A forma (derivado) ficou com a
+  Fase C. E a proposta comercial passa do técnico para o Davi depois da visita.
 - **Q2 — Vistoria.** A R112 a descreveu como "ir ao cliente só para olhar"; o
   Davi a descreveu como o Vinicius **validando o trabalho dos técnicos**. É a
   mesma coisa vista de dois lados (a validação pode ser em loco), ou a
   vistoria deve nascer **da** atividade de validação ("validar em loco")?
+  → **Respondida em 04/09/2026 (R156):** "são a mesma coisa".
 - **Q3 — `operacional`.** Entrega de controle remoto, cadastro, tarefa miúda
   de campo: continua sendo tipo de chamado da equipe técnica e contando nos
   indicadores dela?
+  → **Respondida em 04/09/2026 (R156):** NÃO — "Operacional" é das outras
+  equipes; a técnica tem corretiva, preventiva e implantação. A lista do
+  chamado de campo muda junto com os fluxos que o Davi vai ditar.
 - **Q4 — O regime do equipamento no contrato.** "Comodato com doação",
   locação, venda, e "manutenção inclusa" — modelar como **regime por
   equipamento coberto** (em `contrato_cobertura_itens`), mantendo a
   `modalidade` do contrato como resumo? A extração por IA já lê o PDF inteiro;
   o que muda é o que ela devolve.
+  → **Respondida em 04/09/2026 (R157):** NÃO há regime por equipamento — o
+  contrato do condomínio tem a regra; exceções (totem em locação, poste nunca
+  em comodato) e vendas (aditivo com comodato + doação) constam no contrato.
 - **Q5 — Rubia.** Papel e equipe (ela está na lista de quem tem demandas
   gerais, mas não está em "quem é quem").
 - **Q6 — Os sistemas que a Prever instala.** Lista completa para o catálogo

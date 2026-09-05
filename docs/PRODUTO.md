@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R154). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R157). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3253,3 +3253,64 @@ trabalho".
   diminuir mais o glow do dashboard, deixa as cores do gráfico (o degradê) num
   tom mais claro de cada cor […] as bordas dos cards da tela Início podem
   estar mais claras.")*
+
+
+- **R155** — **A validação do executado é uma ATIVIDADE do gestor da equipe
+  técnica, com card na Início dele — e a proposta comercial passa do técnico
+  para o Davi depois da visita.** Quando o técnico conclui um chamado, nasce
+  para o Vinicius um card na Início: conferir o que foi feito e lançar a
+  cobrança, se houver. É atividade **dele** (ele é o responsável do card), não
+  um aviso dentro do chamado do técnico. A forma técnica fica com a Fase C do
+  plano (card derivado do estado do chamado, que o Davi não contrariou).
+  Mesma lógica para a **Proposta Comercial**: enquanto a visita não foi feita,
+  a atividade é do técnico de campo ("Visita Técnica"); feita a visita, a
+  atividade passa a ser do Davi — aprovar a visita e enviar a proposta — e o
+  card aparece na Início **dele**. Um fluxo, duas fases, dois responsáveis
+  (refina a R147/D5 e encaminha a Q20). Fecha a **Q1**. *(Davi, 04/09/2026:
+  "Quem confere o trabalho do técnico hoje é o Vinicius, ele é responsável por
+  conferir e fazer o lançamento da cobrança caso haja cobrança para o que foi
+  feito. Eu acho que pode criar um card novo na tela início para ele conferir,
+  como uma atividade dele mesmo… Bem como as propostas comerciais para o Davi
+  — quando o pedido de proposta chega, inicialmente a atividade é do técnico
+  de campo, que fará a visita técnica. Uma vez que a visita foi feita, o Davi
+  fará a aprovação da visita e enviar a proposta, e isso é uma atividade dele,
+  por isso deve aparecer um card pra ele na tela INICIO também.")*
+
+- **R156** — **A vistoria É a validação; e a área técnica tem três tipos de
+  demanda: corretiva, preventiva e implantação — "Operacional" não existe para
+  ela.** A vistoria da R112 e a validação do gestor (R155) são a mesma coisa
+  vista de dois lados: o Vinicius indo conferir o trabalho dos técnicos, em
+  loco quando for o caso — não uma "ida só para olhar" genérica. Fecha a
+  **Q2**. O tipo **Operacional** é das outras equipes (T.I., controle
+  patrimonial, comercial…); o escopo da técnica é Manutenção Corretiva,
+  Manutenção Preventiva e Implantação. Fecha a **Q3**. Consequência pendente:
+  a lista de tipos oferecidos ao chamado de campo (`TIPOS_DA_NATUREZA.campo`,
+  hoje com operacional e vistoria) e a R112 serão revistas junto com a
+  estrutura dos fluxos de cada tipo, que o Davi vai ditar em seguida — até
+  lá, nada muda no que o técnico grava. *(Davi, 04/09/2026: Q2 — "São a mesma
+  coisa"; Q3 — "O tipo de demanda operacional só é presente nas atividades das
+  outras equipes. A equipe técnica tem em seu escopo as atividades do tipo de
+  demanda: Manutenção corretiva, manutenção preventiva, implantação. Eu vou
+  explicar no próximo prompt como funciona os fluxos de cada tipo de demanda,
+  ou seja, quais campos serão necessários para cada um desses tipos de
+  demanda. Mas a demanda 'Operacional' não tem para a equipe técnica".)*
+
+- **R157** — **O regime dos equipamentos é o do contrato do condomínio; as
+  exceções constam no contrato — não há regime por equipamento no sistema.**
+  Cada condomínio tem um contrato e todos os equipamentos estão sob aquele
+  regime. As exceções são regras escritas no próprio contrato (numa portaria
+  remota em comodato com doação ao término, o totem fica sob locação; o poste
+  de monitoramento nunca é comodato). Venda de equipamentos num condomínio de
+  locação é **aditivo de contrato**, com comodato e doação ao término do
+  período do aditivo, e consta no contrato atualizado. Para o sistema:
+  `modalidade` continua sendo do contrato; a cobertura por item pode registrar
+  a exceção como texto lido do PDF, não como um "regime" próprio. Fecha a
+  **Q4** (Fase D). *(Davi, 04/09/2026: "Não, cada condomínio tem o contrato, e
+  todos os equipamentos estão sob aquele regime, mas há exceções, por exemplo,
+  se os equipamentos forem comodato com doação ao término do prazo contratual
+  em uma portaria remota que tem totem por exemplo, o totem deve ser sob
+  locação. Não fazemos comodato do poste de monitoramento. Mas isso constará
+  no contrato, ou seja, o contrato contém as regras do condomínio. Caso seja um
+  condomínio com locação e façamos a venda de equipamentos, será um adicional
+  de contrato com comodato e doação ao término do período do adicional. Isso
+  constará no contrato atualizado.")*

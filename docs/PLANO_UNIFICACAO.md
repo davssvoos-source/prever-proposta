@@ -9760,3 +9760,21 @@ incluindo a varredura de hex (nenhum `#0a0b0e`/`#f4f5f7`/`#8a909e` sobrou em
 `node scripts/verificar-logica.cjs` → **2835 passaram, 0 falharam** (34 novas, 5 reapontadas com o motivo ao lado). `npx vite build`
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R154**.
 Sem migration.
+
+
+## U97b — as respostas do Davi às Q1–Q4 viram regra (2026-09-04)
+
+Só documentação. O Davi respondeu as quatro primeiras perguntas do plano e
+avisou que dita em seguida os fluxos de cada tipo de demanda da área técnica
+(o lembrete 1 da U96). Registrei antes de implementar, de propósito: as três
+regras (R155 validação como atividade do gestor e a proposta que passa ao
+Davi; R156 vistoria = validação, técnica sem "Operacional"; R157 regime do
+contrato, não do equipamento) mudam a Fase C, a lista de tipos do chamado de
+campo e a Fase D — e mexer em `TIPOS_DA_NATUREZA.campo` agora, sem os fluxos
+que vêm no próximo prompt, seria implementar metade de uma regra e desfazer
+na hora seguinte. As perguntas ficaram anotadas com a resposta e a regra, para
+quem ler o plano não as responder de novo. A R112 (vistoria "só para olhar")
+ganhou a nota de revisão e será reescrita junto com os fluxos.
+
+Asserções: as três regras existem no PRODUTO, as quatro perguntas estão
+marcadas respondidas, a Q20 está encaminhada. Sem código, sem migration.

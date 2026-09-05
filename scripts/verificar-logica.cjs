@@ -17016,7 +17016,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const ds97 = ler97('DESIGN_SYSTEM.md');
   eq('U97 (regra 7): R151–R154 existem e a última atualização aponta para a R154; a U97 está no diário',
      [['R151', 'R152', 'R153', 'R154'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97)),
-      /Última atualização: 2026-09-04 \(R154\)/.test(prod97),
+      /Última atualização: 2026-09-04 \(R15[4-9]\)/.test(prod97),
       /^## U97 /m.test(ler97('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
   eq('U97 (regra 7): o DESIGN_SYSTEM traz os tokens v10, as oito bordas claras resolvidas, a rampa v10 com o piso de 2,5:1, e o fundo v4/v10 — e o quase-preto só aparece como história',
@@ -17029,6 +17029,28 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U97 (regra 7): o manual fala do card de quatro coisas e do arrasto que muda o prazo',
      [/quatro\s+coisas/.test(ler97('docs/manual/operacao-campo.md')), /Arrastar muda o prazo \(R152\)/.test(ler97('docs/manual/operacao-campo.md'))],
      [true, true]);
+}
+
+// ── U97b — as respostas do Davi às Q1–Q4 (R155–R157), só documentação ───────
+{
+  const ler97b = (p) => require('fs').readFileSync(p, 'utf8');
+  const prod97b = ler97b('docs/PRODUTO.md');
+  eq('U97b (regra 7): R155–R157 existem e a última atualização aponta para a R157',
+     [['R155', 'R156', 'R157'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97b)),
+      /Última atualização: 2026-09-04 \(R157\)/.test(prod97b)],
+     [true, true]);
+  eq('U97b: as Q1–Q4 do plano estão marcadas respondidas, cada uma com a sua regra',
+     ['R155', 'R156', 'R156', 'R157'].map((r, i) =>
+       new RegExp(`Q${i + 1} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(ler97b('docs/PLANO_V0.1.md'))),
+     [true, true, true, true]);
+  eq('U97b: a Q20 está encaminhada pela R155 e a vistoria foi reconciliada na operação técnica',
+     [/Encaminhada em 04\/09\/2026 pela resposta à Q1 \(R155\)/.test(ler97b('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md')),
+      /reconciliado em 04\/09\/2026 — R156/.test(ler97b('docs/CONTEXTO_OPERACAO_TECNICA.md')),
+      /^## U97b /m.test(ler97b('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true]);
+  // R156 ainda NÃO mexe no código: a lista do campo continua a de antes até os fluxos chegarem
+  eq('U97b/R156: a lista de tipos do chamado de campo ainda é a anterior (a revisão espera os fluxos da técnica)',
+     /campo: \["corretiva", "preventiva", "operacional", "implantacao", "vistoria"\],/.test(ler97b('src/lib/chamado-status.ts')), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

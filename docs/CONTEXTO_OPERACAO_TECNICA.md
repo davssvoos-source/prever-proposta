@@ -211,7 +211,7 @@ R125; a receita de dashboard continua sendo `docs/DASHBOARD.md`.
 |---|---|---|
 | QAP | app lê **e escreve** (movimentação via API) | app **só recebe**; escrita não existe |
 | Equipamentos por cliente | registrados pelos técnicos em campo, aos poucos | vêm do **QAP**; no app entram os **sistemas**, à mão |
-| Vistoria | atividade de campo genérica ("ir só para olhar") | ato de **gestão**: validar o trabalho dos técnicos (a reconciliar — Q2) |
+| Vistoria | atividade de campo genérica ("ir só para olhar") | ato de **gestão**: validar o trabalho dos técnicos (reconciliado em 04/09/2026 — R156: "são a mesma coisa") |
 | Validação do executado | um botão "Conferir e fechar" dentro do detalhe | uma **atividade** na Início do gestor, com tudo que o técnico registrou e as duas saídas |
 | Cobrança da obra | acréscimo na mensalidade | **parcelas** reais, que entram no fechamento (já corrigido na R121) |
 | Dashboard da técnica | rankings de carga e ritmo | **implantações em andamento**, **a cobrar no mês**, **aguardando conferência** |
