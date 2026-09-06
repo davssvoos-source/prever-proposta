@@ -411,7 +411,10 @@ reversíveis; nenhuma esconde a alternativa.
   resto vê "Proposta Comercial".** Um registro, dois papéis, decidido por quem
   olha. A alternativa seria criar um segundo registro (uma atividade para o
   comercial e outra para o técnico) — mais cards para a mesma coisa. Se o Davi
-  preferir dois registros, é a **Q20**.
+  preferir dois registros, é a **Q20**. **REVISTA em 04/09/2026 (R170): o
+  Davi preferiu DUAS atividades no mesmo fluxo — a visita é do técnico e,
+  feita, gera a proposta para o Davi (R155). O título por quem olha continua
+  até a implementação, que vem com os fluxos da técnica.**
 - **D6 — O calendário coloca o em-aberto na hora agendada quando há, senão no
   prazo.** O Davi disse "na data do PRAZO caso ainda não tenham sido
   concluídas"; a hora agendada é o compromisso da dupla e some se o prazo

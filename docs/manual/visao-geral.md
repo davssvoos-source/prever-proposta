@@ -35,8 +35,12 @@ lá antes de virar código**, e as importantes viram asserção permanente em
 | **sac** | — | desktop | coordena chamados, agenda visitas (R1: o SAC é gestor) |
 | **tecnico** | Gilleno, Nicholas, Erik, Breno… | **celular** | executa em campo; só o líder da dupla tem conta (R14) |
 
-O Controle Patrimonial usa perfil de técnico (R6). "TI" trabalha nos chamados
-de natureza `interno` (sprint/equipes — R15/R16).
+O Controle Patrimonial usa perfil de técnico (R6). T.I. e Controle Patrimonial
+trabalham nas atividades de natureza `interno`; a equipe da atividade é a das
+pessoas nela (R139) — não se escolhe, e o sprint saiu (R141). A **Rubia**
+(supervisora do atendimento da Portaria Remota) é **sac**: abre e gerencia os
+chamados técnicos (R158). O técnico de campo **não abre chamado** sozinho
+(R163); o "+" da Início, para ele, é a porta do plantão.
 
 ## O fluxo macro
 
@@ -64,10 +68,12 @@ Dois pontos que já causaram confusão e têm regra própria:
 Desde a U7, **tudo que é trabalho é um chamado** (R16), diferenciado por:
 
 - **natureza** — `campo` (dupla se desloca, foto, assinatura, cobrança),
-  `interno` (ex-Notion: equipe, sprint, apoio), `comercial` (o funil da
-  proposta — U29/R29).
-- **tipo** (R24) — `proposta_comercial`, `corretiva`, `preventiva`,
-  `implantacao` (mais os operacionais herdados).
+  `interno` (a atividade das outras equipes: apoio, prazo, data agendada,
+  impacto — a equipe é a das pessoas), `comercial` (o funil da proposta —
+  U29/R29).
+- **tipo de demanda** (R137) — `corretiva`, `preventiva`, `operacional`,
+  `prospeccao` ("Proposta Comercial"), `implantacao`, `melhoria`. A área
+  técnica tem só corretiva, preventiva e implantação (R156).
 
 A proposta comercial É um chamado (R29): mesma fila, mesmo Kanban, número
 CH-. O fluxo dela continua em `visitas_tecnicas`, que virou **satélite 1:1**
@@ -130,7 +136,8 @@ aparelho nasceu.
 A página `/chamados/$id` de uma atividade interna (e o painel lateral, que usa
 os mesmos componentes) tem, no computador, duas colunas: o **texto** na larga —
 a descrição num editor de blocos e a conversa — e as **propriedades** na
-estreita. Cada propriedade (Status, Classificação, Prioridade, Equipe, Sprint) é
+estreita. Cada propriedade (Status, Tipo, Impacto operacional, Prazo — e a
+proposta aprovada, na implantação) é
 um **seletor**: um botão pintado pela cor da coisa escolhida que abre a lista
 (`SeletorDeOpcao`). No editor, um item de checklist é a caixa de marcar do
 design system e não "[ ]"; digitar `@` abre a lista de pessoas, e a **menção**
@@ -154,10 +161,15 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   a semana e o mês. **Pedido de compra não existe mais**: demanda do
   Patrimônio é Operacional.
 - **Impacto operacional** (Sem impacto · Baixo · Moderado · Crítico) é a
-  urgência de Corretiva e Operacional. No campo continua a prioridade.
-- **Cliente** pode ser um cliente, um **grupo** ("Clientes de Portaria Remota")
-  ou interno. O grupo é um card só, conta no histórico de cada cliente e põe um
-  checklist dos clientes na descrição.
+  urgência de Corretiva, Preventiva (R169) e Operacional. No campo continua a
+  prioridade.
+- **Cliente** pode ser um ou **mais** clientes (R151), um ou mais **grupos**
+  ("Clientes de Portaria Remota", "de Monitoramento", "de Portaria Autônoma",
+  "de Portaria Presencial" — R143/R173) ou interno. O grupo é um card só,
+  conta no histórico de cada cliente e põe um checklist dos clientes na
+  descrição.
+- **Calendário**: arrastar uma atividade em aberto para outro dia muda o prazo
+  (R152); o card da semana mostra só quem toca, título, cliente e tipo (R153).
 - **Recebimento, início e conclusão** ficam registrados; o **calendário**
   mostra a concluída no dia da conclusão e a em aberto na hora agendada ou no
   prazo.
@@ -172,10 +184,18 @@ Ditada pelo Davi em 03/09/2026 e transcrita em
   do contato `"Condomínio Apartamento Nome"` (R30).
 - **Implantação com tarefas geradas por IA**; **preventiva com checklist
   fotográfico por item** — planos registrados, não construídos.
+- **A validação do gestor como card na Início do Vinicius** (R155/R162), a
+  **proposta em duas atividades** — visita do técnico, proposta do Davi (R170)
+  —, a **visita comercial travando a agenda** (R172), a **data agendada** e a
+  coluna "Agendados" no quadro (R168, a coluna do banco já existe): tudo
+  registrado, aguardando os fluxos da área técnica que o Davi vai ditar.
+- **O Catálogo refeito** (equipamentos pelo QAP, serviços editados no app —
+  R166) e o **QAP sincronizando** (diário + botão, R160).
 
 ## Referências
 
-- `docs/PRODUTO.md` — as regras R1–R32 e o mapa de telas comentado
+- `docs/ESTADO_ATUAL.md` — onde o projeto está (ler primeiro)
+- `docs/PRODUTO.md` — as regras R1–R173 e o mapa de telas comentado
 - `docs/PLANO_UNIFICACAO.md` — o diário técnico da unificação
 - `docs/PENDENCIAS_TECNICAS.md` — defeitos conhecidos e riscos aceitos
 - `DESIGN_SYSTEM.md` — o design system completo

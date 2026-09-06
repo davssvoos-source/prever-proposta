@@ -9905,3 +9905,63 @@ que é irreversível.
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R172**.
 Migration **U99** (`20260915090000_u99_respostas_do_davi.sql`) — rodar DEPOIS
 da U96.
+
+
+## U100 — os grupos de clientes (R173), CAE/CCA liberados, e a revisão dos documentos (2026-09-04)
+
+O Davi rodou a U96 e a U99 e respondeu a Q23 ("Sim, entra no grupo de
+clientes"). Pediu, junto, "uma rodada de revisão no nosso sistema e nos
+documentos", com o critério explícito: numa máquina nova, entender o sistema
+lendo os documentos tem de ser tranquilo.
+
+### O que a U99 rodada liberou
+
+`TIPOS_SISTEMA_NAO_OFERECIDOS` esvaziou: CAE e CCA passaram a ser oferecidos
+nos dois seletores de tipo de sistema. Um commit, uma linha — como prometido
+na U99. O mecanismo fica: é o modelo para o próximo código que precisar de
+CHECK antes de existir.
+
+### R173 — portaria autônoma e presencial como grupos
+
+A lista de grupos (`SERVICO_ORDEM`) foi de dois para quatro, com rótulo e cor
+própria (azul-escuro e rosa do PRISMA — os dois tons que sobravam
+distinguíveis dos dois já usados). Rótulo de grupo, checklist e etiqueta
+derivam da lista, então nenhum código novo foi preciso fora dela. Dois CHECKs
+guardam a mesma lista no banco (`clientes.servicos_prestados`, U36;
+`chamado_locais.setor`, U71) e a U100 alarga os dois juntos — uma asserção
+confere que a lista do CHECK é a mesma do código. Regra 5: até a U100 rodar,
+os dois grupos novos RENDERIZAM (filtros, chips, rótulos leem
+`SERVICO_ORDEM`) mas não se OFERECEM (a ficha do cliente e os três seletores
+de grupo leem `SERVICOS_OFERECIDOS`). A ficha tem um detalhe: um grupo já
+marcado aparece mesmo que não seja oferecido — para poder ser desmarcado.
+
+### A revisão dos documentos
+
+O que faltava não era volume — são 21 mil linhas de documentação — era o
+PONTO DE ENTRADA. Quem chegasse numa máquina nova tinha o método (CLAUDE.md),
+as regras (PRODUTO), o diário (9.900 linhas) e os contextos, mas o "onde
+estamos" morava na memória local do assistente: migrations pendentes, o que o
+Davi ainda vai mandar, quais perguntas sobraram, o que foi decidido ontem.
+Nasceu `docs/ESTADO_ATUAL.md` para isso: um retrato de cinco minutos, com a
+ordem de leitura, que o passo 7 do ciclo (novo no CLAUDE.md) obriga a manter
+— e uma asserção confere que a "última regra" declarada nele é a última do
+PRODUTO, para o retrato não envelhecer em silêncio.
+
+O resto foi caça ao que envelheceu: o manual descrevia Sprint como
+propriedade da atividade, "pedido de compra" como coisa a que o apoio tem
+acesso, `chamados.novo` como pergunta em aberto, "360+ asserções", "~85
+erros de tipo"; o CLAUDE.md dizia "~1300 asserções"; o ONBOARDING trazia o
+retrato de 24/08 como se fosse hoje; o README do manual citava "R1–R32". Cada
+um foi corrigido no lugar, e a asserção da U100 fixa a ausência dos oito
+sinais de envelhecimento — quem reintroduzir um, acusa. O SISTEMA_OS.md
+ganhou o aviso de documento histórico. A D5 ganhou a nota da R170. As
+pendências P58–P60 registram o que ficou para leva de limpeza (liberar os
+grupos após a U100; a biblioteca do Notion sem tela; o fallback da U96 agora
+morto).
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2887 passaram, 0 falharam** (14 novas, 4 reapontadas). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R173**.
+Migration **U100** (`20260916090000_u100_grupos_de_clientes.sql`) — independe
+das anteriores.

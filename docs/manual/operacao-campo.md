@@ -370,7 +370,7 @@ Duas exclusões deliberadas:
 - **Natureza `comercial` fica FORA** — proposta é funil; misturar faria o
   "tempo de atendimento" somar negociação com conserto.
 - A tela usa `useChamadosPorNatureza("campo")` — demandas internas também
-  ficam fora (têm sprint, não SLA).
+  ficam fora (têm prazo e impacto operacional, não SLA — R142/R169).
 
 **Prática:** indicador novo → função no módulo + teste de unidade no
 verificador + só então pintar na tela. A tela não calcula nada.
@@ -539,7 +539,7 @@ a visita aconteceu, e desafirmar não a desacontece. Se descongelasse, o botão
 
 **3. Quem foi continua com acesso, mesmo se o responsável mudar (R108).** Ser
 apoio dá direito de ver e editar o chamado, o cliente, o local, as fotos, o
-checklist e o pedido de compra. Como o registro não é mais apagado, trocar o
+checklist e os locais. Como o registro não é mais apagado, trocar o
 responsável de um atendimento já cumprido deixa **as duas turmas** com esse
 acesso. É a troca deliberada: guardar um registro a mais é melhor do que apagar o
 registro de quem esteve no prédio. Se a pessoa não deve mais ter acesso, remova-a

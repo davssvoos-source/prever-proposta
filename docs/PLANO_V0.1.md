@@ -235,7 +235,10 @@ O que falta, por ordem:
 - Onboarding do Vinicius: ele já é admin; a primeira semana com o app aberto
   ao lado do Gestor OS é a rodada de correção de cada fase.
 
-## 4. Perguntas em aberto — para o Davi responder
+## 4. Perguntas — respondidas em 04/09/2026 (Q8 adiada, Q13 em aberto)
+
+As respostas estão anotadas em cada pergunta (→) com a regra que nasceu dela.
+O retrato consolidado está em `ESTADO_ATUAL.md` §5–§6.
 
 - **Q1 — A forma da atividade de validação.** Card **derivado** do estado do
   chamado (recomendado) ou chamado interno criado por gatilho? E **quem
@@ -276,6 +279,8 @@ O que falta, por ordem:
   software operante + controladora + rack) para portaria presencial; a Prever
   também faz portaria autônoma. Migration na próxima leva (Fase D/F). Nasce a
   **Q23**: autônoma/presencial como grupos de clientes (R143)?
+  → **Q23 respondida em 04/09/2026 (R173):** sim — entram como grupos, ao lado
+  de Portaria Remota e Monitoramento (migration U100).
 - **Q7 — A API do QAP.** Há documentação e credencial? Qual chave casa o
   cliente (CNPJ)? Frequência de sincronização (diária basta?).
   → **Respondida em 04/09/2026 (R160):** diária basta, mais o botão
@@ -321,9 +326,15 @@ O que falta, por ordem:
 - [ ] Fase F — preventiva por sistema
 - [ ] Fase G — corte do Gestor OS
 - [x] Fase H — a estrutura das atividades: núcleo (U96, R137–R150)
-- [ ] Fase H.1–H.6 — mini-calendário do técnico, data agendada interna (Q18), estrutura da técnica, impacto automático, equipamentos do ERP, IA da proposta
+- [ ] Fase H.1 — mini-calendário do técnico na proposta; a visita trava a agenda (R172) e é atividade distinta da proposta (R170)
+- [~] Fase H.2 — data agendada interna: coluna `data_agendada` pronta (U99, R168); campo, coluna "Agendados" e calendário pendentes
+- [ ] Fase H.3 — a estrutura da área técnica (o Davi vai ditar os fluxos — é o próximo passo)
+- [ ] Fase H.4 — impacto automático por tipo (o Davi vai mandar a relação)
+- [ ] Fase H.5 — equipamentos do ERP (o Davi vai mandar os documentos)
+- [ ] Fase H.6 — IA lendo a proposta aprovada (R148)
 
-As perguntas Q18–Q22 desta fase estão na §6 de `CONTEXTO_ESTRUTURA_ATIVIDADES.md`.
+As perguntas Q1–Q23 foram respondidas em 04/09/2026 (Q8 adiada, Q13 em
+aberto); cada uma está anotada onde nasceu. `ESTADO_ATUAL.md` traz o resumo.
 
 ## 7. A revisão de telas (03/09, à tarde)
 

@@ -55,6 +55,7 @@ import {
   SITUACAO_LABEL,
   SITUACAO_CORES,
   SERVICO_ORDEM,
+  SERVICOS_OFERECIDOS,
   SERVICO_LABEL,
   SERVICO_CORES,
   temServico,
@@ -649,7 +650,9 @@ function ClienteDetalhePage() {
                       }}>
                         Serviço prestado
                       </span>
-                      {SERVICO_ORDEM.map((s) => {
+                      {/* R173: um grupo ainda não aceito pelo banco não se OFERECE — mas,
+                          se já estiver marcado, aparece (para poder ser desmarcado) */}
+                      {SERVICO_ORDEM.filter((s) => SERVICOS_OFERECIDOS.includes(s) || temServico(cliente, s)).map((s) => {
                         const tem = temServico(cliente, s);
                         const cs = SERVICO_CORES[s];
                         return (

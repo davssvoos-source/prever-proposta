@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R172). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R173). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3467,3 +3467,13 @@ trabalho".
   um bloco na agenda de campo do técnico, como qualquer atividade dele — não um
   desenho por cima. Fecha a **Q22**. *(Davi, 04/09/2026: "Deverá travar sim.
   Pois será uma atividade daquele técnico, assim como as outras.")*
+
+
+- **R173** — **Portaria Autônoma e Portaria Presencial são grupos de
+  clientes, ao lado de Portaria Remota e Monitoramento de Alarmes.** Entram em
+  `clientes.servicos_prestados` (o que a Prever presta no cliente) e como
+  etiqueta de grupo de uma atividade (`chamado_locais.setor`, R143) — com
+  rótulo, cor e checklist próprios, pelo mesmo mecanismo dos dois primeiros.
+  Os dois CHECKs do banco mudam juntos na migration **U100**; até ela rodar o
+  app mostra os grupos novos mas não deixa gravá-los (regra 5). Fecha a
+  **Q23**. *(Davi, 04/09/2026: "Sim, entra no grupo de clientes.")*

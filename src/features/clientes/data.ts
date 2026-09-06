@@ -36,19 +36,45 @@ export const SITUACAO_CORES: Record<SituacaoCliente, { dark: string; light: stri
  * e monitoramento de alarmes. Guardar um só forçaria uma escolha falsa no
  * cadastro e faria o cliente sumir do filtro do outro serviço.
  */
-export type ServicoCliente = "portaria_remota" | "monitoramento_alarmes";
+export type ServicoCliente = "portaria_remota" | "monitoramento_alarmes" | "portaria_autonoma" | "portaria_presencial";
 
-export const SERVICO_ORDEM: ServicoCliente[] = ["portaria_remota", "monitoramento_alarmes"];
+/**
+ * Os grupos, na ordem em que aparecem. R173 (U100, Q23 — Davi, 04/09/2026:
+ * "Sim, entra no grupo de clientes"): portaria autônoma e portaria presencial
+ * entram ao lado da remota e do monitoramento — o controle de acesso
+ * eletrônico se aplica às três portarias, e o cliente de presencial também
+ * recebe manutenção.
+ */
+export const SERVICO_ORDEM: ServicoCliente[] = ["portaria_remota", "monitoramento_alarmes", "portaria_autonoma", "portaria_presencial"];
+
+/**
+ * O que o app CONHECE mas ainda NÃO OFERECE para gravar — nem na ficha do
+ * cliente, nem como grupo de uma atividade (o mesmo mecanismo de
+ * `NAO_OFERECIDOS` em chamado-status.ts e de `TIPOS_SISTEMA_NAO_OFERECIDOS`).
+ * Dois CHECKs do banco guardam a lista (clientes.servicos_prestados, U36;
+ * chamado_locais.setor, U71) e só aceitam os dois grupos novos depois da
+ * migration U100, que o Davi roda à mão — o push publica na hora. Quando a
+ * U100 tiver rodado, esta lista esvazia (um commit, uma linha).
+ */
+export const SERVICOS_NAO_OFERECIDOS: ServicoCliente[] = ["portaria_autonoma", "portaria_presencial"];
+
+/** Os grupos que os seletores e a ficha OFERECEM — o que pode ser GRAVADO hoje. */
+export const SERVICOS_OFERECIDOS: ServicoCliente[] =
+  SERVICO_ORDEM.filter((s) => !SERVICOS_NAO_OFERECIDOS.includes(s));
 
 export const SERVICO_LABEL: Record<ServicoCliente, string> = {
   portaria_remota: "Portaria Remota",
   monitoramento_alarmes: "Monitoramento de Alarmes",
+  portaria_autonoma: "Portaria Autônoma",
+  portaria_presencial: "Portaria Presencial",
 };
 
-/** Cores do PRISMA — dois serviços, dois tons distinguíveis no claro e no escuro. */
+/** Cores do PRISMA — quatro serviços, quatro tons distinguíveis no claro e no escuro. */
 export const SERVICO_CORES: Record<ServicoCliente, { dark: string; light: string; bg: string; border: string }> = {
   portaria_remota: PRISMA.azulClaro,
   monitoramento_alarmes: PRISMA.laranja,
+  portaria_autonoma: PRISMA.azulEscuro,
+  portaria_presencial: PRISMA.rosa,
 };
 
 /** true quando o cliente presta aquele serviço. Tolera a coluna ausente. */

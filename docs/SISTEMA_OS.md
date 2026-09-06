@@ -1,5 +1,10 @@
 # Sistema de Ordens de Serviço — Prever
 
+> **Documento histórico (2026-08-15).** É o plano de arquitetura que deu
+> origem ao sistema de atividades; muito do que ele propõe foi construído de
+> outro jeito (ver `PLANO_UNIFICACAO.md`). O estado atual está em
+> `ESTADO_ATUAL.md`; as regras vigentes, em `PRODUTO.md`.
+
 Documento de arquitetura e plano de execução da expansão do app Prever
 Proposta: de ferramenta de orçamentos para o sistema de Ordem de Serviço da
 área de tecnologia da Prever — chamados corretivos, manutenção preventiva e

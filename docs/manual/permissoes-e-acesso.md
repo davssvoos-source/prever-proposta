@@ -233,7 +233,12 @@ não linha da matriz. A terceira aba, **APIs**, lista as integrações com
 terceiros e se a chave de cada uma está no servidor (nunca o valor).
 
 Chave que existe na matriz mas que nenhuma rota lê é **decorativa**: a revisão
-de 03/09/2026 achou três (`historico`, `mapa`, `calendario`) e as ligou; a asserção da U94
-passou a exigir que toda chave com rota própria tenha guarda — as exceções
-conhecidas (`dashboard` e `perfil` são "sempre"; `chamados.novo` é a Q11;
-`admin` é a Q15) estão listadas no próprio verificador.
+de 03/09/2026 achou três (`historico`, `mapa`, `calendario`) e as ligou; a
+asserção da U94 passou a exigir que toda chave com rota própria tenha guarda.
+Em 04/09/2026 as duas pendências fecharam: `chamados.novo` passou a ser lida
+pela triagem e pelo formulário interno (R163 — o técnico não abre chamado) e
+`admin` entrou na guarda padrão (R166 — a leitura própria de `user_roles`
+morreu). `historico` e `chamados.importar` saíram do catálogo (R165/R167;
+a U99 apagou as linhas). As exceções que restam (`dashboard` e `perfil` são
+"sempre"; `clientes.novo`/`clientes.migrar` são redirects) estão listadas
+no próprio verificador.

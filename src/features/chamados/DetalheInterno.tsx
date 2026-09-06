@@ -55,7 +55,7 @@ import {
   adicionarClienteChamado, removerClienteChamado, adicionarSetorChamado, removerLocalChamado,
   type ChamadoPatch,
 } from "@/features/chamados/data";
-import { useClientes, SERVICO_LABEL, SERVICO_CORES, SERVICO_ORDEM, type ServicoCliente } from "@/features/clientes/data";
+import { useClientes, SERVICO_LABEL, SERVICO_CORES, SERVICOS_OFERECIDOS, type ServicoCliente } from "@/features/clientes/data";
 import { checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor } from "@/features/chamados/grupos";
 import {
   chamadoStatusInfo, chamadoEmAberto, situacaoPrazo, textoPrazo,
@@ -131,7 +131,7 @@ export function DetalheInterno({ id }: { id: string }) {
       ...locais.map((l) => l.cliente_id ?? (l.setor ? valorDoGrupo(l.setor as ServicoCliente) : "")).filter(Boolean),
     ]);
     return [
-      ...SERVICO_ORDEM.map((g) => ({ valor: valorDoGrupo(g), rotulo: rotuloDoGrupo(g), secundario: "grupo de clientes" })),
+      ...SERVICOS_OFERECIDOS.map((g) => ({ valor: valorDoGrupo(g), rotulo: rotuloDoGrupo(g), secundario: "grupo de clientes" })),
       ...[...clientes]
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
         .map((c) => ({ valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined })),

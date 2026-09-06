@@ -1907,7 +1907,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const pag = fs16.readFileSync('src/routes/_authenticated/clientes.tsx', 'utf8');
   const det = fs16.readFileSync('src/routes/_authenticated/clientes.$id.tsx', 'utf8');
 
-  eq('os dois serviços, na ordem', CD.SERVICO_ORDEM, ['portaria_remota', 'monitoramento_alarmes']);
+  // R173 (U100): os dois viraram quatro — portaria autônoma e presencial entraram (Q23)
+  eq('os quatro serviços, na ordem', CD.SERVICO_ORDEM, ['portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial']);
   eq('todo serviço tem rótulo e cor',
      CD.SERVICO_ORDEM.every((s) => !!CD.SERVICO_LABEL[s] && !!CD.SERVICO_CORES[s]), true);
   eq('o rótulo é o que o Davi escreveu', CD.SERVICO_LABEL.portaria_remota, 'Portaria Remota');
@@ -2925,8 +2926,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/<option value="">\+ setor<\/option>/.test(pc5), /valorDoGrupo\(s\), rotulo: rotuloDoGrupo\(s\)/.test(pc5),
       /const setor = setorDoValor\(v\);/.test(pc5)],
      [false, true, true]);
+  // U100 (R173): a lista virou SERVICOS_OFERECIDOS (regra 5) — o filtro do já marcado continua igual
   eq('o grupo já marcado não é reoferecido (senão a etiqueta duplicaria)',
-     /SERVICO_ORDEM\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(pc5), true);
+     /SERVICOS_OFERECIDOS\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(pc5), true);
   eq('a busca de "+ adicionar" cliente exclui quem já está na atividade (senão ofereceria chave repetida)',
      /opcoes=\{opcoesClientes\.filter\(\(o\) => !clientesDoChamadoIds\.includes\(o\.valor\)\)\}/.test(pc5),
      true);
@@ -17194,12 +17196,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R159: CAE e CCA existem no vocabulário com rótulo, e OUTRO continua por último',
      [INV99.TIPO_SISTEMA_LABEL.CAE, INV99.TIPO_SISTEMA_LABEL.CCA, INV99.TIPOS_SISTEMA[INV99.TIPOS_SISTEMA.length - 1]],
      ['Controle de Acesso Eletrônico', 'Central de Controle de Acesso', 'OUTRO']);
-  eq('R159 CRÍTICO (regra 5): CAE e CCA NÃO são oferecidos até a U99 rodar — os seletores leem a lista OFERECIDA, não a completa',
-     [INV99.TIPOS_SISTEMA_NAO_OFERECIDOS, INV99.TIPOS_SISTEMA_OFERECIDOS.includes('CAE'), INV99.TIPOS_SISTEMA_OFERECIDOS.includes('PED'),
+  // U100: a U99 rodou em 04/09 e a lista esvaziou (CAE/CCA liberados). O que se fixa
+  // aqui é o MECANISMO — oferecido = conhecido menos o segurado —, não o estado do dia.
+  eq('R159 CRÍTICO (regra 5): os seletores de tipo de sistema leem a lista OFERECIDA (= a completa menos TIPOS_SISTEMA_NAO_OFERECIDOS), nunca a completa',
+     [INV99.TIPOS_SISTEMA_NAO_OFERECIDOS.every((t) => !INV99.TIPOS_SISTEMA_OFERECIDOS.includes(t)),
+      INV99.TIPOS_SISTEMA_OFERECIDOS.length + INV99.TIPOS_SISTEMA_NAO_OFERECIDOS.length === INV99.TIPOS_SISTEMA.length,
+      INV99.TIPOS_SISTEMA_OFERECIDOS.includes('PED'),
       /\{TIPOS_SISTEMA_OFERECIDOS\.map\(/.test(ler99('src/features/clientes/InventarioCliente.tsx')),
       /\{TIPOS_SISTEMA_OFERECIDOS\.map\(/.test(ler99('src/features/chamados/FormularioChamadoTecnico.tsx')),
       /\{TIPOS_SISTEMA\.map\(/.test(ler99('src/features/clientes/InventarioCliente.tsx') + ler99('src/features/chamados/FormularioChamadoTecnico.tsx'))],
-     [['CAE', 'CCA'], false, true, true, true, false]);
+     [true, true, true, true, true, false]);
 
   // ── a migration U99 ──────────────────────────────────────────────────────
   const migPath99 = 'supabase/migrations/20260915090000_u99_respostas_do_davi.sql';
@@ -17258,6 +17264,93 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true]);
   eq('U99 (regra 7): a P55 registra que chamado_compra vai embora na U99 e só chamado_equipes fica',
      /U99, R171[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*chamado_equipes/.test(ler99('docs/PENDENCIAS_TECNICAS.md')), true);
+}
+
+// ── U100 — R173 (grupos de clientes), CAE/CCA liberados, e a revisão dos documentos ──
+{
+  const fs100 = require('fs');
+  const ler100 = (p) => fs100.readFileSync(p, 'utf8');
+  const codigo100 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const semSql100 = (t) => t.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  const CD100 = carregar('src/features/clientes/data.ts');
+  const INV100 = carregar('src/features/clientes/inventario.ts');
+
+  // ── U99 rodou: CAE e CCA são oferecidos ─────────────────────────────────
+  eq('U99 rodada (04/09/2026): TIPOS_SISTEMA_NAO_OFERECIDOS esvaziou e CAE/CCA passaram a ser oferecidos',
+     [INV100.TIPOS_SISTEMA_NAO_OFERECIDOS, INV100.TIPOS_SISTEMA_OFERECIDOS.includes('CAE'), INV100.TIPOS_SISTEMA_OFERECIDOS.includes('CCA')],
+     [[], true, true]);
+
+  // ── R173: os quatro grupos ──────────────────────────────────────────────
+  eq('R173: os quatro grupos, na ordem — remota, monitoramento, autônoma, presencial — cada um com rótulo e cor própria',
+     [CD100.SERVICO_ORDEM, CD100.SERVICO_ORDEM.every((s) => !!CD100.SERVICO_LABEL[s] && !!CD100.SERVICO_CORES[s]),
+      new Set(CD100.SERVICO_ORDEM.map((s) => CD100.SERVICO_CORES[s].dark)).size],
+     [['portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial'], true, 4]);
+  eq('R173 CRÍTICO (regra 5): os dois grupos novos NÃO são oferecidos até a U100 rodar — a ficha e os três seletores de grupo leem SERVICOS_OFERECIDOS',
+     [CD100.SERVICOS_NAO_OFERECIDOS, CD100.SERVICOS_OFERECIDOS,
+      /SERVICO_ORDEM\.filter\(\(s\) => SERVICOS_OFERECIDOS\.includes\(s\) \|\| temServico\(cliente, s\)\)\.map/.test(ler100('src/routes/_authenticated/clientes.$id.tsx')),
+      /\.\.\.SERVICOS_OFERECIDOS\.map\(\(s\) => \(\{ valor: valorDoGrupo\(s\)/.test(ler100('src/features/home/NovaAtividadeDialog.tsx')),
+      /\.\.\.SERVICOS_OFERECIDOS\s*\n\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(ler100('src/features/chamados/PainelChamado.tsx')),
+      /\.\.\.SERVICOS_OFERECIDOS\.map\(\(g\) => \(\{ valor: valorDoGrupo\(g\)/.test(ler100('src/features/chamados/DetalheInterno.tsx'))],
+     [['portaria_autonoma', 'portaria_presencial'], ['portaria_remota', 'monitoramento_alarmes'], true, true, true, true]);
+  eq('R173: nenhum ponto de ESCRITA de grupo sobrou lendo a lista completa (SERVICO_ORDEM fica para leitura: filtros, chips, rótulos)',
+     ['src/features/home/NovaAtividadeDialog.tsx', 'src/features/chamados/PainelChamado.tsx', 'src/features/chamados/DetalheInterno.tsx']
+       .filter((f) => /SERVICO_ORDEM/.test(codigo100(ler100(f)))), []);
+  eq('R173: o rótulo do grupo e o checklist funcionam para os grupos novos sem código novo (derivam de SERVICO_LABEL)',
+     (() => { const G = carregar('src/features/chamados/grupos.ts');
+       return [G.rotuloDoGrupo('portaria_autonoma'), G.valorDoGrupo('portaria_presencial'), G.setorDoValor('setor:portaria_presencial')]; })(),
+     ['Clientes de Portaria Autônoma', 'setor:portaria_presencial', 'portaria_presencial']);
+
+  // ── a migration U100 ───────────────────────────────────────────────────
+  const mig100 = semSql100(ler100('supabase/migrations/20260916090000_u100_grupos_de_clientes.sql'));
+  eq('U100 migration CRÍTICO: os DOIS CHECKs mudam juntos — cadastro e etiqueta aceitam a mesma lista de quatro',
+     [/ADD CONSTRAINT clientes_servicos_check\s*\n\s*CHECK \(servicos_prestados <@ ARRAY\['portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial'\]::text\[\]\);/.test(mig100),
+      /ADD CONSTRAINT chamado_locais_setor_check\s*\n\s*CHECK \(setor IS NULL OR setor IN \('portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial'\)\);/.test(mig100),
+      (mig100.match(/DROP CONSTRAINT IF EXISTS/g) ?? []).length],
+     [true, true, 2]);
+  eq('U100 migration: conferência com três linhas e veredito; DESFAZER no rodapé',
+     [(mig100.match(/^\s*(?:SELECT 1 AS n|UNION ALL\s*\n\s*SELECT [23],)/gm) ?? []).length, /'>>> OLHAR <<<'/.test(mig100),
+      /-- ── DESFAZER/.test(ler100('supabase/migrations/20260916090000_u100_grupos_de_clientes.sql'))],
+     [3, true, true]);
+  eq('U100 migration: a lista do CHECK é a MESMA do código (SERVICO_ORDEM) — se um lado ganhar um grupo, o outro acusa',
+     CD100.SERVICO_ORDEM.every((s) => mig100.includes(`'${s}'`)) && CD100.SERVICO_ORDEM.length === 4, true);
+
+  // ── a revisão dos documentos (pedido do Davi: "quando eu for rodar numa máquina nova, seja tranquilo") ──
+  const estado = ler100('docs/ESTADO_ATUAL.md');
+  const prod100 = ler100('docs/PRODUTO.md');
+  const claude100 = ler100('CLAUDE.md');
+  const ultimaRegraProduto = Math.max(...[...prod100.matchAll(/^- \*\*R(\d+)\*\* —/gm)].map((m) => Number(m[1])));
+  eq('ESTADO_ATUAL CRÍTICO: existe, é a primeira linha do mapa do CLAUDE.md, e o ciclo de trabalho manda atualizá-lo',
+     [/^# Estado atual do projeto/m.test(estado),
+      /\| `docs\/ESTADO_ATUAL\.md` \|/.test(claude100),
+      claude100.indexOf('docs/ESTADO_ATUAL.md') < claude100.indexOf('docs/CONTEXTO_OPERACAO_TECNICA.md'),
+      /7\. \*\*Estado\*\*/.test(claude100)],
+     [true, true, true, true]);
+  eq('ESTADO_ATUAL CRÍTICO: a "última regra" que ele declara É a última do PRODUTO (senão o retrato envelhece em silêncio)',
+     Number((estado.match(/última regra: \*\*R(\d+)\*\*/) ?? [])[1]), ultimaRegraProduto);
+  eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
+     [/\*\*Pendente: U100\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
+      /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U99/.test(estado)],
+     [true, true, true, true]);
+  eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
+     [/ESTADO_ATUAL\.md/.test(ler100('ONBOARDING.md')), /ESTADO_ATUAL\.md/.test(ler100('docs/manual/README.md')),
+      /R1–R173/.test(ler100('docs/manual/README.md')) || new RegExp(`R1–R${ultimaRegraProduto}`).test(ler100('docs/manual/README.md'))],
+     [true, true, true]);
+  eq('Revisão dos documentos: o manual parou de descrever o que saiu — sprint como propriedade, pedido de compra como acesso, chamados.novo como pergunta, "360+ asserções"',
+     [/Prioridade, Equipe, Sprint/.test(ler100('docs/manual/visao-geral.md')),
+      /sprint\/equipes — R15\/R16/.test(ler100('docs/manual/visao-geral.md')),
+      /checklist e o pedido de compra/.test(ler100('docs/manual/operacao-campo.md')),
+      /têm sprint, não SLA/.test(ler100('docs/manual/operacao-campo.md')),
+      /`chamados\.novo` é a Q11/.test(ler100('docs/manual/permissoes-e-acesso.md')),
+      /360\+/.test(ler100('docs/manual/desenvolvimento-e-verificacao.md')),
+      /~1300 asserções/.test(claude100),
+      /~85 pré-existentes/.test(ler100('ONBOARDING.md'))],
+     [false, false, false, false, false, false, false, false]);
+  eq('U100 (regra 7): R173 existe, a última atualização do PRODUTO aponta para ela, a Q23 está anotada e a U100 está no diário',
+     [/^- \*\*R173\*\* —/m.test(prod100), Number((prod100.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 173,
+      /Q23[^\n]*\n(?:[^\n]*\n){0,4}[^\n]*respondida em 04\/09\/2026 \(R173\)/i.test(ler100('docs/PLANO_V0.1.md')),
+      /^## U100 /m.test(ler100('docs/PLANO_UNIFICACAO.md')),
+      /D5 — [^\n]*\n(?:[^\n]*\n){0,6}[^\n]*REVISTA em 04\/09\/2026 \(R170\)/.test(ler100('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md'))],
+     [true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

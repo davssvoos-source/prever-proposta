@@ -41,7 +41,7 @@ export const TIPOS_SISTEMA = Object.keys(TIPO_SISTEMA_LABEL) as TipoSistema[];
  * push publica na hora. Oferecer antes seria um 23514 na cara do técnico.
  * Quando a U99 tiver rodado, esta lista esvazia (um commit, uma linha).
  */
-export const TIPOS_SISTEMA_NAO_OFERECIDOS: TipoSistema[] = ["CAE", "CCA"];
+export const TIPOS_SISTEMA_NAO_OFERECIDOS: TipoSistema[] = []; // U99 rodada em 04/09/2026 — CAE e CCA liberados
 
 /** Os tipos que os seletores OFERECEM — o que pode ser GRAVADO hoje. */
 export const TIPOS_SISTEMA_OFERECIDOS: TipoSistema[] =

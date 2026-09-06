@@ -70,7 +70,7 @@ import {
   comentarChamado, excluirComentario, mapaDePessoas,
   type ChamadoPatch,
 } from "@/features/chamados/data";
-import { useClientes, SERVICO_ORDEM, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
+import { useClientes, SERVICOS_OFERECIDOS, SERVICO_LABEL, SERVICO_CORES, type ServicoCliente } from "@/features/clientes/data";
 import {
   checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
 } from "@/features/chamados/grupos";
@@ -692,7 +692,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   // parte morreu com isso.
   const opcoesClientes: OpcaoBusca[] = useMemo(
     () => [
-      ...SERVICO_ORDEM
+      ...SERVICOS_OFERECIDOS
         .filter((s) => !setoresDoChamado.includes(s))
         .map((s) => ({ valor: valorDoGrupo(s), rotulo: rotuloDoGrupo(s), secundario: "grupo de clientes" })),
       ...clientesOrdenados.map((c) => ({

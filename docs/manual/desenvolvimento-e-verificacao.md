@@ -16,8 +16,8 @@ as três coisas que já derrubaram o app quando ignoradas.
    varre os ~200 arquivos, confere sintaxe e cruza imports.
    Falsos positivos CONHECIDOS (ignorar): `router.tsx`, `start.ts`,
    `styles.css?url`, `*.asset.json` em routeTree/__root.
-2. **Verificar lógica** — `node scripts/verificar-logica.cjs`: 360+
-   asserções. TEM que terminar em `0 falharam`.
+2. **Verificar lógica** — `node scripts/verificar-logica.cjs`: 2.880+
+   asserções (04/09/2026). TEM que terminar em `0 falharam`.
 3. **Build** — `npx vite build`: obrigatório antes de dar por pronto. O
    checador não pega tudo (ex. real: comentário JSX sem fechar passou nele e
    quebrou o build). O build também **regenera `src/routeTree.gen.ts`**.

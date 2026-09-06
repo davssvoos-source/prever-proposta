@@ -49,6 +49,11 @@ Todo o repo (nomes, comentários, docs) é em **português**.
    raciocínio em prosa (por que assim, o que se recusou a fazer, o que a
    verificação pegou). É o histórico de decisões do projeto.
 6. **Commit + push** — mensagem descritiva em português; o push publica.
+7. **Estado** — atualize `docs/ESTADO_ATUAL.md` (última regra, último
+   diário, migrations pendentes, perguntas abertas, o que o Davi vai mandar).
+   É a memória que viaja com o repo: numa máquina nova é o primeiro arquivo
+   que se lê depois deste, e uma asserção confere que a "última regra" dele
+   bate com a do PRODUTO.
 
 ## Migrations (regra inegociável)
 
@@ -99,8 +104,12 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 
 ## Mapa do repo
 
+**Comece por `docs/ESTADO_ATUAL.md`** — ele diz onde o projeto está e em que
+ordem ler o resto.
+
 | Onde | O quê |
 |---|---|
+| `docs/ESTADO_ATUAL.md` | ONDE ESTAMOS: última regra e diário, migrations rodadas e pendentes, decisões recentes, perguntas abertas, o que o Davi vai mandar, quem é quem, a ordem de leitura — atualizado a cada entrega (passo 7) |
 | `docs/CONTEXTO_OPERACAO_TECNICA.md` | o contexto da operação técnica DITADO PELO DAVI (quem é quem, as três atividades, cliente como centro, QAP só lido, validação do gestor) — leia antes de mexer em campo/técnica |
 | `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` | a estrutura das atividades DITADA PELO DAVI (os seis tipos e a matriz de campos, as duas perguntas da criação, equipe das pessoas, impacto operacional, grupos de clientes, o que saiu: pedido de compra e sprint) — leia antes de mexer em atividade/chamado interno, no pop-up de criação ou na ficha do cliente |
 | `docs/PLANO_V0.1.md` | o plano de ação rumo à v0.1: fases A–G, inventário do que já existe, perguntas em aberto |
@@ -111,7 +120,7 @@ Detalhes e cicatrizes: `docs/manual/banco-e-migrations.md`.
 | `DESIGN_SYSTEM.md` | tokens, temas, anti-padrões §8 |
 | `docs/PENDENCIAS_TECNICAS.md` | defeitos conhecidos e não corrigidos |
 | `docs/manual/` | manual por segmento (atualizar junto com regra nova) |
-| `scripts/verificar-logica.cjs` | as ~1300 asserções — leia um bloco recente antes de escrever |
+| `scripts/verificar-logica.cjs` | as ~2900 asserções — leia um bloco recente antes de escrever |
 | `src/lib/paleta.ts`, `src/lib/ui.ts` | cor e superfície — nunca hex solto em tela |
 | `src/features/*/modelo.ts` | a lógica pura de cada domínio |
 | `supabase/migrations/` | histórico completo do banco (fonte do schema) |

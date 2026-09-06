@@ -2063,3 +2063,26 @@ reabri-la para o interno reabriria as duas verdades que a U78 fechou. Hoje a
 atividade interna tem só o prazo; o calendário a coloca nele. Depende da
 resposta à **Q18**: se o Davi quiser a data agendada interna, nasce uma coluna
 própria (`agendada_para date`), com o calendário lendo-a antes do prazo.
+
+
+## P58 — BAIXO · Liberar os grupos novos de clientes quando a U100 rodar (2026-09-04, U100)
+
+`SERVICOS_NAO_OFERECIDOS` (`features/clientes/data.ts`) segura Portaria
+Autônoma e Portaria Presencial fora da ficha do cliente e dos seletores de
+grupo até a migration U100 alargar os dois CHECKs. Quando o Davi confirmar que
+rodou: esvaziar a lista (um commit, uma linha) — o mesmo gesto que liberou
+CAE/CCA no catálogo de sistemas quando a U99 rodou.
+
+## P59 — BAIXO · `importar-notion.ts` ficou sem tela (2026-09-04, U99)
+
+A tela `/chamados/importar` virou redirect (R167). A biblioteca de leitura do
+export do Notion continua no repo, testada pelo verificador contra o arquivo
+real. Sai na Fase G (o corte do Notion), junto com as asserções dela — não
+antes, porque uma nova importação ainda é possível até lá.
+
+## P60 — BAIXO · `comFallbackDaU96` pode sair: a U96 rodou (2026-09-04)
+
+O SELECT que repetia sem `impacto_operacional`/`proposta_id` num 42703
+(`features/chamados/data.ts`) existia só para a janela entre o push e a
+migration. A U96 rodou em 04/09/2026; o fallback é código morto. Remover pede
+reapontar as asserções da U96 que o fixam — leva de limpeza, não urgência.

@@ -41,7 +41,7 @@ import {
   usePropostasEnviadas, equipeDaPessoa,
 } from "@/features/chamados/data";
 import { useClientes, type ServicoCliente } from "@/features/clientes/data";
-import { SERVICO_ORDEM } from "@/features/clientes/data";
+import { SERVICOS_OFERECIDOS } from "@/features/clientes/data";
 import {
   checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
 } from "@/features/chamados/grupos";
@@ -143,7 +143,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   // CLIENTE". O vazio é "Interno — Prever" (manutenção interna, sem cliente).
   const opcoesClientes: OpcaoBusca[] = useMemo(
     () => [
-      ...SERVICO_ORDEM.map((s) => ({ valor: valorDoGrupo(s), rotulo: rotuloDoGrupo(s), secundario: "grupo de clientes" })),
+      ...SERVICOS_OFERECIDOS.map((s) => ({ valor: valorDoGrupo(s), rotulo: rotuloDoGrupo(s), secundario: "grupo de clientes" })),
       ...[...clientes]
         .sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? ""))
         .map((c) => ({ valor: c.id, rotulo: c.nome, secundario: (c as any).posto_servico ?? undefined })),

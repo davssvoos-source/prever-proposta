@@ -49,7 +49,7 @@ Sanidade (as três têm de passar antes de qualquer mudança):
 ```bash
 node scripts/verificar-logica.cjs        # "... 0 falharam"
 npx vite build                           # completa
-npx tsc --noEmit | grep -c "error TS"    # ~85 pré-existentes; é o baseline
+npx tsc --noEmit | grep -c "error TS"    # 57 pré-existentes (baseline vivo — CLAUDE.md)
 ```
 
 ## 4. Zerar os dados operacionais
@@ -104,9 +104,15 @@ importa, e o primeiro passo é o único perigoso de tudo:
    novo pipeline injeta as variáveis e o `.gitignore` + as DUAS asserções
    sobre isso devem ser invertidas juntas.
 
-## 7. Estado do projeto na entrega (2026-08-24)
+## 7. Estado do projeto — `docs/ESTADO_ATUAL.md`
 
-- Última regra: **R79** · último diário: **U69** · **1341+ asserções**,
-  build limpo, 85 erros de tipo pré-existentes (baseline).
-- Pendências conhecidas: `docs/PENDENCIAS_TECNICAS.md`.
-- Migrations aguardando o Davi rodar: U69 (a limpeza, acima).
+O retrato vivo do projeto (última regra, último diário, migrations rodadas e
+pendentes, decisões recentes, perguntas abertas, o que o Davi vai mandar,
+quem é quem, a ordem de leitura) mora em **`docs/ESTADO_ATUAL.md`** e é
+atualizado a cada entrega. É o primeiro arquivo a ler depois do `CLAUDE.md`
+numa máquina nova — este documento aqui é o procedimento de MUDAR de máquina;
+aquele é o de ENTENDER o sistema.
+
+Para referência, o retrato na entrega de 2026-08-24 era: última regra R79,
+último diário U69, 1341+ asserções, 85 erros de tipo no baseline. Em
+04/09/2026: R173, U100, 2.880+ asserções, baseline 57.
