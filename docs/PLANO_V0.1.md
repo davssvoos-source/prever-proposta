@@ -209,9 +209,15 @@ O que falta, por ordem:
   (`duplas_escala`), para o comercial marcar a visita onde há janela. Decisão
   em aberto: a visita comercial vira bloco na programação do Vinicius, ou só se
   desenha sobre ela? (**Q22**.)
+  → **Respondida em 04/09/2026 (R172):** vira bloco — trava o horário do
+  técnico como qualquer atividade dele. E a visita é atividade DISTINTA da
+  proposta (R170): feita, gera a proposta para o Davi.
 - **H.2 — "Data agendada" nas atividades internas** (**Q18**). Hoje só o prazo:
   `data_hora_agendada` é espelho da agenda de campo (R101). Se o Davi quiser,
   nasce uma coluna própria (data, sem hora) e o calendário a lê.
+  → **Respondida em 04/09/2026 (R168):** quer — a coluna `data_agendada` nasce
+  na U99; o campo, a coluna "Agendados" do quadro e o calendário lendo a data
+  vêm com os fluxos da técnica (H.3).
 - **H.3 — A estrutura da área TÉCNICA**, que o Davi vai ditar. Até lá o chamado
   de campo é o de sempre; o "INICIAR ATENDIMENTO" (R144) nasce junto com ela e
   com a Início do técnico (B2).

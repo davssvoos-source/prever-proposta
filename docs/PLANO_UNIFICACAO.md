@@ -9830,3 +9830,78 @@ antes — os endereços estão anotados na própria pergunta.
 `node scripts/verificar-logica.cjs` → **2853 passaram, 0 falharam** (14 novas, 3 reapontadas). `npx vite build`
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R164**.
 Sem migration.
+
+
+## U99 — as respostas do Davi às Q14–Q22: R165–R172, e a primeira migration das respostas (2026-09-04)
+
+Terceira e última leva do questionário. Oito regras; quatro com código, uma
+migration (a primeira desde a U96, e ela EXIGE a U96 antes), e três que
+esperam os fluxos da área técnica.
+
+### O que saiu
+
+**Histórico (R165) e Importar do Notion (R167).** As duas rotas viraram
+redirect para a Início — o mesmo desenho da `clientes.novo` (R21): apagar o
+arquivo pediria regenerar e commitar o routeTree numa janela própria, e
+redirecionar tem o mesmo efeito para quem guardou o link. As chaves saíram do
+catálogo (`telas.ts`), e é aí que a asserção "catálogo e semente têm as
+mesmas telas" cobra a migration: a semente do verificador só perde uma chave
+quando um DELETE participa dela. Por isso a U99 nasceu agora, e não "na
+próxima leva". A lógica de leitura do export do Notion (`importar-notion.ts`)
+ficou: é biblioteca testada contra o arquivo real, não tela; sai no corte do
+Notion (Fase G).
+
+**O pedido de compra, de vez (R171).** A U96 derrubou os gatilhos, desagendou
+o cron e revogou a RPC, mas guardou a tabela como arquivo com a nota "apagar
+pede pedido explícito". O pedido veio ("Pode apagar"). A U99 derruba a tabela
+e as três funções, com IF EXISTS, e o DESFAZER diz a verdade: para os dados
+não há volta — há uma linha comentada de "GUARDAR CÓPIA" para rodar antes, se
+o Davi quiser. `chamado_equipes` fica; ninguém pediu.
+
+### O que entrou
+
+**O Catálogo na guarda padrão (R166).** `/admin` era o único lugar do app
+que lia `user_roles` por conta própria. Passou a `guardaDeTela("admin")`, com
+a chave nascendo fechada para os três papéis — só o cargo admin entra, como
+antes. O Davi adiantou que a tela será refeita (equipamentos pelo QAP,
+serviços editados no app, blocos no banco) — está na regra, para quem for
+refazê-la não ter de perguntar de novo.
+
+**A preventiva TEM impacto (R169).** Uma linha em `TIPOS_COM_IMPACTO` e a
+revisão da D1: a lista de campos do documento estava certa e a frase de
+fechamento, errada — o Davi corrigiu quando perguntado. As telas já leem
+`temImpacto()`, então o campo aparece sozinho na preventiva.
+
+**O catálogo de sistemas (R159, agora com banco).** CAE (Controle de Acesso
+Eletrônico) e CCA (Central de Controle de Acesso) entraram no vocabulário
+com rótulo — RENDERIZAM — mas não são OFERECIDOS até a U99 rodar
+(`TIPOS_SISTEMA_NAO_OFERECIDOS`, o mesmo mecanismo de `NAO_OFERECIDOS` em
+chamado-status.ts). É a regra 5: o push publica na hora, a migration é à mão,
+e um seletor oferecendo um código que o CHECK recusa é um 23514 na cara do
+técnico. Quando a U99 tiver rodado, a lista esvazia num commit.
+
+**A data agendada (R168).** Só a coluna, `chamados.data_agendada date`, com
+o comentário que a distingue de `data_hora_agendada` (espelho da agenda de
+campo, R101). O campo, a coluna "Agendados" no quadro e o calendário lendo
+a data vêm com os fluxos da técnica — desenhar agora seria desenhar duas
+vezes.
+
+### O que espera
+
+R170 (visita e proposta são duas atividades no mesmo fluxo — a visita feita
+gera a proposta para o Davi) e R172 (a visita comercial trava a agenda do
+técnico) são a Fase H.1 mais os fluxos da técnica. Registradas, com a frase.
+
+### A migration
+
+Pré-voo que exige a U96 (ela ainda comenta a tabela e revoga a RPC que a U99
+apaga — na ordem errada, a U96 abortaria). Cinco linhas de conferência, cada
+uma com obtido × esperado × veredito. DESFAZER no rodapé, honesto sobre o
+que é irreversível.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2873 passaram, 0 falharam** (20 novas, 6 reapontadas — inclusive o censo dos escritores da linha do tempo, que perdeu decidir_pedido_compra). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R172**.
+Migration **U99** (`20260915090000_u99_respostas_do_davi.sql`) — rodar DEPOIS
+da U96.

@@ -2034,6 +2034,10 @@ são leitura pura sobre uma tabela que já existe, já tem índice nos dois eixo
 
 ## P55 — BAIXO · `chamado_compra` e `chamado_equipes` ficaram no banco como arquivo (2026-09-03, U96)
 
+**Atualização 04/09/2026 (U99, R171):** o Davi pediu para apagar (Q21: "Pode
+apagar") — a migration U99 derruba `chamado_compra` e as três funções do
+pedido de compra. Fica só `chamado_equipes`, que ninguém pediu para apagar.
+
 A R140 tirou o pedido de compra do sistema e a R139 tirou a equipe como campo.
 As duas tabelas (`chamado_compra`, `chamado_equipes`) **não são mais lidas nem
 escritas** por nenhuma tela; a RPC `decidir_pedido_compra` perdeu o EXECUTE de

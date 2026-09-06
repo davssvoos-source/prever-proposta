@@ -229,7 +229,7 @@ A matriz de campos, como o Davi a ditou (✓ tem · ○ opcional · — não tem
 | Data agendada | ○ | ○ | ○ | ✓ (data e hora da visita) | ○ | ○ |
 | Cliente | cliente · interno · grupo | idem | idem | **Local** (cliente ou prospecção) | cliente | cliente |
 | Status | ✓ | ✓ | ✓ | etiqueta automática (4 etapas) | ✓ | ✓ |
-| Impacto operacional | ✓ | — (ver D2) | ✓ | — | — | — |
+| Impacto operacional | ✓ | ✓ (R169; era "—" pela D1) | ✓ | — | — | — |
 | Descrição | problema detectado | ○ | ○ | descrição do pedido | ○ | ○ |
 | Solução aplicada | ✓ | — | — | — | — | — |
 | Fotos / arquivos | ○ | ○ | ○ | foto da fachada | ○ | ○ |
@@ -309,8 +309,8 @@ que pertence — marcadas como "pelo grupo de clientes ou como local extra".
 ### 2.6 Impacto operacional (R142)
 
 A régua de urgência fora da área técnica: **Sem impacto · Baixo · Moderado ·
-Crítico**. Só **Manutenção Corretiva** e **Operacional** a têm; Implantação,
-Preventiva, Melhoria e Proposta não. No campo continua valendo a
+Crítico**. **Manutenção Corretiva**, **Preventiva** (R169, Q19) e
+**Operacional** a têm; Implantação, Melhoria e Proposta não. No campo continua valendo a
 **prioridade** (o SLA é indexado por ela, R112). O Davi vai mandar a relação
 "tipo de atividade → impacto" para o valor virar automático; até lá é escolha
 de quem cria.
@@ -388,19 +388,21 @@ de opacidade.
 Onde o texto admitia duas leituras, escolhi uma e a marquei. Todas são
 reversíveis; nenhuma esconde a alternativa.
 
-- **D1 — Preventiva NÃO tem impacto operacional.** A lista de campos da
-  preventiva cita "Impacto operacional", mas a frase de fechamento diz que
-  "manutenção preventiva […] não tem grau de urgência, por isso não tem o
-  campo". A frase tem a razão junto e venceu a lista (que repete a da
-  Operacional item a item, inclusive "comentários" duas vezes — sinal de
-  cópia). É a **Q19**.
+- **D1 — Preventiva NÃO tem impacto operacional.** **REVISTA em 04/09/2026
+  (R169): a preventiva TEM impacto.** A lista de campos da preventiva citava
+  "Impacto operacional" e a frase de fechamento dizia que não; segui a frase.
+  Perguntado (Q19), o Davi corrigiu: "Peço perdão, preventiva tem impacto
+  operacional sim." A lista estava certa; `TIPOS_COM_IMPACTO` ganhou a
+  preventiva na U99.
 - **D2 — Corretiva e Operacional têm impacto; Implantação, Melhoria e
   Proposta não.** Segue o texto: Melhoria não lista o campo, e a frase de
   fechamento exclui as outras três.
 - **D3 — O pedido de compra saiu por completo, mas sem destruir dado.** O tipo
   saiu do vocabulário, do CHECK e das telas; os chamados viraram
   `operacional`; a tabela `chamado_compra` ficou no banco como arquivo, com a
-  RPC de decidir revogada. Apagar a tabela pede pedido explícito.
+  RPC de decidir revogada. Apagar a tabela pede pedido explícito. **O pedido
+  veio em 04/09/2026 (Q21, "Pode apagar"): a U99 apaga a tabela e as três
+  funções (R171).**
 - **D4 — A coluna `chamados.equipe` continua sendo escrita.** Com a equipe do
   responsável. Não é para a tela (que deriva das pessoas) — é para a
   Operacional Técnica e as policies que ainda a leem. Nada muda para quem a
@@ -456,8 +458,12 @@ B2, R134).
 - **Q18 — "Data agendada" nas atividades internas.** A coluna
   `data_hora_agendada` é da agenda de campo (R101). Quer uma data agendada
   própria para o interno (coluna nova, sem hora?), ou o prazo basta?
+  → **Respondida em 04/09/2026 (R168):** sim — coluna `data_agendada` (date,
+  U99) e uma coluna "Agendados" no quadro; a tela vem com os fluxos da técnica.
 - **Q19 — Preventiva tem impacto operacional?** A lista diz sim, a frase de
   fechamento diz não. Segui a frase (D1).
+  → **Respondida em 04/09/2026 (R169):** tem — "Peço perdão, preventiva tem
+  impacto operacional sim." D1 revista; código na U99.
 - **Q20 — "Visita Técnica" × "Proposta Comercial".** Um registro com o título
   dependendo de quem olha (D5), ou dois registros — um do comercial e um do
   técnico?
@@ -465,12 +471,18 @@ B2, R134).
   fases — a Visita Técnica é do técnico; feita a visita, a atividade passa ao
   Davi (aprovar e enviar), com card na Início dele. Falta só confirmar se é um
   registro cujo responsável muda ou dois cards do mesmo registro.*
+  → **Respondida em 04/09/2026 (R170):** DUAS atividades no mesmo fluxo — a
+  visita é do técnico e, feita, gera a proposta para o Davi. D5 revista;
+  implementação com os fluxos da técnica e a Fase H.1.
 - **Q21 — A tabela `chamado_compra`.** Ficou arquivada. Pode ser apagada de
   vez, ou fica?
+  → **Respondida em 04/09/2026 (R171):** apagar — a U99 derruba tabela e funções.
 - **Q22 — O mini-calendário semanal do técnico na proposta.** Lê a agenda da
   dupla do técnico na semana (`agenda_campo`) e a escala; a visita comercial
   deve virar um bloco na programação do Vinicius (ocupando a janela), ou só se
   desenha sobre ela?
+  → **Respondida em 04/09/2026 (R172):** trava — "será uma atividade daquele
+  técnico, assim como as outras". Fase H.1.
 
 ---
 

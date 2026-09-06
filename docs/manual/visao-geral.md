@@ -108,8 +108,8 @@ cima dessas listas: tela bloqueada some do menu.
 
 | Área | Rotas |
 |---|---|
-| Fila e detalhe | `/dashboard` · `/chamados/$id` · `/chamados/novo(-campo,-interno)` · `/chamados/painel` · `/chamados/programacao` · `/chamados/importar` |
-| Comercial | `/gerencial` (+`/nova`, `/visita/$id/editar`) · `/visita/$id` e todo o wizard `/visita/$id/orcamento/*` · `/prospeccao` · `/mapa` · `/historico` |
+| Fila e detalhe | `/dashboard` · `/chamados/$id` · `/chamados/novo(-campo,-interno)` · `/chamados/painel` · `/chamados/programacao` (`/chamados/importar` redireciona, R167) |
+| Comercial | `/gerencial` (+`/nova`, `/visita/$id/editar`) · `/visita/$id` e todo o wizard `/visita/$id/orcamento/*` · `/prospeccao` · `/mapa` (`/historico` redireciona para a Início, R165) |
 | Clientes | `/clientes` · `/clientes/$id` |
 | Financeiro | `/contratos/novo` e `/contratos/$id` pela ficha do cliente (`/contratos` redireciona, R132) · `/fechamentos(/$id)` |
 | Painéis | `/painel/operacional` · `/painel/administrativo` (·`/painel/comercial` = redirect) |

@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R164). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R172). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3120,7 +3120,9 @@ trabalho".
   *(Davi: "por enquanto o usuário deverá escolher entre 'Sem impacto, Baixo,
   moderado ou Crítico', que será o maior grau de urgência. Uma implantação,
   manutenção preventiva e uma proposta comercial não têm grau de urgência, por
-  isso não têm o campo de impacto operacional.")*
+  isso não têm o campo de impacto operacional.")* **Revisto em 04/09/2026 pela
+  R169: a preventiva TEM impacto operacional — o Davi confirmou a lista de
+  campos, não a frase.**
 
 - **R143** — **O Cliente de uma atividade é um cliente, um GRUPO de clientes ou
   interno (Prever).** Os grupos ("Clientes de Portaria Remota", "Clientes de
@@ -3395,3 +3397,73 @@ trabalho".
   volta ao detalhe da visita. Até aqui qualquer pessoa logada com o link via
   tudo. Fecha a **Q12**. *(Davi, 04/09/2026: "Sim, somente o Admin e o
   Comercial.")*
+
+
+- **R165** — **A tela "Histórico" saiu.** Era a lista das visitas do técnico
+  logado, sob o nome "Visitas"; a Início já as mostra. A rota redireciona para
+  a Início, a chave saiu do catálogo e a U99 apaga as linhas dela na matriz.
+  Fecha a **Q14**. *(Davi, 04/09/2026: "Pode sumir, já que o início já mostra
+  isso.")*
+
+- **R166** — **O Catálogo usa a guarda padrão e será refeito: equipamentos
+  pelo QAP, serviços editados no app, blocos no banco.** A rota `/admin` lê a
+  chave `admin` por `guardaDeTela`, como todo o resto (era o único lugar que
+  lia `user_roles` por conta própria). O que vem: o catálogo de equipamentos
+  será sincronizado com o QAP (tudo que se compra e/ou se envia aos clientes);
+  o de serviços, que é pequeno e não está no QAP, se edita direto no app; os
+  blocos (HH, itens, variáveis do orçamento) continuam editáveis só no banco,
+  por enquanto. Fecha a **Q15** e a **Q16**. *(Davi, 04/09/2026: "Na verdade a
+  tela de catálogo será refeita. Pode aplicar o padrão que o restante usa, mas
+  já vou te adiantando o que será feito: Será sincronizado com o QAP todos os
+  equipamentos que compramos e/ou enviamos aos clientes. Estou me referindo ao
+  catálogo de equipamentos. Os serviços na verdade são poucos itens, então
+  posso atualizar diretamente no app, não está registrado o catálogo de
+  serviços no QAP." · "Por enquanto vamos manter isso diretamente no banco de
+  dados.")*
+
+- **R167** — **A tela "Importar do Notion" saiu.** A rota redireciona para a
+  Início, a chave saiu do catálogo e a U99 apaga as linhas dela na matriz. A
+  lógica de leitura do export fica como biblioteca testada até o corte do
+  Notion (Fase G). Fecha a **Q17**. *(Davi, 04/09/2026: "Não conheço essa
+  tela, pode deletar ela.")*
+
+- **R168** — **A atividade interna tem DATA AGENDADA, além do prazo — e o
+  quadro ganha a coluna "Agendados".** O prazo é quando tem de estar pronto;
+  a data agendada é o dia em que vai ser feita. Nasce a coluna
+  `chamados.data_agendada` (date, U99) — separada de `data_hora_agendada`,
+  que é o espelho da agenda de campo (R101). A tela (campo no pop-up e na
+  página, a coluna "Agendados" no quadro, o calendário lendo a data) vem com
+  os fluxos da área técnica. Fecha a **Q18**. *(Davi, 04/09/2026: "Sim, também
+  deve ter data agendada além do prazo. Isso inclusive pode ser uma nova
+  coluna no Kanban, para os 'Agendados'.")*
+
+- **R169** — **A Manutenção Preventiva TEM impacto operacional.** Corretiva,
+  Preventiva e Operacional têm a régua; Implantação, Proposta e Melhoria não.
+  Revisa a R142 e a decisão D1 (que seguira a frase de fechamento do documento
+  em vez da lista de campos). Fecha a **Q19**. *(Davi, 04/09/2026: "Peço
+  perdão, preventiva tem impacto operacional sim.")*
+
+- **R170** — **Visita Técnica e Proposta Comercial são duas atividades, no
+  mesmo fluxo.** A visita é do técnico: ele vai ao local e colhe o que a
+  proposta precisa. A proposta é do Davi (comercial): nasce quando a visita
+  está feita, para aprovar e enviar — e aparece na Início dele (R155). Dois
+  registros, um caminho: a visita concluída gera a atividade da proposta. Revisa
+  a R147/D5 (um registro com título por quem olha) e fecha a **Q20**;
+  implementação com os fluxos da área técnica e a Fase H.1. *(Davi, 04/09/2026:
+  "Visita técnica é uma coisa e proposta comercial é outra, podemos separar,
+  mas ambas fazem parte do mesmo fluxo, ou seja, eu preciso que um técnico faça
+  a visita técnica para que eles coletem as informações técnicas necessárias
+  para elaborar a proposta comercial para aquele local. Ou seja, temos a
+  participação dos dois no mesmo fluxo, mas ainda assim são atividades
+  diferentes.")*
+
+- **R171** — **A tabela do pedido de compra é apagada.** `chamado_compra` e
+  as três funções (decidir, criar ficha, alertar) saem na U99; os chamados que
+  eram pedido de compra já são `operacional` desde a U96. Revisa a D3 (que a
+  guardava como arquivo). Fecha a **Q21**. *(Davi, 04/09/2026: "Pode apagar.")*
+
+- **R172** — **A visita comercial TRAVA o horário do técnico na programação
+  semanal.** Marcada no mini-calendário da proposta (R147, Fase H.1), ela vira
+  um bloco na agenda de campo do técnico, como qualquer atividade dele — não um
+  desenho por cima. Fecha a **Q22**. *(Davi, 04/09/2026: "Deverá travar sim.
+  Pois será uma atividade daquele técnico, assim como as outras.")*

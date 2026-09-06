@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,15 +11,15 @@ import { toast } from "sonner";
 import { Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  // R166 (Q15 — Davi, 04/09/2026): "Pode aplicar o padrão que o restante usa".
+  // Até a U99 esta rota lia `user_roles` por conta própria — o único lugar do
+  // app fora de guardaDeTela. A chave "admin" nasce [false, false, false]: só o
+  // cargo admin entra, como antes; a matriz pode abrir para outros se um dia
+  // fizer sentido. O Catálogo em si será refeito: os equipamentos virão do
+  // QAP, os serviços se editam aqui, os blocos ficam no banco (Q16).
   beforeLoad: async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) throw redirect({ to: "/auth" });
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", u.user.id);
-    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
-    if (!isAdmin) throw redirect({ to: "/dashboard" });
+    const { ok } = await guardaDeTela("admin");
+    if (!ok) throw redirect({ to: destinoNegado("admin") as any });
   },
   component: AdminPage,
 });

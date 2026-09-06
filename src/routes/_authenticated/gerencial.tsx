@@ -12,7 +12,7 @@
 //   `prospeccoes` continua no banco; o trabalho de prospecção vive nos
 //   chamados de natureza comercial, na Início);
 // · o botão "Histórico" — levava a outra página com a mesma lista de
-//   visitas; /historico continua existindo por URL, sem porta daqui.
+//   visitas; /historico virou redirect para a Início (R165, U99).
 //
 // A leitura por etapa é derivada em features/comercial/etapas.ts (pura,
 // coberta por asserção): o filtro por chip, o chip de cada linha e o funil

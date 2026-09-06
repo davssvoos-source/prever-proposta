@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isServicoCode } from "@/features/orcamento/blockAutoItems";
 import { gerarCodigoBloco, gerarDescricaoBloco, type BlocoConfig, type TipoBloco } from "@/lib/blocos";
 
-export type TipoSistema = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV" | "TOT" | "OUTRO";
+export type TipoSistema = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV" | "TOT" | "CAE" | "CCA" | "OUTRO";
 export type EstadoEquipamento = "ativo" | "substituido" | "removido";
 export type OrigemEquipamento = "implantacao" | "campo" | "manual";
 
@@ -22,10 +22,30 @@ export const TIPO_SISTEMA_LABEL: Record<TipoSistema, string> = {
   CENT: "Central de Portaria Remota",
   ELV: "Elevadores",
   TOT: "Totem de Monitoramento",
+  // R159 (U99, Q6 — Davi: "o controle de acesso eletrônico pode ser aplicado
+  // para Portaria Presencial, não somente autônoma e remota […] fornecemos
+  // também uma central de controle de acesso eletrônico, que seria basicamente
+  // um PC Desktop para rodar o software operante, controladora, rack, etc.")
+  CAE: "Controle de Acesso Eletrônico",
+  CCA: "Central de Controle de Acesso",
   OUTRO: "Outro sistema",
 };
 
+/** Tudo que o app RENDERIZA — um valor gravado com estes códigos fica legível. */
 export const TIPOS_SISTEMA = Object.keys(TIPO_SISTEMA_LABEL) as TipoSistema[];
+
+/**
+ * O que o app CONHECE mas ainda NÃO OFERECE para gravar (o mesmo mecanismo de
+ * `NAO_OFERECIDOS` em chamado-status.ts). O CHECK `cliente_sistemas_tipo_check`
+ * só aceita CAE e CCA depois da migration U99, que o Davi roda à mão — e o
+ * push publica na hora. Oferecer antes seria um 23514 na cara do técnico.
+ * Quando a U99 tiver rodado, esta lista esvazia (um commit, uma linha).
+ */
+export const TIPOS_SISTEMA_NAO_OFERECIDOS: TipoSistema[] = ["CAE", "CCA"];
+
+/** Os tipos que os seletores OFERECEM — o que pode ser GRAVADO hoje. */
+export const TIPOS_SISTEMA_OFERECIDOS: TipoSistema[] =
+  TIPOS_SISTEMA.filter((t) => !TIPOS_SISTEMA_NAO_OFERECIDOS.includes(t));
 
 export const ESTADO_LABEL: Record<EstadoEquipamento, string> = {
   ativo: "Ativo",

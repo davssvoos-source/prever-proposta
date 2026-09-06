@@ -6,8 +6,9 @@
 //
 // A rota continua existindo porque as filhas moram debaixo dela e seguem
 // vivas: /chamados/$id (o detalhe que todo mundo abre pela Início),
-// /chamados/novo* (abrir chamado), /chamados/painel, /chamados/programacao e
-// /chamados/importar. Só o endereço exato redireciona — quem guardou o link
+// /chamados/novo* (abrir chamado), /chamados/painel e /chamados/programacao
+// (/chamados/importar virou redirect na U99, R167). Só o endereço exato
+// redireciona — quem guardou o link
 // antigo cai na Início, onde a fila mora agora.
 
 import { createFileRoute, redirect, Outlet } from "@tanstack/react-router";

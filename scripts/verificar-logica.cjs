@@ -364,6 +364,9 @@ const ARQUIVOS_SEMENTE = [
   // U94: as chaves 'gerencial.usuarios' e 'gerencial.permissoes' saem — as
   // telas viraram abas do Administrativo (R131), e o DELETE participa da semente.
   'supabase/migrations/20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql',
+  // U99: 'historico' e 'chamados.importar' saem (R165/R167 — as telas viraram
+  // redirect por decisão do Davi, Q14/Q17); o DELETE participa da semente.
+  'supabase/migrations/20260915090000_u99_respostas_do_davi.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -1427,12 +1430,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /ADD COLUMN IF NOT EXISTS cliente_origem_nome/.test(u31), true);
   eq('U31 termina com SELECT de verificação', /SELECT '.*esperado/.test(u31), true);
 
-  // a tela de importar ganhou guarda própria (o pai virou tronco na R31)
+  // a tela de importar virou REDIRECT na U99 (R167, Q17 — Davi: "pode deletar
+  // ela"); a lógica de leitura (importar-notion.ts) continua testada acima.
+  // As duas asserções antigas (guarda própria; gravação em lotes de 400)
+  // morreram com a tela — o bloco da U99 cobre o redirect.
   const imp = fs11.readFileSync('src/routes/_authenticated/chamados.importar.tsx', 'utf8');
-  eq('chamados.importar tem guarda de rota',
-     /guardaDeTela\("chamados\.importar"\)/.test(imp), true);
-  eq('a gravação é em lotes (2 mil linhas de uma vez estouram o PostgREST)',
-     /i \+= 400/.test(imp), true);
+  eq('chamados.importar é redirect para a Início (R167) — sem guarda porque não há mais tela',
+     /throw redirect\(\{ to: "\/dashboard" \}\);/.test(imp) && !/guardaDeTela\(/.test(imp), true);
 }
 
 // ── U32: painel de propriedades + calendário consertado (2026-08-21) ───────
@@ -9530,7 +9534,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const escritores = [...vivasS4.entries()]
     .filter(([, c]) => insertsDeEvento(c).length > 0).map(([n]) => n).sort();
 
-  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas seis (derivado do repo × lista à mão; um sétimo escritor acusa sozinho)',
+  // U99 (R171): decidir_pedido_compra saiu da lista — a U99 a derruba (DROP
+  // FUNCTION IF EXISTS), e o censo, que desconta os DROPs, deixou de vê-la.
+  eq('CRÍTICO: CENSO — as funções VIVAS que escrevem na linha do tempo são EXATAMENTE estas cinco (derivado do repo × lista à mão; um sexto escritor acusa sozinho)',
      escritores,
      ['aprovar_chamado_financeiro',    // S4 — 'Cobrança aprovada: N item(ns).'
       'chamado_registrar_evento',      // u7:353 — aberto / status / atribuído / sprint
@@ -9539,7 +9545,6 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       // evento é o que faz o ato do soltador ser LEGÍVEL no app.
       'chamado_solta_agenda',
       'concluir_chamado_com_cobranca', // u80:514 — 'cobrança lançada: N parcela(s).'
-      'decidir_pedido_compra',         // u9:154 — situação do pedido + motivo digitado
       'marcar_chamado_faturado']);     // u7:758 — contagem de cobranças faturadas
   eq('CRÍTICO: e NENHUM dos inserts vivos carrega cifra — nem to_char de valor, nem "R$", nem v_total. É o invariante, medido no INSERT e não no corpo (`to_char(v_data,\'YYYY-MM\')` é legítimo e fica duas linhas acima)',
      [...vivasS4.entries()].flatMap(([n, c]) => insertsDeEvento(c).map((s) => [n, s]))
@@ -16348,7 +16353,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 
   // ── A revisão: as chaves decorativas passaram a valer ──────────────────
-  for (const [arq, chave] of [['historico.tsx', 'historico'], ['mapa.tsx', 'mapa'], ['calendario.tsx', 'calendario']]) {
+  // historico.tsx saiu desta lista na U99 (R165): virou redirect, não tem guarda
+  for (const [arq, chave] of [['mapa.tsx', 'mapa'], ['calendario.tsx', 'calendario']]) {
     const r = ler94(`src/routes/_authenticated/${arq}`);
     eq(`U94 (revisão): ${arq} lê a chave "${chave}" da matriz — a caixa deixou de ser decorativa`,
        new RegExp(`guardaDeTela\\("${chave}"\\)`).test(r) && new RegExp(`destinoNegado\\("${chave}"\\)`).test(r), true);
@@ -16637,9 +16643,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R142: a régua é Sem impacto · Baixo · Moderado · Crítico, nesta ordem, com rótulo e cor do PRISMA',
      [CS96.IMPACTO_ORDEM, CS96.IMPACTO_ORDEM.map((i) => CS96.IMPACTO_LABEL[i]), CS96.IMPACTO_ORDEM.every((i) => !!CS96.IMPACTO_CORES[i]?.dark && !!CS96.IMPACTO_CORES[i]?.light)],
      [['sem_impacto', 'baixo', 'moderado', 'critico'], ['Sem impacto', 'Baixo', 'Moderado', 'Crítico'], true]);
-  eq('R142 CRÍTICO: só corretiva e operacional têm impacto — implantação, preventiva (D1), melhoria e proposta não',
+  // R169 (U99, Q19): a preventiva passou a TER impacto — Davi: "Peço perdão,
+  // preventiva tem impacto operacional sim." A D1 foi revista; o alvo mudou.
+  eq('R142 + R169 CRÍTICO: corretiva, preventiva e operacional têm impacto — implantação, melhoria e proposta não',
      ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria', 'prospeccao', 'vistoria', null].map((t) => CS96.temImpacto(t)),
-     [true, false, true, false, false, false, false, false]);
+     [true, true, true, false, false, false, false, false]);
   eq('R142: o rank do impacto é crítico 0 … sem impacto 3 (a mesma régua da prioridade, para quem ordena)',
      CS96.IMPACTO_ORDEM.map((i) => CS96.IMPACTO_RANK[i]), [3, 2, 1, 0]);
   eq('D9: prioridade → impacto é um-para-um, na mesma ordem (urgente → crítico … baixa → sem impacto), e nada → null',
@@ -17019,7 +17027,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const ds97 = ler97('DESIGN_SYSTEM.md');
   eq('U97 (regra 7): R151–R154 existem e a última atualização aponta para a R154; a U97 está no diário',
      [['R151', 'R152', 'R153', 'R154'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97)),
-      /Última atualização: 2026-09-04 \(R1[5-9][0-9]\)/.test(prod97),
+      Number((prod97.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 154,
       /^## U97 /m.test(ler97('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
   eq('U97 (regra 7): o DESIGN_SYSTEM traz os tokens v10, as oito bordas claras resolvidas, a rampa v10 com o piso de 2,5:1, e o fundo v4/v10 — e o quase-preto só aparece como história',
@@ -17040,7 +17048,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const prod97b = ler97b('docs/PRODUTO.md');
   eq('U97b (regra 7): R155–R157 existem e a última atualização aponta para a R157',
      [['R155', 'R156', 'R157'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97b)),
-      /Última atualização: 2026-09-04 \(R1[5-9][0-9]\)/.test(prod97b)],
+      Number((prod97b.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 157],
      [true, true]);
   eq('U97b: as Q1–Q4 do plano estão marcadas respondidas, cada uma com a sua regra',
      ['R155', 'R156', 'R156', 'R157'].map((r, i) =>
@@ -17125,7 +17133,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const prod98 = ler98('docs/PRODUTO.md');
   eq('U98 (regra 7): R158–R164 existem; a última atualização aponta para a R164; a U98 está no diário',
      [['R158', 'R159', 'R160', 'R161', 'R162', 'R163', 'R164'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod98)),
-      /Última atualização: 2026-09-04 \(R164\)/.test(prod98),
+      Number((prod98.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 164,
       /^## U98 /m.test(ler98('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
   eq('U98 (regra 7): as Q5–Q10 do plano e as Q11–Q12 da revisão estão anotadas; a Q8 está adiada (Vinicius) e a Q13 espera o Davi ver as telas',
@@ -17140,6 +17148,116 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /R163/.test(ler98('docs/manual/operacao-campo.md')),
       /que ainda FALTAM faturar \(R161/.test(ler98('docs/manual/operacao-campo.md'))],
      [false, true, true]);
+}
+
+// ── U99 — R165–R172: as respostas do Davi às Q14–Q22 (2026-09-04) ───────────
+{
+  const fs99 = require('fs');
+  const ler99 = (p) => fs99.readFileSync(p, 'utf8');
+  const codigo99 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const semSql99 = (t) => t.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
+  const TL99 = carregar('src/lib/telas.ts');
+  const CS99 = carregar('src/lib/chamado-status.ts');
+  const INV99 = carregar('src/features/clientes/inventario.ts');
+
+  // ── R165/R167: Histórico e Importar saíram ───────────────────────────────
+  eq('R165/R167 CRÍTICO: "historico" e "chamados.importar" saíram do catálogo de telas',
+     TL99.TELAS.filter((t) => t.chave === 'historico' || t.chave === 'chamados.importar').map((t) => t.chave), []);
+  for (const [arq, regra] of [['historico.tsx', 'R165'], ['chamados.importar.tsx', 'R167']]) {
+    const r = codigo99(ler99(`src/routes/_authenticated/${arq}`));
+    eq(`${regra}: ${arq} é um redirect para a Início — sem tela, sem guarda, sem consulta`,
+       [/throw redirect\(\{ to: "\/dashboard" \}\);/.test(r), /component: \(\) => null,/.test(r),
+        /guardaDeTela\(/.test(r), /supabase/.test(r)],
+       [true, true, false, false]);
+  }
+  eq('R167: a LÓGICA de leitura do Notion continua (é biblioteca testada, não tela)',
+     fs99.existsSync('src/features/chamados/importar-notion.ts'), true);
+
+  // ── R166: o Catálogo na guarda padrão ────────────────────────────────────
+  const adm99 = codigo99(ler99('src/routes/_authenticated/admin.tsx'));
+  eq('R166 CRÍTICO: /admin lê a chave "admin" por guardaDeTela — a leitura própria de user_roles morreu',
+     [/const \{ ok \} = await guardaDeTela\("admin"\);/.test(adm99), /destinoNegado\("admin"\)/.test(adm99),
+      /from\("user_roles"\)/.test(adm99)],
+     [true, true, false]);
+  eq('R166: a chave "admin" continua fechada para os três papéis (só o cargo admin entra, como antes)',
+     (() => { const t = TL99.TELAS.find((x) => x.chave === 'admin'); return [t?.padrao.tecnico, t?.padrao.comercial, t?.padrao.sac]; })(),
+     [false, false, false]);
+
+  // ── R169: a preventiva TEM impacto ───────────────────────────────────────
+  eq('R169 CRÍTICO: corretiva, preventiva e operacional têm impacto — implantação, melhoria, proposta e vistoria não',
+     ['corretiva', 'preventiva', 'operacional', 'implantacao', 'melhoria', 'prospeccao', 'vistoria', null].map((t) => CS99.temImpacto(t)),
+     [true, true, true, false, false, false, false, false]);
+  eq('R169: a lista é a fonte única (TIPOS_COM_IMPACTO), na ordem do documento',
+     CS99.TIPOS_COM_IMPACTO, ['corretiva', 'preventiva', 'operacional']);
+
+  // ── R159: o catálogo de sistemas renderiza CAE/CCA mas não os oferece antes da U99 ──
+  eq('R159: CAE e CCA existem no vocabulário com rótulo, e OUTRO continua por último',
+     [INV99.TIPO_SISTEMA_LABEL.CAE, INV99.TIPO_SISTEMA_LABEL.CCA, INV99.TIPOS_SISTEMA[INV99.TIPOS_SISTEMA.length - 1]],
+     ['Controle de Acesso Eletrônico', 'Central de Controle de Acesso', 'OUTRO']);
+  eq('R159 CRÍTICO (regra 5): CAE e CCA NÃO são oferecidos até a U99 rodar — os seletores leem a lista OFERECIDA, não a completa',
+     [INV99.TIPOS_SISTEMA_NAO_OFERECIDOS, INV99.TIPOS_SISTEMA_OFERECIDOS.includes('CAE'), INV99.TIPOS_SISTEMA_OFERECIDOS.includes('PED'),
+      /\{TIPOS_SISTEMA_OFERECIDOS\.map\(/.test(ler99('src/features/clientes/InventarioCliente.tsx')),
+      /\{TIPOS_SISTEMA_OFERECIDOS\.map\(/.test(ler99('src/features/chamados/FormularioChamadoTecnico.tsx')),
+      /\{TIPOS_SISTEMA\.map\(/.test(ler99('src/features/clientes/InventarioCliente.tsx') + ler99('src/features/chamados/FormularioChamadoTecnico.tsx'))],
+     [['CAE', 'CCA'], false, true, true, true, false]);
+
+  // ── a migration U99 ──────────────────────────────────────────────────────
+  const migPath99 = 'supabase/migrations/20260915090000_u99_respostas_do_davi.sql';
+  const mig99 = ler99(migPath99);
+  const mig99c = semSql99(mig99);
+  eq('U99 migration CRÍTICO: o pré-voo exige a U96 (a U96 ainda toca objetos do pedido de compra que a U99 apaga)',
+     /column_name = 'impacto_operacional'/.test(mig99c) && /RAISE EXCEPTION 'U99: rode a U96 antes/.test(mig99c), true);
+  eq('U99 migration: apaga as linhas das duas telas na matriz — e a semente do verificador lê este DELETE',
+     [/DELETE FROM public\.permissoes_tela WHERE tela IN \('historico', 'chamados\.importar'\);/.test(mig99c),
+      ARQUIVOS_SEMENTE.includes(migPath99)],
+     [true, true]);
+  eq('U99 migration CRÍTICO (R171): o pedido de compra sai por inteiro — tabela e as três funções, com IF EXISTS',
+     [/DROP TABLE IF EXISTS public\.chamado_compra CASCADE;/.test(mig99c),
+      /DROP FUNCTION IF EXISTS public\.decidir_pedido_compra\(uuid, text, text, numeric\);/.test(mig99c),
+      /DROP FUNCTION IF EXISTS public\.chamado_criar_ficha_compra\(\);/.test(mig99c),
+      /DROP FUNCTION IF EXISTS public\.alertas_compras\(int\);/.test(mig99c),
+      /chamado_equipes/.test(mig99c)],
+     [true, true, true, true, false]);
+  eq('U99 migration (R159): o CHECK de cliente_sistemas.tipo ganha CAE e CCA, mantendo os nove de antes',
+     /CHECK \(tipo IN \('PED','VEI','CFTV','AL','CER','CENT','ELV','TOT','CAE','CCA','OUTRO'\)\)/.test(mig99c), true);
+  eq('U99 migration (R168): a coluna data_agendada nasce como date, idempotente, e o comentário a distingue de data_hora_agendada',
+     [/ADD COLUMN IF NOT EXISTS data_agendada date;/.test(mig99c), /COMMENT ON COLUMN public\.chamados\.data_agendada/.test(mig99c),
+      /espelho da agenda de CAMPO \(R101\)/.test(mig99)],
+     [true, true, true]);
+  eq('U99 migration: conferência com cinco linhas obtido × esperado × veredito, e o DESFAZER no rodapé declara o que é irreversível',
+     [(mig99c.match(/^\s*(?:SELECT 1 AS n|UNION ALL\s*\n\s*SELECT [2-5],)/gm) ?? []).length,
+      /'>>> OLHAR <<<'/.test(mig99c), /-- ── DESFAZER/.test(mig99), /NÃO há desfazer para os dados/.test(mig99)],
+     [5, true, true, true]);
+  eq('U99 migration: idempotente — nenhum CREATE/ALTER/DROP sem IF (NOT) EXISTS fora do CHECK recriado',
+     (mig99c.match(/^(?:DROP|ALTER TABLE public\.chamados ADD)[^\n]*$/gm) ?? []).filter((l) => !/IF (NOT )?EXISTS/.test(l)), []);
+
+  // ── regra 7 ──────────────────────────────────────────────────────────────
+  const prod99 = ler99('docs/PRODUTO.md');
+  eq('U99 (regra 7): R165–R172 existem, a última atualização aponta para a R172 e a U99 está no diário',
+     [['R165', 'R166', 'R167', 'R168', 'R169', 'R170', 'R171', 'R172'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod99)),
+      Number((prod99.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 172,
+      /^## U99 /m.test(ler99('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true]);
+  const rev99 = ler99('docs/REVISAO_2026-09-03.md');
+  const ctx99 = ler99('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md');
+  eq('U99 (regra 7): Q14–Q17 da revisão e Q18–Q22 da estrutura estão anotadas com a regra de cada uma',
+     [['R165', 'R166', 'R166', 'R167'].map((r, i) => new RegExp(`Q${i + 14} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(rev99)),
+      ['R168', 'R169', 'R170', 'R171', 'R172'].map((r, i) => new RegExp(`Q${i + 18} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(ctx99))],
+     [[true, true, true, true], [true, true, true, true, true]]);
+  eq('U99 (regra 7): a D1 foi revista (preventiva TEM impacto), a D3 fechou (tabela apagada) e a matriz de campos marca a preventiva',
+     [/D1 — Preventiva NÃO tem impacto operacional\.\*\* \*\*REVISTA em 04\/09\/2026\s+\(R169\)/.test(ctx99),
+      /D3 — [^\n]*\n(?:[^\n]*\n){0,5}[^\n]*R171/.test(ctx99),
+      /\| Impacto operacional \| ✓ \| ✓ \(R169/.test(ctx99)],
+     [true, true, true]);
+  eq('U99 (regra 7): o plano anota H.1 (trava a agenda) e H.2 (data agendada); o manual parou de listar /historico e /chamados/importar como telas',
+     [/\(\*\*Q22\*\*\.\)\n  → \*\*Respondida em 04\/09\/2026 \(R172\)/.test(ler99('docs/PLANO_V0.1.md')),
+      /→ \*\*Respondida em 04\/09\/2026 \(R168\)/.test(ler99('docs/PLANO_V0.1.md')),
+      /`\/chamados\/importar` redireciona, R167/.test(ler99('docs/manual/visao-geral.md')),
+      /`\/historico` redireciona para a Início, R165/.test(ler99('docs/manual/visao-geral.md')),
+      /o Histórico saiu na R165/.test(ler99('docs/manual/comercial.md'))],
+     [true, true, true, true, true]);
+  eq('U99 (regra 7): a P55 registra que chamado_compra vai embora na U99 e só chamado_equipes fica',
+     /U99, R171[^\n]*\n(?:[^\n]*\n){0,3}[^\n]*chamado_equipes/.test(ler99('docs/PENDENCIAS_TECNICAS.md')), true);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

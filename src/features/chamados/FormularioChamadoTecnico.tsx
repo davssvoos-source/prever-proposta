@@ -49,7 +49,7 @@ import { referenciaSemanal } from "@/lib/periodos";
 import { useTecnicos } from "@/features/gerencial/data";
 import { useClientes } from "@/features/clientes/data";
 import {
-  useInventario, criarSistema, TIPOS_SISTEMA, TIPO_SISTEMA_LABEL, type TipoSistema,
+  useInventario, criarSistema, TIPOS_SISTEMA_OFERECIDOS, TIPO_SISTEMA_LABEL, type TipoSistema,
 } from "@/features/clientes/inventario";
 import { abrirChamado, useSla } from "@/features/chamados/data";
 import { montarChecklistPreventiva } from "@/features/chamados/checklist";
@@ -494,7 +494,7 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
                         value={novoSistemaTipo}
                         onChange={(e) => setNovoSistemaTipo(e.target.value as TipoSistema)}
                       >
-                        {TIPOS_SISTEMA.map((t) => (
+                        {TIPOS_SISTEMA_OFERECIDOS.map((t) => (
                           <option key={t} value={t}>{TIPO_SISTEMA_LABEL[t]}</option>
                         ))}
                       </select>

@@ -85,7 +85,8 @@ export const TELAS: Tela[] = [
   T("chamados.novo", "Abrir chamado", "/chamados/novo", "Chamados", [false, true, true]),
   T("chamados.painel", "Painel de chamados", "/chamados/painel", "Chamados", [false, true, true]),
   T("chamados.programacao", "Programação das duplas", "/chamados/programacao", "Chamados", [false, true, true]),
-  T("chamados.importar", "Importar do Notion", "/chamados/importar", "Chamados", [false, true, true]),
+  // R167/U99: "chamados.importar" SAIU — Davi (Q17): "não conheço essa tela,
+  // pode deletar ela". A rota só redireciona; a U99 apaga as linhas no banco.
 
   // ── Painéis (R27) ─────────────────────────────────────────────────────────
   // "Gerencial" virou três. Os painéis são a PORTA de cada domínio: números do
@@ -118,7 +119,8 @@ export const TELAS: Tela[] = [
   // R38: "prospeccao" não é mais uma tela — virou ABA de /gerencial, que já
   // tem exatamente a mesma permissão ([false, true, true]). /prospeccao só
   // redireciona; a U34 apaga a linha órfã no banco.
-  T("historico", "Histórico", "/historico", "Comercial", [true, true, true]),
+  // R165/U99: "historico" SAIU — Davi (Q14): "pode sumir, já que o início já
+  // mostra isso". A rota só redireciona; a U99 apaga as linhas no banco.
   T("mapa", "Mapa", "/mapa", "Comercial", [true, true, true]),
 
   // ── Clientes ──────────────────────────────────────────────────────────────

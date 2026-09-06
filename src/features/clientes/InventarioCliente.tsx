@@ -23,7 +23,7 @@ import {
   nomeEquipamento,
   temEstrutura,
   TIPO_SISTEMA_LABEL,
-  TIPOS_SISTEMA,
+  TIPOS_SISTEMA_OFERECIDOS,
   ESTADO_LABEL,
   ESTADO_CORES,
   ORIGEM_LABEL,
@@ -523,7 +523,7 @@ function ModalSistema({
 
         <label style={s.label}>Tipo</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-          {TIPOS_SISTEMA.map((t) => {
+          {TIPOS_SISTEMA_OFERECIDOS.map((t) => {
             const ativo = tipo === t;
             return (
               <button

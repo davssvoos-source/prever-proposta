@@ -416,14 +416,15 @@ export const IMPACTO_RANK: Record<ImpactoOperacional, number> = {
 };
 
 /**
- * Quais tipos de demanda TÊM impacto operacional. Davi: implantação,
- * preventiva e proposta comercial não têm grau de urgência; melhoria também
- * não o lista. Sobram corretiva e operacional — o que quebrou e o dia a dia.
- * (A lista de campos da preventiva no documento do Davi cita "impacto
- * operacional", mas a frase de fechamento diz que ela NÃO tem — a frase tem
- * a razão junto, e por isso venceu. Está anotado como pergunta Q19.)
+ * Quais tipos de demanda TÊM impacto operacional: corretiva, preventiva e
+ * operacional. Implantação, proposta comercial e melhoria não.
+ *
+ * A preventiva entrou na R169 (Q19, 04/09/2026). O documento do Davi a
+ * listava com "impacto operacional" e a frase de fechamento dizia que não
+ * (D1 seguiu a frase); perguntado, ele corrigiu: "Peço perdão, preventiva tem
+ * impacto operacional sim." A lista de campos estava certa.
  */
-export const TIPOS_COM_IMPACTO: ChamadoTipo[] = ["corretiva", "operacional"];
+export const TIPOS_COM_IMPACTO: ChamadoTipo[] = ["corretiva", "preventiva", "operacional"];
 
 export function temImpacto(tipo: string | null | undefined): boolean {
   return !!tipo && (TIPOS_COM_IMPACTO as string[]).includes(tipo);
