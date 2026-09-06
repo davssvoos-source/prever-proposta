@@ -101,21 +101,29 @@ export function useIsGerente() {
  * O SAC é gestor mas não vê dinheiro — espelho do pode_ver_financeiro() do
  * banco (U6a). A RLS já bloqueia os dados; este hook esconde a interface.
  */
+export async function consultarVeFinanceiro(): Promise<boolean> {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return false;
+  const [{ data: roles }, { data: profile }] = await Promise.all([
+    supabase.from("user_roles").select("role").eq("user_id", u.user.id),
+    supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
+  ]);
+  const financeiro = ["admin", "comercial"];
+  const roleStrs = (roles ?? []).map((r) => r.role as string);
+  if (roleStrs.some((r) => financeiro.includes(r))) return true;
+  return financeiro.includes(profile?.cargo ?? "");
+}
+
+/**
+ * O mesmo recorte como hook. A função solta acima existe para o `beforeLoad`
+ * das rotas que mostram dinheiro (R164: /visita/$id/pagamento) — `beforeLoad`
+ * roda fora do React, e a guarda de valores tinha de ser a MESMA pergunta que a
+ * interface faz, não uma lista de cargos copiada.
+ */
 export function useVeFinanceiro() {
   return useQuery({
     queryKey: ["ve-financeiro"],
-    queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return false;
-      const [{ data: roles }, { data: profile }] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", u.user.id),
-        supabase.from("profiles").select("cargo").eq("id", u.user.id).maybeSingle(),
-      ]);
-      const financeiro = ["admin", "comercial"];
-      const roleStrs = (roles ?? []).map((r) => r.role as string);
-      if (roleStrs.some((r) => financeiro.includes(r))) return true;
-      return financeiro.includes(profile?.cargo ?? "");
-    },
+    queryFn: consultarVeFinanceiro,
     staleTime: 60_000,
   });
 }

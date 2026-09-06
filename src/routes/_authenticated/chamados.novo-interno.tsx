@@ -9,7 +9,8 @@
 // compra (R140) — e ganhou o impacto operacional (R142), só em corretiva e
 // operacional.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -27,6 +28,12 @@ import { EQUIPE_LABEL } from "@/lib/equipes";
 import { card } from "@/lib/ui";
 
 export const Route = createFileRoute("/_authenticated/chamados/novo-interno")({
+  // R163: a mesma chave da triagem que chega aqui — quem não pode abrir chamado
+  // não pode abrir por esta página tampouco
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("chamados.novo");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.novo") as any });
+  },
   // a triagem (/chamados/novo) chega aqui com o trilho já escolhido:
   // ?equipe=ti | ?equipe=patrimonio&tipo=operacional. A `equipe` da URL só
   // serve de rótulo — a equipe gravada é a do responsável (R139).

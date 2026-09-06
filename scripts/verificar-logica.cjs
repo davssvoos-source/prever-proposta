@@ -16078,15 +16078,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/\{veFinanceiro && \(\s*<Tile\s*\n\s*rotulo="A cobrar este mês"/.test(pop93),
       /useCobrancasDaCompetencia\(competenciaAtual, veFinanceiro\)/.test(pop93)],
      [true, true]);
-  eq('U93/R125: totalACobrar soma só a competência pedida, ignora canceladas, e fecha em CENTAVOS (3 × 33,33 + 0,01 = 100,00)',
+  // R161 (U98, Q9 — Davi: "Somente as que faltam faturar"): a faturada sai do
+  // total e vira só uma contagem ao lado; a cancelada continua fora de tudo.
+  eq('U93/R125 + R161: totalACobrar soma só a competência pedida, ignora canceladas E faturadas (conta-as à parte), e fecha em CENTAVOS (3 × 33,33 + 0,01 = 100,00)',
      IND93.totalACobrar([
        { valor: 33.33, competencia: '2026-09', status: 'aberta' },
        { valor: 33.33, competencia: '2026-09', status: 'fechada' },
        { valor: 33.34, competencia: '2026-09', status: 'aberta' },
        { valor: 999, competencia: '2026-09', status: 'cancelada' },
+       { valor: 200, competencia: '2026-09', status: 'faturada' },
        { valor: 50, competencia: '2026-08', status: 'aberta' },
      ], '2026-09'),
-     { total: 100, quantidade: 3, emAberto: 2, totalEmAberto: 66.67 });
+     { total: 100, quantidade: 3, emAberto: 2, totalEmAberto: 66.67, faturadas: 1, totalFaturado: 200 });
   eq('U93/R125: moedaCurta encurta acima de mil e mantém o exato abaixo',
      [IND93.moedaCurta(850), IND93.moedaCurta(12345.67), IND93.moedaCurta(1300000)].map(semNbsp),
      ['R$ 850,00', 'R$ 12,3 mil', 'R$ 1,3 mi']);
@@ -16358,10 +16361,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        const comGuarda = fs94.readdirSync('src/routes/_authenticated').filter((a) => a.endsWith('.tsx'))
          .map((a) => ler94(`src/routes/_authenticated/${a}`)).filter((s) => /guardaDeTela\(/.test(s)).join('\n');
        // as que se sabe que NÃO gateiam (e por quê): dashboard/perfil são `sempre`;
-       // clientes.novo/migrar são redirects desativados (R21); chamados.novo e a
-       // triagem estão na Q11, decisão do Davi; sobreaviso já gateia; admin decide
-       // por user_roles (Q15) — declaradas aqui para a lista de exceções ser VISÍVEL
-       const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar', 'chamados.novo', 'admin']);
+       // clientes.novo/migrar são redirects desativados (R21); chamados.novo
+       // ganhou guarda na U98 (R163 fechou a Q11); sobreaviso já gateia; admin
+       // decide por user_roles (Q15) — declaradas aqui para a lista ser VISÍVEL
+       const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar', 'admin']);
        return TL94.TELAS.filter((t) => !excecoes.has(t.chave) && !comGuarda.includes(`"${t.chave}"`))
          .map((t) => t.chave);
      })(), []);
@@ -17016,7 +17019,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const ds97 = ler97('DESIGN_SYSTEM.md');
   eq('U97 (regra 7): R151–R154 existem e a última atualização aponta para a R154; a U97 está no diário',
      [['R151', 'R152', 'R153', 'R154'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97)),
-      /Última atualização: 2026-09-04 \(R15[4-9]\)/.test(prod97),
+      /Última atualização: 2026-09-04 \(R1[5-9][0-9]\)/.test(prod97),
       /^## U97 /m.test(ler97('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
   eq('U97 (regra 7): o DESIGN_SYSTEM traz os tokens v10, as oito bordas claras resolvidas, a rampa v10 com o piso de 2,5:1, e o fundo v4/v10 — e o quase-preto só aparece como história',
@@ -17037,7 +17040,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const prod97b = ler97b('docs/PRODUTO.md');
   eq('U97b (regra 7): R155–R157 existem e a última atualização aponta para a R157',
      [['R155', 'R156', 'R157'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod97b)),
-      /Última atualização: 2026-09-04 \(R157\)/.test(prod97b)],
+      /Última atualização: 2026-09-04 \(R1[5-9][0-9]\)/.test(prod97b)],
      [true, true]);
   eq('U97b: as Q1–Q4 do plano estão marcadas respondidas, cada uma com a sua regra',
      ['R155', 'R156', 'R156', 'R157'].map((r, i) =>
@@ -17051,6 +17054,92 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // R156 ainda NÃO mexe no código: a lista do campo continua a de antes até os fluxos chegarem
   eq('U97b/R156: a lista de tipos do chamado de campo ainda é a anterior (a revisão espera os fluxos da técnica)',
      /campo: \["corretiva", "preventiva", "operacional", "implantacao", "vistoria"\],/.test(ler97b('src/lib/chamado-status.ts')), true);
+}
+
+// ── U98 — R158–R164: as respostas do Davi às Q5–Q12 (2026-09-04) ─────────────
+{
+  const ler98 = (p) => require('fs').readFileSync(p, 'utf8');
+  const codigo98 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const TL98 = carregar('src/lib/telas.ts');
+
+  // ── R158: a Rubia é SAC, e o SAC abre e gerencia chamados ────────────────
+  const novo98 = TL98.TELAS.find((t) => t.chave === 'chamados.novo');
+  eq('R158: a chave "chamados.novo" abre para o SAC (a Rubia) e para o comercial, e nega o técnico por padrão',
+     [novo98?.padrao.sac, novo98?.padrao.comercial, novo98?.padrao.tecnico], [true, true, false]);
+  eq('R158 (regra 7): a Rubia entrou em "quem é quem" como SAC, líder do atendimento da Portaria Remota',
+     /\| \*\*Rubia\*\* \| supervisora, líder da equipe de atendimento da Portaria Remota[^\n]*\| SAC \|/.test(ler98('docs/CONTEXTO_OPERACAO_TECNICA.md')), true);
+
+  // ── R161: "a cobrar" é o que falta faturar ───────────────────────────────
+  const IND98 = carregar('src/features/paineis/indicadores.ts');
+  eq('R161 CRÍTICO: a faturada não é "a cobrar" — total e quantidade excluem-na; a cancelada continua fora até da contagem de faturadas',
+     IND98.totalACobrar([
+       { valor: 100, competencia: '2026-09', status: 'faturada' },
+       { valor: 10, competencia: '2026-09', status: 'fechada' },
+       { valor: 5, competencia: '2026-09', status: 'cancelada' },
+     ], '2026-09'),
+     { total: 10, quantidade: 1, emAberto: 0, totalEmAberto: 0, faturadas: 1, totalFaturado: 100 });
+  const pop98 = ler98('src/routes/_authenticated/painel.operacional.tsx');
+  eq('R161: o tile diz "a faturar" e a dica conta as já faturadas — o número mostrado é o que falta, não o que existe',
+     [/\$\{aCobrar\.quantidade\} a faturar · \$\{aCobrar\.emAberto\} em aberto/.test(pop98),
+      /a faturar na competência \$\{competenciaAtual\} \(R161: faturadas e canceladas ficam fora/.test(pop98)],
+     [true, true]);
+
+  // ── R163: o técnico não abre chamado ─────────────────────────────────────
+  for (const arq of ['chamados.novo.tsx', 'chamados.novo-interno.tsx']) {
+    const r = ler98(`src/routes/_authenticated/${arq}`);
+    eq(`R163 CRÍTICO: ${arq} lê a chave "chamados.novo" na guarda e manda o negado para destinoNegado — a caixa da matriz deixou de ser decorativa (Q11)`,
+       [/const \{ ok \} = await guardaDeTela\("chamados\.novo"\);/.test(r),
+        /if \(!ok\) throw redirect\(\{ to: destinoNegado\("chamados\.novo"\) as any \}\);/.test(r)],
+       [true, true]);
+  }
+  const nad98 = codigo98(ler98('src/features/home/NovaAtividadeDialog.tsx'));
+  eq('R163: o diálogo do "+" esconde as DUAS perguntas de quem não tem a chave — e deixa a porta do plantão (R117), que sempre foi do técnico',
+     [/const podeAbrirChamado = podeVer\("chamados\.novo"\) !== false;/.test(nad98),
+      /\) : !podeAbrirChamado \? \(/.test(nad98),
+      /onClick=\{\(\) => setModoPlantao\(true\)\}/.test(nad98),
+      /Registrar atendimento de plantão/.test(nad98)],
+     [true, true, true, true]);
+  const dash98 = codigo98(ler98('src/routes/_authenticated/dashboard.tsx'));
+  eq('R163: o campo de IA (que cria chamado) só aparece para quem pode abrir; o "+" continua para todo mundo (é a porta do plantão)',
+     [/\{podeAbrirChamado && <CriarRapido \/>\}/.test(dash98),
+      /podeAbrirChamado && \(\s*<button/.test(dash98),
+      /aria-label="Criar uma nova atividade"/.test(dash98)],
+     [true, false, true]);
+  eq('R163: a chave é a MESMA nos três lugares — rotas, diálogo e Início leem "chamados.novo", não uma lista de cargos copiada',
+     [(nad98.match(/"chamados\.novo"/g) ?? []).length, (dash98.match(/"chamados\.novo"/g) ?? []).length], [1, 1]);
+
+  // ── R164: valores da visita só para quem vê valores ──────────────────────
+  const pag98 = ler98('src/routes/_authenticated/visita.$id.pagamento.tsx');
+  eq('R164 CRÍTICO: /visita/$id/pagamento tem guarda por consultarVeFinanceiro e devolve o negado ao detalhe da visita (não à Início)',
+     [/if \(!\(await consultarVeFinanceiro\(\)\)\) \{/.test(pag98),
+      /throw redirect\(\{ to: "\/visita\/\$id", params: \{ id: params\.id \} \} as any\);/.test(pag98)],
+     [true, true]);
+  const gd98 = ler98('src/features/gerencial/data.ts');
+  eq('R164: a guarda e o hook fazem a MESMA pergunta — useVeFinanceiro usa consultarVeFinanceiro como queryFn',
+     [/export async function consultarVeFinanceiro\(\): Promise<boolean> \{/.test(gd98),
+      /queryFn: consultarVeFinanceiro,/.test(gd98),
+      /const financeiro = \["admin", "comercial"\];/.test(gd98)],
+     [true, true, true]);
+
+  // ── regra 7 ──────────────────────────────────────────────────────────────
+  const prod98 = ler98('docs/PRODUTO.md');
+  eq('U98 (regra 7): R158–R164 existem; a última atualização aponta para a R164; a U98 está no diário',
+     [['R158', 'R159', 'R160', 'R161', 'R162', 'R163', 'R164'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod98)),
+      /Última atualização: 2026-09-04 \(R164\)/.test(prod98),
+      /^## U98 /m.test(ler98('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true]);
+  eq('U98 (regra 7): as Q5–Q10 do plano e as Q11–Q12 da revisão estão anotadas; a Q8 está adiada (Vinicius) e a Q13 espera o Davi ver as telas',
+     [['R158', 'R159', 'R160'].map((r, i) => new RegExp(`Q${i + 5} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(ler98('docs/PLANO_V0.1.md'))),
+      /Q8 — [^]*?→ \*\*Adiada em 04\/09\/2026:\*\*/.test(ler98('docs/PLANO_V0.1.md')),
+      ['R161', 'R162'].map((r, i) => new RegExp(`Q${i + 9} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(ler98('docs/PLANO_V0.1.md'))),
+      ['R163', 'R164'].map((r, i) => new RegExp(`Q${i + 11} — [^]*?→ \\*\\*Respondida em 04/09/2026 \\(${r}\\):\\*\\*`).test(ler98('docs/REVISAO_2026-09-03.md'))),
+      /Q13 — [^]*?→ \*\*Em aberto \(04\/09\/2026\):\*\*/.test(ler98('docs/REVISAO_2026-09-03.md'))],
+     [[true, true, true], true, [true, true], [true, true], true]);
+  eq('U98 (regra 7): o manual parou de dizer que "qualquer usuário pode abrir chamado" e o tile de dinheiro diz "falta faturar"',
+     [/Qualquer usuário pode abrir chamado/.test(ler98('docs/manual/operacao-campo.md')),
+      /R163/.test(ler98('docs/manual/operacao-campo.md')),
+      /que ainda FALTAM faturar \(R161/.test(ler98('docs/manual/operacao-campo.md'))],
+     [false, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

@@ -46,6 +46,7 @@ import {
   checklistDoGrupo, acrescentarChecklist, rotuloDoGrupo, valorDoGrupo, setorDoValor,
 } from "@/features/chamados/grupos";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
+import { usePermissoes } from "@/features/gerencial/permissoes";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import {
   TIPO_LABEL, TIPO_CORES, IMPACTO_ORDEM, IMPACTO_LABEL, IMPACTO_CORES, temImpacto, dataParaPrazo,
@@ -112,6 +113,12 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
   const ehTecnico = equipeDoResponsavel === "tecnica";
   const ehProposta = tipo === "prospeccao";
   const pronto = !!tipo && !!responsavelId;
+  // R163: quem não tem a chave `chamados.novo` (o técnico, por padrão) não vê
+  // as duas perguntas — o "+" fica com ele porque é a porta do plantão (R117).
+  // Enquanto a matriz carrega (undefined) o corpo aparece: é gate de tela, o
+  // dado continua protegido pela RLS.
+  const { podeVer } = usePermissoes();
+  const podeAbrirChamado = podeVer("chamados.novo") !== false;
 
   const pessoasOrdenadas = useMemo(
     () => [...(pessoas as any[])].sort((a, b) => (a.nome ?? "").localeCompare(b.nome ?? "")),
@@ -257,6 +264,8 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
   const subtitulo = modoPlantao
     ? "O que aconteceu fora do expediente. Isto não vira chamado."
+    : !podeAbrirChamado
+      ? "Chamado, quem abre é o SAC e a gestão. O que se registra por aqui é o plantão."
     : !pronto
       ? "Duas perguntas decidem o resto: o tipo de demanda e quem é o responsável."
       : ehProposta
@@ -316,6 +325,26 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
 
         {modoPlantao ? (
           <PainelDePlantao euId={euId} opcoesPessoas={opcoesPessoas} aoFechar={fechar} />
+        ) : !podeAbrirChamado ? (
+          /* R163 (Davi, 04/09/2026): "O técnico de campo não pode abrir chamado
+             sozinho, vamos manter assim por enquanto." As duas perguntas não
+             aparecem para ele; sobra a porta do plantão, que sempre foi dele. */
+          <div style={{
+            display: "flex", flexDirection: "column", gap: 12, padding: "14px 16px", borderRadius: 14,
+            background: isLight ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.04)",
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: 13, color: textPrimary, lineHeight: 1.5 }}>
+              Abrir chamado é tarefa do SAC e da gestão — o chamado chega a você pela programação.
+              O que você registra por aqui é o <strong>atendimento de plantão</strong>.
+            </span>
+            <button
+              type="button"
+              onClick={() => setModoPlantao(true)}
+              style={{ ...goldButton(), padding: "11px 20px", borderRadius: 12, fontSize: 12.5, alignSelf: "flex-start" }}
+            >
+              Registrar atendimento de plantão
+            </button>
+          </div>
         ) : (
           <>
             {/* ── AS DUAS PERGUNTAS (R138) ─────────────────────────────────── */}

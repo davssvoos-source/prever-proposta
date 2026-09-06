@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R157). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R164). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3314,3 +3314,84 @@ trabalho".
   condomínio com locação e façamos a venda de equipamentos, será um adicional
   de contrato com comodato e doação ao término do período do adicional. Isso
   constará no contrato atualizado.")*
+
+
+- **R158** — **A Rubia é SAC: supervisora e líder da equipe de atendimento da
+  Portaria Remota, e abre e gerencia os chamados técnicos.** Todos os pedidos
+  de chamado que chegam pelo atendimento da Portaria Remota passam por ela —
+  por isso o perfil é SAC (a chave `chamados.novo` e as telas de coordenação
+  abrem para o SAC por padrão). O cargo dela no cadastro é dado, não código:
+  ajusta-se em Administrativo › Usuários. Fecha a **Q5**. *(Davi, 04/09/2026:
+  "A Rubia é a supervisora, líder da equipe de atendimento da Portaria Remota.
+  Na verdade, o perfil dela seria SAC. Pois ela deverá ter capacidade de abrir
+  chamados técnicos e gerenciar os chamados técnicos, uma vez que ela recebe
+  todos os pedidos de chamados que vêm através do atendimento da equipe de
+  Portaria Remota.")*
+
+- **R159** — **O catálogo de sistemas ganha o controle de acesso eletrônico e a
+  sua central; a Prever também faz portaria autônoma.** Ao que existe (eclusa
+  de pedestres, eclusa veicular, CFTV, alarme, cerca elétrica, central de
+  portaria remota, elevadores, totem, outro) entram **Controle de Acesso
+  Eletrônico** — aplicável a portaria presencial, autônoma e remota — e a
+  **Central de Controle de Acesso Eletrônico** (PC desktop com o software
+  operante, controladora, rack…), fornecida quando o controle de acesso vai
+  para uma portaria presencial. A **portaria autônoma** é uma modalidade de
+  serviço, ao lado da remota e da presencial. Implementação: o CHECK de
+  `cliente_equipamentos.tipo` (etapa 2) e `TIPO_SISTEMA_LABEL` mudam na
+  próxima migration (Fase D/F) — não numa migration só para isto, com a U96
+  ainda por rodar. Fecha a **Q6** e abre a **Q23**: portaria autônoma e
+  presencial entram como GRUPOS de clientes (R143), ao lado de Portaria Remota
+  e Monitoramento? *(Davi, 04/09/2026: "A Prever também trabalha com portaria
+  autônoma e além disso, o controle de acesso eletrônico pode ser aplicado para
+  Portaria Presencial, não somente autônoma e remota. Uma vez que o controle de
+  acesso eletrônico é aplicado para portaria presencial, nós fornecemos também
+  uma central de controle de acesso eletrônico, que seria basicamente um PC
+  Desktop para rodar o software operante, controladora, rack, etc.")*
+
+- **R160** — **A integração com o QAP ERP sincroniza uma vez por dia e tem o
+  botão "Sincronizar", que pede o sincronismo à API na hora — e fica para
+  quando o sistema estiver rodando redondo.** O Davi quer chegar ao Lopes (o
+  desenvolvedor do QAP ERP) com o sistema num estágio avançado, pronto para
+  integrar; documentação e credenciais da API entram nessa hora. Fecha a **Q7**
+  (frequência e gesto). Fase E. *(Davi, 04/09/2026: "Serve, nós teremos também
+  o botão 'Sincronizar', que envia um pedido de sincronismo com a API do QAP
+  ERP. Em breve nós faremos a integração com o QAP, mas eu quero ter o sistema
+  rodando certinho antes, para quando eu entrar em contato com o Lopes, que é
+  desenvolvedor do sistema QAP ERP, eu já esteja em um nível de progresso do
+  nosso sistema mais avançado, pronto para integrar.")*
+
+- **R161** — **"A cobrar este mês" é só o que ainda falta faturar.** A
+  cobrança já faturada virou nota e sai do total (fica contada à parte, na
+  dica); a cancelada nunca entrou. Vale a competência corrente: cobranças
+  abertas (fora de fechamento) e fechadas (dentro de um fechamento, nota ainda
+  não emitida). Revisa a leitura da R125, que somava tudo que não era
+  cancelado. Fecha a **Q9**. *(Davi, 04/09/2026: "Somente as que faltam
+  faturar.")*
+
+- **R162** — **O técnico dá baixa; o gestor valida — são dois estados.** A
+  atividade (ou a fase da implantação) que o técnico marca como concluída fica
+  **concluída, não validada** até o gestor validar (R155). A barra da
+  implantação anda com as fases concluídas e a marca de plano segue sendo os
+  dias úteis decorridos (R120 confirmada); a validação pendente aparece como
+  tal. Implementação junto com a R155 (Fase C). Fecha a **Q10**. *(Davi,
+  04/09/2026: "Sim está certo assim, mas o técnico pode dar baixa em uma
+  atividade como concluída porém o gestor deve validar a atividade depois, ou
+  seja, a atividade já foi concluída porém não foi validada.")*
+
+- **R163** — **O técnico de campo não abre chamado sozinho — por enquanto.** A
+  chave `chamados.novo` da matriz (que sempre negou o técnico) passa a ser
+  lida pelas rotas `/chamados/novo` e `/chamados/novo-interno`; o campo de IA
+  da Início só aparece para quem tem a chave; e o "+" da Início **continua
+  para o técnico** — é a porta do atendimento de plantão (R117) —, mas sem as
+  duas perguntas: para ele o diálogo oferece só o plantão. Revisa a R25 ("o
+  campo Abrir chamado, que qualquer usuário pode usar") para **qualquer
+  usuário com a chave** — SAC, comercial e admin. Fecha a **Q11**. *(Davi,
+  04/09/2026: "O Técnico de campo não pode abrir chamado sozinho, vamos manter
+  assim por enquanto.")*
+
+- **R164** — **Os valores da visita — custo, venda, markup, mensalidades —
+  são só de admin e comercial.** `/visita/$id/pagamento` ganha a guarda de
+  valores (a mesma pergunta de `useVeFinanceiro`, R13); quem não vê valores
+  volta ao detalhe da visita. Até aqui qualquer pessoa logada com o link via
+  tudo. Fecha a **Q12**. *(Davi, 04/09/2026: "Sim, somente o Admin e o
+  Comercial.")*

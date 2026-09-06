@@ -924,11 +924,11 @@ function PainelOperacional() {
                   ? "erro ao ler"
                   : cobrancasMes.isLoading
                     ? undefined
-                    : `${aCobrar.quantidade} lanç. · ${aCobrar.emAberto} em aberto`}
+                    : `${aCobrar.quantidade} a faturar · ${aCobrar.emAberto} em aberto`}
                 cor={verde}
                 title={cobrancasMes.isError
                   ? `Não consegui ler as cobranças: ${(cobrancasMes.error as Error).message}`
-                  : `${moeda(aCobrar.total)} na competência ${competenciaAtual} (exceto canceladas) · ${moeda(aCobrar.totalEmAberto)} ainda fora de fechamento — clique para ir aos Fechamentos`}
+                  : `${moeda(aCobrar.total)} a faturar na competência ${competenciaAtual} (R161: faturadas e canceladas ficam fora — ${aCobrar.faturadas} já faturada(s), ${moeda(aCobrar.totalFaturado)}) · ${moeda(aCobrar.totalEmAberto)} ainda fora de fechamento — clique para ir aos Fechamentos`}
                 aoClicar={() => navigate({ to: "/fechamentos" })}
               />
             )}

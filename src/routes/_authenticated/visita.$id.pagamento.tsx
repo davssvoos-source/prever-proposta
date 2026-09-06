@@ -4,7 +4,8 @@
 // portaria remota, software operante, app, monitoramento, link).
 // Regras: src/features/comercial/regrasComerciais.ts
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { consultarVeFinanceiro } from "@/features/gerencial/data";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Layers, KeyRound, Handshake, CalendarClock, FileText, X, PieChart as PieChartIcon } from "lucide-react";
@@ -32,6 +33,15 @@ import {
 } from "@/features/proposta/gerarProposta";
 
 export const Route = createFileRoute("/_authenticated/visita/$id/pagamento")({
+  // R164 (Q12 — Davi, 04/09/2026: "Sim, somente o Admin e o Comercial"): custo,
+  // venda e markup são valores (R13). Até a U98 qualquer pessoa logada com o
+  // link via tudo. Quem não vê valores volta ao detalhe da visita, não à
+  // Início — foi de lá que ele veio.
+  beforeLoad: async ({ params }) => {
+    if (!(await consultarVeFinanceiro())) {
+      throw redirect({ to: "/visita/$id", params: { id: params.id } } as any);
+    }
+  },
   component: PagamentoPage,
 });
 

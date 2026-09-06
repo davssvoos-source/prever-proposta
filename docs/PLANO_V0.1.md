@@ -61,7 +61,8 @@ escrita no QAP (decisão da R129), IA no WhatsApp do SAC (§9 do
 
 **Entregas.** Saem "Fluxo e ritmo" e "Em aberto por técnico". "Atividades por
 equipe" de 12 para 8 semanas. Rosca mais estreita. "Abertos por cliente" à
-esquerda. Entram: "A cobrar este mês" (só para quem vê valores), "Aguardando
+esquerda. Entram: "A cobrar este mês" (só para quem vê valores; desde a R161,
+só o que falta faturar), "Aguardando
 conferência" (clicável, filtra a lista) e "Implantações em andamento" (uma
 barra por obra: real = fases concluídas, plano = dias úteis decorridos).
 
@@ -258,21 +259,37 @@ O que falta, por ordem:
   em comodato) e vendas (aditivo com comodato + doação) constam no contrato.
 - **Q5 — Rubia.** Papel e equipe (ela está na lista de quem tem demandas
   gerais, mas não está em "quem é quem").
+  → **Respondida em 04/09/2026 (R158):** supervisora, líder do atendimento da
+  Portaria Remota; perfil **SAC** — abre e gerencia chamados técnicos.
 - **Q6 — Os sistemas que a Prever instala.** Lista completa para o catálogo
   (hoje: eclusa de pedestres, eclusa veicular, CFTV, alarme, cerca elétrica,
   central de portaria remota, elevadores, totem, outro). "Porta de vidro com
   acesso ao hall" pede um tipo de **controle de acesso de porta**.
+  → **Respondida em 04/09/2026 (R159):** entram Controle de Acesso Eletrônico
+  (presencial, autônoma, remota) e a Central de Controle de Acesso (PC +
+  software operante + controladora + rack) para portaria presencial; a Prever
+  também faz portaria autônoma. Migration na próxima leva (Fase D/F). Nasce a
+  **Q23**: autônoma/presencial como grupos de clientes (R143)?
 - **Q7 — A API do QAP.** Há documentação e credencial? Qual chave casa o
   cliente (CNPJ)? Frequência de sincronização (diária basta?).
+  → **Respondida em 04/09/2026 (R160):** diária basta, mais o botão
+  "Sincronizar". A integração fica para quando o sistema estiver rodando
+  redondo (contato: Lopes, desenvolvedor do QAP ERP); credenciais nessa hora.
 - **Q8 — A descrição sugerida da cobrança.** Padrão do texto: "Manutenção
   corretiva — fornecimento de 1× <peça> (fora de contrato)"? E o
   `tipo_servico` padrão: instalação para implantação, manutenção para o resto?
+  → **Adiada em 04/09/2026:** "Veremos isso depois, preciso do Vinicius para
+  entender melhor isso." Fica com a Fase C.
 - **Q9 — "A cobrar este mês".** Fase A assume: **competência do mês corrente,
   todas as cobranças não canceladas**, com o detalhe de quantas ainda estão
   em aberto. É isso, ou só as ainda não faturadas?
+  → **Respondida em 04/09/2026 (R161):** só as que faltam faturar — a faturada
+  sai do total (U98).
 - **Q10 — Progresso da implantação.** Fase A assume: o preenchimento é
   **fases concluídas** (marcadas pelo gestor, R120) e a marca é o **plano**
   (dias úteis decorridos). O técnico deve poder marcar fase concluída?
+  → **Respondida em 04/09/2026 (R162):** está certo; e o técnico PODE dar
+  baixa — fica "concluída, não validada" até o gestor validar (R155). Fase C.
 
 ## 5. Riscos
 

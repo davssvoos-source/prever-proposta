@@ -27,7 +27,7 @@ está errado.
 | **Vinicius** | **gestor da equipe técnica de campo**: programa, acompanha, faz vistorias validando o trabalho dos técnicos, decide cobrança extra | Admin | Técnica (coordenação) |
 | **Erik, Nicholas** | T.I. | Técnico | T.I. |
 | **Gilleno** | Controle Patrimonial (opera o QAP ERP) | Técnico | Controle Patrimonial |
-| **Rubia** | citada pelo Davi entre quem tem demandas gerais; papel e equipe **a confirmar** | ? | ? |
+| **Rubia** | supervisora, líder da equipe de atendimento da Portaria Remota — recebe todos os pedidos de chamado que chegam pelo atendimento e abre/gerencia os chamados técnicos (R158, Q5) | SAC | Portaria Remota (atendimento) |
 | **Breno e os líderes das duplas** | técnicos de campo | Técnico | Técnica |
 
 Dois fatos que estruturam tudo:

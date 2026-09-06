@@ -539,12 +539,19 @@ export function cobrancasDaCompetencia<T extends CobrancaParaIndicador>(
 }
 
 export interface ACobrar {
-  /** soma de tudo que não foi cancelado na competência */
+  /**
+   * soma do que ainda FALTA faturar na competência — aberta ou fechada.
+   * R161 (Davi, 04/09/2026, Q9: "Somente as que faltam faturar"): a cobrança
+   * já faturada virou nota, não é mais "a cobrar"; a cancelada nunca foi.
+   */
   total: number;
   quantidade: number;
   /** as que ainda não entraram em fechamento nenhum */
   emAberto: number;
   totalEmAberto: number;
+  /** as que já viraram nota — ficam FORA do total, mas o painel diz quantas foram */
+  faturadas: number;
+  totalFaturado: number;
 }
 
 /** Soma em CENTAVOS e divide no fim — a lição de `parcelar()`: 3 × 33,33 em float dá 99,99. */
@@ -552,13 +559,20 @@ const centavos = (v: number | string | null | undefined): number => Math.round(N
 
 export function totalACobrar<T extends CobrancaParaIndicador>(cobrancas: T[], competencia: string): ACobrar {
   const vivas = cobrancasDaCompetencia(cobrancas, competencia);
-  const abertas = vivas.filter((c) => c.status === "aberta");
+  // R161: "a cobrar" é o que ainda falta faturar — aberta (fora de fechamento)
+  // ou fechada (dentro de um fechamento, nota ainda não emitida). A faturada
+  // já foi cobrada; somá-la aqui faria o painel prometer dinheiro que já entrou.
+  const aFaturar = vivas.filter((c) => c.status !== "faturada");
+  const faturadas = vivas.filter((c) => c.status === "faturada");
+  const abertas = aFaturar.filter((c) => c.status === "aberta");
   const soma = (lista: T[]) => lista.reduce((s, c) => s + centavos(c.valor), 0) / 100;
   return {
-    total: soma(vivas),
-    quantidade: vivas.length,
+    total: soma(aFaturar),
+    quantidade: aFaturar.length,
     emAberto: abertas.length,
     totalEmAberto: soma(abertas),
+    faturadas: faturadas.length,
+    totalFaturado: soma(faturadas),
   };
 }
 

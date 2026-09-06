@@ -7,13 +7,23 @@
 // registra a visita e PODE agendar — técnico e data ficam opcionais no
 // formulário; se ficarem vazios, o comercial agenda depois.
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
 import type { CSSProperties, ComponentType } from "react";
 import { ArrowLeft, ChevronRight, ClipboardList, FileText, ShoppingCart, Wrench } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card } from "@/lib/ui";
 
 export const Route = createFileRoute("/_authenticated/chamados/novo")({
+  // R163 (Q11 — Davi, 04/09/2026): "O técnico de campo não pode abrir chamado
+  // sozinho, vamos manter assim por enquanto." A chave `chamados.novo` sempre
+  // negou o técnico por padrão; até a U98 nenhuma guarda a lia e a caixa era
+  // decorativa (REVISAO_2026-09-03, Q11). Agora a triagem e o formulário
+  // interno (que ela abre) leem a mesma chave.
+  beforeLoad: async () => {
+    const { ok } = await guardaDeTela("chamados.novo");
+    if (!ok) throw redirect({ to: destinoNegado("chamados.novo") as any });
+  },
   component: NovoChamadoPage,
 });
 

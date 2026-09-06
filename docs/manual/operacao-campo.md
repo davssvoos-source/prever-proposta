@@ -27,8 +27,10 @@ Timestamps que os indicadores usam: `created_at` (abriu), `iniciada_em`
 
 ## Quem faz o quê
 
-- **Qualquer usuário pode abrir chamado** (campo "Abrir chamado" da Início —
-  decisão do Davi, R25: o chamado entra por três portas).
+- **Quem tem a chave `chamados.novo` abre chamado** — SAC, comercial e admin
+  (R25: o chamado entra por três portas; R163: o técnico de campo não abre
+  chamado sozinho, "por enquanto"). Para o técnico o "+" da Início oferece só o
+  atendimento de plantão (R117), e o campo de IA não aparece.
 - **Quem coordena** (SAC/gestores, R1/R26): vê tudo de todos, agenda,
   distribui. As telas de coordenação são o Painel Operacional, o calendário,
   a programação das duplas e o painel de chamados.
@@ -81,7 +83,7 @@ tela:
 | Esquerda (altura dupla) | **Abertos por cliente** | quem está pedindo mais — só clientes COM chamado aberto; a soma das barras é o KPI "em aberto" |
 | Meio, faixa 1 | **4 KPIs** (em aberto · sem responsável · urgentes · prazo estourado) | os números de cabeça; clicar filtra a lista |
 | Meio, faixa 1 | **Fila por status / por tipo** (rosca) | como a fila em aberto se divide; o miolo não muda ao trocar o corte |
-| Meio, faixa 1 | **A cobrar este mês** | a soma das cobranças da competência corrente (exceto canceladas) e quantas ainda estão fora de fechamento. **Só para quem vê valores** (R13): o SAC não vê o painel — não vê um zero |
+| Meio, faixa 1 | **A cobrar este mês** | a soma das cobranças da competência corrente que ainda FALTAM faturar (R161: faturadas e canceladas ficam fora; a dica diz quantas já foram faturadas) e quantas ainda estão fora de fechamento. **Só para quem vê valores** (R13): o SAC não vê o painel — não vê um zero |
 | Meio, faixa 1 | **Aguardando conferência** | chamados técnicos **concluídos** cuja decisão de cobrança ainda não foi tomada (`a_analisar` ou `em_conferencia`). Clicar filtra a lista: o número e a lista saem da mesma função |
 | Meio, faixa 2 | **Atividades por equipe · 8 semanas** | quem fez o quê, semana a semana (era 12 semanas; encurtou na R125). O botão **Equipes** cadastra e escala |
 | Direita (altura dupla) | **Implantações em andamento** | uma barra por obra aberta |

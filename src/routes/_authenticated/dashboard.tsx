@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { ArrowUpDown, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
 import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
+import { usePermissoes } from "@/features/gerencial/permissoes";
 
 import bannerAsset from "@/assets/banner-home.jpg.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,6 +107,12 @@ function Home() {
   const gestor = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac";
 
   const [novaAberta, setNovaAberta] = useState(false);
+  // R163: o campo de IA cria chamado (abrirChamado) — só aparece para quem tem
+  // a chave `chamados.novo`. O "+" NÃO passa por aqui: ele fica para todo
+  // mundo porque é a porta do plantão (R117); o diálogo é quem esconde as
+  // duas perguntas de quem não pode abrir.
+  const { podeVer } = usePermissoes();
+  const podeAbrirChamado = podeVer("chamados.novo") !== false;
 
   const [visao, setVisao] = useState<"lista" | "quadro">(() => {
     try {
@@ -525,7 +532,7 @@ function Home() {
             onSelecionar={(chave) => setSelecaoPainel((atual) =>
               (atual?.tipo === "kpi" && atual.chave === chave ? null : { tipo: "kpi", chave }))}
           />
-          <CriarRapido />
+          {podeAbrirChamado && <CriarRapido />}
         </div>
 
         {/* O título desceu para cá — o quadrado azul do desenho: vira o

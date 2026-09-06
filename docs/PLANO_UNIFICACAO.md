@@ -9778,3 +9778,55 @@ ganhou a nota de revisão e será reescrita junto com os fluxos.
 
 Asserções: as três regras existem no PRODUTO, as quatro perguntas estão
 marcadas respondidas, a Q20 está encaminhada. Sem código, sem migration.
+
+
+## U98 — as respostas do Davi às Q5–Q13: R158–R164 (2026-09-04)
+
+Segunda leva de respostas do questionário do plano. Sete regras; três com
+código agora, quatro só registradas — e o critério de "agora ou depois" foi
+o mesmo da U97b: mexer no que não depende dos fluxos da técnica que o Davi vai
+ditar, e não abrir migration nova com a U96 ainda por rodar.
+
+### Com código
+
+**R161 — "A cobrar este mês" é o que falta faturar.** `totalACobrar`
+(`indicadores.ts`) deixou a `faturada` fora do total e da quantidade e a
+devolve à parte (`faturadas`, `totalFaturado`) para a dica do tile dizer
+quantas já viraram nota. O tile diz "N a faturar". A asserção da U93 ganhou
+uma cobrança faturada no fixture — os números do que já existia não mudaram,
+o que mostra que até aqui o defeito só apareceria num mês com nota emitida.
+
+**R163 — o técnico não abre chamado.** As duas rotas da triagem passaram a
+ler a chave `chamados.novo` em `beforeLoad`, como as telas da revisão de
+03/09 (a caixa da matriz deixou de ser decorativa — era a Q11). A decisão
+delicada foi o "+" da Início: ele é a porta do plantão (R117, "quem registra
+é o plantonista, às 2h da manhã, no celular"), então tirá-lo do técnico
+quebraria o plantão. Fica: o diálogo esconde as DUAS PERGUNTAS de quem não
+tem a chave e oferece só "Registrar atendimento de plantão". O campo de IA
+(que cria chamado por `abrirChamado`) some para quem não pode abrir. A chave
+é a mesma nos três lugares — rotas, diálogo, Início —, não uma lista de
+cargos copiada. Tirei `chamados.novo` da lista de exceções da asserção
+"toda chave com rota é lida por alguma guarda".
+
+**R164 — valores da visita só para admin e comercial.** Extraí o corpo de
+`useVeFinanceiro` para `consultarVeFinanceiro()` e o hook passou a usá-la
+como `queryFn`: a guarda do `beforeLoad` de `/visita/$id/pagamento` faz
+exatamente a mesma pergunta que a interface. Quem não vê valores volta ao
+detalhe da visita, não à Início — foi de lá que ele veio.
+
+### Só registradas
+
+R158 (a Rubia é SAC — o cargo é dado, ajusta-se em Usuários), R159 (catálogo
+de sistemas: controle de acesso eletrônico e a sua central; portaria autônoma
+— vai com a próxima migration, e abriu a Q23 sobre grupos de clientes), R160
+(QAP: diário + botão Sincronizar, integração quando o sistema estiver
+redondo; contato Lopes), R162 (técnico dá baixa, gestor valida — dois
+estados; implementa junto com a R155). A Q8 ficou adiada por pedido do Davi
+(precisa do Vinicius). A Q13 ficou em aberto: ele quer ver as três telas
+antes — os endereços estão anotados na própria pergunta.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2853 passaram, 0 falharam** (14 novas, 3 reapontadas). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R164**.
+Sem migration.
