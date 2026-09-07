@@ -10745,3 +10745,53 @@ reescreve o MESMO arquivo.
 
 **Números.** Verificador: 3.055 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U111 — sistemas instalados = blocos + equipamentos do QAP vinculados; a ficha do cliente v2 (R200–R201)
+
+O Davi fechou o modelo que a U109 tinha deixado aberto: "Os sistemas
+instalados consistem em blocos com equipamentos vinculados a estes blocos. Os
+blocos deverão ser criados diretamente no nosso app, enquanto os equipamentos
+de cada cliente são importados pelo QAP, e aí no nosso sistema, o usuário
+vincula o equipamento ao sistema instalado (ambos no mesmo cliente)." E pediu a
+ficha inteira revista — visualização e configuração — para desktop.
+
+**O modelo já existia pela metade.** `cliente_sistemas` era o bloco (tipo,
+nome, código R63) e `equipamentos_patrimonio.cliente_sistema_id` nasceu nula na
+U109 exatamente para isto. Faltava o gesto: `vincularAoSistema(ids, sistemaId)`
+(em lote, porque 40 câmeras vão para o mesmo bloco de CFTV num gesto), que
+confere no dado que sistema e itens são do MESMO cliente — um clique errado
+não pode pendurar a câmera de um prédio no bloco de outro, e nada depois
+denunciaria.
+
+**O que saiu, e por quê.** O "+ Equipamento" dentro do bloco (que buscava no
+catálogo do ORÇAMENTO, `equipamentos`, ou aceitava nome livre) e o `+/-` de
+quantidade: equipamento agora é o do QAP, com identificação e data — cadastrar
+outro à mão criaria uma segunda verdade. O que veio dimensionado da proposta
+(`cliente_equipamentos`) NÃO saiu: ficou dentro do bloco como "Previsto no
+orçamento", porque "o que foi vendido × o que está lá" é leitura que interessa.
+"Importar do escopo" também ficou — é o atalho para CRIAR blocos a partir da
+proposta aprovada.
+
+**A ficha v2 (R201).** Cabeçalho de página (nome 22/700, situação, tipo, o
+endereço numa linha, as etiquetas de serviço, "Configurar"); coluna larga = o
+LOCAL (sistemas → fila → atividades → plantão → visitas), coluna estreita = a
+IDENTIDADE (fachada e dados → contatos → contratos → observações). Contratos
+mudou de coluna: é identidade comercial, não histórico do local. `Contato`
+virou componente de módulo (dentro do pai, remontava a cada render). A
+configuração ficou em duas colunas (`.ficha-colunas`), no design system —
+morreu ali o segundo tema claro (gradientes próprios e campos de 46px) que a
+tela carregava desde a Etapa 1.
+
+**O que se recusou a fazer.** (1) Casamento automático "parecido" na fila —
+continua exato, por escolha (R199). (2) Abrir a escrita do vínculo para o
+técnico: a policy da U109 é gestor com vínculo ativo, e mexer nela é decisão
+do Davi (registrado no manual; se o Vinicius for técnico no cadastro, ele não
+vincula). (3) Foto da fachada no cabeçalho: ficaria duplicada com o card da
+coluna estreita, onde estão os botões de trocar/remover.
+
+**O que a verificação pegou.** Uma asserção da U109 descrevia o bloco da ficha
+antes do vínculo ("sem bloco" como rótulo por item) — reapontada. A ficha
+entrou no censo de `etiqueta()` (R177): 18 → 20 etiquetas, dez arquivos.
+
+**Números.** Verificador: 3.068 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

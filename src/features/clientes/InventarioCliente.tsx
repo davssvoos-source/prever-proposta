@@ -1,24 +1,46 @@
-// Inventário do cliente (as-built) na ficha — Etapa 2 do sistema de OS.
-// Lista os sistemas instalados e os equipamentos de cada um, permite importar
-// do escopo aprovado de uma visita e registrar/ajustar o que se encontra em
-// campo. Ver docs/SISTEMA_OS.md §4.2.
+// SISTEMAS INSTALADOS na ficha do cliente — os blocos e o que está neles (R200, U111).
+//
+// Davi, 2026-09-07: "Cada página de cliente deverá ter um campo para os
+// sistemas instalados. Os sistemas instalados consistem em blocos com
+// equipamentos vinculados a estes blocos. Então os blocos deverão ser criados
+// diretamente no nosso app, enquanto os equipamentos de cada cliente são
+// importados pelo QAP, e aí no nosso sistema, o usuário vincula o equipamento
+// ao sistema instalado (ambos no mesmo cliente)."
+//
+// O MODELO, em uma linha: um SISTEMA INSTALADO é um BLOCO do cliente
+// (`cliente_sistemas` — tipo, nome, e a estrutura R63 com o código do bloco),
+// criado aqui no app; o EQUIPAMENTO é o item do QAP (`equipamentos_patrimonio`,
+// importado na U110) e o vínculo é a coluna `cliente_sistema_id` dele.
+//
+// O QUE MUDOU DA 1ª VERSÃO (Etapa 2 / R63): o equipamento deixou de ser
+// cadastrado À MÃO dentro do bloco (o botão "+ Equipamento" que buscava no
+// catálogo do orçamento saiu) — ele vem do QAP e é VINCULADO, com o mesmo
+// seletor da fila `EquipamentosDoCliente`, que também move e desvincula. O que
+// veio do ESCOPO APROVADO da proposta (`cliente_equipamentos`, o dimensionado)
+// continua visível dentro do bloco como "Previsto no orçamento": é a leitura
+// "o que foi vendido × o que está lá", e apagá-la esconderia a diferença.
+// "Importar do escopo" fica, porque é o atalho para CRIAR os blocos a partir
+// da proposta aprovada.
+//
+// OS SUBCOMPONENTES SÃO DE MÓDULO (o mesmo motivo do PainelChamado): declarados
+// dentro do pai ganhariam identidade nova a cada render e o modal remontaria.
+// `useModalEstilos` e `BotaoFechar` são exportados para `EditorBlocoCliente`
+// usar a MESMA casca de modal — uma segunda linguagem visual ninguém pediu.
 
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Boxes, ChevronDown, ChevronRight, Download, Minus, Plus, Search, Settings2, Trash2, X,
-} from "lucide-react";
+import { Boxes, ChevronDown, ChevronRight, Download, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
-import { etiqueta } from "@/lib/ui";
+import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
+import { PRISMA, cinzas } from "@/lib/paleta";
+import { useEquipamentosDoCliente, vincularAoSistema, type ItemDePatrimonio } from "@/features/equipamentos/data";
 import {
   useInventario,
   useVisitasComEscopo,
-  useCatalogoEquipamentos,
   derivarInventarioDaVisita,
   criarSistema,
   excluirSistema,
-  criarEquipamentoInstalado,
   atualizarEquipamentoInstalado,
   excluirEquipamentoInstalado,
   nomeEquipamento,
@@ -29,53 +51,58 @@ import {
   ESTADO_CORES,
   ORIGEM_LABEL,
   type EstadoEquipamento,
-  type ItemCatalogo,
   type SistemaInstalado,
   type TipoSistema,
 } from "./inventario";
 import { EditorBlocoCliente } from "./EditorBlocoCliente";
+import { LinhaDoPatrimonio, SeletorDeSistema, useInvalidarPatrimonioDoCliente } from "./EquipamentosDoCliente";
 
 export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string; podeEditar: boolean }) {
   const { isLight } = useTheme();
+  const c = cinzas(isLight);
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   const qc = useQueryClient();
+  const invalidarPatrimonio = useInvalidarPatrimonioDoCliente(clienteId);
+
   const { data: sistemas = [], isLoading } = useInventario(clienteId);
   const { data: visitasEscopo = [] } = useVisitasComEscopo(clienteId);
+  const { data: patrimonio } = useEquipamentosDoCliente(clienteId);
 
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<
-    null | { tipo: "importar" } | { tipo: "sistema" }
-    | { tipo: "equipamento"; sistema: SistemaInstalado } | { tipo: "bloco"; sistema: SistemaInstalado }
+    null | { tipo: "importar" } | { tipo: "sistema" } | { tipo: "bloco"; sistema: SistemaInstalado }
   >(null);
 
-  const textPrimary = isLight ? "#212121" : "#ffffff";
-  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
-  const gold = isLight ? "#A06108" : "#F8C811";
+  // os equipamentos do QAP, agrupados pelo bloco em que estão (R200)
+  const porSistema = useMemo(() => {
+    const m = new Map<string, ItemDePatrimonio[]>();
+    for (const i of patrimonio?.itens ?? []) {
+      if (!i.cliente_sistema_id) continue;
+      const arr = m.get(i.cliente_sistema_id) ?? [];
+      arr.push(i);
+      m.set(i.cliente_sistema_id, arr);
+    }
+    return m;
+  }, [patrimonio]);
+  const totalDoQap = patrimonio?.itens.length ?? 0;
+  const vinculados = [...porSistema.values()].reduce((t, l) => t + l.length, 0);
 
-  const CARD: CSSProperties = {
-    background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
-      : "linear-gradient(160deg, #161616 0%, #101010 100%)",
-    border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
-    borderRadius: 18,
-    padding: "16px",
-    boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.07)" : "none",
-  };
-  const SEC_LABEL: CSSProperties = {
-    fontFamily: "var(--fonte)",
-    fontWeight: 700, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.5)" : "rgba(248,200,17,0.65)",
+  const MICRO: CSSProperties = {
+    fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em",
+    textTransform: "uppercase", color: gold,
   };
   const btnSec: CSSProperties = {
-    height: 38, padding: "0 14px", borderRadius: 12,
-    background: isLight ? "#ffffff" : "#1b1b1b",
-    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-    fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
+    height: 32, padding: "0 12px", borderRadius: 10,
+    background: c.campo, border: `1px solid ${c.divisoria}`,
+    color: c.texto, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
+    fontFamily: FONT, fontWeight: 600, fontSize: 12,
   };
 
   const invalidar = () => {
     qc.invalidateQueries({ queryKey: ["cliente-inventario", clienteId] });
     qc.invalidateQueries({ queryKey: ["cliente-visitas-escopo", clienteId] });
+    invalidarPatrimonio();
   };
 
   const importar = useMutation({
@@ -85,8 +112,8 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
       setModal(null);
       toast.success(
         r.sistemas === 0
-          ? "Nada novo para importar — os blocos desta visita já estão no inventário."
-          : `${r.sistemas} sistema(s) e ${r.equipamentos} equipamento(s) importados.`,
+          ? "Nada novo para importar — os blocos desta visita já estão na ficha."
+          : `${r.sistemas} bloco(s) criado(s) a partir da proposta, com ${r.equipamentos} item(ns) previsto(s).`,
       );
     },
     onError: (e: Error) => toast.error(e.message),
@@ -94,34 +121,44 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
   const removerSistema = useMutation({
     mutationFn: (id: string) => excluirSistema(id),
-    onSuccess: () => { invalidar(); toast.success("Sistema removido do inventário."); },
+    onSuccess: () => { invalidar(); toast.success("Bloco removido. Os equipamentos dele voltaram para a fila de vínculo."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const mudarEquipamento = useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: { qtd?: number; estado?: EstadoEquipamento } }) =>
+  const mover = useMutation({
+    mutationFn: ({ id, sistemaId }: { id: string; sistemaId: string | null }) => vincularAoSistema([id], sistemaId),
+    onSuccess: (_d, { sistemaId }) => {
+      invalidar();
+      toast.success(sistemaId ? "Equipamento movido de bloco." : "Equipamento desvinculado — voltou para a fila.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mudarPrevisto = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: { estado?: EstadoEquipamento } }) =>
       atualizarEquipamentoInstalado(id, patch),
     onSuccess: () => invalidar(),
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const removerEquipamento = useMutation({
+  const removerPrevisto = useMutation({
     mutationFn: (id: string) => excluirEquipamentoInstalado(id),
-    onSuccess: () => { invalidar(); toast.success("Equipamento removido."); },
+    onSuccess: () => { invalidar(); toast.success("Item previsto removido."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const totalEquipamentos = sistemas.reduce(
-    (s, sis) => s + sis.equipamentos.filter((e) => e.estado === "ativo").reduce((n, e) => n + Number(e.qtd || 0), 0),
-    0,
-  );
   const podeImportar = visitasEscopo.some((v) => v.qtdBlocosNovos > 0);
 
   return (
-    <div style={CARD}>
+    <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <Boxes size={16} color={gold} />
-        <span style={SEC_LABEL}>Sistemas instalados</span>
+        <span style={MICRO}>Sistemas instalados</span>
+        {sistemas.length > 0 && (
+          <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario }}>
+            {sistemas.length} bloco{sistemas.length === 1 ? "" : "s"}
+            {totalDoQap > 0 && ` · ${vinculados} de ${totalDoQap} equipamentos do QAP vinculados`}
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         {podeEditar && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -131,49 +168,42 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                 Importar do escopo
               </button>
             )}
-            <button style={btnSec} onClick={() => setModal({ tipo: "sistema" })}>
-              <Plus size={14} color={gold} />
-              Sistema
+            <button
+              style={{ ...goldButton(), boxShadow: "none", height: 32, padding: "0 12px", borderRadius: 10, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}
+              onClick={() => setModal({ tipo: "sistema" })}
+            >
+              <Plus size={14} />
+              Bloco
             </button>
           </div>
         )}
       </div>
 
-      {sistemas.length > 0 && (
-        <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, marginTop: 8 }}>
-          {sistemas.length} sistema{sistemas.length === 1 ? "" : "s"} · {totalEquipamentos} equipamento{totalEquipamentos === 1 ? "" : "s"} ativo{totalEquipamentos === 1 ? "" : "s"}
-        </div>
-      )}
-
       {isLoading ? (
-        <div style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary, paddingTop: 12 }}>
-          Carregando inventário…
+        <div style={{ fontFamily: FONT, fontSize: 13, color: c.textoSecundario, paddingTop: 12 }}>
+          Carregando os sistemas…
         </div>
       ) : sistemas.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14 }}>
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 13, color: textSecondary }}>
-            Nenhum equipamento registrado neste cliente.
+          <span style={{ fontFamily: FONT, fontSize: 13, color: c.texto }}>
+            Nenhum sistema instalado ainda.
           </span>
-          <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary }}>
-            {podeImportar
-              ? "Importe do escopo aprovado de uma visita ou registre os sistemas manualmente."
-              : "Registre os sistemas manualmente — é o que os chamados vão usar para saber o que existe no local."}
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
+            Cada bloco é um sistema do local — a portaria, o CFTV, o alarme, a cerca. Crie o primeiro
+            com <strong>+ Bloco</strong>{podeImportar ? " ou importe os blocos da proposta aprovada" : ""}; depois
+            vincule a ele os equipamentos que vieram do QAP{totalDoQap > 0 ? ` (${totalDoQap} esperando)` : ""}.
           </span>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
           {sistemas.map((s) => {
             const aberto = expandidos.has(s.id);
-            const ativos = s.equipamentos.filter((e) => e.estado === "ativo").length;
+            const doQap = porSistema.get(s.id) ?? [];
+            const previstos = s.equipamentos;
             return (
               <div
                 key={s.id}
-                style={{
-                  borderRadius: 14,
-                  border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                  background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                  overflow: "hidden",
-                }}
+                style={{ borderRadius: 14, border: `1px solid ${c.divisoria}`, background: c.campo, overflow: "hidden" }}
               >
                 <button
                   onClick={() =>
@@ -183,17 +213,18 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                       return n;
                     })
                   }
+                  aria-expanded={aberto}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 14px", background: "transparent", border: "none",
-                    cursor: "pointer", textAlign: "left", color: textPrimary,
+                    padding: "11px 14px", background: "transparent", border: "none",
+                    cursor: "pointer", textAlign: "left", color: c.texto,
                   }}
                 >
-                  {aberto ? <ChevronDown size={16} color={textSecondary} /> : <ChevronRight size={16} color={textSecondary} />}
+                  {aberto ? <ChevronDown size={16} color={c.textoSecundario} /> : <ChevronRight size={16} color={c.textoSecundario} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{s.nome}</div>
-                    <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: textSecondary }}>
-                      {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo} · {ativos} item{ativos === 1 ? "" : "ns"}
+                    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5 }}>{s.nome}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, marginTop: 1 }}>
+                      {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo}
                       {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
                     </div>
                     {/* R63: o código já é a prova de que o bloco está
@@ -201,115 +232,120 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                         sabia abrindo o editor pra conferir */}
                     {s.codigo_bloco && (
                       <div style={{
-                        fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, color: gold,
+                        fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: gold,
                         marginTop: 2, wordBreak: "break-all",
                       }}>
                         {s.codigo_bloco}
                       </div>
                     )}
                   </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
+                      {doQap.length}
+                    </div>
+                    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: c.textoSecundario }}>
+                      {doQap.length === 1 ? "equipamento" : "equipamentos"}
+                    </div>
+                  </div>
                 </button>
 
                 {aberto && (
-                  <div style={{ padding: "0 14px 14px" }}>
-                    {s.equipamentos.length === 0 ? (
-                      <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: textSecondary, padding: "6px 0" }}>
-                        Sem equipamentos registrados neste sistema.
-                      </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        {s.equipamentos.map((e) => {
-                          const cor = ESTADO_CORES[e.estado] ?? ESTADO_CORES.ativo;
-                          return (
-                            <div
-                              key={e.id}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 8, padding: "8px 0",
-                                borderTop: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
-                              }}
-                            >
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600 }}>
-                                  {nomeEquipamento(e)}
-                                </div>
-                                <div style={{ fontFamily: "var(--fonte)", fontSize: 10, color: textSecondary }}>
-                                  {[e.cod_eq, e.equipamento?.marca, e.equipamento?.modelo].filter(Boolean).join(" · ")}
-                                  {e.origem !== "implantacao" ? ` · ${ORIGEM_LABEL[e.origem]}` : ""}
-                                </div>
-                              </div>
-                              {podeEditar ? (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-                                  <button
-                                    onClick={() => mudarEquipamento.mutate({ id: e.id, patch: { qtd: Math.max(0, Number(e.qtd) - 1) } })}
-                                    style={{
-                                      width: 26, height: 26, borderRadius: 8, cursor: "pointer",
-                                      background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.06)",
-                                      border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-                                      color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}
-                                  >
-                                    <Minus size={12} />
-                                  </button>
-                                  <span style={{ minWidth: 26, textAlign: "center", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12 }}>
-                                    {Number(e.qtd)}
-                                  </span>
-                                  <button
-                                    onClick={() => mudarEquipamento.mutate({ id: e.id, patch: { qtd: Number(e.qtd) + 1 } })}
-                                    style={{
-                                      width: 26, height: 26, borderRadius: 8, cursor: "pointer",
-                                      background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.06)",
-                                      border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
-                                      color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}
-                                  >
-                                    <Plus size={12} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <span style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-                                  {Number(e.qtd)}
-                                </span>
-                              )}
-                              <button
-                                onClick={() =>
-                                  podeEditar &&
-                                  mudarEquipamento.mutate({
-                                    id: e.id,
-                                    patch: { estado: e.estado === "ativo" ? "removido" : "ativo" },
-                                  })
-                                }
-                                title={podeEditar ? "Alternar entre ativo e removido" : undefined}
+                  <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
+                    {/* ── o que ESTÁ no bloco: os equipamentos do QAP vinculados (R200) ── */}
+                    <div>
+                      <div style={{ ...MICRO, fontSize: 9.5, marginBottom: 2 }}>Equipamentos vinculados</div>
+                      {doQap.length === 0 ? (
+                        <div style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario, padding: "6px 0" }}>
+                          Nenhum equipamento do QAP neste bloco ainda — vincule pela fila <strong>Equipamentos a vincular</strong>, abaixo.
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          {doQap.map((i, idx) => (
+                            <LinhaDoPatrimonio
+                              key={i.id}
+                              item={i}
+                              primeira={idx === 0}
+                              direita={podeEditar ? (
+                                <SeletorDeSistema
+                                  sistemas={sistemas}
+                                  valor={s.id}
+                                  desabilitado={mover.isPending}
+                                  aoMudar={(sid) => mover.mutate({ id: i.id, sistemaId: sid })}
+                                />
+                              ) : undefined}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── o que foi VENDIDO: o dimensionado da proposta aprovada (R63) ── */}
+                    {previstos.length > 0 && (
+                      <div>
+                        <div style={{ ...MICRO, fontSize: 9.5, color: c.textoSecundario, marginBottom: 2 }}>
+                          Previsto no orçamento
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          {previstos.map((e, idx) => {
+                            const cor = ESTADO_CORES[e.estado] ?? ESTADO_CORES.ativo;
+                            return (
+                              <div
+                                key={e.id}
                                 style={{
-                                  padding: "3px 8px", borderRadius: 12, flexShrink: 0,
-                                  ...etiqueta(cor),
-                                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
-                                  letterSpacing: "0.06em", textTransform: "uppercase",
-                                  cursor: podeEditar ? "pointer" : "default",
+                                  display: "flex", alignItems: "center", gap: 8, padding: "7px 0",
+                                  borderTop: idx === 0 ? "none" : `1px solid ${c.divisoria}`,
                                 }}
                               >
-                                {ESTADO_LABEL[e.estado] ?? e.estado}
-                              </button>
-                              {podeEditar && (
+                                <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12, minWidth: 28, color: c.texto, fontVariantNumeric: "tabular-nums" }}>
+                                  {Number(e.qtd)}×
+                                </span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: c.texto }}>
+                                    {nomeEquipamento(e)}
+                                  </div>
+                                  <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario }}>
+                                    {[e.cod_eq, e.equipamento?.marca, e.equipamento?.modelo].filter(Boolean).join(" · ")}
+                                    {e.origem !== "implantacao" ? ` · ${ORIGEM_LABEL[e.origem]}` : ""}
+                                  </div>
+                                </div>
                                 <button
-                                  onClick={() => removerEquipamento.mutate(e.id)}
+                                  onClick={() =>
+                                    podeEditar &&
+                                    mudarPrevisto.mutate({ id: e.id, patch: { estado: e.estado === "ativo" ? "removido" : "ativo" } })
+                                  }
+                                  title={podeEditar ? "Alternar entre ativo e removido" : undefined}
                                   style={{
-                                    width: 26, height: 26, borderRadius: 8, cursor: "pointer", flexShrink: 0,
-                                    background: "transparent", border: "none",
-                                    color: isLight ? "#B1242E" : "#F17881",
-                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    padding: "3px 8px", borderRadius: 12, flexShrink: 0, border: "none",
+                                    ...etiqueta(cor),
+                                    fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                                    letterSpacing: "0.06em", textTransform: "uppercase",
+                                    cursor: podeEditar ? "pointer" : "default",
                                   }}
                                 >
-                                  <Trash2 size={13} />
+                                  {ESTADO_LABEL[e.estado] ?? e.estado}
                                 </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                                {podeEditar && (
+                                  <button
+                                    onClick={() => removerPrevisto.mutate(e.id)}
+                                    aria-label={`Remover ${nomeEquipamento(e)} do previsto`}
+                                    style={{
+                                      width: 26, height: 26, borderRadius: 8, cursor: "pointer", flexShrink: 0,
+                                      background: "transparent", border: "none", color: vermelho,
+                                      display: "flex", alignItems: "center", justifyContent: "center",
+                                    }}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
                     {podeEditar && (
-                      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {/* R63: só os tipos que gerarCodigoBloco sabe montar
                             (PED/VEI/CFTV/AL/CER/CENT) — ELV/TOT continuam só
                             com nome/descrição por enquanto (ver
@@ -320,16 +356,17 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                             {s.codigo_bloco ? "Editar estrutura" : "Configurar bloco"}
                           </button>
                         )}
-                        <button style={btnSec} onClick={() => setModal({ tipo: "equipamento", sistema: s })}>
-                          <Plus size={14} color={gold} />
-                          Equipamento
-                        </button>
                         <button
-                          style={{ ...btnSec, color: isLight ? "#B1242E" : "#F17881" }}
-                          onClick={() => removerSistema.mutate(s.id)}
+                          style={{ ...btnSec, color: vermelho }}
+                          onClick={() => {
+                            const aviso = doQap.length > 0
+                              ? `Excluir o bloco "${s.nome}"? Os ${doQap.length} equipamentos dele voltam para a fila de vínculo.`
+                              : `Excluir o bloco "${s.nome}"?`;
+                            if (confirm(aviso)) removerSistema.mutate(s.id);
+                          }}
                         >
                           <Trash2 size={14} />
-                          Excluir sistema
+                          Excluir bloco
                         </button>
                       </div>
                     )}
@@ -356,13 +393,6 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
           onCriado={() => { invalidar(); setModal(null); }}
         />
       )}
-      {modal?.tipo === "equipamento" && (
-        <ModalEquipamento
-          sistema={modal.sistema}
-          onFechar={() => setModal(null)}
-          onCriado={() => { invalidar(); setModal(null); }}
-        />
-      )}
       {modal?.tipo === "bloco" && (
         <EditorBlocoCliente
           sistema={modal.sistema}
@@ -373,60 +403,56 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   );
 }
 
-// ── Modais ──────────────────────────────────────────────────────────────────
+// ── Modais ───────────────────────────────────────────────────
 
 // exportados para EditorBlocoCliente.tsx reaproveitar a MESMA casca de modal
-// (R63) — um popover próprio ficaria com bordas/vidro levemente diferentes
-// do resto da ficha do cliente, e ninguém pediu uma segunda linguagem visual
+// (R63) — um popover próprio ficaria com bordas levemente diferentes do resto
+// da ficha do cliente, e ninguém pediu uma segunda linguagem visual
 export function useModalEstilos() {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const c = cinzas(isLight);
   return {
     isLight,
-    textPrimary,
-    textSecondary: isLight ? "#505050" : "rgba(255,255,255,0.55)",
-    gold: isLight ? "#A06108" : "#F8C811",
+    textPrimary: c.texto,
+    textSecondary: c.textoSecundario,
+    gold: isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
     backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)", zIndex: 90 } as CSSProperties,
     painel: {
       position: "fixed", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
-      width: "min(440px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
+      width: "min(460px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
       borderRadius: 18, padding: "20px 18px",
-      background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
-      border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
+      background: c.superficie, border: `1px solid ${c.divisoria}`,
       boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
-      color: textPrimary,
+      color: c.texto,
     } as CSSProperties,
-    titulo: { fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 } as CSSProperties,
+    titulo: { fontFamily: FONT, fontWeight: 700, fontSize: 16 } as CSSProperties,
     label: {
-      fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
-      letterSpacing: "0.12em", textTransform: "uppercase",
-      color: isLight ? "#505050" : "rgba(255,255,255,0.55)", marginBottom: 6, display: "block",
+      fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em", textTransform: "uppercase",
+      color: c.textoSecundario, marginBottom: 6, display: "block",
     } as CSSProperties,
     input: {
-      width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-      background: isLight ? "#ffffff" : "#1b1b1b",
-      border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-      color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
+      width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
+      background: c.campo, border: `1px solid ${c.divisoria}`,
+      color: c.texto, fontFamily: FONT, fontWeight: 400, fontSize: 14,
       outline: "none", colorScheme: isLight ? "light" : "dark",
     } as CSSProperties,
     cta: {
-      width: "100%", height: 50, borderRadius: 25, border: "none",
-      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E",
-      fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
-      letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
+      ...goldButton(), boxShadow: "none", width: "100%", height: 46, borderRadius: 14,
+      fontFamily: FONT, fontWeight: 700, fontSize: 13,
     } as CSSProperties,
   };
 }
 
 export function BotaoFechar({ onClick }: { onClick: () => void }) {
   const { isLight } = useTheme();
+  const c = cinzas(isLight);
   return (
     <button
       onClick={onClick}
+      aria-label="Fechar"
       style={{
         width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
-        background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-        color: isLight ? "#212121" : "#fff",
+        background: c.campo, color: c.texto,
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}
     >
@@ -444,17 +470,19 @@ function ModalImportar({
   onFechar: () => void;
 }) {
   const s = useModalEstilos();
+  const c = cinzas(s.isLight);
   return (
     <>
       <div style={s.backdrop} onClick={() => !importando && onFechar()} />
       <div style={s.painel}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={s.titulo}>Importar do escopo aprovado</span>
+          <span style={s.titulo}>Importar blocos da proposta aprovada</span>
           <BotaoFechar onClick={onFechar} />
         </div>
-        <p style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary, lineHeight: 1.5, marginBottom: 14 }}>
-          Cada bloco do orçamento aprovado vira um sistema instalado, com os equipamentos dimensionados.
-          Blocos já importados são ignorados.
+        <p style={{ fontFamily: FONT, fontSize: 12.5, color: s.textSecondary, lineHeight: 1.5, marginBottom: 14 }}>
+          Cada bloco do orçamento aprovado vira um sistema instalado, com o que foi dimensionado
+          como "previsto". Os equipamentos de verdade vêm do QAP e são vinculados depois. Blocos
+          já importados são ignorados.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {visitas.map((v) => (
@@ -465,17 +493,15 @@ function ModalImportar({
               style={{
                 display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
                 padding: "12px 14px", borderRadius: 12, textAlign: "left",
-                background: s.isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                border: s.isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                color: s.textPrimary,
+                background: c.campo, border: `1px solid ${c.divisoria}`, color: s.textPrimary,
                 cursor: importando ? "wait" : v.qtdBlocosNovos === 0 ? "default" : "pointer",
                 opacity: v.qtdBlocosNovos === 0 ? 0.55 : 1,
               }}
             >
-              <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
+              <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13 }}>
                 {v.data ? new Date(v.data).toLocaleDateString("pt-BR") : "sem data"} · {v.nome}
               </span>
-              <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: s.textSecondary }}>
+              <span style={{ fontFamily: FONT, fontSize: 11.5, color: s.textSecondary }}>
                 {v.qtdBlocosNovos === 0
                   ? `${v.qtdBlocos} bloco(s) — já importados`
                   : `${v.qtdBlocosNovos} de ${v.qtdBlocos} bloco(s) a importar`}
@@ -508,7 +534,7 @@ function ModalSistema({
         nome: nome.trim() || TIPO_SISTEMA_LABEL[tipo],
         descricao: descricao.trim() || null,
       }),
-    onSuccess: () => { toast.success("Sistema adicionado."); onCriado(); },
+    onSuccess: () => { toast.success("Bloco criado. Agora vincule a ele os equipamentos do QAP."); onCriado(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -516,10 +542,14 @@ function ModalSistema({
     <>
       <div style={s.backdrop} onClick={() => !criar.isPending && onFechar()} />
       <div style={s.painel}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <span style={s.titulo}>Novo sistema instalado</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={s.titulo}>Novo bloco</span>
           <BotaoFechar onClick={onFechar} />
         </div>
+        <p style={{ fontFamily: FONT, fontSize: 12.5, color: s.textSecondary, lineHeight: 1.5, margin: "0 0 14px" }}>
+          Um bloco é um sistema instalado no local — a portaria social, o CFTV da garagem, a central
+          de alarme. Os equipamentos do QAP são vinculados a ele depois.
+        </p>
 
         <label style={s.label}>Tipo</label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
@@ -529,14 +559,10 @@ function ModalSistema({
               <button
                 key={t}
                 onClick={() => setTipo(t)}
+                aria-pressed={ativo}
                 style={{
-                  padding: "8px 12px", borderRadius: 10,
-                  border: ativo ? "none" : s.isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-                  background: ativo
-                    ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                    : s.isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
-                  color: ativo ? "#0E0E0E" : s.textPrimary,
-                  fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11, cursor: "pointer",
+                  ...botaoSelecao(ativo, s.isLight, null), boxShadow: "none",
+                  padding: "7px 12px", borderRadius: 10, fontSize: 11.5,
                 }}
               >
                 {TIPO_SISTEMA_LABEL[t]}
@@ -562,147 +588,7 @@ function ModalSistema({
         />
 
         <button style={{ ...s.cta, opacity: criar.isPending ? 0.7 : 1 }} disabled={criar.isPending} onClick={() => criar.mutate()}>
-          {criar.isPending ? "Adicionando…" : "Adicionar sistema"}
-        </button>
-      </div>
-    </>
-  );
-}
-
-function ModalEquipamento({
-  sistema, onFechar, onCriado,
-}: {
-  sistema: SistemaInstalado;
-  onFechar: () => void;
-  onCriado: () => void;
-}) {
-  const s = useModalEstilos();
-  const [busca, setBusca] = useState("");
-  const [escolhido, setEscolhido] = useState<ItemCatalogo | null>(null);
-  const [nomeLivre, setNomeLivre] = useState("");
-  const [qtd, setQtd] = useState("1");
-  const { data: resultados = [], isFetching } = useCatalogoEquipamentos(busca);
-
-  const criar = useMutation({
-    mutationFn: () => {
-      const n = Number(qtd);
-      if (!Number.isFinite(n) || n <= 0) throw new Error("Quantidade inválida.");
-      if (!escolhido && !nomeLivre.trim()) throw new Error("Escolha um equipamento do catálogo ou informe o nome.");
-      return criarEquipamentoInstalado({
-        cliente_sistema_id: sistema.id,
-        equipamento_id: escolhido?.id ?? null,
-        cod_eq: escolhido?.code ?? null,
-        nome_snapshot: escolhido?.nome ?? nomeLivre.trim(),
-        qtd: n,
-        estado: "ativo",
-        origem: "campo",
-      });
-    },
-    onSuccess: () => { toast.success("Equipamento registrado."); onCriado(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <>
-      <div style={s.backdrop} onClick={() => !criar.isPending && onFechar()} />
-      <div style={s.painel}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={s.titulo}>Equipamento</span>
-          <BotaoFechar onClick={onFechar} />
-        </div>
-        <p style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary, marginBottom: 14 }}>
-          em {sistema.nome}
-        </p>
-
-        {escolhido ? (
-          <div
-            style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, marginBottom: 14,
-              background: s.isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
-              border: s.isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{escolhido.nome}</div>
-              <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: s.textSecondary }}>
-                {[escolhido.code, escolhido.marca, escolhido.modelo].filter(Boolean).join(" · ")}
-              </div>
-            </div>
-            <button
-              onClick={() => setEscolhido(null)}
-              style={{
-                height: 32, padding: "0 12px", borderRadius: 10, flexShrink: 0,
-                background: s.isLight ? "#ffffff" : "#1b1b1b",
-                border: s.isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                color: s.textPrimary, cursor: "pointer",
-                fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
-              }}
-            >
-              Trocar
-            </button>
-          </div>
-        ) : (
-          <>
-            <label style={s.label}>Buscar no catálogo</label>
-            <div style={{ position: "relative", marginBottom: 10 }}>
-              <Search size={15} color={s.textSecondary} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)" }} />
-              <input
-                style={{ ...s.input, paddingLeft: 36 }}
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Nome, código ou modelo"
-              />
-            </div>
-            {busca.trim().length >= 2 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12, maxHeight: 220, overflowY: "auto" }}>
-                {isFetching ? (
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary }}>Buscando…</span>
-                ) : resultados.length === 0 ? (
-                  <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: s.textSecondary }}>
-                    Nada no catálogo — informe o nome abaixo para registrar como equipamento avulso.
-                  </span>
-                ) : (
-                  resultados.map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => setEscolhido(r)}
-                      style={{
-                        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
-                        padding: "10px 12px", borderRadius: 10, textAlign: "left", cursor: "pointer",
-                        background: s.isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                        border: s.isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                        color: s.textPrimary,
-                      }}
-                    >
-                      <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12 }}>{r.nome}</span>
-                      <span style={{ fontFamily: "var(--fonte)", fontSize: 10, color: s.textSecondary }}>
-                        {[r.code, r.marca, r.modelo].filter(Boolean).join(" · ")}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-            <label style={s.label}>Ou nome do equipamento (fora do catálogo)</label>
-            <input
-              style={{ ...s.input, marginBottom: 14 }}
-              value={nomeLivre}
-              onChange={(e) => setNomeLivre(e.target.value)}
-              placeholder="Ex.: interfonia antiga do prédio"
-            />
-          </>
-        )}
-
-        <label style={s.label}>Quantidade</label>
-        <input
-          style={{ ...s.input, marginBottom: 18 }}
-          value={qtd}
-          onChange={(e) => setQtd(e.target.value)}
-          inputMode="numeric"
-        />
-
-        <button style={{ ...s.cta, opacity: criar.isPending ? 0.7 : 1 }} disabled={criar.isPending} onClick={() => criar.mutate()}>
-          {criar.isPending ? "Registrando…" : "Registrar equipamento"}
+          {criar.isPending ? "Criando…" : "Criar bloco"}
         </button>
       </div>
     </>

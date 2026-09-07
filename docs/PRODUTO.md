@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)](#22-o-patrimônio-do-qap-r196r199-davi-2026-09-04) · R196–R199 (4)
+- [22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)](#22-o-patrimônio-do-qap-r196r199-davi-2026-09-04) · R196–R201 (6)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R199). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-07 (R201). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3778,3 +3778,38 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   listados, e posteriormente iremos associar cada equipamento a um bloco do
   condomínio… Antes ainda vamos cadastrar os sistemas implantados em cada
   cliente, para depois vincula-los aos equipamentos".)*
+
+- **R200** — **Sistema instalado é um BLOCO do cliente, criado no app; o
+  equipamento vem do QAP e é VINCULADO ao bloco — ambos do mesmo cliente.**
+  Cada ficha tem a seção "Sistemas instalados": os blocos
+  (`cliente_sistemas` — tipo, nome, e a estrutura da R63 com o código do
+  bloco), criados por "+ Bloco" ou importados do escopo da proposta aprovada.
+  Os equipamentos do QAP (`equipamentos_patrimonio`) que ainda não estão em
+  bloco nenhum ficam na fila **"Equipamentos a vincular"**, com seleção
+  múltipla e um seletor de sistema (em lote e por linha); dentro do bloco, o
+  mesmo seletor **move** ou **desvincula**. O vínculo é a coluna
+  `cliente_sistema_id`, e o banco recusa sistema de outro cliente. O
+  equipamento **não se cadastra mais à mão** dentro do bloco (o botão que
+  buscava no catálogo do orçamento saiu); o que veio dimensionado da proposta
+  continua visível dentro do bloco como **"Previsto no orçamento"** — o que
+  foi vendido ao lado do que está lá. Excluir um bloco devolve os equipamentos
+  dele à fila. *(Davi, 07/09/2026: "Cada página de cliente deverá ter um campo
+  para os sistemas instalados. Os sistemas instalados consistem em blocos com
+  equipamentos vinculados a estes blocos. Então os blocos deverão ser criados
+  diretamente no nosso app, enquanto os equipamentos de cada cliente são
+  importados pelo QAP, e aí no nosso sistema, o usuário vincula o equipamento
+  ao sistema instalado (ambos no mesmo cliente)".)*
+
+- **R201** — **A ficha do cliente é uma página de computador: cabeçalho de
+  página e duas colunas; a configuração, duas colunas.** Cabeçalho: nome
+  22/700, situação e tipo de local ao lado, endereço numa linha, as etiquetas
+  de serviço prestado (que também são o controle, R41/R173) e o botão
+  **Configurar**. Coluna larga, o **local**: Sistemas instalados, Equipamentos
+  a vincular, Atividades, Plantão, Histórico de visitas. Coluna estreita, a
+  **identidade**: a fachada com os dados do local, Contatos (WhatsApp
+  clicável), Contratos (só quem vê financeiro) e Observações. A configuração
+  (`ClienteForm`) divide-se em Identificação + Endereço | Contatos + Estrutura
+  do local, no design system (cinza neutro, botão de seleção sem brilho, uma
+  ação dourada). Nenhum campo entrou ou saiu; no celular tudo empilha. *(Davi,
+  07/09/2026: "Revise toda a página do cliente, quero um design atualizado,
+  layout para desktop, revise toda a página de configuração do cliente".)*

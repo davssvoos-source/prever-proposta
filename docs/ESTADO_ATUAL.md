@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R199** · último diário:
-**U110** · verificador: **3.055 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-07** · última regra: **R201** · último diário:
+**U111** · verificador: **3.068 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -87,6 +87,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U108 | o cinza neutro no sistema inteiro — 29 hexes azulados varridos em cem arquivos, texto na mesma luminância, duas asserções travam a volta (R186 aplicada); tipografia estratégica — títulos de página 700, valor de campo 400, rótulo pequeno 600, só {100, 400, 600, 700} (R195) |
 | U109 | o patrimônio do QAP: `catalogo_equipamentos` + `equipamentos_patrimonio` com RLS, o módulo puro de importação, a tela "Equipamentos cadastrados" (`/equipamentos`), o bloco de equipamentos na ficha do cliente e a saída da tela "Catálogo" (R196–R199) |
 | U110 | os **4.241 equipamentos do QAP** importados: retrato cru versionado, 429 variações de catálogo, chave `qap:<id>` (idempotente), vínculo de local feito no SQL contra a base viva e a relação dos 40 locais fora da base (R196–R199) |
+| U111 | sistemas instalados = **blocos** criados no app + **equipamentos do QAP vinculados** (fila com seleção em lote, mover/desvincular dentro do bloco, mesmo cliente conferido no dado); a **ficha do cliente v2** — cabeçalho de página, duas colunas, configuração em duas colunas (R200–R201) |
 
 ## 4. Banco: migrations
 
@@ -180,6 +181,11 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   variações**; 40 locais do QAP não estão na base e esperam decisão do Davi
   (nossos próprios locais, pessoas por primeiro nome, e clientes a conferir —
   ver `docs/importacao/locais-desconhecidos.md`).
+- **R200–R201** — **sistema instalado é um bloco** criado no app; o equipamento
+  do QAP é **vinculado** ao bloco (fila "Equipamentos a vincular", em lote); a
+  **ficha do cliente v2** em cabeçalho + duas colunas, configuração em duas
+  colunas. Pendência de decisão: a escrita do vínculo é de gestor com vínculo
+  ativo — se o Vinicius for técnico no cadastro, ele não vincula.
 
 ## 6. Perguntas em aberto
 

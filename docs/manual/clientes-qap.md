@@ -209,3 +209,26 @@ exceção e mora no SQL da migration: o UUID do cliente só existe no banco, e
 casar contra a base VIVA no momento de rodar é melhor que casar contra um
 retrato que já nasce velho. O casamento do SQL é mais estrito que o do módulo
 (não ignora acento), então ele erra para o lado de "não vinculou".
+
+## Sistemas instalados e o vínculo com os equipamentos (R200–R201, U111)
+
+Na ficha do cliente, **Sistemas instalados** é a lista de **blocos** do local —
+a portaria social, o CFTV da garagem, a central de alarme. O bloco se cria no
+app (**+ Bloco**: tipo, nome, descrição) ou vem do escopo da proposta aprovada
+(**Importar do escopo**), e pode ganhar a estrutura da R63 (**Configurar
+bloco**, que gera o código).
+
+Os **equipamentos** vêm do QAP (U110) e entram na ficha na fila **Equipamentos
+a vincular**. Marque os que são do mesmo sistema, escolha o bloco no seletor e
+clique **Vincular** — ou use o seletor de cada linha. Dentro do bloco, o mesmo
+seletor **move** o equipamento para outro bloco ou o **desvincula** (volta para
+a fila). Excluir um bloco devolve os equipamentos dele à fila. O banco recusa
+vincular a um sistema de outro cliente.
+
+O que foi **dimensionado na proposta** (o "previsto no orçamento") continua
+visível dentro do bloco, ao lado do que está lá de verdade. O cadastro manual
+de equipamento pela ficha saiu: equipamento é o do QAP.
+
+**Quem pode vincular:** hoje, gestor com vínculo ativo (a policy de escrita do
+patrimônio, U109). Um técnico que atende o cliente vê os equipamentos mas não
+vincula — se o Vinicius for cadastrado como técnico, isso precisa mudar.

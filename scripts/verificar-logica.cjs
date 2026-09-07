@@ -17528,14 +17528,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       'src/features/chamados/DetalheCampo.tsx': 4, 'src/components/StatusBadge.tsx': 1,
       'src/features/clientes/InventarioCliente.tsx': 1, 'src/features/home/NovaAtividadeDialog.tsx': 1,
       'src/features/administrativo/Usuarios.tsx': 2,
+      // U111: a ficha do cliente v2 — o chip de status/situação e a etiqueta de serviço
+      'src/routes/_authenticated/clientes.$id.tsx': 2,
     };
     const chamadas = (f) => codigo101(ler101(f)).split('\n')
       .filter((l) => !/^import /.test(l)).join('\n').match(/etiqueta\(/g) ?? [];
     const fora = Object.entries(alvos).filter(([f, n]) => chamadas(f).length !== n);
-    eq('R177 CRÍTICO: as 18 etiquetas dos nove arquivos passam por etiqueta() — nenhuma monta cor à mão',
+    eq('R177 CRÍTICO: as 20 etiquetas dos dez arquivos passam por etiqueta() — nenhuma monta cor à mão',
        fora.map(([f]) => `${f}: ${chamadas(f).length}`), []);
-    eq('R177: são 18 etiquetas ao todo — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
-       Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 18);
+    eq('R177: são 20 etiquetas ao todo — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
+       Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 20);
     // O véu (.bg) continua VÁLIDO para superfície — fundo de campo, anel de
     // seleção. O que não pode voltar é véu pintando ETIQUETA, e a diferença
     // está no que cerca: uma etiqueta tem `borderRadius: 999` (ou 12) e texto
@@ -18275,10 +18277,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── o bloco da ficha do cliente (R199) ────────────────────────────────────
   {
     const bloco109 = ler109('src/features/clientes/EquipamentosDoCliente.tsx');
+    // R200 (U111): o bloco virou a FILA de vínculo — "sem bloco" deixou de ser um
+    // rótulo por item e passou a ser o critério da lista inteira
     eq('R199: a ficha do cliente lista os equipamentos do local, com identificação (ou a falta dela) e a data de envio',
        [/<EquipamentosDoCliente clienteId=\{id\} \/>/.test(ler109('src/routes/_authenticated/clientes.$id.tsx')),
-        /sem identificação/.test(bloco109), /dataCurta\(i\.enviado_em\)/.test(bloco109),
-        /sem bloco/.test(bloco109)],
+        /sem identificação/.test(bloco109), /dataCurta\(item\.enviado_em\)/.test(bloco109),
+        /!i\.cliente_sistema_id/.test(bloco109)],
        [true, true, true, true]);
     eq('R199: sem a migration o bloco não aparece e a tela do catálogo AVISA — 42P01 é tratado, ninguém vê tela vermelha',
        [/if \(data\?\.faltaMigration\) return null;/.test(bloco109),
@@ -18419,6 +18423,98 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/^## U110 /m.test(ler110('docs/PLANO_UNIFICACAO.md')),
       /U110/.test(ler110('docs/ESTADO_ATUAL.md')) && /U109/.test(ler110('docs/ESTADO_ATUAL.md')) && /U106/.test(ler110('docs/ESTADO_ATUAL.md'))],
      [true, true]);
+}
+
+// ── U111 — sistemas instalados = blocos + equipamentos do QAP vinculados; a ficha v2 (R200–R201) ──
+{
+  const fs111 = require('fs');
+  const ler111 = (f) => fs111.readFileSync(f, 'utf8');
+  const cod111 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+
+  // ── R200: o vínculo ────────────────────────────────────────────────────────
+  const dados111 = ler111('src/features/equipamentos/data.ts');
+  eq('R200 CRÍTICO: vincularAoSistema grava cliente_sistema_id em LOTE e recusa sistema de OUTRO cliente — "ambos no mesmo cliente" é conferido no dado, não só na tela',
+     [/export async function vincularAoSistema\(ids: string\[\], sistemaId: string \| null\)/.test(dados111),
+      /\.update\(\{ cliente_sistema_id: sistemaId \} as any\)\s*\n\s*\.in\("id", ids\)/.test(dados111),
+      /i\.cliente_id !== \(sis as any\)\.cliente_id/.test(dados111),
+      /Equipamento e sistema têm de ser do MESMO cliente — nada foi vinculado\./.test(dados111),
+      /if \(ids\.length === 0\) return;/.test(dados111)],
+     [true, true, true, true, true]);
+
+  const fila111 = ler111('src/features/clientes/EquipamentosDoCliente.tsx');
+  eq('R200: a fila lista SÓ o que não está em bloco nenhum, com seleção múltipla e o seletor de sistema em lote e por linha',
+     [/const semSistema = useMemo\(\(\) => todos\.filter\(\(i\) => !i\.cliente_sistema_id\), \[todos\]\);/.test(fila111),
+      /<CheckSquare size=\{16\} \/> : <Square size=\{16\} \/>/.test(fila111),
+      /vincular\.mutate\(\{ ids: \[\.\.\.selecionados\], sistemaId: destino \}\)/.test(fila111),
+      /vincular\.mutate\(\{ ids: \[i\.id\], sistemaId: sid \}\)/.test(fila111),
+      /export function SeletorDeSistema\(/.test(fila111), /export function LinhaDoPatrimonio\(/.test(fila111)],
+     [true, true, true, true, true, true]);
+  eq('R200: três estados da fila — sem equipamento não aparece; sem bloco explica que é preciso criar um; tudo vinculado vira uma linha de confirmação',
+     [/if \(todos\.length === 0\) return null;/.test(fila111),
+      /Este cliente ainda não tem sistema instalado\./.test(fila111),
+      /equipamentos do QAP deste cliente estão em um sistema instalado\./.test(fila111)],
+     [true, true, true]);
+
+  const inv111 = ler111('src/features/clientes/InventarioCliente.tsx');
+  const inv111c = cod111(inv111);
+  eq('R200 CRÍTICO: o bloco mostra os equipamentos do QAP agrupados por cliente_sistema_id, com o MESMO seletor para mover ou desvincular; o cadastro manual de equipamento (catálogo do orçamento) SAIU',
+     [/for \(const i of patrimonio\?\.itens \?\? \[\]\) \{\s*\n\s*if \(!i\.cliente_sistema_id\) continue;/.test(inv111),
+      /<SeletorDeSistema\s*\n\s*sistemas=\{sistemas\}\s*\n\s*valor=\{s\.id\}/.test(inv111),
+      /mover\.mutate\(\{ id: i\.id, sistemaId: sid \}\)/.test(inv111),
+      /ModalEquipamento|criarEquipamentoInstalado|useCatalogoEquipamentos/.test(inv111c)],
+     [true, true, true, false]);
+  eq('R200: o previsto do orçamento continua visível DENTRO do bloco (só quando existe) — "o que foi vendido × o que está lá"; blocos se criam por "+ Bloco" ou pelo escopo aprovado',
+     [/\{previstos\.length > 0 && \(/.test(inv111), /Previsto no orçamento/.test(inv111),
+      /<Plus size=\{14\} \/>\s*\n\s*Bloco/.test(inv111), /Importar do escopo/.test(inv111),
+      /derivarInventarioDaVisita\(clienteId, visitaId\)/.test(inv111)],
+     [true, true, true, true, true]);
+  eq('R200: excluir um bloco avisa que os equipamentos voltam para a fila (a FK é SET NULL) e pede confirmação',
+     /Os \$\{doQap\.length\} equipamentos dele voltam para a fila de vínculo\./.test(inv111) && /if \(confirm\(aviso\)\) removerSistema\.mutate\(s\.id\);/.test(inv111), true);
+
+  // ── R201: a ficha v2 ───────────────────────────────────────────────────────
+  const fic111 = ler111('src/routes/_authenticated/clientes.$id.tsx');
+  const fic111c = cod111(fic111);
+  eq('R201: cabeçalho de página — h1 22/700 com o nome (ou "Configurar cliente"), situação e tipo de local ao lado, endereço numa linha e as etiquetas de serviço embaixo; o botão diz "Configurar"',
+     [/fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0/.test(fic111),
+      /\{editando \? "Configurar cliente" : cliente\.nome\}/.test(fic111),
+      /\{enderecoCurto \|\| "endereço não informado"\}/.test(fic111),
+      /<Pencil size=\{14\} color=\{gold\} \/>\s*\n\s*Configurar/.test(fic111)],
+     [true, true, true, true]);
+  {
+    const ordem = ['<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<EquipamentosDoCliente clienteId={id} />',
+      '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>', '<span style={SEC_LABEL}>Histórico de visitas</span>',
+      '<span style={SEC_LABEL}>O local</span>', '<span style={SEC_LABEL}>Contatos</span>', '<span style={SEC_LABEL}>Contratos</span>', '<span style={SEC_LABEL}>Observações</span>']
+      .map((t) => fic111c.indexOf(t));
+    eq('R201: a coluna larga é o LOCAL (sistemas → fila → atividades → plantão → visitas) e a estreita é a IDENTIDADE (o local → contatos → contratos → observações), nesta ordem',
+       ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
+  }
+  eq('R201: `Contato` virou componente de MÓDULO (dentro do pai remontaria a cada render), e a ficha continua na grade .detalhe-grid',
+     [/^function Contato\(/m.test(fic111), /function ClienteDetalhePage\(\) \{[\s\S]*?\n  function Contato\(/.test(fic111), /className="detalhe-grid"/.test(fic111)],
+     [true, false, true]);
+  eq('R201: a ficha e o formulário falam o design system — cinzas(isLight), card(isLight), etiqueta(); nenhum gradiente próprio de tema sobrou',
+     [/cinzas\(isLight\)/.test(fic111) && /cinzas\(isLight\)/.test(ler111('src/features/clientes/ClienteForm.tsx')),
+      /linear-gradient\(135deg,#ffffff|#161616 0%/.test(cod111(ler111('src/features/clientes/ClienteForm.tsx'))),
+      /linear-gradient\(135deg,#ffffff|#161616 0%/.test(fic111c)],
+     [true, false, false]);
+  const form111 = ler111('src/features/clientes/ClienteForm.tsx');
+  eq('R201: a configuração é DUAS colunas (.ficha-colunas): Identificação + Endereço | Contatos + Estrutura; os chips são botaoSelecao sem brilho; os campos têm 42px',
+     [/<div className="ficha-colunas">/.test(form111),
+      (form111.match(/<section aria-label=/g) ?? []).length,
+      /\.\.\.botaoSelecao\(ativo, isLight, null\), boxShadow: "none",/.test(form111),
+      /height: 42, borderRadius: 12, padding: "0 13px",/.test(form111)],
+     [true, 2, true, true]);
+  eq('R201: .ficha-colunas é uma coluna no celular e duas a partir de 1024px — o mesmo breakpoint da casa',
+     /\.ficha-colunas \{ display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.ficha-colunas \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(ler111('src/styles.css')), true);
+
+  // regra 7
+  const prod111 = ler111('docs/PRODUTO.md');
+  eq('U111 (regra 7): R200–R201 existem, a última atualização aponta para a R201, o DS tem o §6.20, o manual conta o vínculo, a U111 está no diário e no ESTADO',
+     [['R200', 'R201'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod111)),
+      Number((prod111.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 201,
+      /^### 6\.20 Ficha do cliente/m.test(ler111('DESIGN_SYSTEM.md')),
+      /Sistemas instalados e o vínculo/.test(ler111('docs/manual/clientes-qap.md')),
+      /^## U111 /m.test(ler111('docs/PLANO_UNIFICACAO.md')), /U111/.test(ler111('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

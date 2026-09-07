@@ -151,3 +151,40 @@ export function useRecarregarPatrimonio() {
     qc.invalidateQueries({ queryKey: ["equipamentos-cliente"] });
   };
 }
+
+// ── O VÍNCULO com o sistema instalado (R200, U111) ──────────────────────────
+
+/**
+ * Liga (ou desliga, com `null`) equipamentos do QAP a um bloco do cliente.
+ *
+ * Davi (2026-09-07): "os equipamentos de cada cliente são importados pelo QAP,
+ * e aí no nosso sistema, o usuário vincula o equipamento ao sistema instalado
+ * (ambos no mesmo cliente)". Vários de uma vez, porque é assim que se
+ * trabalha: 40 câmeras do mesmo prédio vão para o mesmo bloco de CFTV num
+ * gesto, não em 40.
+ *
+ * O "mesmo cliente" é conferido AQUI, não só na tela: o sistema escolhido tem
+ * de pertencer ao cliente dos itens, senão um clique errado penduraria a
+ * câmera de um prédio no bloco de outro — e nada depois denunciaria.
+ */
+export async function vincularAoSistema(ids: string[], sistemaId: string | null): Promise<void> {
+  if (ids.length === 0) return;
+  if (sistemaId) {
+    const { data: sis, error: errS } = await supabase
+      .from("cliente_sistemas" as any).select("id, cliente_id").eq("id", sistemaId).maybeSingle();
+    if (errS) throw errS;
+    if (!sis) throw new Error("Este sistema não existe mais — recarregue a ficha.");
+    const { data: itens, error: errI } = await supabase
+      .from("equipamentos_patrimonio" as any).select("id, cliente_id").in("id", ids);
+    if (errI) throw errI;
+    const deOutro = ((itens as any[]) ?? []).filter((i) => i.cliente_id !== (sis as any).cliente_id);
+    if (deOutro.length > 0) {
+      throw new Error("Equipamento e sistema têm de ser do MESMO cliente — nada foi vinculado.");
+    }
+  }
+  const { error } = await supabase
+    .from("equipamentos_patrimonio" as any)
+    .update({ cliente_sistema_id: sistemaId } as any)
+    .in("id", ids);
+  if (error) throw error;
+}
