@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R182 (46)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R186 (50)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R182). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R186). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3583,3 +3583,45 @@ trabalho".
   a ordem é a do preset e ninguém a escolheu. *(Davi, 04/09/2026: "A ordenação
   deve estar sempre escrita ao lado do botão de ordenar. Ou seja, se for Prazo
   (Crescente), deve estar escrito isso ao lado do botão de ordenar".)*
+
+- **R183** — **O Configurador rápido concentra TODA a informação da atividade
+  no cabeçalho, em botões discretos e pequenos.** O painel lateral da atividade
+  tem três linhas de cabeçalho: o **estado** (status, tipo de demanda, a régua
+  de urgência — prioridade no campo, impacto operacional no interno —, prazo,
+  as equipes envolvidas, "Atrasado" e o recebimento), as **pessoas e o local**
+  (responsável, apoio, local) e a **agenda de campo**, recolhida atrás de um
+  botão. Cada etiqueta de estado é o próprio seletor: ler e mudar são o mesmo
+  gesto. As seções "De quem é", "Classificação" e "Quando" que a U40 criou no
+  corpo deixaram de existir. *(Davi, 04/09/2026: "Todas as informações da
+  atividade devem estar no cabeçalho - utilize botões discretos. Pequenos".)*
+
+- **R184** — **A área principal do painel é o REGISTRO do trabalho: PROBLEMA e
+  DIAGNÓSTICO, com a barra de progresso 1→2.** O círculo 1 acende (amarelo)
+  quando o Problema está escrito; a barra e o círculo 2 acendem quando o
+  Diagnóstico está escrito. Cada um olha só o seu campo — um diagnóstico sem
+  problema acende o 2 e deixa o 1 apagado, denunciando o registro incompleto.
+  Um texto conta como escrito quando tem algo além de espaço (um checklist só
+  de caixas é conteúdo). O Diagnóstico grava a mesma coluna `diagnostico` que a
+  execução do técnico usa: o gestor lê aqui o que o técnico escreveu. A decisão
+  do que acende é pura (`features/chamados/registro.ts`); a tela só pinta.
+  *(Davi, 04/09/2026: "A área principal terá dois campos principais, um espaço
+  para PROBLEMA e outro para DIAGNÓSTICO. Crie uma barra de progresso com dois
+  círculos, o 1 e o 2. Ao preencher o PROBLEMA o 1 fica amarelo, e ao preencher
+  o diagnóstico, a barra e o 2 ficam amarelos".)*
+
+- **R185** — **Abaixo do registro vêm os comentários e, por último, a linha do
+  tempo.** A linha do tempo mostra os eventos que não são comentário — a mesma
+  tabela `chamado_eventos`, a mesma consulta —, do mais antigo ao mais novo,
+  com a frase, quem e quando; vazia, diz que está vazia. *(Davi, 04/09/2026:
+  "Abaixo dos campos que falei, terá os comentários e mais abaixo a time
+  Line".)*
+
+- **R186** — **O fundo do sistema é só CINZA: cinza escuro no tema escuro,
+  cinza claro no tema claro — sem azul.** A escala `CINZA` (`src/lib/paleta.ts`:
+  página → superfície → elevada → campo, cada degrau com R = G = B) é a única
+  fonte das superfícies. Nasceu na U104 com o Configurador rápido; a U108
+  troca as superfícies do resto do sistema (as que hoje puxam para o azul:
+  `#08090e`, `#14141b`, `#0b0b10`, `#e9ebef`…) para ela, e atualiza os tokens do
+  `DESIGN_SYSTEM.md`. *(Davi, 04/09/2026: "O Fundo está com tons de azul, eu
+  quero que você utilize somente tons de cinza. Tons de cinza escuro para o
+  modo escuro e tons de cinza claro para o modo claro".)*

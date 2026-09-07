@@ -1502,8 +1502,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // grupo virou atalho de SETOR — etiqueta, não expansão em N clientes.
   eq('o painel edita LOCAL (vários, com atalho de setor) — não mais um patch direto de cliente_id',
      /adicionarClienteChamado[\s\S]*removerClienteChamado[\s\S]*adicionarSetorChamado/.test(painel), true);
+  // R183 (U104): "Local" virou um GRUPO do cabeçalho (era <Campo titulo=…>); o nome é o mesmo
   eq('CRÍTICO (R84): o campo se chama "Local", não "Cliente" — o local pode não ser cliente nenhum',
-     /titulo="Local"/.test(painel), true);
+     /rotulo="Local"/.test(painel) && !/rotulo="Cliente"/.test(painel), true);
   eq('cliente_id não é mais escrito como patch direto no painel (virou lista)',
      /patch: \{ cliente_id/.test(painel), false);
 
@@ -1730,8 +1731,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // coloração estratégica: o MESMO vocabulário dos cards do quadro
   eq('o painel usa as cores de status/tipo/prioridade do sistema',
      /TIPO_CORES/.test(pn) && /PRIORIDADE_CORES/.test(pn) && /chamadoStatusInfo/.test(pn), true);
-  eq('estado e urgência viram etiqueta colorida no cabeçalho',
-     /<Etiqueta[\s\S]{0,400}info\.label/.test(pn), true);
+  // R183 (U104): a etiqueta de status virou o PRÓPRIO seletor, compacto, no
+  // cabeçalho — ler e mudar são o mesmo gesto. As derivadas (equipes,
+  // "Atrasado") continuam etiquetas, porque não se escolhem.
+  eq('R183: o status é um seletor COMPACTO no cabeçalho (era etiqueta + select no corpo)',
+     /<Escolha\s*\n\s*compacto\s*\n\s*titulo="Status"/.test(pn), true);
+  eq('R183: equipes e "Atrasado" continuam ETIQUETAS (derivadas, não escolhidas)',
+     /<Etiqueta key=\{e\} texto=\{EQUIPE_LABEL\[e\]/.test(pn) && /<Etiqueta texto="Atrasado"/.test(pn), true);
   eq('o título é o cabeçalho, não um campo rotulado',
      /fontSize: 22, fontWeight: 700/.test(pn), true);
   // dez campos soltos são uma lista; grupos são um mapa. "Detalhe" (a seção
@@ -1739,9 +1745,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // 2º CAMPO dentro do fluxo De quem é → Descrição → Classificação, sem
   // título de seção próprio — é o que o Davi pediu ("segundo campo deve ser
   // a descrição", não "crie uma seção Detalhe").
+  // R183 (U104, Davi: "Todas as informações da atividade devem estar no
+  // cabeçalho - utilize botões discretos. Pequenos."): as seções "De quem é",
+  // "Classificação" e "Quando" DEIXARAM de ser seções do corpo — viraram três
+  // linhas do cabeçalho (estado · pessoas e local · agenda). O corpo é o
+  // registro (R184). A U40 as tinha criado; esta é a revisão declarada.
   for (const s of ['De quem é', 'Classificação', 'Quando']) {
-    eq(`o painel agrupa em seção "${s}"`, new RegExp(`<Secao titulo="${s}"`).test(pn), true);
+    eq(`R183: a seção "${s}" saiu do corpo — a informação mora no cabeçalho`, new RegExp(`<Secao titulo="${s}"`).test(pn), false);
   }
+  for (const g of ['Prazo', 'Responsável', 'Apoio', 'Local']) {
+    eq(`R183: "${g}" é um GRUPO do cabeçalho (rótulo pequeno + controle + selo)`, new RegExp(`<Grupo rotulo="${g}"`).test(pn), true);
+  }
+  eq('R183: a agenda de campo mora RECOLHIDA no cabeçalho, atrás de um botão',
+     /aria-expanded=\{agendaAberta\}/.test(pn) && /\{agendaAberta && \([\s\S]{0,120}<AgendaDoChamado chamado=/.test(pn), true);
   eq('atrasado se anuncia no campo de prazo',
      /atrasado \? est\.vermelho/.test(soCodigoPn), true);
 
@@ -1818,7 +1834,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // Normal, Alta, Urgente" é trocar um clique por clique mais digitação
   eq('prioridade continua select (lista curta não precisa de busca)',
      /titulo="Prioridade"[\s\S]{0,300}PRIORIDADE_LABEL\[p\]/.test(pn2), true);
-  eq('status continua select', /<Escolha\s+titulo="Status"/.test(pn2), true);
+  eq('status continua select (compacto, no cabeçalho — R183)', /<Escolha\s+compacto\s+titulo="Status"/.test(pn2), true);
 }
 
 // ── U35: o sprint sai do prazo (R40, 2026-08-21) ───────────────────────────
@@ -2457,15 +2473,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o número do chamado não aparece mais como texto visível perto do título',
      /\{chamado\.numero\}/.test(soCodigoPc4), false);
   eq('mas continua no tooltip (title=) do bloco do título',
-     /<div title=\{chamado\.numero \?\? undefined\}>/.test(pc4), true);
+     /<div title=\{chamado\.numero \?\? undefined\} style=/.test(pc4), true);
 
   // 2. De quem é: Cliente + Responsável + Apoio na MESMA grade
   // 3 colunas FIXAS (não auto-fit): a revisão adversarial de U40 achou que
   // auto-fit(180px) quebrava em 2+1 (Apoio órfão) numa faixa comum de
   // largura — fixo nunca quebra, o que "mesma linha" pedia de verdade.
   // U71: o campo "Cliente" virou "Local" (R84). A grade não mudou.
-  eq('Local, Responsável e Apoio estão no MESMO grid de 3 colunas FIXAS',
-     /gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"[\s\S]{0,900}<Campo titulo="Local"[\s\S]{0,7000}<Campo titulo="Responsável"[\s\S]{0,900}<Campo titulo="Apoio"/.test(pc4),
+  // R183 (U104): a grade de 3 colunas FIXAS do corpo saiu — os três são
+  // GRUPOS numa linha do cabeçalho que quebra (flex-wrap); "mesma linha"
+  // continua verdade em painel largo, e em painel estreito o grupo inteiro
+  // desce, nunca um pedaço dele.
+  eq('R183: Responsável, Apoio e Local são três GRUPOS na mesma linha do cabeçalho (a grade de 3 colunas do corpo saiu)',
+     /<Grupo rotulo="Responsável"[\s\S]{0,2000}<Grupo rotulo="Apoio"[\s\S]{0,6000}<Grupo rotulo="Local"/.test(pc4)
+     && !/gridTemplateColumns: "repeat\(3, minmax\(0, 1fr\)\)"/.test(pc4),
      true);
   // R54/U45: Cliente virou chip-list (como Apoio) — o ícone agora mora
   // dentro de cada chip, não mais no iconeEsquerda de um CampoComBusca único
@@ -2489,12 +2510,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // pela posição da CHAMADA <Comentarios/>, não da declaração da seção.
   const corpoDoPainel = pc4.slice(pc4.indexOf('export function PainelChamado'));
   const ordemSecoes = [...corpoDoPainel.matchAll(/<Secao titulo="([^"]+)"/g)].map((m) => m[1]);
-  eq('a ordem das seções é De quem é → Classificação → Quando (Descrição no meio, sem seção própria)',
-     ordemSecoes, ['De quem é', 'Classificação', 'Quando']);
-  eq('Descrição vem DEPOIS de "De quem é" e ANTES de "Classificação"',
-     pc4.indexOf('<Secao titulo="De quem é"') < pc4.indexOf('<DescricaoComFerramentas')
-     && pc4.indexOf('<DescricaoComFerramentas') < pc4.indexOf('<Secao titulo="Classificação"'),
-     true);
+  // R183/R185 (U104): o corpo do painel não declara MAIS nenhuma seção — as
+  // que sobraram ("Comentários", "Linha do tempo") são das peças, e a ordem
+  // do corpo é a que o Davi ditou: barra 1→2, Problema, Diagnóstico,
+  // comentários, "e mais abaixo a time Line".
+  eq('R183: o corpo do PainelChamado não declara seção nenhuma (De quem é/Classificação/Quando saíram)',
+     ordemSecoes, []);
+  {
+    const posBarra = corpoDoPainel.indexOf('<ProgressoDoRegistro');
+    const posProblema = corpoDoPainel.indexOf('titulo="Problema"');
+    const posDiag = corpoDoPainel.indexOf('titulo="Diagnóstico"');
+    const posCom = corpoDoPainel.indexOf('<Comentarios chamadoId=');
+    const posLinha = corpoDoPainel.indexOf('<LinhaDoTempo chamadoId=');
+    eq('R184/R185: a ordem do corpo é barra 1→2 → Problema → Diagnóstico → Comentários → Linha do tempo',
+       [posBarra, posProblema, posDiag, posCom, posLinha].every((p, i, a) => p >= 0 && (i === 0 || a[i - 1] < p)), true);
+    eq('R184: os dois campos do registro passam pelo MESMO editor (DescricaoComFerramentas), gravando colunas diferentes',
+       /titulo="Problema"[\s\S]{0,600}patch: \{ descricao_problema: v \|\| null \}/.test(corpoDoPainel)
+       && /titulo="Diagnóstico"[\s\S]{0,900}patch: \{ diagnostico: v \|\| null \}/.test(corpoDoPainel), true);
+  }
 
   // 4. a barra de ferramentas: negrito, itálico, checklist, lista
   eq('a descrição tem barra de ferramentas com os 4 botões básicos',
@@ -2541,15 +2574,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]{0,200}\.checklist-input:checked \+ \.checklist-check svg \{ transform: none; \}/.test(cssChecklist),
      true);
   eq('o textarea da Descrição tem id, e o Campo recebe idAlvo — o <label> não associa mais com o primeiro botão da barra (o id agora passa pelo EditorDeDescricao, R135)',
-     [/idAlvo="painel-descricao-texto"/.test(pc4), /id=\{i === 0 \? idAlvo : undefined\}/.test(ed95),
-      /<Campo titulo="Descrição" estado=\{estado\} idAlvo="painel-descricao-texto">/.test(pc4)],
+     // U104: o id virou parâmetro (o Problema herda o padrão, o Diagnóstico tem o seu)
+     [/idAlvo = "painel-descricao-texto"/.test(pc4), /id=\{i === 0 \? idAlvo : undefined\}/.test(ed95),
+      /<Campo titulo=\{titulo\} estado=\{estado\} idAlvo=\{idAlvo\} destaque=\{destaque\}>/.test(pc4)
+      && /idAlvo="painel-diagnostico-texto"/.test(pc4)],
      [true, true, true]);
   eq('Campo usa htmlFor=idAlvo no <label> (explícito vence a associação implícita ao primeiro labelable)',
      /<label htmlFor=\{idAlvo\}/.test(pc4), true);
   eq('Enter no campo de comentário respeita enviar.isPending (senão Enter duplo grava o comentário duas vezes)',
      /e\.key === "Enter" && !e\.shiftKey && texto\.trim\(\) && !enviar\.isPending/.test(pc4), true);
-  eq('o aviso "No Notion" mora DENTRO do Campo Local (alinhado com a coluna que ele descreve, não a largura toda)',
-     /<Campo titulo="Local"[\s\S]{0,6200}No Notion:/.test(pc4), true);
+  // U104: o grupo Local é uma linha de chips no cabeçalho; o aviso vem logo
+  // abaixo da linha, ainda no cabeçalho — não no corpo, que é do registro
+  eq('o aviso "No Notion" vem logo DEPOIS do grupo Local, no cabeçalho (R183)',
+     /<Grupo rotulo="Local"[\s\S]{0,6500}No Notion:[\s\S]{0,400}linha 4 — a AGENDA DE CAMPO/.test(pc4), true);
   eq('o aviso "No Notion" só aparece com ZERO clientes ainda escolhidos (some assim que o primeiro é adicionado)',
      /clientesDoChamadoIds\.length === 0 && chamado\.cliente_origem_nome/.test(pc4), true);
 
@@ -2560,16 +2597,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // 5. Classificação: 4 itens numa grade de 4 colunas FIXAS — a revisão
   //    adversarial de U40 achou que auto-fit(150px) quebrava em 3+1 (Equipe
   //    órfão) numa faixa comum de largura, pior que a quebra 2+2 de antes.
-  const blocoClassificacao = pc4.split('<Secao titulo="Classificação"')[1]?.split('<Secao titulo="Quando"')[0] ?? '';
+  // R183 (U104): a seção Classificação virou a "linha 2 — o ESTADO" do cabeçalho
+  const blocoClassificacao = pc4.split('linha 2 — o ESTADO')[1]?.split('linha 3 — as PESSOAS')[0] ?? '';
   // U96: eram 4 colunas fixas (tipo, status, prioridade, equipe). A Equipe saiu
   // (R139) e a régua de urgência é UMA (R142: prioridade no campo, impacto no
   // interno) — 3 colunas com régua, 2 sem. Continuam FIXAS: auto-fit quebrava.
-  eq('a grade de Classificação usa colunas FIXAS (não auto-fit) — 3 com régua de urgência, 2 sem (R139/R142)',
-     /gridTemplateColumns: `repeat\(\$\{natureza === "campo" \|\| \(natureza === "interno" && temImpacto\(chamado\.tipo\)\) \? 3 : 2\}, minmax\(0, 1fr\)\)`/.test(blocoClassificacao), true);
+  // a grade fixa de 3/2 colunas saiu com a seção: no cabeçalho os seletores
+  // são pílulas numa linha que quebra — não há coluna a ficar órfã
+  eq('R183: o estado é uma linha de pílulas que quebra (flex-wrap), não mais a grade fixa de 3/2 colunas',
+     /display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 8/.test(blocoClassificacao)
+     && !/gridTemplateColumns/.test(blocoClassificacao), true);
   eq('e tem os campos: Tipo, Status, Prioridade (só campo) e Impacto operacional (só interno) — Equipe SAIU (R139)',
      [/titulo="Tipo de demanda"/.test(blocoClassificacao), /titulo="Status"/.test(blocoClassificacao),
-      /natureza === "campo" && \(\s*\n\s*<Escolha\s*\n\s*titulo="Prioridade"/.test(blocoClassificacao),
-      /natureza === "interno" && temImpacto\(chamado\.tipo\) && \(\s*\n\s*<Escolha\s*\n\s*titulo="Impacto operacional"/.test(blocoClassificacao),
+      /natureza === "campo" && \(\s*\n\s*<Escolha\s*\n\s*compacto\s*\n\s*titulo="Prioridade"/.test(blocoClassificacao),
+      /natureza === "interno" && temImpacto\(chamado\.tipo\) && \(\s*\n\s*<Escolha\s*\n\s*compacto\s*\n\s*titulo="Impacto operacional"/.test(blocoClassificacao),
       /titulo="Equipe"/.test(blocoClassificacao)],
      [true, true, true, true, false]);
 
@@ -17648,6 +17689,87 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /A Início é personalizável/.test(ler103('docs/manual/operacao-campo.md')),
       /^## U103 /m.test(ler103('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true]);
+}
+
+// ── U104 — o Configurador rápido revisto pelo Davi (R183–R186) ───────────────
+{
+  const fs104 = require('fs');
+  const ler104 = (f) => fs104.readFileSync(f, 'utf8');
+  const REG = carregar('src/features/chamados/registro.ts');
+
+  // R184 — a decisão pura do que acende
+  eq('R184: um texto conta como preenchido quando tem algo além de espaço (checklist só de caixas É conteúdo)',
+     [REG.textoPreenchido(''), REG.textoPreenchido('   \n\t'), REG.textoPreenchido(null), REG.textoPreenchido(undefined),
+      REG.textoPreenchido('x'), REG.textoPreenchido('- [ ] Green Village')],
+     [false, false, false, false, true, true]);
+  eq('R184: o 1 olha só o problema; a barra e o 2 olham só o diagnóstico — independentes',
+     [REG.etapasDoRegistro('Portão travado', null), REG.etapasDoRegistro(null, 'Motor queimado'),
+      REG.etapasDoRegistro('a', 'b'), REG.etapasDoRegistro('', ' ')],
+     [{ problema: true, diagnostico: false }, { problema: false, diagnostico: true },
+      { problema: true, diagnostico: true }, { problema: false, diagnostico: false }]);
+  eq('R184: a frase para quem não vê a cor cobre os quatro estados, e denuncia o diagnóstico sem problema',
+     [REG.fraseDoProgresso({ problema: false, diagnostico: false }), REG.fraseDoProgresso({ problema: true, diagnostico: false }),
+      REG.fraseDoProgresso({ problema: true, diagnostico: true }), REG.fraseDoProgresso({ problema: false, diagnostico: true })],
+     ['Nada registrado ainda', 'Problema registrado — falta o diagnóstico',
+      'Problema e diagnóstico registrados', 'Diagnóstico registrado sem o problema escrito']);
+
+  const pc104 = ler104('src/features/chamados/PainelChamado.tsx');
+  eq('R184: a barra pinta a partir da decisão pura — o painel não decide sozinho o que acende',
+     /etapasDoRegistro\(chamado\.descricao_problema, chamado\.diagnostico\)/.test(pc104)
+     && /aria-label=\{fraseDoProgresso\(etapas\)\}/.test(pc104), true);
+  eq('R184: no desenho, o círculo 1 é o problema; a barra e o círculo 2 são o diagnóstico',
+     [/circulo\(1, etapas\.problema, "Problema"\)/.test(pc104), /circulo\(2, etapas\.diagnostico, "Diagnóstico"\)/.test(pc104),
+      /scaleX\(\$\{etapas\.diagnostico \? 1 : 0\}\)/.test(pc104)],
+     [true, true, true]);
+  eq('R184: o Diagnóstico grava a MESMA coluna que a execução do técnico (diagnostico), pelo mesmo salvar',
+     /campo: "diagnostico", patch: \{ diagnostico: v \|\| null \}/.test(pc104), true);
+  eq('R185: a linha do tempo lê a MESMA consulta dos comentários (chamado_eventos) e tira o que é comentário',
+     /function LinhaDoTempo[\s\S]{0,700}useChamadoEventos\(chamadoId, "asc"\)[\s\S]{0,200}e\.tipo !== "comentario"/.test(pc104), true);
+  eq('R185: a linha do tempo tem estado vazio com frase, e diz quem e quando',
+     /Nenhum evento registrado ainda\./.test(pc104) && /: "Sistema"\}\s*\n\s*\{" · "\}\{tempoRelativo\(e\.created_at\)\}/.test(pc104), true);
+
+  // R183 — o seletor compacto e as peças de módulo
+  const sel104 = ler104('src/components/SeletorDeOpcao.tsx');
+  eq('R183: SeletorDeOpcao tem o modo compacto (30px, pílula, 12px/600) e o modo cheio continua o de sempre (44px)',
+     [/compacto\?: boolean;/.test(sel104),
+      /minHeight: 30, padding: "0 9px 0 11px", borderRadius: 999, fontSize: 12, fontWeight: 600/.test(sel104),
+      /minHeight: 44, padding: "0 12px 0 14px", borderRadius: 12, fontSize: 13\.5/.test(sel104)],
+     [true, true, true]);
+  eq('R183: as peças novas do painel (Grupo, ProgressoDoRegistro, LinhaDoTempo) são de MÓDULO, não nascem dentro do componente',
+     ['Grupo', 'ProgressoDoRegistro', 'LinhaDoTempo'].every((n) => new RegExp(`^function ${n}\\(`, 'm').test(pc104))
+     && !/export function PainelChamado[\s\S]*?\n  function (Grupo|ProgressoDoRegistro|LinhaDoTempo)\(/.test(pc104), true);
+  eq('R183: o cabeçalho tem as três linhas (estado · pessoas e local · agenda) e o corpo começa pela barra',
+     /linha 2 — o ESTADO[\s\S]*linha 3 — as PESSOAS[\s\S]*linha 4 — a AGENDA DE CAMPO[\s\S]*CORPO \(R184, R185\)[\s\S]{0,700}<ProgressoDoRegistro/.test(pc104), true);
+
+  // R186 — a escala de cinza
+  const PAL104 = carregar('src/lib/paleta.ts');
+  const cinzaPuro = (hex) => /^#([0-9a-f]{2})\1\1$/i.test(hex);
+  const nivel = (hex) => parseInt(hex.slice(1, 3), 16);
+  eq('R186 CRÍTICO: toda superfície da escala CINZA é cinza PURO (R = G = B), nos dois temas — sem azul',
+     ['escuro', 'claro'].flatMap((t) => ['pagina', 'superficie', 'elevada', 'campo'].map((k) => `${t}.${k}=${PAL104.CINZA[t][k]}`))
+       .filter((par) => !cinzaPuro(par.split('=')[1])), []);
+  eq('R186: no escuro os degraus CLAREIAM da página para o campo; no claro a página é o mais escuro e o card o mais claro',
+     [nivel(PAL104.CINZA.escuro.pagina) < nivel(PAL104.CINZA.escuro.superficie)
+        && nivel(PAL104.CINZA.escuro.superficie) < nivel(PAL104.CINZA.escuro.elevada)
+        && nivel(PAL104.CINZA.escuro.elevada) < nivel(PAL104.CINZA.escuro.campo),
+      nivel(PAL104.CINZA.claro.pagina) < nivel(PAL104.CINZA.claro.elevada)
+        && nivel(PAL104.CINZA.claro.elevada) < nivel(PAL104.CINZA.claro.campo)
+        && nivel(PAL104.CINZA.claro.campo) < nivel(PAL104.CINZA.claro.superficie)],
+     [true, true]);
+  eq('R186: cinzas(isLight) devolve a escala do tema', [PAL104.cinzas(true).superficie, PAL104.cinzas(false).superficie], ['#ffffff', '#141414']);
+  eq('R186: o painel pinta as superfícies pela escala CINZA — os hexes azulados locais (#0f0f15, #16161d, #f7f7f5) saíram',
+     /const superficie = cinzas\(isLight\)\.superficie;/.test(pc104) && /const cabecalhoBg = cinzas\(isLight\)\.elevada;/.test(pc104)
+     && !/#0f0f15|#16161d|#f7f7f5/i.test(pc104), true);
+
+  // regra 7
+  const prod104 = ler104('docs/PRODUTO.md');
+  eq('U104 (regra 7): R183–R186 existem, a última atualização aponta para a R186, o DS tem o §6.16 e a escala CINZA, o manual conta o Configurador, a U104 está no diário',
+     [['R183', 'R184', 'R185', 'R186'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod104)),
+      Number((prod104.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 186,
+      /^### 6\.16 Configurador rápido/m.test(ler104('DESIGN_SYSTEM.md')) && /\| `superficie` \| `#141414` \| `#ffffff` \|/.test(ler104('DESIGN_SYSTEM.md')),
+      /O Configurador rápido \(R183–R185, U104\)/.test(ler104('docs/manual/operacao-campo.md')),
+      /^## U104 /m.test(ler104('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

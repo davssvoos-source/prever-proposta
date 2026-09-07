@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R182** · último diário:
-**U103** · verificador: **2.937 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-04** · última regra: **R186** · último diário:
+**U104** · verificador: **2.960 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **nenhuma pendente**.
 
 ---
@@ -77,6 +77,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U101 | o sistema como ferramenta de trabalho (R174): painel da Início recolhível (R175), avatar sem glow (R176), etiqueta sólida (R177) — e a **skill de designer** em `.claude/skills/designer/` |
 | U102 | as skills **organizador** e **banco**; `scripts/sumario.cjs` e os sumários gerados em oito documentos mestre; passo 8 do ciclo |
 | U103 | a Início revista pelo Davi: margem de cima (R178), colunas na largura da tela (R179), concluída fica sem filtro (R180), ordem das colunas por arrasto (R181), ordenação escrita (R182) |
+| U104 | o Configurador rápido revisto pelo Davi: toda a informação no cabeçalho em botões discretos (R183), Problema + Diagnóstico com a barra 1→2 (R184), comentários e linha do tempo abaixo (R185); a escala CINZA nasce em `paleta.ts` (R186 — o resto do sistema na U108) |
 
 ## 4. Banco: migrations
 
@@ -127,6 +128,11 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   recolhível), R176 (avatar sem glow) e R177 (etiqueta sólida) são as
   primeiras consequências. A **skill de designer**
   (`.claude/skills/designer/`) carrega este princípio junto com o método.
+- **R183–R185** — o **Configurador rápido** inverteu a hierarquia: o cabeçalho
+  é a informação (botões discretos), o corpo é o **registro** (Problema →
+  Diagnóstico com a barra 1→2 → comentários → linha do tempo).
+- **R186** — **o fundo é só cinza**, sem azul. A escala `CINZA` está em
+  `paleta.ts`; o painel já a usa; a **U108** troca o resto do sistema.
 
 ## 6. Perguntas em aberto
 

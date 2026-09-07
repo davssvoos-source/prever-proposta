@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 42 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 43 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -31,6 +31,7 @@
   - [6.12 Card de atividade — a cor hierárquica só na borda (v10 — 2026-09-04)](#612-card-de-atividade-a-cor-hierárquica-só-na-borda-v10-2026-09-04)
   - [6.14 Etiqueta — a categoria PREENCHIDA (v11 — 2026-09-04, R177)](#614-etiqueta-a-categoria-preenchida-v11-2026-09-04-r177)
   - [6.15 Avatar — sem glow (v11 — 2026-09-04, R176)](#615-avatar-sem-glow-v11-2026-09-04-r176)
+  - [6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)](#616-configurador-rápido-o-painel-da-atividade-v12-2026-09-04-r183r185)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -180,6 +181,26 @@ em `#ffffff` e o card era `#ffffff`: 1.09:1 entre os dois, o card sumia. Davi:
 Agora a **página é `#e9ebef`** (degradê `#eef0f3 → #e9ebef → #e2e5ea`, §5) e o
 **card segue `#ffffff`** — 1.19:1, o card lê como superfície. Popover/modal
 (`bg-overlay`) não mudou.
+
+**v12 (2026-09-04, R186) — o cinza neutro.** Davi: "O Fundo está com tons de
+azul, eu quero que você utilize somente tons de cinza". As superfícies acima
+puxam para o azul (`#08090E`, `#0F111A`, `#161926`, `#e9ebef`). A escala que
+as substitui é `CINZA` em `src/lib/paleta.ts` — cada degrau é cinza **puro**
+(R = G = B), e o verificador cobra isso:
+
+| Degrau | Escuro | Claro | Onde |
+|---|---|---|---|
+| `pagina` | `#0e0e0e` | `#e9e9e9` | o fundo da página |
+| `superficie` | `#141414` | `#ffffff` | card, painel lateral |
+| `elevada` | `#1b1b1b` | `#f4f4f4` | cabeçalho de painel, menu |
+| `campo` | `#222222` | `#f7f7f7` | input, chip neutro |
+| `divisoria` | `rgba(255,255,255,0.10)` | `rgba(0,0,0,0.10)` | bordas e linhas |
+
+A escala **nasceu na U104** — o Configurador rápido (§6.16) já pinta com ela
+(`cinzas(isLight).superficie` / `.elevada`). A **U108** troca o resto do
+sistema e reescreve a tabela de tokens acima com os valores resolvidos; até lá
+as duas convivem, e a tabela de cima é o que o sistema ainda mostra na maior
+parte das telas.
 
 ### 2.3 Texto e ícone
 
@@ -757,6 +778,41 @@ boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`   // a cor do card
 ```
 
 O avatar solto não leva anel: não há sobreposição para separar.
+
+### 6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)
+
+O painel lateral que abre ao clicar num card (`features/chamados/PainelChamado.tsx`)
+tem duas partes com funções diferentes, e o desenho diz isso:
+
+**O cabeçalho é a INFORMAÇÃO** (superfície `cinzas(isLight).elevada`), em três
+linhas que quebram (`flex-wrap`), nunca em grade fixa:
+
+1. Título 22/700 editável no lugar + botão "abrir a página" (32px).
+2. **Estado:** status, tipo e a régua de urgência como **seletores compactos**;
+   prazo como pílula de data; equipes e "Atrasado" como etiquetas (§6.14);
+   "Recebido de X em …" à direita, 11,5px secundário.
+3. **Pessoas e local:** três **grupos** — Responsável (campo com busca
+   compacto, 210px, com avatar), Apoio (chips + "+ adicionar"), Local (chips +
+   etiquetas de setor + "+ adicionar").
+4. Só campo: **Agenda de campo**, recolhida atrás de um botão-pílula
+   (`aria-expanded`).
+
+**O corpo é o REGISTRO** (superfície `cinzas(isLight).superficie`), nesta
+ordem: barra 1→2 · Problema · Diagnóstico · Comentários · Linha do tempo.
+
+As peças e seus números:
+
+| Peça | Medidas | Cor |
+|---|---|---|
+| **Seletor compacto** (`SeletorDeOpcao compacto`) | 30px de altura, pílula (`999`), 12px/600, padding `0 9px 0 11px`, seta 13px | a mesma da opção escolhida (`botaoSelecao`); o popover não muda |
+| **Grupo** (rótulo + controle + selo) | rótulo 10,5px/700, maiúsculas, `letter-spacing .08em` | rótulo em `text-secondary`; o controle leva a própria cor |
+| **Barra 1→2** | círculos 26px com borda 2px e o número 12/700; barra 3px entre eles (máx. 280px); rótulo 10,5px maiúsculo embaixo | feito = dourado (`PRISMA.amarelo` do tema) no círculo, na barra e no rótulo (700); por fazer = `rgba(0,0,0,0.14)` / `rgba(255,255,255,0.16)` e rótulo secundário (500) |
+| **Rótulo de registro** (`Campo destaque`) | 11,5px/700, maiúsculas, `.12em` | dourado — é o rótulo de seção, porque estes dois campos SÃO a área principal |
+| **Linha do tempo** | ponto 8px + frase 13px + "quem · quando" 11,5px | ponto dourado, frase primária, meta secundária |
+
+O que a barra decide não mora na tela: `etapasDoRegistro(problema, diagnostico)`
+(`features/chamados/registro.ts`) diz o que acende, `fraseDoProgresso` dá o
+texto do `aria-label` — cor nunca fala sozinha (§6, "status nunca só por cor").
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

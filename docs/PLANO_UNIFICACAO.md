@@ -10373,3 +10373,62 @@ da ordem em vigor, inclusive a herdada do preset, ao lado do ícone — "Prazo
 
 `node scripts/verificar-logica.cjs` → ver o fim desta entrada. `npx vite build`
 → completa. `npx tsc --noEmit` → **57**. Última regra: **R182**. Sem migration.
+
+## U104 — o Configurador rápido revisto pelo Davi: cabeçalho, registro 1→2, linha do tempo (R183–R186)
+
+Segunda tela da revisão manual de 04/09/2026. O painel lateral da atividade
+(`PainelChamado.tsx`) é a tela mais fixada por asserção do repo — 56 leituras
+do verificador apontavam para ele — e a 2ª revisão (U40) tinha decidido o
+desenho com cuidado: três seções no corpo, grade de 3 colunas fixas. O Davi
+inverteu a hierarquia: **o cabeçalho é a informação, o corpo é o registro.**
+
+**O briefing** (skill designer §1). Usuário: Vinicius e o SAC no desktop,
+varrendo a fila e abrindo um card para entender e ajustar sem sair dela.
+Objetivo: entender a atividade em 3 segundos e registrar o trabalho. Ação
+principal: escrever o Problema e o Diagnóstico. Hierarquia: 1º título +
+estado, 2º o registro com a barra 1→2, 3º comentários, 4º linha do tempo. Sai:
+as três seções do corpo e as caixas de formulário de 44px para propriedades.
+Reuso: `SeletorDeOpcao` (ganhou `compacto`), `CampoComBusca compacto`,
+`EditorDeDescricao`, `AgendaDoChamado`, `Comentarios`. Nasce: `Grupo`,
+`ProgressoDoRegistro`, `LinhaDoTempo` — peças de módulo, como as outras.
+
+**O que mudou de código.**
+
+- `src/features/chamados/registro.ts` (novo, puro): `textoPreenchido`,
+  `etapasDoRegistro`, `fraseDoProgresso`. O 1 olha só o problema; a barra e
+  o 2 só o diagnóstico — independentes, como o Davi descreveu.
+- `SeletorDeOpcao` ganhou `compacto` (30px, pílula, 12px/600): a mesma cor e o
+  mesmo popover, só o corpo encolhe. Estender o componente que existia, não
+  clonar — regra do inventário da skill.
+- `PainelChamado.tsx`: cabeçalho em três linhas que quebram (estado · pessoas
+  e local · agenda recolhida); corpo = barra → Problema → Diagnóstico →
+  Comentários → Linha do tempo. `DescricaoComFerramentas` virou o editor dos
+  dois campos (título, id, convite e altura por parâmetro); `Campo` ganhou
+  `destaque` (rótulo dourado de seção). Nenhuma mutação mudou: os mesmos
+  `salvar`, `mexerApoio`, `mexerCliente`, `mexerSetor`; o Diagnóstico grava
+  a coluna `diagnostico` que a execução do técnico já usa.
+- `paleta.ts`: a escala `CINZA` (R186) e `cinzas(isLight)`. O painel é a
+  primeira tela a pintar com ela; a U108 troca o resto.
+
+**O que se recusou a fazer.** (1) Não escondi a agenda de campo: ela ficou
+recolhida no cabeçalho, atrás de um botão com `aria-expanded` — é o único
+lugar onde se agenda pelo painel (R101), e sumir com ela seria mudar
+comportamento, não desenho. (2) Não troquei "Local" por "Cliente" no
+cabeçalho nem juntei setor e cliente numa cor só (R84, U36). (3) Não pintei
+o corpo com os hexes azulados antigos "só por enquanto": a escala CINZA
+nasceu agora justamente para o painel não carregar um azul que a U108 ia
+tirar.
+
+**O que a verificação pegou.** Catorze asserções da U40/U95/U96 descreviam o
+desenho antigo — a grade de 3 colunas, as seções, a ordem "De quem é →
+Classificação → Quando", o `idAlvo` fixo, o aviso "No Notion" dentro do
+Campo. Cada uma foi reapontada com o motivo (R183–R185) — nenhuma apagada em
+silêncio. A asserção do censo de `etiqueta()` (R177: 2 chamadas no painel)
+passou sem mexer: a barra e os grupos não montam etiqueta.
+
+**Regra 7.** R183–R186 no `PRODUTO.md` com as frases do Davi; `DESIGN_SYSTEM.md`
+§2.2 (v12, a escala CINZA) e §6.16 (a anatomia do painel com os números);
+manual de campo; `ESTADO_ATUAL.md`.
+
+**Números.** Verificador: 2.960 asserções, 0 falharam (+ o bloco U104). `tsc`:
+57 (baseline). Build completa.

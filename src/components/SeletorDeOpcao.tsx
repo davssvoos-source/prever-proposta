@@ -48,10 +48,15 @@ interface Props {
   larguraMenu?: number;
   /** ocupa a largura toda do campo (o padrão no formulário) */
   cheio?: boolean;
+  /**
+   * R183 (U104): o botão PEQUENO do cabeçalho do Configurador rápido — 30px,
+   * pílula, 12px. A mesma cor, o mesmo popover; só o corpo encolhe.
+   */
+  compacto?: boolean;
 }
 
 export function SeletorDeOpcao({
-  valor, opcoes, aoMudar, vazio, desabilitado = false, id, larguraMenu = 260, cheio = true,
+  valor, opcoes, aoMudar, vazio, desabilitado = false, id, larguraMenu = 260, cheio = true, compacto = false,
 }: Props) {
   const { isLight } = useTheme();
   const [aberto, setAberto] = useState(false);
@@ -125,10 +130,12 @@ export function SeletorDeOpcao({
   // pintado pela cor da coisa escolhida; sem escolha, o véu neutro.
   const estiloBotao: CSSProperties = {
     ...botaoSelecao(!!atual, isLight, atual?.cor ?? null),
-    minHeight: 44, padding: "0 12px 0 14px", borderRadius: 12,
-    display: "inline-flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-    width: cheio ? "100%" : undefined, boxSizing: "border-box",
-    fontSize: 13.5, textAlign: "left",
+    ...(compacto
+      ? { minHeight: 30, padding: "0 9px 0 11px", borderRadius: 999, fontSize: 12, fontWeight: 600 }
+      : { minHeight: 44, padding: "0 12px 0 14px", borderRadius: 12, fontSize: 13.5 }),
+    display: "inline-flex", alignItems: "center", justifyContent: "space-between", gap: compacto ? 5 : 8,
+    width: cheio && !compacto ? "100%" : undefined, boxSizing: "border-box",
+    textAlign: "left",
     cursor: desabilitado ? "default" : "pointer",
     opacity: desabilitado ? 0.6 : 1,
   };
@@ -150,7 +157,7 @@ export function SeletorDeOpcao({
           {atual ? atual.rotulo : (vazio ?? "— escolher —")}
         </span>
         <ChevronDown
-          size={15}
+          size={compacto ? 13 : 15}
           style={{ flexShrink: 0, opacity: 0.85, transform: aberto ? "rotate(180deg)" : "none", transition: "transform .15s" }}
         />
       </button>

@@ -366,3 +366,30 @@ export function degradeAvatar(chave: string): DegradeAvatar {
   for (let i = 0; i < chave.length; i++) h = (h * 31 + chave.charCodeAt(i)) | 0;
   return AVATARES[Math.abs(h) % AVATARES.length];
 }
+
+// ── Cinza neutro (R186, U104) ────────────────────────────────────────────────
+//
+// Davi (2026-09-04): "O Fundo está com tons de azul, eu quero que você utilize
+// somente tons de cinza. Tons de cinza escuro para o modo escuro e tons de
+// cinza claro para o modo claro." Esta é a escala das SUPERFÍCIES sem azul —
+// cada degrau é um cinza puro (R = G = B). Nasceu na U104 com o Configurador
+// rápido; a U108 troca as superfícies do resto do sistema para ela.
+//
+// Os degraus, do fundo para a frente: página → superfície (card, painel) →
+// elevada (cabeçalho de painel, menu) → campo (input). O texto tem os dois
+// degraus de sempre (primário, secundário).
+export const CINZA = {
+  escuro: {
+    pagina: "#0e0e0e", superficie: "#141414", elevada: "#1b1b1b", campo: "#222222",
+    texto: "#ffffff", textoSecundario: "rgba(255,255,255,0.62)", divisoria: "rgba(255,255,255,0.10)",
+  },
+  claro: {
+    pagina: "#e9e9e9", superficie: "#ffffff", elevada: "#f4f4f4", campo: "#f7f7f7",
+    texto: "#212121", textoSecundario: "#4f4f4f", divisoria: "rgba(0,0,0,0.10)",
+  },
+} as const;
+
+/** A escala do tema em uso — `cinzas(isLight).superficie` etc. */
+export function cinzas(isLight: boolean) {
+  return isLight ? CINZA.claro : CINZA.escuro;
+}

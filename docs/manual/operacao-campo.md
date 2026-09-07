@@ -99,6 +99,18 @@ o que ainda vence) e com o preset "Meu dia"; pessoa, equipe e busca não a
 tiram. O cancelado continua fora (o quadro conta quantos são). O painel de cima
 recolhe (R175) e a fila começa a 28px do topo.
 
+**O Configurador rápido (R183–R185, U104).** Clicar num card abre o painel
+lateral sem sair da fila. **Tudo o que a atividade É fica no cabeçalho**, em
+botões pequenos: status, tipo, prioridade (ou impacto, no interno), prazo,
+equipes, quem recebeu e quando; embaixo, responsável, apoio e local; e, no
+chamado de campo, a agenda recolhida atrás de "Agenda de campo". Clicar numa
+pílula troca o valor — cada uma salva sozinha e mostra o selo de gravado. **O
+corpo é o registro do trabalho:** a barra com os círculos **1** e **2** diz em
+que pé está — o 1 acende quando o **Problema** está escrito, a barra e o 2
+quando o **Diagnóstico** está escrito. O Diagnóstico é o mesmo que o técnico
+escreve na execução. Abaixo vêm os comentários e, por último, a linha do tempo
+(o que o sistema e as pessoas fizeram, do mais antigo ao mais novo).
+
 ## Programação e painéis
 
 - **Programação das equipes** (`/chamados/programacao`): quem sai com quem e

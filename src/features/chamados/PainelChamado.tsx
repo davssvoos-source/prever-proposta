@@ -12,6 +12,28 @@
 // caiu no sétimo. Cada campo carrega o próprio estado — salvando, salvo, ou o
 // erro com o código (PRV-...) para o defeito ser rastreável.
 //
+// ── O DESENHO (3ª revisão — U104, R183–R185, 2026-09-04) ────────────────────
+//
+// Davi: "Todas as informações da atividade devem estar no cabeçalho - utilize
+// botões discretos. Pequenos. A área principal terá dois campos principais, um
+// espaço para PROBLEMA e outro para DIAGNÓSTICO. Crie uma barra de progresso
+// com dois círculos, o 1 e o 2. Ao preencher o PROBLEMA o 1 fica amarelo, e ao
+// preencher o diagnóstico, a barra e o 2 ficam amarelos. Abaixo dos campos que
+// falei, terá os comentários e mais abaixo a time Line."
+//
+// O que mudou de desenho: as seções "De quem é", "Classificação" e "Quando"
+// DEIXARAM DE SER SEÇÕES DO CORPO. Viraram três linhas do cabeçalho — estado
+// (status, tipo, urgência, prazo, equipes, recebimento), pessoas e local
+// (responsável, apoio, local) e a agenda de campo recolhida. Cada etiqueta de
+// estado É o seletor (SeletorDeOpcao compacto): ler e mudar são o mesmo gesto.
+// O corpo ficou para o REGISTRO: a barra 1→2, Problema, Diagnóstico,
+// Comentários e a Linha do tempo. A decisão de "o que acende" é pura, em
+// features/chamados/registro.ts.
+//
+// A 2ª revisão, abaixo, fica como história: explica por que o painel salva
+// campo a campo, por que os subcomponentes são de módulo e por que a data de
+// criação não se edita — nada disso mudou.
+//
 // ── O DESENHO (2ª revisão, 2026-08-22) ──────────────────────────────────────
 //
 // A ORDEM DAS SEÇÕES é a ordem em que se lê um chamado, não a ordem em que o
@@ -48,13 +70,13 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare, Layers, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Loader2, X, Building2, Send, MessageSquare, Layers, Trash2, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, etiqueta } from "@/lib/ui";
-import { PRISMA } from "@/lib/paleta";
+import { PRISMA, CINZA, cinzas } from "@/lib/paleta";
 import { codigoDeErro } from "@/lib/erros";
 import { SeletorDeOpcao, type CorDaOpcao } from "@/components/SeletorDeOpcao";
 import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
@@ -84,6 +106,7 @@ import {
 import { EQUIPE_LABEL, equipeCores, equipesDePessoas, type Equipe } from "@/lib/equipes";
 import { AgendaDoChamado } from "@/features/programacao/AgendaDoChamado";
 import { especieDoApoio } from "@/features/programacao/modelo";
+import { etapasDoRegistro, fraseDoProgresso, type EtapasDoRegistro } from "@/features/chamados/registro";
 
 /**
  * O estado de um campo que grava sozinho.
@@ -195,14 +218,21 @@ function Secao({ titulo }: { titulo: string }) {
  * (o caso comum — select, input), a associação implícita já funciona e
  * `idAlvo` fica de fora.
  */
-function Campo({ titulo, estado, children, idAlvo }: {
+function Campo({ titulo, estado, children, idAlvo, destaque }: {
   titulo: string; estado?: EstadoCampo; children: ReactNode; idAlvo?: string;
+  /** R184: o rótulo dos dois campos do REGISTRO (Problema, Diagnóstico) é o
+   *  de seção — dourado, maiúsculo — porque eles são a área principal */
+  destaque?: boolean;
 }) {
-  const { rotulo } = useEstiloCampo();
+  const { rotulo, gold } = useEstiloCampo();
+  const rotuloDestaque: CSSProperties = {
+    fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
+    letterSpacing: "0.12em", textTransform: "uppercase", color: gold,
+  };
   return (
     <label htmlFor={idAlvo} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
       <span style={{ display: "flex", alignItems: "center", gap: 7, minHeight: 15 }}>
-        <span style={rotulo}>{titulo}</span>
+        <span style={destaque ? rotuloDestaque : rotulo}>{titulo}</span>
         <Selo estado={estado} />
       </span>
       {children}
@@ -218,23 +248,38 @@ function Campo({ titulo, estado, children, idAlvo }: {
  * coloridas lado a lado brigariam entre si e com as etiquetas do cabeçalho,
  * que são as que devem ser vistas primeiro.
  */
-function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio }: {
+function Escolha({ titulo, estado, valor, opcoes, aoMudar, vazio, compacto }: {
   titulo: string; estado?: EstadoCampo; valor: string | null;
   opcoes: { v: string; t: string; cor?: CorDaOpcao | null }[];
   aoMudar: (v: string | null) => void;
   vazio?: string;
+  /** R183: no cabeçalho, sem rótulo em cima — a pílula pequena É a etiqueta;
+   *  o nome da propriedade fica no tooltip */
+  compacto?: boolean;
 }) {
   // R135 (U95): era um <select> nativo. Virou o SeletorDeOpcao — um botão
   // pintado pela cor da coisa escolhida que abre a lista no popover do design
   // system, o mesmo da página da atividade. Cada opção leva a própria cor.
+  const seletor = (
+    <SeletorDeOpcao
+      valor={valor}
+      vazio={vazio}
+      compacto={compacto}
+      opcoes={opcoes.map((o) => ({ valor: o.v, rotulo: o.t, cor: o.cor ?? null }))}
+      aoMudar={aoMudar}
+    />
+  );
+  if (compacto) {
+    return (
+      <span title={titulo} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+        {seletor}
+        <Selo estado={estado} />
+      </span>
+    );
+  }
   return (
     <Campo titulo={titulo} estado={estado}>
-      <SeletorDeOpcao
-        valor={valor}
-        vazio={vazio}
-        opcoes={opcoes.map((o) => ({ valor: o.v, rotulo: o.t, cor: o.cor ?? null }))}
-        aoMudar={aoMudar}
-      />
+      {seletor}
     </Campo>
   );
 }
@@ -303,20 +348,26 @@ function Etiqueta({ texto, cor, forte }: { texto: string; cor: { dark: string; l
  * atividade —, grava sozinho (R90) e o texto continua Markdown puro
  * (lib/texto-rico.ts): nenhuma tela que lê a descrição hoje muda.
  */
-function DescricaoComFerramentas({ estado, valor, aoSalvar, chaveReset, pessoas }: {
+function DescricaoComFerramentas({
+  estado, valor, aoSalvar, chaveReset, pessoas,
+  titulo = "Descrição", idAlvo = "painel-descricao-texto", placeholder, minAltura = 160, destaque,
+}: {
   estado?: EstadoCampo; valor: string; aoSalvar: (v: string) => void; chaveReset?: string | null;
   pessoas: PessoaParaMencao[];
+  /** R184: o mesmo editor serve o PROBLEMA e o DIAGNÓSTICO — muda o rótulo,
+   *  o id do campo, o convite e a altura */
+  titulo?: string; idAlvo?: string; placeholder?: string; minAltura?: number; destaque?: boolean;
 }) {
   return (
-    <Campo titulo="Descrição" estado={estado} idAlvo="painel-descricao-texto">
+    <Campo titulo={titulo} estado={estado} idAlvo={idAlvo} destaque={destaque}>
       <EditorDeDescricao
-        idAlvo="painel-descricao-texto"
+        idAlvo={idAlvo}
         valor={valor}
         aoSalvar={aoSalvar}
         chaveReset={chaveReset}
         pessoas={pessoas}
-        minAltura={160}
-        placeholder="O que precisa ser feito, o que já se sabe… Digite @ para mencionar alguém."
+        minAltura={minAltura}
+        placeholder={placeholder ?? "O que precisa ser feito, o que já se sabe… Digite @ para mencionar alguém."}
       />
     </Campo>
   );
@@ -486,6 +537,130 @@ function Comentarios({ chamadoId, pessoasPorId, pessoas }: {
   );
 }
 
+// ── As peças do CABEÇALHO e do REGISTRO (R183–R185, U104) ───────────────────
+
+/**
+ * Um grupo do cabeçalho: rótulo pequeno em maiúsculas, o controle, e o selo de
+ * gravação. É o que faz "Responsável ◯ Fulano" ler como uma frase e não como
+ * um campo de formulário — no cabeçalho não há caixa, só a informação.
+ */
+function Grupo({ rotulo, estado, children, titulo }: {
+  rotulo: string; estado?: EstadoCampo; children: ReactNode; titulo?: string;
+}) {
+  const { textSecondary } = useEstiloCampo();
+  return (
+    <div title={titulo} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+      <span style={{
+        fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: textSecondary, whiteSpace: "nowrap",
+      }}>
+        {rotulo}
+      </span>
+      {children}
+      <Selo estado={estado} />
+    </div>
+  );
+}
+
+/**
+ * A barra de progresso do registro (R184). Davi (2026-09-04): "Crie uma barra
+ * de progresso com dois círculos, o 1 e o 2. Ao preencher o PROBLEMA o 1 fica
+ * amarelo, e ao preencher o diagnóstico, a barra e o 2 ficam amarelos."
+ *
+ * Os dois círculos são INDEPENDENTES (o 1 olha só o problema; a barra e o 2
+ * olham só o diagnóstico) — a decisão está em `etapasDoRegistro`, que é pura e
+ * testada; aqui só se pinta. A cor nunca fala sozinha: o rótulo embaixo de
+ * cada círculo engrossa quando a etapa está feita, e a frase inteira vai no
+ * `aria-label`.
+ */
+function ProgressoDoRegistro({ etapas }: { etapas: EtapasDoRegistro }) {
+  const est = useEstiloCampo();
+  const ativo = est.gold;
+  const inativo = est.isLight ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.16)";
+  const sobreOAtivo = est.isLight ? "#ffffff" : CINZA.escuro.pagina;
+  const circulo = (n: 1 | 2, feito: boolean, rotulo: string) => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, width: 92, flexShrink: 0 }}>
+      <span aria-hidden style={{
+        width: 26, height: 26, borderRadius: "50%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: FONT, fontWeight: 700, fontSize: 12,
+        background: feito ? ativo : "transparent",
+        color: feito ? sobreOAtivo : est.textSecondary,
+        border: `2px solid ${feito ? ativo : inativo}`,
+        transition: "background .2s, border-color .2s, color .2s",
+      }}>
+        {n}
+      </span>
+      <span style={{
+        fontFamily: FONT, fontSize: 10.5, letterSpacing: "0.06em", textTransform: "uppercase",
+        fontWeight: feito ? 700 : 500, color: feito ? est.textPrimary : est.textSecondary,
+      }}>
+        {rotulo}
+      </span>
+    </div>
+  );
+  return (
+    <div role="img" aria-label={fraseDoProgresso(etapas)} title={fraseDoProgresso(etapas)}
+      style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "2px 0 0" }}>
+      {circulo(1, etapas.problema, "Problema")}
+      <div aria-hidden style={{
+        flex: 1, maxWidth: 280, height: 3, borderRadius: 2, marginTop: 12,
+        background: inativo, position: "relative", overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0, background: ativo,
+          transform: `scaleX(${etapas.diagnostico ? 1 : 0})`, transformOrigin: "left",
+          transition: "transform .25s",
+        }} />
+      </div>
+      {circulo(2, etapas.diagnostico, "Diagnóstico")}
+    </div>
+  );
+}
+
+/**
+ * A LINHA DO TEMPO (R185) — os eventos que não são comentário, na mesma
+ * tabela (`chamado_eventos`) e na mesma consulta que `Comentarios` já faz:
+ * a chave é a mesma, o React Query serve os dois do mesmo cache. É o mesmo
+ * desenho da página da atividade (DetalheInterno): ponto dourado, a frase,
+ * quem e quando.
+ */
+function LinhaDoTempo({ chamadoId, pessoasPorId }: {
+  chamadoId: string;
+  pessoasPorId: Record<string, { nome: string; avatar_url: string | null }>;
+}) {
+  const est = useEstiloCampo();
+  const { data: eventos = [] } = useChamadoEventos(chamadoId, "asc");
+  const linha = useMemo(() => eventos.filter((e) => e.tipo !== "comentario"), [eventos]);
+  return (
+    <>
+      <Secao titulo="Linha do tempo" />
+      {linha.length === 0 ? (
+        <span style={{ fontFamily: FONT, fontSize: 12.5, color: est.textSecondary }}>
+          Nenhum evento registrado ainda.
+        </span>
+      ) : (
+        <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {linha.map((e) => (
+            <li key={e.id} style={{ display: "flex", gap: 10 }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: est.gold, marginTop: 6, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: FONT, fontSize: 13, color: est.textPrimary, lineHeight: 1.5 }}>
+                  {e.descricao}
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary }}>
+                  {e.user_id ? (pessoasPorId[e.user_id]?.nome ?? "Alguém") : "Sistema"}
+                  {" · "}{tempoRelativo(e.created_at)}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </>
+  );
+}
+
 // ── O painel ────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -506,13 +681,16 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
   const { data: locais = [] } = useChamadoLocais(chamadoId ?? undefined);
 
   const [estados, setEstados] = useState<Record<string, EstadoCampo>>({});
+  // R183: a agenda de campo mora recolhida no cabeçalho; abre por clique
+  const [agendaAberta, setAgendaAberta] = useState(false);
 
   // troca de chamado zera os avisos: um "salvo" verde herdado do cartão
   // anterior diria que algo foi gravado neste, que não foi
   useEffect(() => { setEstados({}); }, [chamadoId]);
 
-  const superficie = isLight ? "#ffffff" : "#0f0f15";
-  const cabecalhoBg = isLight ? "#f7f7f5" : "#16161d";
+  // R186: cinza neutro, sem azul — a escala inteira mora em paleta.ts
+  const superficie = cinzas(isLight).superficie;
+  const cabecalhoBg = cinzas(isLight).elevada;
 
   const salvar = useMutation({
     mutationFn: async ({ patch }: { campo: string; patch: ChamadoPatch }) => {
@@ -739,71 +917,120 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
 
-            {/* ── CABEÇALHO: identidade e estado ───────────────────────── */}
+            {/* ── CABEÇALHO (R183): TODA a informação da atividade mora aqui,
+                em botões discretos e pequenos. Davi (2026-09-04): "Todas as
+                informações da atividade devem estar no cabeçalho - utilize
+                botões discretos. Pequenos." Cada etiqueta de estado É o
+                próprio seletor: ler e mudar são o mesmo gesto. O corpo fica
+                livre para o registro do trabalho (R184). */}
             <div style={{
-              padding: "20px 22px 16px", borderBottom: est.borda,
+              padding: "16px 22px 14px", borderBottom: est.borda,
               background: cabecalhoBg, flexShrink: 0,
             }}>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              {/* linha 1 — O TÍTULO É O CABEÇALHO, grande e editável no lugar.
+                  A sigla CH-... SAIU DA VISTA de vez (2026-08-22, Davi:
+                  "remova a sigla do título"); continua acessível só pelo
+                  TOOLTIP, porque é assim que o chamado se pede por telefone —
+                  o mesmo padrão da R43 na tabela da Início. O X de fechar do
+                  Sheet mora no canto, por isso o paddingRight. */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingRight: 28 }}>
+                <div title={chamado.numero ?? undefined} style={{ flex: 1, minWidth: 0 }}>
+                  <Texto
+                    valor={chamado.titulo ?? ""}
+                    chaveReset={chamadoId}
+                    placeholder="Sem título"
+                    estado={estados.titulo}
+                    aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
+                    estiloProprio={{
+                      // maior e em negrito (Davi, 2026-08-22) — 22px/700 é o
+                      // "Título de página" do design system (§3), o degrau mais
+                      // alto da hierarquia de peso que o sistema carrega
+                      fontSize: 22, fontWeight: 700, minHeight: 0,
+                      padding: "6px 8px", marginLeft: -8, marginTop: -4,
+                      background: "transparent", border: "1px solid transparent",
+                      borderRadius: 10, letterSpacing: "-0.01em",
+                    }}
+                  />
+                </div>
                 <button
                   onClick={() => aoAbrirPagina(chamado.id)}
                   title="Abrir a página completa"
+                  aria-label="Abrir a página completa"
                   style={{
-                    flexShrink: 0, width: 36, height: 36, borderRadius: 11,
+                    flexShrink: 0, width: 32, height: 32, borderRadius: 10,
                     border: est.borda, background: est.campoBg, color: est.textSecondary,
                     display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                    marginRight: 28, // o X de fechar do Sheet mora no canto
-                    marginTop: -6,
                   }}
                 >
-                  <ExternalLink size={16} />
+                  <ExternalLink size={15} />
                 </button>
               </div>
 
-              {/* O TÍTULO É O CABEÇALHO — grande, editável no lugar. A sigla
-                  CH-... SAIU DA VISTA de vez (2026-08-22, Davi: "remova a
-                  sigla do título") — não sobra em linha nenhuma perto dele.
-                  Continua acessível só pelo TOOLTIP ao passar o mouse, porque
-                  é assim que o chamado se pede por telefone — o mesmo padrão
-                  da R43 na tabela da Início. */}
-              <div title={chamado.numero ?? undefined}>
-                <Texto
-                  valor={chamado.titulo ?? ""}
-                  chaveReset={chamadoId}
-                  placeholder="Sem título"
-                  estado={estados.titulo}
-                  aoSalvar={(v) => salvar.mutate({ campo: "titulo", patch: { titulo: v } })}
-                  estiloProprio={{
-                    // maior e em negrito (Davi, 2026-08-22) — 22px/700 é o
-                    // "Título de página" do design system (§3), o degrau mais
-                    // alto da hierarquia de peso que o sistema carrega
-                    fontSize: 22, fontWeight: 700, minHeight: 0,
-                    padding: "6px 8px", marginLeft: -8, marginTop: -4,
-                    background: "transparent", border: "1px solid transparent",
-                    borderRadius: 10, letterSpacing: "-0.01em",
-                  }}
+              {/* linha 2 — o ESTADO. Status, tipo e a régua de urgência são
+                  SELETORES compactos pintados pela cor da coisa escolhida
+                  (R135 + R183); as equipes (R139) e o "Atrasado" continuam
+                  etiquetas, porque são derivados, não escolhidos. */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 8 }}>
+                <Escolha
+                  compacto
+                  titulo="Status" estado={estados.status} valor={chamado.status ?? null}
+                  opcoes={statusDaNatureza(natureza).map((s) => {
+                    const i = chamadoStatusInfo(s);
+                    return { v: s, t: i.label, cor: { dark: i.color, light: i.colorLight, bg: i.bg, border: i.border } };
+                  })}
+                  aoMudar={(v) => salvar.mutate({ campo: "status", patch: { status: v as any } })}
                 />
-              </div>
-
-              {/* ETIQUETAS — a leitura de estado, nas cores dos cards */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 7, alignItems: "center", marginTop: 10 }}>
-                {info && (
-                  <Etiqueta
-                    forte
-                    texto={info.label}
-                    cor={{ dark: info.color, light: info.colorLight, bg: info.bg }}
+                <Escolha
+                  compacto
+                  titulo="Tipo de demanda" estado={estados.tipo} valor={chamado.tipo ?? null}
+                  vazio="Tipo"
+                  // os tipos seguem a natureza: oferecer "corretiva" num chamado
+                  // interno criaria um registro que nenhuma tela sabe ler
+                  opcoes={tiposDaNatureza(natureza).map((t) => ({ v: t, t: TIPO_LABEL[t], cor: TIPO_CORES[t] ?? null }))}
+                  aoMudar={(v) => salvar.mutate({ campo: "tipo", patch: { tipo: v as any } })}
+                />
+                {/* R142: prioridade é do CAMPO; no interno a régua é o impacto,
+                    e só nos tipos que têm */}
+                {natureza === "campo" && (
+                  <Escolha
+                    compacto
+                    titulo="Prioridade" estado={estados.prioridade} valor={chamado.prioridade ?? null}
+                    vazio="Prioridade"
+                    opcoes={(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[])
+                      .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null }))}
+                    aoMudar={(v) => salvar.mutate({ campo: "prioridade", patch: { prioridade: v as any } })}
                   />
                 )}
-                {tipo && TIPO_CORES[tipo] && (
-                  <Etiqueta texto={TIPO_LABEL[tipo]} cor={TIPO_CORES[tipo]} />
+                {natureza === "interno" && temImpacto(chamado.tipo) && (
+                  <Escolha
+                    compacto
+                    titulo="Impacto operacional" estado={estados.impacto_operacional} valor={chamado.impacto_operacional ?? null}
+                    vazio="Impacto"
+                    opcoes={IMPACTO_ORDEM.map((i) => ({ v: i, t: IMPACTO_LABEL[i], cor: IMPACTO_CORES[i] }))}
+                    aoMudar={(v) => salvar.mutate({ campo: "impacto_operacional", patch: { impacto_operacional: (v ?? null) as ImpactoOperacional | null } })}
+                  />
                 )}
-                {/* R142: prioridade é do CAMPO; no interno a régua é o impacto */}
-                {natureza === "campo" && prio && PRIORIDADE_CORES[prio] && (
-                  <Etiqueta texto={PRIORIDADE_LABEL[prio]} cor={PRIORIDADE_CORES[prio]} />
-                )}
-                {natureza === "interno" && chamado.impacto_operacional && IMPACTO_CORES[chamado.impacto_operacional] && (
-                  <Etiqueta texto={IMPACTO_LABEL[chamado.impacto_operacional]} cor={IMPACTO_CORES[chamado.impacto_operacional]} />
-                )}
+                <Grupo rotulo="Prazo" estado={estados.prazo_limite}>
+                  <input
+                    type="date"
+                    aria-label="Prazo"
+                    value={prazoParaData(chamado.prazo_limite)}
+                    onChange={(e) => {
+                      // R141 (U96): o sprint não é mais gravado — ele é
+                      // cálculo sobre este prazo (R40), onde quer que seja lido
+                      salvar.mutate({ campo: "prazo_limite", patch: { prazo_limite: dataParaPrazo(e.target.value || null) } });
+                    }}
+                    style={{
+                      ...est.entrada,
+                      width: "auto", minHeight: 30, padding: "0 10px", borderRadius: 999, fontSize: 12,
+                      // atrasado se anuncia no próprio campo: é a informação que
+                      // decide se este chamado é o próximo a ser tocado
+                      color: atrasado ? est.vermelho : est.textPrimary,
+                      fontWeight: atrasado ? 700 : 600,
+                      borderColor: atrasado ? est.vermelho : undefined,
+                    }}
+                  />
+                </Grupo>
                 {/* R139: as equipes das pessoas — derivadas, não escolhidas */}
                 {equipesEnvolvidas.map((e) => (
                   <Etiqueta key={e} texto={EQUIPE_LABEL[e] ?? e} cor={equipeCores(e)} />
@@ -821,221 +1048,236 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                   })}
                 </span>
               </div>
-            </div>
 
-            {/* ── CAMPOS ───────────────────────────────────────────────── */}
-            <div style={{
-              flex: 1, minHeight: 0, overflowY: "auto",
-              padding: "6px 22px 32px", display: "flex", flexDirection: "column", gap: 14,
-            }}>
-              <Secao titulo="De quem é" />
+              {/* linha 3 — as PESSOAS e o LOCAL, três respostas para "de quem é
+                  isto?" na mesma linha (2026-08-22, Davi), agora como grupos
+                  do cabeçalho e não como três caixas de formulário. Os três
+                  usam campo COM BUSCA — são as listas longas (192 clientes)
+                  onde rolar custa mais que digitar. */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", alignItems: "center", marginTop: 10 }}>
+                <Grupo rotulo="Responsável" estado={estados.responsavel_id}>
+                  <div style={{ width: 210 }}>
+                    <CampoComBusca
+                      id="painel-responsavel"
+                      compacto
+                      opcoes={opcoesPessoas}
+                      valor={chamado.responsavel_id ?? null}
+                      vazio="— sem responsável —"
+                      placeholder="— sem responsável —"
+                      aoMudar={(v) => {
+                        // R139: a coluna `equipe` do banco acompanha o responsável
+                        const eq = equipeDaPessoa(pessoas as any[], v);
+                        salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v, ...(eq ? { equipe: eq } : {}) } });
+                      }}
+                      iconeEsquerda={(esc) => esc
+                        ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
+                        : null}
+                    />
+                  </div>
+                </Grupo>
 
-              {/* Cliente, Responsável e Apoio NA MESMA LINHA (2026-08-22,
-                  Davi): são três respostas para "de quem é isto?", e lado a
-                  lado é como se lê uma resposta composta. Os três usam campo
-                  COM BUSCA — são as listas longas (192 clientes) onde rolar
-                  custa mais que digitar — e os três mostram um ícone/foto ao
-                  lado do nome escolhido.
+                <Grupo rotulo="Apoio" estado={estados.apoio}>
+                  {apoios.map(({ profile_id: id, origem, congelado_em }) => (
+                    <span key={id}
+                      // U81: o chip diz se aquele nome é REGISTRO ou atribuição
+                      // de hoje. `registro` quer dizer que alguém carimbou
+                      // "feito" no bloco daquela semana e o automatismo da
+                      // escala soltou a linha — trocar o responsável não a
+                      // reescreve mais. O X CONTINUA AQUI de propósito: não há
+                      // GRANT de UPDATE nesta tabela, então corrigir um
+                      // congelamento errado é apagar e pôr outro, e fechar a
+                      // porta seria trancá-la com o erro dentro.
+                      title={especieDoApoio({ origem, congelado_em }) === "registro"
+                        ? `${nomeDe(id)} esteve num atendimento que já aconteceu — o sistema não troca mais este nome sozinho. Para corrigir, remova e ponha outro.`
+                        : undefined}
+                      style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "4px 6px 4px 6px", borderRadius: 999,
+                      background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
+                      fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                      // a marca é uma BORDA, não uma cor de fundo nova: o chip
+                      // já usa fundo para dizer "é um chip", e uma segunda
+                      // cor ali competiria com o avatar da pessoa
+                      border: especieDoApoio({ origem, congelado_em }) === "registro"
+                        ? `1px solid ${isLight ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.32)"}`
+                        : "1px solid transparent",
+                    }}>
+                      <AvatarCirculo id={id} nome={nomeDe(id)} pessoa={pessoasPorId[id]} tamanho={17} />
+                      {nomeDe(id)}
+                      {especieDoApoio({ origem, congelado_em }) === "registro" && (
+                        <Check size={11} aria-label="atendimento já realizado" color={est.textSecondary} />
+                      )}
+                      <button
+                        onClick={() => mexerApoio.mutate({ id, remover: true })}
+                        aria-label={`Remover ${nomeDe(id)} do apoio`}
+                        style={{
+                          border: "none", background: "transparent", cursor: "pointer",
+                          color: est.textSecondary, display: "flex", padding: 2,
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    </span>
+                  ))}
+                  <div style={{ width: 130 }}>
+                    <CampoComBusca
+                      id="painel-apoio"
+                      compacto
+                      limpavel={false}
+                      placeholder="+ adicionar"
+                      // quem já está na atividade sai da lista: oferecer de
+                      // novo quem já é apoio só produz chave repetida
+                      opcoes={opcoesPessoas.filter(
+                        (o) => o.valor !== chamado.responsavel_id
+                          && !apoios.some((a) => a.profile_id === o.valor),
+                      )}
+                      valor={null}
+                      aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
+                    />
+                  </div>
+                </Grupo>
 
-                  3 COLUNAS FIXAS, não auto-fit/minmax: a 1ª versão usava
-                  auto-fit(180px), e numa faixa comum de largura de painel
-                  (~522–612px, ex. janela de ~900px) ele resolvia para 2
-                  colunas — Apoio sobrava sozinho numa 2ª linha, ocupando só
-                  1/3 do espaço ao lado de metade da linha vazia. Fixo nunca
-                  quebra: "mesma linha" foi pedido explícito do Davi, não uma
-                  sugestão que vale só em painel largo (achado da revisão
-                  adversarial de U40, 2026-08-21). minmax(0,1fr), não só 1fr:
-                  sem o 0, um nome de cliente comprido poderia empurrar a
-                  coluna além da largura justa dela. */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
                 {/* LOCAL, não "Cliente" (R84, Davi 2026-08-26: "a etiqueta de
                     cliente na verdade seria uma etiqueta de LOCAL, este tempo
                     todo estávamos usando a palavra errada"). Campo de MÚLTIPLOS
                     valores, sem limite (R85), no mesmo desenho de "Apoio":
                     chips + busca para adicionar. O primeiro cliente ocupa o
                     slot principal (cliente_id) por baixo dos panos; na tela é
-                    só uma lista. O seletor "+ setor" pendura o SETOR INTEIRO
-                    como etiqueta — uma linha, não oitenta chips. */}
-                <Campo titulo="Local" estado={estados.cliente_id}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                    {clientesDoChamadoIds.map((id) => (
-                      <span key={id} style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        padding: "4px 6px 4px 6px", borderRadius: 999,
-                        background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
-                        fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                    só uma lista. Um GRUPO (R143) pendura o SETOR INTEIRO como
+                    etiqueta na cor do serviço — uma linha, não oitenta chips. */}
+                <Grupo rotulo="Local" estado={estados.cliente_id}>
+                  {clientesDoChamadoIds.map((id) => (
+                    <span key={id} style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      padding: "4px 6px 4px 6px", borderRadius: 999,
+                      background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
+                      fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
+                    }}>
+                      <span style={{
+                        width: 17, height: 17, borderRadius: "50%", flexShrink: 0,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: est.campoBg,
                       }}>
-                        <span style={{
-                          width: 17, height: 17, borderRadius: "50%", flexShrink: 0,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          background: est.campoBg,
-                        }}>
-                          <Building2 size={10} color={est.textSecondary} />
-                        </span>
-                        {nomeClienteDe(id)}
-                        <button
-                          onClick={() => mexerCliente.mutate({ id, remover: true })}
-                          aria-label={`Remover ${nomeClienteDe(id)} da atividade`}
-                          style={{
-                            border: "none", background: "transparent", cursor: "pointer",
-                            color: est.textSecondary, display: "flex", padding: 2,
-                          }}
-                        >
-                          <X size={13} />
-                        </button>
+                        <Building2 size={10} color={est.textSecondary} />
                       </span>
-                    ))}
-                    <div style={{ minWidth: 130, flex: 1 }}>
-                      <CampoComBusca
-                        id="painel-cliente"
-                        compacto
-                        limpavel={false}
-                        placeholder={clientesDoChamadoIds.length || setoresDoChamado.length ? "+ adicionar" : "Interno — Prever · + adicionar"}
-                        // quem já está na atividade sai da lista: oferecer de
-                        // novo quem já foi adicionado só produz chave repetida.
-                        // Um GRUPO (R143) vira etiqueta de setor; um cliente,
-                        // local — a mesma lista decide pelo valor.
-                        opcoes={opcoesClientes.filter((o) => !clientesDoChamadoIds.includes(o.valor))}
-                        valor={null}
-                        aoMudar={(v) => {
-                          if (!v) return;
-                          const setor = setorDoValor(v);
-                          if (setor) mexerSetor.mutate({ setor, remover: false });
-                          else mexerCliente.mutate({ id: v, remover: false });
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* As etiquetas de SETOR ficam numa fileira própria, e com a
-                      cor do serviço (SERVICO_CORES, U36) — misturar "Portaria
-                      Remota" (oitenta prédios) com "Green Village" (um prédio)
-                      na mesma fileira cinza faria os dois parecerem a mesma
-                      coisa, e eles não são. */}
-                  {setoresDoChamado.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 6 }}>
-                      {setoresDoChamado.map((s) => {
-                        const cor = SERVICO_CORES[s as ServicoCliente];
-                        return (
-                          <span key={s} style={{
-                            display: "inline-flex", alignItems: "center", gap: 5,
-                            padding: "4px 6px", borderRadius: 999,
-                            ...(cor ? etiqueta(cor) : { background: est.campoBg }),
-                            fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
-                          }}>
-                            <Layers size={11} style={{ flexShrink: 0 }} />
-                            {rotuloDoGrupo(s as ServicoCliente)}
-                            <button
-                              onClick={() => mexerSetor.mutate({ setor: s as ServicoCliente, remover: true })}
-                              aria-label={`Remover o setor ${SERVICO_LABEL[s as ServicoCliente] ?? s} da atividade`}
-                              style={{
-                                border: "none", background: "transparent", cursor: "pointer",
-                                color: "inherit", display: "flex", padding: 2, opacity: 0.75,
-                              }}
-                            >
-                              <X size={13} />
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {/* o nome que veio do Notion, quando não há vínculo (U31):
-                      sem isto o campo pareceria vazio numa atividade que TEM
-                      cliente. Só aparece sem NENHUM cliente ainda escolhido —
-                      assim que o primeiro é adicionado (deste aviso ou da
-                      busca), ele some: a atividade já tem cliente de verdade. */}
-                  {clientesDoChamadoIds.length === 0 && chamado.cliente_origem_nome && (
-                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary, lineHeight: 1.5, marginTop: 6 }}>
-                      No Notion:{" "}
-                      <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
-                      {" "}— escolha acima para vincular ao QAP.
-                    </div>
-                  )}
-                </Campo>
-
-                <Campo titulo="Responsável" estado={estados.responsavel_id}>
-                  <CampoComBusca
-                    id="painel-responsavel"
-                    opcoes={opcoesPessoas}
-                    valor={chamado.responsavel_id ?? null}
-                    vazio="— sem responsável —"
-                    aoMudar={(v) => {
-                      // R139: a coluna `equipe` do banco acompanha o responsável
-                      const eq = equipeDaPessoa(pessoas as any[], v);
-                      salvar.mutate({ campo: "responsavel_id", patch: { responsavel_id: v, ...(eq ? { equipe: eq } : {}) } });
-                    }}
-                    iconeEsquerda={(esc) => esc
-                      ? <AvatarCirculo id={esc.valor} nome={esc.rotulo} pessoa={pessoasPorId[esc.valor]} tamanho={18} />
-                      : null}
-                  />
-                </Campo>
-
-                <Campo titulo="Apoio" estado={estados.apoio}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                    {apoios.map(({ profile_id: id, origem, congelado_em }) => (
-                      <span key={id}
-                        // U81: o chip diz se aquele nome é REGISTRO ou atribuição
-                        // de hoje. `registro` quer dizer que alguém carimbou
-                        // "feito" no bloco daquela semana e o automatismo da
-                        // escala soltou a linha — trocar o responsável não a
-                        // reescreve mais. O X CONTINUA AQUI de propósito: não há
-                        // GRANT de UPDATE nesta tabela, então corrigir um
-                        // congelamento errado é apagar e pôr outro, e fechar a
-                        // porta seria trancá-la com o erro dentro.
-                        title={especieDoApoio({ origem, congelado_em }) === "registro"
-                          ? `${nomeDe(id)} esteve num atendimento que já aconteceu — o sistema não troca mais este nome sozinho. Para corrigir, remova e ponha outro.`
-                          : undefined}
+                      {nomeClienteDe(id)}
+                      <button
+                        onClick={() => mexerCliente.mutate({ id, remover: true })}
+                        aria-label={`Remover ${nomeClienteDe(id)} da atividade`}
                         style={{
+                          border: "none", background: "transparent", cursor: "pointer",
+                          color: est.textSecondary, display: "flex", padding: 2,
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    </span>
+                  ))}
+                  {/* As etiquetas de SETOR levam a cor do serviço (SERVICO_CORES,
+                      U36) — misturar "Portaria Remota" (oitenta prédios) com
+                      "Green Village" (um prédio) no mesmo cinza faria os dois
+                      parecerem a mesma coisa, e eles não são. */}
+                  {setoresDoChamado.map((s) => {
+                    const cor = SERVICO_CORES[s as ServicoCliente];
+                    return (
+                      <span key={s} style={{
                         display: "inline-flex", alignItems: "center", gap: 5,
-                        padding: "4px 6px 4px 6px", borderRadius: 999,
-                        background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)",
-                        fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: est.textPrimary,
-                        // a marca é uma BORDA, não uma cor de fundo nova: o chip
-                        // já usa fundo para dizer "é um chip", e uma segunda
-                        // cor ali competiria com o avatar da pessoa
-                        border: especieDoApoio({ origem, congelado_em }) === "registro"
-                          ? `1px solid ${isLight ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.32)"}`
-                          : "1px solid transparent",
+                        padding: "4px 6px", borderRadius: 999,
+                        ...(cor ? etiqueta(cor) : { background: est.campoBg }),
+                        fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
                       }}>
-                        <AvatarCirculo id={id} nome={nomeDe(id)} pessoa={pessoasPorId[id]} tamanho={17} />
-                        {nomeDe(id)}
-                        {especieDoApoio({ origem, congelado_em }) === "registro" && (
-                          <Check size={11} aria-label="atendimento já realizado" color={est.textSecondary} />
-                        )}
+                        <Layers size={11} style={{ flexShrink: 0 }} />
+                        {rotuloDoGrupo(s as ServicoCliente)}
                         <button
-                          onClick={() => mexerApoio.mutate({ id, remover: true })}
-                          aria-label={`Remover ${nomeDe(id)} do apoio`}
+                          onClick={() => mexerSetor.mutate({ setor: s as ServicoCliente, remover: true })}
+                          aria-label={`Remover o setor ${SERVICO_LABEL[s as ServicoCliente] ?? s} da atividade`}
                           style={{
                             border: "none", background: "transparent", cursor: "pointer",
-                            color: est.textSecondary, display: "flex", padding: 2,
+                            color: "inherit", display: "flex", padding: 2, opacity: 0.75,
                           }}
                         >
                           <X size={13} />
                         </button>
                       </span>
-                    ))}
-                    <div style={{ minWidth: 150, flex: 1 }}>
-                      <CampoComBusca
-                        id="painel-apoio"
-                        compacto
-                        limpavel={false}
-                        placeholder="+ adicionar"
-                        // quem já está na atividade sai da lista: oferecer de
-                        // novo quem já é apoio só produz chave repetida
-                        opcoes={opcoesPessoas.filter(
-                          (o) => o.valor !== chamado.responsavel_id
-                            && !apoios.some((a) => a.profile_id === o.valor),
-                        )}
-                        valor={null}
-                        aoMudar={(v) => { if (v) mexerApoio.mutate({ id: v, remover: false }); }}
-                      />
-                    </div>
+                    );
+                  })}
+                  <div style={{ width: 160 }}>
+                    <CampoComBusca
+                      id="painel-cliente"
+                      compacto
+                      limpavel={false}
+                      placeholder={clientesDoChamadoIds.length || setoresDoChamado.length ? "+ adicionar" : "Interno — Prever · + adicionar"}
+                      // quem já está na atividade sai da lista: oferecer de
+                      // novo quem já foi adicionado só produz chave repetida.
+                      // Um GRUPO (R143) vira etiqueta de setor; um cliente,
+                      // local — a mesma lista decide pelo valor.
+                      opcoes={opcoesClientes.filter((o) => !clientesDoChamadoIds.includes(o.valor))}
+                      valor={null}
+                      aoMudar={(v) => {
+                        if (!v) return;
+                        const setor = setorDoValor(v);
+                        if (setor) mexerSetor.mutate({ setor, remover: false });
+                        else mexerCliente.mutate({ id: v, remover: false });
+                      }}
+                    />
                   </div>
-                </Campo>
+                </Grupo>
               </div>
+              {/* o nome que veio do Notion, quando não há vínculo (U31): sem
+                  isto o grupo Local pareceria vazio numa atividade que TEM
+                  cliente. Some assim que o primeiro cliente é adicionado. */}
+              {clientesDoChamadoIds.length === 0 && chamado.cliente_origem_nome && (
+                <div style={{ fontFamily: FONT, fontSize: 11.5, color: est.textSecondary, lineHeight: 1.5, marginTop: 6 }}>
+                  No Notion:{" "}
+                  <strong style={{ color: est.gold }}>{chamado.cliente_origem_nome}</strong>
+                  {" "}— escolha em Local para vincular ao QAP.
+                </div>
+              )}
+
+              {/* linha 4 — a AGENDA DE CAMPO, recolhida. Agendamento só faz
+                  sentido em campo: é a hora de a dupla sair. No interno o que
+                  organiza é o prazo. U79: `data_hora_agendada` é espelho dos
+                  blocos (R101) — ver features/programacao/AgendaDoChamado.tsx.
+                  Recolhida por padrão porque o corpo é do registro (R184) e a
+                  agenda é um widget alto; o botão diz que ela existe. */}
+              {natureza === "campo" && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setAgendaAberta((a) => !a)}
+                    aria-expanded={agendaAberta}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 10px 5px 8px", borderRadius: 999,
+                      border: est.borda, background: est.campoBg, color: est.textPrimary,
+                      fontFamily: FONT, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    <ChevronRight size={13} style={{ transform: agendaAberta ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
+                    Agenda de campo
+                  </button>
+                  {agendaAberta && (
+                    <div style={{ marginTop: 10 }}>
+                      <AgendaDoChamado chamado={chamado as any} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── CORPO (R184, R185): o REGISTRO DO TRABALHO. Davi: "A área
+                principal terá dois campos principais, um espaço para PROBLEMA
+                e outro para DIAGNÓSTICO. … Abaixo dos campos que falei, terá
+                os comentários e mais abaixo a time Line." */}
+            <div style={{
+              flex: 1, minHeight: 0, overflowY: "auto",
+              padding: "16px 22px 32px", display: "flex", flexDirection: "column", gap: 16,
+            }}>
+              <ProgressoDoRegistro etapas={etapasDoRegistro(chamado.descricao_problema, chamado.diagnostico)} />
 
               <DescricaoComFerramentas
+                titulo="Problema"
+                destaque
                 estado={estados.descricao_problema}
                 chaveReset={chamadoId}
                 pessoas={pessoasMencao}
@@ -1045,90 +1287,23 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                 })}
               />
 
-              <Secao titulo="Classificação" />
-
-              {/* Os itens NA MESMA LINHA (2026-08-22, Davi), em colunas FIXAS —
-                  auto-fit quebrava em painel estreito (revisão da U40).
-                  U96: eram quatro (tipo, status, prioridade, equipe). A EQUIPE
-                  saiu (R139: é a das pessoas, e aparece como etiqueta no
-                  cabeçalho); a régua de urgência é UMA — prioridade no campo,
-                  impacto operacional no interno, e só nos tipos que têm (R142).
-                  Três colunas quando há régua, duas quando não. */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${natureza === "campo" || (natureza === "interno" && temImpacto(chamado.tipo)) ? 3 : 2}, minmax(0, 1fr))`,
-                gap: 14,
-              }}>
-                <Escolha
-                  titulo="Tipo de demanda" estado={estados.tipo} valor={chamado.tipo ?? null}
-                  vazio="— sem tipo —"
-                  // os tipos seguem a natureza: oferecer "corretiva" num chamado
-                  // interno criaria um registro que nenhuma tela sabe ler
-                  opcoes={tiposDaNatureza(natureza).map((t) => ({ v: t, t: TIPO_LABEL[t], cor: TIPO_CORES[t] ?? null }))}
-                  aoMudar={(v) => salvar.mutate({ campo: "tipo", patch: { tipo: v as any } })}
-                />
-                <Escolha
-                  titulo="Status" estado={estados.status} valor={chamado.status ?? null}
-                  opcoes={statusDaNatureza(natureza).map((s) => {
-                    const i = chamadoStatusInfo(s);
-                    return { v: s, t: i.label, cor: { dark: i.color, light: i.colorLight, bg: i.bg, border: i.border } };
-                  })}
-                  aoMudar={(v) => salvar.mutate({ campo: "status", patch: { status: v as any } })}
-                />
-                {natureza === "campo" && (
-                  <Escolha
-                    titulo="Prioridade" estado={estados.prioridade} valor={chamado.prioridade ?? null}
-                    vazio="— sem prioridade —"
-                    opcoes={(["baixa", "normal", "alta", "urgente"] as ChamadoPrioridade[])
-                      .map((p) => ({ v: p, t: PRIORIDADE_LABEL[p], cor: PRIORIDADE_CORES[p] ?? null }))}
-                    aoMudar={(v) => salvar.mutate({ campo: "prioridade", patch: { prioridade: v as any } })}
-                  />
-                )}
-                {natureza === "interno" && temImpacto(chamado.tipo) && (
-                  <Escolha
-                    titulo="Impacto operacional" estado={estados.impacto_operacional} valor={chamado.impacto_operacional ?? null}
-                    vazio="— sem impacto definido —"
-                    opcoes={IMPACTO_ORDEM.map((i) => ({ v: i, t: IMPACTO_LABEL[i], cor: IMPACTO_CORES[i] }))}
-                    aoMudar={(v) => salvar.mutate({ campo: "impacto_operacional", patch: { impacto_operacional: (v ?? null) as ImpactoOperacional | null } })}
-                  />
-                )}
-              </div>
-
-              <Secao titulo="Quando" />
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 14 }}>
-                <Campo titulo="Prazo" estado={estados.prazo_limite}>
-                  <input
-                    type="date"
-                    value={prazoParaData(chamado.prazo_limite)}
-                    onChange={(e) => {
-                      // R141 (U96): o sprint não é mais gravado — ele é
-                      // cálculo sobre este prazo (R40), onde quer que seja lido
-                      salvar.mutate({ campo: "prazo_limite", patch: { prazo_limite: dataParaPrazo(e.target.value || null) } });
-                    }}
-                    style={{
-                      ...est.entrada,
-                      // atrasado se anuncia no próprio campo: é a informação que
-                      // decide se este chamado é o próximo a ser tocado
-                      color: atrasado ? est.vermelho : est.textPrimary,
-                      fontWeight: atrasado ? 700 : 500,
-                      borderColor: atrasado ? est.vermelho : undefined,
-                    }}
-                  />
-                </Campo>
-                {/* O seletor de SPRINT morava aqui e saiu (R141, U96): o prazo
-                    diz a semana e o mês sozinho. */}
-                {/* Agendamento só faz sentido em campo: é a hora de a dupla
-                    sair. No chamado interno o que organiza é o prazo.
-                    U79: o `datetime-local` que escrevia `data_hora_agendada`
-                    direto virou LEITURA DOS BLOCOS + gestos nomeados. A coluna
-                    é espelho derivado (R101), e um campo só não sabe
-                    representar N blocos — ver o cabeçalho de
-                    features/programacao/AgendaDoChamado.tsx. */}
-                {natureza === "campo" && (
-                  <AgendaDoChamado chamado={chamado as any} />
-                )}
-              </div>
+              {/* `diagnostico` é a MESMA coluna que a tela do técnico grava na
+                  execução (DetalheCampo) — o gestor lê aqui o que o técnico
+                  escreveu, e pode adiantar o diagnóstico de um chamado interno. */}
+              <DescricaoComFerramentas
+                titulo="Diagnóstico"
+                destaque
+                idAlvo="painel-diagnostico-texto"
+                minAltura={120}
+                placeholder="O que foi encontrado, a causa, o que se decidiu fazer…"
+                estado={estados.diagnostico}
+                chaveReset={chamadoId}
+                pessoas={pessoasMencao}
+                valor={chamado.diagnostico ?? ""}
+                aoSalvar={(v) => salvar.mutate({
+                  campo: "diagnostico", patch: { diagnostico: v || null },
+                })}
+              />
 
               {/* A proposta tem fluxo próprio (visita → orçamento → envio) e
                   este painel não o substitui: mexer no funil pelo atalho das
@@ -1141,7 +1316,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     padding: "13px 18px", borderRadius: 12, border: "none",
                     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                    color: "#08090E", cursor: "pointer",
+                    color: CINZA.escuro.pagina, cursor: "pointer",
                     fontFamily: FONT, fontWeight: 700, fontSize: 13,
                   }}
                 >
@@ -1149,9 +1324,13 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                 </button>
               )}
 
-              {/* COMENTÁRIOS — depois do último campo (2026-08-22, Davi):
-                  discussão SOBRE o chamado, não uma propriedade dele. */}
+              {/* COMENTÁRIOS — depois do registro (R185): discussão SOBRE o
+                  chamado, não uma propriedade dele. */}
               <Comentarios chamadoId={chamado.id} pessoasPorId={pessoasPorId} pessoas={pessoasMencao} />
+
+              {/* LINHA DO TEMPO — o que o sistema e as pessoas fizeram, por
+                  último (R185): é consulta, não trabalho. */}
+              <LinhaDoTempo chamadoId={chamado.id} pessoasPorId={pessoasPorId} />
             </div>
           </div>
         )}
