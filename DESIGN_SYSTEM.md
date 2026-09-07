@@ -1,5 +1,52 @@
 # Prever — Design System v2 (Supernova)
 
+<!-- sumario:inicio -->
+> **Sumário** — 42 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. Identidade](#1-identidade)
+- [2. Tokens de cor](#2-tokens-de-cor)
+  - [2.1 As quatro escalas (tokens W3C — `src/lib/paleta.ts`)](#21-as-quatro-escalas-tokens-w3c-srclibpaletats)
+  - [2.2 Superfícies](#22-superfícies)
+  - [2.3 Texto e ícone](#23-texto-e-ícone)
+  - [2.4 Status semântico](#24-status-semântico)
+  - [2.5 Botão de sucesso (confirmar/aprovar)](#25-botão-de-sucesso-confirmaraprovar)
+- [3. Tipografia](#3-tipografia)
+- [4. Forma, elevação e movimento](#4-forma-elevação-e-movimento)
+- [5. Fundos de página (v4 minimalista · v10 no claro)](#5-fundos-de-página-v4-minimalista-v10-no-claro)
+- [5b. Navegação — sidebar no desktop, barra no celular (v2)](#5b-navegação-sidebar-no-desktop-barra-no-celular-v2)
+  - [Alinhamento à margem do quadro](#alinhamento-à-margem-do-quadro)
+  - [Campo de busca (`CampoBusca.tsx`)](#campo-de-busca-campobuscatsx)
+- [6. Padrões de componente](#6-padrões-de-componente)
+  - [6.1 Card (bloco de conteúdo)](#61-card-bloco-de-conteúdo)
+  - [6.2 Micro-label de seção](#62-micro-label-de-seção)
+  - [6.3 CTA primário (pílula dourada)](#63-cta-primário-pílula-dourada)
+  - [6.4 Botão de seleção (opção marcável)](#64-botão-de-seleção-opção-marcável)
+  - [6.5 Input / textarea](#65-input-textarea)
+  - [6.6 Chip de status](#66-chip-de-status)
+  - [6.7 Botão circular de voltar (header)](#67-botão-circular-de-voltar-header)
+  - [6.8 Header de tela](#68-header-de-tela)
+  - [6.9 Barra de navegação flutuante (mobile)](#69-barra-de-navegação-flutuante-mobile)
+  - [6.10 Modal / popup](#610-modal-popup)
+  - [6.11 Linha de lista (chave → valor)](#611-linha-de-lista-chave-valor)
+  - [6.12 Card de atividade — a cor hierárquica só na borda (v10 — 2026-09-04)](#612-card-de-atividade-a-cor-hierárquica-só-na-borda-v10-2026-09-04)
+  - [6.14 Etiqueta — a categoria PREENCHIDA (v11 — 2026-09-04, R177)](#614-etiqueta-a-categoria-preenchida-v11-2026-09-04-r177)
+  - [6.15 Avatar — sem glow (v11 — 2026-09-04, R176)](#615-avatar-sem-glow-v11-2026-09-04-r176)
+  - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
+- [7. Arquitetura de tema](#7-arquitetura-de-tema)
+- [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
+- [9. Visualização de dados](#9-visualização-de-dados)
+- [10. Checklist de conformidade](#10-checklist-de-conformidade)
+- [11. PRISMA — a paleta do degradê (v5 — 2026-08-20)](#11-prisma-a-paleta-do-degradê-v5-2026-08-20)
+  - [11.1 As nove cores](#111-as-nove-cores)
+  - [11.2 O degradê (v7 — 2026-08-20)](#112-o-degradê-v7-2026-08-20)
+  - [11.3 Prazo → cor da BORDA do card (v8 — 2026-09-03, R136)](#113-prazo-cor-da-borda-do-card-v8-2026-09-03-r136)
+  - [11.4 Os efeitos, e quando cada um cabe](#114-os-efeitos-e-quando-cada-um-cabe)
+  - [11.5 Um amarelo só](#115-um-amarelo-só)
+- [12. Tipografia (v6 — 2026-08-20)](#12-tipografia-v6-2026-08-20)
+- [13. Avatares sem foto](#13-avatares-sem-foto)
+- [14. O campo "Abrir chamado"](#14-o-campo-abrir-chamado)
+<!-- sumario:fim -->
+
 Contexto de design extraído do app **Prever Proposta**. Este documento é
 autossuficiente: contém todos os tokens, padrões de componente e regras
 necessárias para reproduzir a mesma identidade visual em outro sistema,

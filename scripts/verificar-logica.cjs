@@ -17540,5 +17540,56 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 }
 
+// ── U102 — as skills organizador e banco, e os sumários dos documentos mestre ──
+{
+  const fs102 = require('fs');
+  const path102 = require('path');
+  const ler102 = (p) => fs102.readFileSync(p, 'utf8');
+  for (const [nome, refs, gatilhos] of [
+    ['organizador', ['references/documentos-mestre.md', 'references/rituais.md'],
+      ['inicie a sessão', 'documentos mestre', 'sumário', 'ESTADO_ATUAL', 'PRODUTO', 'PLANO_UNIFICACAO', 'PENDENCIAS']],
+    ['banco', ['references/modelo-de-migration.sql'],
+      ['migration', 'RLS', 'gatilho', 'permissoes_tela', 'NAO_OFERECIDOS', 'SQL Editor', 'idempotente']],
+  ]) {
+    const raiz = path102.join('.claude/skills', nome);
+    eq(`SKILL ${nome}: SKILL.md e as referências existem no repo (versionadas)`,
+       ['SKILL.md', ...refs].filter((a) => !fs102.existsSync(path102.join(raiz, a))), []);
+    const skill = ler102(path102.join(raiz, 'SKILL.md'));
+    eq(`SKILL ${nome}: frontmatter com name/description, e a descrição cobre os gatilhos`,
+       [new RegExp(`^---\\n(?:.*\\n)*?name: ${nome}\\n`).test(skill), /^description: /m.test(skill),
+        gatilhos.filter((g) => !skill.includes(g))],
+       [true, true, []]);
+  }
+  const org = ler102('.claude/skills/organizador/SKILL.md');
+  eq('SKILL organizador CRÍTICO: manda capturar a frase do Davi, procurar contradição, dividir em pacotes e atualizar o ESTADO — e cita as duas frases dele que a governam',
+     [/Capture a frase literal/.test(org), /Procure contradição/.test(org), /Divida em pacotes/.test(org),
+      /evite contradições entres*(?:>s*)?regras/.test(org), /rodar numa máquina nova/.test(org)],
+     [true, true, true, true, true]);
+  const banco = ler102('.claude/skills/banco/SKILL.md');
+  eq('SKILL banco CRÍTICO: o procedimento inegociável está lá — idempotente, pré-voo, conferência com veredito, DESFAZER, nunca editar rodada, abortou corrige no lugar, aviso ao Davi',
+     ['Idempotente', 'Pré-voo', ">>> OLHAR <<<", 'DESFAZER', 'Nunca edite migration que o Davi já rodou', 'corrige-se NO LUGAR', 'Aviso ao Davi']
+       .filter((t) => !banco.includes(t)), []);
+  eq('SKILL banco: o modelo de migration tem pré-voo, conferência WITH e DESFAZER — é o padrão da casa para copiar',
+     (() => { const m = ler102('.claude/skills/banco/references/modelo-de-migration.sql');
+       return [/RAISE EXCEPTION/.test(m), /WITH conferencia AS/.test(m), /'>>> OLHAR <<<'/.test(m), /-- ── DESFAZER/.test(m)]; })(),
+     [true, true, true, true]);
+  // os sumários: gerados, e em dia
+  eq('SUMÁRIOS CRÍTICO: scripts/sumario.cjs existe e os blocos dos documentos mestre estão em sincronia (node scripts/sumario.cjs --check)',
+     (() => {
+       if (!fs102.existsSync('scripts/sumario.cjs')) return 'sem script';
+       const r = require('child_process').spawnSync(process.execPath, ['scripts/sumario.cjs', '--check'], { encoding: 'utf8' });
+       return r.status === 0 ? 'em dia' : `velhos: ${(r.stdout.match(/^VELHO\s+(\S+)/gm) ?? []).join(', ')}`;
+     })(), 'em dia');
+  eq('SUMÁRIOS: o PRODUTO diz a faixa de regras por seção (é o que faz achar a R143 sem rolar 3.500 linhas)',
+     /- \[7\. Regras ditadas[^\n]*· R1–R32 \(32\)/.test(ler102('docs/PRODUTO.md'))
+       && /- \[21\. A estrutura das atividades[^\n]*· R137–R\d+ \(\d+\)/.test(ler102('docs/PRODUTO.md')), true);
+  eq('U102 (regra 7): o CLAUDE.md tem o passo 8 (sumários) e as duas skills no mapa; o ESTADO cita as três skills; a U102 está no diário',
+     [/8\. \*\*Sumários\*\*/.test(ler102('CLAUDE.md')),
+      /\.claude\/skills\/organizador\//.test(ler102('CLAUDE.md')) && /\.claude\/skills\/banco\//.test(ler102('CLAUDE.md')),
+      /\*\*organizador\*\*/.test(ler102('docs/ESTADO_ATUAL.md')) && /\*\*banco\*\*/.test(ler102('docs/ESTADO_ATUAL.md')),
+      /^## U102 /m.test(ler102('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-04** · última regra: **R177** · último diário:
-**U101** · verificador: **2.915 asserções, 0 falharam** · `tsc`: baseline
+**U102** · verificador: **2.920+ asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **nenhuma pendente**.
 
 ---
@@ -31,7 +31,11 @@ técnica de campo é o **Vinicius**.
 
 1. `CLAUDE.md` — o método (ciclo de trabalho, migrations, invariantes,
    armadilhas). Cinco minutos.
-2. **Este arquivo** — onde estamos.
+2. **Este arquivo** — onde estamos. As três skills em `.claude/skills/`
+   carregam sozinhas quando a tarefa pede: **organizador** (toda sessão:
+   rituais, documentos mestre, sumários), **designer** (interface), **banco**
+   (migrations). Cada documento mestre tem um **sumário gerado** no topo —
+   navegue por ele, não leia de ponta a ponta.
 3. `docs/CONTEXTO_OPERACAO_TECNICA.md` — a operação técnica ditada pelo Davi:
    quem é quem, as três atividades da técnica, a validação do gestor.
 4. `docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md` — a estrutura das atividades
@@ -71,6 +75,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U100 | portaria autônoma e presencial como grupos de clientes (R173); migration U100; este arquivo |
 | U100b | a U100 rodou: os quatro grupos liberados (P58); o fallback da ordem de deploy da U96 saiu (P60); `data_agendada` já é lida; revisão do dia |
 | U101 | o sistema como ferramenta de trabalho (R174): painel da Início recolhível (R175), avatar sem glow (R176), etiqueta sólida (R177) — e a **skill de designer** em `.claude/skills/designer/` |
+| U102 | as skills **organizador** e **banco**; `scripts/sumario.cjs` e os sumários gerados em oito documentos mestre; passo 8 do ciclo |
 
 ## 4. Banco: migrations
 

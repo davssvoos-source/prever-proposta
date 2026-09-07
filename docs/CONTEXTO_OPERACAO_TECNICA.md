@@ -1,5 +1,19 @@
 # Operação Técnica — o contexto, ditado pelo Davi
 
+<!-- sumario:inicio -->
+> **Sumário** — 9 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. Quem é quem](#1-quem-é-quem)
+- [1b. Em que aparelho cada um trabalha (R134)](#1b-em-que-aparelho-cada-um-trabalha-r134)
+- [2. As três atividades do técnico de campo](#2-as-três-atividades-do-técnico-de-campo)
+- [3. A página do cliente é o centro](#3-a-página-do-cliente-é-o-centro)
+- [4. As integrações moram no Administrativo](#4-as-integrações-moram-no-administrativo)
+- [5. A validação do gestor — o fluxo que fecha cada chamado](#5-a-validação-do-gestor-o-fluxo-que-fecha-cada-chamado)
+- [6. A tela Operacional Técnica — o que o Vinicius precisa ver em cinco segundos](#6-a-tela-operacional-técnica-o-que-o-vinicius-precisa-ver-em-cinco-segundos)
+- [7. Glossário — as palavras que já colidiram, e como se fala aqui](#7-glossário-as-palavras-que-já-colidiram-e-como-se-fala-aqui)
+- [8. O que a leitura de fora errou, e este documento corrige](#8-o-que-a-leitura-de-fora-errou-e-este-documento-corrige)
+<!-- sumario:fim -->
+
 Documento de contexto do domínio **Operação Técnica** (a equipe de campo do
 Grupo Prever e quem a gere). Escrito em 2026-09-03 a partir das palavras do
 Davi, para corrigir a interpretação que veio de fora: o documento mestre do

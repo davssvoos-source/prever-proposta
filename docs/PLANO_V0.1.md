@@ -1,5 +1,27 @@
 # Plano de ação — rumo à versão 0.1
 
+<!-- sumario:inicio -->
+> **Sumário** — 17 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. O que é a v0.1 — a definição de pronto](#1-o-que-é-a-v01-a-definição-de-pronto)
+- [2. Inventário — o que já existe e o que falta](#2-inventário-o-que-já-existe-e-o-que-falta)
+- [3. As fases](#3-as-fases)
+  - [Fase A — O dashboard da Operacional Técnica (R124/R125) — *esta sessão*](#fase-a-o-dashboard-da-operacional-técnica-r124r125-esta-sessão)
+  - [Fase B — O "+" da Operacional Técnica (R126) — *esta sessão*](#fase-b-o-da-operacional-técnica-r126-esta-sessão)
+  - [Fase B2 — A Início do técnico, no celular (R134) — *1–2 sessões*](#fase-b2-a-início-do-técnico-no-celular-r134-12-sessões)
+  - [Fase C — A atividade de validação do gestor (R130) — *2 sessões*](#fase-c-a-atividade-de-validação-do-gestor-r130-2-sessões)
+  - [Fase D — A ficha do cliente como centro (R128) — *2 sessões*](#fase-d-a-ficha-do-cliente-como-centro-r128-2-sessões)
+  - [Fase E — Administrativo → APIs, e o conector do QAP (R129) — *2–3 sessões + dependência externa*](#fase-e-administrativo-apis-e-o-conector-do-qap-r129-23-sessões-dependência-externa)
+  - [Fase F — Preventiva por sistema (R127) — *1–2 sessões*](#fase-f-preventiva-por-sistema-r127-12-sessões)
+  - [Fase G — O corte do Gestor OS — *1 sessão + a data*](#fase-g-o-corte-do-gestor-os-1-sessão-a-data)
+  - [Fase H — A estrutura das atividades (R137–R150) — *iniciada na U96; 2–3 sessões para fechar*](#fase-h-a-estrutura-das-atividades-r137r150-iniciada-na-u96-23-sessões-para-fechar)
+  - [Transversal](#transversal)
+- [4. Perguntas — respondidas em 04/09/2026 (Q8 adiada, Q13 em aberto)](#4-perguntas-respondidas-em-04092026-q8-adiada-q13-em-aberto)
+- [5. Riscos](#5-riscos)
+- [6. Acompanhamento](#6-acompanhamento)
+- [7. A revisão de telas (03/09, à tarde)](#7-a-revisão-de-telas-0309-à-tarde)
+<!-- sumario:fim -->
+
 Escrito em 2026-09-03, a partir do contexto ditado pelo Davi
 (`docs/CONTEXTO_OPERACAO_TECNICA.md`) e do que já está construído
 (`docs/PLANO_UNIFICACAO.md`, U0–U92). É a ordem em que o sistema chega a um

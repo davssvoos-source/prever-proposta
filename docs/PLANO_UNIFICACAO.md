@@ -1,5 +1,135 @@
 # Unificação Prever — Plano da Temporada 2
 
+<!-- sumario:inicio -->
+> **Sumário** — 125 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. Visão](#1-visão)
+- [2. Decisões já tomadas](#2-decisões-já-tomadas)
+- [3. O que cada sistema traz (e o que acontece com ele)](#3-o-que-cada-sistema-traz-e-o-que-acontece-com-ele)
+- [4. Modelo de dados unificado](#4-modelo-de-dados-unificado)
+- [5. Fluxos por persona](#5-fluxos-por-persona)
+- [6. Automações](#6-automações)
+- [7. Migração de dados](#7-migração-de-dados)
+- [8. Integração com o QAP ERP](#8-integração-com-o-qap-erp)
+- [9. IA no WhatsApp (futuro declarado)](#9-ia-no-whatsapp-futuro-declarado)
+- [10. Etapas de execução](#10-etapas-de-execução)
+- [11. Questões em aberto](#11-questões-em-aberto)
+- [12. Registro de execução](#12-registro-de-execução)
+  - [U0 — Fundações (2026-08-18)](#u0-fundações-2026-08-18)
+  - [U1 — Demandas internas (2026-08-18)](#u1-demandas-internas-2026-08-18)
+  - [U2 — Contratos do cliente (2026-08-18)](#u2-contratos-do-cliente-2026-08-18)
+  - [U3 — OS de campo completa (2026-08-18)](#u3-os-de-campo-completa-2026-08-18)
+  - [U4 — Motor de cobrança (2026-08-18)](#u4-motor-de-cobrança-2026-08-18)
+  - [U5 — Fechamentos (2026-08-18)](#u5-fechamentos-2026-08-18)
+  - [U6a — Papel SAC + Home do técnico (2026-08-18)](#u6a-papel-sac-home-do-técnico-2026-08-18)
+  - [U6b — Lista unificada de chamados (2026-08-18)](#u6b-lista-unificada-de-chamados-2026-08-18)
+  - [U6c — Abertura unificada + tipos de chamado (2026-08-18)](#u6c-abertura-unificada-tipos-de-chamado-2026-08-18)
+  - [U6d — Painel de chamados + calendário com filtros (2026-08-18)](#u6d-painel-de-chamados-calendário-com-filtros-2026-08-18)
+  - [U7 — Fusão chamado × demanda (2026-08-19)](#u7-fusão-chamado-demanda-2026-08-19)
+  - [U8 — O aceite do cliente (2026-08-19)](#u8-o-aceite-do-cliente-2026-08-19)
+  - [U9 — O pedido de compra ganha corpo (2026-08-19)](#u9-o-pedido-de-compra-ganha-corpo-2026-08-19)
+- [Fila de migrations a aplicar (nesta ordem)](#fila-de-migrations-a-aplicar-nesta-ordem)
+  - [U10 — A Início vira tela de atividades (2026-08-19)](#u10-a-início-vira-tela-de-atividades-2026-08-19)
+  - [U11 — Permissão por tela, editável pelo admin (2026-08-19)](#u11-permissão-por-tela-editável-pelo-admin-2026-08-19)
+  - [U12 — Desktop: quadro de borda a borda, roda do mouse, filtros em menus (2026-08-19)](#u12-desktop-quadro-de-borda-a-borda-roda-do-mouse-filtros-em-menus-2026-08-19)
+  - [U13 — "Executado" e "concluído" viram a mesma coisa (2026-08-20)](#u13-executado-e-concluído-viram-a-mesma-coisa-2026-08-20)
+  - [U14 — O quadro deixa de espelhar o vocabulário (2026-08-20)](#u14-o-quadro-deixa-de-espelhar-o-vocabulário-2026-08-20)
+  - [U15 — Reforma visual v2: paleta Supernova, sidebar e fundo com glow (2026-08-20)](#u15-reforma-visual-v2-paleta-supernova-sidebar-e-fundo-com-glow-2026-08-20)
+  - [U16 — Ajustes do layout desktop e campo de busca (2026-08-20)](#u16-ajustes-do-layout-desktop-e-campo-de-busca-2026-08-20)
+  - [U17 — Quadro de página única, gráficos da faixa superior e alinhamentos (2026-08-20)](#u17-quadro-de-página-única-gráficos-da-faixa-superior-e-alinhamentos-2026-08-20)
+  - [U18 — Painel superior completo da Início (2026-08-20)](#u18-painel-superior-completo-da-início-2026-08-20)
+  - [U19 — Vidro sobre o Yellow Glow, avatares e header enxuto (2026-08-20)](#u19-vidro-sobre-o-yellow-glow-avatares-e-header-enxuto-2026-08-20)
+  - [U20 — Header cumprido de verdade, sino na sidebar e criação rápida por IA (2026-08-20)](#u20-header-cumprido-de-verdade-sino-na-sidebar-e-criação-rápida-por-ia-2026-08-20)
+  - [U21 — Demanda no tempo, KPIs limpos, cards vermelhos e kanban arrastável (2026-08-20)](#u21-demanda-no-tempo-kpis-limpos-cards-vermelhos-e-kanban-arrastável-2026-08-20)
+  - [U22 — Redesign v4: minimalismo apple-like (2026-08-20)](#u22-redesign-v4-minimalismo-apple-like-2026-08-20)
+  - [U23 — Design v5→v7: o degradê da casa (2026-08-20)](#u23-design-v5v7-o-degradê-da-casa-2026-08-20)
+  - [U24 — Clientes: base oficial, página nova e o mapa do município (2026-08-20)](#u24-clientes-base-oficial-página-nova-e-o-mapa-do-município-2026-08-20)
+  - [S1 — Blindagem de segurança (2026-08-20)](#s1-blindagem-de-segurança-2026-08-20)
+  - [S2 — App fora do ar: três causas, uma raiz (2026-08-20)](#s2-app-fora-do-ar-três-causas-uma-raiz-2026-08-20)
+  - [U25 — O mapa de clientes, em quatro versões (2026-08-20)](#u25-o-mapa-de-clientes-em-quatro-versões-2026-08-20)
+  - [U26 — Margens de Clientes e sidebar recolhível (2026-08-20)](#u26-margens-de-clientes-e-sidebar-recolhível-2026-08-20)
+  - [U27/U28 — Prospecção e os três painéis (2026-08-21)](#u27u28-prospecção-e-os-três-painéis-2026-08-21)
+  - [U29 — A proposta comercial vira um tipo de chamado (R29, 2026-08-21)](#u29-a-proposta-comercial-vira-um-tipo-de-chamado-r29-2026-08-21)
+  - [U30 — Três telas a menos: R31 e R32 (2026-08-21)](#u30-três-telas-a-menos-r31-e-r32-2026-08-21)
+  - [U31 — Export novo do Notion + etiqueta de cliente (2026-08-21)](#u31-export-novo-do-notion-etiqueta-de-cliente-2026-08-21)
+  - [U32 — Painel de propriedades e o calendário que estava vazio (2026-08-21)](#u32-painel-de-propriedades-e-o-calendário-que-estava-vazio-2026-08-21)
+  - [U33 — Painéis que respondem ao filtro, tabela e o painel redesenhado (2026-08-21)](#u33-painéis-que-respondem-ao-filtro-tabela-e-o-painel-redesenhado-2026-08-21)
+  - [U34/U35 — Prospecção vira aba, campo com busca e sprint derivado (2026-08-21)](#u34u35-prospecção-vira-aba-campo-com-busca-e-sprint-derivado-2026-08-21)
+  - [U36 — Serviço prestado por cliente (R41, 2026-08-22)](#u36-serviço-prestado-por-cliente-r41-2026-08-22)
+  - [U37 — Ordenar, tabela mais legível, calendário no design system (2026-08-22)](#u37-ordenar-tabela-mais-legível-calendário-no-design-system-2026-08-22)
+  - [U38 — O fluxo da proposta acaba no envio (R38, 2026-08-22)](#u38-o-fluxo-da-proposta-acaba-no-envio-r38-2026-08-22)
+  - [U39 — Paleta de status retificada + calendário: cor, fundo e um bug de filtro (2026-08-22)](#u39-paleta-de-status-retificada-calendário-cor-fundo-e-um-bug-de-filtro-2026-08-22)
+  - [U40 — O painel de propriedades, 2ª revisão (R47, 2026-08-22)](#u40-o-painel-de-propriedades-2ª-revisão-r47-2026-08-22)
+  - [U41 — Vocabulário de tipos de chamado (R48, 2026-08-21)](#u41-vocabulário-de-tipos-de-chamado-r48-2026-08-21)
+  - [U42 — Zoom e pan no mapa de Clientes (R52, 2026-08-21)](#u42-zoom-e-pan-no-mapa-de-clientes-r52-2026-08-21)
+  - [U43 — Painel do chamado, 3ª revisão de design (R53, 2026-08-22)](#u43-painel-do-chamado-3ª-revisão-de-design-r53-2026-08-22)
+  - [U44 — Marcação de Monitoramento de Alarmes (R41, 2026-08-22)](#u44-marcação-de-monitoramento-de-alarmes-r41-2026-08-22)
+  - [U45 — Uma atividade pode ter mais de um cliente + grupo de clientes (R54, 2026-08-22)](#u45-uma-atividade-pode-ter-mais-de-um-cliente-grupo-de-clientes-r54-2026-08-22)
+  - [U46 — Paginação da lista de Clientes + mapa alinhado com a lista (R55, 2026-08-22)](#u46-paginação-da-lista-de-clientes-mapa-alinhado-com-a-lista-r55-2026-08-22)
+  - [U47 — Duplas de campo, programação e painel operacional (R56–R59, 2026-08-22)](#u47-duplas-de-campo-programação-e-painel-operacional-r56r59-2026-08-22)
+  - [U48 — PGRST201: embed de cliente ambíguo depois da U45 (2026-08-22)](#u48-pgrst201-embed-de-cliente-ambíguo-depois-da-u45-2026-08-22)
+  - [U49 — Início: Ordenar vira ícone, KPIs viram filtro, barra revisada (R60, 2026-08-22)](#u49-início-ordenar-vira-ícone-kpis-viram-filtro-barra-revisada-r60-2026-08-22)
+  - [U50 — Clientes vira tela fixa a partir de 1024px (R61, 2026-08-22)](#u50-clientes-vira-tela-fixa-a-partir-de-1024px-r61-2026-08-22)
+  - [U51 — Mapa de Clientes: texto não seleciona, balão fecha ao sair do ponto (R62, 2026-08-22)](#u51-mapa-de-clientes-texto-não-seleciona-balão-fecha-ao-sair-do-ponto-r62-2026-08-22)
+  - [U52 — Estrutura de blocos permanente do cliente (R63, 2026-08-22)](#u52-estrutura-de-blocos-permanente-do-cliente-r63-2026-08-22)
+  - [U53 — Painel Comercial vira lista única (R64, 2026-08-22)](#u53-painel-comercial-vira-lista-única-r64-2026-08-22)
+  - [U54 — Dashboard 100% dinâmico + o documento estrutural (R65, 2026-08-22)](#u54-dashboard-100-dinâmico-o-documento-estrutural-r65-2026-08-22)
+  - [U55 — Painel Operacional vira dashboard (R66, 2026-08-22)](#u55-painel-operacional-vira-dashboard-r66-2026-08-22)
+  - [U56 — O dashboard cabe no topo, e a lista é a tabela da Início (R67, 2026-08-22)](#u56-o-dashboard-cabe-no-topo-e-a-lista-é-a-tabela-da-início-r67-2026-08-22)
+  - [U57 — O degradê da casa nos gráficos SVG (R68, 2026-08-22)](#u57-o-degradê-da-casa-nos-gráficos-svg-r68-2026-08-22)
+  - [U58 — "Abertos por cliente" ocupa as duas faixas (R69, 2026-08-22)](#u58-abertos-por-cliente-ocupa-as-duas-faixas-r69-2026-08-22)
+  - [U59 — Importação retroativa das 227 OS de manutenção (R70, 2026-08-22)](#u59-importação-retroativa-das-227-os-de-manutenção-r70-2026-08-22)
+  - [U60 — Clientes: lista que cabe, filtro no botão, bolinha no degradê (R71, 2026-08-22)](#u60-clientes-lista-que-cabe-filtro-no-botão-bolinha-no-degradê-r71-2026-08-22)
+  - [U61 — Reimportação: os marcos de campo chegaram (R72, 2026-08-22)](#u61-reimportação-os-marcos-de-campo-chegaram-r72-2026-08-22)
+  - [U62 — As lentes da lista: o histórico ganhou onde ser visto (R73, 2026-08-22)](#u62-as-lentes-da-lista-o-histórico-ganhou-onde-ser-visto-r73-2026-08-22)
+  - [U63 — Roda do mouse no mapa e rótulos sem contorno (R74, 2026-08-22)](#u63-roda-do-mouse-no-mapa-e-rótulos-sem-contorno-r74-2026-08-22)
+  - [U64/U65 — Apoio pela dupla, quadro kanban e 30 chamados de teste (R75–R77, 2026-08-22)](#u64u65-apoio-pela-dupla-quadro-kanban-e-30-chamados-de-teste-r75r77-2026-08-22)
+  - [U66 — Painel Comercial: nome do lugar e envio pelo card (R78, 2026-08-22)](#u66-painel-comercial-nome-do-lugar-e-envio-pelo-card-r78-2026-08-22)
+  - [U67 — Revisão de design: o modo claro em todas as telas (R79, 2026-08-23)](#u67-revisão-de-design-o-modo-claro-em-todas-as-telas-r79-2026-08-23)
+  - [U68 — O contexto viaja com o repo: CLAUDE.md + ONBOARDING.md (2026-08-24)](#u68-o-contexto-viaja-com-o-repo-claudemd-onboardingmd-2026-08-24)
+  - [U69 — Dados do zero, pastas limpas e o plano de saída da Lovable (2026-08-24)](#u69-dados-do-zero-pastas-limpas-e-o-plano-de-saída-da-lovable-2026-08-24)
+  - [U70 — O fim de linha vira regra do repo, não do computador (2026-08-25)](#u70-o-fim-de-linha-vira-regra-do-repo-não-do-computador-2026-08-25)
+  - [U71 — Equipes revisadas, duas equipes na mesma atividade, e a palavra LOCAL (R80–R86, 2026-08-26)](#u71-equipes-revisadas-duas-equipes-na-mesma-atividade-e-a-palavra-local-r80r86-2026-08-26)
+  - [U72 — O arrasto que grava, ordenar com direção, autosave e cor por hierarquia (R87–R91, 2026-08-26)](#u72-o-arrasto-que-grava-ordenar-com-direção-autosave-e-cor-por-hierarquia-r87r91-2026-08-26)
+  - [U73 — Filtro por setor no calendário, e um eixo só em Clientes (R92–R93, 2026-08-26)](#u73-filtro-por-setor-no-calendário-e-um-eixo-só-em-clientes-r92r93-2026-08-26)
+  - [U74 — "Padrão" sai da tela, "Atrasados" vira balde de Prazo (R94, 2026-08-26)](#u74-padrão-sai-da-tela-atrasados-vira-balde-de-prazo-r94-2026-08-26)
+  - [U75 — A Operacional vira Operacional Técnica, e o Gestor OS ganha um plano (R95, 2026-08-31)](#u75-a-operacional-vira-operacional-técnica-e-o-gestor-os-ganha-um-plano-r95-2026-08-31)
+- [U76 — A equipe de campo ganha escala semanal (R96/R97)](#u76-a-equipe-de-campo-ganha-escala-semanal-r96r97)
+- [U77 — A escala vira a única verdade (R98)](#u77-a-escala-vira-a-única-verdade-r98)
+- [U78 — A grade da programação e o bloqueio de agenda (Fase 1, Passo 1.2)](#u78-a-grade-da-programação-e-o-bloqueio-de-agenda-fase-1-passo-12)
+  - [S2 — Apoio deixa de ser auto-serviço (2026-09-01)](#s2-apoio-deixa-de-ser-auto-serviço-2026-09-01)
+  - [S3 — `criado_por` e `origem` deixam de ser do cliente (2026-09-01)](#s3-criadopor-e-origem-deixam-de-ser-do-cliente-2026-09-01)
+- [U79 — A tela da grade, e o fim das duas verdades (Fase 1, Passo 1.2)](#u79-a-tela-da-grade-e-o-fim-das-duas-verdades-fase-1-passo-12)
+- [U80 — O ciclo financeiro no cartão (Fase 1, Passo 1.3)](#u80-o-ciclo-financeiro-no-cartão-fase-1-passo-13)
+- [S4 — Auditoria de valor: quem consegue ler dinheiro, e isso bate com a R13](#s4-auditoria-de-valor-quem-consegue-ler-dinheiro-e-isso-bate-com-a-r13)
+- [U81 — O apoio que já foi é registro (R107/R108 — Fase 1, Passo 1.4)](#u81-o-apoio-que-já-foi-é-registro-r107r108-fase-1-passo-14)
+- [U82 — A segunda mão do carimbo (R109/R110/R111 — Fase 1, Passo 1.5)](#u82-a-segunda-mão-do-carimbo-r109r110r111-fase-1-passo-15)
+- [U83 — Vistoria é um tipo, e o domínio de tipos para de ser copiado (R112)](#u83-vistoria-é-um-tipo-e-o-domínio-de-tipos-para-de-ser-copiado-r112)
+- [U84 — A coordenada conferida (R114 — Fase 2, Passo 2.1)](#u84-a-coordenada-conferida-r114-fase-2-passo-21)
+- [U85 — O calendário de feriados (R115 — Fase 3, Passo 1)](#u85-o-calendário-de-feriados-r115-fase-3-passo-1)
+- [U86 — O sobreaviso: a grade pessoa × dias do mês (R116 — Fase 3, Passo 2)](#u86-o-sobreaviso-a-grade-pessoa-dias-do-mês-r116-fase-3-passo-2)
+- [U87 — O atendimento de plantão (R117 — Fase 3, Passo 3 e último)](#u87-o-atendimento-de-plantão-r117-fase-3-passo-3-e-último)
+- [U88 — Os dois consertos de dinheiro (R118/R119 — pré-requisito da Fase 4)](#u88-os-dois-consertos-de-dinheiro-r118r119-pré-requisito-da-fase-4)
+- [U89 — A implantação ganha período, e sai do SLA que nunca foi dela (R120 — Fase 4, passo 1 de 2)](#u89-a-implantação-ganha-período-e-sai-do-sla-que-nunca-foi-dela-r120-fase-4-passo-1-de-2)
+- [U90 — A conferência decide a cobrança (R121 — Fase 4, passo 2 e último)](#u90-a-conferência-decide-a-cobrança-r121-fase-4-passo-2-e-último)
+- [U91 — O painel do plantão (R122 — Fase 5, primeira metade)](#u91-o-painel-do-plantão-r122-fase-5-primeira-metade)
+- [U92 — O corte por tipo e o plantão na ficha (R123 — Fase 5 fechada)](#u92-o-corte-por-tipo-e-o-plantão-na-ficha-r123-fase-5-fechada)
+- [U93 — O contexto do Davi, o plano da v0.1, e a Operacional Técnica do Vinicius (R124–R130)](#u93-o-contexto-do-davi-o-plano-da-v01-e-a-operacional-técnica-do-vinicius-r124r130)
+- [U94 — A revisão completa: o Administrativo com conteúdo, os contratos na ficha, o calendário semanal (R131–R133)](#u94-a-revisão-completa-o-administrativo-com-conteúdo-os-contratos-na-ficha-o-calendário-semanal-r131r133)
+- [U95 — A tela da atividade: o seletor que abre a lista, o editor de blocos com menção, o autor que apaga (R134/R135)](#u95-a-tela-da-atividade-o-seletor-que-abre-a-lista-o-editor-de-blocos-com-menção-o-autor-que-apaga-r134r135)
+- [U96 — A borda em degradê da Início: a cor estratégica sai do fundo (R136)](#u96-a-borda-em-degradê-da-início-a-cor-estratégica-sai-do-fundo-r136)
+- [U96 — A estrutura das atividades: seis tipos, duas perguntas, equipe das pessoas, impacto, grupos, fachada (R137–R150)](#u96-a-estrutura-das-atividades-seis-tipos-duas-perguntas-equipe-das-pessoas-impacto-grupos-fachada-r137r150)
+- [U96b — O glow do contorno, mais fraco (revisão de R136, 2026-09-04)](#u96b-o-glow-do-contorno-mais-fraco-revisão-de-r136-2026-09-04)
+- [U97 — mais de um cliente por atividade, arrastar no calendário, o card da semana enxuto, o tema claro v10 (2026-09-04)](#u97-mais-de-um-cliente-por-atividade-arrastar-no-calendário-o-card-da-semana-enxuto-o-tema-claro-v10-2026-09-04)
+- [U97b — as respostas do Davi às Q1–Q4 viram regra (2026-09-04)](#u97b-as-respostas-do-davi-às-q1q4-viram-regra-2026-09-04)
+- [U98 — as respostas do Davi às Q5–Q13: R158–R164 (2026-09-04)](#u98-as-respostas-do-davi-às-q5q13-r158r164-2026-09-04)
+- [U99 — as respostas do Davi às Q14–Q22: R165–R172, e a primeira migration das respostas (2026-09-04)](#u99-as-respostas-do-davi-às-q14q22-r165r172-e-a-primeira-migration-das-respostas-2026-09-04)
+- [U100 — os grupos de clientes (R173), CAE/CCA liberados, e a revisão dos documentos (2026-09-04)](#u100-os-grupos-de-clientes-r173-caecca-liberados-e-a-revisão-dos-documentos-2026-09-04)
+- [U100b — a U100 rodou: grupos liberados, o fallback da U96 fora, e a revisão do dia (2026-09-04)](#u100b-a-u100-rodou-grupos-liberados-o-fallback-da-u96-fora-e-a-revisão-do-dia-2026-09-04)
+- [U101 — o sistema como ferramenta de trabalho (R174–R177), e a skill de designer (2026-09-04)](#u101-o-sistema-como-ferramenta-de-trabalho-r174r177-e-a-skill-de-designer-2026-09-04)
+- [U102 — as skills organizador e banco, e os sumários dos documentos mestre (2026-09-04)](#u102-as-skills-organizador-e-banco-e-os-sumários-dos-documentos-mestre-2026-09-04)
+<!-- sumario:fim -->
+
 De quatro sistemas para um: o app Prever absorve a gestão de demandas do
 **Notion**, as ordens de serviço de campo do **Segware SIGMA OS** e o motor de
 cobrança do **gestor-os** (sistema do Vinicius), integrando-se ao **QAP ERP**
@@ -10141,3 +10271,63 @@ porque skill que ninguém acha é skill que não existe.
 `node scripts/verificar-logica.cjs` → **2915 passaram, 0 falharam** (23 novas). `npx vite build`
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R177**.
 Sem migration.
+
+
+## U102 — as skills organizador e banco, e os sumários dos documentos mestre (2026-09-04)
+
+O Davi pediu, na mesma revisão de 04/09, "duas skills que serão necessárias
+para o desenvolvimento do nosso projeto", e desenhou uma delas: "que puxe
+bastante para o lado organizador e planejador do que fazemos, que seja algo que
+sempre te lembre de atualizar e sempre de verificar os documentos mestre. Além
+de claro, criá-los de maneira estratégica, ou seja podemos ter um sumário muito
+bem desenvolvido nos documentos, ajudando você sempre a ler de maneira mais
+eficiente".
+
+### Por que estas duas
+
+A primeira ele definiu. A segunda foi escolha minha, e o critério foi "onde a
+sessão seguinte mais se machuca sem método": as **migrations**. Toda entrega
+grande toca o banco; o Davi roda tudo à mão; a regra 5 (o push publica antes da
+migration rodar) já produziu três mecanismos de "renderiza mas não oferece"; e
+o manual de banco tem uma seção inteira de cicatrizes que foram bug de
+produção. Uma skill que carrega sozinha quando a tarefa toca em schema é o que
+impede a próxima migration de repetir a U96 (que abortou por um `string_agg`
+de array) ou de esquecer o `ARQUIVOS_SEMENTE`.
+
+### O organizador
+
+Mora em `.claude/skills/organizador/`: o método (`SKILL.md`), o mapa "onde mora
+cada fato" (`references/documentos-mestre.md` — um lugar por fato, o
+vocabulário das séries R/U/P/Q/D/S, o modelo de documento novo, a caça aos
+sinais de envelhecimento) e os quatro rituais com os comandos
+(`references/rituais.md`: início de sessão, pedido do Davi, durante, fim de
+entrega). O que ele vigia está listado — regra sem frase do Davi, regra que
+contradiz outra sem dizer que a revisa, diário sem "o que se recusou a fazer",
+sumário velho, pergunta já respondida feita de novo.
+
+### O banco
+
+`.claude/skills/banco/`: o procedimento inegociável em oito pontos, a regra 5
+com as três listas `NAO_OFERECIDOS`, uma tabela "o que cada tipo de mudança
+exige" (tabela nova, coluna, CHECK, tela que sai, apagar, gatilho da linha do
+tempo, dados históricos, rename), as cicatrizes que mais mordem, o que o
+verificador cobra, o que fazer quando o Davi diz "rodei", e o texto do aviso a
+ele. Mais um modelo de migration para copiar
+(`references/modelo-de-migration.sql`), no padrão que a U99 e a U100 já usam.
+
+### Os sumários
+
+`scripts/sumario.cjs` gera um bloco `<!-- sumario:inicio -->…<!-- sumario:fim -->`
+logo abaixo do título de oito documentos mestre, com os cabeçalhos do arquivo
+— e no PRODUTO cada seção diz a faixa de regras que contém (§7: R1–R32; §10:
+R33–R136; §21: R137–R177). É isso que faz um leitor achar a R143 sem rolar 3.500
+linhas. O `--check` roda no verificador: sumário fora de sincronia é asserção
+vermelha, e o passo 8 do ciclo (novo no CLAUDE.md) manda regenerá-lo no fim de
+toda entrega. Não é sumário à mão — sumário à mão é o primeiro documento a
+mentir.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → ver o fim desta entrada. `npx vite build`
+→ não toca em código. `npx tsc --noEmit` → **57**. Última regra: **R177** (não
+nasce regra: é método). Sem migration.

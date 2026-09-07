@@ -1,5 +1,17 @@
 # A estrutura das atividades — ditada pelo Davi em 03/09/2026
 
+<!-- sumario:inicio -->
+> **Sumário** — 7 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. O documento do Davi, na íntegra](#1-o-documento-do-davi-na-íntegra)
+- [2. A leitura estruturada](#2-a-leitura-estruturada)
+- [3. Glossário — as palavras que colidem, e como se fala aqui](#3-glossário-as-palavras-que-colidem-e-como-se-fala-aqui)
+- [4. Decisões que o assistente tomou (o Davi confirma ou corrige)](#4-decisões-que-o-assistente-tomou-o-davi-confirma-ou-corrige)
+- [5. O que o Davi disse que ainda vai mandar (pendências dele)](#5-o-que-o-davi-disse-que-ainda-vai-mandar-pendências-dele)
+- [6. Perguntas abertas (Q18–Q22)](#6-perguntas-abertas-q18q22)
+- [7. Onde está o quê (o mapa desta estrutura no código)](#7-onde-está-o-quê-o-mapa-desta-estrutura-no-código)
+<!-- sumario:fim -->
+
 Este documento existe para quem chega de fora entender **o que é uma
 atividade neste sistema** sem precisar de arqueologia. É a segunda fonte de
 contexto ditada pelo Davi (a primeira é `CONTEXTO_OPERACAO_TECNICA.md`, sobre a

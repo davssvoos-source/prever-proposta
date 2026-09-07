@@ -1,5 +1,38 @@
 # Operação de campo — chamados, fila e programação
 
+<!-- sumario:inicio -->
+> **Sumário** — 28 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [Para que serve este documento](#para-que-serve-este-documento)
+- [O ciclo de vida do chamado](#o-ciclo-de-vida-do-chamado)
+- [Quem faz o quê](#quem-faz-o-quê)
+- [A fila canônica: a Início (R17/R31)](#a-fila-canônica-a-início-r17r31)
+- [Programação e painéis](#programação-e-painéis)
+- [O dashboard da Operacional Técnica — as três perguntas do Vinicius (R124–R126, U93)](#o-dashboard-da-operacional-técnica-as-três-perguntas-do-vinicius-r124r126-u93)
+- [O calendário tem duas visões — Mensal e Semanal (R133, U94)](#o-calendário-tem-duas-visões-mensal-e-semanal-r133-u94)
+- [Equipe de campo: a composição tem SEMANA (R96/R97, U76)](#equipe-de-campo-a-composição-tem-semana-r96r97-u76)
+- [A programação por BLOCO DE TEMPO (R99/R100/R101/R102 — U78/U79)](#a-programação-por-bloco-de-tempo-r99r100r101r102-u78u79)
+- [Os indicadores de campo — o que cada número responde](#os-indicadores-de-campo-o-que-cada-número-responde)
+- [Anti-práticas](#anti-práticas)
+- [O selo do ciclo financeiro no cartão (R103, U80)](#o-selo-do-ciclo-financeiro-no-cartão-r103-u80)
+- [Concluir pelo cartão (R104)](#concluir-pelo-cartão-r104)
+- [Retornos pendentes (R106)](#retornos-pendentes-r106)
+- [Compartilhar o dia (R105)](#compartilhar-o-dia-r105)
+- [Quem foi ao prédio: o apoio que já aconteceu (R107/R108, U81)](#quem-foi-ao-prédio-o-apoio-que-já-aconteceu-r107r108-u81)
+- [Encerrar um chamado passa a perguntar pelas visitas (R109/R110/R111, U82)](#encerrar-um-chamado-passa-a-perguntar-pelas-visitas-r109r110r111-u82)
+- [Vistoria: um tipo de chamado, e ele NÃO é a visita técnica comercial (R112, U83)](#vistoria-um-tipo-de-chamado-e-ele-não-é-a-visita-técnica-comercial-r112-u83)
+- [Trocar a data no formulário move a grade junto (U84)](#trocar-a-data-no-formulário-move-a-grade-junto-u84)
+- [O que o mapa entendeu (e por que ler)](#o-que-o-mapa-entendeu-e-por-que-ler)
+- [Trocar o endereço do cliente apaga a coordenada (U84)](#trocar-o-endereço-do-cliente-apaga-a-coordenada-u84)
+- [Implantação: o período e o cronograma da obra (R120, U89)](#implantação-o-período-e-o-cronograma-da-obra-r120-u89)
+- [Conferir e fechar agora decide a cobrança (R121, U90)](#conferir-e-fechar-agora-decide-a-cobrança-r121-u90)
+- [O que aconteceu no plantão do mês (R122, U91)](#o-que-aconteceu-no-plantão-do-mês-r122-u91)
+- [A rosca do painel tem dois cortes, e a ficha do cliente ganhou o plantão (R123, U92)](#a-rosca-do-painel-tem-dois-cortes-e-a-ficha-do-cliente-ganhou-o-plantão-r123-u92)
+- [Referências](#referências)
+- [Sobreaviso — a escala do plantão (R116, U86)](#sobreaviso-a-escala-do-plantão-r116-u86)
+- [Registrar um atendimento de plantão (U87)](#registrar-um-atendimento-de-plantão-u87)
+<!-- sumario:fim -->
+
 > Manual Prever Proposta — segmento: operação de campo. Gerado em 2026-08-21 a
 > partir de revisão do código. Fonte de verdade: o código e docs/PRODUTO.md;
 > se este documento discordar deles, eles ganham.

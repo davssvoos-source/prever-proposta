@@ -1,5 +1,21 @@
 # Prever App — Documento Mestre do Produto
 
+<!-- sumario:inicio -->
+> **Sumário** — 11 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+
+- [1. Visão](#1-visão)
+- [2. Papéis (permissão) e equipes (roteamento)](#2-papéis-permissão-e-equipes-roteamento)
+- [3. O chamado unificado — a espinha do sistema](#3-o-chamado-unificado-a-espinha-do-sistema)
+- [4. Interfaces por perfil](#4-interfaces-por-perfil) · R11–R12 (2)
+- [5. Ciclo comercial — corrigido (R4)](#5-ciclo-comercial-corrigido-r4)
+- [6. Integração QAP — atualizada](#6-integração-qap-atualizada)
+- [7. Regras ditadas (log numerado)](#7-regras-ditadas-log-numerado) · R1–R32 (32)
+- [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
+- [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
+- [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R177 (41)
+<!-- sumario:fim -->
+
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
 jeito que o aplicativo DEVE ser. As regras chegam ditadas pelo Davi, entram
 aqui numeradas, e só depois viram implementação — sempre gradual, sempre

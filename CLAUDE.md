@@ -54,6 +54,10 @@ Todo o repo (nomes, comentários, docs) é em **português**.
    É a memória que viaja com o repo: numa máquina nova é o primeiro arquivo
    que se lê depois deste, e uma asserção confere que a "última regra" dele
    bate com a do PRODUTO.
+8. **Sumários** — `node scripts/sumario.cjs` regenera o bloco de sumário no
+   topo de cada documento mestre (PRODUTO, diário, pendências, plano, design
+   system, contextos, manual de campo). O verificador roda `--check`: sumário
+   velho é asserção vermelha. Ninguém lê 10 mil linhas; navega-se pelo mapa.
 
 ## Migrations (regra inegociável)
 
@@ -123,6 +127,9 @@ ordem ler o resto.
 | `scripts/verificar-logica.cjs` | as ~2900 asserções — leia um bloco recente antes de escrever |
 | `src/lib/paleta.ts`, `src/lib/ui.ts` | cor e superfície — nunca hex solto em tela |
 | `.claude/skills/designer/` | a SKILL de designer UI/UX (SKILL.md + 3 referências): briefing antes do código, inventário do que já existe, estados/acessibilidade, roteiro de análise de tela. Carrega sozinha em tarefa de interface; invoca-se por `/designer` |
+| `.claude/skills/organizador/` | a SKILL de organização e planejamento: onde mora cada fato (documentos mestre), os quatro rituais (início de sessão · pedido do Davi · durante · fim de entrega), estratégias de leitura por sumário e de escrita que dura. Carrega em toda sessão; `/organizador` |
+| `.claude/skills/banco/` | a SKILL de migrations: o procedimento inegociável, a regra 5 (ordem de deploy e as listas NAO_OFERECIDOS), o que cada tipo de mudança exige, as cicatrizes, o modelo de migration para copiar. Carrega em toda mudança de schema/RLS/gatilho; `/banco` |
+| `scripts/sumario.cjs` | gera/confere os sumários dos documentos mestre (`--check` no verificador) |
 | `src/features/*/modelo.ts` | a lógica pura de cada domínio |
 | `supabase/migrations/` | histórico completo do banco (fonte do schema) |
 
