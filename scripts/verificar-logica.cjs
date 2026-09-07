@@ -17397,7 +17397,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('ESTADO_ATUAL CRÍTICO: a "última regra" que ele declara É a última do PRODUTO (senão o retrato envelhece em silêncio)',
      Number((estado.match(/última regra: \*\*R(\d+)\*\*/) ?? [])[1]), ultimaRegraProduto);
   eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
-     [/Nenhuma\s+migration pendente/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
+     // U106: "pendente" pode ser uma migration nomeada (**Pendente: Uxxx**) ou nenhuma
+     [/Nenhuma\s+migration pendente|\*\*[Pp]endente: U\d+\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
       /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U100/.test(estado)],
      [true, true, true, true]);
   eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
