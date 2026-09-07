@@ -255,10 +255,18 @@ export function aplicarLentes(
   const vinculos = f.vinculos.length ? f.vinculos : (preset?.vinculo ?? []);
 
   return lista.filter((a) => {
-    // R60: o filtro de Situação saiu — a Início sempre mostra o que está em
-    // aberto, que já era o estado em que ela vivia quase todo o tempo (todo
-    // preset já exigia `a.emAberto` por conta própria).
-    if (!a.emAberto) return false;
+    // R180 (U103 — Davi, 04/09/2026: "as atividades concluídas devem aparecer
+    // na tela INICIO sempre que os filtros estiverem vazios […] se o usuário
+    // colocar um filtro em que as atividades concluídas não fazem parte do
+    // grupo de filtro, aí sim podem sumir"). Até a U103 valia a R60 — a Início
+    // só mostrava o que estava em aberto. Agora a CONCLUÍDA fica (é a coluna
+    // Concluído do quadro, e a lista), e só sai quando um filtro a exclui por
+    // natureza: o de PRAZO (é sobre trabalho que ainda vence) e o preset "meu
+    // dia" (que já exige emAberto). Pessoa, equipe e busca não a excluem.
+    // O CANCELADO continua fora: nunca teve coluna (é o "N cancelados — veja na
+    // lista" do quadro) e a R60 não foi revista para ele.
+    if (a.coluna === "cancelado") return false;
+    if (!a.emAberto && f.prazo) return false;
     if (preset && !preset.aplica(a, ctx)) return false;
     if (!casaVinculo(a, vinculos)) return false;
     if (f.pessoa !== "todos" && a.responsavelId !== f.pessoa) return false;
@@ -372,6 +380,37 @@ export function ordenar(lista: Atividade[], modo: Ordenacao, desc = false): Ativ
       // sempre significou, e é o que os presets esperam ao chamar sem `desc`.
       return l.sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1) * s);
   }
+}
+
+// ── A ordem das colunas do quadro (R181) ─────────────────────────────────────
+//
+// Davi, 04/09/2026: "a ordem das colunas deve ser editável pelo usuário, onde
+// caso ele segure e arraste, ele altera a ordem das colunas e fica salvo
+// daquele jeito somente para visualização daquele usuário." A ordem é
+// PREFERÊNCIA de quem olha (localStorage), não regra do quadro — o eixo
+// continua sendo o status, o que muda é a posição.
+//
+// As duas funções são puras e valem para qualquer lista de colunas: o quadro
+// só as chama. `ordemDasColunas` TOLERA o que estiver salvo — coluna que não
+// existe mais é ignorada, coluna nova que ainda não estava salva entra no fim,
+// na posição padrão. Assim uma coluna que nasça amanhã (R168, "Agendados")
+// aparece para quem já tinha reordenado, em vez de sumir.
+
+/** A ordem efetiva: a salva, saneada contra a base; o que falta entra no fim. */
+export function ordemDasColunas<T extends string>(salva: readonly string[] | null | undefined, base: readonly T[]): T[] {
+  const validas = (salva ?? []).filter((c): c is T => (base as readonly string[]).includes(c));
+  const semRepetir = validas.filter((c, i) => validas.indexOf(c) === i);
+  return [...semRepetir, ...base.filter((c) => !semRepetir.includes(c))];
+}
+
+/** Move a coluna `de` para a posição da coluna `para` (as outras deslizam). */
+export function moverColuna<T extends string>(ordem: readonly T[], de: T, para: T): T[] {
+  if (de === para) return [...ordem];
+  const iDe = ordem.indexOf(de), iPara = ordem.indexOf(para);
+  if (iDe < 0 || iPara < 0) return [...ordem];
+  const nova = ordem.filter((c) => c !== de);
+  nova.splice(iPara, 0, de);
+  return nova;
 }
 
 export function ordemDoPreset(chave: string | null): Ordenacao {

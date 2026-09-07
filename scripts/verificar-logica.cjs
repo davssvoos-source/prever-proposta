@@ -1653,11 +1653,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('e a barra do passado deixa de ser zero',
        Object.values(MT.concluidosPorSemana(recorte))[0], 1);
 
-    // o espelho: o recorte NORMAL do quadro continua escondendo encerrado, que
-    // é o certo lá — quadro é fila de trabalho
+    // R180 (U103): o recorte do quadro passou a MOSTRAR a concluída sem filtro
+    // (ela é a coluna Concluído) — o que a R60 escondia. O ponto desta asserção
+    // continua: o painel e o quadro têm recortes DIFERENTES, cada um pelo seu motivo.
     const doQuadro = LN.aplicarLentes([feito, aberto], LN.FILTROS_INICIAIS,
       { agora: agoraT }, (s) => s.toLowerCase());
-    eq('o quadro continua mostrando só o que está em aberto', doQuadro.length, 1);
+    eq('R180: o quadro sem filtro mostra a concluída E a aberta (a R60 mostrava só a aberta)', doQuadro.length, 2);
 
     // preset do técnico: sete dos oito exigem emAberto, e meu_dia ainda
     // recorta por dia — se o preset valesse no painel, zeraria tudo de novo
@@ -3295,8 +3296,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('o filtro "Situação" saiu da barra (nem MenuFiltro, nem campo em Filtros)',
      /rotulo="Situação"/.test(dash2), false);
   eq('Filtros não tem mais o campo situacao', /situacao:/.test(dash2), false);
-  eq('aplicarLentes esconde encerrado INCONDICIONALMENTE agora (Situação não existe mais pra escolher)',
-     /if \(!a\.emAberto\) return false;/.test(fs31.readFileSync('src/features/home/lentes.ts', 'utf8')),
+  // R180 (U103): a R60 escondia TODO encerrado; agora a CONCLUÍDA fica quando
+  // nenhum filtro de prazo a exclui, e só o CANCELADO sai incondicionalmente.
+  eq('R180: aplicarLentes tira o cancelado sempre, e a concluída só quando há filtro de PRAZO (a R60 escondia todo encerrado)',
+     /if \(a\.coluna === "cancelado"\) return false;\s*\n\s*if \(!a\.emAberto && f\.prazo\) return false;/.test(fs31.readFileSync('src/features/home/lentes.ts', 'utf8')),
      true);
   {
     const abertoI = { emAberto: true, souResponsavel: false, souApoio: false, souAutor: false,
@@ -3304,8 +3307,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const fechadoI = { ...abertoI, emAberto: false, coluna: 'concluido' };
     const ctxR60 = { agora: new Date(2026, 7, 21) };
     eq('aplicarLentes: aberto passa', L2.aplicarLentes([abertoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 1);
-    eq('aplicarLentes: encerrado NUNCA passa, mesmo sem nenhum filtro escolhido',
-       L2.aplicarLentes([fechadoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 0);
+    // R180 (U103 — Davi: "as atividades concluídas devem aparecer na tela INICIO
+    // sempre que os filtros estiverem vazios")
+    eq('R180: a CONCLUÍDA passa sem filtro nenhum (era 0 na R60)',
+       L2.aplicarLentes([fechadoI], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 1);
+    eq('R180: a concluída SAI quando há filtro de prazo — o prazo é sobre o que ainda vence',
+       L2.aplicarLentes([{ ...fechadoI, quando: '2026-08-21T09:00:00' }], { ...L2.FILTROS_INICIAIS, prazo: 'hoje' }, ctxR60, (x) => x).length, 0);
+    eq('R180: a concluída FICA com filtro de pessoa/equipe/busca que a inclua (esses não a excluem por natureza)',
+       L2.aplicarLentes([{ ...fechadoI, responsavelId: 'p1' }], { ...L2.FILTROS_INICIAIS, pessoa: 'p1' }, ctxR60, (x) => x).length, 1);
+    eq('R180: o CANCELADO nunca passa — nunca teve coluna, e a R60 não foi revista para ele',
+       L2.aplicarLentes([{ ...fechadoI, coluna: 'cancelado' }], L2.FILTROS_INICIAIS, ctxR60, (x) => x).length, 0);
   }
 
   // ── Prazo (era Período) — reaproveita sprintDoPrazo ──────────────────────
@@ -17563,7 +17574,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const org = ler102('.claude/skills/organizador/SKILL.md');
   eq('SKILL organizador CRÍTICO: manda capturar a frase do Davi, procurar contradição, dividir em pacotes e atualizar o ESTADO — e cita as duas frases dele que a governam',
      [/Capture a frase literal/.test(org), /Procure contradição/.test(org), /Divida em pacotes/.test(org),
-      /evite contradições entres*(?:>s*)?regras/.test(org), /rodar numa máquina nova/.test(org)],
+      /evite contradições entre\s*(?:>\s*)?regras/.test(org), /rodar numa máquina nova/.test(org)],
      [true, true, true, true, true]);
   const banco = ler102('.claude/skills/banco/SKILL.md');
   eq('SKILL banco CRÍTICO: o procedimento inegociável está lá — idempotente, pré-voo, conferência com veredito, DESFAZER, nunca editar rodada, abortou corrige no lugar, aviso ao Davi',
@@ -17588,6 +17599,54 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /\.claude\/skills\/organizador\//.test(ler102('CLAUDE.md')) && /\.claude\/skills\/banco\//.test(ler102('CLAUDE.md')),
       /\*\*organizador\*\*/.test(ler102('docs/ESTADO_ATUAL.md')) && /\*\*banco\*\*/.test(ler102('docs/ESTADO_ATUAL.md')),
       /^## U102 /m.test(ler102('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true]);
+}
+
+// ── U103 — a Início revista pelo Davi (R178–R182) ─────────────────────────────
+{
+  const ler103 = (p) => require('fs').readFileSync(p, 'utf8');
+  const codigo103 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const L103 = carregar('src/features/home/lentes.ts');
+  const dash103 = ler103('src/routes/_authenticated/dashboard.tsx');
+  const quadro103 = codigo103(ler103('src/features/home/Quadro.tsx'));
+
+  // R181 — a lógica pura da ordem das colunas
+  eq('R181: ordemDasColunas tolera o salvo — ignora coluna que não existe, tira repetida, e o que falta entra no fim na ordem padrão',
+     L103.ordemDasColunas(['concluido', 'lixo', 'aberto', 'aberto'], ['aberto', 'em_andamento', 'stand_by', 'aguardando_aprovacao', 'concluido']),
+     ['concluido', 'aberto', 'em_andamento', 'stand_by', 'aguardando_aprovacao']);
+  eq('R181: sem nada salvo, a ordem é a padrão', L103.ordemDasColunas(null, ['a', 'b', 'c']), ['a', 'b', 'c']);
+  eq('R181: moverColuna põe "de" na posição de "para" e as outras deslizam — nos dois sentidos',
+     [L103.moverColuna(['a', 'b', 'c', 'd'], 'a', 'c'), L103.moverColuna(['a', 'b', 'c', 'd'], 'd', 'b'), L103.moverColuna(['a', 'b'], 'a', 'a'), L103.moverColuna(['a', 'b'], 'x', 'a')],
+     [['b', 'c', 'a', 'd'], ['a', 'd', 'b', 'c'], ['a', 'b'], ['a', 'b']]);
+  eq('R181: o quadro lê a ordem do localStorage (prever-home-colunas) por ordemDasColunas, grava por moverColuna, e "sem_status" fica fora da dança',
+     [/const CHAVE_ORDEM = "prever-home-colunas";/.test(quadro103), /ordemDasColunas\(Array\.isArray\(salva\) \? salva : null, COLUNAS\)/.test(quadro103),
+      /const nova = moverColuna\(ordem, de, para\);/.test(quadro103), /if \(c !== "sem_status" && col !== c\) reordenar\(col, c\);/.test(quadro103),
+      /draggable=\{c !== "sem_status"\}/.test(quadro103)],
+     [true, true, true, true, true]);
+  eq('R181: arrastar coluna e arrastar card são dois gestos com dois refs — o onDrop decide qual chegou',
+     [/const colunaArrastadaRef = useRef<ColunaQuadro \| null>\(null\);/.test(quadro103), /const arrastadaRef = useRef<Atividade \| null>\(null\);/.test(quadro103),
+      /const col = colunaArrastadaRef\.current;\s*\n\s*if \(col\) \{/.test(quadro103)],
+     [true, true, true]);
+  // R179 — as colunas na largura
+  eq('R179 CRÍTICO: as colunas dividem a largura (flex 1 1 0, piso 170) — os 260px fixos e o max-content do trilho morreram',
+     [/flex: "1 1 0",\s*\n\s*minWidth: LARGURA_MINIMA_COLUNA,/.test(quadro103), /const LARGURA_MINIMA_COLUNA = 170;/.test(quadro103),
+      /LARGURA_COLUNA\b/.test(quadro103), /minWidth: "max-content"/.test(quadro103)],
+     [true, true, false, false]);
+  // R178 — a margem
+  eq('R178: o contêiner da Início começa a 4px (eram 18) e a faixa do painel perdeu o paddingTop 6',
+     [/<div style=\{\{ paddingTop: 4, display: "flex", flexDirection: "column", gap: 14 \}\}>/.test(dash103),
+      /className="so-desktop sangra-x" style=\{\{ gap: 14, alignItems: "stretch", flexWrap: "wrap" \}\}/.test(dash103)],
+     [true, true]);
+  // R182 — a ordenação escrita
+  eq('R182: o rótulo da ordenação em vigor (inclusive a do preset) fica ao lado do botão, lido de ORDENACOES pela chave+direção',
+     /ORDENACOES\.find\(\(o\) => o\.chave === ordem\.chave && o\.desc === ordem\.desc\)\?\.label/.test(dash103), true);
+  // regra 7
+  const prod103 = ler103('docs/PRODUTO.md');
+  eq('U103 (regra 7): R178–R182 existem, a última atualização aponta para a R182, o manual conta a Início personalizável, a U103 está no diário',
+     [['R178', 'R179', 'R180', 'R181', 'R182'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod103)),
+      Number((prod103.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 182,
+      /A Início é personalizável/.test(ler103('docs/manual/operacao-campo.md')),
+      /^## U103 /m.test(ler103('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true]);
 }
 

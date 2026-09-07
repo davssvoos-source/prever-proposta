@@ -514,7 +514,10 @@ function Home() {
         </button>
       </div>
 
-      <div style={{ paddingTop: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* R178 (Davi, 04/09/2026): "a margem superior do dashboard com o limite
+          superior da tela deve ser ajustada, achei a margem grande". Eram 18px
+          aqui + 6px na faixa + 24px do <main> (--topo) = 48px; ficam 28px. */}
+      <div style={{ paddingTop: 4, display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Faixa superior do desktop. O banner e a frase "Você tem X hoje"
             saíram daqui (viraram cabeçalho da sidebar e conteúdo de celular),
             então a dobra abre com o trabalho. A busca encosta na margem
@@ -524,7 +527,7 @@ function Home() {
             prazos futuros · meta do mês · 4 indicadores · notificações.
             Em telas entre 1024 e ~1400px o flexWrap quebra em duas linhas. */}
         {painelAberto && (
-        <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap", paddingTop: 6 }}>
+        <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
           {/* U33: os três leem o MESMO recorte que o quadro embaixo. Antes
               recebiam o array cru — e duas nem isso, consultavam o banco por
               conta própria —, então filtrar o quadro não mexia em nada aqui. */}
@@ -655,6 +658,21 @@ function Home() {
               selecionados={filtros.ordenacao ? [filtros.ordenacao] : []}
               onMudar={(v) => setFiltros((f) => ({ ...f, ordenacao: v[0] ?? null }))}
             />
+            {/* R182 (Davi, 04/09/2026): "a ordenação deve estar sempre escrita ao
+                lado do botão de ordenar. Ou seja, se for Prazo (Crescente), deve
+                estar escrito isso". O ícone sozinho não dizia crescente EM QUÊ —
+                e a ordem em vigor pode ser a do preset, que ninguém escolheu. */}
+            <span
+              className="so-desktop"
+              aria-live="polite"
+              style={{
+                fontFamily: FONT, fontSize: 11.5, whiteSpace: "nowrap", alignItems: "center",
+                color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+              }}
+            >
+              {ORDENACOES.find((o) => o.chave === ordem.chave && o.desc === ordem.desc)?.label
+                ?? ORDENACOES.find((o) => o.chave === ordem.chave)?.label ?? ""}
+            </span>
             {/* a lupa continua existindo SÓ no celular — lá ela tem função de
                 verdade: abre o campo de busca colapsável abaixo da barra, que
                 no celular não tem onde morar fixo (so-celular logo adiante) */}

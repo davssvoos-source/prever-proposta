@@ -10331,3 +10331,45 @@ mentir.
 `node scripts/verificar-logica.cjs` → ver o fim desta entrada. `npx vite build`
 → não toca em código. `npx tsc --noEmit` → **57**. Última regra: **R177** (não
 nasce regra: é método). Sem migration.
+
+
+## U103 — a Início revista pelo Davi: margem, colunas, concluídas, ordem, ordenação (R178–R182)
+
+Primeira das telas da revisão manual do Davi de 04/09/2026. Cinco pedidos,
+cinco regras, um commit — cada um pequeno, mas dois deles revisam decisões
+antigas e por isso merecem o registro.
+
+**R180 revisa a R60.** A R60 (agosto) tirou o filtro de Situação e fez a
+Início mostrar só o que está em aberto — "fila de trabalho". O Davi agora quer
+a concluída visível quando os filtros estão vazios, sumindo só quando um filtro
+a exclui. A leitura que implementei: um filtro a exclui **por natureza** quando
+é sobre trabalho que ainda vence — o de Prazo (todos os baldes, inclusive
+"Atrasados") e o preset "Meu dia"; pessoa, equipe e busca são sobre QUEM e O
+QUÊ, e a concluída passa por eles. O cancelado ficou fora: o Davi falou de
+concluídas, o cancelado nunca teve coluna, e o quadro já diz "N cancelados —
+veja na lista". E o **teto de tempo** continua sendo o corte de 7 dias da Início
+(`DIAS_ENCERRADO`) — mostrar as 2.100 concluídas do Notion na coluna seria
+transformar a fila em arquivo; a regra diz isso e o resumo ao Davi também.
+Três asserções da R60 fixavam "encerrado nunca passa" e foram reapontadas com o
+motivo; quatro novas travam a leitura (concluída passa sem filtro; sai com
+prazo; fica com pessoa; cancelado nunca).
+
+**R181 é preferência, e a lógica é pura.** `ordemDasColunas` e `moverColuna`
+moram em `lentes.ts` e têm teste de unidade; o quadro só as chama. A ordem
+salva tolera o futuro: coluna que nascer (a "Agendados" da R168) entra no fim
+na posição padrão para quem já reordenou, em vez de sumir; coluna que sair é
+ignorada. Arrastar a coluna e arrastar o card são dois gestos com dois refs —
+o `onDrop` da coluna decide qual chegou. "Sem status" não entra na dança: só
+existe quando há item quebrado.
+
+**R179**: 260px fixos viraram `flex: 1 1 0` com piso de 170 — em 1440px as
+cinco colunas ocupam a largura; em 375px o trilho volta a rolar, porque abaixo
+de 170 o card não lê. **R178**: 48px → 28px do topo (o `<main>` continua com
+os 24 do `--topo`; o que saiu foi o excesso do contêiner). **R182**: o rótulo
+da ordem em vigor, inclusive a herdada do preset, ao lado do ícone — "Prazo
+(crescente)" responde o que o ícone sozinho não respondia.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → ver o fim desta entrada. `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**. Última regra: **R182**. Sem migration.

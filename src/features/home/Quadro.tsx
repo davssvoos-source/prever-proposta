@@ -24,7 +24,7 @@
 // dispara em toque — no celular o quadro segue só de leitura, e mover é pela
 // página do chamado.
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PRISMA } from "@/lib/paleta";
 import { FONT } from "@/lib/ui";
@@ -33,9 +33,19 @@ import {
   type Atividade, type ColunaQuadro,
 } from "@/features/atividades/modelo";
 import { CardAtividade, PISO_TIPO } from "./CardAtividade";
+import { ordemDasColunas, moverColuna } from "./lentes";
 
-const LARGURA_COLUNA = 260;
+/**
+ * R179 (Davi, 04/09/2026: "a visualização Kanban deverá conter as colunas
+ * ajustadas à largura da tela"). Até a U103 cada coluna tinha 260px fixos e o
+ * trilho rolava de lado — em 1440px sobravam 200px vazios à direita. Agora as
+ * colunas DIVIDEM a largura (flex 1); o piso de 170px é o mínimo em que o card
+ * ainda lê, e abaixo dele (celular, cinco colunas) o trilho volta a rolar.
+ */
+const LARGURA_MINIMA_COLUNA = 170;
 const CHAVE_ROLAGEM = "prever-home-quadro-x";
+/** R181: a ordem das colunas é preferência de quem olha — mora no navegador */
+const CHAVE_ORDEM = "prever-home-colunas";
 /** Teto inicial por coluna. O "ver mais" sobe daqui — nada fica inalcançável. */
 const TETO = 25;
 
@@ -63,6 +73,20 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
   // coluna sob o card arrastado — realce do alvo
   const [alvoArrasto, setAlvoArrasto] = useState<ColunaQuadro | null>(null);
   const arrastadaRef = useRef<Atividade | null>(null);
+  // R181: a COLUNA sendo arrastada pelo cabeçalho (é outro gesto, outro ref —
+  // o do card continua sendo o do card)
+  const colunaArrastadaRef = useRef<ColunaQuadro | null>(null);
+  const [ordem, setOrdem] = useState<ColunaQuadro[]>(() => {
+    try {
+      const salva = JSON.parse(localStorage.getItem(CHAVE_ORDEM) ?? "null");
+      return ordemDasColunas(Array.isArray(salva) ? salva : null, COLUNAS);
+    } catch { return [...COLUNAS]; }
+  });
+  function reordenar(de: ColunaQuadro, para: ColunaQuadro) {
+    const nova = moverColuna(ordem, de, para);
+    setOrdem(nova);
+    try { localStorage.setItem(CHAVE_ORDEM, JSON.stringify(nova)); } catch { /* modo privado */ }
+  }
 
   const textPrimary = isLight ? "#1e2229" : "#ffffff";
   const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
@@ -93,15 +117,16 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
     else porColuna.set(destino, [a]);
   }
 
-  // "Sem status" só existe quando existe item quebrado
+  // "Sem status" só existe quando existe item quebrado — e fica sempre no fim,
+  // fora da ordem que a pessoa arrasta (R181)
   const colunas: ColunaQuadro[] = [
-    ...COLUNAS,
+    ...ordem,
     ...((porColuna.get("sem_status")?.length ?? 0) > 0 ? (["sem_status"] as ColunaQuadro[]) : []),
   ];
 
   const COLUNA: CSSProperties = {
-    width: LARGURA_COLUNA,
-    flexShrink: 0,
+    flex: "1 1 0",
+    minWidth: LARGURA_MINIMA_COLUNA,
     display: "flex",
     flexDirection: "column",
     borderRadius: 16,
@@ -112,7 +137,7 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
       ref={trilhoRef}
       className="trilho-x sangra-x"
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, minWidth: "max-content", paddingBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: 4 }}>
         {colunas.map((c) => {
           const itens = porColuna.get(c) ?? [];
           const cor = colunaCores(c);
@@ -127,7 +152,8 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
               data-coluna
               className="coluna-quadro"
               onDragOver={(e) => {
-                if (!onMover || !arrastadaRef.current) return;
+                // dois gestos chegam aqui: um CARD (muda status) ou uma COLUNA (muda ordem)
+                if (!(onMover && arrastadaRef.current) && !colunaArrastadaRef.current) return;
                 e.preventDefault();               // sem isto o drop nunca dispara
                 if (alvoArrasto !== c) setAlvoArrasto(c);
               }}
@@ -137,6 +163,14 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
               }}
               onDrop={(e) => {
                 e.preventDefault();
+                // R181: soltar uma COLUNA reordena; a "sem status" não entra na dança
+                const col = colunaArrastadaRef.current;
+                if (col) {
+                  colunaArrastadaRef.current = null;
+                  setAlvoArrasto(null);
+                  if (c !== "sem_status" && col !== c) reordenar(col, c);
+                  return;
+                }
                 const a = arrastadaRef.current;
                 arrastadaRef.current = null;
                 setAlvoArrasto(null);
@@ -158,11 +192,24 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
                 outlineOffset: 2,
               }}
             >
-              <div style={{
-                flexShrink: 0,
-                padding: "4px 6px 10px",
-                display: "flex", alignItems: "center", gap: 7,
-              }}>
+              <div
+                // R181: o CABEÇALHO é a alça — segurar e arrastar muda a ordem
+                // das colunas, só para quem olha. HTML5 DnD não dispara no toque;
+                // no celular a ordem é a padrão.
+                draggable={c !== "sem_status"}
+                title={c !== "sem_status" ? "Segure e arraste para mudar a ordem das colunas" : undefined}
+                onDragStart={(e: DragEvent) => {
+                  colunaArrastadaRef.current = c;
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", `coluna:${c}`);
+                }}
+                onDragEnd={() => { colunaArrastadaRef.current = null; setAlvoArrasto(null); }}
+                style={{
+                  flexShrink: 0,
+                  padding: "4px 6px 10px",
+                  display: "flex", alignItems: "center", gap: 7,
+                  cursor: c !== "sem_status" ? "grab" : undefined,
+                }}>
                 <span style={{
                   width: 8, height: 8, borderRadius: 4, flexShrink: 0,
                   background: isLight ? cor.light : cor.dark,

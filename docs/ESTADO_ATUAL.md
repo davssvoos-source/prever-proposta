@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R177** · último diário:
-**U102** · verificador: **2.920+ asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-04** · última regra: **R182** · último diário:
+**U103** · verificador: **2.937 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **nenhuma pendente**.
 
 ---
@@ -76,6 +76,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U100b | a U100 rodou: os quatro grupos liberados (P58); o fallback da ordem de deploy da U96 saiu (P60); `data_agendada` já é lida; revisão do dia |
 | U101 | o sistema como ferramenta de trabalho (R174): painel da Início recolhível (R175), avatar sem glow (R176), etiqueta sólida (R177) — e a **skill de designer** em `.claude/skills/designer/` |
 | U102 | as skills **organizador** e **banco**; `scripts/sumario.cjs` e os sumários gerados em oito documentos mestre; passo 8 do ciclo |
+| U103 | a Início revista pelo Davi: margem de cima (R178), colunas na largura da tela (R179), concluída fica sem filtro (R180), ordem das colunas por arrasto (R181), ordenação escrita (R182) |
 
 ## 4. Banco: migrations
 

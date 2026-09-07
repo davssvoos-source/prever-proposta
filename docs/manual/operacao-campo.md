@@ -89,6 +89,16 @@ com um glow levíssimo no contorno (`degradeDeBorda`, em `lib/paleta.ts`).
 A antiga lista `/chamados` morreu (R31). O detalhe continua em
 `/chamados/$id` (corpo de campo ou interno conforme a natureza).
 
+**A Início é personalizável (revisão do Davi, 04/09/2026, R178–R182).** As
+colunas do quadro dividem a largura da tela (piso de 170px por coluna); a
+**ordem** delas muda segurando o cabeçalho e arrastando, e fica salva no
+navegador de quem arrastou — "Sem status" fica sempre no fim. A ordenação em
+vigor está **escrita** ao lado do botão de ordenar. E a **concluída fica na
+fila** enquanto nenhum filtro a excluir: sai com o filtro de Prazo (que é sobre
+o que ainda vence) e com o preset "Meu dia"; pessoa, equipe e busca não a
+tiram. O cancelado continua fora (o quadro conta quantos são). O painel de cima
+recolhe (R175) e a fila começa a 28px do topo.
+
 ## Programação e painéis
 
 - **Programação das equipes** (`/chamados/programacao`): quem sai com quem e

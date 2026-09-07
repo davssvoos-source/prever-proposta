@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R177 (41)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R182 (46)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R177). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R182). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3538,3 +3538,48 @@ trabalho".
   *(Davi, 04/09/2026: "as etiquetas que são coloridas podem ter fundo da
   etiqueta de cor sólida e o texto branco, assim deixa o contraste mais
   limpo".)*
+
+
+- **R178** — **A Início começa mais perto do topo.** O painel de indicadores
+  ficava a 48px do limite superior da tela no desktop (24 do `<main>` + 18 do
+  contêiner + 6 da faixa); passa a 28px. *(Davi, 04/09/2026: "a margem superior
+  do dashboard com o limite superior da tela deve ser ajustada, achei a margem
+  grande".)*
+
+- **R179** — **As colunas do quadro dividem a largura da tela.** Cada coluna
+  tinha 260px fixos e o trilho rolava de lado, deixando espaço vazio à direita
+  em qualquer monitor largo; agora as colunas crescem juntas (flex) até
+  preencher a largura, com piso de 170px por coluna — abaixo disso (celular,
+  cinco colunas) o trilho volta a rolar. *(Davi, 04/09/2026: "A visualização
+  Kanban deverá conter as colunas ajustadas à largura da tela.")*
+
+- **R180** — **A atividade concluída fica na Início enquanto nenhum filtro a
+  excluir.** Revisa a R60, que escondia todo encerrado. Sem filtro, a concluída
+  aparece — na coluna Concluído do quadro e na lista. Sai só quando um filtro a
+  exclui **por natureza**: o de Prazo (é sobre o que ainda vence, inclusive
+  "Atrasados") e o preset "Meu dia" do técnico. Pessoa, equipe e busca não a
+  excluem. O **cancelado** continua fora (nunca teve coluna — o quadro conta
+  "N cancelados" em vez de escondê-los). O teto de tempo continua sendo o corte
+  da Início (7 dias após o encerramento, `DIAS_ENCERRADO`): a concluída de dois
+  meses atrás mora no histórico do cliente e no calendário, não na fila. *(Davi,
+  04/09/2026: "as atividades concluídas devem aparecer na tela INICIO sempre
+  que os filtros estiverem vazios, e claro, se o usuário colocar um filtro em
+  que as atividades concluídas não fazem parte do grupo de filtro, aí sim podem
+  sumir da tela INICIO na coluna CONCLUÍDO — até então as atividades podem
+  estar ali".)*
+
+- **R181** — **A ordem das colunas do quadro é de quem olha: segurar o
+  cabeçalho e arrastar reordena, e fica salvo naquele navegador.** É
+  preferência, não regra do quadro — o eixo continua sendo o status, e a
+  coluna "Sem status" fica sempre no fim, fora da dança. A ordem salva tolera
+  coluna nova (entra no fim, na posição padrão) e coluna que saiu (é ignorada).
+  Toque não arrasta: no celular vale a ordem padrão. *(Davi, 04/09/2026: "a
+  ordem das colunas deve ser editável pelo usuário, onde caso ele segure e
+  arraste, ele altera a ordem das colunas e fica salvo daquele jeito somente
+  para visualização daquele usuário. Ou seja, a tela INICIO é personalizável".)*
+
+- **R182** — **A ordenação em vigor fica escrita ao lado do botão de ordenar.**
+  "Prazo (crescente)", "Local", "Recebimento (decrescente)" — inclusive quando
+  a ordem é a do preset e ninguém a escolheu. *(Davi, 04/09/2026: "A ordenação
+  deve estar sempre escrita ao lado do botão de ordenar. Ou seja, se for Prazo
+  (Crescente), deve estar escrito isso ao lado do botão de ordenar".)*
