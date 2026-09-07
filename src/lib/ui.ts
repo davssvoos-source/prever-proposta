@@ -14,6 +14,9 @@ import { degradeDaCor, tintaSobreDegrade, hexParaRgb } from "@/lib/degrade";
 
 export const FONT = "var(--fonte)";
 
+/** Branco — a tinta da etiqueta sólida no tema claro (R177). */
+const TINTA_CLARA = "#ffffff";
+
 /** Degradê de preto bem escuro — fundo padrão de cards no tema escuro. */
 export const CARD_BG_DARK = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
 /** Fundo padrão de cards no tema claro. */
@@ -49,6 +52,52 @@ export const card = (isLight: boolean): React.CSSProperties => ({
   boxShadow: isLight
     ? "0 1px 2px rgba(0,0,0,0.04), 0 10px 30px rgba(0,0,0,0.07)"
     : "0 1px 2px rgba(0,0,0,0.50), 0 10px 30px rgba(0,0,0,0.30)",
+});
+
+/**
+ * ETIQUETA — o chip de categoria, PREENCHIDO (R177, 2026-09-04).
+ *
+ * Davi: "as etiquetas que são coloridas podem ter fundo da etiqueta de cor
+ * sólida e o texto branco, assim deixa o contraste mais limpo" — dentro do
+ * pedido maior de que o sistema é ferramenta de trabalho e não deve cansar a
+ * vista de quem passa o dia nele (R174).
+ *
+ * Até aqui a etiqueta era véu: fundo na cor a 14% de alfa (`.bg`) e texto na
+ * cor. Empilhava três coisas fracas — fundo lavado, texto colorido e às vezes
+ * borda —, e numa lista de trinta linhas o resultado é ruído de baixa
+ * legibilidade. Preenchida, é UMA forma, com contraste alto e sem borda (o
+ * preenchimento já separa do card).
+ *
+ * O TOM É O MESMO NOS DOIS TEMAS, e é o tom FUNDO da cor (`.light`), com
+ * texto branco. Três candidatos foram medidos antes de escolher:
+ *
+ *   | preenchimento | branco (pior cor) | soma de luminância |
+ *   |---|---|---|
+ *   | tom vivo (`.dark`) | 1,58:1 (amarelo) — reprova | 4,174 |
+ *   | tom vivo misturado 45% com o card | 4,33:1 | 1,375 |
+ *   | **tom fundo (`.light`)** | **4,99:1** | **1,232** |
+ *
+ * O tom vivo obrigaria tinta quase-preta (branco sobre `#F8C811` é 1,58:1) e
+ * — o que decidiu — TRIPLICA a luz que a tela emite, que é justamente o que
+ * esta entrega foi feita para reduzir. O tom fundo passa de 4,99:1 com branco
+ * nas dez cores do PRISMA, é a opção mais calma das três, e deixa a etiqueta
+ * IDÊNTICA nos dois temas — um número a menos para raciocinar.
+ *
+ * A objeção óbvia ao tom fundo era o contraste contra o card escuro (1,55:1),
+ * mas a razão engana no escuro: a fórmula comprime perto do preto, e o
+ * preenchimento é de 7 a 29 vezes mais luminoso que o card `#141416` — lê
+ * como forma sem dificuldade. E o que carrega a informação é o texto branco,
+ * que está em 4,99:1.
+ *
+ * Devolve só `background` e `color`: forma, tamanho e peso continuam de quem
+ * chama, porque a etiqueta de 9px maiúscula da página e a de 11px do card são
+ * densidades diferentes de propósito.
+ */
+export const etiqueta = (
+  cor: { dark: string; light: string },
+): { background: string; color: string } => ({
+  background: cor.light,
+  color: TINTA_CLARA,
 });
 
 /** Painel de vidro — gráficos, sidebar, popovers. */

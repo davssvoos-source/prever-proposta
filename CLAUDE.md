@@ -122,6 +122,7 @@ ordem ler o resto.
 | `docs/manual/` | manual por segmento (atualizar junto com regra nova) |
 | `scripts/verificar-logica.cjs` | as ~2900 asserções — leia um bloco recente antes de escrever |
 | `src/lib/paleta.ts`, `src/lib/ui.ts` | cor e superfície — nunca hex solto em tela |
+| `.claude/skills/designer/` | a SKILL de designer UI/UX (SKILL.md + 3 referências): briefing antes do código, inventário do que já existe, estados/acessibilidade, roteiro de análise de tela. Carrega sozinha em tarefa de interface; invoca-se por `/designer` |
 | `src/features/*/modelo.ts` | a lógica pura de cada domínio |
 | `supabase/migrations/` | histórico completo do banco (fonte do schema) |
 

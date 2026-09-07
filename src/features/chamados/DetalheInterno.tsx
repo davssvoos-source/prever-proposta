@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card } from "@/lib/ui";
+import { card, etiqueta } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { SeletorDeOpcao, type OpcaoDoSeletor } from "@/components/SeletorDeOpcao";
 import { EditorDeDescricao, TextareaComMencoes, type PessoaParaMencao } from "@/components/EditorDeDescricao";
@@ -368,7 +368,8 @@ export function DetalheInterno({ id }: { id: string }) {
       padding: "3px 8px", borderRadius: 999,
       fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
       letterSpacing: "0.06em", textTransform: "uppercase",
-      color: isLight ? c.light : c.dark, background: c.bg, border: `1px solid ${c.border}`,
+      // R177: sólida, sem borda — o preenchimento já separa do card
+      ...etiqueta(c),
     };
   };
 
@@ -404,8 +405,7 @@ export function DetalheInterno({ id }: { id: string }) {
           flexShrink: 0, padding: "5px 10px", borderRadius: 999,
           fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9.5,
           letterSpacing: "0.08em", textTransform: "uppercase",
-          color: isLight ? st.colorLight : st.color,
-          background: st.bg, border: `1px solid ${st.border}`,
+          ...etiqueta({ dark: st.color, light: st.colorLight }),
         }}>
           {st.label}
         </span>
@@ -855,7 +855,7 @@ export function DetalheInterno({ id }: { id: string }) {
                   <span key={s} style={{
                     display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
                     padding: "4px 9px", borderRadius: 999,
-                    background: cor?.bg, color: isLight ? cor?.light : cor?.dark,
+                    ...(cor ? etiqueta(cor) : {}),
                     fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
                   }}>
                     <Layers size={12} /> Clientes de {SERVICO_LABEL[s as ServicoCliente] ?? s}

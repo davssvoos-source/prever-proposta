@@ -25,7 +25,7 @@
 import { createFileRoute, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { ArrowUpDown, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
+import { ArrowUpDown, ChevronsDownUp, ChevronsUpDown, Inbox, KanbanSquare, List as ListIcon, Plus, Search, WifiOff } from "lucide-react";
 import { NovaAtividadeDialog } from "@/features/home/NovaAtividadeDialog";
 import { usePermissoes } from "@/features/gerencial/permissoes";
 
@@ -65,6 +65,12 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 const CHAVE_VISAO = "prever-home-visao";
+/**
+ * R175: o painel de cima é PREFERÊNCIA, e nasce aberto. Quem trabalha o dia
+ * inteiro na Início recolhe uma vez e espera que fique recolhido — a mesma
+ * regra da lista/quadro e da visão do calendário.
+ */
+const CHAVE_PAINEL = "prever-home-painel";
 const CHAVE_FILTROS = "prever-home-filtros";
 /**
  * Teto de linhas da tabela. Mais alto que o dos cards (60) porque uma linha
@@ -107,6 +113,10 @@ function Home() {
   const gestor = s.cargo === "admin" || s.cargo === "comercial" || s.cargo === "sac";
 
   const [novaAberta, setNovaAberta] = useState(false);
+  /** R175: gráficos, meta, indicadores e o campo de IA recolhidos (preferência) */
+  const [painelAberto, setPainelAberto] = useState(() => {
+    try { return localStorage.getItem(CHAVE_PAINEL) !== "fechado"; } catch { return true; }
+  });
   // R163: o campo de IA cria chamado (abrirChamado) — só aparece para quem tem
   // a chave `chamados.novo`. O "+" NÃO passa por aqui: ele fica para todo
   // mundo porque é a porta do plantão (R117); o diálogo é quem esconde as
@@ -123,6 +133,9 @@ function Home() {
   useEffect(() => {
     try { localStorage.setItem(CHAVE_VISAO, visao); } catch { /* modo privado */ }
   }, [visao]);
+  useEffect(() => {
+    try { localStorage.setItem(CHAVE_PAINEL, painelAberto ? "aberto" : "fechado"); } catch { /* modo privado */ }
+  }, [painelAberto]);
 
   // Os filtros sobrevivem a abrir e fechar um card. Antes só a rolagem do
   // quadro voltava: preset, vínculo, período e busca eram perdidos, e quem
@@ -510,6 +523,7 @@ function Home() {
         {/* Painel superior (U18) — o desenho anotado do Davi:
             prazos futuros · meta do mês · 4 indicadores · notificações.
             Em telas entre 1024 e ~1400px o flexWrap quebra em duas linhas. */}
+        {painelAberto && (
         <div className="so-desktop sangra-x" style={{ gap: 14, alignItems: "stretch", flexWrap: "wrap", paddingTop: 6 }}>
           {/* U33: os três leem o MESMO recorte que o quadro embaixo. Antes
               recebiam o array cru — e duas nem isso, consultavam o banco por
@@ -534,6 +548,7 @@ function Home() {
           />
           {podeAbrirChamado && <CriarRapido />}
         </div>
+        )}
 
         {/* O título desceu para cá — o quadrado azul do desenho: vira o
             cabeçalho da área de trabalho, logo acima dos filtros. */}
@@ -653,6 +668,26 @@ function Home() {
               style={botaoIcone}
             >
               <Search size={17} color={gold} />
+            </button>
+            {/* R175 (Davi, 2026-09-04): "vamos criar um botão que recolhe o
+                dashboard da tela inicial, isso já vai reduzir a quantidade de
+                brilho e cor na tela". Só no desktop, porque o painel é
+                `so-desktop` — no celular não há o que recolher.
+
+                RECOLHER LIMPA O FILTRO DO PAINEL, de propósito: os tiles, a
+                rosca e as barras são controles de filtro (R60/R65), e esconder
+                o controle deixando o filtro ligado repetiria o defeito que a
+                U94 consertou no calendário — a lista filtrada por um controle
+                que não está mais na tela. */}
+            <button
+              className="so-desktop"
+              onClick={() => setPainelAberto((v) => { if (v) setSelecaoPainel(null); return !v; })}
+              aria-pressed={!painelAberto}
+              title={painelAberto ? "Recolher o painel de cima" : "Mostrar o painel de cima"}
+              aria-label={painelAberto ? "Recolher o painel de indicadores" : "Mostrar o painel de indicadores"}
+              style={botaoIcone}
+            >
+              {painelAberto ? <ChevronsDownUp size={17} color={gold} /> : <ChevronsUpDown size={17} color={gold} />}
             </button>
             <button
               onClick={() => setVisao((v) => (v === "lista" ? "quadro" : "lista"))}

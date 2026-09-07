@@ -34,7 +34,7 @@ import { FileText, ListPlus, Paperclip, X, Building2, Layers } from "lucide-reac
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card, botaoSelecao, goldButton } from "@/lib/ui";
+import { FONT, card, botaoSelecao, goldButton, etiqueta } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import {
   abrirChamado, usePessoas, adicionarApoio, adicionarSetorChamado, adicionarClienteChamado, anexarFoto,
@@ -384,8 +384,7 @@ export function NovaAtividadeDialog({ aberto, aoFechar }: { aberto: boolean; aoF
                       <span style={{
                         padding: "2px 8px", borderRadius: 999,
                         fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                        color: isLight ? equipeCores(equipeDoResponsavel).light : equipeCores(equipeDoResponsavel).dark,
-                        background: equipeCores(equipeDoResponsavel).bg,
+                        ...etiqueta(equipeCores(equipeDoResponsavel)),
                       }}>
                         {EQUIPE_LABEL[equipeDoResponsavel]}
                       </span>

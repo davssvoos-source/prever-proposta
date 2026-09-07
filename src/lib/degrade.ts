@@ -91,3 +91,4 @@ export function tintaSobreDegrade(hex: string): string {
     ? TINTA_ESCURA
     : TINTA_CLARA;
 }
+

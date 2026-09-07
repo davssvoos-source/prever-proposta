@@ -34,8 +34,10 @@ export function PessoaComFoto({ id, nome, pessoa, tamanho = 20 }: {
         <img src={pessoa.avatar_url} alt="" style={circulo} />
       ) : (
         <span style={{
+          // R176: sem glow. O halo colorido em volta de cada rosto era
+          // decorativo — numa lista de trinta atividades viram trinta faróis,
+          // e o Davi pediu para tirar. O degradê já distingue as pessoas.
           ...circulo, background: d.grad, color: d.sobre,
-          boxShadow: `0 0 8px ${d.glow}`,
           fontFamily: FONT, fontWeight: 700, fontSize: Math.round(tamanho * 0.4),
         }}>
           {iniciais}

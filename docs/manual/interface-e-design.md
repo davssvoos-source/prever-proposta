@@ -62,6 +62,25 @@ paleta que ainda restam em telas legadas.
    `elevavel` dá a elevação padrão; bordas arredondadas no padrão do sistema;
    FAB dourado (`GOLD_GRAD` + `GOLD_GLOW`) para a ação principal.
 
+## A etiqueta é sólida, e o brilho é exceção (R174–R177)
+
+O sistema é **ferramenta de trabalho**: quem o usa passa horas nele. Brilho e
+cor saturada valem onde carregam informação; o resto é superfície neutra e
+tipografia.
+
+- **Etiqueta de categoria** (tipo, status, impacto, equipe, serviço) usa
+  `etiqueta(cor)` de `src/lib/ui.ts`: preenchimento sólido no tom fundo da
+  cor e texto branco, **sem borda**, igual nos dois temas. Nunca monte
+  `background: cor.bg` + texto colorido numa etiqueta — o véu ficou para
+  superfície (fundo de campo, anel de seleção). Tabela de decisão e valores
+  resolvidos no `DESIGN_SYSTEM.md` §6.14.
+- **Avatar** não espalha glow (§6.15). Na pilha, a separação é um anel na cor
+  do card.
+- **O painel de cima da Início recolhe** por um botão do cabeçalho, e a
+  escolha fica no navegador. Se acrescentar um controle de filtro àquele
+  painel, lembre: recolher **limpa** a seleção — controle escondido com filtro
+  ligado é a lista mentindo.
+
 ## Fundo por prazo (cards de atividade)
 
 Amarelo = vence nesta semana · azul = depois · vermelho = atrasado
@@ -84,6 +103,10 @@ box-shadow. Se um vidro/blur vazar do raio do card, é isso.
 
 ## Referências
 
+- **`.claude/skills/designer/`** — a skill de designer UI/UX: o método
+  (briefing antes do código), o inventário do que já existe, a matriz de
+  estados e o roteiro de análise de tela. É o que o assistente carrega quando
+  a tarefa é de interface.
 - `DESIGN_SYSTEM.md` — tokens, §9 dataviz, anti-padrões de modo claro
 - `src/lib/paleta.ts` · `src/lib/ui.ts` · `src/lib/sidebar-recolhida.ts`
 - Exemplos bons: `painel.operacional.tsx`, `PainelBase.tsx`, dashboard

@@ -10028,3 +10028,116 @@ serão redesenhadas — estão triadas no próprio arquivo.
 `node scripts/verificar-logica.cjs` → **2892 passaram, 0 falharam** (5 novas, 7 reapontadas — as do fallback da U96 para o estado final). `npx vite build`
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R173**.
 Sem migration.
+
+
+## U101 — o sistema como ferramenta de trabalho (R174–R177), e a skill de designer (2026-09-04)
+
+O Davi pediu duas coisas na mesma sessão, e elas se encaixaram: uma **skill de
+designer UI/UX** para o assistente pensar como designer antes de implementar
+interface, e uma revisão do design system porque "o sistema está muito
+cansativo aos olhos, para um usuário que pode passar muitas horas em frente a
+essa tela durante o dia". A segunda virou o primeiro trabalho feito pelo
+método da primeira.
+
+### A skill
+
+Mora em `.claude/skills/designer/` — **dentro do repo**, versionada, pelo
+mesmo motivo do `ESTADO_ATUAL.md`: numa máquina nova ela viaja com o `git`.
+Quatro arquivos: `SKILL.md` (o método) e três referências carregadas sob
+demanda — `inventario.md` (o que já existe: helpers, componentes, classes,
+tokens), `estados.md` (a matriz de estados, formulário, responsivo,
+acessibilidade com os números que o verificador cobra) e `analise.md` (o
+roteiro de análise crítica e o que fazer em "está feio" / "deixe mais
+profissional").
+
+A decisão de desenho da skill foi **não criar um design system paralelo**.
+Este repo já tem `DESIGN_SYSTEM.md` com 1.100 linhas de tokens e nove
+anti-padrões que foram bug de produção; uma skill genérica de "boas práticas
+de UI" brigaria com ele. Então a skill é método + ponteiro: ela obriga o
+briefing antes do JSX, manda conferir o inventário antes de criar componente,
+carrega o gosto do Davi já registrado (cor só na borda, "mais nenhuma
+informação no card", hover que move) e lembra que design não escapa do ciclo
+do repo — regra em `PRODUTO.md`, asserção no verificador, diário.
+
+### R174 — o princípio
+
+Antes de mexer em pixel, escrevi a regra que decide os próximos: **brilho é
+exceção, não acabamento**. Luminosidade e cor saturada valem onde carregam
+informação; o resto é superfície neutra e tipografia. Sem isso, cada pedido de
+"tirar o brilho daqui" viraria uma decisão solta, e a próxima tela nasceria
+brilhando de novo.
+
+### R175 — o painel recolhe
+
+Botão no cabeçalho da Início, preferência no `localStorage`, nasce aberto —
+o mesmo desenho da lista/quadro e da visão do calendário. Só no desktop,
+porque o painel é `so-desktop`.
+
+O detalhe que a análise pegou antes de codar: os tiles, a rosca e as barras
+**são controles de filtro** (R60/R65). Recolher o painel deixando um filtro
+ligado esconderia o controle e deixaria a lista filtrada sem explicação — que
+é exatamente o defeito que a U94 consertou no calendário (o filtro de Pessoa
+apagando o botão de Tipo). Então recolher **limpa a seleção**, e isso está na
+regra e na asserção.
+
+### R176 — o avatar sem glow
+
+Duas linhas em dois arquivos, mas uma delas tinha função: na pilha, os
+círculos se sobrepõem em 7px e o glow era o que fazia um descolar do outro.
+Tirar sem substituir deixaria uma massa de círculos colados. Troquei por um
+**anel na cor da superfície** — a separação canônica de uma pilha de
+avatares, e a única que separa sem acrescentar luz. O avatar solto não ganhou
+anel: não há sobreposição para separar.
+
+### R177 — a etiqueta sólida, e a medição que mudou a resposta
+
+O pedido foi "fundo da etiqueta de cor sólida e o texto branco". Implementei
+assim e **a prévia mostrou o contrário do objetivo**: no tema escuro,
+preenchimento no tom vivo transforma cada etiqueta num bloco luminoso — mais
+luz na tela, não menos. Fui medir antes de decidir por gosto:
+
+| preenchimento | branco na pior cor | soma de luminância dos 10 |
+|---|---|---|
+| tom vivo (`.dark`) | 1,58:1 (amarelo) — reprova | 4,174 |
+| tom vivo misturado 45% com o card | 4,33:1 | 1,375 |
+| **tom fundo (`.light`)** | **4,99:1** | **1,232** |
+
+O tom vivo nem serve: texto branco sobre `#F8C811` é 1,58:1, e sobre o verde
+vivo 1,93:1 — obrigaria tinta quase-preta, contrariando o pedido. O tom
+**fundo** passa de 4,99:1 com branco nas dez cores do PRISMA, emite um terço
+da luz do vivo, e tem um bônus: fica **igual nos dois temas**, um número a
+menos para raciocinar.
+
+A objeção ao tom fundo era o contraste contra o card escuro (1,55:1). Ela não
+se sustenta: a razão de contraste comprime perto do preto, e o preenchimento é
+de 7 a 29 vezes mais luminoso que `#141416` — lê como forma sem dificuldade.
+Quem carrega a informação é o texto branco, em 4,99:1. A prévia confirmou nos
+dois temas antes de eu escrever a regra.
+
+Escrevi `tintaSobre()` em `degrade.ts` para o caminho do tom vivo (a tinta
+decidida por medição em vez de lista) e **apaguei na mesma entrega** quando a
+decisão mudou — helper sem chamador é código morto, e a asserção agora
+confere que ele não voltou.
+
+A troca alcançou **18 etiquetas em nove telas** por uma função só — a
+décima-oitava foi um achado da própria asserção de censo: a etiqueta de grupo
+de clientes do painel lateral (a gêmea da que eu já tinha convertido na página
+da atividade) havia ficado com véu, e o censo a acusou antes de eu fechar a
+entrega. É o argumento da asserção de censo em duas linhas. O véu
+(`.bg`) continua vivo para **superfície** — fundo de campo, anel de seleção —,
+e a asserção distingue os dois usos: o que não pode voltar é véu como
+etiqueta.
+
+### O que a verificação pegou
+
+Nada quebrou (as asserções antigas não fixavam o estilo do chip). As 15 novas
+travam o que decide: o piso de 4,5:1 do branco nas dez cores, a recusa medida
+do tom vivo, o anel da pilha, o "recolher limpa o filtro", e a existência e o
+conteúdo da própria skill — inclusive que o `CLAUDE.md` aponta para ela,
+porque skill que ninguém acha é skill que não existe.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2915 passaram, 0 falharam** (23 novas). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R177**.
+Sem migration.

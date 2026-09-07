@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R173** · último diário:
-**U100b** · verificador: **2.890+ asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-04** · última regra: **R177** · último diário:
+**U101** · verificador: **2.915 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **nenhuma pendente**.
 
 ---
@@ -42,7 +42,9 @@ técnica de campo é o **Vinicius**.
 6. `docs/PRODUTO.md` — TODAS as regras (R1–R173). Não se lê de ponta a ponta:
    consulta-se pela regra citada no código.
 7. `docs/manual/README.md` — o manual por segmento; ler o do segmento em que
-   se vai trabalhar.
+   se vai trabalhar. Para interface, a **skill de designer**
+   (`.claude/skills/designer/SKILL.md`) é o método, e o
+   `DESIGN_SYSTEM.md` é a fonte dos tokens.
 8. `docs/PLANO_UNIFICACAO.md` — o diário (U1–U100). É onde está o PORQUÊ de
    cada decisão técnica; ler a entrada citada quando um trecho de código
    parecer estranho.
@@ -68,6 +70,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U97b–U99 | as respostas do Davi às Q1–Q22 viram R155–R172; migration U99 (limpeza, catálogo, `data_agendada`) |
 | U100 | portaria autônoma e presencial como grupos de clientes (R173); migration U100; este arquivo |
 | U100b | a U100 rodou: os quatro grupos liberados (P58); o fallback da ordem de deploy da U96 saiu (P60); `data_agendada` já é lida; revisão do dia |
+| U101 | o sistema como ferramenta de trabalho (R174): painel da Início recolhível (R175), avatar sem glow (R176), etiqueta sólida (R177) — e a **skill de designer** em `.claude/skills/designer/` |
 
 ## 4. Banco: migrations
 
@@ -113,6 +116,11 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 - **R172** — a visita comercial **trava a agenda** do técnico (Fase H.1).
 - **R173** — **Portaria Autônoma** e **Portaria Presencial** são grupos de
   clientes, ao lado de Portaria Remota e Monitoramento.
+- **R174** — **o sistema é ferramenta de trabalho: brilho é exceção.** É o
+  princípio que governa decisão de interface daqui em diante; R175 (painel
+  recolhível), R176 (avatar sem glow) e R177 (etiqueta sólida) são as
+  primeiras consequências. A **skill de designer**
+  (`.claude/skills/designer/`) carrega este princípio junto com o método.
 
 ## 6. Perguntas em aberto
 

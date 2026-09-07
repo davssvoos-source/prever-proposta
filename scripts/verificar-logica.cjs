@@ -17395,5 +17395,150 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true]);
 }
 
+// ── U101 — R174–R177: o sistema como ferramenta de trabalho (2026-09-04) ─────
+{
+  const fs101 = require('fs');
+  const path101 = require('path');
+  const ler101 = (p) => fs101.readFileSync(p, 'utf8');
+  const codigo101 = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const UI101 = carregar('src/lib/ui.ts');
+  const PAL101 = carregar('src/lib/paleta.ts');
+  const fi101 = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum101 = (hex) => { const n = parseInt(hex.slice(1), 16);
+    const [r, g, b2] = [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255].map(fi101);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2; };
+  const ct101 = (a2, b2) => { const [x, y] = [lum101(a2), lum101(b2)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const CORES101 = ['amarelo', 'pessego', 'laranja', 'vermelho', 'rosa', 'azulClaro', 'azul', 'azulEscuro', 'verde', 'neutro'];
+
+  // ── R177: a etiqueta sólida ──────────────────────────────────────────────
+  eq('R177: etiqueta() preenche com o tom FUNDO da cor e escreve em branco — o mesmo par nos dois temas',
+     UI101.etiqueta(PAL101.PRISMA.amarelo), { background: PAL101.PRISMA.amarelo.light, color: '#ffffff' });
+  eq('R177 CRÍTICO: o texto branco passa de 4.5:1 sobre o preenchimento das DEZ cores do PRISMA — se um tom da paleta clarear, isto acusa',
+     CORES101.filter((n) => ct101(PAL101.PRISMA[n].light, '#ffffff') < 4.5), []);
+  eq('R177: a etiqueta não depende do tema — a assinatura tem UM parâmetro, e o mesmo objeto sai nas duas chamadas',
+     [UI101.etiqueta.length, JSON.stringify(UI101.etiqueta(PAL101.PRISMA.azul)) === JSON.stringify(UI101.etiqueta(PAL101.PRISMA.azul))],
+     [1, true]);
+  eq('R177 CRÍTICO: o tom VIVO foi recusado com número — branco sobre o amarelo vivo reprova, e o vivo emite ~3x a luz do tom fundo',
+     [ct101(PAL101.PRISMA.amarelo.dark, '#ffffff') < 4.5,
+      CORES101.map((n) => lum101(PAL101.PRISMA[n].dark)).reduce((a2, b2) => a2 + b2, 0)
+        > 3 * CORES101.map((n) => lum101(PAL101.PRISMA[n].light)).reduce((a2, b2) => a2 + b2, 0)],
+     [true, true]);
+  eq('R177: o preenchimento LÊ como forma sobre o card escuro — de 7 a 29 vezes a luminância de #141416 (a razão de contraste engana perto do preto)',
+     CORES101.filter((n) => lum101(PAL101.PRISMA[n].light) / lum101('#141416') < 5), []);
+  // e a etiqueta chegou aos NOVE arquivos que mostravam chip de véu
+  {
+    // quantas CHAMADAS de etiqueta() cada tela faz (a linha de import não conta)
+    const alvos = {
+      'src/features/home/CardAtividade.tsx': 1, 'src/features/home/TabelaAtividades.tsx': 3,
+      'src/features/chamados/PainelChamado.tsx': 2, 'src/features/chamados/DetalheInterno.tsx': 3,
+      'src/features/chamados/DetalheCampo.tsx': 4, 'src/components/StatusBadge.tsx': 1,
+      'src/features/clientes/InventarioCliente.tsx': 1, 'src/features/home/NovaAtividadeDialog.tsx': 1,
+      'src/features/administrativo/Usuarios.tsx': 2,
+    };
+    const chamadas = (f) => codigo101(ler101(f)).split('\n')
+      .filter((l) => !/^import /.test(l)).join('\n').match(/etiqueta\(/g) ?? [];
+    const fora = Object.entries(alvos).filter(([f, n]) => chamadas(f).length !== n);
+    eq('R177 CRÍTICO: as 18 etiquetas dos nove arquivos passam por etiqueta() — nenhuma monta cor à mão',
+       fora.map(([f]) => `${f}: ${chamadas(f).length}`), []);
+    eq('R177: são 18 etiquetas ao todo — o número está aqui para uma etiqueta nova não entrar sem passar pelo helper',
+       Object.keys(alvos).reduce((t, f) => t + chamadas(f).length, 0), 18);
+    // O véu (.bg) continua VÁLIDO para superfície — fundo de campo, anel de
+    // seleção. O que não pode voltar é véu pintando ETIQUETA, e a diferença
+    // está no que cerca: uma etiqueta tem `borderRadius: 999` (ou 12) e texto
+    // dentro. Este censo cobra os nove arquivos convertidos: nenhum deles pode
+    // ter um `background: <cor>.bg` a menos de três linhas de um padding de
+    // chip. As exceções de SUPERFÍCIE estão nomeadas.
+    const SUPERFICIE_OK = [
+      'est.campoBg',            // PainelChamado: fundo do CAMPO quando não há cor
+      'rgba(248,200,17,0.14)',  // SeletorDeOpcao: anel de seleção (outro arquivo)
+    ];
+    const veuEmEtiqueta = Object.keys(alvos).filter((f) => {
+      const linhas = codigo101(ler101(f)).split('\n');
+      return linhas.some((l, i) => {
+        if (!/background: [A-Za-z][A-Za-z.]*\??\.bg\b/.test(l)) return false;
+        if (SUPERFICIE_OK.some((ok) => l.includes(ok))) return false;
+        return linhas.slice(Math.max(0, i - 3), i + 4).some((v) => /borderRadius: (?:999|12)\b/.test(v));
+      });
+    });
+    eq('R177 CRÍTICO: nenhum dos nove voltou a usar o véu (.bg) como fundo de ETIQUETA (o véu segue valendo para superfície)',
+       veuEmEtiqueta, []);
+  }
+  eq('R177: `tintaSobre` não existe — nasceu nesta entrega para o tom vivo e morreu com a decisão (nada de helper sem chamador)',
+     /tintaSobre\b/.test(ler101('src/lib/degrade.ts')) || /tintaSobre\b/.test(ler101('src/lib/ui.ts')), false);
+
+  // ── R176: o avatar sem glow ──────────────────────────────────────────────
+  const pcf101 = ler101('src/components/PessoaComFoto.tsx');
+  const apl101 = ler101('src/components/AvatarPilha.tsx');
+  eq('R176 CRÍTICO: nenhum avatar espalha glow — o halo colorido saiu dos três desenhos (PessoaComFoto, AvatarCirculo, AvatarPilha)',
+     [/0 0 \d+px \$\{d\.glow\}/.test(pcf101), /0 0 \d+px \$\{d\.glow\}/.test(apl101)], [false, false]);
+  eq('R176: a PILHA troca o glow por um ANEL na cor da superfície — os círculos se sobrepõem em -7px e precisam se separar sem acrescentar luz',
+     [/boxShadow: `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}`/.test(apl101),
+      /marginLeft: i === 0 \? 0 : -7/.test(apl101)],
+     [true, true]);
+  eq('R176: o avatar SOLTO não ganhou anel nenhum (não há sobreposição para separar)',
+     /boxShadow/.test(codigo101(pcf101)), false);
+
+  // ── R175: o painel da Início recolhe ─────────────────────────────────────
+  const dash101 = ler101('src/routes/_authenticated/dashboard.tsx');
+  eq('R175: o painel é PREFERÊNCIA — lida e gravada no localStorage, e nasce ABERTO (quem nunca clicou vê o painel)',
+     [/const CHAVE_PAINEL = "prever-home-painel";/.test(dash101),
+      /localStorage\.getItem\(CHAVE_PAINEL\) !== "fechado"/.test(dash101),
+      /localStorage\.setItem\(CHAVE_PAINEL, painelAberto \? "aberto" : "fechado"\)/.test(dash101)],
+     [true, true, true]);
+  eq('R175 CRÍTICO: recolher LIMPA a seleção do painel — esconder um controle deixando o filtro ligado é o defeito que a U94 consertou no calendário',
+     /onClick=\{\(\) => setPainelAberto\(\(v\) => \{ if \(v\) setSelecaoPainel\(null\); return !v; \}\)\}/.test(dash101), true);
+  eq('R175: o botão é <button aria-pressed> só do DESKTOP (o painel é so-desktop; no celular não há o que recolher) e o painel inteiro entra na condição',
+     [/className="so-desktop"\s*\n\s*onClick=\{\(\) => setPainelAberto/.test(dash101),
+      /aria-pressed=\{!painelAberto\}/.test(dash101),
+      /\{painelAberto && \(\s*\n\s*<div className="so-desktop sangra-x"/.test(dash101)],
+     [true, true, true]);
+
+  // ── regra 7: as regras, o design system, o diário, a skill ───────────────
+  const prod101 = ler101('docs/PRODUTO.md');
+  const ds101 = ler101('DESIGN_SYSTEM.md');
+  eq('U101 (regra 7): R174–R177 existem, a última atualização aponta para a R177 e a U101 está no diário',
+     [['R174', 'R175', 'R176', 'R177'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod101)),
+      Number((prod101.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 177,
+      /^## U101 /m.test(ler101('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true]);
+  eq('U101 (regra 7): o DESIGN_SYSTEM tem a §6.14 da etiqueta sólida com a tabela de decisão, e o princípio do brilho na §1',
+     [/^### 6\.14 Etiqueta — a categoria PREENCHIDA/m.test(ds101),
+      /4,99:1/.test(ds101) && /1,232/.test(ds101),
+      /ferramenta de trabalho/.test(ds101)],
+     [true, true, true]);
+  eq('U101 (regra 7): o manual de interface conta a etiqueta sólida e o painel recolhível',
+     [/etiqueta\(cor\)/.test(ler101('docs/manual/interface-e-design.md')),
+      /painel de cima da Início recolhe/.test(ler101('docs/manual/interface-e-design.md'))],
+     [true, true]);
+
+  // ── a SKILL de designer ──────────────────────────────────────────────────
+  {
+    const raiz = '.claude/skills/designer';
+    const arquivos = ['SKILL.md', 'references/inventario.md', 'references/estados.md', 'references/analise.md'];
+    eq('SKILL designer: os quatro arquivos existem no repo (versionados, viajam para outra máquina)',
+       arquivos.filter((a) => !fs101.existsSync(path101.join(raiz, a))), []);
+    const skill = ler101(path101.join(raiz, 'SKILL.md'));
+    eq('SKILL designer: o frontmatter tem name e description, e a descrição cobre os gatilhos que devem acioná-la',
+       [/^---\n(?:.*\n)*?name: designer\n/.test(skill),
+        /^description: /m.test(skill),
+        ['interface', 'UX', 'tela nova', 'redesenho', 'componente', 'Design System', 'responsividade', 'acessibilidade', 'está feio', 'profissional']
+          .every((g) => skill.includes(g))],
+       [true, true, true]);
+    eq('SKILL designer CRÍTICO: ela manda RACIOCINAR antes de codar, e aponta para o design system que já existe em vez de criar outro',
+       [/briefing antes do código/.test(skill), /Nunca comece escrevendo JSX/.test(skill),
+        /DESIGN_SYSTEM\.md/.test(skill) && /nunca cria um paralelo|Criar um segundo é o pior erro/.test(skill),
+        /references\/inventario\.md/.test(skill)],
+       [true, true, true, true]);
+    eq('SKILL designer: ela lembra do ciclo do repo (regra, asserção, build, diário) — design não escapa dele',
+       [/PRODUTO\.md/.test(skill), /verificar-logica\.cjs/.test(skill),
+        /PLANO_UNIFICACAO\.md/.test(skill), /ESTADO_ATUAL\.md/.test(skill)],
+       [true, true, true, true]);
+    eq('SKILL designer (regra 7): o CLAUDE.md e o ESTADO_ATUAL apontam para ela — skill que ninguém acha é skill que não existe',
+       [/\.claude\/skills\/designer/.test(ler101('CLAUDE.md')),
+        /\.claude\/skills\/designer/.test(ler101('docs/ESTADO_ATUAL.md'))],
+       [true, true]);
+  }
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

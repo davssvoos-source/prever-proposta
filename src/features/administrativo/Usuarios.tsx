@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { etiqueta } from "@/lib/ui";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 
 const L = {
@@ -678,22 +679,18 @@ export function GestaoDeUsuarios() {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <span style={{
-                        fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
-                        color: isLight ? lightCfg.color : cfg.color,
+                        fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
                         padding: "3px 8px", borderRadius: 999,
-                        background: isLight ? lightCfg.bg : `${cfg.color}15`,
-                        border: isLight ? lightCfg.border : `1px solid ${cfg.color}40`,
+                        ...etiqueta({ dark: cfg.color, light: lightCfg.color }),
                         letterSpacing: "0.06em", textTransform: "uppercase",
                       }}>
                         {cfg.label}
                       </span>
                       {u.equipe && (
                         <span style={{
-                          fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 10,
-                          color: isLight ? equipeCores(u.equipe).light : equipeCores(u.equipe).dark,
+                          fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
                           padding: "3px 8px", borderRadius: 999,
-                          background: equipeCores(u.equipe).bg,
-                          border: `1px solid ${equipeCores(u.equipe).border}`,
+                          ...etiqueta(equipeCores(u.equipe)),
                           letterSpacing: "0.06em", textTransform: "uppercase",
                         }}>
                           {EQUIPE_LABEL[u.equipe as Equipe] ?? u.equipe}

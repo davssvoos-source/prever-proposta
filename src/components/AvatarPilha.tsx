@@ -70,9 +70,12 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
               marginLeft: i === 0 ? 0 : -7,
               background: d.grad,
               color: d.sobre,
-              // glow fraco: o suficiente para a pastilha descolar do card sem
-              // virar farol numa lista com dez delas
-              boxShadow: `0 0 10px ${d.glow}`,
+              // R176: ANEL na cor da superfície, não glow. O halo colorido
+              // saiu (pedido do Davi); mas os círculos se sobrepõem em -7px e
+              // precisam de uma separação — e a separação correta de uma pilha
+              // de avatares é um anel da cor do fundo, que não acrescenta luz
+              // nenhuma à tela.
+              boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`,
               fontFamily: FONT,
               fontWeight: 700,
               fontSize: Math.round(tamanho * 0.38),

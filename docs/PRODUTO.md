@@ -11,7 +11,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R173). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R177). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3477,3 +3477,48 @@ trabalho".
   Os dois CHECKs do banco mudam juntos na migration **U100**; até ela rodar o
   app mostra os grupos novos mas não deixa gravá-los (regra 5). Fecha a
   **Q23**. *(Davi, 04/09/2026: "Sim, entra no grupo de clientes.")*
+
+
+- **R174** — **O sistema é ferramenta de trabalho: brilho é exceção, não
+  acabamento.** Quem usa o app passa horas nele, e o que impressiona numa
+  demonstração cansa num turno. Regra de decisão para qualquer tela:
+  luminosidade e cor saturada só onde carregam informação (a ação principal, o
+  que está atrasado, o que precisa de atenção); o resto é superfície neutra e
+  tipografia. Glow decorativo não entra, e o que existe se justifica ou sai.
+  As R175–R177 são as primeiras consequências. *(Davi, 04/09/2026: "O sistema
+  está muito cansativo aos olhos, para um usuário que pode passar muitas horas
+  em frente a essa tela durante o dia […] vamos otimizar o design do sistema
+  pensando que o usuário estará trabalhando e usando como ferramenta de
+  trabalho.")*
+
+- **R175** — **O painel de cima da Início recolhe, e a escolha fica.** Um
+  botão no cabeçalho esconde a faixa de gráficos, meta, indicadores e campo de
+  IA; a preferência mora no navegador e nasce **aberta**. Recolher **limpa o
+  filtro do painel** — os tiles, a rosca e as barras são controles de filtro
+  (R60/R65), e esconder o controle deixando o filtro ligado repetiria o
+  defeito que a U94 consertou no calendário. Só no desktop: no celular o
+  painel não existe. *(Davi, 04/09/2026: "vamos criar um botão que recolhe o
+  dashboard da tela inicial, isso já vai reduzir a quantidade de brilho e cor
+  na tela".)*
+
+- **R176** — **O avatar não espalha glow.** O halo colorido em volta de cada
+  rosto saiu dos três desenhos (o avatar com nome, o círculo solto e a pilha):
+  numa lista de trinta atividades eram trinta faróis, e o degradê já distingue
+  as pessoas. Na **pilha**, onde os círculos se sobrepõem em 7px e precisam de
+  separação, o glow foi trocado por um **anel na cor da superfície** — separa
+  sem acrescentar luz nenhuma à tela. *(Davi, 04/09/2026: "na tela início,
+  pensei em tirar o glow dos ícones dos usuários nos cards".)*
+
+- **R177** — **A etiqueta colorida é PREENCHIDA: fundo sólido no tom fundo da
+  cor e texto branco, igual nos dois temas, sem borda.** Substitui o véu (cor
+  a 14% de alfa com texto colorido), que empilhava três coisas fracas e virava
+  ruído numa lista de trinta linhas. O tom de preenchimento é o `.light` do
+  PRISMA nos **dois** temas — três candidatos foram medidos, e a tabela está
+  no `DESIGN_SYSTEM.md` §6.14: o tom **vivo** reprova texto branco (1,58:1 no
+  amarelo) e **triplica** a luz que a tela emite, que é o oposto do que a R174
+  pede. Vale nas 18 etiquetas de nove telas, por uma função só
+  (`etiqueta()`, em `ui.ts`). O véu continua servindo para **superfície**
+  (fundo de campo, anel de seleção) — o que saiu foi o véu como etiqueta.
+  *(Davi, 04/09/2026: "as etiquetas que são coloridas podem ter fundo da
+  etiqueta de cor sólida e o texto branco, assim deixa o contraste mais
+  limpo".)*

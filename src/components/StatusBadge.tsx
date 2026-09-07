@@ -4,6 +4,7 @@
 import type { CSSProperties } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { PRISMA, type CorPrisma } from "@/lib/paleta";
+import { etiqueta } from "@/lib/ui";
 
 const COR: Record<string, CorPrisma> = {
   rascunho: PRISMA.neutro,
@@ -22,11 +23,8 @@ const LABEL: Record<string, string> = {
 export function StatusBadge({ status }: { status: string }) {
   const { isLight } = useTheme();
   const c = COR[status] ?? PRISMA.neutro;
-  const estilo: CSSProperties = {
-    background: c.bg,
-    border: `1px solid ${c.border}`,
-    color: isLight ? c.light : c.dark,
-  };
+  // R177: sólida, sem borda
+  const estilo: CSSProperties = etiqueta(c);
   return (
     <span
       className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"

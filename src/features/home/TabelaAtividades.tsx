@@ -24,7 +24,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { ArrowDown, ArrowUp, Building2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT } from "@/lib/ui";
+import { FONT, etiqueta } from "@/lib/ui";
 import { type PessoaAvatar } from "@/components/AvatarPilha";
 // Foto + nome: componente COMPARTILHADO (U40) — o painel de propriedades do
 // chamado passou a precisar do mesmo par, e duas cópias divergiriam na
@@ -243,8 +243,7 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                           <span key={e} style={{
                             padding: "2px 8px", borderRadius: 999,
                             fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                            color: isLight ? c.light : c.dark,
-                            background: c.bg, whiteSpace: "nowrap",
+                            ...etiqueta(c), whiteSpace: "nowrap",
                           }}>
                             {EQUIPE_LABEL[e as Equipe] ?? e}
                           </span>
@@ -259,8 +258,7 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                     <span style={{
                       padding: "2px 8px", borderRadius: 999,
                       fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                      color: isLight ? a.tipoCor.light : a.tipoCor.dark,
-                      background: a.tipoCor.bg, whiteSpace: "nowrap",
+                      ...etiqueta(a.tipoCor), whiteSpace: "nowrap",
                     }}>
                       {a.tipoLabel}
                     </span>
@@ -271,8 +269,7 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
                   <span style={{
                     padding: "2px 8px", borderRadius: 999,
                     fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                    color: isLight ? a.statusCor.light : a.statusCor.dark,
-                    background: a.statusCor.bg, whiteSpace: "nowrap",
+                    ...etiqueta(a.statusCor), whiteSpace: "nowrap",
                   }}>
                     {a.rotuloNativo ?? a.statusLabel}
                   </span>

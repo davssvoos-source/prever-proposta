@@ -20,7 +20,7 @@
 import type { CSSProperties } from "react";
 import { Building2, CalendarClock, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card } from "@/lib/ui";
+import { FONT, card, etiqueta } from "@/lib/ui";
 import { PRISMA, degradeDeBorda, esmaecer } from "@/lib/paleta";
 import { AvatarPilha, type PessoaAvatar } from "@/components/AvatarPilha";
 import {
@@ -31,11 +31,14 @@ import {
 export const PISO_TIPO = 11;
 
 /**
- * Chip de rótulo — cor própria sempre, texto sobre o véu (`bg`) da categoria.
+ * Chip de rótulo, PREENCHIDO (R177) — uma forma sólida na cor da categoria,
+ * com a tinta que lê em cima dela (`etiqueta()`, em ui.ts).
+ *
  * Até a R136 o fundo do card podia levar um véu colorido de prazo, e um chip
- * da mesma cor sumia nele ali dentro; o card agora é sempre a superfície
- * neutra (R136), então o chip não precisa mais fingir cinza para não brigar
- * com o fundo.
+ * da mesma cor sumia nele ali dentro; o card virou superfície neutra e o chip
+ * deixou de precisar fingir cinza. Agora ele deixou também de ser véu: numa
+ * lista de trinta atividades, trinta chips lavados são ruído — sólido, cada um
+ * é uma etiqueta legível de relance.
  */
 export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
   return {
@@ -45,8 +48,7 @@ export function chipStyle(c: Cores, isLight: boolean): CSSProperties {
     fontWeight: 600,
     fontSize: PISO_TIPO,
     letterSpacing: "0.04em",
-    color: isLight ? c.light : c.dark,
-    background: c.bg,
+    ...etiqueta(c),
     whiteSpace: "nowrap",
   };
 }

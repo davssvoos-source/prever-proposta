@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
-import { card } from "@/lib/ui";
+import { card, etiqueta } from "@/lib/ui";
 import { TextoComChecklist } from "@/components/TextoComChecklist";
 import { useIsGerente, useTecnicos, useVeFinanceiro } from "@/features/gerencial/data";
 import { AssinaturaCanvas } from "@/features/chamados/AssinaturaCanvas";
@@ -607,7 +607,7 @@ export function DetalheCampo({ id }: { id: string }) {
           <span
             style={{
               padding: "4px 10px", borderRadius: 12,
-              background: info.bg, border: `1px solid ${info.border}`, color: corStatus,
+              ...etiqueta({ dark: info.color, light: info.colorLight }),
               fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
@@ -617,8 +617,7 @@ export function DetalheCampo({ id }: { id: string }) {
           <span
             style={{
               padding: "4px 10px", borderRadius: 12,
-              background: prio.bg, border: `1px solid ${prio.border}`,
-              color: isLight ? prio.light : prio.dark,
+              ...etiqueta(prio),
               fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10,
               letterSpacing: "0.06em", textTransform: "uppercase",
             }}
@@ -934,7 +933,7 @@ export function DetalheCampo({ id }: { id: string }) {
                       flexShrink: 0, padding: "3px 8px", borderRadius: 999,
                       fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
                       letterSpacing: "0.06em", textTransform: "uppercase",
-                      color: isLight ? dc.light : dc.dark, background: dc.bg, border: `1px solid ${dc.border}`,
+                      ...etiqueta(dc),
                     }}>
                       {DIRECAO_LABEL[p.direcao]}
                     </span>
@@ -1166,7 +1165,7 @@ export function DetalheCampo({ id }: { id: string }) {
                           padding: "3px 8px", borderRadius: 999,
                           fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
                           letterSpacing: "0.06em", textTransform: "uppercase",
-                          color: isLight ? rc.light : rc.dark, background: rc.bg, border: `1px solid ${rc.border}`,
+                          ...etiqueta(rc),
                         }}>
                           {RESULTADO_LABEL[a.resultado]}
                         </span>

@@ -26,6 +26,15 @@ vazado), servido **sem modificação** pelo componente
 `src/components/LogoPrever.tsx`. Monocromático dourado com transparência,
 serve nos dois temas. Não aplicar filtro de cor nem recolorir.
 
+**O sistema é ferramenta de trabalho (v11 — 2026-09-04, R174).** Quem usa o
+app passa horas nele; o que impressiona numa demonstração cansa num turno.
+Luminosidade e cor saturada valem onde carregam informação — a ação principal,
+o que está atrasado, o que pede atenção. O resto é superfície neutra e
+tipografia. Glow decorativo não entra, e o que já existe se justifica ou sai:
+foi assim que o halo dos avatares saiu (R176), o painel de indicadores da
+Início ganhou botão de recolher (R175) e a etiqueta trocou o véu colorido por
+preenchimento sólido (R177, §6.14).
+
 Princípios que governam as decisões:
 
 1. **Um acento só.** Dourado é ação, destaque e identidade. Nunca introduza
@@ -625,6 +634,83 @@ status usam **sempre** a cor própria (`chipStyle`, §6.6). O disfarce cinza que
 eles vestiam sobre o fundo colorido (`sobreFaixa`) saiu junto com o fundo
 colorido.
 
+### 6.14 Etiqueta — a categoria PREENCHIDA (v11 — 2026-09-04, R177)
+
+A etiqueta de categoria (tipo, status, impacto, equipe, prioridade, serviço)
+é uma **forma sólida**: fundo no tom FUNDO da cor e texto **branco**, sem
+borda — o preenchimento já separa do card.
+
+```jsx
+// ui.ts — uma função, dezessete etiquetas, nove telas.
+export const etiqueta = (cor: { dark: string; light: string }) => ({
+  background: cor.light,   // o tom FUNDO, nos dois temas
+  color: "#ffffff",
+});
+```
+
+Forma, tamanho e peso ficam com quem chama: a etiqueta de 9px maiúscula da
+página e a de 11px do card são densidades diferentes de propósito.
+
+**O que ela substituiu.** Até a v10 a etiqueta era véu: fundo na cor a 14% de
+alfa (`.bg` do PRISMA) e texto na cor do tema. Empilhava três coisas fracas —
+fundo lavado, texto colorido, às vezes borda — e numa lista de trinta linhas
+o resultado é ruído de baixa legibilidade. O véu **continua** valendo para
+superfície (fundo de campo, anel de seleção); o que saiu foi o véu como
+etiqueta.
+
+**Por que o tom FUNDO, e igual nos dois temas.** Três candidatos, medidos
+antes de escolher:
+
+| preenchimento | branco na pior cor | soma de luminância dos 10 |
+|---|---|---|
+| tom vivo (`.dark`) | 1,58:1 (amarelo) — **reprova** | 4,174 |
+| tom vivo misturado 45% com o card | 4,33:1 — no limite | 1,375 |
+| **tom fundo (`.light`)** | **4,99:1** | **1,232** |
+
+O tom vivo obrigaria tinta quase-preta e — o que decidiu — **triplica** a luz
+que a tela emite, contra o que a R174 pede. O tom fundo passa de 4,99:1 com
+branco nas dez cores do PRISMA, é o mais calmo dos três e deixa a etiqueta
+**idêntica nos dois temas**: um número a menos para raciocinar.
+
+A objeção ao tom fundo era o contraste contra o card escuro (1,55:1), mas a
+razão engana perto do preto: a fórmula comprime, e o preenchimento é de **7 a
+29 vezes** mais luminoso que o card `#141416` — lê como forma sem
+dificuldade. Quem carrega a informação é o texto branco, em 4,99:1.
+
+Valores resolvidos, para quem reproduz sem a função:
+
+| cor | preenchimento | branco sobre ele |
+|---|---|---|
+| amarelo | `#A06108` | 4,99:1 |
+| pêssego | `#9D5C00` | 5,30:1 |
+| laranja | `#AD4700` | 5,71:1 |
+| vermelho | `#B1242E` | 6,64:1 |
+| rosa | `#A83A63` | 6,09:1 |
+| azul claro | `#005F87` | 7,03:1 |
+| azul | `#236FC7` | 5,04:1 |
+| azul escuro | `#0A3573` | 11,87:1 |
+| verde | `#047862` | 5,43:1 |
+| neutro | `#5a6172` | 6,20:1 |
+
+Uma asserção confere o piso de 4,5:1 nas dez: se um tom da paleta clarear, a
+etiqueta acusa antes de chegar à tela.
+
+### 6.15 Avatar — sem glow (v11 — 2026-09-04, R176)
+
+O rosto de quem toca a atividade não espalha luz. O halo colorido saiu dos
+três desenhos; numa lista de trinta atividades eram trinta faróis, e o
+degradê estável por hash (§13) já distingue as pessoas.
+
+Na **pilha** os círculos se sobrepõem em 7px e precisam de separação — e a
+separação de uma pilha de avatares é um **anel na cor da superfície**, que
+separa sem acrescentar luz:
+
+```jsx
+boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`   // a cor do card
+```
+
+O avatar solto não leva anel: não há sobreposição para separar.
+
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 
 R146. O card da lista de clientes recebe a **foto da fachada** como camada
@@ -758,6 +844,10 @@ Regras:
 ---
 
 ## 10. Checklist de conformidade
+
+- [ ] Brilho só onde carrega informação — glow decorativo não entra (R174)
+- [ ] Etiqueta de categoria é sólida, via `etiqueta()`, sem borda (§6.14)
+- [ ] Avatar sem glow; pilha com anel na cor da superfície (§6.15)
 
 - [ ] No tema claro, a página é `#e9ebef` e o card `#ffffff` — o card tem de
       ser o branco mais claro da tela, nunca o mesmo branco da página (v10).

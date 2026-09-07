@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
+import { etiqueta } from "@/lib/ui";
 import {
   useInventario,
   useVisitasComEscopo,
@@ -280,8 +281,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                 title={podeEditar ? "Alternar entre ativo e removido" : undefined}
                                 style={{
                                   padding: "3px 8px", borderRadius: 12, flexShrink: 0,
-                                  background: cor.bg, border: `1px solid ${cor.border}`,
-                                  color: isLight ? cor.light : cor.dark,
+                                  ...etiqueta(cor),
                                   fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 9,
                                   letterSpacing: "0.06em", textTransform: "uppercase",
                                   cursor: podeEditar ? "pointer" : "default",

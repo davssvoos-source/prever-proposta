@@ -53,7 +53,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { CampoComBusca, type OpcaoBusca } from "@/components/CampoComBusca";
 import { AvatarCirculo } from "@/components/PessoaComFoto";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT } from "@/lib/ui";
+import { FONT, etiqueta } from "@/lib/ui";
 import { PRISMA } from "@/lib/paleta";
 import { codigoDeErro } from "@/lib/erros";
 import { SeletorDeOpcao, type CorDaOpcao } from "@/components/SeletorDeOpcao";
@@ -287,8 +287,7 @@ function Etiqueta({ texto, cor, forte }: { texto: string; cor: { dark: string; l
     <span style={{
       padding: "5px 12px", borderRadius: 999,
       fontFamily: FONT, fontWeight: forte ? 700 : 600, fontSize: 12,
-      color: isLight ? cor.light : cor.dark,
-      background: cor.bg, whiteSpace: "nowrap",
+      ...etiqueta(cor), whiteSpace: "nowrap",
     }}>
       {texto}
     </span>
@@ -921,8 +920,7 @@ export function PainelChamado({ chamadoId, aoFechar, aoAbrirPagina }: Props) {
                           <span key={s} style={{
                             display: "inline-flex", alignItems: "center", gap: 5,
                             padding: "4px 6px", borderRadius: 999,
-                            background: cor?.bg ?? est.campoBg,
-                            color: isLight ? cor?.light : cor?.dark,
+                            ...(cor ? etiqueta(cor) : { background: est.campoBg }),
                             fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
                           }}>
                             <Layers size={11} style={{ flexShrink: 0 }} />
