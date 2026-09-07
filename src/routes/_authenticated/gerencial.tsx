@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Plus, Clock, XCircle, FileText, FileClock, Send, CalendarDays, MapPin, User,
-  Trash2, Building2, ChevronRight, MapPinned,
+  Trash2, Building2, ChevronRight,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { visitaRouteFor } from "@/lib/visita-route";
@@ -242,9 +242,9 @@ function GerencialPage() {
           <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
             {/* Só o DOMÍNIO COMERCIAL (R32). "Histórico" saiu (R64): levava a
                 outra página com a mesma lista de visitas — era a terceira
-                porta para o que esta tela já mostra. */}
+                porta para o que esta tela já mostra. "Mapa" saiu (R192, U106):
+                a tela /mapa foi excluída a pedido do Davi. */}
             {[
-              { label: "Mapa", Icon: MapPinned, to: "/mapa" as const, tela: "mapa" },
               { label: "Clientes", Icon: Building2, to: "/clientes" as const, tela: "clientes" },
             ]
               // atalho que leva a uma tela bloqueada é armadilha: some junto

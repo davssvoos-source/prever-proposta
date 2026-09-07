@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 44 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 45 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -33,6 +33,7 @@
   - [6.15 Avatar — sem glow (v11 — 2026-09-04, R176)](#615-avatar-sem-glow-v11-2026-09-04-r176)
   - [6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)](#616-configurador-rápido-o-painel-da-atividade-v12-2026-09-04-r183r185)
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
+  - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -851,6 +852,25 @@ Título 12,5/700 com a borda esquerda na cor do status; linhas "rótulo →
 valor" com rótulo 9,5/700 maiúsculo (112px) e valor 12; o *quando* 10,5
 secundário no fim. Abre embaixo do card; se não couberem 170px, abre em
 cima. Some enquanto se arrasta.
+
+### 6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)
+
+Quando duas listas são consultadas JUNTAS (usuários e a matriz de permissões:
+quem é, o que pode), elas ficam lado a lado em vez de abas:
+
+```css
+.admin-colunas { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+  .admin-colunas { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+}
+```
+
+Cada coluna é um `<section aria-labelledby>` com card(isLight), raio 18,
+padding 16, e um `<h2>` no micro-label dourado (10,5/700, maiúsculas, .10em)
+com o ícone da seção. A coluna da lista mais larga leva 1.45fr. O conteúdo que
+não se consulta junto (as APIs) entra por um **botão-pílula** (`botaoAba`) e
+troca a página inteira para uma coluna, com o botão de voltar no mesmo lugar.
+Breakpoint 1024px — o mesmo de `.cal-semana` e da sidebar.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

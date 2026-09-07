@@ -45,7 +45,7 @@ visita aprovada é venda; achar que proposta cria cliente).
 - **R29 — a proposta É um chamado** (natureza `comercial`, tipo
   `proposta_comercial`, número CH-). Ver "Arquitetura" abaixo.
 - **R32 — `/gerencial` é o Painel Comercial.** Funil em cima, lista embaixo,
-  botões só do domínio (Prospecção, Mapa, Clientes — o Histórico saiu na R165). Contratos/
+  botões só do domínio (Prospecção, Clientes — o Histórico saiu na R165 e o Mapa na R192). Contratos/
   Fechamentos/Usuários/Permissões são do Painel Administrativo.
 
 ## Arquitetura: visita como satélite do chamado (U29)

@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R191 (55)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R193 (57)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R191). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R193). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -418,7 +418,7 @@ Cada conversa de produto acrescenta regras aqui. Fonte: Davi, 2026-08-18.
 - **R32** — **"Visitas e propostas" É o Painel Comercial.** Não existe porta
   (painel-índice) e sala (lista) separadas: `/gerencial` é a página do domínio
   comercial — funil em cima, lista embaixo, botões só do próprio domínio
-  (Prospecção, Mapa, Histórico, Clientes). Contratos, Fechamentos, Usuários e
+  (Prospecção, Clientes — o Mapa saiu na R192 e o Histórico na R165). Contratos, Fechamentos, Usuários e
   Permissões pertencem ao Painel Administrativo. `/painel/comercial` só
   redireciona. Os indicadores de campo, pela mesma lógica, moram NA ENTRADA
   do Painel Operacional — não numa página à parte.
@@ -531,7 +531,8 @@ carga por técnico, reincidência) moram na entrada do **Painel Operacional**
 `/fechamentos` · `/fechamentos/$id` · `/gerencial/nova` ·
 `/gerencial/usuarios` *(só Admin)* · `/visita/$id` e todo o fluxo de orçamento
 (categorias → blocos → complementos → pré-envio → pagamento) ·
-`/historico` · `/mapa` · `/projeto/$id` · `/admin`
+`/historico` · `/projeto/$id` · `/admin` (`/mapa` redireciona para
+`/gerencial` desde a R192)
 
 ### 9.3 SAC — 4 abas
 
@@ -568,8 +569,8 @@ Não vê valores em lugar nenhum.
 
 ### 9.5 Telas legadas / sem dono claro
 
-`/admin` · `/historico` · `/mapa` · `/projeto/$id` · `/novo` (só redireciona
-para `/gerencial/nova`). Nenhuma tem entrada no rodapé — **candidatas a
+`/admin` · `/historico` (redireciona, R165) · `/mapa` (redireciona, R192) ·
+`/projeto/$id` · `/novo` (só redireciona para `/gerencial/nova`). Nenhuma tem entrada no rodapé — **candidatas a
 revisão**: manter, mover para dentro de outra tela, ou remover.
 
 ### 9.6 Pontos que a revisão levantou
@@ -3662,3 +3663,19 @@ trabalho".
 - **R191** — **O calendário não tem botão "Hoje".** Ele abre no mês e na
   semana de hoje; as setas andam a partir daí. *(Davi, 04/09/2026: "Remova o
   botão 'Hoje'".)*
+
+- **R192** — **A tela /mapa não existe mais, e o botão "Mapa" saiu do Painel
+  Comercial.** `/mapa` redireciona para `/gerencial`; a chave `mapa` saiu do
+  catálogo de telas e a migration U106 apaga a linha dela na matriz; o prefixo
+  de erro MAP saiu junto. O **mapa de clientes** (dentro de `/clientes`) é
+  outra coisa e continua. *(Davi, 04/09/2026, revisão manual: pediu para
+  excluir a tela /mapa e também o botão de mapa na aba Comercial.)*
+
+- **R193** — **O Administrativo é duas colunas — Usuários | Permissões — e as
+  APIs abrem por um botão que troca a página para uma coluna só.** No celular
+  as colunas empilham. O `?aba=` continua valendo: é por ele que os endereços
+  antigos chegam (`/gerencial/usuarios` → `?aba=usuarios`) e que o botão das
+  APIs troca a página; "Usuários e permissões" volta às duas colunas. Usuários e
+  permissões continuam só do cargo admin (R131). *(Davi, 04/09/2026, revisão
+  manual: pediu a tela dividida em duas colunas, Usuários e Permissões, com as
+  APIs num botão que, ao clicar, deixa a tela com uma coluna só.)*

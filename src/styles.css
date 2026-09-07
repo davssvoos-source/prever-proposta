@@ -1153,6 +1153,15 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .cal-semana { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
+/* ── O Administrativo em DUAS colunas (R193, U106) ───────────────────────────
+   Usuários | Permissões lado a lado no desktop (a coluna de usuários é mais
+   larga: a lista tem nome, e-mail, cargo e equipe); no celular, uma embaixo da
+   outra. As APIs trocam a página para uma coluna só, por botão. */
+.admin-colunas { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+  .admin-colunas { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+}
+
 /* ── O editor da descrição e a menção (R135, U95) ──────────────────────────
    Chip de menção, ponto da lista e a linha do editor. As cores vêm dos tokens
    do tema (--gold-primary / --gold-glow / --text-muted), como o checklist. */

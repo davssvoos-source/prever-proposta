@@ -121,7 +121,8 @@ export const TELAS: Tela[] = [
   // redireciona; a U34 apaga a linha órfã no banco.
   // R165/U99: "historico" SAIU — Davi (Q14): "pode sumir, já que o início já
   // mostra isso". A rota só redireciona; a U99 apaga as linhas no banco.
-  T("mapa", "Mapa", "/mapa", "Comercial", [true, true, true]),
+  // "mapa" SAIU na U106 (R192): /mapa redireciona para /gerencial e a migration
+  // U106 apaga a linha da matriz. O mapa de clientes (em /clientes) não tem chave.
 
   // ── Clientes ──────────────────────────────────────────────────────────────
   // U24: o Davi definiu quem vê a base — admin, comercial e SAC. O técnico

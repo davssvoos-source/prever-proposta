@@ -66,7 +66,6 @@ const AREAS: [string, string][] = [
   ["/fechamentos", "FEC"],
   ["/calendario", "CAL"],
   ["/historico", "HIS"],
-  ["/mapa", "MAP"],
   ["/dashboard", "INI"],
   ["/perfil", "PRF"],
   ["/admin", "ADM"],

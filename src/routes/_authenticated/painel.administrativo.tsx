@@ -32,7 +32,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useMemo, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CircleDollarSign, Package, Plug, ShieldCheck, Users } from "lucide-react";
+import { ChevronLeft, CircleDollarSign, Package, Plug, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { guardaDeTela, destinoNegado, usePermissoes } from "@/features/gerencial/permissoes";
 import { useUserCargo } from "@/features/gerencial/data";
@@ -210,35 +210,52 @@ function PainelAdministrativo() {
         </div>
       )}
 
-      {/* As abas — o conteúdo mora AQUI (R131) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        {ABAS.map((a) => {
-          const Icon = a === "usuarios" ? Users : a === "permissoes" ? ShieldCheck : Plug;
-          return (
-            <button key={a} onClick={() => irParaAba(a)} aria-pressed={aba === a} style={botaoAba(aba === a)}>
-              <Icon size={13} />
-              {ABA_LABEL[a]}
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
+      {/* R193 (U106): DUAS COLUNAS — Usuários | Permissões — e as APIs por um
+          botão que troca a página para UMA coluna. Davi (2026-09-04, revisão
+          manual): a tela dividida em duas colunas, Usuários e Permissões, e as
+          APIs num botão que, ao clicar, deixa a tela com uma coluna só. O
+          `?aba=` continua valendo: é por ele que os endereços antigos chegam
+          (gerencial.usuarios → ?aba=usuarios) e que o botão das APIs troca a
+          página; "usuarios" e "permissoes" mostram as duas colunas. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         {aba === "apis" ? (
-          <Integracoes />
-        ) : !isAdmin ? (
-          // As duas seções mexem em cargo e em matriz — é regra de CARGO, não de
-          // matriz (a rota antiga já trancava assim), senão uma linha errada na
-          // própria matriz tornaria a correção impossível pelo app.
-          <div style={{ fontFamily: FONT, fontSize: 12.5, color: textSecondary, lineHeight: 1.5 }}>
-            Usuários e permissões são editados pelo administrador.
-          </div>
-        ) : aba === "usuarios" ? (
-          <GestaoDeUsuarios />
+          <button onClick={() => irParaAba("usuarios")} style={botaoAba(false)}>
+            <ChevronLeft size={13} /> Usuários e permissões
+          </button>
         ) : (
-          <MatrizDePermissoes />
+          <button onClick={() => irParaAba("apis")} style={botaoAba(false)}>
+            <Plug size={13} /> {ABA_LABEL.apis}
+          </button>
         )}
       </div>
+
+      {aba === "apis" ? (
+        <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
+          <Integracoes />
+        </div>
+      ) : !isAdmin ? (
+        // As duas seções mexem em cargo e em matriz — é regra de CARGO, não de
+        // matriz (a rota antiga já trancava assim), senão uma linha errada na
+        // própria matriz tornaria a correção impossível pelo app.
+        <div style={{ ...card(isLight), borderRadius: 18, padding: 16, fontFamily: FONT, fontSize: 12.5, color: textSecondary, lineHeight: 1.5 }}>
+          Usuários e permissões são editados pelo administrador.
+        </div>
+      ) : (
+        <div className="admin-colunas">
+          <section aria-labelledby="adm-usuarios" style={{ ...card(isLight), borderRadius: 18, padding: 16, minWidth: 0 }}>
+            <h2 id="adm-usuarios" style={{ ...MICRO, display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px" }}>
+              <Users size={13} /> {ABA_LABEL.usuarios}
+            </h2>
+            <GestaoDeUsuarios />
+          </section>
+          <section aria-labelledby="adm-permissoes" style={{ ...card(isLight), borderRadius: 18, padding: 16, minWidth: 0 }}>
+            <h2 id="adm-permissoes" style={{ ...MICRO, display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px" }}>
+              <ShieldCheck size={13} /> {ABA_LABEL.permissoes}
+            </h2>
+            <MatrizDePermissoes />
+          </section>
+        </div>
+      )}
     </div>
   );
 }

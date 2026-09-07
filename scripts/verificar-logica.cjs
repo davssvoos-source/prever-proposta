@@ -367,6 +367,9 @@ const ARQUIVOS_SEMENTE = [
   // U99: 'historico' e 'chamados.importar' saem (R165/R167 — as telas viraram
   // redirect por decisão do Davi, Q14/Q17); o DELETE participa da semente.
   'supabase/migrations/20260915090000_u99_respostas_do_davi.sql',
+  // U106: 'mapa' sai (R192 — a tela /mapa foi excluída a pedido do Davi na
+  // revisão de 04/09/2026); o DELETE participa da semente.
+  'supabase/migrations/20260917090000_u106_mapa_sai.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -780,11 +783,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     if (t) eq(`S1: ${chave} não é do técnico (lista clientes)`, t.padrao.tecnico, false);
   }
 
-  // XSS: o popup do Leaflet monta HTML na mão
+  // XSS: o popup do Leaflet montava HTML na mão. A tela SAIU na U106 (R192) e
+  // virou redirect — o que se cobra agora é que nenhum popup manual voltou.
   const mapa = fs4.readFileSync('src/routes/_authenticated/mapa.tsx', 'utf8');
-  eq('S1: o popup do mapa escapa o nome do cliente',
-     /escapar\(v\.cliente\?\.nome \?\? v\.titulo\)/.test(mapa), true);
-  eq('S1: nenhuma interpolação crua sobrou no popup',
+  eq('S1/R192: /mapa é redirect — não há mais popup montando HTML na mão',
+     /bindPopup|escapar\(|innerHTML/.test(mapa), false);
+  eq('S1/R192: nenhuma interpolação crua de nome de cliente sobrou no arquivo',
      /\$\{v\.(cliente\?\.nome|titulo)\}/.test(mapa), false);
 
   // CABEÇALHOS DE SEGURANÇA: REVERTIDOS (2026-08-20).
@@ -16413,8 +16417,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   }
 
   // ── A revisão: as chaves decorativas passaram a valer ──────────────────
-  // historico.tsx saiu desta lista na U99 (R165): virou redirect, não tem guarda
-  for (const [arq, chave] of [['mapa.tsx', 'mapa'], ['calendario.tsx', 'calendario']]) {
+  // historico.tsx saiu desta lista na U99 (R165) e mapa.tsx na U106 (R192):
+  // viraram redirect, não têm guarda
+  for (const [arq, chave] of [['calendario.tsx', 'calendario']]) {
     const r = ler94(`src/routes/_authenticated/${arq}`);
     eq(`U94 (revisão): ${arq} lê a chave "${chave}" da matriz — a caixa deixou de ser decorativa`,
        new RegExp(`guardaDeTela\\("${chave}"\\)`).test(r) && new RegExp(`destinoNegado\\("${chave}"\\)`).test(r), true);
@@ -17875,6 +17880,62 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /O Calendário \(R187–R191, U105\)/.test(ler105('docs/manual/operacao-campo.md')),
       /^## U105 /m.test(ler105('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true]);
+}
+
+// ── U106 — o Mapa sai e o Administrativo vira duas colunas (R192–R193) ───────
+{
+  const fs106 = require('fs');
+  const ler106 = (f) => fs106.readFileSync(f, 'utf8');
+  const cod106 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const TL106 = carregar('src/lib/telas.ts');
+
+  // R192 — o mapa
+  eq('R192: a chave "mapa" saiu do catálogo; o mapa de CLIENTES continua (é outra coisa, sem chave própria)',
+     [TL106.TELAS.some((t) => t.chave === 'mapa'), fs106.existsSync('src/features/clientes/MapaClientes.tsx')], [false, true]);
+  const mapa106 = ler106('src/routes/_authenticated/mapa.tsx');
+  eq('R192: /mapa só redireciona para o Comercial — sem guarda, sem consulta, sem Leaflet',
+     [/throw redirect\(\{ to: "\/gerencial" \}\)/.test(mapa106), /component: \(\) => null,/.test(mapa106),
+      /guardaDeTela|useQuery|leaflet|bindPopup/.test(cod106(mapa106))],
+     [true, true, false]);
+  const ger106 = cod106(ler106('src/routes/_authenticated/gerencial.tsx'));
+  eq('R192: o botão "Mapa" saiu da aba Comercial (e o ícone com ele); "Clientes" ficou',
+     [/label: "Mapa"/.test(ger106), /to: "\/mapa"/.test(ger106), /MapPinned/.test(ger106), /label: "Clientes", Icon: Building2, to: "\/clientes"/.test(ger106)],
+     [false, false, false, true]);
+  eq('R192: o prefixo de erro MAP saiu de erros.ts — não há mais tela onde um erro MAP possa nascer',
+     /\["\/mapa", "MAP"\]/.test(ler106('src/lib/erros.ts')), false);
+  const mig106 = ler106('supabase/migrations/20260917090000_u106_mapa_sai.sql');
+  eq('R192: a migration U106 apaga EXATAMENTE a chave mapa, confere com veredito, e traz o DESFAZER',
+     [/^DELETE FROM public\.permissoes_tela WHERE tela IN \('mapa'\);$/m.test(mig106), />>> OLHAR <<</.test(mig106), /DESFAZER/.test(mig106),
+      /RODAR NO SQL EDITOR DO SUPABASE, À MÃO\. Idempotente\./.test(mig106)],
+     [true, true, true, true]);
+  eq('R192: a U106 participa da semente do verificador (o DELETE conta) — senão a chave apareceria como órfã da matriz',
+     ARQUIVOS_SEMENTE.includes('supabase/migrations/20260917090000_u106_mapa_sai.sql'), true);
+
+  // R193 — o Administrativo em duas colunas
+  const adm106 = ler106('src/routes/_authenticated/painel.administrativo.tsx');
+  const adm106c = cod106(adm106);
+  eq('R193: Usuários e Permissões são DUAS colunas na mesma tela (.admin-colunas), cada uma numa seção rotulada',
+     [/<div className="admin-colunas">/.test(adm106), /<section aria-labelledby="adm-usuarios"[\s\S]{0,600}<GestaoDeUsuarios \/>/.test(adm106),
+      /<section aria-labelledby="adm-permissoes"[\s\S]{0,600}<MatrizDePermissoes \/>/.test(adm106)],
+     [true, true, true]);
+  eq('R193: as APIs entram por um BOTÃO que troca a página para uma coluna só, e o botão de voltar devolve as duas',
+     [/onClick=\{\(\) => irParaAba\("apis"\)\}/.test(adm106), /aba === "apis" \? \(\s*\n\s*<div style=\{\{ \.\.\.card\(isLight\), borderRadius: 18, padding: 16 \}\}>\s*\n\s*<Integracoes \/>/.test(adm106),
+      /<ChevronLeft size=\{13\} \/> Usuários e permissões/.test(adm106)],
+     [true, true, true]);
+  eq('R193: a fileira de abas morreu — não há mais ABAS.map desenhando três botões',
+     /ABAS\.map\(/.test(adm106c), false);
+  const css106 = ler106('src/styles.css');
+  eq('R193: .admin-colunas é uma coluna no celular e duas (1.45fr | 1fr) a partir de 1024px — o mesmo breakpoint do resto do app',
+     /\.admin-colunas \{ display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.admin-colunas \{ grid-template-columns: minmax\(0, 1\.45fr\) minmax\(0, 1fr\); \}/.test(css106), true);
+
+  // regra 7
+  const prod106 = ler106('docs/PRODUTO.md');
+  eq('U106 (regra 7): R192–R193 existem, a última atualização aponta para a R193, os manuais não anunciam mais o Mapa, a U106 está no diário e no ESTADO como pendente',
+     [['R192', 'R193'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod106)),
+      Number((prod106.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 193,
+      /`MAP` Mapa/.test(ler106('docs/manual/codigos-de-erro.md')), /Prospecção, Mapa, Clientes/.test(ler106('docs/manual/comercial.md')),
+      /^## U106 /m.test(ler106('docs/PLANO_UNIFICACAO.md')), /U106[^\n]*pendente/i.test(ler106('docs/ESTADO_ATUAL.md'))],
+     [true, true, false, false, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

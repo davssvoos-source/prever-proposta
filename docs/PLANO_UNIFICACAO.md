@@ -10474,3 +10474,44 @@ do anel em §6.15); manual de campo; `ESTADO_ATUAL.md`.
 
 **Números.** Verificador: 2.976 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U106 — o Mapa sai e o Administrativo vira duas colunas (R192–R193)
+
+Quarta e quinta telas da revisão manual de 04/09/2026, num commit só porque
+são pequenas e uma leva migration.
+
+**O Mapa (R192).** `/mapa` era um mapa Leaflet das visitas técnicas, com chave
+própria na matriz e um botão na aba Comercial. Saiu do jeito que o Histórico
+saiu na U99: o arquivo da rota fica como **redirect** para `/gerencial` (o
+routeTree é gerado no build; apagar o arquivo abriria um 404 para link antigo),
+a chave sai do catálogo, a **migration U106** apaga a linha da matriz (entra em
+`ARQUIVOS_SEMENTE` — o DELETE participa da semente), o botão e o ícone saem do
+Comercial, e o prefixo de erro MAP sai de `erros.ts` (não há mais tela onde
+um erro MAP nasça — diferente do HIS, que ficou por ser histórico de log; aqui
+a tela nunca chegou a gerar log em produção que valha guardar). As duas
+asserções S1 (XSS do popup) foram reapontadas: o que se cobra agora é que
+nenhum popup manual volte. O mapa de **clientes** (dentro de /clientes, SVG
+próprio, sem Leaflet) não tem nada a ver e continua. A dependência `leaflet`
+ficou no package.json — tirar dependência é mexer no lockfile e no deploy, e
+não estava no pedido; fica como pendência pequena.
+
+**O Administrativo (R193).** Eram três abas (Usuários, Permissões, APIs — R131,
+U94). Viraram **duas colunas** lado a lado (`.admin-colunas`, 1.45fr | 1fr a
+partir de 1024px, empilhadas no celular), cada uma um `<section>` rotulado, e
+as APIs num **botão** que troca a página para uma coluna só, com o botão de
+voltar no mesmo lugar. O `?aba=` continua: os redirects antigos
+(`gerencial.usuarios` → `?aba=usuarios`) caem nas duas colunas, e é por ele
+que o botão das APIs troca a página. As regras de cargo não mudaram (usuários e
+permissões só do admin — a asserção da U94 continua verde).
+
+**Migration pendente.** `20260917090000_u106_mapa_sai.sql` — só um DELETE
+idempotente em `permissoes_tela`, com conferência e DESFAZER. Independe das
+anteriores e da ordem de deploy: até rodar, a linha órfã fica no banco sem
+ninguém ler.
+
+**Regra 7.** R192–R193 no `PRODUTO.md` (e o §9 sem o /mapa); manuais
+(comercial, visão geral, códigos de erro, operação de campo);
+`DESIGN_SYSTEM.md` §6.18; `ESTADO_ATUAL.md` com a U106 pendente.
+
+**Números.** Verificador: 2.985 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

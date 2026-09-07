@@ -8,9 +8,10 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R191** · último diário:
-**U105** · verificador: **2.976 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U100**; **nenhuma pendente**.
+Última atualização: **2026-09-04** · última regra: **R193** · último diário:
+**U106** · verificador: **2.985 asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U100**; **pendente: U106** (só apaga a
+linha `mapa` da matriz).
 
 ---
 
@@ -79,6 +80,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U103 | a Início revista pelo Davi: margem de cima (R178), colunas na largura da tela (R179), concluída fica sem filtro (R180), ordem das colunas por arrasto (R181), ordenação escrita (R182) |
 | U104 | o Configurador rápido revisto pelo Davi: toda a informação no cabeçalho em botões discretos (R183), Problema + Diagnóstico com a barra 1→2 (R184), comentários e linha do tempo abaixo (R185); a escala CINZA nasce em `paleta.ts` (R186 — o resto do sistema na U108) |
 | U105 | o Calendário revisto pelo Davi: card com fundo na cor do status (R187), rostos sem anel (R188), meses seguintes ao rolar até +3 (R189), dica expandida ao passar o mouse (R190), sem botão "Hoje" (R191) |
+| U106 | o Mapa sai — /mapa redireciona, botão fora do Comercial, chave fora do catálogo, migration U106 apaga a linha (R192); o Administrativo vira duas colunas Usuários | Permissões com as APIs por botão (R193) |
 
 ## 4. Banco: migrations
 
@@ -86,8 +88,11 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Rodadas até a U100** (confirmado pelo Davi em 04/09/2026). **Nenhuma
-  migration pendente.**
+- **Rodadas até a U100** (confirmado pelo Davi em 04/09/2026).
+- **Pendente: U106** (`20260917090000_u106_mapa_sai.sql`) — um DELETE
+  idempotente da chave `mapa` em `permissoes_tela`, com conferência e
+  DESFAZER. Independe das anteriores e da ordem de deploy; até rodar, a linha
+  órfã fica no banco sem ninguém ler.
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
@@ -136,6 +141,9 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   `paleta.ts`; o painel já a usa; a **U108** troca o resto do sistema.
 - **R187–R191** — o **Calendário**: card tingido pela cor do status, rostos sem
   anel, meses seguintes ao rolar (+3), dica expandida no hover, sem "Hoje".
+- **R192–R193** — a tela **/mapa saiu** (redirect; migration U106 pendente) e
+  o **Administrativo** virou duas colunas, Usuários | Permissões, com as APIs
+  por botão.
 
 ## 6. Perguntas em aberto
 

@@ -120,6 +120,13 @@ cliente/local, o tipo de demanda e o responsável (e o apoio, quando há); no
 fim, apagado, o quando — hora marcada, "vence neste dia" ou "concluído neste
 dia". Não há mais botão "Hoje": o calendário abre no mês e na semana de hoje.
 
+**O Administrativo em duas colunas (R193, U106).** Usuários à esquerda,
+Permissões à direita, na mesma tela — não há mais abas. O botão "APIs" troca a
+página para uma coluna só com as integrações; "Usuários e permissões" volta às
+duas. No celular as colunas ficam uma embaixo da outra. A tela do **Mapa** de
+visitas foi excluída (R192): o endereço antigo cai no Painel Comercial, e o
+mapa de clientes continua dentro de Clientes.
+
 ## Programação e painéis
 
 - **Programação das equipes** (`/chamados/programacao`): quem sai com quem e

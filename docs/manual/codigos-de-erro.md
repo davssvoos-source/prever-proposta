@@ -46,7 +46,7 @@ em vez de virar tela branca.
 `INI` Início · `CHM` Chamados · `CLI` Clientes · `GER` Comercial (/gerencial)
 · `PSP` Prospecção · `POP` Painel Operacional · `PAD` Painel Administrativo ·
 `PNL` outros painéis · `VIS` Visita/orçamento · `CTR` Contratos · `FEC`
-Fechamentos · `CAL` Calendário · `HIS` Histórico · `MAP` Mapa · `PER`
+Fechamentos · `CAL` Calendário · `HIS` Histórico · `PER`
 Permissões · `USU` Usuários · `PRF` Perfil · `ADM` Admin · `AUT` Login ·
 `APP` rota desconhecida.
 
