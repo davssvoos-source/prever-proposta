@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R193 (57)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R194 (58)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R193). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R194). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3679,3 +3679,22 @@ trabalho".
   permissões continuam só do cargo admin (R131). *(Davi, 04/09/2026, revisão
   manual: pediu a tela dividida em duas colunas, Usuários e Permissões, com as
   APIs num botão que, ao clicar, deixa a tela com uma coluna só.)*
+
+- **R194** — **A Nova Visita Técnica é UMA tela, em colunas: Local · Contatos
+  e serviços · Agendamento.** As duas etapas (e o stepper, o "Próximo" e o
+  "1/2") morreram; no desktop as três colunas ficam lado a lado (duas a partir
+  de 1024px, com o agendamento embaixo na largura toda; três a partir de
+  1360px), no celular uma embaixo da outra, na mesma ordem. A tela fala o
+  design system — card, cinza neutro, botão de seleção sem brilho, seletor de
+  opção para o técnico — e não tem mais paleta própria. O que falta para
+  agendar é dito no resumo, e a ação "Agendar visita" mora na coluna do
+  agendamento. **Todas as regras da proposta continuam**: o local que já é
+  cliente herda o cadastro e a fachada (R147) e pode atualizá-lo; o que não é
+  vira cadastro novo ou reaproveita um equivalente (R21/R22); residência não
+  aceita controle de acesso nem portaria; o endereço se localiza por um gesto
+  explícito e mostra o que o mapa entendeu (R114); a visita nasce pendente e a
+  proposta é outra atividade (R170). *(Davi, 04/09/2026, revisão manual: pediu
+  que as etapas 1 e 2 ficassem numa tela só no desktop, em duas ou três
+  colunas, num padrão de design novo, respeitando todas as regras da proposta
+  — local que já é cliente, local que não é —, reestruturando a tela por
+  inteiro.)*

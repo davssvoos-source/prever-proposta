@@ -87,8 +87,12 @@ resultado com um dos PDFs reais antes de dar por pronto.
 ## Procedimentos
 
 **Criar uma visita/proposta:** `/gerencial` → FAB "+" (ou "Nova visita" no
-menu do painel) → preencher → ela aparece na lista, no funil e na Início do
-técnico designado.
+menu do painel) → a tela única em **três colunas** (R194): Local (cliente da
+base ou local novo, nome, tipo, endereço com "localizar", fachada) · Contatos
+e serviços (síndico/proprietário, zelador/encarregado, serviços propostos,
+descrição) · Agendamento (data e hora, técnico com a agenda dos 7 dias, resumo
+e o botão "Agendar visita"). O resumo diz o que ainda falta. Depois de
+agendada, ela aparece na lista, no funil e na Início do técnico designado.
 
 **Acompanhar o funil:** `/gerencial` mostra Visitas → Aprovadas → Enviadas →
 Aceitas / Recusadas. A frase no rodapé do funil existe por causa da R4 e deve

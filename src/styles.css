@@ -1162,6 +1162,20 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
   .admin-colunas { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
 }
 
+/* ── A Nova Visita Técnica numa tela só (R194, U107) ─────────────────────────
+   Local · Contatos e serviços · Agendamento. Uma coluna no celular; duas a
+   partir de 1024px (o agendamento desce, na largura toda); três a partir de
+   1360px, onde as três cabem com campo legível. */
+.nova-visita-colunas { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+@media (min-width: 1024px) {
+  .nova-visita-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nova-visita-colunas > section:last-child { grid-column: 1 / -1; }
+}
+@media (min-width: 1360px) {
+  .nova-visita-colunas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .nova-visita-colunas > section:last-child { grid-column: auto; }
+}
+
 /* ── O editor da descrição e a menção (R135, U95) ──────────────────────────
    Chip de menção, ponto da lista e a linha do editor. As cores vêm dos tokens
    do tema (--gold-primary / --gold-glow / --text-muted), como o checklist. */

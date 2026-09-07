@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 45 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 46 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -34,6 +34,7 @@
   - [6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)](#616-configurador-rápido-o-painel-da-atividade-v12-2026-09-04-r183r185)
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
   - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
+  - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -871,6 +872,32 @@ com o ícone da seção. A coluna da lista mais larga leva 1.45fr. O conteúdo q
 não se consulta junto (as APIs) entra por um **botão-pílula** (`botaoAba`) e
 troca a página inteira para uma coluna, com o botão de voltar no mesmo lugar.
 Breakpoint 1024px — o mesmo de `.cal-semana` e da sidebar.
+
+### 6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)
+
+Um formulário longo que era **duas etapas** virou **três colunas** na mesma
+tela: cada coluna responde a uma pergunta (onde · com quem e o quê · quando) e
+tem um título com número dourado (`TituloDaColuna`: círculo 24px em
+`GOLD_GRAD`, título 13,5/700, subtítulo 11 secundário). Dentro, cada bloco de
+campos é um `card(isLight)` com padding 16 e um micro-rótulo (10,5/700,
+maiúsculas, .10em, `textoSecundario`).
+
+```css
+.nova-visita-colunas { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+@media (min-width: 1024px) { … repeat(2, minmax(0, 1fr)); a última seção ocupa a linha inteira }
+@media (min-width: 1360px) { … repeat(3, minmax(0, 1fr)) }
+```
+
+Campos: fundo `cinzas(isLight).campo`, borda `divisoria`, raio 12, 14px/500,
+`color-scheme` do tema. Botões de escolha (tipo de local, serviços) usam
+`botaoSelecao(ativo, isLight, null)` **com `boxShadow: "none"`** — o brilho é
+exceção (R174). O seletor de pessoa é o `SeletorDeOpcao`, não um `<select>`.
+A ação principal fica na última coluna, dentro do card do resumo, com a lista
+do que falta escrita acima dela — o botão nunca é a única fonte de feedback.
+
+O que saiu, e não volta: a paleta local `L` (um segundo tema claro só daquela
+tela) e o "vidro dourado" dos campos no escuro — um design system por tela é o
+primeiro anti-padrão da skill de designer.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

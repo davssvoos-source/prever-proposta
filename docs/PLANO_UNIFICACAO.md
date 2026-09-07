@@ -10515,3 +10515,43 @@ ninguém ler.
 
 **Números.** Verificador: 2.985 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U107 — a Nova Visita Técnica numa tela só, em colunas, no design system (R194)
+
+Sexta tela da revisão manual de 04/09/2026 — a maior reestruturação do lote.
+
+**Briefing.** Usuário: Davi ou o SAC no desktop, ao telefone com um síndico,
+cadastrando o local e agendando a visita; às vezes o celular. Objetivo:
+agendar a visita sem paginar. Ação principal: "Agendar visita". Hierarquia:
+onde (local) → com quem e o quê (contatos, serviços) → quando (agendamento e
+resumo). Sai: o stepper, o "1/2", o "Próximo", o botão redondo de voltar, a
+paleta local `L` e o vidro dourado dos campos. Reuso: `card`, `cinzas`,
+`botaoSelecao`, `goldButton`, `SeletorDeOpcao`. Nasce: `TituloDaColuna`
+(peça de módulo) e a classe `.nova-visita-colunas`. Estados: o resumo lista o
+que falta; o botão escurece até o formulário valer; salvando diz "Agendando…".
+Responsivo: as colunas empilham na mesma ordem abaixo de 1024px; entre 1024 e
+1359px são duas e o agendamento desce na largura toda.
+
+**O que NÃO mudou — de propósito.** Toda a lógica: `aplicarCliente` (R147,
+com a fachada e a herança da AUSÊNCIA de coordenada da U84), `clienteDivergente`
+e a caixa "atualizar o cadastro", `acharClienteEquivalente` (R21/R22), o
+filtro de residência nos serviços propostos e a limpeza ao trocar o tipo, o
+gesto explícito de geocodificar com "O mapa entendeu" e as três travas de
+corrida da U84 (campo, botão, seletor de cliente — as asserções que as fixam
+continuam verdes), `criarMutation` e o `payload` (o censo dos escritores de
+`data_hora_agendada` não mudou). A validação é a mesma de antes (nome, tipo,
+um serviço, endereço) — só passou a ser dita na tela.
+
+**Decisões.** (1) Três colunas só a partir de 1360px: a 1024px cada coluna
+teria ~250px e os campos de endereço e e-mail ficariam ilegíveis; duas colunas
+com o agendamento embaixo lê melhor que três apertadas. (2) O técnico virou
+`SeletorDeOpcao` — era o último `<select>` nativo do fluxo comercial (R135).
+(3) Sem brilho nos botões de escolha (`boxShadow: "none"` sobre
+`botaoSelecao`) — R174. (4) O aviso de "o que falta" é texto no resumo E
+toast: a pessoa que rola até o botão no celular não vê o resumo inteiro.
+
+**Regra 7.** R194 no `PRODUTO.md`; `DESIGN_SYSTEM.md` §6.19; manual comercial
+(o procedimento de criar a visita); `ESTADO_ATUAL.md`.
+
+**Números.** Verificador: 2.994 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

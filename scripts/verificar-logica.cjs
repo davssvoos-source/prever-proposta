@@ -17939,5 +17939,62 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, false, false, true, true]);
 }
 
+// ── U107 — a Nova Visita Técnica numa tela só (R194) ─────────────────────────
+{
+  const fs107 = require('fs');
+  const ler107 = (f) => fs107.readFileSync(f, 'utf8');
+  const cod107 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const nv = ler107('src/routes/_authenticated/gerencial.nova.tsx');
+  const nvc = cod107(nv);
+
+  eq('R194: as duas etapas morreram — sem `step`, sem stepper, sem "Próximo"; a tela é UMA',
+     [/const \[step, setStep\]/.test(nvc), /Stepper|passo2Valido|passo1Valido/.test(nvc), />\s*Próximo\s*</.test(nvc)],
+     [false, false, false]);
+  {
+    const pos = ['<div className="nova-visita-colunas">', 'aria-labelledby="nv-local"', 'aria-labelledby="nv-contatos"', 'aria-labelledby="nv-agendamento"']
+      .map((t) => nv.indexOf(t));
+    eq('R194: três colunas rotuladas, nesta ordem — Local · Contatos e serviços · Agendamento',
+       pos.every((p, i) => p >= 0 && (i === 0 || pos[i - 1] < p)), true);
+  }
+  eq('R194: a coluna 1 tem cliente, nome, tipo, endereço e fachada; a 2 tem contatos, serviços e descrição; a 3 tem data, técnico e o resumo com o botão',
+     [/aria-labelledby="nv-local"[\s\S]*?Buscar cliente já cadastrado[\s\S]*?Nome do Prédio[\s\S]*?Tipo de Local[\s\S]*?<label style=\{LABEL\}>Endereço<\/label>[\s\S]*?Foto da Fachada[\s\S]*?aria-labelledby="nv-contatos"/.test(nv),
+      /aria-labelledby="nv-contatos"[\s\S]*?\{labelResponsavel1\} \(opcional\)[\s\S]*?\{labelResponsavel2\} \(opcional\)[\s\S]*?Serviços Propostos[\s\S]*?Descrição do Pedido[\s\S]*?aria-labelledby="nv-agendamento"/.test(nv),
+      /aria-labelledby="nv-agendamento"[\s\S]*?Data e Horário[\s\S]*?Técnico Responsável[\s\S]*?Resumo da visita[\s\S]*?Agendar visita/.test(nv)],
+     [true, true, true]);
+  const css107 = ler107('src/styles.css');
+  eq('R194: .nova-visita-colunas é uma coluna no celular, duas a partir de 1024px (agendamento embaixo, na largura toda) e três a partir de 1360px',
+     [/\.nova-visita-colunas \{ display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; \}/.test(css107),
+      /@media \(min-width: 1024px\) \{\s*\n\s*\.nova-visita-colunas \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}\s*\n\s*\.nova-visita-colunas > section:last-child \{ grid-column: 1 \/ -1; \}/.test(css107),
+      /@media \(min-width: 1360px\) \{\s*\n\s*\.nova-visita-colunas \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}\s*\n\s*\.nova-visita-colunas > section:last-child \{ grid-column: auto; \}/.test(css107)],
+     [true, true, true]);
+
+  // o padrão de design novo = o design system, não uma paleta local
+  eq('R194: a tela usa o design system — card(isLight), cinzas(isLight), botaoSelecao, goldButton, SeletorDeOpcao — e a paleta local `L` e o vidro dourado morreram',
+     [/const cz = cinzas\(isLight\);/.test(nv), /const SECAO: CSSProperties = \{ \.\.\.card\(isLight\), padding: 16 \};/.test(nv),
+      (nvc.match(/\.\.\.botaoSelecao\(ativo, isLight, null\), boxShadow: "none",/g) ?? []).length,
+      /<SeletorDeOpcao[\s\S]{0,260}opcoes=\{tecnicos\.map\(\(t\) => \(\{ valor: t\.id, rotulo: t\.nome \?\? "—" \}\)\)\}/.test(nv),
+      /const L = \{|GOLD_GRADIENT_BORDER|#0d0e12|<select/.test(nvc)],
+     [true, true, 2, true, false]);
+  eq('R194: o que falta para agendar é dito NA TELA (lista `faltam`) e o botão só grava com o formulário válido',
+     [/const faltam = \[/.test(nv), /Para agendar, falta \{faltam\.join\(", "\)\}\./.test(nv),
+      /if \(!formularioValido\) \{\s*\n\s*toast\.error\(`Para agendar, falta \$\{faltam\.join\(", "\)\}\.`\);/.test(nv)],
+     [true, true, true]);
+
+  // as regras da proposta continuam valendo na tela nova
+  eq('R194 CRÍTICO: as regras da proposta sobreviveram ao redesenho — residência sem controle de acesso (filtro E limpeza ao trocar o tipo), herança do cliente com a fachada (R147), cliente equivalente em vez de duplicado (R21/R22), sem `situacao: "prospecto"`',
+     [(nvc.match(/SERVICOS_INDISPONIVEIS_RESIDENCIA\.includes\(/g) ?? []).length,
+      /function aplicarCliente\(c: Cliente\) \{[\s\S]*?baixarFachadaComoArquivo\(c\.foto_fachada_url\)/.test(nv),
+      /acharClienteEquivalente\(clientes, nomePredio, endereco\)/.test(nv), /situacao: "prospecto"/.test(nvc)],
+     [2, true, true, false]);
+
+  // regra 7
+  const prod107 = ler107('docs/PRODUTO.md');
+  eq('U107 (regra 7): a R194 existe, a última atualização aponta para ela, o DS tem o §6.19, o manual comercial conta a tela única, a U107 está no diário',
+     [/^- \*\*R194\*\* —/m.test(prod107), Number((prod107.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 194,
+      /^### 6\.19 Formulário em colunas/m.test(ler107('DESIGN_SYSTEM.md')),
+      /três colunas/.test(ler107('docs/manual/comercial.md')), /^## U107 /m.test(ler107('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

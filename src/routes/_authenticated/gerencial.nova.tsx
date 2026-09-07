@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, ChevronLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite, Radio, Briefcase } from "lucide-react";
+import { ArrowLeft, MapPin, Check, Camera, Square, CheckSquare, Building2, Home, Warehouse, Camera as CameraIcon, Lock, Phone, Bell, Zap, Eye, DoorOpen, Wrench, Settings, Video, Shield, Satellite, Radio, Briefcase } from "lucide-react";
 import type { ComponentType } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -21,27 +21,18 @@ import {
   type Cliente,
 } from "@/features/clientes/data";
 import { geocode } from "@/features/gerencial/data";
+import { FONT, card, botaoSelecao, goldButton, GOLD_GRAD } from "@/lib/ui";
+import { PRISMA, cinzas, misturar } from "@/lib/paleta";
+import { SeletorDeOpcao } from "@/components/SeletorDeOpcao";
 
 export const Route = createFileRoute("/_authenticated/gerencial/nova")({
   component: NovaVisitaPage,
 });
 
-const L = {
-  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
-  cardSolid: "#ffffff",
-  border: "1px solid rgba(0,0,0,0.07)",
-  borderMd: "1px solid rgba(0,0,0,0.10)",
-  shadow: "0 1px 6px rgba(0,0,0,0.07)",
-  shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#1e2229",
-  textSub: "#4a5060",
-  textMuted: "#7d8391",
-  gold: "#A06108",
-  goldBg: "rgba(160,97,8,0.10)",
-  goldBorder: "1px solid rgba(160,97,8,0.22)",
-  inputBg: "#f0f1f4",
-  inputBorder: "1px solid rgba(0,0,0,0.10)",
-};
+// A paleta local `L` (um segundo tema claro só desta tela) e o "vidro dourado"
+// dos campos no escuro SAÍRAM na U107 (R194): a tela passou a falar o design
+// system — card(isLight), cinzas(isLight), botaoSelecao, goldButton. Um design
+// system por tela era o anti-padrão que a skill de designer nomeia primeiro.
 
 
 const TIPOS_LOCAL: { id: string; label: string; Icon: ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
@@ -83,7 +74,6 @@ function NovaVisitaPage() {
   const { isLight } = useTheme();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [step, setStep] = useState(1);
 
   const [nomePredio, setNomePredio] = useState("");
   const [tipoLocal, setTipoLocal] = useState("");
@@ -135,49 +125,28 @@ function NovaVisitaPage() {
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
-  // Dynamic styles
-  const GLASS: CSSProperties = isLight
-    ? {
-        background: L.card,
-        border: L.border,
-        borderRadius: 18,
-        boxShadow: L.shadow,
-      }
-    : {
-        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-        backdropFilter: "blur(10px) saturate(120%)",
-        WebkitBackdropFilter: "blur(10px) saturate(120%)",
-        border: "1px solid rgba(248,200,17, 0.20)",
-        borderRadius: 18,
-        boxShadow: "0 0 0 1px rgba(248,200,17,0.06) inset, 0 8px 32px rgba(0,0,0,0.35)",
-      };
-
+  // ── Estilos do design system (R194, U107) — nenhuma paleta local ────────────
+  const cz = cinzas(isLight);
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
+  const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
+  /** o card de cada bloco do formulário */
+  const SECAO: CSSProperties = { ...card(isLight), padding: 16 };
+  /** micro-rótulo de campo (DESIGN_SYSTEM §6.2) */
   const LABEL: CSSProperties = {
-    fontFamily: "var(--fonte)",
-    fontWeight: 600,
-    fontSize: 10,
-    letterSpacing: "0.14em",
-    textTransform: "uppercase",
-    color: isLight ? "rgba(0,0,0,0.55)" : "#d1d5db",
-    marginBottom: 8,
-    display: "block",
+    fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em",
+    textTransform: "uppercase", color: cz.textoSecundario, marginBottom: 8, display: "block",
   };
-
-  const GOLD_GRADIENT_BORDER =
-    "linear-gradient(#0d0e12,#0d0e12) padding-box, linear-gradient(135deg, rgba(245,158,11,0.35), rgba(217,119,6,0.15), rgba(245,158,11,0.35)) border-box";
-
   const INPUT: CSSProperties = {
-    width: "100%",
-    background: isLight ? L.inputBg : GOLD_GRADIENT_BORDER,
-    border: isLight ? L.inputBorder : "1px solid transparent",
-    borderRadius: 12,
-    color: isLight ? L.text : "#F0F2F5",
-    fontFamily: "var(--fonte)",
-    fontWeight: 400,
-    fontSize: 14,
-    padding: "12px 14px",
-    outline: "none",
-    boxSizing: "border-box",
+    width: "100%", background: cz.campo, border: `1px solid ${cz.divisoria}`, borderRadius: 12,
+    color: cz.texto, fontFamily: FONT, fontWeight: 500, fontSize: 14, padding: "11px 13px",
+    outline: "none", boxSizing: "border-box", colorScheme: isLight ? "light" : "dark",
+  };
+  /** botão secundário pequeno (desvincular, atalhos de data, localizar) */
+  const BOTAO_SEC: CSSProperties = {
+    height: 34, padding: "0 12px", borderRadius: 10, background: cz.campo,
+    border: `1px solid ${cz.divisoria}`, color: cz.texto, cursor: "pointer",
+    fontFamily: FONT, fontSize: 11.5, fontWeight: 600, flexShrink: 0,
   };
 
   // ── Cadastro de clientes: seleção e preenchimento automático ──────────────
@@ -312,12 +281,11 @@ function NovaVisitaPage() {
     }
   };
 
-  const passo1Valido =
+  const formularioValido =
     nomePredio.trim() !== "" &&
     tipoLocal !== "" &&
     servicosPropostos.length > 0 &&
     endereco.trim() !== "";
-  const passo2Valido = true;
 
   const criarMutation = useMutation({
     mutationFn: async () => {
@@ -453,124 +421,62 @@ function NovaVisitaPage() {
       ? `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008}%2C${lat - 0.008}%2C${lng + 0.008}%2C${lat + 0.008}&layer=mapnik&marker=${lat}%2C${lng}`
       : null;
 
+  // ── O que falta para agendar — dito na tela, não só no toast (R194) ────────
+  const faltam = [
+    !nomePredio.trim() && "o nome do prédio",
+    !tipoLocal && "o tipo de local",
+    servicosPropostos.length === 0 && "pelo menos um serviço proposto",
+    !endereco.trim() && "o endereço",
+  ].filter((x): x is string => !!x);
+
   return (
-    <div>
+    <div className="sangra-x" style={{ paddingTop: 14, paddingBottom: 40, color: cz.texto }}>
       {/* Cabeçalho */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
         <button
-          onClick={() => (step === 1 ? navigate({ to: "/gerencial" }) : setStep(1))}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: isLight ? L.textSub : "rgba(200,200,200,0.7)",
-            padding: 4,
-          }}
+          onClick={() => navigate({ to: "/gerencial" })}
+          aria-label="Voltar ao Painel Comercial"
+          style={{ background: "none", border: "none", cursor: "pointer", color: cz.textoSecundario, padding: 4, display: "flex" }}
         >
           <ArrowLeft size={20} />
         </button>
-        <div style={{ flex: 1 }}>
-          <h1
-            style={{
-              fontFamily: "var(--fonte)",
-              fontWeight: 400,
-              fontSize: 18,
-              color: isLight ? L.text : "#F0F2F5",
-              margin: 0,
-            }}
-          >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
             Nova Visita Técnica
           </h1>
-        </div>
-        <span style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? L.gold : "rgba(248,200,17,0.7)" }}>
-          {step}/2
-        </span>
-      </div>
-
-      {/* Stepper */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
-        {[{ n: 1, label: "Local e Cliente" }, { n: 2, label: "Agendamento" }].map((s, i) => (
-          <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 6, flex: i === 0 ? "0 1 auto" : 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: step >= s.n
-                    ? "linear-gradient(135deg, #FCDE48, #F8C811)"
-                    : isLight
-                      ? "#f0f1f4"
-                      : "rgba(248,200,17,0.08)",
-                  border: step >= s.n
-                    ? "none"
-                    : isLight
-                      ? "1px solid rgba(0,0,0,0.12)"
-                      : "1px solid rgba(248,200,17,0.20)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: step >= s.n ? "#000" : isLight ? L.textSub : "rgba(200,200,200,0.4)",
-                  flexShrink: 0,
-                }}
-              >
-                {step > s.n ? <Check size={12} /> : s.n}
-              </div>
-              <span
-                style={{
-                  fontFamily: "var(--fonte)",
-                  fontWeight: 400,
-                  fontSize: 11,
-                  color: step >= s.n
-                    ? isLight ? L.gold : "#F8C811"
-                    : isLight ? L.textSub : "rgba(200,200,200,0.4)",
-                }}
-              >
-                {s.label}
-              </span>
-            </div>
-            {i < 1 && (
-              <div style={{
-                flex: 1,
-                height: 1,
-                background: step > 1
-                  ? isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.4)"
-                  : isLight ? "rgba(0,0,0,0.08)" : "rgba(248,200,17,0.12)",
-              }} />
-            )}
+          <div style={{ fontFamily: FONT, fontSize: 12, color: cz.textoSecundario, marginTop: 2 }}>
+            O local, os contatos e o agendamento numa tela só. A visita nasce pendente; a proposta
+            é outra atividade, que nasce quando ela é feita (R170).
           </div>
-        ))}
+        </div>
       </div>
 
-      {step === 1 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* R194 (U107): as duas etapas viraram TRÊS COLUNAS na mesma tela — local ·
+          contatos e serviços · agendamento. No celular, uma embaixo da outra,
+          na mesma ordem (classe .nova-visita-colunas em styles.css). */}
+      <div className="nova-visita-colunas">
+
+        {/* ══ 1 · LOCAL ═══════════════════════════════════════════════════════ */}
+        <section aria-labelledby="nv-local" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+          <TituloDaColuna n={1} id="nv-local" titulo="Local" sub="Quem é e onde fica" />
+
           {/* Cliente: vincula a visita ao cadastro (Etapa 1 do sistema de OS).
-              Antes, cada visita criava um cliente novo e descartável. */}
-          <div style={{ ...GLASS, padding: 16 }}>
+              Antes, cada visita criava um cliente novo e descartável. R147: ao
+              escolher, a visita herda os dados e a fachada do cadastro. */}
+          <div style={SECAO}>
             <label style={LABEL}>Cliente</label>
             {clienteSelecionado ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Building2 size={18} color={isLight ? "#A06108" : "#F8C811"} style={{ flexShrink: 0 }} />
+                <Building2 size={18} color={gold} style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14, color: isLight ? L.text : "#fff" }}>
+                  <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 14, color: cz.texto }}>
                     {clienteSelecionado.nome}
                   </div>
-                  <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                  <div style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario }}>
                     {clienteSelecionado.endereco ?? "sem endereço no cadastro"}
                   </div>
                 </div>
-                <button
-                  onClick={() => { setClienteId(null); setBuscaCliente(""); }}
-                  style={{
-                    height: 34, padding: "0 12px", borderRadius: 10,
-                    background: isLight ? "#ffffff" : "#191921",
-                    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-                    color: isLight ? L.text : "#fff", cursor: "pointer", flexShrink: 0,
-                    fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
-                  }}
-                >
+                <button onClick={() => { setClienteId(null); setBuscaCliente(""); }} style={BOTAO_SEC}>
                   Desvincular
                 </button>
               </div>
@@ -581,15 +487,15 @@ function NovaVisitaPage() {
                 style={{
                   display: "flex", alignItems: "center", gap: 8, marginTop: 12,
                   background: "transparent", border: "none", padding: 0, cursor: "pointer",
-                  textAlign: "left", color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
+                  textAlign: "left", color: cz.textoSecundario,
                 }}
               >
                 {sincronizarCliente ? (
-                  <CheckSquare size={16} color={isLight ? L.gold : "#F8C811"} style={{ flexShrink: 0 }} />
+                  <CheckSquare size={16} color={gold} style={{ flexShrink: 0 }} />
                 ) : (
                   <Square size={16} style={{ flexShrink: 0 }} />
                 )}
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 11 }}>
+                <span style={{ fontFamily: FONT, fontSize: 11 }}>
                   Atualizar o cadastro do cliente com os dados desta visita
                 </span>
               </button>
@@ -605,7 +511,7 @@ function NovaVisitaPage() {
                 {buscaCliente.trim() !== "" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                     {clientesFiltrados.length === 0 ? (
-                      <span style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                      <span style={{ fontFamily: FONT, fontSize: 12, color: cz.textoSecundario }}>
                         Nenhum cliente encontrado — os dados preenchidos abaixo criarão um cadastro novo.
                       </span>
                     ) : (
@@ -628,13 +534,11 @@ function NovaVisitaPage() {
                             padding: "10px 12px", borderRadius: 10, textAlign: "left",
                             cursor: geoStatus === "loading" ? "wait" : "pointer",
                             opacity: geoStatus === "loading" ? 0.6 : 1,
-                            background: isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-                            border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-                            color: isLight ? L.text : "#fff",
+                            background: cz.campo, border: `1px solid ${cz.divisoria}`, color: cz.texto,
                           }}
                         >
-                          <span style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
-                          <span style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+                          <span style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13 }}>{c.nome}</span>
+                          <span style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario }}>
                             {c.endereco ?? "sem endereço"}
                           </span>
                         </button>
@@ -642,26 +546,27 @@ function NovaVisitaPage() {
                     )}
                   </div>
                 )}
-                <div style={{ fontFamily: "var(--fonte)", fontSize: 11, color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)", marginTop: 8 }}>
+                <div style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario, marginTop: 8 }}>
                   Deixe em branco para cadastrar um cliente novo com os dados desta visita.
                 </div>
               </>
             )}
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
+          <div style={SECAO}>
             <label style={LABEL}>Nome do Prédio / Empresa</label>
             <input style={INPUT} placeholder="Ex: Edifício Garden Hills" value={nomePredio} onChange={(e) => setNomePredio(e.target.value)} />
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
+          <div style={SECAO}>
             <label style={LABEL}>Tipo de Local</label>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))", gap: 8 }}>
               {TIPOS_LOCAL.map((t) => {
                 const ativo = tipoLocal === t.id;
                 return (
                   <button
                     key={t.id}
+                    aria-pressed={ativo}
                     onClick={() => {
                       setTipoLocal(t.id);
                       // Residência não aceita Controle de Acesso/Portaria — remove se já marcado
@@ -672,38 +577,16 @@ function NovaVisitaPage() {
                       }
                     }}
                     style={{
-                      background: ativo
-                        ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                      border: ativo
-                        ? "none"
-                        : isLight ? L.borderMd : "1px solid rgba(252,222,72,0.16)",
-                      borderRadius: 12,
-                      padding: "16px 8px",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 6,
-                      boxShadow: ativo ? "0 6px 20px rgba(248,200,17,0.35)" : "none",
-                      transition: "all 0.2s ease",
+                      // o botão de seleção do design system, sem o brilho (R174)
+                      ...botaoSelecao(ativo, isLight, null), boxShadow: "none",
+                      borderRadius: 12, padding: "14px 8px",
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
                     }}
                   >
-                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: ativo ? "#0A0A0A" : (isLight ? L.textSub : "#d1d5db") }}>
-                      <t.Icon size={26} />
+                    <span style={{ display: "inline-flex", color: ativo ? "#08090E" : cz.textoSecundario }}>
+                      <t.Icon size={24} />
                     </span>
-                    <span
-                      style={{
-                        fontFamily: "var(--fonte)",
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: ativo
-                          ? "#0A0A0A"
-                          : isLight ? L.textSub : "#d1d5db",
-                        textAlign: "center",
-                        lineHeight: 1.2,
-                      }}
-                    >
+                    <span style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 600, textAlign: "center", lineHeight: 1.2 }}>
                       {t.label}
                     </span>
                   </button>
@@ -712,99 +595,7 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label style={LABEL}>Nome do {labelResponsavel1} (opcional)</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder={`Nome do ${labelResponsavel1.toLowerCase()}`} />
-            </div>
-            <div>
-              <label style={LABEL}>WhatsApp do {labelResponsavel1}</label>
-              <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="(11) 90000-0000" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do {labelResponsavel1}</label>
-              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder={`${labelResponsavel1.toLowerCase()}@email.com`} />
-            </div>
-          </div>
-
-          <div style={{ ...GLASS, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div>
-              <label style={LABEL}>Nome do {labelResponsavel2} (opcional)</label>
-              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder={`Nome do ${labelResponsavel2.toLowerCase()}`} />
-            </div>
-            <div>
-              <label style={LABEL}>WhatsApp do {labelResponsavel2}</label>
-              <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="(11) 90000-0000" />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={LABEL}>E-mail do {labelResponsavel2}</label>
-              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder={`${labelResponsavel2.toLowerCase()}@email.com`} />
-            </div>
-          </div>
-
-
-
-
-
-
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
-            {tipoLocal === "residencia" && (
-              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textSub : "rgba(255,255,255,0.5)", margin: "0 0 8px" }}>
-                Controle de Acesso e serviços de portaria não se aplicam a Residência.
-              </p>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {SERVICOS_PROPOSTOS
-                .filter((s) => !(tipoLocal === "residencia" && SERVICOS_INDISPONIVEIS_RESIDENCIA.includes(s.key)))
-                .map((s) => {
-                const ativo = servicosPropostos.includes(s.key);
-                return (
-                  <button
-                    key={s.key}
-                    onClick={() =>
-                      setServicosPropostos((prev) =>
-                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
-                      )
-                    }
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: ativo
-                        ? isLight ? L.goldBg : "rgba(248,200,17,0.12)"
-                        : isLight ? L.cardSolid : "rgba(8,8,12,0.20)",
-                      border: ativo
-                        ? isLight ? L.goldBorder : "1.5px solid rgba(248,200,17,0.55)"
-                        : isLight ? L.borderMd : "1px solid rgba(248,200,17,0.14)",
-                      borderRadius: 999,
-                      padding: "7px 12px",
-                      fontFamily: "var(--fonte)",
-                      fontSize: 11,
-                      fontWeight: 400,
-                      color: ativo
-                        ? isLight ? L.gold : "#F8C811"
-                        : isLight ? L.textSub : "rgba(255,255,255,0.70)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center" }}>{ativo ? <CheckSquare size={12} /> : <Square size={12} />}</span>
-                    {(() => {
-                      const Ico = SERVICO_PROPOSTO_ICON[s.key];
-                      return Ico ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", color: isLight ? L.gold : "#F8C811" }}>
-                          <Ico size={14} />
-                        </span>
-                      ) : null;
-                    })()}
-                    {s.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ ...GLASS, padding: 16 }}>
+          <div style={SECAO}>
             <label style={LABEL}>Endereço</label>
             <div style={{ display: "flex", gap: 8 }}>
               {/* TRAVADO ENQUANTO A BUSCA ESTÁ NO AR: editar o texto durante a
@@ -829,32 +620,25 @@ function NovaVisitaPage() {
                   — corrigir um dígito e sair era outra requisição, e passar o
                   Tab pelo formulário disparava sem ninguém ter digitado nada.
                   A regra passou a ser: um gesto humano explícito = no máximo
-                  uma requisição. O gesto explícito é o botão ao lado, que já
-                  existia e continua fazendo exatamente a mesma coisa. */}
-              {/* E ELE TEM `disabled`, como os das outras TRÊS telas. Sem isso
-                  esta era a única em que N cliques impacientes viravam N
-                  requisições ao Nominatim — serializadas a 1,1 s pelo freio, de
-                  modo que a última resposta a CHEGAR não é a última PEDIDA. */}
+                  uma requisição. O gesto explícito é o botão ao lado. E ELE TEM
+                  `disabled`, como os das outras TRÊS telas: N cliques
+                  impacientes não viram N requisições ao Nominatim. */}
               <button
                 onClick={geocodificar}
                 disabled={geoStatus === "loading"}
+                aria-label="Localizar o endereço no mapa"
+                title="Localizar no mapa"
                 style={{
-                  background: isLight ? L.cardSolid : "rgba(248,200,17,0.10)",
-                  border: isLight ? L.borderMd : "1px solid rgba(248,200,17,0.30)",
-                  borderRadius: 10,
-                  width: 44,
+                  ...BOTAO_SEC, height: "auto", width: 44, padding: 0, color: gold,
                   cursor: geoStatus === "loading" ? "wait" : "pointer",
-                  color: isLight ? L.gold : "#F8C811",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
                 <MapPin size={16} />
               </button>
             </div>
             {geoStatus === "loading" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? L.textMuted : "rgba(200,200,200,0.55)", fontFamily: "var(--fonte)", fontWeight: 400 }}>
+              <p style={{ marginTop: 8, fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0" }}>
                 Buscando localização...
               </p>
             )}
@@ -867,7 +651,7 @@ function NovaVisitaPage() {
                 frase do sistema que instrui a pessoa a martelar o serviço que
                 acabou de bloqueá-la. */}
             {geoStatus === "err" && (
-              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? "#B1242E" : "#F17881", fontFamily: "var(--fonte)", fontWeight: 400 }}>
+              <p style={{ fontSize: 11, color: vermelho, fontFamily: FONT, margin: "8px 0 0" }}>
                 Não achei este endereço. Confira o texto (bairro e cidade ajudam) — e, se ele está
                 certo, o serviço de mapas pode ter recusado agora: repetir na mesma hora não adianta.
               </p>
@@ -877,13 +661,13 @@ function NovaVisitaPage() {
                 única rede contra "o mapa achou a rua homônima em outra
                 cidade" — nada mais no sistema reconfere esta coordenada. */}
             {geoStatus === "ok" && resolvido && (
-              <p style={{ marginTop: 8, fontSize: 11, color: isLight ? L.textMuted : "rgba(200,200,200,0.55)", fontFamily: "var(--fonte)", fontWeight: 400 }}>
-                O mapa entendeu: <b>{resolvido}</b> — se não é este o lugar, corrija o endereço
+              <p style={{ fontSize: 11, color: cz.textoSecundario, fontFamily: FONT, margin: "8px 0 0" }}>
+                O mapa entendeu: <b style={{ color: cz.texto }}>{resolvido}</b> — se não é este o lugar, corrija o endereço
                 (inclua bairro e cidade) e busque de novo.
               </p>
             )}
             {mapUrl && (
-              <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", border: isLight ? L.border : "1px solid rgba(248,200,17,0.16)" }}>
+              <div style={{ marginTop: 10, borderRadius: 12, overflow: "hidden", border: `1px solid ${cz.divisoria}` }}>
                 <iframe title="mapa" src={mapUrl} style={{ width: "100%", height: 160, border: 0 }} />
               </div>
             )}
@@ -893,63 +677,35 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-
-          <div style={{ ...GLASS, padding: 16 }}>
+          <div style={SECAO}>
             <label style={LABEL}>Foto da Fachada (opcional)</label>
             <div
               onClick={() => document.getElementById("foto-fachada-input")?.click()}
               style={{
-                width: "100%",
-                minHeight: fotoPreview ? "auto" : 90,
-                borderRadius: 14,
-                border: isLight ? "2px dashed rgba(160,97,8,0.30)" : "2px dashed rgba(248,200,17,0.30)",
-                background: isLight ? "rgba(0,0,0,0.02)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                overflow: "hidden",
-                position: "relative",
+                width: "100%", minHeight: fotoPreview ? "auto" : 90, borderRadius: 14,
+                border: `2px dashed ${cz.divisoria}`, background: cz.campo,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", overflow: "hidden", position: "relative",
               }}
             >
               {fotoPreview ? (
                 <>
-                  <img
-                    src={fotoPreview}
-                    alt="preview"
-                    style={{ width: "100%", borderRadius: 12, display: "block" }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 8,
-                      background: isLight ? "rgba(255,255,255,0.85)" : "rgba(8,8,12,0.7)",
-                      borderRadius: 20,
-                      padding: "4px 10px",
-                      fontFamily: "var(--fonte)",
-                      fontWeight: 400,
-                      fontSize: 11,
-                      color: isLight ? L.gold : "#F8C811",
-                    }}
-                  >
+                  <img src={fotoPreview} alt="preview" style={{ width: "100%", borderRadius: 12, display: "block" }} />
+                  <div style={{
+                    position: "absolute", top: 8, right: 8, borderRadius: 20, padding: "4px 10px",
+                    background: cz.elevada, border: `1px solid ${cz.divisoria}`,
+                    fontFamily: FONT, fontWeight: 600, fontSize: 11, color: cz.texto,
+                  }}>
                     Alterar foto
                   </div>
                 </>
               ) : (
                 <div style={{ textAlign: "center", padding: "16px 8px" }}>
                   <div style={{ marginBottom: 4, display: "flex", justifyContent: "center" }}>
-                    <Camera size={24} color={isLight ? L.gold : "rgba(248,200,17,0.65)"} />
+                    <Camera size={22} color={gold} />
                   </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--fonte)",
-                      fontWeight: 400,
-                      fontSize: 12,
-                      color: isLight ? L.textMuted : "rgba(255,255,255,0.45)",
-                    }}
-                  >
-                    Toque para adicionar foto da fachada
+                  <div style={{ fontFamily: FONT, fontSize: 12, color: cz.textoSecundario }}>
+                    Toque para adicionar a foto da fachada
                   </div>
                 </div>
               )}
@@ -968,12 +724,87 @@ function NovaVisitaPage() {
               }}
             />
           </div>
-        </div>
-      )}
+        </section>
 
-      {step === 2 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ ...GLASS, padding: 16 }}>
+        {/* ══ 2 · CONTATOS E SERVIÇOS ════════════════════════════════════════ */}
+        <section aria-labelledby="nv-contatos" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+          <TituloDaColuna n={2} id="nv-contatos" titulo="Contatos e serviços" sub="Com quem falar e o que propor" />
+
+          {/* Residência/Galpão não têm síndico/zelador — os rótulos seguem o tipo */}
+          <div style={SECAO}>
+            <label style={LABEL}>{labelResponsavel1} (opcional)</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder={`Nome do ${labelResponsavel1.toLowerCase()}`} />
+              <input style={INPUT} value={telefoneSindico} onChange={(e) => setTelefoneSindico(e.target.value)} placeholder="WhatsApp — (11) 90000-0000" />
+              <input style={INPUT} type="email" value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} placeholder={`E-mail do ${labelResponsavel1.toLowerCase()}`} />
+            </div>
+          </div>
+
+          <div style={SECAO}>
+            <label style={LABEL}>{labelResponsavel2} (opcional)</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder={`Nome do ${labelResponsavel2.toLowerCase()}`} />
+              <input style={INPUT} value={telefoneZelador} onChange={(e) => setTelefoneZelador(e.target.value)} placeholder="WhatsApp — (11) 90000-0000" />
+              <input style={INPUT} type="email" value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} placeholder={`E-mail do ${labelResponsavel2.toLowerCase()}`} />
+            </div>
+          </div>
+
+          <div style={SECAO}>
+            <label style={LABEL}>Serviços Propostos (selecione um ou mais)</label>
+            {tipoLocal === "residencia" && (
+              <p style={{ fontFamily: FONT, fontSize: 11, color: cz.textoSecundario, margin: "0 0 8px" }}>
+                Controle de Acesso e serviços de portaria não se aplicam a Residência.
+              </p>
+            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {SERVICOS_PROPOSTOS
+                .filter((s) => !(tipoLocal === "residencia" && SERVICOS_INDISPONIVEIS_RESIDENCIA.includes(s.key)))
+                .map((s) => {
+                const ativo = servicosPropostos.includes(s.key);
+                const Ico = SERVICO_PROPOSTO_ICON[s.key];
+                return (
+                  <button
+                    key={s.key}
+                    aria-pressed={ativo}
+                    onClick={() =>
+                      setServicosPropostos((prev) =>
+                        prev.includes(s.key) ? prev.filter((x) => x !== s.key) : [...prev, s.key],
+                      )
+                    }
+                    style={{
+                      ...botaoSelecao(ativo, isLight, null), boxShadow: "none",
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      borderRadius: 999, padding: "7px 12px", fontSize: 11.5,
+                    }}
+                  >
+                    {Ico && (
+                      <span style={{ display: "inline-flex", alignItems: "center", color: ativo ? "#08090E" : gold }}>
+                        <Ico size={13} />
+                      </span>
+                    )}
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={SECAO}>
+            <label style={LABEL}>Descrição do Pedido</label>
+            <textarea
+              style={{ ...INPUT, minHeight: 110, resize: "vertical", lineHeight: 1.5 }}
+              placeholder="Descreva o que o cliente precisa..."
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+            />
+          </div>
+        </section>
+
+        {/* ══ 3 · AGENDAMENTO ════════════════════════════════════════════════ */}
+        <section aria-labelledby="nv-agendamento" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+          <TituloDaColuna n={3} id="nv-agendamento" titulo="Agendamento" sub="Quando e com quem" />
+
+          <div style={SECAO}>
             <label style={LABEL}>Data e Horário (opcional)</label>
             <div style={{ display: "flex", gap: 10 }}>
               <input
@@ -1000,17 +831,7 @@ function NovaVisitaPage() {
                     setData(d.toISOString().split("T")[0]);
                     setHora(a.time);
                   }}
-                  style={{
-                    background: isLight ? L.goldBg : "rgba(248,200,17,0.06)",
-                    border: isLight ? L.goldBorder : "1px solid rgba(248,200,17,0.18)",
-                    borderRadius: 999,
-                    padding: "5px 10px",
-                    fontFamily: "var(--fonte)",
-                    fontSize: 10,
-                    fontWeight: 400,
-                    color: isLight ? L.gold : "rgba(248,200,17,0.75)",
-                    cursor: "pointer",
-                  }}
+                  style={{ ...BOTAO_SEC, height: 28, borderRadius: 999, padding: "0 10px", fontSize: 11 }}
                 >
                   {a.label}
                 </button>
@@ -1018,47 +839,31 @@ function NovaVisitaPage() {
             </div>
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
+          <div style={SECAO}>
             <label style={LABEL}>Técnico Responsável</label>
-            <select
-              style={{ ...INPUT, appearance: "none" }}
-              value={tecnicoId}
-              onChange={(e) => setTecnicoId(e.target.value)}
-            >
-              <option value="">— Sem técnico definido —</option>
-              {tecnicos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.cargo})
-                </option>
-              ))}
-            </select>
+            {/* o seletor do design system (R135), não o <select> nativo */}
+            <SeletorDeOpcao
+              valor={tecnicoId || null}
+              vazio="— Sem técnico definido —"
+              opcoes={tecnicos.map((t) => ({ valor: t.id, rotulo: t.nome ?? "—" }))}
+              aoMudar={(v) => setTecnicoId(v ?? "")}
+            />
 
             {tecnicoId && visitasTecnico.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: isLight ? L.gold : "rgba(248,200,17,0.6)", letterSpacing: "0.10em", textTransform: "uppercase", margin: "0 0 6px" }}>
-                  Agenda dos próximos 7 dias
-                </p>
+                <p style={{ ...LABEL, color: gold, marginBottom: 6 }}>Agenda dos próximos 7 dias</p>
                 {visitasTecnico.map((v, i) => (
                   <div
                     key={i}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "7px 0",
-                      borderBottom: i < visitasTecnico.length - 1
-                        ? isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(248,200,17,0.08)"
-                        : "none",
+                      display: "flex", alignItems: "center", gap: 8, padding: "7px 0",
+                      borderBottom: i < visitasTecnico.length - 1 ? `1px solid ${cz.divisoria}` : "none",
                     }}
                   >
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: isLight ? L.gold : "#F8C811", flexShrink: 0, boxShadow: isLight ? "none" : "0 0 6px rgba(248,200,17,0.5)" }} />
-                    <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textSub : "rgba(200,200,200,0.6)" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: gold, flexShrink: 0 }} />
+                    <span style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario }}>
                       {new Date(v.data_hora_agendada!).toLocaleString("pt-BR", {
-                        weekday: "short",
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
+                        weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                       })}
                       {" — "}
                       {(v as any).nome_predio ?? v.titulo}
@@ -1068,37 +873,21 @@ function NovaVisitaPage() {
               </div>
             )}
             {tecnicoId && visitasTecnico.length === 0 && (
-              <p style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? "#047862" : "rgba(45,210,165,0.7)", margin: "8px 0 0" }}>
+              <p style={{ fontFamily: FONT, fontSize: 11.5, color: verde, margin: "8px 0 0" }}>
                 Técnico livre nos próximos 7 dias
               </p>
             )}
           </div>
 
-          <div style={{ ...GLASS, padding: 16 }}>
-            <label style={LABEL}>Descrição do Pedido</label>
-            <textarea
-              style={{ ...INPUT, minHeight: 90, resize: "vertical" }}
-              placeholder="Descreva o que o cliente precisa..."
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-            />
-          </div>
-
-          <div style={{
-            ...GLASS,
-            padding: 16,
-            borderColor: isLight ? "rgba(45,210,165,0.20)" : "rgba(45,210,165,0.25)",
-            background: isLight ? "rgba(45,210,165,0.05)" : "rgba(45,210,165,0.04)",
-          }}>
-            <p style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 400, color: isLight ? "#047862" : "rgba(45,210,165,0.7)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 10px" }}>
-              Resumo da visita
-            </p>
+          {/* O RESUMO e o botão — a ação principal mora na coluna do agendamento,
+              e o que falta para agendar é dito aqui, não só no toast. */}
+          <div style={{ ...SECAO, border: `1px solid ${misturar(verde, cz.superficie, 0.55)}` }}>
+            <p style={{ ...LABEL, color: verde }}>Resumo da visita</p>
             {[
               { label: "Prédio", value: nomePredio },
               { label: "Tipo", value: TIPOS_LOCAL.find((t) => t.id === tipoLocal)?.label ?? tipoLocal },
               ...(nomeSindico ? [{ label: labelResponsavel1, value: nomeSindico }] : []),
               ...(nomeZelador ? [{ label: labelResponsavel2, value: nomeZelador }] : []),
-
               { label: "Serviços", value: servicosPropostos.map((k) => SERVICOS_PROPOSTOS.find((s) => s.key === k)?.label).filter(Boolean).join(", ") },
               { label: "Endereço", value: endereco + (complemento ? ` — ${complemento}` : "") },
               {
@@ -1107,98 +896,62 @@ function NovaVisitaPage() {
               },
               { label: "Técnico", value: tecnicos.find((t) => t.id === tecnicoId)?.nome ?? "Não definido" },
             ].map((row) => (
-              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderBottom: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.04)" }}>
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.textMuted : "rgba(200,200,200,0.45)" }}>{row.label}</span>
-                <span style={{ fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 400, color: isLight ? L.text : "#F0F2F5", textAlign: "right", maxWidth: "60%" }}>{row.value || "—"}</span>
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "5px 0", borderBottom: `1px solid ${cz.divisoria}` }}>
+                <span style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario, flexShrink: 0 }}>{row.label}</span>
+                <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 600, color: cz.texto, textAlign: "right", minWidth: 0, overflowWrap: "anywhere" }}>
+                  {row.value || "—"}
+                </span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
 
-      {/* Rodapé — padrão OURO */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginTop: 24,
-          marginBottom: 32,
-        }}
-      >
-        {step === 2 && (
-          <button
-            onClick={() => setStep(1)}
-            style={{
-              height: 56,
-              width: 56,
-              flexShrink: 0,
-              background: isLight ? L.cardSolid : "rgba(20,20,26,0.85)",
-              backdropFilter: "blur(12px)",
-              border: isLight ? L.borderMd : "1px solid rgba(248,200,17,0.25)",
-              borderRadius: 28,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: isLight ? L.gold : "#F8C811",
-              boxShadow: isLight ? L.shadow : "0 4px 16px rgba(0,0,0,0.25)",
-            }}
-          >
-            <ChevronLeft size={20} />
-          </button>
-        )}
-        <button
-          onClick={() => {
-            if (step === 1) {
-              if (!passo1Valido) {
-                toast.error("Preencha todos os campos obrigatórios");
-                return;
-              }
-              setStep(2);
-            } else {
-              if (!passo2Valido) {
-                toast.error("Informe a data e o horário");
-                return;
-              }
-              criarMutation.mutate();
-            }
-          }}
-          disabled={criarMutation.isPending}
-          style={{
-            flex: 1,
-            height: 56,
-            borderRadius: 28,
-            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-            border: "none",
-            color: "#08090E",
-            fontFamily: "var(--fonte)",
-            fontWeight: 400,
-            fontSize: 13,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            cursor: criarMutation.isPending ? "not-allowed" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            boxShadow: isLight
-              ? "0 4px 16px rgba(160,97,8,0.30)"
-              : "0 4px 24px rgba(248,200,17,0.35)",
-            opacity: criarMutation.isPending ? 0.7 : 1,
-          }}
-        >
-          {criarMutation.isPending ? (
-            "Agendando..."
-          ) : step === 1 ? (
-            <>
-              Próximo <ChevronRight size={18} />
-            </>
-          ) : (
-            <>
-              Agendar Visita <Check size={18} />
-            </>
-          )}
-        </button>
+            {faltam.length > 0 && (
+              <p style={{ fontFamily: FONT, fontSize: 11.5, color: cz.textoSecundario, margin: "10px 0 0", lineHeight: 1.5 }}>
+                Para agendar, falta {faltam.join(", ")}.
+              </p>
+            )}
+            <button
+              onClick={() => {
+                if (!formularioValido) {
+                  toast.error(`Para agendar, falta ${faltam.join(", ")}.`);
+                  return;
+                }
+                criarMutation.mutate();
+              }}
+              disabled={criarMutation.isPending}
+              style={{
+                ...goldButton(), width: "100%", height: 48, marginTop: 12, borderRadius: 14,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                fontFamily: FONT, fontWeight: 700, fontSize: 13,
+                cursor: criarMutation.isPending ? "not-allowed" : "pointer",
+                opacity: criarMutation.isPending ? 0.7 : formularioValido ? 1 : 0.6,
+              }}
+            >
+              {criarMutation.isPending ? "Agendando..." : (<>Agendar visita <Check size={17} /></>)}
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** O título de cada coluna (R194): número dourado + nome + o que ela responde. */
+function TituloDaColuna({ n, id, titulo, sub }: { n: number; id: string; titulo: string; sub: string }) {
+  const { isLight } = useTheme();
+  const c = cinzas(isLight);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 2px 0" }}>
+      <span aria-hidden style={{
+        width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+        background: GOLD_GRAD, color: "#08090E",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
+      }}>
+        {n}
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <h2 id={id} style={{ fontFamily: FONT, fontWeight: 700, fontSize: 13.5, margin: 0, color: c.texto }}>{titulo}</h2>
+        <div style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>{sub}</div>
       </div>
     </div>
   );

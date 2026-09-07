@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R193** · último diário:
-**U106** · verificador: **2.985 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-04** · última regra: **R194** · último diário:
+**U107** · verificador: **2.994 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendente: U106** (só apaga a
 linha `mapa` da matriz).
 
@@ -81,6 +81,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U104 | o Configurador rápido revisto pelo Davi: toda a informação no cabeçalho em botões discretos (R183), Problema + Diagnóstico com a barra 1→2 (R184), comentários e linha do tempo abaixo (R185); a escala CINZA nasce em `paleta.ts` (R186 — o resto do sistema na U108) |
 | U105 | o Calendário revisto pelo Davi: card com fundo na cor do status (R187), rostos sem anel (R188), meses seguintes ao rolar até +3 (R189), dica expandida ao passar o mouse (R190), sem botão "Hoje" (R191) |
 | U106 | o Mapa sai — /mapa redireciona, botão fora do Comercial, chave fora do catálogo, migration U106 apaga a linha (R192); o Administrativo vira duas colunas Usuários | Permissões com as APIs por botão (R193) |
+| U107 | a Nova Visita Técnica numa tela só — três colunas (Local · Contatos e serviços · Agendamento), design system no lugar da paleta local, todas as regras da proposta preservadas (R194) |
 
 ## 4. Banco: migrations
 
@@ -144,6 +145,9 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 - **R192–R193** — a tela **/mapa saiu** (redirect; migration U106 pendente) e
   o **Administrativo** virou duas colunas, Usuários | Permissões, com as APIs
   por botão.
+- **R194** — a **Nova Visita Técnica** é uma tela só, em três colunas, no
+  design system; as regras da proposta (R147, R21/R22, residência, R114, R170)
+  continuam.
 
 ## 6. Perguntas em aberto
 
