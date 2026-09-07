@@ -48,7 +48,7 @@ export const EQUIPE_CORES: Record<Equipe, { dark: string; light: string; bg: str
   // pela auditoria de contraste do modo claro (§8). Não confundir com o cinza
   // de fallback do equipeCores() abaixo, que significa outra coisa — valor
   // DESCONHECIDO, e por isso é um tom diferente de propósito.
-  outras:        { dark: "#9AA6B2", light: "#5a6172", bg: "rgba(154,166,178,0.12)", border: "rgba(154,166,178,0.30)" },
+  outras:        { dark: "#9AA6B2", light: "#616161", bg: "rgba(154,166,178,0.12)", border: "rgba(154,166,178,0.30)" },
 };
 
 /**

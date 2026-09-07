@@ -35,21 +35,21 @@ import { geocode, useTecnicos, useVisitasGerencial } from "./data";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const L = {
-  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
   cardSolid: "#ffffff",
   border: "1px solid rgba(0,0,0,0.07)",
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#1e2229",
-  textSub: "#4a5060",
-  textMuted: "#7d8391",
+  text: "#212121",
+  textSub: "#505050",
+  textMuted: "#727272",
   // MAHOGANY 700 — os vermelhos claros (red-300/400) somem sobre o card branco
   erro: "#B1242E",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
   goldBorder: "1px solid rgba(160,97,8,0.22)",
-  inputBg: "#f0f1f4",
+  inputBg: "#f0f0f0",
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
@@ -397,7 +397,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     style={{
                       background: active
                         ? isLight ? L.goldBg : "rgba(248,200,17,0.15)"
-                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                        : isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                       border: active
                         ? isLight ? L.goldBorder : "1px solid rgba(248,200,17,0.7)"
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
@@ -580,7 +580,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                         background: isLight ? L.gold : "#F8C811",
                         // sobre o dourado ESCURO do claro quem contrasta é o branco;
                         // sobre o dourado vivo do escuro vale o quase-preto de sempre
-                        color: isLight ? "#ffffff" : "#08090E",
+                        color: isLight ? "#ffffff" : "#0E0E0E",
                         fontSize: 10,
                       }}
                     >
@@ -653,7 +653,7 @@ export function VisitaForm({ initial }: { initial?: VisitaFormInitial }) {
                     style={{
                       background: active
                         ? PRIORIDADE_COLOR[p]
-                        : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                        : isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                       border: active
                         ? `1px solid ${PRIORIDADE_BORDER[p]}`
                         : isLight ? L.borderMd : "1px solid rgba(255,255,255,0.08)",
@@ -768,10 +768,10 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         style={{
           background: active
             ? isLight ? "#A06108" : "#F8C811"
-            : isLight ? "#f0f1f4" : "#191921",
+            : isLight ? "#f0f0f0" : "#1b1b1b",
           // texto sobre o dourado vivo do escuro é sempre quase-preto; sobre o
           // dourado escuro do claro é o branco
-          color: active ? (isLight ? "#ffffff" : "#08090E") : isLight ? "#4a5060" : "#9ca3af",
+          color: active ? (isLight ? "#ffffff" : "#0E0E0E") : isLight ? "#505050" : "#9ca3af",
           border: active ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "none",
         }}
       >
@@ -779,7 +779,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
       </div>
       <span
         className="text-xs font-medium"
-        style={{ color: active ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#4a5060" : "#9ca3af") }}
+        style={{ color: active ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#505050" : "#9ca3af") }}
       >
         {label}
       </span>
@@ -793,7 +793,7 @@ function Stepper({ step, isLight }: { step: 1 | 2; isLight: boolean }) {
         style={{
           background: step >= 2
             ? isLight ? "#A06108" : "linear-gradient(90deg,#F8C811,#F8C811)"
-            : isLight ? "rgba(0,0,0,0.08)" : "#191921",
+            : isLight ? "rgba(0,0,0,0.08)" : "#1b1b1b",
         }}
       />
       <Item n={2} label="Agendamento" active={step >= 2} />

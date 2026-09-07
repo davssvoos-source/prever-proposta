@@ -107,8 +107,8 @@ interface Props {
 
 export function CardAtividade({ a, onClick, mostrarStatus = true, pessoas }: Props) {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.58)";
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   const ambar = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
 

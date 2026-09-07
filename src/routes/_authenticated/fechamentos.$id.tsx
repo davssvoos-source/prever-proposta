@@ -29,13 +29,13 @@ function FechamentoDetalhePage() {
   const { data: f, isLoading } = useFechamento(id);
   const { data: cobrancas = [] } = useCobrancasDoFechamento(id);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "16px", display: "flex", flexDirection: "column", gap: 12 };
   const btn: CSSProperties = {
     height: 44, padding: "0 14px", borderRadius: 22, cursor: "pointer",
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
     fontFamily: FONT, fontWeight: 600, fontSize: 12,
@@ -97,7 +97,7 @@ function FechamentoDetalhePage() {
           onClick={() => navigate({ to: "/fechamentos" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -192,7 +192,7 @@ function FechamentoDetalhePage() {
             {secao.grupos.map((g) => (
               <div key={g.clienteId} style={{
                 padding: "10px 12px", borderRadius: 12,
-                background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                 border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
               }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -239,7 +239,7 @@ function FechamentoDetalhePage() {
             </button>
             <button
               style={{
-                ...btn, flex: 1, border: "none", background: GOLD_GRAD, color: "#08090E", fontWeight: 700,
+                ...btn, flex: 1, border: "none", background: GOLD_GRAD, color: "#0E0E0E", fontWeight: 700,
               }}
               onClick={() => fechar.mutate()}
               disabled={fechar.isPending || cobrancas.length === 0}

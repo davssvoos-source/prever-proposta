@@ -88,8 +88,8 @@ export function Quadro({ atividades, foco, pessoas, onAbrir, onMover }: Props) {
     try { localStorage.setItem(CHAVE_ORDEM, JSON.stringify(nova)); } catch { /* modo privado */ }
   }
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   // v4: a coluna perdeu a caixa — os cards flutuam direto no fundo e a coluna
   // é só o cabeçalho + a pilha. Menos linha, mais espaço em branco (a regra
   // "use whitespace no lugar de divisores" das referências).

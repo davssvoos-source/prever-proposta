@@ -95,8 +95,8 @@ function PainelAdministrativo() {
   const aba: Aba = busca.aba ?? "usuarios";
   const isAdmin = cargo === "admin";
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   const irParaAba = (a: Aba) =>
@@ -128,14 +128,14 @@ function PainelAdministrativo() {
     height: 34, padding: "0 14px", borderRadius: 17, cursor: "pointer",
     border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativa ? "#08090E" : textPrimary,
+    color: ativa ? "#0E0E0E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 12,
   });
 
   return (
     <div className="sangra-x" style={{ paddingTop: 18, paddingBottom: 140, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
       <div>
-        <h1 style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
+        <h1 style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
           Administrativo
         </h1>
         <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary, marginTop: 2 }}>
@@ -165,7 +165,7 @@ function PainelAdministrativo() {
                 {n.valor}
               </div>
               <div style={{
-                fontFamily: FONT, fontWeight: 500, fontSize: 9, letterSpacing: "0.05em",
+                fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.05em",
                 textTransform: "uppercase", color: textSecondary, lineHeight: 1.3, textAlign: "center", marginTop: 6,
               }}>
                 {n.rotulo}

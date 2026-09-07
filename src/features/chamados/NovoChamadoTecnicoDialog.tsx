@@ -34,8 +34,8 @@ export function NovoChamadoTecnicoDialog({ aberto, aoFechar, aoCriar }: Props) {
   const { isLight } = useTheme();
   if (!aberto) return null;
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   return (
@@ -74,7 +74,7 @@ export function NovoChamadoTecnicoDialog({ aberto, aoFechar, aoCriar }: Props) {
             aria-label="Fechar"
             style={{
               width: 32, height: 32, borderRadius: 10, flexShrink: 0, cursor: "pointer",
-              background: isLight ? "#ffffff" : "#191921",
+              background: isLight ? "#ffffff" : "#1b1b1b",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             }}

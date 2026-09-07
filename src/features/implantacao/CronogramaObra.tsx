@@ -56,8 +56,8 @@ export function CronogramaObra({
   podeEditar: boolean;
   dadosDoPdf: { numero: string | null; titulo: string | null; cliente: string | null; endereco: string | null };
 }) {
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const ambar = isLight ? "#8A5A00" : "#F0B429";
 
@@ -78,14 +78,14 @@ export function CronogramaObra({
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", borderRadius: 10, padding: "9px 11px",
     fontFamily: "var(--fonte)", fontSize: 12.5, color: textPrimary,
-    background: isLight ? "#f6f7f9" : "rgba(255,255,255,0.04)",
+    background: isLight ? "#f7f7f7" : "rgba(255,255,255,0.04)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
   };
   const BOTAO: CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 6,
     borderRadius: 10, padding: "8px 13px", cursor: "pointer",
     fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
-    background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)",
+    background: isLight ? "#f0f0f0" : "rgba(255,255,255,0.06)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.09)",
     color: textPrimary,
   };

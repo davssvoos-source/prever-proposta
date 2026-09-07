@@ -67,8 +67,8 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
   const [parcelas, setParcelas] = useState("1");
   const [erro, setErro] = useState<{ frase: string; code: string | null } | null>(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
 
@@ -360,7 +360,7 @@ export function PainelDoCiclo({ chamadoId, isLight, aoFechar, aoAbrirChamado }: 
                         parcelas: previa,
                       }); }}
                       style={{
-                        ...btnSec, border: "none", background: GOLD_GRAD, color: "#08090E",
+                        ...btnSec, border: "none", background: GOLD_GRAD, color: "#0E0E0E",
                         fontWeight: 700, opacity: erroLocal || concluir.isPending ? 0.5 : 1,
                         cursor: erroLocal || concluir.isPending ? "not-allowed" : "pointer",
                       }}

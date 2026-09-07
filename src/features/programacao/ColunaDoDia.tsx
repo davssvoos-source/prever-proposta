@@ -65,7 +65,7 @@ export function BotoesDeCompartilhar({
   /** o aviso ("Programação copiada.") é da tela que chamou, não daqui */
   aoCopiar?: () => void;
 }) {
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
   const estilo = {
     display: "inline-flex", alignItems: "center", gap: 6,
     padding: compacto ? "6px 10px" : "8px 12px",
@@ -125,7 +125,7 @@ export function ColunaDoDia({
   linhas, dia, isLight, rotulos, mostrarRotulos, selos,
   textoParaCompartilhar, aoCopiar, onAbrirItem, onNovoNaCelula,
 }: Props) {
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
 
   if (linhas.length === 0) {
     return (

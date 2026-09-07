@@ -260,14 +260,14 @@ function OrcamentoPasso1() {
 
   const CARD: React.CSSProperties = isLight
     ? {
-        background: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+        background: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
         border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 18,
         padding: "18px 16px",
         boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
       }
     : {
-        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+        background: "linear-gradient(160deg, #161616 0%, #101010 100%)",
         backdropFilter: "blur(12px) saturate(130%)",
         border: "1px solid rgba(248,200,17,0.10)",
         borderRadius: 18,
@@ -288,7 +288,7 @@ function OrcamentoPasso1() {
   const inputMax = 100;
 
   const HEADER_BTN: React.CSSProperties = {
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12,
     width: 40,
@@ -297,14 +297,14 @@ function OrcamentoPasso1() {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
   };
   const TITULO: React.CSSProperties = {
     fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 18,
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
     letterSpacing: "0.02em",
   };
   const CTA: React.CSSProperties = {
@@ -313,7 +313,7 @@ function OrcamentoPasso1() {
     borderRadius: 28,
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
-    color: "#08090E",
+    color: "#0E0E0E",
     fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 13,
@@ -330,7 +330,7 @@ function OrcamentoPasso1() {
   // Aguarda saber o tipo de local para decidir qual 1ª tela mostrar
   if (visita === undefined) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", fontFamily: "var(--fonte)", fontSize: 13 }}>
+      <div style={{ padding: 40, textAlign: "center", color: isLight ? "#505050" : "rgba(255,255,255,0.6)", fontFamily: "var(--fonte)", fontSize: 13 }}>
         Carregando…
       </div>
     );
@@ -387,8 +387,8 @@ function OrcamentoPasso1() {
                       : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                     background: selected
                       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                      : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                    color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
+                      : isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
+                    color: selected ? "#0E0E0E" : isLight ? "#212121" : "#fff",
                     boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
                     fontFamily: "var(--fonte)",
                     fontWeight: 600,
@@ -437,7 +437,7 @@ function OrcamentoPasso1() {
         <button
           onClick={() => navigate({ to: "/visita/$id", params: { id } })}
           style={{
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -446,7 +446,7 @@ function OrcamentoPasso1() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: isLight ? "#1e2229" : "#fff",
+            color: isLight ? "#212121" : "#fff",
             boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
           }}
         >
@@ -458,7 +458,7 @@ function OrcamentoPasso1() {
               fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
-              color: isLight ? "#1e2229" : "#fff",
+              color: isLight ? "#212121" : "#fff",
               letterSpacing: "0.02em",
             }}
           >
@@ -499,7 +499,7 @@ function OrcamentoPasso1() {
               background: "transparent",
               border: "none",
               outline: "none",
-              color: isLight ? "#1e2229" : "#FFFFFF",
+              color: isLight ? "#212121" : "#FFFFFF",
               fontWeight: 700,
               fontSize: 36,
               textAlign: "center",
@@ -509,7 +509,7 @@ function OrcamentoPasso1() {
               MozAppearance: "textfield",
             }}
           />
-          <Pencil size={14} style={{ opacity: 0.3, color: isLight ? "#1e2229" : "#FFFFFF", flexShrink: 0 }} />
+          <Pencil size={14} style={{ opacity: 0.3, color: isLight ? "#212121" : "#FFFFFF", flexShrink: 0 }} />
         </div>
         {/* Barra slider customizada */}
         <div style={{ position: "relative", height: 28, display: "flex", alignItems: "center" }}>
@@ -572,8 +572,8 @@ function OrcamentoPasso1() {
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>0</span>
-          <span style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.4)" }}>100+</span>
+          <span style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.4)" }}>0</span>
+          <span style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.4)" }}>100+</span>
         </div>
       </div>
 
@@ -595,8 +595,8 @@ function OrcamentoPasso1() {
                     : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
                   background: selected
                     ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                    : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
-                  color: selected ? "#08090E" : (isLight ? "#1e2229" : "#fff"),
+                    : (isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)"),
+                  color: selected ? "#0E0E0E" : (isLight ? "#212121" : "#fff"),
                   boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
                   fontFamily: "var(--fonte)",
                   fontWeight: 600,
@@ -639,8 +639,8 @@ function OrcamentoPasso1() {
                     : selected ? "none" : "1px solid rgba(255,255,255,0.12)",
                   background: selected
                     ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                    : (isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
-                  color: selected ? "#08090E" : (isLight ? "#1e2229" : "#fff"),
+                    : (isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)"),
+                  color: selected ? "#0E0E0E" : (isLight ? "#212121" : "#fff"),
                   boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
                   fontFamily: "var(--fonte)",
                   fontWeight: 600,
@@ -682,7 +682,7 @@ function OrcamentoPasso1() {
             borderRadius: 28,
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
-            color: "#08090E",
+            color: "#0E0E0E",
             fontFamily: "var(--fonte)",
             fontWeight: 400,
             fontSize: 13,

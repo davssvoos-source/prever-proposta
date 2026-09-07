@@ -25,11 +25,11 @@ function PerfilPage() {
   const { isLight, toggleTheme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#fff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
+  const textPrimary = isLight ? "#212121" : "#fff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.5)";
   const goldDark = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = {
-    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)" : "rgba(8,8,12,0.22)",
     backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
@@ -51,7 +51,7 @@ function PerfilPage() {
   const INPUT: CSSProperties = {
     width: "100%",
     height: 50,
-    background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12,
     color: textPrimary,
@@ -306,7 +306,7 @@ function PerfilPage() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 700,
                 fontSize: 28,
-                color: "#08090E",
+                color: "#0E0E0E",
                 border: "3px solid rgba(248,200,17,0.3)",
               }}
             >
@@ -324,14 +324,14 @@ function PerfilPage() {
               height: 30,
               borderRadius: "50%",
               background: "linear-gradient(135deg,#FCDE48,#F8C811)",
-              border: isLight ? "2px solid #e9ebef" : "2px solid #08090E",
+              border: isLight ? "2px solid #e9e9e9" : "2px solid #0E0E0E",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
             }}
           >
-            <Camera size={14} color="#08090E" />
+            <Camera size={14} color="#0E0E0E" />
           </button>
         </div>
         <input
@@ -527,7 +527,7 @@ function PerfilPage() {
                 key={v.id}
                 onClick={() => navigate({ to: "/visita/$id", params: { id: v.id }, state: { from: location.pathname } as any })}
                 style={{
-                  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.06)",
                   borderRadius: 12,
                   padding: "10px 12px",
@@ -546,7 +546,7 @@ function PerfilPage() {
                       fontFamily: "var(--fonte)",
                       fontWeight: 400,
                       fontSize: 13,
-                      color: isLight ? "#1e2229" : "#fff",
+                      color: isLight ? "#212121" : "#fff",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -559,7 +559,7 @@ function PerfilPage() {
                       fontFamily: "var(--fonte)",
                       fontWeight: 400,
                       fontSize: 11,
-                      color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
+                      color: isLight ? "#505050" : "rgba(255,255,255,0.45)",
                       marginTop: 2,
                     }}
                   >
@@ -643,7 +643,7 @@ function PerfilPage() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 400,
                 fontSize: 11,
-                color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
+                color: isLight ? "#727272" : "rgba(255,255,255,0.35)",
               }}
             >
               E-mail e cargo não podem ser alterados por aqui — fale com um administrador.
@@ -703,10 +703,10 @@ function PerfilPage() {
               background:
                 novaSenha && confirmarSenha
                   ? "linear-gradient(135deg,#FCDE48,#F8C811)"
-                  : (isLight ? "#e8eaee" : "#191921"),
+                  : (isLight ? "#e8e8e8" : "#1b1b1b"),
               border: "none",
               color: novaSenha && confirmarSenha
-                ? "#08090E"
+                ? "#0E0E0E"
                 : (isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.3)"),
               fontFamily: "var(--fonte)",
               fontWeight: 400,
@@ -762,7 +762,7 @@ function PerfilPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: n.lida ? 400 : 600,
                     fontSize: 12,
-                    color: isLight ? "#1e2229" : "#FFFFFF",
+                    color: isLight ? "#212121" : "#FFFFFF",
                   }}
                 >
                   {n.titulo}
@@ -772,7 +772,7 @@ function PerfilPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 10,
-                    color: isLight ? "#7d8391" : "rgba(255,255,255,0.40)",
+                    color: isLight ? "#727272" : "rgba(255,255,255,0.40)",
                     marginTop: 3,
                     letterSpacing: "0.06em",
                   }}
@@ -815,8 +815,8 @@ function PerfilPage() {
 
 const cardStyle = (isLight: boolean): CSSProperties => ({
   background: isLight
-    ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-    : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+    : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   backdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
   WebkitBackdropFilter: isLight ? "none" : "blur(12px) saturate(130%)",
   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
@@ -840,10 +840,10 @@ const lblStyle = (isLight: boolean): CSSProperties => ({
 const inputStyle = (isLight: boolean): CSSProperties => ({
   width: "100%",
   height: 50,
-  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
   borderRadius: 12,
-  color: isLight ? "#1e2229" : "#fff",
+  color: isLight ? "#212121" : "#fff",
   fontFamily: "var(--fonte)",
   fontWeight: 400,
   fontSize: 14,
@@ -856,9 +856,9 @@ const iconBtnStyle = (isLight: boolean): CSSProperties => ({
   width: 30,
   height: 30,
   borderRadius: 8,
-  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-  color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)",
+  color: isLight ? "#505050" : "rgba(255,255,255,0.7)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -899,7 +899,7 @@ function Stat({ label, value }: { label: string; value: string }) {
           fontSize: 11,
           letterSpacing: "0.10em",
           textTransform: "uppercase",
-          color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+          color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
           marginTop: 4,
         }}
       >
@@ -937,7 +937,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "var(--fonte)",
           fontWeight: 400,
           fontSize: 12,
-          color: isLight ? "#4a5060" : "rgba(255,255,255,0.60)",
+          color: isLight ? "#505050" : "rgba(255,255,255,0.60)",
         }}
       >
         {label}
@@ -947,7 +947,7 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
           fontFamily: "var(--fonte)",
           fontWeight: 400,
           fontSize: 12,
-          color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#1e2229" : "#FFFFFF"),
+          color: highlight ? (isLight ? "#A06108" : "#F8C811") : (isLight ? "#212121" : "#FFFFFF"),
         }}
       >
         {value}
@@ -962,7 +962,7 @@ function badgeStyle(status: string, isLight: boolean): CSSProperties {
     concluida:    { bg: "rgba(37,99,235,0.10)",  bgDark: "rgba(96,165,250,0.12)", color: "#1d4ed8", colorDark: "#93c5fd" },
     em_andamento: { bg: "rgba(160,97,8,0.10)",  bgDark: "rgba(248,200,17,0.12)",  color: "#A06108", colorDark: "#F8C811" },
     reprovada:    { bg: "rgba(239,68,68,0.10)",  bgDark: "rgba(239,68,68,0.15)",  color: "#dc2626", colorDark: "#F17881" },
-    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "#191921",color: "#4a5060", colorDark: "#9CA3AF" },
+    pendente:     { bg: "rgba(0,0,0,0.06)",      bgDark: "#1b1b1b",color: "#505050", colorDark: "#9CA3AF" },
   };
   const s = map[status] ?? map.pendente;
   return {

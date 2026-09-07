@@ -207,8 +207,8 @@ export function FormularioDoBloco({
     erroInicial ?? null,
   );
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const chamadoId = bloco ? bloco.chamado_id : abertura.chamadoId;
@@ -331,7 +331,7 @@ export function FormularioDoBloco({
   };
   const entrada: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: FONT, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -344,7 +344,7 @@ export function FormularioDoBloco({
   };
   const secundario: CSSProperties = {
     height: 40, padding: "0 13px", borderRadius: 20, cursor: "pointer",
-    background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.04)",
+    background: isLight ? "#f4f4f4" : "rgba(255,255,255,0.04)",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     color: textSecondary, fontFamily: FONT, fontWeight: 600, fontSize: 12,
     display: "inline-flex", alignItems: "center", gap: 6,
@@ -637,7 +637,7 @@ export function FormularioDoBloco({
               style={{
                 padding: "6px 11px", borderRadius: 999, cursor: "pointer",
                 background: numeroOuNulo(servico) === m ? GOLD_GRAD : "transparent",
-                color: numeroOuNulo(servico) === m ? "#08090E" : textSecondary,
+                color: numeroOuNulo(servico) === m ? "#0E0E0E" : textSecondary,
                 border: numeroOuNulo(servico) === m ? "none"
                   : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                 fontFamily: FONT, fontWeight: 600, fontSize: 11,
@@ -741,7 +741,7 @@ export function FormularioDoBloco({
             disabled={emVoo || !!erroLocal || !!impossivel}
             style={{
               flex: 2, height: 46, borderRadius: 23, border: "none", background: GOLD_GRAD,
-              color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
+              color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
               cursor: emVoo || erroLocal || impossivel ? "default" : "pointer",
               opacity: emVoo || erroLocal || impossivel ? 0.6 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

@@ -46,7 +46,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     borderRadius: 999,
     boxSizing: "border-box",
     // v4: pílula sólida, sombra leve — o halo dourado saiu junto com o glow
-    background: isLight ? "#ffffff" : "#17171a",
+    background: isLight ? "#ffffff" : "#171717",
     border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.08)",
     boxShadow: isLight
       ? "0 1px 2px rgba(0,0,0,0.04), 0 8px 22px rgba(0,0,0,0.06)"
@@ -62,7 +62,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
     fontFamily: FONT,
     fontWeight: 400,
     fontSize: 14,
-    color: isLight ? "#1e2229" : "#ffffff",
+    color: isLight ? "#212121" : "#ffffff",
   };
 
   const botao: CSSProperties = {
@@ -101,7 +101,7 @@ export function CampoBusca({ valor, onMudar, autoFoco, placeholder = "Procurar a
           style={{
             ...botao,
             background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-            color: isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
+            color: isLight ? "#505050" : "rgba(255,255,255,0.75)",
           }}
         >
           <X size={17} />

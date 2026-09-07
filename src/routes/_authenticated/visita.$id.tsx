@@ -87,7 +87,7 @@ function SlideToStart({
         width: "100%",
         height: 64,
         borderRadius: 32,
-        background: "#101014",
+        background: "#141414",
         border: "1px solid rgba(248,200,17,0.22)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
@@ -603,9 +603,9 @@ function VisitaDetail() {
 
   const ACAO_SECUNDARIA: React.CSSProperties = {
     marginTop: 10, width: "100%", height: 52, borderRadius: 26,
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
     cursor: "pointer",
@@ -621,7 +621,7 @@ function VisitaDetail() {
 
 
   const GLASS: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "rgba(8,8,12,0.22)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)" : "rgba(8,8,12,0.22)",
     backdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(24px) saturate(200%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
@@ -643,8 +643,8 @@ function VisitaDetail() {
     height: 40,
     borderRadius: 12,
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    color: isLight ? "#1e2229" : "#fff",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
+    color: isLight ? "#212121" : "#fff",
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
     cursor: "pointer",
     display: "flex",
@@ -656,8 +656,8 @@ function VisitaDetail() {
     fontSize: 12,
     textDecoration: "none",
   };
-  const TXT_PRIMARY = isLight ? "#1e2229" : "#fff";
-  const TXT_SECONDARY = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const TXT_PRIMARY = isLight ? "#212121" : "#fff";
+  const TXT_SECONDARY = isLight ? "#505050" : "rgba(255,255,255,0.55)";
 
   // EARLY RETURN obrigatório (após todos os hooks) — delega às rotas filhas
   if (pathname !== `/visita/${id}`) {
@@ -668,7 +668,7 @@ function VisitaDetail() {
 
     return (
       <div style={{ padding: 24 }}>
-        <div style={{ ...GLASS, textAlign: "center", color: isLight ? "#4a5060" : "rgba(200,200,200,0.5)" }}>
+        <div style={{ ...GLASS, textAlign: "center", color: isLight ? "#505050" : "rgba(200,200,200,0.5)" }}>
           Carregando visita…
         </div>
       </div>
@@ -694,7 +694,7 @@ function VisitaDetail() {
 
 
           style={{
-            background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
+            background: isLight ? "rgba(0,0,0,0.05)" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -865,8 +865,8 @@ function VisitaDetail() {
             <div
               style={{
                 background: isLight
-                  ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-                  : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+                  : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                 border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.15)",
                 borderRadius: 16,
                 padding: 16,
@@ -917,8 +917,8 @@ function VisitaDetail() {
             <div
               style={{
                 background: isLight
-                  ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-                  : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+                  : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                 border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.15)",
                 borderRadius: 16,
                 padding: 16,
@@ -1004,7 +1004,7 @@ function VisitaDetail() {
                   width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
                   background: "linear-gradient(135deg,#FCDE48,#F8C811)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 16, color: "#08090E",
+                  fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 16, color: "#0E0E0E",
                 }}
               >
                 {initials(tecPerfil.nome ?? "?")}
@@ -1042,10 +1042,10 @@ function VisitaDetail() {
                   }}
                 >
                   {/* o popup nativo não herda a cor do <select>: sem estas duas
-                      propriedades o Chrome abre texto quase-preto sobre #0d0e14 */}
-                  <option value="" style={{ background: isLight ? "#ffffff" : "#0d0e14", color: isLight ? "#1e2229" : "#ffffff" }}>Selecione o técnico…</option>
+                      propriedades o Chrome abre texto quase-preto sobre #0e0e0e */}
+                  <option value="" style={{ background: isLight ? "#ffffff" : "#0e0e0e", color: isLight ? "#212121" : "#ffffff" }}>Selecione o técnico…</option>
                   {todosProfiles.map((p: any) => (
-                    <option key={p.id} value={p.id} style={{ background: isLight ? "#ffffff" : "#0d0e14", color: isLight ? "#1e2229" : "#ffffff" }}>
+                    <option key={p.id} value={p.id} style={{ background: isLight ? "#ffffff" : "#0e0e0e", color: isLight ? "#212121" : "#ffffff" }}>
                       {p.nome} ({p.cargo ?? "sem cargo"})
                     </option>
                   ))}
@@ -1176,7 +1176,7 @@ function VisitaDetail() {
                     style={{
                       background: ativo ? (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.10)") : (isLight ? "#ffffff" : "rgba(8,8,12,0.20)"),
                       border: ativo
-                        ? (isLight ? "1.5px solid #1e2229" : "1.5px solid #FFFFFF")
+                        ? (isLight ? "1.5px solid #212121" : "1.5px solid #FFFFFF")
                         : (isLight ? "1px solid rgba(0,0,0,0.18)" : "1px solid rgba(255,255,255,0.18)"),
                       borderRadius: 999,
                       padding: "6px 11px",
@@ -1184,8 +1184,8 @@ function VisitaDetail() {
                       fontSize: 11,
                       fontWeight: 400,
                       color: ativo
-                        ? (isLight ? "#1e2229" : "#FFFFFF")
-                        : (isLight ? "#4a5060" : "rgba(200,200,200,0.65)"),
+                        ? (isLight ? "#212121" : "#FFFFFF")
+                        : (isLight ? "#505050" : "rgba(200,200,200,0.65)"),
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
@@ -1210,7 +1210,7 @@ function VisitaDetail() {
               fontFamily: "var(--fonte)",
               fontWeight: 400,
               fontSize: 13,
-              color: isLight ? "#1f2430" : "rgba(255,255,255,0.72)",
+              color: isLight ? "#222222" : "rgba(255,255,255,0.72)",
               whiteSpace: "pre-wrap",
               margin: 0,
               lineHeight: 1.6,
@@ -1495,7 +1495,7 @@ function VisitaDetail() {
                     background: isLight ? "rgba(160,97,8,0.07)" : "rgba(248,200,17,0.07)",
                     border: isLight ? "1px solid rgba(160,97,8,0.20)" : "1px solid rgba(248,200,17,0.20)",
                     fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12,
-                    color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", lineHeight: 1.5,
+                    color: isLight ? "#505050" : "rgba(255,255,255,0.65)", lineHeight: 1.5,
                   }}>
                     A visita está aprovada internamente. Enviar a proposta encerra
                     esta atividade — o que o cliente decide é combinado fora do app.
@@ -1518,7 +1518,7 @@ function VisitaDetail() {
               {propostaEnviada && (!resultadoProposta || resultadoProposta === "aguardando") && (
                 <div style={{
                   marginTop: 12, fontFamily: "var(--fonte)", fontWeight: 400,
-                  fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                  fontSize: 12, color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
                 }}>
                   Proposta enviada em{" "}
                   {new Date(visita.proposta_enviada_em as string).toLocaleDateString("pt-BR")}

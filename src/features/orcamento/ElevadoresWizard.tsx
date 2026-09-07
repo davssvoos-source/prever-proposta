@@ -77,7 +77,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
   const totalUnid = itens.reduce((s, i) => s + i.qtd, 0);
 
   const cardStyle: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "linear-gradient(135deg,#fff 0%,#f5f5f5 100%)" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(252,222,72,0.14)",
     borderRadius: 16, padding: 16,
   };
@@ -88,9 +88,9 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
   const circle = (): React.CSSProperties => ({
     width: 44, height: 44, borderRadius: "50%",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.18)",
-    background: isLight ? "#fff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#fff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
   });
   const circlePrimary = (): React.CSSProperties => ({
     width: 44, height: 44, borderRadius: "50%", border: "none",
@@ -104,7 +104,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <ShieldCheck size={18} color={goldText} />
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: isLight ? "#1e2229" : "#fff" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", color: isLight ? "#212121" : "#fff" }}>
             RESUMO
           </span>
         </div>
@@ -129,7 +129,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             gap: 8,
           }} title={it.regra}>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: isLight ? "#1e2229" : "#fff" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: isLight ? "#212121" : "#fff" }}>
                 {meta.nome}
               </div>
               <div style={{ fontSize: 10, color: isLight ? "#6b7280" : "rgba(255,255,255,0.5)" }}>
@@ -150,7 +150,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
         display: "flex", justifyContent: "space-between",
       }}>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldText }}>ITENS</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>{totalUnid} un.</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#212121" : "#fff" }}>{totalUnid} un.</span>
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 </button>
                 <div style={{
                   minWidth: 84, textAlign: "center", fontSize: 42, fontWeight: 700,
-                  color: isLight ? "#1e2229" : "#fff", fontFamily: "var(--fonte)",
+                  color: isLight ? "#212121" : "#fff", fontFamily: "var(--fonte)",
                 }}>{qtdKits}</div>
                 <button style={circlePrimary()} onClick={() => setQtdKits((n) => Math.min(50, n + 1))} aria-label="+">
                   <Plus size={20} />
@@ -190,7 +190,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
               style={{
                 width: "100%", padding: "14px 16px", background: "transparent", border: "none",
                 display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer",
-                color: isLight ? "#1e2229" : "#fff",
+                color: isLight ? "#212121" : "#fff",
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.12em" }}>
@@ -209,7 +209,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                     gap: 8,
                   }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#212121" : "#fff" }}>
                         {k.nome}
                       </div>
                       <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>
@@ -233,7 +233,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
     return (
       <div style={cardStyle}>
         <div style={secLabel}>REVISÃO DO BLOCO</div>
-        <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.65)", marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: isLight ? "#505050" : "rgba(255,255,255,0.65)", marginBottom: 12 }}>
           Ajuste as quantidades item a item para casos excepcionais. O padrão é <b>{qtdKits}× o kit</b>.
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -247,7 +247,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 gap: 12,
               }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#212121" : "#fff" }}>
                     {meta.nome}
                   </div>
                   <div style={{ fontSize: 11, color: isLight ? "#6b7280" : "rgba(255,255,255,0.55)" }}>
@@ -264,7 +264,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                       border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.2)",
                       background: "transparent", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: isLight ? "#1e2229" : "#fff",
+                      color: isLight ? "#212121" : "#fff",
                     }}
                     aria-label="-"
                   >
@@ -277,8 +277,8 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                     style={{
                       width: 50, textAlign: "center", padding: "4px 6px",
                       border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 8, background: isLight ? "#fff" : "#16161d",
-                      color: isLight ? "#1e2229" : "#fff", fontWeight: 700, fontSize: 13,
+                      borderRadius: 8, background: isLight ? "#fff" : "#1b1b1b",
+                      color: isLight ? "#212121" : "#fff", fontWeight: 700, fontSize: 13,
                     }}
                   />
                   <button
@@ -305,7 +305,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
           display: "flex", justifyContent: "space-between",
         }}>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: goldText }}>TOTAL DE ITENS</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#1e2229" : "#fff" }}>{subTotal} un.</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? "#212121" : "#fff" }}>{subTotal} un.</span>
         </div>
       </div>
     );
@@ -322,16 +322,16 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
   const podeConcluir = qtdKits >= 1 && itens.some((i) => i.qtd > 0);
 
   return (
-    <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16, color: isLight ? "#1e2229" : "#fff" }}>
+    <div style={{ padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16, color: isLight ? "#212121" : "#fff" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={voltar}
           style={{
-            background: isLight ? "#fff" : "#191921",
+            background: isLight ? "#fff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12, width: 40, height: 40,
             display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-            color: isLight ? "#1e2229" : "#fff",
+            color: isLight ? "#212121" : "#fff",
           }}>
           <ArrowLeft size={18} />
         </button>
@@ -370,16 +370,16 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                 }}>
                 <div style={{
                   width: 18, height: 18, borderRadius: "50%",
-                  background: cur || done ? gold : (isLight ? "#e5e7eb" : "#191921"),
+                  background: cur || done ? gold : (isLight ? "#e7e7e7" : "#1b1b1b"),
                   // sobre o círculo dourado o texto é o quase-preto da marca —
                   // branco sobre #F59E0B dá ~2:1 nos dois temas
-                  color: cur || done ? "#08090E" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
+                  color: cur || done ? "#0E0E0E" : (isLight ? "#6b7280" : "rgba(255,255,255,0.4)"),
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 10, fontWeight: 700,
                 }}>{done ? <Check size={10} /> : i + 1}</div>
                 <span style={{
                   fontSize: 10, fontWeight: 700,
-                  color: cur ? (isLight ? "#1e2229" : "#fff") : (isLight ? "#6b7280" : "rgba(255,255,255,0.5)"),
+                  color: cur ? (isLight ? "#212121" : "#fff") : (isLight ? "#6b7280" : "rgba(255,255,255,0.5)"),
                 }}>{STEP_TITLE[s]}</span>
               </div>
             );
@@ -396,7 +396,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             flex: 1, padding: "14px 0", borderRadius: 999,
             background: "transparent",
             border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.15)",
-            color: isLight ? "#1e2229" : "#fff", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
+            color: isLight ? "#212121" : "#fff", fontWeight: 700, fontSize: 12, letterSpacing: "0.14em", cursor: "pointer",
           }}>
           VOLTAR
         </button>
@@ -434,12 +434,12 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 40 }} />
           <div style={{
             position: "fixed", right: 0, top: 0, bottom: 0, width: "min(360px, 92vw)",
-            background: isLight ? "#f5f6f8" : "#1e2229", zIndex: 50,
+            background: isLight ? "#f5f5f5" : "#212121", zIndex: 50,
             padding: 16, overflowY: "auto",
             boxShadow: "-8px 0 32px rgba(0,0,0,0.35)",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", color: isLight ? "#1e2229" : "#fff" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", color: isLight ? "#212121" : "#fff" }}>
                 RESUMO DO ORÇAMENTO
               </span>
               <button onClick={() => setResumoOpen(false)}
@@ -447,7 +447,7 @@ export function ElevadoresWizard({ isLight, onVoltar, onConcluir, salvando = fal
                   width: 32, height: 32, borderRadius: "50%",
                   border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.2)",
                   background: "transparent", cursor: "pointer",
-                  color: isLight ? "#1e2229" : "#fff",
+                  color: isLight ? "#212121" : "#fff",
                 }}>×</button>
             </div>
             {Resumo}

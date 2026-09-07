@@ -33,7 +33,7 @@ export function AssinaturaCanvas({ onChange, altura = 170 }: AssinaturaCanvasPro
     ctx.scale(dpr, dpr);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, largura, altura);
-    ctx.strokeStyle = "#0a0b0e";
+    ctx.strokeStyle = "#0b0b0b";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -82,7 +82,7 @@ export function AssinaturaCanvas({ onChange, altura = 170 }: AssinaturaCanvasPro
     if (!canvas || !ctx) return;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.clientWidth, altura);
-    ctx.strokeStyle = "#0a0b0e";
+    ctx.strokeStyle = "#0b0b0b";
     temTraco.current = false;
     setVazio(true);
     onChange(null);
@@ -126,9 +126,9 @@ export function AssinaturaCanvas({ onChange, altura = 170 }: AssinaturaCanvasPro
         onClick={limpar}
         style={{
           marginTop: 8, height: 34, padding: "0 12px", borderRadius: 10,
-          background: isLight ? "#ffffff" : "#191921",
+          background: isLight ? "#ffffff" : "#1b1b1b",
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-          color: isLight ? "#0a0b0e" : "#fff", cursor: "pointer",
+          color: isLight ? "#0b0b0b" : "#fff", cursor: "pointer",
           display: "flex", alignItems: "center", gap: 6,
           fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
         }}

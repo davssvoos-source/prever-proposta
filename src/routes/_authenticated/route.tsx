@@ -80,10 +80,10 @@ function AuthenticatedLayout() {
         <div style={{ minHeight: "100vh", position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ maxWidth: 380 }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
-            <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 22, color: isLight ? "#1e2229" : "#fff", marginBottom: 12 }}>
+            <div style={{ fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 22, color: isLight ? "#212121" : "#fff", marginBottom: 12 }}>
               Aguardando aprovação
             </div>
-            <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+            <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14, color: isLight ? "#505050" : "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
               Sua solicitação de acesso foi enviada. Um administrador irá analisá-la em breve.
             </div>
             <button
@@ -96,8 +96,8 @@ function AuthenticatedLayout() {
                 padding: "10px 24px",
                 borderRadius: 20,
                 border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
-                background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                color: isLight ? "#4a5060" : "rgba(255,255,255,0.7)",
+                background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
+                color: isLight ? "#505050" : "rgba(255,255,255,0.7)",
                 fontSize: 14,
                 cursor: "pointer",
               }}
@@ -145,7 +145,7 @@ function AuthenticatedLayout() {
             justifyContent: "space-between",
             transition: "background 0.3s ease, backdrop-filter 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease",
             background: scrolled
-              ? (isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)")
+              ? (isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)")
               : "transparent",
             backdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
             WebkitBackdropFilter: scrolled ? "blur(20px) saturate(160%)" : "none",
@@ -185,7 +185,7 @@ function AuthenticatedLayout() {
                   fontFamily: "var(--fonte)",
                   fontWeight: 600,
                   fontSize: 13,
-                  color: "#08090E",
+                  color: "#0E0E0E",
                   flexShrink: 0,
                   border: "2px solid rgba(248,200,17,0.3)",
                 }}
@@ -199,7 +199,7 @@ function AuthenticatedLayout() {
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 13,
-                  color: isLight ? "#1e2229" : "#FFFFFF",
+                  color: isLight ? "#212121" : "#FFFFFF",
                   textShadow: scrolled || isLight ? "none" : "0 1px 6px rgba(0,0,0,0.45)",
                   lineHeight: 1.2,
                 }}

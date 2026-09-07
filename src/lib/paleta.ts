@@ -58,7 +58,7 @@ export const ERRO: ParTema = { dark: MAHOGANY[400], light: MAHOGANY[700] };
 export const GRAD_PRIMARIA = `linear-gradient(135deg, ${SUPERNOVA[300]}, ${SUPERNOVA[400]}, ${SUPERNOVA[500]})`;
 
 /** Texto sobre o degradê primário: sempre o quase-preto da marca. */
-export const SOBRE_PRIMARIA = "#08090E";
+export const SOBRE_PRIMARIA = "#0E0E0E";
 
 // ── PRISMA — a paleta do degradê (v6 — 2026-08-20) ─────────────────────────
 // O degradê da casa tem composição fixa, definida pelo Davi:
@@ -115,16 +115,16 @@ export const PRISMA = {
    * aqui para não seguir reescrito igual dezessete vezes.
    */
   verde:      cor("#2DD2A5", "#047862", "45,210,165"),
-  // R79: o `light` escureceu de #657585 para #5a6172. O neutro quase nunca
+  // R79: o `light` escureceu de #657585 para #616161. O neutro quase nunca
   // aparece sobre branco puro — ele é TEXTO DE CHIP sobre o próprio véu
   // (`bg`, 10%), e ali #657585 dava 4.37:1, abaixo do mínimo de texto. Com
-  // #5a6172 sobe para 5.7:1, e o valor é o mesmo do `--muted-foreground` do
+  // #616161 sobe para 5.7:1, e o valor é o mesmo do `--muted-foreground` do
   // tema claro, então chip e texto neutro do sistema falam o mesmo cinza.
   // Conserta de uma vez os cinco que usam este par: cliente inativo,
   // proposta em rascunho, chamado cancelado, tipo operacional e prioridade
   // baixa. Como preenchimento de barra ("sem técnico"/"sem cliente") o tom
   // mais escuro também passa, com folga.
-  neutro:     cor("#9AA6B2", "#5a6172", "154,166,178", 0.10, 0.22),
+  neutro:     cor("#9AA6B2", "#616161", "154,166,178", 0.10, 0.22),
 } as const;
 
 /**

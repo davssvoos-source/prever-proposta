@@ -93,14 +93,14 @@ function ComplementosPage() {
 
   const CARD: React.CSSProperties = isLight
     ? {
-        background: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+        background: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
         border: "1px solid rgba(0,0,0,0.07)",
         borderRadius: 18,
         padding: "18px 16px",
         boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
       }
     : {
-        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+        background: "linear-gradient(160deg, #161616 0%, #101010 100%)",
         border: "1px solid rgba(248,200,17,0.10)",
         borderRadius: 18,
         padding: "18px 16px",
@@ -127,8 +127,8 @@ function ComplementosPage() {
       : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: selected
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-      : isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-    color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
+      : isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
+    color: selected ? "#0E0E0E" : isLight ? "#212121" : "#fff",
     boxShadow: selected ? "0 6px 20px rgba(248,200,17,0.35)" : undefined,
     fontFamily: "var(--fonte)",
     fontWeight: 600,
@@ -162,7 +162,7 @@ function ComplementosPage() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento/categorias", params: { id } })}
           style={{
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -171,7 +171,7 @@ function ComplementosPage() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            color: isLight ? "#1e2229" : "#fff",
+            color: isLight ? "#212121" : "#fff",
           }}
         >
           <ArrowLeft size={18} />
@@ -182,7 +182,7 @@ function ComplementosPage() {
               fontFamily: "var(--fonte)",
               fontWeight: 600,
               fontSize: 18,
-              color: isLight ? "#1e2229" : "#fff",
+              color: isLight ? "#212121" : "#fff",
               letterSpacing: "0.02em",
             }}
           >
@@ -242,7 +242,7 @@ function ComplementosPage() {
             borderRadius: 28,
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
             border: "none",
-            color: "#08090E",
+            color: "#0E0E0E",
             fontFamily: "var(--fonte)",
             fontWeight: 600,
             fontSize: 13,

@@ -93,8 +93,8 @@ function ClienteDetalhePage() {
   const [fotoPronta, setFotoPronta] = useState(false);
   const fotoRef = useRef<HTMLInputElement>(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // card() de lib/ui — a superfície da casa; a cópia v3 que morava aqui
@@ -122,7 +122,7 @@ function ClienteDetalhePage() {
   };
   const botaoLeve: CSSProperties = {
     height: 34, padding: "0 12px", borderRadius: 10,
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, cursor: "pointer", flexShrink: 0,
     fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
@@ -186,7 +186,7 @@ function ClienteDetalhePage() {
           onClick={voltar}
           style={{
             alignSelf: "flex-start", height: 44, padding: "0 18px", borderRadius: 22, border: "none",
-            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
+            background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E",
             fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12, cursor: "pointer",
           }}
         >
@@ -246,7 +246,7 @@ function ClienteDetalhePage() {
           onClick={editando ? () => setEditando(false) : voltar}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -321,7 +321,7 @@ function ClienteDetalhePage() {
                           style={{
                             display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left",
                             padding: "10px 12px", borderRadius: 12, cursor: "pointer",
-                            background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                            background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                             border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                           }}
                         >

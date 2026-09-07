@@ -239,8 +239,8 @@ function Alternador({ estilos: s, rotulo, valor, aoMudar }: {
             style={{
               flex: 1, height: 40, borderRadius: 10, cursor: "pointer",
               border: valor === o.v ? "none" : s.isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-              background: valor === o.v ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : s.isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-              color: valor === o.v ? "#08090E" : s.textPrimary,
+              background: valor === o.v ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : s.isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+              color: valor === o.v ? "#0E0E0E" : s.textPrimary,
               fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
             }}
           >

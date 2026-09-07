@@ -102,7 +102,7 @@ function BotaoMapa({ Icon, rotulo, isLight, desabilitado, aoClicar }: {
         width: 44, height: 44, border: "none", background: "transparent",
         color: desabilitado
           ? (isLight ? "rgba(0,0,0,0.22)" : "rgba(255,255,255,0.22)")
-          : (isLight ? "#1e2229" : "#ffffff"),
+          : (isLight ? "#212121" : "#ffffff"),
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: desabilitado ? "default" : "pointer",
       }}
@@ -371,7 +371,7 @@ export function MapaClientes({ clientes }: Props) {
     && Math.abs(transform.x - VISTA_INICIAL.x) < 1e-6
     && Math.abs(transform.y - VISTA_INICIAL.y) < 1e-6;
 
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   // Três buckets, não dois. O contador antigo somava num só tudo que não
@@ -638,7 +638,7 @@ export function MapaClientes({ clientes }: Props) {
                 border: `1px solid ${alvo.cor}`,
                 boxShadow: `0 4px 14px ${alvo.cor}40`,
                 fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
-                color: isLight ? "#1e2229" : "#ffffff",
+                color: isLight ? "#212121" : "#ffffff",
                 whiteSpace: "nowrap",
                 pointerEvents: "none",
                 zIndex: 3,
@@ -693,7 +693,7 @@ export function MapaClientes({ clientes }: Props) {
 
           <span style={{
             position: "absolute", left: 10, bottom: 10, zIndex: 4,
-            fontFamily: FONT, fontWeight: 500, fontSize: 10.5,
+            fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
             color: isLight ? "rgba(0,0,0,0.38)" : "rgba(255,255,255,0.38)",
             pointerEvents: "none", userSelect: "none",
           }}>
@@ -707,7 +707,7 @@ export function MapaClientes({ clientes }: Props) {
           {foraDaCidade > 0 && (
             <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
               Quantidade de clientes fora de São Paulo:{" "}
-              <strong style={{ fontWeight: 700, color: isLight ? "#1e2229" : "#ffffff" }}>
+              <strong style={{ fontWeight: 700, color: isLight ? "#212121" : "#ffffff" }}>
                 {foraDaCidade}
               </strong>
             </span>

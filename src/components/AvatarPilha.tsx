@@ -39,7 +39,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22, anel = true }
   const visiveis = ids.slice(0, max);
   const resto = ids.length - visiveis.length;
   // a borda na cor da superfície é o que faz a sobreposição ler como pilha
-  const corDoAnel = isLight ? "#ffffff" : "#1a1a20";
+  const corDoAnel = isLight ? "#ffffff" : "#1b1b1b";
 
   const sobreposicao = anel ? -7 : -4;
   const circulo: CSSProperties = {
@@ -84,7 +84,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22, anel = true }
               // precisam de uma separação — e a separação correta de uma pilha
               // de avatares é um anel da cor do fundo, que não acrescenta luz
               // nenhuma à tela.
-              boxShadow: anel ? `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}` : undefined,
+              boxShadow: anel ? `0 0 0 2px ${isLight ? "#ffffff" : "#141414"}` : undefined,
               fontFamily: FONT,
               fontWeight: 700,
               fontSize: Math.round(tamanho * 0.38),
@@ -100,7 +100,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22, anel = true }
             ...circulo,
             marginLeft: sobreposicao,
             background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)",
-            color: isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
+            color: isLight ? "#505050" : "rgba(255,255,255,0.75)",
             fontFamily: FONT,
             fontWeight: 700,
             fontSize: Math.round(tamanho * 0.36),

@@ -44,7 +44,7 @@ Margem inventada por painel é o que desalinha telas irmãs.
 
 ## 3. Superfícies
 
-- **Painel** = `card(isLight)` de `lib/ui` — `#ffffff` / `#141416`, borda
+- **Painel** = `card(isLight)` de `lib/ui` — `#ffffff` / `#141414`, borda
   `rgba(0,0,0,0.05)` / `rgba(255,255,255,0.06)`, raio 18, sombra em duas
   camadas (`0 1px 2px` + `0 10px 30px`). Nunca um gradiente próprio da tela.
 - **Popover/menu** = `vidro(isLight)` (translúcido + `--vidro-blur`).

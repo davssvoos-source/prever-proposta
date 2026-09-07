@@ -58,8 +58,8 @@ export function SugestoesDeMencao({ pessoas, marcada, aoEscolher, aoMarcar }: {
   aoMarcar: (i: number) => void;
 }) {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   if (pessoas.length === 0) {
     return (
       <div className="mencao-lista" style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, padding: "8px 10px" }}>
@@ -241,8 +241,8 @@ export function EditorDeDescricao({
   const pendente = useRef<{ i: number; cursor: number; fim?: number } | null>(null);
   const men = useMencao(pessoas);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.62)";
   const campoBg = isLight ? "#ffffff" : "rgba(255,255,255,0.055)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.14)" : "1px solid rgba(255,255,255,0.14)";
 
@@ -376,7 +376,7 @@ export function EditorDeDescricao({
   }
 
   const estiloTexto: CSSProperties = {
-    fontFamily: FONT, fontSize: 14, fontWeight: 500, color: textPrimary, lineHeight: 1.55,
+    fontFamily: FONT, fontSize: 14, fontWeight: 400, color: textPrimary, lineHeight: 1.55,
   };
 
   return (

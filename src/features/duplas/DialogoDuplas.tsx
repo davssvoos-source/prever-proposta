@@ -59,8 +59,8 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
   const [editandoEscala, setEditandoEscala] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState<string[]>([]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const nomePorId = useMemo(
@@ -148,7 +148,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
   };
   const entrada: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: FONT, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -352,7 +352,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
                                 height: 32, padding: "0 11px", borderRadius: 16, cursor: "pointer",
                                 fontFamily: FONT, fontSize: 12, fontWeight: dentro ? 700 : 400,
                                 background: dentro ? GOLD_GRAD : "transparent",
-                                color: dentro ? "#08090E" : textSecondary,
+                                color: dentro ? "#0E0E0E" : textSecondary,
                                 border: dentro ? "none"
                                   : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                               }}
@@ -370,7 +370,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
                         disabled={salvarEscala.isPending}
                         style={{
                           height: 40, borderRadius: 20, border: "none", background: GOLD_GRAD,
-                          color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 12.5,
+                          color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 12.5,
                           cursor: salvarEscala.isPending ? "default" : "pointer",
                           opacity: salvarEscala.isPending ? 0.6 : 1,
                         }}
@@ -425,7 +425,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
                 onClick={limparCadastro}
                 style={{
                   flex: 1, height: 44, borderRadius: 22, cursor: "pointer",
-                  background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.04)",
+                  background: isLight ? "#f4f4f4" : "rgba(255,255,255,0.04)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: textSecondary, fontFamily: FONT, fontSize: 13,
                 }}
@@ -438,7 +438,7 @@ export function DialogoDuplas({ aberto, aoFechar }: Props) {
               disabled={salvar.isPending}
               style={{
                 flex: 2, height: 44, borderRadius: 22, border: "none", background: GOLD_GRAD,
-                color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
+                color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                 cursor: salvar.isPending ? "default" : "pointer", opacity: salvar.isPending ? 0.6 : 1,
               }}

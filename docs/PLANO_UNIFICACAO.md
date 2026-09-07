@@ -10555,3 +10555,52 @@ toast: a pessoa que rola até o botão no celular não vê o resumo inteiro.
 
 **Números.** Verificador: 2.994 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U108 — o cinza neutro no sistema inteiro e a tipografia estratégica (R186 aplicada, R195)
+
+O último pacote da revisão manual de 04/09/2026 — dois pedidos transversais.
+
+**O cinza (R186).** A escala `CINZA` nasceu na U104 e o Configurador rápido e o
+Calendário já pintavam com ela; faltava o resto. A U108 é uma **varredura por
+tabela**: 29 hexes azulados → cinzas puros, em cem arquivos (código,
+`styles.css`, verificador, design system, documentos e skills), preservando
+caixa. Superfícies: 08090e → `#0e0e0e` (página), 0f111a/101016/12141c/141416 →
+`#141414` (superfície), 161926/191921/16161d → `#1b1b1b` (elevada), 1f2430 →
+`#222222` (campo), o degradê de card 14141b/0b0b10 → `#161616`/`#101010`;
+claras: e9ebef → `#e9e9e9`, f5f6f8 → `#f5f5f5`, f0f1f4 → `#f0f0f0`, e8eaee →
+`#e8e8e8`, e2e5ea → `#e2e2e2`, eef0f3/eef0f4 → `#eeeeee`. **O texto neutro foi
+junto** — o Davi disse "fundo", mas texto azulado sobre fundo cinza puro é o
+azul que sobra, e a troca é sem custo se a luminância se mantém: 1e2229 →
+`#212121`, 4a5060 → `#505050`, 7d8391 → `#727272`, 5a6172 → `#616161`, d1d5db →
+`#d4d4d4` — os contrastes da R154 (16:1, 13:1, 7:1, 3,9:1) continuam, medidos
+por asserção. Uma segunda passada, guiada pela asserção nova, pegou mais 21
+cinzas frios menores (06070b, 0b0d14, 11131d, 1a1a22, 22222c, 34323d, e4e7ec,
+f3f4f6, f9fafb…) e os levou a cinzas de mesma luminância; as tintas com hue de
+propósito (o verde de sucesso, o rosa de erro, o dourado escuro) ficaram.
+Duas asserções travam a volta: nenhum dos 50 em `src/`, e nenhum cinza que
+puxe para o azul (canal azul à frente dos outros em até 16) — é a que pega um
+azulado NOVO. O diário (este arquivo) ficou fora da varredura de propósito: as
+entradas antigas citam os valores antigos como história, e reescrevê-las
+mentiria sobre o que foi feito quando. As três asserções da U104/U105 que
+cobram "os hexes antigos não voltam" foram devolvidas aos valores antigos —
+a varredura as tinha reescrito para os novos, o que inverteria o sentido.
+
+**A tipografia (R195).** O DS v6 dizia "não existe 500 nem 800" e eles tinham
+voltado (14 e 6 usos). A régua agora está escrita e cobrada: título de página
+22/**700** (eram 600 — PainelBase, Início, Clientes, Comercial, Administrativo,
+o título do calendário e `title()` de ui.ts); valor digitado em campo **400**
+(CampoComBusca, EditorDeDescricao, PainelChamado, Nova Visita — era 500);
+rótulo pequeno ≤ 10,5px **600** (PainelBase, painéis, grade da programação,
+mapa de clientes — era 500); 800 → 700 (sobreaviso, plantão). O verificador
+cobra o conjunto exato {100, 400, 600, 700} e que nenhum 22px seja 600.
+
+**O que a verificação pegou.** Duas asserções antigas fixavam os pesos velhos
+(o 14/500 do painel, o 22/600 de Clientes) — reapontadas. Tudo o mais que
+fixava hex passou pela mesma tabela e continuou verde.
+
+**Regra 7.** R195 no `PRODUTO.md` (e a R186 reescrita como aplicada);
+`DESIGN_SYSTEM.md` §2.2 (v12), §3 e §12 (v12); a skill de designer e o manual
+de interface; `ESTADO_ATUAL.md`; a memória do tema claro.
+
+**Números.** Verificador: 3.006 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

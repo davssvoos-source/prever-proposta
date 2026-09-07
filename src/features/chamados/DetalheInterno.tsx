@@ -139,8 +139,8 @@ export function DetalheInterno({ id }: { id: string }) {
   }, [clientes, locais, chamado?.cliente_id]);
   const nomeDe = (pid: string) => pessoasPorId[pid]?.nome ?? "Alguém";
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // card() de lib/ui: a superfície da casa nos dois temas — aqui havia uma
@@ -162,7 +162,7 @@ export function DetalheInterno({ id }: { id: string }) {
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -381,7 +381,7 @@ export function DetalheInterno({ id }: { id: string }) {
           onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -471,7 +471,7 @@ export function DetalheInterno({ id }: { id: string }) {
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 11px",
                       borderRadius: 10, cursor: enviandoArquivo ? "wait" : "pointer",
-                      background: isLight ? "#ffffff" : "#191921",
+                      background: isLight ? "#ffffff" : "#1b1b1b",
                       border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                       color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
                     }}
@@ -508,7 +508,7 @@ export function DetalheInterno({ id }: { id: string }) {
                           style={{
                             width: 92, height: 92, borderRadius: 12, display: "flex", flexDirection: "column",
                             alignItems: "center", justifyContent: "center", gap: 6, textDecoration: "none",
-                            background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+                            background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
                             border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
                             color: textSecondary, fontFamily: "var(--fonte)", fontSize: 10,
                           }}
@@ -525,7 +525,7 @@ export function DetalheInterno({ id }: { id: string }) {
                           aria-label="Remover arquivo"
                           style={{
                             position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                            background: "#1e2229", color: "#fff", border: "none", cursor: "pointer",
+                            background: "#212121", color: "#fff", border: "none", cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
                         >
@@ -606,7 +606,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 style={{
                   height: 44, borderRadius: 12, border: "none",
                   background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                  color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: comentario.trim() ? "pointer" : "default", opacity: comentario.trim() ? 1 : 0.5,
                 }}
               >
@@ -905,7 +905,7 @@ export function DetalheInterno({ id }: { id: string }) {
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "10px 12px", borderRadius: 12,
-                  background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                  background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                   border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                 }}
               >
@@ -950,7 +950,7 @@ export function DetalheInterno({ id }: { id: string }) {
                   style={{
                     height: 44, borderRadius: 12, border: "none",
                     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                    color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: novoEquip.trim() ? "pointer" : "default", opacity: novoEquip.trim() ? 1 : 0.5,
                   }}
                 >

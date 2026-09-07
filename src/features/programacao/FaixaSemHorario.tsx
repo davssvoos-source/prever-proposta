@@ -76,8 +76,8 @@ export function FaixaSemHorario({
 }: PropsFaixa) {
   if (todos.length === 0) return null;
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const azul = isLight ? PRISMA.azul.light : PRISMA.azul.dark;
   const total = comHorario + todos.length;
   const fora = todos.filter((c) => !doDia.some((d) => d.id === c.id));
@@ -231,7 +231,7 @@ export function RetornosPendentes({ lista, isLight, onDarHorario, onAbrirChamado
           Retornos pendentes ({lista.length})
         </span>
       </div>
-      <span style={{ fontFamily: FONT, fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+      <span style={{ fontFamily: FONT, fontSize: 12, color: isLight ? "#505050" : "rgba(255,255,255,0.55)" }}>
         A visita aconteceu, o atendimento continua aberto e não há nada marcado à frente.
       </span>
       {ordenarPorPrazo(lista).map((c) => (
@@ -251,8 +251,8 @@ function CartaoDaFila({ c, isLight, mostrarData, acao, onAcao, onAbrir }: {
   c: ChamadoDaFila; isLight: boolean; mostrarData: boolean;
   acao: string; onAcao: () => void; onAbrir: () => void;
 }) {
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const atrasado = situacaoPrazo(c.prazo_limite ?? null, c.status) === "estourado";
   // SÓ A DATA, nunca a hora: 12:00 sentinela e 12:00 de verdade são
   // indistinguíveis por valor na base (é a razão de a faixa existir).
@@ -261,7 +261,7 @@ function CartaoDaFila({ c, isLight, mostrarData, acao, onAcao, onAbrir }: {
   return (
     <div style={{
       padding: "10px 12px", borderRadius: 12,
-      background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+      background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
       border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
       display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
     }}>

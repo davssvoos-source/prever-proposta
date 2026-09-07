@@ -129,8 +129,8 @@ export function MenuFiltro({
     setAberto((a) => !a);
   }
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const ativo = selecionados.length > 0;
 
   const resumo = (() => {
@@ -149,7 +149,7 @@ export function MenuFiltro({
     flexShrink: 0,
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT,
     fontWeight: 600,
     fontSize: 12.5,
@@ -164,8 +164,8 @@ export function MenuFiltro({
     width: 42, height: 42, borderRadius: 12, flexShrink: 0,
     display: "flex", alignItems: "center", justifyContent: "center",
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "#191921",
-    color: ativo ? "#08090E" : textPrimary,
+    background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "#1b1b1b",
+    color: ativo ? "#0E0E0E" : textPrimary,
     cursor: "pointer",
   };
 
@@ -272,7 +272,7 @@ export function MenuFiltro({
                     ? "none"
                     : isLight ? "1.5px solid rgba(0,0,0,0.25)" : "1.5px solid rgba(255,255,255,0.28)",
                 }}>
-                  {marcada && <Check size={12} color={isLight ? "#ffffff" : "#08090E"} strokeWidth={3} />}
+                  {marcada && <Check size={12} color={isLight ? "#ffffff" : "#0E0E0E"} strokeWidth={3} />}
                 </span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{

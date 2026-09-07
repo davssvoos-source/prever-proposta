@@ -74,8 +74,8 @@ export function SideNav() {
     (i) => !i.tela || podeVer(i.tela) !== false,
   );
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
 
   const largura = recolhida ? LARGURA_RAIL_RECOLHIDA : LARGURA_RAIL;
 
@@ -148,7 +148,7 @@ export function SideNav() {
           height: 26,
           borderRadius: "50%",
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-          background: isLight ? "#ffffff" : "#1a1a22",
+          background: isLight ? "#ffffff" : "#1b1b1b",
           color: textSecondary,
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer",
@@ -267,7 +267,7 @@ export function SideNav() {
           padding: recolhida ? "8px" : "10px 10px",
           borderRadius: 14,
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
-          background: isLight ? "#f7f7f5" : "rgba(255,255,255,0.03)",
+          background: isLight ? "#f7f7f7" : "rgba(255,255,255,0.03)",
           cursor: "pointer",
           width: "100%",
           textAlign: "left",

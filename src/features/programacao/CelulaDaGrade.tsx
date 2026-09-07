@@ -236,7 +236,7 @@ export function CartaoDoBloco({
           </span>
           <span style={{
             display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap",
-            fontFamily: FONT, fontWeight: 500, fontSize: eixo ? 9 : 10.5, opacity: 0.9,
+            fontFamily: FONT, fontWeight: 600, fontSize: eixo ? 9 : 10.5, opacity: 0.9,
           }}>
             {cumprido && <Check size={eixo ? 9 : 11} />}
             {horario}
@@ -335,7 +335,7 @@ export function CelulaDoDia({
   onAbrir, onVazio, arrastavel, aoComecarArrasto, aoTerminarArrasto,
   aoPassarPorCima, aoSairDeCima, aoSoltar,
 }: PropsCelula) {
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const verde = isLight ? "#047862" : "#2DD2A5";
   const escala = ALTURA_EIXO / (janela.ate - janela.de);
 

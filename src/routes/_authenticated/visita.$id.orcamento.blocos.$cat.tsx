@@ -132,14 +132,14 @@ interface WizardState {
 
 // ─── Light palette ───────────────────────────────────────────────────────────
 const L = {
-  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
   cardSolid: "#ffffff",
   border: "1px solid rgba(0,0,0,0.07)",
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#1e2229",
-  textSub: "#4a5060",
+  text: "#212121",
+  textSub: "#505050",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
   goldBorder: "1px solid rgba(160,97,8,0.22)",
@@ -281,11 +281,11 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
 
           const goldSolid = "#F59E0B";
           const goldText = isLight ? "#A06108" : "#F8C811";
-          const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
+          const futureCircleBg = isLight ? "#f0f0f0" : "#1b1b1b";
           const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
-          const futureText = isLight ? "#7d8391" : "rgba(200,200,200,0.4)";
+          const futureText = isLight ? "#727272" : "rgba(200,200,200,0.4)";
           const completedLabel = goldText;
-          const currentLabel = isLight ? "#1e2229" : "#fff";
+          const currentLabel = isLight ? "#212121" : "#fff";
           const lineColor = isCompleted
             ? (isLight ? "rgba(160,97,8,0.4)" : "rgba(248,200,17,0.4)")
             : (isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)");
@@ -307,7 +307,7 @@ function WizardStepIndicator({ steps, currentStep, isLight }: StepIndicatorProps
                     fontWeight: 700,
                     // quase-preto sobre o dourado sólido, nos dois temas — é a
                     // regra da casa para texto em cima da cor da marca.
-                    color: isCurrent || isCompleted ? "#08090E" : futureText,
+                    color: isCurrent || isCompleted ? "#0E0E0E" : futureText,
                     flexShrink: 0,
                     transition: "all 0.2s ease",
                   }}
@@ -390,10 +390,10 @@ function MacroStepIndicator({
   const goldSolid = "#F59E0B";
   const redSolid = "#E64D58";
   const goldText = isLight ? "#A06108" : "#F8C811";
-  const futureCircleBg = isLight ? "#f0f1f4" : "#191921";
+  const futureCircleBg = isLight ? "#f0f0f0" : "#1b1b1b";
   const futureBorder = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
-  const futureText = isLight ? "#7d8391" : "rgba(200,200,200,0.4)";
-  const currentLabel = isLight ? "#1e2229" : "#fff";
+  const futureText = isLight ? "#727272" : "rgba(200,200,200,0.4)";
+  const currentLabel = isLight ? "#212121" : "#fff";
 
   const visibleMacros = macros.filter((m) => !m.hidden);
 
@@ -421,7 +421,7 @@ function MacroStepIndicator({
                   fontSize: 11, fontWeight: 700,
                   // branco só sobre o círculo vermelho; sobre o dourado, o
                   // quase-preto do sistema.
-                  color: m.denied ? "#fff" : active ? "#08090E" : futureText,
+                  color: m.denied ? "#fff" : active ? "#0E0E0E" : futureText,
                   flexShrink: 0, transition: "all 0.2s ease",
                 }}>
                   {m.denied ? <X size={12} /> : m.completed ? <Check size={12} /> : (i + 1)}
@@ -473,7 +473,7 @@ function BlocosWizardPage() {
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
   const BACK_BTN: React.CSSProperties = {
-    background: isLight ? L.cardSolid : "#191921",
+    background: isLight ? L.cardSolid : "#1b1b1b",
     border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.10)",
     boxShadow: isLight ? L.shadowSm : undefined,
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
@@ -501,7 +501,7 @@ function BlocosWizardPage() {
       };
     }
     return {
-      width: "100%", background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)", border: "1px solid rgba(252,222,72,0.18)",
+      width: "100%", background: "linear-gradient(160deg, #161616 0%, #101010 100%)", border: "1px solid rgba(252,222,72,0.18)",
       borderRadius: 14, padding: "16px 18px", textAlign: "left", cursor: "pointer",
       display: "flex", flexDirection: "column", gap: 4, color: "#fff",
     };
@@ -1520,7 +1520,7 @@ function BlocosWizardPage() {
               style={{
                 display: "flex", position: "relative", width: 220, height: 48,
                 borderRadius: 999,
-                background: isLight ? "rgba(0,0,0,0.06)" : "#191921",
+                background: isLight ? "rgba(0,0,0,0.06)" : "#1b1b1b",
                 border: isLight ? L.borderMd : "1px solid rgba(255,255,255,0.12)",
               }}
             >
@@ -1592,7 +1592,7 @@ function BlocosWizardPage() {
                     style={{
                       minHeight: 52, borderRadius: 14, padding: "10px 8px",
                       border: selected ? "none" : isLight ? L.borderMd : "1px solid rgba(252,222,72,0.25)",
-                      background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                      background: selected ? GOLD_GRAD : isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                       color: selected ? "#0A0A0A" : isLight ? L.text : "#fff",
                       fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
                       lineHeight: 1.25, textAlign: "center", cursor: "pointer",
@@ -1618,7 +1618,7 @@ function BlocosWizardPage() {
                     style={{
                       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
                       borderRadius: 12,
-                      background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                      background: isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                       border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                       boxShadow: isLight ? L.shadowSm : undefined,
                     }}
@@ -1665,18 +1665,18 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                background: isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                 border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
                 {cftvBom.map((it) => (
-                  <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                  <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#505050" : "#D4D4D4" }}>
                     {it.qtd}× {cftvEqNomes[it.cod_eq] ?? it.observacao ?? it.cod_eq}
                   </div>
                 ))}
                 {totalMetros > 0 && (
                   <div style={{
-                    fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB",
+                    fontSize: 13, color: isLight ? "#505050" : "#D4D4D4",
                     borderTop: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
                     paddingTop: 6, marginTop: 2,
                   }}>
@@ -1694,7 +1694,7 @@ function BlocosWizardPage() {
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px",
                 borderRadius: 14,
-                background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                background: isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                 border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                 boxShadow: isLight ? L.shadowSm : undefined,
               }}>
@@ -1702,7 +1702,7 @@ function BlocosWizardPage() {
                   const sv = cftvSvInfo[it.cod_eq];
                   const nome = sv?.nome ?? it.observacao ?? it.cod_eq;
                   return (
-                    <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                    <div key={it.cod_eq} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, color: isLight ? "#505050" : "#D4D4D4" }}>
                       <span>{it.qtd}× {nome}</span>
                       {sv && <span style={{ flexShrink: 0, color: isLight ? L.gold : "#F8C811" }}>R$ {(sv.preco * it.qtd).toFixed(2)}/mês</span>}
                     </div>
@@ -1828,7 +1828,7 @@ function BlocosWizardPage() {
                 style={{
                   width: 56, height: 56, borderRadius: "50%",
                   border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.28)",
-                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   color: isLight ? L.text : "#fff", cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
@@ -2244,7 +2244,7 @@ function BlocosWizardPage() {
                 key={bloco.id}
                 onClick={() => abrirBlocoParaEditar(bloco)}
                 style={{
-                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? L.cardSolid : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   border: isLight ? L.borderMd : "1px solid rgba(252,222,72,0.15)",
                   boxShadow: isLight ? L.shadowSm : undefined,
                   borderRadius: 14, padding: "14px 16px",
@@ -2277,7 +2277,7 @@ function BlocosWizardPage() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {itens.map((it, i) => (
-                      <div key={i} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+                      <div key={i} style={{ fontSize: 13, color: isLight ? "#505050" : "#D4D4D4" }}>
                         {it.qtd}× {it.label}
                       </div>
                     ))}

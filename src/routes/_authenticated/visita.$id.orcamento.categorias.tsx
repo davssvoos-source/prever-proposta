@@ -33,8 +33,8 @@ function CategoriasPage() {
 
   const { isLight } = useTheme();
   const iconColor = isLight ? "#A06108" : "#F8C811";
-  const textPrimary = isLight ? "#1e2229" : "#fff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
+  const textPrimary = isLight ? "#212121" : "#fff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.45)";
   const CATEGORIAS_T = [
     { id: "pedestres", label: "Acesso de Pedestres", icon: <PersonStanding size={32} color={iconColor} />, desc: "Portas, cancelas e leitores de pedestre" },
     { id: "veiculos", label: "Acesso de Veículos", icon: <Car size={32} color={iconColor} />, desc: "Cancelas, barreiras e controles veiculares" },
@@ -100,7 +100,7 @@ function CategoriasPage() {
 
 
   const CARD: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "20px 18px",
@@ -122,7 +122,7 @@ function CategoriasPage() {
         <button
           onClick={() => navigate({ to: "/visita/$id/orcamento", params: { id } })}
           style={{
-            background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
+            background: isLight ? "rgba(0,0,0,0.05)" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             borderRadius: 12,
             width: 40,
@@ -264,7 +264,7 @@ function CategoriasPage() {
           borderRadius: 28,
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
-          color: "#08090E",
+          color: "#0E0E0E",
           fontFamily: "var(--fonte)",
           fontWeight: 700,
           fontSize: 13,
@@ -289,7 +289,7 @@ function CategoriasPage() {
       {centralBloco && (
         <div
           style={{
-            background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+            background: isLight ? "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
             border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
             borderRadius: 18,
             padding: "18px 16px",

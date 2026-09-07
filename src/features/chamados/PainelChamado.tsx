@@ -147,8 +147,8 @@ function mensagemDoErro(e: unknown): string {
  */
 function useEstiloCampo() {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.62)";
   const campoBg = isLight ? "#ffffff" : "rgba(255,255,255,0.055)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.14)" : "1px solid rgba(255,255,255,0.14)";
   return {
@@ -166,7 +166,7 @@ function useEstiloCampo() {
     } as CSSProperties,
     entrada: {
       width: "100%", boxSizing: "border-box", minHeight: 44,
-      fontFamily: FONT, fontSize: 14, fontWeight: 500, color: textPrimary,
+      fontFamily: FONT, fontSize: 14, fontWeight: 400, color: textPrimary,
       background: campoBg, border: borda, borderRadius: 12,
       padding: "11px 13px", outline: "none",
       // sem isto o ícone de calendário dos <input type="date"/"datetime-local">
@@ -183,7 +183,7 @@ function Selo({ estado }: { estado?: EstadoCampo }) {
   if (estado && typeof estado === "object") {
     return (
       <span style={{ fontSize: 10, color: vermelho, minWidth: 0 }}>
-        <span style={{ fontFamily: FONT, fontWeight: 500 }}>{estado.erro}</span>
+        <span style={{ fontFamily: FONT, fontWeight: 600 }}>{estado.erro}</span>
         {estado.codigo && (
           <span style={{ fontFamily: "ui-monospace, Menlo, monospace", opacity: 0.8 }}>
             {" "}{estado.codigo}
@@ -524,7 +524,7 @@ function Comentarios({ chamadoId, pessoasPorId, pessoas }: {
             style={{
               height: 44, borderRadius: 12, border: "none",
               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-              color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
               cursor: texto.trim() ? "pointer" : "default", opacity: texto.trim() ? 1 : 0.5,
               flexShrink: 0,
             }}

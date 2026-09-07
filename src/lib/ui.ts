@@ -18,9 +18,9 @@ export const FONT = "var(--fonte)";
 const TINTA_CLARA = "#ffffff";
 
 /** Degradê de preto bem escuro — fundo padrão de cards no tema escuro. */
-export const CARD_BG_DARK = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
+export const CARD_BG_DARK = "linear-gradient(160deg, #161616 0%, #101010 100%)";
 /** Fundo padrão de cards no tema claro. */
-export const CARD_BG_LIGHT = "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)";
+export const CARD_BG_LIGHT = "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)";
 
 export const CARD_BORDER_DARK = "1px solid rgba(252,222,72,0.16)";
 export const CARD_BORDER_LIGHT = "1px solid rgba(0,0,0,0.07)";
@@ -46,7 +46,7 @@ export const VIDRO_BORDER_LIGHT = "1px solid rgba(255,255,255,0.72)";
  * ruído; em pontos escolhidos vira hierarquia de material.
  */
 export const card = (isLight: boolean): React.CSSProperties => ({
-  background: isLight ? "#ffffff" : "#141416",
+  background: isLight ? "#ffffff" : "#141414",
   border: isLight ? "1px solid rgba(0,0,0,0.05)" : "1px solid rgba(255,255,255,0.06)",
   borderRadius: 18,
   boxShadow: isLight
@@ -85,7 +85,7 @@ export const card = (isLight: boolean): React.CSSProperties => ({
  *
  * A objeção óbvia ao tom fundo era o contraste contra o card escuro (1,55:1),
  * mas a razão engana no escuro: a fórmula comprime perto do preto, e o
- * preenchimento é de 7 a 29 vezes mais luminoso que o card `#141416` — lê
+ * preenchimento é de 7 a 29 vezes mais luminoso que o card `#141414` — lê
  * como forma sem dificuldade. E o que carrega a informação é o texto branco,
  * que está em 4,99:1.
  *
@@ -114,7 +114,7 @@ export const vidro = (isLight: boolean): React.CSSProperties => ({
 export const goldButton = (): React.CSSProperties => ({
   background: GOLD_GRAD,
   boxShadow: GOLD_GLOW,
-  color: "#08090E", // = SOBRE_PRIMARIA (paleta.ts) — texto sobre o degradê dourado
+  color: "#0E0E0E", // = SOBRE_PRIMARIA (paleta.ts) — texto sobre o degradê dourado
   border: "none",
   fontFamily: FONT,
   fontWeight: 600,
@@ -165,21 +165,21 @@ export const botaoSelecao = (
   if (ativo) {
     // sem cor própria (sprint, por exemplo) o dourado da marca segue valendo
     return {
-      background: GOLD_GRAD, color: "#08090E", border: "none", boxShadow: GOLD_GLOW,
+      background: GOLD_GRAD, color: "#0E0E0E", border: "none", boxShadow: GOLD_GLOW,
       fontFamily: FONT, fontWeight: 600, cursor: "pointer",
     };
   }
   return {
-    background: cor ? cor.bg : (isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)"),
-    color: cor ? (isLight ? cor.light : cor.dark) : (isLight ? "#1e2229" : "#ffffff"),
+    background: cor ? cor.bg : (isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)"),
+    color: cor ? (isLight ? cor.light : cor.dark) : (isLight ? "#212121" : "#ffffff"),
     border: `1px solid ${cor ? cor.border : (isLight ? "rgba(0,0,0,0.12)" : "rgba(252,222,72,0.16)")}`,
     fontFamily: FONT, fontWeight: 600, cursor: "pointer",
   };
 };
 
-/** Título padrão — Montserrat SemiBold. */
+/** Título padrão — Montserrat Bold (R195: título de página é 700). */
 export const title = (isLight: boolean): React.CSSProperties => ({
   fontFamily: FONT,
-  fontWeight: 600,
-  color: isLight ? "#1e2229" : "#ffffff",
+  fontWeight: 700,
+  color: isLight ? "#212121" : "#ffffff",
 });

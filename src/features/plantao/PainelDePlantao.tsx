@@ -72,8 +72,8 @@ export function PainelDePlantao({
   const [forma, setForma] = useState<FormaDoCliente>("lista");
   const [aviso, setAviso] = useState<AvisoDaEscala | null>(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   // Abre com a hora de AGORA e com quem está registrando. É quem mais registra
@@ -115,7 +115,7 @@ export function PainelDePlantao({
   };
   const entrada: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: FONT, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",

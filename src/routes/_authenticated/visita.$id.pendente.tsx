@@ -74,7 +74,7 @@ function VisitaPendentePage() {
   });
 
   const c = isLight
-    ? { bg: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)", border: "1px solid rgba(0,0,0,0.07)", shadow: "0 1px 6px rgba(0,0,0,0.07)", text: "#1e2229", sub: "#4a5060", muted: "#7d8391", gold: "#A06108", goldBg: "rgba(160,97,8,0.10)" }
+    ? { bg: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)", border: "1px solid rgba(0,0,0,0.07)", shadow: "0 1px 6px rgba(0,0,0,0.07)", text: "#212121", sub: "#505050", muted: "#727272", gold: "#A06108", goldBg: "rgba(160,97,8,0.10)" }
     : { bg: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", shadow: "none", text: "#FFFFFF", sub: "rgba(255,255,255,0.65)", muted: "rgba(255,255,255,0.45)", gold: "#F8C811", goldBg: "rgba(248,200,17,0.10)" };
 
   // getStatusInfo (e não statusLabel): só ele devolve o `colorLight` — o
@@ -157,13 +157,13 @@ function VisitaPendentePage() {
                 type="date"
                 value={draftDate}
                 onChange={(e) => setDraftDate(e.target.value)}
-                style={{ flex: 2, padding: 10, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text }}
+                style={{ flex: 2, padding: 10, borderRadius: 8, border: c.border, background: isLight ? "#f0f0f0" : "rgba(255,255,255,0.05)", color: c.text }}
               />
               <input
                 type="time"
                 value={draftTime}
                 onChange={(e) => setDraftTime(e.target.value)}
-                style={{ flex: 1, padding: 10, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text }}
+                style={{ flex: 1, padding: 10, borderRadius: 8, border: c.border, background: isLight ? "#f0f0f0" : "rgba(255,255,255,0.05)", color: c.text }}
               />
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -176,7 +176,7 @@ function VisitaPendentePage() {
               <button
                 onClick={salvar}
                 disabled={!draftDate || updateDate.isPending}
-                style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: c.gold, color: "#08090E", cursor: "pointer", fontWeight: 700 }}
+                style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: c.gold, color: "#0E0E0E", cursor: "pointer", fontWeight: 700 }}
               >
                 {updateDate.isPending ? "Salvando..." : "Salvar"}
               </button>
@@ -204,7 +204,7 @@ function VisitaPendentePage() {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   padding: "8px 14px", borderRadius: 10, flex: 1,
-                  background: isLight ? "#f0f1f4" : "#191921",
+                  background: isLight ? "#f0f0f0" : "#1b1b1b",
                   border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
                   color: c.text, fontSize: 13, fontWeight: 400, cursor: "pointer",
                 }}
@@ -301,7 +301,7 @@ function VisitaPendentePage() {
                       padding: "6px 10px", borderRadius: 8,
                       background: tel
                         ? (isLight ? "rgba(22,163,74,0.08)" : "rgba(34,197,94,0.10)")
-                        : (isLight ? "rgba(0,0,0,0.04)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
+                        : (isLight ? "rgba(0,0,0,0.04)" : "linear-gradient(160deg, #161616 0%, #101010 100%)"),
                       border: tel
                         ? (isLight ? "1px solid rgba(22,163,74,0.20)" : "1px solid rgba(34,197,94,0.22)")
                         : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)"),
@@ -325,14 +325,14 @@ function VisitaPendentePage() {
                     value={draftNome}
                     placeholder="Nome"
                     onChange={(e) => setDraftNome(e.target.value)}
-                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
+                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f0f0" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
                   />
                   <input
                     type="tel"
                     value={draftTel}
                     placeholder="Telefone"
                     onChange={(e) => setDraftTel(e.target.value)}
-                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f1f4" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
+                    style={{ padding: 8, borderRadius: 8, border: c.border, background: isLight ? "#f0f0f0" : "rgba(255,255,255,0.05)", color: c.text, fontSize: 12 }}
                   />
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
@@ -360,7 +360,7 @@ function VisitaPendentePage() {
                           setSavingContact(false);
                         }
                       }}
-                      style={{ flex: 1, padding: 7, borderRadius: 8, border: "none", background: c.gold, color: "#08090E", cursor: "pointer", fontWeight: 700, fontSize: 12 }}
+                      style={{ flex: 1, padding: 7, borderRadius: 8, border: "none", background: c.gold, color: "#0E0E0E", cursor: "pointer", fontWeight: 700, fontSize: 12 }}
                     >
                       {savingContact ? "..." : "Salvar"}
                     </button>
@@ -445,7 +445,7 @@ function VisitaPendentePage() {
               ? (isLight ? "#d4a800" : "rgba(248,200,17,0.50)")
               : "linear-gradient(135deg, #F8C811 0%, #FCDE48 50%, #FFA500 100%)",
             boxShadow: iniciando ? "none" : "0 4px 20px rgba(248,200,17,0.35)",
-            color: "#1e2229",
+            color: "#212121",
             fontSize: 15,
             fontWeight: 700,
             letterSpacing: "0.06em",

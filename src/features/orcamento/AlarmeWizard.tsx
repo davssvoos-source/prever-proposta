@@ -37,7 +37,7 @@ interface Props {
 }
 
 const GOLD_GRAD = "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)";
-const DARK_CARD = "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)";
+const DARK_CARD = "linear-gradient(160deg, #161616 0%, #101010 100%)";
 
 // Tipos de sensor exibidos por ramo (ordem da spec)
 const SENSORES_CAB: { tipo: AlarmeSensorTipo; Icon: typeof Eye }[] = [
@@ -106,14 +106,14 @@ export function AlarmeWizard({
   // ── Estilos (padrão do app) ────────────────────────────────────────────────
   const PAGE: React.CSSProperties = {
     padding: "12px 16px 32px", display: "flex", flexDirection: "column", gap: 16,
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 };
   const BACK_BTN: React.CSSProperties = {
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center",
-    justifyContent: "center", cursor: "pointer", color: isLight ? "#1e2229" : "#fff",
+    justifyContent: "center", cursor: "pointer", color: isLight ? "#212121" : "#fff",
   };
   const QUESTION: React.CSSProperties = {
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 14,
@@ -121,7 +121,7 @@ export function AlarmeWizard({
     textTransform: "uppercase", margin: "4px 2px 8px",
   };
   const LIST_CARD: React.CSSProperties = {
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.15)",
     borderRadius: 14,
     boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
@@ -129,8 +129,8 @@ export function AlarmeWizard({
   const CIRCLE_BTN: React.CSSProperties = {
     width: 40, height: 40, borderRadius: "50%",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.28)",
-    background: isLight ? "#ffffff" : "#16161d",
-    color: isLight ? "#1e2229" : "#fff",
+    background: isLight ? "#ffffff" : "#1b1b1b",
+    color: isLight ? "#212121" : "#fff",
     cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
   };
 
@@ -146,8 +146,8 @@ export function AlarmeWizard({
               style={{
                 width: 26, height: 26, borderRadius: "50%",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                background: i <= atual ? "#F59E0B" : isLight ? "#f0f1f4" : "rgba(255,255,255,0.06)",
-                color: i <= atual ? "#0A0A0A" : isLight ? "#7d8391" : "rgba(200,200,200,0.4)",
+                background: i <= atual ? "#F59E0B" : isLight ? "#f0f0f0" : "rgba(255,255,255,0.06)",
+                color: i <= atual ? "#0A0A0A" : isLight ? "#727272" : "rgba(200,200,200,0.4)",
                 fontSize: 12, fontWeight: 700, fontFamily: "var(--fonte)",
               }}
             >
@@ -157,7 +157,7 @@ export function AlarmeWizard({
               style={{
                 fontFamily: "var(--fonte)", fontSize: 12,
                 fontWeight: i === atual ? 700 : 400,
-                color: i === atual ? (isLight ? "#1e2229" : "#fff") : isLight ? "#7d8391" : "rgba(200,200,200,0.5)",
+                color: i === atual ? (isLight ? "#212121" : "#fff") : isLight ? "#727272" : "rgba(200,200,200,0.5)",
               }}
             >
               {p}
@@ -216,7 +216,7 @@ export function AlarmeWizard({
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)" }}>
+        <div style={{ fontSize: 12, color: isLight ? "#505050" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)" }}>
           Com fio: central AMT 4010 · Sem fio: central AMT 8000
         </div>
       </div>
@@ -244,7 +244,7 @@ export function AlarmeWizard({
         <button style={BACK_BTN} onClick={() => setStep("tecnologia")}><ArrowLeft size={18} /></button>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 16 }}>Alarme</div>
-          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)" }}>
+          <div style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.5)" }}>
             {isCab ? "Com fio — AMT 4010" : "Sem fio — AMT 8000"}
           </div>
         </div>
@@ -265,8 +265,8 @@ export function AlarmeWizard({
                 style={{
                   minHeight: 56, borderRadius: 14, padding: "10px 8px",
                   border: selected ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-                  background: selected ? GOLD_GRAD : isLight ? "#f5f6f8" : DARK_CARD,
-                  color: selected ? "#0A0A0A" : isLight ? "#1e2229" : "#fff",
+                  background: selected ? GOLD_GRAD : isLight ? "#f5f5f5" : DARK_CARD,
+                  color: selected ? "#0A0A0A" : isLight ? "#212121" : "#fff",
                   fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
                   lineHeight: 1.25, cursor: "pointer",
                   boxShadow: selected ? "0 4px 14px rgba(248,200,17,0.35)" : undefined,
@@ -291,7 +291,7 @@ export function AlarmeWizard({
           <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
             {infoSel?.par ? "Pares na zona" : "Sensores na zona"}
           </div>
-          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
             Zona = ambiente · até {MAX_SENSORES_POR_ZONA} {infoSel?.par ? "pares" : "sensores"} por zona
           </div>
         </div>
@@ -334,7 +334,7 @@ export function AlarmeWizard({
                     flex: 1, zIndex: 1, background: "none", border: "none", cursor: "pointer",
                     fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 12,
                     letterSpacing: "0.06em", textTransform: "uppercase",
-                    color: txSel === val ? "#0A0A0A" : isLight ? "#4a5060" : "rgba(255,255,255,0.6)",
+                    color: txSel === val ? "#0A0A0A" : isLight ? "#505050" : "rgba(255,255,255,0.6)",
                     transition: "color 0.2s",
                   }}
                 >
@@ -344,7 +344,7 @@ export function AlarmeWizard({
             </div>
           </div>
           {txSel ? (
-            <div style={{ fontSize: 12, textAlign: "center", color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", fontFamily: "var(--fonte)" }}>
+            <div style={{ fontSize: 12, textAlign: "center", color: isLight ? "#505050" : "rgba(255,255,255,0.55)", fontFamily: "var(--fonte)" }}>
               Sensor distante sem cabeamento — 1 transmissor TX 4020 Smart por sensor.
             </div>
           ) : (
@@ -393,7 +393,7 @@ export function AlarmeWizard({
                     <div style={{ fontSize: 13, fontWeight: 700 }}>
                       Zona {String(idx + 1).padStart(2, "0")} · {info.label}
                     </div>
-                    <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)" }}>
+                    <div style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.55)" }}>
                       {z.qtd} {info.par ? (z.qtd === 1 ? "par" : "pares") : (z.qtd === 1 ? "sensor" : "sensores")}
                       {isCab ? (z.tx ? " · TX sem fio" : ` · ${z.metros} m`) : ""}
                     </div>
@@ -422,7 +422,7 @@ export function AlarmeWizard({
             <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13 }}>
               Repetidor de sinal REP 8000
             </div>
-            <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.5)", marginTop: 2 }}>
               Sensores sem fio têm alcance limitado — avalie a distância no local.
             </div>
           </div>
@@ -443,7 +443,7 @@ export function AlarmeWizard({
       <div>
         <div style={QUESTION}>Equipamentos</div>
         {isCab && portariaRemota && (
-          <div style={{ fontSize: 11, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)", margin: "-4px 2px 8px" }}>
+          <div style={{ fontSize: 11, color: isLight ? "#505050" : "rgba(255,255,255,0.5)", fontFamily: "var(--fonte)", margin: "-4px 2px 8px" }}>
             Central, GPRS e bateria já inclusos na Central de Portaria Remota — não duplicados aqui.
           </div>
         )}
@@ -452,7 +452,7 @@ export function AlarmeWizard({
             style={{
               textAlign: "center", padding: "20px 16px", borderRadius: 14,
               border: isLight ? "1px dashed rgba(0,0,0,0.15)" : "1px dashed rgba(255,255,255,0.12)",
-              color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13,
+              color: isLight ? "#505050" : "rgba(255,255,255,0.45)", fontSize: 13,
             }}
           >
             Adicione zonas para ver os equipamentos do escopo.
@@ -460,14 +460,14 @@ export function AlarmeWizard({
         ) : (
           <div style={{ ...LIST_CARD, display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px" }}>
             {result.itens.map((it) => (
-              <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB" }}>
+              <div key={it.cod_eq} style={{ fontSize: 13, color: isLight ? "#505050" : "#D4D4D4" }}>
                 {it.qtd}× {nomeEq(it.cod_eq)}
               </div>
             ))}
             {isCab && result.totalMetros > 0 && (
               <div
                 style={{
-                  fontSize: 13, color: isLight ? "#4a5060" : "#D1D5DB",
+                  fontSize: 13, color: isLight ? "#505050" : "#D4D4D4",
                   borderTop: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.08)",
                   paddingTop: 6, marginTop: 2,
                 }}

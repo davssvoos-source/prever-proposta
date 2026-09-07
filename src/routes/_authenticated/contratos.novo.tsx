@@ -59,8 +59,8 @@ function NovoContratoPage() {
   const [equipamentos, setEquipamentos] = useState<any[]>([]);
   const [precos, setPrecos] = useState<any[]>([]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = { ...card(isLight), padding: "18px 16px", display: "flex", flexDirection: "column", gap: 12 };
@@ -74,7 +74,7 @@ function NovoContratoPage() {
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -82,8 +82,8 @@ function NovoContratoPage() {
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "9px 14px", borderRadius: 12,
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-    background: ativo ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    background: ativo ? GOLD_GRAD : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 12, cursor: "pointer",
   });
 
@@ -203,7 +203,7 @@ function NovoContratoPage() {
           )}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -381,7 +381,7 @@ function NovoContratoPage() {
         onClick={() => salvar.mutate()}
         disabled={salvar.isPending || !clienteId}
         style={{
-          height: 52, borderRadius: 26, border: "none", background: GOLD_GRAD, color: "#08090E",
+          height: 52, borderRadius: 26, border: "none", background: GOLD_GRAD, color: "#0E0E0E",
           fontFamily: FONT, fontWeight: 700, fontSize: 13, letterSpacing: "0.14em", textTransform: "uppercase",
           cursor: salvar.isPending || !clienteId ? "default" : "pointer",
           opacity: salvar.isPending || !clienteId ? 0.6 : 1, boxShadow: GOLD_GLOW,

@@ -72,12 +72,12 @@ function useCoresBase() {
   const { isLight } = useTheme();
   return {
     isLight,
-    textPrimary: isLight ? "#1e2229" : "#ffffff",
-    textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+    textPrimary: isLight ? "#212121" : "#ffffff",
+    textSecondary: isLight ? "#505050" : "rgba(255,255,255,0.55)",
     // um amarelo só na Início: o do degradê. O dourado da marca fica nos
     // botões e no logotipo, onde ele é gradiente e lê como coisa própria.
     gold: isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark,
-    tile: isLight ? "#f7f7f5" : "rgba(255,255,255,0.03)",
+    tile: isLight ? "#f7f7f7" : "rgba(255,255,255,0.03)",
   };
 }
 

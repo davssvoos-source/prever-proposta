@@ -45,7 +45,7 @@ export function PessoaComFoto({ id, nome, pessoa, tamanho = 20 }: {
       )}
       <span style={{
         minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        color: isLight ? "#1e2229" : "#ffffff",
+        color: isLight ? "#212121" : "#ffffff",
       }}>
         {nome}
       </span>

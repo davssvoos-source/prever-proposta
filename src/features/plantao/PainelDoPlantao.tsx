@@ -33,8 +33,8 @@ export function PainelDoPlantao({ mes, isLight }: { mes: string; isLight: boolea
   const { data: pessoas = [] } = usePessoasDoSobreaviso();
   const { data: clientes = [] } = useClientes();
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const grade = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)";
 
@@ -116,7 +116,7 @@ export function PainelDoPlantao({ mes, isLight }: { mes: string; isLight: boolea
         <span style={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
                        textTransform: "uppercase", color: textSecondary }}>{rotulo}</span>
       </div>
-      <div style={{ fontFamily: FONT, fontSize: 21, fontWeight: 800,
+      <div style={{ fontFamily: FONT, fontSize: 21, fontWeight: 700,
                     color: cor ?? textPrimary, fontVariantNumeric: "tabular-nums" }}>{valor}</div>
       {nota && <div style={{ fontFamily: FONT, fontSize: 10.5, color: textSecondary }}>{nota}</div>}
     </div>
@@ -143,7 +143,7 @@ export function PainelDoPlantao({ mes, isLight }: { mes: string; isLight: boolea
               <RTooltip
                 cursor={{ fill: isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.05)" }}
                 contentStyle={{ fontFamily: FONT, fontSize: 11, borderRadius: 10, border: `1px solid ${grade}`,
-                                background: isLight ? "#fff" : "#14141a", color: textPrimary }}
+                                background: isLight ? "#fff" : "#141414", color: textPrimary }}
                 formatter={(v: number, _n, p: any) =>
                   p?.payload?.naEscala !== undefined
                     ? [`${v} (${p.payload.naEscala} na escala)`, "atendimentos"]
@@ -226,7 +226,7 @@ export function PainelDoPlantao({ mes, isLight }: { mes: string; isLight: boolea
               <YAxis yAxisId="h" orientation="right" hide />
               <RTooltip
                 contentStyle={{ fontFamily: FONT, fontSize: 11, borderRadius: 10, border: `1px solid ${grade}`,
-                                background: isLight ? "#fff" : "#14141a", color: textPrimary }}
+                                background: isLight ? "#fff" : "#141414", color: textPrimary }}
                 labelFormatter={(d) => `dia ${d}`}
               />
               <Legend wrapperStyle={{ fontFamily: FONT, fontSize: 10.5 }} />

@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R194 (58)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R194). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R195). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3256,10 +3256,10 @@ trabalho".
   palavra prazo ou a palavra concluído".)*
 
 - **R154** — **Tema claro v10: a página é um branco mais escuro, o card é o
-  branco mais claro, o texto é um cinza bem escuro.** Página `#e9ebef`
-  (degradê `#eef0f3 → #e9ebef → #e2e5ea`), card `#ffffff`, texto primário
-  `#1e2229` (16:1 sobre o card, 13:1 sobre a página), texto apagado
-  `#7d8391` (3,9:1). Na Início: as bordas coloridas dos cards usam o tom
+  branco mais claro, o texto é um cinza bem escuro.** Página `#e9e9e9`
+  (degradê `#eeeeee → #e9e9e9 → #e2e2e2`), card `#ffffff`, texto primário
+  `#212121` (16:1 sobre o card, 13:1 sobre a página), texto apagado
+  `#727272` (3,9:1). Na Início: as bordas coloridas dos cards usam o tom
   **saturado** da cor nos dois temas (o tom rebaixado é para texto, e numa
   borda virava marrom/vinho); o glow do dashboard cai (halo do KPI 35% → 18%,
   arco da rosca 0,30 → 0,16, painel de IA 0,42 → 0,30); e a rampa do gráfico
@@ -3621,9 +3621,13 @@ trabalho".
   cinza claro no tema claro — sem azul.** A escala `CINZA` (`src/lib/paleta.ts`:
   página → superfície → elevada → campo, cada degrau com R = G = B) é a única
   fonte das superfícies. Nasceu na U104 com o Configurador rápido; a U108
-  troca as superfícies do resto do sistema (as que hoje puxam para o azul:
-  `#08090e`, `#14141b`, `#0b0b10`, `#e9ebef`…) para ela, e atualiza os tokens do
-  `DESIGN_SYSTEM.md`. *(Davi, 04/09/2026: "O Fundo está com tons de azul, eu
+  trocou (U108) as superfícies do resto do sistema — as que puxavam para o azul
+  (08090e, 14141b, 0b0b10, e9ebef… sem o "#", para a varredura não as caçar) —
+  e o texto neutro (1e2229 → `#212121`, 4a5060 → `#505050`, 7d8391 → `#727272`,
+  na mesma luminância, para o contraste medido da R154 continuar valendo), e
+  atualizou os tokens do `DESIGN_SYSTEM.md`. O verificador trava a volta: nenhum
+  dos 50 hexes varridos pode reaparecer em `src/`, e nenhum cinza que puxe para o
+  azul (canal azul à frente dos outros) pode entrar. *(Davi, 04/09/2026: "O Fundo está com tons de azul, eu
   quero que você utilize somente tons de cinza. Tons de cinza escuro para o
   modo escuro e tons de cinza claro para o modo claro".)*
 
@@ -3698,3 +3702,13 @@ trabalho".
   colunas, num padrão de design novo, respeitando todas as regras da proposta
   — local que já é cliente, local que não é —, reestruturando a tela por
   inteiro.)*
+
+- **R195** — **Tipografia estratégica: quatro pesos, cada um com função.**
+  Título de página 22/700 (era 600); título de coluna e de seção, micro-rótulo
+  em caixa alta, número de KPI e valor de barra em **700**; título de card, nome
+  de pessoa ou cliente, chip, botão e rótulo pequeno (até 10,5px) em **600**;
+  corpo, descrição, valor digitado em campo e metadado ("quem · quando") em
+  **400**; o 100 só no % da rosca. Não existe 500 nem 800 — o verificador cobra
+  o conjunto exato {100, 400, 600, 700} em `src/` (a U108 varreu 14 usos de 500
+  e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
+  estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*

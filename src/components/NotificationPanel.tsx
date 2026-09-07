@@ -95,13 +95,13 @@ export function NotificationPanel() {
           width: 40,
           height: 40,
           borderRadius: 12,
-          background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
+          background: isLight ? "rgba(0,0,0,0.05)" : "#1b1b1b",
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          color: isLight ? "#1e2229" : "rgba(255,255,255,0.85)",
+          color: isLight ? "#212121" : "rgba(255,255,255,0.85)",
         }}
       >
         <Bell size={18} />
@@ -116,7 +116,7 @@ export function NotificationPanel() {
               padding: "0 5px",
               borderRadius: 9,
               background: "linear-gradient(135deg,#FCDE48,#F8C811)",
-              color: "#08090E",
+              color: "#0E0E0E",
               fontFamily: "var(--fonte)",
               fontWeight: 700,
               fontSize: 10,
@@ -125,7 +125,7 @@ export function NotificationPanel() {
               justifyContent: "center",
               boxShadow: "0 0 10px rgba(248,200,17,0.55)",
               animation: "pulseBadge 1.8s ease-in-out infinite",
-              border: "1.5px solid #08090E",
+              border: "1.5px solid #0E0E0E",
             }}
           >
             {badgeLabel}
@@ -147,7 +147,7 @@ export function NotificationPanel() {
             right: 0,
             width: 352,
             zIndex: 100,
-            background: isLight ? "#f8f9fb" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+            background: isLight ? "#f9f9f9" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
             backdropFilter: "blur(24px) saturate(180%)",
             WebkitBackdropFilter: "blur(24px) saturate(180%)",
             border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.12)",
@@ -173,7 +173,7 @@ export function NotificationPanel() {
                 fontFamily: "var(--fonte)",
                 fontWeight: 600,
                 fontSize: 13,
-                color: isLight ? "#1e2229" : "#fff",
+                color: isLight ? "#212121" : "#fff",
               }}
             >
               Notificações
@@ -203,7 +203,7 @@ export function NotificationPanel() {
                 style={{
                   padding: "36px 16px",
                   textAlign: "center",
-                  color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
+                  color: isLight ? "#727272" : "rgba(255,255,255,0.35)",
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 12,
@@ -316,7 +316,7 @@ function NotifItem({
           width: "100%",
           textAlign: "left",
           padding: "12px 16px",
-          background: isLight ? (n.lida ? "#ffffff" : "#fff8e6") : (n.lida ? "#101016" : "#1c1810"),
+          background: isLight ? (n.lida ? "#ffffff" : "#fff8e6") : (n.lida ? "#141414" : "#1c1810"),
           border: "none",
           cursor: "pointer",
           display: "block",
@@ -341,7 +341,7 @@ function NotifItem({
                 fontWeight: n.lida ? 400 : 600,
                 fontSize: 13,
                 color: isLight
-                  ? (n.lida ? "#4a5060" : "#1e2229")
+                  ? (n.lida ? "#505050" : "#212121")
                   : (n.lida ? "rgba(255,255,255,0.65)" : "#fff"),
                 lineHeight: 1.4,
               }}
@@ -354,7 +354,7 @@ function NotifItem({
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 12,
-                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)",
+                  color: isLight ? "#505050" : "rgba(255,255,255,0.45)",
                   marginTop: 3,
                   lineHeight: 1.4,
                 }}

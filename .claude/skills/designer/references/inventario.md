@@ -16,7 +16,7 @@
 | `FONT` | `var(--fonte)` (Montserrat) | toda `fontFamily` |
 | `card(isLight)` | fundo + borda + raio 18 + sombra do tema | **todo card de conteúdo** |
 | `vidro(isLight)` | superfície translúcida com blur | painéis, popover, sidebar — não conteúdo |
-| `goldButton()` | degradê dourado + glow + tinta `#08090E` | a ação principal da tela |
+| `goldButton()` | degradê dourado + glow + tinta `#0E0E0E` | a ação principal da tela |
 | `botaoSelecao(ativo, isLight, cor?)` | botão de opção pintado pela COISA (R87) | escolher tipo, status, impacto, equipe |
 | `title(isLight)` | título padrão da tela | cabeçalho |
 | `GOLD_GRAD` · `GOLD_GLOW` | degradê e glow da marca | FAB, CTA |
@@ -34,7 +34,7 @@ Quatro escalas W3C do Grupo Prever: `SUPERNOVA` (primária), `SHAMROCK`
 |---|---|
 | Par de tema | `PRISMA.<cor>` → `{ dark, light, bg, border }`. Cores: amarelo, pessego, laranja, vermelho, rosa, azulClaro, azul, azulEscuro, verde, neutro |
 | Primária / sucesso / aviso / erro | `PRIMARIA`, `SUCESSO`, `AVISO`, `ERRO` (`{dark, light}`) |
-| Degradê da marca | `GRAD_PRIMARIA` (135°) · tinta por cima: `SOBRE_PRIMARIA` (`#08090E`) |
+| Degradê da marca | `GRAD_PRIMARIA` (135°) · tinta por cima: `SOBRE_PRIMARIA` (`#0E0E0E`) |
 | Rampa de gráfico (preenchimento) | `ESPECTRO.dark` / `.light` — 9 passos · `espectro(i, isLight)` |
 | Rampa de gráfico (TEXTO) | `ESPECTRO_TEXTO` · `espectroTexto(i, isLight)` — é a que passa 4,5:1 |
 | Degradê CSS completo | `degradePrisma(isLight, angulo)` · paradas: `ESPECTRO_STOPS` |
@@ -139,8 +139,8 @@ asserção.
   (none no celular), `--ruido`
 - Gráfico: `--chart-1..5`
 
-Valores do tema claro v10 (R154): página `#e9ebef` · card `#ffffff` · texto
-`#1e2229` · secundário `#4a5060` · apagado `#7d8391`.
+Valores do tema claro v10 (R154): página `#e9e9e9` · card `#ffffff` · texto
+`#212121` · secundário `#505050` · apagado `#727272`.
 
 ## 7. Layout
 

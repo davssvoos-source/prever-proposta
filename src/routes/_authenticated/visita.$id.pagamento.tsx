@@ -245,7 +245,7 @@ function PagamentoPage() {
   const pieCores = isLight ? PIE_CORES_LIGHT : PIE_CORES_DARK;
   const pieOutros = isLight ? PIE_OUTROS_LIGHT : PIE_OUTROS_DARK;
   const corFatia = (i: number, nome: string) => (nome === "Outros" ? pieOutros : pieCores[i % 8]);
-  const pieSurface = isLight ? "#ffffff" : "#101016";
+  const pieSurface = isLight ? "#ffffff" : "#141414";
 
   // ── Geração da proposta (.docx) ─────────────────────────────────────────────
   const [modalAberto, setModalAberto] = useState(false);
@@ -309,17 +309,17 @@ function PagamentoPage() {
   // ── Estilos ─────────────────────────────────────────────────────────────────
   const PAGE: React.CSSProperties = {
     padding: "12px 16px 48px", display: "flex", flexDirection: "column", gap: 16,
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
   };
   const HEADER: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12 };
   const BACK_BTN: React.CSSProperties = {
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 12, width: 40, height: 40, display: "flex", alignItems: "center",
-    justifyContent: "center", cursor: "pointer", color: isLight ? "#1e2229" : "#fff",
+    justifyContent: "center", cursor: "pointer", color: isLight ? "#212121" : "#fff",
   };
   const CARD: React.CSSProperties = {
-    background: isLight ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(252,222,72,0.12)",
     borderRadius: 16, padding: "16px 18px",
   };
@@ -347,7 +347,7 @@ function PagamentoPage() {
   };
   const obsStyle: React.CSSProperties = {
     fontFamily: "var(--fonte)", fontSize: 11,
-    color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
+    color: isLight ? "#505050" : "rgba(255,255,255,0.5)",
   };
 
   return (
@@ -360,7 +360,7 @@ function PagamentoPage() {
           <div style={{ fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 18 }}>
             Formas de Pagamento
           </div>
-          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "var(--fonte)", fontSize: 12, color: isLight ? "#505050" : "rgba(255,255,255,0.5)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {nomeLocal}
           </div>
         </div>
@@ -420,14 +420,14 @@ function PagamentoPage() {
                     nome,
                   ]}
                   contentStyle={{
-                    background: isLight ? "#ffffff" : "#16161d",
+                    background: isLight ? "#ffffff" : "#1b1b1b",
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
                     borderRadius: 10,
                     fontFamily: "var(--fonte)",
                     fontSize: 12,
-                    color: isLight ? "#1e2229" : "#fff",
+                    color: isLight ? "#212121" : "#fff",
                   }}
-                  itemStyle={{ color: isLight ? "#1e2229" : "#fff" }}
+                  itemStyle={{ color: isLight ? "#212121" : "#fff" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -474,7 +474,7 @@ function PagamentoPage() {
           <span style={SEC_TITLE}>Custo por bloco</span>
         </div>
         {blocos.length === 0 ? (
-          <div style={{ fontSize: 13, color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", paddingTop: 8 }}>
+          <div style={{ fontSize: 13, color: isLight ? "#505050" : "rgba(255,255,255,0.45)", paddingTop: 8 }}>
             Nenhum bloco no escopo.
           </div>
         ) : (
@@ -552,7 +552,7 @@ function PagamentoPage() {
           <span style={SEC_TITLE}>Mensalidades de serviços</span>
         </div>
         {linhasMensais.length === 0 ? (
-          <div style={{ fontSize: 13, color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", paddingTop: 8 }}>
+          <div style={{ fontSize: 13, color: isLight ? "#505050" : "rgba(255,255,255,0.45)", paddingTop: 8 }}>
             Nenhum serviço mensal neste projeto.
           </div>
         ) : (
@@ -585,7 +585,7 @@ function PagamentoPage() {
           borderRadius: 28,
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
           border: "none",
-          color: "#08090E",
+          color: "#0E0E0E",
           fontFamily: "var(--fonte)",
           fontWeight: 700,
           fontSize: 13,
@@ -622,7 +622,7 @@ function PagamentoPage() {
               zIndex: 100,
               borderRadius: 18,
               padding: "20px 18px",
-              background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+              background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
               boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
             }}
@@ -636,7 +636,7 @@ function PagamentoPage() {
                 style={{
                   width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
                   background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-                  color: isLight ? "#1e2229" : "#fff",
+                  color: isLight ? "#212121" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
@@ -661,8 +661,8 @@ function PagamentoPage() {
                         : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                       background: selected
                         ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                        : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                      color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
+                        : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                      color: selected ? "#0E0E0E" : isLight ? "#212121" : "#fff",
                       cursor: "pointer",
                       transition: "all 0.15s",
                     }}
@@ -696,8 +696,8 @@ function PagamentoPage() {
                             : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                           background: selected
                             ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                            : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                          color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
+                            : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                          color: selected ? "#0E0E0E" : isLight ? "#212121" : "#fff",
                           cursor: "pointer",
                           transition: "all 0.15s",
                           textAlign: "center",
@@ -738,8 +738,8 @@ function PagamentoPage() {
                             : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                           background: selected
                             ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                            : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                          color: selected ? "#08090E" : isLight ? "#1e2229" : "#fff",
+                            : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                          color: selected ? "#0E0E0E" : isLight ? "#212121" : "#fff",
                           cursor: "pointer",
                           transition: "all 0.15s",
                           textAlign: "center",
@@ -771,8 +771,8 @@ function PagamentoPage() {
                     fontFamily: "var(--fonte)",
                     fontSize: 14,
                     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                    background: isLight ? "#ffffff" : "#16161d",
-                    color: isLight ? "#1e2229" : "#fff",
+                    background: isLight ? "#ffffff" : "#1b1b1b",
+                    color: isLight ? "#212121" : "#fff",
                     outline: "none",
                     marginBottom: 18,
                     colorScheme: isLight ? "light" : "dark",
@@ -800,8 +800,8 @@ function PagamentoPage() {
                 fontFamily: "var(--fonte)",
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                background: isLight ? "#ffffff" : "#16161d",
-                color: isLight ? "#1e2229" : "#fff",
+                background: isLight ? "#ffffff" : "#1b1b1b",
+                color: isLight ? "#212121" : "#fff",
                 outline: "none",
                 marginBottom: 6,
               }}
@@ -810,7 +810,7 @@ function PagamentoPage() {
               style={{
                 fontFamily: "var(--fonte)",
                 fontSize: 11,
-                color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
+                color: isLight ? "#505050" : "rgba(255,255,255,0.5)",
                 marginBottom: 18,
               }}
             >
@@ -830,8 +830,8 @@ function PagamentoPage() {
                 fontFamily: "var(--fonte)",
                 fontSize: 14,
                 border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
-                background: isLight ? "#ffffff" : "#16161d",
-                color: isLight ? "#1e2229" : "#fff",
+                background: isLight ? "#ffffff" : "#1b1b1b",
+                color: isLight ? "#212121" : "#fff",
                 outline: "none",
                 marginBottom: 18,
               }}
@@ -846,7 +846,7 @@ function PagamentoPage() {
                 borderRadius: 26,
                 background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
                 border: "none",
-                color: "#08090E",
+                color: "#0E0E0E",
                 fontFamily: "var(--fonte)",
                 fontWeight: 700,
                 fontSize: 13,

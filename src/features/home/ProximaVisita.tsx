@@ -96,15 +96,15 @@ export function ProximaVisita({ visita, onAbrir }: Props) {
 
   if (!visita) return null;
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.58)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.58)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
 
   const CARD: CSSProperties = {
     background: isLight
-      ? "linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+      ? "linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)"
+      : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(160,97,8,0.25)" : "1px solid rgba(248,200,17,0.20)",
     borderRadius: 18,
     boxShadow: isLight ? "0 1px 6px rgba(0,0,0,0.06)" : "0 8px 32px rgba(0,0,0,0.35)",
@@ -132,7 +132,7 @@ export function ProximaVisita({ visita, onAbrir }: Props) {
             position: "absolute", right: 0, top: 0, bottom: 0, width: "45%",
             background: isLight
               ? "linear-gradient(to right, #ffffff 0%, rgba(255,255,255,0.6) 30%, transparent 100%)"
-              : "linear-gradient(to right, #0a0a14 0%, rgba(10,10,20,0.6) 30%, transparent 100%)",
+              : "linear-gradient(to right, #0e0e0e 0%, rgba(10,10,20,0.6) 30%, transparent 100%)",
             pointerEvents: "none", zIndex: 1,
           }} />
         </>

@@ -74,7 +74,7 @@ export function contraste(a: string, b: string): number {
 }
 
 /** O quase-preto da marca — o mesmo que o botão dourado sempre usou. */
-export const TINTA_ESCURA = "#08090E";
+export const TINTA_ESCURA = "#0E0E0E";
 export const TINTA_CLARA = "#ffffff";
 
 /**

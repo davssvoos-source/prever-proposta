@@ -116,8 +116,8 @@ function ClientesPage() {
     setServicos((v) => (v.includes(k) ? v.filter((x) => x !== k) : [...v, k]));
   }
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   const norm = (t: string) =>
@@ -226,7 +226,7 @@ function ClientesPage() {
           aria-label="Voltar"
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -235,7 +235,7 @@ function ClientesPage() {
           <ArrowLeft size={18} />
         </button>
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0.01em" }}>Clientes</div>
+          <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, letterSpacing: "-0.01em" }}>Clientes</div>
           <div style={{ fontFamily: FONT, fontWeight: 400, fontSize: 12, color: textSecondary }}>
             {/* O subtítulo passou a contar o que a tela MOSTRA, não o total do
                 cadastro: com o filtro de múltipla escolha, dizer "192
@@ -294,7 +294,7 @@ function ClientesPage() {
             {temFiltro && !filtrosAbertos && (
               <span aria-hidden style={{
                 position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: 4,
-                background: gold, boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`,
+                background: gold, boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141414"}`,
               }} />
             )}
           </button>
@@ -570,10 +570,10 @@ function Paginacao({ pagina, totalPaginas, totalItens, itensPorPagina, isLight, 
   pagina: number; totalPaginas: number; totalItens: number; itensPorPagina: number;
   isLight: boolean; aoIrPara: (p: number) => void;
 }) {
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)";
   const fundo = isLight ? "#ffffff" : "rgba(255,255,255,0.03)";
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
 
   const botaoSeta = (desabilitado: boolean): CSSProperties => ({
     width: 32, height: 32, borderRadius: 9, border: borda,

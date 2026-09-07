@@ -43,8 +43,8 @@ export function MatrizDePermissoes() {
     setTocado(false);
   }, [doBanco, isLoading]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const linhaBorda = isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(255,255,255,0.07)";
 
@@ -146,7 +146,7 @@ export function MatrizDePermissoes() {
               display: "flex", alignItems: "center", gap: 8,
               padding: "8px 0", borderBottom: linhaBorda,
               position: "sticky", top: 0, zIndex: 2,
-              background: isLight ? "#e9ebef" : "#08090e",
+              background: isLight ? "#e9e9e9" : "#0e0e0e",
             }}>
               <span style={{
                 width: 210, flexShrink: 0,
@@ -203,7 +203,7 @@ export function MatrizDePermissoes() {
                             onClick={() => !t.sempre && alternar(t.chave, p.chave)}
                             style={CAIXA(marcada, !!t.sempre)}
                           >
-                            {marcada && <Check size={15} color={isLight ? "#ffffff" : "#08090E"} strokeWidth={3} />}
+                            {marcada && <Check size={15} color={isLight ? "#ffffff" : "#0E0E0E"} strokeWidth={3} />}
                           </button>
                         </div>
                       );
@@ -223,7 +223,7 @@ export function MatrizDePermissoes() {
           position: "fixed", left: 12, right: 12, bottom: 118, zIndex: 40,
           display: "flex", alignItems: "center", gap: 10,
           padding: "12px 14px", borderRadius: 16,
-          background: isLight ? "#ffffff" : "#16161d",
+          background: isLight ? "#ffffff" : "#1b1b1b",
           border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.14)",
           boxShadow: isLight ? "0 8px 28px rgba(0,0,0,0.12)" : "0 8px 28px rgba(0,0,0,0.28)",
         }}>
@@ -247,7 +247,7 @@ export function MatrizDePermissoes() {
             disabled={gravar.isPending}
             style={{
               height: 40, padding: "0 16px", borderRadius: 11, border: "none", flexShrink: 0,
-              background: GOLD_GRAD, color: "#08090E",
+              background: GOLD_GRAD, color: "#0E0E0E",
               fontFamily: FONT, fontWeight: 700, fontSize: 12.5,
               cursor: gravar.isPending ? "wait" : "pointer",
             }}

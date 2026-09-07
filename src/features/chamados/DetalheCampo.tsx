@@ -214,8 +214,8 @@ export function DetalheCampo({ id }: { id: string }) {
     setAssinanteNome(os.assinatura_nome ?? "");
   }, [os?.id, os?.diagnostico, os?.servico_executado, os?.assinatura_nome]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // card() da casa — o mesmo do painel e da programação, telas que o usuário
@@ -237,14 +237,14 @@ export function DetalheCampo({ id }: { id: string }) {
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", borderRadius: 12, padding: "12px 14px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const CTA: CSSProperties = {
     width: "100%", height: 54, borderRadius: 27, border: "none",
-    background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
+    background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E",
     fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
     letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -252,7 +252,7 @@ export function DetalheCampo({ id }: { id: string }) {
   };
   const btnSec: CSSProperties = {
     height: 44, padding: "0 16px", borderRadius: 22,
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center",
     justifyContent: "center", gap: 8,
@@ -585,7 +585,7 @@ export function DetalheCampo({ id }: { id: string }) {
           onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -845,14 +845,14 @@ export function DetalheCampo({ id }: { id: string }) {
                           style={{ width: 68, height: 68, objectFit: "cover", borderRadius: 10 }}
                         />
                       ) : (
-                        <div style={{ width: 68, height: 68, borderRadius: 10, background: isLight ? "#e8eaee" : "#22222c" }} />
+                        <div style={{ width: 68, height: 68, borderRadius: 10, background: isLight ? "#e8e8e8" : "#232323" }} />
                       )}
                       {emExecucao && (
                         <button
                           onClick={() => removerFoto.mutate({ fotoId: f.id, path: f.storage_path })}
                           style={{
                             position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%",
-                            background: "#1e2229", color: "#fff", border: "none", cursor: "pointer",
+                            background: "#212121", color: "#fff", border: "none", cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}
                         >
@@ -866,7 +866,7 @@ export function DetalheCampo({ id }: { id: string }) {
                       style={{
                         width: 68, height: 68, borderRadius: 10, cursor: enviandoFoto ? "wait" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+                        background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
                         border: isLight ? "1px dashed rgba(0,0,0,0.20)" : "1px dashed rgba(255,255,255,0.22)",
                       }}
                     >
@@ -925,7 +925,7 @@ export function DetalheCampo({ id }: { id: string }) {
                     style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "10px 12px", borderRadius: 12,
-                      background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                      background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                       border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
@@ -974,8 +974,8 @@ export function DetalheCampo({ id }: { id: string }) {
                         border: novaDirecao === d ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                         background: novaDirecao === d
                           ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                          : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                        color: novaDirecao === d ? "#08090E" : textPrimary,
+                          : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                        color: novaDirecao === d ? "#0E0E0E" : textPrimary,
                         fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11.5,
                       }}
                     >
@@ -1009,7 +1009,7 @@ export function DetalheCampo({ id }: { id: string }) {
                     style={{
                       height: 46, borderRadius: 12, border: "none",
                       background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                      color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
                       cursor: novaDescricao.trim() ? "pointer" : "default",
                       opacity: novaDescricao.trim() ? 1 : 0.5,
                     }}
@@ -1027,7 +1027,7 @@ export function DetalheCampo({ id }: { id: string }) {
             {os.pecas_texto?.trim() && (
               <div style={{
                 marginTop: 10, padding: "10px 12px", borderRadius: 12,
-                background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.02)",
+                background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.02)",
                 border: isLight ? "1px dashed rgba(0,0,0,0.10)" : "1px dashed rgba(255,255,255,0.10)",
               }}>
                 <div style={{ fontFamily: "var(--fonte)", fontSize: 10, fontWeight: 600, letterSpacing: "0.10em", textTransform: "uppercase", color: textSecondary, marginBottom: 4 }}>
@@ -1112,7 +1112,7 @@ export function DetalheCampo({ id }: { id: string }) {
               fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 9,
               letterSpacing: "0.06em", textTransform: "uppercase",
               color: textSecondary,
-              background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.05)",
+              background: isLight ? "#f4f4f4" : "rgba(255,255,255,0.05)",
               border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
             }}>
               {FATURAMENTO_LABEL[(os as any).faturamento_status as FaturamentoStatus] ?? "—"}
@@ -1142,7 +1142,7 @@ export function DetalheCampo({ id }: { id: string }) {
                     key={p.id}
                     style={{
                       padding: "10px 12px", borderRadius: 12,
-                      background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                      background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                       border: `1px solid ${a.resultado === "revisar" || a.resultado === "nao_identificado"
                         ? rc.border
                         : isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)"}`,
@@ -1189,7 +1189,7 @@ export function DetalheCampo({ id }: { id: string }) {
                                 fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10.5,
                                 border: novoResultado === r ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
                                 background: novoResultado === r ? "linear-gradient(135deg,#FCDE48,#F8C811)" : "transparent",
-                                color: novoResultado === r ? "#08090E" : textPrimary,
+                                color: novoResultado === r ? "#0E0E0E" : textPrimary,
                               }}
                             >
                               {RESULTADO_LABEL[r]}
@@ -1209,7 +1209,7 @@ export function DetalheCampo({ id }: { id: string }) {
                             style={{
                               padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
                               background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-                              color: "#08090E", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10.5,
+                              color: "#0E0E0E", fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 10.5,
                             }}
                           >
                             Salvar

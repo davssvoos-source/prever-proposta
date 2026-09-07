@@ -261,7 +261,7 @@ function PreEnvioPage() {
                 boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
               }}
             >
-              <ArrowLeft size={18} color={isLight ? "#1e2229" : "#FFFFFF"} />
+              <ArrowLeft size={18} color={isLight ? "#212121" : "#FFFFFF"} />
             </button>
             {/* Nome do local na borda inferior */}
             <div
@@ -319,13 +319,13 @@ function PreEnvioPage() {
                 boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
               }}
             >
-              <ArrowLeft size={24} color={isLight ? "#1e2229" : "#FFFFFF"} />
+              <ArrowLeft size={24} color={isLight ? "#212121" : "#FFFFFF"} />
             </button>
             <div style={{ minWidth: 0 }}>
-              <p style={{ color: isLight ? "#4a5060" : "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
+              <p style={{ color: isLight ? "#505050" : "#9CA3AF", fontSize: 12, margin: 0 }}>Revisão da visita</p>
               <p
                 style={{
-                  color: isLight ? "#1e2229" : "#FFFFFF",
+                  color: isLight ? "#212121" : "#FFFFFF",
                   fontSize: 17,
                   fontWeight: 600,
                   margin: 0,
@@ -353,7 +353,7 @@ function PreEnvioPage() {
         }}
       >
         <SectionCard icon={<MapPin size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="LOCAL" isLight={isLight}>
-          <div style={{ color: isLight ? "#1e2229" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
+          <div style={{ color: isLight ? "#212121" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {endereco}
           </div>
           <div
@@ -367,7 +367,7 @@ function PreEnvioPage() {
           >
             <p
               style={{
-                color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
                 fontSize: 12,
                 margin: 0,
                 fontFamily: "var(--fonte)",
@@ -398,11 +398,11 @@ function PreEnvioPage() {
                   justifyContent: "center",
                 }}
               >
-                <span style={{ color: isLight ? "#4a5060" : "#9CA3AF", fontSize: 14, lineHeight: 1 }}>+</span>
+                <span style={{ color: isLight ? "#505050" : "#9CA3AF", fontSize: 14, lineHeight: 1 }}>+</span>
               </div>
               <span
                 style={{
-                  color: isLight ? "#4a5060" : "#9CA3AF",
+                  color: isLight ? "#505050" : "#9CA3AF",
                   fontSize: 11,
                   fontFamily: "var(--fonte)",
                 }}
@@ -418,7 +418,7 @@ function PreEnvioPage() {
           titulo="DATA E HORÁRIO DA VISITA"
           isLight={isLight}
         >
-          <div style={{ color: isLight ? "#1e2229" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
+          <div style={{ color: isLight ? "#212121" : "#fff", fontSize: 14, fontFamily: "var(--fonte)" }}>
             {dataFmt}
           </div>
         </SectionCard>
@@ -429,7 +429,7 @@ function PreEnvioPage() {
           isLight={isLight}
         >
           {servicos.length === 0 ? (
-            <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
+            <div style={{ color: isLight ? "#505050" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
               Nenhum serviço selecionado
             </div>
           ) : (
@@ -457,7 +457,7 @@ function PreEnvioPage() {
 
         <SectionCard icon={<Layers size={16} color={isLight ? "#A06108" : "#F8C811"} />} titulo="ESCOPO DO PROJETO" isLight={isLight}>
           {blocos.length === 0 ? (
-            <div style={{ color: isLight ? "#4a5060" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
+            <div style={{ color: isLight ? "#505050" : "rgba(255,255,255,0.45)", fontSize: 13 }}>
               Nenhum bloco adicionado
             </div>
           ) : (
@@ -481,7 +481,7 @@ function PreEnvioPage() {
                         <div
                           style={{
                             height: 1,
-                            background: isLight ? "rgba(0,0,0,0.08)" : "#191921",
+                            background: isLight ? "rgba(0,0,0,0.08)" : "#1b1b1b",
                             marginBottom: 8,
                           }}
                         />
@@ -529,7 +529,7 @@ function PreEnvioPage() {
                                 aspectRatio: "1 / 1",
                                 borderRadius: 8,
                                 overflow: "hidden",
-                                background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                                background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                                 border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.08)",
                               }}
                             >
@@ -602,7 +602,7 @@ function SectionCard({
       style={
         isLight
           ? {
-              background: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+              background: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
               border: "1px solid rgba(0,0,0,0.07)",
               borderRadius: 16,
               padding: "16px",
@@ -610,7 +610,7 @@ function SectionCard({
               boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
             }
           : {
-              background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+              background: "linear-gradient(160deg, #161616 0%, #101010 100%)",
               border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 16,
               padding: "16px",

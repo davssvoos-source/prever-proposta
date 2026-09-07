@@ -35,14 +35,14 @@ paleta que ainda restam em telas legadas.
 ## Receita: tela nova em 8 passos
 
 1. **Fonte**: `FONT` de `src/lib/ui.ts` (= `var(--fonte)` = Montserrat;
-   pesos usados: regular/500/600/700). Números grandes: 700 com leve glow
+   pesos usados: 400/600/700, e 100 só no % da rosca — R195). Números grandes: 700 com leve glow
    (`textShadow` com a própria cor a ~35%).
 2. **Cartões**: `card(isLight)` de `src/lib/ui.ts` — nunca montar fundo/borda
    de card à mão. Raio padrão 16.
 3. **Tema**: `useTheme()` → `isLight`. TODA cor tem os dois lados. Modo
    claro: fundos claros e textos escuros — os anti-padrões (e o que grepar
    para achá-los) estão no DESIGN_SYSTEM.md; a revisão bd1fa3d passou o pente.
-4. **Layout**: título 22/600, subtítulo 12 secundário; margens da página
+4. **Layout**: título 22/700 (R195), subtítulo 12 secundário; margens da página
    iguais às da Início (a classe `sangra-x`); grids com
    `repeat(auto-fit, minmax(..., 1fr))` e `gap` — sem margin solta.
 5. **Sidebar**: a tela deve funcionar com o menu recolhido —

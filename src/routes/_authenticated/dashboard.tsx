@@ -282,8 +282,8 @@ function Home() {
   );
   const proxima = useMemo(() => proximaVisitaDe(visitas, s.userId), [visitas, s.userId]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // Alvo de 40px: o app trava o zoom e quem opera está de luva. Os chips
@@ -297,7 +297,7 @@ function Home() {
     alignItems: "center",
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT,
     fontWeight: 600,
     fontSize: 12.5,
@@ -308,7 +308,7 @@ function Home() {
 
   const botaoIcone: CSSProperties = {
     width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
     cursor: "pointer",
@@ -490,7 +490,7 @@ function Home() {
               justamente onde a frase cai — texto branco ali some. */}
           <div style={{
             fontFamily: FONT, fontWeight: 600, fontSize: 24, lineHeight: 1.2,
-            color: isLight ? "#1e2229" : "#FFFFFF",
+            color: isLight ? "#212121" : "#FFFFFF",
             textShadow: isLight
               ? "0 1px 8px rgba(255,255,255,0.65)"
               : "0 1px 8px rgba(0,0,0,0.55), 0 2px 16px rgba(0,0,0,0.35)",
@@ -504,7 +504,7 @@ function Home() {
           {composicao && (
             <div style={{
               fontFamily: FONT, fontWeight: 400, fontSize: 12.5,
-              color: isLight ? "#4a5060" : "rgba(255,255,255,0.85)",
+              color: isLight ? "#505050" : "rgba(255,255,255,0.85)",
               marginTop: 4,
               textShadow: isLight ? "0 1px 6px rgba(255,255,255,0.6)" : "0 1px 6px rgba(0,0,0,0.6)",
             }}>
@@ -557,7 +557,7 @@ function Home() {
             cabeçalho da área de trabalho, logo acima dos filtros. */}
         <div className="so-desktop sangra-x" style={{ alignItems: "center", paddingTop: 4 }}>
           <h1 style={{
-            fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0,
+            fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0,
             color: textPrimary, letterSpacing: "-0.01em",
           }}>
             Suas atividades
@@ -667,7 +667,7 @@ function Home() {
               aria-live="polite"
               style={{
                 fontFamily: FONT, fontSize: 11.5, whiteSpace: "nowrap", alignItems: "center",
-                color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
               }}
             >
               {ORDENACOES.find((o) => o.chave === ordem.chave && o.desc === ordem.desc)?.label

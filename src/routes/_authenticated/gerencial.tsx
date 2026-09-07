@@ -77,8 +77,8 @@ function GerencialPage() {
   const location = useLocation();
   const { isLight } = useTheme();
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // filtro por etapa — chips com contagem, o mesmo padrão de Clientes (R41).
@@ -206,7 +206,7 @@ function GerencialPage() {
     borderRadius: 999,
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativo ? GOLD_GRAD : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT,
     fontWeight: 600,
     fontSize: 12,
@@ -230,7 +230,7 @@ function GerencialPage() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <h1 style={{
-              fontFamily: FONT, fontWeight: 600, fontSize: 22,
+              fontFamily: FONT, fontWeight: 700, fontSize: 22,
               letterSpacing: "-0.01em", margin: 0,
             }}>
               Painel Comercial
@@ -255,7 +255,7 @@ function GerencialPage() {
                   onClick={() => navigate({ to })}
                   style={{
                     minHeight: 40,
-                    background: isLight ? "#ffffff" : "#191921",
+                    background: isLight ? "#ffffff" : "#1b1b1b",
                     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                     borderRadius: 12,
                     padding: "0 16px",
@@ -350,7 +350,7 @@ function GerencialPage() {
                 style={{
                   marginTop: 8, minHeight: 44, background: GOLD_GRAD,
                   border: "none", borderRadius: 22, padding: "0 24px",
-                  color: "#08090E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
+                  color: "#0E0E0E", fontFamily: FONT, fontWeight: 700, fontSize: 13,
                   cursor: "pointer",
                 }}
               >
@@ -445,7 +445,7 @@ function GerencialPage() {
                       style={{
                         flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6,
                         height: 34, padding: "0 13px", borderRadius: 17, border: "none",
-                        background: GOLD_GRAD, color: "#08090E",
+                        background: GOLD_GRAD, color: "#0E0E0E",
                         fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
                         letterSpacing: "0.03em", whiteSpace: "nowrap",
                         cursor: marcarEnviada.isPending ? "default" : "pointer",
@@ -531,7 +531,7 @@ function GerencialPage() {
         }}
         aria-label="Nova Proposta"
       >
-        <Plus size={28} color="#08090E" strokeWidth={2.5} />
+        <Plus size={28} color="#0E0E0E" strokeWidth={2.5} />
       </button>
     </>
   );

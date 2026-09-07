@@ -484,7 +484,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('azul do PRISMA é a ponta fria da rampa', P.PRISMA.azul.dark, P.ESPECTRO.dark[0]);
   eq('vermelho do PRISMA é a ponta quente da rampa', P.PRISMA.vermelho.dark, P.ESPECTRO.dark[8]);
 
-  for (const [tema, chave, fundo] of [['escuro', 'dark', '#141416'], ['claro', 'light', '#ffffff']]) {
+  for (const [tema, chave, fundo] of [['escuro', 'dark', '#141414'], ['claro', 'light', '#ffffff']]) {
     const r = P.ESPECTRO[chave];
     // azul→amarelo cruza o VERDE em matiz: a costura precisa ser estreita e
     // quase acromática, senão sobra uma barra verde no meio do gráfico.
@@ -1730,7 +1730,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /width: "min\(60vw, 880px\)"/.test(pn) && /maxWidth: "60vw"/.test(pn), true);
   // o print mostrava rótulo de 9,5px em cinza: obriga a aproximar do monitor
   eq('rótulo de campo tem 11px (era 9,5)', /fontSize: 11,\s*\n\s*letterSpacing/.test(pn), true);
-  eq('valor de campo tem 14px (era 13)', /fontSize: 14, fontWeight: 500/.test(pn), true);
+  // R195 (U108): o valor digitado é corpo — 400, não o 500 que a fonte não carrega
+  eq('valor de campo tem 14px (era 13) e peso 400 (R195)', /fontSize: 14, fontWeight: 400/.test(pn), true);
   eq('campo tem altura de toque (44px)', /minHeight: 44/.test(pn), true);
   // coloração estratégica: o MESMO vocabulário dos cards do quadro
   eq('o painel usa as cores de status/tipo/prioridade do sistema',
@@ -2319,7 +2320,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /const final = c\.status === "concluido" \|\| c\.status === "cancelado"/.test(cal3), true);
 
   // fundo sólido, não véu translúcido (o "cinza muito claro" que o Davi viu)
-  // R186 (U105): continua SÓLIDA — e agora cinza neutro, da escala CINZA (era #101016, azulado)
+  // R186 (U105): continua SÓLIDA — e agora cinza neutro, da escala CINZA (era #141414, azulado)
   eq('a superfície do calendário é cor SÓLIDA no escuro, não rgba(255,255,255,...) — e sai da escala CINZA (R186)',
      /const superficie = cinzas\(isLight\)\.superficie;/.test(cal3), true);
   eq('nenhum véu translúcido de branco sobrou como fundo de célula',
@@ -3790,7 +3791,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /Aceitas|Recusadas|proposta_resultado/.test(ger2cod), false);
   eq('a página usa .sangra-x — era a única tela do domínio fora da régua de margem',
      /className="sangra-x"/.test(ger2), true);
-  eq('título no padrão da casa: 22/600 com letterSpacing -0.01em (§3), não 24 espaçado',
+  eq('título no padrão da casa: 22 com letterSpacing -0.01em (§3; o peso virou 700 na R195), não 24 espaçado',
      /fontSize: 22,\s*\n\s*letterSpacing: "-0\.01em"/.test(ger2), true);
   eq('o filtro por etapa é chip com contagem (padrão de Clientes), com "Todas" na frente',
      /\{`Todas · \$\{funil\.visitas\}`\}/.test(ger2) && /ETAPA_ORDEM\.map\(\(e\) => \(/.test(ger2), true);
@@ -4347,7 +4348,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── busca alinhada ao título, filtros atrás do botão redondo ─────────────
   eq('a busca está na MESMA linha do título "Clientes"',
-     /<div style=\{\{ fontFamily: FONT, fontWeight: 600, fontSize: 22, letterSpacing: "-0\.01em" \}\}>Clientes<\/div>[\s\S]{0,1600}placeholder="Buscar cliente, endereço, posto…"/.test(cl4),
+     /<div style=\{\{ fontFamily: FONT, fontWeight: 700, fontSize: 22, letterSpacing: "-0\.01em" \}\}>Clientes<\/div>[\s\S]{0,1600}placeholder="Buscar cliente, endereço, posto…"/.test(cl4),
      true);
   eq('o botão de filtro é um CÍRCULO ao lado da busca',
      /width: 42, height: 42, borderRadius: "50%"/.test(cl4), true);
@@ -4378,7 +4379,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      && /boxShadow: `0 0 8px \$\{cor\}66`/.test(cl4) === false, true);
   eq('CRÍTICO: o ponto do MAPA perdeu o halo (r=13 em 22%) e o contorno — sobrou só a bolinha',
      /r=\{13\}/.test(map2) === false
-     && /stroke=\{isLight \? "#ffffff" : "#141416"\}/.test(map2) === false, true);
+     && /stroke=\{isLight \? "#ffffff" : "#141414"\}/.test(map2) === false, true);
   eq('…e ela é pintada pelo degradê do passo dela',
      /<circle cx=\{p\.x\} cy=\{p\.y\} r=\{5\.5\} fill=\{`url\(#cli-grad-\$\{p\.passo\}\)`\} \/>/.test(map2), true);
   eq('os degradês do mapa saem de paradasBarra (o mesmo caminho SVG dos gráficos, com a costura tratada)',
@@ -4834,24 +4835,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // os que mais doíam, um a um
   eq('--input tem contraste de verdade sobre card branco (era branco 6%: borda invisível)',
      claro['--input'], 'rgba(0,0,0,0.14)');
-  eq('--popover é claro (era #161926: o painel do Select abria escuro sobre a página clara)',
+  eq('--popover é claro (era #1b1b1b: o painel do Select abria escuro sobre a página clara)',
      claro['--popover'], '#ffffff');
   eq('--muted é claro (era #11131D: TabsList virava barra azul-marinho no card branco)',
-     claro['--muted'], '#eef0f4');
+     claro['--muted'], '#eeeeee');
   eq('CRÍTICO: --accent-foreground não é o dourado do escuro (o anti-padrão nº 3: #F8C811 sobre fundo claro dá ~1.6:1)',
      claro['--accent-foreground'] === '#F8C811', false);
   eq('--destructive/--success/--info usam os tons ESCUROS das escalas, que são os legíveis sobre branco',
      [claro['--destructive'], claro['--success'], claro['--info']],
      ['#B1242E', '#047862', '#236FC7']);
   eq('--muted-foreground passa de 4.5:1 sobre branco (era #8A8FA8, ~3.2:1)',
-     claro['--muted-foreground'], '#5a6172');
+     claro['--muted-foreground'], '#616161');
   eq('--border deixou de ser o dourado translúcido — a regra global * { border-color } espalhava aquilo por tudo',
      /rgba\(0,0,0/.test(claro['--border']), true);
 
   // `--primary` é FUNDO do botão da marca: dourado vivo com texto quase-preto
   // é o botão da casa, e escurecê-lo aqui apagaria a identidade.
   eq('--primary segue sendo o dourado da marca no claro (é fundo, não texto) com texto quase-preto',
-     [claro['--primary'], claro['--primary-foreground']], ['#F8C811', '#08090E']);
+     [claro['--primary'], claro['--primary-foreground']], ['#F8C811', '#0E0E0E']);
 
   eq('CRÍTICO: o anel de foco sai do token, não de hex — #F8C811 fixo dava ~1.6:1 na página clara, e o anel de foco é justamente o que precisa ser visto',
      /outline: 2px solid var\(--gold-primary\);/.test(css7), true);
@@ -5230,7 +5231,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      todasAsCores.every((hex) => D.contraste(D.escurecer(hex, 0.10), D.tintaSobreDegrade(hex)) >= 4.5),
      true);
   eq('sobre o dourado a tinta é o quase-preto da marca (nunca branco — §8.2)',
-     D.tintaSobreDegrade('#F8C811'), '#08090E');
+     D.tintaSobreDegrade('#F8C811'), '#0E0E0E');
   eq('a escala de contraste está certa: preto×branco é 21',
      Math.round(D.contraste('#000000', '#ffffff')), 21);
 
@@ -5332,7 +5333,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('a tinta do botão sai do contraste medido, não de um valor fixo',
      /tintaSobreDegrade\(cor\.dark\)/.test(ui3), true);
   eq('sem cor própria, o dourado da marca segue valendo',
-     /background: GOLD_GRAD, color: "#08090E"/.test(ui3), true);
+     /background: GOLD_GRAD, color: "#0E0E0E"/.test(ui3), true);
   const di3 = fs54.readFileSync('src/features/chamados/DetalheInterno.tsx', 'utf8');
   // O dourado literal AINDA aparece no arquivo, nos botões de AÇÃO (salvar,
   // abrir) — e deve mesmo: ação continua sendo território da marca (§6.3). O
@@ -17037,18 +17038,18 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── R154: o tema claro v10 ───────────────────────────────────────────────
   const css97 = ler97('src/styles.css');
-  eq('R154 CRÍTICO: a página clara é #e9ebef e o texto primário #1e2229 — nos tokens do [data-theme="light"]',
-     [/--bg-base:\s+#e9ebef;/.test(css97), /--background:\s+#e9ebef;/.test(css97),
-      /--text-primary:\s+#1e2229;/.test(css97), /--foreground:\s+#1e2229;/.test(css97),
-      /--text-muted:\s+#7d8391;/.test(css97)],
+  eq('R154 CRÍTICO: a página clara é #e9e9e9 e o texto primário #212121 — nos tokens do [data-theme="light"]',
+     [/--bg-base:\s+#e9e9e9;/.test(css97), /--background:\s+#e9e9e9;/.test(css97),
+      /--text-primary:\s+#212121;/.test(css97), /--foreground:\s+#212121;/.test(css97),
+      /--text-muted:\s+#727272;/.test(css97)],
      [true, true, true, true, true]);
   eq('R154: o card continua o branco mais claro da tela (ui.ts) e a página desce no GlowBackground',
-     [/background: isLight \? "#ffffff" : "#141416",/.test(ler97('src/lib/ui.ts')),
-      /const CLARO = "linear-gradient\(180deg, #eef0f3 0%, #e9ebef 55%, #e2e5ea 100%\)";/.test(ler97('src/components/GlowBackground.tsx'))],
+     [/background: isLight \? "#ffffff" : "#141414",/.test(ler97('src/lib/ui.ts')),
+      /const CLARO = "linear-gradient\(180deg, #eeeeee 0%, #e9e9e9 55%, #e2e2e2 100%\)";/.test(ler97('src/components/GlowBackground.tsx'))],
      [true, true]);
   eq('R154: os números do par novo — texto > 12:1 sobre a página e > 15:1 sobre o card; card × página > 1.15 (era 1.09); apagado > 3.5:1',
-     [contraste97('#1e2229', '#e9ebef') > 12, contraste97('#1e2229', '#ffffff') > 15,
-      contraste97('#ffffff', '#e9ebef') > 1.15, contraste97('#7d8391', '#ffffff') > 3.5],
+     [contraste97('#212121', '#e9e9e9') > 12, contraste97('#212121', '#ffffff') > 15,
+      contraste97('#ffffff', '#e9e9e9') > 1.15, contraste97('#727272', '#ffffff') > 3.5],
      [true, true, true, true]);
   {
     const sobras = [];
@@ -17065,8 +17066,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     eq('R154 CRÍTICO: a varredura foi completa — nenhum #0a0b0e/#f4f5f7/#8a909e sobrou em src (a tinta da assinatura é a exceção declarada)',
        sobras, []);
   }
-  eq('R154: a tinta da assinatura continua preta — não é texto de tema',
-     /strokeStyle = "#0a0b0e"/.test(ler97('src/features/chamados/AssinaturaCanvas.tsx')), true);
+  eq('R154: a tinta da assinatura continua preta (cinza puro desde a R186) — não é texto de tema',
+     /strokeStyle = "#0b0b0b"/.test(ler97('src/features/chamados/AssinaturaCanvas.tsx')), true);
   // a rampa: cada amostra v10 é mais clara que a v7 correspondente; o TEXTO não mudou
   const v7 = ['#236FC7', '#2E97C5', '#A99300', '#B78E00', '#BF8A00', '#CC7900', '#D96200', '#D65539', '#CF515E'];
   eq('R154 CRÍTICO: a rampa clara v10 é a v7 clareada amostra a amostra, e a rampa de TEXTO não mudou (é ela que lê)',
@@ -17101,7 +17102,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## U97 /m.test(ler97('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true]);
   eq('U97 (regra 7): o DESIGN_SYSTEM traz os tokens v10, as oito bordas claras resolvidas, a rampa v10 com o piso de 2,5:1, e o fundo v4/v10 — e o quase-preto só aparece como história',
-     [/#e9ebef/.test(ds97) && /#1e2229/.test(ds97) && /#7d8391/.test(ds97),
+     [/#e9e9e9/.test(ds97) && /#212121/.test(ds97) && /#727272/.test(ds97),
       ['#f5a1a7', '#ae565d', '#fad958', '#b3900c', '#84b4f0', '#396ba8', '#6ce0c0', '#209777'].every((h) => ds97.includes(h)),
       /#4F8CD2/.test(ds97) && /2,5:1/.test(ds97) && /COSTURA\.light = #ABC1BE/.test(ds97),
       /^## 5\. Fundos de página \(v4 minimalista · v10 no claro\)/m.test(ds97),
@@ -17487,8 +17488,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       CORES101.map((n) => lum101(PAL101.PRISMA[n].dark)).reduce((a2, b2) => a2 + b2, 0)
         > 3 * CORES101.map((n) => lum101(PAL101.PRISMA[n].light)).reduce((a2, b2) => a2 + b2, 0)],
      [true, true]);
-  eq('R177: o preenchimento LÊ como forma sobre o card escuro — de 7 a 29 vezes a luminância de #141416 (a razão de contraste engana perto do preto)',
-     CORES101.filter((n) => lum101(PAL101.PRISMA[n].light) / lum101('#141416') < 5), []);
+  eq('R177: o preenchimento LÊ como forma sobre o card escuro — de 7 a 29 vezes a luminância de #141414 (a razão de contraste engana perto do preto)',
+     CORES101.filter((n) => lum101(PAL101.PRISMA[n].light) / lum101('#141414') < 5), []);
   // e a etiqueta chegou aos NOVE arquivos que mostravam chip de véu
   {
     // quantas CHAMADAS de etiqueta() cada tela faz (a linha de import não conta)
@@ -17537,7 +17538,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [/0 0 \d+px \$\{d\.glow\}/.test(pcf101), /0 0 \d+px \$\{d\.glow\}/.test(apl101)], [false, false]);
   eq('R176: a PILHA troca o glow por um ANEL na cor da superfície — os círculos se sobrepõem em -7px e precisam se separar sem acrescentar luz',
      // R188 (U105): o anel virou a prop `anel` (padrão true) — sem ele a sobreposição cai para -4
-     [/boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}` : undefined,/.test(apl101),
+     [/boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141414"\}` : undefined,/.test(apl101),
       /const sobreposicao = anel \? -7 : -4;/.test(apl101) && /marginLeft: i === 0 \? 0 : sobreposicao/.test(apl101)],
      [true, true]);
   eq('R176: o avatar SOLTO não ganhou anel nenhum (não há sobreposição para separar)',
@@ -17770,9 +17771,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         && nivel(PAL104.CINZA.claro.campo) < nivel(PAL104.CINZA.claro.superficie)],
      [true, true]);
   eq('R186: cinzas(isLight) devolve a escala do tema', [PAL104.cinzas(true).superficie, PAL104.cinzas(false).superficie], ['#ffffff', '#141414']);
-  eq('R186: o painel pinta as superfícies pela escala CINZA — os hexes azulados locais (#0f0f15, #16161d, #f7f7f5) saíram',
+  eq('R186: o painel pinta as superfícies pela escala CINZA — os hexes azulados locais (0f0f15, 16161d, f7f7f5) saíram',
      /const superficie = cinzas\(isLight\)\.superficie;/.test(pc104) && /const cabecalhoBg = cinzas\(isLight\)\.elevada;/.test(pc104)
-     && !/#0f0f15|#16161d|#f7f7f5/i.test(pc104), true);
+     && !/#0f0f15|#16161d|#f7f7f5/i.test(pc104), true);  // os hexes ANTIGOS do painel, que não podem voltar
 
   // regra 7
   const prod104 = ler104('docs/PRODUTO.md');
@@ -17820,7 +17821,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R188: AvatarPilha tem `anel` (padrão true); sem anel não há borda nem boxShadow, e a sobreposição cai para -4px',
      [/anel\?: boolean;/.test(ap105), /anel = true \}: Props\)/.test(ap105),
       /border: anel \? `2px solid \$\{corDoAnel\}` : "none",/.test(ap105),
-      /boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}` : undefined,/.test(ap105),
+      /boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141414"\}` : undefined,/.test(ap105),
       /const sobreposicao = anel \? -7 : -4;/.test(ap105)],
      [true, true, true, true, true]);
   eq('R188: as DUAS pilhas do calendário vão sem anel (mensal e semanal)',
@@ -17869,7 +17870,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // R186 no calendário
   eq('R186: as superfícies do calendário saem da escala CINZA (superfície e fora-do-mês), sem os hexes azulados locais',
      [/const superficie = cinzas\(isLight\)\.superficie;/.test(cal105), /const foraDoMes = cinzas\(isLight\)\.pagina;/.test(cal105),
-      /#101016|#0a0a0e|#191921/i.test(cal105c)],
+      /#101016|#0a0a0e|#191921/i.test(cal105c)],  // os hexes ANTIGOS do calendário, que não podem voltar
      [true, true, false]);
 
   // regra 7
@@ -17994,6 +17995,93 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^### 6\.19 Formulário em colunas/m.test(ler107('DESIGN_SYSTEM.md')),
       /três colunas/.test(ler107('docs/manual/comercial.md')), /^## U107 /m.test(ler107('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true]);
+}
+
+// ── U108 — o cinza neutro no sistema inteiro (R186) e a tipografia estratégica (R195) ──
+{
+  const fs108 = require('fs');
+  const path108 = require('path');
+  const ler108 = (f) => fs108.readFileSync(f, 'utf8');
+  const arvore108 = (p, acc = []) => {
+    for (const f of fs108.readdirSync(p)) {
+      const q = path108.join(p, f);
+      if (fs108.statSync(q).isDirectory()) arvore108(q, acc);
+      else if (/\.(tsx?|css)$/.test(f) && !/routeTree\.gen/.test(f)) acc.push(q);
+    }
+    return acc;
+  };
+  const fontes108 = arvore108('src').map((f) => [f.split(path108.sep).join('/'), ler108(f)]);
+
+  // R186 — a varredura
+  const AZULADOS = /#(08090e|14141b|0b0b10|191921|16161d|12141c|101016|161926|0a0a14|1f2430|101014|0f111a|0d0e14|141416|1a1a20|0f0f15|e9ebef|f5f6f8|f0f1f4|f0f2f5|eef0f4|e8eaee|e2e5ea|eef0f3|1e2229|4a5060|7d8391|5a6172|d1d5db)\b/i;
+  eq('R186 CRÍTICO: nenhum dos 29 hexes azulados varridos na U108 sobrou em src/ (superfície, página, campo, texto neutro)',
+     fontes108.filter(([, s]) => AZULADOS.test(s)).map(([f]) => f), []);
+  // e nenhum azulado NOVO se esconde: um "cinza que puxa para o azul" é um hex
+  // quase-neutro em que o canal AZUL é o maior, à frente dos outros em até 16.
+  // Tintas de verdade (o verde de sucesso, o rosa de erro, o dourado escuro)
+  // não são azuis e passam; um cinza frio novo acende aqui.
+  const azulados = fontes108.flatMap(([f, s]) => [...s.matchAll(/#([0-9a-f]{6})\b/gi)].map((m) => [f, m[0]]))
+    .filter(([, h]) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      return b > r && b > g && (b - Math.min(r, g)) <= 16;
+    })
+    .map(([f, h]) => `${f}: ${h.toLowerCase()}`);
+  eq('R186 CRÍTICO: nenhum cinza que puxe para o azul sobrou em src/ (canal azul à frente dos outros em até 16) — um cinza frio novo acende aqui',
+     [...new Set(azulados)], []);
+  const css108 = ler108('src/styles.css');
+  eq('R186: os tokens de página, card, overlay e texto dos DOIS temas são cinza puro (styles.css)',
+     [/--bg-base: #0E0E0E;/.test(css108), /--bg-elevated: #141414;/.test(css108), /--bg-overlay: #1b1b1b;/.test(css108),
+      /--bg-base:\s+#e9e9e9;/.test(css108), /--bg-overlay:\s+#e8e8e8;/.test(css108),
+      /--text-primary:\s+#212121;/.test(css108), /--text-secondary:\s+#505050;/.test(css108), /--text-muted:\s+#727272;/.test(css108)],
+     [true, true, true, true, true, true, true, true]);
+  eq('R186: card(isLight) e o degradê de card de ui.ts estão na escala (superfície #141414; degradê #161616→#101010)',
+     [/background: isLight \? "#ffffff" : "#141414",/.test(ler108('src/lib/ui.ts')),
+      /CARD_BG_DARK = "linear-gradient\(160deg, #161616 0%, #101010 100%\)"/.test(ler108('src/lib/ui.ts'))],
+     [true, true]);
+  {
+    const lum = (hex) => {
+      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const contraste = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    eq('R186: o texto neutro do claro manteve o contraste da R154 — #212121 ≥ 15:1 no card e ≥ 13:1 na página; #505050 ≥ 6,5:1; #727272 ≥ 3,9:1 na página',
+       [contraste('#212121', '#ffffff') >= 15, contraste('#212121', '#e9e9e9') >= 13, contraste('#505050', '#ffffff') >= 6.5, contraste('#727272', '#e9e9e9') >= 3.9],
+       [true, true, true, true]);
+    eq('R186: no escuro, o branco lê ≥ 15:1 sobre a superfície #141414 e ≥ 13:1 sobre a elevada #1b1b1b; a página #0e0e0e é o degrau mais fundo',
+       [contraste('#ffffff', '#141414') >= 15, contraste('#ffffff', '#1b1b1b') >= 13, lum('#0e0e0e') < lum('#141414')], [true, true, true]);
+  }
+
+  // R195 — a tipografia
+  const pesos108 = [...new Set(fontes108.flatMap(([, s]) => [...s.matchAll(/fontWeight: (\d+)/g)].map((m) => Number(m[1]))))].sort((a, b) => a - b);
+  eq('R195 CRÍTICO: só os pesos carregados existem em src/ — {100, 400, 600, 700}; 500 e 800 foram varridos de novo na U108',
+     pesos108.filter((p) => ![100, 400, 600, 700].includes(p)), []);
+  eq('R195: todo título de página (22px) é 700 — nenhum "fontWeight: 600, fontSize: 22" sobrou',
+     fontes108.filter(([, s]) => /fontWeight: 600, fontSize: 22\b/.test(s)).map(([f]) => f), []);
+  eq('R195: title() de ui.ts é 700, e o título do calendário também',
+     [/export const title = [\s\S]{0,140}fontWeight: 700,/.test(ler108('src/lib/ui.ts')),
+      /fontFamily: FONT, fontWeight: 700, fontSize: 19, margin: 0,/.test(ler108('src/routes/_authenticated/calendario.tsx'))],
+     [true, true]);
+  eq('R195: o valor digitado num campo é 400 (corpo), não 500 — CampoComBusca, EditorDeDescricao, PainelChamado, Nova Visita',
+     [/fontSize: compacto \? 13 : 14, fontWeight: 400,/.test(ler108('src/components/CampoComBusca.tsx')),
+      /fontSize: 14, fontWeight: 400, color: textPrimary, lineHeight: 1\.55/.test(ler108('src/components/EditorDeDescricao.tsx')),
+      /fontSize: 14, fontWeight: 400, color: textPrimary,/.test(ler108('src/features/chamados/PainelChamado.tsx')),
+      /fontFamily: FONT, fontWeight: 400, fontSize: 14, padding: "11px 13px",/.test(ler108('src/routes/_authenticated/gerencial.nova.tsx'))],
+     [true, true, true, true]);
+  eq('R195: rótulo pequeno (≤ 10,5px) que era 500 virou 600 — texto pequeno precisa de peso para existir',
+     [/fontWeight: 600, fontSize: 9,/.test(ler108('src/features/paineis/PainelBase.tsx')),
+      /fontWeight: 600, fontSize: 8, letterSpacing: "0\.05em"/.test(ler108('src/routes/_authenticated/painel.operacional.tsx'))],
+     [true, true]);
+
+  // regra 7
+  const prod108 = ler108('docs/PRODUTO.md');
+  const ds108 = ler108('DESIGN_SYSTEM.md');
+  eq('U108 (regra 7): R195 existe, a última atualização aponta para ela, o DS §12 é v12 e o §3 diz 22/700, a skill e o manual pararam de dizer 22/600, a U108 está no diário',
+     [/^- \*\*R195\*\* —/m.test(prod108), Number((prod108.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 195,
+      /^## 12\. Tipografia \(v12/m.test(ds108), /\| Título de página \| 22px \| 700 \|/.test(ds108),
+      !/22\/600/.test(ler108('.claude/skills/designer/SKILL.md')) && !/22\/600|regular\/500/.test(ler108('docs/manual/interface-e-design.md')),
+      /^## U108 /m.test(ler108('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

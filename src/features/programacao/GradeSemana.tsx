@@ -66,8 +66,8 @@ interface PropsCabecalho {
  * "disponível". Os dois zeros são diferentes.
  */
 export function CabecalhoDaLinha({ linha, isLight, rotulos, compacto }: PropsCabecalho) {
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const laranja = isLight ? PRISMA.laranja.light : PRISMA.laranja.dark;
   const sub = rotulos.sub(linha.duplaId);
   const origem = rotulos.origem(linha);
@@ -118,7 +118,7 @@ export function CabecalhoDaLinha({ linha, isLight, rotulos, compacto }: PropsCab
             title="Blocos cujo chamado você não pode ler. Eles contam na ocupação de propósito — se sumissem, o chip mostraria 40% onde há 90% — mas o que está neles não é seu para saber."
             style={{
               display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0,
-              fontFamily: FONT, fontWeight: 500, fontSize: 10, color: textSecondary,
+              fontFamily: FONT, fontWeight: 600, fontSize: 10, color: textSecondary,
             }}
           >
             <EyeOff size={11} />
@@ -178,10 +178,10 @@ export function GradeSemana({
   linhas, dias, isLight, rotulos, diaAberto, mostrarRotulos, selos,
   onAbrirItem, onNovoNaCelula, arrasto,
 }: Props) {
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const janela = janelaDoDesenho(linhas);
-  const fundo = isLight ? "#ffffff" : "#141416";
+  const fundo = isLight ? "#ffffff" : "#141414";
   const linhaFina = isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)";
   // A primeira coluna gruda: com seis equipes e sete dias o trilho rola de
   // lado, e uma grade que rola perdendo o nome da equipe é uma grade ilegível.

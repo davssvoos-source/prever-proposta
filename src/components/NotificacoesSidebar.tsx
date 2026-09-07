@@ -52,8 +52,8 @@ export function NotificacoesSidebar({ recolhida = false }: Props) {
     };
   }, [aberto]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   // o amarelo é o principal do sistema — a contagem de não lidas é dele
   const ambar = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
@@ -97,7 +97,7 @@ export function NotificacoesSidebar({ recolhida = false }: Props) {
           <span style={{
             marginLeft: "auto",
             minWidth: 20, height: 20, padding: "0 6px",
-            borderRadius: 10, background: ambar, color: "#08090E",
+            borderRadius: 10, background: ambar, color: "#0E0E0E",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
             fontVariantNumeric: "tabular-nums",

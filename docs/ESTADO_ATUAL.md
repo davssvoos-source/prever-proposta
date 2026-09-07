@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R194** · último diário:
-**U107** · verificador: **2.994 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-04** · última regra: **R195** · último diário:
+**U108** · verificador: **3.006 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendente: U106** (só apaga a
 linha `mapa` da matriz).
 
@@ -82,6 +82,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U105 | o Calendário revisto pelo Davi: card com fundo na cor do status (R187), rostos sem anel (R188), meses seguintes ao rolar até +3 (R189), dica expandida ao passar o mouse (R190), sem botão "Hoje" (R191) |
 | U106 | o Mapa sai — /mapa redireciona, botão fora do Comercial, chave fora do catálogo, migration U106 apaga a linha (R192); o Administrativo vira duas colunas Usuários | Permissões com as APIs por botão (R193) |
 | U107 | a Nova Visita Técnica numa tela só — três colunas (Local · Contatos e serviços · Agendamento), design system no lugar da paleta local, todas as regras da proposta preservadas (R194) |
+| U108 | o cinza neutro no sistema inteiro — 29 hexes azulados varridos em cem arquivos, texto na mesma luminância, duas asserções travam a volta (R186 aplicada); tipografia estratégica — títulos de página 700, valor de campo 400, rótulo pequeno 600, só {100, 400, 600, 700} (R195) |
 
 ## 4. Banco: migrations
 
@@ -139,7 +140,8 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   é a informação (botões discretos), o corpo é o **registro** (Problema →
   Diagnóstico com a barra 1→2 → comentários → linha do tempo).
 - **R186** — **o fundo é só cinza**, sem azul. A escala `CINZA` está em
-  `paleta.ts`; o painel já a usa; a **U108** troca o resto do sistema.
+  `paleta.ts`; a **U108** aplicou ao sistema inteiro (superfícies e texto, na
+  mesma luminância).
 - **R187–R191** — o **Calendário**: card tingido pela cor do status, rostos sem
   anel, meses seguintes ao rolar (+3), dica expandida no hover, sem "Hoje".
 - **R192–R193** — a tela **/mapa saiu** (redirect; migration U106 pendente) e
@@ -148,6 +150,8 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 - **R194** — a **Nova Visita Técnica** é uma tela só, em três colunas, no
   design system; as regras da proposta (R147, R21/R22, residência, R114, R170)
   continuam.
+- **R195** — **tipografia estratégica**: quatro pesos com função (100, 400,
+  600, 700); título de página 700; valor de campo 400; rótulo pequeno 600.
 
 ## 6. Perguntas em aberto
 

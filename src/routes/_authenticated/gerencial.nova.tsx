@@ -139,7 +139,7 @@ function NovaVisitaPage() {
   };
   const INPUT: CSSProperties = {
     width: "100%", background: cz.campo, border: `1px solid ${cz.divisoria}`, borderRadius: 12,
-    color: cz.texto, fontFamily: FONT, fontWeight: 500, fontSize: 14, padding: "11px 13px",
+    color: cz.texto, fontFamily: FONT, fontWeight: 400, fontSize: 14, padding: "11px 13px",
     outline: "none", boxSizing: "border-box", colorScheme: isLight ? "light" : "dark",
   };
   /** botão secundário pequeno (desvincular, atalhos de data, localizar) */
@@ -583,7 +583,7 @@ function NovaVisitaPage() {
                       display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
                     }}
                   >
-                    <span style={{ display: "inline-flex", color: ativo ? "#08090E" : cz.textoSecundario }}>
+                    <span style={{ display: "inline-flex", color: ativo ? "#0E0E0E" : cz.textoSecundario }}>
                       <t.Icon size={24} />
                     </span>
                     <span style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 600, textAlign: "center", lineHeight: 1.2 }}>
@@ -778,7 +778,7 @@ function NovaVisitaPage() {
                     }}
                   >
                     {Ico && (
-                      <span style={{ display: "inline-flex", alignItems: "center", color: ativo ? "#08090E" : gold }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", color: ativo ? "#0E0E0E" : gold }}>
                         <Ico size={13} />
                       </span>
                     )}
@@ -943,7 +943,7 @@ function TituloDaColuna({ n, id, titulo, sub }: { n: number; id: string; titulo:
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "2px 2px 0" }}>
       <span aria-hidden style={{
         width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
-        background: GOLD_GRAD, color: "#08090E",
+        background: GOLD_GRAD, color: "#0E0E0E",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
       }}>

@@ -37,8 +37,8 @@ function ContratoDetalhePage() {
   const [novoPreco, setNovoPreco] = useState("");
   const [novoValor, setNovoValor] = useState("");
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = { ...card(isLight), padding: "16px", display: "flex", flexDirection: "column", gap: 12 };
@@ -52,7 +52,7 @@ function ContratoDetalhePage() {
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 12px",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 13.5,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -60,8 +60,8 @@ function ContratoDetalhePage() {
   const chip = (ativo: boolean): CSSProperties => ({
     padding: "8px 12px", borderRadius: 10,
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-    background: ativo ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    background: ativo ? GOLD_GRAD : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 11.5, cursor: "pointer",
   });
 
@@ -145,7 +145,7 @@ function ContratoDetalhePage() {
             : { to: "/clientes" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -223,7 +223,7 @@ function ContratoDetalhePage() {
             style={{
               alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6,
               padding: "8px 12px", borderRadius: 10, cursor: "pointer",
-              background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
+              background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
               color: textPrimary, fontFamily: FONT, fontWeight: 600, fontSize: 12,
             }}
@@ -315,7 +315,7 @@ function ContratoDetalhePage() {
             key={it.id}
             style={{
               padding: "10px 12px", borderRadius: 12,
-              background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+              background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
               border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
               display: "flex", flexDirection: "column", gap: 8,
             }}
@@ -359,7 +359,7 @@ function ContratoDetalhePage() {
             onClick={() => mexerCobertura.mutate({ tipo: "add" })}
             disabled={!novoEquip.trim()}
             style={{
-              height: 44, borderRadius: 12, border: "none", background: GOLD_GRAD, color: "#08090E",
+              height: 44, borderRadius: 12, border: "none", background: GOLD_GRAD, color: "#0E0E0E",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: novoEquip.trim() ? "pointer" : "default", opacity: novoEquip.trim() ? 1 : 0.5,
             }}
@@ -399,7 +399,7 @@ function ContratoDetalhePage() {
             onClick={() => mexerPreco.mutate({ tipo: "add" })}
             disabled={!novoPreco.trim() || !novoValor.trim()}
             style={{
-              height: 44, borderRadius: 12, border: "none", background: GOLD_GRAD, color: "#08090E",
+              height: 44, borderRadius: 12, border: "none", background: GOLD_GRAD, color: "#0E0E0E",
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: novoPreco.trim() && novoValor.trim() ? "pointer" : "default",
               opacity: novoPreco.trim() && novoValor.trim() ? 1 : 0.5,

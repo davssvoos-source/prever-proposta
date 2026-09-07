@@ -114,7 +114,7 @@ Os números que este projeto cobra **por asserção** (não por opinião):
 | Texto sobre a superfície | **4,5:1** |
 | Não-texto (borda, ícone, barra, arco) | **3:1** |
 | Preenchimento de gráfico no tema **claro** | **2,5:1** — piso declarado da R154, porque o número ao lado é a rampa de TEXTO, que segue em 4,5:1 |
-| Tinta sobre o degradê dourado | 4,5:1 → é `#08090E`, nunca branco (anti-padrão nº 2) |
+| Tinta sobre o degradê dourado | 4,5:1 → é `#0E0E0E`, nunca branco (anti-padrão nº 2) |
 
 Práticas:
 

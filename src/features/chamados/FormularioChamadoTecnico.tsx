@@ -135,8 +135,8 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   const cliente = clientes.find((c) => c.id === clienteId) ?? null;
   const sistema = sistemas.find((s) => s.id === sistemaId) ?? null;
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   // card() do lib/ui — o mesmo das telas irmãs do fluxo (novo, painel,
@@ -157,7 +157,7 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -170,8 +170,8 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
       ? cores
         ? cores.bg
         : "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-      : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? (cores ? cores.cor : "#08090E") : textPrimary,
+      : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+    color: ativo ? (cores ? cores.cor : "#0E0E0E") : textPrimary,
     boxShadow: ativo && cores ? `inset 0 0 0 1px ${cores.border}` : undefined,
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12, cursor: "pointer",
   });
@@ -398,7 +398,7 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
               onClick={() => { setClienteId(null); setSistemaId(null); setBuscaCliente(""); setCriandoSistema(false); }}
               style={{
                 height: 34, padding: "0 12px", borderRadius: 10, flexShrink: 0,
-                background: isLight ? "#ffffff" : "#191921",
+                background: isLight ? "#ffffff" : "#1b1b1b",
                 border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                 color: textPrimary, cursor: "pointer",
                 fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,
@@ -709,7 +709,7 @@ export function FormularioChamadoTecnico({ aoConcluir, tipoInicial, tecnicoInici
         disabled={ocupado}
         style={{
           width: "100%", height: 56, borderRadius: 28, border: "none",
-          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
+          background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E",
           fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.16em", textTransform: "uppercase",
           cursor: ocupado ? "wait" : "pointer",

@@ -76,7 +76,7 @@ function RedefinirSenhaPage() {
   }
 
   const CARD: CSSProperties = {
-    background: isLight ? "#ffffff" : "#101014",
+    background: isLight ? "#ffffff" : "#141414",
     backdropFilter: isLight ? "none" : "blur(20px) saturate(160%)",
     WebkitBackdropFilter: isLight ? "none" : "blur(20px) saturate(160%)",
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
@@ -87,10 +87,10 @@ function RedefinirSenhaPage() {
   const INPUT: CSSProperties = {
     width: "100%",
     height: 52,
-    background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
-    color: isLight ? "#1e2229" : "#fff",
+    color: isLight ? "#212121" : "#fff",
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 14,
@@ -104,7 +104,7 @@ function RedefinirSenhaPage() {
     borderRadius: 26,
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
-    color: "#08090E",
+    color: "#0E0E0E",
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 13,
@@ -128,7 +128,7 @@ function RedefinirSenhaPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: isLight ? "#eef0f4" : "#08090E",
+        background: isLight ? "#eeeeee" : "#0E0E0E",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -181,7 +181,7 @@ function RedefinirSenhaPage() {
                   fontFamily: "var(--fonte)",
                   fontWeight: 400,
                   fontSize: 13,
-                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+                  color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
                   letterSpacing: "0.08em",
                 }}
               >
@@ -196,7 +196,7 @@ function RedefinirSenhaPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 17,
-                    color: isLight ? "#1e2229" : "#fff",
+                    color: isLight ? "#212121" : "#fff",
                     marginBottom: 6,
                   }}
                 >

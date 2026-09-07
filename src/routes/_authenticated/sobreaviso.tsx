@@ -104,8 +104,8 @@ function SobreavisoPage() {
     pessoaId: string; de: string; ate: string; linhas: LinhaDaLimpeza[];
   } | null>(null);
 
-  const textPrimary = isLight ? "#12141c" : "rgba(255,255,255,0.92)";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const ano = Number(mes.slice(0, 4));
 
   const irPara = (novoMes: string) =>
@@ -248,7 +248,7 @@ function SobreavisoPage() {
       {/* ── barra do mês ───────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <CalendarDays size={18} color={isLight ? "#A06108" : "#F8C811"} />
-        <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: textPrimary, margin: 0 }}>
+        <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: textPrimary, margin: 0 }}>
           Sobreaviso
         </h1>
         <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: 6 }}>
@@ -454,7 +454,7 @@ function SobreavisoPage() {
       {/* ── A CONFIRMAÇÃO DO GESTO EM MASSA: os oito números ───────────── */}
       {padrao ? (
         <Modal isLight={isLight} aoFechar={() => setPadrao(null)}>
-          <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: textPrimary, margin: "0 0 4px" }}>
+          <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: textPrimary, margin: "0 0 4px" }}>
             Aplicar a semana padrão vai SUBSTITUIR horas já lançadas
           </h2>
           <p style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, margin: "0 0 12px" }}>
@@ -478,7 +478,7 @@ function SobreavisoPage() {
       {/* ── A CONFIRMAÇÃO DE LIMPAR: as linhas que morrem ──────────────── */}
       {limpeza ? (
         <Modal isLight={isLight} aoFechar={() => setLimpeza(null)}>
-          <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: isLight ? ERRO.light : ERRO.dark, margin: "0 0 4px" }}>
+          <h2 style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: isLight ? ERRO.light : ERRO.dark, margin: "0 0 4px" }}>
             Apagar {limpeza.linhas.length} dia(s), {limpeza.linhas.reduce((s, l) => s + l.horas, 0)} h ao todo
           </h2>
           <p style={{ fontFamily: FONT, fontSize: 12, color: textSecondary, margin: "0 0 12px" }}>
@@ -531,13 +531,13 @@ function SobreavisoPage() {
 function Aviso({ children, isLight, tom }: {
   children: React.ReactNode; isLight: boolean; tom: "erro" | "neutro";
 }) {
-  const textPrimary = isLight ? "#12141c" : "rgba(255,255,255,0.92)";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   return (
     <div style={{ padding: "18px 0 40px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <CalendarDays size={18} color={isLight ? "#A06108" : "#F8C811"} />
-        <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: textPrimary, margin: 0 }}>
+        <h1 style={{ fontFamily: FONT, fontSize: 18, fontWeight: 700, color: textPrimary, margin: 0 }}>
           Sobreaviso
         </h1>
       </div>
@@ -554,8 +554,8 @@ function Aviso({ children, isLight, tom }: {
 }
 
 function TabelaDaPrevia({ linhas, isLight }: { linhas: LinhaDaPrevia[]; isLight: boolean }) {
-  const textPrimary = isLight ? "#12141c" : "rgba(255,255,255,0.92)";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT, fontSize: 12 }}>
       <thead>
@@ -590,13 +590,13 @@ function TabelaDaPrevia({ linhas, isLight }: { linhas: LinhaDaPrevia[]; isLight:
 }
 
 function Selo({ rotulo, valor, cor, isLight }: { rotulo: string; valor: string; cor?: string; isLight: boolean }) {
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <span style={{ fontFamily: FONT, fontSize: 10, color: textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
         {rotulo}
       </span>
-      <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: cor ?? (isLight ? "#12141c" : "rgba(255,255,255,0.92)") }}>
+      <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 700, color: cor ?? (isLight ? "#141414" : "rgba(255,255,255,0.92)") }}>
         {valor}
       </span>
     </div>
@@ -628,7 +628,7 @@ function botaoIcone(isLight: boolean): React.CSSProperties {
     display: "flex", alignItems: "center", justifyContent: "center",
     background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-    color: isLight ? "#12141c" : "rgba(255,255,255,0.92)",
+    color: isLight ? "#141414" : "rgba(255,255,255,0.92)",
   };
 }
 
@@ -639,6 +639,6 @@ function botaoPequeno(isLight: boolean): React.CSSProperties {
     fontFamily: FONT, fontSize: 12, fontWeight: 600,
     background: isLight ? "#ffffff" : "rgba(255,255,255,0.04)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
-    color: isLight ? "#12141c" : "rgba(255,255,255,0.92)",
+    color: isLight ? "#141414" : "rgba(255,255,255,0.92)",
   };
 }

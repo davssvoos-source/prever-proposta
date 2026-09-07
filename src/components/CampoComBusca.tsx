@@ -99,12 +99,12 @@ export function CampoComBusca({
     return () => document.removeEventListener("mousedown", fora);
   }, [aberto]);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.62)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.62)";
   const campoBg = isLight ? "#ffffff" : "rgba(255,255,255,0.055)";
   const borda = isLight ? "1px solid rgba(0,0,0,0.14)" : "1px solid rgba(255,255,255,0.14)";
   const gold = isLight ? "#A06108" : "#F8C811";
-  const listaBg = isLight ? "#ffffff" : "#16161d";
+  const listaBg = isLight ? "#ffffff" : "#1b1b1b";
 
   // com ícone, o texto começa depois dele — senão o avatar cobriria as
   // primeiras letras do nome. `temIcone` olha se HÁ ESCOLHA, não só se a prop
@@ -117,7 +117,7 @@ export function CampoComBusca({
   const estiloCampo: CSSProperties = {
     width: "100%", boxSizing: "border-box",
     minHeight: compacto ? 38 : 44,
-    fontFamily: FONT, fontSize: compacto ? 13 : 14, fontWeight: 500,
+    fontFamily: FONT, fontSize: compacto ? 13 : 14, fontWeight: 400,
     color: textPrimary, background: campoBg, border: borda,
     borderRadius: compacto ? 999 : 12,
     padding: `${compacto ? 8 : 11}px ${compacto ? 34 : 38}px ${compacto ? 8 : 11}px ${padEsquerda}px`,

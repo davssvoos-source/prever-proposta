@@ -203,8 +203,8 @@ function ProgramacaoPage() {
     } as any);
   const setDia = (d: string) => irPara({ dia: d });
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
 
@@ -781,7 +781,7 @@ function ProgramacaoPage() {
             ? `1px solid ${gold}`
             : isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
           background: ativo ? GOLD_GRAD : "transparent",
-          color: ativo ? "#08090E" : textPrimary,
+          color: ativo ? "#0E0E0E" : textPrimary,
           display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
         }}
       >
@@ -796,7 +796,7 @@ function ProgramacaoPage() {
             Vinicius media a coisa errada. */}
         <span style={{
           fontFamily: FONT, fontSize: 9, fontWeight: 600,
-          color: ativo ? "#08090E" : (carga?.minutos ?? 0) > 0 ? gold : "transparent",
+          color: ativo ? "#0E0E0E" : (carga?.minutos ?? 0) > 0 ? gold : "transparent",
         }}>
           {(carga?.minutos ?? 0) > 0 ? duracaoTexto(carga!.minutos) : "·"}
         </span>
@@ -813,13 +813,13 @@ function ProgramacaoPage() {
           <span style={{
             display: "block", height: "100%",
             width: `${Math.min(100, carga?.pctMax ?? 0)}%`,
-            background: ativo ? "#08090E" : gold,
+            background: ativo ? "#0E0E0E" : gold,
           }} />
         </span>
         {/* o legado NUNCA em vermelho: ele é a barra de progresso da migração,
             não uma acusação */}
         <span style={{
-          fontFamily: FONT, fontSize: 8.5, fontWeight: 500,
+          fontFamily: FONT, fontSize: 8.5, fontWeight: 600,
           color: ativo ? "rgba(8,9,14,0.7)" : legado > 0 ? textSecondary : "transparent",
         }}>
           {legado > 0 ? `${legado} s/ hora` : "·"}
@@ -843,7 +843,7 @@ function ProgramacaoPage() {
           aria-label="Voltar"
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -889,7 +889,7 @@ function ProgramacaoPage() {
           title="Nova atividade para técnico de campo"
           style={{
             width: 40, height: 40, borderRadius: 12, border: "none", background: GOLD_GRAD,
-            color: "#08090E", display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#0E0E0E", display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0, boxShadow: "0 6px 20px rgba(248,200,17,0.35)",
           }}
         >
@@ -956,7 +956,7 @@ function ProgramacaoPage() {
               style={{
                 padding: "7px 15px", borderRadius: 999, border: "none", cursor: "pointer",
                 background: modo === m ? GOLD_GRAD : "transparent",
-                color: modo === m ? "#08090E" : textSecondary,
+                color: modo === m ? "#0E0E0E" : textSecondary,
                 fontFamily: FONT, fontWeight: 700, fontSize: 11.5,
                 letterSpacing: "0.04em", textTransform: "capitalize",
                 alignItems: "center",
@@ -1172,7 +1172,7 @@ function ProgramacaoPage() {
               key={x.chamadoId}
               style={{
                 padding: "10px 12px", borderRadius: 12,
-                background: isLight ? "#f9fafb" : "rgba(255,255,255,0.03)",
+                background: isLight ? "#fafafa" : "rgba(255,255,255,0.03)",
                 border: isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)",
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
               }}

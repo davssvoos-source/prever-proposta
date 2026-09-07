@@ -28,7 +28,7 @@ function ChamadoPage() {
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 13,
-    color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+    color: isLight ? "#505050" : "rgba(255,255,255,0.55)",
   };
 
   if (isLoading) return <div style={aviso}>Carregando…</div>;

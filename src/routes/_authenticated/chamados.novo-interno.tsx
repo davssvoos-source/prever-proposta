@@ -81,8 +81,8 @@ function NovaChamadoPage() {
   const tipoEfetivo = tipo || sugestao;
   const equipeDoResponsavel = equipeDaPessoa(pessoas, responsavelId || null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
@@ -97,7 +97,7 @@ function NovaChamadoPage() {
   };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -109,8 +109,8 @@ function NovaChamadoPage() {
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-      : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+      : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
     cursor: "pointer",
   });
@@ -147,7 +147,7 @@ function NovaChamadoPage() {
           onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,
@@ -259,7 +259,7 @@ function NovaChamadoPage() {
         style={{
           height: 52, borderRadius: 26, border: "none",
           background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-          color: "#08090E",
+          color: "#0E0E0E",
           fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
           letterSpacing: "0.14em", textTransform: "uppercase",
           cursor: criar.isPending || !titulo.trim() ? "default" : "pointer",

@@ -276,14 +276,14 @@ function CalendarioPage() {
   const location = useLocation();
   const { isLight } = useTheme();
 
-  const textPrimary = isLight ? "#1e2229" : "#fff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.5)";
+  const textPrimary = isLight ? "#212121" : "#fff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.5)";
   const gold = isLight ? "#A06108" : "#F8C811";
   // SÓLIDA, não um véu translúcido de branco (era `rgba(255,255,255,0.03)`,
   // 2026-08-22: o Davi achou "um cinza muito claro"). Um véu de branco sobre
   // fundo escuro é frágil — o resultado depende de exatamente que cor está
   // por trás, e em qualquer camada/composição intermediária ele clareia mais
-  // do que parece no código. `#101016` é o mesmo tom sólido que a tabela da
+  // do que parece no código. `#141414` é o mesmo tom sólido que a tabela da
   // Início já usa para superfície escura (TabelaAtividades) — consistente
   // com o resto do app, e sempre este tom, não importa o que esteja atrás.
   // R186 (U105): sólida E cinza neutro — a escala CINZA de paleta.ts, sem azul
@@ -747,7 +747,7 @@ function CalendarioPage() {
     height: 30, padding: "0 11px", borderRadius: 15, cursor: "pointer",
     border: ativa ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.12)",
     background: ativa ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativa ? "#08090E" : textPrimary,
+    color: ativa ? "#0E0E0E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 11.5,
   });
 
@@ -779,7 +779,7 @@ function CalendarioPage() {
         }}>
           <CalendarDays size={20} color={gold} />
           <h1 style={{
-            fontFamily: FONT, fontWeight: 600, fontSize: 19, margin: 0,
+            fontFamily: FONT, fontWeight: 700, fontSize: 19, margin: 0,
             minWidth: 190,
           }}>
             {tituloDaJanela}
@@ -907,7 +907,7 @@ function CalendarioPage() {
                     </span>
                     <span style={{
                       fontFamily: FONT, fontWeight: eDeHoje ? 700 : 600, fontSize: 12,
-                      color: eDeHoje ? "#08090E" : textPrimary,
+                      color: eDeHoje ? "#0E0E0E" : textPrimary,
                       background: eDeHoje ? "#F8C811" : "transparent",
                       borderRadius: 999, minWidth: 21, height: 21,
                       display: "flex", alignItems: "center", justifyContent: "center",
@@ -1057,7 +1057,7 @@ function CalendarioPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
                           <span style={{
                             fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
-                            color: eDeHoje ? "#08090E" : textPrimary,
+                            color: eDeHoje ? "#0E0E0E" : textPrimary,
                             // o amarelo da marca, igual nos dois temas: `gold` é token
                             // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
                             // número de 11px abaixo do contraste mínimo.

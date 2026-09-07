@@ -63,8 +63,8 @@ export function PainelBase({ titulo, subtitulo, numeros, atalhos, isAdmin, child
   const navigate = useNavigate();
   const { podeVer } = usePermissoes();
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
 
   const visiveis = atalhos.filter((a) =>
@@ -83,7 +83,7 @@ export function PainelBase({ titulo, subtitulo, numeros, atalhos, isAdmin, child
     <div className="sangra-x" style={{ paddingTop: titulo ? 18 : 6, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, color: textPrimary }}>
       {titulo && (
         <div>
-          <h1 style={{ fontFamily: FONT, fontWeight: 600, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
+          <h1 style={{ fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0, letterSpacing: "-0.01em" }}>
             {titulo}
           </h1>
           {subtitulo && (
@@ -111,7 +111,7 @@ export function PainelBase({ titulo, subtitulo, numeros, atalhos, isAdmin, child
                   {n.valor}
                 </div>
                 <div style={{
-                  fontFamily: FONT, fontWeight: 500, fontSize: 9,
+                  fontFamily: FONT, fontWeight: 600, fontSize: 9,
                   letterSpacing: "0.05em", textTransform: "uppercase",
                   color: textSecondary, lineHeight: 1.3, textAlign: "center", marginTop: 6,
                 }}>

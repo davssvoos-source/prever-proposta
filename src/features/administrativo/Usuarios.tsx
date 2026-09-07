@@ -26,19 +26,19 @@ import { etiqueta } from "@/lib/ui";
 import { EQUIPES, EQUIPE_LABEL, equipeCores, type Equipe } from "@/lib/equipes";
 
 const L = {
-  card: "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)",
+  card: "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)",
   cardSolid: "#ffffff",
   border: "1px solid rgba(0,0,0,0.07)",
   borderMd: "1px solid rgba(0,0,0,0.10)",
   shadow: "0 1px 6px rgba(0,0,0,0.07)",
   shadowSm: "0 1px 3px rgba(0,0,0,0.05)",
-  text: "#1e2229",
-  textSub: "#4a5060",
-  textMuted: "#7d8391",
+  text: "#212121",
+  textSub: "#505050",
+  textMuted: "#727272",
   gold: "#A06108",
   goldBg: "rgba(160,97,8,0.10)",
   goldBorder: "1px solid rgba(160,97,8,0.22)",
-  inputBg: "#f0f1f4",
+  inputBg: "#f0f0f0",
   inputBorder: "1px solid rgba(0,0,0,0.10)",
 };
 
@@ -109,7 +109,7 @@ export function GestaoDeUsuarios() {
         padding: 16,
       }
     : {
-        background: "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+        background: "linear-gradient(160deg, #161616 0%, #101010 100%)",
         backdropFilter: "blur(12px) saturate(130%)",
         border: "1px solid rgba(248,200,17,0.10)",
         borderRadius: 18,
@@ -121,7 +121,7 @@ export function GestaoDeUsuarios() {
     background: isLight ? L.inputBg : "rgba(8,8,12,0.30)",
     border: isLight ? L.inputBorder : "1px solid rgba(248,200,17,0.18)",
     borderRadius: 10,
-    color: isLight ? L.text : "#F0F2F5",
+    color: isLight ? L.text : "#F2F2F2",
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 14,
@@ -358,7 +358,7 @@ export function GestaoDeUsuarios() {
   const inativos = usuarios.filter((u) => u.ativo === false);
 
   return (
-    <div style={{ color: isLight ? L.text : "#F0F2F5" }}>
+    <div style={{ color: isLight ? L.text : "#F2F2F2" }}>
       {/* Cabeçalho da seção: contagem e o botão de convidar */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
         <div style={{ flex: 1 }}>
@@ -383,7 +383,7 @@ export function GestaoDeUsuarios() {
             background: "linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A)",
             border: "none", borderRadius: 12, padding: "10px 16px",
             display: "flex", alignItems: "center", gap: 8,
-            color: "#08090E", fontFamily: "var(--fonte)",
+            color: "#0E0E0E", fontFamily: "var(--fonte)",
             fontWeight: 600, fontSize: 12, cursor: "pointer",
           }}
         >
@@ -436,7 +436,7 @@ export function GestaoDeUsuarios() {
                         textAlign: "left", padding: "10px 14px", borderRadius: 12,
                         background: inviteCargo === id
                           ? (isLight ? lightCfg.bg : `${cfg.color}12`)
-                          : (isLight ? "#f9fafb" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
+                          : (isLight ? "#fafafa" : "linear-gradient(160deg, #161616 0%, #101010 100%)"),
                         border: inviteCargo === id
                           ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
                           : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
@@ -465,7 +465,7 @@ export function GestaoDeUsuarios() {
                 onClick={() => setShowInvite(false)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? "#f4f4f4" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",
@@ -479,7 +479,7 @@ export function GestaoDeUsuarios() {
                 style={{
                   flex: 2, padding: 12, borderRadius: 12,
                   background: "linear-gradient(135deg, #FCDE48, #F8C811)",
-                  border: "none", color: "#08090E",
+                  border: "none", color: "#0E0E0E",
                   fontFamily: "var(--fonte)", fontWeight: 600,
                   fontSize: 13, cursor: "pointer",
                   opacity: (inviteMutation.isPending || !inviteEmail.trim() || !inviteNome.trim()) ? 0.6 : 1,
@@ -533,13 +533,13 @@ export function GestaoDeUsuarios() {
                         style={{
                           padding: "6px 10px", borderRadius: 8,
                           border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
-                          background: isLight ? "#f3f4f6" : "#191921",
+                          background: isLight ? "#f4f4f4" : "#1b1b1b",
                           color: isLight ? L.text : "#FFFFFF", fontSize: 13, cursor: "pointer", outline: "none",
                         }}
                       >
-                        <option value="tecnico" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Técnico</option>
-                        <option value="comercial" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Comercial</option>
-                        <option value="admin" style={{ background: isLight ? "#ffffff" : "#0a0a14" }}>Admin</option>
+                        <option value="tecnico" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Técnico</option>
+                        <option value="comercial" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Comercial</option>
+                        <option value="admin" style={{ background: isLight ? "#ffffff" : "#0e0e0e" }}>Admin</option>
                       </select>
                       <button
                         onClick={() => aprovarMutation.mutate({ userId: s.id, cargo: aprovarCargo })}
@@ -647,7 +647,7 @@ export function GestaoDeUsuarios() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {ativos.map((u) => {
             const cfg = CARGO_CONFIG[u.cargo] ?? { label: u.cargo, color: "#9CA3AF", desc: "" };
-            const lightCfg = CARGO_LIGHT[u.cargo] ?? { color: "#4b5563", bg: "#f3f4f6", border: "1px solid #e5e7eb" };
+            const lightCfg = CARGO_LIGHT[u.cargo] ?? { color: "#4b5563", bg: "#f4f4f4", border: "1px solid #e7e7e7" };
             return (
               <div key={u.id} style={{ ...GLASS, padding: "14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -704,8 +704,8 @@ export function GestaoDeUsuarios() {
                       title="Editar permissão e equipe"
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        background: isLight ? "#f3f4f6" : "rgba(96,165,250,0.10)",
-                        border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(96,165,250,0.25)",
+                        background: isLight ? "#f4f4f4" : "rgba(96,165,250,0.10)",
+                        border: isLight ? "1px solid #e7e7e7" : "1px solid rgba(96,165,250,0.25)",
                         color: isLight ? "#1d4ed8" : "#60A5FA",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
@@ -718,8 +718,8 @@ export function GestaoDeUsuarios() {
                       title="Desativar usuário"
                       style={{
                         width: 36, height: 36, borderRadius: 10,
-                        background: isLight ? "#f3f4f6" : "rgba(239,68,68,0.10)",
-                        border: isLight ? "1px solid #e5e7eb" : "1px solid rgba(239,68,68,0.25)",
+                        background: isLight ? "#f4f4f4" : "rgba(239,68,68,0.10)",
+                        border: isLight ? "1px solid #e7e7e7" : "1px solid rgba(239,68,68,0.25)",
                         color: isLight ? "#dc2626" : "#E64D58",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         cursor: "pointer",
@@ -745,7 +745,7 @@ export function GestaoDeUsuarios() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: "50%",
-                    background: isLight ? "#f3f4f6" : "#191921",
+                    background: isLight ? "#f4f4f4" : "#1b1b1b",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: isLight ? "#9ca3af" : "rgba(255,255,255,0.4)",
                     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
@@ -810,7 +810,7 @@ export function GestaoDeUsuarios() {
             onClick={(e) => e.stopPropagation()}
             style={{
               ...GLASS,
-              background: isLight ? "#ffffff" : "#0F1015",
+              background: isLight ? "#ffffff" : "#101010",
               maxWidth: 420, width: "100%",
             }}
           >
@@ -838,7 +838,7 @@ export function GestaoDeUsuarios() {
                       textAlign: "left", padding: "12px 14px", borderRadius: 12,
                       background: editCargo === id
                         ? (isLight ? lightCfg.bg : `${cfg.color}12`)
-                        : (isLight ? "#f9fafb" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)"),
+                        : (isLight ? "#fafafa" : "linear-gradient(160deg, #161616 0%, #101010 100%)"),
                       border: editCargo === id
                         ? (isLight ? lightCfg.border : `1.5px solid ${cfg.color}55`)
                         : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
@@ -883,7 +883,7 @@ export function GestaoDeUsuarios() {
                       padding: "7px 12px", borderRadius: 999, cursor: "pointer",
                       fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11,
                       color: ativo ? (isLight ? cores.light : cores.dark) : (isLight ? L.textSub : "rgba(255,255,255,0.55)"),
-                      background: ativo ? cores.bg : (isLight ? "#f9fafb" : "rgba(255,255,255,0.03)"),
+                      background: ativo ? cores.bg : (isLight ? "#fafafa" : "rgba(255,255,255,0.03)"),
                       border: ativo
                         ? `1.5px solid ${cores.border}`
                         : (isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)"),
@@ -907,7 +907,7 @@ export function GestaoDeUsuarios() {
                 onClick={() => setEditingUser(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? "#f4f4f4" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",
@@ -932,7 +932,7 @@ export function GestaoDeUsuarios() {
                     style={{
                       flex: 2, padding: 12, borderRadius: 12,
                       background: "linear-gradient(135deg, #FCDE48, #F8C811)",
-                      border: "none", color: "#08090E",
+                      border: "none", color: "#0E0E0E",
                       fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
                       cursor: travado ? "default" : "pointer",
                       opacity: travado ? 0.6 : 1,
@@ -961,7 +961,7 @@ export function GestaoDeUsuarios() {
             onClick={(e) => e.stopPropagation()}
             style={{
               ...GLASS,
-              background: isLight ? "#ffffff" : "#0F1015",
+              background: isLight ? "#ffffff" : "#101010",
               maxWidth: 380, width: "100%", textAlign: "center",
             }}
           >
@@ -985,7 +985,7 @@ export function GestaoDeUsuarios() {
                 onClick={() => setDeleteConfirm(null)}
                 style={{
                   flex: 1, padding: 12, borderRadius: 12,
-                  background: isLight ? "#f3f4f6" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+                  background: isLight ? "#f4f4f4" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
                   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
                   color: isLight ? L.textSub : "rgba(255,255,255,0.6)",
                   fontFamily: "var(--fonte)", fontSize: 13, cursor: "pointer",

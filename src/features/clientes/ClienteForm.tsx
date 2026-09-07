@@ -68,14 +68,14 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
   const [qtdAcessos, setQtdAcessos] = useState(inicial?.qtd_acessos?.toString() ?? "");
   const [observacoes, setObservacoes] = useState(inicial?.observacoes ?? "");
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+      ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+      : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "18px 16px",
@@ -108,7 +108,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     height: 46,
     borderRadius: 12,
     padding: "0 14px",
-    background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary,
     fontFamily: "var(--fonte)",
@@ -125,8 +125,8 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     border: ativo ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
     background: ativo
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-      : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+      : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: "var(--fonte)",
     fontWeight: 600,
     fontSize: 12,
@@ -326,7 +326,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
             style={{
               display: "flex", alignItems: "center", gap: 8,
               height: 42, padding: "0 16px", borderRadius: 12,
-              background: isLight ? "#ffffff" : "#191921",
+              background: isLight ? "#ffffff" : "#1b1b1b",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, cursor: geocodificando ? "wait" : "pointer",
               fontFamily: "var(--fonte)", fontSize: 12, fontWeight: 600,
@@ -446,7 +446,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
             onClick={onCancelar}
             style={{
               flex: "0 0 auto", height: 52, padding: "0 20px", borderRadius: 26,
-              background: isLight ? "#ffffff" : "#191921",
+              background: isLight ? "#ffffff" : "#1b1b1b",
               border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
               color: textPrimary, cursor: "pointer",
               fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 13,
@@ -462,7 +462,7 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
           style={{
             flex: 1, height: 52, borderRadius: 26, border: "none",
             background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-            color: "#08090E",
+            color: "#0E0E0E",
             fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
             letterSpacing: "0.14em", textTransform: "uppercase",
             cursor: salvando ? "wait" : "pointer",

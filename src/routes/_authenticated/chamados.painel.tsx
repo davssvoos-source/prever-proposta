@@ -82,8 +82,8 @@ function PainelChamadosPage() {
   const { data: pessoas = [] } = usePessoas();
 
   const isLoading = l1 || l3;
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const cores = isLight ? CORES_LIGHT : CORES_DARK;
   const CARD: CSSProperties = { ...card(isLight), padding: "16px" };
@@ -93,13 +93,13 @@ function PainelChamadosPage() {
   };
   const SELECT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 12px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: FONT, fontSize: 13,
     outline: "none", colorScheme: isLight ? "light" : "dark",
   };
   const tooltipStyle = {
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     borderRadius: 10, fontFamily: FONT, fontSize: 12, color: textPrimary,
   } as CSSProperties;
@@ -244,7 +244,7 @@ function PainelChamadosPage() {
     background: ativo
       ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
       : isLight ? "#ffffff" : "rgba(255,255,255,0.03)",
-    color: ativo ? "#08090E" : textPrimary,
+    color: ativo ? "#0E0E0E" : textPrimary,
     fontFamily: FONT, fontWeight: 600, fontSize: 11.5, whiteSpace: "nowrap",
   });
 
@@ -261,7 +261,7 @@ function PainelChamadosPage() {
           onClick={() => navigate({ to: "/dashboard" })}
           style={{
             width: 40, height: 40, borderRadius: 12,
-            background: isLight ? "#ffffff" : "#191921",
+            background: isLight ? "#ffffff" : "#1b1b1b",
             border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
             color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", flexShrink: 0,

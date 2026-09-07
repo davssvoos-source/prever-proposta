@@ -204,7 +204,7 @@ export function AnimatedBackground() {
         pointerEvents: 'none',
         overflow: 'hidden',
         background:
-          'radial-gradient(ellipse at top, #0B0D14 0%, #06070B 60%, #030305 100%)',
+          'radial-gradient(ellipse at top, #0D0D0D 0%, #070707 60%, #030303 100%)',
       }}
     >
       <canvas

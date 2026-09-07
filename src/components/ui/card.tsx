@@ -15,8 +15,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
         )}
         style={{
           background: isLight
-            ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-            : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+            ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+            : "linear-gradient(160deg, #161616 0%, #101010 100%)",
           backdropFilter: isLight ? "none" : "blur(10px) saturate(140%)",
           WebkitBackdropFilter: isLight ? "none" : "blur(10px) saturate(140%)",
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(248,200,17, 0.20)",

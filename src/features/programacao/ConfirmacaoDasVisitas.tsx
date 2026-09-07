@@ -151,8 +151,8 @@ export function ConfirmacaoDasVisitas({ estado, isLight, erro = null, modo = "en
   const { visitas, respostas, dias, hoje, recusa } = estado;
   if (visitas.length === 0) return null;
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
 

@@ -47,14 +47,14 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
     | { tipo: "equipamento"; sistema: SistemaInstalado } | { tipo: "bloco"; sistema: SistemaInstalado }
   >(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
 
   const CARD: CSSProperties = {
     background: isLight
-      ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-      : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+      ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+      : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
     borderRadius: 18,
     padding: "16px",
@@ -67,7 +67,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   };
   const btnSec: CSSProperties = {
     height: 38, padding: "0 14px", borderRadius: 12,
-    background: isLight ? "#ffffff" : "#191921",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
     color: textPrimary, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
     fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 12,
@@ -243,7 +243,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                     onClick={() => mudarEquipamento.mutate({ id: e.id, patch: { qtd: Math.max(0, Number(e.qtd) - 1) } })}
                                     style={{
                                       width: 26, height: 26, borderRadius: 8, cursor: "pointer",
-                                      background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.06)",
+                                      background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.06)",
                                       border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
                                       color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
                                     }}
@@ -257,7 +257,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                                     onClick={() => mudarEquipamento.mutate({ id: e.id, patch: { qtd: Number(e.qtd) + 1 } })}
                                     style={{
                                       width: 26, height: 26, borderRadius: 8, cursor: "pointer",
-                                      background: isLight ? "#f5f6f8" : "rgba(255,255,255,0.06)",
+                                      background: isLight ? "#f5f5f5" : "rgba(255,255,255,0.06)",
                                       border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
                                       color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
                                     }}
@@ -380,18 +380,18 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 // do resto da ficha do cliente, e ninguém pediu uma segunda linguagem visual
 export function useModalEstilos() {
   const { isLight } = useTheme();
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
   return {
     isLight,
     textPrimary,
-    textSecondary: isLight ? "#4a5060" : "rgba(255,255,255,0.55)",
+    textSecondary: isLight ? "#505050" : "rgba(255,255,255,0.55)",
     gold: isLight ? "#A06108" : "#F8C811",
     backdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.60)", zIndex: 90 } as CSSProperties,
     painel: {
       position: "fixed", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
       width: "min(440px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
       borderRadius: 18, padding: "20px 18px",
-      background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+      background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
       border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
       boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
       color: textPrimary,
@@ -400,18 +400,18 @@ export function useModalEstilos() {
     label: {
       fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 10,
       letterSpacing: "0.12em", textTransform: "uppercase",
-      color: isLight ? "#4a5060" : "rgba(255,255,255,0.55)", marginBottom: 6, display: "block",
+      color: isLight ? "#505050" : "rgba(255,255,255,0.55)", marginBottom: 6, display: "block",
     } as CSSProperties,
     input: {
       width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-      background: isLight ? "#ffffff" : "#16161d",
+      background: isLight ? "#ffffff" : "#1b1b1b",
       border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
       color: textPrimary, fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 14,
       outline: "none", colorScheme: isLight ? "light" : "dark",
     } as CSSProperties,
     cta: {
       width: "100%", height: 50, borderRadius: 25, border: "none",
-      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#08090E",
+      background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)", color: "#0E0E0E",
       fontFamily: "var(--fonte)", fontWeight: 700, fontSize: 13,
       letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer",
     } as CSSProperties,
@@ -426,7 +426,7 @@ export function BotaoFechar({ onClick }: { onClick: () => void }) {
       style={{
         width: 32, height: 32, borderRadius: "50%", border: "none", cursor: "pointer",
         background: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-        color: isLight ? "#1e2229" : "#fff",
+        color: isLight ? "#212121" : "#fff",
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}
     >
@@ -534,8 +534,8 @@ function ModalSistema({
                   border: ativo ? "none" : s.isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
                   background: ativo
                     ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)"
-                    : s.isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                  color: ativo ? "#08090E" : s.textPrimary,
+                    : s.isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                  color: ativo ? "#0E0E0E" : s.textPrimary,
                   fontFamily: "var(--fonte)", fontWeight: 600, fontSize: 11, cursor: "pointer",
                 }}
               >
@@ -618,7 +618,7 @@ function ModalEquipamento({
           <div
             style={{
               display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, marginBottom: 14,
-              background: s.isLight ? "#f5f6f8" : "rgba(255,255,255,0.04)",
+              background: s.isLight ? "#f5f5f5" : "rgba(255,255,255,0.04)",
               border: s.isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.08)",
             }}
           >
@@ -632,7 +632,7 @@ function ModalEquipamento({
               onClick={() => setEscolhido(null)}
               style={{
                 height: 32, padding: "0 12px", borderRadius: 10, flexShrink: 0,
-                background: s.isLight ? "#ffffff" : "#191921",
+                background: s.isLight ? "#ffffff" : "#1b1b1b",
                 border: s.isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
                 color: s.textPrimary, cursor: "pointer",
                 fontFamily: "var(--fonte)", fontSize: 11, fontWeight: 600,

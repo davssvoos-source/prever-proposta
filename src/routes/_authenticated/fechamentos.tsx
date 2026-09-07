@@ -42,13 +42,13 @@ function FechamentosPage() {
   const [tipoServico, setTipoServico] = useState<"instalacao" | "manutencao">("manutencao");
   const [dataBase, setDataBase] = useState(dataIso(new Date()));
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const CARD: CSSProperties = { ...card(isLight), padding: "14px 16px" };
   const INPUT: CSSProperties = {
     width: "100%", boxSizing: "border-box", height: 46, borderRadius: 12, padding: "0 14px",
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     color: textPrimary, fontFamily: FONT, fontWeight: 400, fontSize: 14,
     outline: "none", colorScheme: isLight ? "light" : "dark",
@@ -122,7 +122,7 @@ function FechamentosPage() {
           title="Lançamento avulso"
           style={{
             height: 42, padding: "0 14px", borderRadius: 12, border: "none",
-            background: GOLD_GRAD, color: "#08090E", display: "flex", alignItems: "center", gap: 6,
+            background: GOLD_GRAD, color: "#0E0E0E", display: "flex", alignItems: "center", gap: 6,
             fontFamily: FONT, fontWeight: 700, fontSize: 12, cursor: "pointer", boxShadow: GOLD_GLOW,
           }}
         >
@@ -171,8 +171,8 @@ function FechamentosPage() {
                 style={{
                   flex: 1, padding: "9px 12px", borderRadius: 12, cursor: "pointer",
                   border: tipoServico === t ? "none" : isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(252,222,72,0.16)",
-                  background: tipoServico === t ? GOLD_GRAD : isLight ? "#f5f6f8" : "rgba(255,255,255,0.03)",
-                  color: tipoServico === t ? "#08090E" : textPrimary,
+                  background: tipoServico === t ? GOLD_GRAD : isLight ? "#f5f5f5" : "rgba(255,255,255,0.03)",
+                  color: tipoServico === t ? "#0E0E0E" : textPrimary,
                   fontFamily: FONT, fontWeight: 600, fontSize: 12,
                 }}
               >
@@ -190,7 +190,7 @@ function FechamentosPage() {
             onClick={() => lancar.mutate()}
             disabled={lancar.isPending}
             style={{
-              height: 46, borderRadius: 23, border: "none", background: GOLD_GRAD, color: "#08090E",
+              height: 46, borderRadius: 23, border: "none", background: GOLD_GRAD, color: "#0E0E0E",
               fontFamily: FONT, fontWeight: 700, fontSize: 12.5, cursor: "pointer",
               opacity: lancar.isPending ? 0.6 : 1,
             }}

@@ -193,7 +193,7 @@ export function LightBackground() {
         zIndex: 0,
         pointerEvents: "none",
         overflow: "hidden",
-        background: "radial-gradient(ellipse at top, #f7f8fa 0%, #eef0f4 60%, #e4e7ec 100%)",
+        background: "radial-gradient(ellipse at top, #f8f8f8 0%, #eeeeee 60%, #e6e6e6 100%)",
       }}
     >
       <canvas

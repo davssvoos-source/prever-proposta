@@ -114,8 +114,8 @@ function AuthPage() {
 
 
 
-  const textPrimary = isLight ? "#1e2229" : "#fff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.45)";
+  const textPrimary = isLight ? "#212121" : "#fff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.45)";
   const goldDark = isLight ? "#A06108" : "rgba(248,200,17,0.65)";
   const CARD: CSSProperties = {
     background: isLight ? "rgba(255,255,255,0.92)" : "rgba(8,8,12,0.55)",
@@ -129,7 +129,7 @@ function AuthPage() {
   const INPUT: CSSProperties = {
     width: "100%",
     height: 52,
-    background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    background: isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
     borderRadius: 14,
     color: textPrimary,
@@ -146,7 +146,7 @@ function AuthPage() {
     borderRadius: 26,
     background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
     border: "none",
-    color: "#08090E",
+    color: "#0E0E0E",
     fontFamily: "var(--fonte)",
     fontWeight: 400,
     fontSize: 13,
@@ -180,7 +180,7 @@ function AuthPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: isLight ? "#eef0f4" : "#08090E",
+        background: isLight ? "#eeeeee" : "#0E0E0E",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -213,7 +213,7 @@ function AuthPage() {
               fontSize: 11,
               letterSpacing: "0.18em",
               textTransform: "uppercase",
-              color: isLight ? "#7d8391" : "rgba(255,255,255,0.35)",
+              color: isLight ? "#727272" : "rgba(255,255,255,0.35)",
             }}
           >
             SISTEMA DE PROJETOS ELETRÔNICOS
@@ -284,8 +284,8 @@ function AuthPage() {
                   padding: "14px",
                   borderRadius: 12,
                   border: isLight ? "1px solid rgba(0,0,0,0.15)" : "1px solid rgba(255,255,255,0.20)",
-                  background: isLight ? "#f5f6f8" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
-                  color: isLight ? "#1f2430" : "rgba(255,255,255,0.75)",
+                  background: isLight ? "#f5f5f5" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
+                  color: isLight ? "#222222" : "rgba(255,255,255,0.75)",
                   fontSize: 15,
                   fontWeight: 400,
                   cursor: "pointer",
@@ -313,7 +313,7 @@ function AuthPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  color: isLight ? "#4a5060" : "rgba(255,255,255,0.5)",
+                  color: isLight ? "#505050" : "rgba(255,255,255,0.5)",
                   marginBottom: 4,
                 }}
               >
@@ -325,7 +325,7 @@ function AuthPage() {
                     fontFamily: "var(--fonte)",
                     fontWeight: 400,
                     fontSize: 17,
-                    color: isLight ? "#1e2229" : "#fff",
+                    color: isLight ? "#212121" : "#fff",
                     marginBottom: 6,
                   }}
                 >
@@ -368,11 +368,11 @@ function AuthPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <button
                 onClick={() => setMode("login")}
-                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: isLight ? "#4a5060" : "rgba(255,255,255,0.6)", marginBottom: 4 }}
+                style={{ ...BTN_GHOST, display: "flex", alignItems: "center", gap: 6, color: isLight ? "#505050" : "rgba(255,255,255,0.6)", marginBottom: 4 }}
               >
                 <ArrowLeft size={14} /> Voltar para o login
               </button>
-              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#1e2229" : "#fff" }}>
+              <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 17, color: isLight ? "#212121" : "#fff" }}>
                 Criar conta
               </div>
               <div style={{ fontFamily: "var(--fonte)", fontWeight: 400, fontSize: 12, color: isLight ? "#6b7280" : "rgba(255,255,255,0.45)", lineHeight: 1.5, marginBottom: 4 }}>

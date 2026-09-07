@@ -45,10 +45,10 @@ export function TelaDeErro({ erro, pathname, aoTentarDeNovo }: Props) {
   const texto = EXPLICACAO[classe];
   const cor = corDaClasse(classe, isLight);
 
-  const fundo = isLight ? "#f5f6f8" : "#08090E";
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.60)";
-  const superficie = isLight ? "#ffffff" : "#14141b";
+  const fundo = isLight ? "#f5f5f5" : "#0E0E0E";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.60)";
+  const superficie = isLight ? "#ffffff" : "#161616";
   const borda = isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)";
 
   const botao = (primario: boolean): CSSProperties => ({
@@ -56,7 +56,7 @@ export function TelaDeErro({ erro, pathname, aoTentarDeNovo }: Props) {
     fontFamily: FONT, fontSize: 13, fontWeight: 600,
     padding: "10px 18px", borderRadius: 12, cursor: "pointer",
     background: primario ? "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)" : superficie,
-    color: primario ? "#08090E" : textPrimary,
+    color: primario ? "#0E0E0E" : textPrimary,
     border: primario ? "none" : borda,
     textDecoration: "none",
   });
@@ -105,7 +105,7 @@ export function TelaDeErro({ erro, pathname, aoTentarDeNovo }: Props) {
           {texto.oQueHouve}
         </p>
         <p style={{
-          fontFamily: FONT, fontWeight: 500, fontSize: 13.5, lineHeight: 1.55,
+          fontFamily: FONT, fontWeight: 400, fontSize: 13.5, lineHeight: 1.55,
           color: textPrimary, marginTop: 10, marginBottom: 0,
         }}>
           {texto.oQueFazer}

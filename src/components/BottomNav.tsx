@@ -22,7 +22,7 @@ export function BottomNav() {
   // com 6 itens a pílula precisa apertar para caber na largura do celular
   const apertado = visiveis.length > 5;
 
-  const inactiveColor = isLight ? "#4a5060" : "#FFFFFF";
+  const inactiveColor = isLight ? "#505050" : "#FFFFFF";
   const activeColor = isLight ? "#A06108" : "#FFFFFF";
 
   return (
@@ -48,7 +48,7 @@ export function BottomNav() {
           gap: apertado ? 2 : 8,
           padding: apertado ? "10px 8px" : "10px 14px",
           maxWidth: "calc(100vw - 16px)",
-          background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+          background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
           backdropFilter: "blur(30px) saturate(180%)",
           border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255, 255, 255, 0.22)",
           borderRadius: 40,

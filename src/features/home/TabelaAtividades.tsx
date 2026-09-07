@@ -65,12 +65,12 @@ export function TabelaAtividades({ atividades, pessoas, aoAbrir }: Props) {
   const { isLight } = useTheme();
   const [ordem, setOrdem] = useState<{ col: ColunaTabela; desc: boolean } | null>(null);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? "#A06108" : "#F8C811";
   const vermelho = isLight ? "#B1242E" : "#F17881";
-  const superficie = isLight ? "#ffffff" : "#101016";
-  const cabecalhoBg = isLight ? "#f5f6f8" : "#16161d";
+  const superficie = isLight ? "#ffffff" : "#141414";
+  const cabecalhoBg = isLight ? "#f5f5f5" : "#1b1b1b";
   const linhaCor = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.07)";
 
   const nomeDe = (id: string | null) => (id ? pessoas[id]?.nome ?? "—" : "—");

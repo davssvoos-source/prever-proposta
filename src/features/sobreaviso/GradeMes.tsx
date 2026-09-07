@@ -58,9 +58,9 @@ interface Props {
 }
 
 export function GradeMes({ grade, isLight, aoDefinir, diaAberto, aoAbrirDia }: Props) {
-  const textPrimary = isLight ? "#12141c" : "rgba(255,255,255,0.92)";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
-  const fundo = isLight ? "#ffffff" : "#141416";
+  const textPrimary = isLight ? "#141414" : "rgba(255,255,255,0.92)";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
+  const fundo = isLight ? "#ffffff" : "#141414";
   const linhaFina = isLight ? "1px solid rgba(0,0,0,0.06)" : "1px solid rgba(255,255,255,0.06)";
   // A lavagem de "não é dia útil" — uma só, para sábado, domingo e feriado.
   const lavagem = isLight ? "rgba(0,0,0,0.035)" : "rgba(255,255,255,0.045)";

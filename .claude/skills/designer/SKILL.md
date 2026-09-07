@@ -61,7 +61,7 @@ Passe por elas mentalmente; escreva só o que muda a decisão.
 que está acontecendo e qual é o próximo passo. Rótulo antes de ícone; ícone
 sozinho só com `title` + `aria-label`.
 
-**Hierarquia.** Uma informação dominante por bloco. Título 22/600, subtítulo
+**Hierarquia.** Uma informação dominante por bloco. Título 22/700, subtítulo
 12 secundário, micro-label de seção maiúsculo espaçado (§6.2 do DS). Número
 grande = 700 com glow levíssimo da própria cor.
 
@@ -125,7 +125,7 @@ sombra só por nível, dois pesos de fonte por tela, alinhamento à mesma
 coluna, e a cor guardada para o que precisa de atenção.
 
 **"Arrume o modo claro"** → o modo claro deste app tem história e números:
-página `#e9ebef`, card `#ffffff`, texto `#1e2229`, apagado `#7d8391`, glow
+página `#e9e9e9`, card `#ffffff`, texto `#212121`, apagado `#727272`, glow
 mais fraco que no escuro, borda de card no tom **saturado** da cor (R154).
 Mexer nisso é mexer em token — passa pelo `DESIGN_SYSTEM.md` §2.
 

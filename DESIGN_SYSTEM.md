@@ -46,7 +46,7 @@
   - [11.3 Prazo → cor da BORDA do card (v8 — 2026-09-03, R136)](#113-prazo-cor-da-borda-do-card-v8-2026-09-03-r136)
   - [11.4 Os efeitos, e quando cada um cabe](#114-os-efeitos-e-quando-cada-um-cabe)
   - [11.5 Um amarelo só](#115-um-amarelo-só)
-- [12. Tipografia (v6 — 2026-08-20)](#12-tipografia-v6-2026-08-20)
+- [12. Tipografia (v12 — 2026-09-04, R195)](#12-tipografia-v12-2026-09-04-r195)
 - [13. Avatares sem foto](#13-avatares-sem-foto)
 - [14. O campo "Abrir chamado"](#14-o-campo-abrir-chamado)
 <!-- sumario:fim -->
@@ -156,7 +156,7 @@ Princípios que governam as decisões:
 
 ```css
 background: linear-gradient(135deg, #FCDE48, #F8C811, #E8B00A);  /* 300→400→500 */
-color: #08090E;                                  /* SEMPRE texto escuro */
+color: #0E0E0E;                                  /* SEMPRE texto escuro */
 box-shadow: 0 6px 20px rgba(248,200,17,0.35);
 ```
 
@@ -169,26 +169,27 @@ andamento), lilás `#A78BFA/#6d28d9` (pedido de compra), teal `#2DD4BF/#0f766e`
 
 | Token | Escuro | Claro |
 |---|---|---|
-| `bg-base` (página) | `#08090E` | `#e9ebef` |
-| `bg-elevated` (card) | `#0F111A` | `#ffffff` |
-| `bg-overlay` (popover/modal) | `#161926` | `#e8eaee` |
-| `card-gradient` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `linear-gradient(135deg, #ffffff 0%, #f5f6f8 100%)` |
+| `bg-base` (página) | `#0E0E0E` | `#e9e9e9` |
+| `bg-elevated` (card) | `#141414` | `#ffffff` |
+| `bg-overlay` (popover/modal) | `#1b1b1b` | `#e8e8e8` |
+| `card-gradient` | `linear-gradient(160deg, #161616 0%, #101010 100%)` | `linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)` |
 | `card-border` | `1px solid rgba(248,200,17,0.10)` | `1px solid rgba(0,0,0,0.07)` |
 | `card-shadow` | `none` (ou glow) | `0 1px 6px rgba(0,0,0,0.07)` |
-| `input-bg` | `linear-gradient(160deg, #14141b 0%, #0b0b10 100%)` | `#ffffff` |
+| `input-bg` | `linear-gradient(160deg, #161616 0%, #101010 100%)` | `#ffffff` |
 | `input-border` | `1px solid rgba(255,255,255,0.10)` | `1px solid rgba(0,0,0,0.12)` |
 
 **v10 (2026-09-04, R154) — o claro desceu.** Até a v9 a página clara começava
 em `#ffffff` e o card era `#ffffff`: 1.09:1 entre os dois, o card sumia. Davi:
 "o fundo deveria ser um branco mais escuro e os cards um branco mais claro".
-Agora a **página é `#e9ebef`** (degradê `#eef0f3 → #e9ebef → #e2e5ea`, §5) e o
+Agora a **página é `#e9e9e9`** (degradê `#eeeeee → #e9e9e9 → #e2e2e2`, §5) e o
 **card segue `#ffffff`** — 1.19:1, o card lê como superfície. Popover/modal
 (`bg-overlay`) não mudou.
 
 **v12 (2026-09-04, R186) — o cinza neutro.** Davi: "O Fundo está com tons de
-azul, eu quero que você utilize somente tons de cinza". As superfícies acima
-puxam para o azul (`#08090E`, `#0F111A`, `#161926`, `#e9ebef`). A escala que
-as substitui é `CINZA` em `src/lib/paleta.ts` — cada degrau é cinza **puro**
+azul, eu quero que você utilize somente tons de cinza". Até a U108 as
+superfícies puxavam para o azul (08090E, 0F111A, 161926, e9ebef — sem o "#",
+para a varredura do cinza não as caçar); a tabela acima já está nos valores
+novos. A escala é `CINZA` em `src/lib/paleta.ts` — cada degrau é cinza **puro**
 (R = G = B), e o verificador cobra isso:
 
 | Degrau | Escuro | Claro | Onde |
@@ -199,29 +200,38 @@ as substitui é `CINZA` em `src/lib/paleta.ts` — cada degrau é cinza **puro**
 | `campo` | `#222222` | `#f7f7f7` | input, chip neutro |
 | `divisoria` | `rgba(255,255,255,0.10)` | `rgba(0,0,0,0.10)` | bordas e linhas |
 
-A escala **nasceu na U104** — o Configurador rápido (§6.16) já pinta com ela
-(`cinzas(isLight).superficie` / `.elevada`). A **U108** troca o resto do
-sistema e reescreve a tabela de tokens acima com os valores resolvidos; até lá
-as duas convivem, e a tabela de cima é o que o sistema ainda mostra na maior
-parte das telas.
+A escala **nasceu na U104** (o Configurador rápido, §6.16, foi a primeira tela
+a pintar com ela) e a **U108 varreu o resto**: 29 hexes azulados trocados em
+cem arquivos — superfícies pela escala, e o texto neutro por cinzas de **mesma
+luminância** (`#1e2229` → `#212121`, `#4a5060` → `#505050`, `#7d8391` →
+`#727272`, `#5a6172` → `#616161`), de modo que os contrastes medidos da R154
+continuam: 16:1 no card, 13,4:1 na página, 7:1 o secundário, 3,9:1 o apagado.
+O texto sobre dourado (`text-on-gold`) foi de `08090E` para `#0E0E0E` pelo mesmo
+motivo. Uma segunda passada pegou mais 21 cinzas frios menores (06070b, 0b0d14,
+11131d, 1a1a22, e4e7ec, f3f4f6…), também para cinzas de mesma luminância; as
+tintas de verdade (o verde de sucesso, o rosa de erro, o dourado escuro) ficaram.
+Duas asserções travam a volta: nenhum dos 50 pode reaparecer em `src/`, e
+**nenhum cinza que puxe para o azul** (canal azul à frente dos outros em até 16)
+pode entrar. Os degradês de card (`CARD_BG_DARK`, `card-gradient`) viraram
+`#161616 → #101010`.
 
 ### 2.3 Texto e ícone
 
 | Token | Escuro | Claro |
 |---|---|---|
-| `text-primary` | `#ffffff` | `#1e2229` |
-| `text-secondary` | `rgba(255,255,255,0.55)` | `#4a5060` |
-| `text-muted` | `rgba(255,255,255,0.40)` | `#7d8391` |
-| `text-on-gold` | `#08090E` | `#08090E` |
+| `text-primary` | `#ffffff` | `#212121` |
+| `text-secondary` | `rgba(255,255,255,0.55)` | `#505050` |
+| `text-muted` | `rgba(255,255,255,0.40)` | `#727272` |
+| `text-on-gold` | `#0E0E0E` | `#0E0E0E` |
 | `label-caps` (micro-label) | `rgba(248,200,17,0.65)` | `rgba(0,0,0,0.55)` |
 | `border-subtle` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.07)` |
 | `divider` | `rgba(255,255,255,0.06)` | `rgba(0,0,0,0.07)` |
 | `placeholder` | herda `text-muted` | `rgba(0,0,0,0.35)` |
 
 **v10 (R154):** o texto primário claro era `#0a0b0e`, quase preto; Davi pediu
-"um cinza bem escuro". `#1e2229` dá 16:1 sobre o card e 13:1 sobre a página
-nova. `text-muted` subiu de `#8a909e` (3,2:1) para `#7d8391` (3,9:1) para não
-perder leitura na página mais escura. `text-secondary` (`#4a5060`, 6,7:1 sobre
+"um cinza bem escuro". `#212121` dá 16:1 sobre o card e 13:1 sobre a página
+nova. `text-muted` subiu de `#8a909e` (3,2:1) para `#727272` (3,9:1) para não
+perder leitura na página mais escura. `text-secondary` (`#505050`, 6,7:1 sobre
 a página) não mudou.
 
 ### 2.4 Status semântico
@@ -266,7 +276,7 @@ Pesos carregados: 200, 300, 400, 500, 600, 700.
 
 | Papel | Tamanho | Peso | Extras |
 |---|---|---|---|
-| Título de página | 22px | 600 | `letter-spacing: -0.02em` |
+| Título de página | 22px | 700 | `letter-spacing: -0.02em` (R195: era 600) |
 | Título de tela/header | 18px | 600 | `letter-spacing: 0.02em` |
 | Título de card | 16px | 600 | — |
 | **Micro-label de seção** | **10–11px** | **700** | `letter-spacing: 0.12–0.18em`, `text-transform: uppercase` |
@@ -331,16 +341,16 @@ profundidade vem da sombra dos cards e do vidro dos painéis.
 | tema | degradê (180deg) |
 |---|---|
 | escuro | `#131315 0%` → `#0a0a0b 45%` → `#030303 100%` |
-| claro (v10) | `#eef0f3 0%` → `#e9ebef 55%` → `#e2e5ea 100%` |
+| claro (v10) | `#eeeeee 0%` → `#e9e9e9 55%` → `#e2e2e2 100%` |
 
 O claro **desceu na v10** (2026-09-04, R154): até então ia de `#ffffff` a
 `#ebebee`, e o card branco (§6.1) sumia na página (1.09:1). Com a página em
-`#e9ebef` o card é o branco mais claro da tela (1.19:1) — Davi: "o fundo
+`#e9e9e9` o card é o branco mais claro da tela (1.19:1) — Davi: "o fundo
 deveria ser um branco mais escuro e os cards um branco mais claro".
 
 Por cima do degradê o `body::before` põe um granulado SVG a 2,5% de
 opacidade, igual nos dois temas. A cor de base do `body` (`--bg-base`) é o que
-aparece no overscroll e antes do React: `#08090E` / `#e9ebef`.
+aparece no overscroll e antes do React: `#0E0E0E` / `#e9e9e9`.
 
 **História.** A v3 (Yellow Glow, importado do claude.design) tinha quatro
 camadas — palco, duas manchas de luz amarela animadas, grade e granulado. Saiu
@@ -354,7 +364,7 @@ própria.
 
 | Contexto | Navegação |
 |---|---|
-| ≥ 1024px | **Sidebar fixa à esquerda, 232px** (`SideNav.tsx`): banner da fachada sangrando no topo, logotipo pousado sobre o degradê dele, itens com ícone+rótulo, alternador de tema e cartão de perfil no rodapé. Item ativo = pílula no gradiente primário com texto `#08090E`. |
+| ≥ 1024px | **Sidebar fixa à esquerda, 232px** (`SideNav.tsx`): banner da fachada sangrando no topo, logotipo pousado sobre o degradê dele, itens com ícone+rótulo, alternador de tema e cartão de perfil no rodapé. Item ativo = pílula no gradiente primário com texto `#0E0E0E`. |
 | < 1024px | **Barra inferior flutuante** (`BottomNav.tsx`), como sempre foi — é onde o polegar alcança. |
 
 Regras de implementação:
@@ -404,8 +414,8 @@ Todos os exemplos assumem uma variável booleana `isLight` disponível.
 ```jsx
 const CARD = {
   background: isLight
-    ? "linear-gradient(135deg,#ffffff 0%,#f5f6f8 100%)"
-    : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+    ? "linear-gradient(135deg,#ffffff 0%,#f5f5f5 100%)"
+    : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.07)" : "1px solid rgba(248,200,17,0.10)",
   borderRadius: 18,
   padding: "20px 18px",
@@ -439,7 +449,7 @@ const LABEL = {
 const CTA_GOLD = {
   width: "100%", height: 56, borderRadius: 28, border: "none",
   background: "linear-gradient(135deg,#FCDE48,#F8C811,#E8B00A)",
-  color: "#08090E",                                  // nos DOIS temas
+  color: "#0E0E0E",                                  // nos DOIS temas
   fontFamily: "'Montserrat', sans-serif",
   fontWeight: 700, fontSize: 13,
   letterSpacing: "0.16em", textTransform: "uppercase",
@@ -496,9 +506,9 @@ diferentes.
 ```jsx
 {
   width: "100%", height: 52, borderRadius: 14, padding: "0 16px",
-  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.10)",
-  color: isLight ? "#1e2229" : "#fff",
+  color: isLight ? "#212121" : "#fff",
   fontFamily: "'Montserrat', sans-serif", fontWeight: 300, fontSize: 14,
   outline: "none", boxSizing: "border-box",
   colorScheme: isLight ? "light" : "dark",   // obrigatório em date/time
@@ -522,9 +532,9 @@ diferentes.
 ```jsx
 {
   width: 40, height: 40, borderRadius: 12,
-  background: isLight ? "#ffffff" : "#191921",
+  background: isLight ? "#ffffff" : "#1b1b1b",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.10)",
-  color: isLight ? "#1e2229" : "#fff",
+  color: isLight ? "#212121" : "#fff",
   display: "flex", alignItems: "center", justifyContent: "center",
   boxShadow: isLight ? "0 1px 3px rgba(0,0,0,0.05)" : undefined,
   cursor: "pointer",
@@ -562,7 +572,7 @@ Pílula centralizada, fixa acima da safe-area:
   position: "fixed", left: "50%", bottom: "max(16px, env(safe-area-inset-bottom))",
   transform: "translateX(-50%)", zIndex: 50,
   display: "flex", gap: 8, padding: "10px 14px",
-  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   backdropFilter: "blur(30px) saturate(180%)",
   border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.22)",
   borderRadius: 40, minWidth: 220,
@@ -587,7 +597,7 @@ Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escu
   position: "fixed", left: "50%", top: "50%", transform: "translate(-50%,-50%)",
   width: "min(440px, 92vw)", maxHeight: "86vh", overflowY: "auto", zIndex: 100,
   borderRadius: 18, padding: "20px 18px",
-  background: isLight ? "#ffffff" : "linear-gradient(160deg, #14141b 0%, #0b0b10 100%)",
+  background: isLight ? "#ffffff" : "linear-gradient(160deg, #161616 0%, #101010 100%)",
   border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(252,222,72,0.16)",
   boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
 }
@@ -611,7 +621,7 @@ Item ativo: fundo `rgba(160,97,8,0.10)` (claro) / `rgba(255,255,255,0.12)` (escu
 
 É o card do quadro por status da Início (`CardAtividade.tsx`), regra R136.
 Até 2026-09-03 o fundo inteiro levava um véu da cor do prazo. A partir da
-R136, **o fundo é sempre a superfície neutra do tema** — `#141416` no escuro,
+R136, **o fundo é sempre a superfície neutra do tema** — `#141414` no escuro,
 `#ffffff` no claro, o mesmo de qualquer card — e **só a borda reage à cor
 hierárquica**: um degradê do tom claro ao tom escuro da MESMA cor, contornado
 por um glow externo bem fraco. Nada no fundo, nada nos chips.
@@ -621,7 +631,7 @@ neutro.
 
 ```jsx
 // A superfície neutra do tema — a mesma de qualquer card (ui.ts: card()).
-const FUNDO  = isLight ? "#ffffff" : "#141416";
+const FUNDO  = isLight ? "#ffffff" : "#141414";
 const SOMBRA = isLight
   ? "0 1px 2px rgba(0,0,0,0.04), 0 10px 30px rgba(0,0,0,0.07)"
   : "0 1px 2px rgba(0,0,0,0.50), 0 10px 30px rgba(0,0,0,0.30)";
@@ -745,7 +755,7 @@ branco nas dez cores do PRISMA, é o mais calmo dos três e deixa a etiqueta
 
 A objeção ao tom fundo era o contraste contra o card escuro (1,55:1), mas a
 razão engana perto do preto: a fórmula comprime, e o preenchimento é de **7 a
-29 vezes** mais luminoso que o card `#141416` — lê como forma sem
+29 vezes** mais luminoso que o card `#141414` — lê como forma sem
 dificuldade. Quem carrega a informação é o texto branco, em 4,99:1.
 
 Valores resolvidos, para quem reproduz sem a função:
@@ -761,7 +771,7 @@ Valores resolvidos, para quem reproduz sem a função:
 | azul | `#236FC7` | 5,04:1 |
 | azul escuro | `#0A3573` | 11,87:1 |
 | verde | `#047862` | 5,43:1 |
-| neutro | `#5a6172` | 6,20:1 |
+| neutro | `#616161` | 6,20:1 |
 
 Uma asserção confere o piso de 4,5:1 nas dez: se um tom da paleta clarear, a
 etiqueta acusa antes de chegar à tela.
@@ -777,7 +787,7 @@ separação de uma pilha de avatares é um **anel na cor da superfície**, que
 separa sem acrescentar luz:
 
 ```jsx
-boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`   // a cor do card
+boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141414"}`   // a cor do card
 ```
 
 O avatar solto não leva anel: não há sobreposição para separar. **No
@@ -946,14 +956,14 @@ precisam ser calculados em JS.
 
 ```css
 :root {                          /* escuro = padrão */
-  --bg-base: #08090E;   --text-primary: #ffffff;
+  --bg-base: #0E0E0E;   --text-primary: #ffffff;
   --text-secondary: #9CA3AF;   --text-muted: #4B5563;
   --border-color: rgba(255,255,255,0.08);
   --gold-primary: #F8C811;
 }
 [data-theme="light"] {
-  --bg-base: #e9ebef;   --text-primary: #1e2229;
-  --text-secondary: #4a5060;   --text-muted: #7d8391;
+  --bg-base: #e9e9e9;   --text-primary: #212121;
+  --text-secondary: #505050;   --text-muted: #727272;
   --border-color: rgba(0,0,0,0.10);
   --gold-primary: #A06108;
 }
@@ -966,13 +976,13 @@ precisam ser calculados em JS.
 Todos abaixo foram bugs de produção — verifique cada um antes de entregar.
 
 1. **Cor fixa fora de branch de tema.** Qualquer `color: "#fff"` ou
-   `background: "linear-gradient(160deg,#14141b…)"` sem `isLight ?` é um bug
+   `background: "linear-gradient(160deg,#161616…)"` sem `isLight ?` é um bug
    esperando o usuário trocar de tema. Varredura obrigatória:
    ```bash
    grep -rnE 'color: ?"#fff|color: ?"rgba\(255, ?255, ?255' src/ | grep -v isLight
-   grep -rnE 'background: ?"(linear-gradient\(160deg, ?#14141b|#191921|#101014)' src/ | grep -v isLight
+   grep -rnE 'background: ?"(linear-gradient\(160deg, ?#161616|#1b1b1b|#141414)' src/ | grep -v isLight
    ```
-2. **Texto branco sobre o gradiente dourado.** ~2:1 de contraste. Use `#08090E`.
+2. **Texto branco sobre o gradiente dourado.** ~2:1 de contraste. Use `#0E0E0E`.
 3. **Dourado `#F8C811` como texto/ícone no modo claro.** Use `#A06108`.
 4. **Constantes de estilo em nível de módulo.** `const CARD = {…}` fora do
    componente não enxerga o tema — transforme em função: `cardStyle(isLight)`.
@@ -1037,9 +1047,9 @@ Regras:
 - [ ] Etiqueta de categoria é sólida, via `etiqueta()`, sem borda (§6.14)
 - [ ] Avatar sem glow; pilha com anel na cor da superfície (§6.15)
 
-- [ ] No tema claro, a página é `#e9ebef` e o card `#ffffff` — o card tem de
+- [ ] No tema claro, a página é `#e9e9e9` e o card `#ffffff` — o card tem de
       ser o branco mais claro da tela, nunca o mesmo branco da página (v10).
-- [ ] Texto primário claro é `#1e2229` (cinza bem escuro), não `#000` nem o
+- [ ] Texto primário claro é `#212121` (cinza bem escuro), não `#000` nem o
       quase-preto `#0a0b0e` (v10).
 
 - [ ] Montserrat carregada com pesos 300/400/600/700
@@ -1269,23 +1279,31 @@ ver §6.4. A regra que sobrou, e que é a que interessa, é a distinção de pap
 **dourado é ação, cor é escala.** O amarelo do prisma e o dourado continuam sem
 disputar espaço, porque agora nunca aparecem no mesmo tipo de botão.
 
-## 12. Tipografia (v6 — 2026-08-20)
+## 12. Tipografia (v12 — 2026-09-04, R195)
 
-**Montserrat**, em quatro pesos e só quatro. Carregada do Google Fonts com
-`display=swap`: o texto aparece na fonte do sistema enquanto a webfont baixa,
-em vez de a tela ficar em branco no 4G de obra.
+**Montserrat**, em quatro pesos e só quatro — **100, 400, 600 e 700**.
+Carregada do Google Fonts com `display=swap`: o texto aparece na fonte do
+sistema enquanto a webfont baixa, em vez de a tela ficar em branco no 4G de
+obra.
+
+**R195 — a régua** (Davi, 04/09/2026: tipografia estratégica, "mais grosso
+onde cabe, mais fino no resto"). O peso diz o PAPEL do texto, não o gosto:
 
 | peso | onde | por quê |
 |---|---|---|
 | **100 Thin** | o `%` da rosca (52px) | no tamanho, o peso vira ruído: quem carrega a hierarquia é o corpo do número |
-| **400 Regular** | corpo, texto secundário, descrição, placeholder | leitura longa |
-| **600 SemiBold** | título de card, chip, item de menu, botão | o degrau de hierarquia mais usado |
-| **700 Bold** | micro-rótulo em caixa alta, valor de barra, **número do KPI** | texto pequeno precisa de peso para existir; e o KPI é número de decisão, não de contemplação |
+| **400 Regular** | corpo, descrição, **valor digitado em campo**, metadado ("quem · quando"), placeholder | leitura longa — e o campo de texto é leitura, não título |
+| **600 SemiBold** | título de card, nome de pessoa ou cliente, chip, item de menu, botão, **rótulo pequeno (≤ 10,5px)** | o degrau mais usado; texto pequeno precisa de peso para existir |
+| **700 Bold** | **título de página (22px)**, título de coluna e de seção, micro-rótulo em caixa alta, valor de barra, **número do KPI** | o que organiza a tela leva o peso |
 
-**Não existe 500 nem 800 no sistema.** Foram varridos (48 e 72 ocorrências).
-Pedir um peso que não foi carregado faz o navegador *sintetizar* — engordar ou
-afinar o desenho por conta — e Montserrat sintetizada fica borrada. Se algum
-peso novo for preciso, ele entra na URL da fonte primeiro.
+**Não existe 500 nem 800.** Pedir um peso que não foi carregado faz o navegador
+escolher o vizinho ou *sintetizar* — engordar ou afinar o desenho por conta —
+e Montserrat sintetizada fica borrada. A v6 tinha varrido 500 e 800 e eles
+voltaram (14 e 6 usos); a U108 varreu de novo — valor de campo → 400, rótulo
+pequeno → 600, 800 → 700 — e desta vez o **verificador cobra**: o conjunto de
+`fontWeight` em `src/` é exatamente {100, 400, 600, 700}, e nenhum título de
+22px é 600. Se algum peso novo for preciso, ele entra na URL da fonte primeiro
+e nesta tabela depois.
 
 Numeral em coluna leva `fontVariantNumeric: "tabular-nums"`.
 

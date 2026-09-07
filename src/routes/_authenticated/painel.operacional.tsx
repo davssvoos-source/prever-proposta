@@ -295,13 +295,13 @@ function PainelOperacional() {
   const idsDasObras = useMemo(() => obras.map((o) => o.id), [obras]);
   const resumoDasObras = useObrasEmAndamento(idsDasObras);
 
-  const textPrimary = isLight ? "#1e2229" : "#ffffff";
-  const textSecondary = isLight ? "#4a5060" : "rgba(255,255,255,0.55)";
+  const textPrimary = isLight ? "#212121" : "#ffffff";
+  const textSecondary = isLight ? "#505050" : "rgba(255,255,255,0.55)";
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
   const vermelho = isLight ? PRISMA.vermelho.light : PRISMA.vermelho.dark;
   const pessego = isLight ? PRISMA.pessego.light : PRISMA.pessego.dark;
-  const superficie = isLight ? "#ffffff" : "#101016";
+  const superficie = isLight ? "#ffffff" : "#141414";
   const neutro = isLight ? PRISMA.neutro.light : PRISMA.neutro.dark;
   const trilho = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.10)";
   // As cores das colunas do quadro (R76) seguem o vocabulário de ESTADO do
@@ -328,7 +328,7 @@ function PainelOperacional() {
     whiteSpace: "nowrap",
   };
   const tooltipStyle: CSSProperties = {
-    background: isLight ? "#ffffff" : "#16161d",
+    background: isLight ? "#ffffff" : "#1b1b1b",
     border: isLight ? "1px solid rgba(0,0,0,0.12)" : "1px solid rgba(255,255,255,0.14)",
     borderRadius: 10, fontFamily: FONT, fontSize: 12, color: textPrimary,
   };
@@ -528,7 +528,7 @@ function PainelOperacional() {
           {valor}
         </div>
         <div style={{
-          fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+          fontFamily: FONT, fontWeight: 600, fontSize: 8, letterSpacing: "0.05em",
           textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
         }}>
           {rotulo}
@@ -787,7 +787,7 @@ function PainelOperacional() {
                     {k.valor}
                   </div>
                   <div style={{
-                    fontFamily: FONT, fontWeight: 500, fontSize: 8, letterSpacing: "0.05em",
+                    fontFamily: FONT, fontWeight: 600, fontSize: 8, letterSpacing: "0.05em",
                     textTransform: "uppercase", color: textSecondary, lineHeight: 1.2,
                   }}>
                     {k.rotulo}
