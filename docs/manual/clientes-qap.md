@@ -164,3 +164,37 @@ opacidade. Ao escolher o cliente numa proposta comercial, a foto é herdada.
 A seção **Atividades** da ficha passou a incluir as atividades de **grupo**
 ("Clientes de Portaria Remota") a que o cliente pertence e as em que ele é
 local extra (R143) — marcadas como tal —, com teto declarado e "ver todas".
+
+## Patrimônio do QAP (R196–R199, U109)
+
+O controle patrimonial da Prever é o **QAP ERP**, em *Patrimônio > Local/Uso*.
+De lá vêm sete campos, e só eles: **almoxarifado, tipo de categoria (que é o
+nome do equipamento no nosso formato), modelo, fabricante, identificação,
+local/pessoa e data de envio**. A "Categoria" do QAP e a bolinha amarela
+(quantos clientes o item já passou) ficam de fora por decisão do Davi.
+
+**Onde cada coisa mora.** Os quatro campos que descrevem o MODELO viram uma
+linha de `catalogo_equipamentos` — a tela **Equipamentos cadastrados**
+(`/equipamentos`), o catálogo do sistema, onde os valores entram no passo
+seguinte. Os três que descrevem o ITEM (identificação, local, data de envio)
+viram uma linha de `equipamentos_patrimonio`, que aparece na **ficha do
+cliente**, no bloco "Equipamentos no local".
+
+**Identificação pode faltar** (R197) e o campo existe de qualquer jeito. Por
+isso a chave que torna a importação repetível leva um **ordinal**: dez itens
+iguais sem identificação, no mesmo prédio e no mesmo dia, são dez itens, e uma
+chave "natural" os colapsaria num só.
+
+**Local casa exato ou não casa** (R199). O texto do QAP fica sempre guardado;
+quando ele bate com um cliente (nome ou nome do prédio) ou com uma pessoa
+nossa, o item ganha o vínculo. Quando não bate, o item entra **sem** vínculo e
+o local vai para `docs/importacao/locais-desconhecidos.md`, com sugestões
+parecidas que ninguém aplica sozinho — pôr equipamento no prédio errado é pior
+que deixá-lo sem prédio.
+
+**Como refazer a importação.** O retrato cru do QAP fica em
+`docs/importacao/qap-equipamentos.json`; `node
+scripts/gerar-migration-equipamentos.cjs` regera a migration dos itens e a
+relação de locais desconhecidos. As decisões (variação, vínculo, chave) são do
+módulo puro `src/features/equipamentos/importacao.ts`, com asserção em cima —
+não do SQL.

@@ -159,8 +159,12 @@ export const TELAS: Tela[] = [
   // R131/U94: "gerencial.usuarios" e "gerencial.permissoes" SAÍRAM — as duas
   // viraram abas do Painel Administrativo (a chave dele é a que vale), e as
   // rotas antigas só redirecionam. A U94 apaga as linhas órfãs no banco.
-  T("admin", "Catálogo", "/admin", "Administração", [false, false, false], {
-    nota: "equipamentos, blocos e serviços de referência — a rota exige o papel admin",
+  // R198/U109: a chave "admin" (a tela "Catálogo") SAIU — o Davi mandou
+  // excluí-la, e o catálogo do sistema virou "Equipamentos cadastrados", que
+  // nasce das variações importadas do QAP. /admin redireciona para cá e a
+  // U109 apaga a linha órfã da matriz.
+  T("equipamentos", "Equipamentos cadastrados", "/equipamentos", "Administração", [false, true, false], {
+    nota: "o catálogo: uma linha por variação (almoxarifado, nome, modelo, fabricante). Vai receber VALOR, e valor é de admin e comercial (R13/R164) — por isso o SAC não entra",
   }),
 ];
 

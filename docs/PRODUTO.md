@@ -1,7 +1,7 @@
 # Prever App — Documento Mestre do Produto
 
 <!-- sumario:inicio -->
-> **Sumário** — 11 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 12 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Visão](#1-visão)
 - [2. Papéis (permissão) e equipes (roteamento)](#2-papéis-permissão-e-equipes-roteamento)
@@ -14,6 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
+- [22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)](#22-o-patrimônio-do-qap-r196r199-davi-2026-09-04) · R196–R199 (4)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R195). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R199). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3712,3 +3713,68 @@ trabalho".
   o conjunto exato {100, 400, 600, 700} em `src/` (a U108 varreu 14 usos de 500
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
+
+## 22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)
+
+O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
+Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
+
+- **R196** — **O equipamento entra com sete campos: Almoxarifado, Tipo de
+  Categoria, Modelo, Fabricante, Identificação, Local/Pessoa e Data de
+  envio.** O **Tipo de Categoria do QAP é o NOME do equipamento no nosso
+  formato**. A **Categoria** do QAP fica de fora, e a contagem de passagens
+  (a bolinha amarela da tela dele) também. No nosso banco os quatro primeiros
+  campos moram no catálogo (`catalogo_equipamentos`) e os três últimos no item
+  físico (`equipamentos_patrimonio`). *(Davi, 04/09/2026: "Quero que você
+  ignore a 'Categoria', vamos usar apenas: Almoxarifado, Tipo de Categoria,
+  Modelo, Fabricante, Identificação, Local, Data de envio"; "O Tipo de
+  categoria é o nome do equipamento no nosso formato"; "ignore isso, significa
+  a quantidade de clientes que este item já passou, e não vamos usar essa
+  informação para nada no nosso sistema".)*
+
+- **R197** — **Identificação é opcional, e o campo existe sempre.** Há
+  equipamento sem identificação porque ninguém preencheu no QAP e há
+  equipamento que não tem identificação nenhuma; os dois entram, com o campo
+  vazio. Identificação **repetida** também entra — o relatório da importação
+  conta as repetições em vez de travar a carga. Como consequência, a chave que
+  torna a importação repetível não pode ser "os campos da linha": dez itens
+  iguais sem identificação, no mesmo local e no mesmo dia, são dez itens — e
+  por isso a chave leva um **ordinal**. *(Davi, 04/09/2026: "nem todo
+  equipamento tem identificação, as vezes é pois não foi preenchida pelo
+  usuário que cadastrou o equipamento no sistema, as vezes nem tem
+  identificação no equipamento mesmo, mas de qualquer jeito deve ter o espaço
+  para por a identificação".)*
+
+- **R198** — **O catálogo do sistema é a tela "Equipamentos cadastrados"
+  (`/equipamentos`): uma linha por VARIAÇÃO** — almoxarifado + nome + modelo +
+  fabricante —, com a contagem de itens de cada uma. É nela que os **valores**
+  entram, no passo seguinte; por isso ela é de admin e comercial (R13/R164
+  barram o SAC de dinheiro). A tela **"Catálogo" (`/admin`) foi excluída**:
+  `/admin` redireciona, a chave saiu da matriz e a U109 apaga a linha. Com ela
+  saíram as abas de blocos (já viviam no banco, R166) e de serviços de
+  referência (sem tela por enquanto). A tabela `equipamentos` (custo/markup)
+  **continua**: é o catálogo do orçamento, que o wizard da proposta lê.
+  *(Davi, 04/09/2026: "Crie uma tela com 'Equipamentos cadastrados' contendo
+  todas as variações de modelos de equipamentos que foram cadastrados nessa
+  rodada de acesso ao QAP, e aí essa tela será o nosso catalogo, pois nela
+  iremos inserir valores, que será o passo que faremos em seguida"; "Exclua a
+  atual tela de Catálogo".)*
+
+- **R199** — **O local do QAP casa EXATO ou não casa.** A coluna
+  "Local / Pessoa" do QAP mistura prédio e gente: casando exato (depois de
+  normalizar caixa, acento e espaço) contra o nome e o nome de prédio dos
+  nossos clientes, ou contra o nome das nossas pessoas — equipamento com
+  pessoa é equipamento que está **com** alguém. Nada de casamento aproximado:
+  o texto do QAP fica **sempre** guardado, o item fica sem vínculo e o local
+  vai para a **relação de locais não cadastrados**
+  (`docs/importacao/locais-desconhecidos.md`), com sugestões que ninguém
+  aplica sozinho. Cada equipamento aparece na **ficha do cliente**; o vínculo
+  com o **bloco/sistema** do condomínio é o passo seguinte (a coluna
+  `cliente_sistema_id` nasce nula), e antes dele vêm os sistemas implantados
+  de cada cliente. *(Davi, 04/09/2026: "Caso seja um local/pessoa
+  desconhecido, deixe anotado para no final você me passar a relação de
+  equipamentos em locais que não temos cadastrado na nossa relação de
+  clientes"; "Cada cliente, na página do cliente terão os equipamentos
+  listados, e posteriormente iremos associar cada equipamento a um bloco do
+  condomínio… Antes ainda vamos cadastrar os sistemas implantados em cada
+  cliente, para depois vincula-los aos equipamentos".)*

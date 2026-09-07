@@ -10604,3 +10604,62 @@ de interface; `ESTADO_ATUAL.md`; a memória do tema claro.
 
 **Números.** Verificador: 3.006 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U109 — o patrimônio do QAP ganha lugar: catálogo, itens e a tela nova (R196–R199)
+
+O Davi abriu a rodada de **importação dos equipamentos do QAP**: ditou a
+estrutura do controle patrimonial dele, mandou ignorar a "Categoria" e a
+bolinha de passagens, pediu a tela "Equipamentos cadastrados" como catálogo
+novo e a exclusão da tela "Catálogo". Esta entrega é **a base**; a extração dos
+4.241 itens ficou bloqueada (ver o fim).
+
+**O que nasceu.**
+
+- `src/features/equipamentos/importacao.ts` (puro): `dataQapParaISO`,
+  `chaveDaVariacao`, `chaveDeImportacao`, `casarLocal`, `sugestoesDeLocal`,
+  `prepararImportacao`. É onde as três decisões da importação moram — qual
+  variação, qual vínculo, qual chave — e cada uma tem asserção.
+- Migration **U109**: `catalogo_equipamentos` (variação única pela chave
+  normalizada) e `equipamentos_patrimonio` (item físico), com RLS na régua da
+  S1/U71 (`pode_ver_cliente`), `local_qap` NOT NULL, `CHECK` de vínculo único
+  (cliente OU pessoa) e `cliente_sistema_id` nula para o passo seguinte. Entra
+  a chave de tela `equipamentos`, sai `admin`.
+- Tela `/equipamentos` ("Equipamentos cadastrados"), agrupada por
+  almoxarifado, com os números do retrato e busca; `EquipamentosDoCliente` na
+  ficha do cliente; `/admin` virou redirect.
+- `scripts/gerar-migration-equipamentos.cjs`: gera a U110 (os itens) e a
+  relação de locais desconhecidos a partir do retrato cru.
+
+**Três decisões que valem registro.**
+
+1. **Sem coluna de valor**, embora o próximo passo seja "inserir valores". A
+   R13 barra o SAC de ver dinheiro e a RLS do Postgres tranca LINHA, não
+   COLUNA — um preço na tabela que o técnico precisa ler para ver o
+   equipamento do prédio vazaria preço. O valor entra na próxima migration, em
+   tabela própria atrás de `pode_ver_financeiro`, como a S4 já faz.
+2. **O ORDINAL na chave de importação.** Sem identificação (R197), itens
+   idênticos no mesmo local e no mesmo dia produzem linhas indistinguíveis; um
+   `ON CONFLICT DO NOTHING` sobre a "chave natural" gravaria UM e jogaria os
+   outros no lixo — sem erro. Com o ordinal cada item tem chave própria e
+   reimportar continua idempotente. Há asserção exatamente para isso.
+3. **Casar local só EXATO.** "Soma Perdizes" e "Soma Perdizes Offices" são
+   parecidos e podem ser prédios diferentes; virou sugestão no relatório, não
+   vínculo. O texto cru fica guardado sempre, mesmo quando casou.
+
+**O que saiu com a tela "Catálogo", e o Davi precisa saber:** as abas de
+**blocos** (já eram do banco, R166) e de **serviços de referência** — esta
+ficou **sem tela**, e editar serviço passa a ser por SQL até `/equipamentos`
+ganhar a seção. A tabela `equipamentos` (custo/markup) **não** foi apagada: o
+wizard da proposta lê dela pelo `cod_eq` dos itens de bloco.
+
+**O que ficou bloqueado.** A extração dos 4.241 itens depende do **Claude in
+Chrome** conectado (a lista de navegadores da conta voltou vazia — extensão
+instalada não é extensão conectada). Nada do que foi feito aqui depende dela: o
+retrato cru entra em `docs/importacao/qap-equipamentos.json` e o gerador faz o
+resto.
+
+**Regra 7.** R196–R199 no `PRODUTO.md` (seção 22); manual de clientes/QAP e o
+de códigos de erro (ADM → EQP); `ESTADO_ATUAL.md` com U109 e U110 pendentes.
+
+**Números.** Verificador: . asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

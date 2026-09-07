@@ -370,6 +370,9 @@ const ARQUIVOS_SEMENTE = [
   // U106: 'mapa' sai (R192 — a tela /mapa foi excluída a pedido do Davi na
   // revisão de 04/09/2026); o DELETE participa da semente.
   'supabase/migrations/20260917090000_u106_mapa_sai.sql',
+  // U109: entra 'equipamentos' (a tela nova) e sai 'admin' (R198 — o Davi
+  // mandou excluir a tela "Catálogo"); o INSERT e o DELETE contam na semente.
+  'supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql',
 ];
 const semente = {};
 // REGRA 2, E ELA MORDEU AQUI: este leitor casava COMENTÁRIO. O bloco DESFAZER
@@ -9697,6 +9700,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   ..76fa7944:38, é duplicata nunca derrubada). Não carrega dinheiro; a S1b
    *   explica por que privilégio de coluna não resolve nada aqui.
    *
+   *  VOCABULÁRIO (U109): `catalogo_equipamentos` — almoxarifado, nome,
+   *   modelo, fabricante. Não carrega valor NENHUM de propósito (R13/R164: o
+   *   valor nasce em tabela própria atrás de `pode_ver_financeiro`), e o
+   *   técnico precisa lê-lo para saber o que é o equipamento que está no
+   *   prédio dele. Fechar não protegeria nada e cegaria a ficha do cliente.
+   *   O IRMÃO dela, `equipamentos_patrimonio` (identificação/série, local),
+   *   NÃO está nesta lista: aquele segue `pode_ver_cliente` e o vínculo
+   *   ativo do gestor — é a diferença entre "o que este modelo é" e "onde
+   *   este item está".
+   *
    *  BOM / DIMENSIONAMENTO, sem uma coluna de valor: `regras_blocos`,
    *   `regras_cftv`, `regras_cerca` (`cod_eq`, `qtd`, `condicao`) e
    *   `blocos_itens` (`qty`, `modelo`). Fechar quebraria o wizard de orçamento
@@ -9727,11 +9740,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
    *   vivo é o mesmo teste de dois eixos de `pessoasDaGrade()` movido para a
    *   fronteira, e ele é medido pela conferência 106 da própria migration.
    */
-  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 22, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
+  eq('CRÍTICO: CENSO — as policies de LEITURA com `USING (true)` vivas no repo são EXATAMENTE estas 23, todas com motivo escrito ao lado. Uma policy nova e frouxa entra nesta lista sozinha e fica VERMELHA sem ninguém lembrar de escrever asserção para ela',
      censoPermissivas(),
      ['agenda_campo|agenda_campo_select',
       'blocos_itens|blocos_itens read all auth',
       'blocos|blocos read all auth',
+      'catalogo_equipamentos|catalogo_equipamentos_select',
       'chamado_apoios|chamado_apoios_select',
       'chamado_checklist_templates|chamado_checklist_templates_select',
       'chamado_equipamentos|chamado_equipamentos_select',
@@ -13464,9 +13478,16 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
        // (USING e WITH CHECK) num CREATE POLICY, num arquivo novo. E ela
        // segue a mesma defesa das anteriores — `p.ativo AND p.status <>
        // 'pendente_aprovacao'` escrito ao lado —, então a P51 NÃO a alcança.
+       // U109 moveu 30→31, 126→135 e 45→52: as SETE policies de escrita e
+       // leitura de gestor das duas tabelas do patrimônio (catálogo e itens),
+       // num arquivo novo. As sete vêm com o teste de dois eixos
+       // (`p.ativo AND p.status <> 'pendente_aprovacao'`) escrito ao lado —
+       // is_gestor NUNCA sozinho —, então a P51 não as alcança. A leitura do
+       // CATÁLOGO não passa por is_gestor: é `USING (true)`, e está declarada
+       // no censo de policies permissivas com o motivo.
        // O censo subiu de propósito: ele existe para que nenhuma política
        // nova entre sem alguém olhar esta linha (regra 3).
-       [true, false, 30, 126, 45]);
+       [true, false, 31, 135, 52]);
   }
 }
 
@@ -16311,7 +16332,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /validateSearch: \(s: Record<string, unknown>\) => \(\{\s*\n\s*aba: ABAS\.includes/.test(adm94)],
      [true, true, true, true, true]);
   eq('U94/R131: Catálogo e Fechamentos continuam como atalhos; o atalho de Contratos SAIU (R132)',
-     [/para: "\/admin"/.test(adm94), /para: "\/fechamentos"/.test(adm94), /para: "\/contratos"/.test(semCom94(adm94))],
+     // R198 (U109): o atalho do Catálogo virou "Equipamentos" (/equipamentos) — a tela /admin saiu
+     [/para: "\/equipamentos"/.test(adm94), /para: "\/fechamentos"/.test(adm94), /para: "\/contratos"/.test(semCom94(adm94))],
      [true, true, false]);
   eq('U94/R131 CRÍTICO: usuários e permissões só para o CARGO admin — regra de cargo, nunca linha da matriz (uma linha errada tornaria a correção impossível pelo app)',
      /: !isAdmin \? \(/.test(adm94) && /const isAdmin = cargo === "admin";/.test(adm94), true);
@@ -16322,10 +16344,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /useQuery|supabase\.from|useMutation/.test(semCom94(r))],
        [true, false]);
   }
-  eq('U94/R131: as duas chaves saíram do catálogo; "admin" virou Catálogo; "contratos" ficou (gateia as filhas)',
+  // R198 (U109): a chave "admin" também saiu — o catálogo agora é "equipamentos"
+  eq('U94/R131: as duas chaves saíram do catálogo; o Catálogo virou "Equipamentos cadastrados" (R198); "contratos" ficou (gateia as filhas)',
      [TL94.TELAS.some((t) => t.chave === 'gerencial.usuarios'), TL94.TELAS.some((t) => t.chave === 'gerencial.permissoes'),
-      TL94.TELAS.find((t) => t.chave === 'admin')?.label, TL94.TELAS.some((t) => t.chave === 'contratos')],
-     [false, false, 'Catálogo', true]);
+      TL94.TELAS.find((t) => t.chave === 'equipamentos')?.label, TL94.TELAS.some((t) => t.chave === 'contratos')],
+     [false, false, 'Equipamentos cadastrados', true]);
   {
     const mig = ler94('supabase/migrations/20260912090000_u94_administrativo_absorve_usuarios_e_permissoes.sql');
     eq('U94/R131: a migration apaga EXATAMENTE as duas chaves órfãs, confere, e traz o DESFAZER',
@@ -16434,9 +16457,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
          .map((a) => ler94(`src/routes/_authenticated/${a}`)).filter((s) => /guardaDeTela\(/.test(s)).join('\n');
        // as que se sabe que NÃO gateiam (e por quê): dashboard/perfil são `sempre`;
        // clientes.novo/migrar são redirects desativados (R21); chamados.novo
-       // ganhou guarda na U98 (R163 fechou a Q11); sobreaviso já gateia; admin
-       // decide por user_roles (Q15) — declaradas aqui para a lista ser VISÍVEL
-       const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar', 'admin']);
+       // ganhou guarda na U98 (R163 fechou a Q11); sobreaviso já gateia.
+       // 'admin' SAIU desta lista na U109: a chave não existe mais (R198), e
+       // a tela nova ("equipamentos") gateia pela chave própria.
+       const excecoes = new Set(['dashboard', 'perfil', 'clientes.novo', 'clientes.migrar']);
        return TL94.TELAS.filter((t) => !excecoes.has(t.chave) && !comGuarda.includes(`"${t.chave}"`))
          .map((t) => t.chave);
      })(), []);
@@ -17244,15 +17268,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R167: a LÓGICA de leitura do Notion continua (é biblioteca testada, não tela)',
      fs99.existsSync('src/features/chamados/importar-notion.ts'), true);
 
-  // ── R166: o Catálogo na guarda padrão ────────────────────────────────────
+  // ── R166: o Catálogo — que a R198 (U109) mandou excluir ──────────────────
+  // A R166 (Q15) tinha posto /admin na guarda padrão, tirando dela a leitura
+  // própria de user_roles. A R198 foi além: a TELA saiu (Davi: "Exclua a atual
+  // tela de Catálogo"). O que a R166 ganhou não se perdeu — nenhuma rota lê
+  // user_roles por conta própria —, e é isso que se cobra agora.
   const adm99 = codigo99(ler99('src/routes/_authenticated/admin.tsx'));
-  eq('R166 CRÍTICO: /admin lê a chave "admin" por guardaDeTela — a leitura própria de user_roles morreu',
-     [/const \{ ok \} = await guardaDeTela\("admin"\);/.test(adm99), /destinoNegado\("admin"\)/.test(adm99),
-      /from\("user_roles"\)/.test(adm99)],
-     [true, true, false]);
-  eq('R166: a chave "admin" continua fechada para os três papéis (só o cargo admin entra, como antes)',
-     (() => { const t = TL99.TELAS.find((x) => x.chave === 'admin'); return [t?.padrao.tecnico, t?.padrao.comercial, t?.padrao.sac]; })(),
-     [false, false, false]);
+  eq('R166/R198: /admin virou redirect para /equipamentos — sem guarda própria e sem a leitura direta de user_roles que a R166 matou',
+     [/throw redirect\(\{ to: "\/equipamentos" \}\)/.test(adm99), /from\("user_roles"\)/.test(adm99),
+      /guardaDeTela\(/.test(adm99)],
+     [true, false, false]);
+  eq('R198: a chave "admin" saiu do catálogo; quem gateia o catálogo novo é "equipamentos" (comercial sim, técnico e SAC não)',
+     (() => { const t = TL99.TELAS.find((x) => x.chave === 'equipamentos');
+              return [TL99.TELAS.some((x) => x.chave === 'admin'), t?.padrao.tecnico, t?.padrao.comercial, t?.padrao.sac]; })(),
+     [false, false, true, false]);
 
   // ── R169: a preventiva TEM impacto ───────────────────────────────────────
   eq('R169 CRÍTICO: corretiva, preventiva e operacional têm impacto — implantação, melhoria, proposta e vistoria não',
@@ -18082,6 +18111,199 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       !/22\/600/.test(ler108('.claude/skills/designer/SKILL.md')) && !/22\/600|regular\/500/.test(ler108('docs/manual/interface-e-design.md')),
       /^## U108 /m.test(ler108('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true, true]);
+}
+
+// ── U109 — o patrimônio do QAP: catálogo, itens e a tela nova (R196–R199) ────
+{
+  const fs109 = require('fs');
+  const ler109 = (f) => fs109.readFileSync(f, 'utf8');
+  const cod109 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const IMP109 = carregar('src/features/equipamentos/importacao.ts');
+  const TL109 = carregar('src/lib/telas.ts');
+
+  // ── a decisão pura: data, limpeza, variação ────────────────────────────────
+  eq('R196: a data do QAP (dd/mm/aaaa) vira ISO; o que não é data VÁLIDA vira null — inventar data seria afirmar quando o equipamento foi para o local',
+     ['01/09/2026', '03/07/2026', '31/12/2026', '29/02/2024', '31/02/2026', '01/13/2026', '1/9/2026', '2026-09-01', '', null]
+       .map((d) => IMP109.dataQapParaISO(d)),
+     ['2026-09-01', '2026-07-03', '2026-12-31', '2024-02-29', null, null, null, null, null, null]);
+  eq('R196: texto do QAP vem limpo; vazio vira ausente (o banco guarda null, não string vazia)',
+     [IMP109.limpar('  Intelbras '), IMP109.limpar('AS  2010'), IMP109.limpar(''), IMP109.limpar('   '), IMP109.limpar(null)],
+     ['Intelbras', 'AS 2010', null, null, null]);
+  eq('R198 CRÍTICO: a VARIAÇÃO ignora caixa, acento e espaço — "INTELBRAS " e "Intelbras" são o mesmo item de catálogo',
+     IMP109.chaveDaVariacao({ almoxarifado: ' alarme ', tipo: 'BOTÃO DE EMERGÊNCIA', modelo: 'as 2010', fabricante: 'INTELBRAS ', identificacao: null, local: 'x', enviadoEm: null }),
+     IMP109.chaveDaVariacao({ almoxarifado: 'Alarme', tipo: 'Botão de emergência', modelo: 'AS 2010', fabricante: 'Intelbras', identificacao: 'y', local: 'z', enviadoEm: '01/09/2026' }));
+  eq('R198: modelo e fabricante AUSENTES são variação legítima — não se descarta o item por falta deles',
+     IMP109.chaveDaVariacao({ almoxarifado: 'Alarme', tipo: 'Sirene', modelo: null, fabricante: null, identificacao: null, local: 'x', enviadoEm: null }),
+     'alarme|sirene||');
+
+  // ── casar local: EXATO, nunca aproximado ──────────────────────────────────
+  {
+    const clientes109 = [
+      { id: 'c1', nome: 'Soma Perdizes Offices', nome_predio: null },
+      { id: 'c2', nome: 'Condomínio Vila Lagos', nome_predio: 'Vila Lagos' },
+    ];
+    const pessoas109 = [{ id: 'p1', nome: 'Giovanni Pascoli' }];
+    eq('R199 CRÍTICO: o local casa EXATO (nome ou nome do prédio) e a pessoa também; parecido NÃO casa — pôr equipamento no prédio errado é pior que deixá-lo sem vínculo',
+       [IMP109.casarLocal('Soma Perdizes Offices', clientes109, pessoas109),
+        IMP109.casarLocal('soma  perdizes offices', clientes109, pessoas109),
+        IMP109.casarLocal('Vila Lagos', clientes109, pessoas109),
+        IMP109.casarLocal('Giovanni Pascoli', clientes109, pessoas109),
+        IMP109.casarLocal('Soma Perdizes', clientes109, pessoas109),
+        IMP109.casarLocal('', clientes109, pessoas109)],
+       [{ tipo: 'cliente', id: 'c1' }, { tipo: 'cliente', id: 'c1' }, { tipo: 'cliente', id: 'c2' },
+        { tipo: 'pessoa', id: 'p1' }, { tipo: 'desconhecido', id: null }, { tipo: 'desconhecido', id: null }]);
+    eq('R199: o parecido vira SUGESTÃO no relatório, que ninguém aplica sozinho',
+       [IMP109.sugestoesDeLocal('Soma Perdizes', clientes109), IMP109.sugestoesDeLocal('Prédio Que Não Temos', clientes109)],
+       [['Soma Perdizes Offices'], []]);
+
+    // ── a importação inteira, num retrato pequeno ───────────────────────────
+    const eqp = (extra) => ({
+      almoxarifado: 'Alarme', tipo: 'Botão de emergência', modelo: 'AS 2010', fabricante: 'Intelbras',
+      identificacao: null, local: 'Soma Perdizes Offices', enviadoEm: '01/09/2026', ...extra,
+    });
+    const cam = (extra) => ({
+      almoxarifado: 'CFTV', tipo: 'Câmera Bullet', modelo: 'VHD 1220 B', fabricante: 'Intelbras',
+      identificacao: null, local: 'Soma Perdizes Offices', enviadoEm: '10/08/2026', ...extra,
+    });
+    const linhas109 = [
+      eqp({ identificacao: 'ODX0007903821' }),                                  // 1
+      eqp({ almoxarifado: ' alarme ', tipo: 'BOTÃO DE EMERGÊNCIA', modelo: 'as 2010', fabricante: 'INTELBRAS ', identificacao: 'OVQ0007903811' }), // 2 — mesma variação
+      eqp({ local: 'Vila Lagos', enviadoEm: '03/07/2026' }),                    // 3 — sem identificação
+      eqp({ local: 'Vila Lagos', enviadoEm: '03/07/2026' }),                    // 4 — IDÊNTICA à 3
+      cam({ identificacao: 'CAM001', local: 'Giovanni Pascoli' }),              // 5 — pessoa
+      cam({ identificacao: 'CAM002', local: 'Prédio Que Não Temos' }),          // 6 — desconhecido
+      cam({ identificacao: 'CAM003', local: 'Soma Perdizes' }),                 // 7 — desconhecido com sugestão
+      cam({ identificacao: 'CAM004', enviadoEm: '32/13/2026' }),                // 8 — data ilegível
+      cam({ identificacao: 'ODX0007903821' }),                                  // 9 — identificação repetida
+    ];
+    const r109 = IMP109.prepararImportacao(linhas109, clientes109, pessoas109);
+
+    eq('R198: nove linhas viram DUAS variações de catálogo, com a contagem certa e a primeira grafia preservada',
+       [r109.catalogo.length, r109.catalogo.map((v) => [v.almoxarifado, v.nome, v.modelo, v.fabricante, v.quantidade])],
+       [2, [['Alarme', 'Botão de emergência', 'AS 2010', 'Intelbras', 4],
+            ['CFTV', 'Câmera Bullet', 'VHD 1220 B', 'Intelbras', 5]]]);
+    eq('R196/R197/R199: os totais do retrato — com cliente, com pessoa, sem vínculo, sem identificação',
+       r109.totais, { linhas: 9, variacoes: 2, comCliente: 6, comPessoa: 1, semVinculo: 2, semIdentificacao: 2 });
+    eq('R197 CRÍTICO: duas linhas IDÊNTICAS sem identificação recebem chaves DIFERENTES (o ordinal) — sem isso o ON CONFLICT gravaria uma e jogaria a outra no lixo, sem erro nenhum',
+       [r109.itens[2].chaveImportacao !== r109.itens[3].chaveImportacao,
+        r109.itens[2].chaveImportacao.endsWith('#1'), r109.itens[3].chaveImportacao.endsWith('#2'),
+        new Set(r109.itens.map((i) => i.chaveImportacao)).size],
+       [true, true, true, 9]);
+    eq('R197: a mesma entrada gera as MESMAS chaves — reimportar é idempotente, não duplica',
+       IMP109.prepararImportacao(linhas109, clientes109, pessoas109).itens.map((i) => i.chaveImportacao),
+       r109.itens.map((i) => i.chaveImportacao));
+    eq('R199 CRÍTICO: o texto do QAP fica guardado SEMPRE — inclusive quando casou com cliente ou pessoa',
+       [r109.itens[0].localQap, r109.itens[2].localQap, r109.itens[4].localQap, r109.itens[5].localQap],
+       ['Soma Perdizes Offices', 'Vila Lagos', 'Giovanni Pascoli', 'Prédio Que Não Temos']);
+    eq('R199: o relatório traz os locais desconhecidos com contagem e sugestão — em ordem de quantidade',
+       r109.desconhecidos,
+       [{ local: 'Prédio Que Não Temos', quantidade: 1, sugestoes: [] },
+        { local: 'Soma Perdizes', quantidade: 1, sugestoes: ['Soma Perdizes Offices'] }]);
+    eq('R196: identificação repetida no QAP é RELATADA, não bloqueia a importação; data ilegível entra nula',
+       [r109.identificacoesRepetidas, r109.datasIlegiveis, r109.itens[7].enviadoEm, r109.itens[0].enviadoEm],
+       [[{ identificacao: 'ODX0007903821', quantidade: 2 }], 1, null, '2026-09-01']);
+    eq('R199: equipamento com PESSOA não tem cliente, e vice-versa — nunca os dois (o CHECK do banco cobra o mesmo)',
+       r109.itens.filter((i) => i.clienteId && i.pessoaId), []);
+  }
+
+  // ── a migration U109 ──────────────────────────────────────────────────────
+  {
+    const mig109 = ler109('supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql');
+    eq('U109: as duas tabelas nascem com RLS, policies por gestor/pode_ver_cliente, e o item guarda o texto do local (NOT NULL)',
+       [/CREATE TABLE IF NOT EXISTS public\.catalogo_equipamentos/.test(mig109),
+        /CREATE TABLE IF NOT EXISTS public\.equipamentos_patrimonio/.test(mig109),
+        /ALTER TABLE public\.catalogo_equipamentos\s+ENABLE ROW LEVEL SECURITY;/.test(mig109),
+        /ALTER TABLE public\.equipamentos_patrimonio\s+ENABLE ROW LEVEL SECURITY;/.test(mig109),
+        /local_qap\s+text NOT NULL/.test(mig109),
+        /public\.pode_ver_cliente\(cliente_id\)/.test(mig109)],
+       [true, true, true, true, true, true]);
+    eq('U109 CRÍTICO: a variação é única (chave), a chave de importação é única, e a identificação NÃO é — o QAP repete número de série e travar aqui derrubaria a importação inteira',
+       [/CREATE UNIQUE INDEX IF NOT EXISTS catalogo_equipamentos_chave_idx/.test(mig109),
+        /CREATE UNIQUE INDEX IF NOT EXISTS equipamentos_patrimonio_chave_idx/.test(mig109),
+        /CREATE UNIQUE INDEX[^\n]*identificacao/.test(mig109)],
+       [true, true, false]);
+    eq('U109: o item aponta para um bloco (cliente_sistema_id) e o vínculo é um só — cliente OU pessoa (R199)',
+       [/cliente_sistema_id uuid REFERENCES public\.cliente_sistemas\(id\)/.test(mig109),
+        /CHECK \(num_nonnulls\(cliente_id, pessoa_id\) <= 1\)/.test(mig109)],
+       [true, true]);
+    // o CORPO do CREATE TABLE, não o comentário que explica por que não há valor
+    eq('U109 CRÍTICO: NENHUMA coluna de valor no catálogo — a RLS tranca linha, não coluna, e a R13/R164 barram o SAC de ver dinheiro; o valor vem em tabela própria',
+       /valor|preco|custo|markup/i.test(
+         (mig109.split('CREATE TABLE IF NOT EXISTS public.catalogo_equipamentos (')[1] ?? '').split('\n);')[0]),
+       false);
+    eq('U109: as sete policies de gestor levam o vínculo ATIVO ao lado (dívida P51) — is_gestor nunca sozinho, nove vezes (as duas de UPDATE repetem o teste no USING e no WITH CHECK)',
+       (mig109.match(/public\.is_gestor\(auth\.uid\(\)\)\s*\n\s*AND EXISTS \(SELECT 1 FROM public\.profiles p/g) ?? []).length, 9);
+    eq('U109: a tabela do ORÇAMENTO (public.equipamentos, com custo/markup) NÃO é apagada — o wizard da proposta lê dela',
+       /DROP TABLE[^\n]*\bpublic\.equipamentos\b/.test(mig109), false);
+    eq('U109: a matriz ganha "equipamentos" (comercial sim, técnico e SAC não) e perde "admin" (R198)',
+       [/\('equipamentos', 'tecnico', false\), \('equipamentos', 'comercial', true\), \('equipamentos', 'sac', false\)/.test(mig109),
+        /^DELETE FROM public\.permissoes_tela WHERE tela IN \('admin'\);$/m.test(mig109),
+        />>> OLHAR <<</.test(mig109), /DESFAZER/.test(mig109)],
+       [true, true, true, true]);
+    eq('U109 participa da semente do verificador (o INSERT e o DELETE contam)',
+       ARQUIVOS_SEMENTE.includes('supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql'), true);
+  }
+
+  // ── a tela nova e a saída do Catálogo (R198) ──────────────────────────────
+  eq('R198: a chave "admin" saiu do catálogo de telas e entrou "equipamentos" — Administração, comercial sim, técnico e SAC não',
+     [TL109.TELAS.some((t) => t.chave === 'admin'),
+      (() => { const t = TL109.TELAS.find((x) => x.chave === 'equipamentos');
+               return [t?.label, t?.rota, t?.grupo, t?.padrao.tecnico, t?.padrao.comercial, t?.padrao.sac]; })()],
+     [false, ['Equipamentos cadastrados', '/equipamentos', 'Administração', false, true, false]]);
+  {
+    const adm109 = ler109('src/routes/_authenticated/admin.tsx');
+    eq('R198: /admin só redireciona para /equipamentos — sem guarda, sem consulta, sem as abas antigas',
+       [/throw redirect\(\{ to: "\/equipamentos" \}\)/.test(adm109), /component: \(\) => null,/.test(adm109),
+        /guardaDeTela|useQuery|supabase|TabsTrigger/.test(cod109(adm109))],
+       [true, true, false]);
+    const tela109 = ler109('src/routes/_authenticated/equipamentos.tsx');
+    eq('R198: a tela nova gateia pela chave própria, agrupa por almoxarifado e mostra a contagem de itens de cada variação',
+       [/guardaDeTela\("equipamentos"\)/.test(tela109), /destinoNegado\("equipamentos"\)/.test(tela109),
+        /Equipamentos cadastrados/.test(tela109), /grupos\.map\(\(\[almoxarifado, itens\]\) => \(/.test(tela109)],
+       [true, true, true, true]);
+    eq('R198 CRÍTICO: a tela do catálogo não mostra valor nenhum ainda — o passo dos valores é o seguinte, e valor tem regra (R13/R164)',
+       /brl\(|valor_unitario|R\$/.test(cod109(tela109)), false);
+    eq('R198: o prefixo de erro ADM deu lugar ao EQP (não há mais tela /admin onde um erro ADM nasça)',
+       [/\["\/admin", "ADM"\]/.test(ler109('src/lib/erros.ts')), /\["\/equipamentos", "EQP"\]/.test(ler109('src/lib/erros.ts'))],
+       [false, true]);
+    eq('R198: o atalho do Painel Administrativo aponta para a tela nova',
+       /para: "\/equipamentos"/.test(ler109('src/routes/_authenticated/painel.administrativo.tsx')), true);
+  }
+
+  // ── o bloco da ficha do cliente (R199) ────────────────────────────────────
+  {
+    const bloco109 = ler109('src/features/clientes/EquipamentosDoCliente.tsx');
+    eq('R199: a ficha do cliente lista os equipamentos do local, com identificação (ou a falta dela) e a data de envio',
+       [/<EquipamentosDoCliente clienteId=\{id\} \/>/.test(ler109('src/routes/_authenticated/clientes.$id.tsx')),
+        /sem identificação/.test(bloco109), /dataCurta\(i\.enviado_em\)/.test(bloco109),
+        /sem bloco/.test(bloco109)],
+       [true, true, true, true]);
+    eq('R199: sem a migration o bloco não aparece e a tela do catálogo AVISA — 42P01 é tratado, ninguém vê tela vermelha',
+       [/if \(data\?\.faltaMigration\) return null;/.test(bloco109),
+        /e\?\.code === "42P01"/.test(ler109('src/features/equipamentos/data.ts')),
+        /migration <strong>U109<\/strong>|migration\{" "\}\s*\n\s*<strong>U109<\/strong>/.test(ler109('src/routes/_authenticated/equipamentos.tsx'))],
+       [true, true, true]);
+  }
+
+  // ── o gerador da U110 ─────────────────────────────────────────────────────
+  eq('U109: o gerador da importação existe, lê o retrato cru, usa o módulo puro e escreve a relação de locais desconhecidos',
+     [fs109.existsSync('scripts/gerar-migration-equipamentos.cjs'),
+      (() => { const g = ler109('scripts/gerar-migration-equipamentos.cjs');
+               return [/docs\/importacao\/qap-equipamentos\.json/.test(g),
+                       /carregar\('src\/features\/equipamentos\/importacao\.ts'\)/.test(g),
+                       /docs\/importacao\/locais-desconhecidos\.md/.test(g),
+                       /ON CONFLICT \(chave_importacao\) DO NOTHING/.test(g)]; })()],
+     [true, [true, true, true, true]]);
+
+  // ── regra 7 ───────────────────────────────────────────────────────────────
+  const prod109 = ler109('docs/PRODUTO.md');
+  eq('U109 (regra 7): R196–R199 existem, a última atualização aponta para a R199, o manual conta a importação do QAP, a U109 está no diário e as duas migrations pendentes no ESTADO',
+     [['R196', 'R197', 'R198', 'R199'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod109)),
+      Number((prod109.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 199,
+      /Patrimônio do QAP/.test(ler109('docs/manual/clientes-qap.md')),
+      /^## U109 /m.test(ler109('docs/PLANO_UNIFICACAO.md')),
+      /U109/.test(ler109('docs/ESTADO_ATUAL.md')) && /U110/.test(ler109('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

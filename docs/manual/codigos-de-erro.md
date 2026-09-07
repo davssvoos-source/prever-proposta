@@ -47,7 +47,7 @@ em vez de virar tela branca.
 · `PSP` Prospecção · `POP` Painel Operacional · `PAD` Painel Administrativo ·
 `PNL` outros painéis · `VIS` Visita/orçamento · `CTR` Contratos · `FEC`
 Fechamentos · `CAL` Calendário · `HIS` Histórico · `PER`
-Permissões · `USU` Usuários · `PRF` Perfil · `ADM` Admin · `AUT` Login ·
+Permissões · `USU` Usuários · `PRF` Perfil · `EQP` Equipamentos · `AUT` Login ·
 `APP` rota desconhecida.
 
 ## O que a pessoa vê

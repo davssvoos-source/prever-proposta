@@ -115,7 +115,10 @@ function PainelAdministrativo() {
    * Atalho para porta trancada é armadilha — quem não pode, não vê.
    */
   const atalhos = [
-    { label: "Catálogo", descricao: "Equipamentos, blocos e serviços de referência", icon: Package, para: "/admin", mostrar: isAdmin },
+    // R198 (U109): era "Catálogo" (/admin), que o Davi mandou excluir. O
+    // catálogo agora é "Equipamentos cadastrados", e quem o vê é quem a
+    // matriz deixa — não mais só o cargo admin.
+    { label: "Equipamentos", descricao: "O catálogo: as variações importadas do QAP", icon: Package, para: "/equipamentos", mostrar: podeVer("equipamentos") !== false },
     { label: "Fechamentos", descricao: "O que foi apurado no período, para o financeiro", icon: CircleDollarSign, para: "/fechamentos", mostrar: podeVer("fechamentos") !== false },
   ].filter((a) => a.mostrar);
 

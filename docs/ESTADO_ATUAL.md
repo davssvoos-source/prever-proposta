@@ -8,10 +8,12 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-04** · última regra: **R195** · último diário:
-**U108** · verificador: **3.006 asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U100**; **pendente: U106** (só apaga a
-linha `mapa` da matriz).
+Última atualização: **2026-09-04** · última regra: **R199** · último diário:
+**U109** · verificador: **. asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
+`mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
+entra na matriz, a tela "Catálogo" sai). A **U110** (os equipamentos do QAP)
+nasce quando a extração rodar.
 
 ---
 
@@ -83,6 +85,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U106 | o Mapa sai — /mapa redireciona, botão fora do Comercial, chave fora do catálogo, migration U106 apaga a linha (R192); o Administrativo vira duas colunas Usuários | Permissões com as APIs por botão (R193) |
 | U107 | a Nova Visita Técnica numa tela só — três colunas (Local · Contatos e serviços · Agendamento), design system no lugar da paleta local, todas as regras da proposta preservadas (R194) |
 | U108 | o cinza neutro no sistema inteiro — 29 hexes azulados varridos em cem arquivos, texto na mesma luminância, duas asserções travam a volta (R186 aplicada); tipografia estratégica — títulos de página 700, valor de campo 400, rótulo pequeno 600, só {100, 400, 600, 700} (R195) |
+| U109 | o patrimônio do QAP: `catalogo_equipamentos` + `equipamentos_patrimonio` com RLS, o módulo puro de importação, a tela "Equipamentos cadastrados" (`/equipamentos`), o bloco de equipamentos na ficha do cliente e a saída da tela "Catálogo" (R196–R199) |
 
 ## 4. Banco: migrations
 
@@ -95,6 +98,15 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   idempotente da chave `mapa` em `permissoes_tela`, com conferência e
   DESFAZER. Independe das anteriores e da ordem de deploy; até rodar, a linha
   órfã fica no banco sem ninguém ler.
+- **Pendente: U109** (`20260918090000_u109_patrimonio_do_qap.sql`) — cria
+  `catalogo_equipamentos` e `equipamentos_patrimonio` (com RLS), põe a tela
+  `equipamentos` na matriz e apaga a chave `admin`. Até rodar, a tela
+  "Equipamentos cadastrados" mostra o aviso de que a estrutura não existe (o
+  42P01 é tratado) e o bloco de equipamentos da ficha do cliente não aparece.
+- **A seguir: U110** — os equipamentos do QAP, gerada por
+  `node scripts/gerar-migration-equipamentos.cjs` a partir de
+  `docs/importacao/qap-equipamentos.json`. O retrato ainda não existe: a
+  extração depende do **Claude in Chrome conectado** (ver §7).
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
@@ -152,6 +164,11 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   continuam.
 - **R195** — **tipografia estratégica**: quatro pesos com função (100, 400,
   600, 700); título de página 700; valor de campo 400; rótulo pequeno 600.
+- **R196–R199** — o **patrimônio do QAP**: sete campos (o "Tipo de Categoria"
+  é o nome do equipamento), identificação opcional, o catálogo é a tela
+  **Equipamentos cadastrados** (a tela "Catálogo" saiu) e local casa **exato**
+  ou vira relatório. O vínculo de cada item com o **bloco** do condomínio é o
+  passo seguinte.
 
 ## 6. Perguntas em aberto
 

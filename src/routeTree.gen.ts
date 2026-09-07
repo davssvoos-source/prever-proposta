@@ -21,6 +21,7 @@ import { Route as AuthenticatedMapaRouteImport } from './routes/_authenticated/m
 import { Route as AuthenticatedHistoricoRouteImport } from './routes/_authenticated/historico'
 import { Route as AuthenticatedGerencialRouteImport } from './routes/_authenticated/gerencial'
 import { Route as AuthenticatedFechamentosRouteImport } from './routes/_authenticated/fechamentos'
+import { Route as AuthenticatedEquipamentosRouteImport } from './routes/_authenticated/equipamentos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated/contratos'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
@@ -117,6 +118,12 @@ const AuthenticatedFechamentosRoute =
   AuthenticatedFechamentosRouteImport.update({
     id: '/fechamentos',
     path: '/fechamentos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedEquipamentosRoute =
+  AuthenticatedEquipamentosRouteImport.update({
+    id: '/equipamentos',
+    path: '/equipamentos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -342,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
@@ -392,6 +400,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/historico': typeof AuthenticatedHistoricoRoute
@@ -443,6 +452,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/contratos': typeof AuthenticatedContratosRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/equipamentos': typeof AuthenticatedEquipamentosRoute
   '/_authenticated/fechamentos': typeof AuthenticatedFechamentosRouteWithChildren
   '/_authenticated/gerencial': typeof AuthenticatedGerencialRouteWithChildren
   '/_authenticated/historico': typeof AuthenticatedHistoricoRoute
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/contratos'
     | '/dashboard'
+    | '/equipamentos'
     | '/fechamentos'
     | '/gerencial'
     | '/historico'
@@ -545,6 +556,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/contratos'
     | '/dashboard'
+    | '/equipamentos'
     | '/fechamentos'
     | '/gerencial'
     | '/historico'
@@ -595,6 +607,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes'
     | '/_authenticated/contratos'
     | '/_authenticated/dashboard'
+    | '/_authenticated/equipamentos'
     | '/_authenticated/fechamentos'
     | '/_authenticated/gerencial'
     | '/_authenticated/historico'
@@ -727,6 +740,13 @@ declare module '@tanstack/react-router' {
       path: '/fechamentos'
       fullPath: '/fechamentos'
       preLoaderRoute: typeof AuthenticatedFechamentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/equipamentos': {
+      id: '/_authenticated/equipamentos'
+      path: '/equipamentos'
+      fullPath: '/equipamentos'
+      preLoaderRoute: typeof AuthenticatedEquipamentosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -1139,6 +1159,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedContratosRoute: typeof AuthenticatedContratosRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEquipamentosRoute: typeof AuthenticatedEquipamentosRoute
   AuthenticatedFechamentosRoute: typeof AuthenticatedFechamentosRouteWithChildren
   AuthenticatedGerencialRoute: typeof AuthenticatedGerencialRouteWithChildren
   AuthenticatedHistoricoRoute: typeof AuthenticatedHistoricoRoute
@@ -1161,6 +1182,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedContratosRoute: AuthenticatedContratosRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEquipamentosRoute: AuthenticatedEquipamentosRoute,
   AuthenticatedFechamentosRoute: AuthenticatedFechamentosRouteWithChildren,
   AuthenticatedGerencialRoute: AuthenticatedGerencialRouteWithChildren,
   AuthenticatedHistoricoRoute: AuthenticatedHistoricoRoute,

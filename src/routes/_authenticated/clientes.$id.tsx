@@ -37,6 +37,7 @@ import { visitaRouteFor } from "@/lib/visita-route";
 import { card } from "@/lib/ui";
 import { ClienteForm } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
+import { EquipamentosDoCliente } from "@/features/clientes/EquipamentosDoCliente";
 import { useChamadosDoCliente } from "@/features/chamados/data";
 import { useAtendimentosDoCliente, TETO_DA_LISTA as TETO_PLANTAO } from "@/features/plantao/data";
 import { diaCurto, horaCurta, TIPO_LABEL as PLANTAO_TIPO_LABEL } from "@/features/plantao/modelo";
@@ -289,6 +290,13 @@ function ClienteDetalhePage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
             {/* Inventário (as-built) — Etapa 2 */}
             <InventarioCliente clienteId={id} podeEditar={true} />
+
+            {/* R199 (U109): o PATRIMÔNIO — o que o QAP diz que está no prédio,
+                item a item. É outra coisa do inventário as-built acima: este
+                vem do controle patrimonial, com identificação e data de envio,
+                e ainda não sabe em que bloco cada item está (o passo
+                seguinte). Não aparece quando o cliente não tem equipamento. */}
+            <EquipamentosDoCliente clienteId={id} />
 
             {/* Contratos — Etapa U2. Só quem enxerga financeiro (admin/comercial):
                 a RLS já barra, e o card seria eternamente vazio para SAC/técnico. */}

@@ -68,7 +68,7 @@ const AREAS: [string, string][] = [
   ["/historico", "HIS"],
   ["/dashboard", "INI"],
   ["/perfil", "PRF"],
-  ["/admin", "ADM"],
+  ["/equipamentos", "EQP"],
   ["/auth", "AUT"],
 ];
 
