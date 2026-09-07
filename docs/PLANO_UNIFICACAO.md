@@ -10725,5 +10725,23 @@ não sobre fixture: 4.241 chaves únicas, toda variação de item existindo no
 catálogo, nenhum campo com tabulação (que teria deslocado a linha na
 extração), e o par negativo — sem base, NADA é vinculado em JS.
 
-**Números.** Verificador: 3.054 asserções, 0 falharam. `tsc`: 57 (baseline).
+**A primeira rodada abortou, e a lição é de SQL, não de dados.** O Davi rodou
+a U109 (dez itens da conferência ok, incluindo `local_qap` aceitando nulo) e
+a U110 morreu em **42P10**: "no unique or exclusion constraint matching the ON
+CONFLICT specification". O índice único de `chave_importacao` é **parcial**
+(`WHERE chave_importacao IS NOT NULL`, U109) e a inferência do `ON CONFLICT`
+só encontra índice parcial quando o predicado é **repetido na cláusula** —
+`ON CONFLICT (chave_importacao) WHERE chave_importacao IS NOT NULL DO NOTHING`.
+Consertado no gerador (a migration não aplicou nada, então corrige-se no
+lugar), com um par de asserções que trava os DOIS lados: se alguém tirar o
+`WHERE` do índice ou o da cláusula, uma das pontas acende. A cicatriz entrou
+na skill do banco, que é onde a próxima migration vai olhar.
+
+**E o gerador ganhou uma trava de nome.** O stamp do arquivo saía da última
+migration do diretório — e a U110 anterior virava "a última", de modo que cada
+regeração inventava um nome novo (20260919 → 20260920) e deixava a versão
+velha, com o defeito, no repo. Agora ele ignora as próprias saídas: regerar
+reescreve o MESMO arquivo.
+
+**Números.** Verificador: 3.055 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.

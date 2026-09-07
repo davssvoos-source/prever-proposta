@@ -98,6 +98,14 @@ mais mordem:
   precisam de instantes diferentes.
 - `string_agg(text[], …)` não existe — a U96 abortou por isso na primeira
   rodada; agregue o elemento (`m.grupo[1]`), não o array.
+- **`ON CONFLICT` não infere índice PARCIAL** sem o predicado repetido na
+  cláusula: com `CREATE UNIQUE INDEX … (col) WHERE col IS NOT NULL`, o
+  `ON CONFLICT (col) DO NOTHING` responde **42P10** ("no unique or exclusion
+  constraint matching the ON CONFLICT specification") e a carga inteira
+  aborta. Escreva `ON CONFLICT (col) WHERE col IS NOT NULL DO NOTHING`. A
+  U110 morreu nisso na primeira rodada, com 4.241 linhas na mesa; o par de
+  asserções que trava os dois lados (índice e cláusula) está no bloco da U110
+  do verificador.
 - PGRST201 depois de junção N:N: embed ambíguo — dica `tabela!coluna`.
 
 ## 5. O que o verificador cobra (e você escreve junto)

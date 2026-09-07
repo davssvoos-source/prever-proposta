@@ -15,7 +15,9 @@
 --   · identificação · local/pessoa · data de envio
 -- A "Categoria" do QAP e a contagem de passagens ficaram de fora, por decisão
 -- dele. O id interno do item no QAP vira a `chave_importacao` (`qap:<id>`):
--- é o que faz rodar isto duas vezes não duplicar nada.
+-- é o que faz rodar isto duas vezes não duplicar nada. O índice que garante
+-- isso é PARCIAL (U109), e é por isso que o ON CONFLICT dos itens repete o
+-- predicado `WHERE chave_importacao IS NOT NULL` — sem ele, 42P10.
 --
 -- COMO O LOCAL É VINCULADO (R199): os itens entram com o TEXTO do QAP em
 -- `local_qap` e sem vínculo; dois UPDATEs ligam ao cliente e à pessoa cujo
@@ -4734,7 +4736,13 @@ INSERT INTO public.equipamentos_patrimonio
 SELECT c.id, e.identificacao, e.local_qap, e.enviado_em, e.chave_importacao, 'qap'
   FROM entrada e
   JOIN public.catalogo_equipamentos c ON c.chave = e.chave_variacao
-ON CONFLICT (chave_importacao) DO NOTHING;
+-- O `WHERE` NÃO É ENFEITE: o índice único de `chave_importacao` (U109) é
+-- PARCIAL, e a inferência do ON CONFLICT só encontra índice parcial quando o
+-- predicado dele é repetido aqui. Sem esta linha o Postgres responde 42P10
+-- ("no unique or exclusion constraint matching the ON CONFLICT
+-- specification") e a carga inteira aborta — aconteceu na 1ª tentativa de
+-- rodar a U110, em 07/09/2026.
+ON CONFLICT (chave_importacao) WHERE chave_importacao IS NOT NULL DO NOTHING;
 
 -- ── 3) o vínculo com o CLIENTE, por nome exato (R199) ──────────────────────
 UPDATE public.equipamentos_patrimonio p

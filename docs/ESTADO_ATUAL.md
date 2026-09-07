@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-04** · última regra: **R199** · último diário:
-**U110** · verificador: **3.054 asserções, 0 falharam** · `tsc`: baseline
+**U110** · verificador: **3.055 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -104,7 +104,7 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   `equipamentos` na matriz e apaga a chave `admin`. Até rodar, a tela
   "Equipamentos cadastrados" mostra o aviso de que a estrutura não existe (o
   42P01 é tratado) e o bloco de equipamentos da ficha do cliente não aparece.
-- **Pendente: U110** (`20260919090000_u110_equipamentos_do_qap.sql`, 532 KB) —
+- **Pendente: U110** (`20260919090000_u110_equipamentos_do_qap.sql`, 533 KB) —
   os 4.241 equipamentos e as 429 variações de catálogo. **Rodar DEPOIS da
   U109.** Idempotente (variação por `chave`, item por `chave_importacao`
   `qap:<id>`); os dois UPDATEs de vínculo só preenchem o que está nulo, então
@@ -112,6 +112,9 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   imprime a relação dos locais que não casaram com a base. Para regerar:
   `node scripts/gerar-migration-equipamentos.cjs` (lê
   `docs/importacao/qap-equipamentos.json`, o retrato cru do QAP).
+  A **U109 já rodou** em 07/09/2026 (dez itens de conferência ok). A primeira
+  tentativa da U110 abortou em **42P10** — índice parcial exige o predicado
+  repetido no `ON CONFLICT` — e está corrigida; nada foi aplicado por ela.
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`

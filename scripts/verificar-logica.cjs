@@ -18294,7 +18294,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
                return [/docs\/importacao\/qap-equipamentos\.json/.test(g),
                        /carregar\('src\/features\/equipamentos\/importacao\.ts'\)/.test(g),
                        /docs\/importacao\/locais-desconhecidos\.md/.test(g),
-                       /ON CONFLICT \(chave_importacao\) DO NOTHING/.test(g)]; })()],
+                       // com o predicado do índice PARCIAL (a cicatriz 42P10 da U110)
+                       /ON CONFLICT \(chave_importacao\) WHERE chave_importacao IS NOT NULL DO NOTHING/.test(g)]; })()],
      [true, [true, true, true, true]]);
 
   // ── regra 7 ───────────────────────────────────────────────────────────────
@@ -18361,8 +18362,20 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /RAISE EXCEPTION 'U110: rode a U109 antes/.test(mig)],
        [true, true]);
     eq('U110 CRÍTICO: idempotente nos dois passos — variação por `chave`, item por `chave_importacao`',
-       [/ON CONFLICT \(chave\) DO NOTHING;/.test(mig), /ON CONFLICT \(chave_importacao\) DO NOTHING;/.test(mig)],
+       [/ON CONFLICT \(chave\) DO NOTHING;/.test(mig),
+        /ON CONFLICT \(chave_importacao\) WHERE chave_importacao IS NOT NULL DO NOTHING;/.test(mig)],
        [true, true]);
+    // CICATRIZ (07/09/2026): a 1ª tentativa de rodar a U110 morreu em 42P10.
+    // O índice único de `chave_importacao` é PARCIAL na U109, e a inferência do
+    // ON CONFLICT só acha índice parcial quando o predicado é repetido na
+    // cláusula. O par abaixo trava os DOIS lados: se alguém tirar o `WHERE` do
+    // índice, ou o `WHERE` do ON CONFLICT, uma das duas pontas acende.
+    eq('U110 CRÍTICO (cicatriz 42P10): o ON CONFLICT dos itens repete o predicado do índice PARCIAL da U109 — sem isso a carga inteira aborta',
+       [/CREATE UNIQUE INDEX IF NOT EXISTS equipamentos_patrimonio_chave_idx\s*\n\s*ON public\.equipamentos_patrimonio \(chave_importacao\)\s*\n\s*WHERE chave_importacao IS NOT NULL;/
+          .test(ler110('supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql')),
+        /ON CONFLICT \(chave_importacao\) WHERE chave_importacao IS NOT NULL DO NOTHING;/.test(mig),
+        /42P10/.test(mig)],
+       [true, true, true]);
     eq('U110 CRÍTICO: o vínculo do local é ESTRITO (lower+btrim, acento incluído) e só preenche o que está NULO — uma correção feita à mão depois NÃO é desfeita ao rodar de novo (R199)',
        [/lower\(btrim\(c\.nome\)\) = lower\(btrim\(p\.local_qap\)\)/.test(mig),
         /lower\(btrim\(coalesce\(f\.nome, ''\)\)\) = lower\(btrim\(p\.local_qap\)\)/.test(mig),
