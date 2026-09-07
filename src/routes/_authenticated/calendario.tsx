@@ -165,6 +165,10 @@ const horaCurta = (iso: string) =>
  * tipo, status (atrasado em primeiro), número, e a hora/"vence"/"concluído" —
  * continua a um hover de distância. Quem se arrasta diz que se arrasta.
  */
+/** true quando os dois ISO apontam para o MESMO instante (o banco escreve "+00:00", o JS ".000Z"). */
+const mesmoInstante = (a: string, b: string | null | undefined) =>
+  !!b && new Date(a).getTime() === new Date(b).getTime();
+
 const dicaDoEvento = (e: Evento) => {
   const quando = e.porConclusao ? "concluído neste dia" : e.porPrazo ? "vence neste dia" : horaCurta(e.quando);
   const partes = [e.tipoLabel, e.atrasado ? "Atrasado" : e.statusLabel, e.numero, quando].filter(Boolean);
@@ -355,7 +359,7 @@ function CalendarioPage() {
       const c = (chamados as any[]).find((x) => x.id === id);
       if (!c) throw new Error("A atividade não está mais nesta janela.");
       const novo = moverPrazoParaODia(c.prazo_limite, dia);
-      if (novo === c.prazo_limite) return null;
+      if (mesmoInstante(novo, c.prazo_limite)) return null;
       await atualizarChamado(id, { prazo_limite: novo });
       return novo;
     },

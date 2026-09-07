@@ -2055,7 +2055,22 @@ INSERT interno — um valor que nenhuma tela mostra. **Dano: nenhum** (é uma
 coluna inerte). Limpar é uma migration que tira a linha do gatilho e derruba a
 coluna e o CHECK; fica para uma leva de limpeza de schema, junto com P55.
 
-## P57 — MÉDIO · "Data agendada" das atividades internas não existe (2026-09-03, U96)
+**Por que não entrou na U100b (04/09/2026), quando as outras limpezas
+entraram:** derrubar a coluna não é só `DROP COLUMN` — o gatilho da linha do
+tempo (`trg_chamado_evento_upd`, `AFTER UPDATE OF status, responsavel_id,
+sprint`) lista a coluna, e `chamado_registrar_evento` lê `NEW.sprint`. Tirar a
+coluna pede reescrever o gatilho e a função que escreve na linha do tempo
+(censo-protegida no verificador) e o `chamado_preencher` da U89 — é uma leva
+própria, com a conferência de que o evento de mudança de status continua
+sendo gravado. Dano hoje: nenhum.
+
+## P57 — MÉDIO · EM ANDAMENTO · "Data agendada" das atividades internas não existe (2026-09-03, U96)
+
+**Andamento (04/09/2026):** o Davi respondeu a Q18 — quer a data agendada e
+uma coluna "Agendados" no quadro (R168). A coluna `chamados.data_agendada`
+(date) nasceu na U99 e já é lida (`CAMPOS_CHAMADO`, tipo `Chamado`,
+`ChamadoPatch`). Falta a TELA: o campo no pop-up e na página, a coluna do
+quadro e o calendário lendo-a — vem com os fluxos da área técnica.
 
 O documento do Davi lista "Data Agendada (opcional)" em toda atividade fora da
 técnica. A coluna `data_hora_agendada` é ESPELHO da agenda de campo (R101) e
@@ -2065,7 +2080,10 @@ resposta à **Q18**: se o Davi quiser a data agendada interna, nasce uma coluna
 própria (`agendada_para date`), com o calendário lendo-a antes do prazo.
 
 
-## P58 — BAIXO · Liberar os grupos novos de clientes quando a U100 rodar (2026-09-04, U100)
+## P58 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · Liberar os grupos novos de clientes quando a U100 rodar
+
+**Fechada:** o Davi rodou a U100 em 04/09/2026 e `SERVICOS_NAO_OFERECIDOS`
+esvaziou (U100b). Os quatro grupos se gravam na ficha e nas atividades.
 
 `SERVICOS_NAO_OFERECIDOS` (`features/clientes/data.ts`) segura Portaria
 Autônoma e Portaria Presencial fora da ficha do cliente e dos seletores de
@@ -2080,7 +2098,13 @@ export do Notion continua no repo, testada pelo verificador contra o arquivo
 real. Sai na Fase G (o corte do Notion), junto com as asserções dela — não
 antes, porque uma nova importação ainda é possível até lá.
 
-## P60 — BAIXO · `comFallbackDaU96` pode sair: a U96 rodou (2026-09-04)
+## P60 — ~~BAIXO~~ FECHADA (U100b, 2026-09-04) · `comFallbackDaU96` pode sair: a U96 rodou
+
+**Fechada:** o fallback, o INSERT repetido de `abrirChamado` e a mensagem "a
+migration U96 precisa ser rodada" saíram na U100b; as leituras pedem as
+colunas direto (`CAMPOS_CHAMADO`, `CAMPOS_DA_HOME`) e o erro do PostgREST
+SOBE em vez de virar lista vazia. As asserções da U96 foram reapontadas para o
+estado final.
 
 O SELECT que repetia sem `impacto_operacional`/`proposta_id` num 42703
 (`features/chamados/data.ts`) existia só para a janela entre o push e a

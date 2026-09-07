@@ -56,7 +56,7 @@ export const SERVICO_ORDEM: ServicoCliente[] = ["portaria_remota", "monitorament
  * migration U100, que o Davi roda à mão — o push publica na hora. Quando a
  * U100 tiver rodado, esta lista esvazia (um commit, uma linha).
  */
-export const SERVICOS_NAO_OFERECIDOS: ServicoCliente[] = ["portaria_autonoma", "portaria_presencial"];
+export const SERVICOS_NAO_OFERECIDOS: ServicoCliente[] = []; // U100 rodada em 04/09/2026 — os quatro grupos liberados
 
 /** Os grupos que os seletores e a ficha OFERECEM — o que pode ser GRAVADO hoje. */
 export const SERVICOS_OFERECIDOS: ServicoCliente[] =

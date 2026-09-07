@@ -3246,8 +3246,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // `CAMPOS_BASE` + `EMBEDS` (o fallback da ordem de deploy, R142) — o embed
   // do cliente mora nos dois lugares novos, e a dica continua sendo cobrada.
   const alvos = [
-    ['camposDaHome (a Home — foi esta que caiu)',
-     recorte(home, 'const camposDaHome =', ';')],
+    ['CAMPOS_DA_HOME (a Home — foi esta que caiu)',
+     recorte(home, 'const CAMPOS_DA_HOME =', ';')],
     ['EMBEDS de chamados/data.ts',
      recorte(chdata, 'const EMBEDS =', ';')],
     ['a consulta de chamados do Calendário',
@@ -7998,9 +7998,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   const membrosPatch = [...corpoPatch.matchAll(/"([a-z_0-9]+)"/g)].map((m) => m[1]).sort();
   eq('CRÍTICO: `ChamadoPatch` não tem mais `data_hora_agendada` — a coluna é ESPELHO derivado (R101), e nenhuma tela a escreve por patch',
      membrosPatch,
-     // U96: `sprint` saiu do patch (R141); `impacto_operacional` e `proposta_id` entraram
+     // U96: `sprint` saiu do patch (R141); `impacto_operacional` e `proposta_id` entraram.
+     // U100b: `data_agendada` entrou (R168, coluna da U99) — a data em que a atividade
+     // interna vai ser feita; NÃO é data_hora_agendada, que continua espelho (R101).
      ['assinatura_nome', 'assinatura_url', 'cliente_id', 'cliente_sistema_id',
-      'concluida_em', 'descricao_problema', 'diagnostico', 'equipe', 'fechada_em',
+      'concluida_em', 'data_agendada', 'descricao_problema', 'diagnostico', 'equipe', 'fechada_em',
       'fechado_por', 'finalizada_em', 'impacto_operacional', 'iniciada_em', 'motivo_cancelamento',
       'pecas_texto', 'prazo_limite', 'prioridade', 'proposta_id', 'responsavel_id',
       'servico_executado', 'status', 'tipo', 'titulo'].sort());
@@ -16691,16 +16693,19 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
 
   // ── a camada de dados: o fallback da ordem de deploy e os grupos no histórico ─
   const dados96 = ler96('src/features/chamados/data.ts');
-  eq('U96 CRÍTICO (regra 5): toda leitura de chamados passa por comFallbackDaU96 — pede as colunas novas e, em 42703, repete sem elas; a tela não fica em branco antes da migration',
-     [/export const COLUNAS_DA_U96 = "impacto_operacional, proposta_id";/.test(dados96),
-      /if \(r\.error && r\.error\.code === "42703"\) r = await consulta\(false\);/.test(dados96),
-      (codigo96(dados96).match(/comFallbackDaU96<any/g) ?? []).length >= 4,
-      /\.select\(CAMPOS\)/.test(codigo96(dados96))],
-     [true, true, true, false]);
-  eq('U96 (regra 5): abrirChamado repete o INSERT sem as duas colunas novas em 42703, e atualizarChamado explica que a migration U96 precisa rodar',
-     [/delete linha\.impacto_operacional;\s*\n\s*delete linha\.proposta_id;/.test(dados96),
-      /a migration U96 precisa ser rodada/.test(dados96)],
-     [true, true]);
+  // U100b (P60): a U96 e a U99 rodaram em 04/09/2026 e o fallback da ordem de
+  // deploy (comFallbackDaU96, o INSERT repetido, a mensagem "a migration U96
+  // precisa ser rodada") saiu. O que se fixa agora é o estado final: toda
+  // leitura pede as colunas da U96 e da U99 direto, e um erro SOBE (não vira
+  // lista vazia).
+  eq('U96→U100b: toda leitura de chamados pede impacto, proposta e data_agendada DIRETO (CAMPOS_CHAMADO), e o fallback da ordem de deploy não existe mais',
+     [/export const CAMPOS_CHAMADO = CAMPOS_BASE \+ ", impacto_operacional, proposta_id, data_agendada, " \+ EMBEDS;/.test(dados96),
+      (codigo96(dados96).match(/\.select\(CAMPOS_CHAMADO\)/g) ?? []).length >= 4,
+      /comFallbackDaU96|COLUNAS_DA_U96|camposDeChamado\(/.test(codigo96(dados96)),
+      /delete linha\.impacto_operacional/.test(dados96), /a migration U96 precisa ser rodada/.test(dados96)],
+     [true, true, false, false, false]);
+  eq('U100b: nas quatro leituras o erro SOBE — nenhuma engole o error do PostgREST devolvendo lista vazia',
+     (codigo96(dados96).match(/\.select\(CAMPOS_CHAMADO\)[\s\S]{0,200}?if \(error\) throw error;/g) ?? []).length, 4);
   eq('R143 CRÍTICO: o histórico do cliente inclui as atividades de GRUPO (setor.in) e de local extra (chamado_locais.cliente_id), e não só cliente_id',
      [/export function useChamadosDoCliente\(clienteId: string \| undefined, servicosPrestados\?: string\[\] \| null\)/.test(dados96),
       /setor\.in\.\(\$\{setores\.join\(","\)\}\)/.test(dados96),
@@ -16714,7 +16719,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [false, false, true]);
   const home96 = ler96('src/features/home/data.ts');
   eq('R139/R140 (Início): o contexto leva o mapa pessoa → equipe; fichas de compra e chamado_equipes saíram da leitura',
-     [/equipeDePessoa,/.test(home96), /useFichasDeCompra|chamado_compra|useEquipesDeTodos\(\)/.test(codigo96(home96)), /camposDaHome\(u96\)/.test(home96)],
+     [/equipeDePessoa,/.test(home96), /useFichasDeCompra|chamado_compra|useEquipesDeTodos\(\)/.test(codigo96(home96)), (home96.match(/\.select\(CAMPOS_DA_HOME\)/g) ?? []).length === 2],
      [true, false, true]);
   eq('R139 (lentes): o filtro Equipe casa com as equipes das PESSOAS (a.equipes), em qualquer natureza',
      /return equipe === "todas" \|\| a\.equipes\.includes\(equipe\);/.test(ler96('src/features/home/lentes.ts')), true);
@@ -16899,7 +16904,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true]);
   eq('R152: soltar num dia escreve prazo_limite por atualizarChamado, com moverPrazoParaODia, e pula a escrita se o dia é o mesmo',
      [/const novo = moverPrazoParaODia\(c\.prazo_limite, dia\);/.test(cal97),
-      /if \(novo === c\.prazo_limite\) return null;/.test(cal97),
+      /if \(mesmoInstante\(novo, c\.prazo_limite\)\) return null;/.test(cal97),
       /await atualizarChamado\(id, \{ prazo_limite: novo \}\);/.test(cal97)],
      [true, true, true]);
   eq('R152: a escrita é OTIMISTA e volta no erro — cancela a consulta, guarda o antes, troca, restaura',
@@ -17286,12 +17291,13 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       new Set(CD100.SERVICO_ORDEM.map((s) => CD100.SERVICO_CORES[s].dark)).size],
      [['portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial'], true, 4]);
   eq('R173 CRÍTICO (regra 5): os dois grupos novos NÃO são oferecidos até a U100 rodar — a ficha e os três seletores de grupo leem SERVICOS_OFERECIDOS',
-     [CD100.SERVICOS_NAO_OFERECIDOS, CD100.SERVICOS_OFERECIDOS,
+     [CD100.SERVICOS_NAO_OFERECIDOS.every((g) => !CD100.SERVICOS_OFERECIDOS.includes(g)),
+      CD100.SERVICOS_OFERECIDOS.length + CD100.SERVICOS_NAO_OFERECIDOS.length === CD100.SERVICO_ORDEM.length,
       /SERVICO_ORDEM\.filter\(\(s\) => SERVICOS_OFERECIDOS\.includes\(s\) \|\| temServico\(cliente, s\)\)\.map/.test(ler100('src/routes/_authenticated/clientes.$id.tsx')),
       /\.\.\.SERVICOS_OFERECIDOS\.map\(\(s\) => \(\{ valor: valorDoGrupo\(s\)/.test(ler100('src/features/home/NovaAtividadeDialog.tsx')),
       /\.\.\.SERVICOS_OFERECIDOS\s*\n\s*\.filter\(\(s\) => !setoresDoChamado\.includes\(s\)\)/.test(ler100('src/features/chamados/PainelChamado.tsx')),
       /\.\.\.SERVICOS_OFERECIDOS\.map\(\(g\) => \(\{ valor: valorDoGrupo\(g\)/.test(ler100('src/features/chamados/DetalheInterno.tsx'))],
-     [['portaria_autonoma', 'portaria_presencial'], ['portaria_remota', 'monitoramento_alarmes'], true, true, true, true]);
+     [true, true, true, true, true, true]);
   eq('R173: nenhum ponto de ESCRITA de grupo sobrou lendo a lista completa (SERVICO_ORDEM fica para leitura: filtros, chips, rótulos)',
      ['src/features/home/NovaAtividadeDialog.tsx', 'src/features/chamados/PainelChamado.tsx', 'src/features/chamados/DetalheInterno.tsx']
        .filter((f) => /SERVICO_ORDEM/.test(codigo100(ler100(f)))), []);
@@ -17328,8 +17334,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('ESTADO_ATUAL CRÍTICO: a "última regra" que ele declara É a última do PRODUTO (senão o retrato envelhece em silêncio)',
      Number((estado.match(/última regra: \*\*R(\d+)\*\*/) ?? [])[1]), ultimaRegraProduto);
   eq('ESTADO_ATUAL: diz qual migration está pendente, lista os quatro lembretes do Davi e as perguntas que sobraram',
-     [/\*\*Pendente: U100\*\*/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
-      /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U99/.test(estado)],
+     [/Nenhuma\s+migration pendente/.test(estado), /## 7\. O que o Davi disse que vai mandar/.test(estado),
+      /Q8/.test(estado) && /Q13/.test(estado), /Rodadas até a U100/.test(estado)],
      [true, true, true, true]);
   eq('ONBOARDING e o manual apontam para o ESTADO_ATUAL, e o README do manual cita a faixa atual de regras',
      [/ESTADO_ATUAL\.md/.test(ler100('ONBOARDING.md')), /ESTADO_ATUAL\.md/.test(ler100('docs/manual/README.md')),
@@ -17350,6 +17356,42 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /Q23[^\n]*\n(?:[^\n]*\n){0,4}[^\n]*respondida em 04\/09\/2026 \(R173\)/i.test(ler100('docs/PLANO_V0.1.md')),
       /^## U100 /m.test(ler100('docs/PLANO_UNIFICACAO.md')),
       /D5 — [^\n]*\n(?:[^\n]*\n){0,6}[^\n]*REVISTA em 04\/09\/2026 \(R170\)/.test(ler100('docs/CONTEXTO_ESTRUTURA_ATIVIDADES.md'))],
+     [true, true, true, true, true]);
+}
+
+// ── U100b — a U100 rodou: grupos liberados (P58), o fallback da U96 fora (P60), revisão ──
+{
+  const ler100b = (p) => require('fs').readFileSync(p, 'utf8');
+  const codigo100b = (t) => t.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const CD100b = carregar('src/features/clientes/data.ts');
+  eq('U100b (P58): a U100 rodou em 04/09/2026 — SERVICOS_NAO_OFERECIDOS esvaziou e os quatro grupos são oferecidos',
+     [CD100b.SERVICOS_NAO_OFERECIDOS, CD100b.SERVICOS_OFERECIDOS], [[], ['portaria_remota', 'monitoramento_alarmes', 'portaria_autonoma', 'portaria_presencial']]);
+  {
+    const path100b = require('path');
+    const sobras = [];
+    (function anda(dir) {
+      for (const n of require('fs').readdirSync(dir)) {
+        const p = path100b.join(dir, n);
+        if (require('fs').statSync(p).isDirectory()) { anda(p); continue; }
+        if (!/\.tsx?$/.test(n)) continue;
+        if (/comFallbackDaU96|COLUNAS_DA_U96|camposDeChamado\(|camposDaHome\(/.test(codigo100b(ler100b(p)))) sobras.push(p.replace(/\\/g, '/'));
+      }
+    })('src');
+    eq('U100b (P60) CRÍTICO: nenhum vestígio do fallback da U96 sobrou em src', sobras, []);
+  }
+  const dados100b = ler100b('src/features/chamados/data.ts');
+  eq('U100b (R168): o tipo Chamado e o ChamadoPatch conhecem data_agendada — a tela vem com os fluxos, mas a leitura já traz a coluna',
+     [/^\s+data_agendada: string \| null;/m.test(dados100b), /\| "prazo_limite" \| "data_agendada" \| "status"/.test(dados100b)],
+     [true, true]);
+  eq('U100b (revisão da R152): soltar no MESMO dia não grava nem avisa — a comparação é por instante, porque o banco escreve "+00:00" e o JS ".000Z"',
+     [/const mesmoInstante = \(a: string, b: string \| null \| undefined\) =>\s*\n\s*!!b && new Date\(a\)\.getTime\(\) === new Date\(b\)\.getTime\(\);/.test(ler100b('src/routes/_authenticated/calendario.tsx')),
+      /if \(mesmoInstante\(novo, c\.prazo_limite\)\) return null;/.test(ler100b('src/routes/_authenticated/calendario.tsx'))],
+     [true, true]);
+  const pend100b = ler100b('docs/PENDENCIAS_TECNICAS.md');
+  eq('U100b (regra 7): P58 e P60 fechadas, P57 em andamento (coluna existe, tela não), P56 com o motivo de não ter entrado; a U100b está no diário',
+     [/^## P58 — ~~BAIXO~~ FECHADA/m.test(pend100b), /^## P60 — ~~BAIXO~~ FECHADA/m.test(pend100b),
+      /^## P57 — MÉDIO · EM ANDAMENTO/m.test(pend100b), /P56[^\n]*\n(?:[^\n]*\n){0,12}[^\n]*trg_chamado_evento_upd/.test(pend100b),
+      /^## U100b /m.test(ler100b('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true]);
 }
 

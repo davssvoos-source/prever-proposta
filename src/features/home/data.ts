@@ -19,7 +19,7 @@ import {
   atividadeDoChamado, atividadeDaVisita,
   type Atividade, type BrutoChamado, type BrutoVisita,
 } from "@/features/atividades/modelo";
-import { comFallbackDaU96, usePessoas } from "@/features/chamados/data";
+import { usePessoas } from "@/features/chamados/data";
 import { SERVICO_LABEL, type ServicoCliente } from "@/features/clientes/data";
 import { inicioSemana } from "@/lib/periodos";
 
@@ -28,13 +28,13 @@ export const DIAS_ENCERRADO = 7;
 
 /**
  * As colunas da Início. `sprint` saiu (R141: é cálculo sobre o prazo) e
- * `impacto_operacional` entrou (R142) — pela porta do fallback da U96, ver
- * `comFallbackDaU96` em chamados/data.ts: enquanto a migration não roda, a
- * consulta repete sem a coluna nova em vez de deixar a Início em branco.
+ * `impacto_operacional` entrou (R142). Entre a U96 e a U100 esta lista era uma
+ * função do fallback da ordem de deploy (`comFallbackDaU96`); a migration
+ * rodou e a lista voltou a ser constante (P60).
  */
-const camposDaHome = (comU96: boolean) =>
+const CAMPOS_DA_HOME =
   "id, numero, titulo, status, natureza, tipo, prioridade, equipe, " +
-  (comU96 ? "impacto_operacional, " : "") +
+  "impacto_operacional, " +
   "prazo_limite, data_hora_agendada, responsavel_id, aberto_por, " +
   "concluida_em, fechada_em, faturamento_status, created_at, updated_at, " +
   // `!cliente_id` DESAMBIGUA o vínculo (U45/R54): desde que `chamado_clientes`
@@ -86,9 +86,9 @@ export function useChamadosDaHome(s: Sessao) {
     queryFn: async (): Promise<BrutoChamado[]> => {
       // corte grosso no servidor por updated_at; o refino por data de
       // encerramento é no cliente, porque PostgREST não tem coalesce.
-      const data = await comFallbackDaU96<any[]>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDaHome(u96))
+        .select(CAMPOS_DA_HOME)
         // A CAPA DA PROPOSTA FICA DE FORA — a visita já a representa.
         //
         // Desde a U29 toda visita tem um chamado com o MESMO id do lado. Os
@@ -100,8 +100,9 @@ export function useChamadosDaHome(s: Sessao) {
         // U29 já carrega o número CH- vindo da capa pelo join.
         .neq("natureza", "comercial")
         .or(`status.not.in.(concluido,cancelado),updated_at.gte.${corte}`)
-        .order("created_at", { ascending: false }));
-      return (data ?? []) as BrutoChamado[];
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data as any[]) ?? []) as BrutoChamado[];
     },
   });
 }
@@ -378,9 +379,9 @@ export function useHistoricoAmplo(s: Sessao) {
       // de fechamento. Encerrado sem nenhuma das duas fica de fora — não dá
       // para colocar numa semana o que não tem data, e a Home já o mostra
       // enquanto for recente.
-      const data = await comFallbackDaU96<any[]>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDaHome(u96))
+        .select(CAMPOS_DA_HOME)
         // mesma razão da consulta da Home: a capa da proposta duplicaria a
         // visita, e aqui o efeito é uma barra do gráfico contando dobrado
         .neq("natureza", "comercial")
@@ -388,8 +389,9 @@ export function useHistoricoAmplo(s: Sessao) {
         .or(`concluida_em.gte.${desde},fechada_em.gte.${desde}`)
         // rede de segurança: se algum dia a janela crescer, é melhor faltar
         // barra do que a resposta ser cortada sem avisar
-        .limit(2000));
-      return (data ?? []) as BrutoChamado[];
+        .limit(2000);
+      if (error) throw error;
+      return ((data as any[]) ?? []) as BrutoChamado[];
     },
   });
 }

@@ -9,8 +9,8 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-04** · última regra: **R173** · último diário:
-**U100** · verificador: **2.880+ asserções, 0 falharam** · `tsc`: baseline
-**57** · migrations rodadas até a **U99**; **U100 pendente** (abaixo).
+**U100b** · verificador: **2.890+ asserções, 0 falharam** · `tsc`: baseline
+**57** · migrations rodadas até a **U100**; **nenhuma pendente**.
 
 ---
 
@@ -67,6 +67,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U97 | mais de um cliente por atividade (R151), arrastar no calendário muda o prazo (R152), card da semana enxuto (R153), tema claro v10 (R154) |
 | U97b–U99 | as respostas do Davi às Q1–Q22 viram R155–R172; migration U99 (limpeza, catálogo, `data_agendada`) |
 | U100 | portaria autônoma e presencial como grupos de clientes (R173); migration U100; este arquivo |
+| U100b | a U100 rodou: os quatro grupos liberados (P58); o fallback da ordem de deploy da U96 saiu (P60); `data_agendada` já é lida; revisão do dia |
 
 ## 4. Banco: migrations
 
@@ -74,18 +75,18 @@ O repo **nunca aplica** migration: o Davi roda à mão no SQL Editor do
 Supabase, na ordem dos nomes de arquivo (`supabase/migrations/`). Cada uma é
 idempotente e termina com uma conferência obtido × esperado × veredito.
 
-- **Rodadas até a U99** (confirmado pelo Davi em 04/09/2026).
-- **Pendente: U100** — `20260916090000_u100_grupos_de_clientes.sql` (alarga os
-  dois CHECKs dos grupos de clientes). Independe das anteriores.
-- **Depois que a U100 rodar:** esvaziar `SERVICOS_NAO_OFERECIDOS` em
-  `src/features/clientes/data.ts` (um commit, uma linha) — até lá o app mostra
-  os grupos novos mas não deixa gravá-los (regra 5: o push publica antes da
-  migration rodar, e um seletor oferecendo o que o CHECK recusa é um 23514).
-- O mesmo mecanismo já liberou CAE/CCA no catálogo de sistemas quando a U99
-  rodou (`TIPOS_SISTEMA_NAO_OFERECIDOS` está vazia).
-- Limpeza possível agora que a U96 rodou: `comFallbackDaU96` (o SELECT que
-  repete sem as colunas novas em 42703) pode sair — P60 em
-  `PENDENCIAS_TECNICAS.md`.
+- **Rodadas até a U100** (confirmado pelo Davi em 04/09/2026). **Nenhuma
+  migration pendente.**
+- **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
+  coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
+  RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
+  em `inventario.ts`, `SERVICOS_NAO_OFERECIDOS` em `clientes/data.ts`,
+  `NAO_OFERECIDOS` em `chamado-status.ts`). Hoje as três estão vazias; a
+  próxima migration que trouxer um valor novo usa uma delas até o Davi rodar.
+- A próxima migration provável é a **limpeza de schema** (P56: a coluna morta
+  `chamados.sprint` e o gatilho que a preenche — exige reescrever o gatilho da
+  linha do tempo, por isso não entrou de carona) e o que os fluxos da área
+  técnica pedirem.
 
 ## 5. Decisões recentes que mudam o rumo (04/09/2026)
 

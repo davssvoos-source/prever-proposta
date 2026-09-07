@@ -39,6 +39,8 @@ export interface Chamado {
   prioridade: ChamadoPrioridade;
   /** R142 (U96) — interno, e só nos tipos que têm (corretiva, operacional). */
   impacto_operacional: ImpactoOperacional | null;
+  /** R168 (U99): o dia em que a atividade INTERNA vai ser feita — separado de data_hora_agendada (agenda de campo, R101). Tela pendente. */
+  data_agendada: string | null;
   /** R148 (U96) — a proposta comercial aprovada que origina a implantação. */
   proposta_id: string | null;
 
@@ -83,29 +85,16 @@ export interface Chamado {
 }
 
 /**
- * AS COLUNAS QUE NASCEM NA U96 — e a ordem de deploy (regra 5 do método).
+ * AS COLUNAS DE UM CHAMADO. Lista explícita, não `*`: a Início não pode
+ * carregar a descrição de 700 chamados só para ler um impacto.
  *
- * O push publica na hora; a migration o Davi roda depois, à mão. Pedir uma
- * coluna que ainda não existe é 42703 e a consulta INTEIRA volta vazia — a
- * tela de chamados ficaria em branco entre o push e a rodada da migration, por
- * dois campos que só pintam um seletor. Então toda leitura de `chamados` passa
- * por `comFallbackDaU96`: tenta com as colunas novas e, se o banco responder
- * 42703, repete sem elas. Depois da migration o primeiro SELECT passa e o
- * segundo caminho nunca mais roda. (O mesmo desenho que a U81 fez com `*` em
- * `chamado_apoios` — aqui com lista explícita, porque a Início não pode
- * carregar a descrição de 700 chamados só para ler um impacto.)
+ * Entre a U96 e a U100 existiu aqui `comFallbackDaU96` — a regra 5 da ordem de
+ * deploy: o push publica na hora e a migration o Davi roda depois, então toda
+ * leitura pedia as colunas novas e, num 42703, repetia sem elas. A U96 e a U99
+ * rodaram em 04/09/2026 e o segundo caminho virou código morto (P60); saiu.
+ * O mecanismo continua documentado no diário (U96) para a próxima coluna que
+ * precisar nascer antes da migration rodar.
  */
-export const COLUNAS_DA_U96 = "impacto_operacional, proposta_id";
-
-export async function comFallbackDaU96<T>(
-  consulta: (comU96: boolean) => PromiseLike<{ data: T | null; error: { code?: string; message?: string } | null }>,
-): Promise<T | null> {
-  let r = await consulta(true);
-  if (r.error && r.error.code === "42703") r = await consulta(false);
-  if (r.error) throw r.error;
-  return r.data;
-}
-
 const CAMPOS_BASE =
   "id, numero, numero_legado, natureza, equipe, tipo, status, prioridade, " +
   "titulo, descricao_problema, cliente_id, cliente_sistema_id, visita_id, " +
@@ -121,21 +110,23 @@ const EMBEDS =
   "cliente:clientes!cliente_id(id, nome, endereco, telefone_sindico), " +
   "sistema:cliente_sistemas(nome, tipo)";
 
-/** A lista de colunas de um chamado, com ou sem as que nascem na U96. */
-export function camposDeChamado(comU96: boolean): string {
-  return CAMPOS_BASE + (comU96 ? ", " + COLUNAS_DA_U96 : "") + ", " + EMBEDS;
-}
+/**
+ * A lista completa: a base, as colunas da U96 (impacto e proposta), a da U99
+ * (`data_agendada`, R168) e os embeds.
+ */
+export const CAMPOS_CHAMADO = CAMPOS_BASE + ", impacto_operacional, proposta_id, data_agendada, " + EMBEDS;
 
 /** Lista completa — a RLS já limita o técnico aos chamados dele. */
 export function useChamados() {
   return useQuery({
     queryKey: ["chamados"],
     queryFn: async (): Promise<Chamado[]> => {
-      const data = await comFallbackDaU96<any[]>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDeChamado(u96))
-        .order("created_at", { ascending: false }));
-      return (data ?? []) as Chamado[];
+        .select(CAMPOS_CHAMADO)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data as any[]) ?? []) as Chamado[];
     },
   });
 }
@@ -145,12 +136,13 @@ export function useChamadosPorNatureza(natureza: Natureza) {
   return useQuery({
     queryKey: ["chamados", natureza],
     queryFn: async (): Promise<Chamado[]> => {
-      const data = await comFallbackDaU96<any[]>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDeChamado(u96))
+        .select(CAMPOS_CHAMADO)
         .eq("natureza", natureza)
-        .order("created_at", { ascending: false }));
-      return (data ?? []) as Chamado[];
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data as any[]) ?? []) as Chamado[];
     },
   });
 }
@@ -160,11 +152,12 @@ export function useChamado(id: string | undefined) {
     queryKey: ["chamado", id],
     enabled: !!id,
     queryFn: async (): Promise<Chamado | null> => {
-      const data = await comFallbackDaU96<any>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDeChamado(u96))
+        .select(CAMPOS_CHAMADO)
         .eq("id", id as string)
-        .maybeSingle());
+        .maybeSingle();
+      if (error) throw error;
       return (data as any) ?? null;
     },
   });
@@ -204,12 +197,13 @@ export function useChamadosDoCliente(clienteId: string | undefined, servicosPres
         .or(filtroLocais);
       const ids = Array.from(new Set(((locais as any[]) ?? []).map((r) => r.chamado_id as string)));
       const filtro = ids.length ? `cliente_id.eq.${cid},id.in.(${ids.join(",")})` : `cliente_id.eq.${cid}`;
-      const data = await comFallbackDaU96<any[]>((u96) => supabase
+      const { data, error } = await supabase
         .from("chamados" as any)
-        .select(camposDeChamado(u96))
+        .select(CAMPOS_CHAMADO)
         .or(filtro)
-        .order("created_at", { ascending: false }));
-      return (data ?? []) as Chamado[];
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data as any[]) ?? []) as Chamado[];
     },
   });
 }
@@ -309,18 +303,9 @@ export async function abrirChamado(input: NovoChamadoInput): Promise<string> {
     status,
     aberto_por: u.user?.id ?? null,
   };
-  const inserir = () => supabase.from("chamados" as any).insert(linha as any).select("id").single();
-  let r = await inserir();
-  // regra 5 (ordem de deploy): sem a migration U96, as duas colunas novas não
-  // existem e o INSERT inteiro cairia. O chamado nasce sem elas — e a tela
-  // avisa quando alguém tentar gravá-las (ver atualizarChamado).
-  if (r.error && r.error.code === "42703" && ("impacto_operacional" in linha || "proposta_id" in linha)) {
-    delete linha.impacto_operacional;
-    delete linha.proposta_id;
-    r = await inserir();
-  }
-  if (r.error) throw r.error;
-  return (r.data as any).id as string;
+  const { data, error } = await supabase.from("chamados" as any).insert(linha as any).select("id").single();
+  if (error) throw error;
+  return (data as any).id as string;
 }
 
 /** A equipe de uma pessoa, pelo cadastro — o que vai em `chamados.equipe` (R139). */
@@ -341,7 +326,7 @@ export type ChamadoPatch = Partial<
     // partir de `public.agenda_campo` — e as três telas que a escreviam direto
     // (programação, novo-campo, PainelChamado) passaram a falar com as quatro
     // portas da U78. Reabrir esta linha é reabrir as duas verdades.
-    | "titulo" | "descricao_problema" | "prioridade" | "prazo_limite" | "status"
+    | "titulo" | "descricao_problema" | "prioridade" | "prazo_limite" | "data_agendada" | "status"
     | "responsavel_id" | "iniciada_em" | "finalizada_em"
     | "concluida_em" | "diagnostico" | "servico_executado" | "pecas_texto"
     | "assinatura_nome" | "assinatura_url" | "fechado_por" | "fechada_em"
@@ -382,14 +367,7 @@ export async function atualizarChamado(id: string, patch: ChamadoPatch): Promise
     .update(patch as any)
     .eq("id", id)
     .select("id");
-  if (error) {
-    // regra 5: a coluna da U96 ainda não existe no banco. A frase diz o que
-    // fazer em vez do "column does not exist" do driver.
-    if (error.code === "42703" && ("impacto_operacional" in patch || "proposta_id" in patch)) {
-      throw new Error("Este campo ainda não existe no banco — a migration U96 precisa ser rodada.");
-    }
-    throw error;
-  }
+  if (error) throw error;
   if (!data || (data as any[]).length === 0) throw new GravacaoRecusada();
 }
 

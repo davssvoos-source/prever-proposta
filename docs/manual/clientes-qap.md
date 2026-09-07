@@ -37,8 +37,8 @@ linhas de cliente. Quem precisa da lista expande na leitura, por
 Monitoramento de Alarmes, Portaria Autônoma e Portaria Presencial — a lista
 única é `SERVICO_ORDEM` (`features/clientes/data.ts`), e os dois CHECKs do
 banco (`clientes.servicos_prestados`, `chamado_locais.setor`) mudam juntos na
-migration U100. Até ela rodar, os dois novos aparecem mas não se gravam
-(`SERVICOS_NAO_OFERECIDOS`).
+migration U100 (rodada em 04/09/2026 — os quatro se gravam; a lista
+`SERVICOS_NAO_OFERECIDOS` que os segurava está vazia).
 
 **Por que isto NÃO afrouxa a R21.** A R21 tranca `clientes` porque a tabela é
 espelho do QAP e um sync futuro faz upsert (e algum dia delete) nela.

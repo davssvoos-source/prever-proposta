@@ -9965,3 +9965,66 @@ morto).
 → completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R173**.
 Migration **U100** (`20260916090000_u100_grupos_de_clientes.sql`) — independe
 das anteriores.
+
+
+## U100b — a U100 rodou: grupos liberados, o fallback da U96 fora, e a revisão do dia (2026-09-04)
+
+O Davi rodou a U100 e pediu: "revise tudo o que foi feito e rode todas as
+pendências". Três coisas.
+
+### O que a migration liberou (P58)
+
+`SERVICOS_NAO_OFERECIDOS` esvaziou: os quatro grupos de clientes se gravam na
+ficha e entram como etiqueta de atividade. Um commit, uma linha — como
+prometido. Com isso as três listas do mecanismo da regra 5 estão vazias
+(`NAO_OFERECIDOS`, `TIPOS_SISTEMA_NAO_OFERECIDOS`, `SERVICOS_NAO_OFERECIDOS`);
+o mecanismo fica para a próxima coluna que nascer antes da migration.
+
+### O fallback da U96 saiu (P60)
+
+Entre a U96 e hoje, toda leitura de chamados passava por `comFallbackDaU96`
+— pedia `impacto_operacional` e `proposta_id` e, num 42703, repetia sem
+elas. Era a ponte entre o push (que publica na hora) e a migration (que o Davi
+roda depois). A ponte cumpriu o papel e virou código morto: saiu, junto com o
+INSERT repetido de `abrirChamado` e a mensagem "a migration U96 precisa ser
+rodada" de `atualizarChamado`. As quatro leituras de chamados e as duas da
+Início voltaram a ser consultas diretas com lista constante de colunas — e,
+de propósito, o erro do PostgREST agora SOBE (`if (error) throw error`) em vez
+de virar lista vazia, que é a lição da U86 (erro, carregando e vazio são três
+telas). Aproveitei a lista para incluir `data_agendada` (R168, U99) na leitura
+e no tipo `Chamado`/`ChamadoPatch`: a tela vem com os fluxos, mas a coluna já
+chega. As asserções da U96 que fixavam o fallback foram reapontadas para o
+estado final, com o motivo ao lado.
+
+### A revisão do dia
+
+Reli o que entrou de U97 a U100 (113 arquivos, 2,6 mil linhas). Um achado
+real, consertado: o arrasto do calendário (R152) comparava o prazo novo com o
+atual por igualdade de STRING — o banco devolve "+00:00" e `toISOString()`
+escreve ".000Z" — então soltar o card no mesmo dia gravava de novo o mesmo
+instante e dizia "prazo movido". Agora compara instantes (`mesmoInstante`).
+O resto passou: os ganchos de arrastar/soltar borbulham do card para a célula
+(o `onDragOver` no pai basta), a escrita otimista lê o `chamados` do
+fechamento de antes da troca (o prazo antigo, que é o certo para calcular o
+novo), o "+" do técnico continua abrindo o plantão pela fallback da R163, e os
+dois redirects (Histórico, Importar) seguem o desenho da R21. Um ponto fica
+declarado, não consertado: a guarda do Catálogo (R166) passou a ler só
+`profiles.cargo` via `guardaDeTela`, como todas as outras telas — um usuário
+que fosse admin só por `user_roles` perderia a entrada; hoje não há esse
+caso (o Davi e o Vinicius têm o cargo), e a fonte dual é assunto da P29/S1.
+
+### O que NÃO entrou, e por quê
+
+**P56** (a coluna morta `chamados.sprint`): derrubá-la exige reescrever o
+gatilho da linha do tempo, que lista `sprint` no `UPDATE OF` e lê
+`NEW.sprint` — uma leva própria, com conferência. **P59** (a biblioteca do
+Notion) espera o corte (Fase G). **P57** (data agendada) está em andamento: a
+coluna existe e é lida; a tela vem com os fluxos. As demais pendências
+(P1–P54) são decisões de produto, riscos aceitos ou defeitos de telas que
+serão redesenhadas — estão triadas no próprio arquivo.
+
+### Números
+
+`node scripts/verificar-logica.cjs` → **2892 passaram, 0 falharam** (5 novas, 7 reapontadas — as do fallback da U96 para o estado final). `npx vite build`
+→ completa. `npx tsc --noEmit` → **57**, sem mudança. Última regra: **R173**.
+Sem migration.
