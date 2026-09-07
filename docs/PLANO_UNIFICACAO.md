@@ -10663,3 +10663,67 @@ de códigos de erro (ADM → EQP); `ESTADO_ATUAL.md` com U109 e U110 pendentes.
 
 **Números.** Verificador: 3.038 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U110 — os 4.241 equipamentos do QAP importados (R196–R199)
+
+A extração que a U109 tinha deixado pendente. O Davi logou no QAP no navegador
+do app e deixou a tela *Patrimônio > Local/Uso* com o filtro Status = "Uso";
+daí em diante foi trabalho de máquina.
+
+**Como a extração foi feita, e por que assim.** A tela pagina de 50 em 50 (85
+páginas). Ler 85 telas com o mouse seria o caminho ruim; o caminho bom estava
+nas requisições da própria página: `GET /Material/Uso/Listar?page=N&buscar[acesso]=true&buscar[status]=300`
+devolve o HTML já filtrado. O parser sai da ESTRUTURA da célula, não do texto
+corrido — cada célula empilha dois ou três valores (`<b>Categoria</b> Tipo<br><em>Almoxarifado</em>`),
+e ler `innerText` colaria "Automação Botão de emergência Alarme" num campo só.
+O achado que salvou a idempotência: o checkbox de cada linha carrega
+`value="28981"`, o **id interno do item no QAP**. Com ele, a chave de
+importação é `qap:<id>` e reimportar não duplica nada — sem ele, os 1.854
+itens sem identificação (44% do total!) dependeriam do ordinal da R197.
+
+**Os números do retrato:** 4.241 itens, 4.241 ids únicos, 429 variações de
+catálogo, 12 almoxarifados, 146 locais distintos, 1.854 sem identificação, 5
+sem local nenhum, nenhum sem data. O retrato cru está versionado em
+`docs/importacao/qap-equipamentos.json` — é a fonte da verdade, e a migration
+é derivada dele por `scripts/gerar-migration-equipamentos.cjs`.
+
+**A decisão que mudou de lugar: o VÍNCULO com o cliente agora é feito no SQL.**
+A U109 previa casar local → cliente aqui, em JS, com um retrato dos ids da
+nossa base. Ao tentar, o retrato se mostrou impossível de tirar com honestidade:
+os UUIDs só existem no banco, a leitura anônima é (corretamente) barrada pela
+RLS, e um retrato tirado hoje já nasceria velho — clientes entraram pelo app
+depois da planilha da U24. Então a U110 insere os itens com o TEXTO do QAP e
+dois UPDATEs ligam ao cliente e à pessoa cujo nome bate **exato**
+(`lower(btrim(...))`, acento incluído). Três consequências, todas boas:
+o casamento usa a base do momento em que o Davi rodar; é mais ESTRITO que o do
+módulo puro (que ignora acento), então erra só para o lado de "não vinculou";
+e os UPDATEs só preenchem o que está NULO, de modo que uma correção manual
+depois não é desfeita ao rodar de novo. O módulo puro continua decidindo o que
+tem asserção em cima: variação, chave de importação e leitura de data.
+
+**O que a extração revelou** (a relação que o Davi pediu, em
+`docs/importacao/locais-desconhecidos.md`): dos 146 locais, 40 não estão na
+planilha da U24, e eles se dividem em três naturezas que pedem decisões
+diferentes — (1) **nossos próprios locais**: "Grupo Prever" (47 itens),
+"Prever Vigilância" (12), "Prever Centro Tático" (8); (2) **pessoas**, quase
+todas por PRIMEIRO NOME ("Vinicius" 28, "Erik" 21, "Breno", "William"…) — o
+UPDATE de pessoa casa pelo nome COMPLETO do perfil, então a maioria não vai
+casar sozinha; (3) **clientes a conferir**: "Alfalux" (29 itens — o mais
+provável é o cliente cujo posto a U24 chama de "Alfalux Plast"), "Nicolau
+Alayon" (12), "Ara Campo Verde", "Resid. Beto". Nada disso foi adivinhado, e é
+exatamente o que a R199 manda: pôr equipamento no prédio errado é pior que
+deixá-lo sem prédio.
+
+**O defeito que a carga real pegou na U109:** `local_qap` era `NOT NULL`, e 5
+itens vêm do QAP com a coluna vazia — a carga inteira abortaria. A U109 ainda
+não tinha rodado, então foi corrigida no lugar (a coluna aceita nulo, e a
+conferência dela agora cobra isso). É o argumento do CLAUDE.md: migration que
+não aplicou nada conserta-se onde está.
+
+**O que a verificação pegou.** As asserções novas rodam sobre o retrato REAL,
+não sobre fixture: 4.241 chaves únicas, toda variação de item existindo no
+catálogo, nenhum campo com tabulação (que teria deslocado a linha na
+extração), e o par negativo — sem base, NADA é vinculado em JS.
+
+**Números.** Verificador: 3.054 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

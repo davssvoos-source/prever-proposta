@@ -18214,7 +18214,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /CREATE TABLE IF NOT EXISTS public\.equipamentos_patrimonio/.test(mig109),
         /ALTER TABLE public\.catalogo_equipamentos\s+ENABLE ROW LEVEL SECURITY;/.test(mig109),
         /ALTER TABLE public\.equipamentos_patrimonio\s+ENABLE ROW LEVEL SECURITY;/.test(mig109),
-        /local_qap\s+text NOT NULL/.test(mig109),
+        // U109c: aceita NULO — 5 itens em 4.241 vêm do QAP sem local nenhum,
+        // e NOT NULL faria a carga da U110 falhar inteira
+        /local_qap\s+text,/.test(mig109) && !/local_qap\s+text NOT NULL/.test(mig109),
         /public\.pode_ver_cliente\(cliente_id\)/.test(mig109)],
        [true, true, true, true, true, true]);
     eq('U109 CRÍTICO: a variação é única (chave), a chave de importação é única, e a identificação NÃO é — o QAP repete número de série e travar aqui derrubaria a importação inteira',
@@ -18304,6 +18306,106 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^## U109 /m.test(ler109('docs/PLANO_UNIFICACAO.md')),
       /U109/.test(ler109('docs/ESTADO_ATUAL.md')) && /U110/.test(ler109('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true]);
+}
+
+// ── U110 — os 4.241 equipamentos do QAP, importados (R196–R199) ──────────────
+{
+  const fs110 = require('fs');
+  const ler110 = (f) => fs110.readFileSync(f, 'utf8');
+  const IMP110 = carregar('src/features/equipamentos/importacao.ts');
+  const MIG110 = 'supabase/migrations/20260919090000_u110_equipamentos_do_qap.sql';
+
+  // ── o retrato cru: é a fonte da verdade, e ela tem de continuar íntegra ──
+  const retrato = JSON.parse(ler110('docs/importacao/qap-equipamentos.json'));
+  const CAMPOS110 = ['almoxarifado', 'tipo', 'modelo', 'fabricante', 'identificacao', 'local', 'enviadoEm', 'qapId'];
+  eq('U110 CRÍTICO: o retrato do QAP tem os 4.241 itens da tela, todos com os oito campos e com id interno ÚNICO — o id é o que faz reimportar não duplicar',
+     [retrato.length,
+      retrato.filter((i) => Object.keys(i).sort().join() !== [...CAMPOS110].sort().join()).length,
+      new Set(retrato.map((i) => i.qapId)).size,
+      retrato.filter((i) => !i.qapId).length],
+     [4241, 0, 4241, 0]);
+  eq('U110: o retrato bate com o que a tela do QAP mostrava — 12 almoxarifados, 146 locais distintos, 1.854 sem identificação (R197), 5 sem local nenhum, nenhum sem data',
+     [new Set(retrato.map((i) => i.almoxarifado)).size,
+      new Set(retrato.map((i) => i.local).filter(Boolean)).size,
+      retrato.filter((i) => !i.identificacao).length,
+      retrato.filter((i) => !i.local).length,
+      retrato.filter((i) => !i.enviadoEm).length],
+     [12, 146, 1854, 5, 0]);
+  eq('U110: nenhum campo do retrato traz tabulação ou quebra de linha — a extração veio por TSV, e um campo sujo teria deslocado a linha inteira',
+     retrato.filter((i) => CAMPOS110.some((c) => i[c] && /[\t\n\r]/.test(i[c]))).length, 0);
+
+  // ── a decisão pura sobre o retrato REAL (não fixture) ────────────────────
+  {
+    const r = IMP110.prepararImportacao(retrato, [], []);
+    eq('U110 CRÍTICO: sobre o retrato real, as chaves de importação são 4.241 e ÚNICAS — 1.854 itens sem identificação não colapsam (é o ordinal da R197 fazendo o trabalho)',
+       [r.itens.length, new Set(r.itens.map((i) => i.chaveImportacao)).size,
+        r.itens.filter((i) => i.chaveImportacao.startsWith('qap:')).length],
+       [4241, 4241, 4241]);
+    eq('U110: o catálogo do retrato real tem 429 variações, e TODA variação de item existe no catálogo (o JOIN da migration não deixa item órfão)',
+       [r.catalogo.length,
+        (() => { const chaves = new Set(r.catalogo.map((v) => v.chave));
+                 return r.itens.filter((i) => !chaves.has(i.chaveVariacao)).length; })()],
+       [429, 0]);
+    eq('U110: as datas do QAP viraram ISO — nenhuma ilegível neste retrato',
+       [r.datasIlegiveis, r.itens.filter((i) => i.enviadoEm && !/^\d{4}-\d{2}-\d{2}$/.test(i.enviadoEm)).length],
+       [0, 0]);
+    eq('U110: sem base para casar, NADA é vinculado — o vínculo é da migration, contra o banco vivo (R199)',
+       [r.totais.comCliente, r.totais.comPessoa], [0, 0]);
+  }
+
+  // ── a migration gerada ──────────────────────────────────────────────────
+  {
+    const mig = ler110(MIG110);
+    eq('U110: roda DEPOIS da U109 — o prefixo do arquivo ordena depois, e o pré-voo aborta sem as tabelas',
+       [MIG110 > 'supabase/migrations/20260918090000_u109_patrimonio_do_qap.sql',
+        /RAISE EXCEPTION 'U110: rode a U109 antes/.test(mig)],
+       [true, true]);
+    eq('U110 CRÍTICO: idempotente nos dois passos — variação por `chave`, item por `chave_importacao`',
+       [/ON CONFLICT \(chave\) DO NOTHING;/.test(mig), /ON CONFLICT \(chave_importacao\) DO NOTHING;/.test(mig)],
+       [true, true]);
+    eq('U110 CRÍTICO: o vínculo do local é ESTRITO (lower+btrim, acento incluído) e só preenche o que está NULO — uma correção feita à mão depois NÃO é desfeita ao rodar de novo (R199)',
+       [/lower\(btrim\(c\.nome\)\) = lower\(btrim\(p\.local_qap\)\)/.test(mig),
+        /lower\(btrim\(coalesce\(f\.nome, ''\)\)\) = lower\(btrim\(p\.local_qap\)\)/.test(mig),
+        (mig.match(/WHERE p\.cliente_id IS NULL\s*\n\s*AND p\.pessoa_id IS NULL/g) ?? []).length,
+        /similarity|ilike|%|levenshtein/i.test(mig.split('-- ── 3)')[1]?.split('-- ── Verificação')[0] ?? '')],
+       [true, true, 2, false]);
+    eq('U110: a conferência confere o que tem número esperado e MARCA para olhar o que não tem; e a última consulta é a RELAÇÃO de locais que não casaram (o que o Davi pediu)',
+       [/'4241'/.test(mig), />>> OLHAR <<</.test(mig), /WHEN esperado = 'ver' THEN 'olhar'/.test(mig),
+        /SELECT coalesce\(p\.local_qap, '\(sem local no QAP\)'\) AS local_no_qap,/.test(mig),
+        /DESFAZER/.test(mig)],
+       [true, true, true, true, true]);
+    eq('U110: os itens entram com origem "qap", e o DESFAZER apaga só essa origem — cadastro manual futuro não é atingido',
+       [/e\.chave_importacao, 'qap'/.test(mig),
+        /DELETE FROM public\.equipamentos_patrimonio WHERE origem = 'qap';/.test(mig)],
+       [true, true]);
+    // a carga é grande: o arquivo tem de trazer as 4.241 linhas de item e as
+    // 429 de catálogo, não um pedaço truncado pelo gerador
+    eq('U110: o arquivo traz a carga inteira — 429 linhas de variação e 4.241 de item',
+       [(mig.match(/^  \('[^']*', '[^']*'|^  \('[^']*', NULL/gm) ?? []).length > 0,
+        (mig.match(/'qap:\d+'\),?$/gm) ?? []).length],
+       [true, 4241]);
+  }
+
+  // ── o relatório da R199 ─────────────────────────────────────────────────
+  {
+    const rel = ler110('docs/importacao/locais-desconhecidos.md');
+    eq('R199: o relatório de locais desconhecidos existe, diz que é PRÉVIA (a base viva é que manda) e traz a contagem por local',
+       [/# Locais do QAP que não estão na nossa base — PRÉVIA/.test(rel),
+        /Quem casa de verdade é a \*\*U110\*\*/.test(rel),
+        /\| Grupo Prever \| 47 \|/.test(rel),
+        /Alfalux Plast/.test(rel)],
+       [true, true, true, true]);
+    eq('U110: o gerador é reprodutível — está no repo, lê o retrato e o módulo puro, e deriva o nome do arquivo da ÚLTIMA migration (com a data de hoje, a U110 ordenaria antes da U109)',
+       [/const IMP = carregar\('src\/features\/equipamentos\/importacao\.ts'\);/.test(ler110('scripts/gerar-migration-equipamentos.cjs')),
+        /o dia seguinte à última migration do repo/.test(ler110('scripts/gerar-migration-equipamentos.cjs'))],
+       [true, true]);
+  }
+
+  // regra 7
+  eq('U110 (regra 7): a U110 está no diário e o ESTADO_ATUAL a lista como pendente, junto da U106 e da U109',
+     [/^## U110 /m.test(ler110('docs/PLANO_UNIFICACAO.md')),
+      /U110/.test(ler110('docs/ESTADO_ATUAL.md')) && /U109/.test(ler110('docs/ESTADO_ATUAL.md')) && /U106/.test(ler110('docs/ESTADO_ATUAL.md'))],
+     [true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

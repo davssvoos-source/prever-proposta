@@ -1,0 +1,146 @@
+Alex	1
+Alfalux	29
+Alfalux Plast	4
+Amarilis	43
+Anderson	2
+Andre	10
+AP Geradores	1
+Aquidauana	12
+Ara Campo Verde	2
+Ara Cidade Jardim	1
+Associação Castelo	127
+Asturias	3
+Avant Garde	96
+Azaléia	40
+Barão de Itapetininga	3
+Berrini	3
+Breno	13
+California	113
+Canamari I	9
+Capadócia	81
+Charm Bahia	3
+Clube Castelo	59
+Concorde	23
+Copacabana	4
+Córdoba	36
+Dalida	1
+Ecolife	14
+Electra	1
+Eliane	1
+Emily	1
+Erik	21
+Estoril Sol	13
+Eugenia Vitale	44
+Eurico Gaspar Dutra	238
+Evolution Paraiso	3
+Fabio	2
+Fairmont Village	9
+Fascinio	30
+Figueira	169
+Gessica	1
+Gilleno	1
+Giovana	1
+Giovanni Pascoli	56
+Gisele	1
+Go Confecção	4
+GoBS	20
+GPS Pamcary	4
+Grand Terrace	61
+Green Village	134
+Gregório Serrão	1
+Grupo Prever	47
+Humboldt	4
+Ibira By You	11
+Icon	3
+In Out America	68
+Irapuru	103
+Isabela	28
+Jailson	1
+Jose Hachem	92
+Josias	2
+Kapptec	4
+Keila	1
+Kethellyn	1
+Laizza	1
+Las Vegas	50
+Leticia	1
+Link Studios	19
+Living Zona Oeste	27
+Lua de Algodao	15
+Lua de Algodão Fundamental	3
+Luca	1
+Maison Classic	1
+Manhattans	83
+Mansões do Lago	1
+Master Tower	8
+Mercadinho Rec Butanta	6
+Micael	4
+Mirant Studios	7
+Mirant Torre	58
+Monte Carlo	1
+Nicholas	1
+Nicolau Alayon	12
+Nicole	2
+Norgren	12
+Paco de Moema	54
+Paineiras	55
+Pamplona I	2
+Paroquia Nossa Senhora da Esperança	3
+Pateo Klabin	33
+Patricia	1
+Paulistano	92
+Paulo	3
+Paysage Noble	3
+Pedro Adam	153
+Perola de Osasco	2
+Prever Centro Tático	8
+Prever Especializados	130
+Prever Vigilância	12
+Pride Ipiranga	1
+Raissa	1
+Recanto Butantã	21
+Resid. Ara	1
+Resid. Beto	3
+Resid. Caio Cardoso	9
+Resid. Francisco	3
+Resid. Gama	4
+Resid. Gustavo Roxo	20
+Rio Azul	34
+Roberta	1
+Robson	15
+Rossini	4
+Rubia	1
+Sabuz	7
+San Francesco e San Vittorio	3
+San Marino	2
+São Luiz	1
+Simoes & Cruz	8
+Sobradão	89
+Soma Perdizes Offices	35
+Soma Perdizes Residencial	2
+SPE Bandeirantes	49
+Sthefany	1
+Sunnyvale	8
+Sunnyvale Itaqua	13
+Sunset	24
+Tarumã	6
+Tássio Franklin	1
+Telerisco	1
+Tenis Village	3
+Umuarama	50
+Universal Serras	8
+Varanda Ipiranga	5
+Velazquez	332
+Veneza	9
+Verana	367
+Vila de Bragança	3
+Vila Lagos	36
+Villa Lobos	16
+Villagio Suzana	12
+Ville Marseille	1
+Vinicius	28
+Vitoria Regia	42
+Wafios	163
+William	13
+Wilson	1
+Window Moema Residencial	1

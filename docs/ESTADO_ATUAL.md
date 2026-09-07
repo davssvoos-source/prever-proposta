@@ -9,11 +9,11 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-04** · última regra: **R199** · último diário:
-**U109** · verificador: **3.038 asserções, 0 falharam** · `tsc`: baseline
+**U110** · verificador: **3.054 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
-entra na matriz, a tela "Catálogo" sai). A **U110** (os equipamentos do QAP)
-nasce quando a extração rodar.
+entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
+QAP) **já existe** — a extração rodou em 07/09/2026.
 
 ---
 
@@ -86,6 +86,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U107 | a Nova Visita Técnica numa tela só — três colunas (Local · Contatos e serviços · Agendamento), design system no lugar da paleta local, todas as regras da proposta preservadas (R194) |
 | U108 | o cinza neutro no sistema inteiro — 29 hexes azulados varridos em cem arquivos, texto na mesma luminância, duas asserções travam a volta (R186 aplicada); tipografia estratégica — títulos de página 700, valor de campo 400, rótulo pequeno 600, só {100, 400, 600, 700} (R195) |
 | U109 | o patrimônio do QAP: `catalogo_equipamentos` + `equipamentos_patrimonio` com RLS, o módulo puro de importação, a tela "Equipamentos cadastrados" (`/equipamentos`), o bloco de equipamentos na ficha do cliente e a saída da tela "Catálogo" (R196–R199) |
+| U110 | os **4.241 equipamentos do QAP** importados: retrato cru versionado, 429 variações de catálogo, chave `qap:<id>` (idempotente), vínculo de local feito no SQL contra a base viva e a relação dos 40 locais fora da base (R196–R199) |
 
 ## 4. Banco: migrations
 
@@ -103,10 +104,14 @@ idempotente e termina com uma conferência obtido × esperado × veredito.
   `equipamentos` na matriz e apaga a chave `admin`. Até rodar, a tela
   "Equipamentos cadastrados" mostra o aviso de que a estrutura não existe (o
   42P01 é tratado) e o bloco de equipamentos da ficha do cliente não aparece.
-- **A seguir: U110** — os equipamentos do QAP, gerada por
-  `node scripts/gerar-migration-equipamentos.cjs` a partir de
-  `docs/importacao/qap-equipamentos.json`. O retrato ainda não existe: a
-  extração depende do **Claude in Chrome conectado** (ver §7).
+- **Pendente: U110** (`20260919090000_u110_equipamentos_do_qap.sql`, 532 KB) —
+  os 4.241 equipamentos e as 429 variações de catálogo. **Rodar DEPOIS da
+  U109.** Idempotente (variação por `chave`, item por `chave_importacao`
+  `qap:<id>`); os dois UPDATEs de vínculo só preenchem o que está nulo, então
+  rodar de novo não desfaz correção feita à mão. A última consulta dela
+  imprime a relação dos locais que não casaram com a base. Para regerar:
+  `node scripts/gerar-migration-equipamentos.cjs` (lê
+  `docs/importacao/qap-equipamentos.json`, o retrato cru do QAP).
 - **O mecanismo da regra 5** (o push publica antes da migration rodar): uma
   coluna ou valor novo que dependa de CHECK nasce em duas listas — a que o app
   RENDERIZA e a que ele OFERECE para gravar (`TIPOS_SISTEMA_NAO_OFERECIDOS`
@@ -168,7 +173,10 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   é o nome do equipamento), identificação opcional, o catálogo é a tela
   **Equipamentos cadastrados** (a tela "Catálogo" saiu) e local casa **exato**
   ou vira relatório. O vínculo de cada item com o **bloco** do condomínio é o
-  passo seguinte.
+  passo seguinte. A importação (U110) já está pronta: **4.241 itens, 429
+  variações**; 40 locais do QAP não estão na base e esperam decisão do Davi
+  (nossos próprios locais, pessoas por primeiro nome, e clientes a conferir —
+  ver `docs/importacao/locais-desconhecidos.md`).
 
 ## 6. Perguntas em aberto
 

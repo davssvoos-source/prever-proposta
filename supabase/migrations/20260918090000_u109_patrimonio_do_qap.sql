@@ -39,9 +39,12 @@
 --      para por a identificação"), o local, e a data de envio.
 --
 --      TRÊS COLUNAS PARA O "LOCAL / PESSOA" do QAP, e as três importam:
---        · `local_qap` (NOT NULL) — o TEXTO CRU, sempre. É o que permite
+--        · `local_qap` — o TEXTO CRU, sempre que existir. É o que permite
 --          refazer o vínculo depois sem voltar ao QAP, e é o que sai no
---          relatório de locais desconhecidos (R199).
+--          relatório de locais desconhecidos (R199). ACEITA NULO porque a
+--          extração de 04/09/2026 achou 5 itens (de 4.241) que o QAP traz com
+--          a coluna Local/Pessoa vazia: NULO diz "não havia nada lá", e
+--          string vazia num campo obrigatório seria fingir que havia.
 --        · `cliente_id` — quando o texto casou EXATO com um cliente nosso.
 --        · `pessoa_id` — quando casou com uma pessoa nossa (o QAP mistura os
 --          dois na mesma coluna: "Soma Perdizes Offices" é cliente,
@@ -136,7 +139,7 @@ CREATE TABLE IF NOT EXISTS public.equipamentos_patrimonio (
   identificacao      text,
 
   -- o "Local / Pessoa" do QAP, nas três formas (ver o cabeçalho)
-  local_qap          text NOT NULL,
+  local_qap          text,
   cliente_id         uuid REFERENCES public.clientes(id) ON DELETE SET NULL,
   pessoa_id          uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
 
@@ -159,7 +162,7 @@ CREATE TABLE IF NOT EXISTS public.equipamentos_patrimonio (
 COMMENT ON TABLE  public.equipamentos_patrimonio IS
   'R196 (U109): o equipamento FISICO importado do QAP (Patrimonio > Local/Uso). Sete campos, por decisao do Davi: almoxarifado, nome (Tipo de Categoria), modelo e fabricante ficam no catalogo; identificacao, local e data de envio ficam aqui.';
 COMMENT ON COLUMN public.equipamentos_patrimonio.local_qap IS
-  'R199: o texto CRU do "Local / Pessoa" do QAP, guardado sempre — mesmo quando casou com cliente ou pessoa. E o que permite refazer o vinculo sem voltar ao QAP.';
+  'R199: o texto CRU do "Local / Pessoa" do QAP, guardado sempre — mesmo quando casou com cliente ou pessoa. E o que permite refazer o vinculo sem voltar ao QAP. NULO = o QAP trouxe a coluna vazia (5 itens em 4.241 na extracao de 04/09/2026).';
 COMMENT ON COLUMN public.equipamentos_patrimonio.cliente_sistema_id IS
   'R199: nasce NULA. O passo seguinte cadastra os sistemas de cada cliente e depois vincula cada equipamento a um bloco.';
 COMMENT ON COLUMN public.equipamentos_patrimonio.chave_importacao IS
@@ -308,6 +311,11 @@ WITH conferencia AS (
   UNION ALL
   SELECT 9, 'nenhum item importado ainda (a U110 traz os itens)',
          (SELECT count(*)::text FROM public.equipamentos_patrimonio), '0'
+  UNION ALL
+  SELECT 10, 'local_qap aceita nulo (5 itens do QAP vêm sem local)',
+         (SELECT is_nullable FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'equipamentos_patrimonio'
+             AND column_name = 'local_qap'), 'YES'
 )
 SELECT n, o_que, obtido, esperado,
        CASE WHEN obtido = esperado THEN 'ok' ELSE '>>> OLHAR <<<' END AS veredito

@@ -1,0 +1,774 @@
+{
+ "fonte": "planilha semeada na U24 (20260820150000) — não é a base viva",
+ "clientes": [
+  {
+   "nome": "Actis",
+   "posto": "Actis"
+  },
+  {
+   "nome": "Alcino Braga",
+   "posto": "Alcino Braga"
+  },
+  {
+   "nome": "Alfaplast",
+   "posto": "Alfalux Plast"
+  },
+  {
+   "nome": "Amadeu Santisi",
+   "posto": "Amadeu Santisi"
+  },
+  {
+   "nome": "Amarilis",
+   "posto": "Amarilis"
+  },
+  {
+   "nome": "AP Geradores",
+   "posto": "AP Geradores"
+  },
+  {
+   "nome": "AP Geradores Indaiatuba",
+   "posto": "AP Geradores Indaiatuba"
+  },
+  {
+   "nome": "Aquidauana",
+   "posto": "Aquidauana"
+  },
+  {
+   "nome": "Ara Vartaniam Iguatemi",
+   "posto": "Ara Iguatemi"
+  },
+  {
+   "nome": "Artisan Moema",
+   "posto": "Artisan Moema"
+  },
+  {
+   "nome": "Associação Castelo",
+   "posto": "Associação Castelo"
+  },
+  {
+   "nome": "Asturias",
+   "posto": "Asturias"
+  },
+  {
+   "nome": "Asturias Tropical",
+   "posto": "Asturias Tropical"
+  },
+  {
+   "nome": "Augusto Meireles",
+   "posto": "Augusto Meireles"
+  },
+  {
+   "nome": "Avanhandava",
+   "posto": "Avanhandava"
+  },
+  {
+   "nome": "Avant Garde",
+   "posto": "Avant Garde"
+  },
+  {
+   "nome": "Azaléia",
+   "posto": "Azaléia"
+  },
+  {
+   "nome": "Barao de Itapetininga",
+   "posto": "Barão de Itapetininga"
+  },
+  {
+   "nome": "Bela Flor",
+   "posto": "Bela Flor"
+  },
+  {
+   "nome": "Berrini",
+   "posto": "Berrini"
+  },
+  {
+   "nome": "Bolonha",
+   "posto": "Bolonha"
+  },
+  {
+   "nome": "Boticario Incense",
+   "posto": "Boticario Incense"
+  },
+  {
+   "nome": "Boulevard",
+   "posto": "Boulevard"
+  },
+  {
+   "nome": "British Garden",
+   "posto": "British Garden"
+  },
+  {
+   "nome": "BSGA",
+   "posto": "BSGA"
+  },
+  {
+   "nome": "California",
+   "posto": "California"
+  },
+  {
+   "nome": "Canamari I",
+   "posto": "Canamari I"
+  },
+  {
+   "nome": "Canamari II",
+   "posto": "Canamari II"
+  },
+  {
+   "nome": "Capadócia",
+   "posto": "Capadócia"
+  },
+  {
+   "nome": "Carolina",
+   "posto": "Carolina"
+  },
+  {
+   "nome": "Celebration",
+   "posto": "Celebration"
+  },
+  {
+   "nome": "Charm Bahia",
+   "posto": "Charm Bahia"
+  },
+  {
+   "nome": "Claudio Monteiro",
+   "posto": "Claudio Monteiro"
+  },
+  {
+   "nome": "Clube Castelo",
+   "posto": "Clube Castelo"
+  },
+  {
+   "nome": "Concorde",
+   "posto": "Concorde"
+  },
+  {
+   "nome": "Copacabana",
+   "posto": "Copacabana"
+  },
+  {
+   "nome": "Córdoba",
+   "posto": "Córdoba"
+  },
+  {
+   "nome": "CST Nacional",
+   "posto": "CST Fazenda São José"
+  },
+  {
+   "nome": "Cullinan",
+   "posto": "Cullinan"
+  },
+  {
+   "nome": "Cyrela Living",
+   "posto": "Cyrela Living"
+  },
+  {
+   "nome": "Diferencial Service",
+   "posto": "Diferencial Service"
+  },
+  {
+   "nome": "Dona Rachel",
+   "posto": "Dona Rachel"
+  },
+  {
+   "nome": "Dona Rachel Frei Caneca",
+   "posto": "Dona Rachel Frei Caneca"
+  },
+  {
+   "nome": "Ecolife",
+   "posto": "Ecolife"
+  },
+  {
+   "nome": "EKDS",
+   "posto": "EKDS"
+  },
+  {
+   "nome": "Electra",
+   "posto": "Electra"
+  },
+  {
+   "nome": "Empório da Segurança",
+   "posto": "Empório da Segurança"
+  },
+  {
+   "nome": "Especializados",
+   "posto": "Prever Especializados"
+  },
+  {
+   "nome": "Estoril Sol",
+   "posto": "Estoril Sol"
+  },
+  {
+   "nome": "Eugenia Vitale",
+   "posto": "Eugenia Vitale"
+  },
+  {
+   "nome": "Evolution Paraiso",
+   "posto": "Evolution Paraiso"
+  },
+  {
+   "nome": "Fairmont Village",
+   "posto": "Fairmont Village"
+  },
+  {
+   "nome": "Fascinio",
+   "posto": "Fascinio"
+  },
+  {
+   "nome": "Figueira",
+   "posto": "Figueira"
+  },
+  {
+   "nome": "GAC Brasil",
+   "posto": "GAC Brasil"
+  },
+  {
+   "nome": "Gaspar Dutra",
+   "posto": "Eurico Gaspar Dutra"
+  },
+  {
+   "nome": "Gaspar Lourenço",
+   "posto": "Gaspar Lourenço"
+  },
+  {
+   "nome": "Giovanni Pascoli",
+   "posto": "Giovanni Pascoli"
+  },
+  {
+   "nome": "Go Confecção",
+   "posto": "Go Confecção"
+  },
+  {
+   "nome": "GoBS",
+   "posto": "GoBS"
+  },
+  {
+   "nome": "GPS Pamcary",
+   "posto": "GPS Pamcary"
+  },
+  {
+   "nome": "Grand Terrace",
+   "posto": "Grand Terrace"
+  },
+  {
+   "nome": "Grand Vitrali",
+   "posto": "Grand Vitrali"
+  },
+  {
+   "nome": "Green Village",
+   "posto": "Green Village"
+  },
+  {
+   "nome": "Green Village II",
+   "posto": "Green Village II"
+  },
+  {
+   "nome": "Gregório Serrão",
+   "posto": "Gregório Serrão"
+  },
+  {
+   "nome": "Hicatu",
+   "posto": "Hicatu"
+  },
+  {
+   "nome": "Humboldt",
+   "posto": "Humboldt"
+  },
+  {
+   "nome": "Ibira By You",
+   "posto": "Ibira By You"
+  },
+  {
+   "nome": "Ibirapitanga",
+   "posto": "Ibirapitanga"
+  },
+  {
+   "nome": "Ibirapuera Office",
+   "posto": "Ibirapuera Office"
+  },
+  {
+   "nome": "Icon Berrini",
+   "posto": "Icon"
+  },
+  {
+   "nome": "In Out America",
+   "posto": "In Out America"
+  },
+  {
+   "nome": "Indianopolis Petropolis",
+   "posto": "Indianopolis Petropolis"
+  },
+  {
+   "nome": "Inhambu",
+   "posto": "Inhambu"
+  },
+  {
+   "nome": "Ipiranga Premium",
+   "posto": "Ipiranga Premium"
+  },
+  {
+   "nome": "Irapuru",
+   "posto": "Irapuru"
+  },
+  {
+   "nome": "Isabela",
+   "posto": "Isabela"
+  },
+  {
+   "nome": "Itaparica",
+   "posto": "Itaparica"
+  },
+  {
+   "nome": "Jardim Botanico",
+   "posto": "Jardim Botanico"
+  },
+  {
+   "nome": "Jose Hachem",
+   "posto": "Jose Hachem"
+  },
+  {
+   "nome": "JR Pavimentação",
+   "posto": "JR Pavimentação"
+  },
+  {
+   "nome": "Julia Baldassarri",
+   "posto": "Julia Baldassarri"
+  },
+  {
+   "nome": "Kapptec",
+   "posto": "Kapptec"
+  },
+  {
+   "nome": "La Grand Maison",
+   "posto": "La Grand Maison"
+  },
+  {
+   "nome": "Las Vegas",
+   "posto": "Las Vegas"
+  },
+  {
+   "nome": "Le Jardin",
+   "posto": "Le Jardin"
+  },
+  {
+   "nome": "Lelis Vieira",
+   "posto": "Lelis Vieira"
+  },
+  {
+   "nome": "LG Dutra",
+   "posto": "LG Dutra"
+  },
+  {
+   "nome": "Link Studios",
+   "posto": "Link Studios"
+  },
+  {
+   "nome": "Living Zona Oeste",
+   "posto": "Living Zona Oeste"
+  },
+  {
+   "nome": "Lua de Algodao",
+   "posto": "Lua de Algodao"
+  },
+  {
+   "nome": "Lua de Algodão Fundamental",
+   "posto": "Lua de Algodão Fundamental"
+  },
+  {
+   "nome": "Luca",
+   "posto": "Luca"
+  },
+  {
+   "nome": "Macunaima",
+   "posto": "Macunaima"
+  },
+  {
+   "nome": "Maison Chartres",
+   "posto": "Maison Chartres"
+  },
+  {
+   "nome": "Maison Classic",
+   "posto": "Maison Classic"
+  },
+  {
+   "nome": "Maison Classique",
+   "posto": "Maison Classique"
+  },
+  {
+   "nome": "Manhattans",
+   "posto": "Manhattans"
+  },
+  {
+   "nome": "Mansões do Lago",
+   "posto": "Mansões do Lago"
+  },
+  {
+   "nome": "Maria Domitila",
+   "posto": "Maria Domitila"
+  },
+  {
+   "nome": "Master Tower",
+   "posto": "Master Tower"
+  },
+  {
+   "nome": "Mercadinho",
+   "posto": "Mercadinho Rec Butanta"
+  },
+  {
+   "nome": "Miami Plaza",
+   "posto": "Miami Plaza"
+  },
+  {
+   "nome": "Michelangelo",
+   "posto": "Michelangelo"
+  },
+  {
+   "nome": "Mirant Vila Madalena Residencial",
+   "posto": "Mirant Torre"
+  },
+  {
+   "nome": "Mirant Vila Madalena Studios",
+   "posto": "Mirant Studios"
+  },
+  {
+   "nome": "Monte Bianco",
+   "posto": "Monte Bianco"
+  },
+  {
+   "nome": "Monte Carlo",
+   "posto": "Monte Carlo"
+  },
+  {
+   "nome": "Mosaico da Aldeia",
+   "posto": "Mosaico da Aldeia"
+  },
+  {
+   "nome": "Muiraquita",
+   "posto": "Muiraquita"
+  },
+  {
+   "nome": "Nice",
+   "posto": "Nice"
+  },
+  {
+   "nome": "Norgren",
+   "posto": "Norgren"
+  },
+  {
+   "nome": "One Implantes",
+   "posto": "One Implantes"
+  },
+  {
+   "nome": "Paco de Moema",
+   "posto": "Paco de Moema"
+  },
+  {
+   "nome": "Paineiras",
+   "posto": "Paineiras"
+  },
+  {
+   "nome": "Palma de Mallorca",
+   "posto": "Palma de Mallorca"
+  },
+  {
+   "nome": "Pamplona I",
+   "posto": "Pamplona I"
+  },
+  {
+   "nome": "Park I",
+   "posto": "Park I"
+  },
+  {
+   "nome": "Paroquia Nossa Senhora da Esperança",
+   "posto": "Paroquia Nossa Senhora da Esperança"
+  },
+  {
+   "nome": "Pateo Klabin",
+   "posto": "Pateo Klabin"
+  },
+  {
+   "nome": "Paulistano",
+   "posto": "Paulistano"
+  },
+  {
+   "nome": "Paysage Clair",
+   "posto": "Paysage Clair"
+  },
+  {
+   "nome": "Paysage Noble",
+   "posto": "Paysage Noble"
+  },
+  {
+   "nome": "Pedro Adam",
+   "posto": "Pedro Adam"
+  },
+  {
+   "nome": "Perola de Osasco",
+   "posto": "Perola de Osasco"
+  },
+  {
+   "nome": "Piazza San Pietro",
+   "posto": "Piazza San Pietro"
+  },
+  {
+   "nome": "Place Vendome",
+   "posto": "Place Vendome"
+  },
+  {
+   "nome": "Pride Ipiranga",
+   "posto": "Pride Ipiranga"
+  },
+  {
+   "nome": "Primavera",
+   "posto": "Primavera"
+  },
+  {
+   "nome": "Prop Starter",
+   "posto": "Prop Starter"
+  },
+  {
+   "nome": "Quintessence",
+   "posto": "Quintessence"
+  },
+  {
+   "nome": "Recanto Butantã",
+   "posto": "Recanto Butantã"
+  },
+  {
+   "nome": "Renoir e Monet",
+   "posto": "Renoir e Monet"
+  },
+  {
+   "nome": "Reserva Julieta",
+   "posto": "Reserva Julieta"
+  },
+  {
+   "nome": "Rio Azul",
+   "posto": "Rio Azul"
+  },
+  {
+   "nome": "Rio das Pedras",
+   "posto": "Rio das Pedras"
+  },
+  {
+   "nome": "Rio Preto",
+   "posto": "Rio Preto"
+  },
+  {
+   "nome": "Riservato Alto da Lapa",
+   "posto": "Riservato Alto da Lapa"
+  },
+  {
+   "nome": "Rossini",
+   "posto": "Rossini"
+  },
+  {
+   "nome": "Runaway",
+   "posto": "Runaway"
+  },
+  {
+   "nome": "Sabuz",
+   "posto": "Sabuz"
+  },
+  {
+   "nome": "Saint Cyr",
+   "posto": "Saint Cyr"
+  },
+  {
+   "nome": "San Francesco e San Vittorio",
+   "posto": "San Francesco e San Vittorio"
+  },
+  {
+   "nome": "San Marino",
+   "posto": "San Marino"
+  },
+  {
+   "nome": "São Luiz",
+   "posto": "São Luiz"
+  },
+  {
+   "nome": "Shopping Marajoara",
+   "posto": "Shopping Marajoara"
+  },
+  {
+   "nome": "Simoes & Cruz",
+   "posto": "Simoes & Cruz"
+  },
+  {
+   "nome": "Sobradão",
+   "posto": "Sobradão"
+  },
+  {
+   "nome": "Solar Anhembi",
+   "posto": "Solar Anhembi"
+  },
+  {
+   "nome": "Soma Perdizes Offices",
+   "posto": "Soma Perdizes Offices"
+  },
+  {
+   "nome": "Soma Perdizes Residencial",
+   "posto": "Soma Perdizes Residencial"
+  },
+  {
+   "nome": "SPE Bandeirantes",
+   "posto": "SPE Bandeirantes"
+  },
+  {
+   "nome": "Sun Gate",
+   "posto": "Sun Gate"
+  },
+  {
+   "nome": "Sunnyvale",
+   "posto": "Sunnyvale"
+  },
+  {
+   "nome": "Sunnyvale Itaqua",
+   "posto": "Sunnyvale Itaqua"
+  },
+  {
+   "nome": "Sunset",
+   "posto": "Sunset"
+  },
+  {
+   "nome": "Sweet Park",
+   "posto": "Sweet Park"
+  },
+  {
+   "nome": "Taman",
+   "posto": "Taman"
+  },
+  {
+   "nome": "Tarumã",
+   "posto": "Tarumã"
+  },
+  {
+   "nome": "Telerisco",
+   "posto": "Telerisco"
+  },
+  {
+   "nome": "Tenis Village",
+   "posto": "Tenis Village"
+  },
+  {
+   "nome": "Theo",
+   "posto": "Theo"
+  },
+  {
+   "nome": "Top One",
+   "posto": "Top One"
+  },
+  {
+   "nome": "Top Tower",
+   "posto": "Top Tower"
+  },
+  {
+   "nome": "Umuarama",
+   "posto": "Umuarama"
+  },
+  {
+   "nome": "Universal Serras",
+   "posto": "Universal Serras"
+  },
+  {
+   "nome": "Varanda Ipiranga",
+   "posto": "Varanda Ipiranga"
+  },
+  {
+   "nome": "Velazquez",
+   "posto": "Velazquez"
+  },
+  {
+   "nome": "Veneza",
+   "posto": "Veneza"
+  },
+  {
+   "nome": "Verana",
+   "posto": "Verana"
+  },
+  {
+   "nome": "Via Nacoes",
+   "posto": "Via Nacoes"
+  },
+  {
+   "nome": "Vienna",
+   "posto": "Vienna"
+  },
+  {
+   "nome": "Vila de Bragança",
+   "posto": "Vila de Bragança"
+  },
+  {
+   "nome": "Vila Lagos",
+   "posto": "Vila Lagos"
+  },
+  {
+   "nome": "Vila Velha",
+   "posto": "Vila Velha"
+  },
+  {
+   "nome": "Villa Lobos",
+   "posto": "Villa Lobos"
+  },
+  {
+   "nome": "Villagio Suzana",
+   "posto": "Villagio Suzana"
+  },
+  {
+   "nome": "Ville Marseille",
+   "posto": "Ville Marseille"
+  },
+  {
+   "nome": "Vitoria Regia",
+   "posto": "Vitoria Regia"
+  },
+  {
+   "nome": "Wafios",
+   "posto": "Wafios"
+  },
+  {
+   "nome": "Window Moema Mall",
+   "posto": "Window Moema Mall"
+  },
+  {
+   "nome": "Window Moema Residencial",
+   "posto": "Window Moema Residencial"
+  },
+  {
+   "nome": "Alexandre Gama de Medeiros",
+   "posto": "Resid. Gama"
+  },
+  {
+   "nome": "Caio Augusto Cardoso",
+   "posto": "Resid. Caio Cardoso"
+  },
+  {
+   "nome": "Clovis Residencia",
+   "posto": "Residencia Clovis"
+  },
+  {
+   "nome": "Eduardo Carballido",
+   "posto": "Resid. Carballido"
+  },
+  {
+   "nome": "Francisco Goeye",
+   "posto": "Resid. Francisco"
+  },
+  {
+   "nome": "Gustavo Roxo",
+   "posto": "Resid. Gustavo Roxo"
+  },
+  {
+   "nome": "Nicole Caetano",
+   "posto": "Nicole"
+  },
+  {
+   "nome": "Ricardo Parasmo",
+   "posto": "Resid. Parasmo"
+  },
+  {
+   "nome": "Robson Altino de Lima",
+   "posto": "Robson"
+  }
+ ],
+ "pessoas": []
+}

@@ -192,9 +192,20 @@ o local vai para `docs/importacao/locais-desconhecidos.md`, com sugestões
 parecidas que ninguém aplica sozinho — pôr equipamento no prédio errado é pior
 que deixá-lo sem prédio.
 
+**Como a extração é feita.** A tela do QAP pagina de 50 em 50 (85 páginas para
+4.241 itens), mas a página consome `GET /Material/Uso/Listar?page=N&buscar[acesso]=true&buscar[status]=300`,
+que devolve o HTML já filtrado — é de lá que se lê, não do mouse. O parser sai
+da ESTRUTURA da célula (cada uma empilha dois ou três valores), e o checkbox de
+cada linha carrega o **id interno do item** (`value="28981"`), que vira a
+chave `qap:<id>` da importação.
+
 **Como refazer a importação.** O retrato cru do QAP fica em
 `docs/importacao/qap-equipamentos.json`; `node
 scripts/gerar-migration-equipamentos.cjs` regera a migration dos itens e a
-relação de locais desconhecidos. As decisões (variação, vínculo, chave) são do
-módulo puro `src/features/equipamentos/importacao.ts`, com asserção em cima —
-não do SQL.
+prévia da relação de locais desconhecidos. As decisões com asserção em cima
+(variação de catálogo, chave de importação, leitura de data) são do módulo puro
+`src/features/equipamentos/importacao.ts`. O **vínculo com o cliente** é a
+exceção e mora no SQL da migration: o UUID do cliente só existe no banco, e
+casar contra a base VIVA no momento de rodar é melhor que casar contra um
+retrato que já nasce velho. O casamento do SQL é mais estrito que o do módulo
+(não ignora acento), então ele erra para o lado de "não vinculou".
