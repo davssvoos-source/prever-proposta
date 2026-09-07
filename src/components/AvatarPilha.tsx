@@ -22,22 +22,31 @@ interface Props {
   pessoas: Record<string, PessoaAvatar>;
   max?: number;
   tamanho?: number;
+  /**
+   * R188 (U105): `false` tira o ANEL (a borda na cor da superfície e o anel
+   * da R176). No calendário o card tem fundo colorido (R187) e o anel na cor
+   * do card lia como um contorno em volta de cada rosto — Davi: "Remova o
+   * contorno dos ícones dos usuários". Sem anel a sobreposição é menor (-4px)
+   * para os rostos não se comerem.
+   */
+  anel?: boolean;
 }
 
-export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
+export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22, anel = true }: Props) {
   const { isLight } = useTheme();
   if (ids.length === 0) return null;
 
   const visiveis = ids.slice(0, max);
   const resto = ids.length - visiveis.length;
   // a borda na cor da superfície é o que faz a sobreposição ler como pilha
-  const anel = isLight ? "#ffffff" : "#1a1a20";
+  const corDoAnel = isLight ? "#ffffff" : "#1a1a20";
 
+  const sobreposicao = anel ? -7 : -4;
   const circulo: CSSProperties = {
     width: tamanho,
     height: tamanho,
     borderRadius: "50%",
-    border: `2px solid ${anel}`,
+    border: anel ? `2px solid ${corDoAnel}` : "none",
     boxSizing: "content-box",
     flexShrink: 0,
     objectFit: "cover",
@@ -59,7 +68,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
             src={p.avatar_url}
             alt={p.nome}
             title={p.nome}
-            style={{ ...circulo, marginLeft: i === 0 ? 0 : -7 }}
+            style={{ ...circulo, marginLeft: i === 0 ? 0 : sobreposicao }}
           />
         ) : (
           <span
@@ -67,7 +76,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
             title={p?.nome}
             style={{
               ...circulo,
-              marginLeft: i === 0 ? 0 : -7,
+              marginLeft: i === 0 ? 0 : sobreposicao,
               background: d.grad,
               color: d.sobre,
               // R176: ANEL na cor da superfície, não glow. O halo colorido
@@ -75,7 +84,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
               // precisam de uma separação — e a separação correta de uma pilha
               // de avatares é um anel da cor do fundo, que não acrescenta luz
               // nenhuma à tela.
-              boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`,
+              boxShadow: anel ? `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}` : undefined,
               fontFamily: FONT,
               fontWeight: 700,
               fontSize: Math.round(tamanho * 0.38),
@@ -89,7 +98,7 @@ export function AvatarPilha({ ids, pessoas, max = 3, tamanho = 22 }: Props) {
         <span
           style={{
             ...circulo,
-            marginLeft: -7,
+            marginLeft: sobreposicao,
             background: isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.12)",
             color: isLight ? "#4a5060" : "rgba(255,255,255,0.75)",
             fontFamily: FONT,

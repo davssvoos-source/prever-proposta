@@ -1,7 +1,7 @@
 # Prever — Design System v2 (Supernova)
 
 <!-- sumario:inicio -->
-> **Sumário** — 43 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
+> **Sumário** — 44 seções. Gerado por `node scripts/sumario.cjs`; não edite à mão. Para ir a uma seção: `grep -n "^## <título>"` no arquivo.
 
 - [1. Identidade](#1-identidade)
 - [2. Tokens de cor](#2-tokens-de-cor)
@@ -32,6 +32,7 @@
   - [6.14 Etiqueta — a categoria PREENCHIDA (v11 — 2026-09-04, R177)](#614-etiqueta-a-categoria-preenchida-v11-2026-09-04-r177)
   - [6.15 Avatar — sem glow (v11 — 2026-09-04, R176)](#615-avatar-sem-glow-v11-2026-09-04-r176)
   - [6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)](#616-configurador-rápido-o-painel-da-atividade-v12-2026-09-04-r183r185)
+  - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -777,7 +778,10 @@ separa sem acrescentar luz:
 boxShadow: `0 0 0 2px ${isLight ? "#ffffff" : "#141416"}`   // a cor do card
 ```
 
-O avatar solto não leva anel: não há sobreposição para separar.
+O avatar solto não leva anel: não há sobreposição para separar. **No
+calendário (R188, U105) a pilha vai sem anel** (`anel={false}`): o card tem
+fundo colorido (§6.17) e o anel na cor do card lia como um contorno em volta
+de cada rosto; sem anel a sobreposição cai para 4px.
 
 ### 6.16 Configurador rápido — o painel da atividade (v12 — 2026-09-04, R183–R185)
 
@@ -813,6 +817,40 @@ As peças e seus números:
 O que a barra decide não mora na tela: `etapasDoRegistro(problema, diagnostico)`
 (`features/chamados/registro.ts`) diz o que acende, `fraseDoProgresso` dá o
 texto do `aria-label` — cor nunca fala sozinha (§6, "status nunca só por cor").
+
+### 6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)
+
+O card de atividade do calendário (mensal e semanal) tem **fundo na cor do
+status, esmaecido e sólido**:
+
+```ts
+const tinta = (cor: string) => misturar(cor, superficie, isLight ? 0.86 : 0.80);
+// 14% da cor no claro (sobre #ffffff), 20% no escuro (sobre #141414)
+background: tinta(e.cor), borderLeft: `2.5px solid ${e.cor}`   // a borda continua a cor pura
+```
+
+Por que mistura e não `rgba`: uma opacidade de verdade depende do que está
+atrás (célula do mês, célula fora do mês, realce de alvo) e clareia mais do
+que parece no código — a lição da U13 sobre véus. A mistura é a cor que a
+opacidade *pareceria* sobre a superfície, sempre a mesma. O verificador mede:
+texto primário ≥ 4,5:1 sobre o fundo tingido de qualquer cor do PRISMA, nos
+dois temas, e o tingido difere da superfície em ≥ 1,08:1 (senão a cor não se
+vê).
+
+**Rostos sem anel** (R188): `<AvatarPilha … anel={false} />` nas duas visões.
+
+**Meses seguintes ao rolar** (R189): uma sentinela de 1px depois da última
+grade, observada por `IntersectionObserver` (`rootMargin` 120px); cada
+interseção anexa um mês, até três. Cada mês anexado leva `<h2>` 15/600 com
+"Mês de Ano" e a mesma grade; só o primeiro tem `flex: 1 0 auto`.
+
+**A dica expandida** (R190, só na mensal): `role="tooltip"` em portal,
+280px, superfície `cinzas(isLight).elevada`, borda `divisoria`, raio 12,
+sombra `0 10px 28px` (14% no claro, 45% no escuro), `pointer-events: none`.
+Título 12,5/700 com a borda esquerda na cor do status; linhas "rótulo →
+valor" com rótulo 9,5/700 maiúsculo (112px) e valor 12; o *quando* 10,5
+secundário no fim. Abre embaixo do card; se não couberem 170px, abre em
+cima. Some enquanto se arrasta.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

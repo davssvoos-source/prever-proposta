@@ -64,7 +64,8 @@
 
 import { createFileRoute, useNavigate, useLocation, redirect } from "@tanstack/react-router";
 import { guardaDeTela, destinoNegado } from "@/features/gerencial/permissoes";
-import { useState, useMemo, useEffect, type CSSProperties, type DragEvent } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment, type CSSProperties, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, LayoutGrid } from "lucide-react";
@@ -74,7 +75,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { FONT } from "@/lib/ui";
 import { chamadoStatusInfo, TIPO_LABEL, moverPrazoParaODia } from "@/lib/chamado-status";
 import { getStatusInfo as getStatusInfoVisita } from "@/lib/visita-status";
-import { PRISMA } from "@/lib/paleta";
+import { PRISMA, misturar, cinzas } from "@/lib/paleta";
 import { inicioSemana, fimSemana, referenciaSemanal } from "@/lib/periodos";
 import { usePessoas, atualizarChamado } from "@/features/chamados/data";
 import {
@@ -169,11 +170,106 @@ const horaCurta = (iso: string) =>
 const mesmoInstante = (a: string, b: string | null | undefined) =>
   !!b && new Date(a).getTime() === new Date(b).getTime();
 
+/** A frase do QUANDO — a conclusão vence a hora e o prazo (R145). */
+const quandoDoEvento = (e: Evento) =>
+  e.porConclusao ? "concluído neste dia" : e.porPrazo ? "vence neste dia" : horaCurta(e.quando);
+
 const dicaDoEvento = (e: Evento) => {
-  const quando = e.porConclusao ? "concluído neste dia" : e.porPrazo ? "vence neste dia" : horaCurta(e.quando);
+  const quando = quandoDoEvento(e);
   const partes = [e.tipoLabel, e.atrasado ? "Atrasado" : e.statusLabel, e.numero, quando].filter(Boolean);
   return partes.join(" · ") + (e.arrastavel ? " — arraste para outro dia para mudar o prazo" : "");
 };
+
+/** Quantos meses além do escolhido a mensal anexa ao rolar (R189: "até um limite de mais 3 meses"). */
+const MESES_EXTRAS_MAX = 3;
+
+/**
+ * As células de UM mês: a grade começa no domingo e fecha a última semana —
+ * sem isso a última linha teria menos colunas e as células mudariam de
+ * largura. Para em 35 se a sexta linha for toda do mês seguinte.
+ */
+function celulasDoMes(mes: Date): Date[] {
+  const primeiro = new Date(mes.getFullYear(), mes.getMonth(), 1);
+  const inicio = new Date(primeiro);
+  inicio.setDate(1 - primeiro.getDay());
+  const dias: Date[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(inicio);
+    d.setDate(inicio.getDate() + i);
+    dias.push(d);
+    if (i === 34 && new Date(inicio.getTime() + 35 * 86400000).getMonth() !== mes.getMonth()) break;
+  }
+  return dias;
+}
+
+/** Onde a dica expandida (R190) se ancora — o card sob o mouse. */
+interface AncoraDaDica {
+  evento: Evento;
+  left: number;
+  /** `top` quando cabe embaixo do card; `bottom` quando só cabe em cima */
+  top: number | null;
+  bottom: number | null;
+}
+
+/**
+ * A DICA EXPANDIDA da atividade (R190). Davi (2026-09-04): "Ao passar o mouse
+ * por cima de uma atividade, deve expandir um campo com: Responsável, Tipo de
+ * Demanda, Cliente/Local e Título — não na ordem que escrevi". A ordem aqui é
+ * a de quem lê: o quê (título) → onde (cliente/local) → que tipo → quem. E
+ * embaixo, apagado, o QUANDO — a informação que a R145 mandou não sumir
+ * (era o `title` do navegador, que morreu com a dica).
+ *
+ * Só na MENSAL: o card da semanal já mostra os quatro (R153). `pointerEvents:
+ * none` — a dica nunca rouba o mouse do card, senão piscaria ao entrar nela.
+ */
+function DicaDaAtividade({ ancora, pessoas, isLight }: {
+  ancora: AncoraDaDica; pessoas: Record<string, PessoaAvatar>; isLight: boolean;
+}) {
+  const e = ancora.evento;
+  const c = cinzas(isLight);
+  const nome = (id: string | undefined) => (id ? pessoas[id]?.nome : undefined);
+  const responsavel = nome(e.pessoas[0]) ?? "— sem responsável —";
+  const apoio = e.pessoas.slice(1).map((id) => nome(id) ?? "Alguém");
+  const local = e.cliente ?? (e.kind === "visita" ? e.titulo : "Interno — Prever");
+  const linha = (rotulo: string, valor: string) => (
+    <div style={{ display: "flex", gap: 8, alignItems: "baseline", minWidth: 0 }}>
+      <span style={{
+        fontFamily: FONT, fontWeight: 700, fontSize: 9.5, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: c.textoSecundario, flexShrink: 0, width: 112,
+      }}>
+        {rotulo}
+      </span>
+      <span style={{ fontFamily: FONT, fontSize: 12, color: c.texto, minWidth: 0, lineHeight: 1.35 }}>
+        {valor}
+      </span>
+    </div>
+  );
+  return createPortal(
+    <div
+      role="tooltip"
+      style={{
+        position: "fixed", zIndex: 220, width: 280, left: ancora.left,
+        top: ancora.top ?? undefined, bottom: ancora.bottom ?? undefined,
+        background: c.elevada, color: c.texto, border: `1px solid ${c.divisoria}`,
+        borderRadius: 12, padding: "10px 12px", pointerEvents: "none",
+        boxShadow: isLight ? "0 10px 28px rgba(0,0,0,0.14)" : "0 10px 28px rgba(0,0,0,0.45)",
+        display: "flex", flexDirection: "column", gap: 6,
+      }}
+    >
+      <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12.5, lineHeight: 1.35, borderLeft: `3px solid ${e.cor}`, paddingLeft: 8 }}>
+        {e.titulo}
+      </div>
+      {linha("Cliente/Local", local)}
+      {linha("Tipo de demanda", e.tipoLabel)}
+      {linha("Responsável", responsavel)}
+      {apoio.length > 0 && linha("Apoio", apoio.join(", "))}
+      <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario, marginTop: 2 }}>
+        {quandoDoEvento(e)}{e.atrasado ? " · atrasado" : ""}{e.numero ? ` · ${e.numero}` : ""}
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 function CalendarioPage() {
   const navigate = useNavigate();
@@ -190,8 +286,16 @@ function CalendarioPage() {
   // do que parece no código. `#101016` é o mesmo tom sólido que a tabela da
   // Início já usa para superfície escura (TabelaAtividades) — consistente
   // com o resto do app, e sempre este tom, não importa o que esteja atrás.
-  const superficie = isLight ? "#ffffff" : "#101016";
-  const foraDoMes = isLight ? "#fafafa" : "#0a0a0e";
+  // R186 (U105): sólida E cinza neutro — a escala CINZA de paleta.ts, sem azul
+  const superficie = cinzas(isLight).superficie;
+  const foraDoMes = cinzas(isLight).pagina;
+  /**
+   * R187: o fundo do card é a COR DO STATUS esmaecida sobre a superfície —
+   * sólida, não translúcida (Davi: "fundo da cor do status, com uma opacidade
+   * baixa"; a mistura sólida é o que uma opacidade baixa PARECE, sem depender
+   * do que está atrás). 14% da cor no claro, 20% no escuro.
+   */
+  const tinta = (cor: string) => misturar(cor, superficie, isLight ? 0.86 : 0.80);
   const linha = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
 
   const hoje = new Date();
@@ -212,6 +316,34 @@ function CalendarioPage() {
   /** R152: o chamado sendo arrastado e o dia sob o cursor */
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [alvoDia, setAlvoDia] = useState<string | null>(null);
+  /** R189: quantos meses além do escolhido já foram anexados ao rolar (0–3) */
+  const [mesesExtras, setMesesExtras] = useState(0);
+  const sentinelaRef = useRef<HTMLDivElement | null>(null);
+  // trocar o mês ou a visão volta a UM mês — os anexados eram deste ponto de partida
+  useEffect(() => { setMesesExtras(0); }, [mes, visao]);
+  useEffect(() => {
+    const alvo = sentinelaRef.current;
+    if (!alvo || visao !== "mes" || mesesExtras >= MESES_EXTRAS_MAX) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver((entradas) => {
+      if (entradas.some((x) => x.isIntersecting)) setMesesExtras((n) => Math.min(MESES_EXTRAS_MAX, n + 1));
+    }, { rootMargin: "120px 0px" });
+    obs.observe(alvo);
+    return () => obs.disconnect();
+  }, [visao, mesesExtras]);
+  /** R190: a dica expandida do card sob o mouse (só na mensal) */
+  const [dica, setDica] = useState<AncoraDaDica | null>(null);
+  function mostrarDica(e: Evento, alvo: HTMLElement) {
+    const r = alvo.getBoundingClientRect();
+    const cabeEmbaixo = r.bottom + 170 < window.innerHeight;
+    setDica({
+      evento: e,
+      left: Math.max(8, Math.min(r.left, window.innerWidth - 280 - 12)),
+      top: cabeEmbaixo ? r.bottom + 6 : null,
+      bottom: cabeEmbaixo ? null : window.innerHeight - r.top + 6,
+    });
+  }
+  const esconderDica = () => setDica(null);
 
   const { data: cargo } = useUserCargo();
   // SAC é gestor de chamados: vê o calendário de TODOS (R8/R26)
@@ -239,7 +371,16 @@ function CalendarioPage() {
   }, [pessoas]);
 
   const inicioMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth(), 1), [mes]);
-  const fimMes = useMemo(() => new Date(mes.getFullYear(), mes.getMonth() + 1, 0, 23, 59, 59), [mes]);
+  // R189: o fim do ÚLTIMO mês mostrado — a janela consultada cresce com os anexados
+  const fimMes = useMemo(
+    () => new Date(mes.getFullYear(), mes.getMonth() + 1 + mesesExtras, 0, 23, 59, 59),
+    [mes, mesesExtras],
+  );
+  /** R189: o mês escolhido e os anexados, na ordem */
+  const mesesVisiveis = useMemo(
+    () => Array.from({ length: 1 + mesesExtras }, (_, i) => new Date(mes.getFullYear(), mes.getMonth() + i, 1)),
+    [mes, mesesExtras],
+  );
   const inicioSem = useMemo(() => inicioSemana(semana), [semana]);
   const fimSem = useMemo(() => fimSemana(semana), [semana]);
 
@@ -560,23 +701,6 @@ function CalendarioPage() {
     [todosEventos],
   );
 
-  // A grade sempre começa no domingo e fecha a última semana: sem isso a
-  // última linha teria menos colunas e as células mudariam de largura.
-  const celulas = useMemo(() => {
-    const primeiro = new Date(mes.getFullYear(), mes.getMonth(), 1);
-    const inicio = new Date(primeiro);
-    inicio.setDate(1 - primeiro.getDay());
-    const dias: Date[] = [];
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      dias.push(d);
-      // para em 35 se a sexta linha for toda do mês seguinte
-      if (i === 34 && new Date(inicio.getTime() + 35 * 86400000).getMonth() !== mes.getMonth()) break;
-    }
-    return dias;
-  }, [mes]);
-
   /** Os sete dias da semana mostrada, de segunda a domingo. */
   const diasDaSemana = useMemo(
     () => Array.from({ length: 7 }, (_, i) => {
@@ -608,23 +732,15 @@ function CalendarioPage() {
       setSemana(d);
     }
   }
-  function irParaHoje() {
-    setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
-    setSemana(inicioSemana(hoje));
-  }
+  // R191 (U105): o botão "Hoje" saiu (Davi: "Remova o botão 'Hoje'"). O
+  // calendário ABRE no mês/semana de hoje; as setas andam a partir daí.
 
   const navBtn: CSSProperties = {
     width: 34, height: 34, borderRadius: 10,
-    background: isLight ? "rgba(0,0,0,0.05)" : "#191921",
+    background: isLight ? "rgba(0,0,0,0.05)" : cinzas(false).elevada,
     border: isLight ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.10)",
     color: textPrimary, display: "flex", alignItems: "center", justifyContent: "center",
     cursor: "pointer", flexShrink: 0,
-  };
-  const seletor: CSSProperties = {
-    fontFamily: FONT, fontSize: 12, color: textPrimary,
-    background: isLight ? "#ffffff" : "#191921",
-    border: isLight ? "1px solid rgba(0,0,0,0.10)" : "1px solid rgba(255,255,255,0.12)",
-    borderRadius: 10, padding: "7px 10px", cursor: "pointer",
   };
   const botaoVisao = (ativa: boolean): CSSProperties => ({
     display: "inline-flex", alignItems: "center", gap: 5,
@@ -676,13 +792,6 @@ function CalendarioPage() {
             onClick={() => andar(1)}>
             <ChevronRight size={17} />
           </button>
-          <button
-            style={{ ...seletor, fontWeight: 600 }}
-            onClick={irParaHoje}
-          >
-            Hoje
-          </button>
-
           {/* R133 — a visão. Dois botões, não um <select>: é uma escolha de
               dois valores, e a escolhida fica visível sem abrir nada. */}
           <div style={{ display: "flex", gap: 4 }}>
@@ -750,7 +859,7 @@ function CalendarioPage() {
             />
           )}
           <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary }}>
-            {eventos.length} {visao === "mes" ? "no mês" : "na semana"}
+            {eventos.length} {visao === "mes" ? (mesesExtras > 0 ? "no período" : "no mês") : "na semana"}
             {/* Escolher setor esconde quem não tem setor nenhum. Sem este
                 aviso, "12 no mês" num mês de 40 pareceria dado sumido. */}
             {setorFiltro !== "todos" && semSetor > 0 && (
@@ -832,14 +941,15 @@ function CalendarioPage() {
                         textAlign: "left", cursor: e.arrastavel ? "grab" : "pointer", width: "100%",
                         border: "none", borderLeft: `3px solid ${e.cor}`,
                         borderRadius: 8, padding: "7px 8px",
-                        background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
+                        // R187: o fundo é a cor do status, esmaecida (ver `tinta`)
+                        background: tinta(e.cor),
                         display: "flex", flexDirection: "column", gap: 5, minWidth: 0, color: textPrimary,
                         opacity: arrastando === e.id ? 0.45 : 1,
                       }}
                     >
                       {e.pessoas.length > 0 && (
                         <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
-                          <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={4} tamanho={20} />
+                          <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={4} tamanho={20} anel={false} />
                         </div>
                       )}
                       <span style={{
@@ -871,128 +981,155 @@ function CalendarioPage() {
           </div>
         ) : (
           <>
-            {/* Cabeçalho dos dias da semana */}
-            <div style={{
-              display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
-              gap: 1, flexShrink: 0,
-            }}>
-              {DIAS_SEMANA.map((d) => (
-                <div key={d} style={{
-                  fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: textSecondary, textAlign: "center", padding: "6px 0",
+            {/* ══ A GRADE MENSAL — um mês, e os SEGUINTES ao rolar (R189) ═══════
+                Davi (2026-09-04): "Os calendários mensais devem ir aparecendo
+                abaixo conforme eu for rolando a tela, isso até um limite de
+                mais 3 meses." O primeiro mês preenche a tela (flex 1 0 auto,
+                como sempre); ao chegar ao fim dele a SENTINELA entra na tela e
+                o mês seguinte é anexado — a janela consultada cresce junto
+                (`fimMes` acompanha `mesesExtras`). Navegar pelas setas volta a
+                um mês só. */}
+            {mesesVisiveis.map((m, indice) => (
+              <Fragment key={chaveDia(m)}>
+                {indice > 0 && (
+                  <h2 style={{
+                    fontFamily: FONT, fontWeight: 600, fontSize: 15, margin: "22px 0 4px",
+                    color: textPrimary,
+                  }}>
+                    {MESES[m.getMonth()]} de {m.getFullYear()}
+                  </h2>
+                )}
+                {/* Cabeçalho dos dias da semana */}
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: 1, flexShrink: 0,
                 }}>
-                  {d}
+                  {DIAS_SEMANA.map((d) => (
+                    <div key={d} style={{
+                      fontFamily: FONT, fontWeight: 700, fontSize: 9.5,
+                      letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: textSecondary, textAlign: "center", padding: "6px 0",
+                    }}>
+                      {d}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* A GRADE — a linha CRESCE com o dia mais cheio dela (pedido do Davi:
-                sem rolagem por dia).
-                `minmax(120px, auto)`: 120px é o piso, para um mês vazio ainda
-                parecer um calendário; daí para cima a linha acompanha o conteúdo.
-                Quem rola é a PÁGINA, uma vez só — antes eram 42 áreas de rolagem
-                independentes, e um item escondido dentro de uma delas era um item
-                que ninguém via. */}
-            <div style={{
-              // "1 0 auto": CRESCE para preencher a tela quando o mês é vazio, e
-              // NÃO ENCOLHE quando é cheio. Um `flex: 1` puro (base 0) espremeria
-              // a grade de volta à altura do contêiner e traria a rolagem cortada
-              // de volta pela porta dos fundos.
-              flex: "1 0 auto",
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gridAutoRows: "minmax(120px, auto)",
-              gap: 1,
-              background: linha,
-              border: `1px solid ${linha}`,
-              borderRadius: 12,
-              overflow: "hidden",
-            }}>
-              {celulas.map((d) => {
-                const doMes = d.getMonth() === mes.getMonth();
-                const eDeHoje = chaveDia(d) === chaveDia(hoje);
-                const itens = porDia[chaveDia(d)] ?? [];
-                return (
-                  <div
-                    key={d.toISOString()}
-                    {...ganchosDeSoltar(d)}
-                    style={{
-                      background: doMes ? superficie : foraDoMes,
-                      padding: "5px 5px 7px",
-                      display: "flex", flexDirection: "column", gap: 3,
-                      opacity: doMes ? 1 : 0.45,
-                      ...realceDeAlvo(d),
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-                      <span style={{
-                        fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
-                        color: eDeHoje ? "#08090E" : textPrimary,
-                        // o amarelo da marca, igual nos dois temas: `gold` é token
-                        // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
-                        // número de 11px abaixo do contraste mínimo.
-                        background: eDeHoje ? "#F8C811" : "transparent",
-                        borderRadius: 999, minWidth: 19, height: 19,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        padding: eDeHoje ? "0 5px" : 0,
-                      }}>
-                        {d.getDate()}
-                      </span>
-                      {itens.length > 2 && (
-                        <span style={{ fontFamily: FONT, fontSize: 9, color: textSecondary }}>
-                          {itens.length}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                      {itens.map((e) => {
-                        return (
-                          <button
-                            key={`${e.kind}-${e.id}`}
-                            onClick={() => abrir(e)}
-                            {...ganchosDeArrastar(e)}
-                            // a hora e o "vence" saíram da célula (pedido do Davi):
-                            // varrendo o mês, o que se procura é O QUE é, não a que
-                            // horas. O detalhe fica no título do navegador e no
-                            // painel, a um clique — e na visão SEMANAL (R133).
-                            title={`${e.titulo}${e.porConclusao
-                              ? " · concluído neste dia"
-                              : e.porPrazo
-                                ? " · vence neste dia"
-                                : ` · ${new Date(e.quando).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}`}
-                            style={{
-                              textAlign: "left", cursor: e.arrastavel ? "grab" : "pointer", width: "100%",
-                              opacity: arrastando === e.id ? 0.45 : 1,
-                              border: "none", borderLeft: `2.5px solid ${e.cor}`,
-                              borderRadius: 5, padding: "4px 6px",
-                              background: isLight ? "rgba(0,0,0,0.045)" : "rgba(255,255,255,0.06)",
-                              display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
-                            }}
-                          >
-                            <span style={{
-                              flex: 1, minWidth: 0,
-                              fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
-                              color: textPrimary, lineHeight: 1.3,
-                              display: "-webkit-box", WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical", overflow: "hidden",
-                            }}>
-                              {e.titulo}
+                {/* A GRADE — a linha CRESCE com o dia mais cheio dela (pedido do Davi:
+                    sem rolagem por dia).
+                    `minmax(120px, auto)`: 120px é o piso, para um mês vazio ainda
+                    parecer um calendário; daí para cima a linha acompanha o conteúdo.
+                    Quem rola é a PÁGINA, uma vez só — antes eram 42 áreas de rolagem
+                    independentes, e um item escondido dentro de uma delas era um item
+                    que ninguém via. */}
+                <div style={{
+                  // "1 0 auto" no PRIMEIRO mês: CRESCE para preencher a tela quando o
+                  // mês é vazio, e NÃO ENCOLHE quando é cheio. Um `flex: 1` puro
+                  // (base 0) espremeria a grade de volta à altura do contêiner e
+                  // traria a rolagem cortada de volta pela porta dos fundos. Os
+                  // meses seguintes (R189) só se empilham.
+                  flex: indice === 0 ? "1 0 auto" : "0 0 auto",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gridAutoRows: "minmax(120px, auto)",
+                  gap: 1,
+                  background: linha,
+                  border: `1px solid ${linha}`,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                }}>
+                  {celulasDoMes(m).map((d) => {
+                    const doMes = d.getMonth() === m.getMonth();
+                    const eDeHoje = chaveDia(d) === chaveDia(hoje);
+                    const itens = porDia[chaveDia(d)] ?? [];
+                    return (
+                      <div
+                        key={d.toISOString()}
+                        {...ganchosDeSoltar(d)}
+                        style={{
+                          background: doMes ? superficie : foraDoMes,
+                          padding: "5px 5px 7px",
+                          display: "flex", flexDirection: "column", gap: 3,
+                          opacity: doMes ? 1 : 0.45,
+                          ...realceDeAlvo(d),
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                          <span style={{
+                            fontFamily: FONT, fontWeight: eDeHoje ? 700 : 500, fontSize: 11,
+                            color: eDeHoje ? "#08090E" : textPrimary,
+                            // o amarelo da marca, igual nos dois temas: `gold` é token
+                            // de TEXTO (no claro, #A06108) e como SUPERFÍCIE deixava o
+                            // número de 11px abaixo do contraste mínimo.
+                            background: eDeHoje ? "#F8C811" : "transparent",
+                            borderRadius: 999, minWidth: 19, height: 19,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            padding: eDeHoje ? "0 5px" : 0,
+                          }}>
+                            {d.getDate()}
+                          </span>
+                          {itens.length > 2 && (
+                            <span style={{ fontFamily: FONT, fontSize: 9, color: textSecondary }}>
+                              {itens.length}
                             </span>
-                            {/* o(s) responsável(eis) — o rosto de quem toca, agora
-                                ao lado do título em vez de numa segunda linha */}
-                            {e.pessoas.length > 0 && (
-                              <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          {itens.map((e) => {
+                            return (
+                              <button
+                                key={`${e.kind}-${e.id}`}
+                                onClick={() => abrir(e)}
+                                {...ganchosDeArrastar(e)}
+                                // R190: a hora e o "vence" saíram da célula (pedido do
+                                // Davi); o que a célula não mostra aparece na DICA que
+                                // se expande ao passar o mouse (ou ao focar) — título,
+                                // cliente/local, tipo, responsável e o quando.
+                                onMouseEnter={(ev) => mostrarDica(e, ev.currentTarget)}
+                                onMouseLeave={esconderDica}
+                                onFocus={(ev) => mostrarDica(e, ev.currentTarget)}
+                                onBlur={esconderDica}
+                                style={{
+                                  textAlign: "left", cursor: e.arrastavel ? "grab" : "pointer", width: "100%",
+                                  opacity: arrastando === e.id ? 0.45 : 1,
+                                  border: "none", borderLeft: `2.5px solid ${e.cor}`,
+                                  borderRadius: 5, padding: "4px 6px",
+                                  // R187: o fundo é a cor do status, esmaecida — sólida,
+                                  // não translúcida (ver `tinta`)
+                                  background: tinta(e.cor),
+                                  display: "flex", alignItems: "flex-start", gap: 5, minWidth: 0,
+                                }}
+                              >
+                                <span style={{
+                                  flex: 1, minWidth: 0,
+                                  fontFamily: FONT, fontWeight: 600, fontSize: 10.5,
+                                  color: textPrimary, lineHeight: 1.3,
+                                  display: "-webkit-box", WebkitLineClamp: 2,
+                                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                                }}>
+                                  {e.titulo}
+                                </span>
+                                {/* o(s) responsável(eis) — o rosto de quem toca, ao lado
+                                    do título; sem anel (R188) */}
+                                {e.pessoas.length > 0 && (
+                                  <AvatarPilha ids={e.pessoas} pessoas={mapaPessoas} max={2} tamanho={15} anel={false} />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Fragment>
+            ))}
+            {/* a SENTINELA (R189): quando entra na tela, o próximo mês é anexado —
+                até três além do escolhido. Depois do terceiro ela some. */}
+            {mesesExtras < MESES_EXTRAS_MAX && (
+              <div ref={sentinelaRef} aria-hidden style={{ height: 1, flexShrink: 0 }} />
+            )}
           </>
         )}
 
@@ -1005,6 +1142,9 @@ function CalendarioPage() {
           </div>
         )}
       </div>
+
+      {/* R190: a dica expandida — some enquanto se arrasta, para não cobrir o alvo */}
+      {dica && !arrastando && <DicaDaAtividade ancora={dica} pessoas={mapaPessoas} isLight={isLight} />}
 
       <PainelChamado
         chamadoId={painelId}

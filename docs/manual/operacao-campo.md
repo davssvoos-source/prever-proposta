@@ -111,6 +111,15 @@ quando o **Diagnóstico** está escrito. O Diagnóstico é o mesmo que o técnic
 escreve na execução. Abaixo vêm os comentários e, por último, a linha do tempo
 (o que o sistema e as pessoas fizeram, do mais antigo ao mais novo).
 
+**O Calendário (R187–R191, U105).** Cada card tem o **fundo na cor do
+status**, bem esmaecido (atrasado = vermelho), e os rostos de quem toca sem
+contorno. Na **mensal**, rolando até o fim do mês aparece o mês seguinte
+embaixo — até três além do escolhido; as setas voltam a um mês só. Passar o
+mouse (ou o foco do teclado) numa atividade abre uma dica com o título, o
+cliente/local, o tipo de demanda e o responsável (e o apoio, quando há); no
+fim, apagado, o quando — hora marcada, "vence neste dia" ou "concluído neste
+dia". Não há mais botão "Hoje": o calendário abre no mês e na semana de hoje.
+
 ## Programação e painéis
 
 - **Programação das equipes** (`/chamados/programacao`): quem sai com quem e

@@ -1775,8 +1775,10 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // o Davi pediu só os títulos na célula
   eq('a célula não mostra hora nem "vence" como texto',
      /vence<\/|Flag size|Clock size/.test(cal), false);
-  eq('mas a hora continua no title do navegador (a informação não sumiu) — e desde a R145 o title começa pela conclusão',
-     /title=\{`\$\{e\.titulo\}\$\{e\.porConclusao/.test(cal) && /concluído neste dia/.test(cal), true);
+  // R190 (U105): o title nativo da mensal saiu — a DICA EXPANDIDA (DicaDaAtividade)
+  // carrega o quando no fim, apagado; a frase continua começando pela conclusão (R145)
+  eq('mas a hora continua a um hover de distância (a informação não sumiu) — na dica expandida da R190, começando pela conclusão (R145)',
+     /<DicaDaAtividade ancora=\{dica\}/.test(cal) && /e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\)/.test(cal), true);
   eq('o rosto do responsável continua na célula', /AvatarPilha/.test(cal), true);
 }
 
@@ -2313,8 +2315,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /const final = c\.status === "concluido" \|\| c\.status === "cancelado"/.test(cal3), true);
 
   // fundo sólido, não véu translúcido (o "cinza muito claro" que o Davi viu)
-  eq('a superfície do calendário é cor SÓLIDA no escuro, não rgba(255,255,255,...)',
-     /const superficie = isLight \? "#ffffff" : "#101016"/.test(cal3), true);
+  // R186 (U105): continua SÓLIDA — e agora cinza neutro, da escala CINZA (era #101016, azulado)
+  eq('a superfície do calendário é cor SÓLIDA no escuro, não rgba(255,255,255,...) — e sai da escala CINZA (R186)',
+     /const superficie = cinzas\(isLight\)\.superficie;/.test(cal3), true);
   eq('nenhum véu translúcido de branco sobrou como fundo de célula',
      /background: doMes \? superficie : \(isLight \? "#fafafa" : "rgba\(255,255,255,0\.012\)"\)/.test(cal3),
      false);
@@ -16402,10 +16405,11 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
         /\.cal-semana \{ display: grid; grid-template-columns: 1fr; gap: 1px; \}/.test(ler94('src/styles.css')),
         /@media \(min-width: 1024px\) \{\s*\n\s*\.cal-semana \{ grid-template-columns: repeat\(7, minmax\(0, 1fr\)\); \}/.test(ler94('src/styles.css'))],
        [false, true, true, true]);
-    eq('U94/R133: os botões da visão são <button aria-pressed>, e "Hoje" volta mês E semana',
+    // R191 (U105): "Hoje" saiu (Davi: "Remova o botão 'Hoje'") — o calendário abre em hoje
+    eq('U94/R133: os botões da visão são <button aria-pressed>; o "Hoje" que voltava mês E semana saiu na R191',
        [/aria-pressed=\{visao === "mes"\}/.test(cal), /aria-pressed=\{visao === "semana"\}/.test(cal),
-        /setMes\(new Date\(hoje\.getFullYear\(\), hoje\.getMonth\(\), 1\)\);\s*\n\s*setSemana\(inicioSemana\(hoje\)\);/.test(cal)],
-       [true, true, true]);
+        /irParaHoje|>\s*Hoje\s*</.test(cal)],
+       [true, true, false]);
   }
 
   // ── A revisão: as chaves decorativas passaram a valer ──────────────────
@@ -16978,7 +16982,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   // ── R153: o card da semana — a REGIÃO da semanal, sem comentários ─────────
   const sem97 = cal97c.slice(cal97c.indexOf('className="cal-semana"'), cal97c.indexOf('/* Cabeçalho dos dias da semana */'));
   eq('R153 CRÍTICO: o card da semana mostra quem toca (avatares), título, cliente e tipo…',
-     [/<AvatarPilha ids=\{e\.pessoas\} pessoas=\{mapaPessoas\} max=\{4\} tamanho=\{20\} \/>/.test(sem97),
+     [/<AvatarPilha ids=\{e\.pessoas\} pessoas=\{mapaPessoas\} max=\{4\} tamanho=\{20\} anel=\{false\} \/>/.test(sem97),  // anel={false}: R188 (U105)
       /\{e\.titulo\}/.test(sem97), /\{e\.cliente\}/.test(sem97), /\{e\.tipoLabel\}/.test(sem97)],
      [true, true, true, true]);
   eq('R153 CRÍTICO: …e NADA mais — sem número, sem status, sem hora, sem "prazo", sem "concluído", sem "Atrasado"',
@@ -16987,7 +16991,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [false, false, false, false, false, false]);
   eq('R153: o que saiu do card ficou na dica do navegador — tipo, status (atrasado primeiro), número, hora/vence/concluído',
      [/title=\{dicaDoEvento\(e\)\}/.test(sem97),
-      /const quando = e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\);/.test(cal97),
+      // U105: a frase virou `quandoDoEvento` — a dica nativa da semanal e a dica expandida da mensal (R190) leem a mesma
+      /const quando = quandoDoEvento\(e\);/.test(cal97)
+        && /const quandoDoEvento = \(e: Evento\) =>\s*\n\s*e\.porConclusao \? "concluído neste dia" : e\.porPrazo \? "vence neste dia" : horaCurta\(e\.quando\);/.test(cal97),
       /\[e\.tipoLabel, e\.atrasado \? "Atrasado" : e\.statusLabel, e\.numero, quando\]/.test(cal97)],
      [true, true, true]);
   eq('R153: a cor da borda esquerda (o status) fica — é cor, não texto',
@@ -17524,8 +17530,9 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R176 CRÍTICO: nenhum avatar espalha glow — o halo colorido saiu dos três desenhos (PessoaComFoto, AvatarCirculo, AvatarPilha)',
      [/0 0 \d+px \$\{d\.glow\}/.test(pcf101), /0 0 \d+px \$\{d\.glow\}/.test(apl101)], [false, false]);
   eq('R176: a PILHA troca o glow por um ANEL na cor da superfície — os círculos se sobrepõem em -7px e precisam se separar sem acrescentar luz',
-     [/boxShadow: `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}`/.test(apl101),
-      /marginLeft: i === 0 \? 0 : -7/.test(apl101)],
+     // R188 (U105): o anel virou a prop `anel` (padrão true) — sem ele a sobreposição cai para -4
+     [/boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}` : undefined,/.test(apl101),
+      /const sobreposicao = anel \? -7 : -4;/.test(apl101) && /marginLeft: i === 0 \? 0 : sobreposicao/.test(apl101)],
      [true, true]);
   eq('R176: o avatar SOLTO não ganhou anel nenhum (não há sobreposição para separar)',
      /boxShadow/.test(codigo101(pcf101)), false);
@@ -17769,6 +17776,104 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /^### 6\.16 Configurador rápido/m.test(ler104('DESIGN_SYSTEM.md')) && /\| `superficie` \| `#141414` \| `#ffffff` \|/.test(ler104('DESIGN_SYSTEM.md')),
       /O Configurador rápido \(R183–R185, U104\)/.test(ler104('docs/manual/operacao-campo.md')),
       /^## U104 /m.test(ler104('docs/PLANO_UNIFICACAO.md'))],
+     [true, true, true, true, true]);
+}
+
+// ── U105 — o Calendário revisto pelo Davi (R187–R191) ────────────────────────
+{
+  const fs105 = require('fs');
+  const ler105 = (f) => fs105.readFileSync(f, 'utf8');
+  const cal105 = ler105('src/routes/_authenticated/calendario.tsx');
+  const cal105c = cal105.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const PAL105 = carregar('src/lib/paleta.ts');
+
+  // R187 — o fundo do card é a cor do status, esmaecida e SÓLIDA
+  eq('R187: o fundo do card do calendário é a cor do status misturada à superfície — 14% no claro, 20% no escuro — e as DUAS visões usam a mesma tinta',
+     [/const tinta = \(cor: string\) => misturar\(cor, superficie, isLight \? 0\.86 : 0\.80\);/.test(cal105),
+      (cal105c.match(/background: tinta\(e\.cor\),/g) ?? []).length,
+      /background: isLight \? "rgba\(0,0,0,0\.045\)" : "rgba\(255,255,255,0\.06\)"/.test(cal105c)],
+     [true, 2, false]);
+  {
+    const lum = (hex) => {
+      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const contraste = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const cores = Object.keys(PAL105.PRISMA);
+    const fracosEscuro = cores.filter((n) => contraste('#ffffff', PAL105.misturar(PAL105.PRISMA[n].dark, PAL105.CINZA.escuro.superficie, 0.80)) < 4.5);
+    const fracosClaro = cores.filter((n) => contraste(PAL105.CINZA.claro.texto, PAL105.misturar(PAL105.PRISMA[n].light, PAL105.CINZA.claro.superficie, 0.86)) < 4.5);
+    eq('R187: o título do card (texto primário) lê a ≥ 4,5:1 sobre o fundo tingido de QUALQUER cor do PRISMA, nos dois temas — medido, não estimado',
+       [fracosEscuro, fracosClaro], [[], []]);
+    eq('R187: a tinta é visível — o fundo tingido difere da superfície em pelo menos 1,08:1 em todas as cores (senão a cor do status não se vê)',
+       cores.filter((n) => contraste(PAL105.misturar(PAL105.PRISMA[n].dark, PAL105.CINZA.escuro.superficie, 0.80), PAL105.CINZA.escuro.superficie) < 1.08), []);
+  }
+
+  // R188 — a pilha sem anel
+  const ap105 = ler105('src/components/AvatarPilha.tsx');
+  eq('R188: AvatarPilha tem `anel` (padrão true); sem anel não há borda nem boxShadow, e a sobreposição cai para -4px',
+     [/anel\?: boolean;/.test(ap105), /anel = true \}: Props\)/.test(ap105),
+      /border: anel \? `2px solid \$\{corDoAnel\}` : "none",/.test(ap105),
+      /boxShadow: anel \? `0 0 0 2px \$\{isLight \? "#ffffff" : "#141416"\}` : undefined,/.test(ap105),
+      /const sobreposicao = anel \? -7 : -4;/.test(ap105)],
+     [true, true, true, true, true]);
+  eq('R188: as DUAS pilhas do calendário vão sem anel (mensal e semanal)',
+     (cal105c.match(/<AvatarPilha ids=\{e\.pessoas\} pessoas=\{mapaPessoas\} max=\{\d\} tamanho=\{\d+\} anel=\{false\} \/>/g) ?? []).length, 2);
+
+  // R189 — os meses seguintes ao rolar
+  eq('R189: até TRÊS meses além do escolhido; a sentinela observada anexa um por vez e some no terceiro',
+     [/const MESES_EXTRAS_MAX = 3;/.test(cal105),
+      /new IntersectionObserver\(\(entradas\) => \{\s*\n\s*if \(entradas\.some\(\(x\) => x\.isIntersecting\)\) setMesesExtras\(\(n\) => Math\.min\(MESES_EXTRAS_MAX, n \+ 1\)\);/.test(cal105),
+      /\{mesesExtras < MESES_EXTRAS_MAX && \(\s*\n\s*<div ref=\{sentinelaRef\}/.test(cal105)],
+     [true, true, true]);
+  eq('R189 CRÍTICO: a janela consultada cresce com os meses anexados — `fimMes` é o fim do ÚLTIMO mês mostrado, e `janela`/chaves não mudaram',
+     [/new Date\(mes\.getFullYear\(\), mes\.getMonth\(\) \+ 1 \+ mesesExtras, 0, 23, 59, 59\)/.test(cal105),
+      /const janela = visao === "mes" \? \{ de: inicioMes, ate: fimMes \} : \{ de: inicioSem, ate: fimSem \};/.test(cal105)],
+     [true, true]);
+  eq('R189: trocar o mês ou a visão volta a UM mês; cada mês anexado tem título próprio e a mesma grade (celulasDoMes é função de módulo)',
+     [/useEffect\(\(\) => \{ setMesesExtras\(0\); \}, \[mes, visao\]\);/.test(cal105),
+      /\{mesesVisiveis\.map\(\(m, indice\) => \(/.test(cal105), /\{indice > 0 && \(\s*\n\s*<h2/.test(cal105),
+      /^function celulasDoMes\(mes: Date\): Date\[\] \{/m.test(cal105), /\{celulasDoMes\(m\)\.map\(\(d\) => \{/.test(cal105),
+      /flex: indice === 0 \? "1 0 auto" : "0 0 auto",/.test(cal105)],
+     [true, true, true, true, true, true]);
+  eq('R189: o contador diz "no período" quando há mais de um mês na tela',
+     /\{visao === "mes" \? \(mesesExtras > 0 \? "no período" : "no mês"\) : "na semana"\}/.test(cal105), true);
+
+  // R190 — a dica expandida
+  eq('R190: o card da mensal expande a dica ao passar o mouse E ao focar (teclado), e a dica é peça de módulo em portal',
+     [/onMouseEnter=\{\(ev\) => mostrarDica\(e, ev\.currentTarget\)\}/.test(cal105), /onFocus=\{\(ev\) => mostrarDica\(e, ev\.currentTarget\)\}/.test(cal105),
+      /^function DicaDaAtividade\(/m.test(cal105), /createPortal\(/.test(cal105), /role="tooltip"/.test(cal105)],
+     [true, true, true, true, true]);
+  {
+    const dica = cal105.slice(cal105.indexOf('function DicaDaAtividade('), cal105.indexOf('function CalendarioPage()'));
+    const pos = ['{e.titulo}', 'linha("Cliente/Local", local)', 'linha("Tipo de demanda", e.tipoLabel)', 'linha("Responsável", responsavel)', 'quandoDoEvento(e)']
+      .map((t) => dica.indexOf(t));
+    eq('R190: a dica traz título → cliente/local → tipo de demanda → responsável (a ordem de quem lê), e o QUANDO apagado no fim (R145)',
+       pos.every((p, i) => p >= 0 && (i === 0 || pos[i - 1] < p)), true);
+    eq('R190: a dica não rouba o mouse do card (pointerEvents none) e some enquanto se arrasta',
+       [/pointerEvents: "none"/.test(dica), /\{dica && !arrastando && <DicaDaAtividade/.test(cal105)], [true, true]);
+  }
+  eq('R190: o `title` do navegador saiu do card da mensal — a dica o substitui (a semanal mantém o dela, R153)',
+     [/title=\{`\$\{e\.titulo\}\$\{e\.porConclusao/.test(cal105), /title=\{dicaDoEvento\(e\)\}/.test(cal105)], [false, true]);
+
+  // R191 — sem "Hoje"
+  eq('R191: o botão "Hoje" saiu, e com ele `irParaHoje` e o estilo `seletor` que só ele usava',
+     [/>\s*Hoje\s*</.test(cal105c), /irParaHoje/.test(cal105c), /const seletor: CSSProperties/.test(cal105c)], [false, false, false]);
+
+  // R186 no calendário
+  eq('R186: as superfícies do calendário saem da escala CINZA (superfície e fora-do-mês), sem os hexes azulados locais',
+     [/const superficie = cinzas\(isLight\)\.superficie;/.test(cal105), /const foraDoMes = cinzas\(isLight\)\.pagina;/.test(cal105),
+      /#101016|#0a0a0e|#191921/i.test(cal105c)],
+     [true, true, false]);
+
+  // regra 7
+  const prod105 = ler105('docs/PRODUTO.md');
+  eq('U105 (regra 7): R187–R191 existem, a última atualização aponta para a R191, o DS tem o §6.17, o manual conta o calendário novo, a U105 está no diário',
+     [['R187', 'R188', 'R189', 'R190', 'R191'].every((r) => new RegExp(`^- \\*\\*${r}\\*\\* —`, 'm').test(prod105)),
+      Number((prod105.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 191,
+      /^### 6\.17 Calendário/m.test(ler105('DESIGN_SYSTEM.md')),
+      /O Calendário \(R187–R191, U105\)/.test(ler105('docs/manual/operacao-campo.md')),
+      /^## U105 /m.test(ler105('docs/PLANO_UNIFICACAO.md'))],
      [true, true, true, true, true]);
 }
 

@@ -13,7 +13,7 @@
 - [8. Questões em aberto — para responder de uma vez](#8-questões-em-aberto-para-responder-de-uma-vez)
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
-- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R186 (50)
+- [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R191 (55)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -27,7 +27,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-04 (R186). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-04 (R191). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3625,3 +3625,40 @@ trabalho".
   `DESIGN_SYSTEM.md`. *(Davi, 04/09/2026: "O Fundo está com tons de azul, eu
   quero que você utilize somente tons de cinza. Tons de cinza escuro para o
   modo escuro e tons de cinza claro para o modo claro".)*
+
+- **R187** — **No calendário, o fundo do card é a cor do status, esmaecida.**
+  A cor é a mesma da borda esquerda (status; atrasado = vermelho), misturada
+  à superfície do tema — 14% da cor no claro, 20% no escuro —, **sólida**, não
+  translúcida: é o que "opacidade baixa" parece, sem depender do que está
+  atrás. Vale para a mensal e a semanal. *(Davi, 04/09/2026: "Os cards devem
+  ter o fundo da cor do status, com uma opacidade baixa".)*
+
+- **R188** — **No calendário, os rostos vão sem contorno.** A pilha de avatares
+  do card não leva o anel da R176 (que, sobre o fundo colorido da R187, lia
+  como um contorno em volta de cada rosto); a sobreposição cai de 7 para 4px.
+  Fora do calendário a pilha continua com o anel. *(Davi, 04/09/2026: "Remova
+  o contorno dos ícones dos usuários".)*
+
+- **R189** — **Na mensal, os meses seguintes aparecem embaixo conforme se
+  rola — até três além do escolhido.** O primeiro mês preenche a tela; ao
+  chegar ao fim dele o mês seguinte é anexado, com título próprio e a mesma
+  grade, e a janela consultada cresce junto. Navegar pelas setas ou trocar a
+  visão volta a um mês só. O contador diz "no período" quando há mais de um
+  mês na tela. *(Davi, 04/09/2026: "Os calendários mensais devem ir aparecendo
+  abaixo conforme eu for rolando a tela, isso até um limite de mais 3
+  meses".)*
+
+- **R190** — **Passar o mouse (ou focar) numa atividade da mensal expande uma
+  dica com Título, Cliente/Local, Tipo de demanda e Responsável** — nesta
+  ordem, a de quem lê (o quê → onde → que tipo → quem); o apoio entra quando
+  há, e o *quando* (hora, "vence neste dia", "concluído neste dia"), o
+  atrasado e o número ficam apagados no fim, porque a R145 mandou essa
+  informação não sumir (era o tooltip do navegador, que saiu). A semanal não
+  ganha a dica: o card dela já mostra os quatro (R153). *(Davi, 04/09/2026:
+  "Ao passar o mouse por cima de uma atividade, deve expandir um campo com:
+  Responsável, Tipo de Demanda, Cliente/Local e Título — não na ordem que
+  escrevi".)*
+
+- **R191** — **O calendário não tem botão "Hoje".** Ele abre no mês e na
+  semana de hoje; as setas andam a partir daí. *(Davi, 04/09/2026: "Remova o
+  botão 'Hoje'".)*

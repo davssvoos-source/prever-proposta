@@ -10432,3 +10432,45 @@ manual de campo; `ESTADO_ATUAL.md`.
 
 **Números.** Verificador: 2.960 asserções, 0 falharam (+ o bloco U104). `tsc`:
 57 (baseline). Build completa.
+
+## U105 — o Calendário revisto pelo Davi: card tingido, sem anel, meses ao rolar, dica, sem "Hoje" (R187–R191)
+
+Terceira tela da revisão manual de 04/09/2026. Cinco pedidos, cinco regras.
+
+**Briefing.** Usuário: quem coordena (Vinicius, SAC) varrendo o mês no
+desktop. Objetivo: ver de relance O QUE há em cada dia e de que cor (status).
+Ação principal: abrir a atividade certa. Hierarquia: dia → cor do card →
+título → rosto. Sai: o botão "Hoje" e o tooltip nativo da mensal. Reuso:
+`misturar` (paleta), `AvatarPilha` (ganha `anel`), `MenuFiltro`,
+`PainelChamado`. Nasce: `DicaDaAtividade` (portal), `celulasDoMes` (função
+de módulo — era um `useMemo` amarrado a um mês só).
+
+**Decisões que não estavam no pedido, e por quê.**
+
+- **Mistura sólida em vez de `rgba`** (R187). O Davi disse "opacidade
+  baixa"; a mistura é o que a opacidade parece, sem depender do que está
+  atrás — a mesma lição da U13 (o "cinza muito claro" era um véu). Os números
+  (14%/20%) foram medidos: texto primário ≥ 4,5:1 sobre o tingido de qualquer
+  cor do PRISMA nos dois temas, e o tingido a ≥ 1,08:1 da superfície.
+- **A janela consultada cresce com os meses anexados** (R189) sem trocar a
+  linha `janela`/as chaves das consultas: `fimMes` passou a ser o fim do
+  ÚLTIMO mês mostrado. A asserção da U94 que fixa a linha continua verde.
+- **A ordem da dica** (R190): o Davi disse "não na ordem que escrevi". Ficou
+  título → cliente/local → tipo → responsável — a ordem de quem lê (o quê,
+  onde, que tipo, quem). E o *quando* apagado no fim, porque a R145 mandou a
+  informação não sumir e o tooltip nativo saiu (dois tooltips brigariam).
+- **A dica só na mensal**: a semanal já mostra os quatro no card (R153) e
+  mantém a dica nativa dela.
+- **`anel` como prop**, não a remoção global do anel: o pedido foi do
+  calendário, e a R176 continua valendo nas pilhas da Início.
+
+**O que a verificação pegou.** Seis asserções da U13/U40/U94/U97/U101
+descreviam o desenho antigo (o tooltip da mensal, a superfície `#101016`, o
+botão "Hoje", a pilha com anel nas duas visões, o `quando` inline da dica);
+reapontadas com o motivo. Nenhuma apagada.
+
+**Regra 7.** R187–R191 no `PRODUTO.md`; `DESIGN_SYSTEM.md` §6.17 (e a nota
+do anel em §6.15); manual de campo; `ESTADO_ATUAL.md`.
+
+**Números.** Verificador: 2.976 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.
