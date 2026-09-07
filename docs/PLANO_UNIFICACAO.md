@@ -10661,5 +10661,5 @@ resto.
 **Regra 7.** R196–R199 no `PRODUTO.md` (seção 22); manual de clientes/QAP e o
 de códigos de erro (ADM → EQP); `ESTADO_ATUAL.md` com U109 e U110 pendentes.
 
-**Números.** Verificador: . asserções, 0 falharam. `tsc`: 57 (baseline).
+**Números.** Verificador: 3.038 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.

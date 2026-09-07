@@ -9,7 +9,7 @@
 > ganham — e isto aqui se corrige.
 
 Última atualização: **2026-09-04** · última regra: **R199** · último diário:
-**U109** · verificador: **. asserções, 0 falharam** · `tsc`: baseline
+**U109** · verificador: **3.038 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os equipamentos do QAP)
