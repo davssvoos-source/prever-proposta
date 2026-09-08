@@ -3598,83 +3598,24 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R62 está documentado', /\*\*R62\*\*/.test(produto8), true);
 }
 
-// ── R63/U52: estrutura de blocos permanente do cliente ──────────────────────
+// ── R63/U52 → R202/U112: a estrutura de blocos do cliente ficou no ORÇAMENTO ──
+//
+// A U52 pôs `codigo_bloco`/`config_bloco` em `cliente_sistemas` e a ficha ganhou
+// um editor de estrutura por perguntas (R63). Em 07/09/2026 o Davi mandou o
+// contrário para cliente que já é nosso: "a estrutura pula etapas, nós
+// indicamos direto os equipamentos de cada bloco" (R202). O editor e o módulo
+// puro dele saíram do repo; as colunas ficam (bloco importado do escopo traz o
+// código do orçamento, que a ficha MOSTRA e não edita). O que se trava aqui é
+// a subtração — e que o orçamento continua sabendo gerar o código.
 {
   const fs34 = require('fs');
-  const BC = carregar('src/features/clientes/blocoCliente.ts');
   const u52 = fs34.readFileSync('supabase/migrations/20260822060000_u52_estrutura_de_blocos_do_cliente.sql', 'utf8');
   const inv = fs34.readFileSync('src/features/clientes/inventario.ts', 'utf8');
-  const ed = fs34.readFileSync('src/features/clientes/EditorBlocoCliente.tsx', 'utf8');
   const ic = fs34.readFileSync('src/features/clientes/InventarioCliente.tsx', 'utf8');
+  const icc = ic.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const BL = carregar('src/lib/blocos.ts');
 
-  // ── configPadrao: nunca abre vazio, e nunca abre já INVÁLIDO ────────────
-  const BC_TIPOS = carregar('src/lib/blocos.ts');
-  for (const tipo of ['PED', 'VEI', 'CFTV', 'AL', 'CER', 'CENT']) {
-    eq(`configPadrao(${tipo}) já nasce válida (o formulário nunca abre "incompleto" de saída)`,
-       BC.configValida(BC.configPadrao(tipo)), true);
-    eq(`configPadrao(${tipo}) mantém tipoBloco correto`,
-       BC.configPadrao(tipo).tipoBloco, tipo);
-  }
-  eq('configPadrao(PED) já gera um código de verdade, sem precisar preencher nada',
-     typeof BC_TIPOS.gerarCodigoBloco(BC.configPadrao('PED')), 'string');
-  eq('configPadrao(PED) tem porta como barreira 1 padrão (o caso mais comum de acesso de pedestre)',
-     BC.configPadrao('PED').b1.tipo, 'PORP');
-
-  // ── barreiraCompleta / configValida — a régua que decide "pode salvar" ──
-  eq('barreira sem tipo NÃO está completa', BC.barreiraCompleta({ tipo: '', entrada: '', saida: '' }), false);
-  eq('barreira ELEV completa exige tamanho E abertura (corta-fogo), não entrada/saída',
-     [
-       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '' }),
-       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL' }),
-       BC.barreiraCompleta({ tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL', abertura: 'PCF' }),
-     ],
-     [false, false, true]);
-  eq('barreira PORP completa exige entrada E saída (abertura é opcional pra "completa")',
-     BC.barreiraCompleta({ tipo: 'PORP', entrada: 'FAC', saida: 'FAC' }), true);
-  eq('barreira PORP com entrada mas sem saída NÃO está completa',
-     BC.barreiraCompleta({ tipo: 'PORP', entrada: 'FAC', saida: '' }), false);
-
-  eq('CRÍTICO: configValida(PED sem eclusa) só olha b1 — b2 indefinido não pode reprovar quem não é eclusa',
-     BC.configValida({ tipoBloco: 'PED', eclusa: false, b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' } }),
-     true);
-  eq('configValida(PED COM eclusa) exige b1 E b2 completos',
-     [
-       BC.configValida({ tipoBloco: 'PED', eclusa: true, b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' } }),
-       BC.configValida({
-         tipoBloco: 'PED', eclusa: true,
-         b1: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' },
-         b2: { tipo: 'PORP', entrada: 'FAC', saida: 'FAC' },
-       }),
-     ],
-     [false, true]);
-  eq('configValida(CFTV) exige tecnologia',
-     [BC.configValida({ tipoBloco: 'CFTV', eclusa: false }),
-      BC.configValida({ tipoBloco: 'CFTV', eclusa: false, tecnologia: 'IP' })],
-     [false, true]);
-  eq('configValida(CER) aceita perímetro/esquinas zerados — "ainda não medido" é um estado válido, não um erro',
-     BC.configValida({ tipoBloco: 'CER', eclusa: false, perimetro: 0, esquinas: 0 }), true);
-  eq('configValida(CENT) exige portaria escolhida',
-     [BC.configValida({ tipoBloco: 'CENT', eclusa: false }),
-      BC.configValida({ tipoBloco: 'CENT', eclusa: false, portaria: 'PR' })],
-     [false, true]);
-
-  // A garantia central do editor: toda config que configValida aprova
-  // PRECISA gerar um código de verdade — senão "válido" mentiria
-  {
-    const validas = [
-      BC.configPadrao('PED'), BC.configPadrao('VEI'), BC.configPadrao('CFTV'),
-      BC.configPadrao('AL'), BC.configPadrao('CER'), BC.configPadrao('CENT'),
-      { tipoBloco: 'PED', eclusa: true,
-        b1: { tipo: 'CAT', entrada: 'FAC', saida: 'FAC' },
-        b2: { tipo: 'ELEV', entrada: '', saida: '', tamanho: '2EL', abertura: 'PCF' }, portaria: 'PP' },
-      { tipoBloco: 'VEI', eclusa: false, b1: { tipo: 'PORV', entrada: 'TAG', saida: 'TAG', abertura: 'PIVO', tamanho: '350CM', folhas: '2F' }, portaria: 'PR' },
-    ];
-    const todasGeramCodigo = validas.every((c) => typeof BC_TIPOS.gerarCodigoBloco(c) === 'string' && BC_TIPOS.gerarCodigoBloco(c).length > 0);
-    eq('CRÍTICO: TODA config aprovada por configValida gera um codigo_bloco de verdade (não undefined/buraco)',
-       todasGeramCodigo, true);
-  }
-
-  // ── a migration ─────────────────────────────────────────────────────────
+  // ── a migration (rodada; as colunas continuam existindo) ────────────────
   eq('U52 adiciona codigo_bloco e config_bloco em cliente_sistemas (não cria tabela nova)',
      /ALTER TABLE public\.cliente_sistemas\s*\n\s*ADD COLUMN IF NOT EXISTS codigo_bloco text,\s*\n\s*ADD COLUMN IF NOT EXISTS config_bloco jsonb;/.test(u52),
      true);
@@ -3684,46 +3625,29 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      /esperado 0 — sem backfill/.test(u52), true);
   eq('U52 termina com SELECT de verificação', /Verificação/.test(u52), true);
 
-  // ── inventario.ts ────────────────────────────────────────────────────────
-  eq('SistemaInstalado carrega codigo_bloco/config_bloco',
+  // ── inventario.ts LÊ a estrutura, não a gera ─────────────────────────────
+  eq('SistemaInstalado carrega codigo_bloco/config_bloco — para LER o que um bloco importado do escopo trouxe do orçamento',
      /codigo_bloco: string \| null;\s*\n\s*config_bloco: BlocoConfig \| null;/.test(inv), true);
-  eq('useInventario busca as duas colunas novas',
+  eq('useInventario busca as duas colunas',
      /codigo_bloco, config_bloco/.test(inv), true);
-  eq('TIPOS_COM_ESTRUTURA é EXATAMENTE os 6 tipos que gerarCodigoBloco sabe montar (ELV/TOT ficam de fora, de propósito)',
-     inv.match(/export const TIPOS_COM_ESTRUTURA: TipoBloco\[\] = \[([^\]]+)\];/)?.[1].replace(/[\s"]/g, ''),
-     'PED,VEI,CFTV,AL,CER,CENT');
-  eq('salvarConfigBloco grava codigo_bloco E descricao, os dois DERIVADOS da config (não digitados à parte)',
-     /const codigo_bloco = gerarCodigoBloco\(config\);\s*\n\s*const descricao = gerarDescricaoBloco\(config\);/.test(inv),
-     true);
+  eq('R202 CRÍTICO: a estrutura por perguntas SAIU da ficha — inventario.ts não tem mais TIPOS_COM_ESTRUTURA/temEstrutura/salvarConfigBloco e não importa gerarCodigoBloco; a geração do código é do orçamento, e src/lib/blocos.ts continua a exportá-la',
+     [/TIPOS_COM_ESTRUTURA|temEstrutura|salvarConfigBloco/.test(inv), /gerarCodigoBloco|gerarDescricaoBloco/.test(inv), typeof BL.gerarCodigoBloco],
+     [false, false, 'function']);
+  eq('R202: os dois arquivos do editor de estrutura da ficha foram apagados (EditorBlocoCliente.tsx e blocoCliente.ts)',
+     [fs34.existsSync('src/features/clientes/EditorBlocoCliente.tsx'), fs34.existsSync('src/features/clientes/blocoCliente.ts')],
+     [false, false]);
 
-  // ── EditorBlocoCliente.tsx ───────────────────────────────────────────────
-  eq('o editor usa a MESMA useModalEstilos/BotaoFechar da ficha do cliente — não inventa uma segunda casca de modal',
-     /import \{ useModalEstilos, BotaoFechar \} from "\.\/InventarioCliente";/.test(ed), true);
-  eq('a prévia do código roda ao vivo (useMemo sobre gerarCodigoBloco), antes de salvar',
-     /const codigo = useMemo\(\(\) => \(configValida\(config\) \? gerarCodigoBloco\(config\) : null\), \[config\]\);/.test(ed),
-     true);
-  eq('o botão Salvar fica desabilitado enquanto a config não é válida — não dá pra gravar um bloco pela metade',
-     /disabled=\{salvar\.isPending \|\| !valido\}/.test(ed), true);
-  eq('trocar o TIPO da barreira reseta entrada/saída — não herda opção de uma lista que já não se aplica',
-     /aoMudar=\{\(tipo\) => aoMudar\(\{ tipo, entrada: "", saida: "" \}\)\}/.test(ed), true);
-  eq('trocar a ABERTURA reseta peso/folhas/tamanho — MOL tinha peso, PIVO/BASC têm tamanho, não é o mesmo campo',
-     /peso: undefined, folhas: undefined, tamanho: undefined,/.test(ed), true);
-  eq('DESL não pergunta peso — mesma regra fixa do wizard original (só um motor em uso)',
-     /DESL: sem pergunta de peso/.test(ed), true);
-
-  // ── wiring na ficha do cliente ───────────────────────────────────────────
-  eq('InventarioCliente só oferece "Configurar bloco" para quem tem estrutura (temEstrutura)',
-     /\{temEstrutura\(s\.tipo\) && \(/.test(ic), true);
-  eq('o botão troca de rótulo depois de configurado — "Configurar bloco" vira "Editar estrutura"',
-     /\{s\.codigo_bloco \? "Editar estrutura" : "Configurar bloco"\}/.test(ic), true);
-  eq('o código do bloco aparece no card, quando existe — sem precisar abrir o editor pra ver se já está estruturado',
-     /\{s\.codigo_bloco && \(/.test(ic), true);
-  eq('o modal "bloco" está fiado (setModal + render do EditorBlocoCliente)',
-     /setModal\(\{ tipo: "bloco", sistema: s \}\)/.test(ic) && /modal\?\.tipo === "bloco" &&/.test(ic),
-     true);
+  // ── InventarioCliente: o código é informação; o bloco novo é só nome ─────
+  eq('R202: o código do bloco continua visível quando existe (informação vinda do orçamento), mas não há mais "Configurar bloco"/"Editar estrutura" nem o modal "bloco"',
+     [/\{s\.codigo_bloco && \(/.test(ic), /Configurar bloco|Editar estrutura|EditorBlocoCliente|temEstrutura/.test(icc), /tipo: "bloco"/.test(icc)],
+     [true, false, false]);
+  eq('R202: o modal de novo bloco oferece os nomes sugeridos do tipo como um clique (NOMES_SUGERIDOS[tipo]) e cria com criarSistema — tipo, nome, descrição, nada de estrutura',
+     [/const sugestoes = NOMES_SUGERIDOS\[tipo\] \?\? \[\];/.test(ic), /onClick=\{\(\) => setNome\(n\)\}/.test(ic),
+      /criarSistema\(\{\s*\n\s*cliente_id: clienteId,\s*\n\s*tipo,\s*\n\s*nome: nome\.trim\(\) \|\| TIPO_SISTEMA_LABEL\[tipo\],/.test(ic)],
+     [true, true, true]);
 
   const produto9 = fs34.readFileSync('docs/PRODUTO.md', 'utf8');
-  eq('R63 está documentado', /\*\*R63\*\*/.test(produto9), true);
+  eq('R63 está documentado — e revista pela R202', [/\*\*R63\*\*/.test(produto9), /\*\*R202\*\*/.test(produto9)], [true, true]);
 }
 
 // ── R64: Painel Comercial vira lista única — etapas do ciclo (2026-08-22) ──
@@ -16899,12 +16823,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true, true]);
   const fc96 = ler96('src/routes/_authenticated/clientes.$id.tsx');
   eq('R146 CRÍTICO: a ficha é duas colunas (.detalhe-grid), o WhatsApp abre o WhatsApp, a fachada sobe pela ficha, e o histórico inclui o grupo (servicos_prestados) com teto declarado',
-     [/className="detalhe-grid"/.test(fc96), /href=\{whatsappLink\(whatsapp\)\}/.test(fc96),
+     [/className="detalhe-grid"/.test(fc96), /href=\{whatsappLink\(whatsapp\)\}/.test(ler96('src/features/clientes/ClienteForm.tsx')), // U112: Contato mora no ClienteForm
       /useChamadosDoCliente\(id, cliente\?\.servicos_prestados\)/.test(fc96), /const TETO_CHAMADOS = 12;/.test(fc96),
       /subirFachada\(cliente, arquivo\)/.test(fc96), /Adicionar foto da fachada/.test(fc96), /ordens\.slice\(0, 8\)/.test(fc96)],
      [true, true, true, true, true, true, false]);
   eq('R146: os contatos viram Proprietário / Encarregado(a) em residência e galpão — o mesmo vocabulário da proposta',
-     /const semSindico = cliente\.tipo_local === "residencia" \|\| cliente\.tipo_local === "empresa";/.test(fc96), true);
+     /const semSindico = cliente\.tipo_local === "residencia" \|\| cliente\.tipo_local === "empresa";/.test(ler96('src/features/clientes/ClienteForm.tsx')), true); // U112: CardContatos
   const lc96 = ler96('src/routes/_authenticated/clientes.tsx');
   eq('R146: o card da lista recebe a fachada como camada (FachadaDoCard) que entra com a classe .pronta no onLoad',
      [/function FachadaDoCard\(/.test(lc96), /className=\{`fachada-card\$\{pronta \? " pronta" : ""\}`\}/.test(lc96), /onLoad=\{\(\) => setPronta\(true\)\}/.test(lc96)],
@@ -16915,7 +16839,7 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /\.fachada-card\.pronta \{ opacity: 0\.55; \}/.test(css96), /\[data-theme="light"\] \.fachada-card\.pronta \{ opacity: 0\.45; \}/.test(css96)],
      [true, true, true, true]);
   eq('R146: o formulário do cliente chama o telefone de WhatsApp (síndico e zelador)',
-     (ler96('src/features/clientes/ClienteForm.tsx').match(/<label style=\{LABEL\}>WhatsApp<\/label>/g) ?? []).length, 2);
+     (ler96('src/features/clientes/ClienteForm.tsx').match(/<label style=\{s\.LABEL\}>WhatsApp<\/label>/g) ?? []).length, 2); // U112: estilos vêm de useEstilosDoCard
   eq('R147: escolher o cliente na proposta herda a fachada como arquivo (o mesmo caminho de upload da foto tirada na hora)',
      /baixarFachadaComoArquivo\(c\.foto_fachada_url\)/.test(ler96('src/routes/_authenticated/gerencial.nova.tsx')), true);
 
@@ -18471,40 +18395,37 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('R200: excluir um bloco avisa que os equipamentos voltam para a fila (a FK é SET NULL) e pede confirmação',
      /Os \$\{doQap\.length\} equipamentos dele voltam para a fila de vínculo\./.test(inv111) && /if \(confirm\(aviso\)\) removerSistema\.mutate\(s\.id\);/.test(inv111), true);
 
-  // ── R201: a ficha v2 ───────────────────────────────────────────────────────
+  // ── R201 → R203: a ficha v2, numa página só ──────────────────────────────
   const fic111 = ler111('src/routes/_authenticated/clientes.$id.tsx');
   const fic111c = cod111(fic111);
-  eq('R201: cabeçalho de página — h1 22/700 com o nome (ou "Configurar cliente"), situação e tipo de local ao lado, endereço numa linha e as etiquetas de serviço embaixo; o botão diz "Configurar"',
+  const form111 = ler111('src/features/clientes/ClienteForm.tsx');
+  eq('R201: cabeçalho de página — h1 22/700 com o nome, situação e tipo de local ao lado, endereço numa linha e as etiquetas de serviço embaixo',
      [/fontFamily: FONT, fontWeight: 700, fontSize: 22, margin: 0/.test(fic111),
-      /\{editando \? "Configurar cliente" : cliente\.nome\}/.test(fic111),
+      /\{cliente\.nome\}\s*\n\s*<\/h1>/.test(fic111),
       /\{enderecoCurto \|\| "endereço não informado"\}/.test(fic111),
-      /<Pencil size=\{14\} color=\{gold\} \/>\s*\n\s*Configurar/.test(fic111)],
+      /Serviço prestado<\/span>/.test(fic111)],
      [true, true, true, true]);
   {
     const ordem = ['<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<EquipamentosDoCliente clienteId={id} />',
       '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>', '<span style={SEC_LABEL}>Histórico de visitas</span>',
-      '<span style={SEC_LABEL}>O local</span>', '<span style={SEC_LABEL}>Contatos</span>', '<span style={SEC_LABEL}>Contratos</span>', '<span style={SEC_LABEL}>Observações</span>']
+      'Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
+      '<span style={SEC_LABEL}>Contratos</span>', '<CardEstrutura {...propsDosCards} />']
       .map((t) => fic111c.indexOf(t));
-    eq('R201: a coluna larga é o LOCAL (sistemas → fila → atividades → plantão → visitas) e a estreita é a IDENTIDADE (o local → contatos → contratos → observações), nesta ordem',
+    eq('R201/R203: a coluna larga é o LOCAL (sistemas → fila → atividades → plantão → visitas) e a estreita é a IDENTIDADE (fachada → o local → contatos → contratos → estrutura e observações), nesta ordem',
        ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
   }
-  eq('R201: `Contato` virou componente de MÓDULO (dentro do pai remontaria a cada render), e a ficha continua na grade .detalhe-grid',
-     [/^function Contato\(/m.test(fic111), /function ClienteDetalhePage\(\) \{[\s\S]*?\n  function Contato\(/.test(fic111), /className="detalhe-grid"/.test(fic111)],
+  eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha continua na grade .detalhe-grid',
+     [/^export function Contato\(/m.test(form111), /function ClienteDetalhePage\(\) \{[\s\S]*?\n  function Contato\(/.test(fic111), /className="detalhe-grid"/.test(fic111)],
      [true, false, true]);
-  eq('R201: a ficha e o formulário falam o design system — cinzas(isLight), card(isLight), etiqueta(); nenhum gradiente próprio de tema sobrou',
-     [/cinzas\(isLight\)/.test(fic111) && /cinzas\(isLight\)/.test(ler111('src/features/clientes/ClienteForm.tsx')),
-      /linear-gradient\(135deg,#ffffff|#161616 0%/.test(cod111(ler111('src/features/clientes/ClienteForm.tsx'))),
+  eq('R201: a ficha e os cards falam o design system — cinzas(isLight), card(isLight), etiqueta(); nenhum gradiente próprio de tema sobrou',
+     [/cinzas\(isLight\)/.test(fic111) && /cinzas\(isLight\)/.test(form111),
+      /linear-gradient\(135deg,#ffffff|#161616 0%/.test(cod111(form111)),
       /linear-gradient\(135deg,#ffffff|#161616 0%/.test(fic111c)],
      [true, false, false]);
-  const form111 = ler111('src/features/clientes/ClienteForm.tsx');
-  eq('R201: a configuração é DUAS colunas (.ficha-colunas): Identificação + Endereço | Contatos + Estrutura; os chips são botaoSelecao sem brilho; os campos têm 42px',
-     [/<div className="ficha-colunas">/.test(form111),
-      (form111.match(/<section aria-label=/g) ?? []).length,
-      /\.\.\.botaoSelecao\(ativo, isLight, null\), boxShadow: "none",/.test(form111),
+  eq('R201: os chips dos cards são botaoSelecao sem brilho (R174) e os campos têm 42px',
+     [/\.\.\.botaoSelecao\(ativo, isLight, null\), boxShadow: "none",/.test(form111),
       /height: 42, borderRadius: 12, padding: "0 13px",/.test(form111)],
-     [true, 2, true, true]);
-  eq('R201: .ficha-colunas é uma coluna no celular e duas a partir de 1024px — o mesmo breakpoint da casa',
-     /\.ficha-colunas \{ display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.ficha-colunas \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/.test(ler111('src/styles.css')), true);
+     [true, true]);
 
   // regra 7
   const prod111 = ler111('docs/PRODUTO.md');
@@ -18515,6 +18436,93 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /Sistemas instalados e o vínculo/.test(ler111('docs/manual/clientes-qap.md')),
       /^## U111 /m.test(ler111('docs/PLANO_UNIFICACAO.md')), /U111/.test(ler111('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true]);
+}
+
+// ── U112 — blocos nomeados direto na ficha; a ficha do cliente numa página só (R202–R203) ──
+{
+  const fs112 = require('fs');
+  const path112 = require('path');
+  const ler112 = (f) => fs112.readFileSync(f, 'utf8');
+  const cod112 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const arvore112 = (dir, acc = []) => {
+    for (const e of fs112.readdirSync(dir, { withFileTypes: true })) {
+      const p = path112.join(dir, e.name).replace(/\\/g, '/');
+      if (e.isDirectory()) arvore112(p, acc);
+      else if (/\.tsx?$/.test(e.name)) acc.push(p);
+    }
+    return acc;
+  };
+  const src112 = arvore112('src');
+
+  // ── R202: o bloco é tipo + nome; a estrutura por perguntas é do orçamento ──
+  eq('R202 CRÍTICO (CENSO): nenhum arquivo de src/ cita EditorBlocoCliente, blocoCliente, temEstrutura, salvarConfigBloco ou TIPOS_COM_ESTRUTURA em linha de código — a estrutura por perguntas saiu da ficha inteira, não só do botão',
+     src112.filter((a) => /EditorBlocoCliente|blocoCliente|temEstrutura|salvarConfigBloco|TIPOS_COM_ESTRUTURA/.test(cod112(ler112(a)))), []);
+  eq('R202: o orçamento continua gerando código e descrição do bloco por perguntas — a estrutura não morreu, mudou de lugar',
+     [/export function gerarCodigoBloco/.test(ler112('src/lib/blocos.ts')), /export function gerarDescricaoBloco/.test(ler112('src/lib/blocos.ts'))],
+     [true, true]);
+  const inv112 = ler112('src/features/clientes/inventario.ts');
+  eq('R202: NOMES_SUGERIDOS cobre os 11 tipos e traz os oito blocos do Paineiras que o Davi ditou (PED com três nomes; VEI, CFTV, CER, TOT e CENT com um)',
+     [(inv112.match(/^  (PED|VEI|CFTV|AL|CER|CENT|ELV|TOT|CAE|CCA|OUTRO): \[/gm) ?? []).length,
+      /PED: \["Eclusa de pedestres", "Porta de carga\/descarga", "Porta do armário de encomendas"\],/.test(inv112),
+      /VEI: \["Eclusa veicular"\],/.test(inv112), /CFTV: \["CFTV"\],/.test(inv112), /CER: \["Cerca elétrica"\],/.test(inv112),
+      /TOT: \["Totem de monitoramento"\],/.test(inv112), /CENT: \["Central de portaria remota"\],/.test(inv112)],
+     [11, true, true, true, true, true, true]);
+  const ic112 = ler112('src/features/clientes/InventarioCliente.tsx');
+  eq('R202: o modal "Novo bloco" pede tipo e nome (descrição opcional), oferece os nomes sugeridos como um clique e diz que os equipamentos se vinculam depois; o código do bloco importado do escopo fica visível como leitura, e nenhum botão de estrutura sobrou',
+     [/const sugestoes = NOMES_SUGERIDOS\[tipo\] \?\? \[\];/.test(ic112), /onClick=\{\(\) => setNome\(n\)\}/.test(ic112),
+      /Só o nome: os equipamentos do QAP são vinculados a ele depois\./.test(ic112),
+      /\{s\.codigo_bloco && \(/.test(ic112), /Configurar bloco|Editar estrutura/.test(cod112(ic112))],
+     [true, true, true, true, false]);
+  eq('R202: o vazio de "Sistemas instalados" ensina o que é um bloco com os exemplos do Davi',
+     /a eclusa de pedestres, a eclusa veicular, o CFTV, a cerca\s*\n?\s*elétrica, a central de portaria remota/.test(ic112), true);
+
+  // ── R203: uma página só, edição no lugar ──────────────────────────────────
+  const fic112 = ler112('src/routes/_authenticated/clientes.$id.tsx');
+  const fic112c = cod112(fic112);
+  const form112 = ler112('src/features/clientes/ClienteForm.tsx');
+  eq('R203 CRÍTICO: a ficha não tem mais modo de configuração — sem `editando`, sem botão "Configurar", sem `<ClienteForm>` inteiro; os três cards editáveis entram no lugar, na coluna da identidade',
+     [/editando/.test(fic112c), /Configurar cliente|Configurar<\/button>|\n\s*Configurar\n/.test(fic112c), /<ClienteForm\b/.test(fic112c),
+      /import \{ CardLocal, CardContatos, CardEstrutura \} from "@\/features\/clientes\/ClienteForm";/.test(fic112),
+      /<CardLocal \{\.\.\.propsDosCards\} \/>/.test(fic112), /<CardContatos \{\.\.\.propsDosCards\} veFinanceiro=\{veFinanceiro\} \/>/.test(fic112),
+      /<CardEstrutura \{\.\.\.propsDosCards\} \/>/.test(fic112)],
+     [false, false, false, true, true, true, true]);
+  eq('R203: cada card tem o próprio lápis e Salvar/Cancelar dentro dele (CascaDoCard) e grava SÓ os campos dele — o patch é parcial de propósito, e a mutação da página aceita o patch parcial',
+     [/^function CascaDoCard\(/m.test(form112),
+      /aria-label=\{`Editar \$\{titulo\.toLowerCase\(\)\}`\}/.test(form112),
+      /\{salvando \? "Salvando…" : rotuloSalvar\}/.test(form112),
+      (form112.match(/await onSalvar\(\{/g) ?? []).length,
+      (form112.match(/^export function (CardLocal|CardContatos|CardEstrutura)\(/gm) ?? []).length,
+      /mutationFn: \(patch: ClientePatch\) => atualizarCliente\(id, patch\),/.test(fic112),
+      /onSalvar: \(p: ClientePatch\) => salvar\.mutateAsync\(p\)/.test(fic112)],
+     [true, true, true, 3, 3, true, true]);
+  eq('R203: só quem pode editar vê o lápis — o card em leitura é o mesmo para todos',
+     [/podeEditar && !editando && \(/.test(form112), /podeEditar: isGerente/.test(fic112)],
+     [true, true]);
+  eq('R203: a fachada continua subindo pelo próprio card (R146), as etiquetas de serviço continuam sendo o controle no cabeçalho (R41/R173), e nenhum campo do antigo formulário ficou sem card',
+     [/subirFachada\(cliente, arquivo\)/.test(fic112), /Adicionar foto da fachada/.test(fic112),
+      /salvar\.mutate\(\{ servicos_prestados: novos \}\);/.test(fic112),
+      ['nome', 'documento', 'tipo_local', 'situacao', 'endereco', 'complemento', 'cidade', 'uf', 'latitude', 'longitude',
+       'nome_sindico', 'telefone_sindico', 'email_sindico', 'nome_zelador', 'telefone_zelador', 'email_zelador',
+       'responsavel_financeiro', 'email_financeiro', 'qtd_apartamentos', 'qtd_acessos', 'observacoes']
+        .filter((campo) => !new RegExp('\\b' + campo + '\\b').test(form112))],
+     [true, true, true, []]);
+  eq('R203: .ficha-colunas saiu do CSS (a configuração em duas colunas não existe mais); a grade da ficha continua a .detalhe-grid',
+     [/\.ficha-colunas/.test(ler112('src/styles.css')), /\.detalhe-grid \{/.test(ler112('src/styles.css'))],
+     [false, true]);
+
+  // regra 7
+  const prod112 = ler112('docs/PRODUTO.md');
+  const ds112 = ler112('DESIGN_SYSTEM.md');
+  const sec620 = ds112.slice(ds112.indexOf('### 6.20 Ficha do cliente'), ds112.indexOf('### 6.13 Card de cliente'));
+  eq('U112 (regra 7): R202–R203 existem, a última atualização aponta para a R203, a R201 e a R63 remetem à revisão, o DS §6.20 não fala mais em Configurar nem em .ficha-colunas, o manual não manda "Configurar bloco", a U112 está no diário e no ESTADO',
+     [['R202', 'R203'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod112)),
+      Number((prod112.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 203,
+      /R203/.test(prod112.slice(prod112.indexOf('- **R201** —'), prod112.indexOf('- **R202** —'))),
+      /R202/.test(prod112.slice(prod112.indexOf('**R63**'), prod112.indexOf('**R63**') + 2500)),
+      sec620.length > 500 && /Configurar|ficha-colunas/.test(sec620),
+      /Configurar bloco/.test(ler112('docs/manual/clientes-qap.md')),
+      /^## U112 /m.test(ler112('docs/PLANO_UNIFICACAO.md')), /U112/.test(ler112('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, false, false, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

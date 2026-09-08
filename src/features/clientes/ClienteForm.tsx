@@ -1,27 +1,32 @@
-// Formulário de cliente — usado no cadastro (/clientes/novo) e na configuração
-// (/clientes/$id). Campos agrupados por assunto, no design system da casa:
-// card(isLight), micro-rótulo, campo em cinza neutro, botão de seleção sem
-// brilho, e o botão dourado como ÚNICA ação principal.
+// Os CARDS EDITÁVEIS da ficha do cliente — a ficha é uma página só (R203, U112).
 //
-// ── R201 (U111): DUAS COLUNAS NO DESKTOP ────────────────────────────────────
-// Davi, 2026-09-07: "revise toda a página de configuração do cliente" (com
-// "layout para desktop"). Era uma coluna só de quatro cards empilhados, com
-// 46px de campo e um segundo tema claro (gradientes próprios). Agora:
-//   · coluna 1 — quem é e onde fica: Identificação, Endereço;
-//   · coluna 2 — com quem falar e o que tem: Contatos, Estrutura do local.
-// No celular empilha na mesma ordem (.ficha-colunas em styles.css). Nenhum
-// campo entrou nem saiu; o que muda é o lugar e o desenho.
+// Davi, 2026-09-07: "na página do cliente, eu quero que tenha tudo, não deve
+// conter outra página para configurar o cliente, deve estar tudo na mesma
+// página. Quero que seja uma página só, com layout bem estruturado, design
+// clean."
 //
-// As guardas do endereço (U84) continuam iguais, letra por letra: editar o
-// texto zera a conferência e a coordenada; o campo e o botão travam durante
-// a busca; o nome do lugar que o mapa respondeu é impresso para um humano ler.
+// Até a U111 este arquivo era UM formulário que substituía a ficha inteira
+// (o "modo de configuração"). Agora são três cards da coluna de identidade,
+// cada um com o próprio lápis: abre a edição NO LUGAR, com Salvar/Cancelar
+// dentro do card, e grava só os campos daquele card. O resto da página
+// continua visível o tempo todo.
+//
+//   · CardLocal     — nome, CNPJ/CPF, tipo de local, situação, endereço (com o
+//                     "Localizar no mapa" e as guardas da U84), complemento.
+//   · CardContatos  — síndico/proprietário, zelador/encarregado(a), financeiro.
+//   · CardEstrutura — apartamentos, acessos controlados, observações.
+//
+// O nome do arquivo ficou (ClienteForm.tsx) de propósito: é onde o verificador
+// cobra, letra por letra, as guardas do endereço da U84 — editar o texto zera
+// a conferência e a coordenada; o campo e o botão travam durante a busca; o
+// nome do lugar que o mapa respondeu é impresso para um humano ler.
 
-import { useState, type CSSProperties } from "react";
-import { MapPin, Loader2 } from "lucide-react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { MapPin, Loader2, Pencil, Phone, Mail, Users, Building2, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { geocode } from "@/features/gerencial/data";
-import { TIPO_LABEL, TIPOS_LOCAL } from "@/features/gerencial/constants";
+import { TIPO_LABEL, TIPOS_LOCAL, whatsappLink } from "@/features/gerencial/constants";
 import { mascararDocumento, validarDocumento } from "@/lib/normalizar";
 import { FONT, card, botaoSelecao, goldButton } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
@@ -32,34 +37,128 @@ import {
   type SituacaoCliente,
 } from "./data";
 
-export interface ClienteFormProps {
-  inicial?: Cliente | null;
-  salvando?: boolean;
-  onSubmit: (patch: ClientePatch) => void;
-  onCancelar?: () => void;
-  rotuloAcao?: string;
+export interface CardDoClienteProps {
+  cliente: Cliente;
+  podeEditar: boolean;
+  salvando: boolean;
+  /** grava SÓ os campos do card; rejeita para o card ficar aberto */
+  onSalvar: (patch: ClientePatch) => Promise<unknown>;
 }
 
-export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAcao }: ClienteFormProps) {
+/** Os estilos que os três cards dividem — tokens do design system, nada local. */
+function useEstilosDoCard() {
   const { isLight } = useTheme();
+  const c = cinzas(isLight);
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  const CARD: CSSProperties = { ...card(isLight), borderRadius: 18, padding: 16 };
+  const SEC_LABEL: CSSProperties = {
+    fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
+    letterSpacing: "0.10em", textTransform: "uppercase", color: gold,
+  };
+  const LABEL: CSSProperties = {
+    fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
+    letterSpacing: "0.10em", textTransform: "uppercase",
+    color: c.textoSecundario, marginBottom: 6, display: "block",
+  };
+  const INPUT: CSSProperties = {
+    width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 13px",
+    background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto,
+    fontFamily: FONT, fontWeight: 400, fontSize: 14, outline: "none",
+    colorScheme: isLight ? "light" : "dark",
+  };
+  const TEXTAREA: CSSProperties = { ...INPUT, height: 96, padding: "11px 13px", resize: "vertical", lineHeight: 1.5 };
+  const NOTA: CSSProperties = { display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: c.textoSecundario, lineHeight: 1.45 };
+  const DUAS: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 };
+  const linha: CSSProperties = {
+    display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "6px 0",
+    borderTop: `1px solid ${c.divisoria}`,
+  };
+  const linhaLabel: CSSProperties = { fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: c.texto };
+  const linhaValor: CSSProperties = {
+    fontFamily: FONT, fontSize: 12.5, fontWeight: 400, color: c.textoSecundario,
+    textAlign: "right", minWidth: 0, wordBreak: "break-word",
+  };
+  const botaoLeve: CSSProperties = {
+    height: 30, padding: "0 11px", borderRadius: 10,
+    background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto,
+    cursor: "pointer", flexShrink: 0, fontFamily: FONT, fontSize: 12, fontWeight: 600,
+    display: "inline-flex", alignItems: "center", gap: 6,
+  };
+  // o botão de seleção do design system, sem o brilho (R174)
+  const chip = (ativo: boolean): CSSProperties => ({
+    ...botaoSelecao(ativo, isLight, null), boxShadow: "none",
+    padding: "7px 12px", borderRadius: 10, fontSize: 12,
+  });
+  return { isLight, c, gold, CARD, SEC_LABEL, LABEL, INPUT, TEXTAREA, NOTA, DUAS, linha, linhaLabel, linhaValor, botaoLeve, chip };
+}
 
-  const [nome, setNome] = useState(inicial?.nome ?? "");
-  const [documento, setDocumento] = useState(mascararDocumento(inicial?.documento ?? ""));
-  const [respFinanceiro, setRespFinanceiro] = useState(inicial?.responsavel_financeiro ?? "");
-  const [emailFinanceiro, setEmailFinanceiro] = useState(inicial?.email_financeiro ?? "");
-  const [tipoLocal, setTipoLocal] = useState(inicial?.tipo_local ?? "");
-  const [situacao, setSituacao] = useState<SituacaoCliente>(inicial?.situacao ?? "ativo");
-  const [endereco, setEndereco] = useState(inicial?.endereco ?? "");
-  const [complemento, setComplemento] = useState(inicial?.complemento ?? "");
-  const [lat, setLat] = useState<number | null>(inicial?.latitude ?? null);
-  const [lng, setLng] = useState<number | null>(inicial?.longitude ?? null);
+/**
+ * A casca comum: micro-rótulo com ícone, o lápis (só para quem pode editar),
+ * e — em edição — Salvar e Cancelar dentro do card. A mesma casca nos três,
+ * para o olho aprender uma vez onde a edição mora.
+ */
+function CascaDoCard({ titulo, icone, podeEditar, editando, salvando, aoAbrir, aoCancelar, aoSalvar, children, rotuloSalvar = "Salvar" }: {
+  titulo: string; icone: ReactNode; podeEditar: boolean; editando: boolean; salvando: boolean;
+  aoAbrir: () => void; aoCancelar: () => void; aoSalvar: () => void; children: ReactNode; rotuloSalvar?: string;
+}) {
+  const s = useEstilosDoCard();
+  return (
+    <div style={{ ...s.CARD, display: "flex", flexDirection: "column", gap: editando ? 12 : 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ color: s.gold, display: "flex" }}>{icone}</span>
+        <span style={s.SEC_LABEL}>{titulo}</span>
+        <span style={{ flex: 1 }} />
+        {podeEditar && !editando && (
+          <button type="button" onClick={aoAbrir} aria-label={`Editar ${titulo.toLowerCase()}`} title="Editar" style={{ ...s.botaoLeve, width: 30, padding: 0, justifyContent: "center" }}>
+            <Pencil size={13} color={s.gold} />
+          </button>
+        )}
+      </div>
+      {children}
+      {editando && (
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 4 }}>
+          <button type="button" onClick={aoCancelar} disabled={salvando} style={{ ...s.botaoLeve, height: 36, padding: "0 14px" }}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={aoSalvar}
+            disabled={salvando}
+            style={{
+              ...goldButton(), boxShadow: "none", height: 36, padding: "0 16px", borderRadius: 10,
+              fontFamily: FONT, fontWeight: 700, fontSize: 12.5,
+              cursor: salvando ? "wait" : "pointer", opacity: salvando ? 0.7 : 1,
+            }}
+          >
+            {salvando ? "Salvando…" : rotuloSalvar}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── O LOCAL ─────────────────────────────────────────────────────────────────
+
+export function CardLocal({ cliente, podeEditar, salvando, onSalvar }: CardDoClienteProps) {
+  const s = useEstilosDoCard();
+  const [editando, setEditando] = useState(false);
+
+  const [nome, setNome] = useState("");
+  const [documento, setDocumento] = useState("");
+  const [tipoLocal, setTipoLocal] = useState("");
+  const [situacao, setSituacao] = useState<SituacaoCliente>("ativo");
+  const [endereco, setEndereco] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [geocodificando, setGeocodificando] = useState(false);
   /**
    * O QUE O MAPA ENTENDEU — U84, e a ausência disto era o defeito.
    *
    * `geocode()` devolve `bairro/cidade/uf/display_name` desde a U84,
-   * explicitamente "para um humano LER e dizer: não é essa cidade". Esta tela
-   * lia `lat`/`lng` e JOGAVA O RESTO FORA: mostrava dois números e a palavra
+   * explicitamente "para um humano LER e dizer: não é essa cidade". A tela lia
+   * `lat`/`lng` e JOGAVA O RESTO FORA: mostrava dois números e a palavra
    * "Coordenadas encontradas." O campo de endereço é UMA linha de texto livre
    * (não há campo de cidade nem de UF nesta ficha), e texto livre é COMO SE
    * ERRA DE CIDADE — "Rua São Paulo, 1200" com `countrycodes=br` e `limit=1`
@@ -69,54 +168,21 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
    * opinar sobre ele, e todo rótulo que o sistema imprime é o NOME DO PRÉDIO,
    * que está certo — não existe tela onde a cidade errada apareça. O erro fica
    * PERMANENTE no cadastro e é invisível: quem for até lá vai ao lugar errado.
-   *
-   * A correção não acrescenta mecanismo nenhum e não faz UMA requisição a mais:
-   * ela para de apagar o que já foi buscado.
    */
   const [resolvido, setResolvido] = useState<string | null>(null);
-  const [nomeSindico, setNomeSindico] = useState(inicial?.nome_sindico ?? "");
-  const [telSindico, setTelSindico] = useState(inicial?.telefone_sindico ?? "");
-  const [emailSindico, setEmailSindico] = useState(inicial?.email_sindico ?? "");
-  const [nomeZelador, setNomeZelador] = useState(inicial?.nome_zelador ?? "");
-  const [telZelador, setTelZelador] = useState(inicial?.telefone_zelador ?? "");
-  const [emailZelador, setEmailZelador] = useState(inicial?.email_zelador ?? "");
-  const [qtdAptos, setQtdAptos] = useState(inicial?.qtd_apartamentos?.toString() ?? "");
-  const [qtdAcessos, setQtdAcessos] = useState(inicial?.qtd_acessos?.toString() ?? "");
-  const [observacoes, setObservacoes] = useState(inicial?.observacoes ?? "");
 
-  const c = cinzas(isLight);
-  const textPrimary = c.texto;
-  const textSecondary = c.textoSecundario;
-  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
-
-  const CARD: CSSProperties = {
-    ...card(isLight), borderRadius: 18, padding: 16,
-    display: "flex", flexDirection: "column", gap: 12,
-  };
-  const SEC_LABEL: CSSProperties = {
-    fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
-    letterSpacing: "0.10em", textTransform: "uppercase", color: gold,
-  };
-  const LABEL: CSSProperties = {
-    fontFamily: FONT, fontWeight: 700, fontSize: 10.5,
-    letterSpacing: "0.10em", textTransform: "uppercase",
-    color: textSecondary, marginBottom: 6, display: "block",
-  };
-  const INPUT: CSSProperties = {
-    width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 13px",
-    background: c.campo, border: `1px solid ${c.divisoria}`, color: textPrimary,
-    fontFamily: FONT, fontWeight: 400, fontSize: 14, outline: "none",
-    colorScheme: isLight ? "light" : "dark",
-  };
-  const TEXTAREA: CSSProperties = { ...INPUT, height: 96, padding: "11px 13px", resize: "vertical", lineHeight: 1.5 };
-  const NOTA: CSSProperties = { display: "block", marginTop: 6, fontFamily: FONT, fontWeight: 400, fontSize: 11.5, color: textSecondary, lineHeight: 1.45 };
-  const DUAS: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 };
-
-  // o botão de seleção do design system, sem o brilho (R174)
-  const chip = (ativo: boolean): CSSProperties => ({
-    ...botaoSelecao(ativo, isLight, null), boxShadow: "none",
-    padding: "8px 13px", borderRadius: 10, fontSize: 12,
-  });
+  function abrir() {
+    setNome(cliente.nome ?? "");
+    setDocumento(mascararDocumento(cliente.documento ?? ""));
+    setTipoLocal(cliente.tipo_local ?? "");
+    setSituacao(cliente.situacao ?? "ativo");
+    setEndereco(cliente.endereco ?? "");
+    setComplemento(cliente.complemento ?? "");
+    setLat(cliente.latitude ?? null);
+    setLng(cliente.longitude ?? null);
+    setResolvido(null);
+    setEditando(true);
+  }
 
   async function buscarCoordenadas() {
     if (!endereco.trim()) {
@@ -151,296 +217,396 @@ export function ClienteForm({ inicial, salvando, onSubmit, onCancelar, rotuloAca
     }
   }
 
-  function submeter() {
-    if (!nome.trim()) {
-      toast.error("Informe o nome do cliente.");
-      return;
-    }
-    if (!endereco.trim()) {
-      toast.error("Informe o endereço — é o que identifica o local nas ordens de serviço.");
-      return;
-    }
+  async function salvar() {
+    if (!nome.trim()) { toast.error("Informe o nome do cliente."); return; }
+    if (!endereco.trim()) { toast.error("Informe o endereço — é o que identifica o local nas ordens de serviço."); return; }
     // documento é opcional, mas errado não passa: é a chave que concilia o
     // cliente com o QAP e sai impressa no fechamento para o financeiro
-    if (!validarDocumento(documento)) {
-      toast.error("CNPJ/CPF inválido. Confira os dígitos ou deixe o campo em branco.");
-      return;
-    }
-    const nAptos = qtdAptos.trim() === "" ? null : Number(qtdAptos);
-    const nAcessos = qtdAcessos.trim() === "" ? null : Number(qtdAcessos);
-    if (nAptos !== null && (!Number.isFinite(nAptos) || nAptos < 0)) {
-      toast.error("Quantidade de apartamentos inválida.");
-      return;
-    }
-    if (nAcessos !== null && (!Number.isFinite(nAcessos) || nAcessos < 0)) {
-      toast.error("Quantidade de acessos inválida.");
-      return;
-    }
-    onSubmit({
-      nome: nome.trim(),
-      nome_predio: nome.trim(),
-      documento: documento.trim() || null,
-      responsavel_financeiro: respFinanceiro.trim() || null,
-      email_financeiro: emailFinanceiro.trim() || null,
-      tipo_local: tipoLocal || null,
-      situacao,
-      endereco: endereco.trim(),
-      complemento: complemento.trim() || null,
-      latitude: lat,
-      longitude: lng,
-      nome_sindico: nomeSindico.trim() || null,
-      telefone_sindico: telSindico.trim() || null,
-      email_sindico: emailSindico.trim() || null,
-      nome_zelador: nomeZelador.trim() || null,
-      telefone_zelador: telZelador.trim() || null,
-      email_zelador: emailZelador.trim() || null,
-      qtd_apartamentos: nAptos,
-      qtd_acessos: nAcessos,
-      observacoes: observacoes.trim() || null,
-    });
+    if (!validarDocumento(documento)) { toast.error("CNPJ/CPF inválido. Confira os dígitos ou deixe o campo em branco."); return; }
+    try {
+      await onSalvar({
+        nome: nome.trim(),
+        nome_predio: nome.trim(),
+        documento: documento.trim() || null,
+        tipo_local: tipoLocal || null,
+        situacao,
+        endereco: endereco.trim(),
+        complemento: complemento.trim() || null,
+        latitude: lat,
+        longitude: lng,
+      });
+      setEditando(false);
+    } catch { /* o toast é da página; o card fica aberto para corrigir */ }
   }
 
-  const semSindico = tipoLocal === "residencia" || tipoLocal === "empresa";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="ficha-colunas">
-        {/* ══ COLUNA 1 — quem é e onde fica ═══════════════════════════════════ */}
-        <section aria-label="Identificação e endereço" style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          <div style={CARD}>
-            <span style={SEC_LABEL}>Identificação</span>
-            <div>
-              <label style={LABEL}>Nome do cliente / prédio</label>
-              <input style={INPUT} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Condomínio Mansões do Lago" />
-            </div>
-            <div>
-              <label style={LABEL}>CNPJ / CPF</label>
-              <input
-                style={INPUT}
-                value={documento}
-                onChange={(e) => setDocumento(mascararDocumento(e.target.value))}
-                inputMode="numeric"
-                placeholder="00.000.000/0000-00"
-              />
-              <span style={NOTA}>
-                Sai impresso no fechamento e é o que casa este cliente com o cadastro do QAP.
-              </span>
-            </div>
-            <div>
-              <label style={LABEL}>Tipo de local</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {TIPOS_LOCAL.map((t) => (
-                  <button key={t} type="button" aria-pressed={tipoLocal === t} style={chip(tipoLocal === t)} onClick={() => setTipoLocal(t)}>
-                    {TIPO_LABEL[t]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label style={LABEL}>Situação</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {(Object.keys(SITUACAO_LABEL) as SituacaoCliente[]).map((s) => (
-                  <button key={s} type="button" aria-pressed={situacao === s} style={chip(situacao === s)} onClick={() => setSituacao(s)}>
-                    {SITUACAO_LABEL[s]}
-                  </button>
-                ))}
-              </div>
-            </div>
+    <CascaDoCard titulo="O local" icone={<Building2 size={15} />} podeEditar={podeEditar} editando={editando} salvando={salvando}
+      aoAbrir={abrir} aoCancelar={() => setEditando(false)} aoSalvar={salvar}>
+      {!editando ? (
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
+          <div style={{ ...s.linha, borderTop: "none" }}>
+            <span style={s.linhaLabel}>Endereço</span>
+            <span style={s.linhaValor}>{cliente.endereco ?? "—"}</span>
           </div>
-
-          <div style={CARD}>
-            <span style={SEC_LABEL}>Endereço</span>
-            <div>
-              <label style={LABEL}>Endereço completo</label>
-              {/* EDITAR O ENDEREÇO INVALIDA A CONFERÊNCIA E A COORDENADA.
-                  A frase impressa abaixo manda, com todas as letras, "corrija o
-                  endereço e localize de novo" — e o gestor fazia a primeira metade
-                  e esquecia a segunda. Sem esta limpeza, "O mapa entendeu: …
-                  Guarulhos" continuava na tela descrevendo um texto que o campo não
-                  contém mais, e `submeter()` gravava a coordenada de Guarulhos com
-                  o endereço novo.
-
-                  E O CAMPO TRAVA ENQUANTO A BUSCA ESTÁ NO AR, pelo mesmo motivo,
-                  por outra porta: sem isso, editar o texto DURANTE a requisição
-                  deixava a resposta do texto ANTIGO chegar depois e reescrever
-                  `resolvido`/`lat`/`lng` por cima do texto NOVO — a mesma frase
-                  obsoleta, a mesma coordenada errada, agora por CORRIDA em vez de
-                  por esquecimento. A espera é limitada (o freio do Nominatim, 1,1 s,
-                  mais o timeout de 4 s), e travar o campo fecha a corrida inteira
-                  sem `ref`, sem token de requisição e sem tocar no contrato de
-                  `geocode()`.
-
-                  E O GATILHO DA U84 NÃO PEGA ESTE CASO. Ele zera quando o endereço
-                  muda E a coordenada veio IGUAL; aqui a coordenada MUDOU (o botão
-                  foi apertado), a perna 2 é falsa, e ele não age. Num cliente NOVO
-                  nem chega perto: ele é BEFORE UPDATE e isto é um INSERT.
-
-                  Zerar aqui é a mesma política do gatilho, um passo antes, onde a
-                  pessoa ainda vê: o campo passa a dizer "sem coordenadas" e o botão
-                  volta a ser o único caminho. É deleção de estado, não mecanismo
-                  novo — e é o que `NovaVisitaDialog` e `/gerencial/nova` já fazem. */}
-              <input
-                style={INPUT}
-                value={endereco}
-                disabled={geocodificando}
-                onChange={(e) => {
-                  setEndereco(e.target.value);
-                  setResolvido(null);
-                  setLat(null);
-                  setLng(null);
-                }}
-                placeholder="Rua, número, bairro, cidade"
-              />
-            </div>
-            <div>
-              <label style={LABEL}>Complemento</label>
-              <input style={INPUT} value={complemento} onChange={(e) => setComplemento(e.target.value)} placeholder="Bloco, torre, referência" />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={buscarCoordenadas}
-                disabled={geocodificando}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  height: 38, padding: "0 14px", borderRadius: 12,
-                  background: c.campo, border: `1px solid ${c.divisoria}`,
-                  color: textPrimary, cursor: geocodificando ? "wait" : "pointer",
-                  fontFamily: FONT, fontSize: 12, fontWeight: 600,
-                }}
-              >
-                {geocodificando ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} color={gold} />}
-                Localizar no mapa
-              </button>
-              <span style={{ fontFamily: FONT, fontSize: 11.5, color: textSecondary, fontVariantNumeric: "tabular-nums" }}>
-                {lat != null && lng != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "sem coordenadas"}
-              </span>
-            </div>
-            {/* DOIS NÚMEROS NÃO SÃO CONFERÍVEIS POR UM HUMANO. O nome do lugar é.
-                Esta linha é a única rede que existe contra "o mapa achou a rua
-                homônima na cidade errada": ler o que o mapa RESPONDEU, e não
-                confiar no que foi MANDADO. */}
-            {resolvido && (
-              <span style={NOTA}>
-                O mapa entendeu: <b style={{ color: textPrimary }}>{resolvido}</b> — se não é este o lugar, corrija o endereço
-                (inclua bairro e cidade) e localize de novo.
-              </span>
-            )}
-            {resolvido === null && lat != null && lng != null && (
-              <span style={NOTA}>
-                Coordenada já cadastrada — ninguém conferiu nesta sessão de qual lugar ela é.
-                Se o endereço acima mudou, use “Localizar no mapa” e leia o que o mapa responder.
-              </span>
-            )}
-          </div>
-        </section>
-
-        {/* ══ COLUNA 2 — com quem falar e o que tem ═══════════════════════════ */}
-        <section aria-label="Contatos e estrutura do local" style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          <div style={CARD}>
-            <span style={SEC_LABEL}>Contatos</span>
-            {/* R146 (U96): nome, WHATSAPP e e-mail do síndico e do zelador — o
-                telefone sempre foi o WhatsApp na prática; agora a ficha diz isso e
-                abre o WhatsApp ao clicar. Residência e galpão trocam os rótulos por
-                proprietário / encarregado(a), como no formulário da proposta. */}
-            <div>
-              <label style={LABEL}>{semSindico ? "Proprietário" : "Síndico"}</label>
-              <input style={INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome" />
-            </div>
-            <div style={DUAS}>
-              <div>
-                <label style={LABEL}>WhatsApp</label>
-                <input style={INPUT} value={telSindico} onChange={(e) => setTelSindico(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
-              </div>
-              <div>
-                <label style={LABEL}>E-mail</label>
-                <input style={INPUT} value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} inputMode="email" />
-              </div>
-            </div>
-            <div style={{ borderTop: `1px solid ${c.divisoria}`, paddingTop: 12 }}>
-              <label style={LABEL}>{semSindico ? "Encarregado(a)" : "Zelador(a)"}</label>
-              <input style={INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome" />
-            </div>
-            <div style={DUAS}>
-              <div>
-                <label style={LABEL}>WhatsApp</label>
-                <input style={INPUT} value={telZelador} onChange={(e) => setTelZelador(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
-              </div>
-              <div>
-                <label style={LABEL}>E-mail</label>
-                <input style={INPUT} value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} inputMode="email" />
-              </div>
-            </div>
-            <div style={{ ...DUAS, borderTop: `1px solid ${c.divisoria}`, paddingTop: 12 }}>
-              <div>
-                <label style={LABEL}>Financeiro / cobrança</label>
-                <input style={INPUT} value={respFinanceiro} onChange={(e) => setRespFinanceiro(e.target.value)} placeholder="Nome ou setor" />
-              </div>
-              <div>
-                <label style={LABEL}>E-mail do financeiro</label>
-                <input style={INPUT} value={emailFinanceiro} onChange={(e) => setEmailFinanceiro(e.target.value)} inputMode="email" />
-              </div>
-            </div>
-          </div>
-
-          <div style={CARD}>
-            <span style={SEC_LABEL}>Estrutura do local</span>
-            <div style={DUAS}>
-              <div>
-                <label style={LABEL}>Apartamentos / unidades</label>
-                <input style={INPUT} value={qtdAptos} onChange={(e) => setQtdAptos(e.target.value)} inputMode="numeric" placeholder="0" />
-              </div>
-              <div>
-                <label style={LABEL}>Acessos controlados</label>
-                <input style={INPUT} value={qtdAcessos} onChange={(e) => setQtdAcessos(e.target.value)} inputMode="numeric" placeholder="0" />
-              </div>
-            </div>
-            <div>
-              <label style={LABEL}>Observações</label>
-              <textarea
-                style={TEXTAREA}
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Particularidades do local, acesso da equipe, histórico relevante…"
-              />
-            </div>
-            <span style={NOTA}>
-              Os sistemas instalados (blocos) e os equipamentos do QAP são montados na própria
-              ficha, fora deste formulário.
+          {cliente.complemento && (
+            <div style={s.linha}><span style={s.linhaLabel}>Complemento</span><span style={s.linhaValor}>{cliente.complemento}</span></div>
+          )}
+          {(cliente.cidade || cliente.uf) && (
+            <div style={s.linha}><span style={s.linhaLabel}>Cidade</span><span style={s.linhaValor}>{[cliente.cidade, cliente.uf].filter(Boolean).join(" / ")}</span></div>
+          )}
+          <div style={s.linha}>
+            <span style={s.linhaLabel}>Tipo de local</span>
+            <span style={{ ...s.linhaValor, color: cliente.tipo_local ? s.c.textoSecundario : (s.isLight ? "#AD4700" : "#FA842D") }}>
+              {cliente.tipo_local ? (TIPO_LABEL[cliente.tipo_local] ?? cliente.tipo_local) : "não informado"}
             </span>
           </div>
-        </section>
-      </div>
+          <div style={s.linha}><span style={s.linhaLabel}>Situação</span><span style={s.linhaValor}>{SITUACAO_LABEL[cliente.situacao] ?? cliente.situacao}</span></div>
+          {cliente.documento && (
+            <div style={s.linha}><span style={s.linhaLabel}>CNPJ / CPF</span><span style={{ ...s.linhaValor, fontFamily: "ui-monospace, Menlo, monospace" }}>{cliente.documento}</span></div>
+          )}
+          {cliente.latitude != null && cliente.longitude != null && (
+            <div style={s.linha}>
+              <span style={s.linhaLabel}>Coordenadas</span>
+              <span style={{ ...s.linhaValor, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end", fontVariantNumeric: "tabular-nums" }}>
+                <MapPin size={12} color={s.gold} />
+                {cliente.latitude.toFixed(5)}, {cliente.longitude.toFixed(5)}
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div>
+            <label style={s.LABEL}>Nome do cliente / prédio</label>
+            <input style={s.INPUT} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Condomínio Mansões do Lago" />
+          </div>
+          <div>
+            <label style={s.LABEL}>CNPJ / CPF</label>
+            <input style={s.INPUT} value={documento} onChange={(e) => setDocumento(mascararDocumento(e.target.value))} inputMode="numeric" placeholder="00.000.000/0000-00" />
+            <span style={s.NOTA}>Sai impresso no fechamento e é o que casa este cliente com o cadastro do QAP.</span>
+          </div>
+          <div>
+            <label style={s.LABEL}>Tipo de local</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {TIPOS_LOCAL.map((t) => (
+                <button key={t} type="button" aria-pressed={tipoLocal === t} style={s.chip(tipoLocal === t)} onClick={() => setTipoLocal(t)}>
+                  {TIPO_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={s.LABEL}>Situação</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {(Object.keys(SITUACAO_LABEL) as SituacaoCliente[]).map((sit) => (
+                <button key={sit} type="button" aria-pressed={situacao === sit} style={s.chip(situacao === sit)} onClick={() => setSituacao(sit)}>
+                  {SITUACAO_LABEL[sit]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={s.LABEL}>Endereço completo</label>
+            {/* EDITAR O ENDEREÇO INVALIDA A CONFERÊNCIA E A COORDENADA.
+                A frase impressa abaixo manda, com todas as letras, "corrija o
+                endereço e localize de novo" — e o gestor fazia a primeira metade
+                e esquecia a segunda. Sem esta limpeza, "O mapa entendeu: …
+                Guarulhos" continuava na tela descrevendo um texto que o campo não
+                contém mais, e o salvar gravava a coordenada de Guarulhos com o
+                endereço novo.
 
-      {/* Ações — a única ação principal da tela é a dourada */}
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        {onCancelar && (
-          <button
-            type="button"
-            onClick={onCancelar}
-            style={{
-              height: 42, padding: "0 18px", borderRadius: 12,
-              background: c.campo, border: `1px solid ${c.divisoria}`,
-              color: textPrimary, cursor: "pointer",
-              fontFamily: FONT, fontWeight: 600, fontSize: 13,
-            }}
-          >
-            Cancelar
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={submeter}
-          disabled={salvando}
-          style={{
-            ...goldButton(), height: 42, minWidth: 200, padding: "0 20px", borderRadius: 12,
-            fontFamily: FONT, fontWeight: 700, fontSize: 13,
-            cursor: salvando ? "wait" : "pointer", opacity: salvando ? 0.7 : 1,
-          }}
-        >
-          {salvando ? "Salvando…" : (rotuloAcao ?? "Salvar cliente")}
-        </button>
+                E O CAMPO TRAVA ENQUANTO A BUSCA ESTÁ NO AR, pelo mesmo motivo,
+                por outra porta: sem isso, editar o texto DURANTE a requisição
+                deixava a resposta do texto ANTIGO chegar depois e reescrever
+                `resolvido`/`lat`/`lng` por cima do texto NOVO — a mesma frase
+                obsoleta, a mesma coordenada errada, agora por CORRIDA em vez de
+                por esquecimento. A espera é limitada (o freio do Nominatim, 1,1 s,
+                mais o timeout de 4 s), e travar o campo fecha a corrida inteira
+                sem `ref`, sem token de requisição e sem tocar no contrato de
+                `geocode()`.
+
+                E O GATILHO DA U84 NÃO PEGA ESTE CASO. Ele zera quando o endereço
+                muda E a coordenada veio IGUAL; aqui a coordenada MUDOU (o botão
+                foi apertado), a perna 2 é falsa, e ele não age.
+
+                Zerar aqui é a mesma política do gatilho, um passo antes, onde a
+                pessoa ainda vê: o campo passa a dizer "sem coordenadas" e o botão
+                volta a ser o único caminho. */}
+            <input
+              style={s.INPUT}
+              value={endereco}
+              disabled={geocodificando}
+              onChange={(e) => {
+                setEndereco(e.target.value);
+                setResolvido(null);
+                setLat(null);
+                setLng(null);
+              }}
+              placeholder="Rua, número, bairro, cidade"
+            />
+          </div>
+          <div>
+            <label style={s.LABEL}>Complemento</label>
+            <input style={s.INPUT} value={complemento} onChange={(e) => setComplemento(e.target.value)} placeholder="Bloco, torre, referência" />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={buscarCoordenadas}
+              disabled={geocodificando}
+              style={{ ...s.botaoLeve, height: 36, padding: "0 14px", cursor: geocodificando ? "wait" : "pointer" }}
+            >
+              {geocodificando ? <Loader2 size={14} className="animate-spin" /> : <MapPin size={14} color={s.gold} />}
+              Localizar no mapa
+            </button>
+            <span style={{ fontFamily: FONT, fontSize: 11.5, color: s.c.textoSecundario, fontVariantNumeric: "tabular-nums" }}>
+              {lat != null && lng != null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : "sem coordenadas"}
+            </span>
+          </div>
+          {/* DOIS NÚMEROS NÃO SÃO CONFERÍVEIS POR UM HUMANO. O nome do lugar é.
+              Esta linha é a única rede que existe contra "o mapa achou a rua
+              homônima na cidade errada": ler o que o mapa RESPONDEU, e não
+              confiar no que foi MANDADO. */}
+          {resolvido && (
+            <span style={s.NOTA}>
+              O mapa entendeu: <b style={{ color: s.c.texto }}>{resolvido}</b> — se não é este o lugar, corrija o endereço
+              (inclua bairro e cidade) e localize de novo.
+            </span>
+          )}
+          {resolvido === null && lat != null && lng != null && (
+            <span style={s.NOTA}>
+              Coordenada já cadastrada — ninguém conferiu nesta sessão de qual lugar ela é.
+              Se o endereço acima mudou, use “Localizar no mapa” e leia o que o mapa responder.
+            </span>
+          )}
+        </>
+      )}
+    </CascaDoCard>
+  );
+}
+
+// ── CONTATOS ────────────────────────────────────────────────────────────────
+
+/** Um bloco de contato em leitura: nome, WhatsApp (abre o WhatsApp) e e-mail (abre o e-mail). */
+export function Contato({ rotulo, nome, whatsapp, email }: {
+  rotulo: string; nome: string | null; whatsapp: string | null; email: string | null;
+}) {
+  const s = useEstilosDoCard();
+  if (!nome && !whatsapp && !email) return null;
+  const link: CSSProperties = { ...s.linhaValor, color: s.gold, fontWeight: 600, textDecoration: "none" };
+  const rotuloForte: CSSProperties = { ...s.linhaLabel, display: "flex", alignItems: "center", gap: 6 };
+  const rotuloLeve: CSSProperties = { fontFamily: FONT, fontSize: 12, fontWeight: 400, color: s.c.textoSecundario, display: "flex", alignItems: "center", gap: 6 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ ...s.linha, borderTop: "none", paddingTop: 10 }}>
+        <span style={rotuloForte}><Users size={13} color={s.gold} /> {rotulo}</span>
+        <span style={{ ...s.linhaValor, color: s.c.texto, fontWeight: 600 }}>{nome ?? "—"}</span>
+      </div>
+      <div style={s.linha}>
+        <span style={rotuloLeve}><Phone size={12} color={s.gold} /> WhatsApp</span>
+        {whatsapp
+          ? <a href={whatsappLink(whatsapp)} target="_blank" rel="noopener noreferrer" style={link}>{whatsapp}</a>
+          : <span style={s.linhaValor}>—</span>}
+      </div>
+      <div style={s.linha}>
+        <span style={rotuloLeve}><Mail size={12} color={s.gold} /> E-mail</span>
+        {email
+          ? <a href={`mailto:${email}`} style={link}>{email}</a>
+          : <span style={s.linhaValor}>—</span>}
       </div>
     </div>
+  );
+}
+
+export function CardContatos({ cliente, podeEditar, salvando, onSalvar, veFinanceiro }: CardDoClienteProps & { veFinanceiro: boolean }) {
+  const s = useEstilosDoCard();
+  const [editando, setEditando] = useState(false);
+  const [nomeSindico, setNomeSindico] = useState("");
+  const [telSindico, setTelSindico] = useState("");
+  const [emailSindico, setEmailSindico] = useState("");
+  const [nomeZelador, setNomeZelador] = useState("");
+  const [telZelador, setTelZelador] = useState("");
+  const [emailZelador, setEmailZelador] = useState("");
+  const [respFinanceiro, setRespFinanceiro] = useState("");
+  const [emailFinanceiro, setEmailFinanceiro] = useState("");
+
+  // Residência e galpão não têm síndico nem zelador: é proprietário e
+  // encarregado(a) — o mesmo vocabulário do formulário da proposta (R147).
+  const semSindico = cliente.tipo_local === "residencia" || cliente.tipo_local === "empresa";
+  const rotulo1 = semSindico ? "Proprietário" : "Síndico";
+  const rotulo2 = semSindico ? "Encarregado(a)" : "Zelador(a)";
+  const semContatos = !cliente.nome_sindico && !cliente.telefone_sindico && !cliente.email_sindico
+    && !cliente.nome_zelador && !cliente.telefone_zelador && !cliente.email_zelador;
+
+  function abrir() {
+    setNomeSindico(cliente.nome_sindico ?? "");
+    setTelSindico(cliente.telefone_sindico ?? "");
+    setEmailSindico(cliente.email_sindico ?? "");
+    setNomeZelador(cliente.nome_zelador ?? "");
+    setTelZelador(cliente.telefone_zelador ?? "");
+    setEmailZelador(cliente.email_zelador ?? "");
+    setRespFinanceiro(cliente.responsavel_financeiro ?? "");
+    setEmailFinanceiro(cliente.email_financeiro ?? "");
+    setEditando(true);
+  }
+
+  async function salvar() {
+    try {
+      await onSalvar({
+        nome_sindico: nomeSindico.trim() || null,
+        telefone_sindico: telSindico.trim() || null,
+        email_sindico: emailSindico.trim() || null,
+        nome_zelador: nomeZelador.trim() || null,
+        telefone_zelador: telZelador.trim() || null,
+        email_zelador: emailZelador.trim() || null,
+        responsavel_financeiro: respFinanceiro.trim() || null,
+        email_financeiro: emailFinanceiro.trim() || null,
+      });
+      setEditando(false);
+    } catch { /* o toast é da página */ }
+  }
+
+  return (
+    <CascaDoCard titulo="Contatos" icone={<Users size={15} />} podeEditar={podeEditar} editando={editando} salvando={salvando}
+      aoAbrir={abrir} aoCancelar={() => setEditando(false)} aoSalvar={salvar}>
+      {!editando ? (
+        semContatos ? (
+          <div style={{ fontFamily: FONT, fontSize: 12.5, color: s.c.textoSecundario, paddingTop: 10 }}>
+            Nenhum contato cadastrado{podeEditar ? " — use o lápis para preencher." : "."}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <Contato rotulo={rotulo1} nome={cliente.nome_sindico} whatsapp={cliente.telefone_sindico} email={cliente.email_sindico} />
+            <Contato rotulo={rotulo2} nome={cliente.nome_zelador} whatsapp={cliente.telefone_zelador} email={cliente.email_zelador} />
+            {veFinanceiro && (cliente.responsavel_financeiro || cliente.email_financeiro) && (
+              <div style={{ ...s.linha, marginTop: 4 }}>
+                <span style={s.linhaLabel}>Financeiro</span>
+                <span style={s.linhaValor}>{[cliente.responsavel_financeiro, cliente.email_financeiro].filter(Boolean).join(" · ")}</span>
+              </div>
+            )}
+          </div>
+        )
+      ) : (
+        <>
+          {/* R146 (U96): nome, WHATSAPP e e-mail do síndico e do zelador — o
+              telefone sempre foi o WhatsApp na prática; a ficha diz isso e abre
+              o WhatsApp ao clicar. */}
+          <div>
+            <label style={s.LABEL}>{rotulo1}</label>
+            <input style={s.INPUT} value={nomeSindico} onChange={(e) => setNomeSindico(e.target.value)} placeholder="Nome" />
+          </div>
+          <div style={s.DUAS}>
+            <div>
+              <label style={s.LABEL}>WhatsApp</label>
+              <input style={s.INPUT} value={telSindico} onChange={(e) => setTelSindico(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
+            </div>
+            <div>
+              <label style={s.LABEL}>E-mail</label>
+              <input style={s.INPUT} value={emailSindico} onChange={(e) => setEmailSindico(e.target.value)} inputMode="email" />
+            </div>
+          </div>
+          <div style={{ borderTop: `1px solid ${s.c.divisoria}`, paddingTop: 12 }}>
+            <label style={s.LABEL}>{rotulo2}</label>
+            <input style={s.INPUT} value={nomeZelador} onChange={(e) => setNomeZelador(e.target.value)} placeholder="Nome" />
+          </div>
+          <div style={s.DUAS}>
+            <div>
+              <label style={s.LABEL}>WhatsApp</label>
+              <input style={s.INPUT} value={telZelador} onChange={(e) => setTelZelador(e.target.value)} inputMode="tel" placeholder="(11) 90000-0000" />
+            </div>
+            <div>
+              <label style={s.LABEL}>E-mail</label>
+              <input style={s.INPUT} value={emailZelador} onChange={(e) => setEmailZelador(e.target.value)} inputMode="email" />
+            </div>
+          </div>
+          {veFinanceiro && (
+            <div style={{ ...s.DUAS, borderTop: `1px solid ${s.c.divisoria}`, paddingTop: 12 }}>
+              <div>
+                <label style={s.LABEL}>Financeiro / cobrança</label>
+                <input style={s.INPUT} value={respFinanceiro} onChange={(e) => setRespFinanceiro(e.target.value)} placeholder="Nome ou setor" />
+              </div>
+              <div>
+                <label style={s.LABEL}>E-mail do financeiro</label>
+                <input style={s.INPUT} value={emailFinanceiro} onChange={(e) => setEmailFinanceiro(e.target.value)} inputMode="email" />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </CascaDoCard>
+  );
+}
+
+// ── ESTRUTURA E OBSERVAÇÕES ────────────────────────────────────────────────
+
+export function CardEstrutura({ cliente, podeEditar, salvando, onSalvar }: CardDoClienteProps) {
+  const s = useEstilosDoCard();
+  const [editando, setEditando] = useState(false);
+  const [qtdAptos, setQtdAptos] = useState("");
+  const [qtdAcessos, setQtdAcessos] = useState("");
+  const [observacoes, setObservacoes] = useState("");
+
+  function abrir() {
+    setQtdAptos(cliente.qtd_apartamentos?.toString() ?? "");
+    setQtdAcessos(cliente.qtd_acessos?.toString() ?? "");
+    setObservacoes(cliente.observacoes ?? "");
+    setEditando(true);
+  }
+
+  async function salvar() {
+    const nAptos = qtdAptos.trim() === "" ? null : Number(qtdAptos);
+    const nAcessos = qtdAcessos.trim() === "" ? null : Number(qtdAcessos);
+    if (nAptos !== null && (!Number.isFinite(nAptos) || nAptos < 0)) { toast.error("Quantidade de apartamentos inválida."); return; }
+    if (nAcessos !== null && (!Number.isFinite(nAcessos) || nAcessos < 0)) { toast.error("Quantidade de acessos inválida."); return; }
+    try {
+      await onSalvar({ qtd_apartamentos: nAptos, qtd_acessos: nAcessos, observacoes: observacoes.trim() || null });
+      setEditando(false);
+    } catch { /* o toast é da página */ }
+  }
+
+  const vazio = cliente.qtd_apartamentos == null && cliente.qtd_acessos == null && !cliente.observacoes;
+
+  return (
+    <CascaDoCard titulo="Estrutura e observações" icone={<LayoutGrid size={15} />} podeEditar={podeEditar} editando={editando} salvando={salvando}
+      aoAbrir={abrir} aoCancelar={() => setEditando(false)} aoSalvar={salvar}>
+      {!editando ? (
+        vazio ? (
+          <div style={{ fontFamily: FONT, fontSize: 12.5, color: s.c.textoSecundario, paddingTop: 10 }}>
+            Nada registrado{podeEditar ? " — use o lápis para preencher." : "."}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
+            {cliente.qtd_apartamentos != null && (
+              <div style={{ ...s.linha, borderTop: "none" }}><span style={s.linhaLabel}>Apartamentos / unidades</span><span style={s.linhaValor}>{cliente.qtd_apartamentos}</span></div>
+            )}
+            {cliente.qtd_acessos != null && (
+              <div style={{ ...s.linha, ...(cliente.qtd_apartamentos == null ? { borderTop: "none" } : {}) }}><span style={s.linhaLabel}>Acessos controlados</span><span style={s.linhaValor}>{cliente.qtd_acessos}</span></div>
+            )}
+            {cliente.observacoes && (
+              <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 400, color: s.c.texto, marginTop: 8, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
+                {cliente.observacoes}
+              </div>
+            )}
+          </div>
+        )
+      ) : (
+        <>
+          <div style={s.DUAS}>
+            <div>
+              <label style={s.LABEL}>Apartamentos / unidades</label>
+              <input style={s.INPUT} value={qtdAptos} onChange={(e) => setQtdAptos(e.target.value)} inputMode="numeric" placeholder="0" />
+            </div>
+            <div>
+              <label style={s.LABEL}>Acessos controlados</label>
+              <input style={s.INPUT} value={qtdAcessos} onChange={(e) => setQtdAcessos(e.target.value)} inputMode="numeric" placeholder="0" />
+            </div>
+          </div>
+          <div>
+            <label style={s.LABEL}>Observações</label>
+            <textarea style={s.TEXTAREA} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Particularidades do local, acesso da equipe, histórico relevante…" />
+          </div>
+        </>
+      )}
+    </CascaDoCard>
   );
 }

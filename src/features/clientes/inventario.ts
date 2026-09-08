@@ -6,7 +6,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { isServicoCode } from "@/features/orcamento/blockAutoItems";
-import { gerarCodigoBloco, gerarDescricaoBloco, type BlocoConfig, type TipoBloco } from "@/lib/blocos";
+// R202 (U112): só o TIPO da configuração sobrevive aqui — para LER o que um
+// bloco importado do escopo trouxe do orçamento. A geração de código e a
+// estrutura por perguntas ficaram no orçamento (src/lib/blocos.ts).
+import { type BlocoConfig } from "@/lib/blocos";
 
 export type TipoSistema = "PED" | "VEI" | "CFTV" | "AL" | "CER" | "CENT" | "ELV" | "TOT" | "CAE" | "CCA" | "OUTRO";
 export type EstadoEquipamento = "ativo" | "substituido" | "removido";
@@ -173,44 +176,32 @@ export async function excluirSistema(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// ── Estrutura do bloco (R63/U52) ─────────────────────────────────────────────
-
-/**
- * Os tipos que `gerarCodigoBloco` (src/lib/blocos.ts) sabe montar. ELV e TOT
- * geram código por um caminho diferente no orçamento (calculado direto nas
- * mutações do wizard, não por `gerarCodigoBloco`) — replicar os dois
- * sub-wizards na ficha do cliente é passo futuro, não desta rodada (R63).
- * OUTRO fica de fora por não ter `TipoBloco` correspondente (é extensão só
- * de `inventario.ts`, não existe no vocabulário do orçamento).
- */
-export const TIPOS_COM_ESTRUTURA: TipoBloco[] = ["PED", "VEI", "CFTV", "AL", "CER", "CENT"];
-
-export function temEstrutura(tipo: TipoSistema): tipo is TipoBloco {
-  return (TIPOS_COM_ESTRUTURA as string[]).includes(tipo);
-}
-
-/**
- * Grava a configuração estruturada de um bloco — a AÇÃO central do R63.
- * `codigo_bloco` e `descricao` são DERIVADOS de `config`, não digitados à
- * parte: gravá-los junto (em vez de deixar a tela calcular na hora de
- * exibir) é o mesmo padrão de `visita_blocos.codigo_bloco` — o que a
- * busca/exibição/o motor de checklist por bloco vão ler é texto pronto, sem
- * recalcular em todo lugar que precisar mostrar o bloco.
- *
- * `descricao` é SOBRESCRITA pela gerada — uma vez que o bloco está
- * estruturado, a descrição em texto livre voltaria a divergir da
- * configuração de verdade a cada edição manual, e "qual das duas é a
- * correta" é exatamente a pergunta que a estrutura existe para eliminar.
- */
-export async function salvarConfigBloco(sistemaId: string, config: BlocoConfig): Promise<void> {
-  const codigo_bloco = gerarCodigoBloco(config);
-  const descricao = gerarDescricaoBloco(config);
-  const { error } = await supabase
-    .from("cliente_sistemas" as any)
-    .update({ config_bloco: config, codigo_bloco, descricao } as any)
-    .eq("id", sistemaId);
-  if (error) throw error;
-}
+// ── Nomes de bloco sugeridos (R202/U112) ──────────────────────────────────────
+//
+// Davi, 2026-09-07, sobre um cliente que já é nosso: "a única coisa que
+// precisamos fazer é: indicar quais blocos existem em cada cliente, por
+// exemplo: no Paineiras tem: Eclusa de pedestres / Porta de Carga/Descarga /
+// Eclusa veicular / Porta do Armário de Encomendas / CFTV / Cerca Elétrica /
+// Totem de Monitoramento / Central de Portaria Remota".
+//
+// São SUGESTÕES de nome por tipo — um clique preenche o campo; digitar outro
+// nome vale igual. Não há estrutura por perguntas na ficha: "a estrutura pula
+// etapas, nós indicamos direto os equipamentos de cada bloco". A estrutura
+// (barreira, entrada, saída, abertura) continua existindo no ORÇAMENTO, onde
+// cada resposta poda os equipamentos de um projeto que ainda não existe.
+export const NOMES_SUGERIDOS: Record<TipoSistema, string[]> = {
+  PED: ["Eclusa de pedestres", "Porta de carga/descarga", "Porta do armário de encomendas"],
+  VEI: ["Eclusa veicular"],
+  CFTV: ["CFTV"],
+  AL: [],
+  CER: ["Cerca elétrica"],
+  CENT: ["Central de portaria remota"],
+  ELV: [],
+  TOT: ["Totem de monitoramento"],
+  CAE: [],
+  CCA: [],
+  OUTRO: [],
+};
 
 export async function criarEquipamentoInstalado(input: {
   cliente_sistema_id: string;

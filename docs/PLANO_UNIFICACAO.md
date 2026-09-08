@@ -10795,3 +10795,80 @@ entrou no censo de `etiqueta()` (R177): 18 → 20 etiquetas, dez arquivos.
 
 **Números.** Verificador: 3.068 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U112 — blocos nomeados direto na ficha; a ficha do cliente numa página só (R202–R203)
+
+Duas correções de rumo do Davi sobre a U111, no mesmo dia. A primeira é de
+modelo: os blocos da PROPOSTA nascem de perguntas e respostas que podam os
+equipamentos de um projeto que ainda não existe — mas "no caso de locais que
+já são nossos clientes, nós não vamos passar pela fase de elaboração da
+proposta comercial […] a única coisa que precisamos fazer é: indicar quais
+blocos existem em cada cliente". O exemplo foi o Paineiras: eclusa de
+pedestres, porta de carga/descarga, eclusa veicular, porta do armário de
+encomendas, CFTV, cerca elétrica, totem de monitoramento, central de portaria
+remota. Cria-se cada um na ficha, pega-se a lista de equipamentos que a
+importação trouxe para o Paineiras e vinculam-se aos blocos. "A estrutura pula
+etapas, nós indicamos direto os equipamentos de cada bloco." A segunda é de
+tela: "não deve conter outra página para configurar o cliente, deve estar tudo
+na mesma página. Quero que seja uma página só."
+
+**O que saiu (R202).** O editor de estrutura da R63 na ficha —
+`EditorBlocoCliente.tsx`, o módulo puro `blocoCliente.ts`, os helpers
+`TIPOS_COM_ESTRUTURA`/`temEstrutura`/`salvarConfigBloco` em `inventario.ts` e
+o botão "Configurar bloco"/"Editar estrutura" com o modal. Não é uma perda: a
+estrutura por perguntas continua inteira no ORÇAMENTO (`src/lib/blocos.ts`
+segue exportando `gerarCodigoBloco`/`gerarDescricaoBloco`, e uma asserção
+garante isso), que é onde cada resposta tem consequência — poda a lista de
+equipamentos a orçar. Na ficha de um local já instalado a resposta não poda
+nada, porque o equipamento é indicado direto. As colunas `codigo_bloco` e
+`config_bloco` da U52 ficam: bloco importado do escopo aprovado traz o código
+que o orçamento gerou, e a ficha o mostra como informação. O que entrou é
+pequeno de propósito: `NOMES_SUGERIDOS` por tipo (os oito nomes do Paineiras),
+oferecidos no modal "Novo bloco" como um clique que preenche o campo — digitar
+outro nome vale igual. O modal pede tipo, nome e descrição opcional, e diz que
+os equipamentos se vinculam depois.
+
+**Uma página só (R203).** A U111 tinha deixado um "modo de configuração" —
+um botão "Configurar" no cabeçalho trocava a ficha inteira pelo formulário em
+duas colunas. Saiu o modo, saiu o botão, saiu a classe `.ficha-colunas`. No
+lugar, três cards na coluna da identidade editam NO LUGAR: **O local** (nome,
+documento, tipo, situação, endereço com o mapa — com os quatro freios da U84
+preservados linha a linha: campo e botão travados durante a busca, conferência
+e coordenada zeradas ao editar), **Contatos** (síndico/proprietário,
+zelador/encarregado, e o financeiro só para quem vê financeiro) e **Estrutura**
+(apartamentos, acessos, observações). Cada um tem o próprio lápis (só quem
+pode editar o vê), abre Salvar/Cancelar dentro do card e grava SÓ os seus
+campos — a mutação da página aceita o patch parcial, o que também evita que
+salvar o telefone do zelador reescreva o endereço com um valor velho. A ordem
+da coluna é a de trabalhar o cliente: fachada → o local → contatos →
+contratos → estrutura. `ClienteForm.tsx` deixou de ser um formulário e passou a
+exportar os três cards e o `Contato` (componente de módulo, pelo motivo de
+sempre: dentro do pai ganharia identidade nova a cada render).
+
+**O que se recusou a fazer.** Apagar a R63 do PRODUTO ou a migration U52 da
+memória: a regra fica, anotada como revista pela R202 — quem ler o histórico
+precisa saber que a estrutura na ficha existiu e por que saiu. Mexer na
+estrutura do orçamento: nada ali mudou. Inventar uma segunda casca de modal ou
+de card: o "Novo bloco" usa a `useModalEstilos` da seção, e os cards usam
+`card(isLight)`, `cinzas(isLight)`, `botaoSelecao` sem brilho e a ação dourada
+única — o mesmo vocabulário das telas irmãs (R174, R186, R195).
+
+**O que a verificação pegou.** O bloco R63 do verificador (127 linhas)
+carregava `blocoCliente.ts` e lia `EditorBlocoCliente.tsx` — com os arquivos
+apagados ele explodiria antes de qualquer `eq`. Foi reescrito como R63→R202:
+mantém a migration U52 e a forma de `SistemaInstalado`, e passa a travar a
+SUBTRAÇÃO (censo de `src/` sem nenhuma citação aos módulos apagados, sem botão
+de estrutura, código de bloco só leitura) e a permanência do gerador no
+orçamento. Três pinos da R146 apontavam para a rota da ficha e agora vivem no
+`ClienteForm` (`Contato`, `whatsappLink`, `semSindico`, os dois rótulos
+"WhatsApp" com `s.LABEL`): reapontados, não afrouxados. As asserções da U111
+sobre o modo de configuração (`editando`, "Configurar", `.ficha-colunas`, as
+duas `<section>`) foram invertidas ou substituídas pela ordem nova da coluna
+(fachada → CardLocal → CardContatos → Contratos → CardEstrutura). Um censo
+novo confere que os 21 campos do antigo formulário estão em algum card — a
+regra "nenhum campo entrou ou saiu" da R201 continua verdadeira por
+construção, não por promessa.
+
+**Números.** Verificador: 3.046 asserções, 0 falharam (o bloco R63 foi de 43
+asserções sobre o editor para 11 sobre a subtração; a U112 pôs 11; a R201
+perdeu a do CSS). `tsc`: 57 (baseline). Build completa.

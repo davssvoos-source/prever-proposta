@@ -1220,11 +1220,3 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 }
 .fachada-card.pronta { opacity: 0.55; }
 [data-theme="light"] .fachada-card.pronta { opacity: 0.45; }
-
-/* ── A configuração do cliente em DUAS colunas (R201, U111) ──────────────────
-   Quem é e onde fica | com quem falar e o que tem. No celular empilha na mesma
-   ordem. Mesmo breakpoint de .detalhe-grid e da sidebar. */
-.ficha-colunas { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
-@media (min-width: 1024px) {
-  .ficha-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}

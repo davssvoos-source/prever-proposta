@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-07** · última regra: **R201** · último diário:
-**U111** · verificador: **3.068 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-07** · última regra: **R203** · último diário:
+**U112** · verificador: **3.046 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -88,6 +88,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U109 | o patrimônio do QAP: `catalogo_equipamentos` + `equipamentos_patrimonio` com RLS, o módulo puro de importação, a tela "Equipamentos cadastrados" (`/equipamentos`), o bloco de equipamentos na ficha do cliente e a saída da tela "Catálogo" (R196–R199) |
 | U110 | os **4.241 equipamentos do QAP** importados: retrato cru versionado, 429 variações de catálogo, chave `qap:<id>` (idempotente), vínculo de local feito no SQL contra a base viva e a relação dos 40 locais fora da base (R196–R199) |
 | U111 | sistemas instalados = **blocos** criados no app + **equipamentos do QAP vinculados** (fila com seleção em lote, mover/desvincular dentro do bloco, mesmo cliente conferido no dado); a **ficha do cliente v2** — cabeçalho de página, duas colunas, configuração em duas colunas (R200–R201) |
+| U112 | os blocos são **nomeados direto** na ficha (sem a estrutura por perguntas, que fica no orçamento; nomes do Paineiras sugeridos por tipo) e a ficha vira **uma página só** — sem modo de configuração, três cards que editam no lugar (R202–R203) |
 
 ## 4. Banco: migrations
 
@@ -183,9 +184,16 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   ver `docs/importacao/locais-desconhecidos.md`).
 - **R200–R201** — **sistema instalado é um bloco** criado no app; o equipamento
   do QAP é **vinculado** ao bloco (fila "Equipamentos a vincular", em lote); a
-  **ficha do cliente v2** em cabeçalho + duas colunas, configuração em duas
-  colunas. Pendência de decisão: a escrita do vínculo é de gestor com vínculo
-  ativo — se o Vinicius for técnico no cadastro, ele não vincula.
+  **ficha do cliente v2** em cabeçalho + duas colunas. Pendência de decisão:
+  a escrita do vínculo é de gestor com vínculo ativo — se o Vinicius for
+  técnico no cadastro, ele não vincula.
+- **R202–R203** — em cliente que já é nosso **o bloco é só nomeado** (o
+  Paineiras: eclusa de pedestres, porta de carga/descarga, eclusa veicular,
+  porta do armário de encomendas, CFTV, cerca elétrica, totem, central de
+  portaria remota) e recebe os equipamentos do QAP — a estrutura por
+  perguntas ficou no orçamento, o editor da R63 saiu da ficha; e a ficha é
+  **uma página só**, sem modo de configuração: os cards O local, Contatos e
+  Estrutura editam no lugar.
 
 ## 6. Perguntas em aberto
 

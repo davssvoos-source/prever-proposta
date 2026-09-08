@@ -35,7 +35,7 @@
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
   - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
-  - [6.20 Ficha do cliente — cabeçalho, duas colunas e o vínculo (v12 — 2026-09-07, R200–R201)](#620-ficha-do-cliente-cabeçalho-duas-colunas-e-o-vínculo-v12-2026-09-07-r200r201)
+  - [6.20 Ficha do cliente — cabeçalho, duas colunas, o vínculo e os cards editáveis (v13 — 2026-09-07, R200–R203)](#620-ficha-do-cliente-cabeçalho-duas-colunas-o-vínculo-e-os-cards-editáveis-v13-2026-09-07-r200r203)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -910,7 +910,7 @@ O que saiu, e não volta: a paleta local `L` (um segundo tema claro só daquela
 tela) e o "vidro dourado" dos campos no escuro — um design system por tela é o
 primeiro anti-padrão da skill de designer.
 
-### 6.20 Ficha do cliente — cabeçalho, duas colunas e o vínculo (v12 — 2026-09-07, R200–R201)
+### 6.20 Ficha do cliente — cabeçalho, duas colunas, o vínculo e os cards editáveis (v13 — 2026-09-07, R200–R203)
 
 A ficha é a página que se trabalha por mais tempo, e o desenho segue a ordem
 do trabalho:
@@ -918,8 +918,8 @@ do trabalho:
 - **Cabeçalho de página** (largura toda): botão de voltar 40px · `h1` 22/700
   com o nome · chip de situação (`etiqueta`) · tipo de local com ícone ·
   linha de meta 12,5 secundária (endereço · contagens) · etiquetas de serviço
-  prestado (`etiqueta` quando marcada, tracejada quando não) · botão
-  **Configurar** à direita.
+  prestado (`etiqueta` quando marcada, tracejada quando não). Não há botão
+  de configurar: a edição é no lugar, card a card (R203).
 - **Duas colunas** (`.detalhe-grid`, 3fr | 2fr a partir de 1024px). Cada
   card: `card(isLight)`, raio 18, padding 16, micro-rótulo dourado 10,5/700
   com ícone 15px e a contagem em 11,5 secundário ao lado.
@@ -932,17 +932,23 @@ do trabalho:
   **contagem grande** à direita (15/700 + rótulo 9 caixa alta). Expandido:
   "Equipamentos vinculados" (linhas `LinhaDoPatrimonio` com o
   `SeletorDeSistema` compacto à direita), "Previsto no orçamento" quando
-  existe, e as ações (Configurar bloco · Excluir bloco).
+  existe, e a ação Excluir bloco. O código do bloco, quando existe, é
+  leitura — não há estrutura por perguntas na ficha (R202).
 - **A fila de vínculo**: barra em `campo` com a caixa "marcar todos", a
   contagem de selecionados, o `SeletorDeSistema` e o botão dourado
   **Vincular** (30px, pílula, sem brilho); embaixo, uma linha por equipamento
   com caixa de seleção à esquerda e o seletor por linha à direita. Três
   estados: sem equipamento não aparece; sem bloco explica; tudo vinculado vira
   uma linha com o ícone de elo em verde.
-- **Configuração** (`.ficha-colunas`, 2 colunas a partir de 1024px): campos
-  de 42px em `campo` com borda `divisoria`; chips `botaoSelecao` sem
-  brilho; nota de campo 11,5 secundário; ações alinhadas à direita, com a
-  ação dourada de 42px como única primária.
+- **Card editável** (`CardLocal` · `CardContatos` · `CardEstrutura`, em
+  `features/clientes/ClienteForm.tsx`): em leitura, linhas rótulo 12,5/600 +
+  valor 13/400 secundário e o lápis 30px no canto, só para quem edita. Em
+  edição, dentro do MESMO card: campos de 42px em `campo` com borda
+  `divisoria`, chips `botaoSelecao` sem brilho, nota de campo 11,5
+  secundário, e o rodapé com **Cancelar** (leve, 36px) e a ação dourada
+  **Salvar** — a única primária do card. Cada card grava só os seus campos.
+  A grade de duas colunas da configuração (v12) saiu com o modo de
+  configuração.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

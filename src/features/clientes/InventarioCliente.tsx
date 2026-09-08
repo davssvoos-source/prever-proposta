@@ -1,4 +1,4 @@
-// SISTEMAS INSTALADOS na ficha do cliente — os blocos e o que está neles (R200, U111).
+// SISTEMAS INSTALADOS na ficha do cliente — os blocos e o que está neles (R200, R202, U111/U112).
 //
 // Davi, 2026-09-07: "Cada página de cliente deverá ter um campo para os
 // sistemas instalados. Os sistemas instalados consistem em blocos com
@@ -7,29 +7,33 @@
 // importados pelo QAP, e aí no nosso sistema, o usuário vincula o equipamento
 // ao sistema instalado (ambos no mesmo cliente)."
 //
-// O MODELO, em uma linha: um SISTEMA INSTALADO é um BLOCO do cliente
-// (`cliente_sistemas` — tipo, nome, e a estrutura R63 com o código do bloco),
-// criado aqui no app; o EQUIPAMENTO é o item do QAP (`equipamentos_patrimonio`,
-// importado na U110) e o vínculo é a coluna `cliente_sistema_id` dele.
+// E, esclarecendo (R202): "no caso de locais que já são nossos clientes, nós não
+// vamos passar pela fase de elaboração da proposta comercial […] a única coisa
+// que precisamos fazer é: indicar quais blocos existem em cada cliente […] e
+// vamos vincular os equipamentos a cada um dos blocos que criamos. […] a
+// estrutura pula etapas, nós indicamos direto os equipamentos de cada bloco."
 //
-// O QUE MUDOU DA 1ª VERSÃO (Etapa 2 / R63): o equipamento deixou de ser
-// cadastrado À MÃO dentro do bloco (o botão "+ Equipamento" que buscava no
-// catálogo do orçamento saiu) — ele vem do QAP e é VINCULADO, com o mesmo
-// seletor da fila `EquipamentosDoCliente`, que também move e desvincula. O que
-// veio do ESCOPO APROVADO da proposta (`cliente_equipamentos`, o dimensionado)
-// continua visível dentro do bloco como "Previsto no orçamento": é a leitura
-// "o que foi vendido × o que está lá", e apagá-la esconderia a diferença.
-// "Importar do escopo" fica, porque é o atalho para CRIAR os blocos a partir
-// da proposta aprovada.
+// O MODELO, em uma linha: um SISTEMA INSTALADO é um BLOCO do cliente
+// (`cliente_sistemas` — tipo e NOME), criado aqui no app; o EQUIPAMENTO é o item
+// do QAP (`equipamentos_patrimonio`, importado na U110) e o vínculo é a coluna
+// `cliente_sistema_id` dele.
+//
+// O QUE NÃO EXISTE MAIS AQUI: a ESTRUTURA por perguntas (barreira, entrada,
+// saída, abertura — o editor da R63). Ela é do ORÇAMENTO, onde cada resposta
+// poda os equipamentos de um projeto que ainda não existe; num cliente que já
+// tem tudo instalado, o equipamento é indicado direto. Bloco importado do
+// escopo aprovado ainda traz o código que o orçamento gerou, e ele é mostrado
+// como informação — só não se edita mais por aqui. O "+ Equipamento" manual
+// (catálogo do orçamento) também saiu na U111: equipamento é o do QAP. O que
+// veio dimensionado da proposta (`cliente_equipamentos`) continua visível
+// dentro do bloco como "Previsto no orçamento".
 //
 // OS SUBCOMPONENTES SÃO DE MÓDULO (o mesmo motivo do PainelChamado): declarados
 // dentro do pai ganhariam identidade nova a cada render e o modal remontaria.
-// `useModalEstilos` e `BotaoFechar` são exportados para `EditorBlocoCliente`
-// usar a MESMA casca de modal — uma segunda linguagem visual ninguém pediu.
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Boxes, ChevronDown, ChevronRight, Download, Plus, Settings2, Trash2, X } from "lucide-react";
+import { Boxes, ChevronDown, ChevronRight, Download, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
@@ -44,9 +48,9 @@ import {
   atualizarEquipamentoInstalado,
   excluirEquipamentoInstalado,
   nomeEquipamento,
-  temEstrutura,
   TIPO_SISTEMA_LABEL,
   TIPOS_SISTEMA_OFERECIDOS,
+  NOMES_SUGERIDOS,
   ESTADO_LABEL,
   ESTADO_CORES,
   ORIGEM_LABEL,
@@ -54,7 +58,6 @@ import {
   type SistemaInstalado,
   type TipoSistema,
 } from "./inventario";
-import { EditorBlocoCliente } from "./EditorBlocoCliente";
 import { LinhaDoPatrimonio, SeletorDeSistema, useInvalidarPatrimonioDoCliente } from "./EquipamentosDoCliente";
 
 export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string; podeEditar: boolean }) {
@@ -70,9 +73,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   const { data: patrimonio } = useEquipamentosDoCliente(clienteId);
 
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState<
-    null | { tipo: "importar" } | { tipo: "sistema" } | { tipo: "bloco"; sistema: SistemaInstalado }
-  >(null);
+  const [modal, setModal] = useState<null | { tipo: "importar" } | { tipo: "sistema" }>(null);
 
   // os equipamentos do QAP, agrupados pelo bloco em que estão (R200)
   const porSistema = useMemo(() => {
@@ -189,9 +190,10 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
             Nenhum sistema instalado ainda.
           </span>
           <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
-            Cada bloco é um sistema do local — a portaria, o CFTV, o alarme, a cerca. Crie o primeiro
-            com <strong>+ Bloco</strong>{podeImportar ? " ou importe os blocos da proposta aprovada" : ""}; depois
-            vincule a ele os equipamentos que vieram do QAP{totalDoQap > 0 ? ` (${totalDoQap} esperando)` : ""}.
+            Cada bloco é um sistema do local — a eclusa de pedestres, a eclusa veicular, o CFTV, a cerca
+            elétrica, a central de portaria remota. Crie o primeiro com <strong>+ Bloco</strong>
+            {podeImportar ? " ou importe os blocos da proposta aprovada" : ""}; depois vincule a ele os
+            equipamentos que vieram do QAP{totalDoQap > 0 ? ` (${totalDoQap} esperando)` : ""}.
           </span>
         </div>
       ) : (
@@ -225,11 +227,11 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                     <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5 }}>{s.nome}</div>
                     <div style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, marginTop: 1 }}>
                       {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo}
+                      {s.descricao && s.descricao !== s.codigo_bloco ? ` · ${s.descricao}` : ""}
                       {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
                     </div>
-                    {/* R63: o código já é a prova de que o bloco está
-                        estruturado — sem ele, "configurado ou não" só se
-                        sabia abrindo o editor pra conferir */}
+                    {/* R202: o código só existe em bloco que veio do orçamento — é
+                        informação, não se edita mais por aqui */}
                     {s.codigo_bloco && (
                       <div style={{
                         fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: gold,
@@ -279,7 +281,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
                       )}
                     </div>
 
-                    {/* ── o que foi VENDIDO: o dimensionado da proposta aprovada (R63) ── */}
+                    {/* ── o que foi VENDIDO: o dimensionado da proposta aprovada ── */}
                     {previstos.length > 0 && (
                       <div>
                         <div style={{ ...MICRO, fontSize: 9.5, color: c.textoSecundario, marginBottom: 2 }}>
@@ -346,16 +348,6 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
                     {podeEditar && (
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {/* R63: só os tipos que gerarCodigoBloco sabe montar
-                            (PED/VEI/CFTV/AL/CER/CENT) — ELV/TOT continuam só
-                            com nome/descrição por enquanto (ver
-                            TIPOS_COM_ESTRUTURA em inventario.ts) */}
-                        {temEstrutura(s.tipo) && (
-                          <button style={btnSec} onClick={() => setModal({ tipo: "bloco", sistema: s })}>
-                            <Settings2 size={14} color={gold} />
-                            {s.codigo_bloco ? "Editar estrutura" : "Configurar bloco"}
-                          </button>
-                        )}
                         <button
                           style={{ ...btnSec, color: vermelho }}
                           onClick={() => {
@@ -393,21 +385,13 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
           onCriado={() => { invalidar(); setModal(null); }}
         />
       )}
-      {modal?.tipo === "bloco" && (
-        <EditorBlocoCliente
-          sistema={modal.sistema}
-          onFechar={() => setModal(null)}
-        />
-      )}
     </div>
   );
 }
 
 // ── Modais ───────────────────────────────────────────────────
 
-// exportados para EditorBlocoCliente.tsx reaproveitar a MESMA casca de modal
-// (R63) — um popover próprio ficaria com bordas levemente diferentes do resto
-// da ficha do cliente, e ninguém pediu uma segunda linguagem visual
+/** A casca de modal da ficha do cliente — a mesma nos dois modais desta seção. */
 export function useModalEstilos() {
   const { isLight } = useTheme();
   const c = cinzas(isLight);
@@ -431,13 +415,13 @@ export function useModalEstilos() {
       color: c.textoSecundario, marginBottom: 6, display: "block",
     } as CSSProperties,
     input: {
-      width: "100%", boxSizing: "border-box", height: 44, borderRadius: 12, padding: "0 13px",
+      width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, padding: "0 13px",
       background: c.campo, border: `1px solid ${c.divisoria}`,
       color: c.texto, fontFamily: FONT, fontWeight: 400, fontSize: 14,
       outline: "none", colorScheme: isLight ? "light" : "dark",
     } as CSSProperties,
     cta: {
-      ...goldButton(), boxShadow: "none", width: "100%", height: 46, borderRadius: 14,
+      ...goldButton(), boxShadow: "none", width: "100%", height: 44, borderRadius: 14,
       fontFamily: FONT, fontWeight: 700, fontSize: 13,
     } as CSSProperties,
   };
@@ -514,6 +498,11 @@ function ModalImportar({
   );
 }
 
+/**
+ * NOVO BLOCO (R202): tipo + nome, e pronto. Os nomes sugeridos são os que o
+ * Davi usou para o Paineiras — um clique preenche; digitar outro também vale.
+ * Nenhuma pergunta de estrutura: isso é do orçamento.
+ */
 function ModalSistema({
   clienteId, onFechar, onCriado,
 }: {
@@ -522,9 +511,11 @@ function ModalSistema({
   onCriado: () => void;
 }) {
   const s = useModalEstilos();
+  const c = cinzas(s.isLight);
   const [tipo, setTipo] = useState<TipoSistema>("PED");
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const sugestoes = NOMES_SUGERIDOS[tipo] ?? [];
 
   const criar = useMutation({
     mutationFn: () =>
@@ -547,8 +538,8 @@ function ModalSistema({
           <BotaoFechar onClick={onFechar} />
         </div>
         <p style={{ fontFamily: FONT, fontSize: 12.5, color: s.textSecondary, lineHeight: 1.5, margin: "0 0 14px" }}>
-          Um bloco é um sistema instalado no local — a portaria social, o CFTV da garagem, a central
-          de alarme. Os equipamentos do QAP são vinculados a ele depois.
+          Um bloco é um sistema instalado no local — a eclusa de pedestres, a porta de carga, o CFTV,
+          a central de portaria remota. Só o nome: os equipamentos do QAP são vinculados a ele depois.
         </p>
 
         <label style={s.label}>Tipo</label>
@@ -571,13 +562,31 @@ function ModalSistema({
           })}
         </div>
 
-        <label style={s.label}>Nome</label>
+        <label style={s.label}>Nome do bloco</label>
         <input
-          style={{ ...s.input, marginBottom: 14 }}
+          style={{ ...s.input, marginBottom: sugestoes.length ? 8 : 14 }}
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder={TIPO_SISTEMA_LABEL[tipo]}
         />
+        {sugestoes.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+            {sugestoes.map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setNome(n)}
+                style={{
+                  padding: "4px 10px", borderRadius: 999, cursor: "pointer",
+                  background: nome === n ? c.elevada : "transparent", border: `1px dashed ${c.divisoria}`,
+                  color: s.textPrimary, fontFamily: FONT, fontSize: 11.5, fontWeight: 600,
+                }}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        )}
 
         <label style={s.label}>Descrição (opcional)</label>
         <input

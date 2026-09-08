@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)](#22-o-patrimônio-do-qap-r196r199-davi-2026-09-04) · R196–R201 (6)
+- [22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r203-davi-2026-09-04-e-2026-09-07) · R196–R203 (8)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-07 (R201). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-07 (R203). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -954,6 +954,13 @@ revisão**: manter, mover para dentro de outra tela, ou remover.
   não, tipo de barreira, leitora/motor de cada porta...) — no MESMO
   vocabulário e código do orçamento (`PED-2B-PORP-FAC-FAC-MOT-...-PR`), sem
   precisar refazer a cada chamado.
+
+  *Revista pela **R202** (07/09/2026): na FICHA do cliente a estrutura por
+  perguntas SAIU — o bloco é nomeado direto e recebe os equipamentos do QAP;
+  o editor, o botão "Configurar bloco" e o módulo puro dele foram apagados.
+  A estrutura continua no orçamento. As colunas `codigo_bloco`/`config_bloco`
+  ficam: bloco importado do escopo aprovado traz o código, que a ficha mostra
+  como informação.*
 
   **Não é cadastro novo** — é o "Sistemas instalados" que a ficha já tinha
   (`cliente_sistemas`, a mesma tabela que hoje só guarda nome/descrição em
@@ -3714,7 +3721,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP (R196–R199, Davi, 2026-09-04)
+## 22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -3801,15 +3808,53 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   ao sistema instalado (ambos no mesmo cliente)".)*
 
 - **R201** — **A ficha do cliente é uma página de computador: cabeçalho de
-  página e duas colunas; a configuração, duas colunas.** Cabeçalho: nome
-  22/700, situação e tipo de local ao lado, endereço numa linha, as etiquetas
-  de serviço prestado (que também são o controle, R41/R173) e o botão
-  **Configurar**. Coluna larga, o **local**: Sistemas instalados, Equipamentos
-  a vincular, Atividades, Plantão, Histórico de visitas. Coluna estreita, a
-  **identidade**: a fachada com os dados do local, Contatos (WhatsApp
-  clicável), Contratos (só quem vê financeiro) e Observações. A configuração
-  (`ClienteForm`) divide-se em Identificação + Endereço | Contatos + Estrutura
-  do local, no design system (cinza neutro, botão de seleção sem brilho, uma
-  ação dourada). Nenhum campo entrou ou saiu; no celular tudo empilha. *(Davi,
-  07/09/2026: "Revise toda a página do cliente, quero um design atualizado,
-  layout para desktop, revise toda a página de configuração do cliente".)*
+  página e duas colunas.** Cabeçalho: nome 22/700, situação e tipo de local ao
+  lado, endereço numa linha e as etiquetas de serviço prestado (que também são
+  o controle, R41/R173). Coluna larga, o **local**: Sistemas instalados,
+  Equipamentos a vincular, Atividades, Plantão, Histórico de visitas. Coluna
+  estreita, a **identidade**: a fachada, o local, os contatos (WhatsApp
+  clicável), os contratos (só quem vê financeiro) e a estrutura com as
+  observações — no design system (cinza neutro, botão de seleção sem brilho,
+  uma ação dourada). Nenhum campo entrou ou saiu; no celular tudo empilha.
+  *Revista pela **R203** (mesmo dia): a "configuração em duas colunas" e o
+  botão "Configurar" que esta regra trazia não existem mais — cada card edita
+  no lugar.* *(Davi, 07/09/2026: "Revise toda a página do cliente, quero um
+  design atualizado, layout para desktop, revise toda a página de configuração
+  do cliente".)*
+
+- **R202** — **Em cliente que já é nosso, o bloco é NOMEADO direto e recebe
+  os equipamentos do QAP — sem a estrutura por perguntas.** A estrutura
+  (eclusa ou não, barreira, entrada, saída, abertura) é do ORÇAMENTO: lá cada
+  resposta poda os equipamentos de um projeto que ainda não existe. Num local
+  já instalado não há proposta a elaborar: indica-se **quais blocos existem**
+  (no Paineiras: Eclusa de pedestres, Porta de carga/descarga, Eclusa
+  veicular, Porta do armário de encomendas, CFTV, Cerca elétrica, Totem de
+  monitoramento, Central de portaria remota), cria-se cada um na ficha
+  (**+ Bloco**: tipo e nome — esses nomes são sugeridos por tipo, um clique
+  preenche; descrição opcional) e vinculam-se a ele os equipamentos
+  importados. O botão "Configurar bloco"/"Editar estrutura" e o editor da R63
+  saem da ficha; o código de bloco que veio do escopo aprovado fica visível
+  como informação. A R63 fica revista neste ponto. *(Davi, 07/09/2026: "no
+  caso de locais que já são nossos clientes, nós não vamos passar pela fase de
+  elaboração da proposta comercial […] a única coisa que precisamos fazer é:
+  indicar quais blocos existem em cada cliente […] vamos criar estes blocos lá
+  na página do Paineiras, e vamos pegar a lista de equipamentos que estão no
+  Paineiras segundo a importação que fizemos, e vamos vincular os equipamentos
+  a cada um dos blocos que criamos […] não terá necessidade de indicar se é
+  facial saída da barreira […] a estrutura pula etapas, nós indicamos direto
+  os equipamentos de cada bloco".)*
+
+- **R203** — **A ficha do cliente é UMA página só: não existe tela nem modo
+  de configuração; cada card edita no lugar.** O cabeçalho (nome, situação,
+  tipo de local, endereço, etiquetas de serviço prestado que são o próprio
+  controle) perde o botão "Configurar". Na coluna da identidade, três cards
+  com lápis próprio — **O local** (nome, documento, tipo, situação, endereço
+  com o mapa e os freios da U84), **Contatos** (síndico/proprietário,
+  zelador/encarregado(a), e o financeiro só para quem vê financeiro) e
+  **Estrutura** (apartamentos, acessos, observações) — abrem a edição dentro
+  do card, com Salvar/Cancelar, e cada um grava só os seus campos. O lápis só
+  aparece para quem pode editar. A fachada sobe pelo card dela (R146). A R201
+  fica revista: a "configuração em duas colunas" não existe mais. *(Davi,
+  07/09/2026: "na página do cliente, eu quero que tenha tudo, não deve conter
+  outra página para configurar o cliente, deve estar tudo na mesma página.
+  Quero que seja uma página só, com layout bem estruturado, design clean".)*

@@ -165,6 +165,12 @@ A seção **Atividades** da ficha passou a incluir as atividades de **grupo**
 ("Clientes de Portaria Remota") a que o cliente pertence e as em que ele é
 local extra (R143) — marcadas como tal —, com teto declarado e "ver todas".
 
+Desde a U112 (R203) a ficha é **uma página só**: não há tela nem modo de
+configuração. Os cards **O local**, **Contatos** e **Estrutura** têm um lápis
+(só para quem pode editar); a edição abre dentro do card, com Salvar e
+Cancelar, e grava só os campos daquele card. As etiquetas de serviço prestado,
+no cabeçalho, continuam sendo o próprio controle.
+
 ## Patrimônio do QAP (R196–R199, U109)
 
 O controle patrimonial da Prever é o **QAP ERP**, em *Patrimônio > Local/Uso*.
@@ -210,13 +216,19 @@ casar contra a base VIVA no momento de rodar é melhor que casar contra um
 retrato que já nasce velho. O casamento do SQL é mais estrito que o do módulo
 (não ignora acento), então ele erra para o lado de "não vinculou".
 
-## Sistemas instalados e o vínculo com os equipamentos (R200–R201, U111)
+## Sistemas instalados e o vínculo com os equipamentos (R200–R202, U111–U112)
 
 Na ficha do cliente, **Sistemas instalados** é a lista de **blocos** do local —
 a portaria social, o CFTV da garagem, a central de alarme. O bloco se cria no
 app (**+ Bloco**: tipo, nome, descrição) ou vem do escopo da proposta aprovada
-(**Importar do escopo**), e pode ganhar a estrutura da R63 (**Configurar
-bloco**, que gera o código).
+(**Importar do escopo**). O bloco é só **tipo e nome**: em cliente que já é
+nosso não se responde às perguntas de estrutura do orçamento — "a estrutura
+pula etapas, nós indicamos direto os equipamentos de cada bloco" (R202). Os
+nomes que o Davi usou no Paineiras (eclusa de pedestres, porta de
+carga/descarga, porta do armário de encomendas, eclusa veicular, CFTV, cerca
+elétrica, totem de monitoramento, central de portaria remota) aparecem no
+modal como sugestão de um clique. O código de bloco de quem veio do escopo
+aprovado fica visível como informação.
 
 Os **equipamentos** vêm do QAP (U110) e entram na ficha na fila **Equipamentos
 a vincular**. Marque os que são do mesmo sistema, escolha o bloco no seletor e
