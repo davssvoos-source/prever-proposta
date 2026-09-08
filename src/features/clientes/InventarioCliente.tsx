@@ -62,7 +62,7 @@ import {
   type TipoSistema,
 } from "./inventario";
 import {
-  CabecalhoDoPainel, EquipamentosDoCliente, LinhaDoPatrimonio, estiloDoPainel, useInvalidarPatrimonioDoCliente,
+  CabecalhoDoPainel, EquipamentosDoCliente, LinhaDoPatrimonio, ROLAGEM_DO_PAINEL, estiloDoPainel, useInvalidarPatrimonioDoCliente,
 } from "./EquipamentosDoCliente";
 import {
   TIPO_ARRASTO, agruparPorSistema, arrastoEhNosso, fraseDoVinculo, idsQueMudam, lerArrasto, serializarArrasto,
@@ -224,7 +224,8 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
               </span>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            /* R208: a lista de blocos rola por dentro do painel; o cabeçalho fica parado */
+            <div className="rolagem-fina" style={{ ...ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column", gap: 10 }}>
               {sistemas.map((s) => {
                 const recolhido = recolhidos.has(s.id);
                 const doQap = porSistema.get(s.id) ?? VAZIO;

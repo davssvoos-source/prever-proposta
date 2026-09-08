@@ -952,6 +952,11 @@ do trabalho — no desktop, que é onde ela é usada (R205):
     a frase do que fazer e — só com seleção — o `SeletorDeSistema` compacto
     como caminho sem arrasto); embaixo, uma linha por equipamento com caixa
     de seleção e alça. Filtro em pílula 28px quando há mais de 8.
+  · **Altura e rolagem** (R208): o painel tem `max-height: min(64vh, 720px)`
+    e, no desktop, os dois têm a mesma altura (`align-items: stretch`). Só a
+    LISTA rola (`ROLAGEM_DO_PAINEL`: `overflow-y: auto; min-height: 0; flex: 1`,
+    com a classe `.rolagem-fina`); cabeçalho e barra do gesto ficam parados.
+    A página não cresce com a quantidade de equipamentos.
   · **Estados do arrasto** (`estiloDoPainel`): em repouso, moldura
     `divisoria`; destino possível, `1.5px dashed` dourado; com o arrasto em
     cima, `1.5px solid` dourado + `PRISMA.amarelo.bg` — e o texto "Solte para

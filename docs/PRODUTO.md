@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP e a ficha do cliente (R196–R207, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r207-davi-2026-09-04-e-2026-09-07) · R196–R207 (12)
+- [22. O patrimônio do QAP e a ficha do cliente (R196–R208, Davi, 2026-09-04 a 2026-09-08)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r208-davi-2026-09-04-a-2026-09-08) · R196–R208 (13)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-07 (R207). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-08 (R208). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3721,7 +3721,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP e a ficha do cliente (R196–R207, Davi, 2026-09-04 e 2026-09-07)
+## 22. O patrimônio do QAP e a ficha do cliente (R196–R208, Davi, 2026-09-04 a 2026-09-08)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -3915,3 +3915,11 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   de WhatsApp. *(Davi, 07/09/2026: "no campo de CONTATOS, eu quero que você
   adicione um botão de enviar mensagem no WhatsApp, adicione um botão de copiar
   e-mail, adicione um botão de copiar endereço no campo de endereço.")*
+
+- **R208** — **Os painéis de blocos e de equipamentos rolam por dentro, não a
+  página.** Os dois painéis do vínculo (R206) têm teto de altura (64% da
+  janela, no máximo 720px) e a mesma altura entre si no desktop; o cabeçalho
+  e a barra do gesto ficam parados e só a lista rola, com a barra fina. Um
+  cliente com sessenta câmeras não estica a ficha inteira. *(Davi,
+  08/09/2026: "A tela de clientes deve ter os campos de bloco e equipamentos
+  com scroll interno, não deve ser scroll da tela inteira.")*

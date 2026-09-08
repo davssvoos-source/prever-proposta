@@ -122,12 +122,22 @@ export function LinhaDoPatrimonio({ item, esquerda, direita, primeira }: {
  * A moldura de um PAINEL do vínculo (Blocos | Sem bloco) — a mesma nos dois.
  * `destaque`: "nenhum" em repouso; "possivel" enquanto algo é arrastado e pode
  * cair aqui (tracejado dourado); "ativo" com o arrasto em cima (sólido + tinta).
+ *
+ * R208: o painel tem TETO de altura e a lista rola POR DENTRO (`ROLAGEM_DO_PAINEL`
+ * no filho que lista) — cabeçalho e barra ficam parados, e a página não cresce
+ * com 60 câmeras. Davi: "os campos de bloco e equipamentos com scroll interno,
+ * não deve ser scroll da tela inteira."
  */
+export const ALTURA_MAXIMA_DO_PAINEL = "min(64vh, 720px)";
+/** o estilo do filho que rola dentro do painel — sempre com a classe `rolagem-fina` */
+export const ROLAGEM_DO_PAINEL: CSSProperties = { overflowY: "auto", minHeight: 0, flex: 1, paddingRight: 2 };
+
 export function estiloDoPainel(isLight: boolean, destaque: "nenhum" | "possivel" | "ativo"): CSSProperties {
   const c = cinzas(isLight);
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   return {
     display: "flex", flexDirection: "column", gap: 10, minHeight: 180, minWidth: 0,
+    maxHeight: ALTURA_MAXIMA_DO_PAINEL, boxSizing: "border-box",
     padding: 12, borderRadius: 14,
     border: destaque === "ativo" ? `1.5px solid ${gold}` : destaque === "possivel" ? `1.5px dashed ${gold}` : `1px solid ${c.divisoria}`,
     background: destaque === "ativo" ? PRISMA.amarelo.bg : "transparent",
@@ -282,7 +292,8 @@ export function EquipamentosDoCliente({
         {filtrados.length === 0 ? (
           <span style={nota}>Nenhum equipamento com “{busca}”.</span>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          /* R208: só a LISTA rola; cabeçalho e barra ficam parados */
+          <div className="rolagem-fina" style={{ ...ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column" }}>
             {filtrados.map((i, idx) => {
               const emArrasto = !!arrastando?.includes(i.id);
               return (

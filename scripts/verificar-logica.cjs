@@ -18629,8 +18629,8 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /Solte aqui os equipamentos deste bloco/.test(inv114), /Solte para tirar do bloco/.test(fila114),
       /<GripVertical size=\{14\}/.test(inv114) && /<GripVertical size=\{14\}/.test(fila114)],
      [true, true, true, true]);
-  eq('R206: .painel-vinculo é uma coluna no celular e duas iguais a partir de 1024px',
-     /\.painel-vinculo \{ display: grid; grid-template-columns: minmax\(0, 1fr\); gap: 12px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.painel-vinculo \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 14px; \}/.test(ler114('src/styles.css')), true);
+  eq('R206: .painel-vinculo é uma coluna no celular e duas iguais a partir de 1024px (da mesma altura — R208)',
+     /\.painel-vinculo \{ display: grid; grid-template-columns: minmax\(0, 1fr\); gap: 12px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.painel-vinculo \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 14px; align-items: stretch; \}/.test(ler114('src/styles.css')), true);
 
   // ── R205: a página preenche a largura ──────────────────────────────────────
   const css114 = ler114('src/styles.css');
@@ -18677,6 +18677,29 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /arrast/i.test(ler114('docs/manual/clientes-qap.md')),
       /^## U114 /m.test(ler114('docs/PLANO_UNIFICACAO.md')), /U114/.test(ler114('docs/ESTADO_ATUAL.md'))],
      [true, true, true, true, true, true, true]);
+}
+
+// ── U115 — os painéis do vínculo rolam por dentro (R208) ────────────────────
+{
+  const fs115 = require('fs');
+  const ler115 = (f) => fs115.readFileSync(f, 'utf8');
+  const fila115 = ler115('src/features/clientes/EquipamentosDoCliente.tsx');
+  const inv115 = ler115('src/features/clientes/InventarioCliente.tsx');
+  eq('R208 CRÍTICO: o painel tem TETO de altura (min(64vh, 720px)) e só a LISTA rola (ROLAGEM_DO_PAINEL + .rolagem-fina) — nos dois painéis; cabeçalho e a barra do gesto ficam parados, fora do que rola',
+     [/export const ALTURA_MAXIMA_DO_PAINEL = "min\(64vh, 720px\)";/.test(fila115),
+      /maxHeight: ALTURA_MAXIMA_DO_PAINEL, boxSizing: "border-box",/.test(fila115),
+      /export const ROLAGEM_DO_PAINEL: CSSProperties = \{ overflowY: "auto", minHeight: 0, flex: 1, paddingRight: 2 \};/.test(fila115),
+      /<div className="rolagem-fina" style=\{\{ \.\.\.ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column" \}\}>/.test(fila115),
+      /<div className="rolagem-fina" style=\{\{ \.\.\.ROLAGEM_DO_PAINEL, display: "flex", flexDirection: "column", gap: 10 \}\}>/.test(inv115),
+      fila115.indexOf('A BARRA DO GESTO') > 0 && fila115.indexOf('A BARRA DO GESTO') < fila115.indexOf('...ROLAGEM_DO_PAINEL')],
+     [true, true, true, true, true, true]);
+  eq('R208: no desktop os dois painéis têm a MESMA altura (align-items: stretch) — o menor não fica curto ao lado do maior',
+     /\.painel-vinculo \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 14px; align-items: stretch; \}/.test(ler115('src/styles.css')), true);
+  const prod115 = ler115('docs/PRODUTO.md');
+  eq('R208 está documentado com a frase do Davi e é a última atualização; a U115 está no diário e no ESTADO',
+     [/\*\*R208\*\*/.test(prod115), /scroll interno/.test(prod115), Number((prod115.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 208,
+      /^## U115 /m.test(ler115('docs/PLANO_UNIFICACAO.md')), /U115/.test(ler115('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

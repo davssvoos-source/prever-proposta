@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-07** · última regra: **R207** · último diário:
-**U114** · verificador: **3.068 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-08** · última regra: **R208** · último diário:
+**U115** · verificador: **3.071 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -91,6 +91,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U112 | os blocos são **nomeados direto** na ficha (sem a estrutura por perguntas, que fica no orçamento; nomes do Paineiras sugeridos por tipo) e a ficha vira **uma página só** — sem modo de configuração, três cards que editam no lugar (R202–R203) |
 | U113 | a tela Administrativo ganha **cancelar convite** na lista de Convites Pendentes — muda só o status em `convites`, não toca na conta já criada pelo envio (R204) |
 | U114 | a ficha do cliente **preenche a largura** (`.pagina-larga`, R205); o vínculo equipamento → bloco é **por arrasto** em dois painéis, Blocos com sub-itens | Sem bloco (R206, lógica pura em `vinculo.ts`); botões **WhatsApp / copiar e-mail / copiar endereço** nos cards (R207) |
+| U115 | os painéis Blocos e Sem bloco **rolam por dentro** (teto min(64vh, 720px), mesma altura no desktop, só a lista rola) — a página não cresce com os equipamentos (R208) |
 
 ## 4. Banco: migrations
 
@@ -204,7 +205,8 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   **por arrasto** — Blocos (com sub-itens) | Sem bloco, arrastar vincula,
   arrastar de volta desvincula, marcar vários e arrastar leva todos, seletor
   como caminho sem arrasto; contatos com botões de WhatsApp e copiar e-mail,
-  endereço com copiar.
+  endereço com copiar. **R208:** os dois painéis rolam por dentro, com teto de
+  altura — a página não cresce com a quantidade de equipamentos.
 
 ## 6. Perguntas em aberto
 

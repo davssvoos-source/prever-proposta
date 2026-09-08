@@ -11003,3 +11003,37 @@ card, que a mutação de vínculo existe UMA vez, e que a tela não toca em
 **Números.** Verificador: 3.068 asserções, 0 falharam (+17: 5 de unidade
 sobre `vinculo.ts`/`ficha.ts`, 11 sobre a tela e a regra 7; a U111 perdeu a
 do seletor por linha). `tsc`: 57 (baseline). Build completa.
+
+## U115 — os painéis do vínculo rolam por dentro (R208)
+
+Pedido do Davi ao voltar: "A tela de clientes deve ter os campos de bloco e
+equipamentos com scroll interno, não deve ser scroll da tela inteira." Com a
+U114 os dois painéis cresciam com o conteúdo — um cliente com sessenta câmeras
+em "Sem bloco" empurrava Atividades, Plantão e Visitas para longe, e arrastar
+de um painel para o outro pedia rolar a página no meio do gesto.
+
+**O que mudou.** O painel (`estiloDoPainel`) ganhou teto de altura,
+`min(64vh, 720px)` — 64% da janela para a ficha continuar mostrando o que vem
+embaixo, 720px para um monitor alto não virar uma lista infinita. Só a LISTA
+rola: um filho com `overflow-y: auto; min-height: 0; flex: 1`
+(`ROLAGEM_DO_PAINEL`, com a classe `.rolagem-fina` que a casa já tinha para a
+barra fina no desktop). O cabeçalho do painel e a barra do gesto ("marque e
+arraste", o seletor) ficam parados — são as instruções e o caminho sem
+arrasto, e não podem sumir enquanto se procura o item. No desktop os dois
+painéis passaram a ter a MESMA altura (`align-items: stretch` na
+`.painel-vinculo`): o de blocos não fica curto ao lado do de equipamentos, e
+a zona de soltar do último bloco não acaba no meio da tela.
+
+**O que se recusou a fazer.** Rolar o card inteiro de "Sistemas instalados":
+esconderia a dica do arrasto e os botões "+ Bloco" e "Importar do escopo".
+Altura fixa em pixels: em notebook de 768px de altura, 720px de painel é a
+tela inteira. O arrasto com rolagem automática perto das bordas é nativo do
+navegador nos containers roláveis — nada a escrever.
+
+**Verificação.** Três asserções novas: o teto e a rolagem só na lista, nos
+dois painéis, com a barra do gesto FORA do que rola; a mesma altura no
+desktop; a regra 7. O pino de `.painel-vinculo` da U114 foi reapontado para a
+linha com `align-items: stretch`.
+
+**Números.** Verificador: 3.071 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.
