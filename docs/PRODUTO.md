@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r203-davi-2026-09-04-e-2026-09-07) · R196–R203 (8)
+- [22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r203-davi-2026-09-04-e-2026-09-07) · R196–R204 (9)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-07 (R203). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-07 (R204). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3858,3 +3858,13 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   07/09/2026: "na página do cliente, eu quero que tenha tudo, não deve conter
   outra página para configurar o cliente, deve estar tudo na mesma página.
   Quero que seja uma página só, com layout bem estruturado, design clean".)*
+
+- **R204** — **Convite pendente se cancela pela própria lista.** Na aba
+  Usuários do Administrativo, cada card da lista "Convites Pendentes" ganha um
+  botão de cancelar ao lado do rótulo "Aguardando", com confirmação. Cancelar
+  só muda o `status` da linha em `convites` para `cancelado` — a conta do
+  convidado, criada no envio (R59, mesmo que o e-mail nunca saia), **não** é
+  tocada; para tirar o acesso de alguém o botão é outro, "Desativar usuário",
+  na lista de ativos. *(Davi, 07/09/2026: "Adicione um botão para cancelar
+  convite em cada card de usuário na tela Administrativo, na lista de
+  convites pendentes".)*

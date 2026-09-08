@@ -10872,3 +10872,36 @@ construção, não por promessa.
 **Números.** Verificador: 3.046 asserções, 0 falharam (o bloco R63 foi de 43
 asserções sobre o editor para 11 sobre a subtração; a U112 pôs 11; a R201
 perdeu a do CSS). `tsc`: 57 (baseline). Build completa.
+
+## U113 — cancelar convite pendente na tela Administrativo (R204)
+
+Pedido direto do Davi: "Adicione um botão para cancelar convite em cada card
+de usuário na tela Administrativo, na lista de convites pendentes." A lista
+em questão é a de `GestaoDeUsuarios` (`src/features/administrativo/Usuarios.tsx`)
+que lê `convites` filtrada por `status = 'pendente'`.
+
+**O que cancelar NÃO faz, de propósito.** Desde a R59, enviar o convite já
+cria a conta (`inviteUserByEmail`/`createUser` + o profile via
+`handle_new_user`), mesmo que o e-mail nunca saia — "cadastrar não depende do
+e-mail sair". A linha em `convites` é só o registro de que um convite foi
+disparado; ela nunca tinha transição nenhuma depois de criada (censo no app:
+nada além do INSERT da R59 e o SELECT desta tela mexia em `convites`). Cancelar
+muda **só** o `status` dessa linha para `cancelado` — a mesma policy "Admins
+can update convites" já cobre, direto pelo client, sem função de servidor
+nova. A conta e o profile continuam como estavam; quem quiser tirar o acesso
+de alguém usa o botão que já existe, "Desativar usuário", na lista de ativos.
+Misturar os dois seria a mesma pessoa resolvendo dois problemas diferentes com
+um clique só, e nenhum dos dois flags contaria a história certa depois.
+
+**A tela.** Um botão vermelho (30px, o mesmo tom do "Desativar usuário") ao
+lado do chip "Aguardando", com `confirm()` antes de mutar — o mesmo padrão já
+usado em "Rejeitar" solicitação de acesso, cinco linhas acima no arquivo.
+`onSuccess` invalida `convites-pendentes`: o card some da lista na hora.
+
+**O que a verificação trava.** Que a mutação atualiza exatamente `convites`
+(nunca `profiles`), que o botão está dentro do bloco de Convites Pendentes e
+não no de Usuários Ativos, e que existe um único disparo de
+`cancelarConviteMutation.mutate(`.
+
+**Números.** Verificador: 3.051 asserções, 0 falharam. `tsc`: 57 (baseline).
+Build completa.

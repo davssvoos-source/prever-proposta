@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-07** · última regra: **R203** · último diário:
-**U112** · verificador: **3.046 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-07** · última regra: **R204** · último diário:
+**U113** · verificador: **3.051 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -89,6 +89,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U110 | os **4.241 equipamentos do QAP** importados: retrato cru versionado, 429 variações de catálogo, chave `qap:<id>` (idempotente), vínculo de local feito no SQL contra a base viva e a relação dos 40 locais fora da base (R196–R199) |
 | U111 | sistemas instalados = **blocos** criados no app + **equipamentos do QAP vinculados** (fila com seleção em lote, mover/desvincular dentro do bloco, mesmo cliente conferido no dado); a **ficha do cliente v2** — cabeçalho de página, duas colunas, configuração em duas colunas (R200–R201) |
 | U112 | os blocos são **nomeados direto** na ficha (sem a estrutura por perguntas, que fica no orçamento; nomes do Paineiras sugeridos por tipo) e a ficha vira **uma página só** — sem modo de configuração, três cards que editam no lugar (R202–R203) |
+| U113 | a tela Administrativo ganha **cancelar convite** na lista de Convites Pendentes — muda só o status em `convites`, não toca na conta já criada pelo envio (R204) |
 
 ## 4. Banco: migrations
 
@@ -194,6 +195,9 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
   perguntas ficou no orçamento, o editor da R63 saiu da ficha; e a ficha é
   **uma página só**, sem modo de configuração: os cards O local, Contatos e
   Estrutura editam no lugar.
+- **R204** — a tela Administrativo ganha **cancelar convite** na lista de
+  Convites Pendentes; só muda o status em `convites`, não mexe na conta (já
+  criada no envio, R59) nem no profile.
 
 ## 6. Perguntas em aberto
 

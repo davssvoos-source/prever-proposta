@@ -18525,5 +18525,45 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, false, false, true, true]);
 }
 
+// ── U113 — cancelar convite pendente na tela Administrativo (R204) ──────────
+{
+  const fs113 = require('fs');
+  const ler113 = (f) => fs113.readFileSync(f, 'utf8');
+  const usu113 = ler113('src/features/administrativo/Usuarios.tsx');
+  const usu113c = usu113.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+
+  eq('R204 CRÍTICO: cancelar convite muda SÓ o status da linha em `convites` para cancelado (não mexe em profiles/auth — a conta já nasceu no envio, R59) e invalida convites-pendentes para sumir da lista na hora',
+     [/mutationFn: async \(id: string\) => \{\s*\n\s*const \{ error \} = await supabase\s*\n\s*\.from\("convites"\)\s*\n\s*\.update\(\{ status: "cancelado" \}\)\s*\n\s*\.eq\("id", id\);/.test(usu113),
+      /qc\.invalidateQueries\(\{ queryKey: \["convites-pendentes"\] \}\);\s*\n\s*toast\.success\("Convite cancelado\."\);/.test(usu113),
+      /cancelarConviteMutation/.test(usu113c.split('const cancelarConviteMutation')[1] ?? ''),
+      // CRÍTICO no sentido do arquivo: a mutação não toca profiles/auth nem desativa a conta
+      !/cancelarConviteMutation[\s\S]{0,400}\.from\("profiles"\)/.test(usu113)],
+     [true, true, true, true]);
+  eq('R204: o botão de cancelar está dentro do map de Convites Pendentes (não na lista de usuários ativos), com confirmação antes de disparar, e o ícone é X (lucide-react já importado)',
+     [(() => {
+        const iMap = usu113.indexOf('{convitesPendentes.map((c) => (');
+        const iFimMap = usu113.indexOf('{/* Lista de usuários ativos */}');
+        const iBtn = usu113.indexOf('title="Cancelar convite"');
+        return iMap >= 0 && iFimMap > iMap && iBtn > iMap && iBtn < iFimMap;
+      })(),
+      /if \(confirm\(`Cancelar o convite de \$\{c\.nome\}\?`\)\) cancelarConviteMutation\.mutate\(c\.id\);/.test(usu113),
+      /title="Cancelar convite"/.test(usu113),
+      /import \{ UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw, X \} from "lucide-react";/.test(usu113)],
+     [true, true, true, true]);
+  eq('R204: o botão de cancelar fica DEPOIS do chip "Aguardando" no mesmo card, e é o único novo botão (nenhum outro cancelarConvite fora do esperado)',
+     [usu113.indexOf('Aguardando') < usu113.indexOf('title="Cancelar convite"'),
+      (usu113.match(/cancelarConviteMutation\.mutate\(/g) ?? []).length],
+     [true, 1]);
+
+  const prod113 = ler113('docs/PRODUTO.md');
+  eq('R204 está documentado, com a frase do Davi, e é a última atualização',
+     [/\*\*R204\*\*/.test(prod113), /convite em cada card de usuário na tela Administrativo/.test(prod113),
+      Number((prod113.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 204],
+     [true, true, true]);
+  eq('U113 (regra 7): está no diário e no ESTADO_ATUAL',
+     [/^## U113 /m.test(ler113('docs/PLANO_UNIFICACAO.md')), /U113/.test(ler113('docs/ESTADO_ATUAL.md'))],
+     [true, true]);
+}
+
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

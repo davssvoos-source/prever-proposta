@@ -17,7 +17,7 @@
 import { useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw } from "lucide-react";
+import { UserPlus, Shield, Trash2, Mail, AlertTriangle, RotateCcw, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { enviarConvite } from "@/lib/convites.functions";
 import { toast } from "sonner";
@@ -230,6 +230,24 @@ export function GestaoDeUsuarios() {
       toast.success("Solicitação rejeitada.");
     },
     onError: () => toast.error("Erro ao rejeitar."),
+  });
+
+  // R204: cancelar o CONVITE (a linha em `convites`) não desativa a conta —
+  // a conta já nasceu no envio (R59), e desativá-la é o botão "Desativar
+  // usuário" da lista de ativos. Cancelar só tira o convite de "Aguardando".
+  const cancelarConviteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("convites")
+        .update({ status: "cancelado" })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["convites-pendentes"] });
+      toast.success("Convite cancelado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const inviteMutation = useMutation({
@@ -628,9 +646,28 @@ export function GestaoDeUsuarios() {
                   padding: "4px 10px", borderRadius: 999,
                   background: isLight ? "#fef3c7" : "rgba(248,200,17,0.10)",
                   border: isLight ? "1px solid #fde68a" : "1px solid rgba(248,200,17,0.25)",
+                  flexShrink: 0,
                 }}>
                   Aguardando
                 </div>
+                <button
+                  onClick={() => {
+                    if (confirm(`Cancelar o convite de ${c.nome}?`)) cancelarConviteMutation.mutate(c.id);
+                  }}
+                  disabled={cancelarConviteMutation.isPending}
+                  title="Cancelar convite"
+                  style={{
+                    width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                    background: isLight ? "#fee2e2" : "rgba(239,68,68,0.10)",
+                    border: isLight ? "1px solid #fecaca" : "1px solid rgba(239,68,68,0.25)",
+                    color: isLight ? "#dc2626" : "#E64D58",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: cancelarConviteMutation.isPending ? "not-allowed" : "pointer",
+                    opacity: cancelarConviteMutation.isPending ? 0.6 : 1,
+                  }}
+                >
+                  <X size={14} />
+                </button>
               </div>
             ))}
           </div>
