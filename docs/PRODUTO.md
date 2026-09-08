@@ -14,7 +14,7 @@
 - [9. Mapa de telas — depois da fusão (revisão de 2026-08-19)](#9-mapa-de-telas-depois-da-fusão-revisão-de-2026-08-19)
 - [10. Estado de implementação](#10-estado-de-implementação) · R33–R136 (103)
 - [21. A estrutura das atividades (R137–R150, Davi, 2026-09-03)](#21-a-estrutura-das-atividades-r137r150-davi-2026-09-03) · R137–R195 (59)
-- [22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r203-davi-2026-09-04-e-2026-09-07) · R196–R204 (9)
+- [22. O patrimônio do QAP e a ficha do cliente (R196–R207, Davi, 2026-09-04 e 2026-09-07)](#22-o-patrimônio-do-qap-e-a-ficha-do-cliente-r196r207-davi-2026-09-04-e-2026-09-07) · R196–R207 (12)
 <!-- sumario:fim -->
 
 O documento vivo do sistema: papéis, telas, fluxos e regras de negócio, do
@@ -28,7 +28,7 @@ Divisão de papéis entre os documentos:
   registro de execução.
 - **SISTEMA_OS.md** — histórico da fundação do módulo de OS (etapas 0–6).
 
-Última atualização: 2026-09-07 (R204). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
+Última atualização: 2026-09-07 (R207). A revisão tela a tela está em `REVISAO_2026-09-03.md`. Os dois contextos ditados pelo Davi estão em `CONTEXTO_OPERACAO_TECNICA.md` (a operação técnica) e `CONTEXTO_ESTRUTURA_ATIVIDADES.md` (a estrutura das atividades, R137–R150); o plano de ação em `PLANO_V0.1.md`.
 
 ---
 
@@ -3721,7 +3721,7 @@ trabalho".
   e 6 de 800). *(Davi, 04/09/2026, revisão manual: pediu tipografia
   estratégica — pesos mais grossos onde cabe, mais finos em outros lugares.)*
 
-## 22. O patrimônio do QAP e a ficha do cliente (R196–R203, Davi, 2026-09-04 e 2026-09-07)
+## 22. O patrimônio do QAP e a ficha do cliente (R196–R207, Davi, 2026-09-04 e 2026-09-07)
 
 O controle patrimonial da Prever vive no **QAP ERP**, em *Patrimônio >
 Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
@@ -3868,3 +3868,50 @@ Local/Uso*. O Davi ditou a estrutura dele e o que entra no nosso sistema.
   na lista de ativos. *(Davi, 07/09/2026: "Adicione um botão para cancelar
   convite em cada card de usuário na tela Administrativo, na lista de
   convites pendentes".)*
+
+- **R205** — **A ficha do cliente preenche a largura da janela.** O miolo do
+  sistema tem teto de 1280px e centraliza; na ficha isso deixava faixas mortas
+  dos dois lados de um monitor largo. A página passa a sangrar até a borda
+  (`.pagina-larga`, a mesma conta da sangria da Início: a metade do que sobra
+  fora do container, compensando o rail da sidebar), com 28px de respiro no
+  desktop e 16px no celular. Dentro dela a grade da ficha é "o que sobrar |
+  identidade com teto": a coluna larga (os sistemas e o vínculo) cresce com a
+  tela, a coluna de identidade fica entre 340 e 480px. Nos cards, em leitura,
+  as linhas são uma grade rótulo | valor com o valor alinhado à esquerda — em
+  card largo, "rótulo na esquerda e valor fugindo para a direita" deixava de
+  se ler. *(Davi, 07/09/2026: "Ajuste a margem dos campos, o conteúdo da tela
+  deverá preencher o espaço, adaptando a largura da tela. […] Lembre-se que o
+  usuário vai usar no Desktop a página Clientes!")*
+
+- **R206** — **O vínculo equipamento → bloco é por ARRASTO, em dois painéis
+  lado a lado.** Em "Sistemas instalados", à esquerda os **Blocos** (cada um
+  com os equipamentos vinculados como sub-itens) e à direita **Sem bloco** (os
+  equipamentos do QAP ainda sem bloco). Arrastar um equipamento de "Sem
+  bloco" para um bloco vincula na hora; arrastar de um bloco para outro move;
+  arrastar de volta para "Sem bloco" desvincula (o botão de desvincular na
+  linha faz o mesmo). Marcar vários e arrastar um leva todos. Soltar no bloco
+  em que o item já está não grava nada; só o arrasto da própria ficha é aceito
+  (tipo MIME próprio). O gesto é ensinado na tela: a dica no card, "Solte aqui"
+  no bloco vazio, a alça de arrasto em cada linha, o destino aceso em dourado.
+  Quem não arrasta (teclado, toque — no celular os painéis empilham) marca os
+  equipamentos e escolhe o bloco no seletor. O "Previsto no orçamento" fica
+  dentro do bloco, recolhido. Revê o GESTO da R200 (seletor por linha e barra
+  "Vincular"); o modelo — bloco criado no app, equipamento do QAP, vínculo
+  pela coluna `cliente_sistema_id`, mesmo cliente conferido no dado — é o
+  mesmo. *(Davi, 07/09/2026: "crie um esquema mais intuitivo para vincular os
+  equipamentos aos blocos - a minha ideia são dois campos um ao lado do outro,
+  um com bloco e sub-itens sendo os equipamentos já vinculados a aquele bloco,
+  e o outro campo são os equipamentos sem bloco vinculado, e aí só de arrastar
+  o equipamento ao bloco, o sistema já vincula. Eu quero que fique muito claro
+  e intuitivo os campos.")*
+
+- **R207** — **Contato e endereço têm botões de ação.** No card Contatos, cada
+  WhatsApp ganha o botão **Enviar mensagem no WhatsApp** (abre a conversa em
+  `wa.me`) e cada e-mail o botão **Copiar e-mail**; no card O local, o
+  endereço ganha **Copiar endereço** — copia o endereço inteiro numa linha
+  (endereço, complemento, cidade - UF). Copiar avisa quando deu certo e, se o
+  navegador não deu a área de transferência, diz para copiar à mão em vez de
+  fingir sucesso. O financeiro usa o mesmo componente de contato, sem a linha
+  de WhatsApp. *(Davi, 07/09/2026: "no campo de CONTATOS, eu quero que você
+  adicione um botão de enviar mensagem no WhatsApp, adicione um botão de copiar
+  e-mail, adicione um botão de copiar endereço no campo de endereço.")*

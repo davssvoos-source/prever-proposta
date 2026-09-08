@@ -10905,3 +10905,101 @@ não no de Usuários Ativos, e que existe um único disparo de
 
 **Números.** Verificador: 3.051 asserções, 0 falharam. `tsc`: 57 (baseline).
 Build completa.
+
+## U114 — a ficha preenche a largura, o vínculo por arrasto e os botões de ação (R205–R207)
+
+O Davi voltou à ficha do cliente com três pedidos: "Ajuste a margem dos
+campos, o conteúdo da tela deverá preencher o espaço, adaptando a largura da
+tela"; um esquema mais intuitivo para vincular — "dois campos um ao lado do
+outro, um com bloco e sub-itens sendo os equipamentos já vinculados a aquele
+bloco, e o outro campo são os equipamentos sem bloco vinculado, e aí só de
+arrastar o equipamento ao bloco, o sistema já vincula"; e botões nos contatos
+(WhatsApp, copiar e-mail) e no endereço (copiar). "Lembre-se que o usuário vai
+usar no Desktop a página Clientes!"
+
+**A largura (R205).** O `<main>` do sistema é `mx-auto max-w-7xl`: 1280px
+centralizados. Num monitor de 1920 com o rail de 232px sobravam ~200px mortos
+de cada lado, e a ficha — que tem dois painéis para caber lado a lado — era a
+página que mais sentia. A saída não foi mexer no `<main>` (trinta telas
+dependem dele) e sim uma classe de página, `.pagina-larga`, com a MESMA conta
+da `.sangra-x` da Início (`50% - 50vw + rail/2`, comentada no styles.css) e
+padding constante. Dentro dela a grade da ficha deixa o 3fr|2fr da página da
+atividade e vira "o que sobrar | `clamp(340px, 30%, 480px)`": a coluna dos
+sistemas é quem cresce, a identidade tem teto — um card de contatos com 700px
+de largura não fica melhor, fica pior. A "margem dos campos" era isto e mais
+uma coisa: em leitura, os cards mostravam rótulo à esquerda e valor fugindo
+para a direita (`justify-content: space-between`); quanto mais largo o card,
+mais longe um do outro. Virou grade `minmax(96px, 30%) | 1fr`, valor à
+esquerda na mesma coluna em todas as linhas, rótulo 12/600 secundário e valor
+13/400 texto. E o atalho `padding: "12px 0 48px"` da raiz teve de virar
+`paddingTop`/`paddingBottom` — o atalho sobrescreveria o horizontal da classe
+e a sangria nasceria sem respiro.
+
+**O arrasto (R206).** A U111 vinculava por seletor: barra em lote com "Vincular"
+e um dropdown por linha, nos dois lugares. Funcionava e não era intuitivo — o
+Davi tinha de descobrir que o dropdown era o gesto. Agora "Sistemas
+instalados" contém dois painéis (`.painel-vinculo`, duas colunas iguais a
+partir de 1024px): **Blocos**, cada um uma zona de soltar com os equipamentos
+vinculados como sub-itens; **Sem bloco**, os que ainda não têm bloco, também
+zona de soltar (cair ali desvincula). O que era um card separado
+(`EquipamentosDoCliente`) virou o painel da direita, dirigido por props: a
+lista, "comecei/terminei a arrastar", "vincule estes ids a este bloco". O dado
+e a MUTAÇÃO moram uma vez, no pai, porque as duas zonas precisam concordar
+sobre o que está no ar. A lógica que decide o gesto é pura (`vinculo.ts`) e
+tem asserção de unidade: arrastar um item MARCADO leva todos os marcados e um
+solto vai sozinho (`idsParaArrastar` — o gesto do explorador de arquivos, que
+faz "40 câmeras para o CFTV" ser um arrasto); soltar no bloco em que o item
+já está não grava nada e id que não é deste cliente é ignorado
+(`idsQueMudam`); só o tipo MIME próprio abre as zonas (`arrastoEhNosso`) — um
+texto arrastado de fora da página não vira "vincular". Nativo do navegador
+(`draggable`/`dataTransfer`), o mesmo mecanismo do calendário e do quadro da
+Início; nenhuma dependência nova. O gesto é ensinado: a dica no card, "Solte
+aqui os equipamentos deste bloco" no bloco vazio, a alça em cada linha, o
+destino aceso em dourado (tracejado = pode; sólido + tinta = vai cair aqui), o
+painel "Sem bloco" inteiro virando "Solte para tirar do bloco". O bloco de
+onde o item saiu não se acende — não é destino. O caminho SEM arrasto ficou,
+menor: marcar e escolher o bloco no seletor que aparece só com seleção
+(teclado, e o celular, onde os painéis empilham e o HTML5 não arrasta). O
+dropdown por linha saiu; dentro do bloco, um botão de desvincular na linha.
+"Previsto no orçamento" ficou dentro do bloco, num `<details>` recolhido — é
+leitura de referência, não trabalho.
+
+**Os botões (R207).** O WhatsApp já era link no número; o Davi pediu o botão
+explícito. Cada contato ganhou "Enviar mensagem no WhatsApp" (o link `wa.me`,
+agora no botão; o número virou texto selecionável) e "Copiar e-mail"; o
+endereço ganhou "Copiar endereço", que copia o endereço INTEIRO numa linha
+(`enderecoParaCopiar` em `ficha.ts`: endereço, complemento, cidade - UF, sem
+vírgula sobrando quando falta parte). Copiar passa por `lib/copiar.ts` — o
+padrão seguro de `TelaDeErro.tsx:68`, `navigator.clipboard?.writeText` com
+optional chaining — e quando o navegador não dá a área de transferência a
+frase diz "selecione e copie à mão" em vez de fingir sucesso. O financeiro
+passou a usar o MESMO componente `Contato`, com a linha de WhatsApp escondida
+(`whatsapp` undefined esconde; `null` mostra o traço, porque o síndico devia
+ter) — e com isso ele ganhou o "Copiar e-mail" de graça.
+
+**O que se recusou a fazer.** Tirar o caminho sem arrasto: seria deixar o
+celular e o teclado sem vínculo. Adotar uma biblioteca de arrasto: o nativo já
+serve o calendário e o quadro; uma segunda forma de arrastar no mesmo sistema
+seria uma segunda verdade. Mexer no `<main>` para alargar tudo: a Início já
+tinha resolvido o mesmo problema com uma classe de sangria, e a ficha seguiu a
+casa. Esconder o painel "Sem bloco" quando o cliente não tem equipamento do
+QAP: com dois painéis, um lado vazio que EXPLICA ("nenhum equipamento
+importado; o nome do local pode estar diferente") vale mais que um layout que
+muda de forma conforme o dado.
+
+**O que a verificação pegou.** Cinco pinos apontavam para a forma antiga —
+`<EquipamentosDoCliente clienteId={id} />` na página (R199 e a ordem da
+coluna), `vincular.mutate` por linha, o `SeletorDeSistema` dentro do bloco, o
+`mover.mutate`, e `if (data?.faltaMigration) return null` (o painel agora
+AVISA em vez de sumir). Todos reapontados para a forma nova, nenhum afrouxado;
+o painel "Sem bloco" continua cobrado por "sem identificação" e
+`dataCurta(item.enviado_em)`, e a separação "sem bloco" passou a ser cobrada
+na lógica pura. O bloco U114 testa a lógica do arrasto por unidade (o
+`carregar()` transpila `vinculo.ts` e `ficha.ts` de verdade) e a forma dos
+dois painéis por regex — inclusive que a página NÃO renderiza mais a fila como
+card, que a mutação de vínculo existe UMA vez, e que a tela não toca em
+`navigator.clipboard` diretamente.
+
+**Números.** Verificador: 3.068 asserções, 0 falharam (+17: 5 de unidade
+sobre `vinculo.ts`/`ficha.ts`, 11 sobre a tela e a regra 7; a U111 perdeu a
+do seletor por linha). `tsc`: 57 (baseline). Build completa.

@@ -1220,3 +1220,29 @@ html[data-theme="light"] .campo-ia:focus { border-color: rgba(0,0,0,0.18) !impor
 }
 .fachada-card.pronta { opacity: 0.55; }
 [data-theme="light"] .fachada-card.pronta { opacity: 0.45; }
+
+/* ── A ficha do cliente preenche a largura (R205, U114) ──────────────────────
+   O <main> é mx-auto max-w-7xl: num monitor de 1920 sobravam ~200px mortos de
+   cada lado da ficha. A mesma conta da .sangra-x (a metade do que sobra fora
+   do container, compensando o rail da sidebar) leva a página até a borda da
+   janela; o padding é uma constante pequena. Dentro dela a grade da ficha
+   troca 3fr|2fr por "o que sobrar | uma coluna de identidade com teto": a
+   coluna larga (os dois painéis do vínculo) é quem cresce com a tela. */
+.pagina-larga { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+@media (min-width: 1024px) {
+  .pagina-larga {
+    margin-left: calc(50% - 50vw + var(--rail) / 2);
+    margin-right: calc(50% - 50vw + var(--rail) / 2);
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+  .pagina-larga .detalhe-grid { grid-template-columns: minmax(0, 1fr) clamp(340px, 30%, 480px); gap: 18px; }
+}
+
+/* ── Os dois painéis do vínculo — Blocos | Sem bloco (R206, U114) ───────────
+   Lado a lado no desktop (o gesto é arrastar de um para o outro); no celular
+   empilham, e o seletor de bloco faz o papel do arrasto. */
+.painel-vinculo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (min-width: 1024px) {
+  .painel-vinculo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}

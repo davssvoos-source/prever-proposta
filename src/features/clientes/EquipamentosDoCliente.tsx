@@ -1,33 +1,37 @@
-// EQUIPAMENTOS DO QAP na ficha do cliente — os que ainda não têm sistema (R200, U111).
+// SEM BLOCO — o painel da direita do vínculo por arrasto (R200, R206; U111/U114).
 //
-// Davi, 2026-09-07: "Os sistemas instalados consistem em blocos com
-// equipamentos vinculados a estes blocos. Então os blocos deverão ser criados
-// diretamente no nosso app, enquanto os equipamentos de cada cliente são
-// importados pelo QAP, e aí no nosso sistema, o usuário vincula o equipamento
-// ao sistema instalado (ambos no mesmo cliente)."
+// Davi, 2026-09-07: "dois campos um ao lado do outro, um com bloco e sub-itens
+// sendo os equipamentos já vinculados a aquele bloco, e o outro campo são os
+// equipamentos sem bloco vinculado, e aí só de arrastar o equipamento ao bloco,
+// o sistema já vincula. Eu quero que fique muito claro e intuitivo os campos."
 //
-// ESTE CARD É A FILA DE TRABALHO DO VÍNCULO: lista só o que ainda não está em
-// bloco nenhum, com seleção múltipla e um seletor de sistema — 40 câmeras vão
-// para o bloco de CFTV num gesto. O que já está vinculado aparece DENTRO do
-// bloco, em `InventarioCliente`, com o mesmo seletor (para mover ou
-// desvincular). Quando tudo está vinculado, o card vira uma linha de
-// confirmação; quando o cliente não tem equipamento do QAP, não aparece.
+// Este arquivo é o painel "Sem bloco": os equipamentos do QAP que ainda não
+// estão em bloco nenhum. Cada linha se ARRASTA para um bloco (o painel da
+// esquerda, em InventarioCliente); marcar várias e arrastar uma leva todas. O
+// painel também é ZONA DE SOLTAR: um equipamento arrastado de dentro de um
+// bloco cai aqui e volta a ficar sem bloco. Quem não arrasta (teclado, toque)
+// tem o seletor de bloco que aparece quando há seleção — o mesmo destino, sem
+// o gesto.
 //
-// `LinhaDoPatrimonio` e `SeletorDeSistema` são exportados para o
-// `InventarioCliente` desenhar o item vinculado com a MESMA linha — o mesmo
-// equipamento não pode ter duas caras na mesma ficha.
+// Quem manda no dado é o pai: o painel recebe a lista, avisa "comecei/terminei
+// a arrastar" e pede "vincule estes ids a este bloco". Assim as duas zonas de
+// soltar (os blocos e este painel) conversam pelo mesmo estado, e a mutação —
+// com a conferência de "mesmo cliente" — existe UMA vez.
+//
+// `LinhaDoPatrimonio` e `SeletorDeSistema` continuam exportados: o mesmo
+// equipamento tem a mesma cara dentro do bloco e fora dele.
 
-import { useMemo, useState, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Boxes, CheckSquare, Link2, Search, Square } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState, type CSSProperties, type DragEvent, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CheckSquare, GripVertical, Inbox, Link2, Search, Square } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { FONT, card, goldButton } from "@/lib/ui";
+import { FONT } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { normalizarTexto } from "@/lib/normalizar";
 import { SeletorDeOpcao } from "@/components/SeletorDeOpcao";
-import { useEquipamentosDoCliente, vincularAoSistema, type ItemDePatrimonio } from "@/features/equipamentos/data";
-import { useInventario, TIPO_SISTEMA_LABEL, type SistemaInstalado } from "./inventario";
+import type { ItemDePatrimonio } from "@/features/equipamentos/data";
+import { TIPO_SISTEMA_LABEL, type SistemaInstalado } from "./inventario";
+import { TIPO_ARRASTO, arrastoEhNosso, idsParaArrastar, lerArrasto, serializarArrasto, textoDoItem } from "./vinculo";
 
 /** dd/mm/aaaa a partir do date do banco (aaaa-mm-dd), sem passar por fuso. */
 export function dataCurta(iso: string | null): string {
@@ -48,20 +52,21 @@ export function useInvalidarPatrimonioDoCliente(clienteId: string) {
 }
 
 /**
- * O seletor de sistema — o MESMO nos dois lugares (fila e bloco). Compacto,
- * pintado só quando há escolha; `vazio` é o gesto de desvincular.
+ * O seletor de bloco — o caminho SEM arrasto (teclado, toque). Compacto,
+ * pintado só quando há escolha; `vazio` é a frase de convite.
  */
-export function SeletorDeSistema({ sistemas, valor, aoMudar, desabilitado }: {
+export function SeletorDeSistema({ sistemas, valor, aoMudar, desabilitado, vazio }: {
   sistemas: SistemaInstalado[];
   valor: string | null;
   aoMudar: (sistemaId: string | null) => void;
   desabilitado?: boolean;
+  vazio?: string;
 }) {
   return (
     <SeletorDeOpcao
       compacto
       valor={valor}
-      vazio={valor ? "Desvincular" : "— vincular a um sistema —"}
+      vazio={vazio ?? (valor ? "Desvincular" : "— vincular a um sistema —")}
       desabilitado={desabilitado || sistemas.length === 0}
       larguraMenu={300}
       opcoes={sistemas.map((s) => ({ valor: s.id, rotulo: s.nome, nota: TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo }))}
@@ -73,9 +78,9 @@ export function SeletorDeSistema({ sistemas, valor, aoMudar, desabilitado }: {
 /** Uma linha de equipamento do QAP: nome, modelo/fabricante/almoxarifado, identificação e data. */
 export function LinhaDoPatrimonio({ item, esquerda, direita, primeira }: {
   item: ItemDePatrimonio;
-  /** o que entra ANTES do texto (a caixa de seleção, na fila) */
+  /** o que entra ANTES do texto (a caixa de seleção e a alça de arrasto) */
   esquerda?: ReactNode;
-  /** o que entra DEPOIS (o seletor de sistema) */
+  /** o que entra DEPOIS (o botão de desvincular, dentro do bloco) */
   direita?: ReactNode;
   primeira?: boolean;
 }) {
@@ -83,15 +88,15 @@ export function LinhaDoPatrimonio({ item, esquerda, direita, primeira }: {
   const c = cinzas(isLight);
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
+      display: "flex", alignItems: "center", gap: 10, padding: "8px 6px",
       borderTop: primeira ? "none" : `1px solid ${c.divisoria}`,
     }}>
       {esquerda}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13, color: c.texto }}>
+        <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 12.5, color: c.texto, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {item.catalogo?.nome ?? "Equipamento"}
         </div>
-        <div style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, marginTop: 1 }}>
+        <div style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {[item.catalogo?.modelo, item.catalogo?.fabricante, item.catalogo?.almoxarifado].filter(Boolean).join(" · ")}
         </div>
       </div>
@@ -99,12 +104,12 @@ export function LinhaDoPatrimonio({ item, esquerda, direita, primeira }: {
         {/* R197: identificação pode faltar — e o espaço dela existe */}
         <div style={{
           fontFamily: item.identificacao ? "ui-monospace, Menlo, monospace" : FONT,
-          fontSize: 11.5, fontWeight: 600,
+          fontSize: 11, fontWeight: 600,
           color: item.identificacao ? c.texto : c.textoSecundario,
         }}>
           {item.identificacao ?? "sem identificação"}
         </div>
-        <div style={{ fontFamily: FONT, fontSize: 11, color: c.textoSecundario }}>
+        <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario }}>
           {dataCurta(item.enviado_em)}
         </div>
       </div>
@@ -113,65 +118,89 @@ export function LinhaDoPatrimonio({ item, esquerda, direita, primeira }: {
   );
 }
 
-export function EquipamentosDoCliente({ clienteId }: { clienteId: string }) {
+/**
+ * A moldura de um PAINEL do vínculo (Blocos | Sem bloco) — a mesma nos dois.
+ * `destaque`: "nenhum" em repouso; "possivel" enquanto algo é arrastado e pode
+ * cair aqui (tracejado dourado); "ativo" com o arrasto em cima (sólido + tinta).
+ */
+export function estiloDoPainel(isLight: boolean, destaque: "nenhum" | "possivel" | "ativo"): CSSProperties {
+  const c = cinzas(isLight);
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  return {
+    display: "flex", flexDirection: "column", gap: 10, minHeight: 180, minWidth: 0,
+    padding: 12, borderRadius: 14,
+    border: destaque === "ativo" ? `1.5px solid ${gold}` : destaque === "possivel" ? `1.5px dashed ${gold}` : `1px solid ${c.divisoria}`,
+    background: destaque === "ativo" ? PRISMA.amarelo.bg : "transparent",
+    transition: "border-color .15s ease, background-color .15s ease",
+  };
+}
+
+/** O micro-rótulo de um painel: ícone dourado, título 10,5/700 caixa alta e a contagem em 11,5 secundário. */
+export function CabecalhoDoPainel({ icone, titulo, contagem, direita }: { icone: ReactNode; titulo: string; contagem?: string; direita?: ReactNode }) {
+  const { isLight } = useTheme();
+  const c = cinzas(isLight);
+  const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 28, flexWrap: "wrap" }}>
+      <span style={{ color: gold, display: "flex" }}>{icone}</span>
+      <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em", textTransform: "uppercase", color: gold }}>{titulo}</span>
+      {contagem && <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario }}>{contagem}</span>}
+      <span style={{ flex: 1 }} />
+      {direita}
+    </div>
+  );
+}
+
+export interface PainelSemBlocoProps {
+  /** os equipamentos do QAP SEM bloco (a lista deste painel) */
+  itens: ItemDePatrimonio[];
+  /** todos os equipamentos do QAP do cliente, para dizer "5 de 14" */
+  total: number;
+  sistemas: SistemaInstalado[];
+  podeEditar: boolean;
+  faltaMigration: boolean;
+  carregando: boolean;
+  /** ids em arrasto agora (de qualquer painel), ou null */
+  arrastando: string[] | null;
+  aoIniciarArrasto: (ids: string[]) => void;
+  aoTerminarArrasto: () => void;
+  /** vincula (sistemaId) ou desvincula (null); o pai confere o que de fato muda */
+  aoVincular: (ids: string[], sistemaId: string | null) => void;
+  vinculando: boolean;
+}
+
+export function EquipamentosDoCliente({
+  itens, total, sistemas, podeEditar, faltaMigration, carregando,
+  arrastando, aoIniciarArrasto, aoTerminarArrasto, aoVincular, vinculando,
+}: PainelSemBlocoProps) {
   const { isLight } = useTheme();
   const c = cinzas(isLight);
   const gold = isLight ? PRISMA.amarelo.light : PRISMA.amarelo.dark;
   const verde = isLight ? PRISMA.verde.light : PRISMA.verde.dark;
-  const invalidar = useInvalidarPatrimonioDoCliente(clienteId);
 
-  const { data, isLoading } = useEquipamentosDoCliente(clienteId);
-  const { data: sistemas = [] } = useInventario(clienteId);
   const [busca, setBusca] = useState("");
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [destino, setDestino] = useState<string | null>(null);
+  const [sobre, setSobre] = useState(false);
 
-  const todos = data?.itens ?? [];
-  // a FILA: só o que ainda não está em bloco nenhum (R200)
-  const semSistema = useMemo(() => todos.filter((i) => !i.cliente_sistema_id), [todos]);
   const filtrados = useMemo(() => {
     const termo = normalizarTexto(busca);
-    if (!termo) return semSistema;
-    return semSistema.filter((i) => normalizarTexto(
-      `${i.catalogo?.nome ?? ""} ${i.catalogo?.modelo ?? ""} ${i.catalogo?.fabricante ?? ""} ${i.identificacao ?? ""} ${i.catalogo?.almoxarifado ?? ""}`,
-    ).includes(termo));
-  }, [semSistema, busca]);
+    if (!termo) return itens;
+    return itens.filter((i) => normalizarTexto(textoDoItem(i)).includes(termo));
+  }, [itens, busca]);
 
-  const vincular = useMutation({
-    mutationFn: ({ ids, sistemaId }: { ids: string[]; sistemaId: string | null }) => vincularAoSistema(ids, sistemaId),
-    onSuccess: (_d, { ids, sistemaId }) => {
-      invalidar();
-      setSelecionados(new Set());
-      const sis = sistemas.find((s) => s.id === sistemaId);
-      toast.success(sis
-        ? `${ids.length} equipamento${ids.length === 1 ? "" : "s"} vinculado${ids.length === 1 ? "" : "s"} a ${sis.nome}.`
-        : "Vínculo desfeito.");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  // a seleção não pode apontar para item que já saiu daqui (foi vinculado)
+  const idsAqui = useMemo(() => new Set(itens.map((i) => i.id)), [itens]);
+  useEffect(() => {
+    setSelecionados((prev) => {
+      const n = new Set([...prev].filter((id) => idsAqui.has(id)));
+      return n.size === prev.size ? prev : n;
+    });
+  }, [idsAqui]);
 
-  // sem a U109 o bloco não aparece: prometer uma lista que o banco ainda não
-  // sabe responder é pior que não mostrar nada
-  if (data?.faltaMigration) return null;
-  if (isLoading) return null;
-  if (todos.length === 0) return null;
-
-  const MICRO = {
-    fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em",
-    textTransform: "uppercase" as const, color: gold,
-  };
-
-  // tudo vinculado: uma linha de confirmação, não um card vazio
-  if (semSistema.length === 0) {
-    return (
-      <div style={{ ...card(isLight), borderRadius: 18, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-        <Link2 size={15} color={verde} />
-        <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.texto }}>
-          Todos os <strong>{todos.length}</strong> equipamentos do QAP deste cliente estão em um sistema instalado.
-        </span>
-      </div>
-    );
-  }
+  const podeArrastar = podeEditar && sistemas.length > 0;
+  // um arrasto vindo de DENTRO de um bloco pode cair aqui (desvincular)
+  const arrastoDeBloco = !!arrastando && arrastando.some((id) => !idsAqui.has(id));
+  const destaque = podeEditar && arrastoDeBloco ? (sobre ? "ativo" : "possivel") : "nenhum";
 
   const alternar = (id: string) => setSelecionados((prev) => {
     const n = new Set(prev);
@@ -191,94 +220,158 @@ export function EquipamentosDoCliente({ clienteId }: { clienteId: string }) {
     </button>
   );
 
-  return (
-    <div style={{ ...card(isLight), borderRadius: 18, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <Boxes size={15} color={gold} />
-        <span style={MICRO}>Equipamentos a vincular</span>
-        <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario }}>
-          {semSistema.length} de {todos.length} do QAP ainda sem sistema
+  const nota: CSSProperties = { fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 };
+
+  const conteudo = (() => {
+    if (faltaMigration) {
+      return <span style={nota}>Os equipamentos do QAP aparecem aqui depois que a migration <strong>U109</strong> rodar.</span>;
+    }
+    if (carregando) return <span style={nota}>Carregando os equipamentos…</span>;
+    if (total === 0) {
+      return (
+        <span style={nota}>
+          Nenhum equipamento do QAP importado para este cliente. A importação casa o local do QAP com o nome do
+          cliente — se o prédio tem equipamento lá, o nome pode estar diferente.
         </span>
-        {semSistema.length > 8 && (
-          <div style={{ position: "relative", marginLeft: "auto", minWidth: 200 }}>
+      );
+    }
+    if (itens.length === 0) {
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link2 size={15} color={verde} />
+          <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.texto }}>
+            Todos os <strong>{total}</strong> equipamentos do QAP deste cliente estão em um sistema instalado.
+          </span>
+        </div>
+      );
+    }
+    return (
+      <>
+        {sistemas.length === 0 ? (
+          <span style={nota}>
+            Este cliente ainda não tem sistema instalado. Crie o primeiro bloco em <strong>+ Bloco</strong> e
+            arraste os equipamentos para ele.
+          </span>
+        ) : podeEditar && (
+          /* A BARRA DO GESTO: o que fazer, e o caminho sem arrasto quando há seleção */
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+            padding: "7px 10px", borderRadius: 12, background: c.campo, border: `1px solid ${c.divisoria}`,
+          }}>
+            {caixa(todosFiltradosMarcados, () => setSelecionados(
+              todosFiltradosMarcados ? new Set() : new Set(filtrados.map((i) => i.id)),
+            ), todosFiltradosMarcados ? "Desmarcar todos" : "Marcar todos os listados")}
+            <span style={{ fontFamily: FONT, fontSize: 12, color: c.texto, minWidth: 0, lineHeight: 1.4 }}>
+              {selecionados.size === 0
+                ? "Arraste um equipamento para o bloco — ou marque vários e arraste juntos."
+                : `${selecionados.size} selecionado${selecionados.size === 1 ? "" : "s"} — arraste um deles para o bloco`}
+            </span>
+            <span style={{ flex: 1 }} />
+            {selecionados.size > 0 && (
+              <SeletorDeSistema
+                sistemas={sistemas}
+                valor={null}
+                vazio="ou escolha o bloco…"
+                desabilitado={vinculando}
+                aoMudar={(sid) => { if (sid) aoVincular([...selecionados], sid); }}
+              />
+            )}
+          </div>
+        )}
+
+        {filtrados.length === 0 ? (
+          <span style={nota}>Nenhum equipamento com “{busca}”.</span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {filtrados.map((i, idx) => {
+              const emArrasto = !!arrastando?.includes(i.id);
+              return (
+                <div
+                  key={i.id}
+                  draggable={podeArrastar}
+                  onDragStart={(e: DragEvent<HTMLDivElement>) => {
+                    const ids = idsParaArrastar(i.id, selecionados);
+                    e.dataTransfer.setData(TIPO_ARRASTO, serializarArrasto(ids));
+                    e.dataTransfer.setData("text/plain", serializarArrasto(ids));
+                    e.dataTransfer.effectAllowed = "move";
+                    aoIniciarArrasto(ids);
+                  }}
+                  onDragEnd={aoTerminarArrasto}
+                  title={podeArrastar ? "Arraste para um bloco" : undefined}
+                  style={{ cursor: podeArrastar ? "grab" : "default", opacity: emArrasto ? 0.45 : 1, borderRadius: 10 }}
+                >
+                  <LinhaDoPatrimonio
+                    item={i}
+                    primeira={idx === 0}
+                    esquerda={podeArrastar ? (
+                      <>
+                        {caixa(selecionados.has(i.id), () => alternar(i.id), `Selecionar ${i.catalogo?.nome ?? "equipamento"}`)}
+                        <GripVertical size={14} color={c.textoSecundario} style={{ flexShrink: 0 }} aria-hidden />
+                      </>
+                    ) : undefined}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  })();
+
+  return (
+    <section
+      aria-label="Equipamentos sem bloco"
+      onDragOver={(e: DragEvent<HTMLElement>) => {
+        if (!podeEditar || !arrastoEhNosso(e.dataTransfer.types)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!sobre) setSobre(true);
+      }}
+      onDragLeave={(e: DragEvent<HTMLElement>) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setSobre(false);
+      }}
+      onDrop={(e: DragEvent<HTMLElement>) => {
+        if (!podeEditar) return;
+        e.preventDefault();
+        setSobre(false);
+        const ids = lerArrasto(e.dataTransfer.getData(TIPO_ARRASTO) || e.dataTransfer.getData("text/plain"));
+        aoVincular(ids.length > 0 ? ids : (arrastando ?? []), null);
+        aoTerminarArrasto();
+      }}
+      style={estiloDoPainel(isLight, destaque)}
+    >
+      <CabecalhoDoPainel
+        icone={<Inbox size={15} />}
+        titulo="Sem bloco"
+        contagem={total > 0 ? `${itens.length} de ${total}` : undefined}
+        direita={itens.length > 8 ? (
+          <div style={{ position: "relative", minWidth: 170 }}>
             <Search size={13} color={c.textoSecundario} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Filtrar equipamento…"
-              aria-label="Filtrar equipamentos a vincular"
+              placeholder="Filtrar…"
+              aria-label="Filtrar equipamentos sem bloco"
               style={{
-                width: "100%", boxSizing: "border-box", minHeight: 32,
-                padding: "0 10px 0 30px", borderRadius: 999,
+                width: "100%", boxSizing: "border-box", minHeight: 28,
+                padding: "0 10px 0 28px", borderRadius: 999,
                 background: c.campo, border: `1px solid ${c.divisoria}`, color: c.texto,
                 fontFamily: FONT, fontWeight: 400, fontSize: 12, outline: "none",
               }}
             />
           </div>
-        )}
-      </div>
-
-      {sistemas.length === 0 ? (
-        <div style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
-          Este cliente ainda não tem sistema instalado. Crie o primeiro bloco em <strong>Sistemas
-          instalados</strong> (acima) e os equipamentos passam a poder ser vinculados a ele.
-        </div>
-      ) : (
-        /* A BARRA DO VÍNCULO EM LOTE — o gesto principal deste card */
+        ) : undefined}
+      />
+      {destaque === "ativo" ? (
         <div style={{
-          display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-          padding: "8px 10px", borderRadius: 12, background: c.campo, border: `1px solid ${c.divisoria}`,
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120,
+          border: `1.5px dashed ${gold}`, borderRadius: 12, fontFamily: FONT, fontWeight: 600, fontSize: 13, color: c.texto,
         }}>
-          {caixa(todosFiltradosMarcados, () => setSelecionados(
-            todosFiltradosMarcados ? new Set() : new Set(filtrados.map((i) => i.id)),
-          ), todosFiltradosMarcados ? "Desmarcar todos" : "Marcar todos os listados")}
-          <span style={{ fontFamily: FONT, fontSize: 12, color: c.texto, minWidth: 0 }}>
-            {selecionados.size === 0
-              ? `Marque os equipamentos e escolha o sistema${busca ? " (só os listados)" : ""}`
-              : `${selecionados.size} selecionado${selecionados.size === 1 ? "" : "s"}`}
-          </span>
-          <span style={{ flex: 1 }} />
-          <SeletorDeSistema sistemas={sistemas} valor={destino} aoMudar={setDestino} />
-          <button
-            type="button"
-            disabled={selecionados.size === 0 || !destino || vincular.isPending}
-            onClick={() => destino && vincular.mutate({ ids: [...selecionados], sistemaId: destino })}
-            style={{
-              ...goldButton(), boxShadow: "none", height: 30, padding: "0 12px", borderRadius: 999,
-              fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6,
-              opacity: selecionados.size === 0 || !destino ? 0.5 : 1,
-              cursor: selecionados.size === 0 || !destino ? "default" : "pointer",
-            }}
-          >
-            <Link2 size={13} /> Vincular
-          </button>
+          Solte para tirar do bloco
         </div>
-      )}
-
-      {filtrados.length === 0 ? (
-        <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario }}>
-          Nenhum equipamento com “{busca}”.
-        </span>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {filtrados.map((i, idx) => (
-            <LinhaDoPatrimonio
-              key={i.id}
-              item={i}
-              primeira={idx === 0}
-              esquerda={sistemas.length > 0 ? caixa(selecionados.has(i.id), () => alternar(i.id), `Selecionar ${i.catalogo?.nome ?? "equipamento"}`) : undefined}
-              direita={sistemas.length > 0 ? (
-                <SeletorDeSistema
-                  sistemas={sistemas}
-                  valor={null}
-                  desabilitado={vincular.isPending}
-                  aoMudar={(sid) => sid && vincular.mutate({ ids: [i.id], sistemaId: sid })}
-                />
-              ) : undefined}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+      ) : conteudo}
+    </section>
   );
 }

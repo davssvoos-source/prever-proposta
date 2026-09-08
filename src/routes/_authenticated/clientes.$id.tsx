@@ -1,4 +1,4 @@
-// Ficha do cliente — o centro do cliente no sistema, numa página só (R146, R200–R203).
+// Ficha do cliente — o centro do cliente no sistema, numa página só (R146, R200–R207).
 //
 // ── R203 (U112): UMA PÁGINA SÓ, EDIÇÃO NO LUGAR ─────────────────────────────
 // Davi, 2026-09-07: "na página do cliente, eu quero que tenha tudo, não deve
@@ -15,11 +15,17 @@
 // A ordem da ficha é a ordem em que se trabalha o cliente (R201):
 //   · CABEÇALHO (largura toda): nome 22/700, situação, tipo de local, endereço
 //     numa linha e as etiquetas de serviço prestado.
-//   · COLUNA LARGA — o LOCAL: Sistemas instalados (os blocos, R200/R202), a
-//     fila de Equipamentos a vincular (o QAP), Atividades, Plantão, Visitas.
-//   · COLUNA ESTREITA — a IDENTIDADE: a fachada, o local, os contatos, os
-//     contratos (só quem vê financeiro) e a estrutura com as observações.
-// A grade é a mesma da página da atividade (.detalhe-grid); no celular empilha.
+//   · COLUNA LARGA — o LOCAL: Sistemas instalados (os blocos e o vínculo por
+//     arrasto em dois painéis, R200/R202/R206), Atividades, Plantão, Visitas.
+//   · COLUNA ESTREITA — a IDENTIDADE: a fachada, o local, os contatos (com os
+//     botões de WhatsApp e copiar, R207), os contratos (só quem vê financeiro)
+//     e a estrutura com as observações.
+// A grade é a da página da atividade (.detalhe-grid); no celular empilha.
+//
+// R205 (U114): a página PREENCHE A LARGURA da janela (`.pagina-larga`, a mesma
+// conta da sangria da Início) — a coluna larga cresce com o monitor, a de
+// identidade tem teto. Davi: "o conteúdo da tela deverá preencher o espaço,
+// adaptando a largura da tela."
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, type CSSProperties } from "react";
@@ -37,7 +43,6 @@ import { FONT, card, etiqueta } from "@/lib/ui";
 import { PRISMA, cinzas } from "@/lib/paleta";
 import { CardLocal, CardContatos, CardEstrutura } from "@/features/clientes/ClienteForm";
 import { InventarioCliente } from "@/features/clientes/InventarioCliente";
-import { EquipamentosDoCliente } from "@/features/clientes/EquipamentosDoCliente";
 import { useChamadosDoCliente } from "@/features/chamados/data";
 import { useAtendimentosDoCliente, TETO_DA_LISTA as TETO_PLANTAO } from "@/features/plantao/data";
 import { diaCurto, horaCurta, TIPO_LABEL as PLANTAO_TIPO_LABEL } from "@/features/plantao/modelo";
@@ -200,7 +205,7 @@ function ClienteDetalhePage() {
   const propsDosCards = { cliente, podeEditar: isGerente, salvando: salvar.isPending, onSalvar: (p: ClientePatch) => salvar.mutateAsync(p) };
 
   return (
-    <div style={{ padding: "12px 0 48px", display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
+    <div className="pagina-larga" style={{ paddingTop: 12, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 14, color: textPrimary }}>
       {/* ══ CABEÇALHO DA PÁGINA (R201) ═══════════════════════════════════════ */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <button
@@ -275,12 +280,10 @@ function ClienteDetalhePage() {
       <div className="detalhe-grid">
         {/* ══ COLUNA LARGA — o LOCAL ═════════════════════════════════════════ */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          {/* R200/R202: os sistemas instalados — os blocos, nomeados direto, com os equipamentos do QAP vinculados */}
+          {/* R200/R202/R206: os sistemas instalados — os blocos, nomeados direto,
+              e o vínculo por arrasto em dois painéis (Blocos | Sem bloco). O
+              painel "Sem bloco" mora DENTRO do card, não é mais um card à parte. */}
           <InventarioCliente clienteId={id} podeEditar={isGerente} />
-
-          {/* R200: a FILA — os equipamentos do QAP que ainda não estão em
-              bloco nenhum, com seleção múltipla e o seletor de sistema. */}
-          <EquipamentosDoCliente clienteId={id} />
 
           {/* Atividades do cliente — Etapa 3, completadas na U96 (R143): as
               dele, as em que ele é local extra e as do GRUPO a que pertence. */}

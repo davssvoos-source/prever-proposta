@@ -35,7 +35,7 @@
   - [6.17 Calendário — o card tingido e a dica expandida (v12 — 2026-09-04, R187–R191)](#617-calendário-o-card-tingido-e-a-dica-expandida-v12-2026-09-04-r187r191)
   - [6.18 Página em duas colunas — o Administrativo (v12 — 2026-09-04, R193)](#618-página-em-duas-colunas-o-administrativo-v12-2026-09-04-r193)
   - [6.19 Formulário em colunas — a Nova Visita (v12 — 2026-09-04, R194)](#619-formulário-em-colunas-a-nova-visita-v12-2026-09-04-r194)
-  - [6.20 Ficha do cliente — cabeçalho, duas colunas, o vínculo e os cards editáveis (v13 — 2026-09-07, R200–R203)](#620-ficha-do-cliente-cabeçalho-duas-colunas-o-vínculo-e-os-cards-editáveis-v13-2026-09-07-r200r203)
+  - [6.20 Ficha do cliente — largura toda, os dois painéis do vínculo e os cards editáveis (v14 — 2026-09-07, R200–R207)](#620-ficha-do-cliente-largura-toda-os-dois-painéis-do-vínculo-e-os-cards-editáveis-v14-2026-09-07-r200r207)
   - [6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)](#613-card-de-cliente-a-fachada-sobreposta-v8-2026-09-03)
 - [7. Arquitetura de tema](#7-arquitetura-de-tema)
 - [8. Anti-padrões (erros reais já cometidos neste sistema)](#8-anti-padrões-erros-reais-já-cometidos-neste-sistema)
@@ -910,45 +910,65 @@ O que saiu, e não volta: a paleta local `L` (um segundo tema claro só daquela
 tela) e o "vidro dourado" dos campos no escuro — um design system por tela é o
 primeiro anti-padrão da skill de designer.
 
-### 6.20 Ficha do cliente — cabeçalho, duas colunas, o vínculo e os cards editáveis (v13 — 2026-09-07, R200–R203)
+### 6.20 Ficha do cliente — largura toda, os dois painéis do vínculo e os cards editáveis (v14 — 2026-09-07, R200–R207)
 
 A ficha é a página que se trabalha por mais tempo, e o desenho segue a ordem
-do trabalho:
+do trabalho — no desktop, que é onde ela é usada (R205):
 
+- **Largura toda** (`.pagina-larga`): a página sangra até a borda da janela
+  com a mesma conta da `.sangra-x` (margem `calc(50% - 50vw + var(--rail)/2)`
+  nos dois lados), padding 28px no desktop e 16px no celular. Dentro dela a
+  grade `.detalhe-grid` vira `minmax(0, 1fr) clamp(340px, 30%, 480px)` com
+  gap 18 — a coluna larga cresce com o monitor, a de identidade tem teto.
+  Receita para outra página que precise da largura: a classe na raiz da
+  página, e `paddingTop`/`paddingBottom` em vez do atalho `padding`, que
+  sobrescreveria o horizontal da classe.
 - **Cabeçalho de página** (largura toda): botão de voltar 40px · `h1` 22/700
   com o nome · chip de situação (`etiqueta`) · tipo de local com ícone ·
   linha de meta 12,5 secundária (endereço · contagens) · etiquetas de serviço
   prestado (`etiqueta` quando marcada, tracejada quando não). Não há botão
   de configurar: a edição é no lugar, card a card (R203).
-- **Duas colunas** (`.detalhe-grid`, 3fr | 2fr a partir de 1024px). Cada
-  card: `card(isLight)`, raio 18, padding 16, micro-rótulo dourado 10,5/700
+- **Card**: `card(isLight)`, raio 18, padding 18, micro-rótulo dourado 10,5/700
   com ícone 15px e a contagem em 11,5 secundário ao lado.
 - **Linha de lista clicável** (atividade, visita, contrato): fundo
   `cinzas().campo`, borda `divisoria`, borda esquerda 3px na cor do status,
   raio 12, padding 9×12; título 12,5/600, meta 11 secundário, chip de status
   9/700 caixa alta à direita.
-- **O bloco** (sistema instalado): card em `campo` com cabeçalho clicável
-  (chevron · nome 13,5/600 · tipo · código do bloco em mono dourado 10,5) e a
-  **contagem grande** à direita (15/700 + rótulo 9 caixa alta). Expandido:
-  "Equipamentos vinculados" (linhas `LinhaDoPatrimonio` com o
-  `SeletorDeSistema` compacto à direita), "Previsto no orçamento" quando
-  existe, e a ação Excluir bloco. O código do bloco, quando existe, é
-  leitura — não há estrutura por perguntas na ficha (R202).
-- **A fila de vínculo**: barra em `campo` com a caixa "marcar todos", a
-  contagem de selecionados, o `SeletorDeSistema` e o botão dourado
-  **Vincular** (30px, pílula, sem brilho); embaixo, uma linha por equipamento
-  com caixa de seleção à esquerda e o seletor por linha à direita. Três
-  estados: sem equipamento não aparece; sem bloco explica; tudo vinculado vira
-  uma linha com o ícone de elo em verde.
+- **Os dois painéis do vínculo** (`.painel-vinculo`: 1 coluna no celular, 2
+  iguais a partir de 1024px, gap 14), dentro do card "Sistemas instalados"
+  (R206). Cada painel é uma `<section>` com moldura `1px divisoria`, raio 14,
+  padding 12, altura mínima 180, e um micro-rótulo (`CabecalhoDoPainel`:
+  ícone dourado · título 10,5/700 caixa alta · contagem 11,5 secundário).
+  · **Blocos** (esquerda): cada bloco é um card em `campo` (raio 14) com
+    cabeçalho — chevron de recolher · nome 13,5/600 · tipo 11,5 secundário ·
+    código do bloco em mono dourado 10,5 quando veio do orçamento · a
+    **contagem grande** (15/700 + rótulo 9 caixa alta) · lixeira 28px. Os
+    sub-itens são `LinhaDoPatrimonio` (nome 12,5/600, meta 11, identificação
+    mono 11, data 10,5) sobre `superficie`, com a alça `GripVertical` 14 à
+    esquerda e o botão de desvincular 28px (`Unlink`) à direita. Bloco vazio
+    mostra a zona tracejada "Solte aqui os equipamentos deste bloco".
+    "Previsto no orçamento" é um `<details>` recolhido, 9,5 caixa alta.
+  · **Sem bloco** (direita): barra do gesto em `campo` (caixa "marcar todos",
+    a frase do que fazer e — só com seleção — o `SeletorDeSistema` compacto
+    como caminho sem arrasto); embaixo, uma linha por equipamento com caixa
+    de seleção e alça. Filtro em pílula 28px quando há mais de 8.
+  · **Estados do arrasto** (`estiloDoPainel`): em repouso, moldura
+    `divisoria`; destino possível, `1.5px dashed` dourado; com o arrasto em
+    cima, `1.5px solid` dourado + `PRISMA.amarelo.bg` — e o texto "Solte para
+    tirar do bloco" ocupa o painel "Sem bloco". A linha em arrasto fica a 45%
+    de opacidade; o cursor é `grab`. Só o tipo MIME próprio
+    (`application/x-prever-equipamentos`) abre as zonas.
 - **Card editável** (`CardLocal` · `CardContatos` · `CardEstrutura`, em
-  `features/clientes/ClienteForm.tsx`): em leitura, linhas rótulo 12,5/600 +
-  valor 13/400 secundário e o lápis 30px no canto, só para quem edita. Em
-  edição, dentro do MESMO card: campos de 42px em `campo` com borda
-  `divisoria`, chips `botaoSelecao` sem brilho, nota de campo 11,5
+  `features/clientes/ClienteForm.tsx`): em leitura, cada linha é uma GRADE
+  `minmax(96px, 30%) | 1fr` — rótulo 12/600 secundário, valor 13/400 texto,
+  alinhado à esquerda, 7px de altura de linha, divisória entre linhas. O
+  lápis 30px fica no canto, só para quem edita. **Botões de ação** (R207):
+  28px, raio 8, fundo `campo`, borda `divisoria`, ícone dourado 13, encostados
+  à direita da célula do valor — `MessageCircle` (WhatsApp), `Copy` (e-mail,
+  endereço). Em edição, dentro do MESMO card: campos de 42px em `campo` com
+  borda `divisoria`, chips `botaoSelecao` sem brilho, nota de campo 11,5
   secundário, e o rodapé com **Cancelar** (leve, 36px) e a ação dourada
   **Salvar** — a única primária do card. Cada card grava só os seus campos.
-  A grade de duas colunas da configuração (v12) saiu com o modo de
-  configuração.
 
 ### 6.13 Card de cliente — a fachada sobreposta (v8 — 2026-09-03)
 

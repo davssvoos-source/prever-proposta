@@ -8,8 +8,8 @@
 > `CLAUDE.md`. Se ele discordar do código ou de `docs/PRODUTO.md`, eles
 > ganham — e isto aqui se corrige.
 
-Última atualização: **2026-09-07** · última regra: **R204** · último diário:
-**U113** · verificador: **3.051 asserções, 0 falharam** · `tsc`: baseline
+Última atualização: **2026-09-07** · última regra: **R207** · último diário:
+**U114** · verificador: **3.068 asserções, 0 falharam** · `tsc`: baseline
 **57** · migrations rodadas até a **U100**; **pendentes: U106** (apaga a linha
 `mapa` da matriz) **e U109** (o patrimônio do QAP: duas tabelas, a tela nova
 entra na matriz, a tela "Catálogo" sai). A **U110** (os 4.241 equipamentos do
@@ -90,6 +90,7 @@ por sistema), **G** (o corte do Gestor OS), **H.1–H.6**.
 | U111 | sistemas instalados = **blocos** criados no app + **equipamentos do QAP vinculados** (fila com seleção em lote, mover/desvincular dentro do bloco, mesmo cliente conferido no dado); a **ficha do cliente v2** — cabeçalho de página, duas colunas, configuração em duas colunas (R200–R201) |
 | U112 | os blocos são **nomeados direto** na ficha (sem a estrutura por perguntas, que fica no orçamento; nomes do Paineiras sugeridos por tipo) e a ficha vira **uma página só** — sem modo de configuração, três cards que editam no lugar (R202–R203) |
 | U113 | a tela Administrativo ganha **cancelar convite** na lista de Convites Pendentes — muda só o status em `convites`, não toca na conta já criada pelo envio (R204) |
+| U114 | a ficha do cliente **preenche a largura** (`.pagina-larga`, R205); o vínculo equipamento → bloco é **por arrasto** em dois painéis, Blocos com sub-itens | Sem bloco (R206, lógica pura em `vinculo.ts`); botões **WhatsApp / copiar e-mail / copiar endereço** nos cards (R207) |
 
 ## 4. Banco: migrations
 
@@ -198,6 +199,12 @@ Todas em `PRODUTO.md`, com a frase do Davi. As que reorganizam o trabalho:
 - **R204** — a tela Administrativo ganha **cancelar convite** na lista de
   Convites Pendentes; só muda o status em `convites`, não mexe na conta (já
   criada no envio, R59) nem no profile.
+- **R205–R207** — a ficha do cliente é de **desktop**: preenche a largura da
+  janela (a coluna dos sistemas cresce, a identidade tem teto); o vínculo é
+  **por arrasto** — Blocos (com sub-itens) | Sem bloco, arrastar vincula,
+  arrastar de volta desvincula, marcar vários e arrastar leva todos, seletor
+  como caminho sem arrasto; contatos com botões de WhatsApp e copiar e-mail,
+  endereço com copiar.
 
 ## 6. Perguntas em aberto
 

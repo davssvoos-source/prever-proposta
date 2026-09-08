@@ -171,6 +171,12 @@ configuração. Os cards **O local**, **Contatos** e **Estrutura** têm um lápi
 Cancelar, e grava só os campos daquele card. As etiquetas de serviço prestado,
 no cabeçalho, continuam sendo o próprio controle.
 
+Na U114 a ficha passou a **preencher a largura da janela** (R205) — a coluna dos
+sistemas cresce com o monitor, a da identidade tem teto — e os contatos
+ganharam botões de ação (R207): **Enviar mensagem no WhatsApp** ao lado de cada
+WhatsApp, **Copiar e-mail** ao lado de cada e-mail, e **Copiar endereço** no
+card O local (copia endereço, complemento e cidade - UF numa linha).
+
 ## Patrimônio do QAP (R196–R199, U109)
 
 O controle patrimonial da Prever é o **QAP ERP**, em *Patrimônio > Local/Uso*.
@@ -216,7 +222,7 @@ casar contra a base VIVA no momento de rodar é melhor que casar contra um
 retrato que já nasce velho. O casamento do SQL é mais estrito que o do módulo
 (não ignora acento), então ele erra para o lado de "não vinculou".
 
-## Sistemas instalados e o vínculo com os equipamentos (R200–R202, U111–U112)
+## Sistemas instalados e o vínculo com os equipamentos (R200–R202 e R206, U111–U114)
 
 Na ficha do cliente, **Sistemas instalados** é a lista de **blocos** do local —
 a portaria social, o CFTV da garagem, a central de alarme. O bloco se cria no
@@ -230,12 +236,14 @@ elétrica, totem de monitoramento, central de portaria remota) aparecem no
 modal como sugestão de um clique. O código de bloco de quem veio do escopo
 aprovado fica visível como informação.
 
-Os **equipamentos** vêm do QAP (U110) e entram na ficha na fila **Equipamentos
-a vincular**. Marque os que são do mesmo sistema, escolha o bloco no seletor e
-clique **Vincular** — ou use o seletor de cada linha. Dentro do bloco, o mesmo
-seletor **move** o equipamento para outro bloco ou o **desvincula** (volta para
-a fila). Excluir um bloco devolve os equipamentos dele à fila. O banco recusa
-vincular a um sistema de outro cliente.
+Os **equipamentos** vêm do QAP (U110) e aparecem no painel **Sem bloco**, à
+direita dos **Blocos** (R206). Para vincular, **arraste** o equipamento para o
+bloco: o vínculo grava na hora. Marque vários (caixinha) e arraste um deles para
+levar todos. Para mover, arraste de um bloco para outro; para desvincular,
+arraste de volta para "Sem bloco" ou use o botão de desvincular na linha. Quem
+não arrasta (teclado, celular) marca os equipamentos e escolhe o bloco no
+seletor que aparece na barra. Excluir um bloco devolve os equipamentos dele a
+"Sem bloco". O banco recusa vincular a um sistema de outro cliente.
 
 O que foi **dimensionado na proposta** (o "previsto no orçamento") continua
 visível dentro do bloco, ao lado do que está lá de verdade. O cadastro manual

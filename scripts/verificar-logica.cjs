@@ -18203,13 +18203,15 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
     const bloco109 = ler109('src/features/clientes/EquipamentosDoCliente.tsx');
     // R200 (U111): o bloco virou a FILA de vínculo — "sem bloco" deixou de ser um
     // rótulo por item e passou a ser o critério da lista inteira
+    // U114 (R206): o painel "Sem bloco" vive DENTRO do card de sistemas (InventarioCliente), e a
+    // separação "sem bloco" é da lógica pura (vinculo.ts) — reapontado, não afrouxado
     eq('R199: a ficha do cliente lista os equipamentos do local, com identificação (ou a falta dela) e a data de envio',
-       [/<EquipamentosDoCliente clienteId=\{id\} \/>/.test(ler109('src/routes/_authenticated/clientes.$id.tsx')),
+       [/<EquipamentosDoCliente\s*\n\s*itens=\{semSistema\}/.test(ler109('src/features/clientes/InventarioCliente.tsx')),
         /sem identificação/.test(bloco109), /dataCurta\(item\.enviado_em\)/.test(bloco109),
-        /!i\.cliente_sistema_id/.test(bloco109)],
+        /if \(!i\.cliente_sistema_id\) \{ semSistema\.push\(i\); continue; \}/.test(ler109('src/features/clientes/vinculo.ts'))],
        [true, true, true, true]);
-    eq('R199: sem a migration o bloco não aparece e a tela do catálogo AVISA — 42P01 é tratado, ninguém vê tela vermelha',
-       [/if \(data\?\.faltaMigration\) return null;/.test(bloco109),
+    eq('R199: sem a migration o painel AVISA (não finge lista vazia) e a tela do catálogo também — 42P01 é tratado, ninguém vê tela vermelha',
+       [/if \(faltaMigration\) \{/.test(bloco109) && /migration <strong>U109<\/strong> rodar/.test(bloco109),
         /e\?\.code === "42P01"/.test(ler109('src/features/equipamentos/data.ts')),
         /migration <strong>U109<\/strong>|migration\{" "\}\s*\n\s*<strong>U109<\/strong>/.test(ler109('src/routes/_authenticated/equipamentos.tsx'))],
        [true, true, true]);
@@ -18366,34 +18368,34 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
      [true, true, true, true, true]);
 
   const fila111 = ler111('src/features/clientes/EquipamentosDoCliente.tsx');
-  eq('R200: a fila lista SÓ o que não está em bloco nenhum, com seleção múltipla e o seletor de sistema em lote e por linha',
-     [/const semSistema = useMemo\(\(\) => todos\.filter\(\(i\) => !i\.cliente_sistema_id\), \[todos\]\);/.test(fila111),
-      /<CheckSquare size=\{16\} \/> : <Square size=\{16\} \/>/.test(fila111),
-      /vincular\.mutate\(\{ ids: \[\.\.\.selecionados\], sistemaId: destino \}\)/.test(fila111),
-      /vincular\.mutate\(\{ ids: \[i\.id\], sistemaId: sid \}\)/.test(fila111),
-      /export function SeletorDeSistema\(/.test(fila111), /export function LinhaDoPatrimonio\(/.test(fila111)],
-     [true, true, true, true, true, true]);
-  eq('R200: três estados da fila — sem equipamento não aparece; sem bloco explica que é preciso criar um; tudo vinculado vira uma linha de confirmação',
-     [/if \(todos\.length === 0\) return null;/.test(fila111),
-      /Este cliente ainda não tem sistema instalado\./.test(fila111),
-      /equipamentos do QAP deste cliente estão em um sistema instalado\./.test(fila111)],
-     [true, true, true]);
-
   const inv111 = ler111('src/features/clientes/InventarioCliente.tsx');
   const inv111c = cod111(inv111);
-  eq('R200 CRÍTICO: o bloco mostra os equipamentos do QAP agrupados por cliente_sistema_id, com o MESMO seletor para mover ou desvincular; o cadastro manual de equipamento (catálogo do orçamento) SAIU',
-     [/for \(const i of patrimonio\?\.itens \?\? \[\]\) \{\s*\n\s*if \(!i\.cliente_sistema_id\) continue;/.test(inv111),
-      /<SeletorDeSistema\s*\n\s*sistemas=\{sistemas\}\s*\n\s*valor=\{s\.id\}/.test(inv111),
-      /mover\.mutate\(\{ id: i\.id, sistemaId: sid \}\)/.test(inv111),
+  // R206 (U114): a fila virou o painel "Sem bloco" e o vínculo passou a ser por
+  // ARRASTO — as asserções abaixo foram REAPONTADAS para a forma nova, não afrouxadas
+  eq('R200/R206: o painel "Sem bloco" lista SÓ o que não está em bloco nenhum (o pai agrupa com agruparPorSistema e passa semSistema), com seleção múltipla; o caminho sem arrasto é o seletor de bloco que aparece com a seleção',
+     [/const \{ porSistema, semSistema \} = useMemo\(\(\) => agruparPorSistema\(todos\), \[todos\]\);/.test(inv111),
+      /<EquipamentosDoCliente\s*\n\s*itens=\{semSistema\}/.test(inv111),
+      /<CheckSquare size=\{16\} \/> : <Square size=\{16\} \/>/.test(fila111),
+      /aoMudar=\{\(sid\) => \{ if \(sid\) aoVincular\(\[\.\.\.selecionados\], sid\); \}\}/.test(fila111),
+      /export function SeletorDeSistema\(/.test(fila111), /export function LinhaDoPatrimonio\(/.test(fila111)],
+     [true, true, true, true, true, true]);
+  eq('R200/R206: os estados do painel "Sem bloco" — sem a U109 avisa; sem equipamento do QAP explica; sem bloco manda criar um; tudo vinculado vira a linha de confirmação',
+     [/if \(faltaMigration\) \{/.test(fila111), /Nenhum equipamento do QAP importado para este cliente\./.test(fila111),
+      /Este cliente ainda não tem sistema instalado\./.test(fila111),
+      /equipamentos do QAP deste cliente estão em um sistema instalado\./.test(fila111)],
+     [true, true, true, true]);
+  eq('R200 CRÍTICO: o bloco mostra os equipamentos do QAP agrupados por cliente_sistema_id como SUB-ITENS (porSistema.get), com o botão de desvincular na linha; o cadastro manual de equipamento (catálogo do orçamento) SAIU',
+     [/const doQap = porSistema\.get\(s\.id\) \?\? VAZIO;/.test(inv111),
+      /onClick=\{\(\) => aoVincular\(\[i\.id\], null\)\}/.test(inv111),
       /ModalEquipamento|criarEquipamentoInstalado|useCatalogoEquipamentos/.test(inv111c)],
-     [true, true, true, false]);
-  eq('R200: o previsto do orçamento continua visível DENTRO do bloco (só quando existe) — "o que foi vendido × o que está lá"; blocos se criam por "+ Bloco" ou pelo escopo aprovado',
+     [true, true, false]);
+  eq('R200: o previsto do orçamento continua visível DENTRO do bloco (só quando existe, recolhido) — "o que foi vendido × o que está lá"; blocos se criam por "+ Bloco" ou pelo escopo aprovado',
      [/\{previstos\.length > 0 && \(/.test(inv111), /Previsto no orçamento/.test(inv111),
       /<Plus size=\{14\} \/>\s*\n\s*Bloco/.test(inv111), /Importar do escopo/.test(inv111),
       /derivarInventarioDaVisita\(clienteId, visitaId\)/.test(inv111)],
      [true, true, true, true, true]);
-  eq('R200: excluir um bloco avisa que os equipamentos voltam para a fila (a FK é SET NULL) e pede confirmação',
-     /Os \$\{doQap\.length\} equipamentos dele voltam para a fila de vínculo\./.test(inv111) && /if \(confirm\(aviso\)\) removerSistema\.mutate\(s\.id\);/.test(inv111), true);
+  eq('R200: excluir um bloco avisa que os equipamentos voltam para "Sem bloco" (a FK é SET NULL) e pede confirmação',
+     /Os \$\{doQap\.length\} equipamentos dele voltam para “Sem bloco”\./.test(inv111) && /if \(confirm\(aviso\)\) removerSistema\.mutate\(s\.id\);/.test(inv111), true);
 
   // ── R201 → R203: a ficha v2, numa página só ──────────────────────────────
   const fic111 = ler111('src/routes/_authenticated/clientes.$id.tsx');
@@ -18406,12 +18408,12 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
       /Serviço prestado<\/span>/.test(fic111)],
      [true, true, true, true]);
   {
-    const ordem = ['<InventarioCliente clienteId={id} podeEditar={isGerente} />', '<EquipamentosDoCliente clienteId={id} />',
+    const ordem = ['<InventarioCliente clienteId={id} podeEditar={isGerente} />',
       '<span style={SEC_LABEL}>Atividades</span>', '<span style={SEC_LABEL}>Plantão</span>', '<span style={SEC_LABEL}>Histórico de visitas</span>',
       'Adicionar foto da fachada', '<CardLocal {...propsDosCards} />', '<CardContatos {...propsDosCards} veFinanceiro={veFinanceiro} />',
       '<span style={SEC_LABEL}>Contratos</span>', '<CardEstrutura {...propsDosCards} />']
       .map((t) => fic111c.indexOf(t));
-    eq('R201/R203: a coluna larga é o LOCAL (sistemas → fila → atividades → plantão → visitas) e a estreita é a IDENTIDADE (fachada → o local → contatos → contratos → estrutura e observações), nesta ordem',
+    eq('R201/R203: a coluna larga é o LOCAL (sistemas com o vínculo dentro → atividades → plantão → visitas) e a estreita é a IDENTIDADE (fachada → o local → contatos → contratos → estrutura e observações), nesta ordem',
        ordem.every((p, i) => p >= 0 && (i === 0 || ordem[i - 1] < p)), true);
   }
   eq('R201: `Contato` é componente de MÓDULO (dentro do pai remontaria a cada render) — hoje exportado pelo ClienteForm, ao lado dos cards; a ficha continua na grade .detalhe-grid',
@@ -18563,6 +18565,118 @@ eq('padrão do catálogo bate com a semente da migration', divergem.map((t) => t
   eq('U113 (regra 7): está no diário e no ESTADO_ATUAL',
      [/^## U113 /m.test(ler113('docs/PLANO_UNIFICACAO.md')), /U113/.test(ler113('docs/ESTADO_ATUAL.md'))],
      [true, true]);
+}
+
+// ── U114 — a ficha preenche a largura, o vínculo por arrasto e os botões de ação (R205–R207) ──
+{
+  const fs114 = require('fs');
+  const ler114 = (f) => fs114.readFileSync(f, 'utf8');
+  const cod114 = (s) => s.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+  const V = carregar('src/features/clientes/vinculo.ts');
+  const F = carregar('src/features/clientes/ficha.ts');
+
+  // ── R206: a lógica pura do arrasto ─────────────────────────────────────────
+  eq('R206: arrastar um item MARCADO leva todos os marcados; um item solto vai sozinho mesmo com outros marcados',
+     [V.idsParaArrastar('b', new Set(['a', 'b'])).sort(), V.idsParaArrastar('c', new Set(['a', 'b']))],
+     [['a', 'b'], ['c']]);
+  eq('R206: o que viaja no arrasto volta igual — e lixo, duplicata e não-texto caem fora sem explodir',
+     [V.lerArrasto(V.serializarArrasto(['x', 'y'])), V.lerArrasto('["x","x",1,null,""]'), V.lerArrasto('{nada'), V.lerArrasto(null), V.lerArrasto('"solto"')],
+     [['x', 'y'], ['x'], [], [], []]);
+  {
+    const itens = [{ id: '1', cliente_sistema_id: 'A' }, { id: '2', cliente_sistema_id: null }, { id: '3', cliente_sistema_id: 'B' }];
+    eq('R206 CRÍTICO: soltar no bloco em que o item JÁ está não grava nada; soltar em "Sem bloco" só muda quem tinha bloco; id de fora da lista (outro cliente) é ignorado',
+       [V.idsQueMudam(itens, ['1', '2', '3'], 'A'), V.idsQueMudam(itens, ['1', '2', '3'], null), V.idsQueMudam(itens, ['zz', '2'], 'B')],
+       [['2', '3'], ['1', '3'], ['2']]);
+    const g = V.agruparPorSistema(itens);
+    eq('R206: agruparPorSistema separa "dentro de qual bloco" e "sem bloco" numa passada, preservando a ordem',
+       [[...g.porSistema.keys()], g.porSistema.get('A').map((i) => i.id), g.semSistema.map((i) => i.id)],
+       [['A', 'B'], ['1'], ['2']]);
+  }
+  eq('R206: só o tipo MIME próprio abre as zonas de soltar — texto arrastado de fora da página não vira "vincular"',
+     [V.arrastoEhNosso([V.TIPO_ARRASTO, 'text/plain']), V.arrastoEhNosso(['text/plain']), V.arrastoEhNosso(undefined), V.TIPO_ARRASTO],
+     [true, false, false, 'application/x-prever-equipamentos']);
+  eq('R206: a frase do toast concorda em número e diz para onde foi',
+     [V.fraseDoVinculo(1, 'CFTV'), V.fraseDoVinculo(3, 'CFTV'), V.fraseDoVinculo(1, null), V.fraseDoVinculo(2, null)],
+     ['1 equipamento vinculado a CFTV.', '3 equipamentos vinculados a CFTV.', '1 equipamento desvinculado — voltou para “Sem bloco”.', '2 equipamentos desvinculados — voltaram para “Sem bloco”.']);
+
+  // ── R206: os dois painéis na tela ──────────────────────────────────────────
+  const inv114 = ler114('src/features/clientes/InventarioCliente.tsx');
+  const fila114 = ler114('src/features/clientes/EquipamentosDoCliente.tsx');
+  const fic114 = ler114('src/routes/_authenticated/clientes.$id.tsx');
+  const fic114c = cod114(fic114);
+  eq('R206 CRÍTICO: o card "Sistemas instalados" tem os DOIS painéis lado a lado (.painel-vinculo): Blocos à esquerda e "Sem bloco" à direita, e a página não renderiza mais a fila como card separado',
+     [/<div className="painel-vinculo">/.test(inv114),
+      /<section aria-label="Blocos do local"/.test(inv114),
+      /<section\s*\n\s*aria-label="Equipamentos sem bloco"/.test(fila114),
+      inv114.indexOf('aria-label="Blocos do local"') < inv114.indexOf('<EquipamentosDoCliente'),
+      /<EquipamentosDoCliente clienteId=\{id\} \/>/.test(fic114c), /EquipamentosDoCliente/.test(fic114c)],
+     [true, true, true, true, false, false]);
+  eq('R206 CRÍTICO: cada bloco é ZONA DE SOLTAR (onDrop → aoVincular(ids, s.id)) e o painel "Sem bloco" também (onDrop → aoVincular(ids, null)); a mutação existe UMA vez, no pai, e só grava o que muda (idsQueMudam)',
+     [/aoVincular\(ids\.length > 0 \? ids : \(arrastando \?\? \[\]\), s\.id\);/.test(inv114),
+      /aoVincular\(ids\.length > 0 \? ids : \(arrastando \?\? \[\]\), null\);/.test(fila114),
+      /const mudam = idsQueMudam\(todos, ids, sistemaId\);\s*\n\s*if \(mudam\.length === 0\) return;\s*\n\s*vincular\.mutate\(\{ ids: mudam, sistemaId \}\);/.test(inv114),
+      (inv114.match(/vincularAoSistema\(/g) ?? []).length, /vincularAoSistema|useMutation/.test(cod114(fila114))],
+     [true, true, true, 1, false]);
+  eq('R206: as linhas se ARRASTAM (draggable + setData no tipo próprio) nos dois painéis; arrastar um item marcado leva a seleção (idsParaArrastar); o bloco de origem não se acende como destino (idsQueMudam vazio); só o nosso tipo MIME passa pelo dragover',
+     [/draggable=\{podeArrastar\}/.test(fila114), /const ids = idsParaArrastar\(i\.id, selecionados\);/.test(fila114),
+      /e\.dataTransfer\.setData\(TIPO_ARRASTO, serializarArrasto\(ids\)\);/.test(fila114),
+      /draggable=\{podeEditar\}/.test(inv114), /e\.dataTransfer\.setData\(TIPO_ARRASTO, serializarArrasto\(\[i\.id\]\)\);/.test(inv114),
+      /const podeReceber = haArrasto && podeEditar && idsQueMudam\(todos, arrastando!, s\.id\)\.length > 0;/.test(inv114),
+      /if \(!podeEditar \|\| !arrastoEhNosso\(e\.dataTransfer\.types\)\) return;/.test(inv114) && /if \(!podeEditar \|\| !arrastoEhNosso\(e\.dataTransfer\.types\)\) return;/.test(fila114)],
+     [true, true, true, true, true, true, true]);
+  eq('R206: o gesto é ENSINADO na tela — a dica no card, "Solte aqui" no bloco vazio, "Solte para tirar do bloco" no painel, e a alça de arrasto (GripVertical) em cada linha',
+     [/Arraste um equipamento de <strong style=\{\{ color: c\.texto \}\}>Sem bloco<\/strong> para o bloco certo/.test(inv114),
+      /Solte aqui os equipamentos deste bloco/.test(inv114), /Solte para tirar do bloco/.test(fila114),
+      /<GripVertical size=\{14\}/.test(inv114) && /<GripVertical size=\{14\}/.test(fila114)],
+     [true, true, true, true]);
+  eq('R206: .painel-vinculo é uma coluna no celular e duas iguais a partir de 1024px',
+     /\.painel-vinculo \{ display: grid; grid-template-columns: minmax\(0, 1fr\); gap: 12px; align-items: start; \}\s*\n@media \(min-width: 1024px\) \{\s*\n\s*\.painel-vinculo \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 14px; \}/.test(ler114('src/styles.css')), true);
+
+  // ── R205: a página preenche a largura ──────────────────────────────────────
+  const css114 = ler114('src/styles.css');
+  eq('R205 CRÍTICO: a ficha usa .pagina-larga — a mesma conta da sangria (50% - 50vw + rail/2) nos dois lados, padding constante — e dentro dela a grade vira "o que sobrar | identidade com teto" (clamp 340–480)',
+     [/<div className="pagina-larga" style=\{\{ paddingTop: 12, paddingBottom: 48,/.test(fic114),
+      /\.pagina-larga \{ margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; \}/.test(css114),
+      /\.pagina-larga \{\s*\n\s*margin-left: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*margin-right: calc\(50% - 50vw \+ var\(--rail\) \/ 2\);\s*\n\s*padding-left: 28px;\s*\n\s*padding-right: 28px;\s*\n\s*\}/.test(css114),
+      /\.pagina-larga \.detalhe-grid \{ grid-template-columns: minmax\(0, 1fr\) clamp\(340px, 30%, 480px\); gap: 18px; \}/.test(css114),
+      /className="detalhe-grid"/.test(fic114)],
+     [true, true, true, true, true]);
+  const form114 = ler114('src/features/clientes/ClienteForm.tsx');
+  eq('R205: em leitura, as linhas dos cards são uma GRADE rótulo | valor (valor à esquerda, na mesma coluna) — não "rótulo na esquerda, valor fugindo para a direita"',
+     [/gridTemplateColumns: "minmax\(96px, 30%\) minmax\(0, 1fr\)", alignItems: "baseline",/.test(form114),
+      /textAlign: "left", minWidth: 0, wordBreak: "break-word",/.test(form114),
+      /textAlign: "right"/.test(cod114(form114))],
+     [true, true, false]);
+
+  // ── R207: os botões de ação ────────────────────────────────────────────────
+  eq('R207: o endereço copiado é o endereço INTEIRO numa linha — complemento e cidade/UF entram, parte vazia não deixa vírgula sobrando',
+     [F.enderecoParaCopiar({ endereco: 'Rua das Paineiras, 250', complemento: 'Torre B', cidade: 'São Paulo', uf: 'SP' }),
+      F.enderecoParaCopiar({ endereco: 'Rua X, 1', complemento: null, cidade: null, uf: 'SP' }),
+      F.enderecoParaCopiar({ endereco: ' Rua Y ', complemento: '  ' }), F.enderecoParaCopiar({})],
+     ['Rua das Paineiras, 250, Torre B, São Paulo - SP', 'Rua X, 1, SP', 'Rua Y', '']);
+  eq('R207 CRÍTICO: o contato tem o botão "Enviar mensagem no WhatsApp" (o link wa.me) e o "Copiar e-mail"; o endereço tem o "Copiar endereço" — e copiar passa pelo copiarTexto seguro (navigator.clipboard?.), nunca pelo clipboard direto na tela',
+     [/title="Enviar mensagem no WhatsApp"/.test(form114), /href=\{whatsappLink\(whatsapp\)\}/.test(form114),
+      /title="Copiar e-mail"/.test(form114), /onClick=\{\(\) => copiar\(email, "E-mail"\)\}/.test(form114),
+      /title="Copiar endereço"/.test(form114), /onClick=\{\(\) => copiar\(enderecoParaCopiar\(cliente\), "Endereço"\)\}/.test(form114),
+      /navigator\.clipboard/.test(cod114(form114)), /navigator\.clipboard\?\.writeText/.test(ler114('src/lib/copiar.ts'))],
+     [true, true, true, true, true, true, false, true]);
+  eq('R207: o financeiro entra pelo MESMO componente Contato, sem a linha de WhatsApp (whatsapp undefined esconde; null mostra o traço)',
+     [/rotulo="Financeiro" nome=\{cliente\.responsavel_financeiro\} email=\{cliente\.email_financeiro\} \/>/.test(form114),
+      /\{whatsapp !== undefined && \(/.test(form114)],
+     [true, true]);
+
+  // regra 7
+  const prod114 = ler114('docs/PRODUTO.md');
+  const ds114 = ler114('DESIGN_SYSTEM.md');
+  const sec620b = ds114.slice(ds114.indexOf('### 6.20 Ficha do cliente'), ds114.indexOf('### 6.13 Card de cliente'));
+  eq('U114 (regra 7): R205–R207 existem com a frase do Davi, a última atualização aponta para a R207, o DS §6.20 descreve os dois painéis e a .pagina-larga (e não mais o seletor por linha), o manual ensina o arrasto, a U114 está no diário e no ESTADO',
+     [['R205', 'R206', 'R207'].every((r) => new RegExp('^- \\*\\*' + r + '\\*\\* —', 'm').test(prod114)),
+      Number((prod114.match(/Última atualização: [^(]*\(R(\d+)\)/) ?? [])[1]) >= 207,
+      /só de arrastar\s+o equipamento ao bloco/.test(prod114),
+      /painel-vinculo/.test(sec620b) && /pagina-larga/.test(sec620b) && !/SeletorDeSistema` compacto à direita/.test(sec620b),
+      /arrast/i.test(ler114('docs/manual/clientes-qap.md')),
+      /^## U114 /m.test(ler114('docs/PLANO_UNIFICACAO.md')), /U114/.test(ler114('docs/ESTADO_ATUAL.md'))],
+     [true, true, true, true, true, true, true]);
 }
 
 console.log(`\n${ok} verificações passaram, ${falhas} falharam.`);

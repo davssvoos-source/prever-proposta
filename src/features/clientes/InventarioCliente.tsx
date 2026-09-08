@@ -1,39 +1,43 @@
-// SISTEMAS INSTALADOS na ficha do cliente — os blocos e o que está neles (R200, R202, U111/U112).
+// SISTEMAS INSTALADOS na ficha do cliente — os blocos e o vínculo por arrasto
+// (R200, R202, R206; U111/U112/U114).
 //
 // Davi, 2026-09-07: "Cada página de cliente deverá ter um campo para os
 // sistemas instalados. Os sistemas instalados consistem em blocos com
-// equipamentos vinculados a estes blocos. Então os blocos deverão ser criados
-// diretamente no nosso app, enquanto os equipamentos de cada cliente são
-// importados pelo QAP, e aí no nosso sistema, o usuário vincula o equipamento
+// equipamentos vinculados a estes blocos. […] o usuário vincula o equipamento
 // ao sistema instalado (ambos no mesmo cliente)."
 //
-// E, esclarecendo (R202): "no caso de locais que já são nossos clientes, nós não
-// vamos passar pela fase de elaboração da proposta comercial […] a única coisa
-// que precisamos fazer é: indicar quais blocos existem em cada cliente […] e
-// vamos vincular os equipamentos a cada um dos blocos que criamos. […] a
-// estrutura pula etapas, nós indicamos direto os equipamentos de cada bloco."
+// E, sobre o gesto (R206): "a minha ideia são dois campos um ao lado do outro,
+// um com bloco e sub-itens sendo os equipamentos já vinculados a aquele bloco,
+// e o outro campo são os equipamentos sem bloco vinculado, e aí só de arrastar
+// o equipamento ao bloco, o sistema já vincula. Eu quero que fique muito claro
+// e intuitivo os campos."
 //
 // O MODELO, em uma linha: um SISTEMA INSTALADO é um BLOCO do cliente
-// (`cliente_sistemas` — tipo e NOME), criado aqui no app; o EQUIPAMENTO é o item
-// do QAP (`equipamentos_patrimonio`, importado na U110) e o vínculo é a coluna
-// `cliente_sistema_id` dele.
+// (`cliente_sistemas` — tipo e NOME, R202), criado aqui; o EQUIPAMENTO é o
+// item do QAP (`equipamentos_patrimonio`, importado na U110) e o vínculo é a
+// coluna `cliente_sistema_id` dele.
 //
-// O QUE NÃO EXISTE MAIS AQUI: a ESTRUTURA por perguntas (barreira, entrada,
-// saída, abertura — o editor da R63). Ela é do ORÇAMENTO, onde cada resposta
-// poda os equipamentos de um projeto que ainda não existe; num cliente que já
-// tem tudo instalado, o equipamento é indicado direto. Bloco importado do
-// escopo aprovado ainda traz o código que o orçamento gerou, e ele é mostrado
-// como informação — só não se edita mais por aqui. O "+ Equipamento" manual
-// (catálogo do orçamento) também saiu na U111: equipamento é o do QAP. O que
-// veio dimensionado da proposta (`cliente_equipamentos`) continua visível
-// dentro do bloco como "Previsto no orçamento".
+// A TELA são dois painéis lado a lado (`.painel-vinculo`; no celular empilham):
+//   · BLOCOS (esquerda, este arquivo) — cada bloco é uma ZONA DE SOLTAR, com os
+//     equipamentos vinculados como sub-itens (que também se arrastam, para
+//     outro bloco ou de volta para "Sem bloco").
+//   · SEM BLOCO (direita, EquipamentosDoCliente) — o que ainda não está em
+//     bloco nenhum; arrasta-se de lá para o bloco. Também é zona de soltar
+//     (soltar ali desvincula).
+// O estado do arrasto (`arrastando`) e a MUTAÇÃO vivem aqui, uma vez, porque as
+// duas zonas precisam concordar sobre o que está no ar e o que muda ao cair.
+//
+// O QUE NÃO EXISTE AQUI: a estrutura por perguntas (R202 — é do orçamento), o
+// "+ Equipamento" manual (U111 — equipamento é o do QAP). O que veio
+// dimensionado da proposta (`cliente_equipamentos`) fica visível dentro do
+// bloco como "Previsto no orçamento", recolhido.
 //
 // OS SUBCOMPONENTES SÃO DE MÓDULO (o mesmo motivo do PainelChamado): declarados
 // dentro do pai ganhariam identidade nova a cada render e o modal remontaria.
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties, type DragEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Boxes, ChevronDown, ChevronRight, Download, Plus, Trash2, X } from "lucide-react";
+import { Boxes, ChevronDown, ChevronRight, Download, GripVertical, Plus, Trash2, Unlink, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { FONT, card, etiqueta, botaoSelecao, goldButton } from "@/lib/ui";
@@ -55,10 +59,16 @@ import {
   ESTADO_CORES,
   ORIGEM_LABEL,
   type EstadoEquipamento,
-  type SistemaInstalado,
   type TipoSistema,
 } from "./inventario";
-import { LinhaDoPatrimonio, SeletorDeSistema, useInvalidarPatrimonioDoCliente } from "./EquipamentosDoCliente";
+import {
+  CabecalhoDoPainel, EquipamentosDoCliente, LinhaDoPatrimonio, estiloDoPainel, useInvalidarPatrimonioDoCliente,
+} from "./EquipamentosDoCliente";
+import {
+  TIPO_ARRASTO, agruparPorSistema, arrastoEhNosso, fraseDoVinculo, idsQueMudam, lerArrasto, serializarArrasto,
+} from "./vinculo";
+
+const VAZIO: ItemDePatrimonio[] = [];
 
 export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string; podeEditar: boolean }) {
   const { isLight } = useTheme();
@@ -70,24 +80,17 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
   const { data: sistemas = [], isLoading } = useInventario(clienteId);
   const { data: visitasEscopo = [] } = useVisitasComEscopo(clienteId);
-  const { data: patrimonio } = useEquipamentosDoCliente(clienteId);
+  const { data: patrimonio, isLoading: carregandoPatrimonio } = useEquipamentosDoCliente(clienteId);
 
-  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const todos = patrimonio?.itens ?? VAZIO;
+  // R200/R206: os equipamentos do QAP, separados em "dentro de qual bloco" e "sem bloco"
+  const { porSistema, semSistema } = useMemo(() => agruparPorSistema(todos), [todos]);
+  const vinculados = todos.length - semSistema.length;
+
+  const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set());
+  const [arrastando, setArrastando] = useState<string[] | null>(null);
+  const [alvo, setAlvo] = useState<string | null>(null);
   const [modal, setModal] = useState<null | { tipo: "importar" } | { tipo: "sistema" }>(null);
-
-  // os equipamentos do QAP, agrupados pelo bloco em que estão (R200)
-  const porSistema = useMemo(() => {
-    const m = new Map<string, ItemDePatrimonio[]>();
-    for (const i of patrimonio?.itens ?? []) {
-      if (!i.cliente_sistema_id) continue;
-      const arr = m.get(i.cliente_sistema_id) ?? [];
-      arr.push(i);
-      m.set(i.cliente_sistema_id, arr);
-    }
-    return m;
-  }, [patrimonio]);
-  const totalDoQap = patrimonio?.itens.length ?? 0;
-  const vinculados = [...porSistema.values()].reduce((t, l) => t + l.length, 0);
 
   const MICRO: CSSProperties = {
     fontFamily: FONT, fontWeight: 700, fontSize: 10.5, letterSpacing: "0.10em",
@@ -99,12 +102,34 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
     color: c.texto, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
     fontFamily: FONT, fontWeight: 600, fontSize: 12,
   };
+  const btnIcone: CSSProperties = {
+    width: 28, height: 28, borderRadius: 8, flexShrink: 0, cursor: "pointer",
+    background: "transparent", border: `1px solid ${c.divisoria}`, color: c.textoSecundario,
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+  };
 
   const invalidar = () => {
     qc.invalidateQueries({ queryKey: ["cliente-inventario", clienteId] });
     qc.invalidateQueries({ queryKey: ["cliente-visitas-escopo", clienteId] });
     invalidarPatrimonio();
   };
+
+  // ── o VÍNCULO — uma mutação para as duas zonas de soltar ──────────────────
+  const vincular = useMutation({
+    mutationFn: ({ ids, sistemaId }: { ids: string[]; sistemaId: string | null }) => vincularAoSistema(ids, sistemaId),
+    onSuccess: (_d, { ids, sistemaId }) => {
+      invalidar();
+      toast.success(fraseDoVinculo(ids.length, sistemas.find((s) => s.id === sistemaId)?.nome ?? null));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  /** vincula (sistemaId) ou desvincula (null) — só o que de fato muda de lugar */
+  const aoVincular = (ids: string[], sistemaId: string | null) => {
+    const mudam = idsQueMudam(todos, ids, sistemaId);
+    if (mudam.length === 0) return;
+    vincular.mutate({ ids: mudam, sistemaId });
+  };
+  const terminarArrasto = () => { setArrastando(null); setAlvo(null); };
 
   const importar = useMutation({
     mutationFn: (visitaId: string) => derivarInventarioDaVisita(clienteId, visitaId),
@@ -122,16 +147,7 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
 
   const removerSistema = useMutation({
     mutationFn: (id: string) => excluirSistema(id),
-    onSuccess: () => { invalidar(); toast.success("Bloco removido. Os equipamentos dele voltaram para a fila de vínculo."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const mover = useMutation({
-    mutationFn: ({ id, sistemaId }: { id: string; sistemaId: string | null }) => vincularAoSistema([id], sistemaId),
-    onSuccess: (_d, { sistemaId }) => {
-      invalidar();
-      toast.success(sistemaId ? "Equipamento movido de bloco." : "Equipamento desvinculado — voltou para a fila.");
-    },
+    onSuccess: () => { invalidar(); toast.success("Bloco removido. Os equipamentos dele voltaram para “Sem bloco”."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -148,16 +164,18 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
   });
 
   const podeImportar = visitasEscopo.some((v) => v.qtdBlocosNovos > 0);
+  const haArrasto = !!arrastando;
 
   return (
-    <div style={{ ...card(isLight), borderRadius: 18, padding: 16 }}>
+    <div style={{ ...card(isLight), borderRadius: 18, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* ── cabeçalho do card ─────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <Boxes size={16} color={gold} />
         <span style={MICRO}>Sistemas instalados</span>
-        {sistemas.length > 0 && (
+        {(sistemas.length > 0 || todos.length > 0) && (
           <span style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario }}>
             {sistemas.length} bloco{sistemas.length === 1 ? "" : "s"}
-            {totalDoQap > 0 && ` · ${vinculados} de ${totalDoQap} equipamentos do QAP vinculados`}
+            {todos.length > 0 && ` · ${vinculados} de ${todos.length} equipamentos do QAP vinculados`}
           </span>
         )}
         <span style={{ flex: 1 }} />
@@ -179,196 +197,255 @@ export function InventarioCliente({ clienteId, podeEditar }: { clienteId: string
           </div>
         )}
       </div>
+      {podeEditar && sistemas.length > 0 && semSistema.length > 0 && (
+        <p style={{ margin: 0, fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
+          Arraste um equipamento de <strong style={{ color: c.texto }}>Sem bloco</strong> para o bloco certo — o vínculo
+          grava na hora. Para tirar, arraste-o de volta.
+        </p>
+      )}
 
-      {isLoading ? (
-        <div style={{ fontFamily: FONT, fontSize: 13, color: c.textoSecundario, paddingTop: 12 }}>
-          Carregando os sistemas…
-        </div>
-      ) : sistemas.length === 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14 }}>
-          <span style={{ fontFamily: FONT, fontSize: 13, color: c.texto }}>
-            Nenhum sistema instalado ainda.
-          </span>
-          <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
-            Cada bloco é um sistema do local — a eclusa de pedestres, a eclusa veicular, o CFTV, a cerca
-            elétrica, a central de portaria remota. Crie o primeiro com <strong>+ Bloco</strong>
-            {podeImportar ? " ou importe os blocos da proposta aprovada" : ""}; depois vincule a ele os
-            equipamentos que vieram do QAP{totalDoQap > 0 ? ` (${totalDoQap} esperando)` : ""}.
-          </span>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-          {sistemas.map((s) => {
-            const aberto = expandidos.has(s.id);
-            const doQap = porSistema.get(s.id) ?? [];
-            const previstos = s.equipamentos;
-            return (
-              <div
-                key={s.id}
-                style={{ borderRadius: 14, border: `1px solid ${c.divisoria}`, background: c.campo, overflow: "hidden" }}
-              >
-                <button
-                  onClick={() =>
-                    setExpandidos((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
-                      return n;
-                    })
-                  }
-                  aria-expanded={aberto}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10,
-                    padding: "11px 14px", background: "transparent", border: "none",
-                    cursor: "pointer", textAlign: "left", color: c.texto,
-                  }}
-                >
-                  {aberto ? <ChevronDown size={16} color={c.textoSecundario} /> : <ChevronRight size={16} color={c.textoSecundario} />}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5 }}>{s.nome}</div>
-                    <div style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, marginTop: 1 }}>
-                      {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo}
-                      {s.descricao && s.descricao !== s.codigo_bloco ? ` · ${s.descricao}` : ""}
-                      {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
-                    </div>
-                    {/* R202: o código só existe em bloco que veio do orçamento — é
-                        informação, não se edita mais por aqui */}
-                    {s.codigo_bloco && (
-                      <div style={{
-                        fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: gold,
-                        marginTop: 2, wordBreak: "break-all",
-                      }}>
-                        {s.codigo_bloco}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
-                      {doQap.length}
-                    </div>
-                    <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: c.textoSecundario }}>
-                      {doQap.length === 1 ? "equipamento" : "equipamentos"}
-                    </div>
-                  </div>
-                </button>
-
-                {aberto && (
-                  <div style={{ padding: "0 14px 14px", display: "flex", flexDirection: "column", gap: 12 }}>
-                    {/* ── o que ESTÁ no bloco: os equipamentos do QAP vinculados (R200) ── */}
-                    <div>
-                      <div style={{ ...MICRO, fontSize: 9.5, marginBottom: 2 }}>Equipamentos vinculados</div>
-                      {doQap.length === 0 ? (
-                        <div style={{ fontFamily: FONT, fontSize: 12, color: c.textoSecundario, padding: "6px 0" }}>
-                          Nenhum equipamento do QAP neste bloco ainda — vincule pela fila <strong>Equipamentos a vincular</strong>, abaixo.
+      {/* ── os dois painéis ───────────────────────────────────────────────── */}
+      <div className="painel-vinculo">
+        {/* BLOCOS — cada um é uma zona de soltar */}
+        <section aria-label="Blocos do local" style={estiloDoPainel(isLight, "nenhum")}>
+          <CabecalhoDoPainel
+            icone={<Boxes size={15} />}
+            titulo="Blocos"
+            contagem={sistemas.length > 0 ? `${sistemas.length}` : undefined}
+          />
+          {isLoading ? (
+            <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario }}>Carregando os sistemas…</span>
+          ) : sistemas.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, color: c.texto }}>Nenhum sistema instalado ainda.</span>
+              <span style={{ fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario, lineHeight: 1.5 }}>
+                Cada bloco é um sistema do local — a eclusa de pedestres, a eclusa veicular, o CFTV, a cerca elétrica, a central de portaria remota.
+                {podeEditar ? <> Crie o primeiro com <strong>+ Bloco</strong>{podeImportar ? " ou importe os blocos da proposta aprovada" : ""}; depois arraste para ele os equipamentos que vieram do QAP{todos.length > 0 ? ` (${todos.length} esperando)` : ""}.</> : null}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {sistemas.map((s) => {
+                const recolhido = recolhidos.has(s.id);
+                const doQap = porSistema.get(s.id) ?? VAZIO;
+                const previstos = s.equipamentos;
+                // o bloco de onde o arrasto saiu não é destino
+                const podeReceber = haArrasto && podeEditar && idsQueMudam(todos, arrastando!, s.id).length > 0;
+                const emCima = alvo === s.id && podeReceber;
+                return (
+                  <div
+                    key={s.id}
+                    onDragOver={(e: DragEvent<HTMLDivElement>) => {
+                      if (!podeEditar || !arrastoEhNosso(e.dataTransfer.types)) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (alvo !== s.id) setAlvo(s.id);
+                    }}
+                    onDragLeave={(e: DragEvent<HTMLDivElement>) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                      setAlvo((a) => (a === s.id ? null : a));
+                    }}
+                    onDrop={(e: DragEvent<HTMLDivElement>) => {
+                      if (!podeEditar) return;
+                      e.preventDefault();
+                      const ids = lerArrasto(e.dataTransfer.getData(TIPO_ARRASTO) || e.dataTransfer.getData("text/plain"));
+                      aoVincular(ids.length > 0 ? ids : (arrastando ?? []), s.id);
+                      terminarArrasto();
+                    }}
+                    style={{
+                      borderRadius: 14, overflow: "hidden", background: emCima ? PRISMA.amarelo.bg : c.campo,
+                      border: emCima ? `1.5px solid ${gold}` : podeReceber ? `1.5px dashed ${gold}` : `1px solid ${c.divisoria}`,
+                      transition: "border-color .15s ease, background-color .15s ease",
+                    }}
+                  >
+                    {/* cabeçalho do bloco: recolher · nome/tipo/código · contagem · excluir */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setRecolhidos((prev) => {
+                          const n = new Set(prev);
+                          if (n.has(s.id)) n.delete(s.id); else n.add(s.id);
+                          return n;
+                        })}
+                        aria-expanded={!recolhido}
+                        aria-label={recolhido ? `Mostrar os equipamentos de ${s.nome}` : `Recolher ${s.nome}`}
+                        style={{
+                          flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8,
+                          background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: c.texto,
+                        }}
+                      >
+                        {recolhido ? <ChevronRight size={16} color={c.textoSecundario} /> : <ChevronDown size={16} color={c.textoSecundario} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.nome}</div>
+                          <div style={{ fontFamily: FONT, fontSize: 11.5, color: c.textoSecundario, marginTop: 1 }}>
+                            {TIPO_SISTEMA_LABEL[s.tipo] ?? s.tipo}
+                            {s.descricao && s.descricao !== s.codigo_bloco ? ` · ${s.descricao}` : ""}
+                            {s.origem_visita_bloco_id ? " · do escopo aprovado" : ""}
+                          </div>
+                          {/* R202: o código só existe em bloco que veio do orçamento — é
+                              informação, não se edita por aqui */}
+                          {s.codigo_bloco && (
+                            <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, color: gold, marginTop: 2, wordBreak: "break-all" }}>
+                              {s.codigo_bloco}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          {doQap.map((i, idx) => (
-                            <LinhaDoPatrimonio
-                              key={i.id}
-                              item={i}
-                              primeira={idx === 0}
-                              direita={podeEditar ? (
-                                <SeletorDeSistema
-                                  sistemas={sistemas}
-                                  valor={s.id}
-                                  desabilitado={mover.isPending}
-                                  aoMudar={(sid) => mover.mutate({ id: i.id, sistemaId: sid })}
-                                />
-                              ) : undefined}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ── o que foi VENDIDO: o dimensionado da proposta aprovada ── */}
-                    {previstos.length > 0 && (
-                      <div>
-                        <div style={{ ...MICRO, fontSize: 9.5, color: c.textoSecundario, marginBottom: 2 }}>
-                          Previsto no orçamento
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column" }}>
-                          {previstos.map((e, idx) => {
-                            const cor = ESTADO_CORES[e.estado] ?? ESTADO_CORES.ativo;
-                            return (
-                              <div
-                                key={e.id}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: 8, padding: "7px 0",
-                                  borderTop: idx === 0 ? "none" : `1px solid ${c.divisoria}`,
-                                }}
-                              >
-                                <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12, minWidth: 28, color: c.texto, fontVariantNumeric: "tabular-nums" }}>
-                                  {Number(e.qtd)}×
-                                </span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: c.texto }}>
-                                    {nomeEquipamento(e)}
-                                  </div>
-                                  <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario }}>
-                                    {[e.cod_eq, e.equipamento?.marca, e.equipamento?.modelo].filter(Boolean).join(" · ")}
-                                    {e.origem !== "implantacao" ? ` · ${ORIGEM_LABEL[e.origem]}` : ""}
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() =>
-                                    podeEditar &&
-                                    mudarPrevisto.mutate({ id: e.id, patch: { estado: e.estado === "ativo" ? "removido" : "ativo" } })
-                                  }
-                                  title={podeEditar ? "Alternar entre ativo e removido" : undefined}
-                                  style={{
-                                    padding: "3px 8px", borderRadius: 12, flexShrink: 0, border: "none",
-                                    ...etiqueta(cor),
-                                    fontFamily: FONT, fontWeight: 700, fontSize: 9,
-                                    letterSpacing: "0.06em", textTransform: "uppercase",
-                                    cursor: podeEditar ? "pointer" : "default",
-                                  }}
-                                >
-                                  {ESTADO_LABEL[e.estado] ?? e.estado}
-                                </button>
-                                {podeEditar && (
-                                  <button
-                                    onClick={() => removerPrevisto.mutate(e.id)}
-                                    aria-label={`Remover ${nomeEquipamento(e)} do previsto`}
-                                    style={{
-                                      width: 26, height: 26, borderRadius: 8, cursor: "pointer", flexShrink: 0,
-                                      background: "transparent", border: "none", color: vermelho,
-                                      display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}
-                                  >
-                                    <Trash2 size={13} />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
+                      </button>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums", color: c.texto }}>{doQap.length}</div>
+                        <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: 9, letterSpacing: "0.05em", textTransform: "uppercase", color: c.textoSecundario }}>
+                          {doQap.length === 1 ? "equipamento" : "equipamentos"}
                         </div>
                       </div>
-                    )}
-
-                    {podeEditar && (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {podeEditar && (
                         <button
-                          style={{ ...btnSec, color: vermelho }}
+                          type="button"
+                          title="Excluir bloco"
+                          aria-label={`Excluir o bloco ${s.nome}`}
                           onClick={() => {
                             const aviso = doQap.length > 0
-                              ? `Excluir o bloco "${s.nome}"? Os ${doQap.length} equipamentos dele voltam para a fila de vínculo.`
+                              ? `Excluir o bloco "${s.nome}"? Os ${doQap.length} equipamentos dele voltam para “Sem bloco”.`
                               : `Excluir o bloco "${s.nome}"?`;
                             if (confirm(aviso)) removerSistema.mutate(s.id);
                           }}
+                          style={{ ...btnIcone, color: vermelho }}
                         >
-                          <Trash2 size={14} />
-                          Excluir bloco
+                          <Trash2 size={13} />
                         </button>
+                      )}
+                    </div>
+
+                    {!recolhido && (
+                      <div style={{ padding: "0 12px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+                        {/* ── os SUB-ITENS: os equipamentos do QAP vinculados (R200/R206) ── */}
+                        {doQap.length === 0 ? (
+                          <div style={{
+                            padding: "14px 12px", borderRadius: 10, textAlign: "center",
+                            border: `1.5px dashed ${emCima ? gold : c.divisoria}`,
+                            fontFamily: FONT, fontSize: 12.5, color: c.textoSecundario,
+                          }}>
+                            {podeEditar ? "Solte aqui os equipamentos deste bloco" : "Nenhum equipamento vinculado."}
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", borderRadius: 10, background: c.superficie, padding: "0 6px" }}>
+                            {doQap.map((i, idx) => (
+                              <div
+                                key={i.id}
+                                draggable={podeEditar}
+                                onDragStart={(e: DragEvent<HTMLDivElement>) => {
+                                  e.dataTransfer.setData(TIPO_ARRASTO, serializarArrasto([i.id]));
+                                  e.dataTransfer.setData("text/plain", serializarArrasto([i.id]));
+                                  e.dataTransfer.effectAllowed = "move";
+                                  setArrastando([i.id]);
+                                }}
+                                onDragEnd={terminarArrasto}
+                                title={podeEditar ? "Arraste para outro bloco, ou para “Sem bloco” para desvincular" : undefined}
+                                style={{ cursor: podeEditar ? "grab" : "default", opacity: arrastando?.includes(i.id) ? 0.45 : 1 }}
+                              >
+                                <LinhaDoPatrimonio
+                                  item={i}
+                                  primeira={idx === 0}
+                                  esquerda={podeEditar ? <GripVertical size={14} color={c.textoSecundario} style={{ flexShrink: 0 }} aria-hidden /> : undefined}
+                                  direita={podeEditar ? (
+                                    <button
+                                      type="button"
+                                      title="Desvincular — volta para “Sem bloco”"
+                                      aria-label={`Desvincular ${i.catalogo?.nome ?? "equipamento"}`}
+                                      disabled={vincular.isPending}
+                                      onClick={() => aoVincular([i.id], null)}
+                                      style={btnIcone}
+                                    >
+                                      <Unlink size={13} />
+                                    </button>
+                                  ) : undefined}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* ── o que foi VENDIDO: o dimensionado da proposta, recolhido ── */}
+                        {previstos.length > 0 && (
+                          <details style={{ borderRadius: 10, border: `1px solid ${c.divisoria}`, padding: "6px 10px" }}>
+                            <summary style={{ ...MICRO, fontSize: 9.5, color: c.textoSecundario, cursor: "pointer", listStyle: "none" }}>
+                              Previsto no orçamento · {previstos.length} {previstos.length === 1 ? "item" : "itens"}
+                            </summary>
+                            <div style={{ display: "flex", flexDirection: "column", marginTop: 4 }}>
+                              {previstos.map((e, idx) => {
+                                const cor = ESTADO_CORES[e.estado] ?? ESTADO_CORES.ativo;
+                                return (
+                                  <div
+                                    key={e.id}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 8, padding: "6px 0",
+                                      borderTop: idx === 0 ? "none" : `1px solid ${c.divisoria}`,
+                                    }}
+                                  >
+                                    <span style={{ fontFamily: FONT, fontWeight: 700, fontSize: 12, minWidth: 28, color: c.texto, fontVariantNumeric: "tabular-nums" }}>
+                                      {Number(e.qtd)}×
+                                    </span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 600, color: c.texto }}>{nomeEquipamento(e)}</div>
+                                      <div style={{ fontFamily: FONT, fontSize: 10.5, color: c.textoSecundario }}>
+                                        {[e.cod_eq, e.equipamento?.marca, e.equipamento?.modelo].filter(Boolean).join(" · ")}
+                                        {e.origem !== "implantacao" ? ` · ${ORIGEM_LABEL[e.origem]}` : ""}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() =>
+                                        podeEditar &&
+                                        mudarPrevisto.mutate({ id: e.id, patch: { estado: e.estado === "ativo" ? "removido" : "ativo" } })
+                                      }
+                                      title={podeEditar ? "Alternar entre ativo e removido" : undefined}
+                                      style={{
+                                        padding: "3px 8px", borderRadius: 12, flexShrink: 0, border: "none",
+                                        ...etiqueta(cor),
+                                        fontFamily: FONT, fontWeight: 700, fontSize: 9,
+                                        letterSpacing: "0.06em", textTransform: "uppercase",
+                                        cursor: podeEditar ? "pointer" : "default",
+                                      }}
+                                    >
+                                      {ESTADO_LABEL[e.estado] ?? e.estado}
+                                    </button>
+                                    {podeEditar && (
+                                      <button
+                                        onClick={() => removerPrevisto.mutate(e.id)}
+                                        aria-label={`Remover ${nomeEquipamento(e)} do previsto`}
+                                        style={{ ...btnIcone, border: "none", color: vermelho }}
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* SEM BLOCO — arrasta-se daqui; soltar aqui desvincula */}
+        <EquipamentosDoCliente
+          itens={semSistema}
+          total={todos.length}
+          sistemas={sistemas}
+          podeEditar={podeEditar}
+          faltaMigration={!!patrimonio?.faltaMigration}
+          carregando={carregandoPatrimonio}
+          arrastando={arrastando}
+          aoIniciarArrasto={setArrastando}
+          aoTerminarArrasto={terminarArrasto}
+          aoVincular={aoVincular}
+          vinculando={vincular.isPending}
+        />
+      </div>
 
       {modal?.tipo === "importar" && (
         <ModalImportar
@@ -525,7 +602,7 @@ function ModalSistema({
         nome: nome.trim() || TIPO_SISTEMA_LABEL[tipo],
         descricao: descricao.trim() || null,
       }),
-    onSuccess: () => { toast.success("Bloco criado. Agora vincule a ele os equipamentos do QAP."); onCriado(); },
+    onSuccess: () => { toast.success("Bloco criado. Agora arraste para ele os equipamentos do QAP."); onCriado(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
